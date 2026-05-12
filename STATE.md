@@ -4,7 +4,7 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-11T05:00:00Z
+timestamp: 2026-05-11T06:00:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
@@ -14,7 +14,7 @@ mode: greenfield
 current_step: pre-phase-0-complete
 current_cycle: cycle-001
 dtu_required: false
-awaiting: human-checkpoint review of full 4-repo ingest synthesis
+awaiting: human-checkpoint review of full 8-repo ingest synthesis
 ---
 
 <!--
@@ -44,14 +44,16 @@ awaiting: human-checkpoint review of full 4-repo ingest synthesis
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-11T05:00:00Z |
+| **Last Updated** | 2026-05-11T06:00:00Z |
 | **Current Phase** | pre-phase-0-complete-awaiting-human-checkpoint |
-| **Current Step** | pre-phase-0-complete — all 4 reference repos ingested; awaiting human GO/REDIRECT/EXPAND |
+| **Current Step** | pre-phase-0-complete — all 8 reference repos ingested; awaiting human GO/REDIRECT/EXPAND |
 
-Rust TUI for managing AI coding harness sessions across multiple engines (Claude Code, CodeMachine-CLI, others) with workflow awareness for sessions operating against factory-pattern projects (vsdd-factory and other dispatchers). Fuses three planes:
-- Runtime plane — multi-harness session manager (live preview, permission popups, hook-driven status, SSH remote, profiles) — inspired by any-context/lazyclaude.
-- Static plane — Claude Code customization explorer (slash commands, agents, skills, hooks, MCP, plugins, settings, memory) — inspired by NikiforovAll/lazyclaude.
-- Workflow plane — factory-awareness: detect projects using a recognized factory dispatcher (vsdd-factory et al.), parse workflow files (lobster today, possibly other formats), surface current phase / step / pending gate / recent hook activity. Monocle observes; it does NOT execute workflows.
+Rust TUI for managing AI coding harness sessions across multiple engines (Claude Code, CodeMachine, others) with workflow awareness for sessions operating against factory-pattern projects (vsdd-factory and other dispatchers compatible with the document_type: pipeline-state discriminator). Fuses five genetic planes drawing on 8 reference repos:
+- Runtime plane (any-context, zellij) — multi-harness session manager + Rust IPC + WASM plugin SDK
+- Static plane (NikiforovAll) — Claude Code customization explorer
+- Workflow plane (vsdd-factory) — factory-awareness (observe-only)
+- Harness plane (codemachine, claude-squad, claude-code-router) — EngineModule abstraction + worktree-isolation + integrate-external routing
+- TUI-philosophy plane (lazygit) — the canonical lazy* signature pattern: context-aware bindings, telescope help, modal cascade
 
 Future: federated multi-host roster, OTel cost/token panel, trigger-trace from popup to defining customization.
 
@@ -64,6 +66,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | -1: Phase B deepening + B.5 v2 audits + gap-fill (any-context + nikiforovall) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x8+) | broker/hooks/tmuxadapter gap-fill; B.5 v2 fresh audits; v2 syntheses |
 | -1: Reference Ingest (codemachine-cli) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 678-line synthesis; EngineModule contract; 7-state FSM |
 | -1: Reference Ingest (vsdd-factory, SCOPED) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 761-line synthesis; lobster YAML; dispatcher; factory pattern |
+| -1: EXPANSION — 4 additional ingests (zellij, lazygit, claude-squad, claude-code-router) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x4) | 57 new files; 5-plane gene corpus complete across 8 repos |
 | 0: Codebase Ingestion | not-started | | | | |
 | 1: Spec Crystallization | not-started | | | | |
 | 2: Story Decomposition | not-started | | | | |
@@ -79,11 +82,9 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Full-protocol Phase B rounds — any-context (broker/hooks/tmuxadapter) + nikiforovall remaining rounds | codebase-analyzer (x8) | DONE | any-context: broker-r1,r2 + hooks-r1,r2 + tmuxadapter-r1; nikiforovall: services/mixins/keybindings/models complete |
-| B.5 v2 fresh-context audits — any-context + nikiforovall (independent watchdog) | codebase-analyzer (x2) | DONE | any-context B.5 v2: TOPIC-DRIFT-FOUND-AND-RESOLVED; nikiforovall B.5 v2: TOPIC-DRIFT-CLEAN |
-| Brownfield-ingest codemachine-cli (full, 14 artifacts) + vsdd-factory (scoped, 14 artifacts) | codebase-analyzer (x2) | DONE | codemachine-cli: 7 A-passes + 4 B-rounds + b5 + b6; vsdd-factory: 7 A-passes + 6 B-rounds |
-| Pass 8 v2 syntheses — any-context (867 lines, ~644 BCs) + nikiforovall (1072 lines, 21 BCs) | codebase-analyzer (x2) | DONE | v2 files absorb full-protocol rounds; v1 files preserved unchanged |
-| Atomic commit + STATE.md transition — pre-phase-0 COMPLETE, awaiting human checkpoint | state-manager | DONE | factory-artifacts HEAD = this commit; all 4 syntheses ready for brief creation |
+| Clone 4 new reference repos (zellij, lazygit, claude-squad, claude-code-router) | devops | DONE | refs cloned to .reference/ at de1e0f75 / c4935036 / a4ab6988 / e270dea5 |
+| 4 parallel ingests — zellij (24 files, 7×2 B-rounds), lazygit (17 files, 7×1 B-rounds), claude-squad (15 files, 5 NITPICK deepenings), claude-code-router (1 consolidated C) | codebase-analyzer (x4) | DONE | 57 new semport files; all Phase C syntheses complete |
+| Atomic commit + STATE.md expansion — 8-repo / 5-plane corpus committed to factory-artifacts | state-manager | DONE | input-drift CLEAN; 57 new files + STATE.md update |
 
 ## Reference Repos (Phase -1 inputs)
 
@@ -93,6 +94,10 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | nikiforovall-lazyclaude | https://github.com/NikiforovAll/lazyclaude | main | ebc1f8f3 | /Users/jmagady/Dev/monocle/.reference/nikiforovall-lazyclaude | /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude | DONE — canonical: semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md |
 | codemachine-cli | https://github.com/moazbuilds/CodeMachine-CLI | main | 572def6 | /Users/jmagady/Dev/monocle/.reference/codemachine-cli | /Users/jmagady/Dev/monocle/.factory/semport/codemachine-cli | DONE — canonical: semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md |
 | vsdd-factory | https://github.com/drbothen/vsdd-factory | develop | 99d2431 | /Users/jmagady/Dev/monocle/.reference/vsdd-factory | /Users/jmagady/Dev/monocle/.factory/semport/vsdd-factory | DONE (SCOPED) — canonical: semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md |
+| zellij | https://github.com/zellij-org/zellij | main | de1e0f75 | /Users/jmagady/Dev/monocle/.reference/zellij | /Users/jmagady/Dev/monocle/.factory/semport/zellij | DONE (SCOPED) — canonical: semport/zellij/zellij-pass-8-final-synthesis.md |
+| lazygit | https://github.com/jesseduffield/lazygit | master | c4935036 | /Users/jmagady/Dev/monocle/.reference/lazygit | /Users/jmagady/Dev/monocle/.factory/semport/lazygit | DONE (SCOPED) — canonical: semport/lazygit/lazygit-pass-8-final-synthesis.md |
+| claude-squad | https://github.com/smtg-ai/claude-squad | main | a4ab6988 | /Users/jmagady/Dev/monocle/.reference/claude-squad | /Users/jmagady/Dev/monocle/.factory/semport/claude-squad | DONE (FULL) — canonical: semport/claude-squad/claude-squad-pass-8-deep-synthesis.md |
+| claude-code-router | https://github.com/musistudio/claude-code-router | main | e270dea5 | /Users/jmagady/Dev/monocle/.reference/claude-code-router | /Users/jmagady/Dev/monocle/.factory/semport/claude-code-router | DONE (FULL, consolidated) — canonical: semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md |
 
 **Scope filter:** The PM/Worker multi-agent subsystem of any-context/lazyclaude is OUT OF SCOPE for monocle. Ingest documents it; disposition pass sorts it to "Leave behind".
 
@@ -108,6 +113,11 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-004 | factory-awareness via discriminator pattern | Monocle OBSERVES factory-pattern projects (.factory/STATE.md + factory plugin manifest) but does NOT execute workflows; vsdd-factory is first concrete adapter | pre-phase-0 | 2026-05-11 | human |
 | D-005 | vsdd-factory ingest scoped | Only workflows/*.lobster + hooks/ + factory pattern + STATE.md template in scope; 38 agent prompts + most skills explicitly excluded | pre-phase-0 | 2026-05-11 | human |
 | D-006 | Full brownfield-ingest protocol on any-context + nikiforovall; vsdd-factory workflow-awareness scope; codemachine as multi-harness gene source | User directed full protocol (not fast-path) for both original repos; vsdd-factory scoped to factory-pattern recognition only; codemachine-cli provides EngineModule + FSM + MCP-router gene set as second harness reference | pre-phase-0 | 2026-05-11 | human |
+| D-007 | Expand reference scope to 8 repos across 5 genetic planes; scope zellij/lazygit (skip multiplexer/git internals), full claude-squad/CCR (small) | Broader gene corpus needed before brief; zellij/lazygit scoped to avoid unrelated internals; small repos justified consolidated convergence | pre-phase-0 | 2026-05-11 | human |
+| D-008 | Adopt zellij's crate split pattern (monocle-core/-runtime/-tui/-plugin-sdk/-monocle) | Clean separation of pure core, async runtime, TUI renderer, plugin SDK, and binary crate; prevents god-crate accumulation | pre-phase-0 | 2026-05-11 | state-manager |
+| D-009 | Adopt lazygit's context-aware binding pattern with 5-level precedence as monocle's Action enum dispatch model | Lazygit's (view,key,handler) signature + precedence stack (search-prompt > custom > per-context > global > builtin) is the most validated approach in the lazy* ecosystem | pre-phase-0 | 2026-05-11 | state-manager |
+| D-010 | Treat claude-code-router as INTEGRATE-EXTERNAL not build-in; no CCR APIs change required | CCR is a mature standalone reverse proxy; monocle integrates by detecting CCR on PATH + writing per-session JSON + setting ANTHROPIC_BASE_URL; no new CCR APIs needed | pre-phase-0 | 2026-05-11 | state-manager |
+| D-011 | claude-squad teaches UX (worktree isolation, snapshot-fork concurrency) not orchestration (it has none — human is coordinator) | claude-squad has no PM/Worker; human is the coordinator; treat as TUI prior art + worktree isolation pattern only | pre-phase-0 | 2026-05-11 | state-manager |
 
 ## Skip Log
 
@@ -130,8 +140,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-11 |
-| **Position** | pre-phase-0-complete; all 4 reference repos fully ingested; Phase -1 DONE; awaiting human checkpoint |
-| **Next** | Human reviews 4-repo synthesis summary → GO: /vsdd-factory:create-brief with all 4 syntheses as input → Phase 0.5 brief creation |
+| **Position** | pre-phase-0-complete; all 8 reference repos fully ingested across 5 genetic planes; Phase -1 DONE; awaiting human checkpoint |
+| **Next** | Human reviews 8-repo synthesis summary → GO: /vsdd-factory:create-brief with all 8 syntheses as input → Phase 0.5 brief creation |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -151,19 +161,22 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | B.5 v2 fresh-context audits — any-context + nikiforovall | 2026-05-11 | codebase-analyzer (x2) | any-context: TOPIC-DRIFT-FOUND-AND-RESOLVED; nikiforovall: TOPIC-DRIFT-CLEAN |
 | Brownfield-ingest codemachine-cli (full) + vsdd-factory (scoped) | 2026-05-11 | codebase-analyzer (x2) | codemachine-cli: 14 files, 678-line synthesis; vsdd-factory: 14 files, 761-line synthesis |
 | Pass 8 v2 syntheses — any-context (867 lines, ~644 BCs) + nikiforovall (1072 lines, 21 BCs) | 2026-05-11 | codebase-analyzer (x2) | v2 files created; v1 preserved unchanged |
-| Atomic commit: Phase -1 COMPLETE — all 4 repos ingested; STATE.md transitioned to human-checkpoint gate | 2026-05-11 | state-manager | factory-artifacts HEAD = this commit |
+| Atomic commit: Phase -1 COMPLETE — all 4 repos ingested; STATE.md transitioned to human-checkpoint gate | 2026-05-11 | state-manager | factory-artifacts HEAD = 234b6bd |
+| Clone 4 new refs (zellij/lazygit/claude-squad/CCR) | 2026-05-11 | devops | refs at de1e0f75 / c4935036 / a4ab6988 / e270dea5 |
+| 4 parallel ingests — 57 new semport files across 4 subtrees | 2026-05-11 | codebase-analyzer (x4) | zellij: 24 files; lazygit: 17 files; claude-squad: 15 files; CCR: 1 file |
+| Atomic commit: EXPANSION — 8-repo / 5-plane corpus committed; STATE.md updated | 2026-05-11 | state-manager | input-drift CLEAN; this commit |
 
 ## Next Step
 
-Human approval gate. Present full 4-repo synthesis summary to human and await GO/REDIRECT/EXPAND.
+Human approval gate. Present full 8-repo synthesis summary to human and await GO/REDIRECT/EXPAND.
 
-If GO: dispatch product-owner to /vsdd-factory:create-brief with the 4 Pass 8 syntheses + the Rust architecture proposal as input.
+If GO: dispatch product-owner to /vsdd-factory:create-brief with all 8 Pass 8 syntheses (5 genetic planes) + the Rust architecture proposal as input. Gene corpus is now complete: runtime (any-context + zellij), static (NikiforovAll), workflow (vsdd-factory), harness (codemachine + claude-squad + CCR), TUI-philosophy (lazygit).
 
 If REDIRECT: re-run targeted deepening on specific subsystems the human flags.
 
-If EXPAND: add additional reference repos (e.g. zellij, claude-squad, claude-code-router) for cross-reference.
+If EXPAND: add further reference repos beyond the current 8.
 
-Per the brownfield-sequence protocol, human approval is required before Phase 1 spec crystallization can begin. /vsdd-factory:check-input-drift should also be run BEFORE the human gate to confirm no artifacts have stale input-hashes (this is the run-the-drift-check rule from the orchestrator constraints).
+Per the brownfield-sequence protocol, human approval is required before Phase 1 spec crystallization can begin. /vsdd-factory:check-input-drift was run BEFORE this commit and returned CLEAN.
 
 ## Historical Content
 
