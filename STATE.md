@@ -4,17 +4,17 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-11T23:45:00Z
+timestamp: 2026-05-11T05:00:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield
-current_step: pre-phase-0-reference-ingest
+current_step: pre-phase-0-complete
 current_cycle: cycle-001
 dtu_required: false
-awaiting: additional reference ingest: codemachine-cli + vsdd-factory + final B.5/B.6/synthesis update for any-context + nikiforovall
+awaiting: human-checkpoint review of full 4-repo ingest synthesis
 ---
 
 <!--
@@ -44,9 +44,9 @@ awaiting: additional reference ingest: codemachine-cli + vsdd-factory + final B.
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-11T23:45:00Z |
-| **Current Phase** | pre-phase-0 (additional reference ingest in progress) |
-| **Current Step** | Phase B deepening DONE — cloning codemachine-cli + vsdd-factory PENDING |
+| **Last Updated** | 2026-05-11T05:00:00Z |
+| **Current Phase** | pre-phase-0-complete-awaiting-human-checkpoint |
+| **Current Step** | pre-phase-0-complete — all 4 reference repos ingested; awaiting human GO/REDIRECT/EXPAND |
 
 Rust TUI for managing AI coding harness sessions across multiple engines (Claude Code, CodeMachine-CLI, others) with workflow awareness for sessions operating against factory-pattern projects (vsdd-factory and other dispatchers). Fuses three planes:
 - Runtime plane — multi-harness session manager (live preview, permission popups, hook-driven status, SSH remote, profiles) — inspired by any-context/lazyclaude.
@@ -59,10 +59,11 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Phase | Status | Started | Completed | Gate | Finding Progression |
 |-------|--------|---------|-----------|------|---------------------|
-| -1: Reference Ingest (any-context-lazyclaude) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 23 artifacts; 803-line synthesis; ~470 BCs; 4P0+10P1+15P2+10P3 backlog |
-| -1: Reference Ingest (nikiforovall-lazyclaude) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 13 artifacts; 12 BCs; 12 holdout seeds; 4P0+5P1 risks; parsers 2r |
-| -1: Phase B Deepening (any-context + nikiforovall) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x8) | 24 new files; server/mcp/plugin/pmw-full (any-context); services/mixins/keybindings/models (nikiforovall) |
-| -1: Reference Ingest (codemachine-cli + vsdd-factory) | PENDING | | | codebase-analyzer | scope: codemachine-cli full; vsdd-factory scoped (workflows+hooks+factory pattern) |
+| -1: Reference Ingest (any-context-lazyclaude) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 23 artifacts; 867-line v2 synthesis; ~644 BCs; 30 Phase B rounds |
+| -1: Reference Ingest (nikiforovall-lazyclaude) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 1072-line v2 synthesis; 12 BCs; 16 Phase B rounds |
+| -1: Phase B deepening + B.5 v2 audits + gap-fill (any-context + nikiforovall) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x8+) | broker/hooks/tmuxadapter gap-fill; B.5 v2 fresh audits; v2 syntheses |
+| -1: Reference Ingest (codemachine-cli) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 678-line synthesis; EngineModule contract; 7-state FSM |
+| -1: Reference Ingest (vsdd-factory, SCOPED) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 761-line synthesis; lobster YAML; dispatcher; factory pattern |
 | 0: Codebase Ingestion | not-started | | | | |
 | 1: Spec Crystallization | not-started | | | | |
 | 2: Story Decomposition | not-started | | | | |
@@ -78,20 +79,20 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Brownfield-ingest nikiforovall-lazyclaude (13 artifacts, Phase A+B+C) | codebase-analyzer | DONE | semport/nikiforovall-lazyclaude/ (223-line synthesis, 12 BCs) |
-| Commit dual ingest to factory-artifacts | state-manager | DONE | 36 semport files staged + STATE.md updated @ 9f00beb |
-| Phase B deepening — 8 parallel agents (any-context: server/mcp/plugin/pmw-full; nikiforovall: services/mixins/app-keybindings/models) | codebase-analyzer (x8) | DONE | 24 new semport files; server 3r, mcp 3r, plugin 3r, pmw 4r, services 3r, mixins 2r, keybindings 3r, models 4r |
-| Commit Phase B deepening + scope expansion to factory-artifacts | state-manager | DONE | 24 semport files + STATE.md updated |
-| Clone codemachine-cli + vsdd-factory + remaining B.5/B.6/synthesis | devops-engineer + codebase-analyzer | PENDING | — |
+| Full-protocol Phase B rounds — any-context (broker/hooks/tmuxadapter) + nikiforovall remaining rounds | codebase-analyzer (x8) | DONE | any-context: broker-r1,r2 + hooks-r1,r2 + tmuxadapter-r1; nikiforovall: services/mixins/keybindings/models complete |
+| B.5 v2 fresh-context audits — any-context + nikiforovall (independent watchdog) | codebase-analyzer (x2) | DONE | any-context B.5 v2: TOPIC-DRIFT-FOUND-AND-RESOLVED; nikiforovall B.5 v2: TOPIC-DRIFT-CLEAN |
+| Brownfield-ingest codemachine-cli (full, 14 artifacts) + vsdd-factory (scoped, 14 artifacts) | codebase-analyzer (x2) | DONE | codemachine-cli: 7 A-passes + 4 B-rounds + b5 + b6; vsdd-factory: 7 A-passes + 6 B-rounds |
+| Pass 8 v2 syntheses — any-context (867 lines, ~644 BCs) + nikiforovall (1072 lines, 21 BCs) | codebase-analyzer (x2) | DONE | v2 files absorb full-protocol rounds; v1 files preserved unchanged |
+| Atomic commit + STATE.md transition — pre-phase-0 COMPLETE, awaiting human checkpoint | state-manager | DONE | factory-artifacts HEAD = this commit; all 4 syntheses ready for brief creation |
 
 ## Reference Repos (Phase -1 inputs)
 
 | Name | URL | Branch | HEAD | Local source path | Analysis output path | Ingest status |
 |------|-----|--------|------|-------------------|----------------------|---------------|
-| any-context-lazyclaude | https://github.com/any-context/lazyclaude | stg | 4516c004 | /Users/jmagady/Dev/monocle/.reference/any-context-lazyclaude | /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude | DONE — synthesis: semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis.md |
-| nikiforovall-lazyclaude | https://github.com/NikiforovAll/lazyclaude | main | ebc1f8f3 | /Users/jmagady/Dev/monocle/.reference/nikiforovall-lazyclaude | /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude | DONE — synthesis: semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis.md |
-| codemachine-cli | https://github.com/moazbuilds/CodeMachine-CLI | main | (clone pending) | /Users/jmagady/Dev/monocle/.reference/codemachine-cli | /Users/jmagady/Dev/monocle/.factory/semport/codemachine-cli | PENDING (clone+ingest) |
-| vsdd-factory | https://github.com/drbothen/vsdd-factory | develop | (clone pending) | /Users/jmagady/Dev/monocle/.reference/vsdd-factory | /Users/jmagady/Dev/monocle/.factory/semport/vsdd-factory | PENDING (clone+SCOPED-ingest) |
+| any-context-lazyclaude | https://github.com/any-context/lazyclaude | stg | 4516c004 | /Users/jmagady/Dev/monocle/.reference/any-context-lazyclaude | /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude | DONE — canonical: semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md |
+| nikiforovall-lazyclaude | https://github.com/NikiforovAll/lazyclaude | main | ebc1f8f3 | /Users/jmagady/Dev/monocle/.reference/nikiforovall-lazyclaude | /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude | DONE — canonical: semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md |
+| codemachine-cli | https://github.com/moazbuilds/CodeMachine-CLI | main | 572def6 | /Users/jmagady/Dev/monocle/.reference/codemachine-cli | /Users/jmagady/Dev/monocle/.factory/semport/codemachine-cli | DONE — canonical: semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md |
+| vsdd-factory | https://github.com/drbothen/vsdd-factory | develop | 99d2431 | /Users/jmagady/Dev/monocle/.reference/vsdd-factory | /Users/jmagady/Dev/monocle/.factory/semport/vsdd-factory | DONE (SCOPED) — canonical: semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md |
 
 **Scope filter:** The PM/Worker multi-agent subsystem of any-context/lazyclaude is OUT OF SCOPE for monocle. Ingest documents it; disposition pass sorts it to "Leave behind".
 
@@ -106,6 +107,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-003 | Scope expansion: multi-harness + workflow-aware | User confirmed monocle manages sessions for multiple AI coding harnesses (Claude Code today; CodeMachine-CLI second); each harness gets profile in ~/.monocle/config.json | pre-phase-0 | 2026-05-11 | human |
 | D-004 | factory-awareness via discriminator pattern | Monocle OBSERVES factory-pattern projects (.factory/STATE.md + factory plugin manifest) but does NOT execute workflows; vsdd-factory is first concrete adapter | pre-phase-0 | 2026-05-11 | human |
 | D-005 | vsdd-factory ingest scoped | Only workflows/*.lobster + hooks/ + factory pattern + STATE.md template in scope; 38 agent prompts + most skills explicitly excluded | pre-phase-0 | 2026-05-11 | human |
+| D-006 | Full brownfield-ingest protocol on any-context + nikiforovall; vsdd-factory workflow-awareness scope; codemachine as multi-harness gene source | User directed full protocol (not fast-path) for both original repos; vsdd-factory scoped to factory-pattern recognition only; codemachine-cli provides EngineModule + FSM + MCP-router gene set as second harness reference | pre-phase-0 | 2026-05-11 | human |
 
 ## Skip Log
 
@@ -128,8 +130,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-11 |
-| **Position** | pre-phase-0; Phase B deepening DONE (24 new files); scope expanded to multi-harness + workflow-aware; codemachine-cli + vsdd-factory clone + ingest PENDING |
-| **Next** | Clone codemachine-cli (main) + vsdd-factory (develop, scoped) into .reference/; ingest both; run fresh B.5/B.6/synthesis updates for any-context + nikiforovall; final commit; then multi-repo synthesis preparation |
+| **Position** | pre-phase-0-complete; all 4 reference repos fully ingested; Phase -1 DONE; awaiting human checkpoint |
+| **Next** | Human reviews 4-repo synthesis summary → GO: /vsdd-factory:create-brief with all 4 syntheses as input → Phase 0.5 brief creation |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -145,19 +147,23 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Init: factory-artifacts branch + .factory/ worktree + STATE.md + cycle-001 | 2026-05-11 | state-manager | factory-artifacts @ 3b8c3b5 |
 | Ingest both reference repos (36 semport artifacts) + STATE.md update | 2026-05-11 | codebase-analyzer + state-manager | any-context 23 files (62 kB synthesis), nikiforovall 13 files (17 kB synthesis); all Iron Law compliant |
 | Phase B deepening — 8 parallel agents (any-context: server/mcp/plugin/pmw-full; nikiforovall: services/mixins/app-keybindings/models) | 2026-05-11 | codebase-analyzer (x8) | 24 new semport files; scope expansion recorded |
+| Full-protocol Phase B rounds — broker/hooks/tmuxadapter gap-fill (any-context) + remaining nikiforovall rounds | 2026-05-11 | codebase-analyzer (x8) | broker-r1,r2 + hooks-r1,r2 + tmuxadapter-r1 added; any-context 30 Phase B rounds total |
+| B.5 v2 fresh-context audits — any-context + nikiforovall | 2026-05-11 | codebase-analyzer (x2) | any-context: TOPIC-DRIFT-FOUND-AND-RESOLVED; nikiforovall: TOPIC-DRIFT-CLEAN |
+| Brownfield-ingest codemachine-cli (full) + vsdd-factory (scoped) | 2026-05-11 | codebase-analyzer (x2) | codemachine-cli: 14 files, 678-line synthesis; vsdd-factory: 14 files, 761-line synthesis |
+| Pass 8 v2 syntheses — any-context (867 lines, ~644 BCs) + nikiforovall (1072 lines, 21 BCs) | 2026-05-11 | codebase-analyzer (x2) | v2 files created; v1 preserved unchanged |
+| Atomic commit: Phase -1 COMPLETE — all 4 repos ingested; STATE.md transitioned to human-checkpoint gate | 2026-05-11 | state-manager | factory-artifacts HEAD = this commit |
 
-## Pending Phase Log
+## Next Step
 
-| Timestamp | Phase | Event | Agent | Status |
-|-----------|-------|-------|-------|--------|
-| 2026-05-11T23:45:00Z | pre-phase-0 | Phase B deepening — 8 parallel agents (any-context: server/mcp/plugin/pmw-full; nikiforovall: services/mixins/app-keybindings/models) | codebase-analyzer (x8) | DONE |
-| — | pre-phase-0 | Clone codemachine-cli + vsdd-factory into .reference/ | devops-engineer | PENDING |
-| — | pre-phase-0 | Brownfield-ingest codemachine-cli (full) | codebase-analyzer | PENDING |
-| — | pre-phase-0 | Brownfield-ingest vsdd-factory (scoped: workflows + hooks + factory pattern) | codebase-analyzer | PENDING |
-| — | pre-phase-0 | Fresh B.5 audit any-context + nikiforovall (independent of original B.5) | codebase-analyzer | PENDING |
-| — | pre-phase-0 | Fresh B.6 extraction validation any-context + nikiforovall | codebase-analyzer | PENDING |
-| — | pre-phase-0 | Phase C synthesis updates any-context + nikiforovall (absorb new deepening) | codebase-analyzer | PENDING |
-| — | pre-phase-0 | Final commit + multi-repo synthesis preparation | state-manager | PENDING |
+Human approval gate. Present full 4-repo synthesis summary to human and await GO/REDIRECT/EXPAND.
+
+If GO: dispatch product-owner to /vsdd-factory:create-brief with the 4 Pass 8 syntheses + the Rust architecture proposal as input.
+
+If REDIRECT: re-run targeted deepening on specific subsystems the human flags.
+
+If EXPAND: add additional reference repos (e.g. zellij, claude-squad, claude-code-router) for cross-reference.
+
+Per the brownfield-sequence protocol, human approval is required before Phase 1 spec crystallization can begin. /vsdd-factory:check-input-drift should also be run BEFORE the human gate to confirm no artifacts have stale input-hashes (this is the run-the-drift-check rule from the orchestrator constraints).
 
 ## Historical Content
 
