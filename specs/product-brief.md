@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.2"
+version: "1.3"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T16:00:00Z
+timestamp: 2026-05-12T21:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -53,6 +53,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.0 | 2026-05-12 | product-owner (direct draft from approved vision) | Initial brief — committed at factory-artifacts e8e8af1 |
 | 1.1 | 2026-05-12 | product-owner (version validation revision) | Updated all crate version pins to crates.io 2026-05-12 reality; added RUSTSEC notes; refreshed wasmi/wasmtime rationale; added 11 new version pins for previously-unpinned vision tech stack crates; added OQ-11 MSRV |
 | 1.2 | 2026-05-12 | product-owner (Option A bloat remediation + OQ/SOQ/JC decisions) | Trimmed core to ~200 lines; moved version manifest + RUSTSEC + ADR + conventions to architecture stubs; applied 11 OQ defaults + 4 SOQs + JC-1/2/3 + EX-1/2 resolutions; full traceability preserved |
+| 1.3 | 2026-05-12 | product-owner (competitive positioning revision + OQ-M1/OQ-M3) | Competitive Positioning revised to acknowledge Anthropic's `claude agents` (agent view, v2.1.139, shipped 2026-05-11). Repositioned monocle's differentiation on mechanism and depth (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay) rather than exclusivity over the session-list surface. R-001 acceptance stated explicitly. Added OQ-M1 (agent-view IPC coexistence) and OQ-M3 (`PermissionRequest` as 6th endpoint) to the Open Questions table as `pending architect review`. No scope changes. Resolves B-1 from `.factory/plans/brief-validation-v2.md`. |
 
 ## Who Is It For?
 
@@ -272,7 +273,9 @@ These constraints are derived from the orchestrator's accepted defaults on
 ## Open Questions for Architect
 
 All 11 original open questions have been resolved via `oq-research.md` (commit b3c68ca).
-The table below is preserved for traceability; decisions are final unless human red-lines.
+Two market-intel open questions (OQ-M1, OQ-M3) have been added for architect review.
+The table below is preserved for traceability; OQ-01 through OQ-11 decisions are final
+unless human red-lines; OQ-M1 and OQ-M3 are pending architect resolution.
 
 | ID | Question | Resolution | Trace |
 |----|----------|-----------|-------|
@@ -287,6 +290,8 @@ The table below is preserved for traceability; decisions are final unless human 
 | OQ-09 | rmcp stub in v1 or omit? | Omit entirely in v1 | oq-research.md §OQ-09 |
 | OQ-10 | Lock-file location XDG or `~/.monocle`? | `directories::ProjectDirs::runtime_dir()` with fallback chain | oq-research.md §OQ-10 |
 | OQ-11 | MSRV target? | Phase 1: Rust 1.86; Phase 3: Rust 1.92 | oq-research.md §OQ-11 |
+| OQ-M1 | Does agent view use Claude Code hook protocol or different IPC? If hook protocol, can monocle daemon and agent view coexist on same host without port/auth collision? | Pending architect review (market intel) | brief-validation-v2.md §OQ-M1 |
+| OQ-M3 | Claude Code 2026 docs list 25 lifecycle events including `PermissionRequest` as a distinct hook event. Should monocle add `PermissionRequest` as a sixth endpoint (current JC-2 decision: 5 endpoints) for cleaner permission-overlay UX? | Pending architect review (market intel) | brief-validation-v2.md §OQ-M3 |
 
 > **Judgment call resolutions (orchestrator-applied 2026-05-12)** — JC-1 → option B1
 > (Phase 2 exit criterion); JC-2 → omit PostToolUse for Phase 1 (Claude Code parity);
@@ -299,9 +304,24 @@ The table below is preserved for traceability; decisions are final unless human 
 
 ### Competitive Positioning
 
-Monocle is not a replacement for lazygit, lazyclaude (either variant), claude-squad,
-or CCR. It is the **session management and permission-prompt dispatch layer that none
-of them provide**. The closest prior art:
+Anthropic shipped `claude agents` (agent view, v2.1.139) on 2026-05-11 — one day before
+brief v1.2 was finalized. Agent view provides session list + inline reply built into
+Claude Code's TUI: no hook protocol, no external overlay, no diff preview, no cascaded
+permission queue, no customization visibility, no workflow plane, no multi-harness support.
+Monocle's differentiation is mechanism and depth, not exclusivity over the session-list
+surface: hook-protocol ingestion (vs. file polling or pane scraping), VecDeque<PromptModal>
+overlay (vs. attach-and-reply dispatch), diff preview (vs. none), trigger-trace to the
+defining settings.json line (Phase 2, vs. none), workflow plane (Phase 3, vs. none),
+multi-harness and external-overlay operation over the user's existing tmux + editor setup
+without modifying Claude Code sessions (vs. built-in, lives inside Claude Code's TUI).
+Anthropic shipping a thin version confirms the pain is real and significant enough for
+a first-party response — monocle goes deeper on every dimension agent view does not touch.
+R-001 acceptance: Anthropic may deepen agent view. Probability that monocle's hook-native
+overlay is commoditized in 12 months: 25–40%. Mitigation: ship Phase 1 fast; lead with
+trigger-trace (Phase 2) and workflow plane (Phase 3) as second and third moats, not the
+session list.
+
+The closest prior art beyond agent view:
 
 - `any-context/lazyclaude`: Go TUI for Claude Code sessions; PM/Worker orchestration;
   hook protocol via `~/.claude/ide/<port>.lock`. Gene source for Runtime plane.
