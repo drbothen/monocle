@@ -100,7 +100,7 @@ Run this checklist as the last act of every task. If any answer is "yes" or "I'm
 ### Boundaries — what the principle does NOT mean
 
 - **It does not mean "do everything before shipping anything."** Phasing features (Phase 1 → 2 → 3 → 4) is correct. Within a phase, every shipped feature must be production-grade.
-- **It does not mean "no asks of the human."** Genuine human decisions — risk acceptance, business priorities, scope vs deadline tradeoffs, versioning policy — should be surfaced. The principle forbids deferring WORK that the AI can do; it does not forbids surfacing DECISIONS that only the human can make.
+- **It does not mean "no asks of the human."** Genuine human decisions — risk acceptance, business priorities, scope vs deadline tradeoffs, versioning policy — should be surfaced. The principle forbids deferring WORK that the AI can do; it does not forbid surfacing DECISIONS that only the human can make.
 - **It does not mean "infinite scope expansion."** If you find an issue, fix it. If the fix requires expanding into a new domain that requires new specs or new architecture decisions, surface it cleanly and request scope expansion. The principle requires fixing, not infinite recursion.
 - **It does not override security or correctness.** If a "production-grade fix" requires a security review, run the security review.
 
@@ -153,6 +153,101 @@ Phase sequence:
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
 - Phase 7: Convergence
+
+---
+
+## Correct Agent Routing — The Production-Grade Companion Principle
+
+The production-grade default ("fix in scope, don't defer") works ONLY when paired with correct agent routing. Otherwise it degrades into "every agent does everything," which destroys specialization and produces worse work than the defer-pattern it replaces.
+
+### Statement
+
+**"Fix in scope" means route the defect to the CORRECT SPECIALIST AGENT in scope of the current work cycle — not defer it, and not silently fix it with the wrong agent.**
+
+### Rules
+
+1. **Agents own their domain.** A spec-reviewer agent reviewing a PR does NOT silently rewrite the implementation code. An implementer does NOT silently rewrite the spec. Each specialist agent has a defined scope (see routing table below); work outside that scope is routed to the correct specialist.
+
+2. **The orchestrator owns routing.** When a specialist agent discovers a defect outside its own domain, it surfaces the finding to the orchestrator with the proposed routing. The orchestrator then dispatches the correct specialist. This is NOT a defer-pattern — it is correct-agent-pattern. The fix still happens in scope of the same work cycle.
+
+3. **"Surface" vs "defer" — the critical distinction:**
+   - **Surface (production-grade):** Agent A finds an issue → routes to orchestrator with "this needs specialist B" → orchestrator dispatches specialist B → specialist B fixes in scope → original work proceeds. **No human round-trip required for the routing.**
+   - **Defer (forbidden):** Agent A finds an issue → adds to tech-debt-register / advisory / "TODO for X" → original work declared done → issue persists across multiple cycles. **Requires human to discover and re-prioritize.**
+
+4. **When in doubt about routing, ask the orchestrator** — not the human. The orchestrator has the routing table and can dispatch. Asking the human is for genuine human decisions, not routing decisions.
+
+5. **The orchestrator NEVER does specialist work itself.** It coordinates, dispatches, and validates gates. If the orchestrator is tempted to write a file directly, that is a routing failure — find the correct specialist and dispatch them.
+
+### Agent Routing Table
+
+Use this table to determine which specialist handles which kind of work. Authoritative reference; supersedes any conflicting routing in upstream skills until the upstream vsdd-factory canonicalization lands.
+
+| If the work is... | Route to agent ID |
+|-------------------|-------------------|
+| Product brief, PRD, behavioral contracts (BCs), holdout scenarios | `vsdd-factory:product-owner` |
+| Market analysis, L2 domain spec, ubiquitous language | `vsdd-factory:business-analyst` |
+| Architecture, ADRs, DTU assessment, gene transfusion, dependency manifest | `vsdd-factory:architect` |
+| UX spec, design system, wireframes, interaction design | `vsdd-factory:ux-designer` |
+| Story decomposition, dependency graph, wave schedule | `vsdd-factory:story-writer` |
+| Cross-document consistency (IDs, anchors, counts, naming) | `vsdd-factory:consistency-validator` |
+| Adversarial fresh-context review (specs or implementation) | `vsdd-factory:adversary` |
+| Constructive spec/story review (different-model cognitive diversity) | `vsdd-factory:spec-reviewer` |
+| PR diff code review (different-model cognitive diversity) | `vsdd-factory:code-reviewer` |
+| Deep codebase scanning, semantic analysis, brownfield ingest | `vsdd-factory:codebase-analyzer` |
+| Brownfield extraction validation (catch hallucinated dependencies) | `vsdd-factory:validate-extraction` |
+| TDD test stubs and failing tests | `vsdd-factory:test-writer` |
+| TDD implementation (one failing test → minimum code → micro-commit) | `vsdd-factory:implementer` |
+| E2E browser tests (Playwright/Cypress) | `vsdd-factory:e2e-tester` |
+| Demo recordings (VHS terminal or Playwright browser) | `vsdd-factory:demo-recorder` |
+| PR lifecycle (create, review dispatch, finding triage, merge) | `vsdd-factory:pr-manager` |
+| Final fresh-eyes PR diff review before merge | `vsdd-factory:pr-reviewer` |
+| Formal proofs (Kani), fuzzing, mutation testing, security scan | `vsdd-factory:formal-verifier` |
+| Security review / triage (CWE/CVE, OWASP) | `vsdd-factory:security-reviewer` |
+| Holdout scenario evaluation against implementation (strict info asymmetry) | `vsdd-factory:holdout-evaluator` |
+| DTU clone validation against real third-party services | `vsdd-factory:dtu-validator` |
+| Repo setup, worktrees, CI/CD, release, Cargo workspace init | `vsdd-factory:devops-engineer` |
+| Toolchain preflight, env setup, dependency installation | `vsdd-factory:dx-engineer` |
+| `.factory/STATE.md` updates, `.factory/` commits, cycle bookkeeping | `vsdd-factory:state-manager` |
+| Spec governance, versioning, traceability audit | `vsdd-factory:spec-steward` |
+| Documentation generation from code/specs (current behavior only) | `vsdd-factory:technical-writer` |
+| External research (Perplexity, Context7, Tavily MCP access) | `vsdd-factory:research-agent` |
+| GitHub CLI operations on behalf of agents without shell access | `vsdd-factory:github-ops` |
+| Performance benchmarks, Core Web Vitals enforcement | `vsdd-factory:performance-engineer` |
+| Data schemas, migrations, pure-core / effectful-I/O boundary | `vsdd-factory:data-engineer` |
+| WCAG AA/AAA accessibility audit | `vsdd-factory:accessibility-auditor` |
+| Visual regression, mockup fidelity comparison | `vsdd-factory:visual-reviewer` |
+| Post-pipeline analysis, lessons capture, improvement proposals | `vsdd-factory:session-reviewer` |
+
+### Routing examples (from this project's recent history)
+
+- **Brief defect found by consistency-validator:** correct routing is `product-owner` (owner of brief content), NOT consistency-validator-fixes-it. Example: the F-03/F-04/F-11 fixes this session went through product-owner via the orchestrator after consistency-validator surfaced them.
+- **Tech-stack version pin needed:** correct routing is `architect` (with input from `research-agent` for version verification), NOT product-owner copying from a generic best-practices list. The `dependencies.md` stub was correctly extracted by product-owner but its production version belongs to architect.
+- **TDD red-gate violation found by test-writer:** route back to product-owner (if the BC is the problem) or to the human (if the spec is genuinely contradictory). DO NOT have the test-writer modify the BC silently.
+- **Security finding found by security-reviewer:** triage classification is security-reviewer's job. The FIX is implementer's job (with security-reviewer re-running to confirm). Use the `fix-pr-delivery` skill.
+- **Out-of-scope finding (legitimate scope-boundary defer):** still route to orchestrator. Orchestrator records the deferral with explicit future-story attachment per Principle 3 of the canonical principle. The deferral target must be a real story ID, not "Phase X" or "later."
+
+### When the routing is unclear
+
+If a defect doesn't obviously map to a specialist:
+
+1. **Ask the orchestrator first.** The orchestrator has the routing table loaded; let it route.
+2. **If the orchestrator is uncertain, the orchestrator asks the human.** This is the legitimate use of human time — routing-table extensions, not domain-fixes-by-wrong-agent.
+3. **Default fallback for unmapped work: research → architect.** Most truly novel work that doesn't fit a specialist needs external research first, then architectural decision.
+
+### Anti-patterns this principle blocks
+
+- ❌ Adversary rewrites failing tests "to make them pass" (wrong: route to test-writer or implementer).
+- ❌ State-manager writes spec content (wrong: route to product-owner or architect).
+- ❌ Consistency-validator silently edits brief frontmatter (wrong: route to product-owner).
+- ❌ Implementer adds a new BC to fix a TDD red-gate (wrong: route to product-owner; implementer cannot author specs).
+- ❌ Orchestrator writes the artifact itself when a specialist's output is unsatisfactory (wrong: re-dispatch the specialist with better instructions, or escalate to human).
+- ❌ Any agent edits `.factory/STATE.md` directly (wrong: state-manager owns STATE.md).
+
+### Conflict with upstream
+
+If a vsdd-factory agent prompt or skill defines a different routing than the table above, this table wins for monocle. The upstream canonicalization issue (filed against `drbothen/vsdd-factory`) tracks bringing upstream into alignment.
+
+---
 
 ## When in Doubt
 
