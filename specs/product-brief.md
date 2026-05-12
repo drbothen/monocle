@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.1"
+version: "1.2"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T10:00:00Z
+timestamp: 2026-05-12T16:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -16,9 +16,15 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/lazygit/lazygit-pass-8-final-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
+  - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest)"
+traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
 project: monocle
+supplements:
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/conventions.md
+  - /Users/jmagady/Dev/monocle/.factory/tech-debt-register.md
 ---
 
 # Product Brief: Monocle
@@ -46,6 +52,7 @@ them — across multiple harnesses and federated across hosts."
 |---------|------|--------|---------|
 | 1.0 | 2026-05-12 | product-owner (direct draft from approved vision) | Initial brief — committed at factory-artifacts e8e8af1 |
 | 1.1 | 2026-05-12 | product-owner (version validation revision) | Updated all crate version pins to crates.io 2026-05-12 reality; added RUSTSEC notes; refreshed wasmi/wasmtime rationale; added 11 new version pins for previously-unpinned vision tech stack crates; added OQ-11 MSRV |
+| 1.2 | 2026-05-12 | product-owner (Option A bloat remediation + OQ/SOQ/JC decisions) | Trimmed core to ~200 lines; moved version manifest + RUSTSEC + ADR + conventions to architecture stubs; applied 11 OQ defaults + 4 SOQs + JC-1/2/3 + EX-1/2 resolutions; full traceability preserved |
 
 ## Who Is It For?
 
@@ -73,15 +80,19 @@ accommodate without breaking Phase 1 ABI.
 **Phase 1 — Runtime Core (v1 delivery contract)**
 
 - `monocle daemon start/stop`: long-lived background process that survives terminal
-  closes; binds axum HTTP on `127.0.0.1:2748` (hook ingestion), optionally
-  `127.0.0.1:2749` (rmcp MCP bridge, stub); writes daemon lock file with
-  `{port, token}` at mode `0o600`; daemon auto-starts on first TUI launch if not
-  already running (architect must decide — see Open Questions OQ-01)
-- Hook ingestion endpoints: `POST /hooks/pre-tool-use`, `POST /hooks/post-tool-use`,
-  `POST /hooks/stop`, `POST /hooks/permission` — schema byte-compatible with
-  Claude Code's tmpfile hook protocol (verified against
-  `/Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md`
-  canonical schema); auth via `X-Claude-Code-Ide-Authorization` header
+  closes; binds axum HTTP on OS-assigned port written to lock file (OQ-04/JC-3
+  closed); writes daemon lock file with `{port, token, contract_version}` at mode
+  `0o600` (SOQ-1); daemon auto-starts on first TUI launch with `MONOCLE_NO_AUTOSTART=1`
+  escape hatch for CI/power users (OQ-01 hybrid)
+- Daemon lock-file path: `directories::ProjectDirs::runtime_dir()` with
+  state_dir → data_dir → `~/.monocle` fallback chain (OQ-10); token rotation invariant:
+  bind socket + write lock-file + write token THEN hooks-settings reads token (SOQ-2)
+- Hook ingestion endpoints (5 total, EX-2 resolution): `POST /hooks/pre-tool-use`,
+  `POST /hooks/notification`, `POST /hooks/stop`, `POST /hooks/session-start`,
+  `POST /hooks/prompt-submit`; schema byte-compatible with Claude Code's tmpfile hook
+  protocol; auth via `X-Claude-Code-Ide-Authorization` header; `PostToolUse` omitted
+  per JC-2 (Claude Code gene-source parity BC-HOOK-007)
+- Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (OQ-02)
 - `ClaudeCodeModule`: built-in `EngineModule` implementation; detects Claude Code
   processes via PID walk; enriches with token counts, cost, phase tag from hook
   events; handles hook events and produces `EnrichedSession`
@@ -90,18 +101,27 @@ accommodate without breaking Phase 1 ABI.
   fullscreen
 - Permission prompt overlay: cascaded `VecDeque<PromptModal>` — both prompts visible
   simultaneously; diff preview via `similar 3`; Accept-once / Accept-always /
-  Reject keybindings; `[t]` trace-to-source stub (full trace lands in Phase 2);
-  overlay survives `Ctrl-\` hide/show cycle without dropping queued prompts
-- Event ribbon panel: rolling log of hook events (PreToolUse, PostToolUse, Stop,
-  Permission) with session ID and latency
+  Reject keybindings; `[t]` trace-to-source stub; overlay clears on daemon disconnect
+  (SOQ-3); overlay survives `Ctrl-\` hide/show cycle without dropping queued prompts
+- Profile picker: sticky-per-project with `Ctrl-P` picker override (OQ-05; Phase 1
+  user-test target — MEDIUM confidence)
+- Event ribbon panel: rolling log of hook events (PreToolUse, Notification, Stop,
+  SessionStart, UserPromptSubmit) with session ID and latency; hybrid RAM ring +
+  async JSONL flush, 100MB × 5 rotation (OQ-06)
 - `monocle-config`: reads/writes `~/.monocle/config.json` (via `tempfile::persist`
   for atomic writes); harness profile schema version 1; CCR path field; binding
   overrides stub
 - Tokio mpsc **bounded** event bus with drop counter surfaced in status bar;
   no unbounded channels (triple-confirmed anti-pattern from broker-r1 §3)
-- `monocle-ipc`: Unix domain socket IPC between TUI client and daemon; shared-memory
-  ring buffer for high-frequency hook event stream
-- macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub Actions
+- `monocle-ipc`: Unix domain socket IPC between TUI client and daemon; UDS-only
+  in v1 — shared-memory ring deferred to Phase 4 transport variant (OQ-08)
+- `monocle-proto`: prost protobuf seam in monocle-core — zero runtime cost in v1,
+  enables cross-host events in Phase 4 (OQ-07)
+- Permission token enum: 17 variants in `monocle-core::permissions`; dispatcher
+  no-op until Phase 3 (SOQ-4); `VsddFactoryAdapter` statically bundled in v1 —
+  WASM plugin SDK ships Phase 3, not v1 (OQ-03)
+- macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
+  Actions; MSRV Rust 1.86 (ratatui floor, OQ-11)
 
 **Phase 2 — Static Plane (roadmap)**
 
@@ -117,23 +137,23 @@ accommodate without breaking Phase 1 ABI.
 
 **Phase 3 — Workflow Plane (roadmap)**
 
-- `monocle-workflow` crate: `FactoryAdapter` trait; `VsddFactoryAdapter` (reads
-  `.factory/STATE.md`, detects `document_type: pipeline-state`, parses phase/status/
-  blocking-issues/convergence); `notify 8` watcher for live updates; multi-repo
-  signal (`.factory-project/` directory)
+- `monocle-workflow` crate: `FactoryAdapter` trait; `VsddFactoryAdapter` promoted
+  from static bundle to WASM-loadable; `notify 8` watcher for live updates
 - Workflow panel (TUI): phase, status, awaiting, blocking issues, cycle for focused
   session's project
 - `monocle-plugin-sdk` crate: WASM ABI (`wasmtime 44`) for third-party
   `EngineModule` + `FactoryAdapter` implementations; loaded from `~/.monocle/plugins/`
+- MSRV bumps to Rust 1.92 (wasmtime requirement, OQ-11)
 
 **Phase 4 — Cross-plane + Multi-harness + Federation (roadmap)**
 
 - `CodeMachineModule`: second built-in `EngineModule`
-- `monocle-proto` crate: prost-generated protobuf wire format for cross-host events
 - `russh 0.60` federation tunnel: TUI on host A shows sessions from host B
-- OTel cost/token panel with aggregate across harnesses
+- `monocle-ipc` shared-memory ring buffer transport variant (OQ-08)
+- OTel cost/token panel with aggregate across harnesses; revisit PostToolUse
+  endpoint need at this point (JC-2)
 - CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL`
-- rmcp MCP bridge (optional, port 2749): session query, prompt injection for tooling
+- rmcp MCP bridge (Phase 4 only, OQ-09): session query, prompt injection for tooling
 
 ### Out of Scope
 
@@ -154,6 +174,13 @@ Per vision §Explicit Non-Goals (these are hard boundaries, not deferred feature
   full transcript storage belongs to each harness's own persistence layer
 - **Does NOT build its own LLM provider abstraction** — CCR is the external router
   (D-010); monocle integrates by detecting it
+- **Does NOT include `PostToolUse` hook endpoint in v1** — per Claude Code gene-source
+  parity (any-context BC-HOOK-007 establishes the 5-endpoint set: PreToolUse,
+  Notification, Stop, SessionStart, UserPromptSubmit; PostToolUse is intentionally
+  absent). Revisit if Phase 4 OTel cost panel requires PostToolUse data. (JC-2)
+- **Does NOT ship the WASM plugin SDK in v1** — Phase 3 deliverable per OQ-03;
+  v1 statically bundles `VsddFactoryAdapter` as the sole built-in factory adapter
+- **Does NOT ship the rmcp MCP bridge port in v1** — Phase 4 deliverable per OQ-09
 
 ## Success Criteria
 
@@ -163,128 +190,110 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 |---------|--------|--------|
 | Session management in popup | User can manage 3+ concurrent Claude Code sessions without leaving the editor pane | Killer scenario resolves in ≤6 keystrokes (per vision §End-to-End Killer Scenario target: 4) |
 | Permission prompt latency | Permission prompt appears as overlay with diff preview after hook fires | ≤100ms from hook POST receipt to TUI overlay render on localhost |
-| Hook protocol parity | Hook injection byte-compatible with Claude Code's schema | Fixture-based parity test passes against schema in any-context hooks-r1 canonical matrix (PreToolUse/PostToolUse/Stop/Permission endpoints, `X-Claude-Code-Ide-Authorization` header) |
-| Customization rendering | All 7 customization types render in Static plane on filter "All" | Zero missing types when pointed at a claude-code project with all 7 type examples |
+| Hook protocol parity | Hook injection byte-compatible with Claude Code's schema | Fixture-based parity test passes against schema in any-context hooks-r1 canonical matrix (5 endpoints: PreToolUse/Notification/Stop/SessionStart/UserPromptSubmit; `X-Claude-Code-Ide-Authorization` header) |
 | Factory pattern detection | vsdd-factory project detected and workflow panel populated | Detection succeeds on monocle's own `.factory/` (self-referential integration test) |
 | Build matrix | Builds and tests pass on macOS and Linux | CI green on darwin/linux × amd64/arm64 |
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 
+## Phase 2 Exit Criteria
+
+Phase 2 (Static plane) ships when:
+
+| Outcome | Metric | Target |
+|---------|--------|--------|
+| Customization rendering | All 7 customization types render in Static plane on filter "All" | Zero missing types when pointed at a claude-code project with all 7 type examples |
+
+Additional Phase 2 exit criteria will be defined by the architect during
+`/vsdd-factory:create-architecture` and refined in PRD behavioral contracts.
+
 ## Constraints & Integration Points
 
-**Tech stack is fixed by vision §Tech Stack** — the architect inherits these
-picks as Phase 1 constraints; they are not up for re-selection in Phase 1:
+**Tech stack inheritance**: All version pins, the wasmtime-vs-wasmi rationale,
+anti-pattern enforcement rules, and RUSTSEC audit context are codified in
+`/Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md`,
+`/Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md`,
+and `/Users/jmagady/Dev/monocle/.factory/specs/architecture/conventions.md`.
+The architect inherits these as Phase 1 constraints (not up for re-selection);
+per vision D-012 the tech stack is human-approved and architecturally pre-committed.
 
-- TUI: `ratatui 0.30` + `crossterm 0.29`
-- Async: `tokio 1.52` (full)
-- HTTP: `axum 0.8` (Cargo.toml pin: `^0.8.9`)
-- IPC: `interprocess 2.4` (Unix domain socket)
-- Serialization: `prost 0.14` for cross-host; `serde_json` + `serde_yaml_ng 0.10`
-  (NOT `serde_yaml 0.8` — unmaintained, alias-bomb CVE); also pin `bytes` directly
-  in workspace to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see Supply Chain section)
-- WASM: `wasmtime 44` (NOT wasmi — see rationale below)
-- Fuzzy: `nucleo 0.5` (NOTE: upstream dormant since 2024-04-02; flag for Phase 2
-  re-evaluation against `frizbee 0.9` / `neo_frizbee 0.10` / `nucleo-picker 0.11`
-  if active maintenance becomes a release constraint)
-- Diff: `similar 3`
-- Temp write: `tempfile 3` via `tempfile::persist` (no naked `write_text` calls —
-  triple-confirmed anti-pattern from nikiforovall atomic-write gap findings)
-- Config dirs: `directories 6` (XDG-compliant)
-- File watch: `notify 8`
-- SSH tunnel (Phase 4): `russh 0.60`
-- CLI parsing: `clap 4.6`
-- Markdown rendering: `pulldown-cmark 0.13`
-- Clipboard: `arboard 3`
-- Tracing: `tracing 0.1`
-- Semver parsing: `semver 1`
-- Error handling: `thiserror 2` (NOTE: 2.x major — do NOT pin to 1.x), `anyhow 1`
-- HTTP client: `reqwest 0.13` (NOTE: 0.13.x — do NOT pin to 0.11 or 0.12, both stale)
-- MCP bridge: `rmcp 1.6` (Anthropic-canonical via modelcontextprotocol/rust-sdk org;
-  crates.io owner alexhancock@Anthropic confirmed)
+**Crate workspace layout** is fixed by vision §Workspace Layout + EX-1 ratification:
+13 crates total — `monocle-core` (zero-dependency pure types), `monocle-runtime`,
+`monocle-tui`, `monocle-static`, `monocle-workflow`, `monocle-plugin-sdk`,
+`monocle-ipc`, `monocle-config`, `monocle-proto`, `monocle-fuzz`,
+`monocle-test-harness`, plus `monocle` (binary). No crate outside the binary may
+depend on the binary crate.
 
-**wasmtime vs wasmi rationale**: `wasmtime 44` is preferred over `wasmi`. wasmi 1.0
-is now mature with WASI support, so the historical "WASI gap" rationale no longer
-applies. Monocle prefers wasmtime for two reasons: (1) JIT throughput for factory
-adapters that may execute non-trivial pipeline logic, and (2) actively-maintained
-security posture — wasmtime's Bytecode Alliance publishes security advisories on a
-tight cadence (multiple advisories in 2026 alone) and ships patches promptly. wasmi
-remains a future fallback if binary-size pressure becomes a release constraint.
+**Action enum dispatch model** is non-negotiable per vision §Key Abstractions and
+D-009: 5-level precedence (SearchPrompt > UserCustomCommand > PerContext > Global >
+Builtin); enum variants (not closures) keep bindings `Eq + inspectable` for the
+telescope help overlay.
 
-**Crate workspace layout is fixed by vision §Workspace Layout and D-008:**
-`monocle-core` (zero-dependency pure types), `monocle-runtime`, `monocle-tui`,
-`monocle-static`, `monocle-workflow`, `monocle-plugin-sdk`, `monocle-ipc`,
-`monocle-config`, `monocle-proto`, `monocle-fuzz`, `monocle-test-harness`,
-`monocle` (binary). No crate outside the binary may depend on the binary crate.
-
-**Action enum dispatch model is non-negotiable** per vision §Key Abstractions and D-009:
-5-level precedence (SearchPrompt > UserCustomCommand > PerContext > Global >
-Builtin); enum variants (not closures) keep bindings `Eq + inspectable` for
-telescope help overlay. The dispatcher walks the stack in order and stops at the
-first match.
-
-**AppMode state machine is non-negotiable** per vision §Key Abstractions: compile-time
-mutual exclusion (not `bag-of-Option` fields); `VecDeque<PromptModal>` overlay
-stack (not single-popup — fixes lazygit's drop-on-concurrent anti-pattern); state
-transitions are pure functions in `monocle-core`.
+**AppMode state machine** is non-negotiable per vision §Key Abstractions:
+compile-time mutual exclusion (not `bag-of-Option` fields); `VecDeque<PromptModal>`
+overlay stack (not single-popup — fixes lazygit's drop-on-concurrent anti-pattern);
+state transitions are pure functions in `monocle-core`.
 
 **Process topology**: monocle uses a separate tmux server (`-L monocle`) to host
 the TUI client as a floating popup over the user's existing tmux session. Daemon
-is a long-lived background process. Hook POSTs are the ingestion boundary; Claude
-Code subprocesses are unmodified beyond pointing their hook scripts at
-`localhost:2748`.
+is long-lived. Hook POSTs are the ingestion boundary; Claude Code subprocesses are
+unmodified beyond pointing their hook scripts at the daemon's lock-file-discovered
+port.
 
 **CCR is integrate-external** (D-010): detect on PATH, write per-session JSON,
 set `ANTHROPIC_BASE_URL`. No CCR API changes required or expected.
 
-**Anti-patterns to enforce at code review (triple-confirmed across 8 gene sources):**
+**OQ + SOQ resolutions applied**: 11 architect open questions and 4 second-order
+questions resolved per `/Users/jmagady/Dev/monocle/.factory/planning/oq-research.md`
+(commit b3c68ca). See Phase 1 Constraints below.
 
-- No `Command::new("sh").arg("-c").arg(template_string)` or equivalent shell=True
-  pattern — use `Command::new(binary).args([...])` arg-array form
-- No naked `std::fs::write` / `write_text` for config files — use `tempfile::persist`
-- No `tokio::sync::mpsc::unbounded_channel` — use bounded channel + drop counter
-- No package-level mutable globals for theme/config — use `Arc<RwLock<Theme>>`
-- No single `Option<PromptModal>` field for the overlay — use `VecDeque<PromptModal>`
-  to support concurrent prompts without drop
+## Phase 1 Constraints (from OQ Resolutions)
 
-## Supply Chain and RUSTSEC Notes
+These constraints are derived from the orchestrator's accepted defaults on
+`oq-research.md` and bind the architect during `/vsdd-factory:create-architecture`.
 
-Validation performed 2026-05-12 against crates.io API + RUSTSEC advisory DB (Tavily + Perplexity + direct crates.io fetch). Findings the architect must respect when finalizing Cargo.toml:
-
-### Advisories on upstream versions monocle must avoid
-
-- `wasmtime` older majors (pre-44) carry RUSTSEC-2026-0114, RUSTSEC-2026-0095, RUSTSEC-2026-0096, RUSTSEC-2026-0006, RUSTSEC-2026-0020 (guest-controlled resource exhaustion in WASI implementations), and others. Pin to `wasmtime = "44"` (latest 44.0.1) and bind future patches via cargo update on the 44.x line.
-- `russh` 0.45..0.59 transitively pulls `rsa = "0.10.0-rc.12"` which is affected by RUSTSEC-2023-0071 (timing-attack on RSA private-key operations). Pin to `russh = "0.60"` (0.60.2 latest) which moved off the affected rsa pre-release.
-- `prost` 0.14 has a transitive `bytes` advisory RUSTSEC-2026-0007 affecting older `bytes` versions. Pin `bytes` directly in workspace dependencies to force a patched version (e.g. `bytes = "1.10"` or whatever the patched line is at audit time).
-- `tokio` 1.x has multiple historical advisories on older minors (RUSTSEC-2025-0023, RUSTSEC-2023-0005, RUSTSEC-2023-0001, RUSTSEC-2021-0124, RUSTSEC-2021-0072). Pin to current 1.52 line to ensure all are remediated.
-- `serde_yaml` 0.8 is unmaintained with alias-bomb CVE; `serde_yml` (a different fork) was archived per RUSTSEC-2025-0068. The brief's choice of `serde_yaml_ng` 0.10 (maintained fork) is correct and survives this audit.
-
-### Re-audit cadence
-
-The architect must enforce a `cargo audit` run in CI on every PR, plus a weekly scheduled `cargo audit --json` against the latest RUSTSEC DB. New advisories on pinned versions block merge until either (a) the version is updated to a patched release, or (b) a documented justification with mitigations is filed under `.factory/specs/risk-acceptance/`.
-
-### Crates flagged for Phase 2 re-evaluation
-
-- `nucleo 0.5.0` — upstream dormant since 2024-04-02 (helix-editor team's focus has shifted). Functionality is intact and adequate for Phase 1 fuzzy filtering. If maintenance becomes a release constraint before Phase 2, evaluate `frizbee 0.9` or `neo_frizbee 0.10` (actively maintained alternatives with SIMD-accelerated matching) or `nucleo-picker 0.11` (TUI-focused fork).
+| Constraint | Trace |
+|---|---|
+| Daemon: hybrid auto-start with `MONOCLE_NO_AUTOSTART=1` escape hatch | OQ-01 |
+| Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (any-context verbatim) | OQ-02 |
+| WASM plugin SDK: NOT shipped in v1; ships in Phase 3; v1 statically bundles `VsddFactoryAdapter` | OQ-03 |
+| Port binding: OS-assigned port + lock-file PID-liveness discovery (JC-3 closed by this) | OQ-04 |
+| Profile picker: sticky-per-project; `Ctrl-P` picker override (Phase 1 user-test target; MEDIUM confidence) | OQ-05 |
+| Hook event retention: hybrid RAM ring + async JSONL flush, 100MB × 5 rotation | OQ-06 |
+| Cross-host migration: protobuf seams in v1 (zero runtime cost), russh transport Phase 4 | OQ-07 |
+| monocle-ipc: UDS-only in v1; shared-memory ring deferred to Phase 4 transport variant | OQ-08 |
+| rmcp MCP bridge: OMITTED in v1; Phase 4 ships real impl (no stub in v1) | OQ-09 |
+| Daemon lock file: `directories::ProjectDirs::runtime_dir()` w/ state_dir → data_dir → `~/.monocle` fallback | OQ-10 |
+| MSRV target: Phase 1 = Rust 1.86 (ratatui floor); Phase 3 bumps to 1.92 (wasmtime) | OQ-11 |
+| Lock-file schema: `contract_version: u32` field from day one (zellij pattern) | SOQ-1 |
+| Token rotation invariant: bind socket + lock-file write + token THEN hooks-settings reads token | SOQ-2 |
+| Overlay survival: clear on daemon disconnect (Claude Code subprocesses time-out delayed responses) | SOQ-3 |
+| Permission token enum: 17 variants in `monocle-core::permissions`; dispatcher no-op until Phase 3 | SOQ-4 |
 
 ## Open Questions for Architect
 
-The following questions must be resolved in Phase 1 spec crystallization before
-architecture can be finalized:
+All 11 original open questions have been resolved via `oq-research.md` (commit b3c68ca).
+The table below is preserved for traceability; decisions are final unless human red-lines.
 
-| ID | Question | Options | Decision Owner |
-|----|----------|---------|----------------|
-| OQ-01 | Does `monocle daemon start` auto-run on first TUI launch, or require explicit invocation? | (a) Auto-start: TUI checks daemon socket, spawns daemon if absent; (b) Explicit: user must run `monocle daemon start` first; fail-fast with helpful error | Architect (UX implication: option a hides daemon lifecycle; option b makes it visible) |
-| OQ-02 | Hook tmpfile per-session or shared per-runtimeDir? | any-context synthesis says shared per-runtimeDir (`~/.claude/ide/<port>.lock` pattern); verify this is the right model for monocle's hook injection, not just lazyclaude's | Architect + review hooks-r1 canonical schema |
-| OQ-03 | Does v1 ship the WASM `monocle-plugin-sdk` crate or bundle `VsddFactoryAdapter` statically? | (a) v1 ships WASM ABI so third-party adapters work from day one; (b) v1 bundles statically, WASM SDK ships in Phase 3 | Architect (binary size and wasmtime startup cost implication) |
-| OQ-04 | Where does the daemon's HTTP server bind — `127.0.0.1:2748` (fixed) or `127.0.0.1:0` with port written to lock file? | Fixed port (simpler, conflicts possible); OS-assigned port written to lock file (any-context pattern, restart-resilient) | Architect (hook injection must know port; OS-assigned requires lock-file discovery) |
-| OQ-05 | Profile picker on session create vs sticky-per-project? | (a) Picker shown when creating a new session (interactive prompt); (b) Profile stored in per-project config, sticky across restarts | Architect + UX designer |
-| OQ-06 | Hook event timeline retention: in-memory ring buffer or persisted JSONL? | In-memory ring is simpler (Phase 1); persisted JSONL enables replay and holdout evaluation; any-context broker has no persistence | Architect (test-harness implication: persisted JSONL enables deterministic fixture replay) |
-| OQ-07 | Cross-host session migration scope: v1 or v4? | Vision §Phase Plan puts federation in Phase 4; confirm v1 architecture does not preclude it (russh + protobuf stubs acceptable in v1 if zero runtime cost) | Architect |
-| OQ-08 | monocle-ipc: Unix domain socket only, or Unix domain socket + shared-memory ring buffer both shipped in v1? | Shared-memory ring buffer adds zero-copy throughput for high-frequency events; vision lists both; shared-mem adds complexity | Architect (vision §Tech Stack lists interprocess 2.4 for both; confirm v1 scope) |
-| OQ-09 | rmcp MCP bridge (port 2749): stub with no-op handlers in v1, or omit entirely? | Including stub prevents port allocation surprises in Phase 4; omitting keeps v1 surface small | Architect |
-| OQ-10 | Daemon lock file location: `~/.monocle/daemon.json` (like any-context's `<runtimeDir>/daemon.json`) or `$XDG_RUNTIME_DIR/monocle/daemon.json`? | XDG-compliant is cleaner on Linux; `~/.monocle/` is simpler and macOS-compatible | Architect + directories 6 XDG resolver |
-| OQ-11 | MSRV target | Pin a specific minimum supported Rust version (e.g. 1.75 or 1.78) in the workspace `rust-version` field to align with the dependency stack; tokio 1.52, wasmtime 44, ratatui 0.30 all have MSRV constraints that must be respected | Architect (cross-reference each pinned crate's MSRV and pick the highest) |
+| ID | Question | Resolution | Trace |
+|----|----------|-----------|-------|
+| OQ-01 | Daemon auto-start vs explicit? | Hybrid auto-start with `MONOCLE_NO_AUTOSTART=1` escape | oq-research.md §OQ-01 |
+| OQ-02 | Hook tmpfile per-session or shared? | Shared per-runtimeDir, `0o600`, atomic-replace | oq-research.md §OQ-02 |
+| OQ-03 | v1 ship WASM SDK or static bundle? | Static bundle in v1; WASM SDK Phase 3 | oq-research.md §OQ-03 |
+| OQ-04 | Daemon port fixed or OS-assigned? | OS-assigned port + lock-file discovery | oq-research.md §OQ-04 |
+| OQ-05 | Profile picker on create vs sticky? | Sticky-per-project; `Ctrl-P` override (MEDIUM confidence) | oq-research.md §OQ-05 |
+| OQ-06 | Event retention ring or JSONL? | Hybrid RAM ring + async JSONL flush, 100MB × 5 | oq-research.md §OQ-06 |
+| OQ-07 | Cross-host scope v1 or v4? | Protobuf seams v1 (zero cost); russh Phase 4 | oq-research.md §OQ-07 |
+| OQ-08 | IPC: UDS only or UDS + shared-mem? | UDS-only v1; shared-mem Phase 4 | oq-research.md §OQ-08 |
+| OQ-09 | rmcp stub in v1 or omit? | Omit entirely in v1 | oq-research.md §OQ-09 |
+| OQ-10 | Lock-file location XDG or `~/.monocle`? | `directories::ProjectDirs::runtime_dir()` with fallback chain | oq-research.md §OQ-10 |
+| OQ-11 | MSRV target? | Phase 1: Rust 1.86; Phase 3: Rust 1.92 | oq-research.md §OQ-11 |
 
-> Five judgment calls flagged by orchestrator awaiting human red-line: JC-1 (static 7-type Phase 1 vs 2), JC-2 (PostToolUse endpoint), JC-3 (port 2748 fixed vs OS-assigned), EX-1 (workspace 11→13 crates), EX-2 (SessionStart/UserPromptSubmit hooks omitted). Architect should resolve OQ-01..OQ-11 with these judgment calls held constant until human red-line lands.
+> **Judgment call resolutions (orchestrator-applied 2026-05-12)** — JC-1 → option B1
+> (Phase 2 exit criterion); JC-2 → omit PostToolUse for Phase 1 (Claude Code parity);
+> JC-3 → CLOSED via OQ-04; EX-1 → ratify 13-crate workspace; EX-2 → add SessionStart
+> + UserPromptSubmit to Phase 1 (full 5-endpoint parity). All resolutions traceable to
+> vision D-012 and oq-research.md commit b3c68ca. Human may red-line any of these in a
+> follow-up brief revision.
 
 ## Overflow Context
 
@@ -310,7 +319,7 @@ of them provide**. The closest prior art:
 ### Decisions Log Cross-Reference
 
 All decisions that constrain this brief are logged in STATE.md §Decisions Log:
-D-001 through D-012. The canonical vision approved by human is D-012.
+D-001 through D-017. The canonical vision approved by human is D-012.
 
 ### Phase Plan Rationale
 
