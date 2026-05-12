@@ -4,7 +4,7 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T10:30:00Z
+timestamp: 2026-05-12T11:00:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
@@ -14,7 +14,7 @@ mode: greenfield
 current_step: validate-brief-v1.1-and-human-redline
 current_cycle: cycle-001
 dtu_required: false
-awaiting: validate-brief on v1.1 draft + human red-line of 5 judgment calls (JC-1..3, EX-1..2)
+awaiting: human red-line of JC-1..3 + EX-1..2 and bloat-decision (Action A/B/C from brief-validation.md) → brief v1.2 → re-validate
 ---
 
 <!--
@@ -44,7 +44,7 @@ awaiting: validate-brief on v1.1 draft + human red-line of 5 judgment calls (JC-
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-12T10:30:00Z |
+| **Last Updated** | 2026-05-12T11:00:00Z |
 | **Current Phase** | phase-1-ready-awaiting-brief-redline |
 | **Current Step** | validate-brief-v1.1-and-human-redline |
 | **Canonical vision** | /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md |
@@ -70,6 +70,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | -1: Reference Ingest (vsdd-factory, SCOPED) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 761-line synthesis; lobster YAML; dispatcher; factory pattern |
 | -1: EXPANSION — 4 additional ingests (zellij, lazygit, claude-squad, claude-code-router) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x4) | 57 new files; 5-plane gene corpus complete across 8 repos |
 | 0.5: Product Brief | DONE | 2026-05-12 | 2026-05-12 | validate-brief (manual PASS) | 341 lines; 3 personas; 7 success rows; 11 OQs; 5 judgment calls (JC-1..3, EX-1..2); RUSTSEC notes; 13 version corrections + 11 new pins |
+| 0.6: validate-brief on v1.1 | NEEDS_WORK | 2026-05-12 | — | validate-brief skill | NEEDS_WORK: bloat 3.6x recommended; JC-1 scope contradiction unresolved; leakage WARNING (intentional + vision-traceable). Report at .factory/planning/brief-validation.md |
 | 0: Codebase Ingestion | not-started | | | | |
 | 1: Spec Crystallization | not-started | | | | |
 | 2: Story Decomposition | not-started | | | | |
@@ -85,11 +86,11 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Vision synthesis approved + committed | state-manager | DONE | specs/research/domain-monocle-vision-synthesis.md; D-012; burst @ 2737bfd |
 | Product brief v1.0 drafted + committed — direct-draft from vision + 8 Pass 8 syntheses | product-owner + state-manager | DONE | specs/product-brief.md 290 lines; 10 OQs; 3 judgment calls; single-commit burst |
 | Version validation — crates.io API + RUSTSEC advisory DB; 13 corrections + 11 new pins | product-owner | DONE | wasmtime 25→44, russh 0.45→0.60, prost 0.13→0.14, +8 others; rmcp 1.6 canonical confirmed |
 | Brief v1.1 revision + STATE.md — RUSTSEC notes section, OQ-11, Revision History, heading fix | product-owner + state-manager | DONE | 291→341 lines; D-014, D-015 logged; single-commit burst @ factory-artifacts |
-| /vsdd-factory:validate-brief on v1.1 + human red-line of 5 judgment calls (JC-1..3, EX-1..2) | human | IN-PROGRESS | — |
+| validate-brief on v1.1 | orchestrator (validate-brief skill) | DONE | NEEDS_WORK — JC-1 contradiction + bloat 3.6x; report @ .factory/planning/brief-validation.md; D-016 logged |
+| Human red-line of JC-1..3 + EX-1..2 + bloat-decision (Action A/B/C) | human | PENDING | — |
 
 ## Reference Repos (Phase -1 inputs)
 
@@ -127,6 +128,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-013 | Product brief drafted via direct-draft per human choice; 10 open architectural questions surfaced for Phase 1; 3 judgment calls flagged for red-line: (1) static 7-type rendering Phase 1 criterion vs Phase 2 exit, (2) PostToolUse endpoint v1 in-scope vs omitted per any-context BC-HOOK-007, (3) port 2748 fixed value vs OS-assigned + lock-file | Direct-draft (product-owner from vision + gene corpus) preferred over guided-brief-creation session; architect open questions deferred to OQ-01..OQ-10 in brief | pre-phase-1 | 2026-05-12 | state-manager |
 | D-014 | Crate version validation via crates.io API + Tavily + Perplexity; 13 corrections + 11 new pins applied to brief v1.1; canonical RUSTSEC notes added; wasmtime/wasmi rationale refreshed (wasmi WASI gap claim dropped as dated) | wasmtime 25→44 (RUSTSEC advisories on pre-44), russh 0.45→0.60 (RUSTSEC-2023-0071), prost 0.13→0.14 (RUSTSEC-2026-0007), thiserror pinned to 2 (major bump mid-2024); new Supply Chain section documents advisory context for architect | pre-phase-1 | 2026-05-12 | state-manager |
 | D-015 | rmcp 1.6 confirmed canonical Anthropic Rust MCP SDK via modelcontextprotocol/rust-sdk org + alexhancock@Anthropic owner record | rmcp is the only Rust SDK under the modelcontextprotocol GitHub org with an Anthropic employee as sole owner; no competing canonical exists; pinned to 1.6 in brief | pre-phase-1 | 2026-05-12 | state-manager |
+| D-016 | Brief v1.1 validate-brief outcome: NEEDS_WORK (bloat 3.6x recommended; JC-1 scope contradiction unresolved; leakage intentional + vision-traceable). Report at .factory/planning/brief-validation.md | validate-brief skill run by orchestrator; 1 quality blocker (JC-1), 1 bloat decision (Action A/B/C), 1 sequential gate (market intel Task #8 before Phase 1 entry) | pre-phase-1 | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -149,8 +151,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-12 |
-| **Position** | phase-1-ready-awaiting-brief-redline; product brief v1.1 (341 lines) at /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md; 13 version corrections + 11 new pins applied; RUSTSEC notes section added; D-014 + D-015 logged; 5 judgment calls open (JC-1..3, EX-1..2) for human red-line; 11 open architect questions (OQ-01..OQ-11) in brief |
-| **Next** | /vsdd-factory:validate-brief on v1.1 draft; human red-line of 5 judgment calls; optionally resolve some of OQ-01..OQ-11 via Perplexity research; then parallel dispatch /vsdd-factory:create-architecture (architect) + /vsdd-factory:create-prd (product-owner) |
+| **Position** | validate-brief DONE on v1.1 (NEEDS_WORK); report at .factory/planning/brief-validation.md; D-016 logged; 1 blocker (JC-1 scope contradiction), 1 bloat-decision pending (Action A/B/C), 1 sequential gate (market intel Task #8); 5 judgment calls open (JC-1..3, EX-1..2) for human red-line |
+| **Next** | Human red-line JC-1..3 + EX-1..2; select bloat-remediation action (A/B/C from brief-validation.md); product-owner revises to v1.2; re-run validate-brief; then parallel dispatch /vsdd-factory:create-architecture + /vsdd-factory:create-prd |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -163,10 +165,6 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Burst | Date | Agent | Outcome |
 |-------|------|-------|---------|
-| Init: factory-artifacts branch + .factory/ worktree + STATE.md + cycle-001 | 2026-05-11 | state-manager | factory-artifacts @ 3b8c3b5 |
-| Ingest both reference repos (36 semport artifacts) + STATE.md update | 2026-05-11 | codebase-analyzer + state-manager | any-context 23 files (62 kB synthesis), nikiforovall 13 files (17 kB synthesis); all Iron Law compliant |
-| Phase B deepening — 8 parallel agents (any-context: server/mcp/plugin/pmw-full; nikiforovall: services/mixins/app-keybindings/models) | 2026-05-11 | codebase-analyzer (x8) | 24 new semport files; scope expansion recorded |
-| Full-protocol Phase B rounds — broker/hooks/tmuxadapter gap-fill (any-context) + remaining nikiforovall rounds | 2026-05-11 | codebase-analyzer (x8) | broker-r1,r2 + hooks-r1,r2 + tmuxadapter-r1 added; any-context 30 Phase B rounds total |
 | B.5 v2 fresh-context audits — any-context + nikiforovall | 2026-05-11 | codebase-analyzer (x2) | any-context: TOPIC-DRIFT-FOUND-AND-RESOLVED; nikiforovall: TOPIC-DRIFT-CLEAN |
 | Brownfield-ingest codemachine-cli (full) + vsdd-factory (scoped) | 2026-05-11 | codebase-analyzer (x2) | codemachine-cli: 14 files, 678-line synthesis; vsdd-factory: 14 files, 761-line synthesis |
 | Pass 8 v2 syntheses — any-context (867 lines, ~644 BCs) + nikiforovall (1072 lines, 21 BCs) | 2026-05-11 | codebase-analyzer (x2) | v2 files created; v1 preserved unchanged |
@@ -177,15 +175,17 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Vision synthesis saved — orchestrator canonical vision doc + STATE.md update (D-012, awaiting update, burst row, next-step) | 2026-05-11 | state-manager | specs/research/domain-monocle-vision-synthesis.md created; single-commit burst to factory-artifacts |
 | Brief commit — product brief drafted by product-owner; STATE.md updated (current_phase, phase progress row, current steps, D-013, next-step, project snapshot); input-drift CLEAN (STALE=0) | 2026-05-12 | state-manager | specs/product-brief.md committed; single-commit burst per TD-VSDD-053 |
 | Version validation + brief v1.1 revision — 13 corrections + 11 new pins; RUSTSEC notes section; OQ-11 (MSRV); Revision History; heading fix; D-014 + D-015 logged; STATE.md updated | 2026-05-12 | state-manager | specs/product-brief.md 291→341 lines; single-commit burst per TD-VSDD-053 |
+| validate-brief on v1.1 — NEEDS_WORK; planning/brief-validation.md created; D-016 logged; STATE.md updated (awaiting, phase progress 0.6, current steps, next step) | 2026-05-12 | state-manager | .factory/planning/brief-validation.md; single-commit burst per TD-VSDD-053 |
 
 ## Next Step
 
-1. Run /vsdd-factory:validate-brief on v1.1 draft (specs/product-brief.md 341 lines)
-2. Human red-line of 5 judgment calls: JC-1 (static 7-type Phase 1 vs Phase 2 exit), JC-2 (PostToolUse endpoint v1 in/out of scope), JC-3 (port 2748 fixed vs OS-assigned + lock-file), EX-1, EX-2
-3. Optionally research OQ-01..OQ-11 via Perplexity before architect dispatch (OQ-11: MSRV reconciliation is new)
-4. On red-line approval: parallel dispatch of /vsdd-factory:create-architecture (architect) and /vsdd-factory:create-prd (product-owner) per greenfield sequence
-5. After PRD + architecture: /vsdd-factory:phase-1d-adversarial-spec-review for 3-clean-pass convergence
-6. Then human approval gate → Phase 2 story decomposition
+1. Human red-line of 5 judgment calls: JC-1 (static 7-type Phase 1 vs Phase 2 exit), JC-2 (PostToolUse endpoint v1 in/out of scope), JC-3 (port 2748 fixed vs OS-assigned + lock-file), EX-1, EX-2 — see brief-validation.md for Action B options on JC-1
+2. Select bloat-remediation action: Action A (tighten bloat — recommended), Action B (resolve JC-1 only), or Action C (accept bloat as trade-off) — see .factory/planning/brief-validation.md
+3. Product-owner revises brief to v1.2; re-run /vsdd-factory:validate-brief
+4. Optionally research OQ-01..OQ-11 via Perplexity before architect dispatch (OQ-11: MSRV reconciliation is new)
+5. Run market intelligence assessment (Task #8) before Phase 1 entry
+6. On brief PASS: parallel dispatch /vsdd-factory:create-architecture (architect) + /vsdd-factory:create-prd (product-owner)
+7. After PRD + architecture: /vsdd-factory:phase-1d-adversarial-spec-review for 3-clean-pass convergence → human approval gate → Phase 2
 
 ## Historical Content
 
