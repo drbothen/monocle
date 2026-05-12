@@ -4,17 +4,17 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T22:30:00Z
+timestamp: 2026-05-12T23:30:00Z
 phase: pre-phase-1-final-gate
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: market-intel-and-validate-v2-complete-awaiting-brief-v1.3
+current_step: brief-v1.3-validated-awaiting-human-phase-1-approval
 current_cycle: cycle-001
 dtu_required: false
-awaiting: brief v1.3 (competitive positioning revision) then re-validate then Phase 1
+awaiting: "human approval gate: Phase 1 entry (create-domain-spec, create-prd, create-architecture, phase-1-prd-revision, phase-1d-adversarial-spec-review)"
 ---
 
 <!--
@@ -33,10 +33,10 @@ awaiting: brief v1.3 (competitive positioning revision) then re-validate then Ph
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | market-intel-and-validate-v2-complete-awaiting-brief-v1.3 |
-| **Product brief** | `.factory/specs/product-brief.md` v1.2 |
+| **Current Step** | brief-v1.3-validated-awaiting-human-phase-1-approval |
+| **Product brief** | `.factory/specs/product-brief.md` v1.3 (commit a46a7ce, validation v3 VALID at b3d9560) |
 | **Canonical vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` |
-| **Last Updated** | 2026-05-12T22:30:00Z |
+| **Last Updated** | 2026-05-12T23:30:00Z |
 
 ## Phase Progress
 
@@ -44,7 +44,8 @@ awaiting: brief v1.3 (competitive positioning revision) then re-validate then Ph
 |-------|--------|-----------|------|-------|
 | -1: Reference Ingest (8 repos / 5 planes) | DONE | 2026-05-11 | codebase-analyzer | 57+ artifacts; semport/ |
 | 0.5-0.8: Brief v1.0→v1.2 + arch stubs | DONE | 2026-05-12 | product-owner | brief v1.2; 4 arch stubs |
-| 0.9: Market Intel + validate-brief v2 | DONE | 2026-05-12 | orchestrator | CAUTION + NEEDS_WORK |
+| 0.9: Market Intel + validate-brief v2/v3 | DONE | 2026-05-12 | orchestrator | v3 VALID after v1.3 competitive positioning revision; consistency audit clean (4 IMPORTANT pre-gate fixes applied) |
+| 0.95: Pre-Phase-1 Consistency Audit | DONE | 2026-05-12 | consistency-validator | GAPS_FOUND non-blocking; fixes F-03/F-04/F-11 applied |
 | 1: Spec Crystallization | not-started | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -57,10 +58,13 @@ awaiting: brief v1.3 (competitive positioning revision) then re-validate then Ph
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Brief v1.2 + arch stubs | product-owner | DONE | brief v1.2 (350 lines); 4 arch stubs; D-018 |
 | Market intel assessment | orchestrator | DONE | planning/market-intelligence.md (CAUTION) |
 | validate-brief v2 | orchestrator | DONE | plans/brief-validation-v2.md (NEEDS_WORK) |
-| Compact STATE.md + resume checkpoint | state-manager | DONE | burst-log.md + session-checkpoints.md created |
+| Brief v1.3 (competitive positioning vs agent view) | product-owner | DONE | commit d6a8291; brief v1.3 (370 lines) |
+| validate-brief v3 | product-owner | DONE | plans/brief-validation-v3.md (VALID, commit b3d9560) |
+| Input-hash drift check | orchestrator | DONE | 3 bookkeeping STALE bumped; 9 UNRESOLVABLE tooling caveat; STALE=0 final |
+| Consistency audit (fresh context) | consistency-validator | DONE | plans/consistency-audit-pre-phase-1.md (GAPS_FOUND, 4 IMPORTANT, 0 BLOCKING, commit b891b78) |
+| Pre-gate consistency fixes F-03/F-04/F-11 | product-owner | DONE | commit a46a7ce (brief OQ-M3 clarification, brief endpoint note, dependencies.md Authority section) |
 
 ## Decisions Log
 
@@ -71,6 +75,7 @@ awaiting: brief v1.3 (competitive positioning revision) then re-validate then Ph
 | D-016 | validate-brief v1.1: NEEDS_WORK (bloat 3.6x; JC-1 unresolved; leakage intentional) | Report at planning/brief-validation.md | pre-phase-1 | 2026-05-12 | state-manager |
 | D-017 | OQ-01..OQ-11 researched; 10/11 HIGH confidence; 4 SOQs surfaced | planning/oq-research.md (1666 lines) | pre-phase-1 | 2026-05-12 | state-manager |
 | D-018 | Brief v1.2 + 4 arch stubs. Bloat Option A. All 11 OQs + 4 SOQs + 5 JCs resolved | dependencies.md; ADR-0001; conventions.md; tech-debt-register.md; commit 6ac4279 | pre-phase-1 | 2026-05-12 | state-manager |
+| D-019 | Brief v1.3 VALID after competitive positioning revision; pre-phase-1 consistency audit GAPS_FOUND but no blockers (4 IMPORTANT pre-gate fixes applied); ready for human Phase 1 approval gate | brief v1.3 commit d6a8291; validation v3 b3d9560; consistency audit b891b78; pre-gate fixes a46a7ce | pre-phase-1 | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -98,28 +103,28 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 
 - 8 reference repos fully ingested into `.factory/semport/`
 - Vision approved by human verbatim 2026-05-11 (D-012)
-- Brief v1.2 at `.factory/specs/product-brief.md` (350 lines, commit 6ac4279)
-- 4 architecture stubs at `.factory/specs/architecture/` + `.factory/tech-debt-register.md`
-- 11 OQs + 4 SOQs + 5 JCs resolved via oq-research.md
-- Two quality gates: validate-brief v2 (NEEDS_WORK, ONE blocker) + market intel (CAUTION)
+- Brief v1.3 at `.factory/specs/product-brief.md` (370 lines, commit a46a7ce) — competitive positioning revised vs Anthropic agent view; OQ-M1 + OQ-M3 added; R-001 acceptance stated
+- validate-brief v3 VALID (plans/brief-validation-v3.md, commit b3d9560) — B-1 RESOLVED
+- Consistency audit run (plans/consistency-audit-pre-phase-1.md, commit b891b78) — GAPS_FOUND 4 IMPORTANT 0 BLOCKING; fixes F-03/F-04/F-11 applied (commit a46a7ce)
+- Input-hash drift clean (3 bookkeeping files bumped; 9 UNRESOLVABLE tooling caveat)
+- D-019 logged
 
 ### Immediate Next Action
 
-Produce brief v1.3 with ONE targeted revision: 5-7 sentences in Competitive Positioning acknowledging Anthropic's `claude agents` (shipped 2026-05-11, research preview) and repositioning monocle's differentiation on depth and mechanism (hook-protocol-native vs attach-and-reply; VecDeque<PromptModal> overlay vs none; diff preview vs none; trigger-trace vs none; workflow plane vs none).
-
-After v1.3 lands: run validate-brief, expected VALID, then dispatch Phase 1 starting with `/vsdd-factory:create-domain-spec`.
+Present Phase 1 entry approval gate to human. After approval, dispatch Phase 1 sequence: create-domain-spec -> create-prd -> create-architecture -> phase-1-prd-revision (max 3x) -> phase-1d-adversarial-spec-review (3 clean passes) -> human Phase 1 approval -> Phase 2.
 
 ### Critical Artifacts (read in this order)
 
 1. `.factory/specs/research/domain-monocle-vision-synthesis.md` — canonical vision (approved)
-2. `.factory/specs/product-brief.md` v1.2 — current brief
+2. `.factory/specs/product-brief.md` v1.3 — current brief (370 lines)
 3. `.factory/planning/oq-research.md` — 11 OQs + 4 SOQs resolved
 4. `.factory/planning/market-intelligence.md` — CAUTION verdict, agent view shock
-5. `.factory/plans/brief-validation-v2.md` — NEEDS_WORK verdict, single blocker
-6. `.factory/specs/architecture/dependencies.md` — 24-crate pin manifest
-7. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — first ADR
-8. `.factory/specs/architecture/conventions.md` — anti-patterns
-9. `.factory/tech-debt-register.md` — TD-001 nucleo dormant
+5. `.factory/plans/brief-validation-v3.md` — VALID verdict, B-1 resolved
+6. `.factory/plans/consistency-audit-pre-phase-1.md` — GAPS_FOUND non-blocking
+7. `.factory/specs/architecture/dependencies.md` — 24-crate pin manifest
+8. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — first ADR
+9. `.factory/specs/architecture/conventions.md` — anti-patterns
+10. `.factory/tech-debt-register.md` — TD-001 nucleo dormant
 
 ### Resolution Summary
 

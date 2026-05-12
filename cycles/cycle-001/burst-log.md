@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "[live-state]"
+input-hash: "571159f"
 traces_to: STATE.md
 ---
 
@@ -148,3 +148,41 @@ Two parallel quality gates. Market intel: CAUTION (claude agents shipped 2026-05
 | orchestrator | Market intelligence assessment | planning/market-intelligence.md (CAUTION) |
 | orchestrator | validate-brief on v1.2 | plans/brief-validation-v2.md (NEEDS_WORK) |
 | state-manager | Compact STATE.md + write resume checkpoint | STATE.md |
+
+---
+
+## Burst 9 (2026-05-12) — Brief v1.3 + validation v3 + consistency audit + pre-gate fixes
+
+**Agents dispatched:** product-owner, orchestrator, consistency-validator, state-manager
+**Files touched:** .factory/specs/product-brief.md, .factory/plans/brief-validation-v3.md, .factory/plans/consistency-audit-pre-phase-1.md, .factory/specs/architecture/dependencies.md, STATE.md, cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md, planning/brief-validation.md (hash bump)
+**Versions bumped:** brief: v1.2 -> v1.3
+
+### Summary
+
+5-event burst closing out the pre-Phase-1 gate:
+
+1. **product-owner** wrote brief v1.3 (commit `d6a8291`) — competitive positioning revised vs Anthropic agent view (claude agents v2.1.139 shipped 2026-05-11); OQ-M1 + OQ-M3 added to OQ table; R-001 acceptance stated with 25-40% commoditization probability + mitigation. Resolves B-1 from validation-v2. No scope change. 350 -> 370 lines.
+
+2. **product-owner** wrote validation-v3 report (commit `b3d9560`) at `.factory/plans/brief-validation-v3.md`. Verdict: VALID. B-1 RESOLVED. No new blockers. Bloat status "IMPROVED but still OVER" (non-blocking per validation-v2 assessment).
+
+3. **orchestrator** ran input-hash drift check. 3 STALE files (all bookkeeping per skill guidance): `cycles/cycle-001/burst-log.md`, `cycles/cycle-001/session-checkpoints.md`, `planning/brief-validation.md`. 9 UNRESOLVABLE (tooling caveat: binary doesn't handle absolute paths in `inputs:` fields; pre-existing, not actionable). Bulk-bumped 3 STALE hashes via `compute-input-hash --scan .factory --update`. Re-scan: STALE=0.
+
+4. **consistency-validator** ran fresh-context pre-gate audit, wrote `.factory/plans/consistency-audit-pre-phase-1.md` (commit `b891b78`). Verdict: GAPS_FOUND. 4 IMPORTANT, 6 ADVISORY, 0 BLOCKING. F-01 + F-02 (STATE.md stale) deferred to state-manager. F-03 / F-04 / F-11 routed to product-owner.
+
+5. **product-owner** applied F-03 / F-04 / F-11 (commit `a46a7ce`) — surgical micro-edits to brief OQ-M3 row, brief Phase 1 endpoint list note, and `dependencies.md` Authority/Supersession section. No version bump on brief.
+
+D-019 logged. Single-commit burst per TD-VSDD-053.
+
+**Triage on untracked files:**
+- `sidecar-learning.md`: committed (append-only session-end markers; valid audit trail)
+- `logs/`: gitignored via .factory/.gitignore entry (ephemeral JSONL event logs; not registry artifacts)
+- `planning/brief-validation-v2.md`: deleted (orphan; superseded by v3 which IS committed at b3d9560; keeping it would create ambiguity about which validation report is canonical)
+
+| Agent | Task | Output |
+|-------|------|--------|
+| product-owner | Brief v1.3 competitive positioning revision | specs/product-brief.md v1.3 (370 lines, commit d6a8291) |
+| product-owner | validate-brief v3 | plans/brief-validation-v3.md (VALID, commit b3d9560) |
+| orchestrator | Input-hash drift check + bump | 3 bookkeeping hashes bumped; STALE=0 |
+| consistency-validator | Pre-gate consistency audit | plans/consistency-audit-pre-phase-1.md (GAPS_FOUND, commit b891b78) |
+| product-owner | Pre-gate fixes F-03/F-04/F-11 | specs/product-brief.md + dependencies.md (commit a46a7ce) |
+| state-manager | STATE.md update + cycle files + triage | STATE.md; burst-log.md; session-checkpoints.md; D-019 |
