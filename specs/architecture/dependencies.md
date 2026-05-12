@@ -18,6 +18,10 @@ project: monocle
 
 # Architecture: Dependency Manifest
 
+## Authority / Supersession
+
+This document is the canonical, authoritative tech-stack version manifest for monocle. The vision document (`.factory/specs/research/domain-monocle-vision-synthesis.md`) §Tech Stack section was produced before OQ-01..OQ-11 resolution and carries pre-OQ version examples. Where this document and the vision disagree on a crate version, this document wins. Where this document and brief v1.3 disagree, this document wins. Trace: D-018 (oq-research.md commit b3c68ca), JC-1/JC-2/JC-3 resolutions.
+
 ## [Section Content]
 
 This file is the canonical dependency manifest for monocle. The product brief

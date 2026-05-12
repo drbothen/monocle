@@ -92,7 +92,11 @@ accommodate without breaking Phase 1 ABI.
   `POST /hooks/notification`, `POST /hooks/stop`, `POST /hooks/session-start`,
   `POST /hooks/prompt-submit`; schema byte-compatible with Claude Code's tmpfile hook
   protocol; auth via `X-Claude-Code-Ide-Authorization` header; `PostToolUse` omitted
-  per JC-2 (Claude Code gene-source parity BC-HOOK-007)
+  per JC-2 (Claude Code gene-source parity BC-HOOK-007). Note: The vision document's
+  §Process Topology diagram pre-dates JC-2 / EX-2 endpoint closures and depicts an
+  illustrative endpoint set (with PostToolUse / PermissionPrompt); the canonical Phase 1
+  endpoint set is the 5 endpoints listed above and the vision diagram is non-authoritative
+  for endpoint enumeration.
 - Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (OQ-02)
 - `ClaudeCodeModule`: built-in `EngineModule` implementation; detects Claude Code
   processes via PID walk; enriches with token counts, cost, phase tag from hook
@@ -291,7 +295,7 @@ unless human red-lines; OQ-M1 and OQ-M3 are pending architect resolution.
 | OQ-10 | Lock-file location XDG or `~/.monocle`? | `directories::ProjectDirs::runtime_dir()` with fallback chain | oq-research.md §OQ-10 |
 | OQ-11 | MSRV target? | Phase 1: Rust 1.86; Phase 3: Rust 1.92 | oq-research.md §OQ-11 |
 | OQ-M1 | Does agent view use Claude Code hook protocol or different IPC? If hook protocol, can monocle daemon and agent view coexist on same host without port/auth collision? | Pending architect review (market intel) | brief-validation-v2.md §OQ-M1 |
-| OQ-M3 | Claude Code 2026 docs list 25 lifecycle events including `PermissionRequest` as a distinct hook event. Should monocle add `PermissionRequest` as a sixth endpoint (current JC-2 decision: 5 endpoints) for cleaner permission-overlay UX? | Pending architect review (market intel) | brief-validation-v2.md §OQ-M3 |
+| OQ-M3 | Claude Code 2026 docs list 25 lifecycle events including `PermissionRequest` as a distinct hook event. Should monocle add `PermissionRequest` as a sixth endpoint (current JC-2 decision: 5 endpoints) for cleaner permission-overlay UX? | Pending architect review (market intel). Forward question; does NOT reopen JC-2 closure (5 endpoints: SessionStart, UserPromptSubmit, PreToolUse, Notification, Stop). Architect may extend to 6 endpoints if PermissionRequest evaluation favors it; default is 5. | brief-validation-v2.md §OQ-M3 |
 
 > **Judgment call resolutions (orchestrator-applied 2026-05-12)** — JC-1 → option B1
 > (Phase 2 exit criterion); JC-2 → omit PostToolUse for Phase 1 (Claude Code parity);
