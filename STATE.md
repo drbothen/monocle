@@ -4,7 +4,7 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-11T06:00:00Z
+timestamp: 2026-05-11T20:30:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
@@ -14,7 +14,7 @@ mode: greenfield
 current_step: pre-phase-0-complete
 current_cycle: cycle-001
 dtu_required: false
-awaiting: human-checkpoint review of full 8-repo ingest synthesis
+awaiting: human GO to dispatch product-owner for /vsdd-factory:create-brief
 ---
 
 <!--
@@ -44,9 +44,10 @@ awaiting: human-checkpoint review of full 8-repo ingest synthesis
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-11T06:00:00Z |
+| **Last Updated** | 2026-05-11T20:30:00Z |
 | **Current Phase** | pre-phase-0-complete-awaiting-human-checkpoint |
-| **Current Step** | pre-phase-0-complete — all 8 reference repos ingested; awaiting human GO/REDIRECT/EXPAND |
+| **Current Step** | pre-phase-0-complete — vision synthesis approved; ready for /vsdd-factory:create-brief |
+| **Canonical vision** | /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md |
 
 Rust TUI for managing AI coding harness sessions across multiple engines (Claude Code, CodeMachine, others) with workflow awareness for sessions operating against factory-pattern projects (vsdd-factory and other dispatchers compatible with the document_type: pipeline-state discriminator). Fuses five genetic planes drawing on 8 reference repos:
 - Runtime plane (any-context, zellij) — multi-harness session manager + Rust IPC + WASM plugin SDK
@@ -85,6 +86,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Clone 4 new reference repos (zellij, lazygit, claude-squad, claude-code-router) | devops | DONE | refs cloned to .reference/ at de1e0f75 / c4935036 / a4ab6988 / e270dea5 |
 | 4 parallel ingests — zellij (24 files, 7×2 B-rounds), lazygit (17 files, 7×1 B-rounds), claude-squad (15 files, 5 NITPICK deepenings), claude-code-router (1 consolidated C) | codebase-analyzer (x4) | DONE | 57 new semport files; all Phase C syntheses complete |
 | Atomic commit + STATE.md expansion — 8-repo / 5-plane corpus committed to factory-artifacts | state-manager | DONE | input-drift CLEAN; 57 new files + STATE.md update |
+| Vision synthesis saved — orchestrator vision approved by human; canonical doc written to specs/research/domain-monocle-vision-synthesis.md | state-manager | DONE | D-012 logged; awaiting updated to brief-creation gate |
 
 ## Reference Repos (Phase -1 inputs)
 
@@ -118,6 +120,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-009 | Adopt lazygit's context-aware binding pattern with 5-level precedence as monocle's Action enum dispatch model | Lazygit's (view,key,handler) signature + precedence stack (search-prompt > custom > per-context > global > builtin) is the most validated approach in the lazy* ecosystem | pre-phase-0 | 2026-05-11 | state-manager |
 | D-010 | Treat claude-code-router as INTEGRATE-EXTERNAL not build-in; no CCR APIs change required | CCR is a mature standalone reverse proxy; monocle integrates by detecting CCR on PATH + writing per-session JSON + setting ANTHROPIC_BASE_URL; no new CCR APIs needed | pre-phase-0 | 2026-05-11 | state-manager |
 | D-011 | claude-squad teaches UX (worktree isolation, snapshot-fork concurrency) not orchestration (it has none — human is coordinator) | claude-squad has no PM/Worker; human is the coordinator; treat as TUI prior art + worktree isolation pattern only | pre-phase-0 | 2026-05-11 | state-manager |
+| D-012 | Vision synthesis approved by human 2026-05-11; canonical reference at /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md; supersedes any free-form vision statements in pre-phase-0 burst log | Human approved orchestrator vision verbatim ("I agree with this fully"); saved as pre-brief canonical doc for product-owner, architect, and disposition-pass agents | pre-phase-0 | 2026-05-11 | state-manager |
 
 ## Skip Log
 
@@ -140,8 +143,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-11 |
-| **Position** | pre-phase-0-complete; all 8 reference repos fully ingested across 5 genetic planes; Phase -1 DONE; awaiting human checkpoint |
-| **Next** | Human reviews 8-repo synthesis summary → GO: /vsdd-factory:create-brief with all 8 syntheses as input → Phase 0.5 brief creation |
+| **Position** | pre-phase-0-complete; vision synthesis approved by human; canonical doc saved at /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md; D-012 logged; ready for brief creation |
+| **Next** | Dispatch product-owner for /vsdd-factory:create-brief using vision doc as primary input + 8 semport syntheses as supporting context |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -165,18 +168,17 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Clone 4 new refs (zellij/lazygit/claude-squad/CCR) | 2026-05-11 | devops | refs at de1e0f75 / c4935036 / a4ab6988 / e270dea5 |
 | 4 parallel ingests — 57 new semport files across 4 subtrees | 2026-05-11 | codebase-analyzer (x4) | zellij: 24 files; lazygit: 17 files; claude-squad: 15 files; CCR: 1 file |
 | Atomic commit: EXPANSION — 8-repo / 5-plane corpus committed; STATE.md updated | 2026-05-11 | state-manager | input-drift CLEAN; this commit |
+| Vision synthesis saved — orchestrator canonical vision doc + STATE.md update (D-012, awaiting update, burst row, next-step) | 2026-05-11 | state-manager | specs/research/domain-monocle-vision-synthesis.md created; single-commit burst to factory-artifacts |
 
 ## Next Step
 
-Human approval gate. Present full 8-repo synthesis summary to human and await GO/REDIRECT/EXPAND.
+Ready for /vsdd-factory:create-brief with the canonical vision as primary input.
 
-If GO: dispatch product-owner to /vsdd-factory:create-brief with all 8 Pass 8 syntheses (5 genetic planes) + the Rust architecture proposal as input. Gene corpus is now complete: runtime (any-context + zellij), static (NikiforovAll), workflow (vsdd-factory), harness (codemachine + claude-squad + CCR), TUI-philosophy (lazygit).
+Dispatch product-owner to /vsdd-factory:create-brief with:
+- Primary input: /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md (approved vision)
+- Supporting inputs: all 8 Pass 8 syntheses in /Users/jmagady/Dev/monocle/.factory/semport/ (5 genetic planes)
 
-If REDIRECT: re-run targeted deepening on specific subsystems the human flags.
-
-If EXPAND: add further reference repos beyond the current 8.
-
-Per the brownfield-sequence protocol, human approval is required before Phase 1 spec crystallization can begin. /vsdd-factory:check-input-drift was run BEFORE this commit and returned CLEAN.
+Vision is approved. Gene corpus is complete. The brief should reflect the five-plane architecture, the observe-only constraint, the multi-harness EngineModule pattern, and the FactoryAdapter discriminator model exactly as stated in the vision doc. Disposition-pass agents sorting subsystems into Model / Take-but-reimplement / Enhance / Leave-behind must reference the vision doc as their primary lens.
 
 ## Historical Content
 
