@@ -4,17 +4,17 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-11T20:30:00Z
+timestamp: 2026-05-12T00:00:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield
-current_step: pre-phase-0-complete
+current_step: phase-1-spec-crystallization-blocked-on-brief-redline
 current_cycle: cycle-001
 dtu_required: false
-awaiting: human GO to dispatch product-owner for /vsdd-factory:create-brief
+awaiting: human red-line of /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
 ---
 
 <!--
@@ -44,10 +44,11 @@ awaiting: human GO to dispatch product-owner for /vsdd-factory:create-brief
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-11T20:30:00Z |
-| **Current Phase** | pre-phase-0-complete-awaiting-human-checkpoint |
-| **Current Step** | pre-phase-0-complete — vision synthesis approved; ready for /vsdd-factory:create-brief |
+| **Last Updated** | 2026-05-12T00:00:00Z |
+| **Current Phase** | phase-1-ready-awaiting-brief-redline |
+| **Current Step** | phase-1-spec-crystallization-blocked-on-brief-redline |
 | **Canonical vision** | /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md |
+| **Product brief** | /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md |
 
 Rust TUI for managing AI coding harness sessions across multiple engines (Claude Code, CodeMachine, others) with workflow awareness for sessions operating against factory-pattern projects (vsdd-factory and other dispatchers compatible with the document_type: pipeline-state discriminator). Fuses five genetic planes drawing on 8 reference repos:
 - Runtime plane (any-context, zellij) — multi-harness session manager + Rust IPC + WASM plugin SDK
@@ -68,6 +69,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | -1: Reference Ingest (codemachine-cli) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 678-line synthesis; EngineModule contract; 7-state FSM |
 | -1: Reference Ingest (vsdd-factory, SCOPED) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 761-line synthesis; lobster YAML; dispatcher; factory pattern |
 | -1: EXPANSION — 4 additional ingests (zellij, lazygit, claude-squad, claude-code-router) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x4) | 57 new files; 5-plane gene corpus complete across 8 repos |
+| 0.5: Product Brief | DONE | 2026-05-12 | 2026-05-12 | validate-brief (manual PASS) | 290 lines; 3 personas; 7 success rows; 10 OQs; 3 judgment calls for redline |
 | 0: Codebase Ingestion | not-started | | | | |
 | 1: Spec Crystallization | not-started | | | | |
 | 2: Story Decomposition | not-started | | | | |
@@ -83,10 +85,11 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Clone 4 new reference repos (zellij, lazygit, claude-squad, claude-code-router) | devops | DONE | refs cloned to .reference/ at de1e0f75 / c4935036 / a4ab6988 / e270dea5 |
-| 4 parallel ingests — zellij (24 files, 7×2 B-rounds), lazygit (17 files, 7×1 B-rounds), claude-squad (15 files, 5 NITPICK deepenings), claude-code-router (1 consolidated C) | codebase-analyzer (x4) | DONE | 57 new semport files; all Phase C syntheses complete |
-| Atomic commit + STATE.md expansion — 8-repo / 5-plane corpus committed to factory-artifacts | state-manager | DONE | input-drift CLEAN; 57 new files + STATE.md update |
-| Vision synthesis saved — orchestrator vision approved by human; canonical doc written to specs/research/domain-monocle-vision-synthesis.md | state-manager | DONE | D-012 logged; awaiting updated to brief-creation gate |
+| Vision synthesis saved — orchestrator vision approved by human; canonical doc written to specs/research/domain-monocle-vision-synthesis.md | state-manager | DONE | D-012 logged; single-commit burst to factory-artifacts @ 2737bfd |
+| Product brief drafted — product-owner direct-draft from approved vision + 8 Pass 8 syntheses | product-owner | DONE | specs/product-brief.md; 290 lines; 3 personas; 7 success rows; 10 OQs; 3 judgment calls |
+| Brief committed to factory-artifacts + STATE.md updated | state-manager | DONE | single-commit burst; input-drift CLEAN (STALE=0) |
+| Human red-line of specs/product-brief.md (3 judgment calls) | human | PENDING | — |
+| Parallel dispatch: /vsdd-factory:create-architecture + /vsdd-factory:create-prd | architect + product-owner | PENDING | — |
 
 ## Reference Repos (Phase -1 inputs)
 
@@ -121,6 +124,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-010 | Treat claude-code-router as INTEGRATE-EXTERNAL not build-in; no CCR APIs change required | CCR is a mature standalone reverse proxy; monocle integrates by detecting CCR on PATH + writing per-session JSON + setting ANTHROPIC_BASE_URL; no new CCR APIs needed | pre-phase-0 | 2026-05-11 | state-manager |
 | D-011 | claude-squad teaches UX (worktree isolation, snapshot-fork concurrency) not orchestration (it has none — human is coordinator) | claude-squad has no PM/Worker; human is the coordinator; treat as TUI prior art + worktree isolation pattern only | pre-phase-0 | 2026-05-11 | state-manager |
 | D-012 | Vision synthesis approved by human 2026-05-11; canonical reference at /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md; supersedes any free-form vision statements in pre-phase-0 burst log | Human approved orchestrator vision verbatim ("I agree with this fully"); saved as pre-brief canonical doc for product-owner, architect, and disposition-pass agents | pre-phase-0 | 2026-05-11 | state-manager |
+| D-013 | Product brief drafted via direct-draft per human choice; 10 open architectural questions surfaced for Phase 1; 3 judgment calls flagged for red-line: (1) static 7-type rendering Phase 1 criterion vs Phase 2 exit, (2) PostToolUse endpoint v1 in-scope vs omitted per any-context BC-HOOK-007, (3) port 2748 fixed value vs OS-assigned + lock-file | Direct-draft (product-owner from vision + gene corpus) preferred over guided-brief-creation session; architect open questions deferred to OQ-01..OQ-10 in brief | pre-phase-1 | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -142,9 +146,9 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Field | Value |
 |-------|-------|
-| **Date** | 2026-05-11 |
-| **Position** | pre-phase-0-complete; vision synthesis approved by human; canonical doc saved at /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md; D-012 logged; ready for brief creation |
-| **Next** | Dispatch product-owner for /vsdd-factory:create-brief using vision doc as primary input + 8 semport syntheses as supporting context |
+| **Date** | 2026-05-12 |
+| **Position** | phase-1-ready-awaiting-brief-redline; product brief drafted (290 lines, validate-brief PASS) at /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md; D-013 logged; 3 judgment calls flagged for human red-line; 10 open architect questions (OQ-01..OQ-10) in brief |
+| **Next** | Human red-line of product-brief.md; resolve 3 judgment calls; then parallel dispatch /vsdd-factory:create-architecture (architect) + /vsdd-factory:create-prd (product-owner) |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -169,16 +173,16 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | 4 parallel ingests — 57 new semport files across 4 subtrees | 2026-05-11 | codebase-analyzer (x4) | zellij: 24 files; lazygit: 17 files; claude-squad: 15 files; CCR: 1 file |
 | Atomic commit: EXPANSION — 8-repo / 5-plane corpus committed; STATE.md updated | 2026-05-11 | state-manager | input-drift CLEAN; this commit |
 | Vision synthesis saved — orchestrator canonical vision doc + STATE.md update (D-012, awaiting update, burst row, next-step) | 2026-05-11 | state-manager | specs/research/domain-monocle-vision-synthesis.md created; single-commit burst to factory-artifacts |
+| Brief commit — product brief drafted by product-owner; STATE.md updated (current_phase, phase progress row, current steps, D-013, next-step, project snapshot); input-drift CLEAN (STALE=0) | 2026-05-12 | state-manager | specs/product-brief.md committed; single-commit burst per TD-VSDD-053 |
 
 ## Next Step
 
-Ready for /vsdd-factory:create-brief with the canonical vision as primary input.
-
-Dispatch product-owner to /vsdd-factory:create-brief with:
-- Primary input: /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md (approved vision)
-- Supporting inputs: all 8 Pass 8 syntheses in /Users/jmagady/Dev/monocle/.factory/semport/ (5 genetic planes)
-
-Vision is approved. Gene corpus is complete. The brief should reflect the five-plane architecture, the observe-only constraint, the multi-harness EngineModule pattern, and the FactoryAdapter discriminator model exactly as stated in the vision doc. Disposition-pass agents sorting subsystems into Model / Take-but-reimplement / Enhance / Leave-behind must reference the vision doc as their primary lens.
+1. Human red-line of /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
+2. Resolve 3 judgment calls (static 7-type Phase 1 vs 2; PostToolUse v1 in/out; port 2748 fixed vs OS-assigned)
+3. Optionally resolve some of the 10 open architect questions (OQ-01..OQ-10) before architect dispatch
+4. On red-line approval: parallel dispatch of /vsdd-factory:create-architecture (architect) and /vsdd-factory:create-prd (product-owner) per greenfield sequence
+5. After PRD + architecture: /vsdd-factory:phase-1d-adversarial-spec-review for 3-clean-pass convergence
+6. Then human approval gate → Phase 2 story decomposition
 
 ## Historical Content
 
