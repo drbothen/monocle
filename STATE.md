@@ -4,17 +4,17 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T00:00:00Z
+timestamp: 2026-05-12T10:30:00Z
 phase: 0
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield
-current_step: phase-1-spec-crystallization-blocked-on-brief-redline
+current_step: validate-brief-v1.1-and-human-redline
 current_cycle: cycle-001
 dtu_required: false
-awaiting: human red-line of /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
+awaiting: validate-brief on v1.1 draft + human red-line of 5 judgment calls (JC-1..3, EX-1..2)
 ---
 
 <!--
@@ -44,9 +44,9 @@ awaiting: human red-line of /Users/jmagady/Dev/monocle/.factory/specs/product-br
 | **Language** | Rust |
 | **Target Workspace** | /Users/jmagady/Dev/monocle |
 | **Started** | 2026-05-11 |
-| **Last Updated** | 2026-05-12T00:00:00Z |
+| **Last Updated** | 2026-05-12T10:30:00Z |
 | **Current Phase** | phase-1-ready-awaiting-brief-redline |
-| **Current Step** | phase-1-spec-crystallization-blocked-on-brief-redline |
+| **Current Step** | validate-brief-v1.1-and-human-redline |
 | **Canonical vision** | /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md |
 | **Product brief** | /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md |
 
@@ -69,7 +69,7 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | -1: Reference Ingest (codemachine-cli) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 678-line synthesis; EngineModule contract; 7-state FSM |
 | -1: Reference Ingest (vsdd-factory, SCOPED) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer | 14 artifacts; 761-line synthesis; lobster YAML; dispatcher; factory pattern |
 | -1: EXPANSION — 4 additional ingests (zellij, lazygit, claude-squad, claude-code-router) | DONE | 2026-05-11 | 2026-05-11 | codebase-analyzer (x4) | 57 new files; 5-plane gene corpus complete across 8 repos |
-| 0.5: Product Brief | DONE | 2026-05-12 | 2026-05-12 | validate-brief (manual PASS) | 290 lines; 3 personas; 7 success rows; 10 OQs; 3 judgment calls for redline |
+| 0.5: Product Brief | DONE | 2026-05-12 | 2026-05-12 | validate-brief (manual PASS) | 341 lines; 3 personas; 7 success rows; 11 OQs; 5 judgment calls (JC-1..3, EX-1..2); RUSTSEC notes; 13 version corrections + 11 new pins |
 | 0: Codebase Ingestion | not-started | | | | |
 | 1: Spec Crystallization | not-started | | | | |
 | 2: Story Decomposition | not-started | | | | |
@@ -85,11 +85,11 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Vision synthesis saved — orchestrator vision approved by human; canonical doc written to specs/research/domain-monocle-vision-synthesis.md | state-manager | DONE | D-012 logged; single-commit burst to factory-artifacts @ 2737bfd |
-| Product brief drafted — product-owner direct-draft from approved vision + 8 Pass 8 syntheses | product-owner | DONE | specs/product-brief.md; 290 lines; 3 personas; 7 success rows; 10 OQs; 3 judgment calls |
-| Brief committed to factory-artifacts + STATE.md updated | state-manager | DONE | single-commit burst; input-drift CLEAN (STALE=0) |
-| Human red-line of specs/product-brief.md (3 judgment calls) | human | PENDING | — |
-| Parallel dispatch: /vsdd-factory:create-architecture + /vsdd-factory:create-prd | architect + product-owner | PENDING | — |
+| Vision synthesis approved + committed | state-manager | DONE | specs/research/domain-monocle-vision-synthesis.md; D-012; burst @ 2737bfd |
+| Product brief v1.0 drafted + committed — direct-draft from vision + 8 Pass 8 syntheses | product-owner + state-manager | DONE | specs/product-brief.md 290 lines; 10 OQs; 3 judgment calls; single-commit burst |
+| Version validation — crates.io API + RUSTSEC advisory DB; 13 corrections + 11 new pins | product-owner | DONE | wasmtime 25→44, russh 0.45→0.60, prost 0.13→0.14, +8 others; rmcp 1.6 canonical confirmed |
+| Brief v1.1 revision + STATE.md — RUSTSEC notes section, OQ-11, Revision History, heading fix | product-owner + state-manager | DONE | 291→341 lines; D-014, D-015 logged; single-commit burst @ factory-artifacts |
+| /vsdd-factory:validate-brief on v1.1 + human red-line of 5 judgment calls (JC-1..3, EX-1..2) | human | IN-PROGRESS | — |
 
 ## Reference Repos (Phase -1 inputs)
 
@@ -125,6 +125,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | D-011 | claude-squad teaches UX (worktree isolation, snapshot-fork concurrency) not orchestration (it has none — human is coordinator) | claude-squad has no PM/Worker; human is the coordinator; treat as TUI prior art + worktree isolation pattern only | pre-phase-0 | 2026-05-11 | state-manager |
 | D-012 | Vision synthesis approved by human 2026-05-11; canonical reference at /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md; supersedes any free-form vision statements in pre-phase-0 burst log | Human approved orchestrator vision verbatim ("I agree with this fully"); saved as pre-brief canonical doc for product-owner, architect, and disposition-pass agents | pre-phase-0 | 2026-05-11 | state-manager |
 | D-013 | Product brief drafted via direct-draft per human choice; 10 open architectural questions surfaced for Phase 1; 3 judgment calls flagged for red-line: (1) static 7-type rendering Phase 1 criterion vs Phase 2 exit, (2) PostToolUse endpoint v1 in-scope vs omitted per any-context BC-HOOK-007, (3) port 2748 fixed value vs OS-assigned + lock-file | Direct-draft (product-owner from vision + gene corpus) preferred over guided-brief-creation session; architect open questions deferred to OQ-01..OQ-10 in brief | pre-phase-1 | 2026-05-12 | state-manager |
+| D-014 | Crate version validation via crates.io API + Tavily + Perplexity; 13 corrections + 11 new pins applied to brief v1.1; canonical RUSTSEC notes added; wasmtime/wasmi rationale refreshed (wasmi WASI gap claim dropped as dated) | wasmtime 25→44 (RUSTSEC advisories on pre-44), russh 0.45→0.60 (RUSTSEC-2023-0071), prost 0.13→0.14 (RUSTSEC-2026-0007), thiserror pinned to 2 (major bump mid-2024); new Supply Chain section documents advisory context for architect | pre-phase-1 | 2026-05-12 | state-manager |
+| D-015 | rmcp 1.6 confirmed canonical Anthropic Rust MCP SDK via modelcontextprotocol/rust-sdk org + alexhancock@Anthropic owner record | rmcp is the only Rust SDK under the modelcontextprotocol GitHub org with an Anthropic employee as sole owner; no competing canonical exists; pinned to 1.6 in brief | pre-phase-1 | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -147,8 +149,8 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-12 |
-| **Position** | phase-1-ready-awaiting-brief-redline; product brief drafted (290 lines, validate-brief PASS) at /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md; D-013 logged; 3 judgment calls flagged for human red-line; 10 open architect questions (OQ-01..OQ-10) in brief |
-| **Next** | Human red-line of product-brief.md; resolve 3 judgment calls; then parallel dispatch /vsdd-factory:create-architecture (architect) + /vsdd-factory:create-prd (product-owner) |
+| **Position** | phase-1-ready-awaiting-brief-redline; product brief v1.1 (341 lines) at /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md; 13 version corrections + 11 new pins applied; RUSTSEC notes section added; D-014 + D-015 logged; 5 judgment calls open (JC-1..3, EX-1..2) for human red-line; 11 open architect questions (OQ-01..OQ-11) in brief |
+| **Next** | /vsdd-factory:validate-brief on v1.1 draft; human red-line of 5 judgment calls; optionally resolve some of OQ-01..OQ-11 via Perplexity research; then parallel dispatch /vsdd-factory:create-architecture (architect) + /vsdd-factory:create-prd (product-owner) |
 | **Convergence counter** | n/a (pre-spec) |
 
 ## Notes
@@ -174,12 +176,13 @@ Future: federated multi-host roster, OTel cost/token panel, trigger-trace from p
 | Atomic commit: EXPANSION — 8-repo / 5-plane corpus committed; STATE.md updated | 2026-05-11 | state-manager | input-drift CLEAN; this commit |
 | Vision synthesis saved — orchestrator canonical vision doc + STATE.md update (D-012, awaiting update, burst row, next-step) | 2026-05-11 | state-manager | specs/research/domain-monocle-vision-synthesis.md created; single-commit burst to factory-artifacts |
 | Brief commit — product brief drafted by product-owner; STATE.md updated (current_phase, phase progress row, current steps, D-013, next-step, project snapshot); input-drift CLEAN (STALE=0) | 2026-05-12 | state-manager | specs/product-brief.md committed; single-commit burst per TD-VSDD-053 |
+| Version validation + brief v1.1 revision — 13 corrections + 11 new pins; RUSTSEC notes section; OQ-11 (MSRV); Revision History; heading fix; D-014 + D-015 logged; STATE.md updated | 2026-05-12 | state-manager | specs/product-brief.md 291→341 lines; single-commit burst per TD-VSDD-053 |
 
 ## Next Step
 
-1. Human red-line of /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-2. Resolve 3 judgment calls (static 7-type Phase 1 vs 2; PostToolUse v1 in/out; port 2748 fixed vs OS-assigned)
-3. Optionally resolve some of the 10 open architect questions (OQ-01..OQ-10) before architect dispatch
+1. Run /vsdd-factory:validate-brief on v1.1 draft (specs/product-brief.md 341 lines)
+2. Human red-line of 5 judgment calls: JC-1 (static 7-type Phase 1 vs Phase 2 exit), JC-2 (PostToolUse endpoint v1 in/out of scope), JC-3 (port 2748 fixed vs OS-assigned + lock-file), EX-1, EX-2
+3. Optionally research OQ-01..OQ-11 via Perplexity before architect dispatch (OQ-11: MSRV reconciliation is new)
 4. On red-line approval: parallel dispatch of /vsdd-factory:create-architecture (architect) and /vsdd-factory:create-prd (product-owner) per greenfield sequence
 5. After PRD + architecture: /vsdd-factory:phase-1d-adversarial-spec-review for 3-clean-pass convergence
 6. Then human approval gate → Phase 2 story decomposition

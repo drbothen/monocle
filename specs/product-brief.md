@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.0"
+version: "1.1"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T00:00:00Z
+timestamp: 2026-05-12T10:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -39,6 +39,13 @@ context-switching today costs the developer real time and real session stalls.
 Per vision §Vision Statement: "One TUI lens over every Claude-class session
 you're running, every customization that shapes them, and every workflow driving
 them — across multiple harnesses and federated across hosts."
+
+## Revision History
+
+| Version | Date | Author | Summary |
+|---------|------|--------|---------|
+| 1.0 | 2026-05-12 | product-owner (direct draft from approved vision) | Initial brief — committed at factory-artifacts e8e8af1 |
+| 1.1 | 2026-05-12 | product-owner (version validation revision) | Updated all crate version pins to crates.io 2026-05-12 reality; added RUSTSEC notes; refreshed wasmi/wasmtime rationale; added 11 new version pins for previously-unpinned vision tech stack crates; added OQ-11 MSRV |
 
 ## Who Is It For?
 
@@ -82,7 +89,7 @@ accommodate without breaking Phase 1 ABI.
   phase tag, token count, cost, uptime; `/` filter (nucleo-matcher); `Enter`
   fullscreen
 - Permission prompt overlay: cascaded `VecDeque<PromptModal>` — both prompts visible
-  simultaneously; diff preview via `similar 2.x`; Accept-once / Accept-always /
+  simultaneously; diff preview via `similar 3`; Accept-once / Accept-always /
   Reject keybindings; `[t]` trace-to-source stub (full trace lands in Phase 2);
   overlay survives `Ctrl-\` hide/show cycle without dropping queued prompts
 - Event ribbon panel: rolling log of hook events (PreToolUse, PostToolUse, Stop,
@@ -112,18 +119,18 @@ accommodate without breaking Phase 1 ABI.
 
 - `monocle-workflow` crate: `FactoryAdapter` trait; `VsddFactoryAdapter` (reads
   `.factory/STATE.md`, detects `document_type: pipeline-state`, parses phase/status/
-  blocking-issues/convergence); `notify 7.x` watcher for live updates; multi-repo
+  blocking-issues/convergence); `notify 8` watcher for live updates; multi-repo
   signal (`.factory-project/` directory)
 - Workflow panel (TUI): phase, status, awaiting, blocking issues, cycle for focused
   session's project
-- `monocle-plugin-sdk` crate: WASM ABI (wasmtime 25.x) for third-party
+- `monocle-plugin-sdk` crate: WASM ABI (`wasmtime 44`) for third-party
   `EngineModule` + `FactoryAdapter` implementations; loaded from `~/.monocle/plugins/`
 
 **Phase 4 — Cross-plane + Multi-harness + Federation (roadmap)**
 
 - `CodeMachineModule`: second built-in `EngineModule`
 - `monocle-proto` crate: prost-generated protobuf wire format for cross-host events
-- `russh 0.45` federation tunnel: TUI on host A shows sessions from host B
+- `russh 0.60` federation tunnel: TUI on host A shows sessions from host B
 - OTel cost/token panel with aggregate across harnesses
 - CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL`
 - rmcp MCP bridge (optional, port 2749): session query, prompt injection for tooling
@@ -162,24 +169,45 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Build matrix | Builds and tests pass on macOS and Linux | CI green on darwin/linux × amd64/arm64 |
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 
-## Constraints and Integration Points
+## Constraints & Integration Points
 
 **Tech stack is fixed by vision §Tech Stack** — the architect inherits these
 picks as Phase 1 constraints; they are not up for re-selection in Phase 1:
 
-- TUI: `ratatui 0.29` + `crossterm 0.28`
-- Async: `tokio 1.x` (full)
-- HTTP: `axum 0.8`
-- IPC: `interprocess 2.x` (Unix domain socket)
-- Serialization: `prost 0.13` for cross-host; `serde_json` + `serde_yaml_ng 0.10`
-  (NOT `serde_yaml 0.8` — unmaintained, alias-bomb CVE)
-- WASM: `wasmtime 25.x` (NOT wasmi — WASI support gap)
-- Fuzzy: `nucleo 0.5`
-- Diff: `similar 2.x`
-- Temp write: `tempfile::persist` (no naked `write_text` calls — triple-confirmed
-  anti-pattern from nikiforovall atomic-write gap findings)
-- Config dirs: `directories 5.x` (XDG-compliant)
-- File watch: `notify 7.x`
+- TUI: `ratatui 0.30` + `crossterm 0.29`
+- Async: `tokio 1.52` (full)
+- HTTP: `axum 0.8` (Cargo.toml pin: `^0.8.9`)
+- IPC: `interprocess 2.4` (Unix domain socket)
+- Serialization: `prost 0.14` for cross-host; `serde_json` + `serde_yaml_ng 0.10`
+  (NOT `serde_yaml 0.8` — unmaintained, alias-bomb CVE); also pin `bytes` directly
+  in workspace to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see Supply Chain section)
+- WASM: `wasmtime 44` (NOT wasmi — see rationale below)
+- Fuzzy: `nucleo 0.5` (NOTE: upstream dormant since 2024-04-02; flag for Phase 2
+  re-evaluation against `frizbee 0.9` / `neo_frizbee 0.10` / `nucleo-picker 0.11`
+  if active maintenance becomes a release constraint)
+- Diff: `similar 3`
+- Temp write: `tempfile 3` via `tempfile::persist` (no naked `write_text` calls —
+  triple-confirmed anti-pattern from nikiforovall atomic-write gap findings)
+- Config dirs: `directories 6` (XDG-compliant)
+- File watch: `notify 8`
+- SSH tunnel (Phase 4): `russh 0.60`
+- CLI parsing: `clap 4.6`
+- Markdown rendering: `pulldown-cmark 0.13`
+- Clipboard: `arboard 3`
+- Tracing: `tracing 0.1`
+- Semver parsing: `semver 1`
+- Error handling: `thiserror 2` (NOTE: 2.x major — do NOT pin to 1.x), `anyhow 1`
+- HTTP client: `reqwest 0.13` (NOTE: 0.13.x — do NOT pin to 0.11 or 0.12, both stale)
+- MCP bridge: `rmcp 1.6` (Anthropic-canonical via modelcontextprotocol/rust-sdk org;
+  crates.io owner alexhancock@Anthropic confirmed)
+
+**wasmtime vs wasmi rationale**: `wasmtime 44` is preferred over `wasmi`. wasmi 1.0
+is now mature with WASI support, so the historical "WASI gap" rationale no longer
+applies. Monocle prefers wasmtime for two reasons: (1) JIT throughput for factory
+adapters that may execute non-trivial pipeline logic, and (2) actively-maintained
+security posture — wasmtime's Bytecode Alliance publishes security advisories on a
+tight cadence (multiple advisories in 2026 alone) and ships patches promptly. wasmi
+remains a future fallback if binary-size pressure becomes a release constraint.
 
 **Crate workspace layout is fixed by vision §Workspace Layout and D-008:**
 `monocle-core` (zero-dependency pure types), `monocle-runtime`, `monocle-tui`,
@@ -217,6 +245,26 @@ set `ANTHROPIC_BASE_URL`. No CCR API changes required or expected.
 - No single `Option<PromptModal>` field for the overlay — use `VecDeque<PromptModal>`
   to support concurrent prompts without drop
 
+## Supply Chain and RUSTSEC Notes
+
+Validation performed 2026-05-12 against crates.io API + RUSTSEC advisory DB (Tavily + Perplexity + direct crates.io fetch). Findings the architect must respect when finalizing Cargo.toml:
+
+### Advisories on upstream versions monocle must avoid
+
+- `wasmtime` older majors (pre-44) carry RUSTSEC-2026-0114, RUSTSEC-2026-0095, RUSTSEC-2026-0096, RUSTSEC-2026-0006, RUSTSEC-2026-0020 (guest-controlled resource exhaustion in WASI implementations), and others. Pin to `wasmtime = "44"` (latest 44.0.1) and bind future patches via cargo update on the 44.x line.
+- `russh` 0.45..0.59 transitively pulls `rsa = "0.10.0-rc.12"` which is affected by RUSTSEC-2023-0071 (timing-attack on RSA private-key operations). Pin to `russh = "0.60"` (0.60.2 latest) which moved off the affected rsa pre-release.
+- `prost` 0.14 has a transitive `bytes` advisory RUSTSEC-2026-0007 affecting older `bytes` versions. Pin `bytes` directly in workspace dependencies to force a patched version (e.g. `bytes = "1.10"` or whatever the patched line is at audit time).
+- `tokio` 1.x has multiple historical advisories on older minors (RUSTSEC-2025-0023, RUSTSEC-2023-0005, RUSTSEC-2023-0001, RUSTSEC-2021-0124, RUSTSEC-2021-0072). Pin to current 1.52 line to ensure all are remediated.
+- `serde_yaml` 0.8 is unmaintained with alias-bomb CVE; `serde_yml` (a different fork) was archived per RUSTSEC-2025-0068. The brief's choice of `serde_yaml_ng` 0.10 (maintained fork) is correct and survives this audit.
+
+### Re-audit cadence
+
+The architect must enforce a `cargo audit` run in CI on every PR, plus a weekly scheduled `cargo audit --json` against the latest RUSTSEC DB. New advisories on pinned versions block merge until either (a) the version is updated to a patched release, or (b) a documented justification with mitigations is filed under `.factory/specs/risk-acceptance/`.
+
+### Crates flagged for Phase 2 re-evaluation
+
+- `nucleo 0.5.0` — upstream dormant since 2024-04-02 (helix-editor team's focus has shifted). Functionality is intact and adequate for Phase 1 fuzzy filtering. If maintenance becomes a release constraint before Phase 2, evaluate `frizbee 0.9` or `neo_frizbee 0.10` (actively maintained alternatives with SIMD-accelerated matching) or `nucleo-picker 0.11` (TUI-focused fork).
+
 ## Open Questions for Architect
 
 The following questions must be resolved in Phase 1 spec crystallization before
@@ -231,9 +279,12 @@ architecture can be finalized:
 | OQ-05 | Profile picker on session create vs sticky-per-project? | (a) Picker shown when creating a new session (interactive prompt); (b) Profile stored in per-project config, sticky across restarts | Architect + UX designer |
 | OQ-06 | Hook event timeline retention: in-memory ring buffer or persisted JSONL? | In-memory ring is simpler (Phase 1); persisted JSONL enables replay and holdout evaluation; any-context broker has no persistence | Architect (test-harness implication: persisted JSONL enables deterministic fixture replay) |
 | OQ-07 | Cross-host session migration scope: v1 or v4? | Vision §Phase Plan puts federation in Phase 4; confirm v1 architecture does not preclude it (russh + protobuf stubs acceptable in v1 if zero runtime cost) | Architect |
-| OQ-08 | monocle-ipc: Unix domain socket only, or Unix domain socket + shared-memory ring buffer both shipped in v1? | Shared-memory ring buffer adds zero-copy throughput for high-frequency events; vision lists both; shared-mem adds complexity | Architect (vision §Tech Stack lists interprocess 2.x for both; confirm v1 scope) |
+| OQ-08 | monocle-ipc: Unix domain socket only, or Unix domain socket + shared-memory ring buffer both shipped in v1? | Shared-memory ring buffer adds zero-copy throughput for high-frequency events; vision lists both; shared-mem adds complexity | Architect (vision §Tech Stack lists interprocess 2.4 for both; confirm v1 scope) |
 | OQ-09 | rmcp MCP bridge (port 2749): stub with no-op handlers in v1, or omit entirely? | Including stub prevents port allocation surprises in Phase 4; omitting keeps v1 surface small | Architect |
-| OQ-10 | Daemon lock file location: `~/.monocle/daemon.json` (like any-context's `<runtimeDir>/daemon.json`) or `$XDG_RUNTIME_DIR/monocle/daemon.json`? | XDG-compliant is cleaner on Linux; `~/.monocle/` is simpler and macOS-compatible | Architect + directories 5.x XDG resolver |
+| OQ-10 | Daemon lock file location: `~/.monocle/daemon.json` (like any-context's `<runtimeDir>/daemon.json`) or `$XDG_RUNTIME_DIR/monocle/daemon.json`? | XDG-compliant is cleaner on Linux; `~/.monocle/` is simpler and macOS-compatible | Architect + directories 6 XDG resolver |
+| OQ-11 | MSRV target | Pin a specific minimum supported Rust version (e.g. 1.75 or 1.78) in the workspace `rust-version` field to align with the dependency stack; tokio 1.52, wasmtime 44, ratatui 0.30 all have MSRV constraints that must be respected | Architect (cross-reference each pinned crate's MSRV and pick the highest) |
+
+> Five judgment calls flagged by orchestrator awaiting human red-line: JC-1 (static 7-type Phase 1 vs 2), JC-2 (PostToolUse endpoint), JC-3 (port 2748 fixed vs OS-assigned), EX-1 (workspace 11→13 crates), EX-2 (SessionStart/UserPromptSubmit hooks omitted). Architect should resolve OQ-01..OQ-11 with these judgment calls held constant until human red-line lands.
 
 ## Overflow Context
 
