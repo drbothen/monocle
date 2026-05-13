@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "60ea203"
+input-hash: "b128c1a"
 traces_to: STATE.md
 ---
 
@@ -65,6 +65,19 @@ traces_to: STATE.md
 | **Date** | 2026-05-12 |
 | **Position** | Validation chain rounds 1-3 complete. Brief v1.4.2 (21257f7) — validate-brief v5 VALID. Vision v1.1.1 (6dc2191, 90ac146). SS-deps v1.1.1 + ADR-0001 v1.0.1 (ad6a303). Round-3 consistency 0 BLK+2 IMP+3 ADV. D-021 logged. CLAUDE.md version refs updated (9863ab3). tech-debt-register frontmatter corrected (inputs+input-hash added). |
 | **Next** | Dispatch adversary fresh pass (round-3) on fully-remediated package. Expect PRODUCTION_READY. Then final consistency confirm + re-present Phase 1 entry gate to human. |
+| **Convergence counter** | n/a (pre-spec) |
+
+---
+
+## Session Resume Checkpoint (2026-05-12) — round-5-substantive-fix-burst-complete
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-12 |
+| **Position** | Adversary fresh pass (e2c224b) found 14 substantive defects (4 CRITICAL+6 IMPORTANT+4 ADVISORY). All 14 fixed in-scope across 9 specialist commits. New artifacts: SS-permissions-phase1.md (281 lines), SS-daemon-lifecycle.md (287 lines), ADR-0003 MIT/Apache-2.0 dual-license (199 lines). Brief v1.4.4 (c28fc64). Vision v1.1.2 (4dfcffd). SS-conventions v1.2 (ee7b3fb) with cargo-deny + SBOM CI gate. serde_json EXACT-pinned (8th crate). D-022 logged. Human decisions: Q-license MIT/Apache-2.0, Q-permission-enum Option A. Upstream #129/#130/#131 filed. |
+| **Next** | Round 6 validation chain: consistency audit + validate-brief v6 against v1.4.4 + adversary fresh pass. If all clean, re-present Phase 1 entry gate to human. |
 | **Convergence counter** | n/a (pre-spec) |
 
 ---

@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "60ea203"
+input-hash: "b128c1a"
 traces_to: STATE.md
 ---
 
@@ -324,3 +324,73 @@ Three-round validation chain following production-grade remediation burst. Round
 | architect | SS-deps Phase 4 prost prose tighten | specs/architecture/SS-deps-pin-manifest.md (1060fc5) |
 | orchestrator | CLAUDE.md version refs update | CLAUDE.md on main (9863ab3) |
 | state-manager | Round-3 close-out: STATE.md, tech-debt-register, cycle files | This commit |
+
+---
+
+## Burst 12 (2026-05-12) — Round-5 adversary fresh pass + substantive fix burst
+
+**Agents dispatched:** adversary, business-analyst, product-owner (x2), architect (x4), devops-engineer, state-manager
+**Files touched:** specs/research/domain-monocle-vision-synthesis.md, specs/product-brief.md (x2), specs/architecture/SS-deps-pin-manifest.md, specs/architecture/SS-permissions-phase1.md (NEW), specs/architecture/SS-daemon-lifecycle.md (NEW), specs/architecture/SS-conventions-anti-patterns.md, specs/architecture/adr/ADR-0003-license-selection.md (NEW), specs/dtu-assessment.md, STATE.md, cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md
+**Versions bumped:** vision: v1.1.1 → v1.1.2; brief: v1.4.2 → v1.4.3 → v1.4.4; SS-conventions-anti-patterns.md: v1.1 → v1.2
+
+### Summary
+
+Adversary fresh pass (commit e2c224b) revealed 14 SUBSTANTIVE defects — a different class than rounds 1-4 textual defer-patterns. 4 CRITICAL + 6 IMPORTANT + 4 ADVISORY. All 14 fixed in-scope per production-grade routing principle across 9 specialist commits (~80 minutes of specialist work). Two human decisions resolved: Q-license (MIT/Apache-2.0 dual) and Q-permission-enum (Option A re-derive). Three upstream issues filed. D-022 logged.
+
+### Chronological Events
+
+1. **commit e2c224b** — adversary fresh pass (round-5). Verdict: SUBSTANTIVE_DEFECTS, 14 findings: 4 CRITICAL (F-NEW-01 endpoint path, F-NEW-02 prost/serde_json threat, F-NEW-03 permission enum), 6 IMPORTANT (F-NEW-04 timeout SLO, F-NEW-05 body-size, F-NEW-06 healthz, F-NEW-07 graceful shutdown, F-NEW-09 crash recovery, F-NEW-10 DTU fidelity), 4 ADVISORY (F-NEW-08 license, F-NEW-11 missing crates in stack, F-NEW-12 lock-file policy, F-NEW-13 SBOM gate). Human decisions triggered: Q-license, Q-permission-enum.
+
+2. **commit 4dfcffd** — vision v1.1.2 (business-analyst): endpoint path sync UserPromptSubmit → prompt-submit throughout vision doc. Resolves F-NEW-01 CRITICAL.
+
+3. **commit 6d87d6c** — brief v1.4.3 (product-owner): timeout SLO added to NFRs; R-001 re-evaluation trigger condition clarified; permission enum reference added; hardening note for body-size. Resolves F-NEW-04 + F-NEW-03 (partial) + F-NEW-05/06/09.
+
+4. **commit 2308b31** — SS-deps-pin-manifest.md (architect): prost-vs-serde_json threat rationale corrected — prost is used for IPC wire format, serde_json for untrusted hook payload deserialization; now EXACT-pinned. Resolves F-NEW-02 CRITICAL.
+
+5. **commit 9f25dcd** — SS-permissions-phase1.md NEW (architect): permission enum re-derived from Claude Code semantics per human Q-permission-enum Option A. 281 lines. Resolves F-NEW-03 CRITICAL.
+
+6. **commit 6e3c658** — SS-daemon-lifecycle.md NEW (architect): /healthz endpoint, body-size limit, graceful shutdown sequence, lock-file scan policy, crash recovery procedure. 287 lines. Resolves F-NEW-05/06/07/09.
+
+7. **commit 44019c2** — dtu-assessment.md (architect): fidelity measurement procedure added — per-endpoint behavioral coverage metric with acceptance threshold. Resolves F-NEW-10.
+
+8. **commit d544731** — ADR-0003-license-selection.md NEW (architect): MIT/Apache-2.0 dual-license documented per human Q-license decision. 199 lines. Resolves F-NEW-08.
+
+9. **commit ee7b3fb** — SS-conventions-anti-patterns.md v1.2 (devops-engineer): cargo-deny CI gate + SBOM generation wired. Resolves F-NEW-08 companion + F-NEW-13.
+
+10. **commit c28fc64** — brief v1.4.4 (product-owner): body-size limit promoted from hardening note to explicit Success Criterion. Architect follow-on from SS-daemon-lifecycle.md.
+
+**Upstream issues filed during burst:**
+- https://github.com/drbothen/vsdd-factory/issues/129 — Production-grade canonicalization (F-NEW-14 upstream root)
+- https://github.com/drbothen/vsdd-factory/issues/130 — Dispatcher recursive-shadow bug
+- https://github.com/drbothen/vsdd-factory/issues/131 — Consistency-validator URL coherence axis (resolves F-NEW-14)
+
+**Human decisions resolved:**
+- Q-license: MIT/Apache-2.0 dual ✓ → ADR-0003 produced
+- Q-permission-enum: Option A re-derive ✓ → SS-permissions-phase1.md produced
+
+**Key Tech Stack additions (F-NEW-11 resolution):**
+- pulldown-cmark 0.13 (Markdown rendering)
+- serde_json now EXACT-pinned (Phase 1 untrusted-input deserializer; 8th EXACT-pinned crate, was 7)
+- bytes (direct pin)
+- semver 1
+
+**D-022 logged:** Round-5 substantive fix burst complete. 14 substantive defects ALL FIXED IN-SCOPE. Architecture artifact count +3. serde_json EXACT-pinned (8 total, was 7). Upstream #129/#130/#131 filed.
+
+**State-manager burst close-out:**
+- STATE.md: frontmatter (timestamp, current_step, awaiting), Project Metadata (brief v1.4.4, vision v1.1.2), Phase Progress (0.98 DONE, 0.99 DONE, 0.99b not-started), Current Phase Steps (11 rows), Decisions Log (D-022), Session Resume Checkpoint replaced, Key Tech Stack (4 crates added, 8-pin note)
+- Burst log + session checkpoints appended
+- sidecar-learning.md: append-only markers only, no changes needed (session-review triage)
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Fresh pass round-5 | plans/adversary-pass-post-remediation.md (e2c224b) |
+| business-analyst | Vision v1.1.2 endpoint path sync | specs/research/domain-monocle-vision-synthesis.md (4dfcffd) |
+| product-owner | Brief v1.4.3 timeout SLO + R-001 + permission enum | specs/product-brief.md (6d87d6c) |
+| architect | SS-deps prost/serde_json threat rationale | specs/architecture/SS-deps-pin-manifest.md (2308b31) |
+| architect | SS-permissions-phase1.md NEW (281 lines) | specs/architecture/SS-permissions-phase1.md (9f25dcd) |
+| architect | SS-daemon-lifecycle.md NEW (287 lines) | specs/architecture/SS-daemon-lifecycle.md (6e3c658) |
+| architect | DTU fidelity measurement procedure | specs/dtu-assessment.md (44019c2) |
+| architect | ADR-0003 MIT/Apache-2.0 dual-license (199 lines) | specs/architecture/adr/ADR-0003-license-selection.md (d544731) |
+| devops-engineer | SS-conventions v1.2 cargo-deny + SBOM CI gate | specs/architecture/SS-conventions-anti-patterns.md (ee7b3fb) |
+| product-owner | Brief v1.4.4 body-size Success Criterion | specs/product-brief.md (c28fc64) |
+| state-manager | Round-5 close-out: STATE.md, D-022, cycle files | This commit |

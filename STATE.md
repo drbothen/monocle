@@ -4,20 +4,20 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T08:30:00Z
+timestamp: 2026-05-12T14:00:00Z
 phase: pre-phase-1-final-gate-post-fix-burst
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: validation-chain-rounds-2-3-clean-awaiting-adversary-fresh-pass-and-phase-1-gate
+current_step: round-5-substantive-fix-burst-complete-awaiting-round-6-validation
 current_cycle: cycle-001
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
 dtu_services: [hook-endpoints-x5]
-awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Phase 1 approval gate"
+awaiting: "round 6 validation chain (consistency + validate-brief v6 against v1.4.4 + adversary fresh pass); then human Phase 1 approval gate"
 ---
 
 <!--
@@ -36,10 +36,10 @@ awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Ph
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
 | **Current Phase** | pre-phase-1-final-gate-post-fix-burst |
-| **Current Step** | validation-chain-rounds-2-3-clean-awaiting-adversary-fresh-pass-and-phase-1-gate |
-| **Product brief** | `.factory/specs/product-brief.md` v1.4.2 (commit 21257f7) |
-| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 (commits 6dc2191, 90ac146) |
-| **Last Updated** | 2026-05-12T08:30:00Z |
+| **Current Step** | round-5-substantive-fix-burst-complete-awaiting-round-6-validation |
+| **Product brief** | `.factory/specs/product-brief.md` v1.4.4 (commit c28fc64) |
+| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved) |
+| **Last Updated** | 2026-05-12T14:00:00Z |
 
 ## Phase Progress
 
@@ -51,7 +51,9 @@ awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Ph
 | 0.95: Pre-Phase-1 Consistency Audit | DONE | 2026-05-12 | consistency-validator | GAPS_FOUND non-blocking; fixes F-03/F-04/F-11 applied (b891b78) |
 | 0.96: Production-Grade Re-Audit | DONE | 2026-05-12 | adversary | MULTIPLE_DEFER_PATTERNS — 14 violations identified and remediated (0bd4ba9) |
 | 0.97: Production-Grade Remediation Burst | DONE | 2026-05-12 | state-manager | commits 0e4b0f4 70286e1 00a2993 79e268a 76db583 21c026d 4df2ff8 + this |
-| 0.98: Validation Chain Post-Remediation | IN PROGRESS (2-of-3) | 2026-05-12 | consistency-validator + validate-brief | Round-1: 4 IMP+6 ADV → Round-2: 2 BLK+3 IMP+2 ADV (self-introduced) → Round-3: 0 BLK+2 IMP+3 ADV; validate-brief v5 VALID (b7439ce); awaiting adversary fresh pass |
+| 0.98: Validation Chain Post-Remediation | DONE | 2026-05-12 | consistency-validator + validate-brief | Rounds 1-3 textual defects decayed to zero; trajectory: 4IMP+6ADV → 2BLK+3IMP+2ADV → 0BLK+2IMP+3ADV; validate-brief v5 VALID (b7439ce) |
+| 0.99: Adversary Fresh Pass (round-5) + Substantive Fix Burst | DONE | 2026-05-12 | adversary + specialists | Fresh pass (e2c224b): 4 CRITICAL+6 IMPORTANT+4 ADVISORY substantive defects — ALL FIXED IN-SCOPE (9 commits); D-022 logged |
+| 0.99b: Round 6 Validation Chain | not-started | | consistency-validator + validate-brief + adversary | Consistency + validate-brief v6 against v1.4.4 + adversary fresh pass |
 | 1: Spec Crystallization | not-started | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -64,21 +66,17 @@ awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Ph
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Brief v1.4 + v1.4.1 (crate count fix, OQ-M resolved, R-001 finalized) | product-owner | DONE | commits 70286e1 + 4df2ff8 |
-| Vision v1.1 + re-approval | business-analyst + state-manager | DONE | commit 0e4b0f4 + this burst |
-| SS-deps-pin-manifest.md v1.1 (6 TODOs resolved, MSRV/patch/security policies) | architect | DONE | commit 00a2993 |
-| SS-conventions-anti-patterns.md v1.1 (5 TODOs, clippy/semgrep/PR-template/CI) | architect | DONE | commit 79e268a |
-| ADR-0002 nucleo acceptance + TD-001 retired + debt governance | architect | DONE | commit 76db583 |
-| DTU assessment (DTU_REQUIRED: true, 5 hook endpoint clones) | architect | DONE | commit 21c026d |
-| Dispatcher shadow cleanup + .gitignore hardening | orchestrator | DONE | commit 8342239 |
-| CLAUDE.md canonical principle + agent routing (main branch) | technical-writer + orchestrator | DONE | commits b69c09f 3366d58 f6cd51c aa852b9 |
-| Upstream issue #129 (canonicalization) + #130 (dispatcher bug) | orchestrator | DONE | drbothen/vsdd-factory#129, #130 |
-| Round-2 consistency audit (0f28619): 2 BLK+3 IMP+2 ADV (self-introduced by remediation) | consistency-validator | DONE | commit 0f28619 |
-| Round-2 validate-brief v4 (38b8e8f): NEEDS_WORK (MVP-phrase blocker) | product-owner | DONE | commit 38b8e8f |
-| Round-2 fix burst: brief v1.4.2 (21257f7) + SS-deps v1.1.1 (ad6a303) + ADR-0001 v1.0.1 (ad6a303) + vision v1.1.1 (6dc2191) | product-owner + architect + business-analyst | DONE | commits 21257f7 ad6a303 6dc2191 |
-| Round-3 consistency audit (f8bffd8): 0 BLK+2 IMP+3 ADV | consistency-validator | DONE | commit f8bffd8 |
-| Round-3 validate-brief v5 (b7439ce): VALID | product-owner | DONE | commit b7439ce |
-| Round-3 patch burst: vision H1 fix (90ac146) + SS-deps Phase 4 prost prose (1060fc5) + CLAUDE.md version refs (9863ab3) | business-analyst + architect + orchestrator | DONE | commits 90ac146 1060fc5 9863ab3 |
+| Round-3 patch burst: vision H1 fix + SS-deps Phase 4 prost + CLAUDE.md version refs | business-analyst + architect + orchestrator | DONE | commits 90ac146 1060fc5 9863ab3 |
+| Adversary fresh pass round-5 (e2c224b): 4 CRITICAL+6 IMP+4 ADV substantive defects identified | adversary | DONE | commit e2c224b |
+| Vision v1.1.2 endpoint path UserPromptSubmit → prompt-submit (F-NEW-01 CRITICAL) | business-analyst | DONE | commit 4dfcffd |
+| Brief v1.4.3: timeout SLO + R-001 re-eval + permission enum ref + hardening (F-NEW-04/03/05/06/09) | product-owner | DONE | commit 6d87d6c |
+| SS-deps prost-vs-serde_json threat rationale corrected (F-NEW-02 CRITICAL) | architect | DONE | commit 2308b31 |
+| SS-permissions-phase1.md NEW — permission enum re-derived from Claude Code semantics (F-NEW-03 CRITICAL) | architect | DONE | commit 9f25dcd |
+| SS-daemon-lifecycle.md NEW — /healthz + body-limit + graceful shutdown + lock-file + crash recovery (F-NEW-05/06/07/09) | architect | DONE | commit 6e3c658 |
+| dtu-assessment fidelity measurement procedure (F-NEW-10) | architect | DONE | commit 44019c2 |
+| ADR-0003 MIT/Apache-2.0 dual-license per human Q-license (F-NEW-08) | architect | DONE | commit d544731 |
+| SS-conventions v1.2 cargo-deny + SBOM CI gate (F-NEW-08 companion) | devops-engineer | DONE | commit ee7b3fb |
+| Brief v1.4.4 body-size limit promoted to Success Criterion (architect follow-on) | product-owner | DONE | commit c28fc64 |
 
 ## Decisions Log
 
@@ -91,7 +89,8 @@ awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Ph
 | D-018 | Brief v1.2 + 4 arch stubs. Bloat Option A. All 11 OQs + 4 SOQs + 5 JCs resolved | dependencies.md; ADR-0001; conventions.md; tech-debt-register.md; commit 6ac4279 | pre-phase-1 | 2026-05-12 | state-manager |
 | D-019 | Brief v1.3 VALID after competitive positioning revision; pre-phase-1 consistency audit GAPS_FOUND but no blockers; ready for human Phase 1 approval gate | brief v1.3 d6a8291; validation v3 b3d9560; consistency audit b891b78; pre-gate fixes a46a7ce | pre-phase-1 | 2026-05-12 | state-manager |
 | D-020 | Production-grade canonical principle articulated and remediated; 14 defer-patterns fixed in-scope across brief/vision/architecture; Q-A1 vision v1.1 re-approved; Q-B R-001 reassessed at <10% (dropped from active risk acceptance); CLAUDE.md establishes principle + agent routing as project-binding; upstream canonicalization filed at drbothen/vsdd-factory#129; dispatcher bug filed at #130 | commits 0bd4ba9 0e4b0f4 70286e1 00a2993 79e268a 76db583 21c026d 4df2ff8 8342239 | pre-phase-1-final-gate-post-remediation | 2026-05-12 | state-manager |
-| D-021 | Validation chain rounds 2-3 converge clean: validate-brief v5 VALID (b7439ce); consistency audits 0f28619+f8bffd8 caught self-introduced defects from prior remediation/fix bursts (MVP-phrase, path-ref propagation gaps, version-string staleness, prose ambiguities); all defects fixed in-scope per production-grade principle (commits 21257f7+ad6a303+6dc2191+90ac146+1060fc5+9863ab3); convergence trajectory: round-1 4-IMP-6-ADV → round-2 2-BLK-3-IMP-2-ADV → round-3 0-BLK-2-IMP-3-ADV (cleanly decaying) | see burst-log.md burst-11 | pre-phase-1-final-gate-post-fix-burst | 2026-05-12 | state-manager |
+| D-021 | Validation chain rounds 2-3 converge clean: validate-brief v5 VALID (b7439ce); consistency audits 0f28619+f8bffd8 caught self-introduced defects from prior remediation/fix bursts; all defects fixed in-scope per production-grade principle; convergence trajectory: round-1 4-IMP-6-ADV → round-2 2-BLK-3-IMP-2-ADV → round-3 0-BLK-2-IMP-3-ADV (cleanly decaying) | see burst-log.md burst-11 | pre-phase-1-final-gate-post-fix-burst | 2026-05-12 | state-manager |
+| D-022 | Round 5 substantive-fix burst: adversary fresh pass found 4 CRITICAL+6 IMPORTANT+4 ADVISORY substantive defects (different class from rounds 1-4 textual defer-patterns); ALL FIXED IN-SCOPE per production-grade routing principle. Human decisions: Q-license MIT/Apache-2.0 dual, Q-permission-enum Option A re-derive. New architecture artifacts: SS-permissions-phase1.md (281 lines), SS-daemon-lifecycle.md (287 lines), ADR-0003 MIT/Apache-2.0 (199 lines). Upstream issues filed: #129 canonicalization, #130 dispatcher bug, #131 URL coherence axis. | commits 4dfcffd+6d87d6c+2308b31+9f25dcd+6e3c658+44019c2+d544731+ee7b3fb+c28fc64 | pre-phase-1-final-gate-post-round-5 | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -116,35 +115,31 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 
 ### Where We Are
 
-- 8 reference repos fully ingested into `.factory/semport/`
-- Vision v1.1.1 approved (commits 6dc2191, 90ac146)
-- Brief v1.4.2 at `.factory/specs/product-brief.md` (commit 21257f7) — MVP-phrase blocker resolved; validate-brief v5 VALID
-- SS-deps-pin-manifest.md v1.1.1 (commit ad6a303); ADR-0001 v1.0.1 (commit ad6a303)
-- 4 architecture artifacts complete: SS-deps-pin-manifest.md v1.1.1, SS-conventions-anti-patterns.md v1.1, ADR-0001 v1.0.1, ADR-0002
-- DTU assessment done: DTU_REQUIRED true, 5 hook endpoint clones required
-- TD-001 retired via ADR-0002 nucleo acceptance
-- Validation chain rounds 1-3 complete; convergence trajectory clean (D-021)
-- CLAUDE.md on main: version refs updated for brief v1.4.2 + vision v1.1.1 (commit 9863ab3)
+Post round-5 fix burst — adversary fresh pass (e2c224b) found 14 substantive defects (4 CRITICAL+6 IMPORTANT+4 ADVISORY), a different class than rounds 1-4 textual defer-patterns. ALL FIXED IN-SCOPE across 9 specialist commits. ~3 new architecture artifacts added (SS-permissions-phase1.md, SS-daemon-lifecycle.md, ADR-0003). License selected (MIT/Apache-2.0 dual). Permission enum re-derived from Claude Code semantics (Option A). Cargo-deny + SBOM CI gate wired. Brief at v1.4.4, vision at v1.1.2.
 
 ### Immediate Next Action
 
-Dispatch adversary fresh pass (round-3) on fully-remediated package. Expect PRODUCTION_READY. Then final consistency confirm + re-present Phase 1 entry gate to human.
+Round 6 validation chain: (1) consistency-validator fresh-context audit; (2) validate-brief v6 against brief v1.4.4; (3) adversary fresh pass. If all clean, re-present Phase 1 entry gate to human.
 
 ### Critical Artifacts (read in this order)
 
 1. `CLAUDE.md` (main; commits b69c09f, 3366d58, f6cd51c, aa852b9, 9863ab3) — canonical principle + agent routing + current refs
-2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 (commits 6dc2191, 90ac146)
-3. `.factory/specs/product-brief.md` v1.4.2 (commit 21257f7)
+2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved)
+3. `.factory/specs/product-brief.md` v1.4.4 (commit c28fc64)
 4. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.1 (commit ad6a303)
-5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.1
-6. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` v1.0.1 (commit ad6a303)
-7. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
-8. `.factory/specs/dtu-assessment.md`
-9. `.factory/tech-debt-register.md` (post TD-001 retirement; frontmatter corrected)
+5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2 (commit ee7b3fb)
+6. `.factory/specs/architecture/SS-permissions-phase1.md` NEW (commit 9f25dcd)
+7. `.factory/specs/architecture/SS-daemon-lifecycle.md` NEW (commit 6e3c658)
+8. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` v1.0.1 (commit ad6a303)
+9. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
+10. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` NEW (commit d544731)
+11. `.factory/specs/dtu-assessment.md` (commit 44019c2)
+12. `.factory/tech-debt-register.md` (post TD-001 retirement)
+13. `.factory/plans/adversary-pass-post-remediation.md` (commit e2c224b) — round-5 fresh pass findings
 
 ### Key Tech Stack (architect inherits)
 
-ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted). MSRV Phase 1: Rust 1.86; Phase 3: 1.92.
+ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted), pulldown-cmark 0.13, serde_json (EXACT-pinned as Phase 1 untrusted-input deserializer; F-NEW-02), bytes (direct pin), semver 1. MSRV Phase 1: Rust 1.86; Phase 3: 1.92. Now 8 EXACT-pinned crates (was 7; serde_json added per F-NEW-02 prost-vs-serde_json threat rationale fix).
 
 ### Critical Hook Lessons
 
@@ -158,7 +153,7 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 
 | Content | Location |
 |---------|----------|
-| Burst history (all 9 bursts through remediation) | `cycles/cycle-001/burst-log.md` |
+| Burst history (all bursts through round-5) | `cycles/cycle-001/burst-log.md` |
 | Prior session checkpoints | `cycles/cycle-001/session-checkpoints.md` |
 | Full decisions D-001..D-015 | `cycles/cycle-001/burst-log.md` |
 | Convergence trajectory | `cycles/cycle-001/convergence-trajectory.md` |
