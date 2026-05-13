@@ -2,11 +2,11 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.4"
+version: "1.1.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T23:15:00Z
+timestamp: 2026-05-13T12:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
@@ -59,6 +59,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | anyhow | 1 | Error propagation in binary crate | caret pin |
 | constant_time_eq | 0.3 | Timing-safe byte comparison for auth token validation per BC-AUTH-001 (SS-daemon-lifecycle.md) | caret pin (utility crate; not on untrusted-input deserialization path) |
 | futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
+| async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
 
 ## Phase 2/3/4 Additions
@@ -178,6 +179,8 @@ graph TD
     core --> thiserror
     core --> semver
     core --> futures
+    core --> async_trait[async-trait]
+    runtime --> async_trait
 
     static[monocle-static] -.->|Phase 2| core
 
