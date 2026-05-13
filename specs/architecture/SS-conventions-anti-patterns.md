@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.7"
+version: "1.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T21:00:00Z
+timestamp: 2026-05-13T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary"
 project: monocle
 ---
 
@@ -153,20 +153,44 @@ rules:
           pub struct $NAME { ... }
       - pattern: |
           #[non_exhaustive]
-          #[...]
+          #[$ATTR(...)]
           pub struct $NAME { ... }
-    # pattern-either rationale (F-R32-2): semgrep's behavior for Rust attribute clusters is not
+    # pattern-either rationale (F-R32-2 / F-R34-2): semgrep's behavior for Rust attribute clusters is not
     # externally documented as strict-or-liberal with respect to intermediate attributes. The first
     # arm matches the minimal shape (no intervening attributes); the second arm matches the
     # production-code shape (#[derive(...)] interposed between #[non_exhaustive] and pub struct).
     # Both arms are required to guarantee the rule fires on actual monocle production structs.
+    # F-R34-2: `#[$ATTR(...)]` is the standard semgrep metavariable form for "any attribute with a
+    # parenthesized argument list." `$ATTR` matches any identifier (e.g., `derive`, `serde`, `repr`);
+    # `(...)` matches any argument list including multi-arg derives like `#[derive(Debug, Clone)]`
+    # and key-value attributes like `#[serde(rename_all = "snake_case")]`. The prior `#[...]`
+    # form is NOT a documented semgrep wildcard — it is not guaranteed to match any attribute and
+    # was replaced in v1.8. Note: `#[$ATTR(...)]` requires the intermediate attribute to have
+    # parentheses; a bare intermediate attribute (e.g., a hypothetical `#[copy]` with no args)
+    # would not be matched by the second arm. All monocle production structs use parenthesized
+    # intermediate attributes (`#[derive(...)]`), so this form is correct for the monocle codebase.
+    # If a production struct acquires a bare intermediate attribute, a third arm must be added.
     # See §Semgrep Coverage Hardening — fixture corpus dual-shape requirement for enforcement.
     paths:
       include:
+        # All 11 named workspace crates (source: SS-deps-pin-manifest.md line 140 + workspace graph)
         - "monocle-core/src/**/*.rs"
         - "monocle-runtime/src/**/*.rs"
         - "monocle-tui/src/**/*.rs"
         - "monocle-proto/src/**/*.rs"
+        - "monocle-ipc/src/**/*.rs"
+        - "monocle-config/src/**/*.rs"
+        - "monocle-plugin-sdk/src/**/*.rs"
+        - "monocle-workflow/src/**/*.rs"
+        - "monocle-static/src/**/*.rs"
+        - "monocle-fuzz/src/**/*.rs"
+        - "monocle-test-harness/src/**/*.rs"
+        # Binary crate (monocle — not a monocle-* crate; sits in monocle/ subdirectory per workspace layout)
+        - "monocle/src/**/*.rs"
+        # Audit-completeness rationale: scope = every workspace crate source directory.
+        # Any Phase 1 PR that adds #[non_exhaustive] to any crate will be detected.
+        # semgrep-fixtures/ is excluded (no glob matches it); spec files (.factory/) are
+        # excluded because they never match the monocle-*/monocle/ source globs.
     message: "Found #[non_exhaustive] pub struct `$NAME`. Verify it appears in the Cross-Crate Constructor Audit Table in SS-engine-module.md §Cross-Crate Constructor Audit. CI script will fail if absent."
     severity: WARNING
     languages: [rust]
@@ -233,15 +257,20 @@ pattern-either:
       pub struct $NAME { ... }
   - pattern: |
       #[non_exhaustive]
-      #[...]
+      #[$ATTR(...)]
       pub struct $NAME { ... }
 ```
 
 This makes the rule correct regardless of semgrep's strict-vs-liberal attribute-cluster semantics.
-The second arm covers the case where exactly one intermediate attribute (`#[derive(...)]`) is
-interposed. If production structs acquire additional intermediate attributes (e.g., `#[serde(...)]`
-in addition to `#[derive(...)]`), the pattern-either arms may need to be extended. The fixture
-corpus dual-shape requirement ensures that any regression in rule matching is caught in CI before
+The second arm uses `#[$ATTR(...)]` — the standard semgrep metavariable form for "any attribute
+with a parenthesized argument list." `$ATTR` matches any attribute identifier; `(...)` matches any
+argument list, including multi-arg derives like `#[derive(Debug, Clone, Serialize)]`. This arm
+covers the production-code shape where exactly one parenthesized intermediate attribute
+(`#[derive(...)]`, `#[serde(...)]`, etc.) is interposed between `#[non_exhaustive]` and
+`pub struct`. If a production struct acquires a bare intermediate attribute (no parentheses),
+a third `pattern-either` arm must be added — the fixture corpus dual-shape requirement will catch
+this gap as a CI failure when the expected match count (2) is not reached.
+The fixture corpus dual-shape requirement ensures that any regression in rule matching is caught in CI before
 it affects production scans.
 
 Each fixture file contains ONLY the violation pattern (plus minimal Rust syntax to make it
@@ -297,9 +326,12 @@ python scripts/check_audit_table.py \
 
 The script:
 1. Parses the semgrep JSON output to extract all struct names matched by the rule.
-2. Opens `SS-engine-module.md` and reads the lines between
-   `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` and
-   `<!-- END: Cross-Crate Constructor Audit Table -->`.
+2. Opens `SS-engine-module.md` and locates the audit table using the line-anchored regexes
+   defined in clause 4 of §Contract edge cases:
+   `BEGIN_DELIMITER_REGEX = r'^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$'`
+   `END_DELIMITER_REGEX   = r'^<!-- END: Cross-Crate Constructor Audit Table -->$'`
+   Reads all lines between the first line matching `BEGIN_DELIMITER_REGEX` and the first
+   subsequent line matching `END_DELIMITER_REGEX`.
 3. Extracts the struct name from the first column of each data row (text between the first
    `|` and second `|` on each row, stripped of surrounding backticks and whitespace).
 4. Computes the set difference: structs in semgrep output but NOT in the table.
@@ -337,14 +369,37 @@ implementer's-choice behavior is permitted.
      `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` exists, exit with status 1 and emit:
      `Error: found END delimiter with no preceding BEGIN delimiter in <path>`.
 
-4. **Duplicate delimiters.** If `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` appears
-   more than once in the spec file (e.g., because a §Trace example embedded the delimiter text),
-   the script MUST exit with status 1 and emit:
+4. **Duplicate delimiters.** Delimiter detection MUST use line-anchored regex to avoid false
+   positives from prose mentions of the delimiter strings (e.g., in §Trace text or backtick-quoted
+   examples). The canonical regexes are:
+
+   ```python
+   BEGIN_DELIMITER_REGEX = r'^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$'
+   END_DELIMITER_REGEX   = r'^<!-- END: Cross-Crate Constructor Audit Table -->$'
+   ```
+
+   Line-anchoring (`^...$`, using `re.match` or `re.fullmatch` on stripped lines, or
+   `re.search` with the anchors) excludes:
+   - Backtick-wrapped prose mentions (the marker is not the full line content).
+   - Indented prose references (leading whitespace breaks the `^` anchor when matching the
+     raw line; strip the line before matching to handle trailing newlines only — do NOT strip
+     leading whitespace, as leading whitespace itself is the discriminant).
+   - Mid-line narrative occurrences (additional text before or after the marker breaks anchoring).
+
+   The line-anchored regex is the sole mechanism for counting delimiter occurrences. If
+   `BEGIN_DELIMITER_REGEX` matches more than once in the spec file, the script MUST exit with
+   status 1 and emit:
    `Error: multiple BEGIN delimiters found in <path>; spec file is ambiguous`.
-   Similarly, if `<!-- END: Cross-Crate Constructor Audit Table -->` appears more than once,
-   exit with status 1 and emit:
+   Similarly, if `END_DELIMITER_REGEX` matches more than once, exit with status 1 and emit:
    `Error: multiple END delimiters found in <path>; spec file is ambiguous`.
    Duplicate-delimiter detection runs before any table content is read.
+
+   **Convention (defense in depth):** Do NOT quote the audit-table delimiter strings verbatim
+   in §Trace prose or any spec narrative. Refer to them by name (e.g., "the BEGIN/END delimiter
+   markers wrapping the audit table" or "the HTML comment markers defined in SS-conventions
+   §Semgrep Coverage Hardening"). Verbatim inline quoting is the root cause the line-anchored
+   regex must guard against; the convention prevents the regression even if the regex is
+   loosened in a future edit.
 
 5. **Empty table.** If the table between the delimiters contains zero data rows (i.e., only
    separator and/or header rows, or no rows at all), the script MUST exit with status 1 and emit:
@@ -711,6 +766,62 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.8 changes (round-35 fixes F-R34-1 CRITICAL / F-R34-2 IMPORTANT / F-R34-3 IMPORTANT):
+
+- F-R34-1 RESOLVED (CRITICAL — adversary finding): The `check_audit_table.py` duplicate-delimiter
+  detection in clause 4 of §Contract edge cases was specified as a substring search ("if the
+  delimiter appears more than once"). A substring search would count occurrences in §Trace prose,
+  backtick-quoted examples, or mid-line narrative text — exactly the scenario described in clause 4's
+  own parenthetical "(e.g., because a §Trace example embedded the delimiter text)." This creates a
+  self-DoS: if any §Trace entry quotes the delimiter string verbatim (as SS-engine-module.md
+  §Trace v1.1.9 did at the adversary-reported lines 1183–1184), the Python script would detect a
+  "duplicate" and exit 1 on first run, making Phase 1 CI permanently broken until a human noticed
+  the spec prose was the cause. Fix applied in two parts (defense in depth):
+  (a) Clause 4 now specifies line-anchored regex for all delimiter detection:
+  `BEGIN_DELIMITER_REGEX = r'^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$'` and
+  `END_DELIMITER_REGEX = r'^<!-- END: Cross-Crate Constructor Audit Table -->$'`. Line-anchoring
+  excludes backtick-wrapped mentions (non-full-line content), indented prose (leading whitespace
+  breaks `^`), and mid-line occurrences. The Step 3 script description (steps 2–3) updated to
+  reference the regex by name for consistency. All prior "find the delimiter" prose in §Step 3
+  now refers to the line-anchored regex, ensuring the devops-engineer cannot implement a plain
+  `str.find()` or `in` check for delimiter detection.
+  (b) Clause 4 now includes a **Convention** rule: do NOT quote the audit-table delimiter strings
+  verbatim in §Trace prose or any spec narrative. Refer to them by name. This prevents the
+  regression even if the line-anchored regex is loosened in a future edit.
+  Companion fix: SS-engine-module.md v1.1.10 §Trace prose at the adversary-reported lines rewritten
+  to refer to the delimiter markers by name without verbatim quoting.
+
+- F-R34-2 RESOLVED (IMPORTANT — adversary finding): The `pattern-either` second arm (Shape B) for
+  rule `monocle-non-exhaustive-struct-audit-completeness` used `#[...]` as the intermediate-attribute
+  wildcard. `#[...]` is NOT a documented semgrep wildcard form — its matching behavior is undefined
+  and it may match nothing, silently breaking the Shape B arm. Standard semgrep form for "any
+  attribute with a parenthesized argument list" is `#[$ATTR(...)]` where `$ATTR` is a named
+  metavariable matching any identifier and `(...)` matches any argument list. Verification:
+  `#[$ATTR(...)]` matches `#[derive(Debug, Clone)]` (`$ATTR=derive`, `(...)=(Debug, Clone)`),
+  `#[derive(Debug, Clone, Serialize)]` (multi-arg; `(...)` is not restricted to single arguments),
+  `#[serde(rename_all = "snake_case")]`, and `#[repr(C)]`. It does NOT match bare attributes with
+  no parentheses (e.g., a hypothetical `#[copy]`). All monocle production structs use parenthesized
+  intermediate attributes; no bare intermediate attributes exist in the codebase. If a production
+  struct acquires a bare intermediate attribute, a third `pattern-either` arm must be added — the
+  dual-shape fixture corpus (expected count 2) will catch the gap as a CI failure.
+  Fix: `#[...]` replaced with `#[$ATTR(...)]` in both the §Semgrep Rules YAML block and the
+  §Semgrep Coverage Hardening `pattern-either` reference block. Rule rationale comment expanded
+  with documentation of `$ATTR`/`(...)` semantics and the bare-attribute limitation.
+
+- F-R34-3 RESOLVED (IMPORTANT — adversary finding): The `monocle-non-exhaustive-struct-audit-completeness`
+  semgrep rule `paths.include` listed only 4 of the 11 Phase 1 workspace crates (`monocle-core`,
+  `monocle-runtime`, `monocle-tui`, `monocle-proto`). Per SS-deps-pin-manifest.md §Workspace
+  Dependency Graph, the Phase 1 workspace has 11 named crates + 1 binary = 12 total. Any
+  `#[non_exhaustive]` struct added to the 7 uncovered crates (`monocle-ipc`, `monocle-config`,
+  `monocle-plugin-sdk`, `monocle-workflow`, `monocle-static`, `monocle-fuzz`,
+  `monocle-test-harness`) or the binary crate (`monocle`) would be silently missed by the semgrep
+  rule, creating an audit-completeness gap without any CI signal. The audit-completeness check
+  (Step 3 Python script) only fires on structs that semgrep finds — structs in uncovered crates
+  are invisible to the script. Fix: `paths.include` expanded from 4 to 12 paths covering all 11
+  named crates and the `monocle/src/**` binary crate. Each path documented with its source
+  (SS-deps-pin-manifest.md workspace graph). Audit-completeness rationale added as inline YAML
+  comment explaining why full-workspace scope is required.
 
 v1.7 changes (round-33 fixes F-R32-2 MEDIUM / F-R32-4 LOW):
 
