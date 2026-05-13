@@ -101,7 +101,7 @@ None identified — rationale: monocle does not call external enrichment service
 
 Schema source: canonical 5-endpoint matrix from any-context BC-HOOK-001..BC-HOOK-041 (verified against hooks-r1/r2 ingest rounds). Note: monocle's canonical Phase 1 paths (`/hooks/pre-tool-use` etc.) differ from any-context gene-source paths (`/notify`, `/stop`, etc.). The clone must target monocle's paths.
 
-Fidelity validation: `dtu-validator` agent compares clone payloads against recorded session sample (if available) or schema-derived fixtures from BC-HOOK-007. Update cadence: monthly schema check against public Claude Code docs; quarterly re-validation against fresh recorded session.
+Fidelity validation: `dtu-validator` agent compares clone payloads against the fixture corpus defined in §DTU Fidelity Measurement Procedure below. Blocking threshold: ≥0.95 mean field-match score across all fixtures. See §DTU Fidelity Measurement Procedure for fixture protocol, scoring function, tooling, and CI gate specification.
 
 ### Environment Variable Overrides
 
@@ -123,3 +123,147 @@ The `dtu-claude-code-hooks-v1` clone is developed as a VSDD story with:
 Clones are scheduled in Wave 1 of the Phase 1 wave schedule to ensure availability before any product story that depends on hook protocol integration testing.
 
 Phase 4 clone candidates: `dtu-rmcp-server-v1` (MCP bridge) and `dtu-russh-server-v1` (federation SSH). Both are out of Phase 1 scope; decision deferred to Phase 4 architecture gate.
+
+## DTU Fidelity Measurement Procedure
+
+Resolves F-NEW-10. Replaces the prior "monthly schema check; quarterly recorded session re-validation" placeholder with a concrete fixture protocol, scoring function, tooling specification, and CI gate definition.
+
+### Fixture Corpus
+
+**Location:** `tests/fixtures/dtu/claude-code-hook-2x/<endpoint>/<scenario>.json`
+
+**Structure:** One JSON file per scenario per endpoint. Scenarios are synthetic hook
+POST payloads constructed to match the real Claude Code 2.x schema as documented in
+Anthropic's public hook docs and verified against BC-HOOK-007.
+
+```
+tests/fixtures/dtu/claude-code-hook-2x/
+├── pre-tool-use/
+│   ├── bash-simple.json
+│   ├── bash-multiline.json
+│   ├── read-file.json
+│   ├── write-file.json
+│   └── unknown-tool.json
+├── notification/
+│   ├── permission-prompt-bash.json
+│   ├── permission-prompt-write.json
+│   ├── permission-prompt-web-fetch.json
+│   ├── non-permission-dropped.json          # must NOT reach the wire
+│   └── large-message-boundary.json          # 200 KiB message field
+├── stop/
+│   ├── stop-reason-error.json
+│   ├── stop-reason-interrupt.json
+│   ├── stop-reason-normal.json
+│   ├── stop-reason-empty.json
+│   └── stop-reason-unknown.json
+├── session-start/
+│   ├── session-start-basic.json
+│   ├── session-start-uuid-v4.json
+│   ├── session-start-missing-session-id.json # missing optional field → empty string
+│   ├── session-start-extra-fields.json       # unknown fields → passed through
+│   └── session-start-null-pid.json           # edge: null pid
+└── prompt-submit/
+    ├── prompt-submit-basic.json
+    ├── prompt-submit-uuid-v4.json
+    ├── prompt-submit-missing-session-id.json
+    ├── prompt-submit-extra-fields.json
+    └── prompt-submit-long-session-id.json
+```
+
+**Minimum corpus at v1 launch:** 5 fixtures per endpoint × 5 endpoints = **25 fixtures total**.
+
+Fixtures are maintained by hand from Anthropic's published hook documentation.
+The fixture corpus is versioned in the monocle git repository under `tests/fixtures/`.
+
+### Scoring Function
+
+Fidelity is computed field-by-field against the expected schema for each fixture:
+
+```
+score(fixture) = matched_fields / total_expected_fields
+```
+
+where:
+- `total_expected_fields` = count of required + optional fields declared in the
+  BC-HOOK-007 schema for this endpoint.
+- `matched_fields` = count of fields where: (a) required field is present in
+  clone output with the correct JSON type, (b) optional field, if present, has
+  the correct JSON type, and (c) string fields with a bounded expected length
+  are within the declared bound (e.g., `session_id` is a non-empty UUID string).
+- Missing required fields: each counts as 0 (field not matched).
+- Extra unknown fields: ignored (not penalized; Claude Code may add fields).
+- Type mismatch on a present field: counts as 0 for that field.
+
+**Overall fidelity score:** arithmetic mean of `score(fixture)` across all fixtures
+in the corpus.
+
+**Blocking threshold:** ≥ 0.95 overall fidelity score = clone is valid.
+< 0.95 blocks the Phase 4 holdout-eval gate and any PR that touches `monocle-ipc`
+or `monocle-runtime`.
+
+### Measurement Cadence
+
+| Trigger | Action |
+|---------|--------|
+| Per-PR (any PR touching `monocle-ipc` or `monocle-runtime`) | CI runs `cargo xtask dtu-fidelity`; score < 0.95 blocks merge |
+| Monthly (1st of each month) | GitHub Actions cron pulls latest Anthropic hook docs; diffs against fixture corpus schemas; if any schema field changes, automatically files an issue tagged `dtu-fixture-refresh` |
+| Quarterly (first PR of each calendar quarter) | Maintainer records a real Claude Code session per the procedure in `docs/dtu-recording-procedure.md`; adds resulting fixture to corpus; re-runs `cargo xtask dtu-fidelity`; if score < 0.95, dispatches dtu-validator agent |
+
+### Tooling
+
+**`cargo xtask dtu-fidelity`** — custom cargo-xtask command in `xtask/src/dtu_fidelity.rs`:
+
+- Loads all `tests/fixtures/dtu/claude-code-hook-2x/**/*.json` fixture files.
+- For each fixture: sends the corresponding HTTP POST to the running DTU clone
+  (requires `MONOCLE_DTU_BASE_URL` env var, default `http://localhost:8765`).
+- Compares the clone's synthesized payload against the fixture using the scoring
+  function above.
+- Prints per-fixture score + diff for any field mismatch.
+- Prints overall mean score.
+- Exits 0 if overall score ≥ 0.95; exits 1 if below threshold.
+
+**GitHub Actions workflow `.github/workflows/dtu-fidelity.yml`:**
+
+```yaml
+on:
+  pull_request:
+    paths:
+      - 'crates/monocle-ipc/**'
+      - 'crates/monocle-runtime/**'
+  schedule:
+    - cron: '0 9 1 * *'   # monthly, 1st of month at 09:00 UTC
+
+jobs:
+  dtu-fidelity:
+    runs-on: ubuntu-latest
+    services:
+      dtu-clone:
+        image: ghcr.io/monocle/dtu-claude-code-hooks-v1:latest
+        ports: ['8765:8765']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo xtask dtu-fidelity
+        env:
+          MONOCLE_DTU_BASE_URL: http://localhost:8765
+          MONOCLE_NO_AUTOSTART: '1'
+```
+
+### Re-eval Trigger
+
+If overall fidelity drops below 0.95 on any per-PR run or monthly check:
+
+1. The CI gate blocks merge.
+2. The devops-engineer or maintainer dispatches the `dtu-validator` agent.
+3. The `dtu-validator` agent dispatches `research-agent` (Perplexity) to check
+   whether Anthropic has published hook schema changes in their changelog or docs.
+4. If schema changed: update fixture corpus + clone implementation together in a
+   single PR; re-run `cargo xtask dtu-fidelity` to confirm score ≥ 0.95 before
+   merging.
+5. If no documented schema change (clone regression): treat as a clone
+   implementation defect; fix the clone and re-validate.
+
+**Trace:** Resolves F-NEW-10 (IMPORTANT adversary finding, commit e2c224b). Replaces
+the prior "monthly schema check; quarterly recorded session re-validation"
+placeholder in this document with a complete fixture protocol, scoring function,
+tooling specification, and CI gate.
