@@ -4,20 +4,20 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T08:00:00Z
-phase: pre-phase-1-final-gate-round-13-complete
+timestamp: 2026-05-13T00:00:00Z
+phase: pre-phase-1-final-gate-round-15-complete
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: pre-phase-1-final-gate-round-13-fix-burst-complete-awaiting-round-14-validation
+current_step: pre-phase-1-final-gate-round-15-fix-burst-complete-awaiting-round-16-validation
 current_cycle: cycle-001
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
 dtu_services: [hook-endpoints-x5]
-awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-contained spec package"
+awaiting: "round 16 validation chain (consistency + adversary fresh pass on vision-restored trait signatures + propagation fixes)"
 ---
 
 <!--
@@ -35,11 +35,11 @@ awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-con
 | **Product** | monocle |
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
-| **Current Phase** | pre-phase-1-final-gate-round-13-complete |
-| **Current Step** | pre-phase-1-final-gate-round-13-fix-burst-complete-awaiting-round-14-validation |
-| **Product brief** | `.factory/specs/product-brief.md` v1.4.8 (commit 1178797) |
+| **Current Phase** | pre-phase-1-final-gate-round-15-complete |
+| **Current Step** | pre-phase-1-final-gate-round-15-fix-burst-complete-awaiting-round-16-validation |
+| **Product brief** | `.factory/specs/product-brief.md` v1.4.10 (commit 08b4a9c) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved) |
-| **Last Updated** | 2026-05-12T08:00:00Z |
+| **Last Updated** | 2026-05-13T00:00:00Z |
 
 ## Phase Progress
 
@@ -60,7 +60,8 @@ awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-con
 | 0.99f: Round 10 Adversary Final | DONE | 2026-05-12 | adversary | PRODUCTION_READY — 0 findings; novelty LOW; spec converged across all 15 artifacts |
 | 0.99g: Final FC Lock-In Burst | DONE | 2026-05-12 | architect + product-owner | 6 FC items (FC-01..FC-06) locked as Phase 1 contracts; NEW SS-core-types-and-abi.md (700 lines); SS-daemon-lifecycle v1.0.3; SS-deps v1.1.4; brief v1.4.7; commits 4f5d4ff + 816b1bc + d77271a |
 | 0.99h: Round 13 Fix Burst (FC defects + EngineModule + ADR-0004) | DONE | 2026-05-12 | architect + product-owner | 13 findings resolved (3 CRITICAL + 5 IMPORTANT + 5 OBS); 3 consistency findings; new SS-engine-module.md + ADR-0004; commits 2cdd8d2 + 1178797 |
-| Pre-Phase-1 Final Gate | round-13 complete — awaiting round-14 validation | 2026-05-12 | state-manager | 17 artifacts; 13 BCs pre-staged; D-025 + D-026 logged |
+| 0.99i: Round 15 Fix Burst (vision authority + propagation gaps) | DONE | 2026-05-13 | architect + product-owner | vision authority restored on EngineModule/FactoryAdapter; sealing removed; 6 supporting types; BC count 13→15; commits 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c |
+| Pre-Phase-1 Final Gate | round-15 complete — awaiting round-16 validation | 2026-05-13 | state-manager | 17 artifacts; 15 BCs pre-staged; D-025 + D-026 + D-027 logged |
 | 1: Spec Crystallization | READY — awaiting human approval (pending round-14 validation) | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -73,11 +74,11 @@ awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-con
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| FC lock-in burst: brief v1.4.7 (6 FC items as Phase 1 contracts; supplements 10; 10 BCs pre-staged) | product-owner | DONE | commit 816b1bc |
-| FC lock-in burst: SS-deps v1.1.4 (constant_time_eq ^0.3 + futures ^0.3) | architect | DONE | commit d77271a |
-| Round 13 fix burst: 13 FC-adversary findings + 3 consistency findings; NEW SS-engine-module.md (~150 lines) + ADR-0004; SS-core-types-and-abi.md v1.1 + SS-daemon-lifecycle v1.0.4; brief v1.4.8 | architect + product-owner | DONE | commits 2cdd8d2 + 1178797 |
-| Round 13 BC update: 10 → 13 (added BC-ENGINE-001/002 + BC-LOCK-001; split BC-PROTO-001 into 001a + 001b) | architect | DONE | commit 2cdd8d2 |
-| Round 13 close-out: STATE.md + burst-log + session-checkpoints | state-manager | DONE | this commit |
+| Round 15 fix: SS-core-types-and-abi.md v1.2 (FactoryAdapter sealing removed; status doc clarified) | architect | DONE | commit 42314db |
+| Round 15 fix: SS-engine-module.md v1.1 (vision-aligned detect/enrich/on_hook trait; 6 supporting types; BC-ENGINE-003) | architect | DONE | commit 7483d93 |
+| Round 15 fix: SS-deps v1.1.5 (async-trait ^0.1 pin) + ADR-0004 v1.0.1 (variant count 14→15) + SS-permissions v1.1/#[non_exhaustive] | architect | DONE | commits 27dd235 + ce4c99f + 806ff5f |
+| Round 15 fix: brief v1.4.9 (supplements 10→12; unsafe-impl ref removed; BC count 10→14) + v1.4.10 (BC count 14→15 reconcile) | product-owner | DONE | commits 816037c + 08b4a9c |
+| Round 15 close-out: STATE.md + burst-log + session-checkpoints; D-027 logged | state-manager | DONE | this commit |
 
 ## Decisions Log
 
@@ -96,6 +97,7 @@ awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-con
 | D-024 | Rounds 8-10 convergence. Round 8 (01e030f): 1 BLOCKING + 1 IMPORTANT + 1 ADVISORY. Round 9 fix burst (190a849 + 438bf95): R8-001 phantom /hooks/post-tool-use route removed from SS-daemon-lifecycle; R8-002 stale count "8 security-sensitive" corrected to "9" in SS-deps-pin-manifest; R8-003 typo "remediatedstarting" corrected in SS-conventions. Round 10 adversary fresh pass: PRODUCTION_READY — 0 findings across all severity classes. Novelty LOW. Spec package converged at 15 artifacts. Phase 1 gate READY. | commits 190a849+438bf95 (round 9) | pre-phase-1-final-gate-converged | 2026-05-12 | state-manager |
 | D-025 | Pre-Phase-1 FC lock-in: 6 forward-compatibility items (FC-01..FC-06) locked into binding Phase 1 contracts per human authorization to clear context for fresh Phase 1 start. New artifact SS-core-types-and-abi.md (700 lines) defines monocle-core public stability surface: MONOCLE_ABI_VERSION constant, #[non_exhaustive] enum policy, FactoryAdapter trait with VsddFactoryAdapter impl, prost HookEnvelope schema with schema_version field. SS-daemon-lifecycle v1.0.3 adds JSONL format_version + versioned auth token prefix (monocle-v1:<64-hex>). SS-deps v1.1.4 adds constant_time_eq + futures pins. 10 behavioral contracts pre-staged for Phase 1 PRD (BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001/002, BC-RING-001, BC-AUTH-001/002). Spec package SELF-CONTAINED for fresh Phase 1 context. | commits 4f5d4ff + 816b1bc + d77271a | pre-phase-1-final-gate-FULLY-CONVERGED | 2026-05-12 | state-manager |
 | D-026 | Round 13 comprehensive fix burst: 13 adversary-found defects (3 CRITICAL + 5 IMPORTANT + 5 OBSERVATIONS) + 3 consistency findings (D-POST-FC-001/002/003) ALL RESOLVED in-scope. New artifacts: SS-engine-module.md (EngineModule trait stability per F-FC-I003), ADR-0004 (Phase1Permission + ClaudeCodeTool exhaustive-enum rationale per F-FC-I004). Critical fixes: invalid unsafe-impl replaced with plugin-sdk-escape-hatch feature flag (compiles + production-grade sealed pattern); STATE.md frontmatter field-name parsing corrected; FactoryState restored to vision's 7 fields per human red-line; all 5 HookEvent inner-variant structs fully specified; lock-file contract_version added (BC-LOCK-001); /status JSON schema includes abi_version. 13 BCs now pre-staged for Phase 1 PRD. Upstream process-gap issue filed at drbothen/vsdd-factory for intra-phase adversarial passes. | commits 2cdd8d2 + 1178797 | pre-phase-1-final-gate-round-13-complete | 2026-05-12 | state-manager |
+| D-027 | Round 15 comprehensive fix burst: vision authority restored on EngineModule and FactoryAdapter (sealing removed entirely per human Q-15-1; plugin-sdk-escape-hatch feature flag dropped; EngineModule trait signature matches vision §EngineModule lines 111-128 exactly with detect/enrich/on_hook methods); BC-ENGINE-003 added for ClaudeCodeModule inherent methods (hook_paths/spawn/preflight as struct methods, not trait); 6 supporting types fully specified (ProcessSnapshot, EnrichedSession, HookResponse, SessionStatus, HookDecision, DeferUntil); async-trait ^0.1 pinned; ADR-0004 variant count 14→15; #[non_exhaustive] propagated to DenyReason/AllowPattern/DenyPattern; brief BC count 10→15; supplements 10→12. | commits 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c | pre-phase-1-final-gate-round-15-complete | 2026-05-13 | state-manager |
 
 ## Skip Log
 
@@ -112,7 +114,7 @@ awaiting: "human Phase 1 approval; Phase 1 begins in fresh context with self-con
 
 <!-- Latest checkpoint. Prior checkpoints archived to cycles/cycle-001/session-checkpoints.md. -->
 
-**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-round-13-complete | **Mode:** greenfield-with-reference-ingest
+**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-round-15-complete | **Mode:** greenfield-with-reference-ingest
 
 ### What This Is
 
@@ -120,35 +122,35 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 
 ### Where We Are
 
-Round 13 fix burst (commits 2cdd8d2 + 1178797) resolved all 13 adversary-found defects from the FC-burst adversary pass + 3 consistency findings. CRITICAL fixes: invalid unsafe-impl sealed pattern replaced with plugin-sdk-escape-hatch cargo feature flag; brief Phase1Permission cross-artifact contradiction corrected; STATE.md frontmatter field-name parsing corrected; FactoryState restored to vision's canonical 7 fields. New artifacts: SS-engine-module.md (~150 lines; EngineModule trait stability; BC-ENGINE-001/002) + ADR-0004 (exhaustive-enum rationale). BC count: 10 → 13. Critical Artifacts: 15 → 17. Brief: v1.4.7 → v1.4.8. D-026 logged. Upstream process-gap issue filed at drbothen/vsdd-factory for intra-phase adversarial passes.
+Round 15 fix burst (7 commits: 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c) restored vision authority on EngineModule and FactoryAdapter. CRITICAL: sealing removed entirely per human Q-15-1; EngineModule trait signature now matches vision §EngineModule lines 111-128 exactly (detect/enrich/on_hook methods); plugin-sdk-escape-hatch feature flag dropped (unnecessary with open traits); FactoryAdapter sealing also removed. New: BC-ENGINE-003 for ClaudeCodeModule inherent methods (hook_paths/spawn/preflight); 6 supporting types fully specified (ProcessSnapshot, EnrichedSession, HookResponse, SessionStatus, HookDecision, DeferUntil). Propagation: async-trait ^0.1 pinned; ADR-0004 variant count 14→15; #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern; brief supplements 10→12; BC count 13→15. Brief: v1.4.8 → v1.4.10. D-027 logged.
 
 ### Immediate Next Action
 
-Orchestrator dispatches round 14 validation chain: consistency-validator fresh pass + adversary fresh pass on updated spec package (17 artifacts, 13 BCs). If clean (0 findings), orchestrator presents Phase 1 gate for human approval.
+Orchestrator dispatches round 16 validation chain: consistency-validator fresh pass + adversary fresh pass on vision-restored trait signatures + propagation fixes (17 artifacts, 15 BCs). If clean (0 findings), orchestrator presents Phase 1 gate for human approval.
 
 ### Critical Artifacts (read in this order for Phase 1)
 
 1. `CLAUDE.md` (project root) — production-grade principle + agent routing table
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved)
-3. `.factory/specs/product-brief.md` v1.4.8 (commit 1178797)
-4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.1 (700 lines, 7 BCs pre-staged; commit 2cdd8d2)
+3. `.factory/specs/product-brief.md` v1.4.10 (commit 08b4a9c)
+4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2 (FactoryAdapter sealing removed; commit 42314db)
 5. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.4 (commit 2cdd8d2)
-6. `.factory/specs/architecture/SS-engine-module.md` (NEW, ~150 lines; EngineModule trait stability; BC-ENGINE-001/002; commit 2cdd8d2)
-7. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.4
+6. `.factory/specs/architecture/SS-engine-module.md` v1.1 (vision-aligned detect/enrich/on_hook; BC-ENGINE-001/002/003; 6 supporting types; commit 7483d93)
+7. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.5 (async-trait ^0.1; commit 27dd235)
 8. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2.2 (commit 438bf95)
-9. `.factory/specs/architecture/SS-permissions-phase1.md` v1.0 (commit 9f25dcd)
-10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.1 (PHASE 1 READY verdict)
+9. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1 (#[non_exhaustive] on DenyReason/AllowPattern/DenyPattern; commit 806ff5f)
+10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.1 (PHASE 1 READY verdict; commit 806ff5f)
 11. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` v1.0.1 (commit ad6a303)
 12. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md` v1.0
 13. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` v1.0.1 (commit d544731)
-14. `.factory/specs/architecture/adr/ADR-0004-exhaustive-enum-rationale.md` (NEW; Phase1Permission + ClaudeCodeTool rationale; commit 2cdd8d2)
+14. `.factory/specs/architecture/adr/ADR-0004-exhaustive-enum-rationale.md` v1.0.1 (variant count 14→15; commit ce4c99f)
 15. `.factory/specs/dtu-assessment.md` v1.1
 16. `.factory/tech-debt-register.md` (empty — TD-001 retired)
 17. `.factory/STATE.md` (this file)
 
 ### Key Tech Stack (architect inherits)
 
-ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted), pulldown-cmark 0.13, serde_json =1.0.149 (EXACT-pinned), rand =0.8.6 (EXACT-pinned), bytes (direct pin), semver 1, constant_time_eq ^0.3 (caret pin; BC-AUTH-001 timing-safe auth comparison), futures ^0.3 (caret pin; FactoryAdapter::subscribe StateChangeStream). 28 named workspace pins total. 9 EXACT-pinned crates: tokio, axum, prost, serde_json, rand, wasmtime, russh, rmcp, reqwest. MSRV Phase 1: Rust 1.86; Phase 3: 1.92. Sealed-enum pattern uses `plugin-sdk-escape-hatch` cargo feature flag (replaces invalid `unsafe impl` pattern; F-FC-C002 fix; commit 2cdd8d2).
+ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted), pulldown-cmark 0.13, serde_json =1.0.149 (EXACT-pinned), rand =0.8.6 (EXACT-pinned), bytes (direct pin), semver 1, constant_time_eq ^0.3 (caret pin; BC-AUTH-001 timing-safe auth comparison), futures ^0.3 (caret pin; FactoryAdapter::subscribe StateChangeStream), async-trait ^0.1 (caret pin; macro for async trait methods). 29 named workspace pins total. 9 EXACT-pinned crates: tokio, axum, prost, serde_json, rand, wasmtime, russh, rmcp, reqwest. MSRV Phase 1: Rust 1.86; Phase 3: 1.92. EngineModule trait uses open (non-sealed) design per vision §EngineModule (sealing removed entirely in round 15; plugin-sdk-escape-hatch feature flag dropped).
 
 ### Critical Hook Lessons
 

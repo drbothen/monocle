@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "d76d6ee"
+input-hash: "9606e64"
 traces_to: STATE.md
 ---
 
@@ -582,3 +582,40 @@ CRITICAL: F-FC-C001 brief Phase1Permission cross-artifact contradiction fixed (c
 | architect | SS-core-types-and-abi.md v1.1 + SS-daemon-lifecycle v1.0.4 + NEW SS-engine-module.md + NEW ADR-0004 | commit 2cdd8d2 |
 | product-owner | brief v1.4.8 — F-FC-C001 fixed; ClaudeCodeTool added; ADR-0004 cross-referenced | commit 1178797 |
 | state-manager | Round 13 close-out: STATE.md (D-026, 17 artifacts, 13 BCs) + burst-log + session-checkpoints | this commit |
+
+## Burst 18 (2026-05-13) — Round 15 Fix Burst (vision authority + propagation gaps)
+
+**Agents dispatched:** architect (x5), product-owner (x2)
+**Files touched:** SS-core-types-and-abi.md, SS-engine-module.md, SS-deps-pin-manifest.md, ADR-0004, SS-permissions-phase1.md, SS-forward-compatibility.md, product-brief.md, STATE.md, burst-log.md, session-checkpoints.md
+**Versions bumped:** SS-core-types-and-abi.md v1.1→v1.2; SS-engine-module.md v1.0→v1.1; SS-deps v1.1.4→v1.1.5; ADR-0004 v1.0→v1.0.1; SS-permissions-phase1.md v1.0→v1.1; brief v1.4.8→v1.4.9→v1.4.10; BC count 13→15
+
+### Summary
+
+Vision authority fully restored per human Q-15-1 directive. EngineModule trait and FactoryAdapter sealed-trait patterns had diverged from vision §EngineModule lines 111-128. Round 15 fixes every divergence and all downstream propagation gaps in a single 7-commit burst.
+
+CRITICAL (vision authority):
+- SS-engine-module.md v1.1: EngineModule trait signature now matches vision exactly — detect/enrich/on_hook async methods; sealing entirely removed; plugin-sdk-escape-hatch cargo feature flag dropped
+- SS-core-types-and-abi.md v1.2: FactoryAdapter sealing removed entirely; status doc clarified
+- BC-ENGINE-003 added: ClaudeCodeModule inherent methods (hook_paths/spawn/preflight are struct methods, not trait)
+- 6 supporting types fully specified: ProcessSnapshot, EnrichedSession, HookResponse, SessionStatus, HookDecision, DeferUntil
+
+PROPAGATION:
+- SS-deps v1.1.5: async-trait ^0.1 caret pin (required for #[async_trait] macro on EngineModule methods)
+- ADR-0004 v1.0.1: ClaudeCodeTool variant count corrected 14→15 + full enumeration
+- SS-permissions-phase1.md v1.1: #[non_exhaustive] applied to DenyReason, AllowPattern, DenyPattern
+- SS-forward-compatibility.md: §Consequences scope corrected
+- Brief v1.4.9: supplements 10→12 (added SS-engine-module + ADR-0004); unsafe-impl reference removed (obsolete since sealing dropped); BC count 10→14 preliminary
+- Brief v1.4.10: BC count reconcile 14→15 (BC-ENGINE-003 added by architect)
+
+D-027 logged. STATE.md current_step set to `pre-phase-1-final-gate-round-15-fix-burst-complete-awaiting-round-16-validation`.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-core-types-and-abi.md v1.2 — FactoryAdapter sealing removed; status doc clarified | commit 42314db |
+| architect | SS-engine-module.md v1.1 — vision-aligned detect/enrich/on_hook trait; 6 supporting types; BC-ENGINE-003 | commit 7483d93 |
+| architect | SS-deps v1.1.5 — async-trait ^0.1 pin | commit 27dd235 |
+| architect | ADR-0004 v1.0.1 — ClaudeCodeTool variant count 14→15 | commit ce4c99f |
+| architect | SS-permissions-phase1.md v1.1 + SS-forward-compatibility — #[non_exhaustive] DenyReason/AllowPattern/DenyPattern; §Consequences scope | commit 806ff5f |
+| product-owner | brief v1.4.9 — supplements 10→12; unsafe-impl ref removed; BC count 10→14 | commit 816037c |
+| product-owner | brief v1.4.10 — BC count 14→15 reconcile (BC-ENGINE-003) | commit 08b4a9c |
+| state-manager | Round 15 close-out: STATE.md (D-027, 17 artifacts, 15 BCs) + burst-log + session-checkpoints | this commit |

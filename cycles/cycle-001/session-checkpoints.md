@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "d76d6ee"
+input-hash: "9606e64"
 traces_to: STATE.md
 ---
 
@@ -131,6 +131,19 @@ traces_to: STATE.md
 | **Position** | FULLY CONVERGED — FC lock-in burst complete. Commits 4f5d4ff + 816b1bc + d77271a locked 6 forward-compatibility items (FC-01..FC-06) into binding Phase 1 contracts per human authorization. NEW SS-core-types-and-abi.md (700 lines) defines monocle-core public stability surface: MONOCLE_ABI_VERSION constant, #[non_exhaustive] enum policy, FactoryAdapter trait with VsddFactoryAdapter impl, prost HookEnvelope schema_version field. SS-daemon-lifecycle v1.0.3 adds JSONL format_version + versioned auth token prefix (monocle-v1:<64-hex>). SS-deps v1.1.4 adds constant_time_eq ^0.3 + futures ^0.3 (28 named workspace pins total). Brief v1.4.7 (10 BCs pre-staged). D-025 logged. Spec package SELF-CONTAINED for fresh Phase 1 context. |
 | **Next** | Human Phase 1 approval. Orchestrator dispatches /vsdd-factory:run-phase 1: business-analyst (create-domain-spec) -> product-owner (create-prd, formalizes 10 pre-staged BCs + ~12 additional) -> architect (create-architecture, builds workspace Cargo.toml from SS-deps, implements SS-core-types-and-abi traits + SS-daemon-lifecycle protocol, scaffolds .github/workflows/r001-monitor.yml) -> product-owner (phase-1-prd-revision iter 1-3) -> adversary (phase-1d-adversarial-spec-review 3 clean passes) -> human Phase 1 approval -> Phase 2. |
 | **Convergence counter** | 10 rounds clean + FC lock-in burst; trajectory: 10 R1 -> 7 R2 -> 5 R3 -> 2 R4 -> 14 R5 substantive -> 6+6 R6 -> 8 fixes R7 -> 3 R8 -> 3 fixes R9 -> 0 R10 -> 0 FC-burst (additive only) |
+
+---
+
+## Session Resume Checkpoint (2026-05-13) — round-15-fix-burst-complete
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 15 fix burst (7 commits: 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c) restored vision authority on EngineModule/FactoryAdapter. Sealing removed entirely per Q-15-1. EngineModule trait matches vision §EngineModule lines 111-128 exactly (detect/enrich/on_hook). BC-ENGINE-003 added. 6 supporting types specified. async-trait pinned. ADR-0004 14→15. #[non_exhaustive] propagated. Brief: v1.4.8→v1.4.10. BC count: 13→15. D-027 logged. |
+| **Next** | Orchestrator dispatches round 16 validation chain (consistency-validator + adversary fresh pass on vision-restored spec package). If clean, Phase 1 gate presented to human. |
+| **Convergence counter** | 10 rounds clean + FC lock-in burst + round 13 fix burst + round 15 fix burst; trajectory: 10 R1 -> 7 R2 -> 5 R3 -> 2 R4 -> 14 R5 -> 6+6 R6 -> 8 fixes R7 -> 3 R8 -> 3 fixes R9 -> 0 R10 -> 0 FC-burst -> 13 FC-adversary (R13 fixes all) -> round 15 vision-authority fixes |
 
 ---
 
