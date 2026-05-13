@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.3"
+version: "1.1.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation"
 project: monocle
 ---
 
@@ -47,15 +47,32 @@ extensibility. The sealed-trait pattern applies only to internal traits that are
 
 ## §EngineModule Trait Signature
 
-The signature below is the authoritative Phase 1 contract. EngineModule trait
-method signatures (`id`, `metadata`, `detect`, `enrich`, `on_hook`) match
-`domain-monocle-vision-synthesis.md` §EngineModule lines 111–128 exactly.
-`EngineMetadata` is a vision-spirit-aligned elaboration: `config_paths: Vec<PathBuf>`
-supports multi-path Claude Code config (e.g., `~/.claude/CLAUDE.md` plus a per-project
-`.claude/CLAUDE.md`); `hook_schema_version: u32` enables Phase 4 federation
-peer-version negotiation. Both fields are forward-compatible elaborations of vision's
-single-path/string-schema-name fields; downstream code that needs vision's exact
-shape can call `.first()` on the Vec and format the u32 as a string.
+The signature below is the authoritative Phase 1 contract. The five trait methods have
+different provenance with respect to `domain-monocle-vision-synthesis.md` §EngineModule
+lines 111–128:
+
+- **Vision-verbatim** (`id`, `detect`, `on_hook`): Signatures match the vision sketch
+  exactly. `id() -> &'static str`; `detect(&self, proc: &ProcessSnapshot) -> bool`;
+  `on_hook(&self, event: HookEvent) -> HookResponse`. No deviation from the vision text.
+
+- **Vision-spirit-aligned** (`metadata`, `enrich`): The vision sketch declares these
+  infallible (`-> EngineMetadata` and `-> EnrichedSession`). Phase 1 wraps both return
+  types in `Result<_, EngineMetadataError>` to honour CLAUDE.md SOUL #4 (no silent
+  fallback for the unresolvable platform home directory case — see §EngineMetadataError).
+  The `Ok` variant recovers the vision's return shape exactly; the `Err` variant adds the
+  `HomeUnresolvable` failure path that the vision sketch left implicit. The vision is
+  non-authoritative for this surface per CLAUDE.md §Architectural Authority ("the LATER,
+  MORE-SPECIFIC artifact wins"); SS-engine-module.md is both later and more specific.
+  Implementers MUST use the Result forms defined here, not the infallible vision sketch.
+
+`EngineMetadata` is additionally a vision-spirit-aligned elaboration at the struct level:
+`config_paths: Vec<PathBuf>` supports multi-path Claude Code config (e.g.,
+`~/.claude/CLAUDE.md` plus a per-project `.claude/CLAUDE.md`); `hook_schema_version: u32`
+enables Phase 4 federation peer-version negotiation. Both fields are forward-compatible
+elaborations of vision's single-path/string-schema-name fields; downstream code that
+needs vision's exact shape can call `.first()` on the Vec and format the u32 as a string.
+
+The trait carries no sealed bound (vision-verbatim; see §Purpose).
 
 ```rust
 // monocle-core/src/engine.rs
@@ -595,6 +612,41 @@ Verification: unit test in `monocle-runtime/tests/engine_module.rs` constructs a
 `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`, asserts `module.id() == "claude-code"`,
 and tests `detect()` with: (a) a synthetic `ProcessSnapshot` with `exe_path = Some(PathBuf::from("/usr/local/bin/claude"))` → asserts `true`; (b) `exe_path = Some(PathBuf::from("/usr/local/bin/claude-squad"))` → asserts `false`; (c) `exe_path = None` (regardless of cmdline contents) → asserts `false`. Note: `detect()` consults ONLY `exe_path`; `cmdline` is preserved for engine-specific use in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`) but is NOT used for engine identification — this avoids false positives from processes such as `claude-squad`, `claudio`, and `claude-code-router` that may place `"claude"` in `cmdline[0]`.
 
+**BC-ENGINE-002-ERR:** `ClaudeCodeModule::metadata()` and `ClaudeCodeModule::enrich()` MUST
+return `Err(EngineMetadataError::HomeUnresolvable)` when the platform home directory is
+unresolvable (i.e., `directories::BaseDirs::new()` returns `None`). This contract enforces
+the no-silent-fallback guarantee of CLAUDE.md SOUL #4: neither method may substitute a
+relative path for an unresolvable home directory. Verification: test in
+`monocle-runtime/tests/engine_module.rs` with the following specification:
+
+1. Construct `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`.
+2. Using `temp-env` (pinned in SS-deps-pin-manifest.md `[dev-dependencies]` at
+   `temp-env = "^0.2"`), call `temp_env::with_vars` to clear `HOME`, `USERPROFILE` (Windows),
+   `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, and `XDG_RUNTIME_DIR` for the
+   duration of the test, forcing `BaseDirs::new()` to return `None`.
+   **Env-isolation rationale:** `temp-env` restores all modified variables on drop — safe
+   for multi-threaded test runs because no `std::env::set_var` / `remove_var` call outlives
+   the closure scope. Manual `std::env::remove_var` without `temp-env` is unsafe in
+   multi-threaded Rust test harnesses: the global environment is shared state across all
+   threads in the same process, and a race between a test clearing `HOME` and another test
+   reading it produces non-deterministic failures. `serial_test` serialises test execution
+   to avoid the race but still leaves the environment mutated if a test panics before
+   cleanup; `temp-env` is superior because it uses RAII cleanup on both normal and panic
+   exit paths.
+3. Within the `temp_env::with_vars` closure, assert:
+   - `module.metadata().is_err()` is `true`.
+   - `matches!(module.metadata().unwrap_err(), EngineMetadataError::HomeUnresolvable)` is `true`.
+4. Construct a synthetic `ProcessSnapshot` with the same field values used in the `detect()`
+   test cases (pid, exe_path, empty cmdline/env). Within the same `temp_env::with_vars`
+   closure, assert:
+   - `module.enrich(&snapshot).await.is_err()` is `true`.
+   - `matches!(module.enrich(&snapshot).await.unwrap_err(), EngineMetadataError::HomeUnresolvable)` is `true`.
+
+The test is placed in `monocle-runtime/tests/engine_module.rs` alongside the BC-ENGINE-002
+`detect()` tests. `temp-env` is a `[dev-dependencies]` entry; it does not appear in the
+production binary. The Phase 1 implementer MUST NOT use `#[serial]` as a substitute for
+`temp-env` — serialisation mitigates the race but does not guarantee cleanup on panic.
+
 **BC-ENGINE-003:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
 `HookType` variant, with the exact path strings in §Struct-level inherent operations.
 `ClaudeCodeModule::spawn()` and `ClaudeCodeModule::preflight()` are inherent methods on
@@ -609,7 +661,7 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 
 | BC ID | Description | Source Section |
 |-------|-------------|----------------|
-| BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (detect/enrich/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>`; `enrich()` returns `Result<EnrichedSession, EngineMetadataError>`; no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
+| BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (id/detect/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>` (vision-spirit-aligned elaboration); `enrich()` returns `Result<EnrichedSession, EngineMetadataError>` (vision-spirit-aligned elaboration); no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
 | BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
 | BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
@@ -619,6 +671,31 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.4 changes (round-22 fixes F-R22-1/F-R22-2/F-R22-3):
+- F-R22-1/F-R22-2 RESOLVED (MEDIUM — adversary finding): §EngineModule Trait Signature
+  opening paragraph previously claimed all five methods match the vision "exactly."
+  This was imprecise: `id`, `detect`, and `on_hook` are vision-verbatim; `metadata`
+  and `enrich` are vision-spirit-aligned elaborations (Result-wrapped return types).
+  Fix: paragraph rewritten to enumerate the two provenance categories with explicit
+  rationale. The vision is confirmed non-authoritative for this surface per CLAUDE.md
+  §Architectural Authority. Implementers reading the vision sketch after this fix will
+  see a clear statement that the Result signatures defined here supersede the infallible
+  vision sketch. BC-ENGINE-001 Pre-Staging table row corrected: "(detect/enrich/on_hook)"
+  changed to "(id/detect/on_hook)" for the vision-verbatim claim; `metadata()` and
+  `enrich()` explicitly marked as vision-spirit-aligned elaborations. The vision document
+  was NOT edited (per authority decision in this fix burst — the vision is human-approved
+  verbatim; the architecture document is the canonical source for Phase 1 signatures).
+- F-R22-3 RESOLVED (MEDIUM — adversary finding): BC-ENGINE-002 had no test specification
+  for the `HomeUnresolvable` error paths in `metadata()` and `enrich()`. New sibling BC
+  BC-ENGINE-002-ERR added specifying the full test in
+  `monocle-runtime/tests/engine_module.rs`. Test isolation strategy: `temp-env = "^0.2"`
+  (new `[dev-dependencies]` pin in SS-deps-pin-manifest.md v1.1.6). `temp-env` uses RAII
+  cleanup (automatic on both normal and panic exit) making it safe for multi-threaded
+  Rust test harnesses; `std::env::remove_var` without RAII is a data-race in multi-threaded
+  tests; `serial_test` mitigates the race but lacks cleanup-on-panic guarantees.
+  Variables cleared: HOME, USERPROFILE, XDG_DATA_HOME, XDG_CONFIG_HOME, XDG_CACHE_HOME,
+  XDG_RUNTIME_DIR (all env vars that could allow `BaseDirs::new()` to succeed).
 
 v1.1.3 changes (round-20 fixes F-R20-1/F-R20-3):
 - F-R20-1 RESOLVED (MEDIUM): silent fallback `unwrap_or_else(|| PathBuf::from(".claude"))`
@@ -706,5 +783,5 @@ Cross-references:
 - `SS-daemon-lifecycle.md` — daemon startup sequence (ClaudeCodeModule::preflight
   called at step 1 before lock-file write)
 - `SS-deps-pin-manifest.md` — `async-trait = "^0.1"` (Phase 1 Pin Manifest)
-- Vision §EngineModule lines 111–128 (authoritative trait signature)
+- Vision §EngineModule lines 111–128 (original sketch; non-authoritative for Phase 1 signatures — this document supersedes it per CLAUDE.md §Architectural Authority)
 - `SS-forward-compatibility.md` lines 95–97 (sealing veto)
