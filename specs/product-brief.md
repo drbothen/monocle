@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.6"
+version: "1.4.7"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T19:00:00Z
+timestamp: 2026-05-12T20:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -30,6 +30,7 @@ supplements:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 ---
 
 # Product Brief: Monocle
@@ -66,6 +67,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4.4 | 2026-05-12 | product-owner (architect-surfaced follow-on from round 5 fix burst) | Body-size limit (256 KiB) added to Success Criteria as a measurable Phase 1 acceptance criterion, cross-referencing BC-DAEMON-003 in `SS-daemon-lifecycle.md`. Resolves the architect-surfaced follow-on from round 5 fix burst — v1.4.3 added the hardening sub-bullet to Scope but did not promote the limit to a measurable Success Criterion. No new scope; just promotes existing scope item to measurable criterion. |
 | 1.4.5 | 2026-05-12 | product-owner (two surgical fixes per round-6 audits) | `supplements:` frontmatter updated to include 3 round-5 artifacts (SS-permissions-phase1.md, SS-daemon-lifecycle.md, ADR-0003-license-selection.md); now 9 supplements total. Body-size Success Criterion endpoint list refined — `/healthz` and `/status` removed (GET endpoints with no body; limit applies to POST endpoints only). Resolves consistency G-01 (IMPORTANT) and adversary F-R6-006 (ADVISORY) from round-6 audits. |
 | 1.4.6 | 2026-05-12 | product-owner (two additions per human pre-Phase-1 decisions) | (Q-2) DTU `dtu-claude-code-hooks-v1` clone added to Phase 1 deliverables + Phase 1 Success Criteria (fidelity ≥0.95, all 5 endpoints, CI per-PR gate); cross-references dtu-assessment §"Phase 1 Clone Build Effort" and §"DTU Fidelity Measurement Procedure"; BC-DTU-001 placeholder. (Q-3) R-001 re-eval trigger monitoring operationalized via weekly GitHub Actions workflow (devops-engineer specced in parallel this burst at `.github/workflows/r001-monitor.yml`); quarterly maintainer review for false-negative trigger keywords. |
+| 1.4.7 | 2026-05-12 | product-owner (6 forward-compatibility FC items integrated as Phase 1 contracts per human authorization to lock pre-Phase-1; Phase 1 will run in fresh context; spec package must be self-contained) | New supplement `SS-core-types-and-abi.md` added (10 supplements total). New Phase 1 Scope sub-bullets and Success Criteria row covering: (FC-01) JSONL `format_version = 1` first key on every ring record; (FC-02) `#[non_exhaustive]` on all `monocle-core` public enums; (FC-03) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (FC-04 CRITICAL) `FactoryAdapter` trait defined with `VsddFactoryAdapter` implementing it (not inline-wired); (FC-05) `monocle-proto` `HookEnvelope` + 5 event messages with `uint32 schema_version = 1` first field; (FC-06) auth token format `monocle-v1:<64-char-hex>` with non-prefix rejection rule (HTTP 401). 10 behavioral contracts pre-staged for Phase 1 PRD authoring: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001/002, BC-RING-001, BC-AUTH-001/002. |
 
 ## Who Is It For?
 
@@ -150,6 +152,13 @@ accommodate without breaking Phase 1 ABI.
 - macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
   Actions; MSRV Rust 1.86 (ratatui floor, OQ-11)
 - DTU Phase 1 clone: `dtu-claude-code-hooks-v1` synthesized clone of Claude Code hook protocol surface for testing fidelity and regression detection. Per `.factory/specs/dtu-assessment.md` §"Phase 1 Clone Build Effort" (architect-specced this burst). Fidelity target: ≥0.95 against fixture corpus.
+- **Forward-compatibility contracts (locked pre-Phase-1 per human authorization):**
+  - **monocle-core ABI:** Export `MONOCLE_ABI_VERSION: u32 = 1` const; expose via `/status` endpoint. Phase 3 plugin SDK uses this to refuse incompatible Phase 1 daemons. See `SS-core-types-and-abi.md` §ABI Version Constant.
+  - **Public enum extensibility:** All `monocle-core` public enums (`HookType`, `HookEvent`, `Phase1Permission`, `DenyReason`, `AllowPattern`, `DenyPattern`) carry `#[non_exhaustive]` to permit Phase 2+ variant additions without breaking downstream `match` statements. See `SS-core-types-and-abi.md` §Enum Extensibility.
+  - **FactoryAdapter trait:** `monocle-core::factory::FactoryAdapter` trait defined; `VsddFactoryAdapter` IMPLEMENTS the trait (not wired inline as a struct with hardcoded behavior). Phase 1 ships one impl (`VsddFactoryAdapter`); Phase 3 plugin SDK extends via documented unsafe-impl mechanism. See `SS-core-types-and-abi.md` §FactoryAdapter Trait.
+  - **Prost wire schemas:** `monocle-proto` defines `HookEnvelope` + 5 event-type messages with `uint32 schema_version = 1;` as first field. Phase 4 federation uses these for cross-host wire format with schema_version compatibility checks. See `SS-core-types-and-abi.md` §Prost Wire Schemas.
+  - **JSONL ring format versioning:** Every JSONL event record carries `format_version: u32 = 1` as first key. Phase 2 trigger-trace can read Phase 1 ring history; version field allows future format evolution. See `SS-daemon-lifecycle.md` v1.0.3 §JSONL Ring Buffer.
+  - **Versioned auth token prefix:** Auth token format `monocle-v1:<64-char-hex>`. Phase 4 federation can introduce OAuth2 (`Bearer ...`) tokens without colliding with Phase 1 local tokens. Validation rule: reject non-prefix tokens with HTTP 401. See `SS-daemon-lifecycle.md` v1.0.3 §Daemon Lifecycle Protocol.
 
 **Phase 2 — Static Plane (roadmap)**
 
@@ -225,6 +234,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-DAEMON-003 (per `SS-daemon-lifecycle.md`). |
 | DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | Behavioral contract: BC-DTU-001 (Phase 1 PRD will formalize). |
+| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 10 behavioral contracts pre-staged for Phase 1 PRD: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001/002, BC-RING-001, BC-AUTH-001/002. Per `SS-core-types-and-abi.md` and `SS-daemon-lifecycle.md` v1.0.3. |
 
 ## Phase 2 Exit Criteria
 
