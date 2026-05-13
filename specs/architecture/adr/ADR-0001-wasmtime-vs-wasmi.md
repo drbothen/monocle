@@ -7,15 +7,15 @@ subsystems_affected: []
 supersedes: null
 superseded_by: null
 level: L3
-version: "1.0"
+version: "1.0.1"
 producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T16:00:00Z
+timestamp: 2026-05-12T18:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
 input-hash: "[live-state]"
-traces_to: "factory-artifacts ee09833 (brief v1.1)"
+traces_to: "factory-artifacts ee09833 (brief v1.1); consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---
 
@@ -70,7 +70,7 @@ future fallback if binary-size pressure becomes a release constraint.
 
 Pre-implementation (Phase 3 deliverable). Decision accepted at brief v1.1;
 rationale extracted to this ADR during brief v1.2 revision. wasmtime 44 pinned
-in dependencies.md; no code shipped yet.
+in SS-deps-pin-manifest.md; no code shipped yet.
 
 ## Alternatives Considered
 
@@ -81,6 +81,6 @@ in dependencies.md; no code shipped yet.
 
 - **Master design doc:** vision §Tech Stack (human-approved, D-012) specifies wasmtime as the WASM runtime
 - **Product brief:** `/Users/jmagady/Dev/monocle/.factory/specs/product-brief.md` v1.1 Constraints & Integration Points, wasmtime vs wasmi rationale paragraph
-- **Dependencies manifest:** `/Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md` §Phase 1 Pin Manifest row wasmtime 44
+- **Dependencies manifest:** `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md` §Phase 1 Pin Manifest row wasmtime 44
 - **Gene source:** `/Users/jmagady/Dev/monocle/.factory/semport/zellij/zellij-pass-8-final-synthesis.md` §plugin (zellij-tile WASM plugin SDK model)
 - **RUSTSEC context:** RUSTSEC-2026-0114, 0095, 0096, 0006, 0020 on pre-44 wasmtime majors

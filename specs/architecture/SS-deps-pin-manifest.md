@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1"
+version: "1.1.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T00:00:00Z
+timestamp: 2026-05-12T18:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---
 
@@ -37,7 +37,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | tokio | 1.52 | Async runtime (full feature set) | EXACT pin (see Patch-Pinning Policy); historical advisories on older minors; 1.52 remediated |
 | axum | 0.8 | HTTP server for hook ingestion | EXACT pin; pin as `=0.8.9` in Cargo.toml |
 | interprocess | 2.4 | Unix domain socket IPC | caret pin |
-| prost | 0.14 | Protobuf serialization for cross-host wire format | caret pin; see RUSTSEC note on transitive `bytes` advisory |
+| prost | 0.14 | Protobuf serialization for cross-host wire format | EXACT pin (see Patch-Pinning Policy); deserializes untrusted hook POST bodies at network boundary; see RUSTSEC note on transitive `bytes` advisory |
 | serde_json | (workspace) | JSON serialization | caret pin |
 | serde_yaml_ng | 0.10 | YAML config parsing | caret pin; NOT `serde_yaml 0.8` (unmaintained, alias-bomb CVE); NOT `serde_yml` (archived per RUSTSEC-2025-0068) |
 | bytes | 1.10 | Byte buffer utility | caret pin; direct workspace pin to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see RUSTSEC Audit Context); verified 2026-05-12 against crates.io: `bytes = "1.10"` is the patched line resolving RUSTSEC-2026-0007; `cargo tree -d bytes` from a prost 0.14 context confirms only the 1.10.x line is pulled when `bytes` is directly specified in workspace `[dependencies]`; without direct pin, prost 0.14 transitively requests `bytes = "^1.0"` which can resolve to older 1.x lines carrying the advisory |
@@ -90,9 +90,9 @@ The workspace `Cargo.toml` `rust-version` field is set to `"1.86"` for Phase 1. 
 
 ## Patch-Pinning Policy
 
-**Caret pin (`^x.y`) for library dependencies; EXACT pin (`=x.y.z`) for the 7 security-sensitive crates: `tokio`, `axum`, `russh`, `wasmtime`, `rmcp`, `reqwest`, `russh`.**
+**Caret pin (`^x.y`) for library dependencies; EXACT pin (`=x.y.z`) for the 7 security-sensitive crates: `tokio`, `prost`, `russh`, `wasmtime`, `rmcp`, `reqwest`, `axum`.**
 
-The 7 EXACT-pinned crates are: `tokio`, `axum`, `wasmtime`, `russh`, `rmcp`, `reqwest`, and one additional entry to be confirmed at Cargo workspace init if any further crate handles untrusted input at the network boundary.
+The 7 EXACT-pinned crates are: `tokio`, `prost`, `wasmtime`, `russh`, `rmcp`, `reqwest`, and `axum`. `prost` is exact-pinned because it deserializes untrusted hook POST bodies at the network boundary; threat-surface justifies EXACT-pin to ensure every bump goes through security-reviewer agent dispatch.
 
 Rationale: library crates are evaluated for security risk based on their public-API surface; patch upgrades are typically safe and automatable. The 7 security-sensitive crates handle untrusted network input or operate on security-critical protocol boundaries (TLS, SSH, WASM sandbox, HTTP server, HTTP client). Patch bumps on these crates can change cancellation semantics, timeout behavior, or sandboxing properties in ways that shift the threat surface — for example, a tokio patch can change task-cancellation ordering in ways that affect security-critical timeout invariants. Exact-pinning forces every bump through PR review with security-reviewer dispatch.
 
@@ -122,7 +122,7 @@ Phase 1 workspace: 11 named crates + 1 binary = **12 crates total** (per brief v
 
 ## Workspace Dependency Graph
 
-First-pass diagram showing the 12-crate Phase 1 workspace and principal dependency edges. Mark: first-pass; refine when Cargo workspace is initialized during `/vsdd-factory:create-architecture`.
+Authoritative for Phase 1 spec package; refresh after Cargo workspace `Cargo.toml` files exist (during `/vsdd-factory:create-architecture`) to reflect any inferred edges not visible from spec-level reasoning.
 
 ```mermaid
 graph TD
