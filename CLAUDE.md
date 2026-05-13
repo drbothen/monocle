@@ -44,8 +44,8 @@ When two artifacts disagree, the LATER, MORE-SPECIFIC artifact wins:
 3. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md` — nucleo 0.5 dormancy risk accepted with explicit re-eval trigger (retires TD-001).
 4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` — code conventions, anti-patterns, clippy + semgrep + PR-template + CI enforcement specs.
 5. `.factory/specs/dtu-assessment.md` — DTU clone scope for hook protocol surface (DTU_REQUIRED: true for Phase 1).
-6. `.factory/specs/product-brief.md` v1.4.1 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view. R-001 (Anthropic commoditization risk) reassessed at <10% probability; informational only, no mitigation scaffolding required.
-7. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1 — re-approved 2026-05-12 with refreshed endpoint set (canonical 5) and tech-stack pointer to `SS-deps-pin-manifest.md`. Captures human intent including all JC/EX/OQ-M closures.
+6. `.factory/specs/product-brief.md` v1.4.2 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view. R-001 (Anthropic commoditization risk) reassessed at <10% probability; informational only, no mitigation scaffolding required.
+7. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 — re-approved 2026-05-12 with refreshed endpoint set (canonical 5) and tech-stack pointer to `SS-deps-pin-manifest.md`. Captures human intent including all JC/EX/OQ-M closures. v1.1.1 is a surgical patch of v1.1 (path refs + frontmatter date); substantive content unchanged.
 8. `.factory/tech-debt-register.md` — tech debt register (see Principle 3 below; not for AI-driven deferrals).
 
 ---
@@ -222,7 +222,7 @@ Use this table to determine which specialist handles which kind of work. Authori
 ### Routing examples (from this project's recent history)
 
 - **Brief defect found by consistency-validator:** correct routing is `product-owner` (owner of brief content), NOT consistency-validator-fixes-it. Example: the F-03/F-04/F-11 fixes this session went through product-owner via the orchestrator after consistency-validator surfaced them.
-- **Tech-stack version pin needed:** correct routing is `architect` (with input from `research-agent` for version verification), NOT product-owner copying from a generic best-practices list. The `SS-deps-pin-manifest.md` stub was correctly extracted by product-owner but its production version (v1.1) was completed by architect.
+- **Tech-stack version pin needed:** correct routing is `architect` (with input from `research-agent` for version verification), NOT product-owner copying from a generic best-practices list. The `SS-deps-pin-manifest.md` stub was correctly extracted by product-owner but its production version (v1.1.1) was completed by architect.
 - **TDD red-gate violation found by test-writer:** route back to product-owner (if the BC is the problem) or to the human (if the spec is genuinely contradictory). DO NOT have the test-writer modify the BC silently.
 - **Security finding found by security-reviewer:** triage classification is security-reviewer's job. The FIX is implementer's job (with security-reviewer re-running to confirm). Use the `fix-pr-delivery` skill.
 - **Out-of-scope finding (legitimate scope-boundary defer):** still route to orchestrator. Orchestrator records the deferral with explicit future-story attachment per Principle 3 of the canonical principle. The deferral target must be a real story ID, not "Phase X" or "later."
