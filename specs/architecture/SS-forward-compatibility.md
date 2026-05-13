@@ -4,11 +4,11 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.0"
+version: "1.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T23:45:00Z
+timestamp: 2026-05-13T00:05:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1)"
 project: monocle
 ---
 
@@ -190,29 +190,44 @@ However, Phase 1 SHOULD version the token format so Phase 4 can distinguish Phas
 
 ### Cross-Phase Decisions Required
 
-All "PHASE 1 MUST DO" findings synthesized:
+All "PHASE 1 MUST DO" findings synthesized. v1.1 adds Disposition column — all 6
+items resolved pre-Phase-1 per human authorization (commit in same burst as v1.1).
 
-| ID | Finding | Severity | Phase 1 Spec Change | Owner |
-|----|---------|----------|---------------------|-------|
-| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-RING-NNN: JSONL event record schema must include `format_version: 1` as an immutable field; specify in Phase 1 PRD | architect |
-| FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | Phase 1 PRD must specify `HookType` enum with `#[non_exhaustive]`; guard against match-exhaustiveness lint via `_ => unreachable_unchecked()` with safety comment | architect |
-| FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | Single-line addition to `monocle-core/src/lib.rs`; Phase 3 SDK embeds this in WIT interface | architect |
-| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | Phase 1 PRD behavioral contract: `VsddFactoryAdapter: FactoryAdapter`; trait defined in `monocle-workflow` (or `monocle-core`); static bundle invokes via the trait, not directly | architect |
-| FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | Phase 1 PRD BC-PROTO-NNN: `HookEventProto` message types with `uint32 schema_version = 1;` field; `prost-build` in `build.rs`; no Phase 1 wire usage | architect |
-| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | SS-daemon-lifecycle.md §Start Sequence step 3 and §Lock File format must specify `monocle-v1:` prefix; auth middleware must strip prefix before validation | architect |
+| ID | Finding | Severity | Phase 1 Spec Change | Owner | Disposition |
+|----|---------|----------|---------------------|-------|-------------|
+| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-RING-001: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.3 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.3 per human authorization |
+| FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | BC-TYPES-001: `#[non_exhaustive]` default for all pub enums; exemption policy documented; specified in SS-core-types-and-abi.md §Enum Extensibility | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | BC-ABI-001 + BC-ABI-002: constant declared in `monocle-core::abi`; exposed via `/status`; specified in SS-core-types-and-abi.md §ABI Version Constant | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-FACTORY-001 + BC-FACTORY-002: trait defined in `monocle-core::factory`; full signature, sealed pattern, self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | BC-PROTO-001 + BC-PROTO-002: full HookEnvelope proto schema with field-number reservation convention; specified in SS-core-types-and-abi.md §Prost Wire Schemas | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-AUTH-001 + BC-AUTH-002: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.3 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.3 per human authorization |
 
-No findings require REWORK-level severity. All findings are tractable additions or one-line changes that fit within the Phase 1 spec crystallization scope.
+No findings require REWORK-level severity. All 6 findings are resolved with
+complete, production-grade spec text — not deferred, not advisory, not TODO.
 
 ### Verdict
 
-**PHASE 1 NEEDS PATCH.**
+**PHASE 1 READY** — all 6 forward-compat items resolved pre-Phase-1 per human
+authorization; spec package self-contained for fresh Phase 1 context.
 
-Phase 1 is structurally sound. The six patches above (FC-01 through FC-06) are required before Phase 1 PRD dispatch. None of them changes the Phase 1 delivery scope, crate layout, or external behavior. They are additions to the Phase 1 spec (primarily new behavioral contract entries and one constant) that prevent silent forward-compatibility failures at Phase 2, 3, and 4 boundaries.
+All six patches (FC-01 through FC-06) are locked into binding architecture
+artifacts BEFORE Phase 1 PRD dispatch. Phase 1 agents operating from a fresh
+context will find complete, unambiguous specs in:
 
-Critically: FC-04 (`VsddFactoryAdapter implements FactoryAdapter trait`) is the only CRITICAL finding. This is not a new requirement — vision §FactoryAdapter and brief §Phase 1 Constraints both describe `VsddFactoryAdapter` as a static bundle implementing the `FactoryAdapter` contract — but it must be made explicit in Phase 1 PRD behavioral contracts so the test-writer and implementer agents do not wire it inline without the trait.
+- `SS-core-types-and-abi.md` — FC-02, FC-03, FC-04 (CRITICAL), FC-05
+- `SS-daemon-lifecycle.md v1.0.3` — FC-01, FC-06
 
-Once these patches are applied during Phase 1 PRD authoring (`/vsdd-factory:create-prd`), Phase 1 dispatches with no further architect intervention on forward-compatibility grounds.
+None of the patches changes Phase 1 delivery scope, crate count, or external
+behavior. They are additions that prevent silent forward-compatibility failures
+at Phase 2, 3, and 4 boundaries.
 
-#### Routing for Patches
+FC-04 (`VsddFactoryAdapter implements FactoryAdapter trait`) was the only CRITICAL
+finding. It is resolved with a complete, sealed-trait-pattern-correct specification
+including the full trait signature, the `VsddFactoryAdapter` implementation skeleton,
+the Phase 3 relaxation path, and two behavioral contracts.
 
-All six patches are architect-owned and applied during Phase 1 PRD authoring. FC-06 additionally requires a patch to SS-daemon-lifecycle.md (an existing architect artifact). The product-owner (`/vsdd-factory:create-prd`) must receive this forward-compat scan as an input so the PRD behavioral contracts reflect FC-01 through FC-06.
+The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
+The 9 pre-staged BC IDs (BC-RING-001, BC-ABI-001, BC-ABI-002, BC-TYPES-001,
+BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001, BC-PROTO-002, BC-AUTH-001,
+BC-AUTH-002) are RESERVED — the PRD must use these exact IDs when formalizing
+the contracts with postconditions and verification harness stubs.

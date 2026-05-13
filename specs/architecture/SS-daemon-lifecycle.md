@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.2"
+version: "1.0.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T22:30:00Z
+timestamp: 2026-05-13T00:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization"
 project: monocle
 ---
 
@@ -164,6 +164,69 @@ let app = public_router.merge(authed_router);
       proceed.
 3. Generate a cryptographically random 32-byte auth token, hex-encoded (64 chars).
    Use `rand::rngs::OsRng` — not `thread_rng`.
+
+   **Token format (FC-06 resolution):** the auth token written to the lock file
+   and presented in the `X-Monocle-Authorization` header is
+   `monocle-v1:<64-char-hex>` — the literal prefix `monocle-v1:` followed by a
+   64-character lowercase hex string (32 bytes of `OsRng`-generated entropy).
+   Total token length: 74 characters.
+
+   The prefix versions the auth model. Phase 4 federation introduces OAuth2
+   bearer tokens for cross-host trust establishment; the prefix allows the
+   daemon's auth middleware to dispatch on token type without ambiguity:
+
+   | Prefix | Auth model | Phase introduced |
+   |--------|-----------|-----------------|
+   | `monocle-v1:` | Local shared secret (32-byte OsRng entropy) | Phase 1 |
+   | `Bearer ` | OAuth2 federation token (standard Authorization header) | Phase 4 |
+
+   Validation rule in Phase 1: any `X-Monocle-Authorization` value that does
+   NOT begin with `monocle-v1:` is rejected immediately with HTTP 401
+   `{"error":"invalid_auth_token_format"}` before any secret comparison occurs.
+   This prevents timing-oracle attacks where an attacker probes whether a
+   non-prefixed string matches the secret.
+
+   Auth middleware implementation:
+
+   ```rust
+   const TOKEN_PREFIX: &str = "monocle-v1:";
+
+   fn validate_auth_token(presented: &str, expected_secret: &str) -> bool {
+       let Some(hex_part) = presented.strip_prefix(TOKEN_PREFIX) else {
+           return false; // Rejected before any secret comparison.
+       };
+       // Constant-time comparison to prevent timing oracle on the hex secret.
+       constant_time_eq::constant_time_eq(hex_part.as_bytes(), expected_secret.as_bytes())
+   }
+   ```
+
+   The `expected_secret` stored in memory (and written to the lock file's
+   `authToken` field) is the bare 64-char hex string WITHOUT the prefix. The
+   prefix is stripped from the presented token before comparison. This design
+   keeps the lock-file value unambiguous (always a raw hex secret for Phase 1)
+   while the wire format is always prefixed.
+
+   Lock file `authToken` field value: `<64-char-hex>` (no prefix — the prefix
+   is a wire-format concern, not a storage concern).
+
+   **Behavioral contracts:**
+
+   - **BC-AUTH-001:** The auth token written to the lock file has format
+     `monocle-v1:<64-hex>` when read back from the lock file and presented to
+     the daemon. The lock file `authToken` field stores only the 64-char hex
+     part. Verification: integration test reads the lock file after daemon start
+     and asserts `authToken` matches `/^[0-9a-f]{64}$/`; presents
+     `monocle-v1:<authToken>` to `/status` and asserts HTTP 200.
+
+   - **BC-AUTH-002:** Any `X-Monocle-Authorization` value not beginning with
+     `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}`.
+     Verification: integration test sends `Authorization: Bearer fake`,
+     `X-Monocle-Authorization: baretoken`, and
+     `X-Monocle-Authorization: monocle-v2:abc` and asserts all receive HTTP 401.
+
+   Note: `constant_time_eq` crate is added to the Phase 1 dependency manifest
+   (caret pin `^1`; no untrusted-input deserialization; timing-safety is its
+   only function). Update SS-deps-pin-manifest.md Phase 1 pin table accordingly.
 4. Bind HTTP listener on `127.0.0.1:0` (OS-assigned port). Retrieve the actual
    port via `listener.local_addr()`.
 5. Bind UDS at `<runtime_dir>/monocle.sock` with mode `0o600`.
@@ -207,6 +270,29 @@ On receiving any shutdown signal:
 4. If `--persistent-events` flag is set, flush the JSONL ring buffer to disk at
    `<runtime_dir>/monocle-events.jsonl` (append mode, `tempfile::persist` for
    the current-segment file).
+
+   **Format versioning (FC-01 resolution):** every JSONL event record carries a
+   top-level `format_version: u32 = 1` field as the first key. Phase 2
+   trigger-trace ingests Phase 1 ring history; the version field allows Phase 2
+   to detect and refuse incompatible records (e.g., if a future Phase 5 changes
+   the record shape, Phase 2's reader checks `format_version` and falls back to
+   a migration path). Any future change to the record shape requires bumping
+   `format_version` AND adding a Phase 2 ingestor capable of reading both
+   versions. The field is serialized first in the JSON object — before
+   `session_id`, `timestamp_micros`, or any event-type field — so readers can
+   parse and validate the version without deserializing the full record.
+
+   Example record shape:
+
+   ```json
+   {"format_version":1,"session_id":"<uuid>","timestamp_micros":1747094400000000,"pid":12345,"hook_type":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cargo test"}}
+   ```
+
+   **Behavioral contract: BC-RING-001** — every JSONL record's first key is
+   `format_version` with value `1` for all Phase 1-origin records. Verification:
+   unit test in `monocle-runtime/tests/jsonl_ring.rs` serializes a
+   `HookEventRecord` and asserts the resulting JSON string begins with
+   `{"format_version":1,`.
 5. Persist last-known AppMode to crash-recovery checkpoint:
    `<runtime_dir>/monocle.recovery.json`:
    ```json
@@ -296,6 +382,9 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint | Daemon Lifecycle Protocol |
 | BC-DAEMON-005 | Lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
+| BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
+| BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-AUTH-002 | Any `X-Monocle-Authorization` value not beginning `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}` (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD will formalize these as full BC entries with postconditions,
 evidence, and verification harness stubs. This artifact pre-stages them for
