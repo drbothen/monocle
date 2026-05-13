@@ -1,11 +1,11 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "1.0"
-status: approved
+version: "1.1"
+status: draft-pending-reapproval
 producer: orchestrator
 phase: pre-phase-0-vision
-timestamp: 2026-05-11T20:30:00Z
+timestamp: 2026-05-12T23:59:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -15,14 +15,17 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/lazygit/lazygit-pass-8-final-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md
+  - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "factory-artifacts commit 2c2b676 (8-repo full-protocol ingest)"
+traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; dependencies.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
 project: monocle
 approved_by: human
 approved_at: 2026-05-11T20:30:00Z
 ---
 
-# Monocle Vision Synthesis (v1, approved 2026-05-11)
+# Monocle Vision Synthesis (v1.1, draft-pending-reapproval 2026-05-12)
 
 ## Vision Statement
 
@@ -51,17 +54,18 @@ User's tmux server (existing)
                                                               ▼
 monocle tmux server  (-L monocle socket, separate from user's)
 └── session: monocle-daemon  (long-lived background process)
-    ├── axum HTTP  :2748  (hook POST receiver)
-    ├── rmcp MCP   :2749  (optional MCP bridge for future tooling)
-    ├── russh      :2750  (SSH tunnel for federated multi-host)
+    ├── axum HTTP  :<os-port>  (hook POST receiver; OS-assigned per OQ-04; port written to lock file)
+    ├── rmcp MCP   :<os-port>  (optional MCP bridge for future tooling; Phase 4 only per OQ-09)
+    ├── russh      :<os-port>  (SSH tunnel for federated multi-host; Phase 4)
     ├── Arc<Broker<Event>>  (fan-out to all connected TUI clients)
     └── EngineModule registry  (per-harness adapters)
 
 Claude Code subprocesses  (one per session)
-├── PreToolUse hook  ──► POST http://localhost:2748/hooks/pre-tool-use
-├── PostToolUse hook ──► POST http://localhost:2748/hooks/post-tool-use
-├── Stop hook        ──► POST http://localhost:2748/hooks/stop
-└── PermissionPrompt ──► POST http://localhost:2748/hooks/permission
+├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
+├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/user-prompt-submit
+├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
+├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
+└── Stop hook              ──► POST http://localhost:<port>/hooks/stop
 
 Broker fans events to:
 ├── TUI client A (local)
@@ -70,6 +74,8 @@ Broker fans events to:
 ```
 
 The daemon is started once (`monocle daemon start`) and survives terminal closes. TUI clients connect and disconnect freely. The hook POST endpoints are the ingestion boundary — Claude Code subprocesses are unmodified; they simply fire their existing hook scripts that POST to the daemon.
+
+The canonical Phase 1 hook set is 5 endpoints, locked by JC-2 (`PostToolUse` omitted to preserve gene-source parity per any-context BC-HOOK-007 canonical matrix) and EX-2 (`SessionStart` and `UserPromptSubmit` added per architect extension). Note that the daemon port is OS-assigned at startup (OQ-04 resolution), not fixed at 2748 as the v1.0 diagram implied; the lock file written at `runtime_dir/monocle.lock` carries the actual port for hook-script consumption. `PermissionRequest` was considered as a 6th endpoint (OQ-M3) and resolved "stay at 5" — the `PreToolUse` + `Notification` pair captures all permission-relevant signal; revisit if Phase 2 trigger-trace UX surfaces a signal gap.
 
 ## Workspace Layout
 
@@ -286,9 +292,9 @@ Built-in: `VsddFactoryAdapter` (reads `.factory/STATE.md`, parses YAML frontmatt
 │  keybinds:  12 custom  /  48 builtin                                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │  [5] Events                                                          │
-│  20:29:01  PreToolUse  Bash  monocle-session-1                       │
-│  20:29:00  PostToolUse Read  monocle-session-1  12ms                 │
-│  20:28:58  Permission  Edit  blog-session-2  PENDING                 │
+│  20:29:01  PreToolUse    Bash  monocle-session-1                     │
+│  20:29:00  Notification  info  monocle-session-1  12ms               │
+│  20:28:58  PreToolUse    Edit  blog-session-2  PENDING               │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Tab: cycle panels  Enter: fullscreen  ?: help  /: filter  q: quit  │
 │  breadcrumb: Dashboard > Sessions                                    │
@@ -325,8 +331,8 @@ The VecDeque stack means both prompts are queued simultaneously. `[↑↓]` rota
 
 Setup: developer has three sessions running — `monocle-session-1` (Claude Code, project `monocle`, vsdd-factory phase pre-phase-0), `blog-session-2` (Claude Code, project `blog`, wave 2), `api-svc-session-3` (CodeMachine, project `api-svc`, idle). Two permission prompts arrive concurrently from different sessions. Developer is editing code in nvim.
 
-1. `blog-session-2` fires a `PermissionPrompt` hook — Edit on `draft.md`. Daemon receives POST, queues `PromptModal` in overlay stack, sends push notification to TUI client.
-2. `api-svc-session-3` fires a `PermissionPrompt` hook — Bash `cargo build --release`. Second `PromptModal` pushed to stack. TUI badge shows `2 prompts`.
+1. `blog-session-2` fires a `PreToolUse` hook with `decision_required: true` — Edit on `draft.md`. Daemon receives POST, queues `PromptModal` in overlay stack, sends push notification to TUI client.
+2. `api-svc-session-3` fires a `PreToolUse` hook with `decision_required: true` — Bash `cargo build --release`. Second `PromptModal` pushed to stack. TUI badge shows `2 prompts`.
 3. Developer presses `Ctrl-\` from nvim. Monocle popup appears (monocle tmux pane floats over editor). AppMode transitions to `Overlay { stack: [blog, api-svc], prior: Sessions }`. Both prompts visible: front prompt (blog) in focus.
 4. Developer reads diff for blog Edit. Presses `2` (Accept always). Daemon sends `{"decision": "always"}` back to `blog-session-2` hook response. `blog-session-2` unblocks and continues. Overlay stack pops front; `api-svc` prompt becomes front.
 5. Developer reads `cargo build --release`. Presses `1` (Accept once). Daemon sends `{"decision": "accept"}` to `api-svc-session-3`. Unblocks. Overlay stack now empty; AppMode restores to `Dashboard { focused: Sessions }`.
@@ -347,30 +353,7 @@ Contrast with today: developer would need to `Ctrl-b n` to find `blog-session-2`
 
 ## Tech Stack
 
-| Concern | Pick | Rationale |
-|---------|------|-----------|
-| TUI rendering | ratatui 0.29 | Mature, widget composability, retained-mode layout engine used by lazygit port candidates and zellij |
-| Terminal backend | crossterm 0.28 | Cross-platform, non-blocking input, mouse support |
-| CLI entrypoint | clap 4.x (derive) | Compile-time validated subcommands; `monocle daemon start/stop`, `monocle tui`, `monocle config` |
-| Async runtime | tokio 1.x (full features) | Industry standard; axum, russh, notify all require tokio |
-| HTTP server (daemon) | axum 0.8 | Ergonomic, tower-compatible, type-safe extractors for hook POST endpoints |
-| IPC (same host) | interprocess 2.x (Unix domain socket) | Zero-copy local IPC; shared-memory ring buffer for high-frequency event stream |
-| Serialization (wire) | prost 0.13 (protobuf) | Cross-host federation wire format; faster than JSON for high-frequency hook events |
-| MCP bridge | rmcp 0.3 | Optional MCP endpoint for future tooling integration (session query, prompt injection) |
-| SSH federation | russh 0.45 | Pure-Rust SSH client/server for multi-host tunnel; no OpenSSH dependency |
-| Fuzzy search | nucleo 0.5 | nucleo-matcher powers the `/` filter overlay; same engine as telescope.nvim |
-| Diff rendering | similar 2.x | Inline diff display in permission prompt overlays |
-| Markdown rendering | pulldown-cmark 0.12 | CLAUDE.md preview rendering in Customizations panel |
-| YAML parsing | serde_yaml_ng 0.10 | NOT serde_yaml 0.8 — that crate has known alias-bomb and is unmaintained (zellij wart: they still use 0.8) |
-| File watching | notify 7.x | Async watcher for STATE.md + settings.json live updates |
-| Clipboard | arboard 3.x | Copy session ID / customization path to system clipboard from popup |
-| Tracing | tracing + tracing-subscriber | Structured logs; hook events emit spans for OTel export |
-| WASM plugins | wasmtime 25.x | NOT wasmi — wasmtime has better WASI support and faster compile-time; used for EngineModule + FactoryAdapter plugins |
-| Temp file safety | tempfile::persist | Atomic config writes to `~/.monocle/config.json` |
-| Version parsing | semver 1.x | EngineModule version negotiation |
-| Config directories | directories 5.x | XDG-compliant `~/.config/monocle/` on Linux, `~/Library/Application Support/monocle/` on macOS |
-| Error handling | thiserror (library), anyhow (binary/main) | Standard Rust error idiom |
-| Event bus | tokio mpsc bounded + drop counter | Back-pressure on slow TUI clients; drop counter surfaces missed events in status bar |
+**Canonical version pin manifest:** see `.factory/specs/architecture/dependencies.md` (`SS-deps-pin-manifest.md` after path migration), which carries live-crates.io-verified pins and the RUSTSEC audit context. The pin manifest supersedes the version examples that appeared in v1.0 of this vision. The architectural intent of each crate (ratatui for TUI, crossterm as backend, tokio for async runtime, axum for hook ingestion, interprocess for IPC, prost for cross-host wire format, serde_yaml_ng for config, wasmtime for Phase 3 SDK, nucleo for fuzzy matching, similar for diff preview, directories for XDG paths, notify for FS watching, russh for federation, rmcp for MCP bridge, tempfile for atomic writes, clap for CLI, arboard for clipboard, tracing for instrumentation, thiserror+anyhow for error handling, reqwest for HTTP client) remains the same as v1.0. What changed: each pin was verified against crates.io between 2026-05-11 (v1.0) and 2026-05-12 (this v1.1), and updated to the current stable major.minor with explicit RUSTSEC justification where pre-current versions had known advisories. See `dependencies.md` §RUSTSEC Audit Context for the per-crate advisory list.
 
 ## Phase Plan
 
@@ -381,6 +364,23 @@ Contrast with today: developer would need to `Ctrl-b n` to find `blog-session-2`
 | 3 | Workflow plane | monocle-workflow, FactoryAdapter trait, VsddFactoryAdapter, Workflow panel, STATE.md live watcher, monocle-plugin-sdk (WASM ABI for EngineModule + FactoryAdapter) | Workflow panel shows phase/status/blocking-issues for a vsdd-factory project in real time; WASM plugin loads a third-party FactoryAdapter |
 | 4 | Cross-plane + multi-harness + federation | CodeMachineModule, monocle-proto (protobuf wire), russh federation tunnel, multi-host roster, OTel cost/token panel, CCR integration (detect + config-write), rmcp MCP bridge (optional) | Two hosts federated: monocle TUI on host A shows sessions from host B; CCR detected and per-session routing config written automatically |
 
+## Closure Log (v1.0 to v1.1)
+
+**What this version captures:** The human's intent from the v1.0 approval event (2026-05-11) AS REFINED by:
+
+- JC-1 (7-customization-type scope) — moved to Phase 2 Exit Criteria, not Phase 1 (resolves contradiction in v1.0 success criteria)
+- JC-2 (5 hook endpoints, `PostToolUse` omitted) — canonical endpoint set locked
+- JC-3 (port 2748 fixed vs OS-assigned) — OS-assigned per OQ-04
+- EX-1 (13-crate workspace → 12-crate workspace per enumeration; see brief v1.4 for correct count)
+- EX-2 (`SessionStart` + `UserPromptSubmit` added to Phase 1 endpoint set)
+- OQ-01..OQ-11 resolutions per `.factory/planning/oq-research.md` (b3c68ca)
+- OQ-M1 (agent-view IPC coexistence): resolved — agent view uses internal Claude Code IPC, no port/auth collision with monocle's outbound hook POSTs
+- OQ-M2 (claude-manager hook protocol): resolved — claude-manager uses tmux pane management, NOT hook protocol; monocle's hook-native moat is intact
+- OQ-M3 (`PermissionRequest` as 6th endpoint): resolved — stay at 5 endpoints per JC-2 parity argument; revisit if Phase 2 trigger-trace UX surfaces signal gap
+- R-001 (Anthropic deepens agent view): probability 25-40% accepted; mitigation = production-grade Phase 1 hook-native overlay + Phase 2 trigger-trace BC anchors + Phase 3 workflow-plane FactoryAdapter trait stability ADR + multi-harness EngineModule architecture (depth on every dimension agent view does not touch).
+
+**What this version does NOT change:** The vision's core thesis ("one TUI lens over every Claude-class session"), the five-plane architecture, the observe-only-for-state / action-only-for-overlays principle, the killer scenario (4 keys per any concurrent permission prompt pair), the gene-transfusion methodology, or the multi-harness EngineModule trait abstraction. All architectural intent from v1.0 is preserved.
+
 ## Provenance
 
 This vision synthesis was produced by the orchestrator agent after the full-protocol brownfield-ingest of 8 reference repos completed (factory-artifacts commit 2c2b676). The human approved it verbatim 2026-05-11 with the statement "I agree with this fully". It is the pre-brief vision document that downstream agents (product-owner for `/vsdd-factory:create-brief`, architect for `/vsdd-factory:create-architecture`, disposition-pass agents) must reference.
@@ -388,3 +388,5 @@ This vision synthesis was produced by the orchestrator agent after the full-prot
 The vision is the synthesis lens for disposition decisions: every subsystem in every reference repo gets sorted into Model / Take-but-reimplement / Enhance / Leave-behind through THIS vision. If a future vision-doc change invalidates prior dispositions, those dispositions must be re-run.
 
 The vision is intentionally opinionated. It does NOT enumerate every option; it states the chosen direction. Alternative directions discussed in the synthesis bursts but rejected: build-in LLM routing (rejected — integrate CCR externally), inherit PM/Worker orchestration (rejected by user direction), execute workflows (rejected — observe-only).
+
+v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/EX/OQ-M closures and version-pin updates from the OQ research and market intel work that followed the v1.0 approval. Awaiting human re-approval.
