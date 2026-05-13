@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.2"
+version: "1.1.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed"
 project: monocle
 ---
 
@@ -81,7 +81,15 @@ pub trait EngineModule: Send + Sync + 'static {
     fn id(&self) -> &'static str;
 
     /// Static metadata describing this engine for UI display + config.
-    fn metadata(&self) -> EngineMetadata;
+    ///
+    /// Returns `Err(EngineMetadataError::HomeUnresolvable)` when the platform
+    /// home directory cannot be resolved (e.g., `$HOME` unset in a systemd
+    /// `User=` unit, broken passwd entry, or sandboxed runtime). Callers MUST
+    /// propagate this error rather than substituting a default path; daemon
+    /// initialization MUST fail fast with a diagnostic message rather than
+    /// operating on a relative path that downstream code treats as absolute
+    /// (silent-failure violation per CLAUDE.md SOUL #4).
+    fn metadata(&self) -> Result<EngineMetadata, EngineMetadataError>;
 
     /// Detect whether a running process matches this engine's signature.
     /// Sync because process inspection is OS-level cheap; called per-process during scan.
@@ -89,7 +97,11 @@ pub trait EngineModule: Send + Sync + 'static {
 
     /// Enrich a detected process snapshot with engine-specific context
     /// (session ID derivation, transcript path resolution, harness config introspection).
-    async fn enrich(&self, proc: &ProcessSnapshot) -> EnrichedSession;
+    ///
+    /// Returns `Err(EngineMetadataError::HomeUnresolvable)` when the platform
+    /// home directory cannot be resolved. The daemon MUST surface this as a
+    /// session-enrichment failure rather than substituting a relative path.
+    async fn enrich(&self, proc: &ProcessSnapshot) -> Result<EnrichedSession, EngineMetadataError>;
 
     /// Process an inbound hook event, returning the dispatch decision.
     async fn on_hook(&self, event: HookEvent) -> HookResponse;
@@ -295,7 +307,7 @@ impl EngineModule for ClaudeCodeModule {
         "claude-code"
     }
 
-    fn metadata(&self) -> EngineMetadata {
+    fn metadata(&self) -> Result<EngineMetadata, EngineMetadataError> {
         // Claude Code is XDG-non-conforming: it uses `~/.claude/` on every platform
         // (Linux, macOS, Windows), NOT XDG-conforming paths such as
         // `~/.config/claude-code/` or `~/Library/Application Support/...`.
@@ -303,11 +315,16 @@ impl EngineModule for ClaudeCodeModule {
         // provides the platform home directory without XDG path transformation,
         // which is exactly the right primitive here. `ProjectDirs` is wrong for this
         // use case because it applies XDG path transforms.
-        let claude_config_root =
-            directories::BaseDirs::new()
-                .map(|b| b.home_dir().join(".claude"))
-                .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
-        EngineMetadata {
+        //
+        // `BaseDirs::new()` returns `None` when the platform home directory is
+        // unresolvable (e.g., `$HOME` unset in a systemd `User=` unit). We MUST
+        // fail fast with a typed error rather than substituting a relative path:
+        // downstream callers treat config_paths entries as absolute, and a relative
+        // `.claude` path would silently point to the wrong directory (SOUL #4).
+        let base_dirs = directories::BaseDirs::new()
+            .ok_or(EngineMetadataError::HomeUnresolvable)?;
+        let claude_config_root = base_dirs.home_dir().join(".claude");
+        Ok(EngineMetadata {
             display_name: "Claude Code",
             icon: '●',
             config_paths: vec![
@@ -315,7 +332,7 @@ impl EngineModule for ClaudeCodeModule {
                 claude_config_root.with_extension("json"), // ~/.claude.json
             ],
             hook_schema_version: 1,
-        }
+        })
     }
 
     fn detect(&self, proc: &ProcessSnapshot) -> bool {
@@ -329,7 +346,7 @@ impl EngineModule for ClaudeCodeModule {
             .unwrap_or(false)
     }
 
-    async fn enrich(&self, proc: &ProcessSnapshot) -> EnrichedSession {
+    async fn enrich(&self, proc: &ProcessSnapshot) -> Result<EnrichedSession, EngineMetadataError> {
         let session_id = proc
             .env
             .get("CLAUDE_SESSION_ID")
@@ -339,10 +356,15 @@ impl EngineModule for ClaudeCodeModule {
         // Resolve Claude Code's config root via `directories::BaseDirs` (no `dirs` crate).
         // Claude Code uses `~/.claude/` on every platform; `BaseDirs::home_dir()`
         // gives the platform home directory without XDG path transforms.
-        let claude_config_root =
-            directories::BaseDirs::new()
-                .map(|b| b.home_dir().join(".claude"))
-                .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
+        //
+        // `BaseDirs::new()` returns `None` when the platform home directory is
+        // unresolvable. We MUST fail fast with a typed error: the paths returned in
+        // `EnrichedSession` (transcript_path, config_path) are treated as absolute by
+        // downstream callers (transcript watcher, DTU validator, TUI display). A
+        // relative fallback would silently misdirect all path-dependent operations.
+        let base_dirs = directories::BaseDirs::new()
+            .ok_or(EngineMetadataError::HomeUnresolvable)?;
+        let claude_config_root = base_dirs.home_dir().join(".claude");
 
         let transcript_path = proc.working_dir.as_ref().map(|cwd| {
             // Standard Claude Code transcript layout:
@@ -353,14 +375,14 @@ impl EngineModule for ClaudeCodeModule {
                 .join(format!("{}", cwd.display()))
         });
 
-        EnrichedSession {
+        Ok(EnrichedSession {
             session_id,
             harness_type: self.id().to_string(),
             transcript_path,
             config_path: Some(claude_config_root),
             status: SessionStatus::Active,
             last_event_micros: 0, // updated by on_hook
-        }
+        })
     }
 
     async fn on_hook(&self, _event: HookEvent) -> HookResponse {
@@ -406,11 +428,12 @@ impl ClaudeCodeModule {
     ///
     /// # Validation
     ///
-    /// `hook_base_url` is **NOT validated as a URL** at construction time. The
-    /// URL is consumed when the module registers hook endpoints with the daemon
-    /// at startup; malformed URLs surface as `PreflightError::InvalidHookUrl`
-    /// from `preflight()`. Callers who want eager validation should
-    /// `Url::parse(&hook_base_url)` (from the `url` crate) before invoking `new`.
+    /// `hook_base_url` is **NOT validated as a URL** at construction time —
+    /// construction is infallible. The URL is validated when the module registers
+    /// hook endpoints with the daemon at startup; malformed URLs surface as
+    /// `PreflightError::InvalidHookUrl` from `preflight()`. Callers who want
+    /// eager URL validation before invoking `new` may do so with any URL parsing
+    /// strategy they choose; the spec does not mandate a specific crate.
     pub fn new(hook_base_url: String) -> Self {
         Self { hook_base_url }
     }
@@ -516,6 +539,28 @@ pub enum PreflightError {
     #[error("preflight check failed: {reason}")]
     Failed { reason: String },
 }
+
+/// Error from `EngineModule::metadata` and `EngineModule::enrich`.
+///
+/// Both methods call `directories::BaseDirs::new()` to resolve the platform home
+/// directory. In correctly configured environments `BaseDirs::new()` always succeeds.
+/// In certain edge cases — a systemd `User=` unit with no `Environment=HOME` directive,
+/// a broken passwd entry, or a hardened sandbox that unsets `$HOME` — it returns `None`.
+/// Substituting a relative path in that case would constitute a silent failure (CLAUDE.md
+/// SOUL #4): downstream callers (TUI display, DTU validator, transcript watcher) treat
+/// the returned paths as absolute. Daemon initialization MUST fail fast with this error
+/// and surface a diagnostic message to the operator.
+#[derive(Debug, thiserror::Error)]
+pub enum EngineMetadataError {
+    /// Platform home directory could not be resolved (e.g., `$HOME` unset
+    /// in a systemd `User=` unit with no `Environment=HOME`, broken passwd
+    /// entry, or sandboxed runtime). Daemon initialization MUST fail fast
+    /// with this error rather than substituting a relative path that
+    /// downstream callers will treat as absolute (silent-failure violation
+    /// per CLAUDE.md SOUL #4).
+    #[error("platform home directory unresolvable (BaseDirs::new() returned None)")]
+    HomeUnresolvable,
+}
 ```
 
 The `todo!()` markers are intentional: these are Phase 1 spec artifacts.
@@ -528,11 +573,17 @@ implementation. These signatures are binding — the implementer must not alter 
 
 **BC-ENGINE-001:** The `EngineModule` trait is defined in `monocle-core::engine` with
 the exact vision-aligned signature in §EngineModule Trait Signature (methods: `id`,
-`metadata`, `detect`, `enrich`, `on_hook`). Supporting types `EngineMetadata`,
-`ProcessSnapshot`, `EnrichedSession`, `SessionStatus`, `HookResponse`, `HookDecision`,
-`DeferUntil` are co-located in `monocle-core::engine`. The trait carries NO sealed
-bound. Verification: `cargo check` with the Phase 1 workspace; `rustdoc` confirms all
-types are publicly accessible and the trait has no `private::Sealed` supertrait.
+`metadata`, `detect`, `enrich`, `on_hook`). Method return types are:
+`id() -> &'static str`; `metadata() -> Result<EngineMetadata, EngineMetadataError>`;
+`detect() -> bool`; `enrich() -> Result<EnrichedSession, EngineMetadataError>`;
+`on_hook() -> HookResponse`. The `Result`-returning methods MUST NOT substitute a
+default path for `EngineMetadataError::HomeUnresolvable`; daemon initialization MUST
+fail fast with a diagnostic (no silent-fallback contract, CLAUDE.md SOUL #4).
+Supporting types `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`, `SessionStatus`,
+`HookResponse`, `HookDecision`, `DeferUntil`, `EngineMetadataError` are co-located in
+`monocle-core::engine`. The trait carries NO sealed bound. Verification: `cargo check`
+with the Phase 1 workspace; `rustdoc` confirms all types are publicly accessible and the
+trait has no `private::Sealed` supertrait.
 
 **BC-ENGINE-002:** `ClaudeCodeModule` (defined in `monocle-runtime::engine::claude_code`)
 implements `EngineModule`. A public `ClaudeCodeModule::new(hook_base_url: String) -> Self`
@@ -558,7 +609,7 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 
 | BC ID | Description | Source Section |
 |-------|-------------|----------------|
-| BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (detect/enrich/on_hook) and no sealed bound | §EngineModule Trait Signature |
+| BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (detect/enrich/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>`; `enrich()` returns `Result<EnrichedSession, EngineMetadataError>`; no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
 | BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
 | BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
@@ -568,6 +619,28 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.3 changes (round-20 fixes F-R20-1/F-R20-3):
+- F-R20-1 RESOLVED (MEDIUM): silent fallback `unwrap_or_else(|| PathBuf::from(".claude"))`
+  eliminated from both `metadata()` and `enrich()`. Root cause: the F-R18-1 fix
+  correctly replaced `ProjectDirs` with `BaseDirs::new()` but introduced
+  `.unwrap_or_else(|| PathBuf::from(".claude"))` for the `None` case — a relative
+  path fallback that downstream callers (TUI display, DTU validator, transcript watcher)
+  treat as absolute. This constitutes a silent-failure violation (CLAUDE.md SOUL #4).
+  Fix: `EngineMetadataError` enum added with `HomeUnresolvable` variant. `metadata()`
+  return type changed from `EngineMetadata` to `Result<EngineMetadata, EngineMetadataError>`;
+  `enrich()` return type changed from `EnrichedSession` to
+  `Result<EnrichedSession, EngineMetadataError>`. Both implementations use
+  `BaseDirs::new().ok_or(EngineMetadataError::HomeUnresolvable)?` — daemon initialization
+  must fail fast with a typed error and operator-visible diagnostic rather than silently
+  operating on a wrong relative path. BC-ENGINE-001 updated to document the Result return
+  types and the no-silent-fallback contract.
+- F-R20-3 RESOLVED (LOW): `ClaudeCodeModule::new` rustdoc previously recommended
+  `Url::parse(&hook_base_url)` from the `url` crate for eager validation. The `url` crate
+  is not pinned in SS-deps-pin-manifest.md; recommending it in spec rustdoc would cause
+  implementers to pull an unpinned transitive. Fix: crate recommendation removed. Rustdoc
+  now describes the infallible-construction / fail-at-preflight contract without mandating
+  a specific validation crate.
 
 v1.1.2 changes (round-19 fixes F-R18-1/F-R18-2/F-R18-4):
 - F-R18-1 RESOLVED (CRITICAL): both `ProjectDirs::from("com", "anthropic", "claude-code")`
