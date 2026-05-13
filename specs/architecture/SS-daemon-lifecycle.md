@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.5"
+version: "1.0.6"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added"
 project: monocle
 ---
 
@@ -337,6 +337,7 @@ On receiving any shutdown signal:
    /// `tool_name` and `tool_input` are `Option` because only `PreToolUse` and
    /// `Notification` hook events carry tool context; `SessionStart`, `Stop`, and
    /// `UserPromptSubmit` events set both to `None`.
+   #[non_exhaustive]
    #[derive(Debug, Clone, Serialize, Deserialize)]
    pub struct HookEventRecord {
        /// Format version for this ring record shape. Always `1` in Phase 1.
@@ -524,6 +525,29 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.6 changes (round-30 fix F-R30-2 MEDIUM):
+- F-R30-2 RESOLVED (MEDIUM — adversary finding): `HookEventRecord` was defined in
+  §Daemon Lifecycle Protocol §Drain with `#[derive(Debug, Clone, Serialize, Deserialize)]`
+  but NO `#[non_exhaustive]` attribute. The v1.0.5 trace entry for F-R28-4 stated that
+  `HookEventRecord::new(...)` was added using "the same `#[non_exhaustive]` / E0639 reasoning
+  as engine-module structs — integration tests compile as separate binaries." This was
+  self-referentially broken: the reasoning cited the attribute's necessity but the attribute
+  was absent from the struct definition. Fix: `#[non_exhaustive]` added to `HookEventRecord`
+  above the `#[derive(...)]` line. Rationale: (1) `monocle-runtime/tests/jsonl_ring.rs`
+  compiles as a separate `[[test]]` binary; E0639 applies — struct literal construction of
+  `HookEventRecord` outside `monocle-runtime` is forbidden unless `#[non_exhaustive]` is
+  absent, but a constructor is already present for exactly this reason. (2) Phase 2
+  ring-buffer format evolution (adding fields to `HookEventRecord`) requires either
+  `#[non_exhaustive]` or a SemVer-major version bump; `#[non_exhaustive]` is the correct
+  production-grade forward-compat mechanism per SS-forward-compatibility.md §Analysis.
+  (3) Consistency: all other structs in the constructor audit table in SS-engine-module.md
+  carry `#[non_exhaustive]` (EngineMetadata, ProcessSnapshot, EnrichedSession, HookResponse,
+  SpawnArgs, SessionHandle, EngineVersion); HookEventRecord should be consistent.
+  The existing `HookEventRecord::new(...)` constructor is unchanged — it was already present
+  to satisfy E0639; the attribute addition makes the intent explicit and the spec internally
+  consistent. Cross-reference: SS-engine-module.md §Cross-Crate Constructor Audit table
+  v1.1.9 now includes `HookEventRecord` as row 8.
 
 v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - F-R28-4 RESOLVED (MEDIUM — adversary finding): `HookEventRecord` was referenced by
