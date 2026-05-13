@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.10"
+version: "1.11"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle)"
 project: monocle
 ---
 
@@ -319,7 +319,7 @@ CI step:
 After Step 2, run `scripts/check_audit_table.py` (devops-engineer Phase 1 deliverable):
 ```
 python scripts/check_audit_table.py \
-  --semgrep-json <(semgrep --config .semgrep.yml --json --include "monocle-*/src/**/*.rs") \
+  --semgrep-json <(semgrep --config .semgrep.yml --json) \
   --spec-file .factory/specs/architecture/SS-engine-module.md \
   --rule-id monocle-non-exhaustive-struct-audit-completeness
 ```
@@ -775,6 +775,28 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.11 changes (round-41 fix F-R40-1 MEDIUM):
+
+- F-R40-1 RESOLVED (MEDIUM — adversary finding): The Step 3 audit-table gap check CLI
+  invocation used `--include "monocle-*/src/**/*.rs"` as a CLI-level file filter. This
+  glob requires a hyphen after `monocle` (the `*` in `monocle-*` matches the crate-name
+  suffix, not an empty string in standard semgrep/shell glob semantics). The binary crate
+  is named `monocle` (no hyphen), so its source at `monocle/src/**/*.rs` does NOT match
+  `monocle-*/src/**/*.rs`. The CLI `--include` is applied by the semgrep runner before
+  rule-level `paths.include` is evaluated — structs defined in `monocle/src/**/*.rs` are
+  never read, making the rule's `paths.include` entry for the binary crate a dead letter.
+  The audit-completeness gap has zero CI signal: the Python script receives no semgrep
+  findings from the binary crate, so it cannot report a table gap for structs defined there.
+  Fix chosen: Option A — remove `--include` from the CLI invocation entirely. The rule's
+  `paths.include` (expanded to all 12 workspace paths in F-R34-3/v1.8) is already the
+  authoritative and complete scope governor. CLI `--include` was redundant and incorrect.
+  Option B (glob `monocle*/src/**/*.rs`) was rejected as relying on glob semantics where `*`
+  matches empty string — correct in Python fnmatch but not universally guaranteed across
+  semgrep runner versions. Option C (dual `--include` flags) was rejected as a maintenance
+  burden requiring update whenever a new crate is added. After fix, the runner reads all
+  Rust source files in the workspace and the rule's `paths.include` governs which files the
+  rule fires on — as intended by F-R34-3.
 
 v1.10 changes (round-39 fix F-R38-1 MEDIUM):
 
