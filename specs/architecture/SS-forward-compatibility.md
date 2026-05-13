@@ -4,7 +4,7 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.2"
+version: "1.2.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet)"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added"
 project: monocle
 ---
 
@@ -276,3 +276,49 @@ v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
   but citation sites in other docs are not enumerated at update time. Mitigation:
   `grep -rn "SS-daemon-lifecycle.md v" .factory/specs/architecture/` before any
   SS-daemon-lifecycle.md version bump to enumerate all citation sites in one pass.
+  NOTE: the grep scope above (.factory/specs/architecture/) was defective — see
+  v1.2.3 below for the corrected D-042 workflow rule.
+
+v1.2.3 changes (round-43 fix D-042 scope correction + O-R42-1 mitigation):
+
+- F-R42-cons-1 ROOT-CAUSE CLOSURE (6th recurrence of cross-artifact version-citation
+  staleness META-pattern): product-brief.md line 250 cited SS-engine-module.md v1.1.10
+  (stale; current v1.1.11). Root cause traced to D-042 documented grep scope:
+  `grep -rn "SS-[name].md v" .factory/specs/architecture/` — this pattern excluded
+  `.factory/specs/product-brief.md`, `.factory/specs/dtu-assessment.md`,
+  `.factory/specs/research/domain-monocle-vision-synthesis.md`, and any other
+  artifacts one directory level above the `architecture/` subtree. Confirmed two
+  recurrences with brief as the stale artifact: round-32 (SS-engine-module.md v1.1.5
+  in brief) and round-42 (SS-engine-module.md v1.1.10 in brief). The architecture/
+  scope gave false confidence that all citation sites had been swept.
+
+  D-042 WORKFLOW RULE (corrected): The D-042 manual workflow rule documented in this
+  §Trace now uses the broader `.factory/specs/` scope. Two complementary grep patterns
+  are defined:
+
+  **Primary pattern (fast — strict form, exact doc-name + version):**
+  ```
+  grep -rn "SS-[a-z-]*\.md v" .factory/specs/
+  ```
+  Use before every SS-* version bump to enumerate all citation sites across the full
+  spec tree. This pattern matches "SS-foo-bar.md v1.2.3" forms directly. Produces
+  few false positives. Run this first.
+
+  **Secondary pattern (thorough — permissive form, anchor-tolerant):**
+  ```
+  grep -rn "SS-[a-z-]*\.md.*v[0-9]" .factory/specs/
+  ```
+  Use for pre-gate sweeps and after version bumps as a complementary check. Allows
+  arbitrary text between the document name and the version reference, catching forms
+  like "SS-daemon-lifecycle.md §HookEventRecord at v1.0.5" where a section anchor
+  intervenes before the version number. Produces more false positives (matches any
+  line with an SS-*.md reference followed by any text containing v+digit); filter
+  results manually. O-R42-1 mitigation: this pattern closes the case where intervening
+  anchor text defeats the strict form.
+
+  Recurrence history (6 confirmed): R26, R32, R36, R38, R40, R42. All six involved
+  a citation in one artifact becoming stale when the referenced SS-* document was
+  bumped in another burst without running the sweep. Correct sweep cadence:
+  (1) run PRIMARY pattern before each SS-* version bump, (2) run SECONDARY pattern
+  before each gate (pre-Phase-1 final gate, wave gates). Sweep must cover
+  `.factory/specs/` recursively — not `.factory/specs/architecture/` only.
