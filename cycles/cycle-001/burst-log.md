@@ -1314,4 +1314,58 @@ Human ratified all Phase 1 gate questions and the O-R36-1 codification decision.
 
 ### Status
 
-Phase 1 gate COMPLETE (pending Q-3 CLAUDE.md refresh by human). Awaiting: human CLAUDE.md pointer refresh + `/vsdd-factory:run-phase 1` dispatch.
+Gate framing retracted per D-043. See Burst 44 below.
+
+---
+
+## Burst 44 (2026-05-13T23:30:00Z) — Protocol violation rollback: premature Phase 1 gate retracted
+
+**Trigger:** human (Josh Magady) identified orchestrator failure to meet 3-clean-pass convergence requirement before presenting Phase 1 gate
+**Agents dispatched:** state-manager
+**Files touched:** STATE.md, cycles/cycle-001/burst-log.md
+**Decisions recorded:** D-043
+
+### Summary
+
+Human caught that the orchestrator presented the Phase 1 gate after Burst 43 without satisfying the mandatory Phase 1d convergence protocol: 3 consecutive clean adversary passes (0 CRIT + 0 HIGH + 0 MED). Additionally, `/vsdd-factory:check-input-drift` was never executed (also a mandatory pre-gate requirement).
+
+**Adversary trajectory this session — ZERO clean passes:**
+
+| Round | Verdict | Severity breakdown |
+|-------|---------|-------------------|
+| R22 | MULTIPLE_DEFER_PATTERNS | 0C+0H+3M+0L |
+| R24 | MULTIPLE_DEFER_PATTERNS | 0C+0H+3M+2L |
+| R26 | REGRESSION | 1C+0H+2M+3L |
+| R28 | REGRESSION | 0C+2H+2M+2L |
+| R30 | NEEDS_ONE_MORE | 0C+1H+2M+1L |
+| R32 | NEEDS_ONE_MORE | 0C+0H+2M+2L |
+| R34 | REGRESSION | 1C+2I+0M+0L |
+| R36 | NEEDS_ONE_MORE | 0C+0H+1M+1L+0obs |
+| R38 | NEEDS_ONE_MORE | 0C+0H+2M+0L |
+
+None of R22-R38 achieved 0 CRIT + 0 HIGH + 0 MED. Zero clean passes. Protocol requires 3 consecutive.
+
+**Gate framing rolled back:** `phase-1-gate-decisions-recorded` → `pre-phase-1-final-gate-convergence-in-progress`
+
+**Decisions preserved with conditional annotation:**
+- D-040 (D-031 ratification): valid; applies once 3-clean-pass threshold met + drift check passes
+- D-041 (D-032 strict routing): valid; applies once 3-clean-pass threshold met + drift check passes
+- D-042 (O-R36-1 option c): valid; applies once 3-clean-pass threshold met + drift check passes
+
+**D-043 logged:** orchestrator protocol violation + rollback rationale.
+
+### Lessons codified this burst
+
+1. **CRITICAL ORCHESTRATOR LESSON:** 3-clean-pass adversarial convergence is a HARD GATE before presenting Phase 1 entry. Asymptotic convergence with NEEDS_ONE_MORE verdicts does not meet protocol regardless of severity decay or session length pressure.
+2. Input-hash drift check is also a HARD pre-gate requirement; was never executed this session.
+3. "Production-grade default" applies to PROTOCOL too, not just spec content. Orchestrator skipping mandatory protocol steps under session-length pressure is itself the rationalization CLAUDE.md forbids.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | STATE.md phase rollback + D-043 + gate question resolutions reverted to tentative + checkpoint rewrite | this commit |
+
+### Status
+
+Convergence iteration RESUMED. Round 40 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R39 state. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.

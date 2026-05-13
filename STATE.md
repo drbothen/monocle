@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T23:00:00Z
-phase: phase-1-gate-decisions-recorded
-current_step: awaiting-human-claude-md-refresh-then-run-phase-1
+timestamp: 2026-05-13T23:30:00Z
+phase: pre-phase-1-final-gate-convergence-in-progress
+current_step: round-40-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 gate decisions: D-031 RATIFIED (architecture wins Phase 1 surfaces) + D-032 STRICT ROUTING (no narrow exemption; CLAUDE.md routing table binding) + O-R36-1 option (c) (manual workflow mitigation accepted); Q-3 pending human action"
-awaiting: "human refresh of CLAUDE.md operational pointers (Q-3 manual action), then /vsdd-factory:run-phase 1 to enter Phase 1 Spec Crystallization"
+traces_to: "orchestrator protocol violation caught by human: presented Phase 1 gate without 3 clean adversary passes (protocol required minimum). D-040/D-041/D-042 human ratifications remain valid but conditional on convergence; rolling back gate framing and resuming convergence iteration."
+awaiting: "3 consecutive clean adversary passes (currently ZERO clean since cycle start) + input-hash drift check before re-presenting Phase 1 gate"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -43,11 +43,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Product** | monocle — single-binary Rust TUI for AI coding harness sessions |
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
-| **Current Phase** | phase-1-gate-decisions-recorded |
-| **Current Step** | awaiting-human-claude-md-refresh-then-run-phase-1 |
+| **Current Phase** | pre-phase-1-final-gate-convergence-in-progress |
+| **Current Step** | round-40-validation-pending |
 | **Brief** | `.factory/specs/product-brief.md` v1.4.18 (commit ddc18b1) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T23:00:00Z |
+| **Last Updated** | 2026-05-13T23:30:00Z |
 
 ## Phase Progress
 
@@ -57,8 +57,8 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | APPROVED 2026-05-13 (human ratified) | 2026-05-13 | D-031 RATIFIED + D-032 STRICT ROUTING + O-R36-1 option (c) accepted; Q-3 pending human CLAUDE.md refresh |
-| 1: Spec Crystallization | READY — awaiting human CLAUDE.md refresh + /vsdd-factory:run-phase 1 dispatch | — | |
+| Pre-Phase-1 Final Gate | PENDING — convergence iteration in progress; 0/3 clean adversary passes achieved | — | D-040/D-041/D-042 human ratifications valid but conditional; Q-3 still pending human CLAUDE.md refresh; gate retracted per D-043 (protocol violation) |
+| 1: Spec Crystallization | not-started | — | |
 | 2-7 | not-started | — | |
 
 ## Current Phase Steps
@@ -95,9 +95,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-037 | Round 35 fix: F-R34-1 CRITICAL META-pattern — defense-in-depth: (1) line-anchored regex `^<!-- BEGIN: ... -->$`; (2) §Trace prose de-quoted (delimiters by name); (3) v1.8 convention rule prohibits verbatim quoting. Architect also fixed "Future audit maintenance" body-prose verbatim-quote (in-scope, not in adversary scope). F-R34-2: `#[$ATTR(...)]` standard semgrep form replaces `#[...]` (multi-arg derives handled by ellipsis). F-R34-3: paths.include 4→12 covering all 11 crates + binary. | 2026-05-13T20:30:00Z | state-manager |
 | D-038 | Round 37 fix: F-R36-1 brief Success Criteria SS-engine-module citation v1.1.9→v1.1.10; F-R36-2 propagation completeness — v1.8 no-verbatim-quoting convention rule fully propagated to v1.6 §Trace entry (SS-conventions v1.8→v1.9) and brief v1.4.16/v1.4.17 revision-history entries (brief v1.4.17→v1.4.18); grep verified zero verbatim delimiter quotes in either file outside the canonical regex constant definitions. S-7.01 Partial-Fix Regression Discipline applied: convention rules introduced in one burst retro-applied to existing siblings in the same layer in the same burst. | 2026-05-13T21:15:00Z | state-manager |
 | D-039 | Round 39 fix: F-R38-1 Option B — narrowly drawn exception added to SS-conventions v1.10 clause 4 (regex constant strings within code-specification blocks are permitted as they ARE the specification; narrative prose elsewhere must still refer to delimiters by name); F-R38-2 4th-recurrence cross-artifact version-citation staleness fix (SS-forward-compatibility v1.2.1→v1.2.2; FC-01/FC-06 lock-in cells updated from v1.0.3→v1.0.6 for SS-daemon-lifecycle.md); META-pattern workflow mitigation rule documented by architect: run `grep -rn 'SS-[name].md v' .factory/specs/architecture/` before any version bump to enumerate all citation sites in one pass (addresses O-R36-1 process-gap at author-discipline level; CI codification remains O-R36-1 open decision). | 2026-05-13T22:00:00Z | state-manager |
-| D-040 | D-031 RATIFIED by human at Phase 1 gate. Architecture-vs-vision authority: architecture wins on Phase 1 surfaces. Vision (`domain-monocle-vision-synthesis.md` v1.1.2) remains human-approved for intent; SS-*.md architecture docs are canonical for Phase 1 trait signatures. No spec edits required — spec text already reflects this framing. | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-041 | D-032 RESOLVED by human at Phase 1 gate: STRICT ROUTING. No narrow exemption for mechanical count-propagation. Commit 688a5ed (architect edited product-brief.md) was a routing violation; product-owner v1.4.12 ratification was correct remediation. Going forward: architects discovering a cross-boundary citation refresh need MUST surface to orchestrator; orchestrator dispatches product-owner (or appropriate owner). CLAUDE.md routing table binding without exemption. Human may optionally codify "no narrow exemptions" language in CLAUDE.md §Correct Agent Routing at convenience; AI does not edit CLAUDE.md. | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-042 | O-R36-1 RESOLVED by human at Phase 1 gate: OPTION (c) ACCEPTED. Manual workflow mitigation only — no CI codification, no tech-debt-register entry. Architect's grep-before-version-bump rule (documented in SS-forward-compatibility.md v1.2.2 §Trace) is the canonical mitigation. Author discipline relied upon; future cross-artifact version-citation staleness instances caught reactively by consistency-validator. | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-040 | D-031 RATIFIED by human at Phase 1 gate. Architecture-vs-vision authority: architecture wins on Phase 1 surfaces. Vision (`domain-monocle-vision-synthesis.md` v1.1.2) remains human-approved for intent; SS-*.md architecture docs are canonical for Phase 1 trait signatures. No spec edits required — spec text already reflects this framing. (Policy decision valid; applies once 3-clean-pass convergence threshold met and input-hash drift check passes.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-041 | D-032 RESOLVED by human at Phase 1 gate: STRICT ROUTING. No narrow exemption for mechanical count-propagation. Commit 688a5ed (architect edited product-brief.md) was a routing violation; product-owner v1.4.12 ratification was correct remediation. Going forward: architects discovering a cross-boundary citation refresh need MUST surface to orchestrator; orchestrator dispatches product-owner (or appropriate owner). CLAUDE.md routing table binding without exemption. Human may optionally codify "no narrow exemptions" language in CLAUDE.md §Correct Agent Routing at convenience; AI does not edit CLAUDE.md. (Policy decision valid; applies once 3-clean-pass convergence threshold met and input-hash drift check passes.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-042 | O-R36-1 RESOLVED by human at Phase 1 gate: OPTION (c) ACCEPTED. Manual workflow mitigation only — no CI codification, no tech-debt-register entry. Architect's grep-before-version-bump rule (documented in SS-forward-compatibility.md v1.2.2 §Trace) is the canonical mitigation. Author discipline relied upon; future cross-artifact version-citation staleness instances caught reactively by consistency-validator. (Policy decision valid; applies once 3-clean-pass convergence threshold met and input-hash drift check passes.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-043 | Orchestrator protocol violation detected by human: presented Phase 1 gate before achieving 3-clean-adversary-pass convergence threshold (required per orchestrator AGENTS.md Phase 1d). Adversary trajectory across R22-R39 had ZERO clean passes (a clean pass = 0 CRIT + 0 HIGH + 0 MED; LOW with human acceptance OK). Additionally, `/vsdd-factory:check-input-drift` was never executed (mandatory pre-gate requirement). Gate framing rolled back 2026-05-13T23:30:00Z; resuming convergence iteration. D-040/D-041/D-042 preserved as valid human policy ratifications, conditional on convergence. | 2026-05-13T23:30:00Z | orchestrator (recorded by state-manager) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -109,19 +110,19 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — Phase 1 gate ready._
+_None — convergence iteration in progress._
 
 ## Session Resume Checkpoint
 
-**PHASE-1-GATE-DECISIONS-RECORDED** | Cycle: cycle-001 | Phase: phase-1-gate-decisions-recorded
+**CONVERGENCE-ITERATION-RESUMED** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-convergence-in-progress
 
 ### Immediate Next Action
 
-**Phase 1 gate decisions RECORDED.** D-031 ratified (architecture wins Phase 1 surfaces), D-032 strict routing (no narrow exemptions; CLAUDE.md routing table binding without exemption), O-R36-1 option (c) accepted (manual workflow mitigation only). Q-3 PENDING — human will manually refresh CLAUDE.md operational pointers (§Current Pipeline State: Brief v1.4.2→v1.4.18; §Architectural Authority items 6+7: v1.4.2→v1.4.18, v1.1.1→v1.1.2) at convenience. AI does not edit CLAUDE.md.
+**Convergence iteration RESUMED.** Orchestrator presented Phase 1 gate prematurely without achieving 3 consecutive clean adversary passes (protocol requirement per orchestrator AGENTS.md Phase 1d). Human (Josh) caught this and directed rollback. D-040/D-041/D-042 human policy ratifications PRESERVED as valid but conditional on convergence.
 
-**After CLAUDE.md is refreshed:** human dispatches `/vsdd-factory:run-phase 1` to enter Phase 1 Spec Crystallization. The orchestrator must NOT auto-dispatch Phase 1 until: (a) CLAUDE.md operational pointers are refreshed AND (b) the human explicitly invokes `/vsdd-factory:run-phase 1`.
+**Immediate action:** dispatch Round 40 validation chain (consistency-validator + adversary in parallel, fresh context) against post-round-39 state (SS-conventions v1.10 + SS-forward-compatibility v1.2.2 + brief v1.4.18 + other current versions). Continue fix-validate iteration until 3 CONSECUTIVE clean adversary passes (0 CRIT + 0 HIGH + 0 MED; LOW with human acceptance OK). Then run `/vsdd-factory:check-input-drift` for the mandatory pre-gate drift check. Then re-present the gate with: (a) 3-clean-pass evidence in STATE.md, (b) drift-check report, (c) confirmation that D-040/D-041/D-042 still stand under the converged spec set.
 
-Optional: human may codify D-032 strict-routing decision in CLAUDE.md §Correct Agent Routing with explicit "no narrow exemptions for mechanical count-propagation" language (recommended for clarity; not auto-actionable by AI).
+**Q-3 still pending:** human will manually refresh CLAUDE.md operational pointers at convenience. AI does not edit CLAUDE.md. Phase 1 dispatch still requires Q-3 refresh + explicit human `/vsdd-factory:run-phase 1` invocation after convergence.
 
 ### Critical Artifacts (read for Phase 1)
 
@@ -151,19 +152,19 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 
 ## Task Queue Snapshot
 
-All prior task history archived to `cycles/cycle-001/burst-log.md`. Current active task: PHASE 1 GATE — awaiting human approval (immediate next action). Re-initialize from Immediate Next Action above if resuming in fresh context.
+All prior task history archived to `cycles/cycle-001/burst-log.md`. Current active task: CONVERGENCE ITERATION — Round 40 validation chain pending (immediate next action). Re-initialize from Immediate Next Action above if resuming in fresh context.
 
-## Phase 1 Gate Questions — RESOLVED 2026-05-13
+## Phase 1 Gate Questions — CONVERGENCE IN PROGRESS
 
-1. **Vision-vs-architecture authority (D-031):** **RATIFIED by human (2026-05-13T23:00:00Z).** Architecture wins on Phase 1 surfaces. Vision remains human-approved for intent. D-040 recorded.
+1. **Vision-vs-architecture authority (D-031):** **Tentatively ratified by human 2026-05-13 (D-040); confirmation will be re-affirmed at re-presented gate post-convergence.**
 
-2. **Architect-brief-routing precedent (D-032):** **STRICT ROUTING by human (2026-05-13T23:00:00Z).** No narrow exemption. CLAUDE.md routing table binding without exemption. D-041 recorded.
+2. **Architect-brief-routing precedent (D-032):** **Tentatively resolved by human 2026-05-13 (D-041) — STRICT ROUTING; will be re-affirmed at re-presented gate post-convergence.**
 
-3. **CLAUDE.md operational pointer refresh:** **PENDING HUMAN ACTION.** Human will manually refresh §Current Pipeline State (Brief v1.4.2→v1.4.18) and §Architectural Authority (v1.4.2→v1.4.18, v1.1.1→v1.1.2) at convenience. AI does not edit CLAUDE.md. Phase 1 dispatch awaits this refresh.
+3. **CLAUDE.md operational pointer refresh:** **Still PENDING HUMAN ACTION.** Human will manually refresh §Current Pipeline State (Brief v1.4.2→v1.4.18) and §Architectural Authority (v1.4.2→v1.4.18, v1.1.1→v1.1.2) at convenience. AI does not edit CLAUDE.md. Phase 1 dispatch awaits this refresh.
 
 ## Pending Human Direction
 
-**O-R36-1 — RESOLVED by human (2026-05-13T23:00:00Z): OPTION (c) ACCEPTED.** Manual workflow mitigation only. Architect's grep-before-version-bump rule (SS-forward-compatibility v1.2.2 §Trace) is canonical. No CI codification, no tech-debt entry. D-042 recorded.
+**O-R36-1:** **Tentatively resolved by human 2026-05-13 (D-042) — option (c) manual mitigation accepted; will be re-affirmed at re-presented gate post-convergence.**
 
 ## Historical Content
 
