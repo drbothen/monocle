@@ -1,27 +1,33 @@
 ---
 document_type: tech-debt-register
+level: ops
+status: active
 producer: product-owner
 version: "1.0"
-last_updated: 2026-05-12T16:00:00Z
+last_updated: 2026-05-12T00:00:00Z
+traces_to: "CLAUDE.md commit 3366d58 §Canonical Principle Rule 3; ADR-0002"
 project: monocle
 phase: pre-phase-1
 ---
 
 # Technical Debt Register
 
+**Governance:** Per `CLAUDE.md` Canonical Principle Rule 3, entries in this register MUST be human-directed deferrals with concrete future story/wave attachment. Agent-discovered issues that can be fixed in-scope must NOT be added here — they must be fixed via the correct specialist agent in the current cycle. This register is NOT a default catchment.
+
 ## Summary
 
 | Priority | Count | Estimated Points |
 |----------|-------|-----------------|
 | P0 (next cycle) | 0 | 0 |
-| P1 (within 3 cycles) | 1 | 2 |
+| P1 (within 3 cycles) | 0 | 0 |
 | P2 (backlog) | 0 | 0 |
 
 ## Debt Items
 
 | ID | Source | Description | Priority | Introduced | Cycle | Story | Due |
 |----|--------|-------------|----------|-----------|-------|-------|-----|
-| TD-001 | Dependency | `nucleo 0.5` upstream dormant since 2024-04-02; helix-editor team's focus shifted. If maintenance becomes a release constraint, evaluate `frizbee 0.9` / `neo_frizbee 0.10` (SIMD alternatives) or `nucleo-picker 0.11` (TUI-focused fork). Functionality intact for Phase 1. | P1 | v1.0 | — | — | Phase 2 re-eval |
+
+*(No active debt items. See Resolution History for retired entries.)*
 
 ### Source Types
 
@@ -40,7 +46,7 @@ phase: pre-phase-1
 
 | ID | Resolved In | Story | Resolution |
 |----|------------|-------|------------|
-| TD-NNN | vX.Y.Z | — | — |
+| TD-001 | pre-phase-1 remediation burst (2026-05-12) | ADR-0002 | Accepted via ADR-0002 with explicit re-eval trigger; not a deferred item — production-grade decision to commit to nucleo 0.5 for Phase 1. AI-introduced registration violated canonical principle §Rule 3 (no story anchor, no human direction). |
 
 ## Tech Debt as Feature Mode Cycles
 
