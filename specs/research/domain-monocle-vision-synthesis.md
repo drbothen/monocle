@@ -26,7 +26,7 @@ approved_at: 2026-05-12T00:00:00Z
 approved_at_v1_0: 2026-05-11T20:30:00Z
 ---
 
-# Monocle Vision Synthesis (v1.1, approved 2026-05-12)
+# Monocle Vision Synthesis (v1.1.1, approved 2026-05-12)
 
 ## Vision Statement
 
