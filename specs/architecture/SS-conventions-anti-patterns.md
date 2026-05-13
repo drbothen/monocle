@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.9"
+version: "1.10"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T23:45:00Z
+timestamp: 2026-05-13T23:55:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose)"
 project: monocle
 ---
 
@@ -401,6 +401,15 @@ implementer's-choice behavior is permitted.
    regex must guard against; the convention prevents the regression even if the regex is
    loosened in a future edit.
 
+   **Exception — regex constant definitions in §Trace:** A §Trace entry that introduces or
+   modifies `BEGIN_DELIMITER_REGEX` or `END_DELIMITER_REGEX` MAY include the full constant
+   assignment expression (e.g., `BEGIN_DELIMITER_REGEX = r'^...$'`) because the delimiter
+   pattern string IS the specification content — it cannot be expressed by name alone.
+   This exception is narrowly scoped: it applies only to code-specification blocks that define
+   the regex constants themselves, not to any narrative prose that incidentally references the
+   delimiter text. All other §Trace prose and spec narrative remains subject to the no-verbatim-
+   quoting rule without exception.
+
 5. **Empty table.** If the table between the delimiters contains zero data rows (i.e., only
    separator and/or header rows, or no rows at all), the script MUST exit with status 1 and emit:
    `Error: Cross-Crate Constructor Audit Table in <path> has no data rows; this is a spec gap`.
@@ -766,6 +775,22 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.10 changes (round-39 fix F-R38-1 MEDIUM):
+
+- F-R38-1 RESOLVED (MEDIUM — adversary finding, Option B chosen): The adversary flagged that
+  §Trace v1.8 lines containing `BEGIN_DELIMITER_REGEX = r'^...$'` and `END_DELIMITER_REGEX =
+  r'^...$'` in the F-R34-1 narrative are borderline under the clause 4 no-verbatim-quoting
+  Convention. Option B selected over Option A on production-grade grounds: the regex constant
+  definitions in §Trace v1.8 cannot be expressed by name alone — the delimiter pattern string
+  IS the specification content that clause 4 added. A reader of §Trace v1.8 must be able to
+  see the full constant assignment (pattern value included) without round-tripping to clause 4;
+  eliminating it reduces spec readability without improving correctness. Option A (rewrite §Trace
+  to refer to constants by name only) would remove information. Option B (amend the convention
+  rule with a narrowly scoped exception) preserves readability and enforces correctness.
+  Fix: clause 4 Convention rule updated with explicit exception: regex constant definition
+  blocks in §Trace MAY include the full assignment expression; all other narrative prose
+  remains subject to the no-verbatim-quoting rule without exception.
 
 v1.9 changes (round-37 fix F-R36-2 MEDIUM):
 
