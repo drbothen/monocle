@@ -869,4 +869,74 @@ All 5 adversary findings and all 4 consistency findings resolved in-scope. F-R24
 | architect | SS-deps-pin-manifest v1.1.7 — temp-env ^0.2→^0.3 + async_closure feature (F-R24-adv-1) | commit f287592 |
 | architect | SS-conventions-anti-patterns v1.4 — Test Conventions subsection (F-R24-adv-5) | commit 3b90235 |
 | product-owner | product-brief v1.4.12 — routing-precedent ratification + daemon-lifecycle citation refresh (F-R24-adv-2 + F-R24-cons-3) | commit 11185a1 |
+
+---
+
+## Burst 26 (2026-05-13) — Round-27 fix burst: F-R26-adv-1 CRITICAL E0639 + F-R26-adv-2/3/5/6 + F-R26-2/3 consistency
+
+**Agents dispatched:** architect (3 commits), product-owner (1 commit), state-manager (this commit)
+**Trigger:** 1 CRITICAL + 2 MEDIUM + 3 LOW from round-26 adversary (F-R26-adv-1 through F-R26-adv-6) + 3 MEDIUM from round-26 consistency (commit 4ef4fc5); routes consolidated to architect + product-owner
+**Files touched:** SS-engine-module.md (v1.1.7), SS-conventions-anti-patterns.md (v1.5), product-brief.md (v1.4.13), plans/adversary-pass-round-26.md (NEW), STATE.md, cycles/cycle-001/burst-log.md
+**Versions bumped:** SS-engine-module v1.1.6→v1.1.7; SS-conventions-anti-patterns v1.4→v1.5; product-brief v1.4.12→v1.4.13
+
+### Summary
+
+F-R26-adv-1 CRITICAL: A 24-round-latent compile defect was surfaced by fresh-context first-principles derivation. Three `#[non_exhaustive]` structs in `monocle-core` (`EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`) were constructed via struct-literal syntax in `monocle-runtime` (an external crate), which is forbidden by E0639. Architect added `pub fn new(...)` constructors to all three structs and updated all production-code and test-spec call sites. Architect additionally found an in-scope E0639 violation on `HookResponse` and fixed it without surfacing as advisory. Architect audited all other `#[non_exhaustive]` structs in monocle-core and confirmed same-crate construction elsewhere (clean). SS-engine-module bumped v1.1.6→v1.1.7 with supersession annotations on v1.1.4 and v1.1.5 trace blocks.
+
+F-R26-adv-2 MEDIUM: Semgrep rule `monocle-no-raw-env-mutation-in-tests` expanded from 2 to 4 pattern-either entries to cover the `use std::env; env::set_var(...)` idiom missed by the original pattern (which only covered fully-qualified `std::env::set_var(...)`).
+
+F-R26-adv-3 MEDIUM [process-gap]: §Semgrep Coverage Hardening subsection added to SS-conventions-anti-patterns v1.5 specifying fixture corpus (one positive match file + one negative match file per rule) and CI assertion (semgrep must match positive fixture; must not match negative fixture; CI job fails on any count mismatch). Covers all 4 semgrep rules per POL-11.
+
+F-R26-adv-5 LOW: BC-ENGINE-002-ERR test spec updated to include all 7 ProcessSnapshot field values (previously omitted 3). Folded into F-R26-adv-1 architect fix.
+
+F-R26-adv-6 LOW: Test Conventions semgrep rule (rule 4) consolidated into §Semgrep Rules block. Cross-reference from §Test Conventions retained. Duplication resolved.
+
+F-R26-2 consistency MEDIUM: Supersession annotations added to v1.1.4 and v1.1.5 trace blocks in SS-engine-module.md (resolved by commit 9be1033).
+
+F-R26-3 consistency MEDIUM: Brief line 244 citation of SS-engine-module v1.1.5 refreshed to v1.1.7 (resolved by commit a1c83a9).
+
+**PARTIALLY UNRESOLVED (routed to human at Phase 1 gate):**
+
+- F-R26-adv-4 LOW: `producer:` frontmatter semantics ambiguous post-ratification pattern. Depends on D-032 human resolution. Added to Phase 1 gate context; no state-manager action required now.
+- F-R26-1 consistency MEDIUM: CLAUDE.md §Current Pipeline State + §Architectural Authority cite stale version pointers. CLAUDE.md is human-authored; AI agents do not edit it. Flagged as Q-3 in Phase 1 Gate Questions section of STATE.md. Human action required at Phase 1 gate review.
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R26-adv-1 CRITICAL: `#[non_exhaustive]` structs constructed via struct-literal cross-crate; E0639 in production code + test specs | CRITICAL | `pub fn new(...)` constructors on EngineMetadata, ProcessSnapshot (two variants), EnrichedSession, HookResponse; all call sites updated; SS-engine-module v1.1.6→v1.1.7 | 9be1033 |
+| F-R26-adv-2 MEDIUM: semgrep pattern misses `use std::env; env::set_var(...)` idiom | MEDIUM | pattern-either expanded to 4 entries; SS-conventions v1.4→v1.5 | 48d952a |
+| F-R26-adv-3 MEDIUM [process-gap]: semgrep rules lack positive-coverage assertions per POL-11 | MEDIUM | §Semgrep Coverage Hardening added: fixture corpus + CI assertion spec for all 4 rules | 48d952a |
+| F-R26-adv-5 LOW: BC-ENGINE-002-ERR test omits 3 of 7 ProcessSnapshot field values | LOW | Field values added; folded into F-R26-adv-1 fix | 9be1033 |
+| F-R26-adv-6 LOW: Test Conventions semgrep rule duplicated/separated from §Semgrep Rules block | LOW | Consolidated into §Semgrep Rules; cross-reference retained in §Test Conventions | 48d952a |
+| F-R26-2 consistency MEDIUM: SS-engine-module v1.1.4 trace block lacks supersession annotation | MEDIUM | Supersession annotation added to v1.1.4 and v1.1.5 trace blocks | 9be1033 |
+| F-R26-3 consistency MEDIUM: brief line 244 cited SS-engine-module v1.1.5 | MEDIUM | Citation refreshed to v1.1.7 in brief v1.4.13 | a1c83a9 |
+
+### Findings Unresolved (routed to human)
+
+| Finding | Severity | Status | Routing |
+|---------|----------|--------|---------|
+| F-R26-adv-4 LOW: `producer:` frontmatter semantics ambiguous | LOW | Deferred to Phase 1 gate; depends on D-032 human decision | orchestrator → spec-steward post-D-032 |
+| F-R26-1 consistency MEDIUM: CLAUDE.md stale version pointers | MEDIUM | Flagged as Q-3 in Phase 1 Gate Questions; human action at gate | human |
+
+### Notable
+
+- **24-round-latent CRITICAL defect surfaced by fresh-context first-principles derivation.** F-R26-adv-1 survived all prior passes because reviewers treated spec Rust code as "illustrative" rather than re-deriving E0639 compilability. Fresh-Context Compounding Value pattern validated. Architects must now explicitly verify cross-crate `#[non_exhaustive]` struct construction in every spec pass.
+- **Architect found additional in-scope E0639 violation (HookResponse) and fixed without surfacing as advisory.** Correct production-grade default per CLAUDE.md Rule 4 (fix in scope, don't defer as advisory).
+- **Architect audit confirmed other `#[non_exhaustive]` structs in monocle-core are same-crate construction (clean).** Audit scope explicitly documented in commit message.
+
+### Lessons
+
+1. **[process-gap] Adversarial review checklist must include a "mentally compile cross-crate struct constructions" pass** for every `#[non_exhaustive]` struct. This is a distinct check from "is the Rust syntax valid?" — it requires asking "is the construction site in an external crate?" E0639 is silent at the spec level but fatal at first `cargo build`. Codify as a checklist item in the adversary agent prompt.
+
+2. **[process-gap] POL-11 positive-coverage assertion pattern applies to ALL detection-rule CI jobs**, not just security-critical ones. Semgrep rules, clippy custom lints, and similar detection mechanisms all need fixture corpora + CI assertions that verify the detector actually fires. Codify across all maintenance-sweep rules and analogous patterns.
+
+3. **[design question for human] CLAUDE.md operational pointer staleness recurs across cycles.** Either (a) codify a mirror-update hook that allows state-manager to update ONLY the non-principle operational subsections of CLAUDE.md (§Current Pipeline State, §Architectural Authority version pointers) while leaving the principle text untouched, OR (b) explicitly delegate the pointer refresh responsibility to a non-principle subsection that state-manager can edit without touching human-authored principle text. Surface as Q-3 at Phase 1 gate. Do NOT silently edit CLAUDE.md principle text.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-engine-module v1.1.7 — EngineMetadata::new, ProcessSnapshot::new + with_full_context, EnrichedSession::new, HookResponse::new; supersession on v1.1.4/v1.1.5; all call sites updated (F-R26-adv-1 + F-R26-adv-5 + F-R26-2) | commit 9be1033 |
+| architect | SS-conventions-anti-patterns v1.5 — semgrep pattern-either expanded to 4 entries + §Semgrep Coverage Hardening added (F-R26-adv-2 + F-R26-adv-3 + F-R26-adv-6) | commit 48d952a |
+| product-owner | product-brief v1.4.13 — F-R26-3 citation refresh (SS-engine-module v1.1.5→v1.1.7) + round-27 ratification entry (F-R26-3 + D-033) | commit a1c83a9 |
+| state-manager | adversary-pass-round-26.md (NEW) + STATE.md update (round-27 close-out) + burst-log Burst 26 | this commit |
 | state-manager | Persist round-24 adversary report + round-25 close-out STATE.md + cycle files | this commit |
