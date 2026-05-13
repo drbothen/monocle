@@ -229,7 +229,7 @@ for plugin SDK consumption) including the full trait signature, the
 behavioral contracts (BC-FACTORY-001 + BC-FACTORY-002).
 
 The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
-The following 15 pre-staged BC IDs are RESERVED — the PRD must use these exact IDs
+The following 16 pre-staged BC IDs are RESERVED — the PRD must use these exact IDs
 when formalizing the contracts with postconditions and verification harness stubs:
 
 | BC ID | Source Artifact |
@@ -248,9 +248,12 @@ when formalizing the contracts with postconditions and verification harness stub
 | BC-LOCK-001 | SS-daemon-lifecycle.md |
 | BC-ENGINE-001 | SS-engine-module.md |
 | BC-ENGINE-002 | SS-engine-module.md |
+| BC-ENGINE-002-ERR | SS-engine-module.md |
 | BC-ENGINE-003 | SS-engine-module.md |
 
 Notes: BC-PROTO-001 was split into BC-PROTO-001a (wire field number) and BC-PROTO-001b
 (Rust struct surface) per F-FC-O004. BC-LOCK-001 added per F-FC-O001 (lock-file
 `contract_version` field). BC-ENGINE-001/002/003 added per round-14 fix burst
-(SS-engine-module.md v1.1; N5 BC count propagation).
+(SS-engine-module.md v1.1; N5 BC count propagation). BC-ENGINE-002-ERR added in
+SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
+(round-23 micro-fix burst).

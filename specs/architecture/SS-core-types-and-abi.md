@@ -1032,11 +1032,11 @@ anchor identifiers that cross-references in this artifact and in SS-forward-comp
 rely upon. BC-PROTO-001 was split into BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust
 surface) to eliminate the wire-vs-Rust conflation identified in F-FC-O004.
 
-Combined with SS-engine-module.md (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-003 = 3 BCs)
-and SS-daemon-lifecycle.md (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001 = 4 BCs),
-the pre-Phase-1 pre-staged total is **15 BCs** across all architecture artifacts.
-The authoritative enumeration with source references is in SS-forward-compatibility.md
-§Cross-Phase Decisions Required closing paragraph.
+Combined with SS-engine-module.md (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR,
+BC-ENGINE-003 = 4 BCs) and SS-daemon-lifecycle.md (BC-RING-001, BC-AUTH-001, BC-AUTH-002,
+BC-LOCK-001 = 4 BCs), the pre-Phase-1 pre-staged total is **16 BCs** across all
+architecture artifacts. The authoritative enumeration with source references is in
+SS-forward-compatibility.md §Cross-Phase Decisions Required closing paragraph.
 
 ---
 

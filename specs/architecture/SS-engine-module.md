@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.4"
+version: "1.1.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs)"
 project: monocle
 ---
 
@@ -663,14 +663,25 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 |-------|-------------|----------------|
 | BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (id/detect/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>` (vision-spirit-aligned elaboration); `enrich()` returns `Result<EnrichedSession, EngineMetadataError>` (vision-spirit-aligned elaboration); no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
 | BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
+| BC-ENGINE-002-ERR | `ClaudeCodeModule::metadata()` and `enrich()` MUST return `Err(EngineMetadataError::HomeUnresolvable)` when `BaseDirs::new()` returns `None`; no-silent-fallback contract enforced via test in `monocle-runtime/tests/engine_module.rs` with `temp-env ^0.2` env-var isolation (clears HOME, USERPROFILE, XDG_*) | §Behavioral Contracts (BC-ENGINE-002-ERR) |
 | BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
-**Total: 3 BCs pre-staged.** Product-owner MUST use these exact IDs when formalizing
+**Total: 4 BCs pre-staged.** Product-owner MUST use these exact IDs when formalizing
 contracts with postconditions and verification harness stubs.
 
 ---
 
 ## §Trace
+
+v1.1.5 changes (round-23 micro-fix):
+- BC-ENGINE-002-ERR ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-ENGINE-002 and
+  BC-ENGINE-003, preserving numerical order). Prior commit 563b573 added this BC to
+  §Behavioral Contracts but missed the pre-staging cross-reference table. Total updated
+  from "3 BCs pre-staged" to "4 BCs pre-staged". No behavioral content changed; this is
+  a cross-reference consistency fix only. Downstream documents updated in same burst:
+  SS-core-types-and-abi.md (BC count 3→4 for engine BCs, global total 15→16),
+  SS-forward-compatibility.md (BC-ENGINE-002-ERR row added, table intro 15→16),
+  product-brief.md (BC list and count updated 15→16).
 
 v1.1.4 changes (round-22 fixes F-R22-1/F-R22-2/F-R22-3):
 - F-R22-1/F-R22-2 RESOLVED (MEDIUM — adversary finding): §EngineModule Trait Signature
