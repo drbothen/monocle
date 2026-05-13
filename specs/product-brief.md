@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.5"
+version: "1.4.6"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T18:30:00Z
+timestamp: 2026-05-12T19:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -65,6 +65,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4.3 | 2026-05-12 | product-owner (adversary findings e2c224b: F-NEW-04, R-001 re-eval, F-NEW-03, F-NEW-05/06/09) | F-NEW-04 CRITICAL: hook ingestion timeout budget added to Success Criteria (300ms PreToolUse/Stop/SessionStart/UserPromptSubmit, 2000ms Notification per BC-HOOK-022); R-001 re-eval trigger paragraph added (4 conditions matching ADR-0002 pattern; <10% probability stands until any condition materializes); F-NEW-03 CRITICAL: permission token enum reference updated; brief no longer claims 17 zellij-borrowed variants for Phase 1; points at architect-produced SS-permissions-phase1.md canonical artifact; F-NEW-05/06/09 IMPORTANT: hook receiver hardening note added to Scope (body size limit, /healthz, /status, graceful shutdown). No scope removals; all additions are production-grade tightening, not new features. |
 | 1.4.4 | 2026-05-12 | product-owner (architect-surfaced follow-on from round 5 fix burst) | Body-size limit (256 KiB) added to Success Criteria as a measurable Phase 1 acceptance criterion, cross-referencing BC-DAEMON-003 in `SS-daemon-lifecycle.md`. Resolves the architect-surfaced follow-on from round 5 fix burst — v1.4.3 added the hardening sub-bullet to Scope but did not promote the limit to a measurable Success Criterion. No new scope; just promotes existing scope item to measurable criterion. |
 | 1.4.5 | 2026-05-12 | product-owner (two surgical fixes per round-6 audits) | `supplements:` frontmatter updated to include 3 round-5 artifacts (SS-permissions-phase1.md, SS-daemon-lifecycle.md, ADR-0003-license-selection.md); now 9 supplements total. Body-size Success Criterion endpoint list refined — `/healthz` and `/status` removed (GET endpoints with no body; limit applies to POST endpoints only). Resolves consistency G-01 (IMPORTANT) and adversary F-R6-006 (ADVISORY) from round-6 audits. |
+| 1.4.6 | 2026-05-12 | product-owner (two additions per human pre-Phase-1 decisions) | (Q-2) DTU `dtu-claude-code-hooks-v1` clone added to Phase 1 deliverables + Phase 1 Success Criteria (fidelity ≥0.95, all 5 endpoints, CI per-PR gate); cross-references dtu-assessment §"Phase 1 Clone Build Effort" and §"DTU Fidelity Measurement Procedure"; BC-DTU-001 placeholder. (Q-3) R-001 re-eval trigger monitoring operationalized via weekly GitHub Actions workflow (devops-engineer specced in parallel this burst at `.github/workflows/r001-monitor.yml`); quarterly maintainer review for false-negative trigger keywords. |
 
 ## Who Is It For?
 
@@ -148,6 +149,7 @@ accommodate without breaking Phase 1 ABI.
   in v1 — WASM plugin SDK ships Phase 3, not v1 (OQ-03)
 - macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
   Actions; MSRV Rust 1.86 (ratatui floor, OQ-11)
+- DTU Phase 1 clone: `dtu-claude-code-hooks-v1` synthesized clone of Claude Code hook protocol surface for testing fidelity and regression detection. Per `.factory/specs/dtu-assessment.md` §"Phase 1 Clone Build Effort" (architect-specced this burst). Fidelity target: ≥0.95 against fixture corpus.
 
 **Phase 2 — Static Plane (roadmap)**
 
@@ -222,6 +224,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Build matrix | Builds and tests pass on macOS and Linux | CI green on darwin/linux × amd64/arm64 |
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-DAEMON-003 (per `SS-daemon-lifecycle.md`). |
+| DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | Behavioral contract: BC-DTU-001 (Phase 1 PRD will formalize). |
 
 ## Phase 2 Exit Criteria
 
@@ -348,6 +351,8 @@ a first-party response — monocle goes deeper on every dimension agent view doe
 The risk that Anthropic deepens agent view to commoditize monocle's hook-native overlay within 12 months was assessed at <10% probability based on agent view's current research-preview scope, single-harness focus, and absence of announced hook-protocol direction (per `.factory/planning/market-intelligence.md` §Risk Register, originally assessed at 25–40%; human red-line at v1.4.1 brief gate revised this to <10% based on additional context about agent view's roadmap and scope). At this probability, no risk mitigation scaffolding is required beyond the production-grade depth monocle is already shipping.
 
 **R-001 re-eval trigger.** Re-open the R-001 risk assessment and reconsider the probability AND the mitigation requirement if ANY of the following occurs: (a) Anthropic announces hook-protocol ingestion as a first-class agent-view capability; (b) Anthropic ships diff-preview or cascaded permission-queue functionality inside agent view; (c) Anthropic extends agent view beyond Claude Code (e.g., supports a non-Claude harness); (d) Anthropic publishes a multi-harness session-management spec or RFC. Until any of these conditions materializes, the <10% assessment stands; monocle's defensible surface is depth + mechanism (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay).
+
+**R-001 monitoring cadence.** The 4 re-eval trigger conditions are checked by a **weekly scheduled GitHub Actions workflow** (`.github/workflows/r001-monitor.yml`, specced this burst by devops-engineer). The workflow fetches Anthropic's published agent-view release notes and changelogs, evaluates each entry against the 4 trigger conditions, and opens a GitHub Issue if any condition is matched. The weekly cadence is calibrated to Anthropic's research-preview release cadence (multiple agent-view shipments observed per month as of 2026-05). Quarterly the workflow output is reviewed by the maintainer for false-negative patterns (e.g., a trigger condition that should have fired but didn't due to wording variation in Anthropic's notes); adjustments to the trigger keyword set ship as a workflow patch.
 
 The closest prior art beyond agent view:
 
