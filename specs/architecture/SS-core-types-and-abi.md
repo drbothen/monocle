@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2.1"
+version: "1.2.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T18:00:00Z
+timestamp: 2026-05-13T20:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping"
 project: monocle
 ---
 
@@ -580,11 +580,21 @@ pub struct VsddFactoryAdapter {
 }
 
 impl VsddFactoryAdapter {
-    /// Construct a `VsddFactoryAdapter` for the given workspace root.
+    /// Construct a `VsddFactoryAdapter` rooted at `workspace_root`.
     ///
     /// Derives the state file path as `<workspace_root>/.factory/STATE.md`.
-    /// Does NOT perform detection — use `detect(workspace_root)` to test
-    /// whether the workspace is a VSDD factory before constructing an instance.
+    ///
+    /// # Validation
+    ///
+    /// This constructor performs **no validation** on `workspace_root`. The
+    /// adapter is intentionally lazy: existence and content validation happens
+    /// in `detect()` (returns `None` for invalid workspaces) and `read_state()`
+    /// (returns `Err(...)` for missing or malformed STATE.md). This separation
+    /// keeps construction infallible and lets callers handle validation errors
+    /// at the right operational point.
+    ///
+    /// Callers that need eager validation should call
+    /// `VsddFactoryAdapter::detect(&workspace_root)` before invoking `new`.
     pub fn new(workspace_root: PathBuf) -> Self {
         let state_file = workspace_root.join(".factory").join("STATE.md");
         Self { workspace_root, state_file }
@@ -690,9 +700,15 @@ impl FactoryAdapter for VsddFactoryAdapter {
 /// must be exactly `---`). This anchors the parser to genuine frontmatter and
 /// prevents matching markdown horizontal rules `---` that appear in the body.
 ///
-/// Returns the trimmed value string for `key: value` lines, or `None`
+/// Returns the trimmed, unquoted value string for `key: value` lines, or `None`
 /// if the key is absent, the value is multi-line (YAML block scalar), or the
 /// document does not begin with `---`.
+///
+/// YAML quoted scalars are unquoted: surrounding double quotes or single quotes
+/// are stripped so callers receive the semantic string value, not the YAML
+/// encoding. Example: `awaiting: "round 18 validation chain"` returns
+/// `Some("round 18 validation chain".to_string())` (without the quotes).
+/// Only a single layer of quoting is stripped; nested quotes are not processed.
 fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
     let mut lines = content.lines();
     // Frontmatter MUST open on the very first line.
@@ -705,7 +721,18 @@ fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
             break; // End of frontmatter block.
         }
         if let Some(rest) = line.strip_prefix(&format!("{}: ", key)) {
-            return Some(rest.trim().to_string());
+            let value = rest.trim();
+            // Strip surrounding double quotes (YAML double-quoted scalar).
+            let value = value
+                .strip_prefix('"')
+                .and_then(|v| v.strip_suffix('"'))
+                .unwrap_or(value);
+            // Strip surrounding single quotes (YAML single-quoted scalar).
+            let value = value
+                .strip_prefix('\'')
+                .and_then(|v| v.strip_suffix('\''))
+                .unwrap_or(value);
+            return Some(value.to_string());
         }
     }
     None
@@ -714,12 +741,20 @@ fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
 /// Collect frontmatter key-value pairs NOT in the `known_keys` list.
 ///
 /// Used to populate `FactoryState::custom_fields` for forward-compat schema
-/// evolution. Only scalar (single-line) values are collected; YAML block scalars
-/// and lists are silently skipped (they would require a full YAML parser, which
-/// Phase 1 defers to the Phase 3 `monocle-workflow` crate).
+/// evolution. Only single-line `key: value` pairs with scalar values are
+/// collected. The following are explicitly skipped and NOT stored:
 ///
-/// Values are wrapped as `serde_yaml_ng::Value::String` to match the
-/// `custom_fields` field type and preserve YAML-native semantics.
+/// - Flow-style lists (`[...]`) — would require a full YAML parser to decode correctly.
+/// - Block scalars (`|` or `>` folded/literal) — multi-line; parsing requires
+///   consuming continuation lines which this function does not attempt.
+/// - Continuation lines (indented lines that are part of a prior block scalar) —
+///   identified by leading whitespace and skipped individually.
+/// - Empty values — lines matching `key: ` with nothing after the space are skipped.
+///
+/// Values are unquoted (same rule as `parse_frontmatter_field`) and wrapped as
+/// `serde_yaml_ng::Value::String`. For full YAML parsing semantics including
+/// nested structures, downstream code should re-parse with
+/// `serde_yaml_ng::from_str` on the raw frontmatter content.
 fn parse_frontmatter_extra_fields(
     content: &str,
     known_keys: &[&str],
@@ -734,13 +769,40 @@ fn parse_frontmatter_extra_fields(
         if line.trim() == "---" {
             break;
         }
-        if let Some(colon_pos) = line.find(": ") {
-            let k = line[..colon_pos].trim();
-            if !known_keys.contains(&k) {
-                let v = line[colon_pos + 2..].trim().to_string();
-                result.insert(k.to_string(), serde_yaml_ng::Value::String(v));
-            }
+        // Skip continuation lines (block scalar body lines begin with whitespace).
+        if line.starts_with(' ') || line.starts_with('\t') {
+            continue;
         }
+        let Some(colon_pos) = line.find(": ") else {
+            continue;
+        };
+        let k = line[..colon_pos].trim();
+        if known_keys.contains(&k) {
+            continue;
+        }
+        let value_str = line[colon_pos + 2..].trim();
+        // Skip empty values.
+        if value_str.is_empty() {
+            continue;
+        }
+        // Skip flow-style lists and block scalars — these require a full YAML parser.
+        if value_str.starts_with('[')
+            || value_str.starts_with('|')
+            || value_str.starts_with('>')
+        {
+            continue;
+        }
+        // Unquote the scalar value (same rule as parse_frontmatter_field).
+        let unquoted = value_str
+            .strip_prefix('"')
+            .and_then(|v| v.strip_suffix('"'))
+            .or_else(|| {
+                value_str
+                    .strip_prefix('\'')
+                    .and_then(|v| v.strip_suffix('\''))
+            })
+            .unwrap_or(value_str);
+        result.insert(k.to_string(), serde_yaml_ng::Value::String(unquoted.to_string()));
     }
     result
 }
@@ -990,6 +1052,26 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.2 fixes (round-19 fixes F-R18-2/F-R18-3):
+- F-R18-2 RESOLVED: `VsddFactoryAdapter::new` rustdoc expanded with an explicit
+  `# Validation` section documenting the no-validation-at-construction contract:
+  `workspace_root` is accepted without existence or content checks; validation
+  is deferred to `detect()` (returns `None` for invalid workspaces) and
+  `read_state()` (returns `Err(...)` for missing or malformed STATE.md).
+- F-R18-3 RESOLVED: Two bugs in the frontmatter parser functions corrected.
+  Bug 1 (`parse_frontmatter_field`): naive `strip_prefix` + `trim` left surrounding
+  YAML double- or single-quotes in the returned string (e.g., `awaiting: "round 18
+  validation chain..."` returned the value WITH quotes). Fixed by adding explicit
+  `strip_prefix('"')` / `strip_suffix('"')` and single-quote equivalents after
+  the initial trim. Bug 2 (`parse_frontmatter_extra_fields`): rustdoc claimed
+  flow-style lists and block scalars were "silently skipped" but the implementation
+  stored them verbatim as `Value::String` (wrong). Fixed by adding explicit guards
+  that `continue` on values starting with `[`, `|`, or `>`, and on lines with
+  leading whitespace (block scalar continuation lines). Rustdoc updated to describe
+  actual behavior: only single-line scalar key-value pairs are extracted; skipped
+  types are enumerated; downstream code needing full YAML semantics should use
+  `serde_yaml_ng::from_str` on the raw frontmatter.
 
 v1.2.1 fixes (round-16 adversary N16-2/N16-5/N16-6/N16-8):
 - N16-2 RESOLVED: `VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self`
