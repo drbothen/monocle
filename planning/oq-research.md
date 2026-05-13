@@ -1,11 +1,11 @@
 ---
 document_type: open-questions-research
-level: pre-architecture
+level: ops
 version: "1.0"
 status: draft
 producer: research-agent
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T14:00:00Z
+timestamp: 2026-05-12T22:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -16,8 +16,10 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
 project: monocle
-brief_version: "1.1"
+brief_version: "1.4"
 target_skill: /vsdd-factory:create-architecture
+traces_to: "brief v1.4 commit <forthcoming>; resolutions valid through brief v1.4; adversary re-audit 0bd4ba9 F-09 F-14"
+input-hash: "[live-state]"
 ---
 
 # Open Questions Research — Monocle v1 Architecture Inputs
