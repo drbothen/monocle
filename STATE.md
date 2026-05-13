@@ -4,20 +4,20 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T08:00:00Z
-phase: pre-phase-1-final-gate-round-17-complete
+timestamp: 2026-05-13T14:00:00Z
+phase: pre-phase-1-final-gate-round-19-complete
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: pre-phase-1-final-gate-round-17-fix-burst-complete-awaiting-round-18-validation
+current_step: pre-phase-1-final-gate-round-19-fix-burst-complete-awaiting-round-20-validation
 current_cycle: cycle-001
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
 dtu_services: [hook-endpoints-x5]
-awaiting: "round 18 validation chain (consistency + adversary fresh pass on round-17 fixes)"
+awaiting: "round 20 validation chain (consistency + adversary fresh pass on round-19 fixes)"
 ---
 
 <!--
@@ -35,11 +35,11 @@ awaiting: "round 18 validation chain (consistency + adversary fresh pass on roun
 | **Product** | monocle |
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
-| **Current Phase** | pre-phase-1-final-gate-round-17-complete |
-| **Current Step** | pre-phase-1-final-gate-round-17-fix-burst-complete-awaiting-round-18-validation |
+| **Current Phase** | pre-phase-1-final-gate-round-19-complete |
+| **Current Step** | pre-phase-1-final-gate-round-19-fix-burst-complete-awaiting-round-20-validation |
 | **Product brief** | `.factory/specs/product-brief.md` v1.4.10 (commit 08b4a9c) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved) |
-| **Last Updated** | 2026-05-13T08:00:00Z |
+| **Last Updated** | 2026-05-13T14:00:00Z |
 
 ## Phase Progress
 
@@ -62,7 +62,8 @@ awaiting: "round 18 validation chain (consistency + adversary fresh pass on roun
 | 0.99h: Round 13 Fix Burst (FC defects + EngineModule + ADR-0004) | DONE | 2026-05-12 | architect + product-owner | 13 findings resolved (3 CRITICAL + 5 IMPORTANT + 5 OBS); 3 consistency findings; new SS-engine-module.md + ADR-0004; commits 2cdd8d2 + 1178797 |
 | 0.99i: Round 15 Fix Burst (vision authority + propagation gaps) | DONE | 2026-05-13 | architect + product-owner | vision authority restored on EngineModule/FactoryAdapter; sealing removed; 6 supporting types; BC count 13→15; commits 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c |
 | 0.99j: Round 17 Fix Burst (round-16 findings) | DONE | 2026-05-13 | architect + state-manager | 8 round-16 findings + 1 obs resolved; BC count remains 15; commits 314f002 + 4ca28fd + 6af919d; D-028 logged |
-| Pre-Phase-1 Final Gate | round-17 complete — awaiting round-18 validation | 2026-05-13 | state-manager | 17 artifacts; 15 BCs pre-staged; D-025..D-028 logged |
+| 0.99k: Round 19 Fix Burst (round-18 findings) | DONE | 2026-05-13 | architect + state-manager | 4 round-18 findings resolved (F-R18-1 CRITICAL semantic regression, F-R18-2 MEDIUM rustdoc, F-R18-3 MEDIUM frontmatter parser, F-R18-4 LOW wording); BC count remains 15; commits 4e386d9 + 33b5a0a; D-029 logged |
+| Pre-Phase-1 Final Gate | round-19 complete — awaiting round-20 validation | 2026-05-13 | state-manager | 17 artifacts; 15 BCs pre-staged; D-025..D-029 logged |
 | 1: Spec Crystallization | READY — awaiting human approval (pending round-14 validation) | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -75,10 +76,11 @@ awaiting: "round 18 validation chain (consistency + adversary fresh pass on roun
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 17 fix: SS-engine-module v1.1.1 — dirs→ProjectDirs (4×), ClaudeCodeModule::new, ProcessSnapshot ppid+exe_path, strict basename, EngineMetadata claim | architect | DONE | commit 314f002 |
-| Round 17 fix: SS-core-types-and-abi v1.2.1 — VsddFactoryAdapter::new, FactoryState Options, serde_yaml_ng::Value, BC footer 9→8, divergence doc | architect | DONE | commit 4ca28fd |
 | Round 17 fix: SS-forward-compatibility v1.2.1 — stale sealed-prose sweep (2 fixed; 5 retained) | architect | DONE | commit 6af919d |
-| Round 17 close-out: STATE.md + burst-log + session-checkpoints; D-028 logged | state-manager | DONE | this commit |
+| Round 17 close-out: STATE.md + burst-log + session-checkpoints; D-028 logged | state-manager | DONE | factory-artifacts |
+| Round 19 fix: SS-engine-module v1.1.2 — F-R18-1 CRITICAL BaseDirs::home_dir().join(".claude") replaces ProjectDirs (XDG regression fixed); F-R18-2 rustdoc; F-R18-4 BC-ENGINE-002 wording | architect | DONE | commit 4e386d9 |
+| Round 19 fix: SS-core-types-and-abi v1.2.2 — F-R18-2 VsddFactoryAdapter rustdoc; F-R18-3 frontmatter parser quote-stripping + list-skipping; PreflightError::InvalidHookUrl variant | architect | DONE | commit 33b5a0a |
+| Round 19 close-out: STATE.md + burst-log + session-checkpoints; D-029 logged | state-manager | DONE | this commit |
 
 ## Decisions Log
 
@@ -99,6 +101,7 @@ awaiting: "round 18 validation chain (consistency + adversary fresh pass on roun
 | D-026 | Round 13 comprehensive fix burst: 13 adversary-found defects (3 CRITICAL + 5 IMPORTANT + 5 OBSERVATIONS) + 3 consistency findings (D-POST-FC-001/002/003) ALL RESOLVED in-scope. New artifacts: SS-engine-module.md (EngineModule trait stability per F-FC-I003), ADR-0004 (Phase1Permission + ClaudeCodeTool exhaustive-enum rationale per F-FC-I004). Critical fixes: invalid unsafe-impl replaced with plugin-sdk-escape-hatch feature flag (compiles + production-grade sealed pattern); STATE.md frontmatter field-name parsing corrected; FactoryState restored to vision's 7 fields per human red-line; all 5 HookEvent inner-variant structs fully specified; lock-file contract_version added (BC-LOCK-001); /status JSON schema includes abi_version. 13 BCs now pre-staged for Phase 1 PRD. Upstream process-gap issue filed at drbothen/vsdd-factory for intra-phase adversarial passes. | commits 2cdd8d2 + 1178797 | pre-phase-1-final-gate-round-13-complete | 2026-05-12 | state-manager |
 | D-027 | Round 15 comprehensive fix burst: vision authority restored on EngineModule and FactoryAdapter (sealing removed entirely per human Q-15-1; plugin-sdk-escape-hatch feature flag dropped; EngineModule trait signature matches vision §EngineModule lines 111-128 exactly with detect/enrich/on_hook methods); BC-ENGINE-003 added for ClaudeCodeModule inherent methods (hook_paths/spawn/preflight as struct methods, not trait); 6 supporting types fully specified (ProcessSnapshot, EnrichedSession, HookResponse, SessionStatus, HookDecision, DeferUntil); async-trait ^0.1 pinned; ADR-0004 variant count 14→15; #[non_exhaustive] propagated to DenyReason/AllowPattern/DenyPattern; brief BC count 10→15; supplements 10→12. | commits 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c | pre-phase-1-final-gate-round-15-complete | 2026-05-13 | state-manager |
 | D-028 | Round 17 fix burst: 8 round-16 adversary findings + 1 consistency observation resolved. N16-1 dirs→directories::ProjectDirs (4 replacements); N16-2 public constructors added to VsddFactoryAdapter + ClaudeCodeModule; N16-3 EngineMetadata "matches exactly" claim revised to precise spirit-aligned elaboration; N16-4 ProcessSnapshot ppid + exe_path fields added; strict basename detect on exe_path replaces fragile cmdline-suffix match; N16-5 FactoryAdapter divergence documented as intentional (human Q-16-5); N16-6 FactoryState Option types restored per vision (convergence + cycle + serde_yaml_ng::Value custom_fields); N16-7 SS-forward-compat stale sealed-pattern prose: 2 fixed, 5 retained as historical record; N16-8 BC footer reconciled 9→8 authored. BC count remains 15 across all artifacts. | commits 314f002 + 4ca28fd + 6af919d | pre-phase-1-final-gate-round-17-complete | 2026-05-13 | state-manager |
+| D-029 | Round 19 fix burst: 4 round-18 findings resolved. F-R18-1 CRITICAL semantic regression from round-17 fixed (replaced ProjectDirs::from with BaseDirs::new().home_dir().join(".claude") preserving Claude Code's XDG-non-conforming ~/.claude/ resolution); F-R18-2 MEDIUM constructor rustdoc + PreflightError::InvalidHookUrl variant added; F-R18-3 MEDIUM frontmatter parser strips YAML quotes and skips flow lists/block scalars per rustdoc; F-R18-4 LOW BC-ENGINE-002 test case wording clarified. | commits 4e386d9 + 33b5a0a | pre-phase-1-final-gate-round-19-complete | 2026-05-13 | state-manager |
 
 ## Skip Log
 
@@ -115,7 +118,7 @@ awaiting: "round 18 validation chain (consistency + adversary fresh pass on roun
 
 <!-- Latest checkpoint. Prior checkpoints archived to cycles/cycle-001/session-checkpoints.md. -->
 
-**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-round-17-complete | **Mode:** greenfield-with-reference-ingest
+**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-round-19-complete | **Mode:** greenfield-with-reference-ingest
 
 ### What This Is
 
@@ -123,20 +126,20 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 
 ### Where We Are
 
-Round 17 fix burst (3 architect commits: 314f002 + 4ca28fd + 6af919d) resolved all 8 round-16 adversary findings + 1 consistency observation. CRITICAL: dirs::home_dir replaced with directories::ProjectDirs (4 occurrences, SS-engine-module). HIGH: VsddFactoryAdapter::new and ClaudeCodeModule::new public constructors added; FactoryAdapter design divergence documented as intentional per human Q-16-5. MEDIUM: EngineMetadata claim precision-revised; ProcessSnapshot ppid + exe_path added with strict basename detection (eliminates false positives on claude-squad/claudio/claude-code-router); FactoryState 3 Option fields restored (convergence, cycle, custom_fields with serde_yaml_ng::Value); SS-forward-compat stale sealed prose: 2 fixed, 5 retained as historical analysis; BC footer reconciled 9→8 authored. BC count remains 15 (constructors are method additions to existing BCs). D-028 logged.
+Round 19 fix burst (2 architect commits: 4e386d9 + 33b5a0a) resolved all 4 round-18 adversary findings. CRITICAL F-R18-1: ProjectDirs::from (round-17 fix) resolved to XDG-transformed paths on Linux, breaking Claude Code's XDG-non-conforming ~/.claude/ resolution; replaced with BaseDirs::new().home_dir().join(".claude") which preserves the correct invariant on all platforms. MEDIUM F-R18-2: VsddFactoryAdapter and ClaudeCodeModule constructor rustdoc added; PreflightError::InvalidHookUrl variant added (was rustdoc-referenced but missing from enum). MEDIUM F-R18-3: frontmatter parser now strips YAML quotes (single + double) from scalar values and skips flow lists, block scalars, and continuation lines per rustdoc. LOW F-R18-4: BC-ENGINE-002 test case (c) wording clarified (cmdline NOT consulted by detect). BC count remains 15. D-029 logged. Critical Hook Lesson added: fix-axis vs behavioral-invariant axis.
 
 ### Immediate Next Action
 
-Orchestrator dispatches round 18 validation chain: consistency-validator fresh pass + adversary fresh pass on round-17 fixes (17 artifacts, 15 BCs). If clean (0 findings), orchestrator presents Phase 1 gate for human approval.
+Orchestrator dispatches round 20 validation chain: consistency-validator fresh pass + adversary fresh pass on round-19 fixes (17 artifacts, 15 BCs). If clean (0 findings), orchestrator presents Phase 1 gate for human approval.
 
 ### Critical Artifacts (read in this order for Phase 1)
 
 1. `CLAUDE.md` (project root) — production-grade principle + agent routing table
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved)
 3. `.factory/specs/product-brief.md` v1.4.10 (commit 08b4a9c)
-4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.1 (VsddFactoryAdapter::new, FactoryState Options, divergence doc; commit 4ca28fd)
+4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.2 (VsddFactoryAdapter rustdoc; PreflightError::InvalidHookUrl; frontmatter parser quote-strip + list-skip; commit 33b5a0a)
 5. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.4 (commit 2cdd8d2)
-6. `.factory/specs/architecture/SS-engine-module.md` v1.1.1 (dirs→ProjectDirs, ClaudeCodeModule::new, ProcessSnapshot ppid+exe_path; commit 314f002)
+6. `.factory/specs/architecture/SS-engine-module.md` v1.1.2 (BaseDirs::home_dir().join(".claude") replaces ProjectDirs; rustdoc; BC-ENGINE-002 wording; commit 4e386d9)
 7. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.5 (async-trait ^0.1; commit 27dd235)
 8. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2.2 (commit 438bf95)
 9. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1 (#[non_exhaustive] on DenyReason/AllowPattern/DenyPattern; commit 806ff5f)
@@ -162,6 +165,7 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 - `.factory/planning/` NOT registered; use `.factory/plans/` for new planning docs
 - FC items resolved pre-Phase-1: Phase 1 agents read SS-core-types-and-abi.md for the canonical monocle-core public stability surface (ABI version constant, FactoryAdapter trait signature, #[non_exhaustive] enum policy, prost HookEnvelope wire schema). Do NOT re-derive these — they are LOCKED.
 - Upstream process-gap filed at drbothen/vsdd-factory: intra-phase adversarial passes (multiple rounds within a single pre-phase burst) need explicit workflow support.
+- Round-17 N16-1 fix optimized for crate-pin compliance (don't pin dirs) but lost semantic invariant (resolve to ~/.claude). Adversary fresh-pass at round 18 caught the regression. Lesson: when fixing a dependency, fix-axis (e.g., "replace crate X") is necessary but insufficient; complementary axis "preserve behavioral invariant Y" must also be tracked.
 
 ## Historical Content
 
