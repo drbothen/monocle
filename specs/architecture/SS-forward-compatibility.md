@@ -4,11 +4,11 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2"
+version: "1.2.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T10:00:00Z
+timestamp: 2026-05-13T18:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1)"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1)"
 project: monocle
 ---
 
@@ -198,7 +198,7 @@ items resolved pre-Phase-1 per human authorization (commit in same burst as v1.1
 | FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-RING-001: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.3 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.3 per human authorization |
 | FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | BC-TYPES-001: `#[non_exhaustive]` default for all pub enums; exemption policy documented; specified in SS-core-types-and-abi.md §Enum Extensibility | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | BC-ABI-001 + BC-ABI-002: constant declared in `monocle-core::abi`; exposed via `/status`; specified in SS-core-types-and-abi.md §ABI Version Constant | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-FACTORY-001 + BC-FACTORY-002: trait defined in `monocle-core::factory`; full signature, sealed pattern, self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-FACTORY-001 + BC-FACTORY-002: trait defined in `monocle-core::factory`; full open-trait signature (no sealed bound; see §Analysis — Sealed trait above), self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | BC-PROTO-001 + BC-PROTO-002: full HookEnvelope proto schema with field-number reservation convention; specified in SS-core-types-and-abi.md §Prost Wire Schemas | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-AUTH-001 + BC-AUTH-002: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.3 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.3 per human authorization |
 
@@ -222,9 +222,11 @@ behavior. They are additions that prevent silent forward-compatibility failures
 at Phase 2, 3, and 4 boundaries.
 
 FC-04 (`VsddFactoryAdapter implements FactoryAdapter trait`) was the only CRITICAL
-finding. It is resolved with a complete, sealed-trait-pattern-correct specification
-including the full trait signature, the `VsddFactoryAdapter` implementation skeleton,
-the Phase 3 relaxation path, and two behavioral contracts.
+finding. It is resolved with a complete, open-trait specification (Round 15:
+sealing removed entirely per human Q-15-1 honoring vision authority; trait now open
+for plugin SDK consumption) including the full trait signature, the
+`VsddFactoryAdapter` implementation skeleton, the Phase 3 extension path, and two
+behavioral contracts (BC-FACTORY-001 + BC-FACTORY-002).
 
 The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
 The following 15 pre-staged BC IDs are RESERVED — the PRD must use these exact IDs
