@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.9"
+version: "1.4.10"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-13T00:00:00Z
+timestamp: 2026-05-13T10:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -72,6 +72,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4.7 | 2026-05-12 | product-owner (6 forward-compatibility FC items integrated as Phase 1 contracts per human authorization to lock pre-Phase-1; Phase 1 will run in fresh context; spec package must be self-contained) | New supplement `SS-core-types-and-abi.md` added (10 supplements total). New Phase 1 Scope sub-bullets and Success Criteria row covering: (FC-01) JSONL `format_version = 1` first key on every ring record; (FC-02) `#[non_exhaustive]` on all `monocle-core` public enums; (FC-03) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (FC-04 CRITICAL) `FactoryAdapter` trait defined with `VsddFactoryAdapter` implementing it (not inline-wired); (FC-05) `monocle-proto` `HookEnvelope` + 5 event messages with `uint32 schema_version = 1` first field; (FC-06) auth token format `monocle-v1:<64-char-hex>` with non-prefix rejection rule (HTTP 401). 10 behavioral contracts pre-staged for Phase 1 PRD authoring: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001/002, BC-RING-001, BC-AUTH-001/002. |
 | 1.4.8 | 2026-05-12 | product-owner (F-FC-C001 CRITICAL adversary finding from post-FC-burst fresh pass) | Resolves F-FC-C001 (CRITICAL adversary finding from post-FC-burst fresh pass): v1.4.7 erroneously listed `Phase1Permission` as carrying `#[non_exhaustive]` — contradicted both SS-permissions-phase1.md and SS-core-types-and-abi.md which require Phase1Permission to be exhaustive. Brief updated to remove Phase1Permission from non_exhaustive list; cross-reference added to ADR-0004 (architect-produced in same burst) documenting the exhaustive-enum exemption rationale. Also adds ClaudeCodeTool to the exhaustive-exempt list per the same ADR. No scope change. |
 | 1.4.9 | 2026-05-13 | product-owner (round-14 propagation gaps resolved) | (G-R14-001) `supplements:` frontmatter expanded from 10 → 12 (added SS-engine-module.md + ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md). (N6) Phase 3 plugin SDK extension prose updated — removed obsolete "unsafe-impl mechanism" reference; replaced with open-trait per vision authority (round-15 architect removes sealing per human Q-15-1). (N5) BC count updated 10 → 14 (added BC-ENGINE-001/002, BC-LOCK-001; split BC-PROTO-001 → 001a/001b). No scope changes. |
+| 1.4.10 | 2026-05-13 | product-owner (BC count reconciliation) | BC count reconciliation — architect's round-15 work (commit 7483d93) added BC-ENGINE-003 (ClaudeCodeModule inherent methods: hook_paths, spawn, preflight as struct methods per vision-aligned trait restoration). Brief BC count 14 → 15. Forward-compatibility Success Criteria row updated; BC list now: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-RING-001, BC-AUTH-001/002, BC-ENGINE-001/002/003, BC-LOCK-001. |
 
 ## Who Is It For?
 
@@ -238,7 +239,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-DAEMON-003 (per `SS-daemon-lifecycle.md`). |
 | DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | Behavioral contract: BC-DTU-001 (Phase 1 PRD will formalize). |
-| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 14 behavioral contracts pre-staged for Phase 1 PRD: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-RING-001, BC-AUTH-001/002, BC-ENGINE-001/002, BC-LOCK-001. Per `SS-core-types-and-abi.md` and `SS-daemon-lifecycle.md` v1.0.3. |
+| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 15 behavioral contracts pre-staged for Phase 1 PRD: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-RING-001, BC-AUTH-001/002, BC-ENGINE-001/002/003, BC-LOCK-001. Per `SS-core-types-and-abi.md`, `SS-daemon-lifecycle.md` v1.0.3, and `SS-engine-module.md` v1.1. |
 
 ## Phase 2 Exit Criteria
 
