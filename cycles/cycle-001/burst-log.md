@@ -4,10 +4,10 @@ level: ops
 version: "1.0"
 status: in-progress
 producer: state-manager
-timestamp: 2026-05-12T22:00:00Z
+timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "f001477"
+input-hash: "7bfff3f"
 traces_to: STATE.md
 ---
 
@@ -522,3 +522,45 @@ Round 10 adversary fresh pass returned PRODUCTION_READY with zero findings acros
 |-------|------|--------|
 | adversary | Round 10 fresh pass | PRODUCTION_READY; persisted to plans/adversary-pass-round-10-final.md |
 | state-manager | CONVERGENCE close-out: STATE.md + cycle files | This commit |
+
+---
+
+## Burst 16 — Final FC Lock-In + PHASE-1-READY Close-Out (2026-05-12)
+
+**Type:** FC lock-in burst + state-manager close-out
+**Agents:** architect, product-owner, state-manager
+**Trigger:** human authorization to lock 6 forward-compatibility items as binding Phase 1 contracts; Phase 1 will run in fresh context (spec package must be self-contained)
+
+### Summary
+
+Final pre-Phase-1 burst. Three architect/product-owner commits locked all 6 forward-compatibility (FC-01..FC-06) items into binding Phase 1 contracts. New artifact SS-core-types-and-abi.md (700 lines) defines monocle-core public stability surface. 10 behavioral contracts pre-staged for Phase 1 PRD. SS-deps updated with 2 new crates (constant_time_eq + futures). Brief advanced to v1.4.7. Spec package is now SELF-CONTAINED for fresh Phase 1 context dispatch. D-025 logged.
+
+### FC Items Resolved
+
+| FC Item | Contract | Primary Artifact |
+|---------|----------|-----------------|
+| FC-01 | JSONL format_version field as first key in ring-buffer entries | SS-daemon-lifecycle v1.0.3 (BC-RING-001) |
+| FC-02 | MONOCLE_ABI_VERSION constant (u32, 0x0001_0000 for v1.0) exposed in /status | SS-core-types-and-abi.md (BC-ABI-001/002) |
+| FC-03 | #[non_exhaustive] on all public enums in monocle-core | SS-core-types-and-abi.md (BC-TYPES-001) |
+| FC-04 | FactoryAdapter trait + VsddFactoryAdapter impl with StateChangeStream | SS-core-types-and-abi.md (BC-FACTORY-001/002) |
+| FC-05 | prost HookEnvelope schema_version field (u32) at position 15 | SS-core-types-and-abi.md (BC-PROTO-001/002) |
+| FC-06 | Auth token versioned prefix monocle-v1:<64-hex>; non-prefix tokens rejected | SS-daemon-lifecycle v1.0.3 (BC-AUTH-001/002) |
+
+### 10 BCs Pre-Staged for Phase 1 PRD
+
+BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001, BC-PROTO-002, BC-RING-001, BC-AUTH-001, BC-AUTH-002
+
+### Chronological Events
+
+1. **commit 4f5d4ff** — architect: NEW SS-core-types-and-abi.md (700 lines; FC-02/03/04/05) + SS-daemon-lifecycle v1.0.3 (FC-01 + FC-06) + SS-forward-compatibility v1.1 (PHASE 1 READY verdict)
+2. **commit 816b1bc** — product-owner: brief v1.4.7 (6 FC items as Phase 1 contracts; supplements 10; 10 BCs pre-staged)
+3. **commit d77271a** — architect follow-on: SS-deps v1.1.4 (constant_time_eq ^0.3 + futures ^0.3)
+
+**D-025 logged.** STATE.md current_step set to `pre-phase-1-final-gate-FULLY-CONVERGED-spec-package-self-contained-awaiting-human-phase-1-approval`.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-core-types-and-abi.md NEW (700 lines) + SS-daemon-lifecycle v1.0.3 + SS-forward-compatibility v1.1 | commits 4f5d4ff |
+| product-owner | Brief v1.4.7 — FC-01..FC-06 contracts + 10 BCs pre-staged | commit 816b1bc |
+| architect | SS-deps v1.1.4: constant_time_eq ^0.3 + futures ^0.3 | commit d77271a |
+| state-manager | PHASE-1-READY close-out: STATE.md, D-025, cycle files | This commit |
