@@ -1,17 +1,17 @@
 ---
 document_type: dtu-assessment
 level: L3
-version: "1.0"
+version: "1.1"
 status: complete
 producer: architect
-timestamp: 2026-05-12T00:00:00Z
+timestamp: 2026-05-12T23:50:00Z
 phase: pre-phase-1-architecture
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1"
+traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1; human Q-2 clone build effort (v1.1)"
 dtu_required: true
 project: monocle
 ---
@@ -267,3 +267,103 @@ If overall fidelity drops below 0.95 on any per-PR run or monthly check:
 the prior "monthly schema check; quarterly recorded session re-validation"
 placeholder in this document with a complete fixture protocol, scoring function,
 tooling specification, and CI gate.
+
+## Phase 1 Clone Build Effort
+
+**Trace:** Human Q-2. Specifies the `dtu-claude-code-hooks-v1` clone as a Phase 1
+deliverable with concrete acceptance criteria, packaging decision, and Phase 4
+expansion boundary.
+
+### What Gets Built
+
+`dtu-claude-code-hooks-v1` — a Rust binary (see §Packaging Decision below) that
+synthesizes Claude Code hook POSTs for the 5 canonical endpoints from the public
+schema documented in any-context BC-HOOK-001..BC-HOOK-041 and in the DTU Architecture
+§Endpoint matrix above. The clone acts as a fake Claude Code process: it reads the
+monocle daemon lock file, extracts the port and auth token, and fires synthetic hook
+POST payloads at the daemon's 5 endpoints with the correct `X-Claude-Code-Ide-Authorization`
+header stamped.
+
+### Packaging Decision: Rust Binary, Not Docker Container
+
+**Decision: Rust binary fixture, compiled into `monocle-test-harness`.** The clone
+is implemented as a module in `crates/monocle-test-harness/src/dtu/` and compiled
+to a binary at `target/debug/dtu-claude-code-hooks-v1` (or `target/release/` for CI).
+
+**Rationale for binary over Docker container:**
+
+| Factor | Binary | Docker |
+|--------|--------|--------|
+| CI dependency surface | Zero new deps (already running cargo) | Docker daemon must be available in every CI runner |
+| Startup latency | <50ms (native binary) | 2-5s (container pull + start) |
+| Port management | Reads daemon lock file directly via Rust code | Requires env var injection or volume mount for lock file |
+| Integration with `cargo xtask dtu-fidelity` | `cargo xtask` spawns the binary as a subprocess | `cargo xtask` must shell out to docker-compose |
+| Cross-platform (macOS + Linux) | Single cargo build matrix | Docker not supported on macOS CI without additional setup |
+| Phase 1 complexity budget | Low — one new binary target in `monocle-test-harness` | High — Dockerfile, docker-compose, registry, CI secrets |
+
+The Docker container approach described in §DTU Architecture §Docker Compose Structure
+is the **distribution packaging** form for the clone — it can be produced from the
+same Rust binary via a `docker build` step in the CI release matrix. Phase 1 ships
+the binary; Phase 4 integration testing may wrap it in a container if multi-host
+federation testing requires it. The GitHub Actions `dtu-fidelity.yml` workflow in
+§DTU Fidelity Measurement Procedure references the Docker image for production CI;
+during Phase 1 development, the binary form replaces it.
+
+The fixture corpus at `tests/fixtures/dtu/claude-code-hook-2x/` (defined in §DTU
+Fidelity Measurement Procedure) is used by both the binary and any future container
+packaging — the corpus is the ground truth; the packaging is an implementation detail.
+
+### Who Builds It
+
+Phase 1 TDD stories, dispatcher: `test-writer` + `implementer` agents under
+architect supervision. The clone is a Phase 1 Wave 1 story (parallel to the daemon
+stories that establish the 5 hook endpoints it will POST to). Story decomposition
+and wave assignment are finalized during `/vsdd-factory:create-prd` and
+`/vsdd-factory:decompose-stories`.
+
+The clone story is a first-class Phase 1 story, not an afterthought. It must be
+Wave 1 because later stories that exercise hook ingestion (e.g., the permission
+overlay, the event ribbon, the session panel) depend on the clone as their test
+driver.
+
+### Acceptance Criteria
+
+All of the following must pass before the clone story is marked complete:
+
+| Criterion | Target | Verification |
+|-----------|--------|-------------|
+| Fidelity score | ≥ 0.95 mean field-match score across 25-fixture corpus | `cargo xtask dtu-fidelity` exits 0 |
+| All 5 endpoint payloads schema-valid | All required fields present with correct JSON types | Per-fixture score = 1.0 for required fields |
+| Auth header stamped | `X-Claude-Code-Ide-Authorization: <token>` present on every POST | `cargo xtask dtu-fidelity` field-match check on auth header |
+| Lock file discovery | Clone reads `<runtime_dir>/monocle.lock` to extract port + token | Integration test: daemon started, clone connects without manual config |
+| Binary artifact at deterministic path | `tests/dtu/dtu-claude-code-hooks-v1/` (source); `target/[debug\|release]/dtu-claude-code-hooks-v1` (built artifact) | `cargo build --bin dtu-claude-code-hooks-v1` succeeds on macOS + Linux |
+| CI gate wired | `dtu-fidelity.yml` GitHub Actions workflow runs on PR touching `monocle-ipc/**` or `monocle-runtime/**` | CI green on PR; workflow visible in `.github/workflows/` |
+
+### Phase 1 Success Criterion Cross-Reference
+
+The brief v1.4.5 §Success Criteria table will add the following row when
+`/vsdd-factory:create-prd` is run (product-owner lane):
+
+> **Hook protocol parity (DTU fidelity):** `dtu-claude-code-hooks-v1` clone scores
+> ≥ 0.95 on the 25-fixture corpus defined in `SS-forward-compatibility.md` and
+> `dtu-assessment.md` §DTU Fidelity Measurement Procedure. `cargo xtask dtu-fidelity`
+> exits 0 in CI.
+
+This cross-reference is an architect-to-product-owner handoff: the architect defines
+the acceptance criterion here; the product-owner incorporates it into the PRD success
+criteria during Phase 1 spec crystallization.
+
+### Phase 4 Expansion
+
+When Phase 4 architecture begins, two additional DTU clones are specced:
+
+- **`dtu-rmcp-server-v1`** — MCP bridge (rmcp 1.6). Synthesizes MCP protocol responses
+  for monocle's session-query and prompt-injection use cases. Evaluated and scoped
+  during Phase 4 architecture gate; not a Phase 1 concern.
+- **`dtu-russh-server-v1`** — Federation SSH server (russh 0.60). Synthesizes a remote
+  monocle daemon for federation tunnel testing. Evaluated and scoped during Phase 4
+  architecture gate; not a Phase 1 concern.
+
+The Phase 4 clones may be packaged as Docker containers (the multi-host federation
+test harness benefits from container isolation across daemon instances). The Phase 1
+binary-first decision does not constrain Phase 4 packaging choices.
