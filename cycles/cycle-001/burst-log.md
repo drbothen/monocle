@@ -761,3 +761,52 @@ All 3 round-20 findings resolved in-scope per production-grade routing principle
 | architect | SS-engine-module v1.1.3 — F-R20-1 typed EngineMetadataError + enrich Result + F-R20-3 rustdoc url removal | commit 83d5fc5 |
 | architect | SS-core-types-and-abi v1.2.3 — F-R20-2 parse_frontmatter_field guard parity | commit 3495812 |
 | state-manager | Round-21 close-out: STATE.md (D-030) + cycle files | this commit |
+
+---
+
+## Burst 24 (2026-05-13) — Round 23 Fix Burst (F-R22-1/2/3 resolved)
+
+**Type:** fix burst
+**Agents:** architect (3 commits)
+**Trigger:** 1 consistency finding + 3 adversary findings at `.factory/plans/adversary-pass-round-22.md` + `.factory/plans/consistency-audit-round-22.md`
+**Files touched:** SS-engine-module.md, SS-deps-pin-manifest.md, plans/adversary-pass-round-22.md (NEW)
+**Versions bumped:** SS-engine-module v1.1.3→v1.1.4; SS-deps-pin-manifest v1.1.5→v1.1.6
+
+### Summary
+
+All 3 adversary findings from round-22 resolved in-scope. Consistency finding rejected per authority decision (see below). Two MEDIUM adversary findings addressed a precision gap in how the five EngineModule trait methods are described vis-a-vis the vision document. One MEDIUM finding added a new BC (BC-ENGINE-002-ERR) specifying the `HomeUnresolvable` error-path test with temp-env isolation. New dev-dependency `temp-env = "^0.2"` added to SS-deps-pin-manifest.
+
+**Notable framing decision (D-031):** SS-engine-module.md now explicitly states "the vision is confirmed non-authoritative for this surface" (Phase 1 trait signatures). This is correct per CLAUDE.md §Architectural Authority (later/more-specific wins) but is a substantive framing the human should be aware of at the Phase 1 gate.
+
+**BC count change:** BC-ENGINE-002-ERR added in §Behavioral Contracts. BC total: 15 → 16. Note: the Phase 1 PRD BC Pre-Staging table at the end of SS-engine-module.md still shows "Total: 3 BCs pre-staged" (stale — BC-ENGINE-002-ERR not yet added to that table). This consistency gap is flagged for round-24 consistency-validator; architect must update the pre-staging table.
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R22-1 MEDIUM (adversary): §EngineModule Trait Signature opening paragraph claimed all 5 methods match the vision "exactly" — imprecise; `metadata` and `enrich` are vision-spirit-aligned (Result-wrapped), not vision-verbatim | MEDIUM | Paragraph rewritten to enumerate vision-verbatim methods (id/detect/on_hook) vs vision-spirit-aligned (metadata/enrich) with explicit rationale; BC-ENGINE-001 pre-staging row corrected | 563b573 |
+| F-R22-2 MEDIUM (adversary): BC-ENGINE-001 row in pre-staging table listed "(detect/enrich/on_hook)" as vision-verbatim claim — incorrect; enrich is vision-spirit-aligned | MEDIUM | Row corrected: "(id/detect/on_hook)" for vision-verbatim; metadata/enrich explicitly marked vision-spirit-aligned | 563b573 |
+| F-R22-3 MEDIUM (adversary): BC-ENGINE-002 had no test specification for HomeUnresolvable error path in metadata() and enrich() | MEDIUM | New sibling BC BC-ENGINE-002-ERR added; test spec in monocle-runtime/tests/engine_module.rs; temp-env = "^0.2" added as dev-dep; both methods covered; error variant matched | 563b573 + afe72a2 |
+| Consistency F-R22-1: vision document not updated to reflect vision-spirit-aligned distinction | REJECTED | Authority decision: vision is human-approved verbatim; SS-engine-module.md is the canonical source for Phase 1 signatures per CLAUDE.md §Architectural Authority (later/more-specific wins). Vision NOT edited. | — |
+
+### Dev Dependency Decision
+
+`temp-env = "^0.2"` chosen over `serial_test` for multi-threaded test isolation of the `HOME`-unset scenario. Rationale:
+
+- `temp-env` uses RAII cleanup — all modified env vars restored on drop, including panic exit paths
+- `std::env::remove_var` without RAII is a data-race in multi-threaded Rust test harnesses (global env state shared across threads in same process)
+- `serial_test` serialises execution to avoid the race but leaves env mutated if a test panics before cleanup
+- `temp-env` is superior because cleanup is unconditional; no `#[serial]` attribute required
+
+### Lessons
+
+- **Propagation-gap class — trait surface changes require downstream-claim sweep.** Every change to trait method signatures or return types must be followed by a sweep of: (a) the vision document's corresponding section (check for claim-mismatch prose); (b) the BC pre-staging table in the same file; (c) any BC rows in other files that reference the same surface (e.g., BC-ENGINE-001 in the pre-staging table). The adversary found F-R22-1 + F-R22-2 as a propagation gap from the F-R20-1 fix that changed return types but did not update all prose claims. Tagged `[process-gap]` — candidate for a Phase 1 self-improvement story to automate this downstream-claim check (to be raised by human if desired; NOT registered in tech-debt-register without explicit human direction per CLAUDE.md Rule 3).
+
+- **Vision authority is anchored to CLAUDE.md §Architectural Authority.** When a later/more-specific document supersedes a vision-level claim, the correct fix is to update the later document to be explicit about the supersession — NOT to edit the human-approved vision. The vision is immutable without human re-approval.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | Persist round-22 adversary report | plans/adversary-pass-round-22.md (commit 4f15092) |
+| architect | SS-engine-module v1.1.4 — F-R22-1/2 provenance precision + F-R22-3 BC-ENGINE-002-ERR test spec | commit 563b573 |
+| architect | SS-deps-pin-manifest v1.1.6 — temp-env ^0.2 added to [dev-dependencies] | commit afe72a2 |
+| state-manager | Round-23 close-out: STATE.md (D-031) + cycle files | this commit |

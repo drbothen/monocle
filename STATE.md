@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T16:00:00Z
-phase: pre-phase-1-final-gate-round-21-complete
-current_step: round-22-validation-pending
+timestamp: 2026-05-13T21:00:00Z
+phase: pre-phase-1-final-gate-round-23-complete
+current_step: round-24-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 21 fix burst commits 83d5fc5 (engine v1.1.3) + 3495812 (core v1.2.3); resolves F-R20-1/2/3"
-awaiting: "round 22 validation (consistency + adversary in parallel); on convergence, Phase 1 gate to human"
+traces_to: "round 23 fix burst commits 563b573 (engine v1.1.4) + afe72a2 (deps v1.1.6) + 4f15092 (adv-report persist); resolves F-R22-1/2/3"
+awaiting: "round 24 validation (consistency + adversary in parallel); on convergence, Phase 1 gate to human (with framing question about vision-vs-architecture authority)"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -44,10 +44,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | round-22-validation-pending |
+| **Current Step** | round-24-validation-pending |
 | **Brief** | `.factory/specs/product-brief.md` v1.4.10 (commit 08b4a9c) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T16:00:00Z |
+| **Last Updated** | 2026-05-13T21:00:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING round-22 validation | — | round-21 fix burst complete (commits 83d5fc5 + 3495812); 17 artifacts; 15 BCs pre-staged |
+| Pre-Phase-1 Final Gate | PENDING round-24 validation | — | round-23 fix burst complete (commits 563b573 + afe72a2 + 4f15092); 17 artifacts; 16 BCs pre-staged (BC-ENGINE-002-ERR added; pre-staging table in SS-engine-module needs architect update — consistency gap for round-24) |
 | 1: Spec Crystallization | READY — awaiting convergence + human approval | — | |
 | 2-7 | not-started | — | |
 
@@ -67,11 +67,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 19 close-out: STATE.md + burst-log + session-checkpoints; D-029 logged | state-manager | DONE | commit 1b26c54 |
 | Round 20 validation: consistency CLEAN + adversary 0+2+1; round-20 report persisted | validator+adversary | DONE | commit 636d8d4 |
 | Durability close-out: STATE.md zero-context rewrite; all untracked committed | state-manager | DONE | commit 11e4b34 |
 | Round 21 fix: F-R20-1 typed metadata/enrich error + F-R20-2 parse_frontmatter_field guard parity + F-R20-3 rustdoc url crate removal | architect | DONE | commits 83d5fc5 + 3495812 |
-| Round 21 close-out: STATE.md + burst-log + session-checkpoints; D-030 logged | state-manager | DONE | this commit |
+| Round 21 close-out: STATE.md + burst-log + session-checkpoints; D-030 logged | state-manager | DONE | commit (round-21) |
+| Round 23 fix: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision + F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable test spec | architect | DONE | commits 563b573 + afe72a2 + 4f15092 |
 
 ## Decisions Log
 
@@ -85,6 +85,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-028 | Round 17 fix: 8 round-16 findings; directories crate; constructors; ProcessSnapshot ppid+exe_path | 2026-05-13 | state-manager |
 | D-029 | Round 19 fix: F-R18-1 CRITICAL BaseDirs::home_dir/.claude; F-R18-2 rustdoc+InvalidHookUrl; F-R18-3 frontmatter parser | 2026-05-13 | state-manager |
 | D-030 | Round 21 fix: F-R20-1 typed EngineMetadataError (metadata + enrich both return Result); F-R20-2 parse_frontmatter_field guard parity; F-R20-3 url crate ref removed from rustdoc | 2026-05-13 | state-manager |
+| D-031 | Round 23 fix: vision deemed non-authoritative for Phase 1 trait signatures per CLAUDE.md §Architectural Authority (later/more-specific wins); BC-ENGINE-002-ERR added specifying HomeUnresolvable test path with temp-env isolation; temp-env ^0.2 added as dev-dep to SS-deps (RAII cleanup superior to serial_test for panic safety). Vision document NOT edited. Pre-staging table in SS-engine-module still shows 3 engine BCs (stale); consistency gap noted for round-24 audit. | 2026-05-13 | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -96,15 +97,15 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 21 fix burst resolved F-R20-1/2/3 (commits 83d5fc5 + 3495812). Round 22 validation pending._
+_None — round 23 fix burst resolved F-R22-1/2/3 (commits 563b573 + afe72a2 + 4f15092). Round 24 validation pending._
 
 ## Session Resume Checkpoint
 
-**ROUND-21-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-21-complete
+**ROUND-23-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-23-complete
 
 ### Immediate Next Action
 
-Round 22 validation chain. Orchestrator should dispatch (in parallel) vsdd-factory:consistency-validator and vsdd-factory:adversary against the round-21 artifacts. Consistency-validator scope: all spec files in `.factory/specs/architecture/` for cross-file consistency post-round-21. Adversary scope: SS-engine-module.md v1.1.3 + SS-core-types-and-abi.md v1.2.3 with fresh context and production-grade lens; specifically verify (a) typed error contract is genuinely no-silent-fallback at every layer, (b) parse_frontmatter_field guards match sibling exactly, (c) rustdoc references no unpinned crates. Persist both reports to `.factory/plans/consistency-audit-round-22.md` and `.factory/plans/adversary-pass-round-22.md`. If both clean (adversary 0 CRIT + 0 MED tolerable; LOW human decision; consistency CLEAN): proceed to Phase 1 gate. If defects: route to correct specialist per CLAUDE.md routing table; re-validate.
+Round 24 validation chain. Orchestrator should dispatch (in parallel) vsdd-factory:consistency-validator and vsdd-factory:adversary. Consistency-validator scope: all architecture docs + brief + vision + dtu-assessment for cross-file coherence post-round-23. Specifically verify: (a) the new "vision non-authoritative for Phase 1 signatures" framing does not contradict any other architecture doc; (b) BC totals reconcile — BC-ENGINE-002-ERR was added in §Behavioral Contracts of SS-engine-module.md v1.1.4 but the Phase 1 PRD BC Pre-Staging table at the end of that file still says "Total: 3 BCs pre-staged" (stale; architect must update); (c) the new `temp-env = "^0.2"` dev-dep entry in SS-deps-pin-manifest.md v1.1.6 is in the correct section and conforms to manifest conventions. Adversary scope: SS-engine-module.md v1.1.4 + SS-deps-pin-manifest.md v1.1.6, fresh context, production-grade lens; specifically verify (a) the new BC-ENGINE-002-ERR test spec is genuinely production-grade (env-isolation, both methods covered, error variant matched); (b) the "vision is non-authoritative" framing is not over-broad or improperly anchored; (c) no new silent-failure patterns introduced. Persist both reports to `.factory/plans/`. If both clean (adversary 0 CRIT + 0 MED tolerable; LOW human decision; consistency CLEAN): proceed to Phase 1 gate. If defects: route to correct specialist; re-validate. Phase 1 gate MUST include explicit human question about vision-vs-architecture authority framing (D-031).
 
 ### Critical Artifacts (read for Phase 1)
 
@@ -112,10 +113,10 @@ Round 22 validation chain. Orchestrator should dispatch (in parallel) vsdd-facto
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
 3. `.factory/specs/product-brief.md` v1.4.10
 4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
-5. `.factory/specs/architecture/SS-engine-module.md` v1.1.3
+5. `.factory/specs/architecture/SS-engine-module.md` v1.1.4
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.4
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
-8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.5
+8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.6
 9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2.2
 10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.1
 
@@ -142,16 +143,19 @@ Persisted from harness TaskList tool (not auto-saved). Active queue at last cont
 |---|---|---|---|
 | #35 | done | Round 21 fix burst — F-R20-1/2/3 architect | — |
 | #36 | done | Round 21 state-manager close-out | #35 |
-| #37 | pending | Round 22 validation chain | #36 |
-| #38 | pending | Iterate fix-validate cycle to convergence | #37 |
-| #12 | in_progress | Re-present Phase 1 gate to human | #38 |
+| #37 | done | Round 22 validation chain | #36 |
+| #38a | done | Round 23 fix burst — F-R22-1/2/3 architect | #37 |
+| #38b | done | Round 23 state-manager close-out | #38a |
+| #39 | pending | Round 24 validation chain | #38b |
+| #40 | pending | Iterate fix-validate cycle to convergence | #39 |
+| #12 | in_progress | Re-present Phase 1 gate to human | #40 |
 
 ### Resumption protocol for fresh-context session
 
-1. Re-create the queue above via 4 `TaskCreate` calls (subjects from this table) + 1 `TaskUpdate` to set `#12` back to `in_progress` (assuming you re-create it; otherwise add it fresh).
+1. Re-create the queue above via `TaskCreate` calls (subjects from this table) + 1 `TaskUpdate` to set `#12` back to `in_progress` (assuming you re-create it; otherwise add it fresh).
 2. Set blocking dependencies via `TaskUpdate addBlockedBy` per the table.
-3. Mark `#37` as `in_progress` when you dispatch the round 22 validation chain.
-4. Immediate Next Action above contains the full round 22 dispatch instructions.
+3. Mark `#39` as `in_progress` when you dispatch the round 24 validation chain.
+4. Immediate Next Action above contains the full round 24 dispatch instructions.
 
 ### Completed history (rounds 1-20)
 
