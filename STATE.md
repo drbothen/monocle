@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T18:30:00Z
-phase: pre-phase-1-final-gate-round-31-complete
-current_step: round-32-validation-pending
+timestamp: 2026-05-13T19:15:00Z
+phase: pre-phase-1-final-gate-round-33-complete
+current_step: round-34-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 31 fix burst commits bdbb97f (adv-r30 persist) + ed9842f (daemon-lifecycle v1.0.6) + 0fc5803 (engine v1.1.9 audit table 7→17) + 2ad7459 (conventions v1.6 semgrep rule 5) + 442190f (brief v1.4.16); resolves F-R30-1/2/3/4; codifies audit-mechanism CI enforcement via Python script"
-awaiting: "round 32 validation; if CLEAN, Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness)"
+traces_to: "round 33 fix burst commits 31ff515 (adv-r32 persist) + 2f05ab6 (conventions v1.7 pattern-either + edge cases) + e2e7d5a (brief v1.4.17 delimiter correction); resolves F-R32-1/2/3/4 incl. POL-11 META-GAP closure"
+awaiting: "round 34 validation; if CLEAN, Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness)"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -44,10 +44,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | round-32-validation-pending |
-| **Brief** | `.factory/specs/product-brief.md` v1.4.16 (commit 442190f) |
+| **Current Step** | round-34-validation-pending |
+| **Brief** | `.factory/specs/product-brief.md` v1.4.17 (commit e2e7d5a) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T18:30:00Z |
+| **Last Updated** | 2026-05-13T19:15:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING round-32 validation | — | round-31 fix burst complete (commits bdbb97f + ed9842f + 0fc5803 + 2ad7459 + 442190f); F-R30-1/2/3/4 resolved; audit table 7→17 structs + HTML delimiters + semgrep rule 5 + Python script CI enforcement + ISO-8601 convention; brief v1.4.16 ratified |
+| Pre-Phase-1 Final Gate | PENDING round-34 validation | — | round-33 fix burst complete (commits 31ff515 + 2f05ab6 + e2e7d5a); F-R32-1/2/3/4 resolved; POL-11 META-GAP closed (pattern-either + dual fixtures); Python script edge-case contract; brief v1.4.17 delimiter strings corrected; Q-3 version refresh |
 | 1: Spec Crystallization | READY — awaiting convergence + human approval | — | |
 | 2-7 | not-started | — | |
 
@@ -67,11 +67,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 27 fix burst: F-R26-adv-1 CRITICAL E0639 constructors (4 structs incl. HookResponse) + F-R26-adv-2 semgrep idiom expansion + F-R26-adv-3 positive-coverage fixture corpus + F-R26-adv-5 field coverage + F-R26-adv-6 rule consolidation + F-R26-2 supersession + F-R26-3 citation refresh | architect+product-owner | DONE | commits 9be1033 + 48d952a + a1c83a9 |
 | Round 28 validation: consistency (CLEAN) + adversary (2 HIGH + 2 MED + 2 LOW — regression from fresh-context derivation, not round-27 changes); adv-report persisted | validator+adversary | DONE | commit 0b3f89d (adversary-pass-round-28.md) |
 | Round 29 fix burst: F-R28-1 EnrichedSession Option<i64> + F-R28-2 3 more constructors + Cross-Crate Audit table + F-R28-3 HookResponse builder + F-R28-4 HookEventRecord struct + F-R28-5 v1.1.5 trace + F-R28-6 brief row order + ratification | architect+product-owner | DONE | commits 0b3f89d + dc719cd + 09642de + 03f08ad + 1427f4d |
 | Round 30 validation: consistency + adversary (1 HIGH + 2 MED + 1 LOW — NEEDS_ONE_MORE); adv-report persisted | validator+adversary | DONE | commit bdbb97f (adversary-pass-round-30.md) |
 | Round 31 fix burst: F-R30-1 audit table 7→17 + HTML delimiters + F-R30-2 HookEventRecord #[non_exhaustive] + F-R30-3 semgrep rule + Python script CI enforcement + F-R30-4 ISO-8601 convention + ratification | architect+product-owner | DONE | commits bdbb97f + ed9842f + 0fc5803 + 2ad7459 + 442190f |
+| Round 33 fix burst: F-R32-1 brief delimiter strings + F-R32-2 POL-11 META-GAP pattern-either + dual fixtures + F-R32-4 Python script edge cases + F-R32-3 STATE.md Q-3 version refresh | architect+product-owner+state-manager | DONE | commits 31ff515 + 2f05ab6 + e2e7d5a |
 
 ## Decisions Log
 
@@ -90,6 +90,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-033 | Round 27 fix: E0639 cross-crate struct-literal CRITICAL resolved via constructors on 4 structs (EngineMetadata, ProcessSnapshot with two variants, EnrichedSession, HookResponse); semgrep pattern-either expanded to cover use-import idiom; §Semgrep Coverage Hardening fixture-corpus + CI assertion specified per POL-11; brief v1.4.13 ratifies architect's round-27 work. | 2026-05-13 | state-manager |
 | D-034 | Round 29 fix: EnrichedSession last_event_micros i64→Option<i64> (epoch sentinel eliminated); SpawnArgs/SessionHandle/EngineVersion constructors added (E0639 prevented in monocle-runtime/tests/); HookResponse builder pattern replaces pub-field mutation; HookEventRecord defined as real struct in monocle-runtime::ring with RING_FORMAT_VERSION const; v1.1.5 supersession annotation corrected; brief v1.4.15 ratifies + adds Cross-Crate Constructor Audit table codification rule. | 2026-05-13 | state-manager |
 | D-035 | Round 31 fix: Cross-Crate Constructor Audit table expanded 7→17 structs with HTML delimiters for CI machine-parsing; HookEventRecord gets #[non_exhaustive]; new semgrep rule monocle-non-exhaustive-struct-audit-completeness + Python script spec gap-checks the audit table against semgrep-enumerated structs (audit-mechanism CI enforcement codified); ISO-8601 timestamp convention adopted prospectively for brief revision history. | 2026-05-13T18:30:00Z | state-manager |
+| D-036 | Round 33 fix: semgrep rule pattern-either hardened (Shape A `AuditFixtureMinimal` + Shape B `AuditFixtureDerived` with #[derive(...)] interposed) closes POL-11 META-GAP that would have shipped audit-rule as functionally inert; Python script edge cases specified for all 5 malformed-input scenarios (header/separator skip, missing file, malformed delimiter pairs, duplicate delimiters, empty table); brief delimiter strings copy-pasted verbatim from source (corrected from paraphrase); F-R32-3 Q-3 staleness refreshed (v1.4.13→v1.4.17 current; SS-engine-module v1.1.5→v1.1.9). | 2026-05-13T19:15:00Z | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -101,27 +102,27 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 32 validation pending._
+_None — round 34 validation pending._
 
 ## Session Resume Checkpoint
 
-**ROUND-31-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-31-complete
+**ROUND-33-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-33-complete
 
 ### Immediate Next Action
 
-Round 32 validation chain. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: (a) audit table 17 structs all match actual struct definitions (cross-file); (b) HTML delimiters present and well-formed (machine-parsable); (c) HookEventRecord has `#[non_exhaustive]` AND constructor; (d) new semgrep rule formatted correctly; (e) Python script contract documented; (f) v1.4.16 ISO-8601 timestamp first use is valid format; (g) all citation refreshes land on the right lines. Adversary scope: SS-engine-module v1.1.9 + SS-daemon-lifecycle v1.0.6 + SS-conventions v1.6 + brief v1.4.16 + audit-mechanism end-to-end. Specifically: (a) does the audit table now genuinely include every `#[non_exhaustive]` struct (re-grep)? (b) is the HTML delimiter format machine-parseable by a simple Python script? (c) does the semgrep rule actually match `#[non_exhaustive]` declarations correctly? (d) does the Python script spec leave gaps for devops-engineer implementation? (e) any new latent defect in the round-31 burst? Projected verdict per round-30 adversary: CONVERGED (0+0+0). If CLEAN: Phase 1 gate to human.
+Round 34 validation chain. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: verify all F-R32-* resolutions land cleanly; audit table count consistency; ISO-8601 timestamps; semgrep rule v1.7 well-formed; brief v1.4.17 delimiter strings match SS-engine-module.md verbatim. Adversary scope: SS-engine-module v1.1.9 + SS-daemon-lifecycle v1.0.6 + SS-conventions v1.7 + brief v1.4.17, fresh context, production-grade lens. Verify: (a) pattern-either rule is genuinely robust against attribute-cluster matching ambiguity; (b) two fixtures + expected match count = 2 is sound; (c) Python script edge-case contract is implementation-ready; (d) brief delimiter strings now match source verbatim; (e) no further META-GAP class defects. Projected verdict: CONVERGED (0+0+0). If CLEAN: present Phase 1 gate to human.
 
 ### Critical Artifacts (read for Phase 1)
 
 1. `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + agent routing
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
-3. `.factory/specs/product-brief.md` v1.4.16
+3. `.factory/specs/product-brief.md` v1.4.17
 4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
 5. `.factory/specs/architecture/SS-engine-module.md` v1.1.9
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.6
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.6
+9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.7
 10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.1
 
 ### Key Tech Stack
@@ -183,7 +184,7 @@ These questions must be answered by the human before entering Phase 1. Both are 
 
 2. **Architect-brief-routing precedent (D-032):** In commit 688a5ed, architect mechanically propagated a BC count update into product-brief.md (product-owner territory per CLAUDE.md routing table). Content was correct; routing was a violation. v1.4.12 was authored by product-owner as ratification. Does the human accept a narrow exemption for mechanical count-propagation across artifact boundaries, or should every cross-boundary edit route through the destination owner even when content is mechanical?
 
-3. **CLAUDE.md operational pointer refresh (F-R26-1):** `/Users/jmagady/Dev/monocle/CLAUDE.md` §Current Pipeline State cites `Brief: v1.4.2` (stale; current v1.4.13) and §Architectural Authority cites `vision v1.1.1` (current v1.1.2). The principle text in CLAUDE.md is human-authored authority and AI agents do not edit it. ACTION: At Phase 1 gate review, refresh the operational pointers to current versions before approving Phase 1 entry. Routing: human.
+3. **CLAUDE.md operational pointer refresh (F-R26-1):** `/Users/jmagady/Dev/monocle/CLAUDE.md` §Current Pipeline State cites `Brief: v1.4.2` (stale; current v1.4.17) and §Architectural Authority cites `vision v1.1.1` (current v1.1.2). The principle text in CLAUDE.md is human-authored authority and AI agents do not edit it. ACTION: At Phase 1 gate review, refresh the operational pointers to current versions before approving Phase 1 entry. Routing: human.
 
 ## Historical Content
 

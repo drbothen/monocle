@@ -1060,3 +1060,54 @@ All 4 adversary findings resolved in-scope across 5 commits. The dominant theme 
 | architect | SS-conventions-anti-patterns v1.6 — semgrep rule 5 `monocle-non-exhaustive-struct-audit-completeness` + Python script spec (F-R30-3) | commit 2ad7459 |
 | product-owner | product-brief v1.4.16 — 4 citation refreshes + ratification of round-31 architect work + F-R30-4 ISO-8601 timestamp convention prospective; FIRST USE of ISO-8601 timestamp in revision history | commit 442190f |
 | state-manager | STATE.md round-31 close-out + burst-log Burst 28 | this commit |
+
+## Burst 29 (2026-05-13T19:15:00Z) — Round-33 fix burst: F-R32-1/2/3/4 + POL-11 META-GAP closure + Q-3 version refresh
+
+**Agents dispatched:** architect (1 commit), product-owner (1 commit), state-manager (adv-r32 persist + this close-out)
+**Trigger:** 2 MED + 2 LOW from round-32 adversary (NEEDS_ONE_MORE verdict)
+**Files touched:** SS-conventions-anti-patterns.md (v1.7), product-brief.md (v1.4.17), plans/adversary-pass-round-32.md (persisted at 31ff515), STATE.md, cycles/cycle-001/burst-log.md
+**Versions bumped:** SS-conventions-anti-patterns v1.6→v1.7; product-brief v1.4.16→v1.4.17
+
+### Summary
+
+All 4 adversary findings resolved in-scope across 3 commits (plus this state close-out). The dominant theme is two compounding quality gaps in the round-31 work: (1) a META-GAP in the new semgrep rule — the rule would have shipped as a functionally inert false-green sieve because the fixture corpus only exercised a synthetic minimal attribute shape, not the production attribute-cluster shape; (2) the brief delimiter strings were paraphrased from memory rather than copy-pasted from the source document, causing a subtle mismatch.
+
+**F-R32-1 MED:** product-brief v1.4.16 cited the HTML audit-table delimiter strings as `<!-- AUDIT-TABLE-START -->` / `<!-- AUDIT-TABLE-END -->`, but SS-engine-module.md v1.1.9 uses `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` / `<!-- END: Cross-Crate Constructor Audit Table -->`. This was a ratification-prose drift: the brief author paraphrased the delimiter strings from memory rather than copy-pasting them verbatim. product-owner corrected both strings in brief v1.4.17, also adding ISO-8601 timestamp to the revision history entry.
+
+**F-R32-2 MED (POL-11 META-GAP):** The semgrep rule added in SS-conventions v1.6 (`monocle-non-exhaustive-struct-audit-completeness`) used a single fixture with only `#[non_exhaustive]` as the sole attribute. Production structs carry attribute clusters (`#[derive(Debug, Clone, ...)]` interposed between `#[non_exhaustive]` and the struct keyword). The single-fixture minimal shape would pass but the rule would fail to match real code — functionally inert. Architect added a second fixture `AuditFixtureMinimal` (existing; keeps syntactic coverage) and new `AuditFixtureDerived` (production shape with interposed `#[derive(...)]`), updated the expected match count from 1 to 2, and documented the dual-fixture rationale in SS-conventions v1.7. This is the correct mechanism per the CLAUDE.md production-grade principle: a fixture corpus that exercises synthetic shape only is not production-grade.
+
+**F-R32-4 LOW:** The Python script edge-case contract in SS-conventions v1.6 left implementation gaps for malformed inputs. Architect specified all 5 malformed-input scenarios explicitly in v1.7: (1) header row and separator row skipped from struct enumeration; (2) missing audit file exits non-zero; (3) malformed delimiter pairs (BEGIN without END, END without BEGIN) raise error; (4) duplicate delimiters raise error; (5) empty table between delimiters is valid (zero-struct baseline case). Script is now implementation-ready for devops-engineer during Phase 3 toolchain provisioning.
+
+**F-R32-3 LOW (STATE.md process-gap):** Phase 1 Gate Question Q-3 cited "current v1.4.13" — stale by 4 versions (current post-round-33 is v1.4.17). State-manager refreshed Q-3 to cite v1.4.17 in this close-out. SS-engine-module version reference in Q-3 context also refreshed from v1.1.5 (original authoring version) to v1.1.9 (current).
+
+**Round-32 adversary persisted:** State-manager persisted adversary-pass-round-32.md at commit 31ff515 (durability per STATE.md §Critical Hook Lessons).
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R32-1 MED: brief v1.4.16 delimiter strings `<!-- AUDIT-TABLE-START/END -->` do not match SS-engine-module source `<!-- BEGIN/END: Cross-Crate Constructor Audit Table -->` — ratification-prose drift | MED | Delimiter strings copy-pasted verbatim from source; brief v1.4.16→v1.4.17 | e2e7d5a |
+| F-R32-2 MED (POL-11 META-GAP): semgrep rule fixture corpus covers only synthetic minimal shape (`#[non_exhaustive]` sole attribute); production structs carry `#[derive(...)]` clusters — rule would be functionally inert against real code | MED | `AuditFixtureMinimal` renamed + `AuditFixtureDerived` added with interposed `#[derive(...)]`; expected match count 1→2; dual-fixture rationale documented; SS-conventions v1.6→v1.7 | 2f05ab6 |
+| F-R32-4 LOW: Python script edge-case contract under-specified — 5 malformed-input scenarios not addressed | LOW | All 5 cases specified: header/separator skip, missing file, malformed delimiter pairs, duplicate delimiters, empty table | 2f05ab6 |
+| F-R32-3 LOW: Phase 1 Gate Question Q-3 cites stale version "current v1.4.13"; actual current v1.4.17 | LOW | Q-3 refreshed to v1.4.17 in STATE.md close-out | this commit |
+
+### Notable
+
+- **POL-11 META-GAP closure.** The most significant finding: a CI enforcement rule that exercises only a synthetic attribute shape is not production-grade — it passes in CI while matching zero production-code structs. The dual-fixture pattern (`AuditFixtureMinimal` + `AuditFixtureDerived`) is now codified as the required standard for any future semgrep rules in SS-conventions v1.7. This prevents the entire audit mechanism from shipping as a false-green sieve.
+- **Ratification-prose drift root cause.** F-R32-1 illustrates a recurring failure mode: when a spec author describes artifact content from memory rather than copy-pasting, subtle paraphrasing errors accumulate. SS-conventions v1.7 notes that delimiter strings must be copy-pasted verbatim from the source artifact, not described from memory.
+- **Gate-question staleness as a defect class.** Q-3 itself became stale across the 4 version bumps from v1.4.13 to v1.4.17. State-manager now refreshes all Phase 1 Gate Question version citations during every close-out that bumps a referenced artifact version. This is a process codification, not just a one-off fix.
+
+### Lessons
+
+1. **[META-GAP class — codified at SS-conventions v1.7] When adding a NEW CI rule, fixture corpora must exercise PRODUCTION-CODE attribute/code shape, not synthetic minimal shape.** The dual-fixture pattern (`AuditFixtureMinimal` + `AuditFixtureDerived`) is the required minimum for semgrep rules that match attribute-decorated Rust items. A single minimal fixture is insufficient.
+
+2. **[Ratification-prose drift] Copy-paste delimiter strings verbatim from the source artifact.** Paraphrasing from memory introduces subtle mismatches that survive human review because the intent is correct even when the string differs. The only production-grade path is copy-paste-and-verify.
+
+3. **[Gate-question staleness] Phase 1 Gate Questions themselves accumulate stale version references across fix bursts.** State-manager must refresh all version citations in the Gate Questions section during every close-out that bumps a referenced artifact. This is a bookkeeping responsibility on par with frontmatter version bumps.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | adversary-pass-round-32.md persisted (durability) | commit 31ff515 |
+| architect | SS-conventions-anti-patterns v1.7 — `AuditFixtureDerived` + dual-fixture pattern + expected count 1→2 + 5 Python script edge cases (F-R32-2/4) | commit 2f05ab6 |
+| product-owner | product-brief v1.4.17 — delimiter strings corrected verbatim from source + ISO-8601 timestamp (F-R32-1) | commit e2e7d5a |
+| state-manager | STATE.md round-33 close-out + Q-3 version refresh (v1.4.13→v1.4.17) + burst-log Burst 29 (F-R32-3) | this commit |
