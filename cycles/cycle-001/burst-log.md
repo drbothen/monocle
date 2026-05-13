@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "b128c1a"
+input-hash: "0f35e1d"
 traces_to: STATE.md
 ---
 
@@ -394,3 +394,39 @@ Adversary fresh pass (commit e2c224b) revealed 14 SUBSTANTIVE defects — a diff
 | devops-engineer | SS-conventions v1.2 cargo-deny + SBOM CI gate | specs/architecture/SS-conventions-anti-patterns.md (ee7b3fb) |
 | product-owner | Brief v1.4.4 body-size Success Criterion | specs/product-brief.md (c28fc64) |
 | state-manager | Round-5 close-out: STATE.md, D-022, cycle files | This commit |
+
+## Burst 13 (2026-05-12) — Round-7 Micro-Fix Burst
+
+**Agents dispatched:** architect, devops-engineer, product-owner, state-manager
+**Files touched:** SS-deps-pin-manifest.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, product-brief.md, STATE.md, cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md
+**Versions bumped:** SS-deps v1.1.1→v1.1.2; SS-daemon-lifecycle v1.0→v1.0.1; SS-conventions v1.2→v1.2.1; brief v1.4.4→v1.4.5
+
+### Summary
+
+Round-7 micro-fix burst resolved 8 nit-class findings from round-6 audits (different character from round-5 substantive defects — all fixable by specialists without new architecture artifacts).
+
+**Findings resolved:**
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R6-001: serde_json workspace placeholder instead of concrete pin | CRITICAL | =1.0.149 added to SS-deps Pin Manifest | d78fc13 |
+| F-R6-002/G-02: SS-conventions tokio prose typo 1.44 (should be 1.52) | IMPORTANT | Corrected prose | 803ea63 |
+| F-R6-003: /healthz auth-layer missing — single-router leak | IMPORTANT | Two-router split documented in SS-daemon-lifecycle | a22ca03 |
+| F-R6-004: rand not declared in SS-deps Pin Manifest | IMPORTANT | rand =0.8.6 EXACT-pinned row added (OsRng auth token gen) | d78fc13 |
+| F-R6-005: axum 0.8 with_graceful_shutdown idiom incorrect | ADVISORY | Corrected to axum 0.8 Server::with_graceful_shutdown | a22ca03 |
+| F-R6-006: /healthz listed under body-size criterion endpoints | ADVISORY | Removed from body-size criterion in brief | 5589849 |
+| G-01: brief supplements frontmatter incomplete | IMPORTANT | All 9 supplement entries complete | 5589849 |
+| G-03: deny.toml content in ADR-0003 instead of SS-conventions canonical | IMPORTANT | Content moved to SS-conventions; ADR-0003 cross-reference added | 803ea63 |
+
+**EXACT-pinned crate count: 8 → 9** (rand =0.8.6 added)
+**serde_json pin now concrete:** =1.0.149 (was workspace placeholder)
+
+**D-023 logged.** Brief at v1.4.5. SS-deps at v1.1.2. SS-conventions at v1.2.1. SS-daemon-lifecycle at v1.0.1.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-deps v1.1.2: serde_json concrete pin + rand =0.8.6 | specs/architecture/SS-deps-pin-manifest.md (d78fc13) |
+| architect | SS-daemon-lifecycle v1.0.1: /healthz two-router + axum 0.8 idiom | specs/architecture/SS-daemon-lifecycle.md (a22ca03) |
+| devops-engineer | SS-conventions v1.2.1: tokio prose fix + deny.toml ADR-0003 cross-ref | specs/architecture/SS-conventions-anti-patterns.md (803ea63) |
+| product-owner | Brief v1.4.5: supplements frontmatter + /healthz removed | specs/product-brief.md (5589849) |
+| state-manager | Round-7 close-out: STATE.md, D-023, cycle files | This commit |

@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "b128c1a"
+input-hash: "0f35e1d"
 traces_to: STATE.md
 ---
 
@@ -78,6 +78,19 @@ traces_to: STATE.md
 | **Date** | 2026-05-12 |
 | **Position** | Adversary fresh pass (e2c224b) found 14 substantive defects (4 CRITICAL+6 IMPORTANT+4 ADVISORY). All 14 fixed in-scope across 9 specialist commits. New artifacts: SS-permissions-phase1.md (281 lines), SS-daemon-lifecycle.md (287 lines), ADR-0003 MIT/Apache-2.0 dual-license (199 lines). Brief v1.4.4 (c28fc64). Vision v1.1.2 (4dfcffd). SS-conventions v1.2 (ee7b3fb) with cargo-deny + SBOM CI gate. serde_json EXACT-pinned (8th crate). D-022 logged. Human decisions: Q-license MIT/Apache-2.0, Q-permission-enum Option A. Upstream #129/#130/#131 filed. |
 | **Next** | Round 6 validation chain: consistency audit + validate-brief v6 against v1.4.4 + adversary fresh pass. If all clean, re-present Phase 1 entry gate to human. |
+| **Convergence counter** | n/a (pre-spec) |
+
+---
+
+## Session Resume Checkpoint (2026-05-12) — round-7-fix-burst-complete
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-12 |
+| **Position** | Round-7 micro-fix burst resolved 8 nit-class findings from round-6 audits. SS-deps v1.1.2 (d78fc13): serde_json =1.0.149 concrete pin + rand =0.8.6 EXACT-pinned (9th crate). SS-daemon-lifecycle v1.0.1 (a22ca03): /healthz two-router auth split + axum 0.8 graceful shutdown idiom. SS-conventions v1.2.1 (803ea63): tokio prose typo fixed + deny.toml cross-ref to ADR-0003. Brief v1.4.5 (5589849): supplements frontmatter complete (9 entries) + /healthz removed from body-size criterion. D-023 logged. |
+| **Next** | Round 8 validation chain; then human Phase 1 approval gate. |
 | **Convergence counter** | n/a (pre-spec) |
 
 ---
