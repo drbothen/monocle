@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "7bfff3f"
+input-hash: "d76d6ee"
 traces_to: STATE.md
 ---
 
@@ -564,3 +564,21 @@ BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-0
 | product-owner | Brief v1.4.7 — FC-01..FC-06 contracts + 10 BCs pre-staged | commit 816b1bc |
 | architect | SS-deps v1.1.4: constant_time_eq ^0.3 + futures ^0.3 | commit d77271a |
 | state-manager | PHASE-1-READY close-out: STATE.md, D-025, cycle files | This commit |
+
+## Burst 17 (2026-05-12) — Round 13 Fix Burst (FC adversary defects + EngineModule + ADR-0004)
+
+**Agents dispatched:** architect, product-owner
+**Files touched:** SS-core-types-and-abi.md, SS-daemon-lifecycle.md, SS-engine-module.md (NEW), ADR-0004 (NEW), product-brief.md, STATE.md, burst-log.md, session-checkpoints.md
+**Versions bumped:** SS-core-types-and-abi.md v1.0 -> v1.1; SS-daemon-lifecycle.md v1.0.3 -> v1.0.4; brief v1.4.7 -> v1.4.8; BC count 10 -> 13; Critical Artifacts 15 -> 17
+
+### Summary
+
+13 adversary-found defects (3 CRITICAL + 5 IMPORTANT + 5 OBS) + 3 consistency findings ALL resolved in-scope per production-grade routing principle.
+
+CRITICAL: F-FC-C001 brief Phase1Permission cross-artifact contradiction fixed (commit 1178797); F-FC-C002 invalid unsafe-impl Sealed replaced with plugin-sdk-escape-hatch feature flag (commit 2cdd8d2); F-FC-C003 STATE.md frontmatter field-name parsing corrected (commit 2cdd8d2). IMPORTANT: F-FC-I001 FactoryState restored to 7 fields per human red-line; F-FC-I002 all 5 HookEvent inner-variant structs fully specified; F-FC-I003 NEW SS-engine-module.md (BC-ENGINE-001/002); F-FC-I004 NEW ADR-0004; F-FC-I005 BC-LOCK-001 lock-file contract_version. BC-PROTO-001 split into 001a + 001b. D-026 logged. Upstream process-gap filed at drbothen/vsdd-factory.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-core-types-and-abi.md v1.1 + SS-daemon-lifecycle v1.0.4 + NEW SS-engine-module.md + NEW ADR-0004 | commit 2cdd8d2 |
+| product-owner | brief v1.4.8 — F-FC-C001 fixed; ClaudeCodeTool added; ADR-0004 cross-referenced | commit 1178797 |
+| state-manager | Round 13 close-out: STATE.md (D-026, 17 artifacts, 13 BCs) + burst-log + session-checkpoints | this commit |
