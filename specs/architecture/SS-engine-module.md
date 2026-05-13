@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.1"
+version: "1.1.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T18:00:00Z
+timestamp: 2026-05-13T20:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording"
 project: monocle
 ---
 
@@ -296,12 +296,16 @@ impl EngineModule for ClaudeCodeModule {
     }
 
     fn metadata(&self) -> EngineMetadata {
-        // `directories::ProjectDirs` (pinned at `directories 6` in SS-deps) is the
-        // canonical way to resolve XDG/platform config directories. For Claude Code,
-        // the config root is `~/.claude/` — resolved here without `dirs::home_dir()`.
+        // Claude Code is XDG-non-conforming: it uses `~/.claude/` on every platform
+        // (Linux, macOS, Windows), NOT XDG-conforming paths such as
+        // `~/.config/claude-code/` or `~/Library/Application Support/...`.
+        // `directories::BaseDirs::home_dir()` (pinned at `directories 6` in SS-deps)
+        // provides the platform home directory without XDG path transformation,
+        // which is exactly the right primitive here. `ProjectDirs` is wrong for this
+        // use case because it applies XDG path transforms.
         let claude_config_root =
-            directories::ProjectDirs::from("com", "anthropic", "claude-code")
-                .map(|p| p.config_dir().to_path_buf())
+            directories::BaseDirs::new()
+                .map(|b| b.home_dir().join(".claude"))
                 .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
         EngineMetadata {
             display_name: "Claude Code",
@@ -332,10 +336,12 @@ impl EngineModule for ClaudeCodeModule {
             .cloned()
             .unwrap_or_else(|| format!("pid-{}", proc.pid));
 
-        // Resolve Claude Code's config root via `directories::ProjectDirs` (no `dirs` crate).
+        // Resolve Claude Code's config root via `directories::BaseDirs` (no `dirs` crate).
+        // Claude Code uses `~/.claude/` on every platform; `BaseDirs::home_dir()`
+        // gives the platform home directory without XDG path transforms.
         let claude_config_root =
-            directories::ProjectDirs::from("com", "anthropic", "claude-code")
-                .map(|p| p.config_dir().to_path_buf())
+            directories::BaseDirs::new()
+                .map(|b| b.home_dir().join(".claude"))
                 .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
 
         let transcript_path = proc.working_dir.as_ref().map(|cwd| {
@@ -397,6 +403,14 @@ impl ClaudeCodeModule {
     /// `hook_base_url` is the base URL where Claude Code hook scripts POST
     /// (e.g., `"http://127.0.0.1:7891"`). The path segments are appended by
     /// `hook_paths()`.
+    ///
+    /// # Validation
+    ///
+    /// `hook_base_url` is **NOT validated as a URL** at construction time. The
+    /// URL is consumed when the module registers hook endpoints with the daemon
+    /// at startup; malformed URLs surface as `PreflightError::InvalidHookUrl`
+    /// from `preflight()`. Callers who want eager validation should
+    /// `Url::parse(&hook_base_url)` (from the `url` crate) before invoking `new`.
     pub fn new(hook_base_url: String) -> Self {
         Self { hook_base_url }
     }
@@ -493,6 +507,12 @@ pub enum PreflightError {
     BinaryNotFound { binary: String },
     #[error("claude version {found} is below minimum supported {minimum}")]
     VersionTooOld { found: String, minimum: String },
+    /// Hook base URL is syntactically invalid. Detected at preflight time when the
+    /// daemon attempts to parse the URL before binding axum routes. The URL was
+    /// accepted by `ClaudeCodeModule::new` without validation (construction is
+    /// infallible); this error surfaces the deferred validation failure.
+    #[error("hook base URL is invalid: {url}: {reason}")]
+    InvalidHookUrl { url: String, reason: String },
     #[error("preflight check failed: {reason}")]
     Failed { reason: String },
 }
@@ -522,7 +542,7 @@ or `"claude.js"` (strict basename match on the resolved binary path; NOT a suffi
 on `cmdline[0]`, which would produce false positives for `claude-squad`, `claudio`, etc.).
 Verification: unit test in `monocle-runtime/tests/engine_module.rs` constructs a module via
 `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`, asserts `module.id() == "claude-code"`,
-and tests `detect()` with: (a) a synthetic `ProcessSnapshot` with `exe_path = Some(PathBuf::from("/usr/local/bin/claude"))` → asserts `true`; (b) `exe_path = Some(PathBuf::from("/usr/local/bin/claude-squad"))` → asserts `false`; (c) `exe_path = None, cmdline[0] = "claude"` → asserts `false` (exe_path=None means no match).
+and tests `detect()` with: (a) a synthetic `ProcessSnapshot` with `exe_path = Some(PathBuf::from("/usr/local/bin/claude"))` → asserts `true`; (b) `exe_path = Some(PathBuf::from("/usr/local/bin/claude-squad"))` → asserts `false`; (c) `exe_path = None` (regardless of cmdline contents) → asserts `false`. Note: `detect()` consults ONLY `exe_path`; `cmdline` is preserved for engine-specific use in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`) but is NOT used for engine identification — this avoids false positives from processes such as `claude-squad`, `claudio`, and `claude-code-router` that may place `"claude"` in `cmdline[0]`.
 
 **BC-ENGINE-003:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
 `HookType` variant, with the exact path strings in §Struct-level inherent operations.
@@ -549,11 +569,36 @@ contracts with postconditions and verification harness stubs.
 
 ## §Trace
 
+v1.1.2 changes (round-19 fixes F-R18-1/F-R18-2/F-R18-4):
+- F-R18-1 RESOLVED (CRITICAL): both `ProjectDirs::from("com", "anthropic", "claude-code")`
+  call sites in `metadata()` and `enrich()` replaced with
+  `BaseDirs::new().map(|b| b.home_dir().join(".claude"))`. Root cause: round-17's
+  N16-1 fix correctly removed the `dirs` crate but chose `ProjectDirs` which applies
+  XDG-conforming path transforms (`~/Library/Application Support/...` on macOS,
+  `~/.config/...` on Linux) — wrong for Claude Code which is XDG-non-conforming and
+  uses `~/.claude/` on every platform. `directories::BaseDirs::home_dir()` returns
+  the platform home directory without XDG transforms; `.join(".claude")` then
+  constructs the correct path on all platforms. `directories 6` remains the pinned
+  crate (no new dep); `BaseDirs` and `ProjectDirs` are both in that crate.
+- F-R18-2 RESOLVED: `ClaudeCodeModule::new` rustdoc expanded with a `# Validation`
+  section explicitly documenting the no-validation-at-construction contract:
+  `hook_base_url` is accepted without URL parsing; malformed URLs surface as
+  `PreflightError::InvalidHookUrl` from `preflight()`. `PreflightError::InvalidHookUrl`
+  variant added to the enum (was missing; the rustdoc referenced it but the enum
+  did not define it).
+- F-R18-4 RESOLVED: BC-ENGINE-002 test case (c) reworded from
+  `exe_path = None, cmdline[0] = "claude"` to `exe_path = None (regardless of
+  cmdline contents)`. Explicit note added: `detect()` consults ONLY `exe_path`;
+  `cmdline` is used only in `enrich()` for session enrichment, not for engine
+  identification.
+
 v1.1.1 changes (round-16 adversary N16-1/N16-2/N16-3/N16-4):
 - N16-1 RESOLVED: all four `dirs::home_dir()` calls replaced with
   `directories::ProjectDirs::from("com", "anthropic", "claude-code")` (pinned as
   `directories 6` in SS-deps-pin-manifest.md). No `dirs` crate introduced or referenced.
   Affected: `metadata()` (2 calls) and `enrich()` (2 calls).
+  (NOTE: N16-1 was partially wrong — ProjectDirs resolves XDG paths, not `~/.claude/`.
+  Corrected in v1.1.2 by F-R18-1 above.)
 - N16-2 RESOLVED: `ClaudeCodeModule::new(hook_base_url: String) -> Self` public
   constructor added to the inherent `impl ClaudeCodeModule` block. BC-ENGINE-002
   updated to require the constructor and test it explicitly.
