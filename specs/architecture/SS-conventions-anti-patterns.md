@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.2.2"
+version: "1.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T15:30:00Z
+timestamp: 2026-05-12T17:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning"
 project: monocle
 ---
 
@@ -224,6 +224,123 @@ Note: pin the `uses:` line to a full commit SHA when creating the workflow file 
 ### SBOM Generation
 
 SBOM (Software Bill of Materials) generation via `cargo sbom` (or `cargo cyclonedx`) is run per-release tag in CI. Output format: CycloneDX JSON 1.6 (CISA-compliant; EU CRA-compliant). SBOM is attached to the GitHub Release artifact. Per-PR runs are NOT gated on SBOM (only on cargo-deny); SBOM is a release-time artifact, not a merge gate. License audit per merge is handled by cargo-deny (above).
+
+## R-001 Monitoring Workflow
+
+### Purpose
+
+Weekly scheduled check of Anthropic agent-view release notes against the 4 R-001 re-eval trigger conditions. Opens a labeled GitHub Issue when any condition matches. Per brief v1.4.6 §Competitive Positioning.
+
+This section specifies the workflow contract. The actual implementation files (`/.github/workflows/r001-monitor.yml` and `scripts/r001-monitor.py`) are created during Phase 1 `/vsdd-factory:create-architecture` by the devops-engineer. This is a SPEC, not the implementation.
+
+### Trigger Conditions
+
+Four conditions, any single match opens a GitHub Issue:
+
+| ID | Condition | Rationale |
+|---|---|---|
+| (a) | Anthropic announces hook-protocol ingestion as a first-class agent-view capability | Directly commoditizes monocle's hook-event pipeline (BC-HOOK-001–006) |
+| (b) | Anthropic ships diff-preview or cascaded permission-queue functionality inside agent view | Directly commoditizes monocle's permission overlay plane (VecDeque\<PromptModal\>) |
+| (c) | Anthropic extends agent view beyond Claude Code (e.g., supports a non-Claude harness) | Attacks monocle's multi-harness federation differentiator |
+| (d) | Anthropic publishes a multi-harness session-management spec or RFC | Pre-empts monocle's Phase 4 harness-federation roadmap |
+
+### Workflow Specification — `.github/workflows/r001-monitor.yml`
+
+```yaml
+name: R-001 Monitor (Anthropic agent-view trigger conditions)
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'  # Every Monday at 14:00 UTC (10am ET / 7am PT)
+  workflow_dispatch:  # Allow manual trigger for ad-hoc checks
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: r001-monitor
+  cancel-in-progress: false
+
+jobs:
+  check-anthropic-release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+      - name: Fetch agent-view docs and release notes
+        env:
+          ANTHROPIC_DOCS_URL: 'https://code.claude.com/docs/en/agent-view'
+          ANTHROPIC_RELEASE_NOTES_URL: 'https://docs.claude.com/en/release-notes/claude-code'
+        run: python scripts/r001-monitor.py
+      - name: Open issue on trigger match
+        if: env.R001_TRIGGER_MATCHED == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const triggerReport = fs.readFileSync('r001-trigger-report.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[R-001 TRIGGER] Anthropic agent-view release matches re-eval condition`,
+              body: triggerReport,
+              labels: ['risk', 'r-001', 'competitive-monitoring']
+            });
+```
+
+**Action pinning requirement:** The devops-engineer MUST resolve `actions/checkout@v4`, `actions/setup-python@v5`, and `actions/github-script@v7` to full commit SHAs at workflow creation time. The `@vN` references above are illustrative version pointers; the final file must pin to SHA per the project action-pinning requirement (see §CI Wiring).
+
+### Companion Script Contract — `scripts/r001-monitor.py`
+
+The script is specced here; the full Python implementation is the devops-engineer's Phase 1 deliverable.
+
+**Inputs:** Two public URLs (set via env vars in the workflow):
+- `ANTHROPIC_DOCS_URL`: `https://code.claude.com/docs/en/agent-view`
+- `ANTHROPIC_RELEASE_NOTES_URL`: `https://docs.claude.com/en/release-notes/claude-code`
+
+**Processing:**
+1. Fetch both URLs via `requests`; extract visible text via BeautifulSoup HTML parsing.
+2. For each of the 4 trigger conditions, evaluate keyword/regex patterns against the combined text corpus:
+   - **(a)** keywords: `hook protocol`, `hook ingestion`, `hooks api`, `PreToolUse`, `PostToolUse`, `PermissionPrompt`
+   - **(b)** keywords: `diff preview`, `diff overlay`, `permission queue`, `cascaded permission`, `permission stack`
+   - **(c)** keywords: any harness name OTHER than `Claude Code` — e.g., `Codex`, `Aider`, `Cursor`, `Continue`, `GitHub Copilot` (case-insensitive, whole-word match to reduce false positives)
+   - **(d)** keywords: `multi-harness`, `harness-agnostic`, `session management spec`, `session management RFC`, `agent-view spec`
+
+**Outputs:**
+- If ANY condition matches: set GitHub Actions env var `R001_TRIGGER_MATCHED=true` and write `r001-trigger-report.md` containing: matched condition ID(s), matched text excerpt(s) (up to 200 chars each), source URL, and fetched UTC timestamp (ISO 8601).
+- Always (match or no match): append a JSON log entry to `r001-monitor-log/YYYY-MM-DD.json` recording: run timestamp, conditions checked, match results (true/false per condition), and fetch status (ok/unreachable/parse-error) per URL. This log file is committed back to a maintenance branch (`chore/r001-monitor-log`) so the historical trail is preserved even when no trigger fires.
+
+### Failure Modes
+
+| Failure | Behavior |
+|---|---|
+| URL unreachable | Log warning; do NOT set `R001_TRIGGER_MATCHED`; do NOT open trigger issue (no false positive) |
+| HTML structure change (parsing yields empty or implausible content) | Log warning; open a SEPARATE maintenance issue labeled `r-001-monitor-broken` (distinct from trigger label `r-001`) |
+| Cron timeout / workflow failure | Retry once via manual `workflow_dispatch` within 24h; if second run also fails, open maintenance issue labeled `r-001-monitor-broken` |
+
+The maintenance issue label `r-001-monitor-broken` must be created in the repository at initialization time (different from the trigger label `r-001`). The devops-engineer creates both labels during Phase 1 repo setup.
+
+### Quarterly Keyword Maintainer Review
+
+The keyword patterns in §Companion Script Contract above are anchored to Anthropic's current terminology as of brief v1.4.6. Anthropic may introduce new wording (e.g., referring to hook-protocol ingestion under a new product name) that does not match current patterns, creating false-negative drift.
+
+**Required cadence:** Review and update keyword patterns quarterly (every 13 weeks). Track via a recurring maintenance issue tagged `r-001-keywords-review`, created automatically by the workflow at each calendar quarter boundary (1 January, 1 April, 1 July, 1 October). The quarterly creation logic is embedded in `scripts/r001-monitor.py` using the run date.
+
+**Review checklist:**
+- [ ] Check Anthropic release notes for new terminology covering hook-protocol, diff-preview, multi-harness, or session-management surface areas.
+- [ ] Update keyword lists in `scripts/r001-monitor.py` to cover new wording.
+- [ ] Run workflow manually (`workflow_dispatch`) after update to verify no spurious matches on prior release notes.
+- [ ] Commit updated script and close the `r-001-keywords-review` issue.
+
+### Cost
+
+GitHub Actions free tier covers weekly cron (`0 14 * * 1`) plus light Python compute (typically under 30 seconds per run). No external API costs — both source URLs are public Anthropic documentation. No GitHub API rate-limit risk: one issue creation per trigger event, well within the 5,000 requests/hour ceiling for `GITHUB_TOKEN`.
 
 ## Gene-Source Citations
 
