@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.3"
+version: "1.1.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T22:30:00Z
+timestamp: 2026-05-12T23:15:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies"
 project: monocle
 ---
 
@@ -57,6 +57,8 @@ All versions verified against crates.io REST API on 2026-05-12.
 | semver | 1 | Semantic version parsing | caret pin |
 | thiserror | 2 | Error type derivation | caret pin; 2.x major — do NOT pin to 1.x |
 | anyhow | 1 | Error propagation in binary crate | caret pin |
+| constant_time_eq | 0.3 | Timing-safe byte comparison for auth token validation per BC-AUTH-001 (SS-daemon-lifecycle.md) | caret pin (utility crate; not on untrusted-input deserialization path) |
+| futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
 
 ## Phase 2/3/4 Additions
@@ -148,6 +150,7 @@ graph TD
     runtime --> tokio
     runtime --> tracing
     runtime --> rand
+    runtime --> constant_time_eq
     runtime --> core
     runtime --> proto[monocle-proto]
     runtime --> ipc
@@ -170,9 +173,11 @@ graph TD
 
     workflow[monocle-workflow] -.->|Phase 3| notify
     workflow -.->|Phase 3| redb
+    workflow -.->|Phase 3| futures
 
     core --> thiserror
     core --> semver
+    core --> futures
 
     static[monocle-static] -.->|Phase 2| core
 
