@@ -5,7 +5,7 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T14:30:00Z
+timestamp: 2026-05-13T15:00:00Z
 phase: pre-phase-1-final-gate
 current_step: durability-close-out-round-21-pending
 mode: greenfield-with-reference-ingest
@@ -148,6 +148,38 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 - Use `git commit -F /tmp/<file>` for messages over 2KB
 - Round-17 lesson: fix-axis (replace crate X) + behavioral-invariant axis (preserve Y) both required
 - FC items LOCKED: read SS-core-types-and-abi.md; do NOT re-derive
+
+## Task Queue Snapshot
+
+Persisted from harness TaskList tool (not auto-saved). Active queue at last context-clear preparation:
+
+### Pending (dependency-ordered)
+
+| ID | Status | Subject | BlockedBy |
+|---|---|---|---|
+| #35 | pending | Round 21 fix burst — F-R20-1/2/3 architect | — |
+| #36 | pending | Round 21 state-manager close-out | #35 |
+| #37 | pending | Round 22 validation chain | #36 |
+| #38 | pending | Iterate fix-validate cycle to convergence | #37 |
+| #12 | in_progress | Re-present Phase 1 gate to human | #38 |
+
+### Resumption protocol for fresh-context session
+
+1. Re-create the queue above via 4 `TaskCreate` calls (subjects from this table) + 1 `TaskUpdate` to set `#12` back to `in_progress` (assuming you re-create it; otherwise add it fresh).
+2. Set blocking dependencies via `TaskUpdate addBlockedBy` per the table.
+3. Mark `#35` as `in_progress` when you dispatch the round 21 fix burst.
+4. Reference Immediate Next Action Step B above for the literal architect prompt.
+
+### Completed history (rounds 1-20)
+
+All 28 prior tasks (TaskList #6-#34) tracked the round-by-round convergence work. Full chronology is in `cycles/cycle-001/burst-log.md` (Bursts 1-22) — TaskList completion order matches burst order. Major milestones:
+- Tasks #6-#19: Round 1-4 textual defer-pattern decay + Round 5 production-grade principle articulation + R5 substantive fix burst (commits 0bd4ba9 through 6638de5)
+- Tasks #20-#27: Round 5-10 convergence to PRODUCTION_READY (R10 commit e0caccf)
+- Tasks #28-#29: FC items locked pre-Phase-1 + round 13 fix burst (vision drift surfaced)
+- Tasks #30-#33: Vision authority restored (Q-15-1); rounds 15-17 (commits 9fa9ebe + 48852c8 + 1b26c54)
+- Task #34: Round 20 validation (consistency CLEAN; adversary INLINE → 3 round-20 findings persisted at adversary-pass-round-20.md)
+
+If a fresh-context session needs full task history for retrospective analysis, read burst-log.md sequentially.
 
 ## Historical Content
 

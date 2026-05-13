@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "e0ee788"
+input-hash: "a65c466"
 traces_to: STATE.md
 ---
 
@@ -198,5 +198,13 @@ traces_to: STATE.md
 | **Position** | Round 20 validation complete: consistency CLEAN + adversary 0 CRITICAL + 2 MEDIUM + 1 LOW. Round 20 adversary report persisted to plans/adversary-pass-round-20.md. STATE.md comprehensively rewritten as zero-context resume guide. Round 21 fix burst authorized but NOT dispatched (context cleared first). All untracked files committed. Convergence trajectory: CRITICAL decayed to zero at R20. |
 | **Next** | Fresh-context session reads STATE.md + CLAUDE.md, then dispatches architect for round 21 fix burst (F-R20-1 silent fallback, F-R20-2 sibling guards, F-R20-3 url rustdoc). Full prompt template embedded in STATE.md Immediate Next Action section. |
 | **Convergence counter** | R20: 0 CRITICAL + 2 MEDIUM + 1 LOW. CRITICAL converged. MEDIUM plateau at 2 per round. |
+
+---
+
+## TASK-QUEUE-PERSISTED (2026-05-13) — round 21 fix burst pending
+
+TASK-QUEUE-PERSISTED: round 21 fix burst pending, full architect dispatch prompt in STATE.md Immediate Next Action Step B.
+
+Active TaskList at context-clear: 5 tasks (#35 round-21-fix-burst, #36 round-21-state-close-out, #37 round-22-validation, #38 iterate-to-convergence, #12 phase-1-gate). Full queue and resumption protocol written to STATE.md "Task Queue Snapshot" section (commit to follow). Completed history (28 prior tasks, #6-#34) referenced as available in cycles/cycle-001/burst-log.md sequential chronology.
 
 ---
