@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.6"
+version: "1.1.7"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T20:00:00Z
+timestamp: 2026-05-13T21:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries)"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries"
 project: monocle
 ---
 
@@ -151,6 +151,37 @@ pub struct EngineMetadata {
     pub hook_schema_version: u32,
 }
 
+impl EngineMetadata {
+    /// Construct an `EngineMetadata` instance.
+    ///
+    /// All four fields are required — no field has a semantically valid default.
+    /// `display_name` and `icon` are always known at module compilation time.
+    /// `config_paths` must contain at least the primary config root for the
+    /// engine; an empty Vec would silently disable config-path-dependent features
+    /// (TUI display, DTU validator, transcript watcher). `hook_schema_version`
+    /// must reflect the hook protocol version this engine speaks.
+    ///
+    /// Field order matches struct declaration order.
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `EngineMetadata` carries `#[non_exhaustive]`. Per Rust E0639, struct literal
+    /// construction (`EngineMetadata { display_name: ..., ... }`) is forbidden outside
+    /// the defining crate (`monocle-core`). `ClaudeCodeModule` is defined in
+    /// `monocle-runtime` (an external crate), so a constructor in `monocle-core` is
+    /// the only legal construction path for downstream implementors. A builder pattern
+    /// would add complexity without benefit for four semantically-required fields;
+    /// this single constructor is the production-grade default.
+    pub fn new(
+        display_name: &'static str,
+        icon: char,
+        config_paths: Vec<PathBuf>,
+        hook_schema_version: u32,
+    ) -> Self {
+        Self { display_name, icon, config_paths, hook_schema_version }
+    }
+}
+
 /// A snapshot of a running process, captured by OS-level process enumeration.
 ///
 /// `detect` receives one of these per observed process on each scan cycle.
@@ -195,6 +226,75 @@ pub struct ProcessSnapshot {
     pub start_time_secs: i64,
 }
 
+impl ProcessSnapshot {
+    /// Construct a `ProcessSnapshot` with the minimum viable signal set for `detect()`.
+    ///
+    /// `ppid`, `working_dir`, and `env` default to `None` / empty — they are not
+    /// required for `detect()` to function. Callers that need those fields for
+    /// `enrich()` (e.g., test fixtures that exercise the enrichment path) use
+    /// `with_full_context` instead.
+    ///
+    /// # Field choices
+    ///
+    /// - `pid`: always available from OS process enumeration; required.
+    /// - `exe_path`: the canonical `detect()` signal; `None` when process exits
+    ///   before the path is resolved (daemon handles this gracefully).
+    /// - `cmdline`: retained for `enrich()` (reading `CLAUDE_SESSION_ID`); always
+    ///   available from OS enumeration (may be empty for exited processes).
+    /// - `start_time_secs`: required for session deduplication across pid-reuse cycles.
+    ///
+    /// # Rationale — two constructors vs builder
+    ///
+    /// `ProcessSnapshot` has seven fields with a natural two-tier access pattern:
+    /// detection needs only `pid`/`exe_path`/`cmdline`/`start_time_secs`; enrichment
+    /// additionally needs `ppid`/`working_dir`/`env`. A builder pattern would add
+    /// complexity (a `ProcessSnapshotBuilder` type and `.build()` step) for no
+    /// ergonomic gain in a type that is always constructed from OS data where all
+    /// fields are known at construction time. Two constructors with clear documentation
+    /// of which tier each serves is the production-grade default.
+    ///
+    /// # Rationale — no `Default` impl
+    ///
+    /// `pid: 0` has no valid meaning (PID 0 is the idle/swapper process, never a
+    /// Claude Code session). `start_time_secs: 0` is the Unix epoch, semantically
+    /// wrong for any real process. A `Default` impl would produce a silently-invalid
+    /// snapshot that passes `detect()` only by accident. No `Default` is provided.
+    pub fn new(
+        pid: u32,
+        exe_path: Option<PathBuf>,
+        cmdline: Vec<String>,
+        start_time_secs: i64,
+    ) -> Self {
+        Self {
+            pid,
+            ppid: None,
+            exe_path,
+            cmdline,
+            working_dir: None,
+            env: HashMap::new(),
+            start_time_secs,
+        }
+    }
+
+    /// Construct a `ProcessSnapshot` with the full context needed by `enrich()`.
+    ///
+    /// Use this constructor in production process-scan code (where all fields are
+    /// populated from the OS) and in test fixtures that exercise the enrichment path
+    /// (e.g., BC-ENGINE-002-ERR async half). For fixtures that only exercise `detect()`,
+    /// `new` is sufficient.
+    pub fn with_full_context(
+        pid: u32,
+        ppid: Option<u32>,
+        exe_path: Option<PathBuf>,
+        cmdline: Vec<String>,
+        working_dir: Option<PathBuf>,
+        env: HashMap<String, String>,
+        start_time_secs: i64,
+    ) -> Self {
+        Self { pid, ppid, exe_path, cmdline, working_dir, env, start_time_secs }
+    }
+}
+
 /// A process snapshot enriched with engine-specific context.
 ///
 /// Returned by `EngineModule::enrich`. May perform I/O (transcript path
@@ -216,6 +316,43 @@ pub struct EnrichedSession {
     /// Timestamp of the most recent hook event for this session,
     /// as microseconds since the Unix epoch (UTC).
     pub last_event_micros: i64,
+}
+
+impl EnrichedSession {
+    /// Construct an `EnrichedSession` instance.
+    ///
+    /// All six fields are required. `transcript_path` and `config_path` are
+    /// `Option<PathBuf>` in the struct because they may be legitimately unknown
+    /// at enrichment time (e.g., a session whose config file has not been read yet
+    /// passes `None`; the TUI handles `None` by displaying `"—"`). The caller
+    /// always knows the initial status and last_event_micros at construction time.
+    ///
+    /// Field order matches struct declaration order.
+    ///
+    /// # Rationale — no `Default` impl
+    ///
+    /// An `EnrichedSession` with `session_id: ""` and `harness_type: ""` is
+    /// semantically invalid — it would be indistinguishable from a session that
+    /// failed enrichment. The TUI and transcript watcher consume `EnrichedSession`
+    /// values as authoritative; a silently-wrong default would cause observable
+    /// misbehavior (wrong session ID in display, wrong harness_type in routing).
+    /// No `Default` is provided to prevent accidental use of the zero-value.
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `EnrichedSession` carries `#[non_exhaustive]`. Per Rust E0639, struct literal
+    /// construction is forbidden outside `monocle-core`. `ClaudeCodeModule::enrich`
+    /// is in `monocle-runtime`, so this constructor is the only legal construction path.
+    pub fn new(
+        session_id: String,
+        harness_type: String,
+        transcript_path: Option<PathBuf>,
+        config_path: Option<PathBuf>,
+        status: SessionStatus,
+        last_event_micros: i64,
+    ) -> Self {
+        Self { session_id, harness_type, transcript_path, config_path, status, last_event_micros }
+    }
 }
 
 /// Session lifecycle status as observed by the engine module.
@@ -248,6 +385,35 @@ pub struct HookResponse {
     /// May be surfaced in the TUI status bar when the user has the session
     /// detail panel open.
     pub diagnostic: Option<String>,
+}
+
+impl HookResponse {
+    /// Construct a `HookResponse` with the given decision.
+    ///
+    /// `redirect_url` and `diagnostic` default to `None`, which is the correct
+    /// Phase 1 state: no federation redirect (Phase 4+ only), no diagnostic
+    /// string unless the engine has one to surface.
+    ///
+    /// Callers that need to set `redirect_url` or `diagnostic` construct via
+    /// this method and then assign the fields directly (they are `pub`):
+    /// ```rust
+    /// let mut resp = HookResponse::new(HookDecision::Allow);
+    /// resp.diagnostic = Some("allow: no policy match".to_string());
+    /// ```
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `HookResponse` carries `#[non_exhaustive]`. Per Rust E0639, struct literal
+    /// construction (`HookResponse { decision: ..., redirect_url: None, diagnostic: None }`)
+    /// is forbidden outside `monocle-core`. `ClaudeCodeModule::on_hook` is defined in
+    /// `monocle-runtime`, so this constructor is the only legal construction path.
+    ///
+    /// A single required argument (`decision`) with `None` defaults for the two
+    /// optional Phase 4 fields is the production-grade choice: `decision` is always
+    /// known at construction; the optional fields are always `None` in Phase 1.
+    pub fn new(decision: HookDecision) -> Self {
+        Self { decision, redirect_url: None, diagnostic: None }
+    }
 }
 
 /// The action the daemon takes in response to a hook event.
@@ -341,15 +507,15 @@ impl EngineModule for ClaudeCodeModule {
         let base_dirs = directories::BaseDirs::new()
             .ok_or(EngineMetadataError::HomeUnresolvable)?;
         let claude_config_root = base_dirs.home_dir().join(".claude");
-        Ok(EngineMetadata {
-            display_name: "Claude Code",
-            icon: '●',
-            config_paths: vec![
+        Ok(EngineMetadata::new(
+            "Claude Code",
+            '●',
+            vec![
                 claude_config_root.clone(),
                 claude_config_root.with_extension("json"), // ~/.claude.json
             ],
-            hook_schema_version: 1,
-        })
+            1,
+        ))
     }
 
     fn detect(&self, proc: &ProcessSnapshot) -> bool {
@@ -392,25 +558,21 @@ impl EngineModule for ClaudeCodeModule {
                 .join(format!("{}", cwd.display()))
         });
 
-        Ok(EnrichedSession {
+        Ok(EnrichedSession::new(
             session_id,
-            harness_type: self.id().to_string(),
+            self.id().to_string(),
             transcript_path,
-            config_path: Some(claude_config_root),
-            status: SessionStatus::Active,
-            last_event_micros: 0, // updated by on_hook
-        })
+            Some(claude_config_root),
+            SessionStatus::Active,
+            0, // last_event_micros: updated by on_hook
+        ))
     }
 
     async fn on_hook(&self, _event: HookEvent) -> HookResponse {
         // Phase 1: default fail-open policy per BC-HOOK-018.
         // Full permission-overlay dispatch implemented in Phase 1 story
         // for monocle-runtime hook_handler.
-        HookResponse {
-            decision: HookDecision::Allow,
-            redirect_url: None,
-            diagnostic: None,
-        }
+        HookResponse::new(HookDecision::Allow)
     }
 }
 ```
@@ -610,7 +772,12 @@ or `"claude.js"` (strict basename match on the resolved binary path; NOT a suffi
 on `cmdline[0]`, which would produce false positives for `claude-squad`, `claudio`, etc.).
 Verification: unit test in `monocle-runtime/tests/engine_module.rs` constructs a module via
 `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`, asserts `module.id() == "claude-code"`,
-and tests `detect()` with: (a) a synthetic `ProcessSnapshot` with `exe_path = Some(PathBuf::from("/usr/local/bin/claude"))` → asserts `true`; (b) `exe_path = Some(PathBuf::from("/usr/local/bin/claude-squad"))` → asserts `false`; (c) `exe_path = None` (regardless of cmdline contents) → asserts `false`. Note: `detect()` consults ONLY `exe_path`; `cmdline` is preserved for engine-specific use in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`) but is NOT used for engine identification — this avoids false positives from processes such as `claude-squad`, `claudio`, and `claude-code-router` that may place `"claude"` in `cmdline[0]`.
+and tests `detect()` with three synthetic `ProcessSnapshot` instances constructed via
+`ProcessSnapshot::new(pid, exe_path, cmdline, start_time_secs)`:
+(a) `ProcessSnapshot::new(12345, Some(PathBuf::from("/usr/local/bin/claude")), vec![], 1_700_000_000)` → asserts `detect()` returns `true`;
+(b) `ProcessSnapshot::new(12346, Some(PathBuf::from("/usr/local/bin/claude-squad")), vec![], 1_700_000_000)` → asserts `detect()` returns `false`;
+(c) `ProcessSnapshot::new(12347, None, vec!["claude".to_string()], 1_700_000_000)` → asserts `detect()` returns `false` (exe_path=None regardless of cmdline contents).
+Note: `detect()` consults ONLY `exe_path`; `cmdline` is preserved for engine-specific use in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`) but is NOT used for engine identification — this avoids false positives from processes such as `claude-squad`, `claudio`, and `claude-code-router` that may place `"claude"` in `cmdline[0]`.
 
 **BC-ENGINE-002-ERR:** `ClaudeCodeModule::metadata()` and `ClaudeCodeModule::enrich()` MUST
 return `Err(EngineMetadataError::HomeUnresolvable)` when the platform home directory is
@@ -675,10 +842,21 @@ relative path for an unresolvable home directory. Verification: test in
    );
    ```
 5. **Async half — `enrich()` test (use `temp_env::async_with_vars`):**
-   Construct a synthetic `ProcessSnapshot` with the same field values used in the
-   `detect()` test cases (pid, exe_path, empty cmdline/env). In a separate
-   `#[tokio::test]` (or within an `async` block):
+   Construct a synthetic `ProcessSnapshot` using `ProcessSnapshot::new(...)` with the
+   same pid and exe_path values used in the `detect()` test case (a), plus explicitly
+   specified cmdline and start_time_secs. All seven fields are accounted for (four via
+   `new`, three defaulted to `None`/empty by the constructor — satisfying F-R26-adv-5).
+   In a separate `#[tokio::test]` (or within an `async` block):
    ```rust
+   // Construct snapshot via ProcessSnapshot::new — struct literal is forbidden
+   // outside monocle-core (E0639 applies to #[non_exhaustive] structs).
+   // ProcessSnapshot::new sets ppid=None, working_dir=None, env=HashMap::new().
+   let snapshot = ProcessSnapshot::new(
+       12345,                                              // pid
+       Some(PathBuf::from("/usr/local/bin/claude")),       // exe_path
+       vec![],                                             // cmdline (empty for this test)
+       1_700_000_000,                                      // start_time_secs
+   );
    temp_env::async_with_vars(
        [("HOME", None::<&str>), ("USERPROFILE", None::<&str>),
         ("HOMEDRIVE", None::<&str>), ("HOMEPATH", None::<&str>)],
@@ -726,6 +904,37 @@ contracts with postconditions and verification harness stubs.
 
 ## §Trace
 
+v1.1.7 changes (round-27 fixes F-R26-adv-1 CRITICAL / F-R26-adv-5 LOW / F-R26-2 MEDIUM):
+- F-R26-adv-1 RESOLVED (CRITICAL — adversary finding): `EngineMetadata`, `ProcessSnapshot`,
+  `EnrichedSession`, and `HookResponse` are all `#[non_exhaustive]` structs defined in
+  `monocle-core`. The production code in `ClaudeCodeModule` (in `monocle-runtime`, an
+  external crate from `monocle-core`'s perspective) previously constructed all four via
+  struct literal syntax — forbidden by Rust E0639: "`#[non_exhaustive]` prevents struct
+  literal construction outside the defining crate." An implementer following the prior spec
+  would hit E0639 compile errors on first `cargo build`. Fix: added `pub fn new(...)` and
+  (for `ProcessSnapshot`) `pub fn with_full_context(...)` inherent constructors to all four
+  structs within `monocle-core`. Updated all four call sites in `ClaudeCodeModule`:
+  `metadata()` → `EngineMetadata::new(...)`; `enrich()` → `EnrichedSession::new(...)`;
+  `on_hook()` → `HookResponse::new(HookDecision::Allow)`. `HookResponse::new` takes only
+  `decision` (the one required field) and defaults `redirect_url` and `diagnostic` to
+  `None` (correct Phase 1 state). Constructor design rationale for each struct is documented
+  in their respective `impl` block rustdocs inline in §Supporting Types.
+- F-R26-adv-5 RESOLVED (LOW — folded into F-R26-adv-1): The BC-ENGINE-002-ERR async half
+  test spec previously stated "construct a synthetic `ProcessSnapshot` with the same field
+  values used in the detect() test cases (pid, exe_path, empty cmdline/env)" — an incomplete
+  specification that left 3 of 7 field values unspecified and left the constructor form
+  implicit. Fixed in the same edit: the test spec now shows the complete `ProcessSnapshot::new`
+  call with all four positional arguments (`pid=12345`, `exe_path=Some(...)`, `cmdline=vec![]`,
+  `start_time_secs=1_700_000_000`) and a comment noting that the three remaining fields
+  (`ppid`, `working_dir`, `env`) are defaulted by the constructor.
+- F-R26-2 RESOLVED (MEDIUM — consistency finding): v1.1.4 trace block referenced `temp-env
+  ^0.2` and the XDG_* env-var list, both superseded in v1.1.6. v1.1.5 trace block was
+  superseded by v1.1.6 (behavioral changes) and v1.1.7 (constructor changes). Fix: supersession
+  annotations added to both the v1.1.4 and v1.1.5 trace entries identifying exactly what
+  content was superseded and by which version.
+- Additional in-scope finding: `HookResponse` audited as an additional E0639-affected struct
+  (same `#[non_exhaustive]` cross-crate struct literal pattern; constructor added in same burst).
+
 v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
 - F-R24-adv-1 RESOLVED (MEDIUM — adversary finding): BC-ENGINE-002-ERR verification block
   previously called `temp_env::with_vars` (synchronous closure) and then used `.await`
@@ -757,6 +966,10 @@ v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
   on runners with a registered user SID; Linux/macOS path is fully deterministic.
 
 v1.1.5 changes (round-23 micro-fix):
+**NOTE: Superseded by v1.1.6 (F-R24-adv-1: test spec async/sync split; temp-env ^0.2 → ^0.3;
+env-var list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH; XDG_* removed; commits captured
+in v1.1.6 trace) and v1.1.7 (F-R26-adv-1: constructors added; F-R26-adv-5: ProcessSnapshot
+args fully specified in test; F-R26-2: these annotations added).**
 - BC-ENGINE-002-ERR ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-ENGINE-002 and
   BC-ENGINE-003, preserving numerical order). Prior commit 563b573 added this BC to
   §Behavioral Contracts but missed the pre-staging cross-reference table. Total updated
@@ -767,6 +980,11 @@ v1.1.5 changes (round-23 micro-fix):
   product-brief.md (BC list and count updated 15→16).
 
 v1.1.4 changes (round-22 fixes F-R22-1/F-R22-2/F-R22-3):
+**NOTE: Superseded by v1.1.5 (BC-ENGINE-002-ERR added to Pre-Staging table; cross-ref
+consistency fix) and v1.1.6 (test-spec async/sync split; temp-env ^0.2 → ^0.3; env-var
+list HOME+USERPROFILE+HOMEDRIVE+HOMEPATH; XDG_* removed). The v1.1.4 temp-env pin
+(^0.2) and XDG_* env-var list in this entry are SUPERSEDED — implementers MUST follow
+the v1.1.6 (and later v1.1.7) specifications.**
 - F-R22-1/F-R22-2 RESOLVED (MEDIUM — adversary finding): §EngineModule Trait Signature
   opening paragraph previously claimed all five methods match the vision "exactly."
   This was imprecise: `id`, `detect`, and `on_hook` are vision-verbatim; `metadata`
