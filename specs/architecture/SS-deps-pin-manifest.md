@@ -2,7 +2,7 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.6"
+version: "1.1.7"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -12,7 +12,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API"
 project: monocle
 ---
 
@@ -70,7 +70,7 @@ These crates do NOT appear in the production binary.
 
 | Crate | Version | Role | Cargo.toml Note |
 |-------|---------|------|-----------------|
-| temp-env | 0.2 | Environment variable manipulation in integration tests with RAII cleanup | caret pin (`^0.2`); `[dev-dependencies]` only; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); chosen over `serial_test` + manual `remove_var` because `temp-env` restores variables on both normal and panic exit paths — safe for multi-threaded Rust test harnesses |
+| temp-env | 0.3 | Environment variable manipulation in integration tests with RAII cleanup — sync (`with_vars`) and async (`async_with_vars`) variants | caret pin (`^0.3`); feature `async_closure` required for `async_with_vars` API; `[dev-dependencies]` only; declare as `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime/Cargo.toml`; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); bumped from `^0.2` in round-24 (F-R24-adv-1): `^0.2` exposed only synchronous `with_vars`; the async `enrich()` half of BC-ENGINE-002-ERR requires `async_with_vars` which is gated on the `async_closure` feature introduced in 0.3.0; latest 0.3.x is 0.3.6 (2023-09-24, not yanked, verified against crates.io API 2026-05-13) |
 
 ## Phase 2/3/4 Additions
 
@@ -248,3 +248,26 @@ pinned versions block merge until either:
 | Phase 3 | Rust 1.92 | wasmtime 44 requirement |
 
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
+
+## §Trace
+
+v1.1.7 changes (round-24 fix F-R24-adv-1):
+- temp-env dev-dependency bumped from `^0.2` to `{ version = "^0.3", features =
+  ["async_closure"] }`. Rationale: the BC-ENGINE-002-ERR verification block requires
+  `temp_env::async_with_vars` for the async `enrich()` assertion; this function is
+  available only in temp-env 0.3+ behind the `async_closure` feature flag. The `^0.2`
+  pin exposed only synchronous `with_vars`; using `.await` inside a sync closure
+  produces a compile error. Verification performed 2026-05-13: crates.io API confirms
+  `temp-env 0.3.6` (latest in 0.3.x line, published 2023-09-24, not yanked); source
+  inspection of `github.com/vmx/temp-env` `src/lib.rs` confirms `async_with_vars` is
+  `#[cfg(feature = "async_closure")]`-gated with signature
+  `pub async fn async_with_vars<K,V,F,R>(kvs: impl AsRef<[(K,Option<V>)]>, closure: F) -> R
+  where K: AsRef<OsStr>+Clone+Eq+Hash, V: AsRef<OsStr>+Clone,
+  F: Future<Output=R>+IntoFuture<Output=R>`. The `async_closure` feature depends on
+  `futures ^0.3.31`.
+
+v1.1.6 changes (round-22 fix F-R22-3):
+- temp-env added as `[dev-dependencies]` pin at `^0.2` for BC-ENGINE-002-ERR test
+  isolation in `monocle-runtime/tests/engine_module.rs`. Chosen over `serial_test` +
+  manual `remove_var` because `temp-env` restores env vars on both normal and panic
+  exit paths (RAII cleanup), making it safe for multi-threaded Rust test harnesses.
