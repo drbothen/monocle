@@ -2,16 +2,16 @@
 document_type: architecture-permissions
 level: L3
 section: "permissions"
-version: "1.0"
+version: "1.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T21:00:00Z
+timestamp: 2026-05-13T12:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2"
+traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved"
 project: monocle
 ---
 
@@ -155,6 +155,10 @@ pub enum ClaudeCodeTool {
 }
 
 /// Describes which future invocations an AllowAlways decision applies to.
+///
+/// `#[non_exhaustive]` — Phase 2+ may add new pattern types (e.g., regex match,
+/// glob path pattern). Consumers must handle unknown patterns gracefully.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AllowPattern {
     /// Allow any invocation of the tool, regardless of args.
@@ -168,6 +172,10 @@ pub enum AllowPattern {
 }
 
 /// Describes which future invocations a DenyAlways decision applies to.
+///
+/// `#[non_exhaustive]` — Phase 2+ may add new pattern types (e.g., glob path
+/// deny pattern matching a directory subtree). Consumers must handle unknown patterns.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DenyPattern {
     /// Deny any invocation of the tool, regardless of args.
@@ -177,6 +185,11 @@ pub enum DenyPattern {
 }
 
 /// The reason surfaced to Claude Code (and the user) on a Deny decision.
+///
+/// `#[non_exhaustive]` — Phase 2+ may add new denial reason types (e.g., a
+/// machine-learning classifier deny, a compliance-rule deny). Consumers must
+/// handle unknown reasons without panicking.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DenyReason {
     /// User explicitly chose to deny.
@@ -262,8 +275,14 @@ architecture cycle to define the `PluginPermission` enum surface.
   concrete Phase 1 use case.
 - **Phase 3 architecture:** a new artifact `SS-permissions-phase3.md` defines the
   WASM plugin sandbox permission enum separately from this one.
-- **No `#[non_exhaustive]` anywhere in this module.** Exhaustiveness is enforced by
-  the compiler; new variants require ADR and compiler-guided match-site updates.
+- **Exhaustive enums (two):** `Phase1Permission` (5 canonical variants) and
+  `ClaudeCodeTool` (15 named variants + `Unknown(String)`) are exhaustive by design per
+  ADR-0004. `#[non_exhaustive]` is FORBIDDEN on these two enums; exhaustiveness is a
+  compile-time correctness invariant enforced by the Rust compiler.
+- **Non-exhaustive supporting enums (three):** `DenyReason`, `AllowPattern`, and
+  `DenyPattern` carry `#[non_exhaustive]` per BC-TYPES-001. Phase 2+ may add new
+  pattern or reason variants without breaking Phase 1 consumers. Consumers of these
+  enums MUST include a wildcard arm in match statements.
 
 ## Re-eval Triggers
 

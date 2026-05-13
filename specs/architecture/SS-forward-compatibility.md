@@ -227,10 +227,28 @@ including the full trait signature, the `VsddFactoryAdapter` implementation skel
 the Phase 3 relaxation path, and two behavioral contracts.
 
 The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
-The 11 pre-staged BC IDs (BC-RING-001, BC-ABI-001, BC-ABI-002, BC-TYPES-001,
-BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002,
-BC-AUTH-001, BC-AUTH-002, BC-LOCK-001) are RESERVED — the PRD must use these
-exact IDs when formalizing the contracts with postconditions and verification
-harness stubs. Note: BC-PROTO-001 was split into BC-PROTO-001a (wire field
-number) and BC-PROTO-001b (Rust struct surface) per F-FC-O004. BC-LOCK-001
-added per F-FC-O001 (lock-file contract_version field).
+The following 15 pre-staged BC IDs are RESERVED — the PRD must use these exact IDs
+when formalizing the contracts with postconditions and verification harness stubs:
+
+| BC ID | Source Artifact |
+|-------|----------------|
+| BC-RING-001 | SS-daemon-lifecycle.md |
+| BC-ABI-001 | SS-core-types-and-abi.md |
+| BC-ABI-002 | SS-core-types-and-abi.md |
+| BC-TYPES-001 | SS-core-types-and-abi.md |
+| BC-FACTORY-001 | SS-core-types-and-abi.md |
+| BC-FACTORY-002 | SS-core-types-and-abi.md |
+| BC-PROTO-001a | SS-core-types-and-abi.md |
+| BC-PROTO-001b | SS-core-types-and-abi.md |
+| BC-PROTO-002 | SS-core-types-and-abi.md |
+| BC-AUTH-001 | SS-daemon-lifecycle.md |
+| BC-AUTH-002 | SS-daemon-lifecycle.md |
+| BC-LOCK-001 | SS-daemon-lifecycle.md |
+| BC-ENGINE-001 | SS-engine-module.md |
+| BC-ENGINE-002 | SS-engine-module.md |
+| BC-ENGINE-003 | SS-engine-module.md |
+
+Notes: BC-PROTO-001 was split into BC-PROTO-001a (wire field number) and BC-PROTO-001b
+(Rust struct surface) per F-FC-O004. BC-LOCK-001 added per F-FC-O001 (lock-file
+`contract_version` field). BC-ENGINE-001/002/003 added per round-14 fix burst
+(SS-engine-module.md v1.1; N5 BC count propagation).
