@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.10"
+version: "1.1.11"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2)"
 project: monocle
 ---
 
@@ -1161,6 +1161,19 @@ contracts with postconditions and verification harness stubs.
 
 ## §Trace
 
+v1.1.11 changes (round-41 fixes F-R40-2 MEDIUM):
+- F-R40-2 RESOLVED (MEDIUM — adversary finding): Two current-pointer citations in the v1.1.8
+  §Trace block referenced `SS-daemon-lifecycle.md v1.0.5` without qualification. The phrasing
+  "See SS-daemon-lifecycle.md v1.0.5" and "(v1.0.5)" in a trace entry describing F-R28-2 and
+  F-R28-4 reads as a current pointer — directing readers to v1.0.5 to understand the current
+  state of `HookEventRecord`. However, SS-daemon-lifecycle.md was bumped to v1.0.6 in a
+  subsequent round (F-R30-2) which added `#[non_exhaustive]` to `HookEventRecord`. A reader
+  consulting v1.0.5 (per the old citation) would see the struct definition without
+  `#[non_exhaustive]`, missing a materially important attribute. Fix: both citations rewritten
+  as historical pinpoints clearly distinguishing when HookEventRecord was first defined (v1.0.5)
+  from what the current version adds (v1.0.6 adds `#[non_exhaustive]`). Historical narrative
+  meaning preserved: F-R28-2 and F-R28-4 context is unchanged; the temporal precision is added.
+
 v1.1.10 changes (round-35 fix F-R34-1 CRITICAL):
 - F-R34-1 RESOLVED (CRITICAL — adversary finding): §Trace prose in the v1.1.9 entry (at
   the lines describing the HTML delimiter addition in F-R30-1) quoted the audit-table delimiter
@@ -1253,7 +1266,8 @@ v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-
   construction sites, and constructor status. (5) HookEvent inner structs audited: serde-
   deserialize-only construction — no cross-crate struct literal, no constructor required.
   (6) Also defines `HookEventRecord` (see F-R28-4 below) — the ring buffer serialization
-  struct referenced in SS-daemon-lifecycle.md BC-RING-001. See SS-daemon-lifecycle.md v1.0.5.
+  struct referenced in SS-daemon-lifecycle.md BC-RING-001 (introduced at SS-daemon-lifecycle.md
+  v1.0.5; `#[non_exhaustive]` attribute added in v1.0.6 per F-R30-2).
 - F-R28-3 RESOLVED (MEDIUM — adversary finding): `HookResponse` rustdoc documented the
   canonical setter pattern as pub-field mutation (`let mut resp = HookResponse::new(...);
   resp.diagnostic = Some(...)`), forcing `let mut` and bypassing encapsulation. Fix:
@@ -1263,8 +1277,8 @@ v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-
   chain form: `HookResponse::new(decision).with_diagnostic("...")`. The pub-field mutation
   example is removed from the rustdoc; pub visibility is retained for read access by
   consumers outside `monocle-core`, but the WRITE path is the builder method.
-- F-R28-4 RESOLVED (MEDIUM — folded into F-R28-2 above): `HookEventRecord` is now defined in
-  SS-daemon-lifecycle.md §HookEventRecord (v1.0.5). The type is the concrete struct pushed
+- F-R28-4 RESOLVED (MEDIUM — folded into F-R28-2 above): `HookEventRecord` was first defined in
+  SS-daemon-lifecycle.md §HookEventRecord at v1.0.5. The type is the concrete struct pushed
   onto the JSONL ring buffer, and its definition is in the daemon-lifecycle spec because the
   ring buffer is a daemon-lifecycle artifact. Cross-reference: §Behavioral Contracts
   BC-RING-001 in SS-daemon-lifecycle.md now references `HookEventRecord` via a defined type,
