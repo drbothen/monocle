@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.8"
+version: "1.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T23:30:00Z
+timestamp: 2026-05-13T23:45:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file)"
 project: monocle
 ---
 
@@ -767,6 +767,21 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 
 ## §Trace
 
+v1.9 changes (round-37 fix F-R36-2 MEDIUM):
+
+- F-R36-2 RESOLVED (MEDIUM — adversary finding, Partial-Fix Regression Discipline S-7.01): The
+  v1.8 §Trace entry for F-R30-3 (v1.6 changes) quoted the audit-table delimiter markers verbatim
+  in its §Trace prose — a direct self-violation of the no-verbatim-quoting convention introduced
+  in the same v1.8 edit (clause 4, §Semgrep Coverage Hardening Layer 2). Partial-Fix Regression
+  Discipline (S-7.01): when a convention rule is introduced, ALL existing occurrences of the
+  prohibited pattern in the same file must be remediated in the same edit. The v1.8 fix correctly
+  patched SS-engine-module.md §Trace but missed the parallel occurrence at v1.6 §Trace of this
+  file. Fix: v1.6 §Trace point (1) rewritten to refer to the audit-table delimiter markers by
+  name (referencing BEGIN_DELIMITER_REGEX and END_DELIMITER_REGEX in clause 4 of §Semgrep
+  Coverage Hardening) without verbatim HTML comment quoting. Historical narrative meaning
+  preserved: the boundary between where the markers live (SS-engine-module.md) and how they work
+  (CI machine-parsing) remains clear.
+
 v1.8 changes (round-35 fixes F-R34-1 CRITICAL / F-R34-2 IMPORTANT / F-R34-3 IMPORTANT):
 
 - F-R34-1 RESOLVED (CRITICAL — adversary finding): The `check_audit_table.py` duplicate-delimiter
@@ -868,8 +883,9 @@ v1.6 changes (round-30 fix F-R30-3 MEDIUM):
   Audit table invariant in SS-engine-module.md was a passive policy with no machine enforcement.
   F-R30-1 demonstrated the policy was violated — 10 of 17 `#[non_exhaustive]` structs were
   missing while the invariant statement claimed completeness. Fix (split across two files):
-  (1) SS-engine-module.md v1.1.9: HTML delimiters `<!-- BEGIN: Cross-Crate Constructor Audit
-  Table -->` and `<!-- END: Cross-Crate Constructor Audit Table -->` wrap the audit table rows,
+  (1) SS-engine-module.md v1.1.9: HTML BEGIN/END delimiter markers (whose canonical line-anchored
+  regex patterns are specified in BEGIN_DELIMITER_REGEX and END_DELIMITER_REGEX in clause 4 of
+  §Semgrep Coverage Hardening) wrap the audit table rows,
   enabling a CI Python script to machine-parse the declared struct list. Audit table expanded
   from 7 to 17 structs (see SS-engine-module.md §Trace v1.1.9 for the complete expansion log).
   (2) This file v1.6: new semgrep rule `monocle-non-exhaustive-struct-audit-completeness` added
