@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.7"
+version: "1.1.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T21:00:00Z
+timestamp: 2026-05-13T22:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected"
 project: monocle
 ---
 
@@ -315,17 +315,36 @@ pub struct EnrichedSession {
     pub status: SessionStatus,
     /// Timestamp of the most recent hook event for this session,
     /// as microseconds since the Unix epoch (UTC).
-    pub last_event_micros: i64,
+    ///
+    /// `None` means the session has been enriched but no hook events have been
+    /// received yet (e.g., a session detected immediately after process spawn, before
+    /// the first `SessionStart` hook POST arrives at the daemon). `Some(t)` carries
+    /// the microseconds-since-epoch timestamp of the most recent hook event.
+    ///
+    /// **Contract for consumers:**
+    /// - TUI session-list age column: display `"—"` for `None`; compute age as
+    ///   `now - t` for `Some(t)`. MUST NOT treat `0` as a sentinel — that is the
+    ///   Unix epoch (1970-01-01), semantically wrong for any real session event.
+    /// - Idle-session reaper: treat `None` as "no events yet; do not reap based on
+    ///   event timestamp." Reaping a `None`-epoch session requires a separate policy
+    ///   (e.g., time-since-process-start). MUST NOT coerce `None` to `0` and compare
+    ///   against a reap threshold — that would wrongly classify new sessions as 56
+    ///   years idle.
+    pub last_event_micros: Option<i64>,
 }
 
 impl EnrichedSession {
     /// Construct an `EnrichedSession` instance.
     ///
-    /// All six fields are required. `transcript_path` and `config_path` are
-    /// `Option<PathBuf>` in the struct because they may be legitimately unknown
-    /// at enrichment time (e.g., a session whose config file has not been read yet
-    /// passes `None`; the TUI handles `None` by displaying `"—"`). The caller
-    /// always knows the initial status and last_event_micros at construction time.
+    /// `transcript_path` and `config_path` are `Option<PathBuf>` because they may
+    /// be legitimately unknown at enrichment time (e.g., a session whose config file
+    /// has not been read yet passes `None`; the TUI handles `None` by displaying
+    /// `"—"`).
+    ///
+    /// `last_event_micros` is `Option<i64>`. Pass `None` at initial enrichment time
+    /// (no hook events received yet). The daemon updates this field to `Some(t)` when
+    /// the first hook event for this session arrives. See field-level rustdoc for the
+    /// full consumer contract.
     ///
     /// Field order matches struct declaration order.
     ///
@@ -343,13 +362,25 @@ impl EnrichedSession {
     /// `EnrichedSession` carries `#[non_exhaustive]`. Per Rust E0639, struct literal
     /// construction is forbidden outside `monocle-core`. `ClaudeCodeModule::enrich`
     /// is in `monocle-runtime`, so this constructor is the only legal construction path.
+    ///
+    /// # Rationale — `Option<i64>` vs sentinel `0`
+    ///
+    /// `0i64` is the Unix epoch (1970-01-01T00:00:00Z). Using it as a sentinel for
+    /// "no hook events yet" would cause the TUI age column to display "56 years idle"
+    /// and would cause any idle-session reaper comparing `(now - last_event_micros)`
+    /// against a threshold to wrongly classify new sessions as stale. The `Option`
+    /// type makes the "not yet received" state unambiguous and enforces explicit
+    /// handling at every consumer. This is the same reasoning that motivated
+    /// `ProcessSnapshot::start_time_secs` to have no `Default` impl (see §Supporting
+    /// Types — ProcessSnapshot rationale). The two cases require consistent treatment:
+    /// there is no valid zero-value timestamp for any field on these structs.
     pub fn new(
         session_id: String,
         harness_type: String,
         transcript_path: Option<PathBuf>,
         config_path: Option<PathBuf>,
         status: SessionStatus,
-        last_event_micros: i64,
+        last_event_micros: Option<i64>,
     ) -> Self {
         Self { session_id, harness_type, transcript_path, config_path, status, last_event_micros }
     }
@@ -394,11 +425,20 @@ impl HookResponse {
     /// Phase 1 state: no federation redirect (Phase 4+ only), no diagnostic
     /// string unless the engine has one to surface.
     ///
-    /// Callers that need to set `redirect_url` or `diagnostic` construct via
-    /// this method and then assign the fields directly (they are `pub`):
+    /// Phase 1 callers that only need a decision use `new` directly:
     /// ```rust
-    /// let mut resp = HookResponse::new(HookDecision::Allow);
-    /// resp.diagnostic = Some("allow: no policy match".to_string());
+    /// HookResponse::new(HookDecision::Allow)
+    /// ```
+    ///
+    /// Callers that need to attach a diagnostic or redirect chain builder methods:
+    /// ```rust
+    /// HookResponse::new(HookDecision::Allow)
+    ///     .with_diagnostic("allow: no policy match")
+    ///
+    /// // Phase 4 federation redirect:
+    /// HookResponse::new(HookDecision::Allow)
+    ///     .with_redirect("http://peer-daemon:7892")
+    ///     .with_diagnostic("federated to peer")
     /// ```
     ///
     /// # Rationale — constructor required for `#[non_exhaustive]`
@@ -411,8 +451,50 @@ impl HookResponse {
     /// A single required argument (`decision`) with `None` defaults for the two
     /// optional Phase 4 fields is the production-grade choice: `decision` is always
     /// known at construction; the optional fields are always `None` in Phase 1.
+    ///
+    /// # Rationale — builder methods vs pub-field mutation
+    ///
+    /// `HookResponse` fields are `pub` for forward-compat read access by consumers
+    /// outside `monocle-core`. However, direct field assignment (`resp.diagnostic = ...`)
+    /// forces callers to declare `let mut`, bypasses future validation, and leaks
+    /// mutability into caller code. Builder methods (`with_diagnostic`, `with_redirect`)
+    /// consume `self` by value and return `Self`, enabling immutable construction with
+    /// no `let mut` required. This is the idiomatic Rust builder pattern for structs with
+    /// a small number of optional fields. Phase 4 federation logic that needs `redirect_url`
+    /// uses `.with_redirect(...)` — the builder method is the canonical setter.
     pub fn new(decision: HookDecision) -> Self {
         Self { decision, redirect_url: None, diagnostic: None }
+    }
+
+    /// Attach a human-readable diagnostic string to this response.
+    ///
+    /// The diagnostic may be surfaced in the TUI status bar when the session
+    /// detail panel is open, and appears in daemon debug logs. Accepts anything
+    /// that converts `Into<String>` (string literals, `String`, `&str`).
+    ///
+    /// ```rust
+    /// HookResponse::new(HookDecision::Allow).with_diagnostic("allow: no policy match")
+    /// ```
+    pub fn with_diagnostic(mut self, diagnostic: impl Into<String>) -> Self {
+        self.diagnostic = Some(diagnostic.into());
+        self
+    }
+
+    /// Set the federation redirect URL for this response.
+    ///
+    /// Used in Phase 4 federation scenarios where the hook should be forwarded to
+    /// a peer daemon. Always `None` in Phase 1 (`ClaudeCodeModule` never sets this).
+    /// Phase 4 federation logic sets this to the peer daemon's hook base URL before
+    /// returning the response.
+    ///
+    /// ```rust
+    /// HookResponse::new(HookDecision::Allow)
+    ///     .with_redirect("http://127.0.0.1:7892")
+    ///     .with_diagnostic("federated to peer")
+    /// ```
+    pub fn with_redirect(mut self, url: impl Into<String>) -> Self {
+        self.redirect_url = Some(url.into());
+        self
     }
 }
 
@@ -564,7 +646,7 @@ impl EngineModule for ClaudeCodeModule {
             transcript_path,
             Some(claude_config_root),
             SessionStatus::Active,
-            0, // last_event_micros: updated by on_hook
+            None, // last_event_micros: None = no hook events received yet; daemon sets Some(t) on first hook
         ))
     }
 
@@ -664,9 +746,68 @@ pub struct SpawnArgs {
     /// The project root directory for this session.
     pub project_root: PathBuf,
     /// Optional worktree path override (claude-squad isolation pattern).
+    /// `None` means Claude Code opens in `project_root` directly (no worktree isolation).
     pub worktree: Option<PathBuf>,
     /// Environment variable overrides for the spawned subprocess.
+    /// Empty map means no overrides; Claude Code inherits the daemon's environment.
     pub env_overrides: HashMap<String, String>,
+}
+
+impl SpawnArgs {
+    /// Construct a `SpawnArgs` for a session rooted at `project_root`.
+    ///
+    /// `worktree` defaults to `None` (no worktree isolation). Use `with_worktree`
+    /// to set the worktree path for claude-squad-style isolation.
+    /// `env_overrides` defaults to empty (inherit daemon environment).
+    /// Use `with_env_override` to add per-session environment overrides.
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `SpawnArgs` carries `#[non_exhaustive]`. Per Rust E0639, struct literal
+    /// construction is forbidden outside `monocle-runtime`. Integration tests in
+    /// `monocle-runtime/tests/` compile as separate `[[test]]` binaries that link
+    /// `monocle-runtime` as a dependency — they are external crates from the
+    /// library's perspective and cannot construct `SpawnArgs` via struct literal.
+    /// This constructor is the only legal construction path for test fixtures and
+    /// any future Phase 4 federation code that spawns sessions on peer daemons.
+    ///
+    /// # Rationale — builder methods for optional fields
+    ///
+    /// `SpawnArgs` has one required field (`project_root`) and two optional fields
+    /// with valid defaults (`None` and empty map respectively). A single mandatory
+    /// argument in `new` with `with_*` builder methods for optional configuration
+    /// is the production-grade Rust pattern for structs with mixed required/optional
+    /// fields where all optionals have valid no-op defaults.
+    pub fn new(project_root: PathBuf) -> Self {
+        Self {
+            project_root,
+            worktree: None,
+            env_overrides: HashMap::new(),
+        }
+    }
+
+    /// Set the worktree path override for this spawn.
+    ///
+    /// Used for claude-squad-style worktree isolation: `claude` is invoked with
+    /// `worktree` as its working directory rather than `project_root`.
+    /// Phase 1 TUI "spawn in new worktree" action sets this field.
+    pub fn with_worktree(mut self, worktree: PathBuf) -> Self {
+        self.worktree = Some(worktree);
+        self
+    }
+
+    /// Add a single environment variable override for the spawned subprocess.
+    ///
+    /// Overrides an environment variable in the subprocess's environment without
+    /// replacing the full environment. Multiple calls accumulate: each call inserts
+    /// or replaces one entry in `env_overrides`.
+    ///
+    /// Phase 4 federation may use this to inject session-routing variables
+    /// (e.g., `MONOCLE_PEER_TOKEN`) into the subprocess environment.
+    pub fn with_env_override(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.env_overrides.insert(key.into(), value.into());
+        self
+    }
 }
 
 /// Handle to a successfully spawned Claude Code session.
@@ -681,6 +822,29 @@ pub struct SessionHandle {
     pub hook_base_url: String,
 }
 
+impl SessionHandle {
+    /// Construct a `SessionHandle` from the spawn result.
+    ///
+    /// All three fields are required — each is populated from the spawn result and
+    /// cannot be deferred. `pid` comes from the spawned subprocess. `session_id`
+    /// is read from the `CLAUDE_SESSION_ID` environment variable that Claude Code
+    /// injects into its own hook scripts. `hook_base_url` is the base URL where
+    /// Claude Code hook scripts POST events, copied from `ClaudeCodeModule::hook_base_url`.
+    ///
+    /// Field order matches struct declaration order.
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `SessionHandle` carries `#[non_exhaustive]`. Integration tests in
+    /// `monocle-runtime/tests/` are separate `[[test]]` binaries and cannot
+    /// construct `SessionHandle` via struct literal (E0639). This constructor
+    /// is the only legal construction path for test fixtures that exercise
+    /// spawn-result processing (e.g., session-handle-to-enriched-session flow).
+    pub fn new(pid: u32, session_id: String, hook_base_url: String) -> Self {
+        Self { pid, session_id, hook_base_url }
+    }
+}
+
 /// Version information returned by a successful preflight check.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -689,6 +853,26 @@ pub struct EngineVersion {
     pub version: String,
     /// Absolute path to the `claude` binary as resolved by `which`.
     pub binary_path: PathBuf,
+}
+
+impl EngineVersion {
+    /// Construct an `EngineVersion` from a successful preflight result.
+    ///
+    /// Both fields are required — they come from parsing `claude --version` output
+    /// and resolving the binary path via `which claude`. Neither has a valid default.
+    ///
+    /// Field order matches struct declaration order.
+    ///
+    /// # Rationale — constructor required for `#[non_exhaustive]`
+    ///
+    /// `EngineVersion` carries `#[non_exhaustive]`. Integration tests in
+    /// `monocle-runtime/tests/` are separate `[[test]]` binaries and cannot
+    /// construct `EngineVersion` via struct literal (E0639). This constructor
+    /// is the only legal construction path for test fixtures that mock preflight
+    /// results (e.g., tests that assert a minimum version requirement rejection).
+    pub fn new(version: String, binary_path: PathBuf) -> Self {
+        Self { version, binary_path }
+    }
 }
 
 /// Error from `ClaudeCodeModule::spawn`.
@@ -760,9 +944,13 @@ default path for `EngineMetadataError::HomeUnresolvable`; daemon initialization 
 fail fast with a diagnostic (no silent-fallback contract, CLAUDE.md SOUL #4).
 Supporting types `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`, `SessionStatus`,
 `HookResponse`, `HookDecision`, `DeferUntil`, `EngineMetadataError` are co-located in
-`monocle-core::engine`. The trait carries NO sealed bound. Verification: `cargo check`
-with the Phase 1 workspace; `rustdoc` confirms all types are publicly accessible and the
-trait has no `private::Sealed` supertrait.
+`monocle-core::engine`. The trait carries NO sealed bound.
+`EnrichedSession::last_event_micros` is `Option<i64>`: `None` = no hook events received
+yet; `Some(t)` = microseconds since epoch of most recent hook event. Consumers MUST
+distinguish `None` from any numeric value — treating `0` as a sentinel is forbidden
+(the Unix epoch 1970-01-01 is not a valid last-event timestamp for any real session).
+Verification: `cargo check` with the Phase 1 workspace; `rustdoc` confirms all types
+are publicly accessible and the trait has no `private::Sealed` supertrait.
 
 **BC-ENGINE-002:** `ClaudeCodeModule` (defined in `monocle-runtime::engine::claude_code`)
 implements `EngineModule`. A public `ClaudeCodeModule::new(hook_base_url: String) -> Self`
@@ -888,6 +1076,59 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 
 ---
 
+## §Cross-Crate Constructor Audit
+
+Every `#[non_exhaustive]` struct in the monocle workspace requires a `pub fn new(...)` (or
+equivalent constructor) when it is constructed from any crate OTHER than the defining crate.
+This requirement arises from Rust E0639: struct literal construction (`Foo { field: val }`) is
+forbidden outside the defining crate for `#[non_exhaustive]` types. The restriction applies
+to integration test binaries (`monocle-runtime/tests/*.rs`) because each `tests/*.rs` file is
+compiled as a separate `[[test]]` binary that LINKS the library as an external dependency — it
+is NOT part of the library crate. Therefore E0639 applies to test fixtures exactly as it
+applies to production code in downstream crates.
+
+**Invariant:** Every architect spec change that adds `#[non_exhaustive]` to a struct MUST
+update this table and add a constructor if any cross-crate construction site exists or is
+anticipated. The table is committed atomically with the struct definition — never retroactively.
+
+### Audit Table (Phase 1 baseline)
+
+| Struct | Defining crate | `#[non_exhaustive]`? | Cross-crate construction sites | Constructor present? | Notes |
+|--------|---------------|---------------------|-------------------------------|---------------------|-------|
+| `EngineMetadata` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (metadata()); test fixtures | Yes (`new(display_name, icon, config_paths, hook_schema_version)`, v1.1.7) | All 4 fields required |
+| `ProcessSnapshot` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (detect/enrich path); `monocle-runtime/tests/engine_module.rs` | Yes (two: `new(pid, exe_path, cmdline, start_time_secs)` + `with_full_context(...)`, v1.1.7) | Two-tier: detect-only vs enrich |
+| `EnrichedSession` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (enrich()); `monocle-runtime/tests/` | Yes (`new(session_id, harness_type, transcript_path, config_path, status, last_event_micros: Option<i64>)`, v1.1.8) | `last_event_micros: Option<i64>` — None on initial enrich |
+| `HookResponse` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (on_hook()); `monocle-runtime/tests/` | Yes (`new(decision)` + `.with_diagnostic()` + `.with_redirect()`, v1.1.8) | Builder pattern for optional fields |
+| `SpawnArgs` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(project_root)` + `.with_worktree()` + `.with_env_override()`, v1.1.8) | Builder for optional fields |
+| `SessionHandle` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(pid, session_id, hook_base_url)`, v1.1.8) | All 3 fields required |
+| `EngineVersion` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(version, binary_path)`, v1.1.8) | All 2 fields required |
+
+### HookEvent Inner Struct Audit (`monocle-core::hook_events`)
+
+The five event payload structs (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`,
+`NotificationEvent`, `StopEvent`) all carry `#[non_exhaustive]` per SS-core-types-and-abi.md
+§Non-Exhaustive Inner Structs. The E0639 question is: does any code outside `monocle-core`
+construct these structs via struct literal?
+
+**Finding: serde-deserialize-only construction. No cross-crate constructors required.**
+
+All five inner event structs are constructed EXCLUSIVELY through serde deserialization:
+the axum HTTP handlers in `monocle-runtime` receive JSON POST bodies and call
+`serde_json::from_slice::<HookEvent>(&body)`. Serde's deserialization path does NOT
+use struct literal syntax — it calls the generated `Deserialize` impl which constructs
+the value internally within `monocle-core`. Therefore E0639 does not apply to these structs.
+
+No test fixture in `monocle-runtime/tests/` constructs a `SessionStartEvent` etc. via struct
+literal. If a future test fixture needs to do so, that test MUST add a constructor to the
+relevant struct in `monocle-core::hook_events` (and update this table) before using struct
+literal construction fails to compile.
+
+**Enforcement note:** The `Deserialize` derive on each inner struct is the construction
+gate. If `Deserialize` is ever removed from any inner struct, the construct path changes and
+this audit must be re-run.
+
+---
+
 ## §Phase 1 PRD BC Pre-Staging
 
 | BC ID | Description | Source Section |
@@ -903,6 +1144,59 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-R28-5 LOW):
+- F-R28-1 RESOLVED (HIGH — adversary finding): `EnrichedSession::last_event_micros` changed
+  from `i64` to `Option<i64>`. The prior type accepted `0` as a construction argument in the
+  `enrich()` call site comment, using Unix epoch (1970-01-01T00:00:00Z) as a sentinel for
+  "no events yet" — the exact semantic-smell the architect rejected for `ProcessSnapshot`'s
+  `start_time_secs` (no `Default` impl, `0` is semantically wrong for any real process). Fix:
+  (1) `EnrichedSession::last_event_micros` field type changed to `Option<i64>` with expanded
+  field-level rustdoc documenting the `None`/"no events yet" vs `Some(t)`/"last event time"
+  contract and explicit consumer guidance (TUI display `"—"` for `None`; reaper must not
+  coerce `None` to `0`). (2) `EnrichedSession::new(...)` `last_event_micros` parameter type
+  changed to `Option<i64>`. (3) `enrich()` call site updated from `0` to `None` with a
+  comment: "None = no hook events received yet; daemon sets Some(t) on first hook." (4)
+  Constructor rustdoc updated with the Option rationale (same epoch-sentinel reasoning as
+  ProcessSnapshot). (5) BC-ENGINE-001 updated to state the `Option<i64>` contract and
+  sentinel-is-forbidden rule.
+- F-R28-2 RESOLVED (HIGH — adversary finding): Three additional `#[non_exhaustive]` structs
+  in `monocle-runtime` (`SpawnArgs`, `SessionHandle`, `EngineVersion`) lacked constructors.
+  Integration tests in `monocle-runtime/tests/*.rs` compile as separate `[[test]]` binaries
+  (external crates from the library's perspective); E0639 applies. Architect's round-27 audit
+  claimed completeness for 4 structs but missed 3 additional structs in the SAME crate. Fix:
+  (1) `SpawnArgs::new(project_root: PathBuf) -> Self` added with `with_worktree(PathBuf)` and
+  `with_env_override(key, value)` builder methods — builder pattern because `project_root` is
+  the only required field and both remaining fields have valid empty/None defaults. (2)
+  `SessionHandle::new(pid: u32, session_id: String, hook_base_url: String) -> Self` added —
+  single constructor because all 3 fields are always known at spawn time. (3)
+  `EngineVersion::new(version: String, binary_path: PathBuf) -> Self` added — single
+  constructor because both fields come from the preflight parse result. (4) A new §Cross-Crate
+  Constructor Audit table added listing all 7 `#[non_exhaustive]` structs with their crate,
+  construction sites, and constructor status. (5) HookEvent inner structs audited: serde-
+  deserialize-only construction — no cross-crate struct literal, no constructor required.
+  (6) Also defines `HookEventRecord` (see F-R28-4 below) — the ring buffer serialization
+  struct referenced in SS-daemon-lifecycle.md BC-RING-001. See SS-daemon-lifecycle.md v1.0.5.
+- F-R28-3 RESOLVED (MEDIUM — adversary finding): `HookResponse` rustdoc documented the
+  canonical setter pattern as pub-field mutation (`let mut resp = HookResponse::new(...);
+  resp.diagnostic = Some(...)`), forcing `let mut` and bypassing encapsulation. Fix:
+  `with_diagnostic(impl Into<String>) -> Self` and `with_redirect(impl Into<String>) -> Self`
+  builder methods added to `impl HookResponse`. Both consume `self` by value and return
+  `Self` (consuming builder pattern — no `&mut self`). The rustdoc now shows the builder-
+  chain form: `HookResponse::new(decision).with_diagnostic("...")`. The pub-field mutation
+  example is removed from the rustdoc; pub visibility is retained for read access by
+  consumers outside `monocle-core`, but the WRITE path is the builder method.
+- F-R28-4 RESOLVED (MEDIUM — folded into F-R28-2 above): `HookEventRecord` is now defined in
+  SS-daemon-lifecycle.md §HookEventRecord (v1.0.5). The type is the concrete struct pushed
+  onto the JSONL ring buffer, and its definition is in the daemon-lifecycle spec because the
+  ring buffer is a daemon-lifecycle artifact. Cross-reference: §Behavioral Contracts
+  BC-RING-001 in SS-daemon-lifecycle.md now references `HookEventRecord` via a defined type,
+  not a phantom reference.
+- F-R28-5 RESOLVED (LOW — adversary finding): The v1.1.5 trace block had a supersession
+  annotation incorrectly implying its content was no longer applicable. v1.1.5's sole change
+  (adding BC-ENGINE-002-ERR to the Pre-Staging table) is still current and correct in v1.1.8.
+  Fix: annotation rewritten to "v1.1.5 content remains current; subsequent versions add new
+  content but do not supersede this entry."
 
 v1.1.7 changes (round-27 fixes F-R26-adv-1 CRITICAL / F-R26-adv-5 LOW / F-R26-2 MEDIUM):
 - F-R26-adv-1 RESOLVED (CRITICAL — adversary finding): `EngineMetadata`, `ProcessSnapshot`,
@@ -966,10 +1260,10 @@ v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
   on runners with a registered user SID; Linux/macOS path is fully deterministic.
 
 v1.1.5 changes (round-23 micro-fix):
-**NOTE: Superseded by v1.1.6 (F-R24-adv-1: test spec async/sync split; temp-env ^0.2 → ^0.3;
-env-var list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH; XDG_* removed; commits captured
-in v1.1.6 trace) and v1.1.7 (F-R26-adv-1: constructors added; F-R26-adv-5: ProcessSnapshot
-args fully specified in test; F-R26-2: these annotations added).**
+**NOTE: v1.1.5 content remains current. Subsequent versions (v1.1.6, v1.1.7, v1.1.8) add
+new content (test-spec corrections, constructors, builder methods) but do NOT supersede
+v1.1.5's contribution, which was a cross-reference table consistency fix — the BC-ENGINE-002-ERR
+Pre-Staging row added here is still present and correct in the current version.**
 - BC-ENGINE-002-ERR ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-ENGINE-002 and
   BC-ENGINE-003, preserving numerical order). Prior commit 563b573 added this BC to
   §Behavioral Contracts but missed the pre-staging cross-reference table. Total updated
