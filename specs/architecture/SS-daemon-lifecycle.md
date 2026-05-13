@@ -2,11 +2,11 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.1"
+version: "1.0.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T21:30:00Z
+timestamp: 2026-05-12T22:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
@@ -136,10 +136,10 @@ let public_router = Router::new()
 // is irrelevant for the public router.
 let authed_router = Router::new()
     .route("/hooks/pre-tool-use", post(pre_tool_use_handler))
-    .route("/hooks/post-tool-use", post(post_tool_use_handler))
     .route("/hooks/notification", post(notification_handler))
     .route("/hooks/stop", post(stop_handler))
     .route("/hooks/session-start", post(session_start_handler))
+    .route("/hooks/prompt-submit", post(prompt_submit_handler))
     .route("/status", get(status_handler))
     .route("/shutdown", post(shutdown_handler))
     .layer(DefaultBodyLimit::max(256 * 1024))

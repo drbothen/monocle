@@ -2,11 +2,11 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.2"
+version: "1.1.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T18:00:00Z
+timestamp: 2026-05-12T22:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
@@ -100,7 +100,7 @@ The 9 EXACT-pinned crates are: `tokio`, `prost`, `wasmtime`, `russh`, `rmcp`, `r
 - `rand` is exact-pinned because it is the **auth token generator**: `OsRng` produces the 32-byte cryptographically random token written to the daemon lock file. Patch bumps require security-reviewer dispatch because changes to the OS entropy interface or CSPRNG seeding can affect key-derivation security properties.
 - The remaining 6 (`tokio`, `wasmtime`, `russh`, `rmcp`, `reqwest`, `axum`) handle security-critical protocol boundaries (TLS, SSH, WASM sandbox, HTTP server, HTTP client, async runtime).
 
-Rationale: library crates are evaluated for security risk based on their public-API surface; patch upgrades are typically safe and automatable. The 8 security-sensitive crates handle untrusted network input or operate on security-critical protocol boundaries. Patch bumps on these crates can change cancellation semantics, timeout behavior, deserialization behavior, or sandboxing properties in ways that shift the threat surface — for example, a tokio patch can change task-cancellation ordering in ways that affect security-critical timeout invariants; a serde_json patch can change how malformed JSON is handled in ways that affect resource-exhaustion behavior. Exact-pinning forces every bump through PR review with security-reviewer dispatch.
+Rationale: library crates are evaluated for security risk based on their public-API surface; patch upgrades are typically safe and automatable. The 9 security-sensitive crates handle untrusted network input or operate on security-critical protocol boundaries. Patch bumps on these crates can change cancellation semantics, timeout behavior, deserialization behavior, or sandboxing properties in ways that shift the threat surface — for example, a tokio patch can change task-cancellation ordering in ways that affect security-critical timeout invariants; a serde_json patch can change how malformed JSON is handled in ways that affect resource-exhaustion behavior. Exact-pinning forces every bump through PR review with security-reviewer dispatch.
 
 In `Cargo.toml` syntax:
 - Library deps: `ratatui = "0.30"` (caret is implicit)
