@@ -1369,3 +1369,44 @@ None of R22-R38 achieved 0 CRIT + 0 HIGH + 0 MED. Zero clean passes. Protocol re
 ### Status
 
 Convergence iteration RESUMED. Round 40 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R39 state. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.
+
+## Burst 33 — Round 40 Validation + Round 41 Fix Burst Close-Out (2026-05-13T23:55:00Z)
+
+**Trigger:** Round 40 adversary surfaced 2 MEDIUM findings (F-R40-1 CLI override gap + F-R40-2 5th-recurrence stale citations).
+
+**Commits:**
+- `0bf426a` — state-manager persisted round-40 adversary report (adversary-pass-round-40.md)
+- `6fc5ef4` — architect SS-conventions-anti-patterns v1.10 → v1.11 (F-R40-1: Option a — removed redundant `--include` CLI flag; rule's paths.include is authoritative scope governor)
+- `eaf4adf` — architect SS-engine-module.md v1.1.10 → v1.1.11 (F-R40-2: rewrote §Trace lines 1256/1267 as historical pinpoints with explicit current-state annotation)
+- this commit — state-manager round-41 close-out
+
+**Findings resolved:**
+- F-R40-1: SS-conventions-anti-patterns `--include` CLI flag removed (Option a). Reasoning: CLI `--include` runs BEFORE rule paths.include (it acts as a gate, not a union); removing the redundant flag eliminates root cause rather than patching glob semantics.
+- F-R40-2: SS-engine-module §Trace historical pinpoints rewritten. Reasoning: §Trace narrating the v1.1.8 fix accurately describes "what was current at the time"; refreshing to current would falsify the historical narrative. Explicit current-state annotation added to each pinpoint.
+
+**Notable — Architect proactive retroactive citation sweep:**
+- Scope: all 7 architecture docs (SS-conventions v1.11, SS-engine-module v1.1.11, SS-daemon-lifecycle v1.0.6, SS-forward-compatibility v1.2.2, SS-core-types-and-abi v1.2.3, SS-permissions-phase1 v1.1, SS-deps-pin-manifest v1.1.7)
+- 16 citation instances examined and classified
+- 14 classified as legitimate historical pinpoints (correct as-is)
+- 2 stale current-pointers found — both in F-R40-2 scope (already fixed)
+- 0 other stale instances found
+- D-042 manual workflow rule now retroactively applied
+
+**Convergence count:** 0/3 still. Round 42 validation will determine if F-R40 closure produces first clean pass.
+
+**Lessons:**
+
+1. **D-042 manual rule is only effective when applied retroactively + on every version bump:** Round-39's "within-file full sweep" failure demonstrates the rule's brittleness as currently stated. The retroactive sweep should now be standard practice on every architect burst.
+2. **Historical-pinpoint disposition vs version-refresh:** §Trace entries that narrate a past fix accurately should receive pinpoint annotations, not version refreshes. Refreshing falsifies the historical narrative.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Round 40 fresh-context review of post-R39 spec set | adversary-pass-round-40.md (2 MEDIUM) |
+| architect | F-R40-1 Option a CLI removal (SS-conventions v1.11) + F-R40-2 historical pinpoints (SS-engine-module v1.1.11) + proactive 7-doc citation sweep | commits 6fc5ef4 + eaf4adf |
+| state-manager | Round-41 close-out STATE.md + burst-log append | this commit |
+
+### Status
+
+Round 41 fix burst complete. Round 42 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R41 state (SS-conventions v1.11 + SS-engine-module v1.1.11). If CLEAN: 1-of-3 required consecutive clean passes. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.
