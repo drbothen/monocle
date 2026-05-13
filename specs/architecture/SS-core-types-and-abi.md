@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.1"
+version: "1.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T10:00:00Z
+timestamp: 2026-05-13T12:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved"
 project: monocle
 ---
 
@@ -173,12 +173,15 @@ permission semantic, full match-arm coverage across all dispatch sites, and
 security-reviewer sign-off.
 
 **`ClaudeCodeTool`** (defined in `SS-permissions-phase1.md`): exhaustive because
-this enum mirrors Claude Code's tool list exactly. New tools are added by Anthropic
-as a product decision; monocle's mapping enum must track Claude Code's set
-deliberately. Each new tool addition requires an explicit ADR when Claude Code ships
-it, covering monocle's intended permission dispatch behavior for that tool. The
-`Unknown(String)` catch-all variant is the runtime safety net for tools added between
-monocle releases; it IS the exhaustion escape hatch and is intentional.
+this enum mirrors Claude Code's tool list exactly. Phase 1 defines fifteen named
+variants (`Bash`, `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`,
+`WebFetch`, `WebSearch`, `TodoRead`, `TodoWrite`, `NotebookRead`, `NotebookEdit`,
+`Task`) plus the `Unknown(String)` catch-all. New tools are added by Anthropic as a
+product decision; monocle's mapping enum must track Claude Code's set deliberately.
+Each new tool addition requires an explicit ADR when Claude Code ships it, covering
+monocle's intended permission dispatch behavior for that tool. The `Unknown(String)`
+catch-all variant is the runtime safety net for tools added between monocle releases;
+it IS the exhaustion escape hatch and is intentional.
 
 These two enums are the complete Phase 1 exhaustive-enum forbidden list.
 The exemptions are recorded in ADR-0004.
@@ -360,8 +363,19 @@ pub struct FactoryState {
     /// Current pipeline phase identifier (e.g., "phase-1-spec-crystallization").
     /// Populated from STATE.md frontmatter `phase:` key.
     pub phase: String,
-    /// Workflow status (e.g., "in-progress", "blocked", "converged").
+    /// Workflow status string.
     /// Populated from STATE.md frontmatter `status:` key.
+    ///
+    /// Valid values matching STATE.md frontmatter `status:` field convention:
+    /// - `"active"` — default workflow state; work in progress.
+    /// - `"blocked"` — gate is waiting on input (human or agent).
+    /// - `"converged"` — current cycle complete; all findings resolved.
+    /// - `"draft"` — pre-completion; artifact in authoring.
+    /// - `"complete"` — cycle archived; no further changes expected.
+    ///
+    /// Implementations may encounter project-specific values beyond this list;
+    /// consumers MUST handle unknown values gracefully (do not panic on
+    /// unrecognized status strings).
     pub status: String,
     /// What the orchestrator is waiting on, if anything.
     /// Populated from STATE.md frontmatter `awaiting:` key.
@@ -454,9 +468,13 @@ pub type StateChangeStream =
 /// that the Phase 3 WASM component will expose, so the host-side dispatch code
 /// requires no changes at the Phase 3 boundary.
 ///
-/// The trait is sealed for Phase 1. Phase 3 relaxes this via the
-/// `plugin-sdk-escape-hatch` feature flag (see §Sealed Pattern Relaxation below).
-pub trait FactoryAdapter: Send + Sync + private::Sealed {
+/// The trait is OPEN — third-party crates may implement it. This is intentional:
+/// it is the mechanism by which the Phase 3 plugin SDK exposes factory adapter
+/// extensibility. Per SS-forward-compatibility.md §Analysis — Sealed trait
+/// (lines 95–97): "Do not apply the Sealed pattern to `EngineModule` or
+/// `FactoryAdapter`." Sealing would prevent Phase 3 WASM plugin authors from
+/// implementing this trait, defeating its purpose.
+pub trait FactoryAdapter: Send + Sync + 'static {
     /// Detect whether the project at `workspace_root` uses this factory pattern.
     ///
     /// Returns `Some(FactoryDetection)` if detected; `None` if this adapter does
@@ -520,18 +538,13 @@ pub trait FactoryAdapter: Send + Sync + private::Sealed {
 
     /// The ABI version this adapter was compiled against.
     ///
-    /// Default implementation returns `crate::MONOCLE_ABI_VERSION`. Overriding
-    /// this method is forbidden in Phase 1 implementations (the Sealed pattern
-    /// prevents external impls; Phase 3 SDK adapters use the default).
+    /// Default implementation returns `crate::MONOCLE_ABI_VERSION`.
+    /// Phase 3 SDK adapters use the default; if the host ABI version differs,
+    /// the plugin loader refuses to activate the adapter. Phase 1 static
+    /// implementations inherit the default without override.
     fn abi_version(&self) -> u32 {
         crate::MONOCLE_ABI_VERSION
     }
-}
-
-/// Sealing module — prevents external crates from implementing `FactoryAdapter`
-/// in Phase 1. Phase 3 `monocle-plugin-sdk` exposes a controlled relaxation.
-mod private {
-    pub trait Sealed {}
 }
 ```
 
@@ -551,8 +564,6 @@ pub struct VsddFactoryAdapter {
     workspace_root: PathBuf,
     state_file: PathBuf,
 }
-
-impl private::Sealed for VsddFactoryAdapter {}
 
 impl FactoryAdapter for VsddFactoryAdapter {
     fn detect(workspace_root: &Path) -> Option<FactoryDetection> {
@@ -708,69 +719,28 @@ fn parse_frontmatter_extra_fields(
 }
 ```
 
-### Sealed Pattern Relaxation in Phase 3 (F-FC-C002 resolution)
+### Phase 3 Plugin SDK Integration
 
-The original sealed-pattern approach used `unsafe impl monocle_core::factory::private::Sealed`
-in `monocle-plugin-sdk`. This does not compile: `mod private` is not `pub` so it is
-unreachable from other crates, and `unsafe impl` requires `unsafe trait`. Both are
-Rust compilation errors.
-
-Phase 3 instead uses a **feature-flag-gated escape hatch**:
+Because `FactoryAdapter` is an open trait (no sealed bound), the Phase 3
+`monocle-plugin-sdk` crate can implement it directly without any feature-flag
+escape hatch. A Phase 3 WASM adapter implementing `FactoryAdapter` simply:
 
 ```rust
-// monocle-core/src/factory.rs
+// monocle-plugin-sdk/src/adapter.rs (Phase 3 only)
 
-/// Sealed module — prevents external crates from implementing `FactoryAdapter`.
-/// The `plugin-sdk-escape-hatch` feature re-exports `FactoryAdapter` publicly
-/// for `monocle-plugin-sdk`. This feature MUST NOT be enabled in any binary
-/// build; it is consumed only by the plugin SDK crate as a dev/test dependency.
-mod private {
-    pub trait Sealed {}
-}
-
-/// Re-export for Phase 3 `monocle-plugin-sdk` only.
-/// Gated behind a feature flag that is NEVER in the default feature set.
-/// Build-time assertion below enforces this at compile time.
-#[cfg(feature = "plugin-sdk-escape-hatch")]
-pub mod __plugin_sdk_only {
-    pub use super::private::Sealed;
-    pub use super::FactoryAdapter;
-}
-
-// Build-time guard: if this crate is built with the escape-hatch feature
-// AND it is being built as the `monocle` binary (detected via a cargo env var
-// set in the binary crate's build.rs), panic at compile time.
-// This prevents the escape-hatch from accidentally leaking into production builds.
-#[cfg(all(feature = "plugin-sdk-escape-hatch", feature = "__monocle-binary-build"))]
-compile_error!(
-    "plugin-sdk-escape-hatch must not be enabled in monocle binary builds. \
-     This feature is for monocle-plugin-sdk only."
-);
-```
-
-In `monocle-plugin-sdk/Cargo.toml`:
-```toml
-[dependencies]
-monocle-core = { path = "../monocle-core", features = ["plugin-sdk-escape-hatch"] }
-```
-
-In `monocle-plugin-sdk/src/adapter.rs` (Phase 3 only, not in Phase 1 workspace):
-```rust
-use monocle_core::__plugin_sdk_only::{Sealed, FactoryAdapter};
+use monocle_core::factory::FactoryAdapter;
 
 /// Phase 3 WASM adapter implementing FactoryAdapter for plugin-SDK-loaded adapters.
 /// ABI version is checked at WASM component load time via MONOCLE_ABI_VERSION.
-pub struct SdkAdapter { /* ... wasmtime Store, WIT bindings ... */ }
+pub struct SdkAdapter { /* wasmtime Store, WIT bindings */ }
 
-impl Sealed for SdkAdapter {}
 impl FactoryAdapter for SdkAdapter { /* ... */ }
 ```
 
-The `plugin-sdk-escape-hatch` feature is excluded from `default-features = []`
-in every crate that depends on `monocle-core` except `monocle-plugin-sdk`.
-The binary-build compile-time guard ensures accidental feature unification during
-`cargo build --workspace` cannot silently activate the escape hatch in the daemon
-or TUI binaries.
+No `plugin-sdk-escape-hatch` feature flag is needed or defined. No `mod private`
+module exists in `monocle-core::factory`. This is simpler and more correct than
+the feature-flag pattern: the trait is open because it is intended to be implemented
+by third-party code. Openness is the right default for extension traits.
 
 ### Behavioral Contracts
 
@@ -778,9 +748,12 @@ or TUI binaries.
 with the exact signature above (including `StateChangeStream` type alias,
 `FactoryDetection`, `FactoryState` (7-field canonical struct), `BlockingIssue`,
 `BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`, `FactorySubscribeError`
-supporting types, the `private::Sealed` bound, and the `matches` dyn-dispatch method).
+supporting types, and the `matches` dyn-dispatch method). The trait carries NO sealed
+bound (`Send + Sync + 'static` only) — it is an open extension trait per
+SS-forward-compatibility.md lines 95–97.
 Verification: `cargo check` with the Phase 1 workspace; `rustdoc` output confirms
-public trait surface including all supporting types.
+public trait surface including all supporting types, and confirms no `private::Sealed`
+supertrait appears.
 
 **BC-FACTORY-002:** `VsddFactoryAdapter` implements `FactoryAdapter`. Its `detect`
 method returns `Some(FactoryDetection)` when called against monocle's own workspace
@@ -930,11 +903,17 @@ stubs during PRD authoring.
 | BC-PROTO-002 | Phase 1 HookEnvelope schema is canonical wire representation; Phase 4 validates `schema_version` before deserializing | §Prost Wire Schemas |
 | BC-LOCK-001 | Lock-file JSON includes `contract_version: u32 = 1` as the first key (see SS-daemon-lifecycle.md §Lock File Discovery Policy) | Covered in SS-daemon-lifecycle.md |
 
-**Total: 9 BCs pre-staged.** The product-owner MUST NOT renumber these BCs during
-PRD authoring; the IDs above are anchor identifiers that cross-references in this
-artifact and in SS-forward-compatibility.md rely upon. BC-PROTO-001 was split into
-BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust surface) to eliminate the
-wire-vs-Rust conflation identified in F-FC-O004.
+**Total: 9 BCs pre-staged in this artifact.** The product-owner MUST NOT renumber
+these BCs during PRD authoring; the IDs above are anchor identifiers that
+cross-references in this artifact and in SS-forward-compatibility.md rely upon.
+BC-PROTO-001 was split into BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust
+surface) to eliminate the wire-vs-Rust conflation identified in F-FC-O004.
+
+Combined with SS-engine-module.md (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-003 = 3 BCs)
+and SS-daemon-lifecycle.md (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001 = 4 BCs),
+the pre-Phase-1 pre-staged total is **15 BCs** across all architecture artifacts.
+The authoritative enumeration with source references is in SS-forward-compatibility.md
+§Cross-Phase Decisions Required closing paragraph.
 
 ---
 
@@ -948,7 +927,8 @@ an ADR. The following operations are explicitly NOT breaking and do not require 
 - Adding a new field to any `#[non_exhaustive]` struct.
 - Adding a new proto field with a field number in the Phase 4 reserved range (100–999)
   or Phase 5+ range (1000+).
-- Adding a new method to `FactoryAdapter` with a default implementation.
+- Adding a new method to `FactoryAdapter` with a default implementation (the trait
+  is open; existing impls are unaffected by new default methods).
 
 The following operations ARE breaking and require an ADR:
 
@@ -975,6 +955,19 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2 fixes (human Q-15-1, round-14 adversary N2/N9):
+- N2 RESOLVED: `FactoryAdapter` sealed pattern removed entirely. Trait bound changed
+  from `Send + Sync + private::Sealed` to `Send + Sync + 'static`. `mod private`,
+  `Sealed` marker, `__plugin_sdk_only` re-export, `compile_error!` guard, and
+  `plugin-sdk-escape-hatch` feature references all removed from spec. Phase 3 plugin
+  SDK implements the open trait directly — no escape hatch needed.
+- N9 RESOLVED: `FactoryState.status` field doc now enumerates the five canonical
+  valid values ("active", "blocked", "converged", "draft", "complete") that align
+  with STATE.md frontmatter convention, with an explicit note that consumers must
+  handle unknown values gracefully.
+- BC-FACTORY-001 updated to remove `private::Sealed` reference.
+- BC pre-staging count note updated to reflect cross-artifact total.
 
 v1.1 fixes (adversary fresh-pass F-FC-C001/C002/C003/I001/I002/O002/O003/O004):
 - F-FC-C001: exhaustive-enum forbidden list now unambiguously lists both
