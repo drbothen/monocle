@@ -21,10 +21,12 @@ input-hash: "[live-state]"
 traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
 project: monocle
 supplements:
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/conventions.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-conventions-anti-patterns.md
   - /Users/jmagady/Dev/monocle/.factory/tech-debt-register.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/dtu-assessment.md
 ---
 
 # Product Brief: Monocle
@@ -217,9 +219,9 @@ Additional Phase 2 exit criteria will be defined by the architect during
 
 **Tech stack inheritance**: All version pins, the wasmtime-vs-wasmi rationale,
 anti-pattern enforcement rules, and RUSTSEC audit context are codified in
-`/Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md`,
+`/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md`,
 `/Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md`,
-and `/Users/jmagady/Dev/monocle/.factory/specs/architecture/conventions.md`.
+and `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-conventions-anti-patterns.md`.
 The architect inherits these as Phase 1 constraints (not up for re-selection);
 per vision D-012 the tech stack is human-approved and architecturally pre-committed.
 

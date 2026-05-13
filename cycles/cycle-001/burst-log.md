@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "571159f"
+input-hash: "1638cda"
 traces_to: STATE.md
 ---
 
@@ -186,3 +186,73 @@ D-019 logged. Single-commit burst per TD-VSDD-053.
 | consistency-validator | Pre-gate consistency audit | plans/consistency-audit-pre-phase-1.md (GAPS_FOUND, commit b891b78) |
 | product-owner | Pre-gate fixes F-03/F-04/F-11 | specs/product-brief.md + dependencies.md (commit a46a7ce) |
 | state-manager | STATE.md update + cycle files + triage | STATE.md; burst-log.md; session-checkpoints.md; D-019 |
+
+---
+
+## Burst 10 (2026-05-12) — Production-grade canonical principle + remediation burst
+
+**Agents dispatched:** adversary, business-analyst, product-owner (x2), architect (x4), orchestrator, state-manager, technical-writer
+**Files touched:** plans/production-grade-reaudit.md, specs/research/domain-monocle-vision-synthesis.md, specs/product-brief.md (x2), specs/architecture/SS-deps-pin-manifest.md, specs/architecture/SS-conventions-anti-patterns.md, specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, specs/dtu-assessment.md, tech-debt-register.md, STATE.md, CLAUDE.md (main branch), .gitignore (.factory/), cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md
+**Versions bumped:** vision: v1.1 draft-pending-reapproval → approved; brief: v1.3 → v1.4 → v1.4.1; SS-deps-pin-manifest.md: v1.0 → v1.1; SS-conventions-anti-patterns.md: v1.0 → v1.1
+
+### Summary
+
+Largest single burst of cycle-001. Triggered by adversary production-grade re-audit that identified 14 MULTIPLE_DEFER_PATTERNS violations across brief/vision/architecture. All 14 resolved in-scope. Concurrent upstream issues filed.
+
+### Chronological Events
+
+1. **commit 0bd4ba9** — adversary production-grade re-audit report (transcribed by orchestrator after adversary read-only profile couldn't write). Verdict: MULTIPLE_DEFER_PATTERNS, 14 violations identified.
+
+2. **commit 0e4b0f4** — vision v1.1 draft saved (status: draft-pending-reapproval; business-analyst). NOTE: this commit accidentally bundled pre-staged renames (`dependencies.md → SS-deps-pin-manifest.md`, `conventions.md → SS-conventions-anti-patterns.md`) from a partial earlier architect dispatch.
+
+3. **commit 70286e1** — brief v1.4 (product-owner): crate count corrected 13→12; OQ-M1/M2/M3 resolved in-scope (no longer "Pending architect review"); F-07/F-08 citation parentheticals added; R-001 mitigation HOLD pending human Q-B.
+
+4. **commit 00a2993** — SS-deps-pin-manifest.md v1.1 (architect): 6 TODOs resolved in-scope; MSRV policy, patch-pinning policy, security-advisory policy, workspace mermaid dependency graph.
+
+5. **commit 79e268a** — SS-conventions-anti-patterns.md v1.1 (architect): 5 TODOs resolved with concrete clippy config, semgrep rules, PR-template checklist, CI enforcement specs, naming convention table.
+
+6. **commit 76db583** — ADR-0002 nucleo acceptance with re-eval trigger; TD-001 retired; tech-debt governance note added.
+
+7. **commit 21c026d** — DTU assessment (DTU_REQUIRED: true; 5 hook endpoint clones required for isolation testing).
+
+8. **commit 4df2ff8** — brief v1.4.1 (product-owner): R-001 probability finalized at <10% per human Q-B response; HOLD removed; informational-only framing. Competitive Positioning simplified.
+
+9. **commit 8342239** — defensive .gitignore exclusion of nested .factory/ shadow (orchestrator).
+
+**Main branch commits (same burst window):**
+- `b69c09f` — CLAUDE.md v1 canonical principle + scaffold (technical-writer + orchestrator)
+- `3366d58` — CLAUDE.md v2 Correct Agent Routing companion
+- `f6cd51c` — CLAUDE.md canonical path updates after architecture rename
+- `aa852b9` — CLAUDE.md brief v1.4.1 + vision v1.1 reference updates
+
+**Upstream issues filed:**
+- https://github.com/drbothen/vsdd-factory/issues/129 — Production-grade canonicalization (self-contained, 366-line body)
+- https://github.com/drbothen/vsdd-factory/issues/130 — Dispatcher recursive-shadow bug
+
+**Decisions resolved:**
+- Human Q-A: A1 — vision re-version to v1.1 with human re-approval (DONE — re-approved this turn)
+- Human Q-B: probability bucket = <10% — R-001 dropped from active risk acceptance
+- Human authorization for full remediation burst — DONE
+
+**D-020 logged:** Production-grade canonical principle codified; 14 defer-patterns fixed in-scope; Q-A1 vision v1.1 re-approved; Q-B R-001 reassessed at <10%; CLAUDE.md establishes principle + agent routing as project-binding; upstream issues #129 + #130 filed.
+
+**State-manager burst close-out (this commit):**
+- Vision v1.1 status flipped to `approved`
+- Brief v1.4.1 supplements frontmatter updated to canonical paths (SS-deps-pin-manifest.md, SS-conventions-anti-patterns.md, ADR-0002, dtu-assessment.md)
+- STATE.md updated: phase 0.96/0.97 added, DTU frontmatter updated, D-020 logged, Skip Log DTU row removed, Session Resume Checkpoint updated
+- Burst log + session checkpoints appended
+- Bookkeeping hashes bumped via compute-input-hash --scan --update
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Production-grade re-audit | plans/production-grade-reaudit.md (commit 0bd4ba9) |
+| business-analyst | Vision v1.1 draft | specs/research/domain-monocle-vision-synthesis.md (commit 0e4b0f4) |
+| product-owner | Brief v1.4 (14 violation fixes) | specs/product-brief.md (commit 70286e1) |
+| architect | SS-deps-pin-manifest.md v1.1 | specs/architecture/SS-deps-pin-manifest.md (commit 00a2993) |
+| architect | SS-conventions-anti-patterns.md v1.1 | specs/architecture/SS-conventions-anti-patterns.md (commit 79e268a) |
+| architect | ADR-0002 + TD-001 retirement | specs/architecture/adr/ADR-0002-*; tech-debt-register.md (commit 76db583) |
+| architect | DTU assessment | specs/dtu-assessment.md (commit 21c026d) |
+| product-owner | Brief v1.4.1 (R-001 finalized) | specs/product-brief.md (commit 4df2ff8) |
+| orchestrator | .gitignore hardening | .factory/.gitignore (commit 8342239) |
+| technical-writer + orchestrator | CLAUDE.md v1 + v2 + path updates + references | CLAUDE.md on main (commits b69c09f 3366d58 f6cd51c aa852b9) |
+| state-manager | Burst close-out: vision approval, brief paths, STATE.md, cycle files | This commit |

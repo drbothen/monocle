@@ -2,10 +2,10 @@
 document_type: vision-synthesis
 level: ops
 version: "1.1"
-status: draft-pending-reapproval
+status: approved
 producer: orchestrator
 phase: pre-phase-0-vision
-timestamp: 2026-05-12T23:59:00Z
+timestamp: 2026-05-13T00:45:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -25,7 +25,7 @@ approved_by: human
 approved_at: 2026-05-11T20:30:00Z
 ---
 
-# Monocle Vision Synthesis (v1.1, draft-pending-reapproval 2026-05-12)
+# Monocle Vision Synthesis (v1.1, approved 2026-05-12)
 
 ## Vision Statement
 
@@ -377,7 +377,7 @@ Contrast with today: developer would need to `Ctrl-b n` to find `blog-session-2`
 - OQ-M1 (agent-view IPC coexistence): resolved — agent view uses internal Claude Code IPC, no port/auth collision with monocle's outbound hook POSTs
 - OQ-M2 (claude-manager hook protocol): resolved — claude-manager uses tmux pane management, NOT hook protocol; monocle's hook-native moat is intact
 - OQ-M3 (`PermissionRequest` as 6th endpoint): resolved — stay at 5 endpoints per JC-2 parity argument; revisit if Phase 2 trigger-trace UX surfaces signal gap
-- R-001 (Anthropic deepens agent view): probability 25-40% accepted; mitigation = production-grade Phase 1 hook-native overlay + Phase 2 trigger-trace BC anchors + Phase 3 workflow-plane FactoryAdapter trait stability ADR + multi-harness EngineModule architecture (depth on every dimension agent view does not touch).
+- R-001 (Anthropic deepens agent view): probability red-lined from market-intel's 25–40% to <10% per human Q-B response (2026-05-12). At this probability, no separate mitigation scaffolding is required beyond the production-grade depth monocle is already shipping. Noted as informational background; brief v1.4.1 reflects the revised assessment.
 
 **What this version does NOT change:** The vision's core thesis ("one TUI lens over every Claude-class session"), the five-plane architecture, the observe-only-for-state / action-only-for-overlays principle, the killer scenario (4 keys per any concurrent permission prompt pair), the gene-transfusion methodology, or the multi-harness EngineModule trait abstraction. All architectural intent from v1.0 is preserved.
 
@@ -389,4 +389,6 @@ The vision is the synthesis lens for disposition decisions: every subsystem in e
 
 The vision is intentionally opinionated. It does NOT enumerate every option; it states the chosen direction. Alternative directions discussed in the synthesis bursts but rejected: build-in LLM routing (rejected — integrate CCR externally), inherit PM/Worker orchestration (rejected by user direction), execute workflows (rejected — observe-only).
 
-v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/EX/OQ-M closures and version-pin updates from the OQ research and market intel work that followed the v1.0 approval. Awaiting human re-approval.
+v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/EX/OQ-M closures and version-pin updates from the OQ research and market intel work that followed the v1.0 approval.
+
+v1.1 re-approved by the human on 2026-05-12 during the production-grade remediation burst Phase 1 gate review. R-001 probability red-lined from market-intel's 25–40% estimate to <10% during the same review; brief v1.4.1 reflects the revised assessment.
