@@ -8,10 +8,10 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0"
+version: "1.0.1"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T10:00:00Z
+timestamp: 2026-05-13T12:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
@@ -47,7 +47,9 @@ variants: `AllowOnce`, `AllowAlways`, `DenyOnce`, `DenyAlways`, `AskUser`.
 
 **`ClaudeCodeTool`** (defined in `monocle-core::permissions`, specified in
 `SS-permissions-phase1.md`): the set of Claude Code tools that monocle can receive
-`permission_prompt` Notifications for. Fourteen named variants plus `Unknown(String)`.
+`permission_prompt` Notifications for. Fifteen named variants plus `Unknown(String)`:
+`Bash`, `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`, `WebFetch`,
+`WebSearch`, `TodoRead`, `TodoWrite`, `NotebookRead`, `NotebookEdit`, `Task`.
 
 BC-TYPES-001 states that exemptions require an ADR. `SS-permissions-phase1.md` documents
 the exhaustiveness decision for both enums but is not an ADR — it is an architecture
