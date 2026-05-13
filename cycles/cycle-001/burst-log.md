@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "0f35e1d"
+input-hash: "f001477"
 traces_to: STATE.md
 ---
 
@@ -430,3 +430,95 @@ Round-7 micro-fix burst resolved 8 nit-class findings from round-6 audits (diffe
 | devops-engineer | SS-conventions v1.2.1: tokio prose fix + deny.toml ADR-0003 cross-ref | specs/architecture/SS-conventions-anti-patterns.md (803ea63) |
 | product-owner | Brief v1.4.5: supplements frontmatter + /healthz removed | specs/product-brief.md (5589849) |
 | state-manager | Round-7 close-out: STATE.md, D-023, cycle files | This commit |
+
+---
+
+## Burst 13 — Round 8 Validation Chain (2026-05-12)
+
+**Type:** validation chain
+**Agents:** consistency-validator, validate-brief v7, adversary (inline)
+**Trigger:** round-7 fix burst complete; human directed round-8 validation
+
+### Summary
+
+Round 8 audits surfaced 3 residual findings requiring a final fix burst (round 9).
+
+**Findings from round 8:**
+
+| ID | Severity | Finding | Fix |
+|----|----------|---------|-----|
+| R8-001 | BLOCKING | SS-daemon-lifecycle still registered `/hooks/post-tool-use` in authenticated router code example | removed in round-9 fix burst (190a849) |
+| R8-002 | IMPORTANT | SS-deps-pin-manifest prose said "8 security-sensitive crates" after count was bumped to 9 | corrected in round-9 fix burst (190a849) |
+| R8-003 | ADVISORY | SS-conventions typo "remediatedstarting" (missing space) | corrected in round-9 fix burst (438bf95) |
+
+| Agent | Task | Output |
+|-------|------|--------|
+| consistency-validator | Round 8 fresh-context audit | commit 01e030f — 3 findings surfaced |
+| validate-brief v7 | Brief v1.4.5 re-validation | VALID |
+| adversary (inline) | Round 8 fresh pass | 1 BLOCKING + 1 IMPORTANT + 1 ADVISORY |
+
+---
+
+## Burst 14 — Round 9 Fix Burst (2026-05-12)
+
+**Type:** fix burst
+**Agents:** architect, devops-engineer
+**Trigger:** round-8 findings R8-001 (BLOCKING), R8-002 (IMPORTANT), R8-003 (ADVISORY)
+
+### Summary
+
+Minimal targeted fixes resolving all 3 round-8 findings.
+
+**Findings resolved:**
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| R8-001: phantom `/hooks/post-tool-use` in SS-daemon-lifecycle code example | BLOCKING | Removed; replaced with correct `/hooks/prompt-submit` | 190a849 |
+| R8-002: stale "8 security-sensitive crates" prose in SS-deps-pin-manifest | IMPORTANT | Corrected to "9 security-sensitive crates" (lines 94, 96, 103, 111, 113) | 190a849 |
+| R8-003: SS-conventions typo "remediatedstarting" (missing space) | ADVISORY | Corrected to "remediated starting" | 438bf95 |
+
+**Artifact versions after round-9:**
+- SS-deps-pin-manifest.md v1.1.3 (190a849)
+- SS-daemon-lifecycle.md v1.0.2 (190a849)
+- SS-conventions-anti-patterns.md v1.2.2 (438bf95)
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-daemon-lifecycle v1.0.2 + SS-deps v1.1.3: route fix + count fix | commit 190a849 |
+| devops-engineer | SS-conventions v1.2.2: typo corrected | commit 438bf95 |
+
+---
+
+## Burst 15 — CONVERGENCE Close-Out (2026-05-12)
+
+**Type:** convergence close-out (state-manager)
+**Agents:** adversary (round 10 fresh pass — inline), state-manager
+**Trigger:** round-9 fix burst complete; final convergence gate
+
+### Summary
+
+Round 10 adversary fresh pass returned PRODUCTION_READY with zero findings across all severity classes. Novelty decayed to LOW. Spec package is internally consistent, defer-pattern-free, and gate-ready.
+
+**Round 10 verdict:** PRODUCTION_READY — 0 BLOCKING, 0 CRITICAL, 0 IMPORTANT, 0 ADVISORY.
+
+**Full convergence trajectory:**
+
+| Round | BLOCKING | CRITICAL | IMPORTANT | ADVISORY |
+|-------|----------|----------|-----------|----------|
+| 1 | 0 | — | 4 | 6 |
+| 2 (post-remediation) | 2 | — | 3 | 2 |
+| 3 | 0 | — | 2 | 3 |
+| 4 | 0 | — | 1 | 1 |
+| 5 (substantive adversary) | — | 4 | 6 | 4 |
+| 6 (combined audits) | 0 | 1 | 3-6 | 0-2 |
+| 7 fix burst | 8 fixes | | | |
+| 8 | 1 | — | 1 | 1 |
+| 9 fix burst | 3 fixes | | | |
+| **10** | **0** | **0** | **0** | **0** |
+
+**D-024 logged.** STATE.md current_step set to `pre-phase-1-final-gate-CONVERGED-awaiting-human-phase-1-approval`.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Round 10 fresh pass | PRODUCTION_READY; persisted to plans/adversary-pass-round-10-final.md |
+| state-manager | CONVERGENCE close-out: STATE.md + cycle files | This commit |

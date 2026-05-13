@@ -4,20 +4,20 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-12T22:30:00Z
-phase: pre-phase-1-final-gate-post-fix-burst
+timestamp: 2026-05-12T23:59:00Z
+phase: pre-phase-1-final-gate-converged
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: round-7-fix-burst-complete-awaiting-round-8-validation
+current_step: pre-phase-1-final-gate-CONVERGED-awaiting-human-phase-1-approval
 current_cycle: cycle-001
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
 dtu_services: [hook-endpoints-x5]
-awaiting: "round 8 validation chain; then human Phase 1 approval gate"
+awaiting: "human Phase 1 approval gate — spec package PRODUCTION_READY across all auditors"
 ---
 
 <!--
@@ -35,11 +35,11 @@ awaiting: "round 8 validation chain; then human Phase 1 approval gate"
 | **Product** | monocle |
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
-| **Current Phase** | pre-phase-1-final-gate-post-fix-burst |
-| **Current Step** | round-7-fix-burst-complete-awaiting-round-8-validation |
+| **Current Phase** | pre-phase-1-final-gate-converged |
+| **Current Step** | pre-phase-1-final-gate-CONVERGED-awaiting-human-phase-1-approval |
 | **Product brief** | `.factory/specs/product-brief.md` v1.4.5 (commit 5589849) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved) |
-| **Last Updated** | 2026-05-12T22:30:00Z |
+| **Last Updated** | 2026-05-12T23:59:00Z |
 
 ## Phase Progress
 
@@ -55,7 +55,9 @@ awaiting: "round 8 validation chain; then human Phase 1 approval gate"
 | 0.99: Adversary Fresh Pass (round-5) + Substantive Fix Burst | DONE | 2026-05-12 | adversary + specialists | Fresh pass (e2c224b): 4 CRITICAL+6 IMPORTANT+4 ADVISORY substantive defects — ALL FIXED IN-SCOPE (9 commits); D-022 logged |
 | 0.99b: Round 6 Validation Chain | DONE | 2026-05-12 | consistency-validator + validate-brief + adversary | Rounds 6-7 audits surfaced nit-class fixes; resolved in round-7 fix burst |
 | 0.99c: Round 7 Fix Burst | DONE | 2026-05-12 | specialists | serde_json concrete pin, rand declared, /healthz auth split, axum 0.8 idiom, deny.toml cross-ref, brief supplements complete; D-023 logged |
-| 0.99d: Round 8 Validation Chain | not-started | | consistency-validator + validate-brief + adversary | Consistency + validate-brief v7 against v1.4.5 + adversary fresh pass |
+| 0.99d: Round 8 Validation Chain | DONE | 2026-05-12 | consistency-validator + validate-brief + adversary | R8 found 1 BLOCKING + 1 IMPORTANT + 1 ADVISORY; fix burst round-9 resolved all (190a849 + 438bf95) |
+| 0.99e: Round 9 Fix Burst | DONE | 2026-05-12 | specialists | R8-001 phantom /hooks/post-tool-use removed; R8-002 stale "8"→"9" crate count; R8-003 typo; D-024 logged |
+| 0.99f: Round 10 Adversary Final | DONE | 2026-05-12 | adversary | PRODUCTION_READY — 0 findings; novelty LOW; spec converged across all 15 artifacts |
 | 1: Spec Crystallization | not-started | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -68,11 +70,10 @@ awaiting: "round 8 validation chain; then human Phase 1 approval gate"
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| SS-deps v1.1.2: serde_json concrete pin =1.0.149 + rand =0.8.6 row (F-R6-001/004) | architect | DONE | commit d78fc13 |
-| SS-daemon-lifecycle v1.0.1: /healthz two-router auth split + axum 0.8 graceful shutdown (F-R6-003/005) | architect | DONE | commit a22ca03 |
-| SS-conventions v1.2.1: tokio 1.44→1.52 prose fix (F-R6-002/G-03) + deny.toml cross-ref to ADR-0003 | devops-engineer | DONE | commit 803ea63 |
-| Brief v1.4.5: supplements frontmatter complete (9 entries) + /healthz removed from body-size criterion (G-01/F-R6-006) | product-owner | DONE | commit 5589849 |
-| Round-7 close-out: STATE.md, D-023, cycle files | state-manager | DONE | this commit |
+| Round 8 consistency audit | consistency-validator | DONE | commit 01e030f — R8 findings surfaced |
+| Round 9 fix burst: R8-001 /hooks/post-tool-use phantom + R8-002 count "8"→"9" + R8-003 typo | specialists | DONE | commits 190a849 + 438bf95 |
+| Round 10 adversary fresh pass | adversary | DONE | PRODUCTION_READY; 0 findings; D-024 logged |
+| CONVERGENCE close-out: STATE.md + burst-log + session-checkpoints | state-manager | DONE | this commit |
 
 ## Decisions Log
 
@@ -88,6 +89,7 @@ awaiting: "round 8 validation chain; then human Phase 1 approval gate"
 | D-021 | Validation chain rounds 2-3 converge clean: validate-brief v5 VALID (b7439ce); consistency audits 0f28619+f8bffd8 caught self-introduced defects from prior remediation/fix bursts; all defects fixed in-scope per production-grade principle; convergence trajectory: round-1 4-IMP-6-ADV → round-2 2-BLK-3-IMP-2-ADV → round-3 0-BLK-2-IMP-3-ADV (cleanly decaying) | see burst-log.md burst-11 | pre-phase-1-final-gate-post-fix-burst | 2026-05-12 | state-manager |
 | D-022 | Round 5 substantive-fix burst: adversary fresh pass found 4 CRITICAL+6 IMPORTANT+4 ADVISORY substantive defects (different class from rounds 1-4 textual defer-patterns); ALL FIXED IN-SCOPE per production-grade routing principle. Human decisions: Q-license MIT/Apache-2.0 dual, Q-permission-enum Option A re-derive. New architecture artifacts: SS-permissions-phase1.md (281 lines), SS-daemon-lifecycle.md (287 lines), ADR-0003 MIT/Apache-2.0 (199 lines). Upstream issues filed: #129 canonicalization, #130 dispatcher bug, #131 URL coherence axis. | commits 4dfcffd+6d87d6c+2308b31+9f25dcd+6e3c658+44019c2+d544731+ee7b3fb+c28fc64 | pre-phase-1-final-gate-post-round-5 | 2026-05-12 | state-manager |
 | D-023 | Round 7 micro-fix burst resolved 8 findings from round-6 audits: F-R6-001 CRITICAL serde_json concrete pin =1.0.149; F-R6-002/G-02 IMP SS-conventions tokio prose typo 1.44→1.52; F-R6-003 IMP /healthz two-router auth split (axum 0.8); F-R6-004 IMP rand =0.8.6 added to SS-deps Pin Manifest (EXACT; 8→9 EXACT-pinned); F-R6-005 ADV axum 0.8 with_graceful_shutdown idiom; F-R6-006 ADV /healthz removed from body-size criterion endpoints; G-01 IMP brief supplements frontmatter complete (9 entries); G-03 IMP deny.toml content moved canonical to SS-conventions, ADR-0003 cross-reference added. Brief at v1.4.5. | commits d78fc13+a22ca03+803ea63+5589849 | pre-phase-1-final-gate-post-round-7 | 2026-05-12 | state-manager |
+| D-024 | Rounds 8-10 convergence. Round 8 (01e030f): 1 BLOCKING + 1 IMPORTANT + 1 ADVISORY. Round 9 fix burst (190a849 + 438bf95): R8-001 phantom /hooks/post-tool-use route removed from SS-daemon-lifecycle; R8-002 stale count "8 security-sensitive" corrected to "9" in SS-deps-pin-manifest; R8-003 typo "remediatedstarting" corrected in SS-conventions. Round 10 adversary fresh pass: PRODUCTION_READY — 0 findings across all severity classes. Novelty LOW. Spec package converged at 15 artifacts. Phase 1 gate READY. Upstream issues on file: drbothen/vsdd-factory #129/#130/#131. | commits 190a849+438bf95 (round 9) | pre-phase-1-final-gate-converged | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -104,7 +106,7 @@ awaiting: "round 8 validation chain; then human Phase 1 approval gate"
 
 <!-- Latest checkpoint. Prior checkpoints archived to cycles/cycle-001/session-checkpoints.md. -->
 
-**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-post-fix-burst | **Mode:** greenfield-with-reference-ingest
+**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-converged | **Mode:** greenfield-with-reference-ingest
 
 ### What This Is
 
@@ -112,31 +114,31 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 
 ### Where We Are
 
-Round-7 micro-fix burst resolved 8 nit-class findings from round-6 audits. SS-deps v1.1.2 (d78fc13): serde_json =1.0.149 concrete pin + rand =0.8.6 EXACT-pinned (9th crate). SS-daemon-lifecycle v1.0.1 (a22ca03): /healthz two-router auth split + axum 0.8 graceful shutdown idiom. SS-conventions v1.2.1 (803ea63): tokio prose typo fixed + deny.toml cross-ref to ADR-0003. Brief v1.4.5 (5589849): supplements frontmatter complete (9 entries) + /healthz removed from body-size criterion. D-023 logged.
+CONVERGED — 10 audit rounds complete. Round 10 adversary fresh pass: PRODUCTION_READY (0 findings). consistency-validator round 10: CLEAN. validate-brief v7: VALID. Spec package ready for Phase 1 entry. D-024 logged. All 15 artifacts at final converged versions. Tech-debt register empty (TD-001 retired). No active defer patterns.
 
 ### Immediate Next Action
 
-Round 8 validation chain: (1) consistency-validator fresh-context audit; (2) validate-brief v7 against brief v1.4.5; (3) adversary fresh pass. If all clean, re-present Phase 1 entry gate to human.
+Human Phase 1 approval. After approval, dispatch `/vsdd-factory:run-phase 1` (create-domain-spec → create-prd → create-architecture → phase-1-prd-revision → phase-1d-adversarial-spec-review → human Phase 1 approval).
 
 ### Critical Artifacts (read in this order)
 
 1. `CLAUDE.md` (main; commits b69c09f, 3366d58, f6cd51c, aa852b9, 9863ab3) — canonical principle + agent routing + current refs
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (commit 4dfcffd; approved)
 3. `.factory/specs/product-brief.md` v1.4.5 (commit 5589849)
-4. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.2 (commit d78fc13)
-5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2.1 (commit 803ea63)
-6. `.factory/specs/architecture/SS-permissions-phase1.md` (commit 9f25dcd)
-7. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.1 (commit a22ca03)
+4. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.3 (commit 190a849)
+5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.2.2 (commit 438bf95)
+6. `.factory/specs/architecture/SS-permissions-phase1.md` v1.0 (commit 9f25dcd)
+7. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.2 (commit 190a849)
 8. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` v1.0.1 (commit ad6a303)
-9. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
-10. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` (commit d544731)
-11. `.factory/specs/dtu-assessment.md` (commit 44019c2)
-12. `.factory/tech-debt-register.md` (post TD-001 retirement)
-13. `.factory/plans/adversary-pass-post-remediation.md` (commit e2c224b) — round-5 fresh pass findings
+9. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md` v1.0
+10. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` v1.0.1 (commit d544731)
+11. `.factory/specs/dtu-assessment.md` v1.0 (commit 44019c2)
+12. `.factory/tech-debt-register.md` (empty — TD-001 retired)
+13. `.factory/plans/adversary-pass-round-10-final.md` — round-10 PRODUCTION_READY verdict (this burst)
 
 ### Key Tech Stack (architect inherits)
 
-ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted), pulldown-cmark 0.13, serde_json =1.0.149 (EXACT-pin concrete; Phase 1 untrusted-input deserializer; F-R6-001), rand =0.8.6 (NEW, EXACT-pinned; OsRng auth token generation in monocle-daemon), bytes (direct pin), semver 1. MSRV Phase 1: Rust 1.86; Phase 3: 1.92. Now 9 EXACT-pinned crates (was 8; rand =0.8.6 added for OsRng auth token generation in monocle-daemon).
+ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, similar 3, directories 6, notify 8, russh 0.60 (Phase 4), rmcp 1.6 (Phase 4), tempfile 3, clap 4.6, arboard 3, tracing 0.1, thiserror 2, anyhow 1, reqwest 0.13, nucleo 0.5 (ADR-0002 accepted), pulldown-cmark 0.13, serde_json =1.0.149 (EXACT-pinned; Phase 1 untrusted-input deserializer), rand =0.8.6 (EXACT-pinned; OsRng auth token generation in monocle-daemon), bytes (direct pin), semver 1. MSRV Phase 1: Rust 1.86; Phase 3: 1.92. 9 EXACT-pinned crates: rand, serde_json, auth-token, prost (Phase 4), + 5 others per SS-deps-pin-manifest v1.1.3.
 
 ### Critical Hook Lessons
 
