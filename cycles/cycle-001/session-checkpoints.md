@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "a65c466"
+input-hash: "[live-state]"
 traces_to: STATE.md
 ---
 
@@ -206,5 +206,16 @@ traces_to: STATE.md
 TASK-QUEUE-PERSISTED: round 21 fix burst pending, full architect dispatch prompt in STATE.md Immediate Next Action Step B.
 
 Active TaskList at context-clear: 5 tasks (#35 round-21-fix-burst, #36 round-21-state-close-out, #37 round-22-validation, #38 iterate-to-convergence, #12 phase-1-gate). Full queue and resumption protocol written to STATE.md "Task Queue Snapshot" section (commit to follow). Completed history (28 prior tasks, #6-#34) referenced as available in cycles/cycle-001/burst-log.md sequential chronology.
+
+---
+
+## Round 21 Close-Out (2026-05-13) — F-R20-1/2/3 resolved; round 22 validation pending
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 21 fix burst complete. Commits 83d5fc5 (SS-engine-module v1.1.3) + 3495812 (SS-core-types-and-abi v1.2.3). All 3 round-20 findings resolved: F-R20-1 MEDIUM (EngineMetadataError::HomeUnresolvable; metadata + enrich both return Result), F-R20-2 MEDIUM (parse_frontmatter_field guard parity with sibling), F-R20-3 LOW (url crate rustdoc removed). BC-ENGINE-001 updated for new contract. Architect judgment call: enrich() return type also expanded to Result — correct per production-grade principle. |
+| **Next** | Round 22 validation chain. Dispatch vsdd-factory:consistency-validator and vsdd-factory:adversary in parallel. Consistency scope: all SS-*.md files post-round-21. Adversary scope: SS-engine-module.md v1.1.3 + SS-core-types-and-abi.md v1.2.3 — verify typed error contract is no-silent-fallback at every layer; parse_frontmatter_field guards match sibling exactly; rustdoc references no unpinned crates. Persist reports to .factory/plans/. If both clean: present Phase 1 gate to human. |
+| **Convergence counter** | R20: 0 CRIT + 2 MED + 1 LOW. R21 fix burst resolved all 3. R22 validation pending. |
 
 ---

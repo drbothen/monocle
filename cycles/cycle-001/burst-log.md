@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "e0ee788"
+input-hash: "[live-state]"
 traces_to: STATE.md
 ---
 
@@ -726,3 +726,38 @@ Context cleared by human after round-20 adversary report. STATE.md fully rewritt
 | state-manager | Cycle files updated (burst-log + session-checkpoints) | cycles/cycle-001/burst-log.md + session-checkpoints.md |
 | state-manager | Untracked files triaged (planning/brief-validation.md, plans/consistency-audit-round-10-final.md, sidecar-learning.md) | committed |
 | state-manager | Sidecar-learning append-only markers added | sidecar-learning.md |
+
+---
+
+## Burst 23 (2026-05-13) — Round 21 Fix Burst (F-R20-1/2/3 resolved)
+
+**Type:** fix burst
+**Agents:** architect (2 commits)
+**Trigger:** 3 findings persisted at `.factory/plans/adversary-pass-round-20.md` after round-20 adversary pass
+**Files touched:** SS-engine-module.md, SS-core-types-and-abi.md
+**Versions bumped:** SS-engine-module v1.1.2→v1.1.3; SS-core-types-and-abi v1.2.2→v1.2.3
+
+### Summary
+
+All 3 round-20 findings resolved in-scope per production-grade routing principle. Two MEDIUM + one LOW — no CRITICAL this round (continued convergence from R20 trajectory).
+
+**Notable judgment call:** Architect expanded `enrich()` return type to `Result<EnrichedSession, EngineMetadataError>` in addition to `metadata()`. This is a Phase-1 trait surface change for both methods. Correct per production-grade principle — silent fallback at either layer of the trait is a defect; the fix must cover both `metadata()` and `enrich()`. BC-ENGINE-001 wording updated to reflect the new contract.
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R20-1: Silent fallback in `metadata()` returns relative `.claude` path when HOME unresolvable — violates SOUL #4 | MEDIUM | Added `EngineMetadataError::HomeUnresolvable` variant; changed both `EngineModule::metadata` and `EngineModule::enrich` signatures to return `Result`; BC-ENGINE-001 updated | 83d5fc5 |
+| F-R20-2: `parse_frontmatter_field` (lines 712-739) lacked guards present in sibling `parse_frontmatter_extra_fields`: skip continuation lines; return `None` for empty/flow-list/block-scalar values | MEDIUM | Same four guards added to `parse_frontmatter_field`; rustdoc updated | 3495812 |
+| F-R20-3: Rustdoc for `ClaudeCodeModule::new` recommended `Url::parse` from unpinned `url` crate absent from SS-deps-pin-manifest | LOW | Recommendation removed from rustdoc | 83d5fc5 |
+
+### Lessons
+
+- **Silent-fallback class extends across sibling methods at the trait level.** When fixing a silent-fallback in `metadata()`, the reviewer must ask: does any sibling method (`enrich()`, `on_hook()`, etc.) have the same failure mode? Trait-level invariants require trait-level coherence — fixing one method while leaving a sibling with the same defect is incomplete.
+- **Guard parity is a cross-function invariant.** When `parse_frontmatter_extra_fields` had guards and `parse_frontmatter_field` did not, both functions shared the same contract but had divergent implementations. When fixing a guard in one function, always sweep for sibling functions with the same contract.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-engine-module v1.1.3 — F-R20-1 typed EngineMetadataError + enrich Result + F-R20-3 rustdoc url removal | commit 83d5fc5 |
+| architect | SS-core-types-and-abi v1.2.3 — F-R20-2 parse_frontmatter_field guard parity | commit 3495812 |
+| state-manager | Round-21 close-out: STATE.md (D-030) + cycle files | this commit |
