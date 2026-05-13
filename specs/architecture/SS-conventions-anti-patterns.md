@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.4"
+version: "1.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T17:00:00Z
+timestamp: 2026-05-13T21:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules"
 project: monocle
 ---
 
@@ -65,7 +65,10 @@ disallowed_methods = [
 
 ### Semgrep Rules
 
-Write to `.semgrep.yml` at workspace root:
+Write to `.semgrep.yml` at workspace root. All four rules below are authoritative; the
+fourth rule (no-raw-env-mutation-in-tests) was added in v1.5 (consolidation of the §Test
+Conventions CI enforcement rule to create a single source of truth). Cross-references:
+§Test Conventions below cites this list as the canonical rule location.
 
 ```yaml
 rules:
@@ -88,7 +91,102 @@ rules:
     message: "Unbounded channel masks backpressure. Use bounded mpsc::channel(N) with drop counter. See conventions.md anti-patterns."
     severity: ERROR
     languages: [rust]
+  - id: monocle-no-raw-env-mutation-in-tests
+    # Covers fully-qualified, module-relative, and use-alias import forms.
+    # Rationale for pattern-either expansion (F-R26-adv-2):
+    #   - `std::env::set_var(...)` matches only the fully-qualified path.
+    #   - `use std::env; env::set_var(...)` is a common Rust idiom that writes
+    #     `env::set_var(...)` — NOT matched by the fully-qualified pattern alone.
+    #   - Bare-import form (`use std::env::set_var; set_var(...)`) is NOT covered
+    #     because semgrep cannot disambiguate `set_var(...)` from a user-defined
+    #     function of the same name without full type information. The bare-import
+    #     form is documented as discouraged in §Test Conventions prose but is not
+    #     enforced by semgrep (noise risk outweighs coverage). Developers using
+    #     the bare-import form should use `#[allow]` sparingly only for legitimate
+    #     use of a user-defined function named `set_var` or `remove_var`.
+    pattern-either:
+      - pattern: std::env::set_var($X, $Y)
+      - pattern: std::env::remove_var($X)
+      - pattern: env::set_var($X, $Y)
+      - pattern: env::remove_var($X)
+    paths:
+      include:
+        - "**/tests/**/*.rs"
+        - "**/*_test.rs"
+        - "**/*tests*.rs"
+    message: "Raw env mutation in tests is unsafe in multi-threaded Rust harnesses (Rust 1.86+
+      marks set_var/remove_var unsafe). Use temp_env::with_vars (sync) or
+      temp_env::async_with_vars (async) from temp-env ^0.3. See SS-conventions-anti-patterns.md
+      §Test Conventions."
+    severity: ERROR
+    languages: [rust]
 ```
+
+### Semgrep Coverage Hardening (POL-11 positive-coverage requirement)
+
+Semgrep rules that return zero findings on every CI run are unverifiable — the rule may be
+silently broken (wrong path glob, incompatible pattern for the semgrep version in use, or
+path scope that never matches any file). This section specifies the fixture corpus and CI
+assertion requirements that give each rule a positive signal on every run.
+
+#### Fixture corpus
+
+The devops-engineer creates `semgrep-fixtures/` at the project root (NOT under `tests/`,
+which is the Rust integration test crate). Each semgrep rule has exactly one corresponding
+fixture file containing a deliberate violation of that rule.
+
+| Rule ID | Fixture file | Violation |
+|---------|-------------|-----------|
+| `monocle-no-shell-injection` | `semgrep-fixtures/shell_injection.rs` | `Command::new("sh").arg("-c").arg("echo hi");` |
+| `monocle-no-naked-fs-write` | `semgrep-fixtures/naked_fs_write.rs` | `std::fs::write("/tmp/x", b"data").unwrap();` |
+| `monocle-no-unbounded-channel` | `semgrep-fixtures/unbounded_channel.rs` | `tokio::sync::mpsc::unbounded_channel::<u8>();` |
+| `monocle-no-raw-env-mutation-in-tests` | `semgrep-fixtures/tests/raw_env_mutation.rs` | `std::env::set_var("HOME", "/tmp");` AND `env::set_var("HOME", "/tmp");` (both patterns exercised) |
+
+Each fixture file contains ONLY the violation pattern (plus minimal Rust syntax to make it
+parse). Fixture files are NOT part of the Rust workspace (`Cargo.toml` workspace members list
+does not include `semgrep-fixtures/`); they exist solely as semgrep targets.
+
+#### CI assertions (two steps)
+
+The following CI step specifications are normative requirements for the devops-engineer to
+wire into the GitHub Actions workflow at implementation time. The exact YAML belongs in
+`.github/workflows/` (devops-engineer territory); this section specifies the behavioral
+contract that YAML must satisfy.
+
+**Step 1 — Fixture corpus scan (positive-coverage assertion):**
+
+Run semgrep against `semgrep-fixtures/` only. For each rule, assert the finding count
+equals the expected value defined in the table above. Emit a log line per rule:
+`Fixture corpus: N violation(s) detected for rule <rule-id> (expected N) — PASS` or
+`Fixture corpus: N violation(s) detected for rule <rule-id> (expected M) — FAIL`.
+Fail the CI step if any rule's actual count does not equal the expected count.
+
+The `monocle-no-raw-env-mutation-in-tests` rule must match 2 findings in its fixture
+(one for each pattern in `pattern-either`: `std::env::set_var` and `env::set_var`).
+`std::env::remove_var` and `env::remove_var` are implicitly covered by the fixture — the
+devops-engineer may add them to the fixture file to make the 4-pattern coverage explicit,
+adjusting the expected count accordingly (2 → 4).
+
+**Step 2 — Production scan (zero-findings assertion):**
+
+Run semgrep against the production Rust source (`src/`, `crates/`, or equivalent workspace
+source directories — NOT `semgrep-fixtures/`, NOT `tests/` for the production-code rules).
+Assert zero findings for each rule. Emit a log line per rule:
+`Production scan: 0 violations for rule <rule-id> (clean)` or
+`Production scan: N violations for rule <rule-id> — FAIL (see semgrep output above)`.
+Fail the CI step if any rule returns a non-zero count.
+
+**Step ordering in CI workflow:**
+
+Both steps run after `cargo clippy` and before `cargo test`. They are separate CI steps
+(distinct `name:` entries) so failures are individually addressable in the GitHub Actions
+UI. The fixture-corpus step runs first; if it fails (rule broken), the production scan step
+is skipped to avoid a false-clean result from a non-functioning rule.
+
+**Note on scope:** The CI wiring (actual `.github/workflows/` YAML, fixture file content,
+semgrep version pin) is the devops-engineer's Phase 1 deliverable. This section specifies
+the behavioral requirement with enough precision that the implementer can wire it without
+round-trips to the architect.
 
 ### PR Template Checklist
 
@@ -398,31 +496,19 @@ that add `temp-env`.
 **Canonical usage example:** BC-ENGINE-002-ERR test in
 `monocle-runtime/tests/engine_module.rs` (see SS-engine-module.md §Behavioral Contracts).
 
-**CI enforcement:** Add a semgrep rule rejecting `env::set_var` and `env::remove_var` in
-test files:
+**CI enforcement:** Rule `monocle-no-raw-env-mutation-in-tests` is the 4th semgrep rule
+in §Semgrep Rules above — it is the canonical single-source-of-truth location for this
+rule. The rule uses `pattern-either` to cover both the fully-qualified form
+(`std::env::set_var`, `std::env::remove_var`) and the module-relative form
+(`env::set_var`, `env::remove_var`), scoped to test file paths only via `paths.include`.
+See §Semgrep Rules for the full rule definition and §Semgrep Coverage Hardening for the
+positive-coverage fixture corpus requirement (POL-11).
 
-```yaml
-  - id: monocle-no-raw-env-mutation-in-tests
-    pattern-either:
-      - pattern: std::env::set_var(...)
-      - pattern: std::env::remove_var(...)
-    paths:
-      include:
-        - "**/tests/**/*.rs"
-        - "**/*_test.rs"
-        - "**/*tests*.rs"
-    message: "Raw env mutation in tests is unsafe in multi-threaded Rust harnesses (Rust 1.86+
-      marks set_var/remove_var unsafe). Use temp_env::with_vars (sync) or
-      temp_env::async_with_vars (async) from temp-env ^0.3. See SS-conventions-anti-patterns.md
-      §Test Conventions."
-    severity: ERROR
-    languages: [rust]
-```
-
-Add this rule to `.semgrep.yml` alongside the existing production-code rules. The rule
-targets test file paths only (tests directories, `_test.rs`, and files containing `tests`
-in the name) to avoid false positives from production code that legitimately calls env
-functions (e.g., the daemon start sequence reading env vars, which is a read, not a write).
+**Bare-import form** (`use std::env::set_var; set_var(...)`): not enforced by semgrep
+(cannot disambiguate from a user-defined function without full type resolution). This form
+is also discouraged; developers using it must use `temp_env::with_vars` anyway. If a
+false-positive suppression is needed for a legitimate user-defined `set_var` function,
+add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[allow]`.
 
 ## Gene-Source Citations
 
@@ -436,6 +522,38 @@ functions (e.g., the daemon start sequence reading env vars, which is a read, no
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.5 changes (round-27 fixes F-R26-adv-2 MEDIUM / F-R26-adv-3 MEDIUM / F-R26-adv-6 LOW):
+- F-R26-adv-2 RESOLVED (MEDIUM — adversary finding): The `monocle-no-raw-env-mutation-in-tests`
+  semgrep rule previously matched only the fully-qualified path form `std::env::set_var(...)`.
+  The common Rust idiom `use std::env; env::set_var(...)` writes `env::set_var(...)` and was
+  not matched — creating a false-green where tests using the module-relative form silently
+  bypassed CI enforcement. Fix: rule expanded from two `pattern-either` entries to four,
+  adding `env::set_var($X, $Y)` and `env::remove_var($X)` alongside the fully-qualified
+  forms. Bare-import form (`use std::env::set_var; set_var(...)`) is explicitly NOT covered
+  by semgrep (documented in both §Semgrep Rules and §Test Conventions with rationale: would
+  collide with user-defined functions of the same name; prose discourages it; nosemgrep
+  comment is the suppression mechanism for legitimate user-defined functions).
+- F-R26-adv-3 RESOLVED (MEDIUM process-gap — adversary finding): All four semgrep rules
+  could produce zero findings on every CI run without indicating a problem — the rule may
+  be silently broken (wrong path glob, incompatible semgrep pattern syntax for the pinned
+  semgrep version, or pattern-either that matches nothing because of Rust AST differences).
+  Fix: added §Semgrep Coverage Hardening subsection (between §Semgrep Rules and §PR Template
+  Checklist) specifying: (1) `semgrep-fixtures/` directory with one fixture file per rule;
+  (2) CI Step 1 — fixture corpus scan asserting each rule produces the expected non-zero
+  finding count; (3) CI Step 2 — production scan asserting zero findings per rule; (4) log
+  line format for both steps; (5) step ordering (fixture step first; skip production scan
+  if fixture step fails). The CI wiring (actual workflow YAML, fixture file content, semgrep
+  version pin) is the devops-engineer's Phase 1 deliverable — this section specifies the
+  behavioral requirement with enough precision for implementation without architect round-trips.
+- F-R26-adv-6 RESOLVED (LOW — adversary finding): The `monocle-no-raw-env-mutation-in-tests`
+  semgrep rule was defined in two places: partially in §Semgrep Rules (via a trailing comment
+  "Add this rule to .semgrep.yml") and fully in §Test Conventions (as a YAML block). This
+  created a single-source-of-truth violation: a future editor might update one copy but not
+  the other. Fix: the canonical rule definition is now in §Semgrep Rules as the 4th rule
+  (complete YAML block). The §Test Conventions §CI enforcement paragraph now cross-references
+  §Semgrep Rules as the canonical location rather than duplicating the YAML. The rule's
+  expanded pattern-either (from F-R26-adv-2) is defined once in §Semgrep Rules only.
 
 v1.4 changes (round-24 fix F-R24-adv-5):
 - F-R24-adv-5 RESOLVED (LOW process-gap — adversary finding): BC-ENGINE-002-ERR
