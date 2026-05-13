@@ -619,3 +619,27 @@ D-027 logged. STATE.md current_step set to `pre-phase-1-final-gate-round-15-fix-
 | product-owner | brief v1.4.9 — supplements 10→12; unsafe-impl ref removed; BC count 10→14 | commit 816037c |
 | product-owner | brief v1.4.10 — BC count 14→15 reconcile (BC-ENGINE-003) | commit 08b4a9c |
 | state-manager | Round 15 close-out: STATE.md (D-027, 17 artifacts, 15 BCs) + burst-log + session-checkpoints | this commit |
+
+## Burst 19 (2026-05-13) — Round 17 Fix Burst (round-16 findings)
+
+**Agents dispatched:** architect (x3 commits)
+**Files touched:** SS-engine-module.md, SS-core-types-and-abi.md, SS-forward-compatibility.md
+**Versions bumped:** SS-engine-module v1.1→v1.1.1; SS-core-types-and-abi v1.2→v1.2.1; SS-forward-compatibility v1.1→v1.2.1
+
+### Summary
+
+8 round-16 adversary findings + 1 consistency observation resolved. BC count remains 15 (constructors are method additions to existing BCs, not new BCs).
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| N16-1 dirs::home_dir → directories::ProjectDirs (4 occurrences) | CRITICAL | Replaced all 4 uses in SS-engine-module with already-pinned `directories 6` crate | 314f002 |
+| N16-2 VsddFactoryAdapter::new + ClaudeCodeModule::new constructors missing (implementer-blocker) | HIGH | Public constructors added to both types | 4ca28fd + 314f002 |
+| N16-3 EngineMetadata "matches vision exactly" claim over-precise | MEDIUM | Revised to: method signatures match exactly; struct fields are spirit-aligned elaboration | 314f002 |
+| N16-4 ProcessSnapshot missing ppid + exe_path; fragile cmdline-suffix detection | MEDIUM | ppid + exe_path fields added; strict basename detect replaces cmdline-suffix (eliminates false positives on claude-squad/claudio/claude-code-router) | 314f002 |
+| N16-5 FactoryAdapter design divergence from vision sketch undocumented | HIGH | Divergence documented as intentional improvement per human Q-16-5 (architect's design retained over vision sketch) | 4ca28fd |
+| N16-6 FactoryState Option types absent (convergence, cycle, custom_fields) | MEDIUM | 3 Option fields restored: convergence: Option<ConvergenceMetrics>, cycle: Option<String>, custom_fields: HashMap<String, serde_yaml_ng::Value>; read_state returns None for absent fields | 4ca28fd |
+| N16-7 SS-forward-compat stale sealed-pattern prose | MEDIUM | 2 stale references fixed; 5 retained as accurate historical analysis of why sealing was originally considered | 6af919d |
+| N16-8 BC footer count 9 → 8 authored | MEDIUM | BC-LOCK-001 was cross-ref from SS-daemon-lifecycle, not an authored BC in SS-core; footer corrected | 4ca28fd |
+| Consistency obs: serde_yaml_ng::Value in custom_fields | OBS | Verified consistent with existing serde_yaml_ng dependency pin | 4ca28fd |
+
+D-028 logged. STATE.md current_step: pre-phase-1-final-gate-round-17-fix-burst-complete-awaiting-round-18-validation.

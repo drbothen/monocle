@@ -159,3 +159,16 @@ traces_to: STATE.md
 | **Convergence counter** | 10 rounds clean + FC lock-in burst + round 13 fix burst; trajectory: 10 R1 -> 7 R2 -> 5 R3 -> 2 R4 -> 14 R5 -> 6+6 R6 -> 8 fixes R7 -> 3 R8 -> 3 fixes R9 -> 0 R10 -> 0 FC-burst -> 13 FC-adversary (round 13 fix burst resolves all) |
 
 ---
+
+## Session Resume Checkpoint (2026-05-13) — round-15-fix-burst-complete
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 15 fix burst complete. Vision authority restored on EngineModule and FactoryAdapter (sealing removed entirely per human Q-15-1). EngineModule trait matches vision §EngineModule exactly (detect/enrich/on_hook). BC-ENGINE-003 added for ClaudeCodeModule inherent methods. 6 supporting types fully specified. async-trait ^0.1 pinned. ADR-0004 variant count 14→15. Brief v1.4.10. BC count: 13→15. D-027 logged. commits: 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c |
+| **Next** | Orchestrator dispatches round 16 validation chain: consistency-validator fresh pass + adversary fresh pass on vision-restored trait signatures + propagation fixes (17 artifacts, 15 BCs). If clean, Phase 1 gate for human approval. |
+| **Convergence counter** | 10 rounds clean + FC lock-in + round 13 fix burst + round 15 fix burst; trajectory: 10 R1 → 7 R2 → 5 R3 → 2 R4 → 14 R5 → 6+6 R6 → 8 fixes R7 → 3 R8 → 3 fixes R9 → 0 R10 → 0 FC-burst → 13 FC-adversary → 15-fix-burst complete |
+
+---
