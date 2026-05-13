@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.12"
+version: "1.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift"
 project: monocle
 ---
 
@@ -65,10 +65,12 @@ disallowed_methods = [
 
 ### Semgrep Rules
 
-Write to `.semgrep.yml` at workspace root. All four rules below are authoritative; the
-fourth rule (no-raw-env-mutation-in-tests) was added in v1.5 (consolidation of the §Test
-Conventions CI enforcement rule to create a single source of truth). Cross-references:
-§Test Conventions below cites this list as the canonical rule location.
+Write to `.semgrep.yml` at workspace root. All five rules below are authoritative; the
+fifth rule (`monocle-non-exhaustive-struct-audit-completeness`) was added in v1.6 (F-R30-3
+audit-completeness check). The fourth rule (`monocle-no-raw-env-mutation-in-tests`) was
+added in v1.5 (consolidation of the §Test Conventions CI enforcement rule to create a
+single source of truth). Cross-references: §Test Conventions below cites this list as the
+canonical rule location.
 
 ```yaml
 rules:
@@ -187,10 +189,15 @@ rules:
         - "monocle-test-harness/src/**/*.rs"
         # Binary crate (monocle — not a monocle-* crate; sits in monocle/ subdirectory per workspace layout)
         - "monocle/src/**/*.rs"
-        # Audit-completeness rationale: scope = every workspace crate source directory.
-        # Any Phase 1 PR that adds #[non_exhaustive] to any crate will be detected.
-        # semgrep-fixtures/ is excluded (no glob matches it); spec files (.factory/) are
-        # excluded because they never match the monocle-*/monocle/ source globs.
+        # Fixture corpus (F-R44-adv-1): semgrep-fixtures/ MUST be included so Step 1 (fixture
+        # corpus scan) can target this rule against its fixture file. Without this entry, Step 1
+        # runs semgrep against semgrep-fixtures/ but the rule's paths.include rejects all fixture
+        # files — producing 0 findings vs expected 2 and causing CI to fail on every run from day 1.
+        # The fixture file contains AuditFixtureMinimal and AuditFixtureDerived structs which are
+        # NOT production structs; their names are excluded from Step 2 and Step 3 by name-based
+        # filtering (see Step 2 special case and Step 3 description below).
+        - "semgrep-fixtures/**/*.rs"
+        # Spec files (.factory/) are excluded because they never match the above source globs.
     message: "Found #[non_exhaustive] pub struct `$NAME`. Verify it appears in the Cross-Crate Constructor Audit Table in SS-engine-module.md §Cross-Crate Constructor Audit. CI script will fail if absent."
     severity: WARNING
     languages: [rust]
@@ -277,7 +284,7 @@ Each fixture file contains ONLY the violation pattern (plus minimal Rust syntax 
 parse). Fixture files are NOT part of the Rust workspace (`Cargo.toml` workspace members list
 does not include `semgrep-fixtures/`); they exist solely as semgrep targets.
 
-#### CI assertions (two steps)
+#### CI assertions (three steps)
 
 The following CI step specifications are normative requirements for the devops-engineer to
 wire into the GitHub Actions workflow at implementation time. The exact YAML belongs in
@@ -327,7 +334,20 @@ Fail the CI step if any rule returns a non-zero count.
 This rule uses `severity: WARNING` (not `ERROR`) and does NOT participate in Step 2's
 zero-findings assertion — it is expected to match every `#[non_exhaustive] pub struct` in
 the codebase (by design). Instead, its production-scan output is consumed by a separate
-CI step:
+CI step.
+
+**Fixture-name exclusion for Step 2 (F-R44-adv-1):** The rule's `paths.include` now
+includes `semgrep-fixtures/**/*.rs` to enable Step 1 fixture corpus scanning (see
+`paths.include` rationale above). This means a production-scope semgrep run (Step 2)
+without path filtering would also scan `semgrep-fixtures/non_exhaustive_struct.rs` and
+return findings for `AuditFixtureMinimal` and `AuditFixtureDerived`. Since Step 2 is
+skipped for this rule (it uses WARNING severity and is not a zero-findings rule), this has
+no direct impact on Step 2's assertion logic. However, to document the exclusion contract
+for future maintainers: if the rule's severity is ever promoted to ERROR or a zero-findings
+assertion is added, the CI script MUST filter out struct names `AuditFixtureMinimal` and
+`AuditFixtureDerived` from the Step 2 production-scan output before asserting zero findings.
+These names are fixture-only; their presence in `semgrep-fixtures/non_exhaustive_struct.rs`
+is intentional and must not be treated as a production violation.
 
 **Step 3 — Audit-table gap check (Python script):**
 
@@ -341,21 +361,34 @@ python scripts/check_audit_table.py \
 
 The script:
 1. Parses the semgrep JSON output to extract all struct names matched by the rule.
-2. Opens `SS-engine-module.md` and locates the audit table using the line-anchored regexes
+2. **Removes fixture struct names from the semgrep output set (F-R44-adv-1):** Before
+   computing the set difference, the script MUST remove the known fixture struct names
+   `AuditFixtureMinimal` and `AuditFixtureDerived` from the semgrep-enumerated set. These
+   names are present because `semgrep-fixtures/**/*.rs` is included in `paths.include` to
+   enable Step 1 fixture corpus scanning. The fixture structs are not production structs and
+   must not be looked up in the audit table. Exclusion is by exact struct name (string
+   equality after stripping whitespace and backticks), not by file path, so this remains
+   correct even if the fixture file is moved. If either name is found in the semgrep output,
+   it is silently dropped before step 3 below. The exclusion list is:
+   `FIXTURE_STRUCT_NAMES = {"AuditFixtureMinimal", "AuditFixtureDerived"}`
+   This constant MUST be defined as a named set in the script (not an inline literal) so
+   that future fixture struct additions are a single-location update.
+3. Opens `SS-engine-module.md` and locates the audit table using the line-anchored regexes
    defined in clause 4 of §Contract edge cases:
    `BEGIN_DELIMITER_REGEX = r'^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$'`
    `END_DELIMITER_REGEX   = r'^<!-- END: Cross-Crate Constructor Audit Table -->$'`
    Reads all lines between the first line matching `BEGIN_DELIMITER_REGEX` and the first
    subsequent line matching `END_DELIMITER_REGEX`.
-3. Extracts the struct name from the first column of each data row (text between the first
+4. Extracts the struct name from the first column of each data row (text between the first
    `|` and second `|` on each row, stripped of surrounding backticks and whitespace).
-4. Computes the set difference: structs in semgrep output but NOT in the table.
-5. Fails with exit code 1 and prints the gap list if the difference is non-empty:
+5. Computes the set difference: structs in (semgrep output minus fixture names) but NOT in
+   the table.
+6. Fails with exit code 1 and prints the gap list if the difference is non-empty:
    `Audit table gap: following structs carry #[non_exhaustive] but are absent from the
    Cross-Crate Constructor Audit Table: <list>. Update SS-engine-module.md §Cross-Crate
    Constructor Audit and add a constructor if any cross-crate construction site exists.`
-6. Exits 0 with `Audit table: complete (N structs declared, N structs found by semgrep).`
-   if the sets are equal.
+7. Exits 0 with `Audit table: complete (N structs declared, N structs found by semgrep).`
+   if the sets are equal. N reflects the post-exclusion count (production structs only).
 
 **Contract edge cases (F-R32-4):** The following behaviors are normative requirements for the
 `check_audit_table.py` implementation. The devops-engineer MUST implement all five. No
@@ -446,7 +479,7 @@ the fixture-corpus assertion is the only POL-11 coverage check for this rule.
 
 **Step ordering in CI workflow:**
 
-All four steps run after `cargo clippy` and before `cargo test`. They are separate CI steps
+All three steps run after `cargo clippy` and before `cargo test`. They are separate CI steps
 (distinct `name:` entries) so failures are individually addressable in the GitHub Actions
 UI. The fixture-corpus step (Step 1) runs first; if it fails (rule broken), Steps 2 and 3
 are skipped to avoid misleading results from a non-functioning rule.
@@ -790,6 +823,70 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.13 changes (round-45 fixes F-R44-adv-1 HIGH / F-R44-adv-2 MEDIUM / F-R44-adv-3 MEDIUM / F-R44-adv-4 LOW):
+
+- F-R44-adv-1 RESOLVED (HIGH — adversary finding, Option B chosen): The
+  `monocle-non-exhaustive-struct-audit-completeness` rule's `paths.include` listed 12
+  production source paths (11 named crates + binary crate) but excluded `semgrep-fixtures/`
+  — no glob matched it. Step 1 (fixture corpus scan) invokes semgrep against
+  `semgrep-fixtures/` only; the rule's `paths.include` then rejected all fixture files,
+  producing 0 findings against an expected count of 2. This caused guaranteed CI failure on
+  every run from day one. Root cause: F-R34-3 (v1.8) expanded `paths.include` for
+  production-scope correctness but was not cross-checked against the Step 1 invocation
+  pattern introduced by F-R26-adv-3/POL-11 (v1.5). Two defense layers with a silent
+  compatibility gap. Option B chosen over Option A (CLI --include override) and Option C
+  (separate fixture-only rule):
+    - Option A rejected: reintroduces the CLI --include override pattern that F-R40-1 (v1.11)
+      explicitly removed; contradicts F-R40-1 reasoning.
+    - Option C rejected: a separate fixture-only rule adds maintenance overhead (two rules to
+      keep in sync per arm change) with no material benefit over Option B.
+    - Option B implemented (three parts):
+      (1) Added `semgrep-fixtures/**/*.rs` to `paths.include` with inline rationale comment
+          explaining the F-R44-adv-1 compatibility constraint.
+      (2) Added fixture-struct-name exclusion to Step 2 special-case prose: documents that
+          `AuditFixtureMinimal` and `AuditFixtureDerived` are present in the semgrep output
+          due to the fixture path inclusion; if Step 2 ever adds a zero-findings assertion for
+          this rule, the CI script MUST filter these two names first.
+      (3) Added fixture-struct-name exclusion as a normative Step 3 requirement: step 2 of the
+          Python script description (renumbered; all subsequent steps incremented by 1) now
+          specifies `FIXTURE_STRUCT_NAMES = {"AuditFixtureMinimal", "AuditFixtureDerived"}` as
+          a named constant; the script MUST remove these names from the semgrep output set before
+          computing the set difference against the audit table. Exclusion is by exact name (not
+          by path) so it remains correct if the fixture file is moved. The named-constant
+          requirement ensures future fixture additions are a single-location update.
+
+- F-R44-adv-2 RESOLVED (MEDIUM — adversary finding): Lines 68-69 read "All four rules below
+  are authoritative; the fourth rule (no-raw-env-mutation-in-tests) was added in v1.5."
+  Current state is 5 rules (the fifth — `monocle-non-exhaustive-struct-audit-completeness`
+  — was added in v1.6 per F-R30-3). Narrative count was not updated at v1.6 add-time, nor at
+  any subsequent version. Fix: "All five rules below are authoritative; the fifth rule
+  (`monocle-non-exhaustive-struct-audit-completeness`) was added in v1.6." The fourth rule
+  reference is preserved as a secondary clause so both add-events remain traceable. META-pattern:
+  narrative wrapper counts ("All N rules", "the Nth rule") are a distinct propagation layer from
+  content counts (rule YAML entries). They must be explicitly audited on every rule/step add
+  or remove event. This is now documented as a §Trace requirement: future rule additions must
+  update BOTH the YAML content AND the narrative wrapper count in the same commit.
+
+- F-R44-adv-3 RESOLVED (MEDIUM — adversary finding): Two stale step counts: (1) heading
+  "CI assertions (two steps)" should be "three steps" — Steps 1, 2, and 3 have existed since
+  F-R30-3/v1.6; the heading was never updated past "two steps." (2) prose "All four steps run
+  after cargo clippy" should be "All three steps" — this refers to the three semgrep CI steps,
+  not the 6-entry CI Wiring list. The "four" count had no basis in any version of the spec.
+  Both narrative count errors follow the same root cause as F-R44-adv-2: narrative wrapper
+  counts were not audited when the content they describe changed. Fix: heading updated to
+  "three steps"; prose updated to "All three steps."
+
+- F-R44-adv-4 AUTO-RESOLVED (LOW): Line 800 reads "Rule monocle-no-raw-env-mutation-in-tests
+  is the 4th semgrep rule." This is numerically correct (rule 4 of 5); the reference did not
+  require a change after F-R44-adv-2. Line 1062 "the 4th rule" is also correct for the same
+  reason. Both confirmed clean post-fix.
+
+- META-pattern (narrative wrapper count discipline): Every rule addition, removal, or
+  reordering event MUST include a proactive grep for "N rules", "Nth rule", "N steps", and
+  "Nth step" across the file before declaring done. This is not optional — narrative wrapper
+  counts are a separate propagation layer that semgrep and table validators do not cover.
+  The S-7.01 Partial-Fix Regression Discipline now explicitly includes this layer.
 
 v1.12 changes (round-43 fix F-R42-adv-1 MEDIUM — S-7.01 propagation):
 
