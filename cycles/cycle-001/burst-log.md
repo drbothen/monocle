@@ -1457,3 +1457,44 @@ Round 41 fix burst complete. Round 42 validation chain pending: dispatch consist
 ### Status
 
 Round 43 fix burst complete. Round 44 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R43 state (SS-conventions v1.12 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11). If CLEAN: 1-of-3 required consecutive clean passes. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.
+
+## Burst 35 — Round 44 Validation + Round 45 Fix Burst Close-Out (2026-05-14T03:00:00Z)
+
+**Trigger:** Round 44 adversary surfaced 1 HIGH (F-R44-adv-1 paths.include vs fixture corpus incompatibility) + 2 MEDIUM (F-R44-adv-2/3 narrative count drifts) + 1 LOW (F-R44-adv-4).
+
+**Commits:**
+- `e281286` — state-manager persisted round-44 adversary report (adversary-pass-round-44.md)
+- `e7ef2b5` — architect SS-conventions-anti-patterns v1.12 → v1.13: F-R44-adv-1 Option (b) chosen (fixture path added to paths.include + Python script FIXTURE_STRUCT_NAMES exclusion constant); F-R44-adv-2 narrative count "All four rules" → "All five rules" + v1.6 attribution for rule 5; F-R44-adv-3 "two steps" → "three steps" + "All four steps" → "All three steps"; F-R44-adv-4 auto-resolved; proactive grep confirmed only 4 adversary-identified locations had stale counts
+- this commit — state-manager round-45 close-out
+
+**Findings resolved:**
+- F-R44-adv-1 HIGH: paths.include in the audit-completeness semgrep rule excluded the fixture corpus (semgrep-fixtures/**/*.rs), meaning Shape A and Shape B fixtures would never be matched by the rule — making the POL-11 dual-shape defense functionally inert on the files it was designed to validate. Architect chose Option (b): add semgrep-fixtures/**/*.rs to paths.include AND define FIXTURE_STRUCT_NAMES = {"AuditFixtureMinimal", "AuditFixtureDerived"} in the Python script so fixture structs are excluded from the production-scan and audit-table gap check. Option (a) rejected: re-introducing a CLI flag reintroduces the F-R40-1 root cause (rule paths.include is authoritative; CLI override is the anti-pattern). Option (c) rejected: maintaining parallel rules doubles maintenance burden with no correctness advantage.
+- F-R44-adv-2 MEDIUM: Narrative count "All four rules" on line 68 and line 69 was stale (there are five anti-pattern rules, not four). Fixed to "All five rules" with v1.6 attribution clarified for rule 5.
+- F-R44-adv-3 MEDIUM: Narrative count "two steps" (line 280) and "All four steps" (line 449) were stale (three steps, not two or four). Fixed to "three steps" / "All three steps".
+- F-R44-adv-4 LOW: Auto-resolved by the same changes that fixed F-R44-adv-1/2/3.
+
+**Notable — First HIGH-severity finding since R34:**
+- F-R44-adv-1 was the first HIGH finding since R34 (round 34 HIGH: line-anchored regex META-pattern). The defense layer added in round 35 (line-anchored regex) and round 41 (paths.include authoritative) had an inter-layer incompatibility: the fixture path was already excluded by paths.include scope, so the dual-shape validation could never exercise the fixtures. Each new defense layer must be checked against ALL prior layers, not just the gap it closes.
+
+**Notable — O-R44-1 convergence-dimension hypothesis:**
+- 12 adversary rounds (R22-R44) yielded zero clean passes. The adversary's O-R44-1 hypothesis is empirically supported: each round adds a new defense layer that mostly closes the prior cause-class but introduces its own META-flaw or exposes a previously-hidden interaction. The strict "3 zero-finding adversary passes" target may be unreachable for this spec set complexity. Per O-R42-2 + O-R44-1: orchestrator will surface convergence-definition question to human after R46 regardless of outcome.
+
+**Convergence count:** 0/3 still. Round 46 validation will determine outcome; convergence-definition question surfaces to human post-R46 regardless.
+
+**Lessons:**
+
+1. **5th defense dimension recognized — inter-layer compatibility verification:** Each new defense layer must be explicitly checked against ALL prior layers, not just the immediate gap it closes. The paths.include scope (Layer 1: round 41) and the dual-shape fixture validation (Layer 2: round 33/35) had an incompatibility that neither layer's introduction round caught. A checklist item: "Does this new layer interact with each existing layer? List each interaction explicitly."
+2. **Narrative wrapper count drift is its own S-7.01 propagation class:** Any spec change that adds rules/steps/entries to a counted set must include a narrative-count grep. This is distinct from version-citation staleness (D-042 class) — it is a counted-list-prose staleness class. The proactive grep in round 45 confirmed 4 locations; all 4 were in the adversary-identified scope.
+3. **Option choice rationale must cite rejected options explicitly:** The round-45 F-R44-adv-1 fix explicitly rejected Option (a) (F-R40-1 recurrence risk) and Option (c) (maintenance doubling). Citing rejected options in the fix trace prevents future rounds from rediscovering and re-proposing them.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Round 44 fresh-context review of post-R43 spec set | adversary-pass-round-44.md (1 HIGH + 2 MEDIUM + 1 LOW) |
+| architect | F-R44-adv-1 Option b (paths.include + FIXTURE_STRUCT_NAMES exclusion) + F-R44-adv-2/3 narrative count drift + F-R44-adv-4 auto-resolved (SS-conventions v1.13) | commit e7ef2b5 |
+| state-manager | Round 44 adv-report persist + round-45 close-out STATE.md + burst-log append | commits e281286 + this commit |
+
+### Status
+
+Round 45 fix burst complete. Round 46 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R45 state (SS-conventions v1.13 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11). CRITICAL: regardless of R46 outcome, orchestrator surfaces convergence-definition question to human (O-R44-1). If CLEAN: 1-of-3 required consecutive clean passes. Continue until human ratifies convergence definition or 3 CONSECUTIVE clean passes achieved, then run check-input-drift, then re-present gate.

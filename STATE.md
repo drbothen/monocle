@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-14T01:30:00Z
-phase: pre-phase-1-final-gate-round-43-complete
-current_step: round-44-validation-pending
+timestamp: 2026-05-14T03:00:00Z
+phase: pre-phase-1-final-gate-round-45-complete
+current_step: round-46-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 43 fix burst commits c3440cf (adv-r42 persist) + 9cfd779 (conventions v1.12 dual-shape propagation) + c938364 (brief v1.4.19 + broader sweep) + 9f3da82 (forward-compat v1.2.3 D-042 scope correction); resolves F-R42-adv-1 + F-R42-cons-1 + closes D-042 scope hole proactively; 0/3 clean passes still"
-awaiting: "round 44 validation — if CLEAN, 1-of-3 required clean adversary passes for Phase 1 gate convergence"
+traces_to: "round 45 fix burst commits e281286 (adv-r44 persist) + e7ef2b5 (conventions v1.13 Option b + narrative count drift closure); resolves F-R44-adv-1/2/3/4; 0/3 clean adversary passes after 12 rounds"
+awaiting: "round 46 validation — if CLEAN, 1-of-3 required clean adversary passes (12 prior adversary rounds yielded zero clean passes); orchestrator will surface convergence-definition question to human after R46 result regardless of outcome per O-R44-1"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -43,11 +43,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Product** | monocle — single-binary Rust TUI for AI coding harness sessions |
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
-| **Current Phase** | pre-phase-1-final-gate-round-43-complete |
-| **Current Step** | round-44-validation-pending |
+| **Current Phase** | pre-phase-1-final-gate-round-45-complete |
+| **Current Step** | round-46-validation-pending |
 | **Brief** | `.factory/specs/product-brief.md` v1.4.19 (commit c938364) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-14T01:30:00Z |
+| **Last Updated** | 2026-05-14T03:00:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING — round 44 validation; 0/3 clean adversary passes | — | D-040/D-041/D-042 human ratifications valid but conditional; Q-3 still pending human CLAUDE.md refresh; gate retracted per D-043 (protocol violation) |
+| Pre-Phase-1 Final Gate | PENDING — round 46 validation; 0/3 clean adversary passes after 12 rounds | — | D-040/D-041/D-042 human ratifications valid but conditional; Q-3 still pending human CLAUDE.md refresh; gate retracted per D-043 (protocol violation); convergence-definition question surfaces post-R46 per O-R44-1 |
 | 1: Spec Crystallization | not-started | — | |
 | 2-7 | not-started | — | |
 
@@ -67,11 +67,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 37 mechanical fix burst: F-R36-1 brief citation refresh + F-R36-2 §Trace v1.6 + brief v1.4.16/v1.4.17 de-quote (S-7.01 propagation completeness) | architect+product-owner | DONE | commits 17373a3 + ee3f8ab + ddc18b1 |
-| Round 39 fix burst: F-R38-1 architect Option B (narrowly-scoped exception for regex constants in code-specification blocks) + F-R38-2 4th-recurrence stale citation fix (SS-forward-compatibility v1.2.2) + workflow mitigation rule for O-R36-1 | architect+state-manager | DONE | commits 58d1320 + 7f0da23 + 8db4676 |
 | Round 41 fix burst: F-R40-1 (SS-conventions v1.11 Option a — removed --include CLI; rule paths.include authoritative) + F-R40-2 (SS-engine-module v1.1.11 — historical pinpoints) + proactive full 7-doc citation sweep (16 instances, only 2 stale found in F-R40-2 scope) | architect | DONE | commits 0bf426a + 6fc5ef4 + eaf4adf |
 | Round 42 validation: consistency F-R42-cons-1 (brief stale citation 6th-recurrence) + adversary F-R42-adv-1 (POL-11 partial-arm-coverage in 3 sibling semgrep rules); adv-report persisted | validator+adversary+state-manager | DONE | commit c3440cf (adversary-pass-round-42.md) |
 | Round 43 fix burst: F-R42-adv-1 (3 sibling semgrep rules dual-shape) + F-R42-cons-1 (brief citation + broader sweep) + D-042 scope correction (proactive root-cause closure) | architect+product-owner | DONE | commits c3440cf + 9cfd779 + c938364 + 9f3da82 |
+| Round 44 validation: adversary F-R44-adv-1 HIGH (paths.include vs fixture corpus) + F-R44-adv-2/3 MEDIUM (narrative count drifts) + F-R44-adv-4 LOW; adv-report persisted | adversary+state-manager | DONE | commit e281286 (adversary-pass-round-44.md) |
+| Round 45 fix burst: F-R44-adv-1 HIGH (Option b — fixture path to paths.include + Python script struct-name exclusion) + F-R44-adv-2/3 narrative count drift (5 rules / 3 steps) + F-R44-adv-4 auto-resolved | architect | DONE | commits e281286 + e7ef2b5 |
 
 ## Decisions Log
 
@@ -100,6 +100,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-043 | Orchestrator protocol violation detected by human: presented Phase 1 gate before achieving 3-clean-adversary-pass convergence threshold (required per orchestrator AGENTS.md Phase 1d). Adversary trajectory across R22-R39 had ZERO clean passes (a clean pass = 0 CRIT + 0 HIGH + 0 MED; LOW with human acceptance OK). Additionally, `/vsdd-factory:check-input-drift` was never executed (mandatory pre-gate requirement). Gate framing rolled back 2026-05-13T23:30:00Z; resuming convergence iteration. D-040/D-041/D-042 preserved as valid human policy ratifications, conditional on convergence. | 2026-05-13T23:30:00Z | orchestrator (recorded by state-manager) |
 | D-044 | Round 41 fix: F-R40-1 Option (a) CLI flag removal (rule paths.include is authoritative scope governor; removing --include CLI eliminates root cause rather than patching glob semantics); F-R40-2 historical-pinpoint rewrite (§Trace narrates what was current at v1.1.8 fix time — refreshing to current would falsify historical narrative; annotated with explicit current-state note); D-042 manual citation-sweep rule retroactively applied across 7 architecture docs (16 instances examined, 2 stale found in F-R40-2 scope only, 0 other surprises). | 2026-05-13T23:55:00Z | state-manager |
 | D-045 | Round 43 fix: F-R32-2 dual-shape discipline propagated to 3 sibling semgrep rules (S-7.01 propagation completeness; shell_injection 1→2 arms, naked_fs_write 1→2, raw_env_mutation 2→4; normative MUST language + CI sanity check added). F-R42-cons-1 brief citation refresh (SS-engine-module v1.1.10→v1.1.11) + broader-scope sweep across .factory/specs/ (23 hits classified, 1 stale found). D-042 scope hole proactively closed: grep pattern .factory/specs/architecture/ → .factory/specs/ recursive; secondary anchor-tolerant pattern added to SS-forward-compatibility v1.2.3; 6 documented recurrences cited. | 2026-05-14T01:30:00Z | state-manager |
+| D-046 | Round 45 fix: F-R44-adv-1 Option (b) chosen (Option a rejected — reintroduces F-R40-1 CLI override pattern; Option c rejected — doubles maintenance via parallel rule); semgrep-fixtures/**/*.rs added to audit-completeness rule paths.include + Python script defines FIXTURE_STRUCT_NAMES = {"AuditFixtureMinimal", "AuditFixtureDerived"} for name-based exclusion in production-scan and Step 3 audit-table gap check. F-R44-adv-2/3 narrative count drift: 4 stale references fixed (lines 68-69 "five rules"; line 280 "three steps"; line 449 "three steps"). Proactive grep confirmed no other stale narrative-count references exist. F-R44-adv-4 auto-resolved. SS-conventions-anti-patterns v1.12 → v1.13. | 2026-05-14T03:00:00Z | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -111,15 +112,17 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 44 validation pending; 0/3 clean adversary passes_
+_None — round 46 validation pending; 0/3 clean adversary passes after 12 rounds_
 
 ## Session Resume Checkpoint
 
-**ROUND-43-COMPLETE** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-43-complete
+**ROUND-45-COMPLETE** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-45-complete
 
 ### Immediate Next Action
 
-**Round 44 validation chain.** Dispatch consistency-validator + adversary in parallel against post-round-43 state (SS-conventions v1.12 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11 + others current). Consistency scope: verify F-R42 resolutions; sweep using new D-042 broader-scope pattern (.factory/specs/ recursive). Adversary scope: SS-conventions v1.12 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + remaining specs at current versions; fresh context; production-grade lens. Verify: (a) F-R42-adv-1 + F-R42-cons-1 GENUINELY resolved; (b) D-042 scope correction has no second-order defects; (c) sibling-rule fixture coverage genuinely closes POL-11 partial-arm-coverage gap; (d) any new META-pattern; (e) CLEAN PASS (0+0+0). If CLEAN: this is 1-of-3 required consecutive clean adversary passes. If FINDINGS: route to specialist; re-validate. Per orchestrator AGENTS.md Phase 1d: 3 clean passes minimum before Phase 1 gate re-presentation. After 3 clean passes: run `/vsdd-factory:check-input-drift` then re-present gate with evidence.
+**Round 46 validation chain.** Dispatch consistency-validator + adversary in parallel against post-round-45 state (SS-conventions v1.13 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11 + others current). Adversary scope: fresh context; production-grade lens; SS-conventions v1.13 (fixture path in paths.include + Python script FIXTURE_STRUCT_NAMES exclusion + narrative count corrections). Verify: (a) F-R44-adv-1 Option b GENUINELY resolves the fixture/production boundary without introducing new META-gaps; (b) F-R44-adv-2/3 narrative count fixes propagated completely; (c) any new META-pattern; (d) CLEAN PASS (0+0+0). If CLEAN: 1-of-3 required consecutive clean passes. If FINDINGS: route to specialist; re-validate.
+
+**CRITICAL post-R46 orchestrator action (O-R44-1):** Surface the convergence-definition question to human REGARDLESS of R46 outcome. 12 adversary rounds (R22-R44) yielded zero clean passes. Novelty decreasing but not at zero. Per O-R42-2 + O-R44-1: human may need to ratify alternative convergence definition (e.g., "no HIGH+ findings for 3 consecutive rounds with severity decay" vs "strict 0+0+0"). After R46: orchestrator presents data to human with options.
 
 **Q-3 still pending:** human will manually refresh CLAUDE.md operational pointers at convenience. AI does not edit CLAUDE.md. Phase 1 dispatch still requires Q-3 refresh + explicit human `/vsdd-factory:run-phase 1` invocation after convergence.
 
@@ -133,7 +136,7 @@ _None — round 44 validation pending; 0/3 clean adversary passes_
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.6
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.12
+9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.13
 10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.3
 
 ### Key Tech Stack
