@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2"
+version: "1.2.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T12:00:00Z
+timestamp: 2026-05-13T18:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref"
 project: monocle
 ---
 
@@ -357,6 +357,16 @@ pub struct FactoryDetection {
 /// Fields are non-exhaustive to allow Phase 3+ extension without breaking
 /// Phase 1 consumers. The `raw_content` field is explicitly NOT included
 /// per user red-line (vision-7-field-only; no hybrid fields).
+///
+/// `convergence` and `cycle` are `Option` because STATE.md files in early pipeline
+/// stages legitimately lack a §Session Resume Checkpoint convergence block and a
+/// `current_cycle:` frontmatter key. Consumers (Workflow TUI panel) MUST display
+/// `"pending"` or `"—"` for `None` fields rather than synthesizing a placeholder string.
+///
+/// `custom_fields` uses `serde_yaml_ng::Value` (project pins `serde_yaml_ng 0.10` in
+/// SS-deps-pin-manifest.md) because STATE.md is a YAML-frontmatter file; mapping
+/// unmapped frontmatter values through a YAML-native type avoids lossy JSON round-trips
+/// on structured YAML values (sequences, nested mappings).
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct FactoryState {
@@ -385,13 +395,17 @@ pub struct FactoryState {
     pub blocking_issues: Vec<BlockingIssue>,
     /// Convergence round count and finding trajectory from the most recent
     /// §Session Resume Checkpoint in the STATE.md body.
-    pub convergence: ConvergenceMetrics,
+    /// `None` if no §Session Resume Checkpoint block is present in STATE.md.
+    pub convergence: Option<ConvergenceMetrics>,
     /// Current cycle identifier (e.g., "cycle-001").
     /// Populated from STATE.md frontmatter `current_cycle:` key.
-    pub cycle: String,
+    /// `None` if the `current_cycle:` key is absent from the frontmatter.
+    pub cycle: Option<String>,
     /// Forward-compatibility escape hatch: any frontmatter keys not explicitly
     /// mapped above are collected here for Phase 3+ schema evolution.
-    pub custom_fields: std::collections::HashMap<String, serde_json::Value>,
+    /// Uses `serde_yaml_ng::Value` (project pin `serde_yaml_ng 0.10`) because
+    /// STATE.md frontmatter is YAML; YAML-native values avoid lossy JSON coercion.
+    pub custom_fields: std::collections::HashMap<String, serde_yaml_ng::Value>,
 }
 
 /// A single issue blocking pipeline progress.
@@ -565,6 +579,18 @@ pub struct VsddFactoryAdapter {
     state_file: PathBuf,
 }
 
+impl VsddFactoryAdapter {
+    /// Construct a `VsddFactoryAdapter` for the given workspace root.
+    ///
+    /// Derives the state file path as `<workspace_root>/.factory/STATE.md`.
+    /// Does NOT perform detection — use `detect(workspace_root)` to test
+    /// whether the workspace is a VSDD factory before constructing an instance.
+    pub fn new(workspace_root: PathBuf) -> Self {
+        let state_file = workspace_root.join(".factory").join("STATE.md");
+        Self { workspace_root, state_file }
+    }
+}
+
 impl FactoryAdapter for VsddFactoryAdapter {
     fn detect(workspace_root: &Path) -> Option<FactoryDetection> {
         let state_file = workspace_root.join(".factory").join("STATE.md");
@@ -607,7 +633,7 @@ impl FactoryAdapter for VsddFactoryAdapter {
         //   phase:         current pipeline phase identifier
         //   status:        workflow status string
         //   awaiting:      optional waiting-on string
-        //   current_cycle: cycle identifier
+        //   current_cycle: optional cycle identifier
         // Body-level fields (blocking_issues, convergence) are parsed from
         // the markdown body sections below the frontmatter.
         let phase = parse_frontmatter_field(&content, "phase")
@@ -615,8 +641,8 @@ impl FactoryAdapter for VsddFactoryAdapter {
         let status = parse_frontmatter_field(&content, "status")
             .unwrap_or_else(|| "unknown".to_string());
         let awaiting = parse_frontmatter_field(&content, "awaiting");
-        let cycle = parse_frontmatter_field(&content, "current_cycle")
-            .unwrap_or_else(|| "unknown".to_string());
+        // cycle: None when current_cycle: key is absent — do NOT substitute "unknown".
+        let cycle = parse_frontmatter_field(&content, "current_cycle");
 
         // Collect any additional frontmatter keys not explicitly mapped above.
         // This provides the forward-compat escape hatch for future STATE.md fields.
@@ -627,18 +653,15 @@ impl FactoryAdapter for VsddFactoryAdapter {
               "mode", "current_step", "dtu_required", "dtu_assessment",
               "dtu_clones_built", "dtu_services"]);
 
-        // Phase 1: blocking_issues and convergence metrics are stub-populated.
-        // Full body parsing (§Blocking Issues table, §Session Resume Checkpoint)
-        // is implemented in the Phase 3 monocle-workflow crate where the full
-        // markdown parser (pulldown-cmark) is available as a workspace dependency.
+        // Phase 1: blocking_issues are stub-populated (empty Vec).
+        // convergence: None when §Session Resume Checkpoint is absent — do NOT
+        // synthesize a zero-round placeholder. Full body parsing
+        // (§Blocking Issues table, §Session Resume Checkpoint) is implemented in
+        // the Phase 3 monocle-workflow crate where pulldown-cmark is available.
         // Phase 1 surfaces the frontmatter-derived fields which cover the
         // Workflow panel's primary display: phase, status, awaiting, cycle.
         let blocking_issues = Vec::new();
-        let convergence = ConvergenceMetrics {
-            round: 0,
-            findings_by_severity: std::collections::HashMap::new(),
-            trajectory_clean: true,
-        };
+        let convergence: Option<ConvergenceMetrics> = None;
 
         Ok(FactoryState {
             phase,
@@ -692,11 +715,15 @@ fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
 ///
 /// Used to populate `FactoryState::custom_fields` for forward-compat schema
 /// evolution. Only scalar (single-line) values are collected; YAML block scalars
-/// and lists are silently skipped.
+/// and lists are silently skipped (they would require a full YAML parser, which
+/// Phase 1 defers to the Phase 3 `monocle-workflow` crate).
+///
+/// Values are wrapped as `serde_yaml_ng::Value::String` to match the
+/// `custom_fields` field type and preserve YAML-native semantics.
 fn parse_frontmatter_extra_fields(
     content: &str,
     known_keys: &[&str],
-) -> std::collections::HashMap<String, serde_json::Value> {
+) -> std::collections::HashMap<String, serde_yaml_ng::Value> {
     let mut result = std::collections::HashMap::new();
     let mut lines = content.lines();
     let first = lines.next().unwrap_or("");
@@ -711,7 +738,7 @@ fn parse_frontmatter_extra_fields(
             let k = line[..colon_pos].trim();
             if !known_keys.contains(&k) {
                 let v = line[colon_pos + 2..].trim().to_string();
-                result.insert(k.to_string(), serde_json::Value::String(v));
+                result.insert(k.to_string(), serde_yaml_ng::Value::String(v));
             }
         }
     }
@@ -755,14 +782,22 @@ Verification: `cargo check` with the Phase 1 workspace; `rustdoc` output confirm
 public trait surface including all supporting types, and confirms no `private::Sealed`
 supertrait appears.
 
-**BC-FACTORY-002:** `VsddFactoryAdapter` implements `FactoryAdapter`. Its `detect`
-method returns `Some(FactoryDetection)` when called against monocle's own workspace
-root (the directory containing `.factory/STATE.md` with
+**BC-FACTORY-002:** `VsddFactoryAdapter` implements `FactoryAdapter`. A public
+`VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self` constructor is provided;
+it derives `state_file = workspace_root.join(".factory/STATE.md")`. The `detect`
+static method returns `Some(FactoryDetection)` when called against monocle's own
+workspace root (the directory containing `.factory/STATE.md` with
 `document_type: pipeline-state` frontmatter). This is the self-referential detection
-test from brief v1.4.6 §Phase 1 Success Criteria. Verification: integration test
+test from brief v1.4.6 §Phase 1 Success Criteria. When `read_state` encounters
+absent optional fields, the returned `FactoryState` carries `None` rather than
+placeholder strings: absent `current_cycle:` → `cycle: None`; absent §Session
+Resume Checkpoint → `convergence: None`. Consumers (Workflow TUI panel) display
+`"pending"` or `"—"` for `None` fields. Verification: integration test
 `monocle-core/tests/factory_self_referential.rs` calls
 `VsddFactoryAdapter::detect(workspace_root)` with the monocle repository root as
-`workspace_root`; asserts `Some(_)` is returned with `display_name == "VSDD Factory"`.
+`workspace_root`; asserts `Some(_)` is returned with `display_name == "VSDD Factory"`;
+also constructs via `VsddFactoryAdapter::new(workspace_root)` and calls `read_state()`,
+asserting `cycle` is `None` or `Some(_)` (not a hardcoded `"unknown"` string).
 
 ---
 
@@ -897,16 +932,16 @@ stubs during PRD authoring.
 | BC-ABI-002 | `monocle-core` exports `MONOCLE_ABI_VERSION` as pub const at crate root | §ABI Version Constant |
 | BC-TYPES-001 | Every pub enum in `monocle-core` carries `#[non_exhaustive]` unless ADR exempts it (two current exemptions: Phase1Permission and ClaudeCodeTool per ADR-0004) | §Enum Extensibility |
 | BC-FACTORY-001 | `FactoryAdapter` trait defined in `monocle-core::factory` with the 7-field FactoryState and all supporting types per this artifact | §FactoryAdapter Trait |
-| BC-FACTORY-002 | `VsddFactoryAdapter` passes self-referential detection test against monocle's own `.factory/` | §FactoryAdapter Trait |
+| BC-FACTORY-002 | `VsddFactoryAdapter::new(workspace_root)` public constructor; passes self-referential detection test; `read_state` returns `None` for absent optional fields (cycle, convergence) | §FactoryAdapter Trait |
 | BC-PROTO-001a | `.proto` message definition declares `schema_version` at proto field number 1 (wire-format contract) | §Prost Wire Schemas |
 | BC-PROTO-001b | Prost-build-generated `HookEnvelope` Rust struct exposes `pub schema_version: u32` with value `1` for Phase 1 messages (Rust surface contract) | §Prost Wire Schemas |
 | BC-PROTO-002 | Phase 1 HookEnvelope schema is canonical wire representation; Phase 4 validates `schema_version` before deserializing | §Prost Wire Schemas |
 | BC-LOCK-001 | Lock-file JSON includes `contract_version: u32 = 1` as the first key (see SS-daemon-lifecycle.md §Lock File Discovery Policy) | Covered in SS-daemon-lifecycle.md |
 
-**Total: 9 BCs pre-staged in this artifact.** The product-owner MUST NOT renumber
-these BCs during PRD authoring; the IDs above are anchor identifiers that
-cross-references in this artifact and in SS-forward-compatibility.md rely upon.
-BC-PROTO-001 was split into BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust
+**Total: 8 BCs authored in this artifact; BC-LOCK-001 cross-referenced from `SS-daemon-lifecycle.md`.**
+The product-owner MUST NOT renumber these BCs during PRD authoring; the IDs above are
+anchor identifiers that cross-references in this artifact and in SS-forward-compatibility.md
+rely upon. BC-PROTO-001 was split into BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust
 surface) to eliminate the wire-vs-Rust conflation identified in F-FC-O004.
 
 Combined with SS-engine-module.md (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-003 = 3 BCs)
@@ -955,6 +990,65 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.1 fixes (round-16 adversary N16-2/N16-5/N16-6/N16-8):
+- N16-2 RESOLVED: `VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self`
+  public constructor added as an inherent `impl VsddFactoryAdapter` block.
+  BC-FACTORY-002 updated to require the constructor and verify it.
+- N16-5 RESOLVED: FactoryAdapter divergence from vision §FactoryAdapter documented
+  in §FactoryAdapter vs vision divergence subsection (below), per human Q-16-5
+  authorization retaining architect's design over vision sketch.
+- N16-6 RESOLVED: `FactoryState.convergence` changed from `ConvergenceMetrics` to
+  `Option<ConvergenceMetrics>`; `FactoryState.cycle` changed from `String` to
+  `Option<String>`; `FactoryState.custom_fields` type changed from
+  `HashMap<String, serde_json::Value>` to `HashMap<String, serde_yaml_ng::Value>`
+  (project pin `serde_yaml_ng 0.10`). `read_state` updated: absent `current_cycle:`
+  yields `cycle: None` (not `"unknown"`); absent §Session Resume Checkpoint yields
+  `convergence: None` (not zero-round stub). `parse_frontmatter_extra_fields`
+  return type updated to `serde_yaml_ng::Value`. BC-FACTORY-002 updated to require
+  None semantics and the constructor. BC pre-staging table row for BC-FACTORY-002
+  updated accordingly.
+- N16-8 RESOLVED: BC footer changed from "9 BCs pre-staged" to "8 BCs authored in
+  this artifact; BC-LOCK-001 cross-referenced from SS-daemon-lifecycle.md."
+  Grand total 15 = 8 (SS-core) + 4 (SS-daemon) + 3 (SS-engine) confirmed unchanged.
+
+### FactoryAdapter vs vision divergence (intentional, human-authorized)
+
+Vision §FactoryAdapter sketches four methods: `fn id() -> &'static str`,
+`fn detect(&self, project_root: &Path) -> bool`,
+`async fn read_state(&self, project_root: &Path) -> Result<FactoryState>`,
+`async fn on_change(...)`.
+
+The current spec departs from this sketch in the following ways, each an intentional
+improvement authorized by the human per Q-16-5:
+
+- `detect` is split into a `where Self: Sized` static method returning
+  `Option<FactoryDetection>` (carries detection metadata — `display_name`,
+  `workspace_root`, `state_file` — not just a bool) and a `matches(&self,
+  workspace_root) -> bool` dyn-dispatch-safe method. The static variant is
+  called at daemon startup for efficient type-driven dispatch; the instance
+  variant is callable on `dyn FactoryAdapter` in Phase 3 plugin SDK scenarios.
+- `read_state` is synchronous (`fn read_state(&self) -> Result<FactoryState, ...>`
+  with no async, no `project_root` argument). Rationale: filesystem reads are
+  synchronous OS operations. Callers in async contexts use
+  `tokio::task::spawn_blocking`. This is more honest than an `async fn` that
+  internally does a synchronous read; the sync signature makes the blocking
+  nature explicit at the call site.
+- `on_change` (callback pattern) is replaced by `subscribe(&self) ->
+  Result<StateChangeStream, ...>` (stream pattern). A stream is more composable
+  than a callback: it supports backpressure, cancellation, and multi-consumer fan-out
+  without requiring the adapter to manage a callback registry.
+- Accessors `state_file_path()`, `display_name()`, `abi_version()` are added to
+  support TUI panel display and Phase 3 plugin SDK version negotiation without
+  requiring the `FactoryDetection` struct to be re-queried.
+- `id()` is absorbed into `display_name() -> &str` (non-static, instance method)
+  because the display name already serves as the identity discriminant in all
+  Phase 1 contexts; a separate `id()` method would be redundant.
+
+The human authorized retaining this design per Q-16-5. Vision §FactoryAdapter is
+preserved as historical intent but is not a binding contract for Phase 1 implementation.
+Downstream code written against vision §FactoryAdapter sketch must be updated to use
+the `FactoryAdapter` trait signature above; no compatibility shim is provided.
 
 v1.2 fixes (human Q-15-1, round-14 adversary N2/N9):
 - N2 RESOLVED: `FactoryAdapter` sealed pattern removed entirely. Trait bound changed
