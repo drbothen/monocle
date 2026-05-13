@@ -1,11 +1,11 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "1.1.1"
+version: "1.1.2"
 status: approved
 producer: orchestrator
 phase: pre-phase-0-vision
-timestamp: 2026-05-12T22:00:00Z
+timestamp: 2026-05-12T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -26,7 +26,7 @@ approved_at: 2026-05-12T00:00:00Z
 approved_at_v1_0: 2026-05-11T20:30:00Z
 ---
 
-# Monocle Vision Synthesis (v1.1.1, approved 2026-05-12)
+# Monocle Vision Synthesis (v1.1.2, approved 2026-05-12)
 
 ## Vision Statement
 
@@ -63,7 +63,7 @@ monocle tmux server  (-L monocle socket, separate from user's)
 
 Claude Code subprocesses  (one per session)
 ├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
-├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/user-prompt-submit
+├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/prompt-submit
 ├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
 ├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
 └── Stop hook              ──► POST http://localhost:<port>/hooks/stop
@@ -395,3 +395,5 @@ v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/E
 v1.1 re-approved by the human on 2026-05-12 during the production-grade remediation burst Phase 1 gate review. R-001 probability red-lined from market-intel's 25–40% estimate to <10% during the same review; brief v1.4.1 reflects the revised assessment.
 
 v1.1.1 (2026-05-12): Surgical frontmatter and §Tech Stack pointer fixes — `dependencies.md` references updated to canonical `SS-deps-pin-manifest.md`; `approved_at` corrected to reflect 2026-05-12 v1.1 re-approval (original v1.0 approval preserved as `approved_at_v1_0`). Substantive content unchanged. Resolves consistency audit F-01-B and F-04-I (commit 0f28619).
+
+v1.1.2 (2026-05-12): Surgical path fix — §Process Topology diagram endpoint `/hooks/user-prompt-submit` corrected to `/hooks/prompt-submit` to match canonical brief and DTU paths. Resolves adversary F-NEW-01 (CRITICAL wire-protocol divergence across 3 artifacts). No content change.
