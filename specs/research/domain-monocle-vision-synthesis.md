@@ -1,11 +1,11 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "1.1"
+version: "1.1.1"
 status: approved
 producer: orchestrator
 phase: pre-phase-0-vision
-timestamp: 2026-05-13T00:45:00Z
+timestamp: 2026-05-12T22:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -16,13 +16,14 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/dependencies.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; dependencies.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
+traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; SS-deps-pin-manifest.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
 project: monocle
 approved_by: human
-approved_at: 2026-05-11T20:30:00Z
+approved_at: 2026-05-12T00:00:00Z
+approved_at_v1_0: 2026-05-11T20:30:00Z
 ---
 
 # Monocle Vision Synthesis (v1.1, approved 2026-05-12)
@@ -353,7 +354,7 @@ Contrast with today: developer would need to `Ctrl-b n` to find `blog-session-2`
 
 ## Tech Stack
 
-**Canonical version pin manifest:** see `.factory/specs/architecture/dependencies.md` (`SS-deps-pin-manifest.md` after path migration), which carries live-crates.io-verified pins and the RUSTSEC audit context. The pin manifest supersedes the version examples that appeared in v1.0 of this vision. The architectural intent of each crate (ratatui for TUI, crossterm as backend, tokio for async runtime, axum for hook ingestion, interprocess for IPC, prost for cross-host wire format, serde_yaml_ng for config, wasmtime for Phase 3 SDK, nucleo for fuzzy matching, similar for diff preview, directories for XDG paths, notify for FS watching, russh for federation, rmcp for MCP bridge, tempfile for atomic writes, clap for CLI, arboard for clipboard, tracing for instrumentation, thiserror+anyhow for error handling, reqwest for HTTP client) remains the same as v1.0. What changed: each pin was verified against crates.io between 2026-05-11 (v1.0) and 2026-05-12 (this v1.1), and updated to the current stable major.minor with explicit RUSTSEC justification where pre-current versions had known advisories. See `dependencies.md` §RUSTSEC Audit Context for the per-crate advisory list.
+**Canonical version pin manifest:** see `.factory/specs/architecture/SS-deps-pin-manifest.md`, which carries live-crates.io-verified pins and the RUSTSEC audit context. The pin manifest supersedes the version examples that appeared in v1.0 of this vision. The architectural intent of each crate (ratatui for TUI, crossterm as backend, tokio for async runtime, axum for hook ingestion, interprocess for IPC, prost for cross-host wire format, serde_yaml_ng for config, wasmtime for Phase 3 SDK, nucleo for fuzzy matching, similar for diff preview, directories for XDG paths, notify for FS watching, russh for federation, rmcp for MCP bridge, tempfile for atomic writes, clap for CLI, arboard for clipboard, tracing for instrumentation, thiserror+anyhow for error handling, reqwest for HTTP client) remains the same as v1.0. What changed: each pin was verified against crates.io between 2026-05-11 (v1.0) and 2026-05-12 (this v1.1), and updated to the current stable major.minor with explicit RUSTSEC justification where pre-current versions had known advisories. See `SS-deps-pin-manifest.md` §RUSTSEC Audit Context for the per-crate advisory list.
 
 ## Phase Plan
 
@@ -392,3 +393,5 @@ The vision is intentionally opinionated. It does NOT enumerate every option; it 
 v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/EX/OQ-M closures and version-pin updates from the OQ research and market intel work that followed the v1.0 approval.
 
 v1.1 re-approved by the human on 2026-05-12 during the production-grade remediation burst Phase 1 gate review. R-001 probability red-lined from market-intel's 25–40% estimate to <10% during the same review; brief v1.4.1 reflects the revised assessment.
+
+v1.1.1 (2026-05-12): Surgical frontmatter and §Tech Stack pointer fixes — `dependencies.md` references updated to canonical `SS-deps-pin-manifest.md`; `approved_at` corrected to reflect 2026-05-12 v1.1 re-approval (original v1.0 approval preserved as `approved_at_v1_0`). Substantive content unchanged. Resolves consistency audit F-01-B and F-04-I (commit 0f28619).
