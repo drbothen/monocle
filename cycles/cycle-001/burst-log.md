@@ -940,3 +940,66 @@ F-R26-3 consistency MEDIUM: Brief line 244 citation of SS-engine-module v1.1.5 r
 | product-owner | product-brief v1.4.13 — F-R26-3 citation refresh (SS-engine-module v1.1.5→v1.1.7) + round-27 ratification entry (F-R26-3 + D-033) | commit a1c83a9 |
 | state-manager | adversary-pass-round-26.md (NEW) + STATE.md update (round-27 close-out) + burst-log Burst 26 | this commit |
 | state-manager | Persist round-24 adversary report + round-25 close-out STATE.md + cycle files | this commit |
+
+---
+
+## Burst 27 (2026-05-13) — Round-29 fix burst: F-R28-1/2/3/4/5/6 + Cross-Crate Constructor Audit table codified
+
+**Agents dispatched:** architect (2 commits), product-owner (2 commits), state-manager (this commit)
+**Trigger:** 2 HIGH + 2 MED + 2 LOW from round-28 adversary (adversary-pass-round-28.md at commit 0b3f89d); regression from fresh-context derivation, not round-27 changes
+**Files touched:** SS-engine-module.md (v1.1.8), SS-daemon-lifecycle.md (v1.0.5), product-brief.md (v1.4.14 → v1.4.15), plans/adversary-pass-round-28.md (persisted at 0b3f89d), STATE.md, cycles/cycle-001/burst-log.md
+**Versions bumped:** SS-engine-module v1.1.7→v1.1.8; SS-daemon-lifecycle v1.0.4→v1.0.5; product-brief v1.4.13→v1.4.14→v1.4.15
+
+### Summary
+
+All 6 adversary findings resolved in-scope across 4 commits. Architect addressed the round-26 architect-audit-completeness meta-pattern by adding a §Cross-Crate Constructor Audit table — a permanent registry enumerating every `#[non_exhaustive]` struct with its constructor, construction site crate, and E0639 risk posture. This codifies the lesson from round 28 into the spec itself, giving future reviewers a definitive checklist.
+
+F-R28-1 HIGH: `EnrichedSession.last_event_micros` changed from `i64` to `Option<i64>` — eliminates the epoch-zero sentinel anti-pattern. Sessions that have never processed an event now carry `None` rather than a magic zero.
+
+F-R28-2 HIGH: `SpawnArgs`, `SessionHandle`, and `EngineVersion` lacked constructors, making them E0639-unsafe for construction in `monocle-runtime/tests/`. Architect added `pub fn new(...)` constructors to all three; cross-crate construction now fails to compile only if using struct-literal syntax (which is correctly blocked).
+
+F-R28-3 MED: `HookResponse` was accumulating fields via pub mutation after `HookResponse::new(decision)`. Architect introduced a builder pattern (`with_session_id`, `with_modified_input`, etc.) returning `Self` — idiomatic, composable, and compatible with the `#[non_exhaustive]` constraint.
+
+F-R28-4 MED: `HookEventRecord` was referenced as a struct type in the spec but had no definition. Architect defined it as a real struct in `monocle-runtime::ring` with fields matching BC-RING-001's JSONL example shape, plus a `RING_FORMAT_VERSION` const to anchor the serde contract.
+
+F-R28-5 LOW: The v1.1.5 supersession annotation in SS-engine-module.md cited the wrong superseding version. Architect corrected the annotation.
+
+F-R28-6 LOW: The product-brief revision table had a non-monotonic row order (v1.4.11 appeared after v1.4.13). Product-owner fixed row order in brief v1.4.14.
+
+**Product-owner parallel-burst sequence:** First commit (v1.4.14) was a targeted row-order fix dispatched in parallel with architect. Second commit (v1.4.15) was a sequential follow-up after architect's commits landed — product-owner ran a grep to identify 4 stale citations (3 beyond the initial dispatch scope) and refreshed all, then ratified all 5 architect F-R28-* fixes and codified the Cross-Crate Constructor Audit table into the brief's narrative. Production-grade completeness: product-owner found the additional citations independently without orchestrator prompt.
+
+**HookEvent inner structs audited:** `HookEvent` has inner structs. Architect confirmed they are used as serde-deserialize-only types (incoming webhook payloads), constructed exclusively via `serde_json::from_str` / `serde_json::from_value`, not via cross-crate struct-literal syntax. No E0639 risk; documented in the Cross-Crate Constructor Audit table with posture "serde-only / no E0639 risk."
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R28-1 HIGH: `EnrichedSession.last_event_micros` is `i64` (epoch-zero sentinel anti-pattern); must be `Option<i64>` | HIGH | Type changed to `Option<i64>`; all consumers updated; SS-engine-module v1.1.7→v1.1.8 | dc719cd |
+| F-R28-2 HIGH: `SpawnArgs`, `SessionHandle`, `EngineVersion` lack constructors — E0639-unsafe for monocle-runtime/tests/ cross-crate construction | HIGH | `pub fn new(...)` constructors added to all 3 structs; §Cross-Crate Constructor Audit table added to SS-engine-module | dc719cd |
+| F-R28-3 MED: `HookResponse` accumulates fields via pub mutation after construction — not idiomatic for `#[non_exhaustive]` | MED | Builder pattern added (`with_session_id`, `with_modified_input`, etc., each returning `Self`); pub field mutation removed; rustdoc example updated | dc719cd |
+| F-R28-4 MED: `HookEventRecord` referenced as struct type but not defined — no fields, no serde contract | MED | Struct defined in `monocle-runtime::ring`; fields match BC-RING-001 JSONL example; `RING_FORMAT_VERSION` const added; SS-daemon-lifecycle v1.0.4→v1.0.5 | 09642de |
+| F-R28-5 LOW: v1.1.5 supersession annotation in SS-engine-module.md cites wrong superseding version | LOW | Annotation corrected; folded into architect's SS-engine-module v1.1.8 bump | dc719cd |
+| F-R28-6 LOW: product-brief revision table non-monotonic row order (v1.4.11 after v1.4.13) | LOW | Row order fixed; brief v1.4.13→v1.4.14 | 03f08ad |
+
+### Notable
+
+- **Architect addressed audit-completeness meta-pattern.** The §Cross-Crate Constructor Audit table codifies the lesson from rounds 26-28: every `#[non_exhaustive]` struct must be listed with its constructor, construction site, and E0639 risk posture. Future adversary passes have a checklist rather than requiring fresh derivation.
+- **Product-owner found 3 additional stale citations independently.** Brief v1.4.15 refreshed 4 total citations; only 1 was in the initial dispatch. This validates that product-owner grepping for stale version strings as a completion check is production-grade practice.
+- **Parallel-burst race condition identified.** When product-owner depends on architect's output for citation refresh, product-owner should be dispatched sequentially (after architect commits), not in parallel. First commit (v1.4.14) was forced to be a limited row-order fix because architect's bumps hadn't landed. Second sequential commit (v1.4.15) did the full ratification. Future orchestrator should serialize product-owner ratification behind architect when citation refresh is in scope.
+
+### Lessons
+
+1. **§Cross-Crate Constructor Audit table is the canonical check for future `#[non_exhaustive]` additions.** When adding a new `#[non_exhaustive]` struct, the architect must update this table in the same commit: struct name, crate, constructor signature, cross-crate construction site crate, E0639 risk posture, notes. Adversary and consistency-validator should verify table completeness as a first-pass check.
+
+2. **[process-gap] Parallel-burst race condition: product-owner ratification depends on architect output.** When the product-owner dispatch includes citation refresh of architect-versioned specs, the orchestrator MUST serialize: architect commits land first, then product-owner is dispatched. Parallel dispatch forces a multi-commit workaround that is less clean and adds risk of stale-citation carry-over between commits.
+
+3. **Option<i64> sentinel elimination as a recurring pattern.** The epoch-zero sentinel (i64 defaulting to 0 to mean "never") recurs in Rust TUI contexts. The Cross-Crate Constructor Audit table's `last_event_micros: Option<i64>` entry is a production-grade reference implementation: use `Option<T>` for "not-yet-set" semantics; never use magic zero or i64::MAX as a sentinel.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | adversary-pass-round-28.md persisted (durability) | commit 0b3f89d |
+| architect | SS-engine-module v1.1.8 — F-R28-1 Option<i64> + F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + F-R28-3 HookResponse builder + §Cross-Crate Constructor Audit table + F-R28-5 v1.1.5 trace correction | commit dc719cd |
+| architect | SS-daemon-lifecycle v1.0.5 — F-R28-4 HookEventRecord struct + RING_FORMAT_VERSION const | commit 09642de |
+| product-owner | product-brief v1.4.14 — F-R28-6 row order fix | commit 03f08ad |
+| product-owner | product-brief v1.4.15 — 4 citation refreshes + ratification of all 5 architect F-R28-* fixes + Cross-Crate Constructor Audit table codification | commit 1427f4d |
+| state-manager | STATE.md round-29 close-out + burst-log Burst 27 | this commit |

@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T23:45:00Z
-phase: pre-phase-1-final-gate-round-27-complete
-current_step: round-28-validation-pending
+timestamp: 2026-05-13T23:59:00Z
+phase: pre-phase-1-final-gate-round-29-complete
+current_step: round-30-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 27 fix burst commits 9be1033 (engine v1.1.7 constructors) + 48d952a (conventions v1.5 semgrep hardening) + a1c83a9 (brief v1.4.13); resolves F-R26-adv-1 CRITICAL + F-R26-adv-2/3/5/6 + F-R26-2/3 consistency"
-awaiting: "round 28 validation; on convergence, Phase 1 gate to human with 3 gate questions (D-031 vision/arch authority + D-032 routing precedent + CLAUDE.md staleness refresh)"
+traces_to: "round 29 fix burst commits 0b3f89d (adv-r28 persist) + dc719cd (engine v1.1.8) + 09642de (daemon-lifecycle v1.0.5) + 03f08ad (brief v1.4.14 row order) + 1427f4d (brief v1.4.15 ratification); resolves F-R28-1/2/3/4/5/6 + codifies Cross-Crate Constructor Audit table for future #[non_exhaustive] additions"
+awaiting: "round 30 validation; convergence projected per round-28 adversary; Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness refresh)"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -44,10 +44,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | round-28-validation-pending |
-| **Brief** | `.factory/specs/product-brief.md` v1.4.13 (commit a1c83a9) |
+| **Current Step** | round-30-validation-pending |
+| **Brief** | `.factory/specs/product-brief.md` v1.4.15 (commit 1427f4d) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T23:45:00Z |
+| **Last Updated** | 2026-05-13T23:59:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING round-28 validation | — | round-27 fix burst complete (commits 9be1033 + 48d952a + a1c83a9); E0639 constructors on 4 structs; semgrep pattern-either expanded; fixture corpus + CI assertion specified; brief v1.4.13 ratified |
+| Pre-Phase-1 Final Gate | PENDING round-30 validation | — | round-29 fix burst complete (commits 0b3f89d + dc719cd + 09642de + 03f08ad + 1427f4d); F-R28-1/2/3/4/5/6 resolved; Cross-Crate Constructor Audit table codified; brief v1.4.15 ratified |
 | 1: Spec Crystallization | READY — awaiting convergence + human approval | — | |
 | 2-7 | not-started | — | |
 
@@ -67,11 +67,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 23 fix: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision + F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable test spec | architect | DONE | commits 563b573 + afe72a2 + 4f15092 |
-| Round 24 validation: consistency + adversary (3 MEDIUM + 2 LOW surfaced); reports persisted | validator+adversary | DONE | commit 2fb7d82 (consistency-audit-round-24.md) |
 | Round 25 fix burst: F-R24-adv-1 async test split + F-R24-adv-3 env-var coverage + F-R24-adv-5 test convention + F-R24-adv-2 brief ratification + F-R24-cons-3 daemon-lifecycle citation | architect+product-owner | DONE | commits 436d4d3 + f287592 + 3b90235 + 11185a1 |
 | Round 26 validation: consistency (3 MED) + adversary (1 CRIT + 2 MED + 3 LOW); adv-report persisted | validator+adversary | DONE | commit 4ef4fc5 (consistency-audit-round-26.md) + adversary-pass-round-26.md |
 | Round 27 fix burst: F-R26-adv-1 CRITICAL E0639 constructors (4 structs incl. HookResponse) + F-R26-adv-2 semgrep idiom expansion + F-R26-adv-3 positive-coverage fixture corpus + F-R26-adv-5 field coverage + F-R26-adv-6 rule consolidation + F-R26-2 supersession + F-R26-3 citation refresh | architect+product-owner | DONE | commits 9be1033 + 48d952a + a1c83a9 |
+| Round 28 validation: consistency (CLEAN) + adversary (2 HIGH + 2 MED + 2 LOW — regression from fresh-context derivation, not round-27 changes); adv-report persisted | validator+adversary | DONE | commit 0b3f89d (adversary-pass-round-28.md) |
+| Round 29 fix burst: F-R28-1 EnrichedSession Option<i64> + F-R28-2 3 more constructors + Cross-Crate Audit table + F-R28-3 HookResponse builder + F-R28-4 HookEventRecord struct + F-R28-5 v1.1.5 trace + F-R28-6 brief row order + ratification | architect+product-owner | DONE | commits 0b3f89d + dc719cd + 09642de + 03f08ad + 1427f4d |
 
 ## Decisions Log
 
@@ -88,6 +88,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-031 | Round 23 fix: vision deemed non-authoritative for Phase 1 trait signatures per CLAUDE.md §Architectural Authority (later/more-specific wins); BC-ENGINE-002-ERR added specifying HomeUnresolvable test path with temp-env isolation; temp-env ^0.2 added as dev-dep to SS-deps (RAII cleanup superior to serial_test for panic safety). Vision document NOT edited. Pre-staging table in SS-engine-module still shows 3 engine BCs (stale); consistency gap noted for round-24 audit. | 2026-05-13 | state-manager |
 | D-032 | Round 25 fix: temp-env ^0.2 → ^0.3 (async_with_vars for enrich() test half; with_vars retained for metadata() half); env-var unset list corrected (HOME/USERPROFILE/HOMEDRIVE/HOMEPATH; XDG_* removed); Test Conventions subsection added to SS-conventions-anti-patterns v1.4; product-owner authored v1.4.12 ratification of architect's v1.4.11 routing-precedent edit (option B: leave in place + ratify, less disruptive); routing-precedent question flagged for Phase 1 gate (see Phase 1 Gate Questions). | 2026-05-13 | state-manager |
 | D-033 | Round 27 fix: E0639 cross-crate struct-literal CRITICAL resolved via constructors on 4 structs (EngineMetadata, ProcessSnapshot with two variants, EnrichedSession, HookResponse); semgrep pattern-either expanded to cover use-import idiom; §Semgrep Coverage Hardening fixture-corpus + CI assertion specified per POL-11; brief v1.4.13 ratifies architect's round-27 work. | 2026-05-13 | state-manager |
+| D-034 | Round 29 fix: EnrichedSession last_event_micros i64→Option<i64> (epoch sentinel eliminated); SpawnArgs/SessionHandle/EngineVersion constructors added (E0639 prevented in monocle-runtime/tests/); HookResponse builder pattern replaces pub-field mutation; HookEventRecord defined as real struct in monocle-runtime::ring with RING_FORMAT_VERSION const; v1.1.5 supersession annotation corrected; brief v1.4.15 ratifies + adds Cross-Crate Constructor Audit table codification rule. | 2026-05-13 | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -99,24 +100,24 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 28 validation pending._
+_None — round 30 validation pending._
 
 ## Session Resume Checkpoint
 
-**ROUND-27-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-27-complete
+**ROUND-29-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-29-complete
 
 ### Immediate Next Action
 
-Round 28 validation chain. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: full check including (a) constructor signatures consistent across production-code and test-spec call sites; (b) §Semgrep Rules consolidation result (rule 4 present, Test Conventions cross-references correctly); (c) supersession annotations on v1.1.4/v1.1.5 trace entries readable; (d) brief v1.4.13 inline citations all current. Adversary scope: SS-engine-module.md v1.1.7 + SS-conventions-anti-patterns.md v1.5 + product-brief.md v1.4.13; fresh context; production-grade lens. Specifically verify: (a) Constructor design is genuinely production-grade (no shortcuts, no Default-where-no-default-makes-sense, two-constructor ProcessSnapshot rationale holds); (b) HookResponse::new(decision) extra-field handling is correct given non_exhaustive constraint; (c) Semgrep pattern-either covers all realistic idioms (does it miss `use std::env::set_var; set_var(...)` bare-import? architect documented intentionally excluded — is the exclusion correctly defended?); (d) Fixture corpus specification is implementation-ready (devops-engineer can wire CI without round-trip); (e) No new silent-failure patterns; (f) No new routing violations; (g) Watch for ANOTHER pre-existing defect class adversary missed (review §Non-Exhaustive Inner Structs in SS-core-types-and-abi.md for HookEvent inner structs — are they constructed cross-crate anywhere?).
+Round 30 validation chain. Per round-28 adversary projection (~40% probability of 1-2 more pattern-recurrence items), this round should test whether the architect-audit-completeness lesson (codified in §Cross-Crate Constructor Audit) is sufficient. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: full check including (a) all 7 entries in the Cross-Crate Constructor Audit table cross-reference actual struct definitions correctly; (b) Option<i64> propagation to all downstream consumers (TUI, idle-session reaper); (c) HookEventRecord struct fields match BC-RING-001's JSONL example shape; (d) HookResponse builder rustdoc actually demonstrates idiomatic chain usage; (e) all 4 citation refreshes in brief v1.4.15 land on the correct lines; (f) row order in brief revision table is monotonically ascending. Adversary scope: SS-engine-module.md v1.1.8 + SS-daemon-lifecycle.md v1.0.5 + product-brief.md v1.4.15; fresh context; production-grade lens. Verify: (a) Cross-Crate Constructor Audit table is complete — are there OTHER `#[non_exhaustive]` structs anywhere in the project that the table doesn't enumerate? (b) HookEventRecord field shapes are correct for JSONL serialization (serde_json::to_string preserves field order; first key must be format_version); (c) HookResponse builder API is idiomatic (consuming self, with_* naming, impl Into<String>); (d) No new silent failures; (e) No new routing violations; (f) Convergence verdict: CONVERGED vs NEEDS_MORE.
 
 ### Critical Artifacts (read for Phase 1)
 
 1. `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + agent routing
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
-3. `.factory/specs/product-brief.md` v1.4.13
+3. `.factory/specs/product-brief.md` v1.4.15
 4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
-5. `.factory/specs/architecture/SS-engine-module.md` v1.1.7
-6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.4
+5. `.factory/specs/architecture/SS-engine-module.md` v1.1.8
+6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.5
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
 9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.5
