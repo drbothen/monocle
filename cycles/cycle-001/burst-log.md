@@ -1410,3 +1410,50 @@ Convergence iteration RESUMED. Round 40 validation chain pending: dispatch consi
 ### Status
 
 Round 41 fix burst complete. Round 42 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R41 state (SS-conventions v1.11 + SS-engine-module v1.1.11). If CLEAN: 1-of-3 required consecutive clean passes. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.
+
+## Burst 34 — Round 42 Validation + Round 43 Fix Burst Close-Out (2026-05-14T01:30:00Z)
+
+**Trigger:** Round 42 consistency surfaced F-R42-cons-1 (brief citation stale 6th-recurrence); round 42 adversary surfaced F-R42-adv-1 (POL-11 partial-arm-coverage in 3 sibling semgrep rules).
+
+**Commits:**
+- `c3440cf` — state-manager persisted round-42 adversary report (adversary-pass-round-42.md)
+- `9cfd779` — architect SS-conventions-anti-patterns v1.11 → v1.12 (F-R42-adv-1: propagated F-R32-2 dual-shape discipline to 3 sibling semgrep rules; shell_injection 1→2 arms exercised, naked_fs_write 1→2, raw_env_mutation 2→4; normative MUST language replaces "implicitly covered" / "may"; CI sanity check added for future arm additions)
+- `c938364` — product-owner product-brief v1.4.18 → v1.4.19 (F-R42-cons-1: SS-engine-module citation v1.1.10 → v1.1.11; broader-scope sweep across .factory/specs/ 23 hits classified; D-042 scope-hole surfaced to architect)
+- `9f3da82` — architect SS-forward-compatibility v1.2.2 → v1.2.3 (D-042 scope correction: grep pattern updated from .factory/specs/architecture/ → .factory/specs/ recursive; O-R42-1 secondary anchor-tolerant pattern added; 6 documented recurrences cited)
+- this commit — state-manager round-43 close-out
+
+**Findings resolved:**
+- F-R42-adv-1: POL-11 partial-arm-coverage gap in 3 sibling semgrep rules. Dual-shape discipline (F-R32-2) was applied to the audit-completeness rule in round 33 but not propagated to shell_injection, naked_fs_write, and raw_env_mutation rules. Round 43 propagated to all 3 + added normative MUST language + CI sanity check for future arm additions. S-7.01 propagation completeness enforced in-burst.
+- F-R42-cons-1: Brief v1.4.18 Success Criteria cited SS-engine-module v1.1.10 (stale); updated to v1.1.11 (current). 6th recurrence of cross-artifact version-citation staleness pattern; root cause traced to D-042 scope hole.
+
+**Notable — D-042 scope hole proactively closed:**
+- The manual workflow rule in SS-forward-compatibility.md specified scope `.factory/specs/architecture/` — but product-brief.md lives one level up at `.factory/specs/`. The 6 documented recurrences of stale citations (R22, R24, R32, R34, R38, R42) all involved brief.md, which was outside the grep scope.
+- Round 43 corrected to `.factory/specs/` (recursive) and added a secondary anchor-tolerant pattern (O-R42-1) to catch both `v1.2.3` and `[v1.2.3]` citation forms.
+- Product-owner's broader sweep classified 23 cross-artifact citations and surfaced the scope-hole explicitly, enabling proactive root-cause closure in the same burst.
+
+**Notable — Sibling-rule POL-11 propagation closure:**
+- F-R32-2 dual-shape discipline was introduced in round 33 as a fix to the audit-completeness rule only. The 3 sibling rules (shell_injection, naked_fs_write, raw_env_mutation) shared the same POL-11 class of defect but were not included in the round-33 propagation pass.
+- S-7.01 (partial-fix regression discipline) was not applied retroactively to siblings in round 33. Round 43 closes this gap: dual-shape propagated to all 3 siblings + CI sanity check added.
+- **Protocol improvement:** S-7.01 requires sibling propagation in the SAME burst that introduces the discipline, not in a follow-up burst. This was not honored at round 33; codified explicitly in this burst's lessons.
+
+**Convergence count:** 0/3 still. Round 44 validation will determine if F-R42 closures + D-042 root-cause fix produce first clean pass.
+
+**Lessons:**
+
+1. **CRITICAL LESSON — scope empirical validation at codification time:** When codifying a manual workflow rule (e.g., a grep pattern), the rule's scope MUST be empirically validated — i.e., does the stated scope cover all files where the rule's failure mode could manifest? D-042's `.factory/specs/architecture/` scope failed this test because brief.md lives one level up. Codification without empirical validation is a latent defect generator.
+2. **Sibling-rule discipline propagation is mandatory in the SAME burst:** When introducing a discipline to one rule in a family of structurally similar rules, S-7.01 requires propagating to all siblings in the same burst. Deferring to a follow-up burst creates a systematic gap (as demonstrated by F-R32-2 in round 33 → F-R42-adv-1 in round 42).
+3. **Broader-scope sweeps surface root-cause patterns:** Product-owner's in-scope expansion to 23 citations (vs narrow task of refreshing 1 citation) surfaced the D-042 scope hole that caused 6 recurrences. Production-grade in-scope completeness generates this class of insight; narrow-task execution does not.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| adversary | Round 42 fresh-context review of post-R41 spec set | adversary-pass-round-42.md (F-R42-adv-1 MEDIUM) |
+| consistency-validator | Round 42 consistency audit of post-R41 state | F-R42-cons-1 (brief citation stale 6th-recurrence) |
+| architect | F-R42-adv-1 dual-shape propagation to 3 sibling rules (SS-conventions v1.12) + D-042 scope correction (SS-forward-compatibility v1.2.3) | commits 9cfd779 + 9f3da82 |
+| product-owner | F-R42-cons-1 brief citation refresh + broader-scope sweep (23 hits classified) | commit c938364 |
+| state-manager | Round-43 close-out STATE.md + burst-log append | this commit |
+
+### Status
+
+Round 43 fix burst complete. Round 44 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R43 state (SS-conventions v1.12 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11). If CLEAN: 1-of-3 required consecutive clean passes. Continue until 3 CONSECUTIVE clean passes, then run check-input-drift, then re-present gate.
