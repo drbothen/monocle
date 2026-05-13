@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.4"
+version: "1.0.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T10:00:00Z
+timestamp: 2026-05-13T22:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring"
 project: monocle
 ---
 
@@ -312,7 +312,95 @@ On receiving any shutdown signal:
    `session_id`, `timestamp_micros`, or any event-type field — so readers can
    parse and validate the version without deserializing the full record.
 
-   Example record shape:
+   **`HookEventRecord` struct (defined in `monocle-runtime::ring`):**
+
+   The concrete Rust type written to the JSONL ring buffer. Defined in
+   `monocle-runtime` (NOT `monocle-core`) because the ring buffer is a daemon
+   runtime artifact — it is not part of the core ABI surface. The struct uses
+   `#[derive(serde::Serialize, serde::Deserialize)]` for JSON round-trips.
+   Field ordering in the serialized JSON is governed by serde's default (field
+   declaration order) combined with the `format_version` field being first.
+   `serde_json::to_string` preserves declaration order for standard structs.
+
+   ```rust
+   // monocle-runtime/src/ring.rs
+
+   use serde::{Serialize, Deserialize};
+
+   /// A single event record written to the JSONL ring buffer.
+   ///
+   /// `format_version` is declared first to guarantee it serializes first in the
+   /// JSON object (`serde_json` preserves struct field declaration order). Phase 2
+   /// ring-buffer ingestors check this field before deserializing the rest of the
+   /// record. The value is always `1` for Phase 1-origin records.
+   ///
+   /// `tool_name` and `tool_input` are `Option` because only `PreToolUse` and
+   /// `Notification` hook events carry tool context; `SessionStart`, `Stop`, and
+   /// `UserPromptSubmit` events set both to `None`.
+   #[derive(Debug, Clone, Serialize, Deserialize)]
+   pub struct HookEventRecord {
+       /// Format version for this ring record shape. Always `1` in Phase 1.
+       /// Declared and serialized first so ingestors can version-check without
+       /// deserializing the full record.
+       pub format_version: u32,
+       /// Claude Code's session UUID (matches `EnrichedSession::session_id`).
+       pub session_id: String,
+       /// Event timestamp as microseconds since the Unix epoch (UTC).
+       pub timestamp_micros: i64,
+       /// PID of the Claude Code subprocess that generated this hook event.
+       pub pid: u32,
+       /// Hook event type as a string (matches `HookType` variant names:
+       /// "SessionStart", "UserPromptSubmit", "PreToolUse", "Notification", "Stop").
+       /// Stored as `String` (not `HookType`) to avoid pulling `monocle-core` into
+       /// deserialization paths that only need the raw JSONL record.
+       pub hook_type: String,
+       /// Tool name; populated for `PreToolUse` and `Notification` events.
+       /// `None` for `SessionStart`, `UserPromptSubmit`, and `Stop`.
+       pub tool_name: Option<String>,
+       /// JSON-encoded tool input; populated for `PreToolUse` and `Notification` events.
+       /// `None` for events without tool context.
+       /// Stored as `serde_json::Value` to avoid double-deserialization.
+       pub tool_input: Option<serde_json::Value>,
+   }
+
+   impl HookEventRecord {
+       /// Construct a ring record from a parsed hook event.
+       ///
+       /// `format_version` is always `1` in Phase 1 — callers must NOT pass any
+       /// other value. The const `RING_FORMAT_VERSION: u32 = 1` is defined in
+       /// this module and MUST be used at all `HookEventRecord::new` call sites.
+       ///
+       /// `tool_name` and `tool_input` are `None` for hook types that carry no tool
+       /// context (`SessionStart`, `UserPromptSubmit`, `Stop`). For `PreToolUse`
+       /// and `Notification`, both are `Some`.
+       pub fn new(
+           session_id: String,
+           timestamp_micros: i64,
+           pid: u32,
+           hook_type: String,
+           tool_name: Option<String>,
+           tool_input: Option<serde_json::Value>,
+       ) -> Self {
+           Self {
+               format_version: RING_FORMAT_VERSION,
+               session_id,
+               timestamp_micros,
+               pid,
+               hook_type,
+               tool_name,
+               tool_input,
+           }
+       }
+   }
+
+   /// Ring buffer format version constant for Phase 1.
+   ///
+   /// Increment this constant AND add a Phase 2 ingestor capable of reading both
+   /// versions before changing the `HookEventRecord` field layout.
+   pub const RING_FORMAT_VERSION: u32 = 1;
+   ```
+
+   Example serialized record (`serde_json::to_string` with field declaration order):
 
    ```json
    {"format_version":1,"session_id":"<uuid>","timestamp_micros":1747094400000000,"pid":12345,"hook_type":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cargo test"}}
@@ -320,9 +408,9 @@ On receiving any shutdown signal:
 
    **Behavioral contract: BC-RING-001** — every JSONL record's first key is
    `format_version` with value `1` for all Phase 1-origin records. Verification:
-   unit test in `monocle-runtime/tests/jsonl_ring.rs` serializes a
-   `HookEventRecord` and asserts the resulting JSON string begins with
-   `{"format_version":1,`.
+   unit test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
+   `HookEventRecord` via `HookEventRecord::new(...)` and asserts the resulting
+   JSON string begins with `{"format_version":1,`.
 5. Persist last-known AppMode to crash-recovery checkpoint:
    `<runtime_dir>/monocle.recovery.json`:
    ```json
@@ -432,3 +520,25 @@ scope only.
 The lock file format gains a `"peers"` array in Phase 4 (federation peer list)
 but the `"app"`, `"pid"`, `"port"`, `"authToken"`, `"startTimeUtc"`, `"version"`
 fields are stable across Phase 1 → Phase 4.
+
+---
+
+## §Trace
+
+v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
+- F-R28-4 RESOLVED (MEDIUM — adversary finding): `HookEventRecord` was referenced by
+  BC-RING-001's verification body ("unit test serializes a `HookEventRecord`") but was
+  defined nowhere in the spec corpus. An implementer following BC-RING-001 would not know
+  what `HookEventRecord` is, what fields it contains, or how to construct it. Fix: a full
+  `HookEventRecord` struct definition added to §Daemon Lifecycle Protocol §Drain, immediately
+  preceding the BC-RING-001 contract statement. The struct is placed in `monocle-runtime::ring`
+  (NOT `monocle-core`) because the ring buffer is a daemon runtime artifact, not part of the
+  core ABI surface. Fields match the JSONL example record exactly:
+  `format_version: u32` (first, always `1` in Phase 1), `session_id: String`,
+  `timestamp_micros: i64`, `pid: u32`, `hook_type: String`, `tool_name: Option<String>`,
+  `tool_input: Option<serde_json::Value>`. A `pub fn new(...)` constructor is provided (same
+  `#[non_exhaustive]` / E0639 reasoning as engine-module structs — integration tests compile
+  as separate binaries). The module-level const `RING_FORMAT_VERSION: u32 = 1` is the single
+  source of truth for the format version value. BC-RING-001 verification body updated to use
+  `HookEventRecord::new(...)` explicitly. Cross-reference: SS-engine-module.md §Trace v1.1.8
+  F-R28-2 entry notes that F-R28-4 is resolved in this document.
