@@ -1168,3 +1168,51 @@ All 3 adversary findings resolved in-scope across 2 architect commits plus this 
 | architect | SS-engine-module v1.1.10 — §Trace prose de-quoted (delimiters by name); "Future audit maintenance" body prose verbatim-quote removed (F-R34-1 defense layer 2 + in-scope additional fix) | commit bdfc4b8 |
 | architect | SS-conventions-anti-patterns v1.8 — line-anchored regex contract (F-R34-1 layer 1) + convention rule prohibiting verbatim delimiter quotation (F-R34-1 layer 3) + `#[$ATTR(...)]` standard form (F-R34-2) + 12-path paths.include (F-R34-3) | commit f584c59 |
 | state-manager | STATE.md round-35 close-out (D-037) + burst-log Burst 30 | this commit |
+
+---
+
+## Burst 31 (2026-05-13T21:15:00Z) — Round-37 fix burst: F-R36-1 IMPORTANT + F-R36-2 MEDIUM resolved; O-R36-1 process-gap surfaced for human direction
+
+**Agents dispatched:** state-manager (adv-r36 persist + this close-out), architect (conventions v1.9), product-owner (brief v1.4.18)
+**Trigger:** 1 IMPORTANT + 1 MEDIUM from round-36 adversary (NEEDS_ONE_MORE verdict)
+**Files touched:** SS-conventions-anti-patterns.md (v1.9), product-brief.md (v1.4.18), plans/adversary-pass-round-36.md (persisted at 17373a3), STATE.md, cycles/cycle-001/burst-log.md
+**Versions bumped:** SS-conventions-anti-patterns v1.8→v1.9; product-brief v1.4.17→v1.4.18
+
+### Summary
+
+All 2 adversary findings resolved in-scope across 2 commits (ee3f8ab + ddc18b1) plus this state close-out. The dominant theme is S-7.01 Partial-Fix Regression Discipline: when the round-35 burst introduced a convention rule prohibiting verbatim delimiter quotation in spec prose, it correctly applied the rule prospectively but did not retro-apply it to existing violations in sibling files (v1.6 §Trace entry in SS-engine-module, and the brief v1.4.16/v1.4.17 revision-history entries that cited SS-conventions). Round-37 closes that propagation gap.
+
+**F-R36-1 IMPORTANT:** The product brief Success Criteria section cited SS-engine-module at v1.1.9 instead of the current v1.1.10. This is a cross-artifact version-citation staleness defect — the same class that recurred at R26 (CLAUDE.md pointers), R32 (STATE.md Q-3), and now R36 (brief). Product-owner refreshed the citation in product-brief v1.4.18 (commit ddc18b1). The O-R36-1 process-gap (no CI check for version-citation staleness) is surfaced for human direction rather than silently added to the tech-debt-register per CLAUDE.md Rule 3.
+
+**F-R36-2 MEDIUM (S-7.01 propagation completeness):** SS-conventions v1.8 introduced rule prohibiting verbatim quoting of CI-enforced syntactic markers. The rule was applied to the "Future audit maintenance" paragraph (F-R34-1 in-scope fix) but NOT propagated to the v1.6 §Trace entry in SS-conventions itself (which still contained verbatim delimiter strings) nor to the brief v1.4.16 and v1.4.17 revision-history entries (which narrated the fix using verbatim delimiter strings). Architect applied the propagation to SS-conventions v1.9 (ee3f8ab). Product-owner applied the propagation to brief v1.4.18 (ddc18b1). Both agents ran grep verification confirming zero verbatim delimiter quotes remain outside the canonical regex constant definitions.
+
+**Round-36 adversary persisted:** State-manager persisted adversary-pass-round-36.md at commit 17373a3 (durability per STATE.md §Critical Hook Lessons).
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R36-1 IMPORTANT: brief Success Criteria cites SS-engine-module v1.1.9 (stale; current v1.1.10) — cross-artifact version-citation staleness (3rd recurrence of this class) | IMPORTANT | Citation refreshed v1.1.9→v1.1.10 in product-brief v1.4.17→v1.4.18; O-R36-1 process-gap flagged for human direction | ddc18b1 |
+| F-R36-2 MEDIUM: SS-conventions v1.8 no-verbatim-quoting rule not propagated to v1.6 §Trace entry in SS-conventions itself + brief v1.4.16/v1.4.17 revision-history entries — S-7.01 partial-fix regression | MEDIUM | SS-conventions v1.8→v1.9 (v1.6 §Trace entry de-quoted to refer by name); brief v1.4.17→v1.4.18 (v1.4.16 + v1.4.17 entries rewritten); grep verified zero verbatim delimiter quotes in both files | ee3f8ab + ddc18b1 |
+
+### Notable
+
+- **S-7.01 Partial-Fix Regression Discipline applied.** When introducing a new convention rule, the same burst MUST retro-apply it to existing violations in sibling files at the same architectural layer. Round-35 applied the rule forward but not backward. Round-37 closes the backward gap. This pattern is now codified: the rule itself is a finding trigger — any new convention rule must be accompanied by a grep sweep of the entire spec corpus to identify existing violations.
+- **Grep verification as production-grade confirmation.** Both architect (SS-conventions) and product-owner (brief) ran `grep` to confirm zero verbatim delimiter quotes remain outside canonical regex constant definitions before declaring work done. Memory check is insufficient; grep verification is the production-grade standard per this project's history of paraphrase-drift defects.
+- **O-R36-1 not silently added to tech-debt-register.** Per CLAUDE.md Rule 3, the cross-artifact version-citation staleness process-gap is surfaced in STATE.md as a Pending Human Direction item with three explicit options. AI-driven addition to the tech-debt-register without human direction is forbidden.
+- **OBSERVATION O-R36-1 (process-gap):** No CI check exists for cross-artifact version-citation staleness. This defect class has recurred 3 times. Options for human decision: (a) Phase 1 self-improvement story for `check_version_citations.py` CI script; (b) tech-debt-register entry with future-story anchor; (c) accept as manual close-out overhead. Recorded in STATE.md §Pending Human Direction.
+
+### Lessons
+
+1. **[S-7.01 Propagation Completeness] When introducing a new convention rule, the introducing burst MUST immediately grep the entire spec corpus and retro-apply the rule to all existing violations.** Prospective-only application is a partial fix and will surface as a defect in the next adversary pass. The grep sweep is not optional — it is part of the rule-introduction definition of done.
+
+2. **[Cross-artifact version-citation staleness — recurring class] Brief citation refresh is not a one-off task; it is a recurring bookkeeping responsibility triggered by every architect version bump.** After 3 recurrences (R26, R32, R36), the pattern is clear: every state-manager close-out that bumps a spec version MUST also check all cross-artifact citations to that spec and flag any that are now stale. This is a state-manager discipline, not an architect oversight.
+
+3. **[Grep verification over memory check] For defect classes with a history of paraphrase-drift, grep verification is the only production-grade confirmation method.** Memory of what was fixed is insufficient given the subtlety of delimiter-string variations. Run the grep; record the result; commit with the evidence.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | adversary-pass-round-36.md persisted (durability) | commit 17373a3 |
+| architect | SS-conventions-anti-patterns v1.9 — v1.6 §Trace entry de-quoted (delimiters by name); propagation completeness closure for no-verbatim-quoting rule (F-R36-2) | commit ee3f8ab |
+| product-owner | product-brief v1.4.18 — SS-engine-module citation v1.1.9→v1.1.10 (F-R36-1) + v1.4.16/v1.4.17 revision-history entries de-quoted (F-R36-2) | commit ddc18b1 |
+| state-manager | STATE.md round-37 close-out (D-038) + O-R36-1 pending human direction + burst-log Burst 31 | this commit |

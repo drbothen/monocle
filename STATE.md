@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T20:30:00Z
-phase: pre-phase-1-final-gate-round-35-complete
-current_step: round-36-validation-pending
+timestamp: 2026-05-13T21:15:00Z
+phase: pre-phase-1-final-gate-round-37-complete
+current_step: round-38-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 35 fix burst commits 5f35b1b (adv-r34 persist) + bdfc4b8 (engine v1.1.10) + f584c59 (conventions v1.8); resolves F-R34-1 CRITICAL META-pattern + F-R34-2/3 IMPORTANT"
-awaiting: "round 36 validation — projected convergence; if CLEAN, Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness)"
+traces_to: "round 37 fix burst commits 17373a3 (adv-r36 persist) + ee3f8ab (conventions v1.9) + ddc18b1 (brief v1.4.18); resolves F-R36-1 IMPORTANT + F-R36-2 MEDIUM"
+awaiting: "round 38 validation — final convergence projected; if CLEAN, Phase 1 gate to human with 3 questions"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -44,10 +44,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | round-36-validation-pending |
-| **Brief** | `.factory/specs/product-brief.md` v1.4.17 (commit e2e7d5a) |
+| **Current Step** | round-38-validation-pending |
+| **Brief** | `.factory/specs/product-brief.md` v1.4.18 (commit ddc18b1) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T20:30:00Z |
+| **Last Updated** | 2026-05-13T21:15:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING round-36 validation | — | round-35 fix burst complete (commits 5f35b1b + bdfc4b8 + f584c59); F-R34-1 CRITICAL META-pattern resolved (defense-in-depth: line-anchored regex + §Trace prose de-quote + convention rule); F-R34-2 standard #[$ATTR(...)] semgrep form; F-R34-3 12-path workspace scope |
+| Pre-Phase-1 Final Gate | PENDING round-38 validation | — | round-37 fix burst complete (commits 17373a3 + ee3f8ab + ddc18b1); F-R36-1 brief citation v1.1.9→v1.1.10 resolved; F-R36-2 §Trace de-quote propagation completeness (SS-conventions v1.8→v1.9 + brief v1.4.17→v1.4.18); O-R36-1 process-gap surfaced for human direction |
 | 1: Spec Crystallization | READY — awaiting convergence + human approval | — | |
 | 2-7 | not-started | — | |
 
@@ -72,6 +72,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | Round 31 fix burst: F-R30-1 audit table 7→17 + HTML delimiters + F-R30-2 HookEventRecord #[non_exhaustive] + F-R30-3 semgrep rule + Python script CI enforcement + F-R30-4 ISO-8601 convention + ratification | architect+product-owner | DONE | commits bdbb97f + ed9842f + 0fc5803 + 2ad7459 + 442190f |
 | Round 33 fix burst: F-R32-1 brief delimiter strings + F-R32-2 POL-11 META-GAP pattern-either + dual fixtures + F-R32-4 Python script edge cases + F-R32-3 STATE.md Q-3 version refresh | architect+product-owner+state-manager | DONE | commits 31ff515 + 2f05ab6 + e2e7d5a |
 | Round 35 fix burst: F-R34-1 CRITICAL META-pattern defense-in-depth (line-anchored regex + §Trace prose de-quote + convention rule) + F-R34-2 standard #[$ATTR(...)] semgrep wildcard + F-R34-3 12-path workspace scope | architect | DONE | commits 5f35b1b + bdfc4b8 + f584c59 |
+| Round 37 mechanical fix burst: F-R36-1 brief citation refresh + F-R36-2 §Trace v1.6 + brief v1.4.16/v1.4.17 de-quote (S-7.01 propagation completeness) | architect+product-owner | DONE | commits 17373a3 + ee3f8ab + ddc18b1 |
 
 ## Decisions Log
 
@@ -92,6 +93,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-035 | Round 31 fix: Cross-Crate Constructor Audit table expanded 7→17 structs with HTML delimiters for CI machine-parsing; HookEventRecord gets #[non_exhaustive]; new semgrep rule monocle-non-exhaustive-struct-audit-completeness + Python script spec gap-checks the audit table against semgrep-enumerated structs (audit-mechanism CI enforcement codified); ISO-8601 timestamp convention adopted prospectively for brief revision history. | 2026-05-13T18:30:00Z | state-manager |
 | D-036 | Round 33 fix: semgrep rule pattern-either hardened (Shape A `AuditFixtureMinimal` + Shape B `AuditFixtureDerived` with #[derive(...)] interposed) closes POL-11 META-GAP that would have shipped audit-rule as functionally inert; Python script edge cases specified for all 5 malformed-input scenarios (header/separator skip, missing file, malformed delimiter pairs, duplicate delimiters, empty table); brief delimiter strings copy-pasted verbatim from source (corrected from paraphrase); F-R32-3 Q-3 staleness refreshed (v1.4.13→v1.4.17 current; SS-engine-module v1.1.5→v1.1.9). | 2026-05-13T19:15:00Z | state-manager |
 | D-037 | Round 35 fix: F-R34-1 CRITICAL META-pattern — defense-in-depth: (1) line-anchored regex `^<!-- BEGIN: ... -->$`; (2) §Trace prose de-quoted (delimiters by name); (3) v1.8 convention rule prohibits verbatim quoting. Architect also fixed "Future audit maintenance" body-prose verbatim-quote (in-scope, not in adversary scope). F-R34-2: `#[$ATTR(...)]` standard semgrep form replaces `#[...]` (multi-arg derives handled by ellipsis). F-R34-3: paths.include 4→12 covering all 11 crates + binary. | 2026-05-13T20:30:00Z | state-manager |
+| D-038 | Round 37 fix: F-R36-1 brief Success Criteria SS-engine-module citation v1.1.9→v1.1.10; F-R36-2 propagation completeness — v1.8 no-verbatim-quoting convention rule fully propagated to v1.6 §Trace entry (SS-conventions v1.8→v1.9) and brief v1.4.16/v1.4.17 revision-history entries (brief v1.4.17→v1.4.18); grep verified zero verbatim delimiter quotes in either file outside the canonical regex constant definitions. S-7.01 Partial-Fix Regression Discipline applied: convention rules introduced in one burst retro-applied to existing siblings in the same layer in the same burst. | 2026-05-13T21:15:00Z | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -103,27 +105,33 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 36 validation pending; projected convergence._
+_None — round 38 validation pending; final convergence projected._
 
 ## Session Resume Checkpoint
 
-**ROUND-35-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-35-complete
+**ROUND-37-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-37-complete
 
 ### Immediate Next Action
 
-Round 36 validation chain. Projected convergence 0+0+0. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: (a) F-R34-* resolutions clean; (b) 17-struct audit table parseable by line-anchored regex; (c) §Trace prose zero verbatim delimiter quotes; (d) `#[$ATTR(...)]` standard semgrep form documented; (e) 12 paths.include match SS-deps workspace graph; (f) brief v1.4.17 citations cite v1.1.10 (route to product-owner v1.4.18 if any cite v1.1.9). Adversary scope: SS-engine-module v1.1.10 + SS-conventions v1.8 + STATE.md + remaining specs; fresh context; production-grade lens. Verify: (a) line-anchored regex excludes prose references; (b) §Trace prose narrative preserved; (c) `#[$ATTR(...)]` no further wildcard ambiguity; (d) 12-path scope covers all `#[non_exhaustive]` crates; (e) no META-pattern recurrence; (f) compile+test clean. If CLEAN: Phase 1 gate to human (3 standing questions). If NOT clean: route to correct specialist, round-37 fix.
+Round 38 validation chain — FINAL convergence projected. Orchestrator dispatches consistency-validator + adversary in parallel.
+
+Consistency scope: (a) F-R36-1 brief citation now v1.1.10 confirmed? (b) F-R36-2 zero verbatim delimiter quotes in §Trace prose anywhere across architecture docs + brief revision history? (c) v1.6/v1.4.16/v1.4.17 §Trace narrative preserved meaningfully (no semantic loss from de-quoting)? (d) audit table 17 structs + delimiters intact? (e) STATE.md Critical Artifacts list reflects v1.9 + v1.4.18.
+
+Adversary scope: SS-conventions v1.9 + brief v1.4.18 + remaining specs at current versions; fresh context; production-grade lens. Verify: (a) all F-R36 findings GENUINELY resolved; (b) S-7.01 propagation completeness — no other §Trace entries in any file violate the convention; (c) no new META-pattern recurrence; (d) trajectory genuinely converged.
+
+If CLEAN: present Phase 1 gate to human with 3 standing questions (D-031, D-032, Q-3) + Pending Human Direction (O-R36-1). If NOT clean: route to correct specialist appropriately.
 
 ### Critical Artifacts (read for Phase 1)
 
 1. `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + agent routing
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
-3. `.factory/specs/product-brief.md` v1.4.17
+3. `.factory/specs/product-brief.md` v1.4.18
 4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
 5. `.factory/specs/architecture/SS-engine-module.md` v1.1.10
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.6
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.8
+9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.9
 10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.1
 
 ### Key Tech Stack
@@ -141,41 +149,7 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 
 ## Task Queue Snapshot
 
-Persisted from harness TaskList tool (not auto-saved). Active queue at last context-clear preparation:
-
-### Pending (dependency-ordered)
-
-| ID | Status | Subject | BlockedBy |
-|---|---|---|---|
-| #35 | done | Round 21 fix burst — F-R20-1/2/3 architect | — |
-| #36 | done | Round 21 state-manager close-out | #35 |
-| #37 | done | Round 22 validation chain | #36 |
-| #38a | done | Round 23 fix burst — F-R22-1/2/3 architect | #37 |
-| #38b | done | Round 23 state-manager close-out | #38a |
-| #39 | done | Round 24 validation chain | #38b |
-| #39b | done | Round 25 fix burst — F-R24-adv-1/2/3/5 architect + product-owner | #39 |
-| #39c | done | Round 25 state-manager close-out | #39b |
-| #40 | pending | Round 26 validation chain | #39c |
-| #41 | pending | Iterate fix-validate cycle to convergence | #40 |
-| #12 | in_progress | Re-present Phase 1 gate to human | #41 |
-
-### Resumption protocol for fresh-context session
-
-1. Re-create the queue above via `TaskCreate` calls (subjects from this table) + 1 `TaskUpdate` to set `#12` back to `in_progress` (assuming you re-create it; otherwise add it fresh).
-2. Set blocking dependencies via `TaskUpdate addBlockedBy` per the table.
-3. Mark `#39` as `in_progress` when you dispatch the round 24 validation chain.
-4. Immediate Next Action above contains the full round 24 dispatch instructions.
-
-### Completed history (rounds 1-20)
-
-All prior tasks tracked the round-by-round convergence work. Full chronology is in `cycles/cycle-001/burst-log.md` (Bursts 1-23) — TaskList completion order matches burst order. Major milestones:
-- Tasks #6-#19: Round 1-4 textual defer-pattern decay + Round 5 production-grade principle articulation + R5 substantive fix burst (commits 0bd4ba9 through 6638de5)
-- Tasks #20-#27: Round 5-10 convergence to PRODUCTION_READY (R10 commit e0caccf)
-- Tasks #28-#29: FC items locked pre-Phase-1 + round 13 fix burst (vision drift surfaced)
-- Tasks #30-#33: Vision authority restored (Q-15-1); rounds 15-17 (commits 9fa9ebe + 48852c8 + 1b26c54)
-- Task #34: Round 20 validation (consistency CLEAN; adversary INLINE → 3 round-20 findings persisted at adversary-pass-round-20.md)
-
-If a fresh-context session needs full task history for retrospective analysis, read burst-log.md sequentially.
+All prior task history archived to `cycles/cycle-001/burst-log.md`. Current active task: Round 38 validation chain (immediate next action). Re-initialize TaskList from Immediate Next Action above if resuming in fresh context.
 
 ## Phase 1 Gate Questions for Human Review
 
@@ -185,7 +159,19 @@ These questions must be answered by the human before entering Phase 1. Both are 
 
 2. **Architect-brief-routing precedent (D-032):** In commit 688a5ed, architect mechanically propagated a BC count update into product-brief.md (product-owner territory per CLAUDE.md routing table). Content was correct; routing was a violation. v1.4.12 was authored by product-owner as ratification. Does the human accept a narrow exemption for mechanical count-propagation across artifact boundaries, or should every cross-boundary edit route through the destination owner even when content is mechanical?
 
-3. **CLAUDE.md operational pointer refresh (F-R26-1):** `/Users/jmagady/Dev/monocle/CLAUDE.md` §Current Pipeline State cites `Brief: v1.4.2` (stale; current v1.4.17) and §Architectural Authority cites `vision v1.1.1` (current v1.1.2). The principle text in CLAUDE.md is human-authored authority and AI agents do not edit it. ACTION: At Phase 1 gate review, refresh the operational pointers to current versions before approving Phase 1 entry. Routing: human.
+3. **CLAUDE.md operational pointer refresh (F-R26-1):** `/Users/jmagady/Dev/monocle/CLAUDE.md` §Current Pipeline State cites `Brief: v1.4.2` (stale; current v1.4.18) and §Architectural Authority cites `vision v1.1.1` (current v1.1.2). The principle text in CLAUDE.md is human-authored authority and AI agents do not edit it. ACTION: At Phase 1 gate review, refresh the operational pointers to current versions before approving Phase 1 entry. Routing: human.
+
+## Pending Human Direction
+
+**O-R36-1 [process-gap, CLAUDE.md Rule 3]** — Cross-artifact version-citation staleness has recurred 3 times (R26 CLAUDE.md, R32 STATE.md, R36 brief). No CI check exists. AI may not add to tech-debt-register without explicit human direction. Human decision required from the following options:
+
+> (a) **Codify as Phase 1 self-improvement story:** architect adds `scripts/check_version_citations.py` that grep-validates `<artifact> vX.Y.Z` citations across spec bodies against actual frontmatter versions. Runs in CI on every push to factory-artifacts.
+>
+> (b) **Add to tech-debt-register** with future-story anchor (e.g., Wave 1 story slot).
+>
+> (c) **Accept current state** — citation refresh is part of the round close-out process manually, acknowledged as recurring overhead.
+
+Per CLAUDE.md Rule 3, AI agents may not add to tech-debt-register without explicit human direction AND a concrete future dependency. Select (a), (b), or (c) at Phase 1 gate review.
 
 ## Historical Content
 
