@@ -33,17 +33,19 @@ The Rust workspace will be initialized during `/vsdd-factory:create-architecture
 - Security audit: `cargo audit` (must run in CI on every PR; weekly scheduled `cargo audit --json` against latest RUSTSEC DB)
 - Format: `cargo fmt --all`
 
-MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor). Phase 3 = Rust 1.92 (wasmtime 44 requirement). Two-MSRV strategy is intentional; see `.factory/specs/architecture/dependencies.md` Architect TODO.
+MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor). Phase 3 = Rust 1.92 (wasmtime 44 requirement). Single-workspace MSRV strategy is canonical; see `.factory/specs/architecture/SS-deps-pin-manifest.md` §"MSRV Policy".
 
 ## Architectural Authority — Source of Truth
 
 When two artifacts disagree, the LATER, MORE-SPECIFIC artifact wins:
 
-1. `.factory/specs/architecture/dependencies.md` — canonical version pins (supersedes vision §Tech Stack).
-2. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — first ADR (wasmtime 44 over wasmi).
-3. `.factory/specs/architecture/conventions.md` — code conventions and anti-patterns (shell injection, naked writes, unbounded channels, single-popup overlay, theme globals — all forbidden).
-4. `.factory/specs/product-brief.md` v1.3 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view.
-5. `.factory/tech-debt-register.md` — tech debt register (see Principle 3 below; not for AI-driven deferrals).
+1. `.factory/specs/architecture/SS-deps-pin-manifest.md` — canonical version pins, MSRV policy, patch-pinning policy, security-advisory response policy, workspace dependency graph (supersedes vision §Tech Stack).
+2. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — wasmtime 44 over wasmi for Phase 3 plugin SDK.
+3. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md` — nucleo 0.5 dormancy risk accepted with explicit re-eval trigger (retires TD-001).
+4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` — code conventions, anti-patterns, clippy + semgrep + PR-template + CI enforcement specs.
+5. `.factory/specs/dtu-assessment.md` — DTU clone scope for hook protocol surface (DTU_REQUIRED: true for Phase 1).
+6. `.factory/specs/product-brief.md` v1.4 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view (R-001 mitigation pending v1.4.1 patch).
+7. `.factory/tech-debt-register.md` — tech debt register (see Principle 3 below; not for AI-driven deferrals).
 
 The vision document captures human intent but has known stale items (endpoint count, tech-stack version pins) superseded by the above.
 
@@ -112,7 +114,7 @@ If this principle conflicts with a vsdd-factory agent prompt, skill, or rule, th
 
 ## Conventions (Code-Level)
 
-Detailed conventions live in `.factory/specs/architecture/conventions.md`. Highlights:
+Detailed conventions live in `.factory/specs/architecture/SS-conventions-anti-patterns.md`. Highlights:
 
 - **Product name:** lowercase `monocle` in code; capitalized `Monocle` in prose headings.
 - **Forbidden patterns:** shell injection via template strings; naked `std::fs::write` for config (use `tempfile::persist`); unbounded `mpsc::unbounded_channel` (use bounded with drop counter); package-level mutable globals for theme/config (use `Arc<RwLock<>>`); `Option<PromptModal>` for permission overlay (use `VecDeque<PromptModal>`).
@@ -221,7 +223,7 @@ Use this table to determine which specialist handles which kind of work. Authori
 ### Routing examples (from this project's recent history)
 
 - **Brief defect found by consistency-validator:** correct routing is `product-owner` (owner of brief content), NOT consistency-validator-fixes-it. Example: the F-03/F-04/F-11 fixes this session went through product-owner via the orchestrator after consistency-validator surfaced them.
-- **Tech-stack version pin needed:** correct routing is `architect` (with input from `research-agent` for version verification), NOT product-owner copying from a generic best-practices list. The `dependencies.md` stub was correctly extracted by product-owner but its production version belongs to architect.
+- **Tech-stack version pin needed:** correct routing is `architect` (with input from `research-agent` for version verification), NOT product-owner copying from a generic best-practices list. The `SS-deps-pin-manifest.md` stub was correctly extracted by product-owner but its production version (v1.1) was completed by architect.
 - **TDD red-gate violation found by test-writer:** route back to product-owner (if the BC is the problem) or to the human (if the spec is genuinely contradictory). DO NOT have the test-writer modify the BC silently.
 - **Security finding found by security-reviewer:** triage classification is security-reviewer's job. The FIX is implementer's job (with security-reviewer re-running to confirm). Use the `fix-pr-delivery` skill.
 - **Out-of-scope finding (legitimate scope-boundary defer):** still route to orchestrator. Orchestrator records the deferral with explicit future-story attachment per Principle 3 of the canonical principle. The deferral target must be a real story ID, not "Phase X" or "later."
