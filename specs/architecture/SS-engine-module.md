@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1"
+version: "1.1.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T12:00:00Z
+timestamp: 2026-05-13T18:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot"
 project: monocle
 ---
 
@@ -47,8 +47,15 @@ extensibility. The sealed-trait pattern applies only to internal traits that are
 
 ## §EngineModule Trait Signature
 
-The signature below is the authoritative Phase 1 contract. It matches
+The signature below is the authoritative Phase 1 contract. EngineModule trait
+method signatures (`id`, `metadata`, `detect`, `enrich`, `on_hook`) match
 `domain-monocle-vision-synthesis.md` §EngineModule lines 111–128 exactly.
+`EngineMetadata` is a vision-spirit-aligned elaboration: `config_paths: Vec<PathBuf>`
+supports multi-path Claude Code config (e.g., `~/.claude/CLAUDE.md` plus a per-project
+`.claude/CLAUDE.md`); `hook_schema_version: u32` enables Phase 4 federation
+peer-version negotiation. Both fields are forward-compatible elaborations of vision's
+single-path/string-schema-name fields; downstream code that needs vision's exact
+shape can call `.first()` on the Vec and format the u32 as a string.
 
 ```rust
 // monocle-core/src/engine.rs
@@ -120,12 +127,33 @@ pub struct EngineMetadata {
 /// `detect` receives one of these per observed process on each scan cycle.
 /// All fields are cheap to populate (no I/O beyond a single `/proc` stat read
 /// or equivalent on non-Linux platforms).
+///
+/// Detection rule: `ClaudeCodeModule::detect` performs a STRICT basename match
+/// on `exe_path` (NOT `cmdline[0]`). This avoids false positives from processes
+/// named `claude-squad`, `claudio`, or `claude-code-router` that share a prefix
+/// with the `claude` binary. `cmdline` is retained for engine-specific
+/// environment-aware logic in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`).
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct ProcessSnapshot {
     /// Process ID of the running process.
     pub pid: u32,
+    /// Parent process ID, if available.
+    /// Populated from `/proc/<pid>/status` (Linux) or platform-equivalent.
+    /// Used for process-tree analysis (e.g., detecting claude launched inside tmux).
+    pub ppid: Option<u32>,
+    /// Resolved binary path via `/proc/<pid>/exe` readlink (Linux) or
+    /// platform-equivalent (`sysctl KERN_PROC_PATHNAME` on macOS,
+    /// `GetModuleFileNameEx` on Windows).
+    ///
+    /// This is the canonical field for `detect()`. Strict basename match on
+    /// this field is required; `cmdline[0]` is unreliable (may be a wrapper script
+    /// or symlink with a different name). `None` if the process has exited before
+    /// the daemon could resolve the path.
+    pub exe_path: Option<PathBuf>,
     /// Full command line including argv[0] and all arguments.
+    /// Retained for `enrich()` use (e.g., reading `CLAUDE_SESSION_ID` from env).
+    /// MUST NOT be used as the primary detection signal — use `exe_path` instead.
     pub cmdline: Vec<String>,
     /// Working directory of the process, if accessible.
     pub working_dir: Option<PathBuf>,
@@ -268,21 +296,32 @@ impl EngineModule for ClaudeCodeModule {
     }
 
     fn metadata(&self) -> EngineMetadata {
+        // `directories::ProjectDirs` (pinned at `directories 6` in SS-deps) is the
+        // canonical way to resolve XDG/platform config directories. For Claude Code,
+        // the config root is `~/.claude/` — resolved here without `dirs::home_dir()`.
+        let claude_config_root =
+            directories::ProjectDirs::from("com", "anthropic", "claude-code")
+                .map(|p| p.config_dir().to_path_buf())
+                .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
         EngineMetadata {
             display_name: "Claude Code",
             icon: '●',
             config_paths: vec![
-                dirs::home_dir().unwrap_or_default().join(".claude"),
-                dirs::home_dir().unwrap_or_default().join(".claude.json"),
+                claude_config_root.clone(),
+                claude_config_root.with_extension("json"), // ~/.claude.json
             ],
             hook_schema_version: 1,
         }
     }
 
     fn detect(&self, proc: &ProcessSnapshot) -> bool {
-        proc.cmdline
-            .first()
-            .map(|arg0| arg0.ends_with("claude") || arg0.ends_with("claude.js"))
+        // Strict basename match on the RESOLVED exe path (not cmdline[0]).
+        // This avoids false positives from `claude-squad`, `claudio`,
+        // `claude-code-router`, and other binaries that share a name prefix.
+        proc.exe_path
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .map(|name| name == "claude" || name == "claude.js")
             .unwrap_or(false)
     }
 
@@ -293,13 +332,17 @@ impl EngineModule for ClaudeCodeModule {
             .cloned()
             .unwrap_or_else(|| format!("pid-{}", proc.pid));
 
+        // Resolve Claude Code's config root via `directories::ProjectDirs` (no `dirs` crate).
+        let claude_config_root =
+            directories::ProjectDirs::from("com", "anthropic", "claude-code")
+                .map(|p| p.config_dir().to_path_buf())
+                .unwrap_or_else(|| std::path::PathBuf::from(".claude"));
+
         let transcript_path = proc.working_dir.as_ref().map(|cwd| {
             // Standard Claude Code transcript layout:
             // ~/.claude/projects/<cwd-sha256-hex>/
-            // Phase 1: placeholder path; full derivation in Phase 1 story.
-            dirs::home_dir()
-                .unwrap_or_default()
-                .join(".claude")
+            // Phase 1: placeholder path; full SHA-256 derivation in Phase 1 story.
+            claude_config_root
                 .join("projects")
                 .join(format!("{}", cwd.display()))
         });
@@ -308,9 +351,7 @@ impl EngineModule for ClaudeCodeModule {
             session_id,
             harness_type: self.id().to_string(),
             transcript_path,
-            config_path: Some(
-                dirs::home_dir().unwrap_or_default().join(".claude"),
-            ),
+            config_path: Some(claude_config_root),
             status: SessionStatus::Active,
             last_event_micros: 0, // updated by on_hook
         }
@@ -350,6 +391,16 @@ use monocle_core::hook_events::HookType;
 use std::collections::HashMap;
 
 impl ClaudeCodeModule {
+    /// Construct a new `ClaudeCodeModule` with the given hook base URL.
+    ///
+    /// Called once at daemon startup after the HTTP listener is bound.
+    /// `hook_base_url` is the base URL where Claude Code hook scripts POST
+    /// (e.g., `"http://127.0.0.1:7891"`). The path segments are appended by
+    /// `hook_paths()`.
+    pub fn new(hook_base_url: String) -> Self {
+        Self { hook_base_url }
+    }
+
     /// Hook protocol path mapping: hook event type to URL path segment.
     ///
     /// The daemon's axum router is built from this mapping at startup.
@@ -464,11 +515,14 @@ bound. Verification: `cargo check` with the Phase 1 workspace; `rustdoc` confirm
 types are publicly accessible and the trait has no `private::Sealed` supertrait.
 
 **BC-ENGINE-002:** `ClaudeCodeModule` (defined in `monocle-runtime::engine::claude_code`)
-implements `EngineModule`. `id()` returns the string `"claude-code"`. `detect()` returns
-`true` for any process whose `cmdline[0]` ends with `"claude"` or `"claude.js"`.
-Verification: unit test in `monocle-runtime/tests/engine_module.rs` asserts
-`module.id() == "claude-code"` and `module.detect(&snap) == true` for a synthetic
-`ProcessSnapshot` with `cmdline[0] = "/usr/local/bin/claude"`.
+implements `EngineModule`. A public `ClaudeCodeModule::new(hook_base_url: String) -> Self`
+constructor is provided. `id()` returns the string `"claude-code"`. `detect()` returns
+`true` for any process whose `exe_path` has a final basename component equal to `"claude"`
+or `"claude.js"` (strict basename match on the resolved binary path; NOT a suffix match
+on `cmdline[0]`, which would produce false positives for `claude-squad`, `claudio`, etc.).
+Verification: unit test in `monocle-runtime/tests/engine_module.rs` constructs a module via
+`ClaudeCodeModule::new("http://127.0.0.1:7891".into())`, asserts `module.id() == "claude-code"`,
+and tests `detect()` with: (a) a synthetic `ProcessSnapshot` with `exe_path = Some(PathBuf::from("/usr/local/bin/claude"))` → asserts `true`; (b) `exe_path = Some(PathBuf::from("/usr/local/bin/claude-squad"))` → asserts `false`; (c) `exe_path = None, cmdline[0] = "claude"` → asserts `false` (exe_path=None means no match).
 
 **BC-ENGINE-003:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
 `HookType` variant, with the exact path strings in §Struct-level inherent operations.
@@ -485,7 +539,7 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 | BC ID | Description | Source Section |
 |-------|-------------|----------------|
 | BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (detect/enrich/on_hook) and no sealed bound | §EngineModule Trait Signature |
-| BC-ENGINE-002 | `ClaudeCodeModule` implements `EngineModule`; `id()` returns "claude-code"; `detect()` matches claude processes | §Phase 1 Implementation |
+| BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
 | BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
 **Total: 3 BCs pre-staged.** Product-owner MUST use these exact IDs when formalizing
@@ -494,6 +548,27 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.1 changes (round-16 adversary N16-1/N16-2/N16-3/N16-4):
+- N16-1 RESOLVED: all four `dirs::home_dir()` calls replaced with
+  `directories::ProjectDirs::from("com", "anthropic", "claude-code")` (pinned as
+  `directories 6` in SS-deps-pin-manifest.md). No `dirs` crate introduced or referenced.
+  Affected: `metadata()` (2 calls) and `enrich()` (2 calls).
+- N16-2 RESOLVED: `ClaudeCodeModule::new(hook_base_url: String) -> Self` public
+  constructor added to the inherent `impl ClaudeCodeModule` block. BC-ENGINE-002
+  updated to require the constructor and test it explicitly.
+- N16-3 RESOLVED: claim "matches vision exactly" replaced with precise text
+  distinguishing which parts match verbatim (method signatures) vs which parts are
+  vision-spirit-aligned elaborations (`EngineMetadata` fields). Rationale for both
+  elaborations documented inline.
+- N16-4 RESOLVED: `ProcessSnapshot` gains `ppid: Option<u32>` (parent PID for
+  process-tree analysis) and `exe_path: Option<PathBuf>` (resolved binary path via
+  `/proc/<pid>/exe` readlink on Linux, platform-equivalent on macOS/Windows).
+  `detect()` rewritten to perform strict basename match on `exe_path` instead of
+  suffix match on `cmdline[0]`. Detection rule, false-positive avoidance, and `None`
+  semantics documented in `ProcessSnapshot` doc-comment and `detect()` body comment.
+  BC-ENGINE-002 verification updated with three cases: true positive, false positive
+  guard (`claude-squad`), and `exe_path=None` guard.
 
 v1.1 changes (human Q-15-1, round-14 adversary N1/N2):
 - N1 RESOLVED: trait signature restored to vision-exact (detect/enrich/on_hook).
