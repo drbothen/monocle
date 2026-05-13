@@ -1270,3 +1270,48 @@ All 2 adversary findings resolved in-scope across 2 commits (ee3f8ab + ddc18b1) 
 All 2 MEDIUM adversary findings resolved in-scope across 3 commits (58d1320 + 7f0da23 + 8db4676) plus this state close-out. The dominant theme is precision in convention scope: F-R38-1 required architect judgment to determine that the rule's purpose (prevent narrative paraphrase-drift) did not apply to code-specification blocks containing canonical definitions. F-R38-2 was a mechanical fix of the same cross-artifact version-citation staleness class that has now recurred 4 times, elevating O-R36-1 from an observation to a RECOMMENDED CI codification decision.
 
 **PHASE 1 GATE STATUS: READY.** After 19 fix-validate rounds (R20-R39), the spec package is internally consistent, production-grade, and ready for Phase 1 implementation. Awaiting human approval of 3 gate questions (D-031, D-032, Q-3) + O-R36-1 codification decision.
+
+---
+
+## Burst 33 (2026-05-13T23:00:00Z) — Phase 1 gate decisions recorded
+
+**Trigger:** Phase 1 gate human review (Josh Magady)
+**Agents dispatched:** state-manager
+**Files touched:** STATE.md
+**Decisions recorded:** D-040, D-041, D-042
+
+### Summary
+
+Human ratified all Phase 1 gate questions and the O-R36-1 codification decision. 19-round convergence cycle (R20-R39) closed. 35+ commits across the convergence cycle.
+
+**Gate question outcomes:**
+
+| Question | Outcome | Decision |
+|----------|---------|----------|
+| Q-1: Vision-vs-architecture authority (D-031) | RATIFIED — architecture wins Phase 1 surfaces | D-040 |
+| Q-2: Architect-brief-routing precedent (D-032) | STRICT ROUTING — no narrow exemption; routing table binding without exemption | D-041 |
+| Q-3: CLAUDE.md operational pointer refresh | PENDING HUMAN ACTION — human will refresh at convenience; AI does not edit CLAUDE.md | — |
+| O-R36-1: Cross-artifact version-citation staleness | OPTION (c) ACCEPTED — manual workflow mitigation only | D-042 |
+
+**Notable facts from convergence cycle:**
+- 19 fix-validate rounds (R20-R39) converged from 1 CRIT + 2 MED + 1 LOW to 0+0+0
+- 16 BCs pre-staged; 17 #[non_exhaustive] structs with constructor coverage + CI enforcement spec
+- 24-round-latent CRITICAL defect detection (POL pattern) validated fresh-context derivation principle
+- META-pattern: rules introduced in one burst can be violated in same burst — S-7.01 propagation discipline required
+- Cross-artifact version-citation staleness recurred 4x; human accepted manual workflow rule (option c)
+
+### Lessons codified this burst
+
+1. Architecture-vs-vision authority is settled: CLAUDE.md §Architectural Authority (later/more-specific wins) governs. Agents need not re-derive this at Phase 1.
+2. Routing table has no narrow exemptions. Mechanical cross-boundary edits must route through the destination artifact owner via orchestrator. Commit 688a5ed is the anti-pattern; v1.4.12 ratification is the pattern.
+3. O-R36-1 process gap at 4 recurrences: human explicitly accepted author-discipline mitigation. Future recurrences caught reactively by consistency-validator.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | STATE.md phase transition + D-040/D-041/D-042 + gate question resolutions + checkpoint rewrite | this commit |
+
+### Status
+
+Phase 1 gate COMPLETE (pending Q-3 CLAUDE.md refresh by human). Awaiting: human CLAUDE.md pointer refresh + `/vsdd-factory:run-phase 1` dispatch.
