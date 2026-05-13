@@ -78,7 +78,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 - **`rmcp 1.6`** — already pinned; activated by `monocle-mcp-bridge` crate. The Phase 4 workspace expands from 12 crates to 13 by adding `monocle-mcp-bridge`.
 - **`oauth2 5.x`** — federation auth flows for multi-host trust establishment. The `oauth2` crate 5.x (maintained by ramosbugs) provides PKCE, device flow, and authorization code flows; caret pin: `oauth2 = "^5"`.
 - **`quinn 0.11`** — QUIC transport, optional. Include only if Phase 4 federation benchmarks demonstrate that sub-100ms host-to-host latency is required AND russh over TCP cannot meet the target. Decision deferred to Phase 4 benchmark gate. If activated, pin: `quinn = "^0.11"`. Do not activate in Phase 4 Cargo workspace by default; gate behind a `quic-transport` Cargo feature flag.
-- **`prost 0.14`** — already pinned; activated for cross-host wire format encoding in Phase 4 remote session events.
+- **`prost 0.14`** — Phase 4 expands the use of `prost` (already pinned and used by `monocle-proto` in Phase 1 for hook POST body deserialization at the network boundary, per the Patch-Pinning Policy's threat-surface justification) to cross-host wire format encoding for federation events. No new prost version pin required.
 
 ## MSRV Policy
 
