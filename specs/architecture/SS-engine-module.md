@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.8"
+version: "1.1.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser)"
 project: monocle
 ---
 
@@ -1091,41 +1091,56 @@ applies to production code in downstream crates.
 update this table and add a constructor if any cross-crate construction site exists or is
 anticipated. The table is committed atomically with the struct definition — never retroactively.
 
+This table covers ALL `#[non_exhaustive]` structs in the monocle workspace, regardless of which
+spec file defines them. It is the single authoritative list. Enums with `#[non_exhaustive]` are
+governed by BC-TYPES-001 and ADR-0004 (separate concern — match pattern completeness vs struct
+literal construction); they do not appear here. `#[non_exhaustive]` on a struct that is NEVER
+constructed via struct literal (only via serde deserialization) still needs the attribute for
+forward-compat field extension — the "Constructor present?" column records the construction path.
+
+**CI enforcement:** A semgrep rule (`monocle-non-exhaustive-struct-audit-completeness`) and a
+CI Python script validate that every `#[non_exhaustive]`-annotated `pub struct` appearing in
+the Rust source is listed between the HTML delimiters below. See SS-conventions-anti-patterns.md
+§Semgrep Rules for the rule definition and §Semgrep Coverage Hardening for the fixture corpus.
+
 ### Audit Table (Phase 1 baseline)
 
-| Struct | Defining crate | `#[non_exhaustive]`? | Cross-crate construction sites | Constructor present? | Notes |
-|--------|---------------|---------------------|-------------------------------|---------------------|-------|
-| `EngineMetadata` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (metadata()); test fixtures | Yes (`new(display_name, icon, config_paths, hook_schema_version)`, v1.1.7) | All 4 fields required |
-| `ProcessSnapshot` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (detect/enrich path); `monocle-runtime/tests/engine_module.rs` | Yes (two: `new(pid, exe_path, cmdline, start_time_secs)` + `with_full_context(...)`, v1.1.7) | Two-tier: detect-only vs enrich |
-| `EnrichedSession` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (enrich()); `monocle-runtime/tests/` | Yes (`new(session_id, harness_type, transcript_path, config_path, status, last_event_micros: Option<i64>)`, v1.1.8) | `last_event_micros: Option<i64>` — None on initial enrich |
-| `HookResponse` | `monocle-core` | Yes | `monocle-runtime::engine::claude_code` (on_hook()); `monocle-runtime/tests/` | Yes (`new(decision)` + `.with_diagnostic()` + `.with_redirect()`, v1.1.8) | Builder pattern for optional fields |
-| `SpawnArgs` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(project_root)` + `.with_worktree()` + `.with_env_override()`, v1.1.8) | Builder for optional fields |
-| `SessionHandle` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(pid, session_id, hook_base_url)`, v1.1.8) | All 3 fields required |
-| `EngineVersion` | `monocle-runtime` | Yes | `monocle-runtime/src/` (same crate, struct-literal OK); `monocle-runtime/tests/` (cross-crate — E0639 applies) | Yes (`new(version, binary_path)`, v1.1.8) | All 2 fields required |
+<!-- BEGIN: Cross-Crate Constructor Audit Table -->
+| Struct | Defining crate | Source spec | Construction path | Constructor present? | Notes |
+|--------|---------------|-------------|-------------------|---------------------|-------|
+| `EngineMetadata` | `monocle-core` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime::engine::claude_code` (metadata()); test fixtures | Yes (`new(display_name, icon, config_paths, hook_schema_version)`, v1.1.7) | All 4 fields required |
+| `ProcessSnapshot` | `monocle-core` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime::engine::claude_code` (detect/enrich path); `monocle-runtime/tests/engine_module.rs` | Yes (two: `new(pid, exe_path, cmdline, start_time_secs)` + `with_full_context(...)`, v1.1.7) | Two-tier: detect-only vs enrich |
+| `EnrichedSession` | `monocle-core` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime::engine::claude_code` (enrich()); `monocle-runtime/tests/` | Yes (`new(session_id, harness_type, transcript_path, config_path, status, last_event_micros: Option<i64>)`, v1.1.8) | `last_event_micros: Option<i64>` — None on initial enrich |
+| `HookResponse` | `monocle-core` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime::engine::claude_code` (on_hook()); `monocle-runtime/tests/` | Yes (`new(decision)` + `.with_diagnostic()` + `.with_redirect()`, v1.1.8) | Builder pattern for optional fields |
+| `SpawnArgs` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (tests compile as separate `[[test]]` binaries) | Yes (`new(project_root)` + `.with_worktree()` + `.with_env_override()`, v1.1.8) | Builder for optional fields |
+| `SessionHandle` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (separate `[[test]]` binaries) | Yes (`new(pid, session_id, hook_base_url)`, v1.1.8) | All 3 fields required |
+| `EngineVersion` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (separate `[[test]]` binaries) | Yes (`new(version, binary_path)`, v1.1.8) | All 2 fields required |
+| `HookEventRecord` | `monocle-runtime` | SS-daemon-lifecycle.md | struct-literal (cross-crate): `monocle-runtime/tests/jsonl_ring.rs` (separate `[[test]]` binary) | Yes (`new(session_id, timestamp_micros, pid, hook_type, tool_name, tool_input)`, v1.0.5); `RING_FORMAT_VERSION: u32 = 1` const | `format_version` always `RING_FORMAT_VERSION`; Phase 2 field evolution requires `#[non_exhaustive]` to avoid SemVer-major break |
+| `SessionStartEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only: axum handlers call `serde_json::from_slice::<HookEvent>(&body)`; serde's `Deserialize` impl constructs internally within `monocle-core` — E0639 does not apply | No constructor required | Forward-compat: `#[non_exhaustive]` allows Phase 2+ field additions without breaking `Deserialize` impls in downstream crates. Enforce: if `Deserialize` is ever removed, re-audit. |
+| `UserPromptSubmitEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
+| `PreToolUseEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
+| `NotificationEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
+| `StopEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
+| `FactoryDetection` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): `VsddFactoryAdapter::detect()` constructs via struct literal WITHIN `monocle-core::factory` — E0639 does not apply. Phase 3 WASM adapters implementing `FactoryAdapter::detect()` will construct cross-crate. | No constructor yet — add before Phase 3 when first cross-crate construction site materializes | Production-grade note: `#[non_exhaustive]` on `FactoryDetection` allows Phase 3+ field additions (e.g., adapter priority, schema version) without breaking existing `detect()` callers. |
+| `FactoryState` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): `VsddFactoryAdapter::read_state()` constructs via struct literal WITHIN `monocle-core::factory` — E0639 does not apply. Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | `blocking_issues` and `convergence` are Phase 1 stubs (empty Vec / None) constructed inline. Phase 2 adds body parsing in `monocle-workflow` — that is a cross-crate construction site requiring a constructor. |
+| `BlockingIssue` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (blocking_issues Vec is always empty). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 table parser populates `Vec<BlockingIssue>` — that is the first cross-crate construction site. |
+| `ConvergenceMetrics` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (convergence is always None). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 §Session Resume Checkpoint parser populates `Option<ConvergenceMetrics>` — that is the first cross-crate construction site. |
+<!-- END: Cross-Crate Constructor Audit Table -->
 
-### HookEvent Inner Struct Audit (`monocle-core::hook_events`)
+**Serde-deserialize-only enforcement note:** The `Deserialize` derive on each HookEvent inner
+struct is the construction gate. If `Deserialize` is ever removed from any of the five inner
+structs (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`,
+`StopEvent`), the construction path changes from serde-internal to struct-literal — at which
+point E0639 applies and a constructor MUST be added before removing `Deserialize`. Any PR that
+removes `Deserialize` from these structs must include a constructor addition in the same commit.
 
-The five event payload structs (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`,
-`NotificationEvent`, `StopEvent`) all carry `#[non_exhaustive]` per SS-core-types-and-abi.md
-§Non-Exhaustive Inner Structs. The E0639 question is: does any code outside `monocle-core`
-construct these structs via struct literal?
-
-**Finding: serde-deserialize-only construction. No cross-crate constructors required.**
-
-All five inner event structs are constructed EXCLUSIVELY through serde deserialization:
-the axum HTTP handlers in `monocle-runtime` receive JSON POST bodies and call
-`serde_json::from_slice::<HookEvent>(&body)`. Serde's deserialization path does NOT
-use struct literal syntax — it calls the generated `Deserialize` impl which constructs
-the value internally within `monocle-core`. Therefore E0639 does not apply to these structs.
-
-No test fixture in `monocle-runtime/tests/` constructs a `SessionStartEvent` etc. via struct
-literal. If a future test fixture needs to do so, that test MUST add a constructor to the
-relevant struct in `monocle-core::hook_events` (and update this table) before using struct
-literal construction fails to compile.
-
-**Enforcement note:** The `Deserialize` derive on each inner struct is the construction
-gate. If `Deserialize` is ever removed from any inner struct, the construct path changes and
-this audit must be re-run.
+**Future audit maintenance:** The CI `monocle-non-exhaustive-struct-audit-completeness` semgrep
+rule (SS-conventions-anti-patterns.md §Semgrep Rules) scans for `#[non_exhaustive]` on `pub struct`
+definitions and verifies each struct name appears in the `<!-- BEGIN: Cross-Crate Constructor Audit
+Table -->` … `<!-- END: Cross-Crate Constructor Audit Table -->` block. A Python CI script reads
+the delimiter-bounded block and compares the set of struct names against semgrep matches; CI fails
+if any struct is missing from the table. This prevents the class of defect that motivated F-R30-1
+(audit table claimed completeness while 10 structs were missing).
 
 ---
 
@@ -1144,6 +1159,52 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.9 changes (round-30 fixes F-R30-1 HIGH / F-R30-3 MEDIUM):
+- F-R30-1 RESOLVED (HIGH — adversary finding): §Cross-Crate Constructor Audit table claimed
+  "every `#[non_exhaustive]` struct in the monocle workspace" but enumerated only 7 structs.
+  Fresh grep across all spec files (`grep -rn "#\[non_exhaustive\]" .factory/specs/`) revealed
+  17 `#[non_exhaustive]` structs across four spec documents. Missing structs:
+  (1) `HookEventRecord` (SS-daemon-lifecycle.md, monocle-runtime) — had a constructor but was
+  omitted from the table; now in row 8.
+  (2) Five HookEvent inner structs (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`,
+  `NotificationEvent`, `StopEvent`) from SS-core-types-and-abi.md — previously in a separate
+  "HookEvent Inner Struct Audit" sub-section; now merged into the main table (rows 9–13) with
+  "serde-deserialize-only" construction path column value. The serde-deserialize-only reasoning
+  is preserved in the "Serde-deserialize-only enforcement note" paragraph after the table.
+  (3) Four factory structs from SS-core-types-and-abi.md (`FactoryDetection`, `FactoryState`,
+  `BlockingIssue`, `ConvergenceMetrics`) — never appeared in any audit. Added as rows 14–17.
+  Phase 1 construction is intra-crate only (within `monocle-core::factory`); no cross-crate
+  construction in Phase 1, so no constructor required now. Phase 2 (`monocle-workflow` body
+  parser for `blocking_issues` and `convergence`) and Phase 3 (WASM adapters implementing
+  `FactoryAdapter::detect()`) will require constructors — the table notes record the trigger.
+  Structure change: the separate "HookEvent Inner Struct Audit" sub-section is replaced by the
+  "Serde-deserialize-only enforcement note" paragraph; all struct entries are now in one table.
+  HTML delimiters added: `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` and
+  `<!-- END: Cross-Crate Constructor Audit Table -->` wrap the table rows for CI machine-parsing.
+  Table column "Source spec" added to make the audit cross-document navigable.
+  Table column "Construction path" replaces the merged "Cross-crate construction sites" +
+  "`#[non_exhaustive]`?" columns; the latter was always "Yes" (the table lists only `#[non_exhaustive]`
+  structs) and is now conveyed by the section title and invariant statement.
+  Total structs in audit table: 17.
+- F-R30-3 RESOLVED (MEDIUM process-gap — adversary finding): The audit-table invariant was a
+  passive policy ("MUST update this table") with no machine enforcement. F-R30-1 demonstrated
+  the policy was violated — 10 structs were missing while the table claimed completeness. Fix:
+  (1) HTML delimiters (`<!-- BEGIN: ... -->` / `<!-- END: ... -->`) wrap the audit table, enabling
+  a CI Python script to extract the declared struct names by parsing between the delimiters.
+  (2) A new semgrep rule `monocle-non-exhaustive-struct-audit-completeness` is specified in
+  SS-conventions-anti-patterns.md v1.6 §Semgrep Rules. The rule matches `#[non_exhaustive]` on
+  `pub struct` definitions in monocle crate sources. The CI Python script (devops-engineer Phase 1
+  deliverable) cross-references semgrep match output against the delimiter-bounded table to fail
+  if any struct is absent. (3) A fixture file `semgrep-fixtures/non_exhaustive_struct.rs` is
+  added to the POL-11 fixture corpus (SS-conventions-anti-patterns.md §Semgrep Coverage Hardening).
+  Mechanism choice: semgrep + CI Python script over a Rust `syn`-based integration test. Rationale:
+  semgrep is already in the CI pipeline (4 existing rules); adding a 5th rule keeps enforcement
+  homogeneous. The Python script requires no compilation and fits in the existing two-step
+  (fixture-corpus → production-scan) CI pattern. A `syn`-based test binary would add a new
+  dev-dependency (`syn` with all-features), CI build time, and a new test crate — more overhead
+  for the same coverage. The delimiter approach is language-agnostic and works even if the spec
+  is the source of truth (which it is in pre-Phase-1).
 
 v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-R28-5 LOW):
 - F-R28-1 RESOLVED (HIGH — adversary finding): `EnrichedSession::last_event_micros` changed
