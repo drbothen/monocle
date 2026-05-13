@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0"
+version: "1.0.1"
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-12T21:45:00Z
@@ -102,30 +102,17 @@ license incompatible with MIT OR Apache-2.0 binary distribution:
 - Apache-2.0 (wasmtime, prost, russh): compatible with MIT/Apache-2.0.
 - MIT (axum, tokio, ratatui, rmcp, etc.): trivially compatible.
 
-`cargo-deny` with the configuration below enforces this at every PR:
+`cargo-deny` with the canonical `deny.toml` enforces this at every PR.
 
-```toml
-# deny.toml — workspace root
-[licenses]
-allow = [
-  "MIT",
-  "Apache-2.0",
-  "Apache-2.0 WITH LLVM-exception",
-  "MPL-2.0",
-  "ISC",
-  "BSD-2-Clause",
-  "BSD-3-Clause",
-  "Unicode-3.0",
-  "Unicode-DFS-2016",
-  "CC0-1.0",
-  "Zlib",
-]
-deny = ["GPL-2.0", "GPL-3.0", "AGPL-3.0", "LGPL-2.0", "LGPL-2.1", "LGPL-3.0"]
-exceptions = [
-  # nucleo 0.5 — MPL-2.0 file-level copyleft; compatible with binary linking
-  { allow = ["MPL-2.0"], name = "nucleo", version = "^0.5" },
-]
-```
+**Canonical `deny.toml` content lives in
+`SS-conventions-anti-patterns.md` §deny.toml configuration.** ADR-0003 captures
+the license *selection* decision (MIT OR Apache-2.0 dual) that drives the license
+allow-list; the `deny.toml` file content itself — including the exact `[licenses]`
+allow/deny lists, `[bans]` entries, `[advisories]` settings, and MPL-2.0 rationale
+for nucleo — is maintained in SS-conventions as the single authoritative source.
+Any future change to the deny.toml allow-list (e.g., adding a new license for a
+new dependency) is made in SS-conventions; this ADR does not need to change unless
+the *license selection decision itself* changes (i.e., monocle's own license).
 
 ### Aligns with Anthropic SDK and monocle's interop story
 
