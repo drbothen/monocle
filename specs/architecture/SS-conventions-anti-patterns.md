@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.2"
+version: "1.2.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T06:00:00Z
+timestamp: 2026-05-12T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d)"
 project: monocle
 ---
 
@@ -195,7 +195,7 @@ allow-git = []
 **Rationale for `[bans]` deny entries:**
 
 - **`openssl` / `openssl-sys`**: OpenSSL introduces system-library linkage that breaks hermetic builds and creates version-mismatch failures in CI containers and musl targets. monocle uses rustls (pure-Rust TLS) throughout; any transitive pull of openssl indicates a dependency tree problem to be resolved at the source, not papered over with feature flags.
-- **`tokio < 1.52`**: RUSTSEC advisories were remediatedstarting in tokio 1.52. Any version below this floor represents a known-vulnerable async runtime. The `SS-deps-pin-manifest.md` already pins tokio at 1.44 for Phase 1 — this ban acts as a floor guard that will fire if a transitive dep drags in a pre-remediation version.
+- **`tokio < 1.52`**: RUSTSEC advisories were remediatedstarting in tokio 1.52. Any version below this floor represents a known-vulnerable async runtime. The `SS-deps-pin-manifest.md` already pins tokio at 1.52 for Phase 1 — this ban acts as a floor guard that will fire if a transitive dep drags in a pre-remediation version.
 - **`russh < 0.60`**: russh versions below 0.60 pull in a pre-release `rsa` crate affected by RUSTSEC-2023-0071 (RSA key recovery via Marvin attack). russh is not a direct monocle dependency but may appear transiently through plugin SDK paths in Phase 3; the ban prevents accidental introduction.
 
 **Rationale for MPL-2.0 inclusion:**
