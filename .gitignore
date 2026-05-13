@@ -1,1 +1,6 @@
 logs/
+
+# Defensive: hook-dispatcher must NEVER create a recursive .factory shadow
+# inside .factory. If this directory appears, it indicates upstream
+# dispatcher bug (filed at drbothen/vsdd-factory).
+.factory/
