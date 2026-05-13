@@ -1216,3 +1216,57 @@ All 2 adversary findings resolved in-scope across 2 commits (ee3f8ab + ddc18b1) 
 | architect | SS-conventions-anti-patterns v1.9 — v1.6 §Trace entry de-quoted (delimiters by name); propagation completeness closure for no-verbatim-quoting rule (F-R36-2) | commit ee3f8ab |
 | product-owner | product-brief v1.4.18 — SS-engine-module citation v1.1.9→v1.1.10 (F-R36-1) + v1.4.16/v1.4.17 revision-history entries de-quoted (F-R36-2) | commit ddc18b1 |
 | state-manager | STATE.md round-37 close-out (D-038) + O-R36-1 pending human direction + burst-log Burst 31 | this commit |
+
+---
+
+## Burst 32 — Round 39 Fix Burst Close-Out (2026-05-13T22:00:00Z)
+
+**Trigger:** 2 MEDIUM findings from round-38 adversary (persisted at commit 58d1320).
+- F-R38-1: Debatable §Trace entry — regex constant strings present in a code-specification block argued as violating the no-verbatim-quoting convention (SS-conventions clause 4).
+- F-R38-2: 4th-recurrence cross-artifact version-citation staleness — SS-forward-compatibility.md FC-01/FC-06 lock-in cells cited SS-daemon-lifecycle.md at v1.0.3 (stale; current v1.0.6).
+
+**Commits in this burst:**
+
+| Commit | Author | Change |
+|--------|--------|--------|
+| 58d1320 | state-manager | adversary-pass-round-38.md persisted (durability per §Critical Hook Lessons) |
+| 7f0da23 | architect | SS-conventions-anti-patterns v1.9→v1.10: narrowly-scoped exception added to clause 4 (regex constant strings within code-specification blocks permitted; narrative prose elsewhere must still refer to delimiters by name) + META-pattern mitigation workflow rule documented |
+| 8db4676 | architect | SS-forward-compatibility v1.2.1→v1.2.2: FC-01/FC-06 lock-in cells updated SS-daemon-lifecycle citation v1.0.3→v1.0.6; full file sweep via grep confirmed no other stale citations; lines 257-259 verified as legitimate historical §Trace pinpoints, not cross-artifact citations |
+| this commit | state-manager | STATE.md round-39 close-out (D-039) + O-R36-1 strengthened to 4-recurrence evidence + burst-log Burst 32 |
+
+**Findings Resolved:**
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R38-1: §Trace entry in SS-conventions contains regex constant strings — debatable convention violation (code-specification blocks vs narrative prose) | MEDIUM | Architect Option B: narrowly-scoped exception added to clause 4; the regex IS the specification — replacing with "the constants defined in clause 4" loses engineering information; exception preserves convention integrity with explicit reasoning | 7f0da23 |
+| F-R38-2: SS-forward-compatibility FC-01/FC-06 lock-in cells cite SS-daemon-lifecycle.md v1.0.3 (stale; current v1.0.6) — 4th recurrence of cross-artifact version-citation staleness class | MEDIUM | Mechanical fix: citations updated v1.0.3→v1.0.6; grep sweep confirmed all other citation sites in forward-compat file were historical §Trace pinpoints (legitimate), not stale cross-artifact citations | 8db4676 |
+
+**Notable:**
+
+- **Architect Option B production-grade reasoning:** Code-specification regex constants are not narrative — they ARE the specification. A rule that prohibits embedding the canonical regex in the document that defines it would degrade engineering information. The exception is narrowly drawn: only regex constant strings within code-specification blocks that describe the canonical-regex addition are permitted; all narrative prose elsewhere must still refer to delimiters by name. This preserves convention integrity while avoiding self-defeating over-strictness.
+- **4th recurrence of cross-artifact version-citation staleness META-pattern.** O-R36-1 evidence is now STRENGTHENED. Recurrences: R26 (CLAUDE.md operational pointers), R32 (STATE.md Q-3 brief version), R36 (brief Success Criteria SS-engine-module citation), R38 (SS-forward-compatibility FC lock-in cells). The recurrence rate is increasing, not stable.
+- **Workflow mitigation rule documented (architect-discipline level):** Run `grep -rn 'SS-[name].md v' .factory/specs/architecture/` before any version bump to enumerate all citation sites in one pass. Addresses O-R36-1 process-gap at author-discipline level; CI codification remains an open human decision (O-R36-1 option a).
+- **STATE.md O-R36-1 entry strengthened** from 3-recurrence to 4-recurrence evidence with RECOMMENDED label on option (a) Phase 1 self-improvement story. Per CLAUDE.md Rule 3, option selection remains human decision.
+
+**Lessons:**
+
+1. **[Convention scope definition requires architect judgment.] Strict reading of a convention vs production-grade exception requires explicit reasoning about the purpose of the rule.** The no-verbatim-quoting convention exists to prevent paraphrase-drift in narrative prose — not to prevent specification documents from containing the specifications they define. When strict reading would degrade engineering information, a narrowly drawn exception with documented reasoning is the production-grade resolution.
+
+2. **[Process gaps with 4+ recurrences are no longer observations — they are systematic gaps requiring CI codification.] After 4 recurrences of the same defect class (cross-artifact version-citation staleness), the author-discipline mitigation (grep workflow rule) is provably insufficient.** The RECOMMENDED path is a CI check that fails on stale citations. The observation has escalated to a codification-level decision, which is why O-R36-1 is now RECOMMENDED (a) rather than three equal options.
+
+3. **[Grep file sweeps before declaring a mechanical fix complete.]** F-R38-2 fix included a full grep sweep of the forward-compat file to distinguish stale cross-artifact citations (requiring update) from historical §Trace pinpoints (legitimate and immutable). Distinguishing these two categories is non-trivial; the grep-with-context approach (checking surrounding narrative) is the only reliable method.
+
+**Agent Dispatch:**
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | adversary-pass-round-38.md persisted (durability) | commit 58d1320 |
+| architect | SS-conventions-anti-patterns v1.10 — narrowly-scoped exception for regex constants in code-specification blocks (F-R38-1 Option B) + META-pattern mitigation workflow rule | commit 7f0da23 |
+| architect | SS-forward-compatibility v1.2.2 — FC-01/FC-06 lock-in cell citations updated v1.0.3→v1.0.6; grep sweep confirmed no other stale citations (F-R38-2) | commit 8db4676 |
+| state-manager | STATE.md round-39 close-out (D-039) + O-R36-1 strengthened to 4-recurrence + burst-log Burst 32 | this commit |
+
+### Summary
+
+All 2 MEDIUM adversary findings resolved in-scope across 3 commits (58d1320 + 7f0da23 + 8db4676) plus this state close-out. The dominant theme is precision in convention scope: F-R38-1 required architect judgment to determine that the rule's purpose (prevent narrative paraphrase-drift) did not apply to code-specification blocks containing canonical definitions. F-R38-2 was a mechanical fix of the same cross-artifact version-citation staleness class that has now recurred 4 times, elevating O-R36-1 from an observation to a RECOMMENDED CI codification decision.
+
+**PHASE 1 GATE STATUS: READY.** After 19 fix-validate rounds (R20-R39), the spec package is internally consistent, production-grade, and ready for Phase 1 implementation. Awaiting human approval of 3 gate questions (D-031, D-032, Q-3) + O-R36-1 codification decision.
