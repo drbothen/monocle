@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.3"
+version: "1.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests"
 project: monocle
 ---
 
@@ -342,6 +342,88 @@ The keyword patterns in §Companion Script Contract above are anchored to Anthro
 
 GitHub Actions free tier covers weekly cron (`0 14 * * 1`) plus light Python compute (typically under 30 seconds per run). No external API costs — both source URLs are public Anthropic documentation. No GitHub API rate-limit risk: one issue creation per trigger event, well within the 5,000 requests/hour ceiling for `GITHUB_TOKEN`.
 
+## Test Conventions
+
+### Environment Variable Mutation in Tests
+
+Tests that mutate `std::env` MUST use `temp-env 0.3+` (`with_vars` for sync closures;
+`async_with_vars` for async closures). Raw `std::env::set_var` / `std::env::remove_var` is
+**forbidden** in tests — it is unsound in multi-threaded Rust test harnesses (Rust 1.86+
+marks these functions `unsafe` for exactly this reason), and lacks panic-safe cleanup.
+`temp-env` provides RAII cleanup that fires on both normal return and panic exit.
+
+**Forbidden pattern:**
+
+```rust
+// FORBIDDEN: raw env mutation — race-prone, leaks on panic
+std::env::set_var("HOME", "/tmp/test-home");
+// ... test body ...
+std::env::remove_var("HOME"); // never executes if test panics
+```
+
+**Required pattern (sync closure):**
+
+```rust
+// REQUIRED: RAII cleanup on normal return AND panic
+temp_env::with_vars(
+    [("HOME", None::<&str>)],
+    || {
+        // test body — env is restored when closure exits
+    },
+);
+```
+
+**Required pattern (async closure — requires `features = ["async_closure"]`):**
+
+```rust
+// REQUIRED for async test bodies
+temp_env::async_with_vars(
+    [("HOME", None::<&str>)],
+    async {
+        // async test body — env is restored when future completes or panics
+    },
+).await;
+```
+
+**Dependency declaration** (`monocle-runtime/Cargo.toml` `[dev-dependencies]`):
+
+```toml
+temp-env = { version = "^0.3", features = ["async_closure"] }
+```
+
+The `async_closure` feature must always be enabled even if only sync closures are used in
+a given crate's tests, to keep the dev-dependency declaration consistent across all crates
+that add `temp-env`.
+
+**Canonical usage example:** BC-ENGINE-002-ERR test in
+`monocle-runtime/tests/engine_module.rs` (see SS-engine-module.md §Behavioral Contracts).
+
+**CI enforcement:** Add a semgrep rule rejecting `env::set_var` and `env::remove_var` in
+test files:
+
+```yaml
+  - id: monocle-no-raw-env-mutation-in-tests
+    pattern-either:
+      - pattern: std::env::set_var(...)
+      - pattern: std::env::remove_var(...)
+    paths:
+      include:
+        - "**/tests/**/*.rs"
+        - "**/*_test.rs"
+        - "**/*tests*.rs"
+    message: "Raw env mutation in tests is unsafe in multi-threaded Rust harnesses (Rust 1.86+
+      marks set_var/remove_var unsafe). Use temp_env::with_vars (sync) or
+      temp_env::async_with_vars (async) from temp-env ^0.3. See SS-conventions-anti-patterns.md
+      §Test Conventions."
+    severity: ERROR
+    languages: [rust]
+```
+
+Add this rule to `.semgrep.yml` alongside the existing production-code rules. The rule
+targets test file paths only (tests directories, `_test.rs`, and files containing `tests`
+in the name) to avoid false positives from production code that legitimately calls env
+functions (e.g., the daemon start sequence reading env vars, which is a read, not a write).
+
 ## Gene-Source Citations
 
 | Anti-Pattern | Gene-Source Evidence |
@@ -351,3 +433,19 @@ GitHub Actions free tier covers weekly cron (`0 14 * * 1`) plus light Python com
 | Unbounded channels | `any-context-lazyclaude-pass-8-final-synthesis-v2.md` §broker-r1: BC-BROKER-003 documents unbounded channel as a confirmed failure mode in the broker subsystem; broker drops are completely silent (no log, no metric, no counter) per BC-BROKER-006 |
 | Theme globals | `lazygit-pass-8-final-synthesis.md` §pkg/gui: package-level theme globals causing render-thread contention |
 | Single-popup overlay | `lazygit-pass-8-final-synthesis.md` §pkg/gui popup: `Option<Popup>` drop-on-concurrent pattern; concurrent modal opens silently drop the pending prompt |
+| Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
+
+## §Trace
+
+v1.4 changes (round-24 fix F-R24-adv-5):
+- F-R24-adv-5 RESOLVED (LOW process-gap — adversary finding): BC-ENGINE-002-ERR
+  established a precedent for `temp-env` usage in env-mutating tests, but the
+  conventions doc did not codify the rule. Future tests for env-sensitive code paths
+  (e.g., `MONOCLE_NO_AUTOSTART`, `CLAUDE_SESSION_ID`, daemon lock-file path resolution)
+  could silently regress to raw `std::env::set_var`/`remove_var` — which Rust 1.86+
+  marks `unsafe` in multi-threaded contexts and which lacks panic-safe cleanup. Fix:
+  added §Test Conventions subsection with forbidden/required patterns, Cargo.toml
+  declaration, canonical usage example pointer (BC-ENGINE-002-ERR), and a semgrep CI
+  rule that rejects raw env mutation in test files. The semgrep rule is scoped to test
+  file paths only to avoid false positives on production code that reads (but does not
+  write) env vars (e.g., daemon start sequence `std::env::var("CLAUDE_SESSION_ID")`).
