@@ -810,3 +810,63 @@ All 3 adversary findings from round-22 resolved in-scope. Consistency finding re
 | architect | SS-engine-module v1.1.4 — F-R22-1/2 provenance precision + F-R22-3 BC-ENGINE-002-ERR test spec | commit 563b573 |
 | architect | SS-deps-pin-manifest v1.1.6 — temp-env ^0.2 added to [dev-dependencies] | commit afe72a2 |
 | state-manager | Round-23 close-out: STATE.md (D-031) + cycle files | this commit |
+
+---
+
+## Burst 24 (2026-05-13) — Round-24 validation chain
+
+**Agents dispatched:** consistency-validator + adversary (parallel)
+**Files touched:** plans/consistency-audit-round-24.md (NEW)
+**Versions bumped:** n/a (validation only)
+
+### Summary
+
+Round 24 validation chain complete. Consistency-validator found F-R24-cons-1/2/3/4 (BC count reconciliation, pre-staging table stale, daemon-lifecycle citation, version pointer gaps). Adversary found 0 CRITICAL + 3 MEDIUM + 2 LOW (F-R24-adv-1 through F-R24-adv-5). Adversary report transcribed by state-manager to plans/adversary-pass-round-24.md during round-25 close-out. Consistency report persisted at commit 2fb7d82.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| consistency-validator | Full post-round-23 cross-file coherence audit | plans/consistency-audit-round-24.md (commit 2fb7d82) |
+| adversary | Fresh-context production-grade review — SS-engine-module v1.1.5 + SS-deps v1.1.6 + SS-conventions v1.3 + brief v1.4.11 | adversary-pass-round-24.md (transcribed during round-25 close-out) |
+
+---
+
+## Burst 25 (2026-05-13) — Round-25 fix burst: F-R24-adv-1/2/3/5 + F-R24-cons-1/2/3/4
+
+**Agents dispatched:** architect (3 commits), product-owner (1 commit)
+**Trigger:** 3 MEDIUM + 2 LOW from round-24 adversary (F-R24-adv-1/2/3/5) + 4 consistency findings (F-R24-cons-1/2/3/4); routes consolidated to architect + product-owner
+**Files touched:** SS-engine-module.md (v1.1.6), SS-deps-pin-manifest.md (v1.1.7), SS-conventions-anti-patterns.md (v1.4), product-brief.md (v1.4.12), plans/adversary-pass-round-24.md (NEW), STATE.md, cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md
+**Versions bumped:** SS-engine-module v1.1.5→v1.1.6; SS-deps-pin-manifest v1.1.6→v1.1.7; SS-conventions-anti-patterns v1.3→v1.4; product-brief v1.4.11→v1.4.12
+
+### Summary
+
+All 5 adversary findings and all 4 consistency findings resolved in-scope. F-R24-adv-1 addressed the async/sync API mismatch in the BC-ENGINE-002-ERR test spec: temp-env ^0.2 → ^0.3, with_vars retained for the sync metadata() half and async_with_vars used for the async enrich() half. F-R24-adv-3 corrected the env-var unset list (HOME/USERPROFILE/HOMEDRIVE/HOMEPATH; XDG_* removed as irrelevant to home_dir(); None::<&str> form specified). F-R24-adv-5 added a Test Conventions subsection to SS-conventions-anti-patterns v1.4 mandating temp-env for all env-mutating tests with a CI grep rule. F-R24-adv-2 (routing violation — architect authored product-brief changelog entry in v1.4.11) resolved via Option B: product-owner authored v1.4.12 ratification rather than full revert. Consistency findings F-R24-cons-1/2/4 closed by architect propagation sweep; F-R24-cons-3 closed by product-owner v1.4.12.
+
+**Notable — temp-env ecosystem verification:** Architect verified temp-env API surface against crates.io and upstream source before pinning ^0.3. Async variant `async_with_vars` was introduced in 0.3.0; with_vars (sync) retained in 0.3.x. Pin correct.
+
+**Notable — Option B routing choice (F-R24-adv-2):** Orchestrator chose Option B (ratify via product-owner v1.4.12) over Option A (full revert + re-dispatch through product-owner). Less disruptive; content was correct; routing violation was mechanical. Routing-precedent question (narrow exemption for count-propagation vs mandatory cross-boundary routing) escalated to Phase 1 human gate as D-032.
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R24-adv-1 MEDIUM (adversary): BC-ENGINE-002-ERR test spec uses sync with_vars for async enrich() call — will not compile under temp-env ^0.2 | MEDIUM | temp-env bumped ^0.2→^0.3; test spec split into sync half (with_vars for metadata()) and async half (async_with_vars for enrich()); SS-engine-module v1.1.5→v1.1.6 | 436d4d3 |
+| F-R24-adv-2 MEDIUM [process-gap] (adversary): architect authored product-brief v1.4.11 changelog entry — routing violation (product-brief → product-owner per CLAUDE.md routing table) | MEDIUM (process) | product-owner authored v1.4.12 ratification entry; routing-precedent question captured for Phase 1 gate (D-032) | 11185a1 |
+| F-R24-adv-3 MEDIUM (adversary): env-var unset list incomplete (missing USERPROFILE/HOMEDRIVE/HOMEPATH for Windows) and contained irrelevant XDG_* vars; "clear" ambiguous | MEDIUM | Env-var list corrected to HOME/USERPROFILE/HOMEDRIVE/HOMEPATH; XDG_* removed; None::<&str> form specified; Windows FOLDERID_Profile fallback caveat documented | 436d4d3 |
+| F-R24-adv-4 LOW (adversary): STATE.md stale (brief v1.4.10 vs v1.4.11; engine v1.1.4 vs v1.1.5) | LOW | Resolved by this round-25 close-out STATE.md update | this commit |
+| F-R24-adv-5 LOW [process-gap] (adversary): no convention mandating temp-env for env-mutating tests in SS-conventions-anti-patterns.md | LOW | Test Conventions subsection added to SS-conventions-anti-patterns v1.3→v1.4; CI grep rule specified rejecting env::set_var/env::remove_var in tests/ | 3b90235 |
+| F-R24-cons-1/2/4 (consistency): BC count reconciliation + pre-staging table stale + version pointer gaps | MEDIUM | Resolved by architect propagation sweep (temp-env version, BC count, pre-staging table); commits 436d4d3 + f287592 | 436d4d3 + f287592 |
+| F-R24-cons-3 (consistency): daemon-lifecycle citation stale (v1.0.3 → v1.0.4) in 3 places in product-brief | MEDIUM | product-owner refreshed all 3 citations in v1.4.12 | 11185a1 |
+
+### Lessons
+
+- **[process-gap] Count-propagation across artifact boundaries should route through destination owner.** Architect's mechanical BC count propagation into product-brief.md (commit 688a5ed) was content-correct but routing-wrong per CLAUDE.md. Orchestrator chose Option B (ratification) over Option A (revert). The underlying question — does a narrow count-propagation exemption exist, or must ALL cross-boundary edits route through the destination owner? — is now a Phase 1 gate question for the human (D-032). Codification pending human decision.
+
+- **[process-gap] Test-spec verification — architect should verify external API surface against upstream before pinning version.** BC-ENGINE-002-ERR was written assuming temp-env ^0.2 async API; the API (async_with_vars) only exists in ^0.3. Architect must check crates.io + upstream source for the specific API method before writing test specs that depend on it. This near-miss would have produced a non-compiling spec that would only be caught at implementation time.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-engine-module v1.1.6 — async/sync test spec split (F-R24-adv-1) + env-var list corrected (F-R24-adv-3) | commit 436d4d3 |
+| architect | SS-deps-pin-manifest v1.1.7 — temp-env ^0.2→^0.3 + async_closure feature (F-R24-adv-1) | commit f287592 |
+| architect | SS-conventions-anti-patterns v1.4 — Test Conventions subsection (F-R24-adv-5) | commit 3b90235 |
+| product-owner | product-brief v1.4.12 — routing-precedent ratification + daemon-lifecycle citation refresh (F-R24-adv-2 + F-R24-cons-3) | commit 11185a1 |
+| state-manager | Persist round-24 adversary report + round-25 close-out STATE.md + cycle files | this commit |

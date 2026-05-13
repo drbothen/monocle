@@ -230,3 +230,14 @@ Active TaskList at context-clear: 5 tasks (#35 round-21-fix-burst, #36 round-21-
 | **Convergence counter** | R22: 0 CRIT + 3 MED + 0 LOW. R23 fix burst resolved all 3. R24 validation pending. |
 
 ---
+
+## Round 25 Close-Out (2026-05-13) — F-R24-adv-1/2/3/5 + F-R24-cons-1/2/3/4 resolved; round 26 validation pending
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 25 fix burst complete. Commits 436d4d3 (SS-engine-module v1.1.6) + f287592 (SS-deps-pin-manifest v1.1.7) + 3b90235 (SS-conventions-anti-patterns v1.4) + 11185a1 (product-brief v1.4.12). All 3 adversary MEDIUM findings resolved: F-R24-adv-1 (async test spec sync/async split; temp-env ^0.3), F-R24-adv-2 (routing-precedent ratified by product-owner v1.4.12; question escalated to Phase 1 gate), F-R24-adv-3 (env-var list corrected: HOME/USERPROFILE/HOMEDRIVE/HOMEPATH; XDG_* removed). Both LOW findings resolved: F-R24-adv-4 (STATE.md version refresh), F-R24-adv-5 (Test Conventions subsection added to SS-conventions v1.4). Consistency findings F-R24-cons-1/2/4 closed by architect sweep; F-R24-cons-3 closed by product-owner v1.4.12. Adversary report transcribed to plans/adversary-pass-round-24.md. D-032 logged. Phase 1 gate now has 2 explicit human questions (vision-vs-architecture authority D-031; routing-precedent D-032). |
+| **Next** | Round 26 validation chain. Dispatch consistency-validator + adversary in parallel. See STATE.md Immediate Next Action for full dispatch instructions. If both clean (0 CRIT + 0 MED): present Phase 1 gate to human with 2 gate questions (D-031 + D-032). |
+| **Convergence counter** | R24: 0 CRIT + 3 MED + 2 LOW. R25 fix burst resolved all 5. R26 validation pending. Trajectory: 10→7→5→2→14→6+6→8 fixes→3→3 fixes→0 R10→13 FC-adversary→15-fix→17-fix→21-fix→3 R20→2+1 R21-fix→3 R22→3 R23-fix→3+2 R24→5 R25-fix. |
+
+---
