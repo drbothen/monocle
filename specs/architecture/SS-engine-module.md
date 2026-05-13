@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.5"
+version: "1.1.6"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs)"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries)"
 project: monocle
 ---
 
@@ -620,10 +620,15 @@ relative path for an unresolvable home directory. Verification: test in
 `monocle-runtime/tests/engine_module.rs` with the following specification:
 
 1. Construct `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`.
-2. Using `temp-env` (pinned in SS-deps-pin-manifest.md `[dev-dependencies]` at
-   `temp-env = "^0.2"`), call `temp_env::with_vars` to clear `HOME`, `USERPROFILE` (Windows),
-   `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, and `XDG_RUNTIME_DIR` for the
-   duration of the test, forcing `BaseDirs::new()` to return `None`.
+2. **Env-isolation strategy — two closures, one sync, one async:**
+   `temp-env ^0.3` (feature `async_closure`) is pinned in SS-deps-pin-manifest.md
+   `[dev-dependencies]`. It exposes two relevant APIs:
+   - `temp_env::with_vars` — synchronous closure: `with_vars(kvs, FnOnce() -> R) -> R`
+   - `temp_env::async_with_vars` — async closure (requires `features = ["async_closure"]`):
+     `async_with_vars(kvs, impl Future<Output = R>) -> R`
+   Because `metadata()` is synchronous and `enrich()` is `async`, they require different
+   wrappers and MUST NOT be co-located inside the same `with_vars` call (which accepts
+   a synchronous closure only and does not support `.await` inside it).
    **Env-isolation rationale:** `temp-env` restores all modified variables on drop — safe
    for multi-threaded test runs because no `std::env::set_var` / `remove_var` call outlives
    the closure scope. Manual `std::env::remove_var` without `temp-env` is unsafe in
@@ -633,19 +638,67 @@ relative path for an unresolvable home directory. Verification: test in
    to avoid the race but still leaves the environment mutated if a test panics before
    cleanup; `temp-env` is superior because it uses RAII cleanup on both normal and panic
    exit paths.
-3. Within the `temp_env::with_vars` closure, assert:
-   - `module.metadata().is_err()` is `true`.
-   - `matches!(module.metadata().unwrap_err(), EngineMetadataError::HomeUnresolvable)` is `true`.
-4. Construct a synthetic `ProcessSnapshot` with the same field values used in the `detect()`
-   test cases (pid, exe_path, empty cmdline/env). Within the same `temp_env::with_vars`
-   closure, assert:
-   - `module.enrich(&snapshot).await.is_err()` is `true`.
-   - `matches!(module.enrich(&snapshot).await.unwrap_err(), EngineMetadataError::HomeUnresolvable)` is `true`.
+3. **Variables to clear — four env vars (corrected from prior v1.1.4 list):**
+   Clear exactly these four variables, each with `None::<&str>` to explicitly unset (not
+   empty-string):
+   - `HOME` — Linux/macOS home resolution
+   - `USERPROFILE` — Windows primary home resolution
+   - `HOMEDRIVE` — Windows legacy home prefix (combined with `HOMEPATH`)
+   - `HOMEPATH` — Windows legacy home path (combined with `HOMEDRIVE`)
+   Use the explicit form `[("HOME", None::<&str>), ("USERPROFILE", None::<&str>),
+   ("HOMEDRIVE", None::<&str>), ("HOMEPATH", None::<&str>)]` so the unset-vs-empty-string
+   distinction is unambiguous in the test source.
+   **Why XDG_* were removed:** The prior v1.1.4 specification listed `XDG_DATA_HOME`,
+   `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, and `XDG_RUNTIME_DIR`. These are NOT consulted
+   by `directories::BaseDirs::home_dir()` in `directories 6`; they affect `data_dir()`,
+   `config_dir()`, `cache_dir()`, and `runtime_dir()` respectively. Clearing them does not
+   affect `BaseDirs::new()` null-vs-Some result. They were documentation noise that
+   misleads implementers about what `BaseDirs::new()` actually checks. Removed.
+   **Windows CI caveat:** On Windows, `BaseDirs` may also fall back to `FOLDERID_Profile`
+   (resolved via `SHGetKnownFolderPath` Windows COM call) regardless of env-var state.
+   GitHub Actions Windows runners typically have a registered user SID, so `home_dir()`
+   MAY succeed even with all four vars cleared. The test on Windows CI is therefore
+   best-effort for the `None` path; the contract is fully deterministic on Linux/macOS
+   where the four env vars are the only resolution mechanism.
+4. **Sync half — `metadata()` test (use `temp_env::with_vars`):**
+   ```rust
+   temp_env::with_vars(
+       [("HOME", None::<&str>), ("USERPROFILE", None::<&str>),
+        ("HOMEDRIVE", None::<&str>), ("HOMEPATH", None::<&str>)],
+       || {
+           assert!(module.metadata().is_err());
+           assert!(matches!(
+               module.metadata().unwrap_err(),
+               EngineMetadataError::HomeUnresolvable
+           ));
+       },
+   );
+   ```
+5. **Async half — `enrich()` test (use `temp_env::async_with_vars`):**
+   Construct a synthetic `ProcessSnapshot` with the same field values used in the
+   `detect()` test cases (pid, exe_path, empty cmdline/env). In a separate
+   `#[tokio::test]` (or within an `async` block):
+   ```rust
+   temp_env::async_with_vars(
+       [("HOME", None::<&str>), ("USERPROFILE", None::<&str>),
+        ("HOMEDRIVE", None::<&str>), ("HOMEPATH", None::<&str>)],
+       async {
+           assert!(module.enrich(&snapshot).await.is_err());
+           assert!(matches!(
+               module.enrich(&snapshot).await.unwrap_err(),
+               EngineMetadataError::HomeUnresolvable
+           ));
+       },
+   ).await;
+   ```
 
 The test is placed in `monocle-runtime/tests/engine_module.rs` alongside the BC-ENGINE-002
-`detect()` tests. `temp-env` is a `[dev-dependencies]` entry; it does not appear in the
-production binary. The Phase 1 implementer MUST NOT use `#[serial]` as a substitute for
-`temp-env` — serialisation mitigates the race but does not guarantee cleanup on panic.
+`detect()` tests. `temp-env` is a `[dev-dependencies]` entry with `features = ["async_closure"]`;
+it does not appear in the production binary. The Phase 1 implementer MUST NOT use `#[serial]`
+as a substitute for `temp-env` — serialisation mitigates the race but does not guarantee
+cleanup on panic. The implementer MUST NOT use `tokio::runtime::Handle::current().block_on()`
+inside the sync closure as a workaround — that pattern induces a nested-runtime panic under
+`#[tokio::test]` and is explicitly forbidden.
 
 **BC-ENGINE-003:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
 `HookType` variant, with the exact path strings in §Struct-level inherent operations.
@@ -663,7 +716,7 @@ asserts `module.hook_paths().len() == 5` with the exact path string for each `Ho
 |-------|-------------|----------------|
 | BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (id/detect/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>` (vision-spirit-aligned elaboration); `enrich()` returns `Result<EnrichedSession, EngineMetadataError>` (vision-spirit-aligned elaboration); no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
 | BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
-| BC-ENGINE-002-ERR | `ClaudeCodeModule::metadata()` and `enrich()` MUST return `Err(EngineMetadataError::HomeUnresolvable)` when `BaseDirs::new()` returns `None`; no-silent-fallback contract enforced via test in `monocle-runtime/tests/engine_module.rs` with `temp-env ^0.2` env-var isolation (clears HOME, USERPROFILE, XDG_*) | §Behavioral Contracts (BC-ENGINE-002-ERR) |
+| BC-ENGINE-002-ERR | `ClaudeCodeModule::metadata()` and `enrich()` MUST return `Err(EngineMetadataError::HomeUnresolvable)` when `BaseDirs::new()` returns `None`; no-silent-fallback contract enforced via test in `monocle-runtime/tests/engine_module.rs` with `temp-env ^0.3` (features=["async_closure"]) — `with_vars` for sync `metadata()` half, `async_with_vars` for async `enrich()` half; clears HOME, USERPROFILE, HOMEDRIVE, HOMEPATH | §Behavioral Contracts (BC-ENGINE-002-ERR) |
 | BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
 **Total: 4 BCs pre-staged.** Product-owner MUST use these exact IDs when formalizing
@@ -672,6 +725,36 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
+- F-R24-adv-1 RESOLVED (MEDIUM — adversary finding): BC-ENGINE-002-ERR verification block
+  previously called `temp_env::with_vars` (synchronous closure) and then used `.await`
+  inside that closure for the `enrich()` assertion — an uncompilable pattern because
+  `with_vars` accepts a synchronous `FnOnce` only. Fix: the test specification is now split
+  into two halves. The sync half (`metadata()`) uses `temp_env::with_vars`. The async half
+  (`enrich()`) uses `temp_env::async_with_vars`, which is available in `temp-env 0.3+`
+  behind the `async_closure` feature flag. Verification: crates.io API confirmed
+  `temp-env 0.3.6` (latest in 0.3.x line, published 2023-09-24, not yanked); source
+  inspection of `vmx/temp-env` confirmed `async_with_vars` is gated on `features =
+  ["async_closure"]` with signature `pub async fn async_with_vars<K,V,F,R>(kvs, F) -> R
+  where F: Future<Output=R> + IntoFuture<Output=R>`. SS-deps-pin-manifest.md bumped from
+  `^0.2` to `{ version = "^0.3", features = ["async_closure"] }` in the same burst
+  (v1.1.7). The fallback path (block_on inside sync closure) was explicitly rejected:
+  `Handle::current().block_on()` panics under `#[tokio::test]` due to nested-runtime
+  prohibition; this prohibition is now documented in the test spec.
+- F-R24-adv-3 RESOLVED (MEDIUM — adversary finding): The env-var list cleared to force
+  `BaseDirs::new()` to return `None` was incorrect on two axes. (1) Missing Windows legacy
+  vars: `HOMEDRIVE` and `HOMEPATH` (combined, they provide the Windows legacy home path
+  used by `directories 6` BaseDirs on Windows); clearing only `USERPROFILE` allows
+  `HOMEDRIVE`+`HOMEPATH` fallback to succeed, causing a false-pass on Windows CI.
+  (2) XDG_* irrelevant: `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, and
+  `XDG_RUNTIME_DIR` are NOT consulted by `BaseDirs::home_dir()` in `directories 6`; they
+  affect `data_dir()`/`config_dir()`/`cache_dir()`/`runtime_dir()` only. Listing them
+  created documentation noise that misleads implementers. Fix: corrected list is exactly
+  four variables — `HOME`, `USERPROFILE`, `HOMEDRIVE`, `HOMEPATH` — each with
+  `None::<&str>` to unset (not empty-string). XDG_* entries removed. Windows CI caveat
+  documented: `FOLDERID_Profile` COM fallback may resolve home_dir regardless of env state
+  on runners with a registered user SID; Linux/macOS path is fully deterministic.
 
 v1.1.5 changes (round-23 micro-fix):
 - BC-ENGINE-002-ERR ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-ENGINE-002 and
