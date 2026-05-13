@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.9"
+version: "1.1.10"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T22:00:00Z
+timestamp: 2026-05-13T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser)"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention"
 project: monocle
 ---
 
@@ -1136,11 +1136,12 @@ removes `Deserialize` from these structs must include a constructor addition in 
 
 **Future audit maintenance:** The CI `monocle-non-exhaustive-struct-audit-completeness` semgrep
 rule (SS-conventions-anti-patterns.md §Semgrep Rules) scans for `#[non_exhaustive]` on `pub struct`
-definitions and verifies each struct name appears in the `<!-- BEGIN: Cross-Crate Constructor Audit
-Table -->` … `<!-- END: Cross-Crate Constructor Audit Table -->` block. A Python CI script reads
-the delimiter-bounded block and compares the set of struct names against semgrep matches; CI fails
-if any struct is missing from the table. This prevents the class of defect that motivated F-R30-1
-(audit table claimed completeness while 10 structs were missing).
+definitions and verifies each struct name appears in the delimiter-bounded block (the HTML BEGIN/END
+marker pair defined in SS-conventions-anti-patterns.md §Semgrep Coverage Hardening that wraps the
+audit table rows below). A Python CI script reads the delimiter-bounded block and compares the set
+of struct names against semgrep matches; CI fails if any struct is missing from the table. This
+prevents the class of defect that motivated F-R30-1 (audit table claimed completeness while 10
+structs were missing).
 
 ---
 
@@ -1159,6 +1160,20 @@ contracts with postconditions and verification harness stubs.
 ---
 
 ## §Trace
+
+v1.1.10 changes (round-35 fix F-R34-1 CRITICAL):
+- F-R34-1 RESOLVED (CRITICAL — adversary finding): §Trace prose in the v1.1.9 entry (at
+  the lines describing the HTML delimiter addition in F-R30-1) quoted the audit-table delimiter
+  strings verbatim in backticks. The SS-conventions-anti-patterns.md v1.8 F-R34-1 fix specifies
+  that the `check_audit_table.py` duplicate-delimiter detection MUST use line-anchored regex
+  (not substring search) precisely to exclude prose mentions like these. However, as defense in
+  depth, the convention also prohibits verbatim quoting of the delimiter strings in §Trace or any
+  spec narrative — the line-anchored regex is the first defense; the no-verbatim-quoting convention
+  is the second. Fix: the two verbatim delimiter quotes in the v1.1.9 §Trace entry and the
+  abbreviated form in the F-R30-3 entry are replaced with name-references: "HTML BEGIN/END
+  delimiter markers (defined in SS-conventions-anti-patterns.md §Semgrep Coverage Hardening)."
+  Historical meaning is preserved — readers understand that HTML comment markers wrap the table;
+  the verbatim strings are no longer embedded in the spec file.
 
 v1.1.9 changes (round-30 fixes F-R30-1 HIGH / F-R30-3 MEDIUM):
 - F-R30-1 RESOLVED (HIGH — adversary finding): §Cross-Crate Constructor Audit table claimed
@@ -1180,8 +1195,8 @@ v1.1.9 changes (round-30 fixes F-R30-1 HIGH / F-R30-3 MEDIUM):
   `FactoryAdapter::detect()`) will require constructors — the table notes record the trigger.
   Structure change: the separate "HookEvent Inner Struct Audit" sub-section is replaced by the
   "Serde-deserialize-only enforcement note" paragraph; all struct entries are now in one table.
-  HTML delimiters added: `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` and
-  `<!-- END: Cross-Crate Constructor Audit Table -->` wrap the table rows for CI machine-parsing.
+  HTML BEGIN/END delimiter markers (defined in SS-conventions-anti-patterns.md §Semgrep Coverage
+  Hardening) wrap the table rows for CI machine-parsing by the Step 3 Python script.
   Table column "Source spec" added to make the audit cross-document navigable.
   Table column "Construction path" replaces the merged "Cross-crate construction sites" +
   "`#[non_exhaustive]`?" columns; the latter was always "Yes" (the table lists only `#[non_exhaustive]`
@@ -1190,8 +1205,9 @@ v1.1.9 changes (round-30 fixes F-R30-1 HIGH / F-R30-3 MEDIUM):
 - F-R30-3 RESOLVED (MEDIUM process-gap — adversary finding): The audit-table invariant was a
   passive policy ("MUST update this table") with no machine enforcement. F-R30-1 demonstrated
   the policy was violated — 10 structs were missing while the table claimed completeness. Fix:
-  (1) HTML delimiters (`<!-- BEGIN: ... -->` / `<!-- END: ... -->`) wrap the audit table, enabling
-  a CI Python script to extract the declared struct names by parsing between the delimiters.
+  (1) HTML BEGIN/END delimiter markers (defined in SS-conventions-anti-patterns.md §Semgrep
+  Coverage Hardening) wrap the audit table, enabling a CI Python script to extract the declared
+  struct names by parsing between the delimiters.
   (2) A new semgrep rule `monocle-non-exhaustive-struct-audit-completeness` is specified in
   SS-conventions-anti-patterns.md v1.6 §Semgrep Rules. The rule matches `#[non_exhaustive]` on
   `pub struct` definitions in monocle crate sources. The CI Python script (devops-engineer Phase 1
