@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.11"
+version: "1.12"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T23:55:00Z
+timestamp: 2026-05-14T02:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added"
 project: monocle
 ---
 
@@ -209,13 +209,13 @@ The devops-engineer creates `semgrep-fixtures/` at the project root (NOT under `
 which is the Rust integration test crate). Each semgrep rule has exactly one corresponding
 fixture file containing a deliberate violation of that rule.
 
-| Rule ID | Fixture file | Violation |
-|---------|-------------|-----------|
-| `monocle-no-shell-injection` | `semgrep-fixtures/shell_injection.rs` | `Command::new("sh").arg("-c").arg("echo hi");` |
-| `monocle-no-naked-fs-write` | `semgrep-fixtures/naked_fs_write.rs` | `std::fs::write("/tmp/x", b"data").unwrap();` |
-| `monocle-no-unbounded-channel` | `semgrep-fixtures/unbounded_channel.rs` | `tokio::sync::mpsc::unbounded_channel::<u8>();` |
-| `monocle-no-raw-env-mutation-in-tests` | `semgrep-fixtures/tests/raw_env_mutation.rs` | `std::env::set_var("HOME", "/tmp");` AND `env::set_var("HOME", "/tmp");` (both patterns exercised) |
-| `monocle-non-exhaustive-struct-audit-completeness` | `semgrep-fixtures/non_exhaustive_struct.rs` | Two fixture structs (both in the same file): **Shape A** — minimal: `#[non_exhaustive] pub struct AuditFixtureMinimal { pub field: u32 }` (no intervening attribute); **Shape B** — production-code shape: `#[non_exhaustive] #[derive(Debug, Clone)] pub struct AuditFixtureDerived { pub field: u32 }` (`#[derive(...)]` interposed between `#[non_exhaustive]` and `pub struct`, mirroring every real monocle production struct). Expected match count: 2 (one per shape). Rationale: see note below. |
+| Rule ID | Fixture file | Violations required (all arms) | Expected count |
+|---------|-------------|--------------------------------|---------------|
+| `monocle-no-shell-injection` | `semgrep-fixtures/shell_injection.rs` | **Arm 1:** `Command::new("sh").arg("-c").arg("echo hi");` — **Arm 2:** `Command::new("bash").arg("-c").arg("echo hi");` — both `pattern-either` arms MUST be present | 2 |
+| `monocle-no-naked-fs-write` | `semgrep-fixtures/naked_fs_write.rs` | **Arm 1:** `std::fs::write("/tmp/x", b"data").unwrap();` — **Arm 2:** `tokio::fs::write("/tmp/x", b"data").await.unwrap();` — both `pattern-either` arms MUST be present | 2 |
+| `monocle-no-unbounded-channel` | `semgrep-fixtures/unbounded_channel.rs` | `tokio::sync::mpsc::unbounded_channel::<u8>();` (single pattern; no `pattern-either`) | 1 |
+| `monocle-no-raw-env-mutation-in-tests` | `semgrep-fixtures/tests/raw_env_mutation.rs` | All four `pattern-either` arms MUST be present: **Arm 1:** `std::env::set_var("HOME", "/tmp");` — **Arm 2:** `std::env::remove_var("HOME");` — **Arm 3:** `env::set_var("HOME", "/tmp");` — **Arm 4:** `env::remove_var("HOME");` | 4 |
+| `monocle-non-exhaustive-struct-audit-completeness` | `semgrep-fixtures/non_exhaustive_struct.rs` | Both `pattern-either` arms MUST be present: **Shape A** — minimal: `#[non_exhaustive] pub struct AuditFixtureMinimal { pub field: u32 }` (no intervening attribute); **Shape B** — production-code shape: `#[non_exhaustive] #[derive(Debug, Clone)] pub struct AuditFixtureDerived { pub field: u32 }` (`#[derive(...)]` interposed between `#[non_exhaustive]` and `pub struct`, mirroring every real monocle production struct). Rationale: see note below. | 2 |
 
 **Note — why two fixture shapes are required for `monocle-non-exhaustive-struct-audit-completeness` (F-R32-2):**
 
@@ -292,11 +292,26 @@ equals the expected value defined in the table above. Emit a log line per rule:
 `Fixture corpus: N violation(s) detected for rule <rule-id> (expected M) — FAIL`.
 Fail the CI step if any rule's actual count does not equal the expected count.
 
-The `monocle-no-raw-env-mutation-in-tests` rule must match 2 findings in its fixture
-(one for each pattern in `pattern-either`: `std::env::set_var` and `env::set_var`).
-`std::env::remove_var` and `env::remove_var` are implicitly covered by the fixture — the
-devops-engineer may add them to the fixture file to make the 4-pattern coverage explicit,
-adjusting the expected count accordingly (2 → 4).
+Each rule's fixture MUST contain at least one violation per `pattern-either` arm. Expected
+counts for Step 1 (computed from each rule's arm count):
+
+- `monocle-no-shell-injection` — 2 arms (`Command::new("sh")`, `Command::new("bash")`); expected count: **2**
+- `monocle-no-naked-fs-write` — 2 arms (`std::fs::write`, `tokio::fs::write`); expected count: **2**
+- `monocle-no-unbounded-channel` — 1 pattern (no `pattern-either`); expected count: **1**
+- `monocle-no-raw-env-mutation-in-tests` — 4 arms (`std::env::set_var`, `std::env::remove_var`, `env::set_var`, `env::remove_var`); expected count: **4**
+- `monocle-non-exhaustive-struct-audit-completeness` — 2 arms (Shape A minimal, Shape B with `#[derive(...)]`); expected count: **2**
+
+If any rule's actual finding count does not equal the expected count, CI MUST fail with an
+explicit error message identifying the missing arm, for example:
+`Fixture corpus: 1 violation(s) detected for rule monocle-no-shell-injection (expected 2) — FAIL: arm 'Command::new("bash")' produced no findings; verify fixture semgrep-fixtures/shell_injection.rs contains this pattern`.
+
+**CI sanity check — future arm additions:** The CI script MUST also assert that for each
+`pattern-either` rule, the declared expected count in the CI configuration is less than or
+equal to the actual fixture finding count. When a new `pattern-either` arm is added to any
+rule in `.semgrep.yml`, the corresponding fixture file MUST be updated with a violation for
+that arm and the expected count in the CI step MUST be incremented. Failure to do both in
+the same PR will be caught on the next fixture corpus run: the new arm produces zero findings
+in the stale fixture, causing the count to fall below the updated expected value — CI fails.
 
 **Step 2 — Production scan (zero-findings assertion):**
 
@@ -775,6 +790,40 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.12 changes (round-43 fix F-R42-adv-1 MEDIUM — S-7.01 propagation):
+
+- F-R42-adv-1 RESOLVED (MEDIUM process-gap — adversary finding): The F-R32-2 fix (v1.7) applied
+  dual-shape fixture corpus discipline to `monocle-non-exhaustive-struct-audit-completeness` —
+  mandatory all-arm coverage, expected count computed from arm count, CI failure on mismatch.
+  That discipline was NOT propagated to 3 sibling rules at the same fix point, violating
+  Partial-Fix Regression Discipline (S-7.01): when a convention is introduced or strengthened,
+  ALL existing occurrences of the gap in the same file must be remediated in the same edit.
+  The 3 sibling rules carried the same POL-11 partial-arm-coverage gap:
+  (1) `monocle-no-shell-injection` (2 `pattern-either` arms: `Command::new("sh")` and
+  `Command::new("bash")`): fixture previously exercised only the first arm. If the
+  `Command::new("bash")` arm's pattern syntax broke (semgrep version regression, YAML typo),
+  CI would emit PASS because the `sh` arm still matched — the broken arm is unverified.
+  (2) `monocle-no-naked-fs-write` (2 arms: `std::fs::write` and `tokio::fs::write`): fixture
+  previously exercised only `std::fs::write`. The `tokio::fs::write` arm was unverified.
+  (3) `monocle-no-raw-env-mutation-in-tests` (4 arms: `std::env::set_var`, `std::env::remove_var`,
+  `env::set_var`, `env::remove_var`): fixture exercised 2 of 4. Step 1 CI assertion used "implicitly
+  covered" language and "may add them to make explicit" — optional, not normative. The remaining
+  2 arms were unverified; a pattern regression on either would go undetected.
+  Fix (three parts, applied per S-7.01 all-at-once discipline):
+  (1) Fixture corpus table updated with all-arm requirements: each of the 3 affected rules now lists
+  ALL arms with MUST language, and expected counts computed from arm counts (shell_injection=2,
+  naked_fs_write=2, raw_env_mutation=4). `monocle-non-exhaustive-struct-audit-completeness`
+  unchanged (already dual-shape compliant from F-R32-2). `monocle-no-unbounded-channel` unchanged
+  (single-pattern rule, no `pattern-either`; expected count remains 1).
+  (2) Step 1 CI assertion language replaced: "implicitly covered" and "may" optional language
+  removed. Normative MUST language added: each rule's fixture MUST contain at least one violation
+  per `pattern-either` arm; expected counts table added; CI MUST fail with explicit arm-identifying
+  error message on count mismatch.
+  (3) CI sanity check added: the CI script MUST assert that declared expected count <= actual
+  fixture finding count, preventing future arm additions from regressing to partial coverage without
+  a corresponding fixture update. New arm + updated fixture + incremented expected count must ship
+  in the same PR; the sanity check catches the omission on the next fixture corpus run.
 
 v1.11 changes (round-41 fix F-R40-1 MEDIUM):
 
