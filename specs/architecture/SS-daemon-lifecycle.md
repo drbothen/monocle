@@ -2,11 +2,11 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.3"
+version: "1.0.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T00:00:00Z
+timestamp: 2026-05-13T10:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
@@ -69,8 +69,9 @@ initiates normal auto-start (lock file is stale).
   "pid": <N>,
   "uptime_sec": <N>,
   "version": "<semver>",
+  "abi_version": <N>,
   "lock_file": "<path>",
-  "hook_endpoints": ["/hooks/pre-tool-use", "/hooks/notification", ...],
+  "hook_endpoints": ["/hooks/pre-tool-use", "/hooks/notification", "..."],
   "ring_buffer_fill_pct": <0.0-100.0>,
   "channel_saturation_pct": <0.0-100.0>,
   "last_hook_ts": {
@@ -83,6 +84,11 @@ initiates normal auto-start (lock file is stale).
   "tui_attached": <bool>
 }
 ```
+
+The `abi_version` field carries `monocle_core::MONOCLE_ABI_VERSION` as compiled
+into this binary. Required by BC-ABI-001 (see SS-core-types-and-abi.md §ABI Version
+Constant). Phase 3 plugin SDK and Phase 4 federation use this field to verify
+ABI compatibility before handshake.
 
 **Authentication:** `/status` requires the same `X-Monocle-Authorization: <token>`
 header as hook endpoints. Rationale: `/status` exposes internal buffer fill levels
@@ -172,13 +178,27 @@ let app = public_router.merge(authed_router);
    Total token length: 74 characters.
 
    The prefix versions the auth model. Phase 4 federation introduces OAuth2
-   bearer tokens for cross-host trust establishment; the prefix allows the
-   daemon's auth middleware to dispatch on token type without ambiguity:
+   bearer tokens; the prefix allows the daemon's auth middleware to dispatch
+   on token type without ambiguity for the LOCAL auth surface:
 
-   | Prefix | Auth model | Phase introduced |
-   |--------|-----------|-----------------|
-   | `monocle-v1:` | Local shared secret (32-byte OsRng entropy) | Phase 1 |
-   | `Bearer ` | OAuth2 federation token (standard Authorization header) | Phase 4 |
+   | Prefix | Auth model | Header | Phase introduced |
+   |--------|-----------|--------|-----------------|
+   | `monocle-v1:` | Local shared secret (32-byte OsRng entropy) | `X-Monocle-Authorization` | Phase 1 |
+
+   **Phase 4 OAuth2 clarification (F-FC-I005):** Phase 4 federation does NOT
+   extend `X-Monocle-Authorization` to carry OAuth2 tokens. Phase 4 federation
+   tokens use the STANDARD `Authorization: Bearer <token>` header on a SEPARATE
+   `monocle-ipc` federation channel (russh tunnel), which is distinct from the
+   Phase 1 HTTP hook-ingestion channel. The Phase 1 daemon's auth middleware:
+
+   - Inspects only `X-Monocle-Authorization` (never `Authorization: Bearer`).
+   - Rejects any `Authorization: Bearer` header with HTTP 401 on Phase 1 routes
+     (the header is not a recognized auth mechanism for Phase 1 endpoints).
+
+   Phase 4 daemon adds a separate federation middleware path on the russh/`monocle-ipc`
+   channel gated by a `federation` feature flag. The Phase 1 HTTP routes remain
+   `X-Monocle-Authorization`-only with no Bearer support. BC-AUTH-002 applies
+   only to the Phase 1 `X-Monocle-Authorization` surface.
 
    Validation rule in Phase 1: any `X-Monocle-Authorization` value that does
    NOT begin with `monocle-v1:` is rejected immediately with HTTP 401
@@ -220,19 +240,23 @@ let app = public_router.merge(authed_router);
 
    - **BC-AUTH-002:** Any `X-Monocle-Authorization` value not beginning with
      `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}`.
+     Phase 4 OAuth2 federation tokens use `Authorization: Bearer` on a separate
+     federation channel and are NOT valid on Phase 1 HTTP endpoints.
      Verification: integration test sends `Authorization: Bearer fake`,
      `X-Monocle-Authorization: baretoken`, and
      `X-Monocle-Authorization: monocle-v2:abc` and asserts all receive HTTP 401.
 
    Note: `constant_time_eq` crate is added to the Phase 1 dependency manifest
-   (caret pin `^1`; no untrusted-input deserialization; timing-safety is its
-   only function). Update SS-deps-pin-manifest.md Phase 1 pin table accordingly.
+   (caret pin `^0.3`; no untrusted-input deserialization; timing-safety is its
+   only function). This matches the canonical pin in SS-deps-pin-manifest.md
+   Phase 1 pin table (authoritative source).
 4. Bind HTTP listener on `127.0.0.1:0` (OS-assigned port). Retrieve the actual
    port via `listener.local_addr()`.
 5. Bind UDS at `<runtime_dir>/monocle.sock` with mode `0o600`.
 6. Write lock file atomically via `tempfile::persist`:
    ```json
    {
+     "contract_version": 1,
      "pid": <N>,
      "port": <N>,
      "authToken": "<64-char hex>",
@@ -241,6 +265,12 @@ let app = public_router.merge(authed_router);
      "version": "<semver>"
    }
    ```
+   The `contract_version` field is always the first key (parallel to the JSONL
+   ring `format_version` convention). Phase 4 and future tooling check this field
+   before parsing remaining lock-file fields. Value `1` is the Phase 1 contract.
+   BC-LOCK-001: any lock-file reader MUST check `contract_version == 1` before
+   consuming other fields; an unrecognized version triggers a graceful skip with
+   a log warning.
    Lock file mode: `0o600` (owner-only read/write).
 7. Spawn hook-receiver task (axum server on the bound listener).
 8. Spawn UDS control task.
@@ -384,7 +414,8 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-AUTH-002 | Any `X-Monocle-Authorization` value not beginning `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}` (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-AUTH-002 | Any `X-Monocle-Authorization` value not beginning `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}`; Phase 4 OAuth2 federation uses separate channel not this header (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-LOCK-001 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD will formalize these as full BC entries with postconditions,
 evidence, and verification harness stubs. This artifact pre-stages them for

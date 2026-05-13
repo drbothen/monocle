@@ -4,11 +4,11 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.1"
+version: "1.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T00:05:00Z
+timestamp: 2026-05-13T10:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -227,7 +227,10 @@ including the full trait signature, the `VsddFactoryAdapter` implementation skel
 the Phase 3 relaxation path, and two behavioral contracts.
 
 The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
-The 9 pre-staged BC IDs (BC-RING-001, BC-ABI-001, BC-ABI-002, BC-TYPES-001,
-BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001, BC-PROTO-002, BC-AUTH-001,
-BC-AUTH-002) are RESERVED — the PRD must use these exact IDs when formalizing
-the contracts with postconditions and verification harness stubs.
+The 11 pre-staged BC IDs (BC-RING-001, BC-ABI-001, BC-ABI-002, BC-TYPES-001,
+BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002,
+BC-AUTH-001, BC-AUTH-002, BC-LOCK-001) are RESERVED — the PRD must use these
+exact IDs when formalizing the contracts with postconditions and verification
+harness stubs. Note: BC-PROTO-001 was split into BC-PROTO-001a (wire field
+number) and BC-PROTO-001b (Rust struct surface) per F-FC-O004. BC-LOCK-001
+added per F-FC-O001 (lock-file contract_version field).

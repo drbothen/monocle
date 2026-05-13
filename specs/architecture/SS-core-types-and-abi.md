@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.0"
+version: "1.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T23:59:00Z
+timestamp: 2026-05-13T10:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -159,37 +159,135 @@ existing variant structs (via `#[non_exhaustive]` on the inner event structs as
 well — see §Non-Exhaustive Inner Structs below). Phase 4 federation may introduce a
 `FederatedEvent` variant that wraps a remote peer's event for local display.
 
-#### `Phase1Permission` — Exemption
+#### Exhaustive Enums — Forbidden List (F-FC-C001 resolution)
 
-`Phase1Permission` (defined in `SS-permissions-phase1.md`) is **exhaustive by
-explicit design**. `#[non_exhaustive]` is FORBIDDEN on this enum. Rationale:
+The following Phase 1 enums are **exhaustive by explicit design**. `#[non_exhaustive]`
+is FORBIDDEN on each. Both are documented in ADR-0004.
+
+**`Phase1Permission`** (defined in `SS-permissions-phase1.md`): exhaustive because
 the TUI permission dispatcher must handle every variant at compile time;
 exhaustiveness is a compile-time correctness invariant. Phase 3 adds a categorically
 distinct `monocle-plugin-sdk::PluginPermission` enum rather than extending
-`Phase1Permission`. This exemption is documented in SS-permissions-phase1.md §Decision
-and is not subject to the general non-exhaustive default established below.
+`Phase1Permission`. Adding a variant requires an ADR covering the new Claude Code
+permission semantic, full match-arm coverage across all dispatch sites, and
+security-reviewer sign-off.
 
-### Non-Exhaustive Inner Structs
+**`ClaudeCodeTool`** (defined in `SS-permissions-phase1.md`): exhaustive because
+this enum mirrors Claude Code's tool list exactly. New tools are added by Anthropic
+as a product decision; monocle's mapping enum must track Claude Code's set
+deliberately. Each new tool addition requires an explicit ADR when Claude Code ships
+it, covering monocle's intended permission dispatch behavior for that tool. The
+`Unknown(String)` catch-all variant is the runtime safety net for tools added between
+monocle releases; it IS the exhaustion escape hatch and is intentional.
 
-Event variant payload structs also carry `#[non_exhaustive]` to allow adding new
-fields in future phases without breaking construction sites:
+These two enums are the complete Phase 1 exhaustive-enum forbidden list.
+The exemptions are recorded in ADR-0004.
+
+### Non-Exhaustive Inner Structs (F-FC-I002 resolution — all 5 fully specified)
+
+All five event variant payload structs are fully specified below. No placeholders.
+Gene-source: BC-HOOK-007 canonical hook-endpoint-body matrix (any-context-lazyclaude
+deep-hooks pass). EX-2 architect extensions add `cwd`, `transcript_path`, and `prompt`
+beyond the gene-source body fields.
 
 ```rust
+// monocle-core/src/hook_events.rs
+
+/// SessionStart hook — fired when a Claude Code session begins.
+/// Gene-source body fields: pid, session_id.
+/// EX-2 extension adds: cwd, transcript_path.
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SessionStartEvent {
+    /// Working directory of the spawned Claude Code session.
     pub cwd: String,
+    /// Absolute path to Claude Code's session transcript file.
     pub transcript_path: String,
+    /// Claude Code's own session UUID (not monocle's internal session ID).
     pub session_id: String,
+    /// PID of the Claude Code subprocess (process.ppid in the hook JS).
     pub pid: u32,
 }
 
-// ... similar for UserPromptSubmitEvent, PreToolUseEvent, NotificationEvent, StopEvent
+/// UserPromptSubmit hook — fired when the user submits a prompt.
+/// Gene-source body fields: pid, session_id.
+/// EX-2 extension adds: prompt text.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct UserPromptSubmitEvent {
+    /// The submitted prompt text. May be large; bounded by BC-DAEMON-003 (256 KiB).
+    pub prompt: String,
+    /// Claude Code's own session UUID.
+    pub session_id: String,
+    /// PID of the Claude Code subprocess.
+    pub pid: u32,
+}
+
+/// PreToolUse hook — fired before Claude Code executes a tool.
+/// Gene-source body fields: type ('tool_info'), pid, tool_name, tool_input.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PreToolUseEvent {
+    /// Name of the tool about to be invoked (e.g., "Bash", "Edit", "Write").
+    pub tool_name: String,
+    /// JSON-encoded tool input arguments. Stored as serde_json::Value to avoid
+    /// double-deserialization; the TUI renders this in the permission overlay.
+    pub tool_input: serde_json::Value,
+    /// Claude Code's own session UUID.
+    pub session_id: String,
+    /// PID of the Claude Code subprocess.
+    pub pid: u32,
+}
+
+/// Notification hook — fired for permission prompts and assistant messages.
+/// Gene-source body fields: pid, tool_name, tool_input, message.
+/// Gene-source applies a client-side filter (notification_type == 'permission_prompt')
+/// before POSTing; monocle preserves that filter in hook-install JS.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NotificationEvent {
+    /// "permission_prompt" or "assistant_message". Always "permission_prompt"
+    /// for Phase 1 due to the client-side filter. Retained as String
+    /// (not enum) for Phase 2 forward compatibility when the filter may relax.
+    pub notification_type: String,
+    /// Tool name; populated for permission_prompt type. Empty string otherwise.
+    pub tool_name: String,
+    /// JSON tool input; populated for permission_prompt type.
+    pub tool_input: serde_json::Value,
+    /// Human-readable notification body. May be large; bounded by BC-DAEMON-003.
+    pub message: String,
+    /// Claude Code's own session UUID.
+    pub session_id: String,
+    /// PID of the Claude Code subprocess.
+    pub pid: u32,
+}
+
+/// Stop hook — fired when a Claude Code session ends.
+/// Gene-source body fields: pid, stop_reason, session_id.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct StopEvent {
+    /// Reason the session ended. Known values: "end_turn" | "max_tokens" |
+    /// "tool_use" | "error". Stored as String for forward compatibility.
+    pub stop_reason: String,
+    /// Claude Code's own session UUID.
+    pub session_id: String,
+    /// PID of the Claude Code subprocess.
+    pub pid: u32,
+}
 ```
 
-Phase 2 may add fields to `NotificationEvent` (e.g., `parent_message_id` for
-trigger-trace) without a breaking change, because `#[non_exhaustive]` prevents
-exhaustive struct literal construction in downstream code.
+**Field reconciliation: `session_id` and `pid` in Rust structs vs proto `HookEnvelope`.**
+Both fields appear in the Rust inner event structs AND in the proto `HookEnvelope`
+(envelope fields 2 and 4). This is intentional. Rust structs carry them because the
+daemon's HTTP handlers deserialize the JSON POST body directly into the event struct;
+the proto envelope is not in the HTTP deserialization path. The proto `HookEnvelope`
+carries them as envelope-level routing fields for Phase 4 federation. Inner proto
+event messages do NOT re-declare `session_id` or `pid` — they are envelope-level.
+The invariant `envelope.session_id == event.session_id` holds for all Phase 1 messages.
+
+Phase 2 may add fields to any event struct without a breaking change, because
+`#[non_exhaustive]` prevents exhaustive struct literal construction in downstream code.
 
 ### General Rule for All Other Phase 1 Public Enums
 
@@ -210,7 +308,9 @@ source files (see SS-conventions-anti-patterns.md).
 
 **BC-TYPES-001:** Every `pub` enum in `monocle-core` carries `#[non_exhaustive]`
 unless an ADR documents the exhaustiveness requirement. At Phase 1 PRD dispatch,
-the exemptions are: `Phase1Permission` (ADR exemption per SS-permissions-phase1.md).
+the exhaustive-enum forbidden list contains exactly two entries: `Phase1Permission`
+and `ClaudeCodeTool` (both documented in ADR-0004). Any future exemption requires
+a new ADR before the exemption is valid.
 Verification: `cargo clippy` with a project-local lint that checks public enums for
 the attribute; CI enforces this via the `--deny warnings` flag.
 
@@ -250,18 +350,69 @@ pub struct FactoryDetection {
 
 /// A parsed, structured representation of the factory pipeline state.
 ///
-/// The fields here are the minimum required by the Phase 1 Workflow panel.
-/// Phase 3 extends this via the WASM adapter API; fields are non-exhaustive
-/// to allow extension without breaking Phase 1 consumers.
+/// This is the canonical 7-field struct from the vision (approved 2026-05-12).
+/// Fields are non-exhaustive to allow Phase 3+ extension without breaking
+/// Phase 1 consumers. The `raw_content` field is explicitly NOT included
+/// per user red-line (vision-7-field-only; no hybrid fields).
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct FactoryState {
-    /// Current pipeline phase (e.g., "phase-1", "pre-phase-1-architecture").
-    pub current_phase: String,
-    /// Human-readable summary of the current pipeline status.
-    pub status_summary: String,
-    /// Raw content of the state file, retained for display in the TUI panel.
-    pub raw_content: String,
+    /// Current pipeline phase identifier (e.g., "phase-1-spec-crystallization").
+    /// Populated from STATE.md frontmatter `phase:` key.
+    pub phase: String,
+    /// Workflow status (e.g., "in-progress", "blocked", "converged").
+    /// Populated from STATE.md frontmatter `status:` key.
+    pub status: String,
+    /// What the orchestrator is waiting on, if anything.
+    /// Populated from STATE.md frontmatter `awaiting:` key.
+    pub awaiting: Option<String>,
+    /// Structured list of issues blocking pipeline progress.
+    /// Populated by parsing the STATE.md §"Blocking Issues" body table.
+    pub blocking_issues: Vec<BlockingIssue>,
+    /// Convergence round count and finding trajectory from the most recent
+    /// §Session Resume Checkpoint in the STATE.md body.
+    pub convergence: ConvergenceMetrics,
+    /// Current cycle identifier (e.g., "cycle-001").
+    /// Populated from STATE.md frontmatter `current_cycle:` key.
+    pub cycle: String,
+    /// Forward-compatibility escape hatch: any frontmatter keys not explicitly
+    /// mapped above are collected here for Phase 3+ schema evolution.
+    pub custom_fields: std::collections::HashMap<String, serde_json::Value>,
+}
+
+/// A single issue blocking pipeline progress.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct BlockingIssue {
+    /// Issue identifier (e.g., "B-1").
+    pub id: String,
+    /// Severity classification.
+    pub severity: BlockingSeverity,
+    /// Human-readable description of the blocking condition.
+    pub description: String,
+    /// The agent or human responsible for resolving this issue, if known.
+    pub owner: Option<String>,
+}
+
+/// Severity classification for a blocking issue.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum BlockingSeverity {
+    Critical,
+    Important,
+    Advisory,
+}
+
+/// Convergence metrics extracted from the most recent session checkpoint.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct ConvergenceMetrics {
+    /// The current adversarial review round number.
+    pub round: u32,
+    /// Count of findings per severity level from the most recent pass.
+    pub findings_by_severity: std::collections::HashMap<BlockingSeverity, u32>,
+    /// True if the most recent pass produced zero Critical or Important findings.
+    pub trajectory_clean: bool,
 }
 
 /// Error reading or parsing the factory state file.
@@ -303,9 +454,8 @@ pub type StateChangeStream =
 /// that the Phase 3 WASM component will expose, so the host-side dispatch code
 /// requires no changes at the Phase 3 boundary.
 ///
-/// The trait is sealed for Phase 1: only `monocle-core` defines implementations.
-/// Phase 3 relaxes this via an `unsafe impl FactoryAdapter for SdkAdapter`
-/// mechanism in `monocle-plugin-sdk`, documented in SS-permissions-phase3.md.
+/// The trait is sealed for Phase 1. Phase 3 relaxes this via the
+/// `plugin-sdk-escape-hatch` feature flag (see §Sealed Pattern Relaxation below).
 pub trait FactoryAdapter: Send + Sync + private::Sealed {
     /// Detect whether the project at `workspace_root` uses this factory pattern.
     ///
@@ -314,9 +464,20 @@ pub trait FactoryAdapter: Send + Sync + private::Sealed {
     ///
     /// This method is called once at daemon startup and at TUI attach time.
     /// It must be fast (no network I/O; filesystem stat only).
+    ///
+    /// The `where Self: Sized` bound means this method is NOT available on
+    /// `dyn FactoryAdapter`. Use `matches` instead for dyn-dispatch contexts.
     fn detect(workspace_root: &Path) -> Option<FactoryDetection>
     where
         Self: Sized;
+
+    /// Returns true if this adapter recognizes `workspace_root`.
+    ///
+    /// Equivalent to `Self::detect(workspace_root).is_some()` but callable on
+    /// `dyn FactoryAdapter` (no `where Self: Sized` bound). Phase 3 plugin SDK
+    /// calls this on dynamically dispatched plugin adapters to probe which adapter
+    /// handles a given workspace, before calling `read_state`.
+    fn matches(&self, workspace_root: &Path) -> bool;
 
     /// Path to the canonical state file for this factory.
     ///
@@ -414,8 +575,12 @@ impl FactoryAdapter for VsddFactoryAdapter {
         &self.state_file
     }
 
+    fn matches(&self, workspace_root: &Path) -> bool {
+        Self::detect(workspace_root).is_some()
+    }
+
     fn read_state(&self) -> Result<FactoryState, FactoryReadError> {
-        let raw_content = std::fs::read_to_string(&self.state_file).map_err(|e| {
+        let content = std::fs::read_to_string(&self.state_file).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 FactoryReadError::NotFound {
                     path: self.state_file.clone(),
@@ -426,22 +591,57 @@ impl FactoryAdapter for VsddFactoryAdapter {
             }
         })?;
 
-        // Extract the current phase from the STATE.md frontmatter.
-        // The state file uses YAML frontmatter delimited by `---` lines.
-        let current_phase = parse_frontmatter_field(&raw_content, "current_phase")
+        // Parse STATE.md frontmatter fields. Field names match the canonical
+        // STATE.md YAML frontmatter keys produced by vsdd-factory:state-manager:
+        //   phase:         current pipeline phase identifier
+        //   status:        workflow status string
+        //   awaiting:      optional waiting-on string
+        //   current_cycle: cycle identifier
+        // Body-level fields (blocking_issues, convergence) are parsed from
+        // the markdown body sections below the frontmatter.
+        let phase = parse_frontmatter_field(&content, "phase")
             .unwrap_or_else(|| "unknown".to_string());
-        let status_summary = parse_frontmatter_field(&raw_content, "status")
+        let status = parse_frontmatter_field(&content, "status")
+            .unwrap_or_else(|| "unknown".to_string());
+        let awaiting = parse_frontmatter_field(&content, "awaiting");
+        let cycle = parse_frontmatter_field(&content, "current_cycle")
             .unwrap_or_else(|| "unknown".to_string());
 
+        // Collect any additional frontmatter keys not explicitly mapped above.
+        // This provides the forward-compat escape hatch for future STATE.md fields.
+        let custom_fields = parse_frontmatter_extra_fields(&content,
+            &["phase", "status", "awaiting", "current_cycle",
+              "document_type", "level", "version", "producer",
+              "timestamp", "inputs", "input-hash", "traces_to", "project",
+              "mode", "current_step", "dtu_required", "dtu_assessment",
+              "dtu_clones_built", "dtu_services"]);
+
+        // Phase 1: blocking_issues and convergence metrics are stub-populated.
+        // Full body parsing (§Blocking Issues table, §Session Resume Checkpoint)
+        // is implemented in the Phase 3 monocle-workflow crate where the full
+        // markdown parser (pulldown-cmark) is available as a workspace dependency.
+        // Phase 1 surfaces the frontmatter-derived fields which cover the
+        // Workflow panel's primary display: phase, status, awaiting, cycle.
+        let blocking_issues = Vec::new();
+        let convergence = ConvergenceMetrics {
+            round: 0,
+            findings_by_severity: std::collections::HashMap::new(),
+            trajectory_clean: true,
+        };
+
         Ok(FactoryState {
-            current_phase,
-            status_summary,
-            raw_content,
+            phase,
+            status,
+            awaiting,
+            blocking_issues,
+            convergence,
+            cycle,
+            custom_fields,
         })
     }
 
     fn subscribe(&self) -> Result<StateChangeStream, FactorySubscribeError> {
-        // Phase 1: return an empty stream. Phase 3 activates `notify 8` here.
+        // Phase 1: return an empty stream. Phase 3 activates notify 8 here.
         Ok(Box::pin(futures::stream::empty()))
     }
 
@@ -452,60 +652,135 @@ impl FactoryAdapter for VsddFactoryAdapter {
 
 /// Extract a scalar value from YAML frontmatter without a full YAML parse.
 ///
-/// Scans for lines of the form `key: value` between the opening `---` and
-/// the closing `---` delimiter. Returns the trimmed value string, or `None`
-/// if the key is absent or the frontmatter block is malformed.
+/// The frontmatter block MUST start on the FIRST LINE of the document (line 0
+/// must be exactly `---`). This anchors the parser to genuine frontmatter and
+/// prevents matching markdown horizontal rules `---` that appear in the body.
+///
+/// Returns the trimmed value string for `key: value` lines, or `None`
+/// if the key is absent, the value is multi-line (YAML block scalar), or the
+/// document does not begin with `---`.
 fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
-    let mut in_frontmatter = false;
-    let mut frontmatter_started = false;
-    for line in content.lines() {
+    let mut lines = content.lines();
+    // Frontmatter MUST open on the very first line.
+    let first = lines.next()?;
+    if first.trim() != "---" {
+        return None; // Document does not start with a frontmatter marker.
+    }
+    for line in lines {
         if line.trim() == "---" {
-            if !frontmatter_started {
-                frontmatter_started = true;
-                in_frontmatter = true;
-                continue;
-            } else {
-                break; // End of frontmatter block.
-            }
+            break; // End of frontmatter block.
         }
-        if in_frontmatter {
-            if let Some(rest) = line.strip_prefix(&format!("{}: ", key)) {
-                return Some(rest.trim().to_string());
-            }
+        if let Some(rest) = line.strip_prefix(&format!("{}: ", key)) {
+            return Some(rest.trim().to_string());
         }
     }
     None
 }
+
+/// Collect frontmatter key-value pairs NOT in the `known_keys` list.
+///
+/// Used to populate `FactoryState::custom_fields` for forward-compat schema
+/// evolution. Only scalar (single-line) values are collected; YAML block scalars
+/// and lists are silently skipped.
+fn parse_frontmatter_extra_fields(
+    content: &str,
+    known_keys: &[&str],
+) -> std::collections::HashMap<String, serde_json::Value> {
+    let mut result = std::collections::HashMap::new();
+    let mut lines = content.lines();
+    let first = lines.next().unwrap_or("");
+    if first.trim() != "---" {
+        return result;
+    }
+    for line in lines {
+        if line.trim() == "---" {
+            break;
+        }
+        if let Some(colon_pos) = line.find(": ") {
+            let k = line[..colon_pos].trim();
+            if !known_keys.contains(&k) {
+                let v = line[colon_pos + 2..].trim().to_string();
+                result.insert(k.to_string(), serde_json::Value::String(v));
+            }
+        }
+    }
+    result
+}
 ```
 
-### Sealed Pattern Relaxation in Phase 3
+### Sealed Pattern Relaxation in Phase 3 (F-FC-C002 resolution)
 
-Phase 3 `monocle-plugin-sdk` introduces a controlled relaxation. The SDK exposes
-a `SdkAdapter` wrapper type that implements `FactoryAdapter` for WASM-loaded adapters:
+The original sealed-pattern approach used `unsafe impl monocle_core::factory::private::Sealed`
+in `monocle-plugin-sdk`. This does not compile: `mod private` is not `pub` so it is
+unreachable from other crates, and `unsafe impl` requires `unsafe trait`. Both are
+Rust compilation errors.
+
+Phase 3 instead uses a **feature-flag-gated escape hatch**:
 
 ```rust
-// monocle-plugin-sdk/src/adapter.rs (Phase 3 only — not in Phase 1 workspace)
-//
-// SAFETY: `SdkAdapter` wraps a WASM component that has been validated by the
-// wasmtime 44 component model linker against the canonical `FactoryAdapter` WIT
-// interface. ABI version compatibility is checked at load time via
-// `monocle_core::MONOCLE_ABI_VERSION`. The adapter is `Send + Sync` because
-// the WASM component model enforces single-threaded execution within the
-// guest; the host-side `SdkAdapter` manages the wasmtime `Store` under an
-// internal `Arc<Mutex<Store<WasiCtx>>>`.
-unsafe impl monocle_core::factory::private::Sealed for SdkAdapter {}
+// monocle-core/src/factory.rs
+
+/// Sealed module — prevents external crates from implementing `FactoryAdapter`.
+/// The `plugin-sdk-escape-hatch` feature re-exports `FactoryAdapter` publicly
+/// for `monocle-plugin-sdk`. This feature MUST NOT be enabled in any binary
+/// build; it is consumed only by the plugin SDK crate as a dev/test dependency.
+mod private {
+    pub trait Sealed {}
+}
+
+/// Re-export for Phase 3 `monocle-plugin-sdk` only.
+/// Gated behind a feature flag that is NEVER in the default feature set.
+/// Build-time assertion below enforces this at compile time.
+#[cfg(feature = "plugin-sdk-escape-hatch")]
+pub mod __plugin_sdk_only {
+    pub use super::private::Sealed;
+    pub use super::FactoryAdapter;
+}
+
+// Build-time guard: if this crate is built with the escape-hatch feature
+// AND it is being built as the `monocle` binary (detected via a cargo env var
+// set in the binary crate's build.rs), panic at compile time.
+// This prevents the escape-hatch from accidentally leaking into production builds.
+#[cfg(all(feature = "plugin-sdk-escape-hatch", feature = "__monocle-binary-build"))]
+compile_error!(
+    "plugin-sdk-escape-hatch must not be enabled in monocle binary builds. \
+     This feature is for monocle-plugin-sdk only."
+);
 ```
 
-This is the ONLY legitimate external impl. The `unsafe` keyword signals the
-intentional bypass of the sealed pattern with a documented safety argument.
+In `monocle-plugin-sdk/Cargo.toml`:
+```toml
+[dependencies]
+monocle-core = { path = "../monocle-core", features = ["plugin-sdk-escape-hatch"] }
+```
+
+In `monocle-plugin-sdk/src/adapter.rs` (Phase 3 only, not in Phase 1 workspace):
+```rust
+use monocle_core::__plugin_sdk_only::{Sealed, FactoryAdapter};
+
+/// Phase 3 WASM adapter implementing FactoryAdapter for plugin-SDK-loaded adapters.
+/// ABI version is checked at WASM component load time via MONOCLE_ABI_VERSION.
+pub struct SdkAdapter { /* ... wasmtime Store, WIT bindings ... */ }
+
+impl Sealed for SdkAdapter {}
+impl FactoryAdapter for SdkAdapter { /* ... */ }
+```
+
+The `plugin-sdk-escape-hatch` feature is excluded from `default-features = []`
+in every crate that depends on `monocle-core` except `monocle-plugin-sdk`.
+The binary-build compile-time guard ensures accidental feature unification during
+`cargo build --workspace` cannot silently activate the escape hatch in the daemon
+or TUI binaries.
 
 ### Behavioral Contracts
 
 **BC-FACTORY-001:** `FactoryAdapter` trait is defined in `monocle-core::factory`
 with the exact signature above (including `StateChangeStream` type alias,
-`FactoryDetection`, `FactoryState`, `FactoryReadError`, `FactorySubscribeError`
-supporting types, and the `private::Sealed` bound). Verification: `cargo check`
-with the Phase 1 workspace; `rustdoc` output confirms public trait surface.
+`FactoryDetection`, `FactoryState` (7-field canonical struct), `BlockingIssue`,
+`BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`, `FactorySubscribeError`
+supporting types, the `private::Sealed` bound, and the `matches` dyn-dispatch method).
+Verification: `cargo check` with the Phase 1 workspace; `rustdoc` output confirms
+public trait surface including all supporting types.
 
 **BC-FACTORY-002:** `VsddFactoryAdapter` implements `FactoryAdapter`. Its `detect`
 method returns `Some(FactoryDetection)` when called against monocle's own workspace
@@ -611,11 +886,20 @@ message StopEvent {
 
 ### Behavioral Contracts
 
-**BC-PROTO-001:** Every `HookEnvelope` wire message has `schema_version` as field
-number 1, with value `1` for all Phase 1-origin messages. Verification: prost-build
-generates `schema_version: u32` as the first field in the generated `HookEnvelope`
-Rust struct; a unit test in `monocle-proto/tests/schema_version.rs` constructs a
-`HookEnvelope` and asserts `schema_version == 1`.
+**BC-PROTO-001a (proto schema contract):** The `.proto` message definition declares
+`schema_version` at proto field number 1 in `HookEnvelope`. This is a wire-format
+contract — it governs the binary encoding on the wire and the field number visible
+to every proto consumer regardless of language. Verification: `protoc --decode`
+confirms field number 1 is `schema_version` in any encoded Phase 1 `HookEnvelope`
+message; a `monocle-proto/tests/wire_field_order.rs` test round-trips a message and
+asserts the field number assignment via prost-build's generated descriptor.
+
+**BC-PROTO-001b (Rust surface contract):** The prost-build-generated `HookEnvelope`
+Rust struct exposes `pub schema_version: u32`. The value is `1` for all Phase 1-origin
+messages. The generated Rust struct field order is an implementation detail of
+prost-build and is NOT a behavioral contract. Verification: a unit test in
+`monocle-proto/tests/schema_version.rs` constructs a `HookEnvelope` with
+`schema_version: 1` and asserts `envelope.schema_version == 1`.
 
 **BC-PROTO-002:** The Phase 1 `HookEnvelope` schema is the canonical wire
 representation for cross-host federation in Phase 4. Phase 4 federation nodes
@@ -638,15 +922,19 @@ stubs during PRD authoring.
 |-------|-------------|----------------|
 | BC-ABI-001 | Every monocle binary exposes `abi_version: 1` in `/status` response | §ABI Version Constant |
 | BC-ABI-002 | `monocle-core` exports `MONOCLE_ABI_VERSION` as pub const at crate root | §ABI Version Constant |
-| BC-TYPES-001 | Every pub enum in `monocle-core` carries `#[non_exhaustive]` unless ADR exempts it | §Enum Extensibility |
-| BC-FACTORY-001 | `FactoryAdapter` trait defined in `monocle-core::factory` with the signature in this artifact | §FactoryAdapter Trait |
+| BC-TYPES-001 | Every pub enum in `monocle-core` carries `#[non_exhaustive]` unless ADR exempts it (two current exemptions: Phase1Permission and ClaudeCodeTool per ADR-0004) | §Enum Extensibility |
+| BC-FACTORY-001 | `FactoryAdapter` trait defined in `monocle-core::factory` with the 7-field FactoryState and all supporting types per this artifact | §FactoryAdapter Trait |
 | BC-FACTORY-002 | `VsddFactoryAdapter` passes self-referential detection test against monocle's own `.factory/` | §FactoryAdapter Trait |
-| BC-PROTO-001 | Every HookEnvelope wire message defines `schema_version = 1` as field number 1 | §Prost Wire Schemas |
+| BC-PROTO-001a | `.proto` message definition declares `schema_version` at proto field number 1 (wire-format contract) | §Prost Wire Schemas |
+| BC-PROTO-001b | Prost-build-generated `HookEnvelope` Rust struct exposes `pub schema_version: u32` with value `1` for Phase 1 messages (Rust surface contract) | §Prost Wire Schemas |
 | BC-PROTO-002 | Phase 1 HookEnvelope schema is canonical wire representation; Phase 4 validates `schema_version` before deserializing | §Prost Wire Schemas |
+| BC-LOCK-001 | Lock-file JSON includes `contract_version: u32 = 1` as the first key (see SS-daemon-lifecycle.md §Lock File Discovery Policy) | Covered in SS-daemon-lifecycle.md |
 
-**Total: 7 BCs pre-staged.** The product-owner MUST NOT renumber these BCs during
+**Total: 9 BCs pre-staged.** The product-owner MUST NOT renumber these BCs during
 PRD authoring; the IDs above are anchor identifiers that cross-references in this
-artifact and in SS-forward-compatibility.md rely upon.
+artifact and in SS-forward-compatibility.md rely upon. BC-PROTO-001 was split into
+BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust surface) to eliminate the
+wire-vs-Rust conflation identified in F-FC-O004.
 
 ---
 
@@ -670,7 +958,7 @@ The following operations ARE breaking and require an ADR:
 - Changing any existing proto field number.
 - Modifying the `MONOCLE_ABI_VERSION` constant.
 - Modifying the `detect`, `state_file_path`, `read_state`, `subscribe`,
-  `display_name`, or `abi_version` method signatures on `FactoryAdapter`.
+  `display_name`, `matches`, or `abi_version` method signatures on `FactoryAdapter`.
 - Adding a non-default method to `FactoryAdapter` (breaks existing impls).
 
 Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
@@ -688,13 +976,31 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
 
+v1.1 fixes (adversary fresh-pass F-FC-C001/C002/C003/I001/I002/O002/O003/O004):
+- F-FC-C001: exhaustive-enum forbidden list now unambiguously lists both
+  `Phase1Permission` AND `ClaudeCodeTool`; refers to ADR-0004.
+- F-FC-C002: `unsafe impl private::Sealed` replaced with feature-flag-gated
+  `__plugin_sdk_only` escape hatch that compiles correctly.
+- F-FC-C003: `read_state` parser now uses actual STATE.md field names:
+  `phase:`, `status:`, `awaiting:`, `current_cycle:`.
+- F-FC-I001: `FactoryState` restored to canonical 7-field vision struct with
+  `BlockingIssue`, `BlockingSeverity`, `ConvergenceMetrics` supporting types.
+  No `raw_content` field (user red-line: pure vision-7-field-only).
+- F-FC-I002: All 5 HookEvent inner-variant structs fully specified; no placeholders.
+- F-FC-O002: `matches(&self, workspace_root: &Path) -> bool` added to trait for
+  dyn-dispatch. `detect` retains `where Self: Sized`.
+- F-FC-O003: `parse_frontmatter_field` now anchors `---` to first line of document
+  only, preventing false matches on markdown horizontal rules in body.
+- F-FC-O004: BC-PROTO-001 split into BC-PROTO-001a (wire field number contract)
+  and BC-PROTO-001b (Rust struct surface contract); wire-vs-Rust conflation resolved.
+
 Cross-references:
-- `SS-permissions-phase1.md` — `Phase1Permission` exhaustiveness exemption
-  (see §Enum Extensibility §Mandatory Non-Exhaustive Enums §Phase1Permission)
+- `SS-permissions-phase1.md` — `Phase1Permission` and `ClaudeCodeTool` definitions
+- `ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md` — exemption rationale
 - `SS-daemon-lifecycle.md` — `/status` endpoint BC-DAEMON-002 extended by
-  BC-ABI-001 (add `abi_version` field)
-- `SS-deps-pin-manifest.md` — `prost 0.14` EXACT pin; `futures` crate for
-  `StateChangeStream` (add to Phase 1 pin manifest: `futures = "^0.3"`,
-  caret pin acceptable — no untrusted-input deserialization path)
+  BC-ABI-001 (`abi_version` field); lock-file `contract_version` (BC-LOCK-001)
+- `SS-engine-module.md` — EngineModule trait (companion artifact, same fix burst)
+- `SS-deps-pin-manifest.md` — `prost 0.14` EXACT pin; `futures` caret pin;
+  `serde_json` for tool_input fields
 - `oq-research.md` OQ-03 (`VsddFactoryAdapter` as Phase 1 static bundle),
   OQ-07 (protobuf seams v1)
