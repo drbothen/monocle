@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.1"
+version: "1.4.2"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T23:00:00Z
+timestamp: 2026-05-12T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -58,6 +58,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.3 | 2026-05-12 | product-owner (competitive positioning revision + OQ-M1/OQ-M3) | Competitive Positioning revised to acknowledge Anthropic's `claude agents` (agent view, v2.1.139, shipped 2026-05-11). Repositioned monocle's differentiation on mechanism and depth (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay) rather than exclusivity over the session-list surface. R-001 acceptance stated explicitly. Added OQ-M1 (agent-view IPC coexistence) and OQ-M3 (`PermissionRequest` as 6th endpoint) to the Open Questions table as `pending architect review`. No scope changes. Resolves B-1 from `.factory/plans/brief-validation-v2.md`. |
 | 1.4 | 2026-05-12 | product-owner (production-grade defect fixes per adversary re-audit 0bd4ba9) | CRITICAL production-grade defect fixes per adversary re-audit (commit 0bd4ba9). Crate count typo 13→12. OQ-M1/M2/M3 resolved in-scope (no longer Pending architect review): OQ-M1 = no agent-view IPC collision; OQ-M2 = claude-manager not hook-protocol; OQ-M3 = stay at 5 endpoints via JC-2 parity. OQ-M2 row added to table (was absent in v1.3). F-07/F-08 citation parentheticals added. R-001 mitigation reframe HOLD pending human Q-B confirmation (v1.4 shipped with HOLD marker in place). No scope changes. |
 | 1.4.1 | 2026-05-12 | product-owner (R-001 probability finalized per human Q-B response) | R-001 risk assessment finalized at <10% probability per human Q-B response. Removed the elaborate mitigation framing (was 'ship Phase 1 fast' in v1.3, became HOLD in v1.4 pending human answer). R-001 is now noted as informational background only — at <10%, the production-grade depth monocle is already shipping IS the response; no separate mitigation scaffolding required. Competitive Positioning section simplified to 3-4 sentences replacing the HOLD block. No scope changes. No other content changes. |
+| 1.4.2 | 2026-05-12 | product-owner (Rule 1 violation fix per validate-brief v4) | §Phase Plan Rationale — replaced 'minimum viable product' phrase (Rule 1 violation per CLAUDE.md §Canonical Principle) with production-grade phrasing. Substantive meaning unchanged. Resolves the single blocker from validate-brief v4 (commit 38b8e8f). |
 
 ## Who Is It For?
 
@@ -350,8 +351,8 @@ D-001 through D-017. The canonical vision approved by human is D-012 (archived t
 
 ### Phase Plan Rationale
 
-Phase 1 ships the daemon + hook ingestion + sessions panel. This is the minimum
-viable product for the killer scenario — permission prompt dispatch without
+Phase 1 ships the daemon + hook ingestion + sessions panel. This is the Phase 1
+delivery scope for the killer scenario — permission prompt dispatch without
 context-switching. Phase 2 adds the customization plane (trigger-trace) which
 enriches the permission prompt overlay with "why did this prompt appear" context.
 Phase 3 adds workflow awareness which is the factory-operator persona's core need.

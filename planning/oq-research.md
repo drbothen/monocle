@@ -18,7 +18,7 @@ inputs:
 project: monocle
 brief_version: "1.4"
 target_skill: /vsdd-factory:create-architecture
-traces_to: "brief v1.4 commit <forthcoming>; resolutions valid through brief v1.4; adversary re-audit 0bd4ba9 F-09 F-14"
+traces_to: "brief v1.4 commit 70286e1; resolutions valid through brief v1.4; adversary re-audit 0bd4ba9 F-09 F-14"
 input-hash: "[live-state]"
 ---
 
