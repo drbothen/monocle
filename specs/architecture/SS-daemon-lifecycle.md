@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0"
+version: "1.0.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -117,16 +117,37 @@ workstation.
 `/healthz` carries no body; no limit applies.
 
 **Implementation note:** axum 0.8 does NOT apply a body limit by default.
-`DefaultBodyLimit` must be explicitly added as a layer:
+`DefaultBodyLimit` must be explicitly added as a layer. The auth middleware must
+NOT be applied to `/healthz` (unauthenticated per BC-DAEMON-001). The correct
+axum 0.8 pattern is to declare two routers — one unauthenticated, one authenticated
+— and merge them. Hook endpoints and admin endpoints (`/status`, `/shutdown`)
+share the same `X-Monocle-Authorization` middleware layer (single auth layer on the
+authenticated router); the Claude Code IDE token (`X-Claude-Code-Ide-Authorization`)
+is checked per-handler inside the hook handlers, not as a separate router-level layer,
+because the IDE token is optional and absent on non-hook requests.
 
 ```rust
-let router = Router::new()
+// Unauthenticated router — liveness probe only; no body limit needed (no body).
+let public_router = Router::new()
+    .route("/healthz", get(healthz_handler));
+
+// Authenticated router — hook endpoints + admin endpoints.
+// DefaultBodyLimit is applied here; /healthz carries no body so the limit
+// is irrelevant for the public router.
+let authed_router = Router::new()
     .route("/hooks/pre-tool-use", post(pre_tool_use_handler))
-    // ... other hook routes ...
-    .route("/healthz", get(healthz_handler))
+    .route("/hooks/post-tool-use", post(post_tool_use_handler))
+    .route("/hooks/notification", post(notification_handler))
+    .route("/hooks/stop", post(stop_handler))
+    .route("/hooks/session-start", post(session_start_handler))
     .route("/status", get(status_handler))
+    .route("/shutdown", post(shutdown_handler))
     .layer(DefaultBodyLimit::max(256 * 1024))
-    .layer(auth_layer); // auth layer applied after body limit
+    .layer(auth_layer); // X-Monocle-Authorization enforced on all routes above
+
+// Merge into a single service. axum::Router::merge combines two independent
+// routers; routes in each retain their own layer stacks.
+let app = public_router.merge(authed_router);
 ```
 
 ## Daemon Lifecycle Protocol (F-NEW-09)
@@ -200,8 +221,14 @@ On receiving any shutdown signal:
 ### Hard Shutdown
 
 6. After 10-second drain timeout OR on receipt of a second SIGTERM:
-   a. Force-close all axum connections (`axum::Server::graceful_shutdown` with
-      zero timeout if drain window has expired).
+   a. Force-close all axum connections. In axum 0.8, `axum::Server` was removed;
+      the correct idiom is `axum::serve(listener, app).with_graceful_shutdown(shutdown_rx)`
+      where `shutdown_rx` is a `tokio::sync::oneshot::Receiver<()>` sent by the
+      signal handler. On hard shutdown (second SIGTERM or drain timeout expiry), drop
+      the sender half to unblock the receiver and trigger immediate connection close.
+      Signal handling uses `tokio::signal::unix::signal(SignalKind::terminate())` for
+      SIGTERM and `tokio::signal::ctrl_c()` for SIGINT; both are `async fn` futures
+      awaited in a `tokio::select!` loop alongside the oneshot receiver.
    b. Close UDS socket; remove `<runtime_dir>/monocle.sock`.
    c. Remove `<runtime_dir>/monocle.lock`.
    d. Exit.
