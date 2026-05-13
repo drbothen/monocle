@@ -37,8 +37,8 @@ All versions verified against crates.io REST API on 2026-05-12.
 | tokio | 1.52 | Async runtime (full feature set) | EXACT pin (see Patch-Pinning Policy); historical advisories on older minors; 1.52 remediated |
 | axum | 0.8 | HTTP server for hook ingestion | EXACT pin; pin as `=0.8.9` in Cargo.toml |
 | interprocess | 2.4 | Unix domain socket IPC | caret pin |
-| prost | 0.14 | Protobuf serialization for cross-host wire format | EXACT pin (see Patch-Pinning Policy); deserializes untrusted hook POST bodies at network boundary; see RUSTSEC note on transitive `bytes` advisory |
-| serde_json | (workspace) | JSON serialization | caret pin |
+| prost | 0.14 | Protobuf serialization for cross-host wire format | EXACT pin (see Patch-Pinning Policy); Phase 1: zero runtime cost — `monocle-proto` declares `prost` but no Phase 1 wire path uses protobuf encoding; Phase 4: deserializes untrusted federation wire-format on cross-host events; pinned now to lock the audit baseline before Phase 4 activation — version stability is more valuable than patch flexibility for a future untrusted-input deserializer; see RUSTSEC note on transitive `bytes` advisory |
+| serde_json | (workspace) | JSON deserialization for hook POST bodies at the network boundary | EXACT pin (see Patch-Pinning Policy — Phase 1 untrusted-input deserializer); every patch bump requires security-reviewer agent dispatch because changes to JSON parser internals can affect timing-attack resistance, error-message disclosure, and resource-exhaustion behavior |
 | serde_yaml_ng | 0.10 | YAML config parsing | caret pin; NOT `serde_yaml 0.8` (unmaintained, alias-bomb CVE); NOT `serde_yml` (archived per RUSTSEC-2025-0068) |
 | bytes | 1.10 | Byte buffer utility | caret pin; direct workspace pin to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see RUSTSEC Audit Context); verified 2026-05-12 against crates.io: `bytes = "1.10"` is the patched line resolving RUSTSEC-2026-0007; `cargo tree -d bytes` from a prost 0.14 context confirms only the 1.10.x line is pulled when `bytes` is directly specified in workspace `[dependencies]`; without direct pin, prost 0.14 transitively requests `bytes = "^1.0"` which can resolve to older 1.x lines carrying the advisory |
 | wasmtime | 44 | WASM runtime for Phase 3 plugin SDK | EXACT pin (see Patch-Pinning Policy); NOT wasmi — see ADR-0001; Phase 3 MSRV implication: Rust 1.92 |
@@ -78,7 +78,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 - **`rmcp 1.6`** — already pinned; activated by `monocle-mcp-bridge` crate. The Phase 4 workspace expands from 12 crates to 13 by adding `monocle-mcp-bridge`.
 - **`oauth2 5.x`** — federation auth flows for multi-host trust establishment. The `oauth2` crate 5.x (maintained by ramosbugs) provides PKCE, device flow, and authorization code flows; caret pin: `oauth2 = "^5"`.
 - **`quinn 0.11`** — QUIC transport, optional. Include only if Phase 4 federation benchmarks demonstrate that sub-100ms host-to-host latency is required AND russh over TCP cannot meet the target. Decision deferred to Phase 4 benchmark gate. If activated, pin: `quinn = "^0.11"`. Do not activate in Phase 4 Cargo workspace by default; gate behind a `quic-transport` Cargo feature flag.
-- **`prost 0.14`** — Phase 4 expands the use of `prost` (already pinned and used by `monocle-proto` in Phase 1 for hook POST body deserialization at the network boundary, per the Patch-Pinning Policy's threat-surface justification) to cross-host wire format encoding for federation events. No new prost version pin required.
+- **`prost 0.14`** — Phase 4 activates `prost` for cross-host federation wire-format encoding and decoding. In Phase 1, `monocle-proto` declares `prost` as a dependency but no Phase 1 code path invokes protobuf serialization — hook POST bodies use `serde_json`, not prost. Phase 4 is the first phase where `prost` touches untrusted input (cross-host federation events). The exact pin established in Phase 1 locks the audit baseline; no version change is required at Phase 4 boundary unless a RUSTSEC advisory mandates a bump.
 
 ## MSRV Policy
 
@@ -90,11 +90,15 @@ The workspace `Cargo.toml` `rust-version` field is set to `"1.86"` for Phase 1. 
 
 ## Patch-Pinning Policy
 
-**Caret pin (`^x.y`) for library dependencies; EXACT pin (`=x.y.z`) for the 7 security-sensitive crates: `tokio`, `prost`, `russh`, `wasmtime`, `rmcp`, `reqwest`, `axum`.**
+**Caret pin (`^x.y`) for library dependencies; EXACT pin (`=x.y.z`) for the 8 security-sensitive crates: `tokio`, `prost`, `russh`, `wasmtime`, `rmcp`, `reqwest`, `axum`, `serde_json`.**
 
-The 7 EXACT-pinned crates are: `tokio`, `prost`, `wasmtime`, `russh`, `rmcp`, `reqwest`, and `axum`. `prost` is exact-pinned because it deserializes untrusted hook POST bodies at the network boundary; threat-surface justifies EXACT-pin to ensure every bump goes through security-reviewer agent dispatch.
+The 8 EXACT-pinned crates are: `tokio`, `prost`, `wasmtime`, `russh`, `rmcp`, `reqwest`, `axum`, and `serde_json`.
 
-Rationale: library crates are evaluated for security risk based on their public-API surface; patch upgrades are typically safe and automatable. The 7 security-sensitive crates handle untrusted network input or operate on security-critical protocol boundaries (TLS, SSH, WASM sandbox, HTTP server, HTTP client). Patch bumps on these crates can change cancellation semantics, timeout behavior, or sandboxing properties in ways that shift the threat surface — for example, a tokio patch can change task-cancellation ordering in ways that affect security-critical timeout invariants. Exact-pinning forces every bump through PR review with security-reviewer dispatch.
+- `serde_json` is exact-pinned because it is the **Phase 1 untrusted-input deserializer**: every hook POST body arrives as `Content-Type: application/json` and is deserialized by `serde_json` at the axum handler boundary. Patch bumps require security-reviewer agent dispatch because changes to JSON parser internals can affect timing-attack resistance, error-message disclosure, and resource-exhaustion behavior.
+- `prost` is exact-pinned because it is the **Phase 4 untrusted-input deserializer**: in Phase 1 it carries zero runtime cost (`monocle-proto` declares `prost` but no Phase 1 wire path uses protobuf encoding). In Phase 4 it deserializes untrusted federation wire-format on cross-host events. It is pinned now to lock the audit baseline before Phase 4 activation — version stability is more valuable than patch flexibility for a future untrusted-input deserializer.
+- The remaining 6 (`tokio`, `wasmtime`, `russh`, `rmcp`, `reqwest`, `axum`) handle security-critical protocol boundaries (TLS, SSH, WASM sandbox, HTTP server, HTTP client, async runtime).
+
+Rationale: library crates are evaluated for security risk based on their public-API surface; patch upgrades are typically safe and automatable. The 8 security-sensitive crates handle untrusted network input or operate on security-critical protocol boundaries. Patch bumps on these crates can change cancellation semantics, timeout behavior, deserialization behavior, or sandboxing properties in ways that shift the threat surface — for example, a tokio patch can change task-cancellation ordering in ways that affect security-critical timeout invariants; a serde_json patch can change how malformed JSON is handled in ways that affect resource-exhaustion behavior. Exact-pinning forces every bump through PR review with security-reviewer dispatch.
 
 In `Cargo.toml` syntax:
 - Library deps: `ratatui = "0.30"` (caret is implicit)
@@ -102,9 +106,9 @@ In `Cargo.toml` syntax:
 
 ## Security Advisory Response Policy
 
-**Automated Dependabot PRs for patch-level bumps on caret-pinned library deps, gated by `cargo audit --deny warnings` in CI; auto-merge on green for caret-pinned libs only. Manual review with security-reviewer agent dispatch for: (a) any minor or major bump on any dependency; (b) ALL bumps on the 7 EXACT-pinned crates regardless of bump magnitude.**
+**Automated Dependabot PRs for patch-level bumps on caret-pinned library deps, gated by `cargo audit --deny warnings` in CI; auto-merge on green for caret-pinned libs only. Manual review with security-reviewer agent dispatch for: (a) any minor or major bump on any dependency; (b) ALL bumps on the 8 EXACT-pinned crates regardless of bump magnitude.**
 
-Rationale: patch bumps on library crates are common, low-risk, and automatable when CI gates hold. Any bump on a security-sensitive crate (the 7 EXACT-pinned) or any minor/major bump anywhere requires explicit human + AI review because the threat surface can shift. Security-reviewer agent dispatch is non-optional for the 7 exact-pinned crates.
+Rationale: patch bumps on library crates are common, low-risk, and automatable when CI gates hold. Any bump on a security-sensitive crate (the 8 EXACT-pinned) or any minor/major bump anywhere requires explicit human + AI review because the threat surface can shift. Security-reviewer agent dispatch is non-optional for the 8 exact-pinned crates.
 
 Operationally:
 1. Dependabot opens a PR for a patch bump on a caret-pinned lib.
