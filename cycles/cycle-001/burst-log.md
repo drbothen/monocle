@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-12T22:00:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "1638cda"
+input-hash: "60ea203"
 traces_to: STATE.md
 ---
 
@@ -256,3 +256,71 @@ Largest single burst of cycle-001. Triggered by adversary production-grade re-au
 | orchestrator | .gitignore hardening | .factory/.gitignore (commit 8342239) |
 | technical-writer + orchestrator | CLAUDE.md v1 + v2 + path updates + references | CLAUDE.md on main (commits b69c09f 3366d58 f6cd51c aa852b9) |
 | state-manager | Burst close-out: vision approval, brief paths, STATE.md, cycle files | This commit |
+
+---
+
+## Burst 11 (2026-05-12) — Round-2/3 fix bursts + validation chain convergence
+
+**Agents dispatched:** consistency-validator (x2), product-owner (x2), architect, business-analyst, orchestrator, state-manager
+**Files touched:** specs/product-brief.md, specs/research/domain-monocle-vision-synthesis.md, specs/architecture/SS-deps-pin-manifest.md, specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, tech-debt-register.md, STATE.md, CLAUDE.md (main), cycles/cycle-001/burst-log.md, cycles/cycle-001/session-checkpoints.md
+**Versions bumped:** brief: v1.4.1 → v1.4.2; vision: v1.1 → v1.1.1; SS-deps-pin-manifest.md: v1.1 → v1.1.1; ADR-0001: v1.0 → v1.0.1
+
+### Summary
+
+Three-round validation chain following production-grade remediation burst. Rounds 2 and 3 each caught self-introduced defects from the prior remediation, all resolved in-scope per canonical principle. Convergence trajectory cleanly decaying across rounds.
+
+### Chronological Events
+
+1. **commit 0f28619** — consistency-validator round-2 audit post-remediation. Verdict: 2 BLOCKING + 3 IMPORTANT + 2 ADVISORY. Blockers: MVP-phrase residue in brief, stale version reference in SS-deps.
+
+2. **commit f8bffd8** — consistency-validator round-3 audit post-fix-burst. Verdict: 0 BLOCKING + 2 IMPORTANT + 3 ADVISORY. Clean trajectory confirmed.
+
+3. **commit 38b8e8f** — validate-brief v4 post-remediation. Verdict: NEEDS_WORK. Blocker: MVP-phrase in brief executive summary.
+
+4. **commit b7439ce** — validate-brief v5 post-fix-burst. Verdict: VALID. All blockers resolved.
+
+5. **commit 21257f7** — brief v1.4.2 (product-owner): MVP-phrase removed from executive summary; version refs updated; round-2 BLOCKING fixes applied.
+
+6. **commit ad6a303** — SS-deps-pin-manifest.md v1.1.1 + ADR-0001 v1.0.1 (architect): Phase 4 prost prose tightened; stale version reference removed from SS-deps; ADR-0001 prose clarification for NF-05.
+
+7. **commit 6dc2191** — vision v1.1.1 (business-analyst): prose ambiguity fixes per round-2 consistency findings.
+
+8. **commit 90ac146** — vision H1 heading fix (business-analyst): NF-04 — H1 heading corrected per round-3 patch requirement.
+
+9. **commit 1060fc5** — SS-deps Phase 4 prost prose tightening (architect): NF-05 final prose tighten.
+
+10. **commit 9863ab3** — CLAUDE.md version-ref updates on main (orchestrator): NF-03 — brief v1.4.2 + vision v1.1.1 refs propagated to CLAUDE.md.
+
+**Validation reports:**
+- `0f28619` — consistency post-remediation (round-2 audit)
+- `f8bffd8` — consistency post-fix-burst (round-3 audit)
+- `b7439ce` — validate-brief v5 (VALID)
+
+**Convergence trajectory:**
+- Round 1 (pre-remediation): 4 IMPORTANT + 6 ADVISORY
+- Adversary re-audit: 14 MULTIPLE_DEFER_PATTERNS
+- Round 2 (post-remediation): 2 BLOCKING + 3 IMPORTANT + 2 ADVISORY (self-introduced by remediation burst)
+- Round 2 validate-brief: NEEDS_WORK (MVP-phrase)
+- Round 3 (post-fix-burst): 0 BLOCKING + 2 IMPORTANT + 3 ADVISORY
+- Round 3 validate-brief: VALID
+
+**D-021 logged:** Validation chain rounds 2-3 converge clean. All self-introduced defects fixed in-scope. Awaiting adversary fresh pass + human Phase 1 approval gate.
+
+**State-manager burst close-out (this commit):**
+- STATE.md updated: version refs (brief v1.4.2, vision v1.1.1, SS-deps v1.1.1, ADR-0001 v1.0.1), phase 0.98 IN PROGRESS, Current Phase Steps rows added, D-021 appended, Session Resume Checkpoint replaced
+- tech-debt-register.md frontmatter: `inputs: []` and `input-hash: "[live-state]"` added
+- Burst log + session checkpoints appended
+- Bookkeeping hashes bumped via compute-input-hash --scan --update
+
+| Agent | Task | Output |
+|-------|------|--------|
+| consistency-validator | Round-2 consistency audit | plans/consistency-audit-round-2.md (0f28619) |
+| consistency-validator | Round-3 consistency audit | plans/consistency-audit-round-3.md (f8bffd8) |
+| product-owner | validate-brief v4 (NEEDS_WORK) | plans/brief-validation-v4.md (38b8e8f) |
+| product-owner | validate-brief v5 (VALID) | plans/brief-validation-v5.md (b7439ce) |
+| product-owner | Brief v1.4.2 (MVP-phrase fix) | specs/product-brief.md (21257f7) |
+| architect | SS-deps v1.1.1 + ADR-0001 v1.0.1 | specs/architecture/SS-deps-pin-manifest.md + adr/ADR-0001-* (ad6a303) |
+| business-analyst | Vision v1.1.1 prose + H1 fix | specs/research/domain-monocle-vision-synthesis.md (6dc2191 + 90ac146) |
+| architect | SS-deps Phase 4 prost prose tighten | specs/architecture/SS-deps-pin-manifest.md (1060fc5) |
+| orchestrator | CLAUDE.md version refs update | CLAUDE.md on main (9863ab3) |
+| state-manager | Round-3 close-out: STATE.md, tech-debt-register, cycle files | This commit |

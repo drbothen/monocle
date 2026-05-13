@@ -4,20 +4,20 @@ level: ops
 version: "2.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T00:45:00Z
-phase: pre-phase-1-final-gate-post-remediation
+timestamp: 2026-05-12T08:30:00Z
+phase: pre-phase-1-final-gate-post-fix-burst
 inputs: []
 input-hash: "[live-state]"
 traces_to: ""
 project: monocle
 mode: greenfield-with-reference-ingest
-current_step: production-grade-remediation-burst-complete-awaiting-validation-chain-and-phase-1-gate
+current_step: validation-chain-rounds-2-3-clean-awaiting-adversary-fresh-pass-and-phase-1-gate
 current_cycle: cycle-001
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
 dtu_services: [hook-endpoints-x5]
-awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; then human Phase 1 approval gate"
+awaiting: "adversary fresh pass (round-3) + final consistency confirm + human Phase 1 approval gate"
 ---
 
 <!--
@@ -35,11 +35,11 @@ awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; the
 | **Product** | monocle |
 | **Mode** | greenfield-with-reference-ingest |
 | **Language** | Rust |
-| **Current Phase** | pre-phase-1-final-gate-post-remediation |
-| **Current Step** | production-grade-remediation-burst-complete-awaiting-validation-chain-and-phase-1-gate |
-| **Product brief** | `.factory/specs/product-brief.md` v1.4.1 (commit 4df2ff8) |
-| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1 (re-approved 2026-05-12) |
-| **Last Updated** | 2026-05-13T00:45:00Z |
+| **Current Phase** | pre-phase-1-final-gate-post-fix-burst |
+| **Current Step** | validation-chain-rounds-2-3-clean-awaiting-adversary-fresh-pass-and-phase-1-gate |
+| **Product brief** | `.factory/specs/product-brief.md` v1.4.2 (commit 21257f7) |
+| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 (commits 6dc2191, 90ac146) |
+| **Last Updated** | 2026-05-12T08:30:00Z |
 
 ## Phase Progress
 
@@ -51,7 +51,7 @@ awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; the
 | 0.95: Pre-Phase-1 Consistency Audit | DONE | 2026-05-12 | consistency-validator | GAPS_FOUND non-blocking; fixes F-03/F-04/F-11 applied (b891b78) |
 | 0.96: Production-Grade Re-Audit | DONE | 2026-05-12 | adversary | MULTIPLE_DEFER_PATTERNS — 14 violations identified and remediated (0bd4ba9) |
 | 0.97: Production-Grade Remediation Burst | DONE | 2026-05-12 | state-manager | commits 0e4b0f4 70286e1 00a2993 79e268a 76db583 21c026d 4df2ff8 + this |
-| 0.98: Validation Chain Post-Remediation | not-started | | | consistency + validate-brief v4 + adversary fresh pass |
+| 0.98: Validation Chain Post-Remediation | IN PROGRESS (2-of-3) | 2026-05-12 | consistency-validator + validate-brief | Round-1: 4 IMP+6 ADV → Round-2: 2 BLK+3 IMP+2 ADV (self-introduced) → Round-3: 0 BLK+2 IMP+3 ADV; validate-brief v5 VALID (b7439ce); awaiting adversary fresh pass |
 | 1: Spec Crystallization | not-started | | | |
 | 2: Story Decomposition | not-started | | | |
 | 3: TDD Implementation | not-started | | | |
@@ -73,6 +73,12 @@ awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; the
 | Dispatcher shadow cleanup + .gitignore hardening | orchestrator | DONE | commit 8342239 |
 | CLAUDE.md canonical principle + agent routing (main branch) | technical-writer + orchestrator | DONE | commits b69c09f 3366d58 f6cd51c aa852b9 |
 | Upstream issue #129 (canonicalization) + #130 (dispatcher bug) | orchestrator | DONE | drbothen/vsdd-factory#129, #130 |
+| Round-2 consistency audit (0f28619): 2 BLK+3 IMP+2 ADV (self-introduced by remediation) | consistency-validator | DONE | commit 0f28619 |
+| Round-2 validate-brief v4 (38b8e8f): NEEDS_WORK (MVP-phrase blocker) | product-owner | DONE | commit 38b8e8f |
+| Round-2 fix burst: brief v1.4.2 (21257f7) + SS-deps v1.1.1 (ad6a303) + ADR-0001 v1.0.1 (ad6a303) + vision v1.1.1 (6dc2191) | product-owner + architect + business-analyst | DONE | commits 21257f7 ad6a303 6dc2191 |
+| Round-3 consistency audit (f8bffd8): 0 BLK+2 IMP+3 ADV | consistency-validator | DONE | commit f8bffd8 |
+| Round-3 validate-brief v5 (b7439ce): VALID | product-owner | DONE | commit b7439ce |
+| Round-3 patch burst: vision H1 fix (90ac146) + SS-deps Phase 4 prost prose (1060fc5) + CLAUDE.md version refs (9863ab3) | business-analyst + architect + orchestrator | DONE | commits 90ac146 1060fc5 9863ab3 |
 
 ## Decisions Log
 
@@ -85,6 +91,7 @@ awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; the
 | D-018 | Brief v1.2 + 4 arch stubs. Bloat Option A. All 11 OQs + 4 SOQs + 5 JCs resolved | dependencies.md; ADR-0001; conventions.md; tech-debt-register.md; commit 6ac4279 | pre-phase-1 | 2026-05-12 | state-manager |
 | D-019 | Brief v1.3 VALID after competitive positioning revision; pre-phase-1 consistency audit GAPS_FOUND but no blockers; ready for human Phase 1 approval gate | brief v1.3 d6a8291; validation v3 b3d9560; consistency audit b891b78; pre-gate fixes a46a7ce | pre-phase-1 | 2026-05-12 | state-manager |
 | D-020 | Production-grade canonical principle articulated and remediated; 14 defer-patterns fixed in-scope across brief/vision/architecture; Q-A1 vision v1.1 re-approved; Q-B R-001 reassessed at <10% (dropped from active risk acceptance); CLAUDE.md establishes principle + agent routing as project-binding; upstream canonicalization filed at drbothen/vsdd-factory#129; dispatcher bug filed at #130 | commits 0bd4ba9 0e4b0f4 70286e1 00a2993 79e268a 76db583 21c026d 4df2ff8 8342239 | pre-phase-1-final-gate-post-remediation | 2026-05-12 | state-manager |
+| D-021 | Validation chain rounds 2-3 converge clean: validate-brief v5 VALID (b7439ce); consistency audits 0f28619+f8bffd8 caught self-introduced defects from prior remediation/fix bursts (MVP-phrase, path-ref propagation gaps, version-string staleness, prose ambiguities); all defects fixed in-scope per production-grade principle (commits 21257f7+ad6a303+6dc2191+90ac146+1060fc5+9863ab3); convergence trajectory: round-1 4-IMP-6-ADV → round-2 2-BLK-3-IMP-2-ADV → round-3 0-BLK-2-IMP-3-ADV (cleanly decaying) | see burst-log.md burst-11 | pre-phase-1-final-gate-post-fix-burst | 2026-05-12 | state-manager |
 
 ## Skip Log
 
@@ -101,7 +108,7 @@ awaiting: "consistency-validator + validate-brief v4 + adversary fresh pass; the
 
 <!-- Latest checkpoint. Prior checkpoints archived to cycles/cycle-001/session-checkpoints.md. -->
 
-**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-post-remediation | **Mode:** greenfield-with-reference-ingest
+**Cycle:** cycle-001 | **Phase:** pre-phase-1-final-gate-post-fix-burst | **Mode:** greenfield-with-reference-ingest
 
 ### What This Is
 
@@ -110,30 +117,30 @@ monocle is a Rust TUI for managing AI coding harness sessions (Claude Code, futu
 ### Where We Are
 
 - 8 reference repos fully ingested into `.factory/semport/`
-- Vision v1.1 approved by human 2026-05-12 (D-020; Q-A1 resolved)
-- Brief v1.4.1 at `.factory/specs/product-brief.md` — R-001 finalized at <10% (Q-B resolved; informational-only framing)
-- 4 architecture artifacts complete: SS-deps-pin-manifest.md v1.1, SS-conventions-anti-patterns.md v1.1, ADR-0001, ADR-0002
+- Vision v1.1.1 approved (commits 6dc2191, 90ac146)
+- Brief v1.4.2 at `.factory/specs/product-brief.md` (commit 21257f7) — MVP-phrase blocker resolved; validate-brief v5 VALID
+- SS-deps-pin-manifest.md v1.1.1 (commit ad6a303); ADR-0001 v1.0.1 (commit ad6a303)
+- 4 architecture artifacts complete: SS-deps-pin-manifest.md v1.1.1, SS-conventions-anti-patterns.md v1.1, ADR-0001 v1.0.1, ADR-0002
 - DTU assessment done: DTU_REQUIRED true, 5 hook endpoint clones required
 - TD-001 retired via ADR-0002 nucleo acceptance
-- All "Placeholder for architect" and "Pending architect review" patterns removed (14 defer-violations fixed per adversary re-audit 0bd4ba9)
-- CLAUDE.md on main establishes production-grade canonical principle + agent routing
+- Validation chain rounds 1-3 complete; convergence trajectory clean (D-021)
+- CLAUDE.md on main: version refs updated for brief v1.4.2 + vision v1.1.1 (commit 9863ab3)
 
 ### Immediate Next Action
 
-Run validation chain: (1) consistency-validator fresh-context audit on remediated package; (2) validate-brief v4 against v1.4.1 (expect VALID); (3) adversary fresh pass (expect PRODUCTION_READY). Then re-present Phase 1 entry gate to human.
+Dispatch adversary fresh pass (round-3) on fully-remediated package. Expect PRODUCTION_READY. Then final consistency confirm + re-present Phase 1 entry gate to human.
 
 ### Critical Artifacts (read in this order)
 
-1. `CLAUDE.md` (main; commits b69c09f, 3366d58, f6cd51c, aa852b9) — canonical principle + agent routing
-2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1 (approved 2026-05-12)
-3. `.factory/specs/product-brief.md` v1.4.1 (commit 4df2ff8)
-4. `.factory/plans/production-grade-reaudit.md` (commit 0bd4ba9)
-5. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1
-6. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.1
-7. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md`
-8. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
-9. `.factory/specs/dtu-assessment.md`
-10. `.factory/tech-debt-register.md` (post TD-001 retirement)
+1. `CLAUDE.md` (main; commits b69c09f, 3366d58, f6cd51c, aa852b9, 9863ab3) — canonical principle + agent routing + current refs
+2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 (commits 6dc2191, 90ac146)
+3. `.factory/specs/product-brief.md` v1.4.2 (commit 21257f7)
+4. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.1 (commit ad6a303)
+5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.1
+6. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` v1.0.1 (commit ad6a303)
+7. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
+8. `.factory/specs/dtu-assessment.md`
+9. `.factory/tech-debt-register.md` (post TD-001 retirement; frontmatter corrected)
 
 ### Key Tech Stack (architect inherits)
 

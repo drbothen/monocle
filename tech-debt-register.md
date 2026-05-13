@@ -4,7 +4,9 @@ level: ops
 status: active
 producer: product-owner
 version: "1.0"
-last_updated: 2026-05-12T00:00:00Z
+last_updated: 2026-05-12T08:30:00Z
+inputs: []
+input-hash: "[live-state]"
 traces_to: "CLAUDE.md commit 3366d58 §Canonical Principle Rule 3; ADR-0002"
 project: monocle
 phase: pre-phase-1
