@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.5"
+version: "1.6"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry"
 project: monocle
 ---
 
@@ -120,6 +120,45 @@ rules:
       §Test Conventions."
     severity: ERROR
     languages: [rust]
+  - id: monocle-non-exhaustive-struct-audit-completeness
+    # Matches any #[non_exhaustive] attribute applied to a pub struct definition.
+    # This rule does NOT assert correctness by itself — it is used as the SOURCE
+    # for CI audit-completeness checking (see note below).
+    #
+    # CI script contract (devops-engineer Phase 1 deliverable):
+    #   1. Run semgrep with --json to get the list of matched struct names.
+    #   2. Parse SS-engine-module.md §Cross-Crate Constructor Audit Table between
+    #      the <!-- BEGIN: Cross-Crate Constructor Audit Table --> and
+    #      <!-- END: Cross-Crate Constructor Audit Table --> HTML delimiters.
+    #   3. Extract struct names from the first column of every data row in the table.
+    #   4. For each struct name in the semgrep output, verify it appears in the table.
+    #   5. Fail CI if any struct is missing from the table; emit:
+    #      "Audit table gap: `<StructName>` carries #[non_exhaustive] but is absent
+    #      from the Cross-Crate Constructor Audit Table in SS-engine-module.md.
+    #      Update the table and add a constructor if any cross-crate construction
+    #      site exists or is anticipated."
+    #
+    # Semgrep itself does NOT fail the CI step — it only produces the match list.
+    # The Python script (not semgrep) fails the step on a gap. This two-step design
+    # means the semgrep fixture-corpus assertion (Step 1 in §CI assertions) remains
+    # a pure "does this rule match the fixture?" check, separate from the table-gap logic.
+    #
+    # Scope: only monocle crate source directories. Spec files (.factory/specs/) are
+    # excluded — they contain #[non_exhaustive] in code blocks that are prose, not
+    # compiled Rust. The path include list is kept narrowly scoped to avoid false
+    # matches on fixture files or generated code.
+    pattern: |
+      #[non_exhaustive]
+      pub struct $NAME { ... }
+    paths:
+      include:
+        - "monocle-core/src/**/*.rs"
+        - "monocle-runtime/src/**/*.rs"
+        - "monocle-tui/src/**/*.rs"
+        - "monocle-proto/src/**/*.rs"
+    message: "Found #[non_exhaustive] pub struct `$NAME`. Verify it appears in the Cross-Crate Constructor Audit Table in SS-engine-module.md §Cross-Crate Constructor Audit. CI script will fail if absent."
+    severity: WARNING
+    languages: [rust]
 ```
 
 ### Semgrep Coverage Hardening (POL-11 positive-coverage requirement)
@@ -141,6 +180,7 @@ fixture file containing a deliberate violation of that rule.
 | `monocle-no-naked-fs-write` | `semgrep-fixtures/naked_fs_write.rs` | `std::fs::write("/tmp/x", b"data").unwrap();` |
 | `monocle-no-unbounded-channel` | `semgrep-fixtures/unbounded_channel.rs` | `tokio::sync::mpsc::unbounded_channel::<u8>();` |
 | `monocle-no-raw-env-mutation-in-tests` | `semgrep-fixtures/tests/raw_env_mutation.rs` | `std::env::set_var("HOME", "/tmp");` AND `env::set_var("HOME", "/tmp");` (both patterns exercised) |
+| `monocle-non-exhaustive-struct-audit-completeness` | `semgrep-fixtures/non_exhaustive_struct.rs` | `#[non_exhaustive] pub struct AuditFixtureStruct { pub field: u32 }` — one deliberate match to confirm the rule fires on a `#[non_exhaustive] pub struct` definition |
 
 Each fixture file contains ONLY the violation pattern (plus minimal Rust syntax to make it
 parse). Fixture files are NOT part of the Rust workspace (`Cargo.toml` workspace members list
@@ -176,17 +216,54 @@ Assert zero findings for each rule. Emit a log line per rule:
 `Production scan: N violations for rule <rule-id> — FAIL (see semgrep output above)`.
 Fail the CI step if any rule returns a non-zero count.
 
+**Special case — `monocle-non-exhaustive-struct-audit-completeness` (audit-completeness rule):**
+
+This rule uses `severity: WARNING` (not `ERROR`) and does NOT participate in Step 2's
+zero-findings assertion — it is expected to match every `#[non_exhaustive] pub struct` in
+the codebase (by design). Instead, its production-scan output is consumed by a separate
+CI step:
+
+**Step 3 — Audit-table gap check (Python script):**
+
+After Step 2, run `scripts/check_audit_table.py` (devops-engineer Phase 1 deliverable):
+```
+python scripts/check_audit_table.py \
+  --semgrep-json <(semgrep --config .semgrep.yml --json --include "monocle-*/src/**/*.rs") \
+  --spec-file .factory/specs/architecture/SS-engine-module.md \
+  --rule-id monocle-non-exhaustive-struct-audit-completeness
+```
+
+The script:
+1. Parses the semgrep JSON output to extract all struct names matched by the rule.
+2. Opens `SS-engine-module.md` and reads the lines between
+   `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` and
+   `<!-- END: Cross-Crate Constructor Audit Table -->`.
+3. Extracts the struct name from the first column of each data row (text between the first
+   `|` and second `|` on each row, stripped of surrounding backticks and whitespace).
+4. Computes the set difference: structs in semgrep output but NOT in the table.
+5. Fails with exit code 1 and prints the gap list if the difference is non-empty:
+   `Audit table gap: following structs carry #[non_exhaustive] but are absent from the
+   Cross-Crate Constructor Audit Table: <list>. Update SS-engine-module.md §Cross-Crate
+   Constructor Audit and add a constructor if any cross-crate construction site exists.`
+6. Exits 0 with `Audit table: complete (N structs declared, N structs found by semgrep).`
+   if the sets are equal.
+
+The fixture-corpus assertion for this rule (Step 1 above) must match 1 finding in
+`semgrep-fixtures/non_exhaustive_struct.rs` (the `AuditFixtureStruct` fixture).
+The production scan expected count is NOT zero (not a conventional zero-findings rule) —
+the fixture-corpus assertion is the only POL-11 coverage check for this rule.
+
 **Step ordering in CI workflow:**
 
-Both steps run after `cargo clippy` and before `cargo test`. They are separate CI steps
+All four steps run after `cargo clippy` and before `cargo test`. They are separate CI steps
 (distinct `name:` entries) so failures are individually addressable in the GitHub Actions
-UI. The fixture-corpus step runs first; if it fails (rule broken), the production scan step
-is skipped to avoid a false-clean result from a non-functioning rule.
+UI. The fixture-corpus step (Step 1) runs first; if it fails (rule broken), Steps 2 and 3
+are skipped to avoid misleading results from a non-functioning rule.
 
 **Note on scope:** The CI wiring (actual `.github/workflows/` YAML, fixture file content,
-semgrep version pin) is the devops-engineer's Phase 1 deliverable. This section specifies
-the behavioral requirement with enough precision that the implementer can wire it without
-round-trips to the architect.
+`scripts/check_audit_table.py` implementation, semgrep version pin) is the devops-engineer's
+Phase 1 deliverable. This section specifies the behavioral requirement with enough precision
+that the implementer can wire it without round-trips to the architect.
 
 ### PR Template Checklist
 
@@ -522,6 +599,30 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.6 changes (round-30 fix F-R30-3 MEDIUM):
+- F-R30-3 RESOLVED (MEDIUM process-gap — adversary finding): The §Cross-Crate Constructor
+  Audit table invariant in SS-engine-module.md was a passive policy with no machine enforcement.
+  F-R30-1 demonstrated the policy was violated — 10 of 17 `#[non_exhaustive]` structs were
+  missing while the invariant statement claimed completeness. Fix (split across two files):
+  (1) SS-engine-module.md v1.1.9: HTML delimiters `<!-- BEGIN: Cross-Crate Constructor Audit
+  Table -->` and `<!-- END: Cross-Crate Constructor Audit Table -->` wrap the audit table rows,
+  enabling a CI Python script to machine-parse the declared struct list. Audit table expanded
+  from 7 to 17 structs (see SS-engine-module.md §Trace v1.1.9 for the complete expansion log).
+  (2) This file v1.6: new semgrep rule `monocle-non-exhaustive-struct-audit-completeness` added
+  as the 5th rule in §Semgrep Rules. The rule has `severity: WARNING` (unlike the 4 ERROR-severity
+  anti-pattern rules) because it is not a direct defect detector — it is an enumeration tool whose
+  output feeds a Python script (Step 3 — Audit-table gap check). The rule matches `#[non_exhaustive]
+  pub struct $NAME { ... }` in monocle crate source directories; fixture file
+  `semgrep-fixtures/non_exhaustive_struct.rs` added to §Semgrep Coverage Hardening table.
+  (3) §CI assertions expanded with "Step 3 — Audit-table gap check" specifying the
+  `scripts/check_audit_table.py` contract: parse semgrep JSON output, extract struct names from
+  the delimiter-bounded table, compute set difference, fail CI if any struct is absent. The Python
+  script implementation is the devops-engineer's Phase 1 deliverable.
+  Mechanism choice rationale: semgrep + Python CI script over Rust `syn`-based integration test.
+  Semgrep is already in the CI pipeline (4 existing rules, same two-step pattern, same fixture
+  corpus). A `syn`-based test binary adds a new dev-dependency and compile step. The Python script
+  fits the existing pattern and requires no compilation.
 
 v1.5 changes (round-27 fixes F-R26-adv-2 MEDIUM / F-R26-adv-3 MEDIUM / F-R26-adv-6 LOW):
 - F-R26-adv-2 RESOLVED (MEDIUM — adversary finding): The `monocle-no-raw-env-mutation-in-tests`
