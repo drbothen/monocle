@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.2"
+version: "1.4.3"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T23:30:00Z
+timestamp: 2026-05-13T00:45:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -59,6 +59,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4 | 2026-05-12 | product-owner (production-grade defect fixes per adversary re-audit 0bd4ba9) | CRITICAL production-grade defect fixes per adversary re-audit (commit 0bd4ba9). Crate count typo 13→12. OQ-M1/M2/M3 resolved in-scope (no longer Pending architect review): OQ-M1 = no agent-view IPC collision; OQ-M2 = claude-manager not hook-protocol; OQ-M3 = stay at 5 endpoints via JC-2 parity. OQ-M2 row added to table (was absent in v1.3). F-07/F-08 citation parentheticals added. R-001 mitigation reframe HOLD pending human Q-B confirmation (v1.4 shipped with HOLD marker in place). No scope changes. |
 | 1.4.1 | 2026-05-12 | product-owner (R-001 probability finalized per human Q-B response) | R-001 risk assessment finalized at <10% probability per human Q-B response. Removed the elaborate mitigation framing (was 'ship Phase 1 fast' in v1.3, became HOLD in v1.4 pending human answer). R-001 is now noted as informational background only — at <10%, the production-grade depth monocle is already shipping IS the response; no separate mitigation scaffolding required. Competitive Positioning section simplified to 3-4 sentences replacing the HOLD block. No scope changes. No other content changes. |
 | 1.4.2 | 2026-05-12 | product-owner (Rule 1 violation fix per validate-brief v4) | §Phase Plan Rationale — replaced 'minimum viable product' phrase (Rule 1 violation per CLAUDE.md §Canonical Principle) with production-grade phrasing. Substantive meaning unchanged. Resolves the single blocker from validate-brief v4 (commit 38b8e8f). |
+| 1.4.3 | 2026-05-12 | product-owner (adversary findings e2c224b: F-NEW-04, R-001 re-eval, F-NEW-03, F-NEW-05/06/09) | F-NEW-04 CRITICAL: hook ingestion timeout budget added to Success Criteria (300ms PreToolUse/Stop/SessionStart/UserPromptSubmit, 2000ms Notification per BC-HOOK-022); R-001 re-eval trigger paragraph added (4 conditions matching ADR-0002 pattern; <10% probability stands until any condition materializes); F-NEW-03 CRITICAL: permission token enum reference updated; brief no longer claims 17 zellij-borrowed variants for Phase 1; points at architect-produced SS-permissions-phase1.md canonical artifact; F-NEW-05/06/09 IMPORTANT: hook receiver hardening note added to Scope (body size limit, /healthz, /status, graceful shutdown). No scope removals; all additions are production-grade tightening, not new features. |
 
 ## Who Is It For?
 
@@ -102,6 +103,12 @@ accommodate without breaking Phase 1 ABI.
   illustrative endpoint set (with PostToolUse / PermissionPrompt); the canonical Phase 1
   endpoint set is the 5 endpoints listed above and the vision diagram is non-authoritative
   for endpoint enumeration.
+  - Hook receiver hardening: body size limit ≤256KiB (RFC 7230 §3.3.2 compliant; reject
+    with HTTP 413 Payload Too Large), `/healthz` liveness endpoint, `/status` daemon-state
+    query endpoint, graceful shutdown protocol on SIGTERM/SIGINT (drain in-flight requests,
+    flush JSONL ring per OQ-06, close UDS, persist lock file shutdown marker). See
+    `.factory/specs/architecture/SS-conventions-anti-patterns.md` and the architect's
+    daemon-lifecycle additions for the full BC list.
 - Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (OQ-02)
 - `ClaudeCodeModule`: built-in `EngineModule` implementation; detects Claude Code
   processes via PID walk; enriches with token counts, cost, phase tag from hook
@@ -127,9 +134,13 @@ accommodate without breaking Phase 1 ABI.
   in v1 — shared-memory ring deferred to Phase 4 transport variant (OQ-08)
 - `monocle-proto`: prost protobuf seam in monocle-core — zero runtime cost in v1,
   enables cross-host events in Phase 4 (OQ-07)
-- Permission token enum: 17 variants in `monocle-core::permissions`; dispatcher
-  no-op until Phase 3 (SOQ-4); `VsddFactoryAdapter` statically bundled in v1 —
-  WASM plugin SDK ships Phase 3, not v1 (OQ-03)
+- Permission token enum: see `.factory/specs/architecture/SS-permissions-phase1.md`
+  (architect-produced canonical artifact) — small Phase-1-purpose enum derived from
+  Claude Code hook permission semantics (allow/deny/ask-user decisions for the 5
+  Phase 1 hook endpoint types). The zellij-style 17-variant WASM plugin permission
+  enum is Phase 3 scope alongside the wasmtime plugin SDK; not in Phase 1.
+  Dispatcher no-op until Phase 3 (SOQ-4); `VsddFactoryAdapter` statically bundled
+  in v1 — WASM plugin SDK ships Phase 3, not v1 (OQ-03)
 - macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
   Actions; MSRV Rust 1.86 (ratatui floor, OQ-11)
 
@@ -200,6 +211,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 |---------|--------|--------|
 | Session management in popup | User can manage 3+ concurrent Claude Code sessions without leaving the editor pane | Killer scenario resolves in ≤6 keystrokes (per vision §End-to-End Killer Scenario target: 4) |
 | Permission prompt latency | Permission prompt appears as overlay with diff preview after hook fires | ≤100ms from hook POST receipt to TUI overlay render on localhost |
+| Hook ingestion timeout budget | Daemon responds within Claude Code's upstream timeout ceilings for each hook type | ≤300ms end-to-end response for `PreToolUse`, `Stop`, `SessionStart`, `UserPromptSubmit`; ≤2000ms for `Notification` — per gene-source BC-HOOK-022 (any-context-lazyclaude-pass-B-deep-hooks-r1.md). Exceeding these ceilings causes Claude Code to silently drop the event. Daemon broker architecture (event-bus, mpsc channel sizing) must be designed against these deadlines. |
 | Hook protocol parity | Hook injection byte-compatible with Claude Code's schema | Fixture-based parity test passes against schema in any-context hooks-r1 canonical matrix (5 endpoints: PreToolUse/Notification/Stop/SessionStart/UserPromptSubmit; `X-Claude-Code-Ide-Authorization` header) |
 | Factory pattern detection | vsdd-factory project detected and workflow panel populated | Detection succeeds on monocle's own `.factory/` (self-referential integration test) |
 | Build matrix | Builds and tests pass on macOS and Linux | CI green on darwin/linux × amd64/arm64 |
@@ -277,7 +289,7 @@ These constraints are derived from the orchestrator's accepted defaults on
 | Lock-file schema: `contract_version: u32` field from day one (zellij pattern) | SOQ-1 |
 | Token rotation invariant: bind socket + lock-file write + token THEN hooks-settings reads token | SOQ-2 |
 | Overlay survival: clear on daemon disconnect (Claude Code subprocesses time-out delayed responses) | SOQ-3 |
-| Permission token enum: 17 variants in `monocle-core::permissions`; dispatcher no-op until Phase 3 | SOQ-4 |
+| Permission token enum: see `.factory/specs/architecture/SS-permissions-phase1.md` (architect-produced canonical artifact) — small Phase-1-purpose enum derived from Claude Code hook permission semantics (allow/deny/ask-user decisions for the 5 Phase 1 hook endpoint types); dispatcher no-op until Phase 3; zellij-style 17-variant WASM plugin permission enum is Phase 3 scope | SOQ-4 |
 
 ## Open Questions for Architect
 
@@ -328,6 +340,8 @@ without modifying Claude Code sessions (vs. built-in, lives inside Claude Code's
 Anthropic shipping a thin version confirms the pain is real and significant enough for
 a first-party response — monocle goes deeper on every dimension agent view does not touch.
 The risk that Anthropic deepens agent view to commoditize monocle's hook-native overlay within 12 months was assessed at <10% probability based on agent view's current research-preview scope, single-harness focus, and absence of announced hook-protocol direction (per `.factory/planning/market-intelligence.md` §Risk Register, originally assessed at 25–40%; human red-line at v1.4.1 brief gate revised this to <10% based on additional context about agent view's roadmap and scope). At this probability, no risk mitigation scaffolding is required beyond the production-grade depth monocle is already shipping.
+
+**R-001 re-eval trigger.** Re-open the R-001 risk assessment and reconsider the probability AND the mitigation requirement if ANY of the following occurs: (a) Anthropic announces hook-protocol ingestion as a first-class agent-view capability; (b) Anthropic ships diff-preview or cascaded permission-queue functionality inside agent view; (c) Anthropic extends agent view beyond Claude Code (e.g., supports a non-Claude harness); (d) Anthropic publishes a multi-harness session-management spec or RFC. Until any of these conditions materializes, the <10% assessment stands; monocle's defensible surface is depth + mechanism (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay).
 
 The closest prior art beyond agent view:
 
