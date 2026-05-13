@@ -46,3 +46,6 @@ Session-end markers for the VSDD factory. Run /session-review to synthesize.
 - Session ended at 2026-05-12T14:50:42Z (awaiting /session-review)
 - Session ended at 2026-05-12T16:57:48Z (awaiting /session-review)
 - Session ended at 2026-05-13T00:37:11Z (awaiting /session-review)
+- Session ended at 2026-05-13T03:30:11Z (awaiting /session-review)
+- Session ended at 2026-05-13T03:54:06Z (awaiting /session-review)
+- Session ended at 2026-05-13T14:30:00Z — DURABILITY-CHECKPOINT: context clear before round-21 dispatch; STATE.md zero-context-resume-ready; round-20 adversary: 0 CRITICAL + 2 MEDIUM + 1 LOW

@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "9606e64"
+input-hash: "e0ee788"
 traces_to: STATE.md
 ---
 
@@ -643,3 +643,86 @@ D-027 logged. STATE.md current_step set to `pre-phase-1-final-gate-round-15-fix-
 | Consistency obs: serde_yaml_ng::Value in custom_fields | OBS | Verified consistent with existing serde_yaml_ng dependency pin | 4ca28fd |
 
 D-028 logged. STATE.md current_step: pre-phase-1-final-gate-round-17-fix-burst-complete-awaiting-round-18-validation.
+
+## Burst 20 (2026-05-13) — Round 19 Fix Burst (round-18 findings)
+
+**Agents dispatched:** architect (2 commits)
+**Files touched:** SS-engine-module.md, SS-core-types-and-abi.md, STATE.md, burst-log.md, session-checkpoints.md
+**Versions bumped:** SS-engine-module v1.1.1→v1.1.2; SS-core-types-and-abi v1.2.1→v1.2.2
+
+### Summary
+
+4 round-18 findings resolved. F-R18-1 CRITICAL: ProjectDirs::from introduced by round-17 N16-1 fix resolved to XDG-transformed paths on Linux, breaking Claude Code's XDG-non-conforming ~/.claude/ resolution; replaced with BaseDirs::new().home_dir().join(".claude") which preserves the correct invariant on all platforms. F-R18-2 MEDIUM: VsddFactoryAdapter and ClaudeCodeModule constructor rustdoc added; PreflightError::InvalidHookUrl variant added. F-R18-3 MEDIUM: frontmatter parser now strips YAML quotes and skips flow lists, block scalars, and continuation lines. F-R18-4 LOW: BC-ENGINE-002 test case (c) wording clarified. BC count remains 15. D-029 logged.
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R18-1: ProjectDirs XDG regression broke ~/.claude resolution | CRITICAL | BaseDirs::new() home_dir join(".claude") in metadata() + clone_state() | 4e386d9 |
+| F-R18-2: Missing constructor rustdoc + PreflightError::InvalidHookUrl absent from enum | MEDIUM | Rustdoc on both constructors; InvalidHookUrl variant added | 4e386d9 + 33b5a0a |
+| F-R18-3: parse_frontmatter_extra_fields lacked quote-strip + list/block scalar skip | MEDIUM | Guards added: skip empty, flow lists, block scalars, continuation lines; strip quotes | 33b5a0a |
+| F-R18-4: BC-ENGINE-002 test case wording ambiguous on cmdline | LOW | Clarified: cmdline NOT consulted by detect; only exe_path basename checked | 4e386d9 |
+
+| Agent | Task | Output |
+|-------|------|--------|
+| architect | SS-engine-module v1.1.2 — F-R18-1 BaseDirs + rustdoc + BC-ENGINE-002 wording | commit 4e386d9 |
+| architect | SS-core-types-and-abi v1.2.2 — F-R18-2 rustdoc + InvalidHookUrl + F-R18-3 frontmatter parser | commit 33b5a0a |
+| state-manager | Round-19 close-out: STATE.md (D-029) + cycle files | commit 1b26c54 |
+
+---
+
+## Burst 21 (2026-05-13) — Round 20 Validation (consistency clean + adversary 0 CRITICAL + 2 MEDIUM + 1 LOW)
+
+**Agents dispatched:** consistency-validator (fresh), adversary (fresh — inline)
+**Files touched:** STATE.md, plans/adversary-pass-round-20.md (NEW, persisted during durability close-out), plans/consistency-audit-round-20.md (NEW)
+**Versions bumped:** n/a (validation only)
+
+### Summary
+
+Round 20 validation chain. Consistency audit returned CLEAN (no blocking issues). Adversary fresh pass returned MULTIPLE_DEFER_PATTERNS with CRITICAL count = 0 (first zero-CRITICAL round). 2 MEDIUM + 1 LOW found — all three are residual gaps from the F-R18-1 remediation and its sibling-propagation. Full report at plans/adversary-pass-round-20.md.
+
+**Adversary verdict:** MULTIPLE_DEFER_PATTERNS — 0 CRITICAL + 2 MEDIUM + 1 LOW
+
+| Finding | Severity | Description | Routed To |
+|---------|----------|-------------|-----------|
+| F-R20-1 | MEDIUM | Silent fallback in metadata() returns relative ".claude" path when HOME unresolvable — violates SOUL #4 | architect (SS-engine-module: EngineMetadataError::HomeUnresolvable; metadata() returns Result) |
+| F-R20-2 | MEDIUM | parse_frontmatter_field (lines 712-739) lacks guards present in sibling: returns block-scalar marker, empty string, or flow-list string instead of None — rustdoc contract violated | architect (SS-core-types-and-abi) |
+| F-R20-3 | LOW | Rustdoc for ClaudeCodeModule::new (line 413) recommends Url::parse from unpinned `url` crate absent from SS-deps-pin-manifest | architect (remove suggestion or pin url ^2) |
+
+**Severity trajectory (FC-onwards):**
+
+| Round | CRITICAL | MEDIUM/HIGH | LOW |
+|---|---|---|---|
+| R12 (FC) | 4 | 6 | 4 |
+| R14 | 3 | 5 | 0 |
+| R16 | 1 | 4 | 0 |
+| R18 | 1 | 2 | 1 |
+| R20 | **0** | **2** | **1** |
+
+**Human authorization:** Round 21 fix burst authorized but NOT dispatched before context clear. Durability close-out committed first.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| consistency-validator | Round 20 fresh-context consistency audit | plans/consistency-audit-round-20.md (commit 636d8d4) |
+| adversary (inline) | Round 20 fresh pass | plans/adversary-pass-round-20.md (persisted during durability close-out) |
+| state-manager | Durability close-out: STATE.md rewrite + cycle files + all untracked triaged | this commit |
+
+---
+
+## Burst 22 (2026-05-13) — DURABILITY CLOSE-OUT (zero-context resume ready)
+
+**Type:** state-manager durability close-out
+**Agents:** state-manager
+**Trigger:** human clearing context; must be zero-context-resume-ready before dispatch
+
+### Summary
+
+Context cleared by human after round-20 adversary report. STATE.md fully rewritten as zero-context resume guide. Round-20 adversary report persisted. All untracked files triaged and committed. Round 21 fix burst authorized but not dispatched — full dispatch prompt embedded in STATE.md Immediate Next Action section.
+
+**Durability checkpoint:** DURABILITY-CHECKPOINT: zero-context-resume-ready
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | Adversary round-20 report persisted to plans/ | plans/adversary-pass-round-20.md |
+| state-manager | STATE.md comprehensive rewrite — zero-context resume | STATE.md |
+| state-manager | Cycle files updated (burst-log + session-checkpoints) | cycles/cycle-001/burst-log.md + session-checkpoints.md |
+| state-manager | Untracked files triaged (planning/brief-validation.md, plans/consistency-audit-round-10-final.md, sidecar-learning.md) | committed |
+| state-manager | Sidecar-learning append-only markers added | sidecar-learning.md |

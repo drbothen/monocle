@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "9606e64"
+input-hash: "e0ee788"
 traces_to: STATE.md
 ---
 
@@ -167,8 +167,36 @@ traces_to: STATE.md
 | Field | Value |
 |-------|-------|
 | **Date** | 2026-05-13 |
-| **Position** | Round 15 fix burst complete. Vision authority restored on EngineModule and FactoryAdapter (sealing removed entirely per human Q-15-1). EngineModule trait matches vision §EngineModule exactly (detect/enrich/on_hook). BC-ENGINE-003 added for ClaudeCodeModule inherent methods. 6 supporting types fully specified. async-trait ^0.1 pinned. ADR-0004 variant count 14→15. Brief v1.4.10. BC count: 13→15. D-027 logged. commits: 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c |
+| **Position** | Round 15 fix burst complete. Vision authority restored on EngineModule and FactoryAdapter (sealing removed entirely per human Q-15-1). EngineModule trait matches vision exactly (detect/enrich/on_hook). BC-ENGINE-003 added for ClaudeCodeModule inherent methods. 6 supporting types fully specified. async-trait ^0.1 pinned. ADR-0004 variant count 14->15. Brief v1.4.10. BC count: 13->15. D-027 logged. commits: 42314db + 7483d93 + 27dd235 + ce4c99f + 806ff5f + 816037c + 08b4a9c |
 | **Next** | Orchestrator dispatches round 16 validation chain: consistency-validator fresh pass + adversary fresh pass on vision-restored trait signatures + propagation fixes (17 artifacts, 15 BCs). If clean, Phase 1 gate for human approval. |
-| **Convergence counter** | 10 rounds clean + FC lock-in + round 13 fix burst + round 15 fix burst; trajectory: 10 R1 → 7 R2 → 5 R3 → 2 R4 → 14 R5 → 6+6 R6 → 8 fixes R7 → 3 R8 → 3 fixes R9 → 0 R10 → 0 FC-burst → 13 FC-adversary → 15-fix-burst complete |
+| **Convergence counter** | 10 rounds clean + FC lock-in + round 13 fix burst + round 15 fix burst; trajectory: 10 R1 - 7 R2 - 5 R3 - 2 R4 - 14 R5 - 6+6 R6 - 8 fixes R7 - 3 R8 - 3 fixes R9 - 0 R10 - 0 FC-burst - 13 FC-adversary - 15-fix-burst complete |
+
+---
+
+## Session Resume Checkpoint (2026-05-13) — round-19-fix-burst-complete
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 19 fix burst complete. F-R18-1 CRITICAL resolved: BaseDirs::new() home_dir join(".claude") replaces ProjectDirs (XDG regression fixed). F-R18-2 MEDIUM: constructor rustdoc + PreflightError::InvalidHookUrl added. F-R18-3 MEDIUM: frontmatter parser sibling guards added. F-R18-4 LOW: BC-ENGINE-002 wording clarified. BC count remains 15. D-029 logged. commits: 4e386d9 + 33b5a0a |
+| **Next** | Round 20 validation chain: consistency-validator + adversary fresh pass. If clean (0 findings), Phase 1 gate for human approval. |
+| **Convergence counter** | Trajectory R12-onwards: 14 CRITICAL+IMPORTANT+LOW at FC introduction; R14: 3+5+0; R16: 1+4+0; R18: 1+2+1; R19 fixes applied. |
+
+---
+
+## DURABILITY-CHECKPOINT (2026-05-13) — zero-context-resume-ready
+
+**Type:** DURABILITY-CHECKPOINT: zero-context-resume-ready
+
+### State
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-05-13 |
+| **Position** | Round 20 validation complete: consistency CLEAN + adversary 0 CRITICAL + 2 MEDIUM + 1 LOW. Round 20 adversary report persisted to plans/adversary-pass-round-20.md. STATE.md comprehensively rewritten as zero-context resume guide. Round 21 fix burst authorized but NOT dispatched (context cleared first). All untracked files committed. Convergence trajectory: CRITICAL decayed to zero at R20. |
+| **Next** | Fresh-context session reads STATE.md + CLAUDE.md, then dispatches architect for round 21 fix burst (F-R20-1 silent fallback, F-R20-2 sibling guards, F-R20-3 url rustdoc). Full prompt template embedded in STATE.md Immediate Next Action section. |
+| **Convergence counter** | R20: 0 CRITICAL + 2 MEDIUM + 1 LOW. CRITICAL converged. MEDIUM plateau at 2 per round. |
 
 ---
