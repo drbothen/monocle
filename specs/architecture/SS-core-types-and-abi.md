@@ -4,7 +4,7 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2.2"
+version: "1.2.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling"
 project: monocle
 ---
 
@@ -701,14 +701,24 @@ impl FactoryAdapter for VsddFactoryAdapter {
 /// prevents matching markdown horizontal rules `---` that appear in the body.
 ///
 /// Returns the trimmed, unquoted value string for `key: value` lines, or `None`
-/// if the key is absent, the value is multi-line (YAML block scalar), or the
-/// document does not begin with `---`.
+/// in any of the following cases:
+///
+/// - The document does not begin with `---`.
+/// - The key is absent in the frontmatter block.
+/// - The line is a continuation line (leading whitespace — part of a prior block scalar).
+/// - The value is empty after trimming (e.g., `key: ` with trailing space).
+/// - The value begins with `[` (flow-style list — requires a full YAML parser to decode).
+/// - The value begins with `|` or `>` (block scalar marker — multi-line; not parsed).
 ///
 /// YAML quoted scalars are unquoted: surrounding double quotes or single quotes
 /// are stripped so callers receive the semantic string value, not the YAML
 /// encoding. Example: `awaiting: "round 18 validation chain"` returns
 /// `Some("round 18 validation chain".to_string())` (without the quotes).
 /// Only a single layer of quoting is stripped; nested quotes are not processed.
+///
+/// This function and `parse_frontmatter_extra_fields` share identical guard semantics.
+/// BC-FACTORY-002's `Some(_) or None` assertion is genuinely discriminating: `None`
+/// means "key absent or value unparseable as a simple scalar".
 fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
     let mut lines = content.lines();
     // Frontmatter MUST open on the very first line.
@@ -720,8 +730,24 @@ fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
         if line.trim() == "---" {
             break; // End of frontmatter block.
         }
+        // Skip continuation lines (block scalar body lines begin with whitespace).
+        if line.starts_with(' ') || line.starts_with('\t') {
+            continue;
+        }
         if let Some(rest) = line.strip_prefix(&format!("{}: ", key)) {
             let value = rest.trim();
+            // Return None for empty values — semantically distinct from "key absent".
+            if value.is_empty() {
+                return None;
+            }
+            // Return None for flow-style lists and block scalars — these require a
+            // full YAML parser to decode correctly.
+            if value.starts_with('[')
+                || value.starts_with('|')
+                || value.starts_with('>')
+            {
+                return None;
+            }
             // Strip surrounding double quotes (YAML double-quoted scalar).
             let value = value
                 .strip_prefix('"')
@@ -1052,6 +1078,21 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.3 fixes (round-20 fix F-R20-2):
+- F-R20-2 RESOLVED (MEDIUM): `parse_frontmatter_field` lacked three of the four
+  safety guards present in its sibling `parse_frontmatter_extra_fields`. The v1.2.2
+  fix (F-R18-3) applied the guards only to `parse_frontmatter_extra_fields`. Consequences
+  before this fix: (1) `phase: |` block-scalar marker returned `Some("|")`, violating the
+  rustdoc contract that promises `None` for block scalars; (2) `current_cycle: ` (empty
+  value) returned `Some("")`, semantically indistinct from an absent key and defeating
+  BC-FACTORY-002's `Some(_) or None` assertion; (3) `awaiting: [a, b]` flow-list returned
+  `Some("[a, b]")` rather than `None`. Fix: four guards added to `parse_frontmatter_field`
+  matching `parse_frontmatter_extra_fields` exactly: (a) skip continuation lines (leading
+  whitespace); (b) return `None` for empty value_str; (c) return `None` for values
+  starting with `[` (flow-style list); (d) return `None` for values starting with `|`
+  or `>` (block scalar). Rustdoc updated to enumerate all `None`-returning cases
+  explicitly. `Some(_) or None` is now genuinely discriminating.
 
 v1.2.2 fixes (round-19 fixes F-R18-2/F-R18-3):
 - F-R18-2 RESOLVED: `VsddFactoryAdapter::new` rustdoc expanded with an explicit
