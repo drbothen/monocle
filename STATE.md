@@ -5,14 +5,14 @@ project: monocle
 version: "3.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-13T19:15:00Z
-phase: pre-phase-1-final-gate-round-33-complete
-current_step: round-34-validation-pending
+timestamp: 2026-05-13T20:30:00Z
+phase: pre-phase-1-final-gate-round-35-complete
+current_step: round-36-validation-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "round 33 fix burst commits 31ff515 (adv-r32 persist) + 2f05ab6 (conventions v1.7 pattern-either + edge cases) + e2e7d5a (brief v1.4.17 delimiter correction); resolves F-R32-1/2/3/4 incl. POL-11 META-GAP closure"
-awaiting: "round 34 validation; if CLEAN, Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness)"
+traces_to: "round 35 fix burst commits 5f35b1b (adv-r34 persist) + bdfc4b8 (engine v1.1.10) + f584c59 (conventions v1.8); resolves F-R34-1 CRITICAL META-pattern + F-R34-2/3 IMPORTANT"
+awaiting: "round 36 validation — projected convergence; if CLEAN, Phase 1 gate to human with 3 questions (D-031 vision/arch authority + D-032 routing precedent + Q-3 CLAUDE.md staleness)"
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -44,10 +44,10 @@ Context was cleared by the human. This file is the only prior context. Do:
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
 | **Current Phase** | pre-phase-1-final-gate |
-| **Current Step** | round-34-validation-pending |
+| **Current Step** | round-36-validation-pending |
 | **Brief** | `.factory/specs/product-brief.md` v1.4.17 (commit e2e7d5a) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-13T19:15:00Z |
+| **Last Updated** | 2026-05-13T20:30:00Z |
 
 ## Phase Progress
 
@@ -57,7 +57,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0->v1.4.10 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adversary 0 CRIT + 2 MED + 1 LOW |
-| Pre-Phase-1 Final Gate | PENDING round-34 validation | — | round-33 fix burst complete (commits 31ff515 + 2f05ab6 + e2e7d5a); F-R32-1/2/3/4 resolved; POL-11 META-GAP closed (pattern-either + dual fixtures); Python script edge-case contract; brief v1.4.17 delimiter strings corrected; Q-3 version refresh |
+| Pre-Phase-1 Final Gate | PENDING round-36 validation | — | round-35 fix burst complete (commits 5f35b1b + bdfc4b8 + f584c59); F-R34-1 CRITICAL META-pattern resolved (defense-in-depth: line-anchored regex + §Trace prose de-quote + convention rule); F-R34-2 standard #[$ATTR(...)] semgrep form; F-R34-3 12-path workspace scope |
 | 1: Spec Crystallization | READY — awaiting convergence + human approval | — | |
 | 2-7 | not-started | — | |
 
@@ -67,11 +67,11 @@ Context was cleared by the human. This file is the only prior context. Do:
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| Round 28 validation: consistency (CLEAN) + adversary (2 HIGH + 2 MED + 2 LOW — regression from fresh-context derivation, not round-27 changes); adv-report persisted | validator+adversary | DONE | commit 0b3f89d (adversary-pass-round-28.md) |
 | Round 29 fix burst: F-R28-1 EnrichedSession Option<i64> + F-R28-2 3 more constructors + Cross-Crate Audit table + F-R28-3 HookResponse builder + F-R28-4 HookEventRecord struct + F-R28-5 v1.1.5 trace + F-R28-6 brief row order + ratification | architect+product-owner | DONE | commits 0b3f89d + dc719cd + 09642de + 03f08ad + 1427f4d |
 | Round 30 validation: consistency + adversary (1 HIGH + 2 MED + 1 LOW — NEEDS_ONE_MORE); adv-report persisted | validator+adversary | DONE | commit bdbb97f (adversary-pass-round-30.md) |
 | Round 31 fix burst: F-R30-1 audit table 7→17 + HTML delimiters + F-R30-2 HookEventRecord #[non_exhaustive] + F-R30-3 semgrep rule + Python script CI enforcement + F-R30-4 ISO-8601 convention + ratification | architect+product-owner | DONE | commits bdbb97f + ed9842f + 0fc5803 + 2ad7459 + 442190f |
 | Round 33 fix burst: F-R32-1 brief delimiter strings + F-R32-2 POL-11 META-GAP pattern-either + dual fixtures + F-R32-4 Python script edge cases + F-R32-3 STATE.md Q-3 version refresh | architect+product-owner+state-manager | DONE | commits 31ff515 + 2f05ab6 + e2e7d5a |
+| Round 35 fix burst: F-R34-1 CRITICAL META-pattern defense-in-depth (line-anchored regex + §Trace prose de-quote + convention rule) + F-R34-2 standard #[$ATTR(...)] semgrep wildcard + F-R34-3 12-path workspace scope | architect | DONE | commits 5f35b1b + bdfc4b8 + f584c59 |
 
 ## Decisions Log
 
@@ -91,6 +91,7 @@ Context was cleared by the human. This file is the only prior context. Do:
 | D-034 | Round 29 fix: EnrichedSession last_event_micros i64→Option<i64> (epoch sentinel eliminated); SpawnArgs/SessionHandle/EngineVersion constructors added (E0639 prevented in monocle-runtime/tests/); HookResponse builder pattern replaces pub-field mutation; HookEventRecord defined as real struct in monocle-runtime::ring with RING_FORMAT_VERSION const; v1.1.5 supersession annotation corrected; brief v1.4.15 ratifies + adds Cross-Crate Constructor Audit table codification rule. | 2026-05-13 | state-manager |
 | D-035 | Round 31 fix: Cross-Crate Constructor Audit table expanded 7→17 structs with HTML delimiters for CI machine-parsing; HookEventRecord gets #[non_exhaustive]; new semgrep rule monocle-non-exhaustive-struct-audit-completeness + Python script spec gap-checks the audit table against semgrep-enumerated structs (audit-mechanism CI enforcement codified); ISO-8601 timestamp convention adopted prospectively for brief revision history. | 2026-05-13T18:30:00Z | state-manager |
 | D-036 | Round 33 fix: semgrep rule pattern-either hardened (Shape A `AuditFixtureMinimal` + Shape B `AuditFixtureDerived` with #[derive(...)] interposed) closes POL-11 META-GAP that would have shipped audit-rule as functionally inert; Python script edge cases specified for all 5 malformed-input scenarios (header/separator skip, missing file, malformed delimiter pairs, duplicate delimiters, empty table); brief delimiter strings copy-pasted verbatim from source (corrected from paraphrase); F-R32-3 Q-3 staleness refreshed (v1.4.13→v1.4.17 current; SS-engine-module v1.1.5→v1.1.9). | 2026-05-13T19:15:00Z | state-manager |
+| D-037 | Round 35 fix: F-R34-1 CRITICAL META-pattern — defense-in-depth: (1) line-anchored regex `^<!-- BEGIN: ... -->$`; (2) §Trace prose de-quoted (delimiters by name); (3) v1.8 convention rule prohibits verbatim quoting. Architect also fixed "Future audit maintenance" body-prose verbatim-quote (in-scope, not in adversary scope). F-R34-2: `#[$ATTR(...)]` standard semgrep form replaces `#[...]` (multi-arg derives handled by ellipsis). F-R34-3: paths.include 4→12 covering all 11 crates + binary. | 2026-05-13T20:30:00Z | state-manager |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less than 10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -102,15 +103,15 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 at less tha
 
 ## Blocking Issues
 
-_None — round 34 validation pending._
+_None — round 36 validation pending; projected convergence._
 
 ## Session Resume Checkpoint
 
-**ROUND-33-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-33-complete
+**ROUND-35-CLOSE-OUT** | Cycle: cycle-001 | Phase: pre-phase-1-final-gate-round-35-complete
 
 ### Immediate Next Action
 
-Round 34 validation chain. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: verify all F-R32-* resolutions land cleanly; audit table count consistency; ISO-8601 timestamps; semgrep rule v1.7 well-formed; brief v1.4.17 delimiter strings match SS-engine-module.md verbatim. Adversary scope: SS-engine-module v1.1.9 + SS-daemon-lifecycle v1.0.6 + SS-conventions v1.7 + brief v1.4.17, fresh context, production-grade lens. Verify: (a) pattern-either rule is genuinely robust against attribute-cluster matching ambiguity; (b) two fixtures + expected match count = 2 is sound; (c) Python script edge-case contract is implementation-ready; (d) brief delimiter strings now match source verbatim; (e) no further META-GAP class defects. Projected verdict: CONVERGED (0+0+0). If CLEAN: present Phase 1 gate to human.
+Round 36 validation chain. Projected convergence 0+0+0. Orchestrator dispatches consistency-validator + adversary in parallel. Consistency scope: (a) F-R34-* resolutions clean; (b) 17-struct audit table parseable by line-anchored regex; (c) §Trace prose zero verbatim delimiter quotes; (d) `#[$ATTR(...)]` standard semgrep form documented; (e) 12 paths.include match SS-deps workspace graph; (f) brief v1.4.17 citations cite v1.1.10 (route to product-owner v1.4.18 if any cite v1.1.9). Adversary scope: SS-engine-module v1.1.10 + SS-conventions v1.8 + STATE.md + remaining specs; fresh context; production-grade lens. Verify: (a) line-anchored regex excludes prose references; (b) §Trace prose narrative preserved; (c) `#[$ATTR(...)]` no further wildcard ambiguity; (d) 12-path scope covers all `#[non_exhaustive]` crates; (e) no META-pattern recurrence; (f) compile+test clean. If CLEAN: Phase 1 gate to human (3 standing questions). If NOT clean: route to correct specialist, round-37 fix.
 
 ### Critical Artifacts (read for Phase 1)
 
@@ -118,11 +119,11 @@ Round 34 validation chain. Orchestrator dispatches consistency-validator + adver
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
 3. `.factory/specs/product-brief.md` v1.4.17
 4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
-5. `.factory/specs/architecture/SS-engine-module.md` v1.1.9
+5. `.factory/specs/architecture/SS-engine-module.md` v1.1.10
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.6
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.7
+9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.8
 10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.1
 
 ### Key Tech Stack

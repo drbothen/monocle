@@ -1111,3 +1111,60 @@ All 4 adversary findings resolved in-scope across 3 commits (plus this state clo
 | architect | SS-conventions-anti-patterns v1.7 — `AuditFixtureDerived` + dual-fixture pattern + expected count 1→2 + 5 Python script edge cases (F-R32-2/4) | commit 2f05ab6 |
 | product-owner | product-brief v1.4.17 — delimiter strings corrected verbatim from source + ISO-8601 timestamp (F-R32-1) | commit e2e7d5a |
 | state-manager | STATE.md round-33 close-out + Q-3 version refresh (v1.4.13→v1.4.17) + burst-log Burst 29 (F-R32-3) | this commit |
+
+---
+
+## Burst 30 (2026-05-13T20:30:00Z) — Round-35 fix burst: F-R34-1 CRITICAL META-pattern + F-R34-2/3 IMPORTANT resolved
+
+**Agents dispatched:** architect (2 commits), state-manager (adv-r34 persist + this close-out)
+**Trigger:** 1 CRITICAL + 2 IMPORTANT from round-34 adversary (NEEDS_ONE_MORE verdict)
+**Files touched:** SS-engine-module.md (v1.1.10), SS-conventions-anti-patterns.md (v1.8), plans/adversary-pass-round-34.md (persisted at 5f35b1b), STATE.md, cycles/cycle-001/burst-log.md
+**Versions bumped:** SS-engine-module v1.1.9→v1.1.10; SS-conventions-anti-patterns v1.7→v1.8
+
+### Summary
+
+All 3 adversary findings resolved in-scope across 2 architect commits plus this state close-out. The dominant theme is META-pattern recurrence: the same class of defect that caused F-R32-1 (ratification-prose drift: paraphrasing instead of copy-pasting delimiter strings) manifested at a deeper layer — the F-R30-3 Python script contract itself used the HTML delimiter strings verbatim in its regex spec, creating an exact replica of the trap the rule was designed to prevent.
+
+**F-R34-1 CRITICAL (META-pattern):** The Python script contract in SS-conventions v1.7 specified the regex as `<!-- BEGIN: ... -->` and `<!-- END: ... -->` without line anchors (`^` and `$`). This means prose references to delimiter strings (e.g., in §Trace narrative: `"The script matches <!-- BEGIN: ... -->"`) would be matched by the regex as false-positive struct names. Resolution applied defense-in-depth across three layers:
+1. **Regex layer:** Python script contract updated in SS-conventions v1.8 to specify line-anchored pattern `^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$` — prevents mid-line prose matches.
+2. **Prose layer:** §Trace section in SS-engine-module v1.1.10 rewritten to refer to delimiters by name ("the begin-delimiter" / "the end-delimiter") rather than quoting them verbatim — eliminates the prose source of the false-positive.
+3. **Convention layer:** SS-conventions v1.8 adds a new convention rule: spec prose MUST NOT quote CI-enforced syntactic markers verbatim; refer to them by name or role instead.
+
+**ADDITIONAL fix (in-scope, not in adversary scope):** Architect found a second verbatim-quoting instance in the SS-engine-module v1.1.10 body prose at the "Future audit maintenance" paragraph. This paragraph also quoted the delimiter strings verbatim. Fixed in the same commit per CLAUDE.md Rule 4 (fix in scope, don't surface as advisory). Defense-in-depth approach prevents any single layer failure from re-introducing the defect.
+
+**F-R34-2 IMPORTANT:** The semgrep pattern for the `non-exhaustive` audit rule used `#[...]` as the wildcard form for attributes. This is non-standard in semgrep; the correct metavariable form is `#[$ATTR(...)]`. The ellipsis `(...)` in the argument position handles both single-arg (`#[derive(Debug)]`) and multi-arg (`#[derive(Debug, Clone, PartialEq)]`) derives correctly. Architect updated SS-conventions v1.8 with the standard form and documented the multi-arg derive handling rationale.
+
+**F-R34-3 IMPORTANT:** The semgrep `paths.include` list in SS-conventions v1.7 covered only 4 paths. All workspace crates were not covered — specifically, only `monocle-core`, `monocle-runtime`, `monocle-tui`, and `monocle-cli` were listed. The full workspace includes 11 named crates plus the binary. Architect expanded the `paths.include` array to 12 entries in SS-conventions v1.8, covering all named workspace crates and the binary target. This ensures `#[non_exhaustive]` structs in any crate are captured by CI.
+
+**Round-34 adversary persisted:** State-manager persisted adversary-pass-round-34.md at commit 5f35b1b (durability per STATE.md §Critical Hook Lessons).
+
+### Findings Resolved
+
+| Finding | Severity | Fix | Commit |
+|---------|----------|-----|--------|
+| F-R34-1 CRITICAL: Python script regex `<!-- BEGIN: ... -->` / `<!-- END: ... -->` unanchored — prose references to delimiters in §Trace would match as false-positive struct names; META-pattern (the spec describing its own CI rule walked into the trap it enforced) | CRITICAL | Defense-in-depth: (1) line-anchored regex `^<!-- BEGIN: ... -->$` in script contract (SS-conventions v1.8); (2) §Trace prose de-quoted to refer by name (SS-engine-module v1.1.10); (3) convention rule prohibiting verbatim delimiter quotation in spec prose (SS-conventions v1.8); also fixed "Future audit maintenance" body prose verbatim-quote (in-scope) | bdfc4b8 + f584c59 |
+| F-R34-2 IMPORTANT: semgrep pattern uses non-standard `#[...]` wildcard; correct form is `#[$ATTR(...)]` metavariable | IMPORTANT | Replaced with `#[$ATTR(...)]`; multi-arg derive handling via `(...)` ellipsis documented; SS-conventions v1.7→v1.8 | f584c59 |
+| F-R34-3 IMPORTANT: semgrep paths.include covers only 4 of 12 workspace paths — `#[non_exhaustive]` structs in 8 crates would escape CI detection | IMPORTANT | paths.include expanded to 12 entries covering all 11 named crates + binary; SS-conventions v1.7→v1.8 | f584c59 |
+
+### Notable
+
+- **META-pattern: codification anti-pattern when policy text references CI-enforced syntactic markers verbatim.** The F-R30-3 Python script contract (which was designed to enforce delimiter correctness) itself quoted the delimiters verbatim in its regex, creating the exact trap it was preventing. This is the deepest layer of the recurrence — the enforcer was vulnerable to the defect class it enforced. The defense-in-depth resolution ensures that even if one layer fails, the others remain protective.
+- **Defense-in-depth as the correct production-grade response to a recurring defect class.** After three rounds (R30-3, R32-1, R34-1) of delimiter-related defects, a single-layer fix is insufficient. Three mutually reinforcing layers prevent the class from recurring even if one is bypassed.
+- **Architect extended scope to body-prose fix without orchestrator prompt.** The "Future audit maintenance" paragraph fix was not in the adversary scope but was found during in-scope work. Correct production-grade default per CLAUDE.md Rule 4.
+- **`#[$ATTR(...)]` ellipsis handles multi-arg derives.** This is a semgrep documentation verification, not an assumption. Architect verified against semgrep documentation before codifying.
+- **12-path coverage is the correct workspace scope.** The 4-path original was an under-specification that would have allowed `#[non_exhaustive]` additions in 8 crates to escape CI detection entirely.
+
+### Lessons
+
+1. **[META-pattern] When codifying a rule that detects a specific syntactic pattern, the rule's own documentation MUST NOT reproduce that pattern verbatim.** The enforcer is also a document, and documents accumulate the same drift patterns as code. Apply the rule to its own documentation as the first test case.
+
+2. **[Defense-in-depth for recurring defect classes] After a defect class recurs three times, a single-point fix is insufficient.** The correct production-grade response is defense-in-depth: multiple mutually independent layers, each preventing the same defect via a different mechanism. No single layer failure should re-introduce the defect.
+
+3. **[semgrep wildcard verification] Always verify semgrep metavariable forms against documentation before codifying.** `#[...]` vs `#[$ATTR(...)]` is a subtle distinction with functional consequences: the non-standard form may pass linting but behave unexpectedly against real code. Verification cost is low; defect cost is high.
+
+| Agent | Task | Output |
+|-------|------|--------|
+| state-manager | adversary-pass-round-34.md persisted (durability) | commit 5f35b1b |
+| architect | SS-engine-module v1.1.10 — §Trace prose de-quoted (delimiters by name); "Future audit maintenance" body prose verbatim-quote removed (F-R34-1 defense layer 2 + in-scope additional fix) | commit bdfc4b8 |
+| architect | SS-conventions-anti-patterns v1.8 — line-anchored regex contract (F-R34-1 layer 1) + convention rule prohibiting verbatim delimiter quotation (F-R34-1 layer 3) + `#[$ATTR(...)]` standard form (F-R34-2) + 12-path paths.include (F-R34-3) | commit f584c59 |
+| state-manager | STATE.md round-35 close-out (D-037) + burst-log Burst 30 | this commit |
