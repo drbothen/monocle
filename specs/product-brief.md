@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4"
+version: "1.4.1"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-12T22:30:00Z
+timestamp: 2026-05-12T23:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
@@ -54,7 +54,8 @@ them — across multiple harnesses and federated across hosts."
 | 1.1 | 2026-05-12 | product-owner (version validation revision) | Updated all crate version pins to crates.io 2026-05-12 reality; added RUSTSEC notes; refreshed wasmi/wasmtime rationale; added 11 new version pins for previously-unpinned vision tech stack crates; added OQ-11 MSRV |
 | 1.2 | 2026-05-12 | product-owner (Option A bloat remediation + OQ/SOQ/JC decisions) | Trimmed core to ~200 lines; moved version manifest + RUSTSEC + ADR + conventions to architecture stubs; applied 11 OQ defaults + 4 SOQs + JC-1/2/3 + EX-1/2 resolutions; full traceability preserved |
 | 1.3 | 2026-05-12 | product-owner (competitive positioning revision + OQ-M1/OQ-M3) | Competitive Positioning revised to acknowledge Anthropic's `claude agents` (agent view, v2.1.139, shipped 2026-05-11). Repositioned monocle's differentiation on mechanism and depth (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay) rather than exclusivity over the session-list surface. R-001 acceptance stated explicitly. Added OQ-M1 (agent-view IPC coexistence) and OQ-M3 (`PermissionRequest` as 6th endpoint) to the Open Questions table as `pending architect review`. No scope changes. Resolves B-1 from `.factory/plans/brief-validation-v2.md`. |
-| 1.4 | 2026-05-12 | product-owner (production-grade defect fixes per adversary re-audit 0bd4ba9) | CRITICAL production-grade defect fixes per adversary re-audit (commit 0bd4ba9). Crate count typo 13→12. OQ-M1/M2/M3 resolved in-scope (no longer Pending architect review): OQ-M1 = no agent-view IPC collision; OQ-M2 = claude-manager not hook-protocol; OQ-M3 = stay at 5 endpoints via JC-2 parity. OQ-M2 row added to table (was absent in v1.3). F-07/F-08 citation parentheticals added. R-001 mitigation reframe HELD pending human Q-B confirmation; v1.4.1 patch will land final mitigation text replacing 'ship Phase 1 fast' with concrete Phase 2/3 artifact anchors. No scope changes. |
+| 1.4 | 2026-05-12 | product-owner (production-grade defect fixes per adversary re-audit 0bd4ba9) | CRITICAL production-grade defect fixes per adversary re-audit (commit 0bd4ba9). Crate count typo 13→12. OQ-M1/M2/M3 resolved in-scope (no longer Pending architect review): OQ-M1 = no agent-view IPC collision; OQ-M2 = claude-manager not hook-protocol; OQ-M3 = stay at 5 endpoints via JC-2 parity. OQ-M2 row added to table (was absent in v1.3). F-07/F-08 citation parentheticals added. R-001 mitigation reframe HOLD pending human Q-B confirmation (v1.4 shipped with HOLD marker in place). No scope changes. |
+| 1.4.1 | 2026-05-12 | product-owner (R-001 probability finalized per human Q-B response) | R-001 risk assessment finalized at <10% probability per human Q-B response. Removed the elaborate mitigation framing (was 'ship Phase 1 fast' in v1.3, became HOLD in v1.4 pending human answer). R-001 is now noted as informational background only — at <10%, the production-grade depth monocle is already shipping IS the response; no separate mitigation scaffolding required. Competitive Positioning section simplified to 3-4 sentences replacing the HOLD block. No scope changes. No other content changes. |
 
 ## Who Is It For?
 
@@ -323,9 +324,7 @@ multi-harness and external-overlay operation over the user's existing tmux + edi
 without modifying Claude Code sessions (vs. built-in, lives inside Claude Code's TUI).
 Anthropic shipping a thin version confirms the pain is real and significant enough for
 a first-party response — monocle goes deeper on every dimension agent view does not touch.
-<!-- HOLD: R-001 mitigation pending Q-B answer; final text via v1.4.1 -->
-**R-001 acceptance (pending human Q-B confirmation):** Probability 25–40% accepted [confirm with human]. Mitigation reframe pending human decision — orchestrator will follow up with a v1.4.1 patch carrying the final mitigation text. Current candidate mitigation: production-grade Phase 1 hook-native overlay (VecDeque concurrency, diff preview, trigger-trace BC anchors codified in Phase 2 PRD) + workflow-plane FactoryAdapter trait stability ADR (Phase 3) + multi-harness EngineModule architecture (broader surface than agent-view's Claude-Code-only scope). "Ship fast" framing replaced with concrete artifact-anchored mitigation. (per `.factory/planning/market-intelligence.md` §Risk Register)
-<!-- HOLD: R-001 mitigation pending Q-B answer; final text via v1.4.1 -->
+The risk that Anthropic deepens agent view to commoditize monocle's hook-native overlay within 12 months was assessed at <10% probability based on agent view's current research-preview scope, single-harness focus, and absence of announced hook-protocol direction (per `.factory/planning/market-intelligence.md` §Risk Register, originally assessed at 25–40%; human red-line at v1.4.1 brief gate revised this to <10% based on additional context about agent view's roadmap and scope). At this probability, no risk mitigation scaffolding is required beyond the production-grade depth monocle is already shipping.
 
 The closest prior art beyond agent view:
 
