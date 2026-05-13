@@ -2,7 +2,7 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.5"
+version: "1.1.6"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -12,7 +12,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation"
 project: monocle
 ---
 
@@ -61,6 +61,16 @@ All versions verified against crates.io REST API on 2026-05-12.
 | futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
+
+## Dev Dependencies
+
+Test-only crates that appear in `[dev-dependencies]` in `monocle-runtime/Cargo.toml`
+(and any other crate that has integration tests requiring environment manipulation).
+These crates do NOT appear in the production binary.
+
+| Crate | Version | Role | Cargo.toml Note |
+|-------|---------|------|-----------------|
+| temp-env | 0.2 | Environment variable manipulation in integration tests with RAII cleanup | caret pin (`^0.2`); `[dev-dependencies]` only; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); chosen over `serial_test` + manual `remove_var` because `temp-env` restores variables on both normal and panic exit paths — safe for multi-threaded Rust test harnesses |
 
 ## Phase 2/3/4 Additions
 
