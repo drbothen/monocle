@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.6"
+version: "1.7"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table)"
 project: monocle
 ---
 
@@ -147,9 +147,20 @@ rules:
     # excluded — they contain #[non_exhaustive] in code blocks that are prose, not
     # compiled Rust. The path include list is kept narrowly scoped to avoid false
     # matches on fixture files or generated code.
-    pattern: |
-      #[non_exhaustive]
-      pub struct $NAME { ... }
+    pattern-either:
+      - pattern: |
+          #[non_exhaustive]
+          pub struct $NAME { ... }
+      - pattern: |
+          #[non_exhaustive]
+          #[...]
+          pub struct $NAME { ... }
+    # pattern-either rationale (F-R32-2): semgrep's behavior for Rust attribute clusters is not
+    # externally documented as strict-or-liberal with respect to intermediate attributes. The first
+    # arm matches the minimal shape (no intervening attributes); the second arm matches the
+    # production-code shape (#[derive(...)] interposed between #[non_exhaustive] and pub struct).
+    # Both arms are required to guarantee the rule fires on actual monocle production structs.
+    # See §Semgrep Coverage Hardening — fixture corpus dual-shape requirement for enforcement.
     paths:
       include:
         - "monocle-core/src/**/*.rs"
@@ -180,7 +191,58 @@ fixture file containing a deliberate violation of that rule.
 | `monocle-no-naked-fs-write` | `semgrep-fixtures/naked_fs_write.rs` | `std::fs::write("/tmp/x", b"data").unwrap();` |
 | `monocle-no-unbounded-channel` | `semgrep-fixtures/unbounded_channel.rs` | `tokio::sync::mpsc::unbounded_channel::<u8>();` |
 | `monocle-no-raw-env-mutation-in-tests` | `semgrep-fixtures/tests/raw_env_mutation.rs` | `std::env::set_var("HOME", "/tmp");` AND `env::set_var("HOME", "/tmp");` (both patterns exercised) |
-| `monocle-non-exhaustive-struct-audit-completeness` | `semgrep-fixtures/non_exhaustive_struct.rs` | `#[non_exhaustive] pub struct AuditFixtureStruct { pub field: u32 }` — one deliberate match to confirm the rule fires on a `#[non_exhaustive] pub struct` definition |
+| `monocle-non-exhaustive-struct-audit-completeness` | `semgrep-fixtures/non_exhaustive_struct.rs` | Two fixture structs (both in the same file): **Shape A** — minimal: `#[non_exhaustive] pub struct AuditFixtureMinimal { pub field: u32 }` (no intervening attribute); **Shape B** — production-code shape: `#[non_exhaustive] #[derive(Debug, Clone)] pub struct AuditFixtureDerived { pub field: u32 }` (`#[derive(...)]` interposed between `#[non_exhaustive]` and `pub struct`, mirroring every real monocle production struct). Expected match count: 2 (one per shape). Rationale: see note below. |
+
+**Note — why two fixture shapes are required for `monocle-non-exhaustive-struct-audit-completeness` (F-R32-2):**
+
+Semgrep's Rust pattern matching is tree-sitter-based (AST-level), but semgrep's behavior when
+matching multi-attribute clusters is not unambiguously documented for the case where intervening
+attributes exist between the matched attribute and the `pub struct` keyword. The rule pattern:
+
+```yaml
+pattern: |
+  #[non_exhaustive]
+  pub struct $NAME { ... }
+```
+
+In tree-sitter-rust, a `struct_item` node's attributes are represented as sibling `attribute_item`
+nodes preceding the `struct` keyword. The pattern above may be interpreted strictly — matching only
+a struct whose first and only outer attribute is `#[non_exhaustive]` — or liberally — matching any
+struct that carries `#[non_exhaustive]` as one of its attributes regardless of order. This behavior
+is NOT verifiable from semgrep's public documentation alone (confirmed via research, F-R32-2
+finding rationale).
+
+Every monocle production struct that carries `#[non_exhaustive]` ALSO carries `#[derive(...)]`
+interposed between the two, matching Shape B above. If semgrep's matching is strict (position-
+sensitive on attribute order), then the current rule pattern would match Shape A (the minimal
+fixture already in v1.6) but FAIL to match Shape B (the production-code shape), producing a
+false-green: the fixture passes, the production code is never matched, the audit-completeness
+check never fires on real structs, and the POL-11 coverage guarantee is worthless.
+
+The dual-shape fixture requirement ensures the CI catches this failure mode: if Shape B produces
+zero findings during the fixture corpus step (Step 1), the expected count (2) will not be met and
+CI fails with a clear message indicating the rule does not match production-code attribute ordering.
+
+**Rule pattern hardening:** The rule pattern is updated (see §Semgrep Rules above) to use
+`pattern-either` to cover both attribute orderings explicitly:
+
+```yaml
+pattern-either:
+  - pattern: |
+      #[non_exhaustive]
+      pub struct $NAME { ... }
+  - pattern: |
+      #[non_exhaustive]
+      #[...]
+      pub struct $NAME { ... }
+```
+
+This makes the rule correct regardless of semgrep's strict-vs-liberal attribute-cluster semantics.
+The second arm covers the case where exactly one intermediate attribute (`#[derive(...)]`) is
+interposed. If production structs acquire additional intermediate attributes (e.g., `#[serde(...)]`
+in addition to `#[derive(...)]`), the pattern-either arms may need to be extended. The fixture
+corpus dual-shape requirement ensures that any regression in rule matching is caught in CI before
+it affects production scans.
 
 Each fixture file contains ONLY the violation pattern (plus minimal Rust syntax to make it
 parse). Fixture files are NOT part of the Rust workspace (`Cargo.toml` workspace members list
@@ -248,8 +310,58 @@ The script:
 6. Exits 0 with `Audit table: complete (N structs declared, N structs found by semgrep).`
    if the sets are equal.
 
-The fixture-corpus assertion for this rule (Step 1 above) must match 1 finding in
-`semgrep-fixtures/non_exhaustive_struct.rs` (the `AuditFixtureStruct` fixture).
+**Contract edge cases (F-R32-4):** The following behaviors are normative requirements for the
+`check_audit_table.py` implementation. The devops-engineer MUST implement all five. No
+implementer's-choice behavior is permitted.
+
+1. **Header and separator row handling.** When iterating lines between the delimiter markers,
+   the script MUST skip two categories of non-data rows before attempting to extract struct names:
+   - Separator rows: skip any line matching the regex `r'^\|[-: |]+\|$'` (a row whose cells
+     contain only hyphens, colons, spaces, and pipe characters — the markdown table separator).
+   - Header rows: skip any line whose first cell (text between the first `|` and second `|`,
+     stripped) equals the literal string `Struct` or begins with `**` (bold-formatted header).
+   Lines that are neither separator nor header are treated as data rows. Struct names are extracted
+   from data rows only.
+
+2. **Missing spec file.** If the file path supplied via `--spec-file` does not exist, the script
+   MUST exit with status code 1 and emit exactly:
+   `Error: spec file not found: <path>` (where `<path>` is the value passed to `--spec-file`).
+   No further processing occurs.
+
+3. **Malformed delimiter pairs.** The script MUST validate delimiter pairing before reading table
+   data:
+   - If `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` is found but no subsequent
+     `<!-- END: Cross-Crate Constructor Audit Table -->` exists, exit with status 1 and emit:
+     `Error: found BEGIN delimiter with no matching END delimiter in <path>`.
+   - If `<!-- END: Cross-Crate Constructor Audit Table -->` is found but no preceding
+     `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` exists, exit with status 1 and emit:
+     `Error: found END delimiter with no preceding BEGIN delimiter in <path>`.
+
+4. **Duplicate delimiters.** If `<!-- BEGIN: Cross-Crate Constructor Audit Table -->` appears
+   more than once in the spec file (e.g., because a §Trace example embedded the delimiter text),
+   the script MUST exit with status 1 and emit:
+   `Error: multiple BEGIN delimiters found in <path>; spec file is ambiguous`.
+   Similarly, if `<!-- END: Cross-Crate Constructor Audit Table -->` appears more than once,
+   exit with status 1 and emit:
+   `Error: multiple END delimiters found in <path>; spec file is ambiguous`.
+   Duplicate-delimiter detection runs before any table content is read.
+
+5. **Empty table.** If the table between the delimiters contains zero data rows (i.e., only
+   separator and/or header rows, or no rows at all), the script MUST exit with status 1 and emit:
+   `Error: Cross-Crate Constructor Audit Table in <path> has no data rows; this is a spec gap`.
+   Rationale: an empty table indicates the audit table has not been populated, which is a spec
+   defect — not a legitimate "zero structs declared" state. A codebase with zero
+   `#[non_exhaustive]` structs would still produce an empty semgrep output, which is handled
+   by the normal set-difference logic (0 structs declared = 0 structs found = complete). The
+   empty-table check is distinct from the zero-semgrep-findings case.
+
+The fixture-corpus assertion for this rule (Step 1 above) must match **2 findings** in
+`semgrep-fixtures/non_exhaustive_struct.rs` — one for `AuditFixtureMinimal` (Shape A, minimal
+form) and one for `AuditFixtureDerived` (Shape B, production-code form with `#[derive(...)]`
+interposed). Expected count: 2. If CI reports 1 instead of 2, the rule's `pattern-either` second
+arm is not matching the production-code attribute shape — the rule must be corrected before
+proceeding. If CI reports 0, the rule is entirely non-functional. Both count-mismatch conditions
+block CI (Step 1 fails; Steps 2 and 3 are skipped per step-ordering rule).
 The production scan expected count is NOT zero (not a conventional zero-findings rule) —
 the fixture-corpus assertion is the only POL-11 coverage check for this rule.
 
@@ -599,6 +711,46 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
 ## §Trace
+
+v1.7 changes (round-33 fixes F-R32-2 MEDIUM / F-R32-4 LOW):
+
+- F-R32-2 RESOLVED (MEDIUM process-gap — adversary finding): The semgrep fixture corpus for
+  `monocle-non-exhaustive-struct-audit-completeness` contained a single fixture struct
+  (`#[non_exhaustive] pub struct AuditFixtureStruct { ... }`) with no `#[derive(...)]` attribute
+  between `#[non_exhaustive]` and `pub struct`. Every actual monocle production struct has
+  `#[derive(Debug, Clone)]` (or similar) interposed between these two. If semgrep's Rust tree-sitter
+  pattern matching is position-sensitive on attribute clusters — i.e., `#[non_exhaustive]\npub
+  struct $NAME { ... }` matches only a struct whose first outer attribute is `#[non_exhaustive]`
+  with no intervening attributes — then the rule matches the minimal fixture (confirming the rule
+  is functional) but fails to match any production struct (because production structs have an
+  intermediate `#[derive(...)]` attribute). The Step 3 Python script then receives an empty semgrep
+  JSON output and trivially exits 0: no struct names found, no table gap possible. This is the
+  POL-11 false-green pattern identical to the prism PR #127 failure mode (a rule appears to work
+  in CI because the fixture passes, but never fires on production code). Fix (three parts):
+  (1) Fixture corpus updated to require two fixture structs in `semgrep-fixtures/non_exhaustive_struct.rs`:
+  Shape A (minimal — no intermediate attribute, matches `AuditFixtureMinimal`) and Shape B
+  (production-code shape — `#[derive(Debug, Clone)]` interposed, matches `AuditFixtureDerived`).
+  Expected Step 1 match count updated from 1 to 2. If CI reports 1 instead of 2, the rule's
+  second arm fails on the production-code attribute shape — this is a blocking CI failure.
+  (2) The semgrep rule pattern updated from a single `pattern: |` block to a `pattern-either` with
+  two arms — one for the minimal shape, one for the production-code shape with `#[...]` as a
+  wildcard intermediate attribute. This makes the rule correct regardless of whether semgrep's
+  attribute-cluster matching is strict or liberal. Rationale is documented inline in the rule YAML
+  comment.
+  (3) The fixture corpus rationale note added after the table explains WHY dual-shape is required
+  (F-R32-2 META-GAP rationale + POL-11 production-shape requirement), enabling future readers to
+  understand the non-obvious design decision.
+
+- F-R32-4 RESOLVED (LOW process-gap — adversary finding): The `check_audit_table.py` Step 3
+  contract (§Step 3 — Audit-table gap check) lacked specification for five edge cases that would
+  leave the script with undefined/implementer-choice behavior: header/separator row skipping,
+  missing spec file, malformed delimiter pairs (BEGIN without END, END without BEGIN), duplicate
+  delimiters, and empty table. In each case a naive implementation could silently succeed with
+  exit 0 despite the spec being in a broken state — a false-green identical to the POL-11 pattern.
+  Fix: a "Contract edge cases" paragraph added after Step 3's step 6, specifying all five cases
+  with exact exit codes, exact error message formats, and production-grade defaults (empty table =
+  fail, not warn; missing file = fail; duplicate delimiters = fail with disambiguation). All five
+  cases are normative requirements for the devops-engineer Phase 1 deliverable.
 
 v1.6 changes (round-30 fix F-R30-3 MEDIUM):
 - F-R30-3 RESOLVED (MEDIUM process-gap — adversary finding): The §Cross-Crate Constructor
