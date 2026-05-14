@@ -1714,3 +1714,201 @@ Pass A: All 4 R48/R49 findings genuinely resolved. Pass B: No new META-pattern i
 Convergence trajectory: R44 4f, R46 3f (1H+1M+1L), R48 3f (LOW only, all [process-gap]), R50 ZERO. Novelty exhausted. Defense layer coverage closed.
 
 Next: R51 audit cycle (consistency + adversary in parallel on post-state-commit). Target: clean-pass 2 of 3. After R51 CLEAN → R52 for 3 of 3 → Phase 1 final gate re-presentation to human.
+
+---
+
+## R51-R53 Cycle — 9 Bursts, 5 META-Rule Codifications, 0/3 Clean Passes (2026-05-14)
+
+### Overview
+
+R51 adversary found 1 MEDIUM finding (F-R51-adv-1: §Option A mis-anchor, PG-4 class).
+R52 consistency found 2 LOW findings (§Trace self-violation + cascade hole + ordering).
+R53 adversary found 5 findings (1 MED + 1 MED [process-gap] META-META scope hole + 3 LOW).
+D-047 strict policy reset convergence count to 0/3 after each finding. R50 remains the only
+clean round.
+
+Total: ~20 mis-anchors / version-staleness / META-pattern instances fixed across 9 bursts.
+5 new META-rule codifications in SS-conventions-anti-patterns.md.
+
+---
+
+### R51 Audit Burst — NEEDS_ONE_MORE (2026-05-14)
+
+**Consistency leg commit:** ff17425 — CLEAN (2-of-3 consistency leg, reset by adversary)
+**Adversary leg commit:** ff17425 — 1 MEDIUM finding
+**Reports:** plans/consistency-audit-round-51.md, plans/adversary-pass-round-51.md
+
+#### R51 Adversary Finding
+
+| ID | Severity | Description |
+|----|----------|-------------|
+| F-R51-adv-1 | MEDIUM | §Option A mis-anchor at 4 sites — SS-permissions-phase1.md has no §Option A heading; attestation is under §Trace. Sites: SS-engine-module.md L655/L1187, SS-conventions L1035/L1038. |
+
+#### D-047 Reset
+
+Convergence count reset: 0/3.
+
+---
+
+### R51.1 Architect Fix Burst (2026-05-14)
+
+**Commit:** 562b54c
+**Agent:** architect
+
+**Fixes:**
+- F-R51-adv-1: §Option A → §Trace at all 4 sites (SS-engine-module.md L655, L1187; SS-conventions L1035, L1038)
+- PG-4 §Section-Anchor Citation Convention codified in SS-conventions-anti-patterns.md v1.18→v1.19
+- Comprehensive §-heading-existence sweep across 8 spec files: 10 total mis-anchors fixed
+  (F-R51-adv-1 primary ×4 + 6 bonus catches: §HookEventRecord→§Drain, §Future audit maintenance→§Cross-Crate Constructor Audit, §Phase 4 Additions→§Phase 4 — Federation MCP Bridge, §Analysis — Sealed trait ×2 sites, §Item P3-1 intra-doc)
+- D-042 cascade: SS-engine-module v1.1.14→v1.1.15, SS-core-types-and-abi v1.2.4→v1.2.5, SS-forward-compat v1.2.5→v1.2.6, SS-conventions v1.18→v1.19
+
+**Decisions logged:** D-049 (PG-4 §Section-Anchor Citation Convention codified)
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R51-adv-1 + PG-4 codification + 10-site sweep + 5 file bumps | commit 562b54c |
+
+---
+
+### R51.2 Product-Owner Brief Cascade (2026-05-14)
+
+**Commit:** b89d9c0
+**Agent:** product-owner
+
+**Fixes:**
+- F-R51-cascade-1: SS-engine-module citation v1.1.14→v1.1.15 in brief Success Criteria row
+- Bonus PG-4 catch: §JSONL Ring Buffer mis-anchor in brief line 177 → §Daemon Lifecycle Protocol
+- brief v1.4.21→v1.4.22
+
+| Agent | Work | Output |
+|-------|------|--------|
+| product-owner | Brief cascade + bonus §JSONL mis-anchor catch | commit b89d9c0 |
+
+---
+
+### R52 Audit Burst — 2 LOW findings (2026-05-14)
+
+**Consistency leg commit:** b89d9c0
+**Reports:** plans/consistency-audit-round-52.md, plans/consistency-audit-round-52-reaudit.md
+
+First pass found 1 LOW (F-R52-cons-1). Re-audit on fa3051d found 2 findings (F-R52R-1 + F-R52R-2).
+
+#### R52 Findings
+
+| ID | Severity | Description |
+|----|----------|-------------|
+| F-R52-cons-1 | LOW | SS-conventions §Trace v1.19 entry for R51.1 burst contained bare L487 token — PG-3 violation in §Trace entry that itself documents the PG-4 sweep (ironic self-violation). |
+| F-R52R-1 | LOW | D-042 incomplete cascade: SS-forward-compat §P2-1 3 sites cited dtu-assessment.md v1.4 but dtu-assessment bumped to v1.5 in R52.1 burst; sites not updated. |
+| F-R52R-2 | LOW | §Trace ordering anomaly in SS-forward-compat §Trace: v1.2.7, v1.2.6, v1.2.5, v1.2.2, v1.2.4, v1.2.3 — incorrect descending order (pre-existing, surfaced for audit evaluation). |
+
+---
+
+### R52.1 Architect Fix Burst (2026-05-14)
+
+**Commit:** fa3051d
+**Agent:** architect
+
+**Fixes:**
+- F-R52-cons-1: L487 bare token removed from SS-conventions §Trace v1.19 entry
+- 3-site §Trace sweep for PG-3-TRACE-NEW-ENTRY violations in sibling files
+- PG-3-TRACE-NEW-ENTRY META-rule reflexivity discipline codified in SS-conventions v1.19→v1.20
+- D-042 cascade: SS-core-types-and-abi.md v1.2.5→v1.2.6; dtu-assessment.md v1.4→v1.5
+
+**Decisions logged:** D-050 (PG-3-TRACE-NEW-ENTRY META-rule reflexivity discipline codified)
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R52-cons-1 + 3-site §Trace sweep + PG-3-TRACE-NEW-ENTRY codified | commit fa3051d |
+
+---
+
+### R52.2 Architect Fix Burst (2026-05-14)
+
+**Commit:** c20ff19
+**Agent:** architect
+
+**Fixes:**
+- F-R52R-1: dtu-assessment.md v1.4→v1.5 at SS-forward-compat §P2-1 3 body sites (L55, L57, L73)
+- F-R52R-2: §Trace ordering corrected in SS-forward-compat v1.2.7→v1.2.8
+- PG-D042-DTU-SCOPE codified: D-042 grep recipe extended with sibling patterns for dtu-assessment.md and vision
+
+**Decisions logged:** D-051 (PG-D042-DTU-SCOPE codified)
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R52R-1/2 + PG-D042-DTU-SCOPE codified | commit c20ff19 |
+
+---
+
+### R53 Audit Burst — NEEDS_ONE_MORE (2026-05-14)
+
+**Consistency leg commit:** c20ff19 — CLEAN (1-of-3 consistency leg, reset by adversary)
+**Adversary leg commit:** c20ff19 — 5 findings
+**Reports:** plans/consistency-audit-round-53.md, plans/adversary-pass-round-53.md
+
+#### R53 Adversary Findings
+
+| ID | Severity | Description |
+|----|----------|-------------|
+| F-R53-adv-1 | MEDIUM | §Analysis mis-anchor in SS-daemon-lifecycle §Trace v1.0.6: cites §Analysis in SS-forward-compat; no such heading. Correct anchor: §Item P3-1. |
+| F-R53-adv-2 | MEDIUM [process-gap] | PG-4 recipe SS-only scope hole (META-META): recipe excluded brief, dtu-assessment, vision, ADR files. Same root-cause class as pre-PG-D042-DTU-SCOPE gap. |
+| F-R53-adv-3 | LOW | Brief §-anchor mis-anchors (5 sites): §Phase Plan, §Explicit Non-Goals, §Phase Plan Phase 2/3, §Phase 4 notes — all pointing to non-existent headings. |
+| F-R53-adv-4 | LOW | Brief §Phase 1 Success Criteria (2 sites) — heading is §Success Criteria, not §Phase 1 Success Criteria. |
+| F-R53-adv-5 | LOW | ADR-0004 §Public enum extensibility — no such heading; enclosing heading is §Scope (Public enum extensibility forward-compatibility contract). |
+
+#### D-047 Reset
+
+Convergence count reset: 0/3.
+
+---
+
+### R53.1 Architect Fix Burst (2026-05-14)
+
+**Commit:** 8baec19
+**Agent:** architect
+
+**Fixes:**
+- F-R53-adv-1: §Analysis → §Item P3-1 in SS-daemon-lifecycle §Trace v1.0.6
+- F-R53-adv-2: PG-4 recipe expanded with 4 sibling grep patterns (Patterns 2-5: brief, dtu-assessment, vision, ADR files); PG-RECIPE-SCOPE META-META rule codified
+- F-R53-adv-3: 5 brief §-anchor mis-anchors fixed (§Phase Plan → §Phase Plan Rationale ×3; §Explicit Non-Goals → §Out of Scope; §Phase 4 notes → §Scope)
+- F-R53-adv-4: §Phase 1 Success Criteria → §Success Criteria at 2 sites
+- F-R53-adv-5: §Public enum extensibility → §Scope (Public enum extensibility forward-compatibility contract) in ADR-0004 frontmatter + body
+- Comprehensive expanded-scope PG-4 sweep: 10 total brief §-anchor mis-anchors swept
+- D-042 cascade: SS-core-types-and-abi.md v1.2.6→v1.2.7; dtu-assessment.md v1.5→v1.6 (3 body citations); SS-daemon-lifecycle v1.0.6→v1.0.7 (1 site); SS-forward-compat cascades; SS-conventions exemplar refresh
+
+**Decisions logged:** D-052 (PG-RECIPE-SCOPE META-META rule codified)
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R53-adv-1/2/3/4/5 + PG-RECIPE-SCOPE META-META + 10 brief mis-anchors + 6 file bumps | commit 8baec19 |
+
+---
+
+### R53.2 Product-Owner Brief Cascade (2026-05-14)
+
+**Commit:** 0d0b0db
+**Agent:** product-owner
+
+**Fixes:**
+- F-R53-cascade-1: SS-daemon-lifecycle v1.0.6→v1.0.7 at 3 brief citation sites
+- brief PG-4 expanded-scope audit: CLEAN (no new mis-anchors at expanded scope)
+- brief v1.4.22→v1.4.23
+
+| Agent | Work | Output |
+|-------|------|--------|
+| product-owner | Brief cascade (SS-daemon-lifecycle v1.0.7) + PG-4 expanded-scope audit CLEAN | commit 0d0b0db |
+
+---
+
+### R51-R53 Cycle Summary
+
+| Metric | Value |
+|--------|-------|
+| Bursts | 9 (R51 audit ×2 legs + R51.1 + R51.2 + R52 audit + R52.1 + R52.2 + R53 audit ×2 legs + R53.1 + R53.2) |
+| Spec commits | 6 (562b54c, b89d9c0, fa3051d, c20ff19, 8baec19, 0d0b0db) |
+| META-rule codifications | 5 (PG-4, PG-3-TRACE-NEW-ENTRY, PG-D042-DTU-SCOPE, PG-RECIPE-SCOPE, PG-4 recipe expansion) |
+| Decisions recorded | D-049 through D-052 |
+| Mis-anchors / version-staleness fixed | ~20 instances across 9 bursts |
+| Clean passes | 0/3 (R50 remains only clean round under D-047) |
+| Defense layers | 12 codified (PG-1 through PG-4 + PG-RECIPE-SCOPE META-META + D-042 4-pattern + constructor + BC attestation + DTU split-column) |
+| Next | R54 audit cycle dispatch (consistency + adversary truly-parallel on commit 0d0b0db) |
