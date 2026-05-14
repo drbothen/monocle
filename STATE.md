@@ -51,7 +51,7 @@ Context was cleared. This file is the only prior context. Do:
 | 0.5-0.9: Brief v1.0→v1.4.19 + arch stubs | DONE | 2026-05-12 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adv 0 CRIT+2 MED+1 LOW |
-| Pre-Phase-1 Final Gate | PENDING — R46 adversary NEEDS_ONE_MORE 1H+1M+1L (commit [this-burst]). 0/3 clean passes after 13 rounds (R22-R44 + R46). Convergence-definition question SURFACING NOW per O-R44-1. D-040/D-041/D-042 conditional; Q-3 pending human refresh; gate retracted per D-043. | — | |
+| Pre-Phase-1 Final Gate | PENDING — R46 adversary NEEDS_ONE_MORE 1H+1M+1L (commit 0903d48). 0/3 clean passes after 13 rounds (R22-R44 + R46). Convergence-definition question SURFACING NOW per O-R44-1. D-040/D-041/D-042 conditional; Q-3 pending human refresh; gate retracted per D-043. | — | |
 | 1: Spec Crystallization | not-started | — | |
 | 2-7 | not-started | — | |
 
@@ -65,7 +65,7 @@ Context was cleared. This file is the only prior context. Do:
 | R45 fix burst: F-R44-adv-1 HIGH Option b (fixture path to paths.include + FIXTURE_STRUCT_NAMES exclusion) + F-R44-adv-2/3 narrative count drift (5 rules / 3 steps) + F-R44-adv-4 auto-resolved | architect | DONE | commit e7ef2b5 |
 | R45 state close-out: convergence-definition flagged post-R46; 0/3 after 12 rounds | state-manager | DONE | commit 705df28 |
 | R46 consistency: 0 findings CLEAN | consistency-validator | DONE | commit ceff2e6 |
-| R46 adversary retry: F-R46-1 HIGH (DTU schema-citation drift 3-doc) + F-R46-2 MED (phantom BC-HOOK-001–006) + F-R46-3 LOW (step-6→7 stale); Pass A 4/4 R44 RESOLVED | adversary+state-manager | DONE | commits ceff2e6 + [this-burst] |
+| R46 adversary retry: F-R46-1 HIGH (DTU schema-citation drift 3-doc) + F-R46-2 MED (phantom BC-HOOK-001–006) + F-R46-3 LOW (step-6→7 stale); Pass A 4/4 R44 RESOLVED | adversary+state-manager | DONE | commits ceff2e6 + 0903d48 |
 
 ## Decisions Log
 
@@ -106,7 +106,7 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 <10%; Q-lic
 1. Read this file completely.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` (canonical principle binds everything).
 3. Verify git: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Most recent commits: [this-burst] (R46 persist + state update), ceff2e6 (R46 consistency CLEAN), 705df28 (R45 close-out), e7ef2b5 (SS-conventions v1.13), e281286 (R44 adv persist).
+4. Most recent commits: 0903d48 (R46 persist + state update), ceff2e6 (R46 consistency CLEAN), 705df28 (R45 close-out), e7ef2b5 (SS-conventions v1.13), e281286 (R44 adv persist).
 
 ### Immediate Next Action — AWAIT HUMAN CONVERGENCE-DEFINITION RATIFICATION
 
@@ -141,7 +141,7 @@ Full report: `.factory/plans/adversary-pass-round-46.md`
 ### Session Commit Chain (most-recent-first)
 
 ```
-[this-burst] — R46 adversary persist + STATE.md update (convergence-def surfaces to human)
+0903d48 — R46 adversary persist + STATE.md update (convergence-def surfaces to human)
 ceff2e6 — R46 consistency CLEAN (0 findings)
 705df28 — R45 state-manager close-out (convergence-definition flagged post-R46)
 e7ef2b5 — R45 architect SS-conventions v1.13 (F-R44-adv-1 Option b + count drift)
