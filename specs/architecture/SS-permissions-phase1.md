@@ -2,7 +2,7 @@
 document_type: architecture-permissions
 level: L3
 section: "permissions"
-version: "1.2"
+version: "1.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved; v1.2: round-57.1 PG-5 sweep — brief v1.3 + v1.4.3 historical-anchor fix (§Context + §Consequences)"
+traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved; v1.2: round-57.1 PG-5 sweep — brief v1.3 + v1.4.3 historical-anchor fix (§Context + §Consequences); v1.3: round-58.1 F-R58-1-cons — PG-3-TRACE-NEW-ENTRY self-violation in §Trace v1.2 entries; bare L-numbers removed, position-free rewrite"
 project: monocle
 ---
 
@@ -295,14 +295,18 @@ requiring an ADR — only new dispatch semantics require one.
 
 ## Trace
 
+v1.3 changes (round-58.1 F-R58-1-cons — PG-3-TRACE-NEW-ENTRY self-violation fix):
+- §Trace v1.2 entries contained bare L-number pinpoints (§Context entry and §Consequences
+  entry). Bare L-numbers in §Trace prose violate PG-3-TRACE-NEW-ENTRY (codified v1.20).
+  Both entries rewritten to position-free form: section names only, no L-number pinpoints.
+  No substantive content change — the PG-5 fixes described by v1.2 are unchanged.
+
 v1.2 changes (round-57.1 PG-5 sweep — 2 brief version citations):
-- §Context L28: `Brief v1.3 introduced` lacked PG-5 Form 2 qualifier. Fixed: `Brief v1.3
-  at spec authoring time introduced`. Citation describes a historical event (what brief
-  said when this spec was first authored).
-- §Consequences L271: `Brief v1.4.3: the permission line will reference` was future-tense
-  provenance at time of authoring, now fulfilled. Fixed: `Brief v1.4.3 (at spec authoring
-  time): the permission line references`. Tense updated to past-accurate and historical
-  qualifier added. `traces_to` frontmatter exempt per PG-5 Option B carve-out.
+- §Context opening sentence lacked PG-5 Form 2 qualifier. Fixed: historical-anchor framing
+  added so the citation reads as provenance at authoring time, not a navigation pointer.
+- §Consequences opening bullet was future-tense provenance now fulfilled. Fixed: tense
+  updated to past-accurate and historical qualifier added. The `traces_to` frontmatter
+  field is exempt per PG-5 Option B carve-out (SS-conventions-anti-patterns.md v1.25).
 
 v1.1 changes: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005
 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved.
