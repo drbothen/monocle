@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.17"
+version: "1.18"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T01:00:00Z
+timestamp: 2026-05-14T03:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include \"monocle-*/src/**/*.rs\" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift; v1.14 round-47: F-R46-2 MEDIUM phantom BC-HOOK-001-006 replaced with attested gene-source reference; F-R46-3 LOW stale step-6 pinpoint reworded to position-free; PG-1 D-042 extension: schema-fact citation convention added; PG-2 META rule extended to cover step-renumbering events; v1.15 round-48: F-R48-cons-1 LOW directional typo in §Trace v1.14 corrected (Convention below → Convention above); v1.16 round-48: F-NEW-PG-1-direction LOW directional typo in §Trace v1.14 PG-1 entry corrected (Citation Convention below → above); PG-3 §Cross-Section Directional Reference Convention codified; SS-engine-module.md v1.1.12 co-edit (audit table rows below → above); v1.17 round-47.3: F-R48R-1 + F-R48R-2 L-number pinpoint sweep; PG-3 §Trace-prose authoring sub-rule codified; SS-engine-module.md v1.1.13 co-edit (§Trace L-numbers → position-free)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include \"monocle-*/src/**/*.rs\" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift; v1.14 round-47: F-R46-2 MEDIUM phantom BC-HOOK-001-006 replaced with attested gene-source reference; F-R46-3 LOW stale step-6 pinpoint reworded to position-free; PG-1 D-042 extension: schema-fact citation convention added; PG-2 META rule extended to cover step-renumbering events; v1.15 round-48: F-R48-cons-1 LOW directional typo in §Trace v1.14 corrected (Convention below → Convention above); v1.16 round-48: F-NEW-PG-1-direction LOW directional typo in §Trace v1.14 PG-1 entry corrected (Citation Convention below → above); PG-3 §Cross-Section Directional Reference Convention codified; SS-engine-module.md v1.1.12 co-edit (audit table rows below → above); v1.17 round-47.3: F-R48R-1 + F-R48R-2 L-number pinpoint sweep; PG-3 §Trace-prose authoring sub-rule codified; SS-engine-module.md v1.1.13 co-edit (§Trace L-numbers → position-free); v1.18 round-49: F-R48-adv-1 PG-2 noun-agnostic generalization + count fix (five→seven); F-R48-adv-2 PG-3 all-prose expansion + main-body L-number sweep; F-R48-adv-3 BC-HOOK-018 gene-source qualifier; D-042 scope codified (.factory/specs/ recursive); SS-engine-module.md v1.1.14 + SS-core-types-and-abi.md v1.2.4 co-edits"
 project: monocle
 ---
 
@@ -48,7 +48,7 @@ and are explicitly forbidden in monocle's codebase:
 
 ## Test-Time Enforcement
 
-All five mechanisms below are wired in CI and block merge on failure. See CI Wiring section for step ordering.
+All seven mechanisms below are wired in CI and block merge on failure. See §CI Wiring for step ordering.
 
 ### Clippy `disallowed_methods` Configuration
 
@@ -175,7 +175,7 @@ rules:
     # See §Semgrep Coverage Hardening — fixture corpus dual-shape requirement for enforcement.
     paths:
       include:
-        # All 11 named workspace crates (source: SS-deps-pin-manifest.md line 140 + workspace graph)
+        # All 11 named workspace crates (source: SS-deps-pin-manifest.md §Phase 1 vs Pinned-But-Unused Crates + workspace graph)
         - "monocle-core/src/**/*.rs"
         - "monocle-runtime/src/**/*.rs"
         - "monocle-tui/src/**/*.rs"
@@ -843,12 +843,36 @@ validation pattern.)
 
 **Correct form:** "field X is present in all 5 monocle-canonical hook body schemas per
 dtu-assessment.md v1.2 §monocle-canonical column, verified against SS-core-types-and-abi.md
-v1.2.3 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
+v1.2.4 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
 
 **D-042 integration:** The D-042 workflow (primary and secondary grep patterns, documented in
-SS-forward-compatibility.md §Trace v1.2.3) covers version-citation staleness. Schema-fact
-citation validation requires an ADDITIONAL grep before every version bump of any document
-containing a schema-fact assertion. The grep pattern for hook body field presence:
+SS-forward-compatibility.md §Trace §D-042 WORKFLOW RULE corrected) covers version-citation
+staleness. Schema-fact citation validation requires an ADDITIONAL grep before every version
+bump of any document containing a schema-fact assertion.
+
+**D-042 CANONICAL SCOPE (codified v1.18, round-49 PG-D042-BURST-SKIP closure):**
+The D-042 grep MUST be run at `.factory/specs/` recursive scope — NOT `.factory/specs/architecture/`
+only. Restricting to `architecture/` silently excludes `.factory/specs/product-brief.md`,
+`.factory/specs/dtu-assessment.md`, `.factory/specs/research/domain-monocle-vision-synthesis.md`,
+and all other spec artifacts above the `architecture/` subtree. This was the confirmed root
+cause of seven recurrences of citation-staleness (rounds 26, 32, 36, 38, 40, 42, and the
+PG-D042-BURST-SKIP pattern itself). The corrected scope is documented in
+SS-forward-compatibility.md §Trace §D-042 WORKFLOW RULE corrected (v1.2.3); this entry
+canonicalizes it in SS-conventions for pre-commit self-check use.
+
+**Correct D-042 primary grep (strict form):**
+```
+grep -rn "SS-[a-z-]*\.md v" .factory/specs/
+```
+
+**Correct D-042 secondary grep (anchor-tolerant):**
+```
+grep -rn "SS-[a-z-]*\.md.*v[0-9]" .factory/specs/
+```
+
+Both patterns MUST use `.factory/specs/` as the root — not `.factory/specs/architecture/`.
+
+The grep pattern for hook body field presence (schema-fact validation):
 
 ```
 grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
@@ -925,13 +949,41 @@ version bump.
 qualifier staleness. Both are triggered by version bumps of any SS-*.md document. Run both
 checks in the same pre-commit pass.
 
-**§Trace prose authoring convention (added v1.17, round-47.3):** §Trace entries describing
-changes MUST use position-free references (section names) rather than current-state L-numbers.
-Current-state L-numbers in §Trace prose are FORBIDDEN because §Trace entries are written at
-version-bump time but read after subsequent edits shift line numbers, making any current-state
-pinpoint a guaranteed staleness vector. Historical-state L-numbers prefixed with their version
-(e.g., "in v1.14, the rule was at L904") are ACCEPTABLE provided the L-number was accurate at
-the cited version. Pre-commit grep to detect current-state L-number violations in §Trace prose:
+**All-prose L-number convention (expanded v1.18, round-49, F-R48-adv-2 root-cause):**
+Current-state cross-doc L-number pinpoints are FORBIDDEN in ANY spec prose — not only
+in §Trace entries. This generalizes the §Trace-prose sub-rule (added v1.17) to the full
+document body. A "cross-doc L-number pinpoint" is any reference of the form "SS-foo.md
+lines N-M", "SS-foo.md line N", "vision.md lines N-M", or "(lines N-M)" citing a current
+position in another document, where that position is not prefixed with a version pin.
+
+**Carve-outs (unchanged from v1.17):**
+- Version-prefixed historical references (e.g., "in v1.14, the rule was at L904") are
+  ACCEPTABLE provided the L-number was accurate at the cited version.
+- Gene-source file references (e.g., "any-context-lazyclaude-pass-B-deep-hooks-r1.md
+  lines 412–428") are ACCEPTABLE — gene-source files are read-only ingest artifacts that
+  do not shift after ingestion.
+- Code-block examples and anti-pattern fenced code blocks that use line numbers as
+  illustrative values (not as navigational pointers) are ACCEPTABLE.
+- Rust doc-comment code-specification blocks that define regex constants or similar
+  specification content that cannot be expressed by name alone are ACCEPTABLE per the
+  clause-4 exception in §Semgrep Coverage Hardening.
+
+**Pre-commit grep — whole-file scan (primary, §Trace and main-body):**
+```
+grep -nE 'SS-[a-z-]+\.md (line|lines) [0-9]|domain-monocle-vision[^ ]* (line|lines) [0-9]|\(lines? [0-9]+[–-][0-9]+\)' <file>
+```
+Filter out gene-source file names (contain `-pass-` or `-synthesis`) and version-prefixed
+matches (preceded by "in vX.Y.Z"). Any remaining match is a forbidden current-state
+pinpoint and MUST be replaced with the referenced section's heading name.
+
+**§Trace prose sub-rule (original v1.17 scope, preserved as special case):**
+§Trace entries describing changes MUST use position-free references (section names) rather
+than current-state L-numbers. Current-state L-numbers in §Trace prose are FORBIDDEN because
+§Trace entries are written at version-bump time but read after subsequent edits shift line
+numbers, making any current-state pinpoint a guaranteed staleness vector. Historical-state
+L-numbers prefixed with their version (e.g., "in v1.14, the rule was at L904") are
+ACCEPTABLE provided the L-number was accurate at the cited version. Pre-commit grep to
+detect current-state L-number violations in §Trace prose specifically:
 
 ```
 grep -A1 "^## §Trace" <file> | grep -A9999 "^## §Trace" | grep -E '\(L[0-9]+\)|paragraph at L[0-9]+|this file L[0-9]+|L[0-9]+-L[0-9]+'
@@ -941,6 +993,66 @@ Any match that lacks a version prefix (e.g., `in vX.Y.Z, L...`) is a forbidden c
 pinpoint and MUST be replaced with the referenced section's heading name.
 
 ## §Trace
+
+v1.18 changes (round-49 F-R48-adv-1/2/3 root-cause fixes + PG-2 generalization + PG-3 all-prose expansion + D-042 scope codify):
+
+- F-R48-adv-1 RESOLVED (LOW process-gap — PG-2 vocabulary gap, root-cause fix):
+  §Test-Time Enforcement lead sentence at L51 read "All five mechanisms below" — the
+  section now contains seven subsections (Clippy, Semgrep Rules, Semgrep Coverage Hardening,
+  PR Template, Channel-Drop Test, CI Wiring, SBOM). Count corrected to "All seven mechanisms
+  below"; reference also updated to position-free "§CI Wiring" (was "CI Wiring section").
+  Root-cause fix: PG-2 META-pattern rule in this §Trace generalized from vocabulary-specific
+  grep ("N rules", "N steps", "N entries") to noun-agnostic syntactic-shape grep covering
+  "(All|These|The) <number-word> <noun>", "<number> <noun> (above|below)", and
+  "<ordinal> <noun>" patterns. The grep recipe now catches "All five mechanisms",
+  "All seven sections", "These three steps", "The fourth rule", etc. regardless of the
+  noun used — closing the "mechanism" vocabulary gap exposed by this finding.
+  Recurrence lineage: F-R44-adv-2 (v1.13) → F-R44-adv-3 (v1.13) → F-R46-3 (v1.14) →
+  F-R48-adv-1 (v1.18). Each recurrence found the same root cause with a slightly different
+  noun. The noun-agnostic recipe closes the class.
+
+- F-R48-adv-2 RESOLVED (LOW process-gap — PG-3 scope expansion, root-cause fix):
+  Cross-doc current-state L-number pinpoints found in main-body prose (outside §Trace):
+  (1) §Test-Time Enforcement §Semgrep Rules YAML comment: "SS-deps-pin-manifest.md line 140"
+  → "SS-deps-pin-manifest.md §Phase 1 vs Pinned-But-Unused Crates".
+  Co-edited files (same L-number class, same PG-3 root cause):
+  (2) SS-engine-module.md §Purpose: "SS-forward-compatibility.md lines 95–97" →
+  "SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed". (3) SS-engine-module.md
+  §EngineModule Trait Signature signature block provenance prose: "lines 111–128" →
+  position-free "§EngineModule". (4) SS-engine-module.md rustdoc comment for EngineModule
+  trait: "(lines 95–97)" → "(§Item P3-1 — Verdict on Sealed)". (5) SS-engine-module.md
+  §Trace v1.1 cross-reference block: two L-number pinpoints → position-free.
+  (6) SS-core-types-and-abi.md §FactoryAdapter rustdoc and §BC-FACTORY-001 Traceability:
+  "lines 95–97" → "§Item P3-1 — Verdict on Sealed" (two sites).
+  Root-cause fix: PG-3 §Trace-prose sub-rule (v1.17) expanded to all-prose scope. The
+  previous rule only covered §Trace entries; main-body prose carried the same staleness
+  risk. All-prose PG-3 now covers §Trace + §Purpose + §Section Content + rustdoc comments
+  + any other prose, with identical carve-outs (version-prefixed historical, gene-source
+  files, code-block examples, regex constant definitions).
+
+- F-R48-adv-3 RESOLVED (LOW — phantom-ID prevention, Option A applied uniformly):
+  Inline code comment in SS-engine-module.md §ClaudeCodeModule on_hook cited "BC-HOOK-018"
+  without gene-source qualifier. BC-HOOK-018 IS attested (SS-permissions-phase1.md §Option A
+  gene-source: BC-HOOK-007/BC-HOOK-018), but the prevention grep could not chain-resolve
+  across files. Option A chosen: added explicit two-line gene-source qualifier
+  "(gene-source: any-context-lazyclaude; attested in SS-permissions-phase1.md §Option A)"
+  adjacent to the citation. Option B (soften grep to cross-file chain-resolution) rejected:
+  adds grep complexity without marginal benefit; the line-grep is correct for unattested
+  citations. Uniform application: BC-HOOK-018 is the only inline BC-HOOK-NNN citation in
+  SS-engine-module.md; no sibling sites required treatment. Sweep of all 8 architecture
+  spec files confirmed no other inline BC-HOOK-NNN citations outside their attestation source.
+
+- PG-D042-BURST-SKIP CLOSURE (7th recurrence root-cause): D-042 grep scope explicitly
+  codified in §Schema-Fact Citation Convention D-042 integration block (this file) as
+  `.factory/specs/` recursive — NOT `.factory/specs/architecture/` only. The scope error
+  was documented in SS-forward-compatibility.md §Trace v1.2.3 (round-43) but not propagated
+  to this file, allowing the burst-skip pattern to recur in subsequent rounds. Correct D-042
+  primary grep (`grep -rn "SS-[a-z-]*\.md v" .factory/specs/`) and secondary grep now
+  embedded in §Schema-Fact Citation Convention for pre-commit use. The "architecture/"
+  restriction gave false confidence that all citation sites had been swept.
+
+- SS-engine-module.md bumped to v1.1.14; SS-core-types-and-abi.md bumped to v1.2.4 as
+  co-edit partners for F-R48-adv-2 L-number fixes.
 
 v1.17 changes (round-47.3 F-R48R-1 LOW + F-R48R-2 LOW + PG-3 §Trace-prose sub-rule):
 
@@ -1076,8 +1188,8 @@ v1.14 changes (round-47 fixes F-R46-2 MEDIUM / F-R46-3 LOW / PG-1 / PG-2):
     pattern in §Trace that re-validates the fact against the canonical anchor at any version
     bump of either the citing or cited document.
   - The grep validation pattern for the session_id fact is now embedded in both
-    dtu-assessment.md v1.2 §Schema-fact grep anchor and SS-forward-compatibility.md v1.2.4
-    §Trace. D-042 workflow rule extended: before any version bump of dtu-assessment.md or
+    dtu-assessment.md v1.3 §Trace and SS-forward-compatibility.md §Trace §D-042 WORKFLOW RULE.
+    D-042 workflow rule extended: before any version bump of dtu-assessment.md or
     SS-core-types-and-abi.md, run:
     ```
     grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
@@ -1151,19 +1263,37 @@ v1.13 changes (round-45 fixes F-R44-adv-1 HIGH / F-R44-adv-2 MEDIUM / F-R44-adv-
   require a change after F-R44-adv-2. Line 1062 "the 4th rule" is also correct for the same
   reason. Both confirmed clean post-fix.
 
-- META-pattern (narrative wrapper count discipline): Every rule OR step addition, removal,
-  reordering, or renumbering event — including step-renumbering in any procedural spec (Python
-  script steps, CI step sequences, or any other numbered procedure) — MUST include a proactive
-  grep for "N rules", "Nth rule", "N steps", "Nth step", "step N", and "N entries" across the
-  file before declaring done. This is not optional — narrative wrapper counts are a separate
-  propagation layer that semgrep and table validators do not cover. The S-7.01 Partial-Fix
-  Regression Discipline now explicitly includes this layer, covering both rule-change events
-  AND step-renumbering events. Step-renumbering failures produce off-by-one pinpoints in §Trace
-  entries; these are distinct from rule-count narrative drift but follow the same root cause.
-  PG-2 extension (round-47, F-R46-3 root-cause closure): the F-R44-adv-2 META rule previously
-  stated "rule addition, removal, or reordering" — step-renumbering (e.g., inserting a new step
-  into a Python script changes all subsequent step N references in §Trace) was not covered.
-  F-R46-3 is the first confirmed instance of the step-renumbering sub-class.
+- META-pattern (narrative wrapper count discipline — GENERALIZED v1.18, round-49):
+  Any addition, removal, reordering, or renumbering of ANY countable item — rules, steps,
+  mechanisms, sections, entries, checks, arms, criteria, or ANY other noun — MUST include
+  a proactive noun-agnostic grep for narrative count wrappers across the file before
+  declaring done. This is not optional — narrative wrapper counts are a separate propagation
+  layer that semgrep and table validators do not cover.
+
+  **PG-2 noun-agnostic grep recipe (run before every version bump or item-count change):**
+  ```
+  grep -nEi '(All|These|The|all)\s+(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+)\s+\w+|(one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+)\s+\w+\s+(above|below)|(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+\w+' <file>
+  ```
+  For each match: confirm the count or ordinal is still accurate against the current item
+  list. Fix any mismatch before committing. The grep is syntactic-shape-based (not
+  vocabulary-limited); it catches "All five mechanisms", "All seven sections", "These
+  three steps", "The fourth rule", "six entries above", and all sibling variants regardless
+  of noun.
+
+  **Covered event classes (expanded from v1.13 → v1.14 → v1.18):**
+  - Rule addition/removal/reordering (original F-R44-adv-2 scope)
+  - Step-renumbering in any procedural spec (added round-47, F-R46-3)
+  - Section/mechanism addition in any structured list (added round-49, F-R48-adv-1 root-cause)
+  The S-7.01 Partial-Fix Regression Discipline explicitly includes this layer. Step-renumbering
+  failures produce off-by-one pinpoints in §Trace entries; section-count drift produces
+  stale lead sentences (e.g., "All five mechanisms" when seven exist). Both follow the
+  same root cause: a human-readable count in narrative prose that is not verified against
+  the actual item list at write time.
+
+  PG-2 extension lineage: F-R44-adv-2 (round-45) introduced the rule for "N rules"; F-R46-3
+  (round-47) extended to step-renumbering; F-R48-adv-1 (round-49) generalized to
+  noun-agnostic syntactic shape after "All five mechanisms" drifted when the §Test-Time
+  Enforcement section grew to seven subsections.
 
 v1.12 changes (round-43 fix F-R42-adv-1 MEDIUM — S-7.01 propagation):
 

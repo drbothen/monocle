@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2.3"
+version: "1.2.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T20:00:00Z
+timestamp: 2026-05-14T03:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility lines 95-97 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs"
 project: monocle
 ---
 
@@ -485,9 +485,9 @@ pub type StateChangeStream =
 /// The trait is OPEN — third-party crates may implement it. This is intentional:
 /// it is the mechanism by which the Phase 3 plugin SDK exposes factory adapter
 /// extensibility. Per SS-forward-compatibility.md §Analysis — Sealed trait
-/// (lines 95–97): "Do not apply the Sealed pattern to `EngineModule` or
-/// `FactoryAdapter`." Sealing would prevent Phase 3 WASM plugin authors from
-/// implementing this trait, defeating its purpose.
+/// §Item P3-1 — Verdict on Sealed: "Do not apply the Sealed pattern to
+/// `EngineModule` or `FactoryAdapter`." Sealing would prevent Phase 3 WASM plugin
+/// authors from implementing this trait, defeating its purpose.
 pub trait FactoryAdapter: Send + Sync + 'static {
     /// Detect whether the project at `workspace_root` uses this factory pattern.
     ///
@@ -865,7 +865,7 @@ with the exact signature above (including `StateChangeStream` type alias,
 `BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`, `FactorySubscribeError`
 supporting types, and the `matches` dyn-dispatch method). The trait carries NO sealed
 bound (`Send + Sync + 'static` only) — it is an open extension trait per
-SS-forward-compatibility.md lines 95–97.
+SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed.
 Verification: `cargo check` with the Phase 1 workspace; `rustdoc` output confirms
 public trait surface including all supporting types, and confirms no `private::Sealed`
 supertrait appears.
@@ -1078,6 +1078,18 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.4 changes (round-49 F-R48-adv-2 root-cause fix — PG-3 all-prose expansion):
+
+- F-R48-adv-2 RESOLVED (LOW process-gap): Two cross-doc L-number pinpoints converted
+  to position-free section references per expanded PG-3 rule (now covers all spec
+  prose, not only §Trace):
+  (1) §FactoryAdapter Trait rustdoc (§Phase 3 Forward-Compatibility Analysis inline):
+  "Per SS-forward-compatibility.md §Analysis — Sealed trait (lines 95–97)" →
+  "Per SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed".
+  (2) §BC-FACTORY-001 Traceability prose: "open extension trait per
+  SS-forward-compatibility.md lines 95–97" → "per SS-forward-compatibility.md
+  §Item P3-1 — Verdict on Sealed".
 
 v1.2.3 fixes (round-20 fix F-R20-2):
 - F-R20-2 RESOLVED (MEDIUM): `parse_frontmatter_field` lacked three of the four

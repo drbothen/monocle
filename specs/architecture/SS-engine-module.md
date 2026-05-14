@@ -4,17 +4,17 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.13"
+version: "1.1.14"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T01:00:00Z
+timestamp: 2026-05-14T03:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2); v1.1.12 round-48: directional typo in §Future audit maintenance corrected (audit table rows below → above; PG-3 sweep); v1.1.13 round-47.3: §Trace v1.1.12 L-number pinpoints converted to position-free section refs per PG-3 §Trace-prose sub-rule"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility §Item P3-1 veto honored; F-FC-I003 adversary finding; vision §EngineModule; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2); v1.1.12 round-48: directional typo in §Future audit maintenance corrected (audit table rows below → above; PG-3 sweep); v1.1.13 round-47.3: §Trace v1.1.12 L-number pinpoints converted to position-free section refs per PG-3 §Trace-prose sub-rule; v1.1.14 round-49: F-R48-adv-2 PG-3 all-prose expansion (4 cross-doc L-number pinpoints → §Item P3-1 section refs; vision lines 111-128 → §EngineModule); F-R48-adv-3 BC-HOOK-018 gene-source qualifier added"
 project: monocle
 ---
 
@@ -36,8 +36,8 @@ trait to a WASM ABI via `monocle-plugin-sdk`; the Phase 1 static built-in
 implementation is `ClaudeCodeModule`.
 
 **Sealing policy:** `EngineModule` and `FactoryAdapter` are NOT sealed. Per
-SS-forward-compatibility.md lines 95–97: "Do not apply the Sealed pattern to
-`EngineModule` or `FactoryAdapter`." These traits exist to be implemented by
+SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed: "Do not apply the Sealed
+pattern to `EngineModule` or `FactoryAdapter`." These traits exist to be implemented by
 third-party code (that is their purpose); sealing would defeat Phase 3 plugin SDK
 extensibility. The sealed-trait pattern applies only to internal traits that are
 `pub` for technical reasons but must not be implemented by downstream code.
@@ -49,7 +49,7 @@ extensibility. The sealed-trait pattern applies only to internal traits that are
 
 The signature below is the authoritative Phase 1 contract. The five trait methods have
 different provenance with respect to `domain-monocle-vision-synthesis.md` §EngineModule
-lines 111–128:
+(original sketch; non-authoritative — this document supersedes it per CLAUDE.md §Architectural Authority):
 
 - **Vision-verbatim** (`id`, `detect`, `on_hook`): Signatures match the vision sketch
   exactly. `id() -> &'static str`; `detect(&self, proc: &ProcessSnapshot) -> bool`;
@@ -89,7 +89,7 @@ use std::time::Duration;
 ///
 /// The trait is OPEN — third-party crates may implement it. This is intentional:
 /// it is the mechanism by which the Phase 3 plugin SDK exposes harness extensibility.
-/// See SS-forward-compatibility.md §Analysis — Sealed trait (lines 95–97).
+/// See SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed.
 #[async_trait::async_trait]
 pub trait EngineModule: Send + Sync + 'static {
     /// Stable identifier for this engine (e.g., "claude-code", "codemachine").
@@ -651,7 +651,8 @@ impl EngineModule for ClaudeCodeModule {
     }
 
     async fn on_hook(&self, _event: HookEvent) -> HookResponse {
-        // Phase 1: default fail-open policy per BC-HOOK-018.
+        // Phase 1: default fail-open policy per BC-HOOK-018
+        // (gene-source: any-context-lazyclaude; attested in SS-permissions-phase1.md §Option A).
         // Full permission-overlay dispatch implemented in Phase 1 story
         // for monocle-runtime hook_handler.
         HookResponse::new(HookDecision::Allow)
@@ -1161,6 +1162,36 @@ contracts with postconditions and verification harness stubs.
 
 ## §Trace
 
+v1.1.14 changes (round-49 F-R48-adv-2 + F-R48-adv-3 root-cause fixes):
+
+- F-R48-adv-2 RESOLVED (LOW process-gap — PG-3 all-prose expansion): Four cross-doc
+  L-number pinpoints converted to position-free section references per the expanded
+  PG-3 rule (now covers all spec prose, not only §Trace):
+  (1) §Purpose: "SS-forward-compatibility.md lines 95–97" → "SS-forward-compatibility.md
+  §Item P3-1 — Verdict on Sealed".
+  (2) §EngineModule Trait Signature rustdoc (formerly L92): "(lines 95–97)" →
+  position-free "(§Item P3-1 — Verdict on Sealed)".
+  (3) §Trace v1.1 entry: "SS-forward-compatibility.md lines 95–97 veto honored" →
+  "SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed veto honored".
+  (4) §Trace Cross-references block: "lines 95–97 (sealing veto)" →
+  "§Item P3-1 — Verdict on Sealed (sealing veto)".
+  Additionally: §EngineModule Trait Signature main-body prose (formerly L52): vision
+  "lines 111–128" → position-free "§EngineModule" (non-authoritative parenthetical
+  moved to same line for clarity). §Trace Cross-references vision entry updated to
+  match: "lines 111–128" → position-free section reference.
+
+- F-R48-adv-3 RESOLVED (LOW — phantom-ID prevention, Option A chosen): Inline code
+  comment at §ClaudeCodeModule Trait Implementation on_hook method body cited
+  "BC-HOOK-018" without a gene-source qualifier. Option A: added two-line inline
+  gene-source qualifier "(gene-source: any-context-lazyclaude; attested in
+  SS-permissions-phase1.md §Option A)" to make the citation chain-resolvable without
+  per-line grep lookup. Option A chosen over B (soften phantom-ID grep) because: the
+  line-grep prevention pattern is correct for unattested citations; BC-HOOK-018 is
+  attested, so the pattern would not flag it once the chain-resolution qualifier is
+  present; B adds grep complexity for no marginal benefit. Uniform application scope:
+  BC-HOOK-018 is the only inline BC-HOOK-NNN citation in this file; no sibling sites
+  required the same treatment.
+
 v1.1.13 changes (round-47.3 PG-3 §Trace-prose sub-rule — position-free conversion):
 
 - §Trace v1.1.12 L-number pinpoints converted to position-free section references per
@@ -1489,7 +1520,7 @@ v1.1 changes (human Q-15-1, round-14 adversary N1/N2):
   Removed hook_paths/spawn/preflight/abi_version from trait surface; moved to
   `ClaudeCodeModule` inherent methods per vision authority.
 - N2 RESOLVED: sealed pattern removed entirely. `EngineModule` trait is open.
-  SS-forward-compatibility.md lines 95–97 veto honored. No `mod private`, no
+  SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed veto honored. No `mod private`, no
   `Sealed` supertrait, no `plugin-sdk-escape-hatch` feature flag on this trait.
 - Supporting types fully specified: `EngineMetadata`, `ProcessSnapshot`,
   `EnrichedSession`, `SessionStatus`, `HookResponse`, `HookDecision`, `DeferUntil`.
@@ -1502,5 +1533,5 @@ Cross-references:
 - `SS-daemon-lifecycle.md` — daemon startup sequence (ClaudeCodeModule::preflight
   called at step 1 before lock-file write)
 - `SS-deps-pin-manifest.md` — `async-trait = "^0.1"` (Phase 1 Pin Manifest)
-- Vision §EngineModule lines 111–128 (original sketch; non-authoritative for Phase 1 signatures — this document supersedes it per CLAUDE.md §Architectural Authority)
-- `SS-forward-compatibility.md` lines 95–97 (sealing veto)
+- Vision `domain-monocle-vision-synthesis.md` §EngineModule (original sketch; non-authoritative for Phase 1 signatures — this document supersedes it per CLAUDE.md §Architectural Authority)
+- `SS-forward-compatibility.md` §Item P3-1 — Verdict on Sealed (sealing veto)
