@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.0"
+version: "1.1"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-14T21:00:00Z
+timestamp: 2026-05-14T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.7; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; 16 pre-staged BCs; D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.8; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f)"
 project: monocle
 supplements: []
 ---
@@ -47,12 +47,14 @@ The killer scenario per vision §End-to-End Killer Scenario: 4 keystrokes (`Ctrl
 
 | ID | Differentiator | BC Backing |
 |----|---------------|------------|
-| D-1 | Hook-protocol ingestion at OS-assigned port with versioned auth token | BC-AUTH-001, BC-AUTH-002, BC-LOCK-001 |
+| D-1 | Hook-protocol ingestion at OS-assigned port with versioned auth token | BC-AUTH-001, BC-AUTH-002, BC-LOCK-001, BC-DAEMON-001, BC-DAEMON-002 |
 | D-2 | VecDeque overlay stack — both concurrent prompts visible simultaneously | BC-ENGINE-001, BC-ENGINE-002 |
 | D-3 | Forward-compatible ABI via const + non_exhaustive + proto schema_version | BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002 |
 | D-4 | FactoryAdapter open trait — VsddFactoryAdapter ships in Phase 1; WASM loadable in Phase 3 | BC-FACTORY-001, BC-FACTORY-002 |
 | D-5 | ClaudeCodeModule strict-basename detect — no false positives from claude-squad/claudio | BC-ENGINE-002 |
 | D-6 | JSONL ring with format_version first key — Phase 2 trigger-trace can read Phase 1 history | BC-RING-001 |
+| D-7 | 256 KiB body size limit with structured error — bounded daemon memory exposure | BC-DAEMON-003 |
+| D-8 | Graceful 10-second drain with crash-recovery checkpoint | BC-DAEMON-004, BC-DAEMON-006 |
 
 ### 1.4 Target Users
 
@@ -80,13 +82,16 @@ Per vision §Explicit Non-Goals (hard boundaries):
 
 ### 2.1 Grouping
 
-BCs are grouped by domain subsystem. The 16 pre-staged BCs span four functional domains:
+BCs are grouped by domain subsystem. The 22 Phase 1 BCs span five functional domains:
 
 | Domain | BC IDs | Subsystem Anchor |
 |--------|--------|-----------------|
+| Daemon Health + Status Endpoints | BC-DAEMON-001, BC-DAEMON-002 | SS-daemon-lifecycle.md §Health and Status Endpoints |
+| Daemon Body Size Limit | BC-DAEMON-003 | SS-daemon-lifecycle.md §Body Size Limit |
+| Daemon Lifecycle — Shutdown + Recovery | BC-DAEMON-004, BC-DAEMON-005, BC-DAEMON-006 | SS-daemon-lifecycle.md §Daemon Lifecycle Protocol |
 | Hook Ingestion — Ring Buffer + Drain | BC-RING-001 | SS-daemon-lifecycle.md §Drain |
 | Daemon Authentication | BC-AUTH-001, BC-AUTH-002 | SS-daemon-lifecycle.md §Daemon Lifecycle Protocol |
-| Lock File Discovery | BC-LOCK-001 | SS-daemon-lifecycle.md §Lock File Discovery Policy |
+| Lock File Discovery | BC-LOCK-001 | SS-daemon-lifecycle.md §Daemon Lifecycle Protocol §Start Sequence |
 | Core ABI Stability | BC-ABI-001, BC-ABI-002 | SS-core-types-and-abi.md §ABI Version Constant |
 | Enum Extensibility | BC-TYPES-001 | SS-core-types-and-abi.md §Enum Extensibility |
 | Factory Adapter Trait | BC-FACTORY-001, BC-FACTORY-002 | SS-core-types-and-abi.md §FactoryAdapter Trait |
@@ -97,11 +102,316 @@ BCs are grouped by domain subsystem. The 16 pre-staged BCs span four functional 
 
 ## 3. Full Behavioral Contract Specifications
 
+### BC-DAEMON-001 — Healthz Endpoint (Unauthenticated Liveness Probe)
+
+**Priority:** P0 — Daemon liveness contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /healthz
+
+**Preconditions:**
+1. The monocle daemon is running and bound on `127.0.0.1:<port>`.
+2. A `GET /healthz` request arrives (no auth header required).
+
+**Postconditions:**
+1. When AppMode is normal (not `ShuttingDown`) and the hook-receiver task is alive: HTTP 200 with body `{"status":"alive","uptime_sec":<N>,"version":"<semver>"}` where `uptime_sec` is integer seconds since daemon start and `version` is the monocle binary semver string.
+2. When AppMode is `ShuttingDown` OR the hook-receiver task has exited abnormally: HTTP 503 with body `{"status":"shutting_down"}`.
+3. `/healthz` is unauthenticated — no `X-Monocle-Authorization` header is required or checked.
+4. `/healthz` has no request body and no `DefaultBodyLimit` applies (the limit is applied to the authenticated router only).
+
+**Invariants:**
+1. The endpoint must succeed even if the auth token has rotated during crash recovery. Unauthenticated access is warranted because `uptime_sec` and `version` are not secret, and a local adversary with `127.0.0.1` access already has OS-level process enumeration capability.
+2. `/healthz` is registered on the unauthenticated router and MUST NOT be co-located on the authenticated router (which would inadvertently apply the auth middleware).
+
+**Edge Cases:**
+
+EC-040: TUI client behavior when `/healthz` is unreachable AND the lock file exists with a live pid (`kill(pid, 0)` succeeds): TUI concludes daemon is hung (accepting TCP, not responding) and initiates recovery flow with a 10-second countdown before auto-restarting.
+
+EC-041: TUI client behavior when `/healthz` is unreachable AND the lock file exists with a dead pid: TUI treats the lock file as stale and initiates normal auto-start.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input | Expected |
+|----------|-------|----------|
+| Normal operation | `GET /healthz` (no auth header) | HTTP 200 `{"status":"alive","uptime_sec":<N>,"version":"<semver>"}` |
+| Daemon shutting down | `GET /healthz` during graceful shutdown | HTTP 503 `{"status":"shutting_down"}` |
+| No auth header required | `GET /healthz` with no `X-Monocle-Authorization` | HTTP 200 (not HTTP 401) |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/healthz_endpoint.rs`: starts daemon, polls `/healthz`, asserts HTTP 200 with `"status":"alive"` and numeric `uptime_sec`.
+- Test name: `test_BC_DAEMON_001_healthz_unauthenticated_alive`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /healthz
+- Brief: §Scope (hook receiver hardening sub-bullet — `/healthz` liveness endpoint)
+
+---
+
+### BC-DAEMON-002 — Status Endpoint (Authenticated Daemon State)
+
+**Priority:** P0 — Daemon observability contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /status
+
+**Preconditions:**
+1. The monocle daemon is running.
+2. A `GET /status` request arrives with a valid `X-Monocle-Authorization: monocle-v1:<token>` header.
+
+**Postconditions:**
+1. HTTP 200 with a JSON body containing all of the following fields:
+   - `pid`: integer PID of the daemon process
+   - `uptime_sec`: integer seconds since daemon start
+   - `version`: daemon binary semver string
+   - `abi_version`: integer `1` (`monocle_core::MONOCLE_ABI_VERSION` as compiled)
+   - `lock_file`: absolute path string to `<runtime_dir>/monocle.lock`
+   - `hook_endpoints`: JSON array of 5 hook path strings (`["/hooks/pre-tool-use", "/hooks/notification", "/hooks/stop", "/hooks/session-start", "/hooks/prompt-submit"]`)
+   - `ring_buffer_fill_pct`: float 0.0–100.0 representing ring buffer fill percentage
+   - `channel_saturation_pct`: float 0.0–100.0 representing bounded channel fill percentage
+   - `last_hook_ts`: JSON object with per-hook-type ISO 8601 timestamps or `null` for hook types that have not fired since daemon start
+   - `tui_attached`: boolean — `true` if a TUI client is currently connected via UDS
+2. If the auth token is invalid: HTTP 401 per BC-AUTH-002.
+3. `/status` continues to serve during graceful shutdown drain (read-only; useful for drain monitoring).
+
+**Invariants:**
+1. `/status` requires authentication because it exposes internal buffer fill levels and channel saturation metrics that could reveal load patterns to a local adversary.
+2. The `abi_version` field in the response MUST equal `monocle_core::MONOCLE_ABI_VERSION`. This enables Phase 3 plugin SDK and Phase 4 federation to gate on ABI compatibility.
+3. `/status` is subject to the 256 KiB body size limit (BC-DAEMON-003) in its request path (even though GET responses are unbounded — the limit protects request ingestion, not response generation).
+
+**Edge Cases:**
+
+EC-042: Phase 4 federation reads `abi_version` from a peer's `/status` and refuses to activate if the version is incompatible. Phase 1 daemon only needs to serve the field with the correct value.
+
+EC-043: `ring_buffer_fill_pct` is `0.0` if no events have been received since startup. `channel_saturation_pct` is `0.0` if the bounded channel is empty.
+
+EC-044: `last_hook_ts` values use ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ` UTC). A hook type that has not fired since daemon start has value `null` (JSON null), not an empty string.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input | Expected |
+|----------|-------|----------|
+| Authenticated request | `GET /status` with valid `X-Monocle-Authorization` header | HTTP 200; body contains all 10 fields; `abi_version == 1` |
+| Unauthenticated request | `GET /status` (no auth header) | HTTP 401 `{"error":"missing_auth_token"}` |
+| Wrong token | `GET /status` with invalid token | HTTP 401 `{"error":"invalid_auth_token"}` |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/status_endpoint_auth.rs`: starts daemon, reads lock file for auth token, requests `/status` with valid token, asserts HTTP 200 and all 10 fields present including `abi_version == 1`.
+- Test name: `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /status
+- Brief: §Scope (hook receiver hardening sub-bullet — `/status` daemon-state query endpoint)
+
+---
+
+### BC-DAEMON-003 — Body Size Limit (256 KiB, HTTP 413)
+
+**Priority:** P0 — Memory protection contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Body Size Limit
+
+**Preconditions:**
+1. The monocle daemon is running.
+2. A request arrives at any of the 5 hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`, `/hooks/prompt-submit`) or at `/status` with a request body exceeding 262,144 bytes.
+
+**Postconditions:**
+1. The daemon returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`.
+2. The limit is enforced via axum's `DefaultBodyLimit::max(256 * 1024)` layer applied at router construction time on the authenticated router.
+3. `/healthz` (unauthenticated, no body) is NOT subject to the limit — it is registered on the unauthenticated router which has no body-limit layer.
+4. The limit applies to the request body. Response bodies from `/status` are not bounded by this contract.
+
+**Invariants:**
+1. The 256 KiB ceiling accommodates 5× the 99th-percentile expected payload from Claude Code's `Notification` hook (diff output, stack traces, tool output summaries typically 1–50 KiB).
+2. The worst-case daemon memory exposure per connection is bounded to `concurrent_requests_max × 256KiB`.
+3. `DefaultBodyLimit::max(256 * 1024)` must be explicitly added — axum 0.8 does NOT apply a default body limit.
+
+**Edge Cases:**
+
+EC-045: Request body is exactly 262,144 bytes: HTTP 413 (limit is strictly exclusive — `> limit` triggers the rejection; axum's `DefaultBodyLimit::max(N)` rejects bodies strictly exceeding N bytes).
+
+EC-046: Request body is 262,143 bytes: HTTP 200 (within limit).
+
+EC-047: `POST /shutdown` (authenticated admin endpoint) is also on the authenticated router and therefore subject to the body limit. A shutdown payload is typically empty or a few bytes; the limit provides defence-in-depth against oversized shutdown requests.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input Body Size | Expected |
+|----------|----------------|----------|
+| At limit (exceeds) | 262,145 bytes | HTTP 413 `{"error":"payload_too_large","limit_bytes":262144}` |
+| Just under limit | 262,143 bytes | HTTP 200 (hook processed) |
+| Normal hook | ~1 KiB | HTTP 200 |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/body_size_limit.rs`: sends a 262,145-byte POST to a hook endpoint, asserts HTTP 413 with the exact error body.
+- Test name: `test_BC_DAEMON_003_body_size_limit_413_on_excess`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Body Size Limit
+- Brief: §Success Criteria (hook receiver body size limit row — target `{"error":"payload_too_large","limit_bytes":262144}`)
+
+---
+
+### BC-DAEMON-004 — Graceful Shutdown (10-Second Drain)
+
+**Priority:** P0 — Data integrity and reliability contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+
+**Preconditions:**
+1. The monocle daemon is running and may have in-flight hook POST requests.
+2. A shutdown signal arrives: SIGTERM, SIGINT, or an authenticated `POST /shutdown`.
+
+**Postconditions:**
+1. AppMode transitions to `ShuttingDown` immediately.
+2. All new hook POST requests to `/hooks/*` receive HTTP 503 with header `Retry-After: 10` and body `{"error":"daemon_shutting_down"}`.
+3. `/healthz` returns HTTP 503 with body `{"status":"shutting_down"}` during drain.
+4. `/status` continues to serve (read-only) during drain for monitoring purposes.
+5. The daemon waits up to 10 seconds for in-flight hook POSTs to complete (`tokio::time::timeout(Duration::from_secs(10), drain_inflight())`).
+6. If `--persistent-events` flag is set, the JSONL ring buffer is flushed to `<runtime_dir>/monocle-events.jsonl` during drain.
+7. After drain or on second SIGTERM: lock file removed, UDS socket closed, daemon exits.
+8. Exit code `0` if drain succeeded cleanly; exit code `130` if hard-killed during drain.
+
+**Invariants:**
+1. The 10-second drain window is a hard timeout. A second SIGTERM during drain triggers immediate hard shutdown without waiting for in-flight requests.
+2. Signal handling uses `tokio::signal::unix::signal(SignalKind::terminate())` for SIGTERM and `tokio::signal::ctrl_c()` for SIGINT. Both are awaited in a `tokio::select!` loop alongside the oneshot shutdown receiver.
+3. The `POST /shutdown` endpoint requires `X-Monocle-Authorization` authentication — unauthenticated shutdown requests receive HTTP 401.
+
+**Edge Cases:**
+
+EC-048: Hook POST arrives mid-drain after the drain timeout has expired but before the connection is force-closed. The daemon rejects with HTTP 503 `{"error":"daemon_shutting_down"}`.
+
+EC-049: Ring buffer flush fails during drain (e.g., filesystem full). The daemon logs `WARN: ring buffer flush failed: <io-error>` (E-RING-001) and proceeds with shutdown. The partial flush is acceptable — Phase 2 readers skip incomplete trailing lines.
+
+EC-050: `POST /shutdown` with valid auth during a drain already in progress. The daemon acknowledges with HTTP 200 and the second shutdown signal triggers immediate hard close.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input | Expected |
+|----------|-------|----------|
+| Shutdown signal received | SIGTERM or `POST /shutdown` (authenticated) | AppMode → ShuttingDown; new hooks get HTTP 503 + Retry-After: 10 |
+| New hook during drain | POST /hooks/* during drain | HTTP 503 `{"error":"daemon_shutting_down"}`, `Retry-After: 10` |
+| Clean drain | All in-flight requests complete within 10s | Exit code 0 |
+| Hard kill during drain | Second SIGTERM during drain | Exit code 130 |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/graceful_shutdown.rs`: starts daemon, sends SIGTERM, immediately sends a new hook POST, asserts HTTP 503 with correct body and `Retry-After: 10` header.
+- Test name: `test_BC_DAEMON_004_graceful_shutdown_503_on_new_requests`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+- Brief: §Scope (hook receiver hardening sub-bullet — graceful shutdown protocol on SIGTERM/SIGINT)
+
+---
+
+### BC-DAEMON-005 — Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)
+
+**Priority:** P0 — Process isolation and idempotency contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+
+**Preconditions:**
+1. The monocle daemon is starting up (executing the start sequence).
+2. The runtime directory `<runtime_dir>` has been created or already exists.
+
+**Postconditions (start sequence):**
+1. If a lock file exists at `<runtime_dir>/monocle.lock` with a live pid (`kill(pid, 0)` succeeds): daemon logs `ERROR: daemon already running at pid=<N>; exiting` and exits 1.
+2. If a lock file exists with a dead pid: daemon logs `WARN: stale lock file removed` and proceeds with startup.
+3. The lock file is written atomically via `tempfile::persist` to `<runtime_dir>/monocle.lock` after the daemon has bound its listener and obtained a port. Lock file mode: `0o600`.
+4. The lock file JSON has `contract_version` as the first key (value `1`), followed by `pid`, `port`, `authToken`, `startTimeUtc`, `app`, `version`.
+
+**Postconditions (clean shutdown):**
+5. On successful graceful shutdown, `<runtime_dir>/monocle.lock` is removed.
+6. On successful graceful shutdown, `<runtime_dir>/monocle.sock` is removed.
+
+**Invariants:**
+1. Only one monocle daemon instance runs per runtime directory. The pid-liveness check (step 1) enforces this.
+2. `tempfile::persist` guarantees atomicity — no partial lock file is observable by concurrent readers.
+3. Lock file mode `0o600` prevents other OS users from reading the auth token.
+
+**Edge Cases:**
+
+EC-051: Lock file write fails (filesystem full, permission denied). Daemon exits before accepting any requests. No partial lock file with wrong or empty content is left on disk (tempfile guarantees).
+
+EC-052: Runtime directory does not exist on startup. Daemon creates it with mode `0o700` (owner-only). If directory creation fails, daemon logs error and exits 1.
+
+EC-053: Lock file removed between pid-liveness check and atomic write (TOCTOU race). The `tempfile::persist` atomic-replace pattern mitigates this — the rename step is atomic on POSIX filesystems.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input | Expected |
+|----------|-------|----------|
+| Fresh start (no lock file) | `monocle daemon start` | Lock file created at `<runtime_dir>/monocle.lock` with mode 0600 and `contract_version == 1` as first key |
+| Stale lock file (dead pid) | Lock file exists; pid is not alive | WARN logged; old lock file removed; new daemon starts |
+| Live daemon already running | Lock file exists; pid is alive | Error logged; exit 1 |
+| Clean shutdown | Daemon exits gracefully | Lock file removed; UDS socket removed |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/lock_file_lifecycle.rs`: starts daemon, verifies lock file exists at correct path with mode 0600 and `contract_version == 1`; shuts down daemon and verifies lock file is removed.
+- Test name: `test_BC_DAEMON_005_lock_file_create_and_cleanup`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+- Cross-ref: BC-LOCK-001 (lock file JSON schema contract)
+
+---
+
+### BC-DAEMON-006 — Crash Recovery Checkpoint
+
+**Priority:** P0 — State continuity contract.
+
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Crash Recovery
+
+**Preconditions:**
+1. On startup, `<runtime_dir>/monocle.recovery.json` exists.
+2. The pid in the stale or absent lock file is dead (prior daemon exited without clean shutdown).
+
+**Postconditions:**
+1. Daemon logs `WARN: recovery checkpoint found; prior daemon exited without clean shutdown`.
+2. Daemon reads `last_app_mode` and `shutdown_reason` from the recovery file.
+3. If a TUI client attaches within 60 seconds of daemon start, daemon sends the recovery state via the UDS control protocol: `{"type":"recovery_available","last_app_mode":"<...>"}`.
+4. TUI displays a recovery banner: `"Prior session ended unexpectedly. Restore state? [Y/n]"`.
+5. On TUI acknowledgment (Y or 60-second timeout): `monocle.recovery.json` is deleted.
+6. On TUI decline (N): `monocle.recovery.json` is deleted without restoring state.
+7. If no TUI attaches within 60 seconds: recovery file is deleted silently and daemon starts fresh.
+
+**Invariants:**
+1. The recovery checkpoint file schema is:
+   ```json
+   {"pid":<N>,"shutdown_reason":"graceful|signal|forced","last_app_mode":"<string>","shutdown_utc":"<ISO8601>"}
+   ```
+2. Recovery file creation occurs during the drain sequence (step 5 of §Drain) — BEFORE the lock file is removed. If the daemon crashes hard (SIGKILL), the recovery file may not be written; this is acceptable (no recovery file = clean-start behavior).
+3. The 60-second TUI attach window is measured from daemon start time, not from the moment the control socket becomes ready.
+
+**Edge Cases:**
+
+EC-054: Recovery file is malformed JSON (e.g., truncated due to a crash during write). Daemon logs `WARN: recovery file malformed; starting fresh` and deletes the file. No banner is shown to the TUI.
+
+EC-055: Multiple recovery files from multiple crash cycles (hypothetical). Only one `monocle.recovery.json` exists per runtime directory (each shutdown overwrites the previous recovery file).
+
+EC-056: TUI attaches exactly at 60-second boundary. If the recovery offer has already been sent (within the window), the TUI receives it. If the 60-second timeout has expired and the recovery file deleted, the TUI connects to a fresh daemon with no recovery state.
+
+**Canonical Test Vectors:**
+
+| Scenario | Input | Expected |
+|----------|-------|----------|
+| Clean startup (no recovery file) | `monocle daemon start` with no recovery file | No WARN log; normal start |
+| Recovery file present | `monocle daemon start` with existing recovery file | WARN logged; UDS message sent if TUI attaches within 60s |
+| TUI accepts recovery | TUI responds Y to banner | Recovery file deleted; state offered to TUI |
+| TUI declines recovery | TUI responds N to banner | Recovery file deleted; clean start |
+| No TUI attaches | 60 seconds elapse without TUI attach | Recovery file deleted silently |
+
+**Verification:**
+- Integration test in `monocle-runtime/tests/crash_recovery.rs`: creates a synthetic `monocle.recovery.json` before daemon start; starts daemon; asserts WARN log; connects a mock TUI client within 60 seconds; asserts recovery UDS message is received; sends Y acknowledgment; asserts recovery file is deleted.
+- Test name: `test_BC_DAEMON_006_crash_recovery_checkpoint_offer_and_cleanup`
+
+**Traceability:**
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Crash Recovery
+
+---
+
 ### BC-RING-001 — JSONL Ring Format Version (FC-01)
 
 **Priority:** P0 — Forward-compatibility contract; locked pre-Phase-1 by human authorization.
 
-**Source:** SS-daemon-lifecycle.md v1.0.7 §Drain
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Drain
 
 **Preconditions:**
 1. The monocle daemon is running and has received at least one hook event.
@@ -140,9 +450,9 @@ EC-003: Ring buffer file truncated mid-line (e.g., crash during write). Phase 2 
 - Test name: `test_BC_RING_001_format_version_first_key`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.7 §Drain
+- Source: SS-daemon-lifecycle.md v1.0.8 §Drain
 - FC: FC-01 (JSONL ring format versioning)
-- Brief: §Forward-compatibility contracts / JSONL ring sub-bullet
+- Brief: §Scope (forward-compatibility contracts sub-bullet — JSONL ring format versioning)
 
 ---
 
@@ -150,7 +460,7 @@ EC-003: Ring buffer file truncated mid-line (e.g., crash during write). Phase 2 
 
 **Priority:** P0 — Security contract; locked pre-Phase-1 by human authorization.
 
-**Source:** SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol §Start Sequence
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence
 
 **Preconditions:**
 1. The monocle daemon has completed its start sequence (steps 1–6 of §Start Sequence).
@@ -184,62 +494,65 @@ EC-006: The lock file `contract_version` field is `1` (first key). Any lock-file
 | Wrong hex | `GET /status` with `X-Monocle-Authorization: monocle-v1:<wrong-hex>` | HTTP 401 |
 
 **Verification:**
-- Integration test in `monocle-runtime/tests/auth.rs`: reads lock file after daemon start, asserts `authToken` matches regex; presents `monocle-v1:<authToken>` to `/status`, asserts HTTP 200.
+- Integration test in `monocle-runtime/tests/auth_token_lifecycle.rs`: reads lock file after daemon start, asserts `authToken` matches regex; presents `monocle-v1:<authToken>` to `/status`, asserts HTTP 200.
 - Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol §Start Sequence
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence
 - FC: FC-06 (versioned auth token prefix)
-- Brief: §Forward-compatibility contracts / Versioned auth token sub-bullet
+- Brief: §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix)
 
 ---
 
-### BC-AUTH-002 — Auth Token Prefix Rejection (FC-06)
+### BC-AUTH-002 — Auth Header Validation (Missing and Invalid Token)
 
 **Priority:** P0 — Security contract; locked pre-Phase-1.
 
-**Source:** SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol §Start Sequence
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence
 
 **Preconditions:**
 1. The monocle daemon is running with a valid lock file.
-2. A request arrives at any authenticated endpoint (`/hooks/*`, `/status`, `/shutdown`) with an `X-Monocle-Authorization` header whose value does NOT begin with `monocle-v1:`.
+2. A request arrives at any authenticated endpoint (`/hooks/*`, `/status`, `/shutdown`).
 
 **Postconditions:**
-1. The daemon returns HTTP 401 with body `{"error":"invalid_auth_token_format"}` before performing any secret comparison.
-2. The rejection is immediate upon detecting a non-`monocle-v1:` prefix — no constant-time comparison is performed for non-prefixed tokens (the prefix check acts as a fast-fail gate, not a timing oracle, because the prefix itself is not secret).
-3. Phase 4 OAuth2 `Authorization: Bearer <token>` headers on Phase 1 endpoints receive HTTP 401 with the same body. Phase 4 federation tokens are valid only on the separate russh/IPC federation channel.
+1. **Missing header:** If the `X-Monocle-Authorization` header is absent entirely, return HTTP 401 `{"error":"missing_auth_token"}`. This is a structural precondition failure, not an authentication attempt.
+2. **Any value-present failure:** If the header is present but its value fails validation for any reason — bad prefix (does not begin with `monocle-v1:`), bad format, empty suffix, secret mismatch — return HTTP 401 `{"error":"invalid_auth_token"}`. All value-present failure modes return the same body intentionally (no format/mismatch distinction in the response body).
+3. `Authorization: Bearer <token>` headers on Phase 1 endpoints (Phase 4 OAuth2 attempt) receive HTTP 401 `{"error":"missing_auth_token"}` — `Authorization: Bearer` is not a recognized header name for Phase 1 endpoints; `X-Monocle-Authorization` is absent.
 
 **Invariants:**
-1. Rejection of non-prefixed tokens MUST occur before any secret comparison to prevent timing oracle attacks where an attacker determines whether a non-prefixed string matches the secret.
-2. The prefix `monocle-v1:` is a public constant (`const TOKEN_PREFIX: &str = "monocle-v1:";`) in the auth middleware.
-3. A `monocle-v2:` prefix (future protocol version) is also rejected with HTTP 401 on Phase 1 endpoints — Phase 1 validates only `monocle-v1:`.
+1. The two-body taxonomy (`missing_auth_token` vs. `invalid_auth_token`) is the complete auth error surface for Phase 1. There is no third body. The old body `invalid_auth_token_format` is retired and does not appear in any Phase 1 response.
+2. Value-present failures (Rules 2 and 3 in the auth middleware) deliberately return the same body to prevent an attacker from determining whether their token had the structurally correct prefix, even if they cannot read the lock file directly.
+3. The distinction between missing and invalid is preserved because a missing header is a client-configuration error (actionable for debugging), not an authentication attempt. The `missing_auth_token` body provides developer-friendly diagnostics at zero security cost.
+4. The auth middleware implementation uses `AuthError::Missing` for absent headers and `AuthError::Invalid` for all value-present failures.
 
 **Edge Cases:**
 
-EC-007: Empty `X-Monocle-Authorization` header. Returns HTTP 401 `{"error":"invalid_auth_token_format"}` — empty string does not begin with `monocle-v1:`.
+EC-007: Empty `X-Monocle-Authorization` value (header present but value is empty string). Empty string does not begin with `monocle-v1:` — returns HTTP 401 `{"error":"invalid_auth_token"}` (value-present, format-fail case).
 
-EC-008: `X-Monocle-Authorization` header absent entirely. Returns HTTP 401 `{"error":"missing_auth_token"}` — distinct error from malformed token.
+EC-008: `X-Monocle-Authorization` header absent entirely. Returns HTTP 401 `{"error":"missing_auth_token"}`.
 
-EC-009: `X-Monocle-Authorization: monocle-v1:` (prefix present but no hex part). Passes the prefix check but fails the secret comparison (empty hex string never matches the 64-char secret). Returns HTTP 401 `{"error":"invalid_auth_token"}` (distinct body to distinguish malformed-after-prefix from missing-prefix).
+EC-009: `X-Monocle-Authorization: monocle-v1:` (prefix present but no hex suffix). Passes the prefix check but fails the constant-time secret comparison (empty hex string never matches the 64-char secret). Returns HTTP 401 `{"error":"invalid_auth_token"}` — the empty suffix is a value-present failure.
 
 **Canonical Test Vectors:**
 
-| Scenario | Input Header | Expected |
-|----------|-------------|----------|
-| Bearer token (Phase 4 OAuth2 attempt on Phase 1 route) | `Authorization: Bearer fake-token` | HTTP 401 `{"error":"invalid_auth_token_format"}` |
-| Bare token (no prefix) | `X-Monocle-Authorization: deadbeef...64chars` | HTTP 401 `{"error":"invalid_auth_token_format"}` |
-| Wrong version prefix | `X-Monocle-Authorization: monocle-v2:deadbeef...64chars` | HTTP 401 `{"error":"invalid_auth_token_format"}` |
-| Missing header entirely | (no Authorization headers) | HTTP 401 `{"error":"missing_auth_token"}` |
-| Prefix only, no hex | `X-Monocle-Authorization: monocle-v1:` | HTTP 401 `{"error":"invalid_auth_token"}` |
+| Scenario | Input Header | Expected HTTP Status | Expected Body |
+|----------|-------------|---------------------|---------------|
+| Absent header | (no `X-Monocle-Authorization` header) | 401 | `{"error":"missing_auth_token"}` |
+| Bare token (no prefix) | `X-Monocle-Authorization: deadbeef...64chars` | 401 | `{"error":"invalid_auth_token"}` |
+| Wrong version prefix | `X-Monocle-Authorization: monocle-v2:deadbeef...64chars` | 401 | `{"error":"invalid_auth_token"}` |
+| Prefix only, no hex | `X-Monocle-Authorization: monocle-v1:` | 401 | `{"error":"invalid_auth_token"}` |
+| Wrong header name (Bearer) | `Authorization: Bearer fake-token` (no `X-Monocle-Authorization`) | 401 | `{"error":"missing_auth_token"}` |
+| Correct format, wrong value | `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` | 401 | `{"error":"invalid_auth_token"}` |
 
 **Verification:**
-- Integration test in `monocle-runtime/tests/auth.rs`: for each test vector above, sends the specified header to `/status` and asserts the expected HTTP status + body.
-- Test name: `test_BC_AUTH_002_non_prefixed_token_rejection`
+- Integration test in `monocle-runtime/tests/auth_header_rejection.rs`: for each of the 6 test vectors above, sends the specified header to `/status` and asserts the expected HTTP status + body.
+- Test name: `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol §Start Sequence
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence
 - FC: FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)
-- Brief: §Forward-compatibility contracts / Versioned auth token sub-bullet
+- Brief: §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix)
+- Architect adjudication: commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired
 
 ---
 
@@ -247,7 +560,7 @@ EC-009: `X-Monocle-Authorization: monocle-v1:` (prefix present but no hex part).
 
 **Priority:** P0 — Forward-compatibility contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging
+**Source:** SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging
 
 **Preconditions:**
 1. The monocle daemon has completed step 6 of its start sequence (lock file written via `tempfile::persist`).
@@ -281,11 +594,11 @@ EC-012: Lock file with `contract_version` key missing entirely (pre-Phase-1 form
 | Reader encounters `contract_version: 99` | WARN log, skip, proceed as if no daemon running |
 
 **Verification:**
-- Integration test in `monocle-runtime/tests/daemon_lock.rs`: starts daemon, reads lock file, asserts `contract_version == 1` is first key via `serde_json::Value::Object` iteration (which preserves insertion order for `serde_json::Map<String, Value>`).
+- Integration test in `monocle-runtime/tests/lock_file_contract.rs`: starts daemon, reads lock file, asserts `contract_version == 1` is first key via `serde_json::Value::Object` iteration (which preserves insertion order for `serde_json::Map<String, Value>`).
 - Test name: `test_BC_LOCK_001_contract_version_first_key`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.7 §Lock File Discovery Policy
+- Source: SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence
 - SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging row BC-LOCK-001
 
 ---
@@ -323,7 +636,7 @@ EC-014: Federation handshake (Phase 4) where two daemons running different ABI v
 | `GET /status` (unauthenticated) | HTTP 401 |
 
 **Verification:**
-- Integration test: `GET /status | jq .abi_version == 1`.
+- Integration test in `monocle-runtime/tests/status_abi_version.rs`: `GET /status | jq .abi_version == 1`.
 - Test name: `test_BC_ABI_001_status_abi_version_field`
 
 **Traceability:**
@@ -382,7 +695,7 @@ EC-015: Compile-time assertion in `monocle-plugin-sdk`. If `MONOCLE_ABI_VERSION`
 **Source:** SS-core-types-and-abi.md v1.2.8 §Enum Extensibility
 
 **Preconditions:**
-1. The `monocle-core` crate compiles with `cargo clippy --workspace -- -D warnings`.
+1. The `monocle-core` crate source tree is parsed via `syn 2` to enumerate all `pub` enum declarations.
 
 **Postconditions:**
 1. Every `pub` enum in `monocle-core` carries `#[non_exhaustive]` unless explicitly exempted by an ADR.
@@ -391,13 +704,13 @@ EC-015: Compile-time assertion in `monocle-plugin-sdk`. If `MONOCLE_ABI_VERSION`
 4. The mandatory non-exhaustive enums include at minimum: `HookType`, `HookEvent`, `DenyReason`, `AllowPattern`, `DenyPattern`, `BlockingSeverity`, `SessionStatus`, `HookDecision`, `DeferUntil`.
 
 **Invariants:**
-1. A custom clippy lint enforces this at CI time — `#[allow(non_exhaustive_omitted_patterns)]` is forbidden in monocle source files (see SS-conventions-anti-patterns.md).
+1. The verification mechanism is a `syn 2` AST parse (NOT clippy). The test in `monocle-core/tests/enum_audit.rs` walks every `Item::Enum` node across all `.rs` files in `monocle-core/src/**/*.rs`, asserts `#[non_exhaustive]` is present unless the enum identifier is in the ADR-0004 EXEMPT list. This is deterministic and load-bearing; clippy's `non_exhaustive_omitted_patterns` lint is supplement only.
 2. Adding a variant to any `#[non_exhaustive]` enum (except `Phase1Permission`) is NOT a breaking change and does NOT require a SemVer-major version bump.
 3. `Phase1Permission` is exhaustive because the TUI permission dispatcher must handle every variant at compile time. Phase 3 adds `monocle-plugin-sdk::PluginPermission` as a separate enum rather than extending `Phase1Permission`.
 
 **Edge Cases:**
 
-EC-016: New enum added in a future PR without `#[non_exhaustive]`. CI clippy lint must reject it unless an ADR is filed concurrently.
+EC-016: New enum added in a future PR without `#[non_exhaustive]`. The `syn 2` AST audit test in CI must reject it unless an ADR is filed concurrently.
 
 EC-017: `ClaudeCodeTool::Unknown(String)` catch-all variant. This is the runtime safety net for tools added by Anthropic between monocle releases. It does NOT make `ClaudeCodeTool` non-exhaustive in the Rust sense — the enum is still exhaustive (every `match` must cover all variants including `Unknown`). The `Unknown` catch-all is the intended escape valve that keeps the enum exhaustive without breaking on new tools.
 
@@ -405,12 +718,12 @@ EC-017: `ClaudeCodeTool::Unknown(String)` catch-all variant. This is the runtime
 
 | Scenario | Expected |
 |----------|----------|
-| `cargo clippy --workspace -- -D warnings` with a new `pub enum Foo { A, B }` in monocle-core (missing `#[non_exhaustive]`) | Compile error |
-| `cargo clippy` with `Phase1Permission` lacking `#[non_exhaustive]` | No error (ADR-0004 exemption) |
+| `syn 2` AST parse of `monocle-core/src/**/*.rs` with a new `pub enum Foo { A, B }` (missing `#[non_exhaustive]`) | Test asserts error: enum `Foo` missing `#[non_exhaustive]` |
+| `syn 2` AST parse with `Phase1Permission` lacking `#[non_exhaustive]` | No error (ADR-0004 EXEMPT list) |
 
 **Verification:**
-- `cargo clippy` with the Phase 1 workspace; `rustdoc` confirms all public enums carry `#[non_exhaustive]` except the ADR-0004 exemptions.
-- Test name: `test_BC_TYPES_001_non_exhaustive_enum_coverage` (compile-time via clippy deny-list)
+- AST audit test in `monocle-core/tests/enum_audit.rs`: uses `syn 2` to parse every `.rs` file in `monocle-core/src/**/*.rs`, walks `Item::Enum` nodes, asserts `#[non_exhaustive]` is present unless enum identifier is in the ADR-0004 EXEMPT list (`Phase1Permission`, `ClaudeCodeTool`).
+- Test name: `test_BC_TYPES_001_non_exhaustive_enum_coverage`
 
 **Traceability:**
 - Source: SS-core-types-and-abi.md v1.2.8 §Enum Extensibility
@@ -465,13 +778,13 @@ EC-020: Phase 3 WASM adapter implements `FactoryAdapter` in a separate crate. Th
 | `cargo check` with Phase 1 workspace | Compiles without error; no `private::Sealed` supertrait in rustdoc |
 
 **Verification:**
-- `cargo check` with Phase 1 workspace; `rustdoc` confirms public trait surface and no sealed supertrait.
+- AST audit test in `monocle-core/tests/factory_trait_surface.rs`: uses `syn 2` to parse `monocle-core/src/factory.rs`, asserts 7-method count, no `Sealed` supertrait bound, and `Send + Sync + 'static` bounds only.
 - Test name: `test_BC_FACTORY_001_trait_defined_open_no_sealed_bound`
 
 **Traceability:**
 - Source: SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait
 - FC: FC-04 (CRITICAL)
-- Brief: §Forward-compatibility contracts / FactoryAdapter trait sub-bullet
+- Brief: §Scope (forward-compatibility contracts sub-bullet — FactoryAdapter trait)
 
 ---
 
@@ -520,7 +833,7 @@ EC-023: STATE.md file with `blocking_issues: []` (YAML flow-style list). `parse_
 
 **Traceability:**
 - Source: SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter
-- Brief: §Success Criteria (factory pattern detection row)
+- Brief: §Success Criteria (factory pattern detection row — "Detection succeeds on monocle's own `.factory/`")
 
 ---
 
@@ -537,7 +850,7 @@ EC-023: STATE.md file with `blocking_issues: []` (YAML flow-style list). `parse_
 1. `schema_version` is declared at proto FIELD NUMBER 1 in `HookEnvelope` (`uint32 schema_version = 1;`).
 2. This is a WIRE-FORMAT contract: it governs the binary protobuf encoding on the wire. Field number 1 in proto3 binary encoding uses tag `0x08` (field 1, varint type). Any proto consumer in any language sees field number 1 as `schema_version`.
 3. The proto package is `monocle.v1`. The file path is `monocle-proto/proto/monocle/v1/hook_envelope.proto`.
-4. The oneof `event` in `HookEnvelope` uses field numbers 10–14 for the five event types (SessionStart=10, UserPromptSubmit=11, PreToolUse=12, Notification=13, Stop=14). These are in the Phase 1 reserved range (1–99).
+4. The oneof `event` in `HookEnvelope` uses field numbers 10–14 for the five event variants: `session_start (SessionStartEvent) = 10`, `prompt_submit (UserPromptSubmitEvent) = 11`, `pre_tool_use (PreToolUseEvent) = 12`, `notification (NotificationEvent) = 13`, `stop (StopEvent) = 14`. These are in the Phase 1 reserved range (1–99). Field names are snake_case; the parenthetical shows the event message type.
 5. Phase 4 federation additions MUST use field numbers 100–999. Phase 5+ MUST use 1000+.
 
 **Invariants:**
@@ -689,11 +1002,11 @@ EC-031: `on_hook()` called with an unrecognized `HookEvent` variant (future Phas
 
 | Scenario | Expected |
 |----------|----------|
-| `cargo check` with Phase 1 workspace | Compiles without error; no `private::Sealed` supertrait |
-| `rustdoc` output | All 5 trait methods visible; no sealed supertrait |
+| `syn 2` AST parse of `monocle-core/src/engine.rs` | 5 methods present; no `Sealed` supertrait; return types match specification |
+| `cargo check` with Phase 1 workspace | Compiles without error |
 
 **Verification:**
-- `cargo check` with Phase 1 workspace; `rustdoc` confirms all types are publicly accessible and trait has no `private::Sealed` supertrait.
+- AST audit test in `monocle-core/tests/engine_module_surface.rs`: uses `syn 2` to parse `monocle-core/src/engine.rs`, asserts 5-method count, no `Sealed` supertrait bound, and verifies return-type token-stream matches for each method signature.
 - Test name: `test_BC_ENGINE_001_trait_defined_all_methods_no_sealed_bound`
 
 **Traceability:**
@@ -745,7 +1058,7 @@ EC-035: `exe_path` is `Some(PathBuf::from("/usr/local/bin/claude-squad"))`. `fil
 | claudio (false positive risk) | `exe_path: Some("/usr/local/bin/claudio")` | `detect() == false` |
 
 **Verification:**
-- Unit test in `monocle-runtime/tests/engine_module.rs` with all 5 (minimum 3 per spec) test vectors above.
+- Unit test in `monocle-runtime/tests/engine_module_claude_detect.rs` with all 5 test vectors above.
 - Test name: `test_BC_ENGINE_002_claude_code_module_detect`
 
 **Traceability:**
@@ -789,7 +1102,7 @@ EC-037: `enrich()` called with a `ProcessSnapshot` that has `working_dir: None`.
 | metadata() with HOME set | Normal environment | `Ok(EngineMetadata { config_paths: [~/.claude, ~/.claude.json], ... })` |
 
 **Verification:**
-- Test in `monocle-runtime/tests/engine_module.rs`. Sync half uses `temp_env::with_vars`; async half uses `temp_env::async_with_vars` in a separate `#[tokio::test]`.
+- Test in `monocle-runtime/tests/engine_module_home_unresolvable.rs`. Sync half uses `temp_env::with_vars`; async half uses `temp_env::async_with_vars` in a separate `#[tokio::test]`.
 - Dev dependency: `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime` `[dev-dependencies]`.
 - Test name: `test_BC_ENGINE_002_ERR_home_unresolvable_metadata_and_enrich`
 
@@ -803,7 +1116,7 @@ EC-037: `enrich()` called with a `ProcessSnapshot` that has `working_dir: None`.
 
 **Priority:** P0 — Phase 1 hook path routing contract.
 
-**Source:** SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule §Struct-level inherent operations
+**Source:** SS-engine-module.md v1.1.15 §Struct-level inherent operations
 
 **Preconditions:**
 1. `ClaudeCodeModule` is instantiated via `ClaudeCodeModule::new("http://127.0.0.1:7891".into())`.
@@ -821,7 +1134,7 @@ EC-037: `enrich()` called with a `ProcessSnapshot` that has `working_dir: None`.
 5. These three methods (`hook_paths`, `spawn`, `preflight`) are NOT in the `EngineModule` trait. They are engine-specific operational methods on the concrete struct.
 
 **Invariants:**
-1. The 5 hook path strings exactly match the canonical endpoint set from brief §Scope: `PostToolUse` is NOT included (JC-2 gene-source parity).
+1. The 5 hook path strings exactly match the canonical endpoint set from brief §Scope (§In Scope sub-bullets for hook endpoints): `PostToolUse` is NOT included (JC-2 gene-source parity).
 2. Path strings begin with `/` (relative to the daemon's base URL).
 3. The `hook_paths()` method is synchronous — it returns a static mapping. No I/O, no async.
 
@@ -843,7 +1156,7 @@ EC-039: `preflight()` called at daemon startup before accepting hook registratio
 | `hook_paths()[HookType::Notification]` | `"/hooks/notification"` |
 
 **Verification:**
-- Unit test in `monocle-runtime/tests/engine_module.rs`: asserts `module.hook_paths().len() == 5` with the exact path string for each `HookType`.
+- Unit test in `monocle-runtime/tests/engine_module_claude_methods.rs`: asserts `module.hook_paths().len() == 5` with the exact path string for each `HookType`.
 - Test name: `test_BC_ENGINE_003_hook_paths_five_entries`
 
 **Traceability:**
@@ -876,14 +1189,13 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 
 | Code | Category | Severity | Exit / HTTP | Message Format | Source BC |
 |------|----------|----------|-------------|---------------|-----------|
-| E-AUTH-001 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token_format"}` | BC-AUTH-002 |
-| E-AUTH-002 | Authentication | Broken | HTTP 401 | `{"error":"missing_auth_token"}` | BC-AUTH-002 EC-008 |
-| E-AUTH-003 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token"}` | BC-AUTH-002 EC-009 |
-| E-DAEMON-001 | Body Size | Broken | HTTP 413 | `{"error":"payload_too_large","limit_bytes":262144}` | BC-DAEMON-003 (SS-daemon-lifecycle.md) |
-| E-DAEMON-002 | Shutdown | Degraded | HTTP 503 | `{"error":"daemon_shutting_down"}` with `Retry-After: 10` header | SS-daemon-lifecycle.md §Shutdown Signal Handling |
-| E-DAEMON-003 | Liveness | Broken | HTTP 503 | `{"status":"shutting_down"}` | SS-daemon-lifecycle.md §Health and Status Endpoints |
-| E-LOCK-001 | Lock File | Broken | Exit 1 | `ERROR: daemon already running at pid=<N>; exiting` | BC-LOCK-001 §Start Sequence step 2b |
-| E-LOCK-002 | Lock File | Degraded | WARN log | `WARN: stale lock file removed` | BC-LOCK-001 §Start Sequence step 2c |
+| E-AUTH-001 | Authentication | Broken | HTTP 401 | `{"error":"missing_auth_token"}` | BC-AUTH-002 (absent header) |
+| E-AUTH-002 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token"}` | BC-AUTH-002 (any value-present failure) |
+| E-DAEMON-001 | Body Size | Broken | HTTP 413 | `{"error":"payload_too_large","limit_bytes":262144}` | BC-DAEMON-003 |
+| E-DAEMON-002 | Shutdown | Degraded | HTTP 503 | `{"error":"daemon_shutting_down"}` with `Retry-After: 10` header | BC-DAEMON-004 §Shutdown Signal Handling |
+| E-DAEMON-003 | Liveness | Broken | HTTP 503 | `{"status":"shutting_down"}` | BC-DAEMON-001 (healthz during shutdown) |
+| E-LOCK-001 | Lock File | Broken | Exit 1 | `ERROR: daemon already running at pid=<N>; exiting` | BC-DAEMON-005 §Start Sequence step 2b |
+| E-LOCK-002 | Lock File | Degraded | WARN log | `WARN: stale lock file removed` | BC-DAEMON-005 §Start Sequence step 2c |
 | E-LOCK-003 | Lock File | Degraded | WARN log | `WARN: lock file contract_version <N> not recognized; skipping` | BC-LOCK-001 EC-010 |
 | E-ENG-001 | Engine Init | Broken | Daemon exit | `ERROR: platform home directory unresolvable (BaseDirs::new() returned None)` | BC-ENGINE-002-ERR |
 | E-FACT-001 | Factory Parse | Degraded | WARN log | `WARN: STATE.md not found at <path>: <io-error>` | BC-FACTORY-002 |
@@ -899,12 +1211,14 @@ Per vision §Vision Statement and brief §Success Criteria. Every differentiator
 
 | Differentiator | Description | BC Backing | Verification |
 |---------------|-------------|------------|-------------|
-| Hook-protocol ingestion at OS-assigned port | Daemon binds on OS-assigned port; port written to lock file; hook scripts read absolute lock file path (no directory scan, no "highest-port-wins" collision) | BC-AUTH-001, BC-AUTH-002, BC-LOCK-001 | Integration test: lock file read after start; port confirmed reachable; no `~/.claude/ide/` scanning |
+| Hook-protocol ingestion at OS-assigned port | Daemon binds on OS-assigned port; port written to lock file; hook scripts read absolute lock file path (no directory scan, no "highest-port-wins" collision) | BC-AUTH-001, BC-AUTH-002, BC-LOCK-001, BC-DAEMON-001, BC-DAEMON-002 | Integration test: lock file read after start; port confirmed reachable; no `~/.claude/ide/` scanning |
 | VecDeque overlay stack for concurrent prompts | Both permission prompts visible simultaneously; `[↑↓]` rotates stack; `Esc` hides without rejecting | BC-ENGINE-001, BC-ENGINE-002 (on_hook → HookDecision::Defer) | Killer scenario: 2 concurrent PreToolUse hooks arrive; TUI shows both prompts; 4 keystrokes resolve both |
-| Versioned ABI with forward-compatible extension | `MONOCLE_ABI_VERSION = 1` const; `#[non_exhaustive]` on all public enums; proto `schema_version = 1` first field | BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-PROTO-001a, BC-PROTO-001b | Compile-time assertions; clippy lint; wire-format round-trip test |
+| Versioned ABI with forward-compatible extension | `MONOCLE_ABI_VERSION = 1` const; `#[non_exhaustive]` on all public enums; proto `schema_version = 1` first field | BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-PROTO-001a, BC-PROTO-001b | Compile-time assertions; AST audit (syn 2); wire-format round-trip test |
 | FactoryAdapter open trait — Phase 3 WASM extensibility | `VsddFactoryAdapter` ships Phase 1 as a static implementation; WASM plugin SDK in Phase 3 uses the same trait without code changes | BC-FACTORY-001, BC-FACTORY-002 | `cargo check` no sealed supertrait; self-referential detection test |
 | Strict-basename detection (no false positives) | `detect()` uses `exe_path.file_name()` == `"claude"` or `"claude.js"`; rejects `claude-squad`, `claudio`, `claude-code-router` | BC-ENGINE-002 | Unit tests with 5 synthetic ProcessSnapshot instances |
 | JSONL ring with format_version first key | Phase 2 trigger-trace can read Phase 1 history; version field allows future format evolution | BC-RING-001 | Unit test: serialized JSONL line begins with `{"format_version":1,` |
+| 256 KiB body size limit with structured error | Bounded daemon memory exposure per connection; structured error body for machine-readable rejection | BC-DAEMON-003 | Integration test: 262,145-byte body returns HTTP 413 with correct error body |
+| Graceful 10-second drain with crash-recovery checkpoint | In-flight requests complete before daemon exits; crash-recovery state offered to TUI on reconnect | BC-DAEMON-004, BC-DAEMON-006 | Integration test: SIGTERM triggers drain; new hooks get 503 with Retry-After: 10 |
 
 ---
 
@@ -912,22 +1226,28 @@ Per vision §Vision Statement and brief §Success Criteria. Every differentiator
 
 | BC ID | Brief Section | Architecture Source | Priority | Test File | Test Type |
 |-------|--------------|--------------------|---------|-----------|----|
-| BC-RING-001 | §Forward-compatibility contracts §JSONL ring | SS-daemon-lifecycle.md v1.0.7 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Unit |
-| BC-AUTH-001 | §Forward-compatibility contracts §Versioned auth token | SS-daemon-lifecycle.md v1.0.7 §Start Sequence | P0 | `monocle-runtime/tests/auth.rs` | Integration |
-| BC-AUTH-002 | §Forward-compatibility contracts §Versioned auth token | SS-daemon-lifecycle.md v1.0.7 §Start Sequence | P0 | `monocle-runtime/tests/auth.rs` | Integration |
-| BC-LOCK-001 | §Forward-compatibility contracts §JSONL ring (cross-ref) | SS-daemon-lifecycle.md v1.0.7 §Lock File Discovery Policy | P0 | `monocle-runtime/tests/daemon_lock.rs` | Integration |
-| BC-ABI-001 | §Forward-compatibility contracts §monocle-core ABI | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/` | Integration |
-| BC-ABI-002 | §Forward-compatibility contracts §monocle-core ABI | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
-| BC-TYPES-001 | §Forward-compatibility contracts §Public enum extensibility | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | Clippy workspace lint | Clippy |
-| BC-FACTORY-001 | §Forward-compatibility contracts §FactoryAdapter trait | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait | P0 | `monocle-core/tests/` | Compile/rustdoc |
-| BC-FACTORY-002 | §Success Criteria §Factory pattern detection | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
-| BC-PROTO-001a | §Forward-compatibility contracts §Prost wire schemas | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Unit |
-| BC-PROTO-001b | §Forward-compatibility contracts §Prost wire schemas | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Unit |
-| BC-PROTO-002 | §Forward-compatibility contracts §Prost wire schemas | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
-| BC-ENGINE-001 | §Scope §ClaudeCodeModule | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | P0 | `cargo check` + rustdoc | Compile/rustdoc |
-| BC-ENGINE-002 | §Scope §ClaudeCodeModule | SS-engine-module.md v1.1.15 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module.rs` | Unit |
-| BC-ENGINE-002-ERR | §Scope §ClaudeCodeModule | SS-engine-module.md v1.1.15 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module.rs` | Unit (env-isolation) |
-| BC-ENGINE-003 | §Scope §ClaudeCodeModule | SS-engine-module.md v1.1.15 §Struct-level inherent operations | P0 | `monocle-runtime/tests/engine_module.rs` | Unit |
+| BC-DAEMON-001 | §Scope (hook receiver hardening sub-bullet — `/healthz`) | SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
+| BC-DAEMON-002 | §Scope (hook receiver hardening sub-bullet — `/status`) | SS-daemon-lifecycle.md v1.0.8 §Health and Status Endpoints §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
+| BC-DAEMON-003 | §Success Criteria (hook receiver body size limit row) | SS-daemon-lifecycle.md v1.0.8 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
+| BC-DAEMON-004 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` | Integration |
+| BC-DAEMON-005 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
+| BC-DAEMON-006 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
+| BC-RING-001 | §Scope (forward-compatibility contracts sub-bullet — JSONL ring) | SS-daemon-lifecycle.md v1.0.8 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Unit |
+| BC-AUTH-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
+| BC-AUTH-002 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
+| BC-LOCK-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
+| BC-ABI-001 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
+| BC-ABI-002 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
+| BC-TYPES-001 | §Scope (forward-compatibility contracts sub-bullet — public enum extensibility) | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
+| BC-FACTORY-001 | §Scope (forward-compatibility contracts sub-bullet — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
+| BC-FACTORY-002 | §Success Criteria (factory pattern detection row) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
+| BC-PROTO-001a | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Unit |
+| BC-PROTO-001b | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Unit |
+| BC-PROTO-002 | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
+| BC-ENGINE-001 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
+| BC-ENGINE-002 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Unit |
+| BC-ENGINE-002-ERR | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Behavioral Contracts BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Unit (env-isolation) |
+| BC-ENGINE-003 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Struct-level inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Unit |
 
 ---
 
@@ -971,7 +1291,7 @@ BC-ENGINE-002-ERR's `HomeUnresolvable` test path is best-effort on Windows CI ru
 
 ## 9. Edge Case Catalog
 
-All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 within each BC. This index provides a cross-reference for sweep tooling.
+All per-contract edge cases (EC-001 through EC-056) are embedded in Section 3 within each BC. This index provides a cross-reference for sweep tooling.
 
 | EC ID | BC | Category | Description |
 |-------|----|----------|-------------|
@@ -981,16 +1301,16 @@ All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 wi
 | EC-004 | BC-AUTH-001 | Token lifecycle | Token rotation on daemon restart; scripts reading from lock file always have current token |
 | EC-005 | BC-AUTH-001 | Atomic write | Lock file write failure (filesystem full); daemon exits without partial lock file |
 | EC-006 | BC-AUTH-001 | Lock file cross-ref | `contract_version` field cross-references BC-LOCK-001 |
-| EC-007 | BC-AUTH-002 | Empty header | Empty `X-Monocle-Authorization` value → HTTP 401 format error |
-| EC-008 | BC-AUTH-002 | Missing header | No auth header → HTTP 401 missing_auth_token |
-| EC-009 | BC-AUTH-002 | Prefix-only token | `monocle-v1:` with no hex → HTTP 401 invalid_auth_token |
+| EC-007 | BC-AUTH-002 | Empty header value | Empty `X-Monocle-Authorization` value (value-present, format-fail) → HTTP 401 `{"error":"invalid_auth_token"}` |
+| EC-008 | BC-AUTH-002 | Missing header | No auth header → HTTP 401 `{"error":"missing_auth_token"}` |
+| EC-009 | BC-AUTH-002 | Prefix-only token | `monocle-v1:` with no hex suffix (value-present, secret-mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` |
 | EC-010 | BC-LOCK-001 | Future version | `contract_version: 99` → WARN log + skip |
 | EC-011 | BC-LOCK-001 | Type coercion | `contract_version` stored as string → graceful coerce or skip |
 | EC-012 | BC-LOCK-001 | Missing field | No `contract_version` key → same treatment as EC-010 |
 | EC-013 | BC-ABI-001 | Phase 3 forward | Plugin SDK reads `abi_version` from /status to version-gate loading |
 | EC-014 | BC-ABI-001 | Phase 4 forward | Federation peer with different ABI version → HTTP 409 |
 | EC-015 | BC-ABI-002 | Compile-time | Plugin SDK compile-time assertion fails if ABI version changes without SDK update |
-| EC-016 | BC-TYPES-001 | Clippy enforcement | New enum without `#[non_exhaustive]` → CI compile error |
+| EC-016 | BC-TYPES-001 | AST enforcement | New enum without `#[non_exhaustive]` → CI AST audit test error |
 | EC-017 | BC-TYPES-001 | Unknown variant | `ClaudeCodeTool::Unknown(String)` catch-all — exhaustive enum with runtime escape |
 | EC-018 | BC-FACTORY-001 | dyn dispatch | `detect()` not callable on `dyn FactoryAdapter`; use `matches()` |
 | EC-019 | BC-FACTORY-001 | YAML complex types | `custom_fields` skips flow-lists and block scalars; re-parse with serde_yaml_ng for full semantics |
@@ -1014,6 +1334,23 @@ All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 wi
 | EC-037 | BC-ENGINE-002-ERR | working_dir None | `working_dir: None` → `transcript_path: None` in EnrichedSession; separate from HomeUnresolvable |
 | EC-038 | BC-ENGINE-003 | spawn stub | `spawn()` panics with `todo!()` in Phase 1; replaced in Phase 1 story |
 | EC-039 | BC-ENGINE-003 | preflight stub | `preflight()` panics with `todo!()` in Phase 1; replaced in Phase 1 story |
+| EC-040 | BC-DAEMON-001 | TUI hung detection | `/healthz` unreachable + live pid → TUI initiates hung-daemon recovery flow |
+| EC-041 | BC-DAEMON-001 | TUI stale lock | `/healthz` unreachable + dead pid → TUI auto-starts daemon (stale lock) |
+| EC-042 | BC-DAEMON-002 | Phase 4 ABI gate | Federation reads `abi_version` from `/status`; refuses incompatible ABI |
+| EC-043 | BC-DAEMON-002 | Zero metrics | `ring_buffer_fill_pct == 0.0` and `channel_saturation_pct == 0.0` on fresh start |
+| EC-044 | BC-DAEMON-002 | Null timestamps | `last_hook_ts` values are `null` for hook types not yet fired since daemon start |
+| EC-045 | BC-DAEMON-003 | At-limit rejection | Body exactly 262,145 bytes → HTTP 413 |
+| EC-046 | BC-DAEMON-003 | Under-limit pass | Body 262,143 bytes → HTTP 200 |
+| EC-047 | BC-DAEMON-003 | Shutdown endpoint | `POST /shutdown` body also subject to 256 KiB limit (defence-in-depth) |
+| EC-048 | BC-DAEMON-004 | Post-timeout arrival | Hook POST after drain timeout expires → HTTP 503 |
+| EC-049 | BC-DAEMON-004 | Ring flush failure | Ring buffer flush fails during drain → WARN logged; shutdown proceeds |
+| EC-050 | BC-DAEMON-004 | Double shutdown | Second `POST /shutdown` during drain → immediate hard close |
+| EC-051 | BC-DAEMON-005 | Lock file write fail | Lock write fails → daemon exits; no partial lock file on disk |
+| EC-052 | BC-DAEMON-005 | Missing runtime dir | Runtime dir absent → created with mode 0o700; failure exits 1 |
+| EC-053 | BC-DAEMON-005 | TOCTOU race | Lock file removed between liveness check and atomic write → tempfile::persist atomicity mitigates |
+| EC-054 | BC-DAEMON-006 | Malformed recovery | Recovery file is malformed JSON → WARN logged; file deleted; clean start |
+| EC-055 | BC-DAEMON-006 | Single recovery file | Only one `monocle.recovery.json` per runtime dir; overwrites on each shutdown |
+| EC-056 | BC-DAEMON-006 | 60-second boundary | TUI at exact boundary: recovery offer already sent if within window; clean start if past window |
 
 ---
 
@@ -1023,12 +1360,12 @@ All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 wi
 |------|-----------|--------|
 | ABI | Application Binary Interface. `MONOCLE_ABI_VERSION` identifies the stable contract between `monocle-core` and its consumers (plugin SDK, federation layer). | SS-core-types-and-abi.md §ABI Version Constant |
 | BC | Behavioral Contract. A testable specification with preconditions, postconditions, and at least one canonical test vector. | This document |
-| `ClaudeCodeModule` | Phase 1 built-in `EngineModule` implementation for Claude Code harness integration. Defined in `monocle-runtime`. | SS-engine-module.md §Phase 1 Implementation |
+| `ClaudeCodeModule` | Phase 1 built-in `EngineModule` implementation for Claude Code harness integration. Defined in `monocle-runtime`. | SS-engine-module.md §Phase 1 Implementation: ClaudeCodeModule |
 | DTU | Digital Twin Universe. Behavioral clone of the Claude Code hook protocol for testing fidelity and regression detection. | dtu-assessment.md |
 | `EngineModule` | Trait in `monocle-core::engine` abstracting over AI coding harness adapters. Open (not sealed). | SS-engine-module.md §EngineModule Trait Signature |
 | `FactoryAdapter` | Trait in `monocle-core::factory` abstracting over factory-pattern workflow detectors. Open (not sealed). | SS-core-types-and-abi.md §FactoryAdapter Trait |
 | `FactoryState` | 7-field canonical struct returned by `FactoryAdapter::read_state()`. Fields: `phase`, `status`, `awaiting`, `blocking_issues`, `convergence`, `cycle`, `custom_fields`. | SS-core-types-and-abi.md §FactoryAdapter Trait |
-| FC | Forward-Compatibility item. Pre-Phase-1 contracts locked by human authorization. FC-01 through FC-06. | SS-forward-compatibility.md; product-brief.md §Forward-compatibility contracts |
+| FC | Forward-Compatibility item. Pre-Phase-1 contracts locked by human authorization. FC-01 through FC-06. | SS-forward-compatibility.md; product-brief.md §Scope (forward-compatibility contracts sub-bullet) |
 | `format_version` | First key in every JSONL ring buffer record. Value `1` for all Phase 1 records. | BC-RING-001; SS-daemon-lifecycle.md §Drain |
 | `HookEventRecord` | Rust struct in `monocle-runtime::ring` written to the JSONL ring buffer. `#[non_exhaustive]`; provides `new()` constructor. | SS-daemon-lifecycle.md §Drain |
 | `HookEnvelope` | Proto message in `monocle-proto` with `schema_version` at field number 1. Wire format for Phase 4 federation. | BC-PROTO-001a, BC-PROTO-001b; SS-core-types-and-abi.md §Prost Wire Schemas |
@@ -1036,7 +1373,7 @@ All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 wi
 | `monocle-v1:` | Wire-format prefix for Phase 1 auth tokens. `X-Monocle-Authorization: monocle-v1:<64-hex>`. | BC-AUTH-001, BC-AUTH-002 |
 | `MONOCLE_ABI_VERSION` | `pub const u32 = 1` in `monocle-core::abi`. Exported at crate root. Used by Phase 3 plugin SDK and Phase 4 federation. | BC-ABI-001, BC-ABI-002 |
 | `#[non_exhaustive]` | Rust attribute preventing exhaustive match and struct literal construction outside the defining crate. Default for all `pub` enums in `monocle-core`. | BC-TYPES-001; ADR-0004 |
-| OsRng | `rand::rngs::OsRng`. Cryptographically secure random source used for auth token generation. Required; `thread_rng` is forbidden for secrets. | BC-AUTH-001; SS-daemon-lifecycle.md §Start Sequence |
+| OsRng | `rand::rngs::OsRng`. Cryptographically secure random source used for auth token generation. Required; `thread_rng` is forbidden for secrets. | BC-AUTH-001; SS-daemon-lifecycle.md §Daemon Lifecycle Protocol §Start Sequence |
 | `Phase1Permission` | Exhaustive enum in `monocle-core::permissions`. Five variants. ADR-0004 exempts it from `#[non_exhaustive]`. | ADR-0004; SS-permissions-phase1.md |
 | `schema_version` | Proto field number 1 in `HookEnvelope`. Value `1` for all Phase 1 messages. Used by Phase 4 federation to validate message format compatibility. | BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002 |
 | `VsddFactoryAdapter` | Phase 1 static implementation of `FactoryAdapter`. Detects VSDD Factory workspaces via `document_type: pipeline-state` in `.factory/STATE.md`. | BC-FACTORY-002 |
@@ -1047,31 +1384,103 @@ All per-contract edge cases (EC-001 through EC-039) are embedded in Section 3 wi
 
 **v1.0 (2026-05-14):** Initial PRD authored by product-owner from 16 pre-staged BCs. Source artifacts: SS-daemon-lifecycle.md v1.0.7, SS-core-types-and-abi.md v1.2.8, SS-engine-module.md v1.1.15, product-brief.md v1.4.23, vision v1.1.2, dtu-assessment.md, 4 ADRs. 16 BCs formalized with full preconditions, postconditions, invariants, edge cases, canonical test vectors, and verification specifications. 5 NFRs promoted from brief §Success Criteria; 6 additional NFRs added from cross-cutting concerns. Error taxonomy: 14 error codes covering all error surfaces across 6 subsystem abbreviations. Edge case catalog: 39 entries (EC-001 through EC-039). Glossary: 19 terms. META defense layer compliance: D-047 strict applied; no ambiguous requirements; every BC has ≥1 edge case and ≥1 canonical test vector; no MVP deferrals; no "pending architect review" for answerable questions; all field-order contracts explicitly stated with serde implementation rationale.
 
-**D-042 sweep (v1.0):** 4-pattern sweep applied to this document before commit — SS-*.md v, dtu-assessment.md v, vision v, ADR v citations verified: SS-daemon-lifecycle.md v1.0.7 (confirmed current), SS-core-types-and-abi.md v1.2.8 (confirmed current), SS-engine-module.md v1.1.15 (confirmed current). All version citations in this document are current-pointers, not historical pinpoints.
+## §Trace v1.1
 
-**PG-4 §-heading-existence sweep (v1.0):** All §-anchor references in this document verified against actual headings in cited architecture files: SS-daemon-lifecycle.md §Drain ✓, §Daemon Lifecycle Protocol ✓, §Lock File Discovery Policy ✓, §Start Sequence ✓, §Health and Status Endpoints ✓. SS-core-types-and-abi.md §ABI Version Constant ✓, §Enum Extensibility ✓, §FactoryAdapter Trait ✓, §Prost Wire Schemas ✓, §Phase 1 PRD BC Pre-Staging ✓. SS-engine-module.md §EngineModule Trait Signature ✓, §Phase 1 Implementation: ClaudeCodeModule ✓, §Struct-level inherent operations ✓, §Behavioral Contracts ✓, §Cross-Crate Constructor Audit ✓. vision §Vision Statement ✓, §End-to-End Killer Scenario ✓, §EngineModule ✓, §FactoryAdapter ✓, §Closure Log ✓, §Explicit Non-Goals ✓. brief §Scope ✓, §Success Criteria ✓, §Forward-compatibility contracts ✓.
+**v1.1 (2026-05-14):** Fix-burst F-R62. Source commits: adversary report R62 (5713ccc), consistency audit T-4 (0e322da), architect auth adjudication (2db408f). Input version bump: SS-daemon-lifecycle.md v1.0.7 → v1.0.8 (architect commit 2db408f). Changes applied per D-047 strict:
 
-**PG-RECIPE-SCOPE compliance (v1.0):** Sweep scope `.factory/specs/` recursive — no citations narrowed to `.factory/specs/architecture/` subdirectory only (the D-042 scope-hole root cause documented in brief v1.4.19).
+- **F-R62-1 RESOLVED (CRITICAL):** BC count expanded from 16 → 22 BCs. Added 6 new BC sections: BC-DAEMON-001 (healthz endpoint), BC-DAEMON-002 (status endpoint), BC-DAEMON-003 (body size limit), BC-DAEMON-004 (graceful shutdown), BC-DAEMON-005 (lock file lifecycle), BC-DAEMON-006 (crash recovery). All 6 BCs sourced from SS-daemon-lifecycle.md v1.0.8 §Behavioral Contract Summary per architecture's prescriptive language (lines 586-588: "The Phase 1 PRD will formalize these as full BC entries"). §2.1 grouping table updated to 5 domains. §7 RTM expanded from 16 to 22 rows. §1.3 differentiator table updated. §5 error taxonomy source BC citations updated. §9 edge case catalog extended to EC-040..EC-056. §10 Glossary frontmatter §Trace source citations updated.
 
-**PG-5 §Historical-Anchor Framing compliance (v1.0):** All brief version citations in §Trace are contextual historical references (e.g., "brief §Success Criteria" without a pinned version qualifier). Section heading references are stable; version qualifiers omitted per PG-5 option (c) convention.
+- **F-R62-2 + T-4-F-001 RESOLVED (HIGH):** PG-4 §-heading-existence violations fixed across PRD. `§Forward-compatibility contracts` (brief bullet label, not a heading) re-anchored throughout to `§Scope (forward-compatibility contracts sub-bullet)`. `§Scope §ClaudeCodeModule` (bullet in `### In Scope`, not a heading) re-anchored to `§Scope §In Scope (ClaudeCodeModule sub-bullet)`. `§Success Criteria §Factory pattern detection` (table row label, not a heading) re-anchored to `§Success Criteria (factory pattern detection row)`. All affected sites: §3 BC Traceability fields, §7 RTM Brief Section column, §10 Glossary FC row, §Trace citations. Comprehensive sweep performed per F-R60-corpus-sweep 5-step protocol.
 
-**F-R60-corpus-sweep (v1.0):** Corpus sweep applied — no known-stale references to: deleted section headings, old enum variant names, superseded type names, or pre-ADR-0004 exhaustive-enum assumptions. `Phase1Permission` and `ClaudeCodeTool` correctly classified as exhaustive-by-ADR throughout.
+- **F-R62-3 RESOLVED (HIGH):** §Trace v1.0 falsified PG-4 self-check corrected. The v1.0 §Trace claimed `brief §Forward-compatibility contracts ✓` — this was a false PASS (no such heading exists in brief). The v1.1 §Trace documents the actual PG-4 sweep result with correct re-anchored citations.
 
-**18+ META rule checklist (v1.0):**
-- D-042 (4-pattern citation sweep): PASS — 3 current-pointer SS-*.md citations swept and confirmed.
+- **F-R62-4 RESOLVED (HIGH):** Canonical test-harness file paths authored. BC-AUTH-001 canonical file: `monocle-runtime/tests/auth_token_lifecycle.rs` (was `auth.rs`). BC-AUTH-002 canonical file: `monocle-runtime/tests/auth_header_rejection.rs` (was `auth.rs`). BC-LOCK-001 canonical file: `monocle-runtime/tests/lock_file_contract.rs` (was `daemon_lock.rs`). BC-ABI-001 canonical file: `monocle-runtime/tests/status_abi_version.rs` (was vague). New BC-DAEMON-001..006 canonical files assigned (see §7 RTM). §7 RTM updated with all canonical paths. PRD is source of truth; formal-verifier must adopt these paths in VP v1.1.
+
+- **F-R62-6 RESOLVED (HIGH):** BC-TYPES-001 and BC-ENGINE-001 verification rigor upgraded to match VP v1.0. BC-TYPES-001 §Verification now specifies `syn 2` AST parse of all `.rs` files in `monocle-core/src/**/*.rs`, walking `Item::Enum` nodes. BC-ENGINE-001 §Verification now specifies `syn 2` AST parse of `monocle-core/src/engine.rs` with 5-method count + no-Sealed-bound + return-type token-stream match. §7 RTM Test Type column: BC-TYPES-001 updated from `Clippy` → `AST audit (syn 2)`; BC-ENGINE-001 updated from `Compile/rustdoc` → `AST audit (syn 2)`. BC-FACTORY-001 also upgraded to AST audit (syn 2) for consistency.
+
+- **F-R62-8 RESOLVED (MED, per architect adjudication commit 2db408f):** Auth error taxonomy updated to match SS-daemon-lifecycle.md v1.0.8 (disposition (c) mixed approach). Retired body: `invalid_auth_token_format` (removed from all PRD locations). New 2-row taxonomy in §5: E-AUTH-001 (`missing_auth_token` for absent header) and E-AUTH-002 (`invalid_auth_token` for any value-present failure). BC-AUTH-002 postconditions rewritten to reflect the two-body taxonomy. EC-007 updated: empty header value → `invalid_auth_token` (value-present failure). EC-009 note updated: prefix-only token → `invalid_auth_token` (no separate body). Canonical test vectors table expanded from 5 to 6 rows covering all three middleware branches (missing header, bare token, wrong version, prefix-only, wrong header name, correct-format-wrong-value).
+
+- **F-R62-10 RESOLVED (LOW):** BC-PROTO-001a postcondition 4 corrected. Field assignments now use field names (snake_case) with type-name parenthetical: `session_start (SessionStartEvent) = 10`, `prompt_submit (UserPromptSubmitEvent) = 11`, `pre_tool_use (PreToolUseEvent) = 12`, `notification (NotificationEvent) = 13`, `stop (StopEvent) = 14`. Prior version incorrectly listed event type names (`SessionStart=10`, `UserPromptSubmit=11`, etc.) as field names.
+
+- **T-4-F-002 RESOLVED (MED):** BC-LOCK-001 §Traceability re-anchored from `SS-daemon-lifecycle.md v1.0.7 §Lock File Discovery Policy` → `SS-daemon-lifecycle.md v1.0.8 §Daemon Lifecycle Protocol §Start Sequence`. §7 RTM Architecture Source column for BC-LOCK-001 updated to match. The BC-LOCK-001 contract (lock file JSON schema) lives at §Daemon Lifecycle Protocol §Start Sequence; §Lock File Discovery Policy covers the TUI-client hook-script path discovery mechanism (separate concern).
+
+**D-042 sweep (v1.1):** 4-pattern recursive sweep on this document. Pattern 1 (SS-*.md v): SS-daemon-lifecycle.md v1.0.8 ✓ (updated from v1.0.7 per architect commit 2db408f), SS-core-types-and-abi.md v1.2.8 ✓ (confirmed current), SS-engine-module.md v1.1.15 ✓ (confirmed current). No dtu-assessment.md version citations in body. No vision version citations in body. No ADR version citations in body. All current-pointer citations confirmed correct.
+
+**PG-4 §-heading-existence sweep (v1.1):** All §-anchor references in this document verified against actual headings in cited files per 5-pattern recipe. Results:
+
+SS-daemon-lifecycle.md v1.0.8 headings verified:
+- `§Health and Status Endpoints` ✓ (H2 at line 32)
+- `§GET /healthz` ✓ (H3 at line 36)
+- `§GET /status` ✓ (H3 at line 63)
+- `§Body Size Limit` ✓ (H2 at line 102)
+- `§Daemon Lifecycle Protocol` ✓ (H2 at line 159)
+- `§Start Sequence` ✓ (H3 at line 161)
+- `§Shutdown Signal Handling` ✓ (H3 at line 360)
+- `§Drain` ✓ (H3 at line 373)
+- `§Crash Recovery` ✓ (H3 at line 523)
+
+SS-core-types-and-abi.md v1.2.8 headings verified:
+- `§ABI Version Constant` ✓ (H2 at line 48)
+- `§Enum Extensibility` ✓ (H2 at line 113)
+- `§FactoryAdapter Trait` ✓ (H2 at line 322)
+- `§Prost Wire Schemas` ✓ (H2 at line 892)
+- `§Phase 1 PRD BC Pre-Staging` ✓ (H2 at line 1010)
+- `§Phase 1 Implementation: VsddFactoryAdapter` ✓ (H3 at line 565, prefix-match)
+
+SS-engine-module.md v1.1.15 headings verified:
+- `§EngineModule Trait Signature` ✓ (H2 at line 48, prefix-match)
+- `§Phase 1 Implementation: ClaudeCodeModule` ✓ (H2 at line 539, prefix-match)
+- `§Struct-level inherent operations` ✓ (H3 at line 663, prefix-match)
+- `§Behavioral Contracts BC-ENGINE-002-ERR` ✓ (H2 at line 936, prefix-match to §Behavioral Contracts)
+- `§Cross-Crate Constructor Audit` ✓ (H2 at line 1080, prefix-match)
+
+Vision headings verified (domain-monocle-vision-synthesis.md v1.1.2):
+- `§Vision Statement` ✓
+- `§End-to-End Killer Scenario` ✓
+- `§EngineModule` ✓
+- `§FactoryAdapter` ✓
+- `§Closure Log` ✓
+- `§Explicit Non-Goals` ✓
+
+Brief headings verified (product-brief.md v1.4.23) — PG-4 pattern 2 applied:
+- `§Scope` ✓ (H2 at line 105)
+- `§Scope §In Scope` ✓ (H3 at line 107) — used for ClaudeCodeModule references
+- `§Success Criteria` ✓ (H2 at line 240)
+- `brief §Scope (forward-compatibility contracts sub-bullet)` — PASS: `§Scope` is a real heading; the parenthetical `(forward-compatibility contracts sub-bullet)` is a position-free qualifier for the bold-label content at line 173 (not cited as a heading itself — PG-4 compliant form)
+- `brief §Success Criteria (factory pattern detection row)` — PASS: `§Success Criteria` is a real heading; the parenthetical `(factory pattern detection row)` qualifies the table row at line 250 without asserting it is a heading
+- `brief §Scope (hook receiver hardening sub-bullet)` — PASS: same pattern; `§Scope` is real; parenthetical qualifies bullet content
+
+All §-anchor references: PASS. Zero mis-anchors in v1.1.
+
+**PG-2 noun-agnostic count coherence (v1.1):** "22 BCs" is the correct count. Verified occurrences: §2.1 grouping table (11 rows, 22 BC IDs listed) ✓; §7 RTM (22 rows) ✓; §9 edge case catalog header "EC-001 through EC-056" ✓; frontmatter `traces_to` "22 BCs" ✓. No remaining "16 BCs" references in normative content.
+
+**PG-RECIPE-SCOPE compliance (v1.1):** Sweep scope `.factory/specs/` recursive — not narrowed to `.factory/specs/architecture/` subdirectory only.
+
+**PG-5 §Historical-Anchor Framing compliance (v1.1):** All brief version citations in §Trace use position-free section heading anchors without version qualifiers per PG-5 option (c). Architecture file version citations in §Trace are labeled as current-pointers (not historical pinpoints).
+
+**PG-3 §Trace directional refs (v1.1):** No `above`, `below`, or bare L-numbers appear in this §Trace entry. All references use section heading anchors (§-form).
+
+**PG-3-TRACE-NEW-ENTRY (v1.1):** This §Trace v1.1 entry uses only §-section references, no bare L-numbers, no directional qualifiers.
+
+**F-R60-corpus-sweep (v1.1):** Corpus sweep applied — no known-stale references to deleted section headings, old enum variant names (no `invalid_auth_token_format` anywhere in normative content), superseded type names, or pre-ADR-0004 exhaustive-enum assumptions. All `invalid_auth_token_format` occurrences removed. Auth taxonomy updated to two-body taxonomy throughout.
+
+**18+ META rule checklist (v1.1):**
+- D-042 (4-pattern citation sweep): PASS — SS-daemon-lifecycle.md v1.0.8 current, SS-core-types-and-abi.md v1.2.8 current, SS-engine-module.md v1.1.15 current.
 - D-047 strict (3-clean-pass convergence): N/A for PRD authoring; applies to adversarial review passes.
-- PG-1 (no ambiguous requirements): PASS — every BC has testable preconditions, postconditions, and test vectors.
-- PG-2 (no MVP shortcuts): PASS — no "for now", "good enough", "we can fix later" rationalizations.
+- PG-1 (no ambiguous requirements): PASS — every BC has testable preconditions, postconditions, and test vectors. 22 BCs covered.
+- PG-2 (noun-agnostic count coherence): PASS — "22 BCs" consistent in §2.1, §7 RTM (22 rows), frontmatter, edge case count (EC-001..EC-056).
 - PG-3 (no L-number pinpoints in §Trace): PASS — all §Trace references use section heading anchors.
-- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS — this entry uses only section heading anchors.
-- PG-4 (§-heading-existence sweep): PASS — all §-anchors verified against actual headings in cited files.
+- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS — v1.1 entry uses only section heading anchors.
+- PG-4 (§-heading-existence sweep): PASS — all §-anchors verified per sweep above; zero mis-anchors. The v1.0 falsified claim is corrected in the v1.1 §Trace.
 - PG-5 (historical-anchor framing): PASS — version qualifiers on stable section refs omitted.
-- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS — sweep was not narrowed to architecture/ subdirectory.
+- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS — sweep not narrowed to architecture/ subdirectory.
 - BC-H1-is-title-source-of-truth: N/A — BCs are inline in this PRD (not separate files); H1 is each `### BC-*` heading.
 - architecture_is_subsystem_name_source_of_truth: N/A — no `subsystem:` frontmatter on individual BC files (PRD format).
-- append_only_numbering: PASS — no BC IDs renumbered; BC-PROTO-001 split preserved as 001a/001b per architect decision.
-- lift_invariants_to_bcs: PASS — all invariants from SS-*.md surfaced in corresponding BC invariant sections.
-- Capability Anchor Justification (S-7.01): N/A — this is a project-specific PRD, not a standard VSDD L3 PRD with CAP-NNN domain spec; BCs trace to brief §Scope and architecture SS-* sections directly.
+- append_only_numbering: PASS — no BC IDs renumbered; BC-DAEMON-001..006 are new append-only additions. EC-040..EC-056 are new append-only additions.
+- lift_invariants_to_bcs: PASS — all invariants from SS-daemon-lifecycle.md v1.0.8 §Behavioral Contract Summary surfaced in corresponding BC invariant sections.
+- Capability Anchor Justification (S-7.01): N/A — project-specific PRD; BCs trace to brief §Scope and architecture SS-* sections directly.
 - bc_array_changes_propagate_to_body_and_acs: N/A — no stories exist yet; Phase 2 story decomposition pending.
-- vp_index_is_vp_catalog_source_of_truth: N/A — no VPs authored yet; formal-verifier runs in parallel per STATE.md T-2.
+- vp_index_is_vp_catalog_source_of_truth: N/A for this burst; VP v1.1 update is formal-verifier scope (out of bounds for product-owner).
 - Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — no "for now," "good enough," "minimum viable," or similar language. All 22 BCs have full contract specifications.
+- Correct agent routing: PASS — VP file not touched (formal-verifier owns); architecture files not touched (architect owns); STATE.md not touched (state-manager owns).
