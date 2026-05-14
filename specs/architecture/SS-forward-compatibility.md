@@ -4,11 +4,11 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.12"
+version: "1.2.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T08:00:00Z
+timestamp: 2026-05-14T20:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -260,6 +260,21 @@ SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 
 ## §Trace
 
+v1.2.13 changes (round-60.1 F-R60-1 sibling-propagation fix):
+
+- F-R60-1 RESOLVED (MED — sibling-propagation gap from R59.1 narrow sweep): §Trace v1.2.9
+  entry for the comprehensive PG-4 sweep (round-53.1 F-R53-adv-2 companion) read "verified
+  across all 8 architecture spec files" — actual SS-*.md count is 7 (confirmed by ls SS-*.md).
+  Corrected "8" → "7". Root cause: R59.1 fixed 2 stale-count sites in SS-conventions-anti-patterns
+  §Trace but performed only a narrow 2-site fix without corpus-wide grep, missing this sibling.
+  F-R60-corpus-sweep META rule (§Corpus-Wide-Sweep Convention) codified in SS-conventions-anti-patterns
+  v1.28 closes the partial-sweep recurrence pattern structurally.
+
+  PG-3 self-audit: no directional qualifiers added; no current-state L-numbers used.
+  PG-4 self-audit: "§Corpus-Wide-Sweep Convention" — confirmed heading exists in
+  SS-conventions-anti-patterns.md v1.28. "§Trace v1.2.9" — versioned historical reference, exempt.
+  PG-5 self-audit: no bare version citations added; no new false-currency claims.
+
 v1.2.12 changes (round-56.1 F-R56-1 §Trace factual correction):
 
 - F-R56-1 RESOLVED (MEDIUM content — adversary finding R56): §Trace v1.2.11 entry contained
@@ -330,7 +345,7 @@ v1.2.9 changes (round-53.1 F-R53-adv-3 brief §-anchor mis-anchors + comprehensi
   §P3-1 analysis, §P3-2 Verdict.
 
 - Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 companion): brief.md §-anchors
-  verified across all 8 architecture spec files. All brief §-anchor citations now resolve
+  verified across all 7 architecture spec files. All brief §-anchor citations now resolve
   to actual headings in product-brief.md. No additional SS-*.md mis-anchors found beyond
   those captured in this burst.
 
