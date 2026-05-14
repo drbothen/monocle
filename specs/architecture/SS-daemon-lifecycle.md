@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.9"
+version: "1.0.10"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T23:59:00Z
+timestamp: 2026-05-14T22:44:39Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs)"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX)"
 project: monocle
 ---
 
@@ -595,10 +595,11 @@ this collision in practice. monocle eliminates the risk entirely by:
 
 The Phase 1 PRD has formalized these as full BC entries with preconditions,
 postconditions, invariants, edge cases, canonical test vectors, and verification
-harness stubs (PRD v1.1, commit f855835). This architecture artifact remains
-the source-of-truth for invariants, protocol decisions, and security rationale;
-the PRD remains the source-of-truth for canonical test names, test-file paths,
-error taxonomy, and edge case catalog.
+harness stubs (initial formalization: PRD v1.1, commit f855835). The current
+canonical PRD is `.factory/specs/prd.md` regardless of version evolution.
+Authority split: this architecture artifact is source-of-truth for invariants,
+protocol decisions, and security rationale; the PRD is source-of-truth for
+canonical test names, test-file paths, error taxonomy, and edge case catalog.
 
 ## Phase 4 Notes
 
@@ -615,6 +616,36 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.10 changes (consistency R3 R3-001 closure + oscillation-prevention sweep):
+- R3-001 RESOLVED (MEDIUM — consistency-validator R3 finding, commit ba62a15):
+  §Behavioral Contract Summary footer cited "PRD v1.1, commit f855835" as the
+  source-of-truth pointer for canonical test names, test-file paths, error taxonomy,
+  and edge case catalog. PRD is at v1.2 (commit 5a49b0b) and the footer's version pin
+  was factually stale. Root cause: normative-current version pins in architecture body
+  prose go stale whenever PRD bumps for any reason, creating an oscillation cycle
+  (F-R62 → R63 → R3-001 chain). Fix: §Behavioral Contract Summary footer rephrased
+  to version-stable Pattern B — historical formalization anchor preserved (PRD v1.1,
+  commit f855835) plus file-path version-stable pointer (`.factory/specs/prd.md`).
+  Future PRD version bumps will NOT make this sentence stale. Lesson applied:
+  L-F-R63-PARTIAL-FIX (cycles/cycle-001/lessons.md) propagation discipline — the
+  full propagation checklist was applied:
+  (a) §Behavioral Contract Summary footer — normative-current version pin removed;
+  (b) normative body lines for BC-AUTH-001 and BC-AUTH-002 §Verification cite
+  "PRD v1.1 §7 RTM" as historical fix-provenance for the F-R62-4 path
+  canonicalization — classified as PG-5 historical anchors, not normative-current
+  claims; kept unchanged;
+  (c) §Trace history entries contain PRD v1.1 references — historical per PG-5
+  exemption; no changes;
+  (d) SS-deps-pin-manifest.md cites SS-daemon-lifecycle.md without a version pin
+  (grep confirmed zero "SS-daemon-lifecycle\.md v" matches) — no update needed.
+  PG-3 compliant: §-anchor refs used; no bare L-numbers; no directional qualifiers.
+  PG-4 sweep evidence: §Behavioral Contract Summary (EXISTS heading), §Start Sequence
+  (EXISTS heading), §Trace (EXISTS heading). PG-5 sweep evidence: §Behavioral
+  Contract Summary footer — 1 normative-current pin fixed to version-stable;
+  body lines BC-AUTH-001/002 §Verification — classified historical (PG-5 compliant,
+  retained); §Trace history entries — PG-5 exemption confirmed. Post-write self-grep:
+  0 L[0-9]+ matches in this §Trace v1.0.10 entry.
 
 v1.0.9 changes (F-R62-4 back-propagation closure, adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3):
 - F-R63-cons-3 RESOLVED (MEDIUM — consistency-validator R2 finding): §Behavioral
