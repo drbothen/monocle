@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: "core"
-version: "1.1.12"
+version: "1.1.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -14,7 +14,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2); v1.1.12 round-48: directional typo in §Future audit maintenance corrected (audit table rows below → above; PG-3 sweep)"
+traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility lines 95-97 veto honored; F-FC-I003 adversary finding; vision §EngineModule lines 111-128; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2); v1.1.12 round-48: directional typo in §Future audit maintenance corrected (audit table rows below → above; PG-3 sweep); v1.1.13 round-47.3: §Trace v1.1.12 L-number pinpoints converted to position-free section refs per PG-3 §Trace-prose sub-rule"
 project: monocle
 ---
 
@@ -1161,16 +1161,27 @@ contracts with postconditions and verification harness stubs.
 
 ## §Trace
 
+v1.1.13 changes (round-47.3 PG-3 §Trace-prose sub-rule — position-free conversion):
+
+- §Trace v1.1.12 L-number pinpoints converted to position-free section references per
+  PG-3 §Trace-prose authoring sub-rule (codified in SS-conventions-anti-patterns.md v1.17
+  §Cross-Section Directional Reference Convention). Affected: `paragraph at L1137` → `§Future
+  audit maintenance paragraph`; `delimiter block L1108-L1128` → `HTML-delimited §Cross-Crate
+  Constructor Audit table block`. Also removed stale version pin in the PG-3 rule citation
+  (v1.16 → bare section name, since the convention persists across versions). No behavioral
+  change; navigation accuracy fix only.
+
 v1.1.12 changes (round-48 PG-3 sweep directional fix):
 
 - Directional typo in §Future audit maintenance RESOLVED (LOW — PG-3 sweep finding): the
-  paragraph at L1137 described the HTML BEGIN/END delimiter pair "that wraps the audit table
-  rows below." The audit table (delimiter block L1108-L1128) is above that paragraph, not
-  below. Corrected "below" to "above". No content change; navigational accuracy fix only.
-  Root cause: the phrase was introduced when the paragraph immediately followed the table;
-  subsequent additions between the table and this paragraph inverted the positional truth
-  without updating the directional qualifier. Caught by the PG-3 mandatory sweep
-  (see SS-conventions-anti-patterns.md v1.16 §Cross-Section Directional Reference Convention).
+  §Future audit maintenance paragraph described the HTML BEGIN/END delimiter pair "that wraps
+  the audit table rows below." The HTML-delimited §Cross-Crate Constructor Audit table block
+  is above that paragraph, not below. Corrected "below" to "above". No content change;
+  navigational accuracy fix only. Root cause: the phrase was introduced when the paragraph
+  immediately followed the table; subsequent additions between the table and this paragraph
+  inverted the positional truth without updating the directional qualifier. Caught by the PG-3
+  mandatory sweep (see SS-conventions-anti-patterns.md §Cross-Section Directional Reference
+  Convention).
 
 v1.1.11 changes (round-41 fixes F-R40-2 MEDIUM):
 - F-R40-2 RESOLVED (MEDIUM — adversary finding): Two current-pointer citations in the v1.1.8
