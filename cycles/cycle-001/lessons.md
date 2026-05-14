@@ -615,3 +615,47 @@ If a future fresh-context adversary pass finds a similar dispatch-scope-under-en
 #### Follow-up
 
 None required. The fix-burst F-R62 already remediated the content defect (PRD v1.0 → v1.1, +6 BCs; VPs v1.0 → v1.1, +6 VPs). The orchestrator lesson is captured here so subsequent dispatch authors find it on resume.
+
+---
+
+## F-R63 Codifications (2026-05-14)
+
+## L-F-R63-PARTIAL-FIX: F-R62 fix-burst was incomplete (path reconciled, name not; arch not propagated) [process-gap] [codified]
+
+**Date:** 2026-05-14
+**Severity:** META (process-gap; depth-2 META — about how fix-bursts are scoped)
+**Origin:** F-R63-adv-1 (HIGH) + F-R63-adv-2 (MED) + F-R63-cons-1/2/3 (MED) — combined finding set from adversary R63 and consistency-validator round 2 on artifacts produced by F-R62 fix-burst
+**Codified in:** STATE.md §Critical Hook Lessons "Partial-fix regression discipline" (this burst)
+
+### Pattern
+
+The F-R62 fix-burst was dispatched with explicit instructions to reconcile PRD ↔ VP test paths via a "canonical name list" interface contract. The product-owner authored canonical paths AND names; the formal-verifier was instructed to adopt po's PATHS verbatim. But:
+1. The dispatch prompt did not explicitly call out test NAMES as also requiring verbatim adoption — formal-verifier re-framed 4 names independently, producing drift caught only by R63.
+2. The dispatch prompt did not include architecture as a propagation target — F-R62-4 path split was applied to PRD/VP but architecture v1.0.8 retained the pre-F-R62 single-file path, caught by R63 + cons R2.
+3. The product-owner's F-R62-8 retirement of one error code was correctly reflected in the PRD body but the §Trace v1.1 count claim ("14 error codes") was not updated to the post-burst count (13), caught by cons R2.
+
+Each was a partial-fix regression (S-7.01 META-class). The F-R62 burst FELT complete because PRD/VP came back internally consistent. It was actually incomplete because the propagation surface was wider than the burst scope.
+
+### Lesson
+
+When a fix-burst affects cross-artifact properties (file paths, function/test names, taxonomy entries, version pins, counts), the orchestrator dispatch prompt MUST include an EXPLICIT propagation checklist enumerating every artifact dimension the fix might touch AND every sibling artifact that might cite those dimensions. The dispatched agent then sweeps those targets and either fixes or routes-back-to-orchestrator for sibling-agent fixes. Implicit "just fix the obvious thing" is the regression source.
+
+### Codification
+
+- STATE.md §Critical Hook Lessons gained the new entry "Partial-fix regression discipline" (this burst).
+- Future orchestrator dispatch prompts for fix-bursts should follow the template structure:
+  ```
+  PROPAGATION CHECKLIST (mandatory):
+  - [ ] Artifact A modified? Sweep <list of files that cite A's modified property>
+  - [ ] Artifact B modified? Sweep <list of files that cite B's modified property>
+  - [ ] Counts/versions changed in any artifact? Apply PG-2 count-coherence sweep + PG-5 version-pin sweep across all sibling artifacts
+  ```
+- This is an orchestrator-process rule, not a spec-authoring rule.
+
+### Recurrence guard
+
+If a future fresh-context pass finds a similar partial-fix-regression issue introduced by a fix-burst dispatched AFTER this codification, escalate to human as repeat process-gap. Single-recurrence post-codification = process-gap recurrence trigger per S-7.02 conventions.
+
+### Follow-up
+
+None required. The fix-burst F-R63 already remediated all 5 partial-fix-regression instances (test names, test name asymmetry, arch path propagation, arch summary tense, PRD error count). Future fix-burst dispatches should be authored with the propagation checklist template.
