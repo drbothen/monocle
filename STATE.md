@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "3.3"
+version: "4.0"
 status: active
 producer: state-manager
-timestamp: 2026-05-14T12:00:00Z
-phase: pre-phase-1-final-gate-d053-option-b-active-r56-audit-pending
-current_step: dispatch-R56-audit-under-d053-option-b
+timestamp: 2026-05-14T18:00:00Z
+phase: phase-1-spec-crystallization-entry-pending
+current_step: artifact-inventory-and-phase-1-entry-plan
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-053 RATIFIED 2026-05-14: convergence relaxed to option (b) for pre-Phase-1 phase only. Subsequent phases (Phase 1+) revert to D-047 strict. Bounded LOW META residuals: F-R55-adv-1 (PG-4 em-dash separator codification gap), F-R55-adv-3 (PG-4 intra-document scope hole). R55 consistency CLEAN; R55 adversary 1 MED (fixed in R55.1) + 2 bounded LOW META. R56 audit under (b) criterion pending."
-awaiting: "R56 audit cycle dispatch on commit d870280 (R55.1 fix) under D-053 option (b) criterion. Target: clean-pass 1-of-3-under-(b) (= 0 CRIT/HIGH + 0 MED-content + only bounded LOW META gaps within residual catalog)."
+traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054 human ratification of option (c). 26 adversary rounds + numerous fix bursts in cycle-001. 16 BCs implementable; 0 spec content defects. Defense layers: 18+ codified META rules. Permanent residual META catalog: F-R55-adv-1 (PG-4 em-dash codification gap), F-R55-adv-3 (PG-4 intra-doc scope hole), F-R61-adv-1 (PG-3-CLASSIFICATION-EVIDENCE), F-R61-2 (§Trace-Heading-Convention ADR/vision/brief equivalents). Phase 1+ reverts to D-047 strict 3-clean-pass."
+awaiting: "Phase 1 entry plan — orchestrator artifact inventory + dispatch sequence pending. Most Phase 1 architecture artifacts already exist (SS-engine-module, SS-conventions, SS-forward-compat, SS-core-types, SS-daemon-lifecycle, SS-permissions-phase1, SS-deps-pin-manifest, dtu-assessment, ADR-0001-0004) — PRD synthesis from existing 16 pre-staged BCs and verification properties are the primary remaining Phase 1 work."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -36,163 +36,158 @@ current_cycle: cycle-001
 | **Product** | monocle — single-binary Rust TUI for AI coding harness sessions |
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
-| **Current Phase** | pre-phase-1-final-gate-d053-option-b-active-r56-audit-pending |
-| **Current Step** | dispatch-R56-audit-under-d053-option-b |
-| **Brief** | `.factory/specs/product-brief.md` v1.4.23 (commit 0d0b0db) |
-| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-14T12:00:00Z |
+| **Current Phase** | phase-1-spec-crystallization-entry-pending |
+| **Current Step** | artifact-inventory-and-phase-1-entry-plan |
+| **Brief** | `.factory/specs/product-brief.md` v1.4.23 |
+| **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 |
+| **Last Updated** | 2026-05-14T18:00:00Z |
 
-## Convergence Criterion (Pre-Phase-1, per D-053)
+## Pre-Phase-1 Final Gate — PASS (2026-05-14 per D-054)
 
-**Active criterion (this phase only):** Option (b) — relaxed.
+**Status:** GATE PASS declared 2026-05-14 per D-054 human ratification of option (c).
 
-- **0 CRIT/HIGH on any finding** (hard block)
-- **0 MED on content-affecting findings** (hard block)
-- **LOW META-rule-codification gaps allowed as bounded residuals** (PG-N scope clauses, separator conventions, intra-doc scope holes)
-- **3 consecutive passes meeting this criterion** = pre-Phase-1 gate PASS
+**Decision rationale:** 7 audit cycles attempted under D-053 option (b); 0 clean rounds. Pattern
+empirically confirmed: each fix burst introduces NEW META class instances at progressively
+meta-level depth. 16 BCs implementable verified every round; 0 spec content defects. Remaining
+findings are pure META authoring discipline — separate quality dimension from BC correctness.
+Per CLAUDE.md production-grade lens: spec is implementable; META recursion is documented,
+residual, and isolated from Phase 1 readiness.
 
-**Subsequent phases (Phase 1+):** revert to D-047 strict 3-clean-pass (0 findings of any severity for 3 consecutive passes).
+**Defense layers in place (18+):** Constructor pattern + 17-struct audit table; D-042 4-pattern recursive + WITHIN-FILE + DTU-SCOPE; PG-1 §Schema-Fact Citation Convention; PG-2 noun-agnostic narrative-count; PG-3 §Cross-Section Directional Reference + §Trace-prose + ALL-PROSE + TRACE-NEW-ENTRY enhanced self-audit; PG-4 §-heading-existence 5-pattern + scope clause; PG-RECIPE-SCOPE META-META; PG-5 §Historical-Anchor Framing + Option B frontmatter exemption + sweep-evidence checklist; §Trace-Heading-Convention + heading-agnostic recipe; F-R60-corpus-sweep META rule (5-step protocol); DTU split-column matrix; BC-HOOK-007 Option A gene-source qualifier.
 
-**Convergence count under D-053 option (b): 0/3** (newly counting; R56 audit pending)
+**Permanent residual META catalog (frozen per D-054; NOT to grow during Phase 1):**
 
-**Bounded LOW META Residual Catalog (must not grow during pre-Phase-1):**
+| ID | Description | Disposition |
+|----|-------------|-------------|
+| F-R55-adv-1 | PG-4 em-dash separator codification gap (em-dash form `§Item P3-1 — Verdict` accepted as alternate separator; not codified explicitly) | Permanent residual |
+| F-R55-adv-3 | PG-4 intra-document scope hole (rule "cross-document" only; intra-doc bold-paragraph-label citations accepted) | Permanent residual |
+| F-R61-adv-1 | PG-3-CLASSIFICATION-EVIDENCE (META rule's own §Trace classification-evidence prose may use bare L-numbers in post-fix summary shorthand; structural collision with PG-3 §Trace-prose) | Permanent residual |
+| F-R61-2 | §Trace-Heading-Convention scope clause doesn't document ADR/vision/brief equivalents (Amendment History, Closure Log, Revision History) | Permanent residual |
 
-| ID | Description | Source | Disposition |
-|----|-------------|--------|-------------|
-| F-R55-adv-1 | PG-4 em-dash separator codification gap (16 sites use em-dash form while PG-4 anti-pattern examples use parens; convention doesn't authorize/forbid em-dash) | R55 adversary | Bounded residual per D-053; deferred to Phase 1 burndown OR ratification as alternate separator |
-| F-R55-adv-3 | PG-4 intra-document scope hole (rule scoped "cross-document" only; intra-doc citations to bold-paragraph-labels escape PG-4 enforcement) | R55 adversary | Bounded residual per D-053; deferred to Phase 1 burndown OR PG-4 scope extension |
+**Phase 1+ policy:** REVERT to D-047 strict 3-clean-pass (0 findings of any severity for 3 consecutive passes).
 
-**Bounding rule:** R56+ audits SHOULD NOT add new LOW META findings to the residual catalog. A NEW META pattern not in this catalog constitutes NEEDS_ONE_MORE under option (b) (catalog must not grow). Findings within this catalog re-flagged: expected.
+**16 BCs pre-staged (Phase 1 PRD authoring scope):** BC-RING-001, BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-AUTH-001/002, BC-LOCK-001, BC-ENGINE-001/002/002-ERR/003 — locatable in SS-engine-module + SS-core-types + SS-daemon-lifecycle + SS-permissions-phase1.
 
 ## Phase Progress
 
 | Phase | Status | Completed | Notes |
 |-------|--------|-----------|-------|
 | -1: Reference Ingest (8 repos) | DONE | 2026-05-11 | 57+ artifacts; semport/ |
-| 0.5-0.9: Brief v1.0→v1.4.21 + arch stubs | DONE | 2026-05-14 | |
+| 0.5-0.9: Brief v1.0→v1.4.23 + arch stubs | DONE | 2026-05-14 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adv 0 CRIT+2 MED+1 LOW |
-| Pre-Phase-1 Final Gate | PENDING — 0/3 under D-053 option (b). D-053 ratified 2026-05-14: option (b) phase-scoped. R55 consistency CLEAN + R55.1 fixes MED content; F-R55-adv-1/3 documented as bounded LOW META residuals. R56 audit pending under (b); target clean-pass 1/3-of-3 under relaxed criterion. | — | R54 cycle: consistency 1 LOW + adversary 1 MED + 1 LOW (both legs found F-R54-adv-1 independently) → R54.1 PG-D042-WITHIN-FILE + PG-4 scope clause. R55 cycle: consistency CLEAN, adversary NEEDS_ONE_MORE 1 MED + 2 LOW META (all scope-hole exploits of R54.1 rules); R55-gate invoked. D-053 ratified. R55.1 fixes F-R55-adv-2 MED; F-R55-adv-1/3 bounded. |
-| 1: Spec Crystallization | not-started | — | |
+| Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054** option (c). 26 adv rounds R22-R61. 18+ defense layers. 16 BCs implementable; 0 content defects. Permanent META residual catalog (4 entries). Phase 1+ reverts to D-047 strict. |
+| 1: Spec Crystallization | **READY-TO-ENTRY** | — | Artifact inventory complete (see below). PRD + verification properties are primary remaining work. |
 | 2-7 | not-started | — | |
 
 ## Current Phase Steps
 
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| R54 audit cycle: consistency 1 LOW + adversary 1 MED + 1 LOW (both legs found F-R54-adv-1 independently) | consistency-validator+adversary | DONE | plans/ persisted |
-| R54.1 fix burst F-R54-adv-1/2 + PG-D042-WITHIN-FILE codified + PG-4 scope clause | architect | DONE | commit ee1fa67 |
-| R55 audit cycle: consistency CLEAN, adversary NEEDS_ONE_MORE 1 MED + 2 LOW (all META scope-hole exploits); R55-gate commitment triggered | consistency-validator+adversary | DONE | plans/ persisted |
-| **HUMAN RATIFICATION D-053** (2026-05-14): option (b) phase-scoped (pre-Phase-1 only); subsequent phases revert to D-047 strict | human (Josh Magady) | DONE | D-053 |
-| R55.1 fix burst F-R55-adv-2 MED content (historical-anchor rewrite); F-R55-adv-1/3 documented as bounded META residuals under D-053 | architect | DONE | commit d870280 |
+| R56-R57: PG-5 codification + frontmatter scope-hole + sweep-evidence checklist | consistency-validator+adversary+architect | DONE | plans/ persisted |
+| R58-R59: PG-3-TRACE-NEW-ENTRY enhanced + §Trace-Heading-Convention + heading-agnostic recipe | consistency-validator+adversary+architect | DONE | plans/ persisted |
+| R60-R60.1: F-R60-corpus-sweep META rule codified; stale "8"→"7" count fixed | consistency-validator+adversary+architect | DONE | commit 1fb6da0 |
+| R61: 2 LOW META catalog-growth findings (PG-3 post-fix summary shorthand + §Trace-Heading-Convention ADR scope gap) | consistency-validator+adversary | DONE | plans/ persisted |
+| **D-054 HUMAN RATIFICATION 2026-05-14**: option (c) — pre-Phase-1 gate PASS now; 4-entry permanent residual META catalog; Phase 1+ reverts to D-047 strict | human (Josh Magady) | DONE | D-054 |
+| Pre-Phase-1 final gate: PASS | state-manager | DONE | this commit |
 
 ## Decisions Log
 
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
-| D-040 | D-031 RATIFIED: architecture wins on Phase 1 surfaces; vision canonical for intent. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-041 | D-032 RESOLVED: STRICT ROUTING — no narrow exemptions. Routing table binding. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-042 | O-R36-1 RESOLVED: OPTION (c) — manual workflow mitigation; grep-before-version-bump canonical. D-042 scope codified as .factory/specs/ recursive. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-047 | Human ratified option (a) strict 3-clean-pass policy per O-R44-1. No policy change. Convergence requires 3 consecutive 0+0+0+0 audit cycles. | 2026-05-14 | human (Josh Magady) |
-| D-048 | R47-R49 defense-layer coverage closure: PG-1 §Schema-Fact Citation Convention; PG-2 META generalized; PG-3 expanded; PG-D042-BURST-SKIP closed. | 2026-05-14 | state-manager |
+| D-047 | Human ratified option (a) strict 3-clean-pass policy. Convergence requires 3 consecutive 0+0+0+0 audit cycles. | 2026-05-14 | human (Josh Magady) |
+| D-048 | R47-R49 defense-layer coverage closure: PG-1, PG-2 generalized, PG-3 expanded, PG-D042-BURST-SKIP closed. | 2026-05-14 | state-manager |
 | D-049 | PG-4 §Section-Anchor Citation Convention codified (R51.1, commit 562b54c). | 2026-05-14 | state-manager |
 | D-050 | PG-3-TRACE-NEW-ENTRY META-rule reflexivity discipline codified (R52.1, commit fa3051d). | 2026-05-14 | state-manager |
-| D-051 | PG-D042-DTU-SCOPE codified: D-042 grep recipe extended with sibling patterns (R52.2, commit c20ff19). | 2026-05-14 | state-manager |
-| D-052 | PG-RECIPE-SCOPE META-META rule codified: every new META-rule recipe MUST include sibling patterns for ALL versioned spec artifacts at codification time (R53.1, commit 8baec19). | 2026-05-14 | state-manager |
-| D-053 | Convergence-definition relaxation per O-R44-1 + R55-gate commitment: option (b) ratified for **pre-Phase-1 phase ONLY**. Relaxed criterion: 0 CRIT/HIGH + 0 MED-content + bounded LOW META gaps for 3 consecutive passes. Subsequent phases (Phase 1+) revert to D-047 strict 3-clean-pass. Bounded LOW META residual catalog: F-R55-adv-1, F-R55-adv-3 (frozen set; must not grow during pre-Phase-1). | 2026-05-14 | human (Josh Magady) |
+| D-051 | PG-D042-DTU-SCOPE codified (R52.2, commit c20ff19). | 2026-05-14 | state-manager |
+| D-052 | PG-RECIPE-SCOPE META-META rule codified (R53.1, commit 8baec19). | 2026-05-14 | state-manager |
+| D-053 | Convergence-definition relaxation: option (b) ratified for pre-Phase-1 ONLY. Relaxed criterion: 0 CRIT/HIGH + 0 MED-content + bounded LOW META for 3 consecutive passes. Phase 1+ reverts to D-047 strict. Bounded LOW META residual catalog: F-R55-adv-1, F-R55-adv-3 (frozen). | 2026-05-14 | human (Josh Magady) |
+| D-054 | **PRE-PHASE-1 GATE PASS declared per option (c)**: Accept current state. 26 adversary rounds (R22-R61). 16 BCs implementable; 0 spec content defects. Bounded META residual catalog frozen: 4 permanent entries (F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2). 18+ defense layers codified. Phase 1+ reverts to D-047 strict. | 2026-05-14 | human (Josh Magady) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 <10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
-## Skip Log
-
-| Step | Skipped? | Justification |
-|------|----------|---------------|
-| UX Spec | no | TUI product requires UX spec |
-
 ## Blocking Issues
 
-_None — R55.1 fix landed; D-053 ratified; R56 audit dispatch pending under option (b) criterion._
+_None — pre-Phase-1 gate PASS declared per D-054. Phase 1 entry sequence pending orchestrator plan + human approval._
 
-## Session Resume Checkpoint
+## Phase 1 Spec Crystallization — Entry Artifact Inventory
 
-### Immediate Next Action — DISPATCH R56 AUDIT CYCLE UNDER D-053 OPTION (B)
+| Artifact | Path | Status |
+|----------|------|--------|
+| Domain spec / Vision | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 | EXISTS |
+| Product brief | `.factory/specs/product-brief.md` v1.4.23 | EXISTS |
+| PRD with behavioral contracts | `.factory/specs/prd.md` | MISSING — 16 BCs pre-staged in arch docs; formal PRD synthesis required |
+| Architecture (7 SS files) | `.factory/specs/architecture/SS-*.md` | EXISTS (v1.28, v1.2.13, v1.1.15, v1.2.8, v1.0.7, v1.4, v1.1.8) |
+| DTU assessment | `.factory/specs/dtu-assessment.md` v1.7 | EXISTS |
+| ADRs (4) | `.factory/specs/architecture/adr/ADR-0001..0004` | EXISTS |
+| Verification properties | `.factory/specs/verification-properties.md` | MISSING — not yet authored |
+| CI/CD setup | `.github/workflows/` | MISSING — no Cargo.toml yet; devops-engineer scope at Phase 3 |
+| Phase 1d adversarial spec review | 26 rounds R22-R61 completed | EFFECTIVELY DONE (exceeds standard) |
+| Human Phase 1 gate approval | pending orchestrator plan surface | PENDING |
 
-R56 consistency-validator AND adversary dispatched in parallel (single message, two Agent
-invocations) on commit `d870280` (R55.1 fix).
+## Immediate Next Action — PHASE 1 ENTRY PLAN
 
-**R56 must apply D-053 option (b) criterion:**
-- 0 CRIT/HIGH on any finding → hard block
-- 0 MED on content-affecting findings → hard block
-- LOW META findings within the bounded residual catalog (F-R55-adv-1, F-R55-adv-3) → ALLOWED, expected
-- LOW META findings OUTSIDE the bounded catalog → NEEDS_ONE_MORE (catalog must not grow)
+Orchestrator next steps after this state-manager commit lands:
 
-**Target:** clean-pass 1-of-3 under (b). Three consecutive such passes = pre-Phase-1 gate PASS.
+1. Surface Phase 1 entry plan to human with artifact inventory above.
+2. Decide what's needed: PRD synthesis (`product-owner`), Verification properties (`formal-verifier`), or proceed to Phase 2 Story Decomposition if Phase 1 is effectively complete given pre-staged BCs.
+3. Phase 1+ convergence reverts to D-047 strict 3-clean-pass policy. Architecture specs guarded by 18+ codified META rules.
 
-**Convergence count (under D-053 option (b)): 0/3** (newly counting from this state-manager commit)
+## Pending Human Direction
 
-Read for R56 — spec versions at d870280:
-- SS-engine-module v1.1.15, SS-conventions v1.23, SS-forward-compat v1.2.11, SS-core-types v1.2.7
-- SS-daemon-lifecycle v1.0.7, SS-permissions-phase1 v1.1, SS-deps-pin-manifest v1.1.7
-- dtu-assessment v1.6, product-brief v1.4.23, ADR-0004 v1.0.2, vision v1.1.2
-- This STATE.md (D-053 + residual catalog active), CLAUDE.md (Q-3 standing disposition)
+- O-R46-1: RESOLVED 2026-05-14 (D-047)
+- O-R55-gate: RESOLVED 2026-05-14 (D-053 option (b))
+- **O-R61-gate: RESOLVED 2026-05-14 (D-054 option (c) — pre-Phase-1 gate PASS)**
+- Q-3: PENDING (CLAUDE.md operational pointer refresh — brief v1.4.23, vision v1.1.2; NOT BLOCKING)
 
-### Session Commit Chain (most-recent-first)
+## Session Commit Chain (most-recent-first)
 
 ```
-d870280 — R55.1 architect F-R55-adv-2 historical-anchor rewrite (under D-053 option b)
-ee1fa67 — R54.1 architect F-R54-adv-1/2 + PG-D042-WITHIN-FILE + PG-4 scope clause
-a772b6d — R51-R53 close-out (state-manager) [prior]
-0d0b0db — R53.2 brief cascade + brief PG-4 audit CLEAN
-8baec19 — R53.1 architect F-R53-adv-1/2/3/4/5 + PG-RECIPE-SCOPE META-META + 10 brief mis-anchors
+[this commit] — D-054 gate PASS + R56-R61 close-out + Phase 1 entry inventory
+1fb6da0 — R60.1 architect F-R60-1 + F-R60-corpus-sweep META rule codified
+8c261e2 — R59.1 architect F-R59-adv-1/2 + §Trace-Heading-Convention + PG-3 recipe heading-agnostic
+d00c67f — R58.1 architect F-R58-1 cons+adv + PG-3-TRACE-NEW-ENTRY enhanced self-audit
+9cc8205 — R57.1 architect F-R57-1/2 + PG-5 sweep-evidence checklist + PG-RECIPE-SCOPE count
+e5a5b5a — R56.1 architect F-R56-1/2 + PG-5 §Historical-Anchor Framing codified
+d870280 — R55.1 architect F-R55-adv-2 historical-anchor rewrite
+5b35e77 — R54-R55 close-out + D-053 [prior state-manager commit]
 [...earlier in cycles/cycle-001/burst-log.md...]
 ```
 
-### Critical Artifacts (read for Phase 1)
+## Critical Artifacts (read for Phase 1)
 
 1. `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + agent routing
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
 3. `.factory/specs/product-brief.md` v1.4.23
-4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.23
-5. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.11
-6. `.factory/specs/architecture/SS-engine-module.md` v1.1.15
+4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.28 (18+ META rules)
+5. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.13
+6. `.factory/specs/architecture/SS-engine-module.md` v1.1.15 (16 pre-staged BCs)
 7. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.7
-8. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
-9. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-10. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.7
+8. `.factory/specs/architecture/SS-permissions-phase1.md` v1.4
+9. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.8
+10. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.8
 
-### Key Tech Stack
+## Key Tech Stack
 
-ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6, reqwest 0.13, nucleo 0.5, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), async-trait ^0.1, futures ^0.3, constant_time_eq ^0.3.
+ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
+serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
+reqwest 0.13, nucleo 0.5, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT),
+async-trait ^0.1, futures ^0.3, constant_time_eq ^0.3.
 
-### Critical Hook Lessons
+## Critical Hook Lessons
 
 - `validate-input-hash`: update frontmatter to `[live-state]` BEFORE editing a cycle file with computed hash
 - `block-ai-attribution`: rejects "Co-Authored-By: Claude" + robot emoji in commits
 - Use `git commit -F /tmp/<file>` for messages over 2KB
-- Round-17 lesson: fix-axis (replace crate X) + behavioral-invariant axis (preserve Y) both required
 - FC items LOCKED: read SS-core-types-and-abi.md; do NOT re-derive
-
-## Phase 1 Gate Questions — SUSPENDED PENDING CONVERGENCE
-
-SUSPENDED. Convergence count: 0/3 under D-053 option (b). D-040/D-041/D-042 conditional; Q-3 (CLAUDE.md pointer refresh) PENDING HUMAN ACTION — not blocking. Gate re-presents after clean-pass 3-of-3 achieved under D-053 option (b).
-
-## Pending Human Direction
-
-**O-R36-1:** RESOLVED 2026-05-14 via D-042 option (c).
-
-**O-R46-1:** RESOLVED 2026-05-14 — D-047 strict 3-clean-pass ratified; superseded by D-053 (option (b) phase-scoped ratified 2026-05-14).
-
-**O-R55-gate:** RESOLVED 2026-05-14 — D-053 option (b) ratified for pre-Phase-1 only; D-047 strict reverts at Phase 1+.
-
-**Q-3 (CLAUDE.md operational pointer refresh — brief v1.4.23, vision v1.1.2):** PENDING HUMAN ACTION. NOT BLOCKING. AI does not edit CLAUDE.md.
 
 ## Historical Content
 
 | Content | Location |
 |---------|----------|
-| Burst history (R1-R53) | `cycles/cycle-001/burst-log.md` |
-| R54-R55 burst summary | `cycles/cycle-001/burst-log.md` (appended this session) |
-| Lessons learned | `cycles/cycle-001/lessons.md` |
+| Burst history (R1-R55) | `cycles/cycle-001/burst-log.md` |
+| R56-R61 burst summary + D-054 ratification | `cycles/cycle-001/burst-log.md` (appended this commit) |
+| Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` (updated this commit) |
 | Decisions D-001..D-039 | `cycles/cycle-001/burst-log.md` |
 | Prior session checkpoints | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |

@@ -402,3 +402,183 @@ level. Orchestrator surfaced O-R55-gate to human; human ratified option (b).
 
 **Bounded residual catalog (frozen during pre-Phase-1):** F-R55-adv-1, F-R55-adv-3.
 If R56+ surfaces a NEW META pattern not in this catalog, that is NEEDS_ONE_MORE.
+
+---
+
+## R56 Codifications
+
+### [codified] PG-5 — §Historical-Anchor Framing Convention (R56.1, commit e5a5b5a)
+
+**Pattern:** Version citations to external documents (brief, vision, ADRs) in body prose must
+use historical-anchor Form 2 ("at time of authoring") rather than bare unqualified version
+references. Bare references appear to claim the cited version is current truth.
+
+**Codified in:** SS-conventions-anti-patterns.md §Historical-Anchor Framing Convention with
+full scope clause (SS-* ×7, dtu-assessment, ADR-N ×4, vision, brief) and per-class sweep
+recipe (commit e5a5b5a).
+
+**Trigger:** F-R56-1/2 — SS-deps-pin-manifest, SS-permissions-phase1, ADR-0001, ADR-0004 body
+citations without historical-anchor qualifier; R55.1 scoped fix to SS-forward-compatibility.md
+only, leaving other artifact classes un-swept.
+
+---
+
+## R57 Codifications
+
+### [codified] PG-5 Sweep-Evidence Checklist Requirement (R57.1, commit 9cc8205)
+
+**Pattern:** Any §Trace entry applying PG-5 must include per-class enumerated sweep evidence
+(SS-*: N files swept, N violations, N fixed; brief: N; dtu-assessment: N; vision: N; ADR-N: N).
+Without enumerated evidence, auditors cannot verify PG-5 coverage from the §Trace audit trail.
+
+**Codified in:** SS-conventions-anti-patterns.md §Historical-Anchor Framing Convention §Trace
+entry requirements (commit 9cc8205).
+
+**Trigger:** F-R57-1 — R56.1 §Trace entry for SS-conventions v1.24 missing per-class counts.
+S-7.01 partial-fix irony: PG-5 codification burst omitted the sweep-evidence requirement from
+its own §Trace entry.
+
+---
+
+### [codified] PG-5 Option B — Frontmatter Carve-Out (R57.1, commit 9cc8205)
+
+**Pattern:** PG-5 scope clause covers body prose of versioned spec artifacts. Frontmatter fields
+(`traces_to`, `commit`, `timestamp`, etc.) are operational metadata and explicitly exempt.
+
+**Codified in:** SS-conventions-anti-patterns.md §Historical-Anchor Framing Convention scope
+clause (commit 9cc8205).
+
+**Trigger:** F-R57-2 — PG-5 scope clause as codified in R56.1 did not address frontmatter fields.
+
+---
+
+## R58 Codifications
+
+### [codified] PG-3-TRACE-NEW-ENTRY Enhanced Self-Audit (R58.1, commit d00c67f)
+
+**Pattern:** Before committing any §Trace entry, run `grep -nE 'L[0-9]+'` on the full new
+§Trace entry block (not just a pattern subset). The narrow grep recipe
+`\(L[0-9]+\)|paragraph at L[0-9]+|this file L[0-9]+|L[0-9]+-L[0-9]+` does not catch
+space-delimited tokens ("L1408 + L1483") or bare L-number shorthands in summary lines.
+
+**Codified in:** SS-conventions-anti-patterns.md §PG-3-TRACE-NEW-ENTRY enhanced self-audit
+step (commit d00c67f).
+
+**Trigger:** F-R58-1 — SS-permissions-phase1.md v1.2 §Trace used "§Context L28" / "§Consequences
+L271" — bare L-numbers without version prefix. S-7.01 partial-fix irony: R57.1 applied PG-5
+to the file and wrote a §Trace entry violating PG-3.
+
+---
+
+### [codified] §Trace-Heading-Convention (R58.1, commit d00c67f)
+
+**Pattern:** All versioned spec artifacts (SS-*.md, dtu-assessment.md) must use `## §Trace` as
+their versioned change-log section heading. Files without this heading must be explicitly
+documented as intentionally having no §Trace equivalent.
+
+**Codified in:** SS-conventions-anti-patterns.md §Trace-Heading-Convention with corpus audit
+checklist (commit d00c67f).
+
+**Trigger:** F-R58-adv (architecture-consistency gap — inconsistent heading forms across specs).
+
+---
+
+## R59 Codifications
+
+### [codified] §Trace-Heading-Convention — Heading-Agnostic Recipe (R59.1, commit 8c261e2)
+
+**Pattern:** The §Trace-Heading-Convention recipe must be heading-agnostic. The grep pattern
+must explicitly document which heading forms are accepted (`## §Trace` required; no-§ form
+`## Trace` not accepted unless documented as equivalent) to prevent future audit ambiguity.
+
+**Codified in:** SS-conventions-anti-patterns.md §Trace-Heading-Convention recipe (commit 8c261e2).
+
+**Trigger:** F-R59-adv-1 — recipe grep ("^## §Trace") did not address the `## Trace` (no §)
+form; future spec authors could use the no-§ form believing it complies.
+
+---
+
+### [codified] PG-3-TRACE-NEW-ENTRY Bootstrap Attestation (R59.1, commit 8c261e2)
+
+**Pattern:** When a §Trace entry codifies a new META rule (bootstrap scenario), it cannot
+be pre-commit verified by the rule it introduces. A retroactive compliance attestation line
+must be added to the bootstrap entry: "Post-write self-grep: 0 L[0-9]+ matches."
+
+**Codified in:** SS-conventions-anti-patterns.md §PG-3-TRACE-NEW-ENTRY bootstrap note (commit
+8c261e2).
+
+**Trigger:** F-R59-adv-2 — SS-conventions v1.26 §Trace bootstrap entry for PG-3-TRACE-NEW-ENTRY
+enhanced self-audit was missing its own self-grep attestation.
+
+---
+
+## R60 Codifications
+
+### [codified] F-R60-corpus-sweep META Rule — 5-Step Count Correction Protocol (R60.1, commit 1fb6da0)
+
+**Pattern:** Any burst that corrects a count value in body prose MUST also sweep §Trace
+narrative descriptions for the same stale count. §Trace historical entries retain count claims
+from prior epochs; body-only corrections create count drift in the audit trail.
+
+**5-step protocol:**
+1. Grep body prose for old count value
+2. Grep §Trace sections for old count value
+3. Classify each match as historical-correct or stale
+4. Fix stale matches
+5. Emit per-class sweep evidence in the committing §Trace entry
+
+**Codified in:** SS-conventions-anti-patterns.md `## §Corpus-Wide-Sweep Convention (F-R60-corpus-sweep
+META rule)` with 5-step protocol (commit 1fb6da0).
+
+**Trigger:** F-R60-1 — SS-conventions §Trace v1.18 + §Trace v1.25 retained "8 architecture spec
+files" after PG-RECIPE-SCOPE count correction in R57.1 changed the canonical count to 7.
+Body prose was swept; §Trace narratives were not.
+
+---
+
+## [bounded-residual] F-R61-adv-1 — PG-3-CLASSIFICATION-EVIDENCE (post-fix summary bare L-numbers)
+
+**Pattern:** The F-R60-corpus-sweep META rule §Trace classification-evidence bullets use
+version-suffix form ("L1408 (§Trace v1.27)") rather than canonical version-prefix form, and
+the post-fix summary shorthand uses bare "L1408 + L1483" without any version context. The
+narrow PG-3-TRACE-NEW-ENTRY grep recipe misses space-delimited bare tokens.
+
+**Status:** PERMANENT RESIDUAL per D-054 option (c). The META rule's own §Trace proof line
+is structurally constrained: it must cite L-numbers to prove they are correctly classified,
+creating a structural collision with PG-3 §Trace-prose that cannot be resolved without
+removing the proof. Phase 1+ auditors applying PG-3 to §Trace classification-evidence prose
+may use position-free descriptions instead.
+
+---
+
+## [bounded-residual] F-R61-2 — §Trace-Heading-Convention Scope Clause (ADR/vision/brief equivalents)
+
+**Pattern:** §Trace-Heading-Convention §Scope clause lists `ADR-N-*.md` as in-scope, but ADR
+files use `## Amendment History`, vision uses `## Closure Log`, brief uses `## Revision History`.
+No exemption or equivalence mapping is documented in the convention.
+
+**Status:** PERMANENT RESIDUAL per D-054 option (c). The convention is clear in practice
+(SS-*.md and dtu-assessment.md are the intended targets); the scope clause overreach is a
+documentation gap that creates nominal audit confusion for non-SS artifact classes. Phase 1+
+auditors should apply §Trace-Heading-Convention to SS-*.md and dtu-assessment.md only.
+
+---
+
+## [policy] D-054 — Pre-Phase-1 Gate PASS via Option (c) (2026-05-14)
+
+**Decision:** Human (Josh Magady) ratified option (c) — pre-Phase-1 gate PASS declared now.
+
+**Rationale:** 7 audit cycles under D-053 option (b) returned NEEDS_ONE_MORE (R56-R61 + R60.1).
+Empirically confirmed asymptotic META recursion pattern: each fix burst introduces NEW META
+class instances at progressively meta-level depth, with decreasing severity (2 MED → 1 MED+1
+LOW → 1 MED → 2 MED → 1 MED → 2 LOW). 16 BCs implementable verified every cycle. 0 spec
+content defects. 18+ defense layers codified.
+
+**Permanent residual catalog (frozen, 4 entries):**
+- F-R55-adv-1: PG-4 em-dash separator codification gap
+- F-R55-adv-3: PG-4 intra-document scope hole
+- F-R61-adv-1: PG-3-CLASSIFICATION-EVIDENCE (META rule's own §Trace proof)
+- F-R61-2: §Trace-Heading-Convention scope clause (ADR/vision/brief equivalents)
+
+**Phase 1+ policy:** REVERT to D-047 strict 3-clean-pass (0 findings of any severity for 3
+consecutive passes). Architecture specs guarded by 18+ codified META rules.
