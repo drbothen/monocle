@@ -4,7 +4,7 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.7"
+version: "1.2.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21"
 project: monocle
 ---
 
@@ -52,9 +52,9 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan:
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.4 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.6 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.5 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.6 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.4 §monocle-canonical column)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.5 §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -70,7 +70,7 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.4 §monocle-canonical column).
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.5 §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -260,6 +260,29 @@ SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 
 ## §Trace
 
+v1.2.8 changes (round-52.2 F-R52R-1 D-042 cascade + F-R52R-2 §Trace reorder + PG-D042-DTU-SCOPE companion):
+
+- F-R52R-1 RESOLVED (LOW NEW — D-042 incomplete cascade): Three body citations of
+  `dtu-assessment.md v1.4` updated to `v1.5` in §P2-1 analysis session_id prose,
+  §P2-2 Verdict pid prose, and §P2-2 Verdict join-key sentence.
+  dtu-assessment.md was bumped to v1.5 in round-52.1 (D-042 cascade from
+  SS-core-types-and-abi.md v1.2.5 → v1.2.6). The R52.1 D-042 primary grep used
+  `grep -rn "SS-[a-z-]*\.md v"` — matching only SS-prefixed filenames — and did not
+  catch `dtu-assessment.md` citations. Root cause is insufficient D-042 grep scope:
+  the sibling pattern `grep -rn "dtu-assessment\.md v" .factory/specs/` was missing
+  from the D-042 recipe. PG-D042-DTU-SCOPE codified in SS-conventions-anti-patterns.md
+  v1.21 §Schema-Fact Citation Convention (this burst) adds the two missing sibling
+  patterns to the canonical D-042 recipe.
+
+- F-R52R-2 RESOLVED (LOW PRE-EXISTING — §Trace ordering anomaly): §Trace entries were
+  in order v1.2.7, v1.2.6, v1.2.5, v1.2.2, v1.2.4, v1.2.3 — v1.2.2 appeared before
+  v1.2.4 and v1.2.3, violating strict descending semantic-version order. No content
+  within entries changed; only relative position. Corrected order: v1.2.7, v1.2.6,
+  v1.2.5, v1.2.4, v1.2.3, v1.2.2.
+
+- M-TRACE-ORDERING sweep result (round-52.2): all other spec files CLEAN. Only
+  this file had a §Trace ordering anomaly; corrected by F-R52R-2 above.
+
 v1.2.7 changes (round-52.1 PG-3-TRACE-NEW-ENTRY sweep + D-042 cascade):
 
 - F-R52-cons-1 COMPANION (PG-3-TRACE-NEW-ENTRY sweep): §Trace v1.2.6 D-042 entry contained
@@ -305,25 +328,6 @@ v1.2.5 changes (round-49 D-042 citation refresh):
   dtu-assessment.md was bumped from v1.2 to v1.3 in this same round-49 burst (D-042
   citation refresh for SS-core-types-and-abi.md version); this file lagged.
   D-042 full-scope grep (`.factory/specs/` recursive) surfaced all five sites.
-
-v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
-
-- F-R38-2 RESOLVED (MEDIUM — adversary finding): Three citations of
-  `SS-daemon-lifecycle.md v1.0.3` were stale; current version is v1.0.6. Sites: FC-01
-  table row (Phase 1 Spec Change column + Disposition column), FC-06 table row (same
-  columns), and Verdict bullet listing the two FC items locked into that document.
-  All three replaced with `SS-daemon-lifecycle.md v1.0.6`. Full sweep performed:
-  all other SS-* version citations in this file (SS-engine-module.md v1.1, v1.1.4,
-  v1.1.5 at lines 257–259) are historical §Trace narrative pinpoints (the version at
-  which BCs were added), not cross-artifact current-version pointers; they are
-  correct as written. No other stale citations found.
-  META-pattern note (4th recurrence): cross-artifact version-citation staleness
-  continues to recur across bursts. Root cause: SS-* docs are updated incrementally
-  but citation sites in other docs are not enumerated at update time. Mitigation:
-  `grep -rn "SS-daemon-lifecycle.md v" .factory/specs/architecture/` before any
-  SS-daemon-lifecycle.md version bump to enumerate all citation sites in one pass.
-  NOTE: the grep scope above (.factory/specs/architecture/) was defective — see
-  v1.2.3 below for the corrected D-042 workflow rule.
 
 v1.2.4 changes (round-47 fix F-R46-1 HIGH — schema-fact citation correction):
 
@@ -398,3 +402,22 @@ v1.2.3 changes (round-43 fix D-042 scope correction + O-R42-1 mitigation):
   (1) run PRIMARY pattern before each SS-* version bump, (2) run SECONDARY pattern
   before each gate (pre-Phase-1 final gate, wave gates). Sweep must cover
   `.factory/specs/` recursively — not `.factory/specs/architecture/` only.
+
+v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
+
+- F-R38-2 RESOLVED (MEDIUM — adversary finding): Three citations of
+  `SS-daemon-lifecycle.md v1.0.3` were stale; current version is v1.0.6. Sites: FC-01
+  table row (Phase 1 Spec Change column + Disposition column), FC-06 table row (same
+  columns), and Verdict bullet listing the two FC items locked into that document.
+  All three replaced with `SS-daemon-lifecycle.md v1.0.6`. Full sweep performed:
+  all other SS-* version citations in this file (SS-engine-module.md v1.1, v1.1.4,
+  v1.1.5 at lines 257–259) are historical §Trace narrative pinpoints (the version at
+  which BCs were added), not cross-artifact current-version pointers; they are
+  correct as written. No other stale citations found.
+  META-pattern note (4th recurrence): cross-artifact version-citation staleness
+  continues to recur across bursts. Root cause: SS-* docs are updated incrementally
+  but citation sites in other docs are not enumerated at update time. Mitigation:
+  `grep -rn "SS-daemon-lifecycle.md v" .factory/specs/architecture/` before any
+  SS-daemon-lifecycle.md version bump to enumerate all citation sites in one pass.
+  NOTE: the grep scope above (.factory/specs/architecture/) was defective — see
+  v1.2.3 above for the corrected D-042 workflow rule.
