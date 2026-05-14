@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.0"
+version: "5.1"
 status: active
 producer: state-manager
-timestamp: 2026-05-14T20:00:00Z
-phase: phase-1-spec-crystallization-entry-pending
-current_step: durability-checkpoint-phase-1-entry-dispatch-ready
+timestamp: 2026-05-14T22:00:00Z
+phase: phase-1-spec-crystallization
+current_step: phase-1-r62-fix-burst-complete-r63-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 26 adversary rounds + fix bursts in cycle-001. 16 BCs implementable; 0 content defects. 18+ META defense layers. Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass."
-awaiting: "Phase 1 dispatch: product-owner PRD synthesis + formal-verifier verification properties. Literal dispatch prompts below."
+traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 26 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 0 content defects. 18+ META defense layers. Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass."
+awaiting: "Adversary R63 + consistency-validator round 2 fresh-context re-review of PRD v1.1 (f855835) + VP v1.1 (8454ff2) + arch v1.0.8 (2db408f). D-047 strict 3-clean-pass cycle restarts at pass 1."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -22,8 +22,9 @@ current_cycle: cycle-001
 
 <!--
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
-Cycle: cycle-001 (CLOSED 2026-05-14 per D-054)
-Phase: phase-1-spec-crystallization-entry-pending
+Cycle: cycle-001 (ACTIVE — Phase 1 Spec Crystallization)
+Phase: phase-1-spec-crystallization
+Step: phase-1-r62-fix-burst-complete-r63-pending
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -35,20 +36,25 @@ Context was cleared. This file is your only prior context. Do:
 1. Read this file completely before doing anything.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing companion principle bind every action.
 3. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -5`
-4. **Pre-Phase-1 Final Gate: PASS** declared 2026-05-14 per D-054. Architecture specs implementable; 16 BCs locatable; 0 content defects. 4-entry permanent META residual catalog frozen (see §Pre-Phase-1 Gate PASS below).
-5. Phase 1 Spec Crystallization entry sequence: dispatch product-owner for PRD synthesis + formal-verifier for verification properties (see §Immediate Next Action for LITERAL DISPATCH PROMPTS).
+4. **Pre-Phase-1 Final Gate: PASS** declared 2026-05-14 per D-054. Architecture specs implementable; 22 BCs locatable; 0 content defects. 4-entry permanent META residual catalog frozen (see §Pre-Phase-1 Gate PASS below).
+5. **F-R62 fix-burst COMPLETE (2026-05-14):** PRD v1.1 (f855835) + VPs v1.1 (8454ff2) + arch v1.0.8 (2db408f). D-047 strict 3-clean-pass cycle restarts; adversary R63 pass 1 pending.
 6. Phase 1+ reverts to D-047 strict 3-clean-pass convergence (option b/c relaxations were pre-Phase-1 ONLY).
 
 ## Task Queue (active)
 
 | # | Task | Status | Routing |
 |---|------|--------|---------|
-| T-1 | Phase 1: PRD synthesis from 16 pre-staged BCs | pending | product-owner |
-| T-2 | Phase 1: Verification properties authoring | pending | formal-verifier |
-| T-3 | Phase 1d: Adversarial spec review on PRD + VPs (D-047 strict) | pending (blocked: T-1, T-2) | adversary |
-| T-4 | Phase 1 consistency audit (D-047 strict) | pending (blocked: T-1, T-2) | consistency-validator |
-| T-5 | Human Phase 1 approval gate | pending (blocked: T-3, T-4) | human |
-| T-6 | Phase 2 entry (Story Decomposition) | pending (blocked: T-5) | story-writer |
+| T-1 | Phase 1: PRD synthesis from 22 pre-staged BCs | COMPLETE | product-owner (commits c69518d → f855835) |
+| T-2 | Phase 1: Verification properties authoring (22 VPs) | COMPLETE | formal-verifier (commits b7a5715 → 8454ff2) |
+| T-3 | Phase 1d: Adversary R62 pass 1 (D-047 strict) | COMPLETE — 10 FINDINGS → F-R62 fix-burst applied | adversary (commit 5713ccc) |
+| T-4 | Phase 1 consistency audit pass 1 | COMPLETE — 3 GAPS → F-R62 fix-burst applied | consistency-validator (commit 0e322da) |
+| T-7 | Adversary R63 (D-047 strict pass 1) on PRD v1.1 + VP v1.1 + arch v1.0.8 | pending dispatch | adversary |
+| T-8 | Consistency-validator round 2 (fresh context) on PRD v1.1 + VP v1.1 + arch v1.0.8 | pending dispatch | consistency-validator |
+| T-9 | Adversary R64 (D-047 strict pass 2) | blocked: T-7 must produce CLEAN | adversary |
+| T-10 | Adversary R65 (D-047 strict pass 3 — convergence) | blocked: T-9 must produce CLEAN | adversary |
+| T-11 | Input-hash drift check pre-T-12 | blocked: T-7..T-10 + T-8 | devops-engineer |
+| T-12 | Human Phase 1 approval gate | blocked: T-11 | human |
+| T-13 | Phase 2 entry (Story Decomposition) | blocked: T-12 | story-writer |
 
 ## Phase Progress
 
@@ -58,8 +64,8 @@ Context was cleared. This file is your only prior context. Do:
 | 0.5-0.9: Brief v1.0→v1.4.23 + arch stubs | DONE | 2026-05-14 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k-m: Rounds 20-26 (R20-R61) | DONE | 2026-05-14 | see cycles/cycle-001/burst-log.md |
-| Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054**. 26 adv rounds. 18+ defense layers. 16 BCs; 0 content defects. 4-entry frozen META catalog. |
-| 1: Spec Crystallization | **READY-TO-ENTRY** | — | PRD + VPs are primary remaining work. Literal dispatch prompts in §Next Action. |
+| Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054**. 26 adv rounds. 18+ defense layers. 22 BCs; 0 content defects. 4-entry frozen META catalog. |
+| 1: Spec Crystallization | **IN PROGRESS** | — | PRD v1.1 + VPs v1.1 + arch v1.0.8 authored. F-R62 fix-burst COMPLETE 2026-05-14. Adversary R63 pass 1 pending. |
 | 2-7 | not-started | — | |
 
 ## Pre-Phase-1 Final Gate — PASS (2026-05-14 per D-054)
@@ -77,7 +83,7 @@ Context was cleared. This file is your only prior context. Do:
 | F-R61-adv-1 | PG-3-CLASSIFICATION-EVIDENCE (META rule's own §Trace may use bare L-numbers in post-fix summary shorthand) | Permanent residual |
 | F-R61-2 | §Trace-Heading-Convention scope clause doesn't document ADR/vision/brief equivalents | Permanent residual |
 
-**16 BCs pre-staged:** BC-RING-001, BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-AUTH-001/002, BC-LOCK-001, BC-ENGINE-001/002/002-ERR/003 — in SS-engine-module + SS-core-types + SS-daemon-lifecycle + SS-permissions-phase1.
+**22 BCs in PRD v1.1 (f855835):** BC-RING-001, BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-AUTH-001/002, BC-LOCK-001, BC-ENGINE-001/002/002-ERR/003 (daemon-lifecycle: 10; core-types: 8; engine-module: 4) — authoritative count per SS-daemon-lifecycle.md §Behavioral Contract Summary.
 
 ## Phase 1+ Convergence Policy (per D-054 + D-047)
 
@@ -93,60 +99,14 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 |----------|------|--------|
 | Domain spec / Vision | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 | EXISTS |
 | Product brief | `.factory/specs/product-brief.md` v1.4.23 | EXISTS |
-| PRD with behavioral contracts | `.factory/specs/prd.md` | MISSING — formal PRD synthesis required (T-1) |
-| Architecture (7 SS files) | `.factory/specs/architecture/SS-*.md` | EXISTS (v1.28, v1.2.13, v1.1.15, v1.2.8, v1.0.7, v1.4, v1.1.8) |
+| PRD with 22 behavioral contracts | `.factory/specs/prd.md` v1.1 | EXISTS (commit f855835) |
+| Verification properties (22 VPs) | `.factory/specs/verification-properties.md` v1.1 | EXISTS (commit 8454ff2) |
+| Architecture (7 SS files) | `.factory/specs/architecture/SS-*.md` | EXISTS (SS-daemon-lifecycle v1.0.8 at 2db408f; others at prior versions) |
 | DTU assessment | `.factory/specs/dtu-assessment.md` v1.7 | EXISTS |
 | ADRs (4) | `.factory/specs/architecture/adr/ADR-0001..0004` | EXISTS |
-| Verification properties | `.factory/specs/verification-properties.md` | MISSING — not yet authored (T-2) |
 | CI/CD setup | `.github/workflows/` | MISSING — devops-engineer scope at Phase 3 |
-| Phase 1d adversarial spec review | 26 rounds R22-R61 | EFFECTIVELY DONE (exceeds standard) |
-| Human Phase 1 gate approval | pending T-1..T-4 | PENDING (T-5) |
-
-## Immediate Next Action — LITERAL DISPATCH PROMPTS
-
-Orchestrator: copy these prompts verbatim into Agent tool calls for T-1 and T-2.
-
-### Dispatch Prompt T-1: product-owner PRD synthesis
-
-```
-cd /Users/jmagady/Dev/monocle. Read /Users/jmagady/Dev/monocle/CLAUDE.md FIRST
-(canonical principle + Correct Agent Routing). You own the PRD per the routing table.
-
-Task: Synthesize formal PRD at `.factory/specs/prd.md` from 16 pre-staged BCs.
-
-16 BCs and their source files:
-- SS-daemon-lifecycle.md v1.0.7: BC-RING-001 (§HookEventRecord+§Drain), BC-AUTH-001, BC-AUTH-002 (§Daemon Lifecycle Protocol), BC-LOCK-001 (§Lock File Discovery Policy)
-- SS-core-types-and-abi.md v1.2.8: BC-ABI-001 (§ABI Version Constant), BC-ABI-002 (§Enum Extensibility), BC-TYPES-001 (§Non-Exhaustive Inner Structs), BC-FACTORY-001, BC-FACTORY-002 (§FactoryAdapter Trait+§Prost Wire Schemas), BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002 (§Prost Wire Schemas)
-- SS-engine-module.md v1.1.15: BC-ENGINE-001, BC-ENGINE-002 (§EngineModule trait), BC-ENGINE-002-ERR (§EngineModule trait error types), BC-ENGINE-003 (§ClaudeCodeModule)
-
-Inputs: product-brief.md v1.4.23, domain-monocle-vision-synthesis.md v1.1.2, all 7 SS-*.md at current versions, dtu-assessment.md v1.7, 4 ADRs.
-
-PRD structure: frontmatter (version:"1.0", input-hash, traces_to, level:L3), Overview, all 16 BCs (contract text + error taxonomy + edge cases + acceptance test sketches), Cross-Cutting Concerns, Out-of-Scope, References (PG-5), Edge Case Catalog, Glossary, §Trace v1.0.
-
-Defense-layer: All 18+ META rules (D-047 strict): D-042 4-pattern recursive, PG-1..PG-5, PG-RECIPE-SCOPE, §Trace-Heading-Convention, F-R60-corpus-sweep. No MVP shortcuts; fix in scope.
-
-Commit: Single atomic commit (TD-VSDD-053). No "Co-Authored-By: Claude". git commit -F /tmp/msg if heredoc blocked.
-
-Deliverables: Commit SHA; PRD path; 16-BC coverage summary; error taxonomy extraction; edge case catalog; 18+ META rule checklist; hook warnings.
-```
-
-### Dispatch Prompt T-2: formal-verifier verification properties
-
-```
-cd /Users/jmagady/Dev/monocle. Read /Users/jmagady/Dev/monocle/CLAUDE.md FIRST.
-
-Task: Author `.factory/specs/verification-properties.md` — formally-testable VPs against 16 pre-staged BCs.
-
-Inputs: PRD at .factory/specs/prd.md (if exists; else use architecture docs directly), all 7 SS-*.md at current versions, dtu-assessment.md v1.7, ADRs 0001-0004.
-
-Per-BC VP structure: VP-XXX-NNN id (matching BC-XXX-NNN), mechanical property statement (testable assertion), verification mechanism (Kani proof / fuzz harness / unit test / mutation test), pre/post-conditions, counter-example sketches.
-
-Output structure: frontmatter (version:"1.0", input-hash, traces_to, level:L3), Overview, VP table (16 VPs), per-VP detail sections, coverage matrix BC-to-VP, open verification gaps, References (PG-5), §Trace v1.0.
-
-Defense-layer: All 18+ META rules (D-047 strict). Single atomic commit. No "Co-Authored-By: Claude". git commit -F /tmp/msg if heredoc blocked.
-
-Deliverables: Commit SHA; VP path; 16-VP coverage summary; verification mechanism distribution (Kani/fuzz/unit/mutation counts); open gaps; pre-commit checklist; hook warnings.
-```
+| Phase 1d adversarial spec review | R62 pass 1 FAIL → F-R62 fix-burst applied → R63 pending | IN PROGRESS |
+| Human Phase 1 gate approval | pending T-7..T-11 | PENDING (T-12) |
 
 ## Decisions Log
 
@@ -154,19 +114,20 @@ Deliverables: Commit SHA; VP path; 16-VP coverage summary; verification mechanis
 |----|----------|------|---------|
 | D-047 | Human ratified strict 3-clean-pass policy. 3 consecutive 0+0+0+0 audit cycles required for convergence. | 2026-05-14 | human (Josh Magady) |
 | D-053 | Pre-Phase-1 ONLY relaxation: 0 CRIT/HIGH + 0 MED-content + bounded LOW META for 3 passes. Phase 1+ reverts to D-047. | 2026-05-14 | human (Josh Magady) |
-| D-054 | **PRE-PHASE-1 GATE PASS option (c):** 26 adv rounds (R22-R61). 16 BCs implementable; 0 content defects. 4-entry frozen META catalog. 18+ defense layers. Phase 1+ reverts to D-047 strict. | 2026-05-14 | human (Josh Magady) |
+| D-054 | **PRE-PHASE-1 GATE PASS option (c):** 26 adv rounds (R22-R61). 22 BCs implementable; 0 content defects. 4-entry frozen META catalog. 18+ defense layers. Phase 1+ reverts to D-047 strict. | 2026-05-14 | human (Josh Magady) |
+| D-055 | Architect adjudicated F-R62-8: BC-AUTH-002 disposition (c) Mixed. `missing_auth_token` for absent header; `invalid_auth_token` collapsed for all value-present failures (format-fail + mismatch). `invalid_auth_token_format` RETIRED. SS-daemon-lifecycle.md v1.0.8 commit 2db408f. Rationale: threat model is 127.0.0.1-local single-user; format-vs-mismatch enumeration leaks zero info to same-user / privileged attacker but blocks improbable-but-nonzero sandboxed-network-only attacker. | 2026-05-14 | architect (delegated via orchestrator) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types. D-048..D-052 in `cycles/cycle-001/burst-log.md`. All binding.
 
 ## Blocking Issues
 
-_None — pre-Phase-1 gate PASS per D-054. Phase 1 T-1 + T-2 dispatch pending._
+_None — F-R62 fix-burst applied. R63 adversary pass 1 pending (T-7)._
 
 ## Session Resume Checkpoint
 
-**HEAD:** `03aacfc` — state(PRE-PHASE-1-GATE-PASS): D-054 ratified; 26 adversary rounds complete; phase 1 entry pending
+**F-R62 fix-burst COMPLETE:** PRD v1.1 (f855835) + VPs v1.1 (8454ff2) + arch v1.0.8 (2db408f). D-047 strict 3-clean-pass cycle restarts at pass 1.
 
-Phase 1 entry dispatch ready. Run T-1 (product-owner PRD) + T-2 (formal-verifier VPs) concurrently. Both use literal prompts above.
+Next actions: dispatch T-7 (adversary R63, D-047 strict pass 1) + T-8 (consistency-validator round 2) concurrently on PRD v1.1 + VP v1.1 + arch v1.0.8. Both fresh-context. D-047: 0 findings of any severity required for 3 consecutive passes.
 
 ## Critical Hook Lessons
 
@@ -177,6 +138,7 @@ Phase 1 entry dispatch ready. Run T-1 (product-owner PRD) + T-2 (formal-verifier
 - 4-entry permanent META catalog (D-054) is frozen — do NOT add to it during Phase 1+
 - Phase 1+ adversarial review reverts to D-047 strict (0 findings x 3 consecutive passes)
 - 18+ codified META rules in SS-conventions-anti-patterns.md v1.28 guard Phase 1 work
+- **Orchestrator dispatch-prompt scope verification (codified per F-R62-1 META-finding):** When authoring dispatch prompts that enumerate BC/VP/story scope, the orchestrator MUST verify the enumeration against the architecture's source-of-truth section (e.g., §Behavioral Contract Summary) rather than copying from secondary references like STATE.md task queues. STATE.md scope claims can drift from architecture; the architect's §Behavioral Contract Summary is the authoritative count. Codified after F-R62-1 (16-BC dispatch under-enumerated the architect's prescribed 22-BC PRD scope).
 
 ## Key Tech Stack
 

@@ -582,3 +582,36 @@ content defects. 18+ defense layers codified.
 
 **Phase 1+ policy:** REVERT to D-047 strict 3-clean-pass (0 findings of any severity for 3
 consecutive passes). Architecture specs guarded by 18+ codified META rules.
+
+---
+
+## F-R62 Codifications (2026-05-14)
+
+### L-F-R62-META: Orchestrator dispatch-prompt scope verification gap [process-gap] [codified]
+
+**Date:** 2026-05-14
+**Severity:** META (process-gap)
+**Origin:** F-R62-1 (CRITICAL adversary finding R62 pass 1, commit 5713ccc)
+**Codified in:** STATE.md §Critical Hook Lessons (this burst)
+
+#### Pattern
+
+Orchestrator authored T-1 product-owner dispatch prompt from STATE.md's literal "16 BCs pre-staged" claim. The architecture's SS-daemon-lifecycle.md §Behavioral Contract Summary actually prescribed 10 BCs from that single file alone (BC-DAEMON-001..006 + 4 others), making the architect's prescribed PRD scope 22 BCs total. STATE.md's count claim was a stale secondary reference; the architect's BC summary was the source of truth. Dispatching against the stale reference under-enumerated by 6 BCs, propagating through the entire T-1 + T-2 burst and triggering the F-R62 fix-burst.
+
+#### Lesson
+
+When orchestrator authors a dispatch prompt that enumerates spec scope (BCs, VPs, stories), it MUST verify the enumeration against the source-of-truth section in the architecture document (e.g., `§Behavioral Contract Summary`, `§Story Catalog`, etc.) rather than copying from a secondary reference. STATE.md is an operations log, not a spec authority. The architecture file's canonical inventory wins.
+
+#### Codification
+
+- STATE.md §Critical Hook Lessons gained the new entry "Orchestrator dispatch-prompt scope verification" (this burst).
+- No new content rule (e.g., no addition to SS-conventions-anti-patterns.md) — this is an orchestrator-process rule, not a spec-authoring rule.
+- Future orchestrator dispatch templates should grep the architecture's BC summary as the first verification step.
+
+#### Recurrence guard
+
+If a future fresh-context adversary pass finds a similar dispatch-scope-under-enumeration issue, that's a recurrence — escalate to human as repeat process-gap. Single-recurrence is the trigger threshold per cycle-closing checklist conventions (Codification reserved for 3+ recurrences for content defects; process gaps are codified immediately).
+
+#### Follow-up
+
+None required. The fix-burst F-R62 already remediated the content defect (PRD v1.0 → v1.1, +6 BCs; VPs v1.0 → v1.1, +6 VPs). The orchestrator lesson is captured here so subsequent dispatch authors find it on resume.
