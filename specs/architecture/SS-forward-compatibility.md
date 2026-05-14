@@ -4,11 +4,11 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.3"
+version: "1.2.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T23:56:00Z
+timestamp: 2026-05-14T00:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2"
 project: monocle
 ---
 
@@ -52,9 +52,9 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan:
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (already present in all 5 hook body schemas per DTU endpoint matrix)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.2 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.3 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 hook schemas)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.2 §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -70,7 +70,7 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 hook schemas.
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.2 §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -278,6 +278,34 @@ v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
   SS-daemon-lifecycle.md version bump to enumerate all citation sites in one pass.
   NOTE: the grep scope above (.factory/specs/architecture/) was defective — see
   v1.2.3 below for the corrected D-042 workflow rule.
+
+v1.2.4 changes (round-47 fix F-R46-1 HIGH — schema-fact citation correction):
+
+- F-R46-1 RESOLVED (HIGH — adversary finding): P2-1 analysis at the `session_id` bullet
+  contained a factually-false claim: "already present in all 5 hook body schemas per DTU
+  endpoint matrix." The gene-source BC-HOOK-007 endpoint matrix (the original DTU matrix
+  in dtu-assessment.md v1.1) did NOT include session_id on PreToolUse or Notification.
+  The claim was simultaneously true for monocle's canonical schema (session_id IS in all 5
+  monocle-canonical structs per SS-core-types-and-abi.md v1.2.3 §Non-Exhaustive Inner Structs)
+  and false as stated (the DTU matrix it cited was the gene-source-only form, not the
+  monocle-canonical form). Fix: (1) dtu-assessment.md v1.2 splits the endpoint matrix into
+  two columns — gene-source canonical vs monocle-canonical; (2) P2-1 analysis citation
+  updated to reference the monocle-canonical column with explicit attribution to
+  dtu-assessment.md v1.2 and SS-core-types-and-abi.md v1.2.3 as co-authoritative sources.
+  PG-1 propagation: the PG-1 schema-fact citation convention (SS-conventions-anti-patterns.md
+  v1.14 §Schema-Fact Citation Convention) was applied to two additional uncited schema-fact
+  claims in this document discovered during the PG-1 re-validation grep:
+  - P2-1 analysis bullet "The pid (already present in all 5 hook schemas)": updated to
+    cite monocle-canonical column of dtu-assessment.md v1.2.
+  - P2-2 verdict "join key (session_id) is already in all 5 hook schemas": updated to
+    cite monocle-canonical column of dtu-assessment.md v1.2.
+  Root-cause class: schema-fact citation drift — a factual claim in one doc about another
+  doc's matrix content became false when the matrix was the gene-source-only form but
+  monocle had extended the schema (EX-2). Covered by D-042 PG-1 extension (new grep anchor
+  in dtu-assessment.md v1.2 §Schema-fact grep anchor). Re-validation grep:
+  ```
+  grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
+  ```
 
 v1.2.3 changes (round-43 fix D-042 scope correction + O-R42-1 mitigation):
 

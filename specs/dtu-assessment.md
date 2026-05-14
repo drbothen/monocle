@@ -1,17 +1,18 @@
 ---
 document_type: dtu-assessment
 level: L3
-version: "1.1"
+version: "1.2"
 status: complete
 producer: architect
-timestamp: 2026-05-12T23:50:00Z
+timestamp: 2026-05-14T00:00:00Z
 phase: pre-phase-1-architecture
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1; human Q-2 clone build effort (v1.1)"
+traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1; human Q-2 clone build effort (v1.1); v1.2 round-47: F-R46-1 HIGH — endpoint matrix split into gene-source canonical vs monocle-canonical columns to reflect session_id on all 5 events and EX-2 extensions (cwd, transcript_path, prompt) verified against SS-core-types-and-abi.md v1.2.3 struct definitions"
 dtu_required: true
 project: monocle
 ---
@@ -91,15 +92,40 @@ None identified — rationale: monocle does not call external enrichment service
 
 **Endpoint matrix the clone synthesizes:**
 
-| Hook type | HTTP method | Path | Auth header | Body fields |
-|-----------|-------------|------|-------------|-------------|
-| PreToolUse | POST | `/hooks/pre-tool-use` | `X-Claude-Code-Ide-Authorization` | `type, pid, tool_name, tool_input` |
-| Notification | POST | `/hooks/notification` | `X-Claude-Code-Ide-Authorization` | `pid, tool_name, tool_input, message` |
-| Stop | POST | `/hooks/stop` | `X-Claude-Code-Ide-Authorization` | `pid, stop_reason, session_id` |
-| SessionStart | POST | `/hooks/session-start` | `X-Claude-Code-Ide-Authorization` | `pid, session_id` |
-| UserPromptSubmit | POST | `/hooks/prompt-submit` | `X-Claude-Code-Ide-Authorization` | `pid, session_id` |
+The matrix below has two body-field columns: the gene-source canonical fields (from BC-HOOK-007,
+any-context ingest) and monocle-canonical fields (from SS-core-types-and-abi.md v1.2.3 struct
+definitions). The DTU clone MUST produce monocle-canonical payloads — the gene-source column is
+retained for provenance traceability only. The monocle-canonical column is the authoritative serde
+contract; clone payloads built from the gene-source column alone will fail deserialization at the
+monocle daemon.
 
-Schema source: canonical 5-endpoint matrix from any-context BC-HOOK-001..BC-HOOK-041 (verified against hooks-r1/r2 ingest rounds). Note: monocle's canonical Phase 1 paths (`/hooks/pre-tool-use` etc.) differ from any-context gene-source paths (`/notify`, `/stop`, etc.). The clone must target monocle's paths.
+EX-2 denotes architect-extension fields added beyond the gene-source body (cwd, transcript_path,
+prompt) — specified in SS-core-types-and-abi.md §Non-Exhaustive Inner Structs.
+
+| Hook type | HTTP method | Path | Auth header | Gene-source body fields (BC-HOOK-007) | Monocle-canonical body fields (SS-core-types-and-abi.md v1.2.3) |
+|-----------|-------------|------|-------------|--------------------------------------|------------------------------------------------------------------|
+| PreToolUse | POST | `/hooks/pre-tool-use` | `X-Claude-Code-Ide-Authorization` | `type, pid, tool_name, tool_input` | `session_id, pid, tool_name, tool_input` |
+| Notification | POST | `/hooks/notification` | `X-Claude-Code-Ide-Authorization` | `pid, tool_name, tool_input, message` | `session_id, pid, notification_type, tool_name, tool_input, message` |
+| Stop | POST | `/hooks/stop` | `X-Claude-Code-Ide-Authorization` | `pid, stop_reason, session_id` | `session_id, pid, stop_reason` |
+| SessionStart | POST | `/hooks/session-start` | `X-Claude-Code-Ide-Authorization` | `pid, session_id` | `session_id, pid, cwd (EX-2), transcript_path (EX-2)` |
+| UserPromptSubmit | POST | `/hooks/prompt-submit` | `X-Claude-Code-Ide-Authorization` | `pid, session_id` | `session_id, pid, prompt (EX-2)` |
+
+Schema provenance: gene-source column from canonical 5-endpoint matrix in any-context
+BC-HOOK-001..BC-HOOK-041 (hooks-r1/r2 ingest rounds). Monocle-canonical column from
+SS-core-types-and-abi.md v1.2.3 §Non-Exhaustive Inner Structs — the authoritative Rust struct
+field list used by the daemon's serde deserialization path. Note: monocle's canonical Phase 1
+paths (`/hooks/pre-tool-use` etc.) differ from any-context gene-source paths (`/notify`,
+`/stop`, etc.); the clone must target monocle's paths.
+
+**Schema-fact grep anchor (D-042 PG-1 extension):** Any document asserting a fact about this
+matrix (e.g., "field X present in all N hook body schemas") MUST verify that claim against the
+monocle-canonical column of this table AND cite this document as the canonical anchor. The
+grep pattern to re-validate field-presence claims at version-bump time is:
+```
+grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
+```
+Run this pattern before every version bump of dtu-assessment.md or SS-core-types-and-abi.md to
+enumerate cross-doc factual claims that must be re-verified.
 
 Fidelity validation: `dtu-validator` agent compares clone payloads against the fixture corpus defined in §DTU Fidelity Measurement Procedure below. Blocking threshold: ≥0.95 mean field-match score across all fixtures. See §DTU Fidelity Measurement Procedure for fixture protocol, scoring function, tooling, and CI gate specification.
 

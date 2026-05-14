@@ -2,16 +2,16 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.13"
+version: "1.14"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T02:00:00Z
+timestamp: 2026-05-14T00:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include "monocle-*/src/**/*.rs" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include \"monocle-*/src/**/*.rs\" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift; v1.14 round-47: F-R46-2 MEDIUM phantom BC-HOOK-001-006 replaced with attested gene-source reference; F-R46-3 LOW stale step-6 pinpoint reworded to position-free; PG-1 D-042 extension: schema-fact citation convention added; PG-2 META rule extended to cover step-renumbering events"
 project: monocle
 ---
 
@@ -638,7 +638,7 @@ Four conditions, any single match opens a GitHub Issue:
 
 | ID | Condition | Rationale |
 |---|---|---|
-| (a) | Anthropic announces hook-protocol ingestion as a first-class agent-view capability | Directly commoditizes monocle's hook-event pipeline (BC-HOOK-001–006) |
+| (a) | Anthropic announces hook-protocol ingestion as a first-class agent-view capability | Directly commoditizes monocle's hook-event pipeline (gene-source canonical 5-hook matrix: BC-HOOK-007) |
 | (b) | Anthropic ships diff-preview or cascaded permission-queue functionality inside agent view | Directly commoditizes monocle's permission overlay plane (VecDeque\<PromptModal\>) |
 | (c) | Anthropic extends agent view beyond Claude Code (e.g., supports a non-Claude harness) | Attacks monocle's multi-harness federation differentiator |
 | (d) | Anthropic publishes a multi-harness session-management spec or RFC | Pre-empts monocle's Phase 4 harness-federation roadmap |
@@ -822,7 +822,136 @@ add a `# nosemgrep: monocle-no-raw-env-mutation-in-tests` comment — NOT `#[all
 | Single-popup overlay | `lazygit-pass-8-final-synthesis.md` §pkg/gui popup: `Option<Popup>` drop-on-concurrent pattern; concurrent modal opens silently drop the pending prompt |
 | Raw env mutation in tests | `monocle` round-21 adversary trace + round-24 F-R24-adv-1: `std::env::set_var`/`remove_var` is unsound in multi-threaded test harnesses; data-race on `HOME` between concurrent test threads causes non-deterministic failures; cleanup leaks on panic; `temp-env` is the canonical RAII fix |
 
+## Schema-Fact Citation Convention
+
+Added in v1.14 (round-47, PG-1 D-042 extension). Closes the root-cause class exposed by F-R46-1.
+
+**Rule:** When a document asserts a factual claim about the schema content of another document's
+table, matrix, or struct (e.g., "field X is present in all N hook body schemas"), the assertion
+MUST:
+
+1. Cite a single canonical anchor document as the source of truth (not a generic descriptor).
+2. Name the specific column or table within that anchor (e.g., "monocle-canonical column of
+   dtu-assessment.md §Endpoint matrix" — not "the DTU endpoint matrix").
+3. Include a grep re-validation pattern in the §Trace of the citing document that can be run
+   to re-verify the claim against the canonical anchor at any future version bump of either
+   the citing or the cited document.
+
+**Anti-pattern:** "field X is already present in all 5 hook body schemas per the DTU endpoint
+matrix." (Ambiguous anchor; does not distinguish gene-source vs monocle-canonical; no grep
+validation pattern.)
+
+**Correct form:** "field X is present in all 5 monocle-canonical hook body schemas per
+dtu-assessment.md v1.2 §monocle-canonical column, verified against SS-core-types-and-abi.md
+v1.2.3 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
+
+**D-042 integration:** The D-042 workflow (primary and secondary grep patterns, documented in
+SS-forward-compatibility.md §Trace v1.2.3) covers version-citation staleness. Schema-fact
+citation validation requires an ADDITIONAL grep before every version bump of any document
+containing a schema-fact assertion. The grep pattern for hook body field presence:
+
+```
+grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
+```
+
+Run this grep in addition to the D-042 version-citation greps before any version bump of
+`dtu-assessment.md` or `SS-core-types-and-abi.md`.
+
+## Phantom-ID Convention
+
+Added in v1.14 (round-47, F-R46-2 root-cause closure).
+
+**Rule:** Every BC ID, VP ID, or other VSDD artifact ID referenced in a spec document MUST be
+attested — verifiable in at least one of: (a) the pre-staged BC table in SS-forward-compat.md
+§Cross-Phase Decisions, (b) the gene-source canonical BC set cited by name with document
+provenance, or (c) a BC-INDEX.md or VP-INDEX.md row.
+
+**Forbidden:** Citing a BC ID range (e.g., "BC-HOOK-001–006") that appears in no index, no
+pre-staged table, and no named gene-source reference. Such citations are phantom forward-references
+that block implementer resolution.
+
+**Prevention grep (run before every commit touching BC ID references):**
+
+```
+grep -rn "BC-[A-Z]*-[0-9]" .factory/specs/ | grep -v "gene-source\|any-context\|BC-HOOK-007\|BC-RING\|BC-ABI\|BC-TYPES\|BC-FACTORY\|BC-PROTO\|BC-AUTH\|BC-LOCK\|BC-ENGINE"
+```
+
+Any BC ID that does not appear in the allowlist above must be verified against the pre-staged
+table in SS-forward-compatibility.md or a named gene-source reference before committing.
+
 ## §Trace
+
+v1.14 changes (round-47 fixes F-R46-2 MEDIUM / F-R46-3 LOW / PG-1 / PG-2):
+
+- F-R46-2 RESOLVED (MEDIUM — adversary finding, Option C chosen): Line 641 (R-001 trigger
+  condition (a)) referenced "monocle's hook-event pipeline (BC-HOOK-001–006)" — these monocle
+  BC IDs do not exist. The 16 pre-staged BC IDs in SS-forward-compatibility.md L235-252 contain
+  no BC-HOOK-NNN entries; the gene-source any-context repo uses BC-HOOK-001..BC-HOOK-041 but
+  those are gene-source IDs, not monocle IDs. "BC-HOOK-001–006" is an unattested phantom range.
+  Option C chosen over A (forward-reference disclaimer) and B (remove parenthetical entirely):
+  - Option A rejected: "to-be-authored in Phase 1 PRD" language creates a vague forward
+    reference that won't match any specific BC IDs once the PRD authors them; the R-001
+    trigger rationale becomes stale again as soon as Phase 1 IDs are assigned.
+  - Option B rejected: removing the parenthetical reduces traceability — the trigger condition
+    provides no observable hook-pipeline anchor for the weekly monitoring workflow.
+  - Option C implemented: replaced "(BC-HOOK-001–006)" with "(gene-source canonical 5-hook
+    matrix: BC-HOOK-007)". BC-HOOK-007 IS attested: it is cited in dtu-assessment.md and
+    SS-core-types-and-abi.md as the gene-source canonical hook-endpoint-body matrix. It is an
+    external observable fact (the any-context gene-source canonical reference) that does not
+    depend on monocle Phase 1 PRD numbering finalization. The R-001 trigger rationale remains
+    resolvable for both the weekly monitoring workflow and future readers.
+  META-pattern (phantom forward-reference — new class): a BC ID range referenced as if anchored
+  but unattested in any current artifact. Prevention rule added in §Phantom-ID Convention below.
+
+- F-R46-3 RESOLVED (LOW — adversary finding, Option B chosen, intent: NOT historical
+  preservation): §Trace v1.7 entry for F-R32-4 at L1069 stated "a 'Contract edge cases'
+  paragraph added after Step 3's step 6." After F-R44-adv-1 (v1.13) inserted a new step 2
+  into the Python script, renumbering subsequent steps from 1-6 to 1-7, the "step 6"
+  pinpoint became an off-by-one (current location is after step 7). The §Trace entry is
+  operationally consulted by current-state readers (they read the §Trace to understand where
+  in the spec an item lives); a stale step number sends readers to the wrong location.
+  Option B chosen over A (update to "step 7") and C (declare historical preservation):
+  - Option A (update to "step 7") rejected: updates the count to match the current-state
+    but remains fragile — any future step insertion will produce the same off-by-one. The
+    root cause is position-coupling in §Trace prose, not the specific number.
+  - Option C (historical preservation) rejected: the §Trace entry is NOT historical archival
+    of a time-locked state; it is an active navigational aid. "Historical preservation" applies
+    to rationale for a decision made at a past point in time — not to a pointer to where in
+    the current spec to find a section. A position pointer must be current-state-accurate.
+  - Option B implemented: "after Step 3's step 6" reworded to "after the final step of the
+    Step 3 script description" — position-free, resilient to future step insertions.
+  META-pattern (step-renumbering sub-class — PG-2): covered in updated META-pattern rule below.
+
+- PG-1 RESOLVED (D-042 grep workflow scope extension): The D-042 workflow documented in
+  SS-forward-compatibility.md v1.2.3 §Trace targets SS-*.md version-citation drift
+  (primary: `grep -rn "SS-[a-z-]*\.md v" .factory/specs/`) but does NOT catch cross-doc
+  factual claims about content matrices (e.g., "field X present in all N hook body schemas").
+  F-R46-1 root cause: a sentence in SS-forward-compatibility.md asserted session_id was
+  present in all 5 hook body schemas citing the DTU endpoint matrix — but the DTU matrix
+  showed only gene-source fields, which lack session_id on 2 of 5 endpoints.
+  Convention rule added (see §Schema-Fact Citation Convention below):
+  - Schema-fact citations across docs MUST cite a single canonical anchor document AND cite
+    the specific column/table name within that anchor.
+  - Any schema-fact assertion of the form "field X in all N schemas" MUST include a grep
+    pattern in §Trace that re-validates the fact against the canonical anchor at any version
+    bump of either the citing or cited document.
+  - The grep validation pattern for the session_id fact is now embedded in both
+    dtu-assessment.md v1.2 §Schema-fact grep anchor and SS-forward-compatibility.md v1.2.4
+    §Trace. D-042 workflow rule extended: before any version bump of dtu-assessment.md or
+    SS-core-types-and-abi.md, run:
+    ```
+    grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all 5 hook" .factory/specs/
+    ```
+    to enumerate all cross-doc factual claims referencing hook body field presence.
+
+- PG-2 RESOLVED (META-pattern rule scope extension): The F-R44-adv-2 META-pattern rule
+  (introduced v1.13) stated "Every rule addition, removal, or reordering event MUST include
+  a proactive grep for 'N rules', 'Nth rule', 'N steps', 'Nth step'." This did not explicitly
+  cover step-renumbering in procedural specs — F-R44-adv-1 (v1.13) inserted a Python script
+  step, renumbering steps 1-6 to 1-7, but the META-pattern grep ("step N") was not applied
+  to §Trace pinpoints. F-R46-3 was the result. Fix: META-pattern rule above expanded to
+  include "step-renumbering events in any procedural spec" and "step N" variant in the grep
+  list. Step-renumbering events are now an explicit trigger for the proactive grep.
 
 v1.13 changes (round-45 fixes F-R44-adv-1 HIGH / F-R44-adv-2 MEDIUM / F-R44-adv-3 MEDIUM / F-R44-adv-4 LOW):
 
@@ -882,11 +1011,19 @@ v1.13 changes (round-45 fixes F-R44-adv-1 HIGH / F-R44-adv-2 MEDIUM / F-R44-adv-
   require a change after F-R44-adv-2. Line 1062 "the 4th rule" is also correct for the same
   reason. Both confirmed clean post-fix.
 
-- META-pattern (narrative wrapper count discipline): Every rule addition, removal, or
-  reordering event MUST include a proactive grep for "N rules", "Nth rule", "N steps", and
-  "Nth step" across the file before declaring done. This is not optional — narrative wrapper
-  counts are a separate propagation layer that semgrep and table validators do not cover.
-  The S-7.01 Partial-Fix Regression Discipline now explicitly includes this layer.
+- META-pattern (narrative wrapper count discipline): Every rule OR step addition, removal,
+  reordering, or renumbering event — including step-renumbering in any procedural spec (Python
+  script steps, CI step sequences, or any other numbered procedure) — MUST include a proactive
+  grep for "N rules", "Nth rule", "N steps", "Nth step", "step N", and "N entries" across the
+  file before declaring done. This is not optional — narrative wrapper counts are a separate
+  propagation layer that semgrep and table validators do not cover. The S-7.01 Partial-Fix
+  Regression Discipline now explicitly includes this layer, covering both rule-change events
+  AND step-renumbering events. Step-renumbering failures produce off-by-one pinpoints in §Trace
+  entries; these are distinct from rule-count narrative drift but follow the same root cause.
+  PG-2 extension (round-47, F-R46-3 root-cause closure): the F-R44-adv-2 META rule previously
+  stated "rule addition, removal, or reordering" — step-renumbering (e.g., inserting a new step
+  into a Python script changes all subsequent step N references in §Trace) was not covered.
+  F-R46-3 is the first confirmed instance of the step-renumbering sub-class.
 
 v1.12 changes (round-43 fix F-R42-adv-1 MEDIUM — S-7.01 propagation):
 
@@ -1066,7 +1203,7 @@ v1.7 changes (round-33 fixes F-R32-2 MEDIUM / F-R32-4 LOW):
   missing spec file, malformed delimiter pairs (BEGIN without END, END without BEGIN), duplicate
   delimiters, and empty table. In each case a naive implementation could silently succeed with
   exit 0 despite the spec being in a broken state — a false-green identical to the POL-11 pattern.
-  Fix: a "Contract edge cases" paragraph added after Step 3's step 6, specifying all five cases
+  Fix: a "Contract edge cases" paragraph added after the final step of the Step 3 script description, specifying all five cases
   with exact exit codes, exact error message formats, and production-grade defaults (empty table =
   fail, not warn; missing file = fail; duplicate delimiters = fail with disambiguation). All five
   cases are normative requirements for the devops-engineer Phase 1 deliverable.
