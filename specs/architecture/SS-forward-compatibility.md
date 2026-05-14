@@ -4,7 +4,7 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.6"
+version: "1.2.7"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site)"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose"
 project: monocle
 ---
 
@@ -52,7 +52,7 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan:
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.4 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.5 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.4 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.6 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
 - The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.4 §monocle-canonical column)
 
@@ -260,6 +260,21 @@ SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 
 ## §Trace
 
+v1.2.7 changes (round-52.1 PG-3-TRACE-NEW-ENTRY sweep + D-042 cascade):
+
+- F-R52-cons-1 COMPANION (PG-3-TRACE-NEW-ENTRY sweep): §Trace v1.2.6 D-042 entry contained
+  bare positional L-number tokens `(L55)`, `(L57)`, `(L73)` identifying where in this file's
+  body the version citations were updated. PG-3 §Trace-prose sub-rule forbids current-state
+  L-number pinpoints in §Trace prose. Tokens dropped; the section-name descriptions `§P2-1
+  analysis session_id prose`, `§P2-2 Verdict pid prose`, and `§P2-2 Verdict join-key sentence`
+  are sufficient for navigation.
+
+- D-042 CITATION REFRESH (round-52.1 cascade from SS-core-types-and-abi.md v1.2.5 → v1.2.6
+  bump): `SS-core-types-and-abi.md v1.2.5` → `v1.2.6` in §P2-1 analysis session_id prose.
+  SS-core-types-and-abi.md was bumped from v1.2.5 to v1.2.6 in round-52.1 PG-3-TRACE-NEW-ENTRY
+  sweep (bare L-number in §Trace v1.2.5 entry removed). D-042 full-scope grep surfaced this
+  body citation site.
+
 v1.2.6 changes (round-51.1 PG-4 §-heading-existence sweep + D-042 citation refresh):
 
 - F-R51-adv-1 COMPANION (PG-4 sweep): §Item P4-3 body cited
@@ -269,8 +284,8 @@ v1.2.6 changes (round-51.1 PG-4 §-heading-existence sweep + D-042 citation refr
   §-anchor was wrong.
 
 - D-042 CITATION REFRESH (round-51.1 cascades): Two live body citations updated:
-  (1) `dtu-assessment.md v1.3` → `v1.4` in §P2-1 analysis session_id prose (L55),
-  §P2-2 Verdict pid prose (L57), and §P2-2 Verdict join-key sentence (L73).
+  (1) `dtu-assessment.md v1.3` → `v1.4` in §P2-1 analysis session_id prose,
+  §P2-2 Verdict pid prose, and §P2-2 Verdict join-key sentence.
   dtu-assessment.md was bumped from v1.3 to v1.4 in this same burst (D-042 cascade from
   SS-core-types-and-abi.md v1.2.4 → v1.2.5 bump).
   (2) `SS-core-types-and-abi.md v1.2.4` → `v1.2.5` in §P2-1 analysis session_id prose.
