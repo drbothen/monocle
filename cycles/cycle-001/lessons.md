@@ -659,3 +659,7 @@ If a future fresh-context pass finds a similar partial-fix-regression issue intr
 ### Follow-up
 
 None required. The fix-burst F-R63 already remediated all 5 partial-fix-regression instances (test names, test name asymmetry, arch path propagation, arch summary tense, PRD error count). Future fix-burst dispatches should be authored with the propagation checklist template.
+
+### Recurrence Note (2026-05-14)
+
+R3-001 was the first post-codification application of this lesson. Consistency R3 (ba62a15) found that the R3-001 arch §BC Summary footer "(PRD v1.1, commit f855835)" parenthetical became stale after PRD v1.2 and v1.3 bumps — a direct instance of the partial-fix pattern this lesson was codified to prevent. Architect adjudicated via D-057 (dc3af71) using Pattern B (version-stable file path pointer replacing the bare version pin), then PRD v1.3 (d8e66c3) propagated arch v1.0.10 references at 31 sites and VP v1.3 (2b24735) propagated at 32+42=74 sites. The mechanical sweep approach worked cleanly — no new META-finding patterns emerged. Note: future passes may consider whether to recommend PG-5 convention amendment to make normative `**Source:** vX.Y §X` citations version-stable (path-only) to eliminate the propagation entirely — this is a convention-level question for the human gate, not a cycle-001 codification.
