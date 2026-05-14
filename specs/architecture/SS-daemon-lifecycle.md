@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.7"
+version: "1.0.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c)"
 project: monocle
 ---
 
@@ -200,23 +200,84 @@ let app = public_router.merge(authed_router);
    `X-Monocle-Authorization`-only with no Bearer support. BC-AUTH-002 applies
    only to the Phase 1 `X-Monocle-Authorization` surface.
 
-   Validation rule in Phase 1: any `X-Monocle-Authorization` value that does
-   NOT begin with `monocle-v1:` is rejected immediately with HTTP 401
-   `{"error":"invalid_auth_token_format"}` before any secret comparison occurs.
-   This prevents timing-oracle attacks where an attacker probes whether a
-   non-prefixed string matches the secret.
+   Auth middleware validation rules in Phase 1 (applied in this order):
+
+   1. **Missing header:** if the `X-Monocle-Authorization` header is absent
+      entirely, return HTTP 401 `{"error":"missing_auth_token"}` immediately.
+      This is a structural precondition failure, not an authentication attempt.
+
+   2. **Format check:** if the header is present but its value does NOT begin
+      with `monocle-v1:`, return HTTP 401 `{"error":"invalid_auth_token"}`
+      before any secret comparison occurs. This prevents timing-oracle attacks
+      where an attacker probes whether a non-prefixed string matches the secret.
+
+   3. **Secret comparison:** strip the `monocle-v1:` prefix, then perform a
+      constant-time comparison of the remaining hex part against the stored
+      secret. If the comparison fails for any reason (wrong hex value, empty
+      suffix, length mismatch), return HTTP 401 `{"error":"invalid_auth_token"}`.
+
+   Rules 2 and 3 deliberately return the SAME error body (`invalid_auth_token`).
+   This collapses the "malformed format" and "correct format but wrong value"
+   failure modes into a single indistinguishable response, blocking an attacker
+   from determining whether their token had the structurally correct prefix even
+   if they could not read the lock file directly.
+
+   **Security rationale (threat model):** The monocle daemon binds exclusively
+   to `127.0.0.1`. All callers are local processes running as the same OS user.
+   An adversary co-located as the same user can read `monocle.lock` directly
+   (0o600, same-user read access). Enumeration via distinct format-vs-mismatch
+   error bodies provides zero marginal attack capability for a same-user
+   adversary. However, defence-in-depth is applied: collapsing Rules 2 and 3
+   costs nothing (both are auth failures) and prevents any information leak to
+   an attacker who has gained unexpected network access to 127.0.0.1 but has
+   NOT gained file-system access (e.g., a compromised subprocess with a
+   restricted sandbox).
+
+   The `missing_auth_token` body for absent headers (Rule 1) is deliberately
+   distinct because: (a) absence of the header is a client-configuration error,
+   not an authentication attempt — the attacker who omits the header has
+   revealed nothing about knowledge of the secret; (b) the distinct body
+   provides actionable diagnostics for developers debugging hook integration.
 
    Auth middleware implementation:
 
    ```rust
    const TOKEN_PREFIX: &str = "monocle-v1:";
 
-   fn validate_auth_token(presented: &str, expected_secret: &str) -> bool {
+   /// Extract and validate the monocle auth token from the request headers.
+   ///
+   /// Returns:
+   /// - `Ok(())` if the token is present, well-formed, and matches the secret.
+   /// - `Err(AuthError::Missing)` if the `X-Monocle-Authorization` header is absent.
+   /// - `Err(AuthError::Invalid)` if the header is present but fails validation
+   ///   for any reason (bad prefix, bad format, or secret mismatch). These cases
+   ///   are intentionally collapsed into a single error variant to prevent
+   ///   information disclosure about which check failed.
+   fn validate_auth_header(
+       headers: &HeaderMap,
+       expected_secret: &str,
+   ) -> Result<(), AuthError> {
+       let Some(header_value) = headers.get("X-Monocle-Authorization") else {
+           return Err(AuthError::Missing);
+       };
+       let Ok(presented) = header_value.to_str() else {
+           return Err(AuthError::Invalid);
+       };
        let Some(hex_part) = presented.strip_prefix(TOKEN_PREFIX) else {
-           return false; // Rejected before any secret comparison.
+           return Err(AuthError::Invalid); // bad prefix — not an auth attempt
        };
        // Constant-time comparison to prevent timing oracle on the hex secret.
-       constant_time_eq::constant_time_eq(hex_part.as_bytes(), expected_secret.as_bytes())
+       if constant_time_eq::constant_time_eq(hex_part.as_bytes(), expected_secret.as_bytes()) {
+           Ok(())
+       } else {
+           Err(AuthError::Invalid) // format OK but token mismatch — same body
+       }
+   }
+
+   #[derive(Debug)]
+   enum AuthError {
+       Missing,  // → HTTP 401 {"error":"missing_auth_token"}
+       Invalid,  // → HTTP 401 {"error":"invalid_auth_token"} (all other failures)
    }
    ```
 
@@ -238,13 +299,29 @@ let app = public_router.merge(authed_router);
      and asserts `authToken` matches `/^[0-9a-f]{64}$/`; presents
      `monocle-v1:<authToken>` to `/status` and asserts HTTP 200.
 
-   - **BC-AUTH-002:** Any `X-Monocle-Authorization` value not beginning with
-     `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}`.
+   - **BC-AUTH-002:** Three auth failure modes are specified:
+
+     | Failure mode | Header state | HTTP body |
+     |---|---|---|
+     | Missing header | `X-Monocle-Authorization` absent | `{"error":"missing_auth_token"}` |
+     | Invalid token | Header present; value fails for any reason (bad prefix, bad format, secret mismatch, or empty suffix) | `{"error":"invalid_auth_token"}` |
+
+     All "invalid token" failures return the same body regardless of whether
+     the format check or the secret comparison failed — this is a deliberate
+     security choice (see security rationale above).
+
      Phase 4 OAuth2 federation tokens use `Authorization: Bearer` on a separate
-     federation channel and are NOT valid on Phase 1 HTTP endpoints.
-     Verification: integration test sends `Authorization: Bearer fake`,
-     `X-Monocle-Authorization: baretoken`, and
-     `X-Monocle-Authorization: monocle-v2:abc` and asserts all receive HTTP 401.
+     federation channel and are NOT valid on Phase 1 HTTP endpoints; they
+     receive HTTP 401 `{"error":"invalid_auth_token"}` (header present but
+     `Authorization: Bearer ...` does not begin with `monocle-v1:`).
+
+     Verification: integration test in `monocle-runtime/tests/auth.rs`:
+     - No header → HTTP 401 `{"error":"missing_auth_token"}`
+     - `X-Monocle-Authorization: baretoken` → HTTP 401 `{"error":"invalid_auth_token"}`
+     - `X-Monocle-Authorization: monocle-v2:abc` → HTTP 401 `{"error":"invalid_auth_token"}`
+     - `X-Monocle-Authorization: monocle-v1:` (empty suffix) → HTTP 401 `{"error":"invalid_auth_token"}`
+     - `Authorization: Bearer fake` (wrong header name) → HTTP 401 `{"error":"missing_auth_token"}`
+     - `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` → HTTP 401 `{"error":"invalid_auth_token"}`
 
    Note: `constant_time_eq` crate is added to the Phase 1 dependency manifest
    (caret pin `^0.3`; no untrusted-input deserialization; timing-safety is its
@@ -503,7 +580,7 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-AUTH-002 | Any `X-Monocle-Authorization` value not beginning `monocle-v1:` receives HTTP 401 `{"error":"invalid_auth_token_format"}`; Phase 4 OAuth2 federation uses separate channel not this header (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-AUTH-002 | Three auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed, no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
 | BC-LOCK-001 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD will formalize these as full BC entries with postconditions,
@@ -525,6 +602,26 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.8 changes (fix-burst F-R62, finding F-R62-8 MED — architect adjudication):
+- F-R62-8 RESOLVED (MED — adversary finding R62): PRD at commit c69518d introduced
+  `E-AUTH-002 {"error":"missing_auth_token"}` and `E-AUTH-003 {"error":"invalid_auth_token"}`
+  in §Section 5 and edge cases EC-008/EC-009 in BC-AUTH-002, none of which were specified in
+  SS-daemon-lifecycle.md v1.0.7. The architecture defined only `invalid_auth_token_format` for
+  the single BC-AUTH-002 case (non-prefixed header). This was a PRD invention of contract surface
+  beyond architecture authorization. Architect disposition chosen: **(c) mixed approach** —
+  two distinct error bodies: `missing_auth_token` for absent header (structural precondition
+  failure, not an auth attempt; diagnostic value with zero security cost) and `invalid_auth_token`
+  for any value-present failure (format failure OR secret mismatch, intentionally collapsed into
+  one body to eliminate the format-vs-mismatch enumeration vector). The third PRD invention
+  `invalid_auth_token_format` is RETIRED — no body of that name exists in the architecture.
+  Security rationale in §Start Sequence §Behavioral contracts BC-AUTH-002 (threat model:
+  localhost-only, same-user adversary already has lock-file read access; defence-in-depth
+  collapse of Rules 2+3 blocks information leak to adversaries with unexpected network access
+  but no filesystem access). Auth middleware implementation updated to `validate_auth_header`
+  returning `AuthError::Missing` or `AuthError::Invalid`. BC-AUTH-002 §Behavioral Contract
+  Summary row expanded to reflect three-case table. Verification test vectors updated to 6
+  cases covering all three middleware branches.
 
 v1.0.7 changes (round-53.1 fix F-R53-adv-1 MEDIUM):
 - F-R53-adv-1 RESOLVED (MEDIUM — adversary finding R53): §Trace v1.0.6 rationale sentence
