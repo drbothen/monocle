@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.10"
+version: "1.0.11"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T22:44:39Z
+timestamp: 2026-05-14T23:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX)"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token)"
 project: monocle
 ---
 
@@ -304,7 +304,7 @@ let app = public_router.merge(authed_router);
      Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
      (PRD v1.1 §7 RTM canonical path; F-R62-4).
 
-   - **BC-AUTH-002:** Three auth failure modes are specified:
+   - **BC-AUTH-002:** Two auth failure modes are specified:
 
      | Failure mode | Header state | HTTP body |
      |---|---|---|
@@ -317,8 +317,10 @@ let app = public_router.merge(authed_router);
 
      Phase 4 OAuth2 federation tokens use `Authorization: Bearer` on a separate
      federation channel and are NOT valid on Phase 1 HTTP endpoints; they
-     receive HTTP 401 `{"error":"invalid_auth_token"}` (header present but
-     `Authorization: Bearer ...` does not begin with `monocle-v1:`).
+     receive HTTP 401 `{"error":"missing_auth_token"}` (no `X-Monocle-Authorization`
+     header present; `Authorization: Bearer` is a different, unrecognized header —
+     Phase 4 OAuth2 uses a separate federation channel and does not reuse the
+     Phase 1 HTTP endpoints).
 
      Verification: integration test in
      `monocle-runtime/tests/auth_header_rejection.rs` (rejection probes;
@@ -590,7 +592,7 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-AUTH-002 | Three auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed, no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-AUTH-002 | Two auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
 | BC-LOCK-001 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD has formalized these as full BC entries with preconditions,
@@ -616,6 +618,61 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.11 changes (adversary R65 F-R65-1/2/3 content closure + propagation sweep):
+- F-R65-1 RESOLVED (HIGH — adversary R65 pass 1 attempt 2): BC-AUTH-002 lead-in prose
+  at §Behavioral contracts stated "Three auth failure modes are specified:" but the
+  BC-AUTH-002 table immediately below contained exactly two rows (Missing header /
+  Invalid token). Similarly, §Behavioral Contract Summary BC-AUTH-002 row opened with
+  "Three auth failure modes:". Root cause: F-R62-8 (v1.0.8) collapsed the originally
+  distinct format / mismatch rows into a single "Invalid token" row — reducing the table
+  to 2 rows — but the lead-in count words at both sibling sites were not updated in that
+  same burst. The L-F-R63-PARTIAL-FIX propagation discipline was not yet codified at the
+  time of F-R62-8; these sibling sites were therefore a pre-codification gap. Fix: "Three"
+  → "Two" at both body-prose sites.
+- F-R65-2 RESOLVED (CRITICAL — adversary R65 pass 1 attempt 2): BC-AUTH-002 §Behavioral
+  contracts §Verification block contained two conflicting statements about the same
+  scenario (an inbound request carrying `Authorization: Bearer` instead of
+  `X-Monocle-Authorization`). The paragraph describing Phase 4 OAuth2 federation
+  tokens stated the response body is `{"error":"invalid_auth_token"}` (bearer-as-invalid).
+  The test vector bullet immediately below in the same block stated
+  `Authorization: Bearer fake` → `{"error":"missing_auth_token"}` (bearer-as-missing).
+  Production-grade reasoning: from the Phase 1 daemon's perspective, a request carrying
+  `Authorization: Bearer` has NO `X-Monocle-Authorization` header — the structurally
+  correct disposition is `missing_auth_token` (Rule 1: missing header). The Phase 4
+  OAuth2 bearer header is a different, unrecognized header for Phase 1 endpoints; its
+  presence does not constitute a "header present but invalid" scenario. The bearer-as-invalid
+  paragraph (lines 320-321 at time of this fix) contained a logic error: it treated presence
+  of `Authorization: Bearer` as equivalent to presence of `X-Monocle-Authorization`. Fix:
+  bearer-as-invalid body changed from `{"error":"invalid_auth_token"}` to
+  `{"error":"missing_auth_token"}`; parenthetical updated to reflect the correct semantic
+  "(no `X-Monocle-Authorization` header present; `Authorization: Bearer` is a different,
+  unrecognized header — Phase 4 OAuth2 uses a separate federation channel and does not
+  reuse the Phase 1 HTTP endpoints)". Aligns with: test vector bullet in same block
+  (`Authorization: Bearer fake` → missing); PRD v1.3 BC-AUTH-002 postcondition 3 +
+  Canonical Test Vector row 5; VP v1.3 §VP-AUTH-002 probe 5.
+- F-R65-3 RESOLVED (HIGH — closed by F-R65-2 fix): Cross-artifact contradiction between
+  arch and PRD/VP on Bearer disposition. After F-R65-2 fix, arch aligns with PRD v1.3
+  BC-AUTH-002 and VP v1.3 VP-AUTH-002. No independent change required.
+- Propagation sweep (L-F-R63-PARTIAL-FIX discipline applied):
+  (a) "Three/three" auth failure modes — body prose grep result: 2 sites fixed
+  (BC-AUTH-002 lead-in at §Behavioral contracts; §Behavioral Contract Summary row);
+  §Trace v1.0.8 contains "three-case table" and "three middleware branches" —
+  HISTORICAL per PG-5 (describing what was introduced at v1.0.8 time); NOT changed.
+  (b) Bearer disposition `invalid_auth_token` — body prose grep result: 1 site fixed
+  (bearer-paragraph in §Behavioral contracts §Verification); §Trace v1.0.8 references
+  "three-case table" — HISTORICAL; NOT changed.
+  (c) `invalid_auth_token_format` RETIRED — grep result: 2 sites in §Trace v1.0.8
+  body, both clearly marked RETIRED in historical context; NOT changed (PG-5 exempt).
+  (d) SS-deps-pin-manifest.md — grep for "SS-daemon-lifecycle\.md v" confirmed 0
+  version-pinned citations (matches prior v1.0.10 sweep finding); no update needed.
+  PG-2 count-verification sweep: "Two" count matches 2 actual table rows in
+  BC-AUTH-002 table — VERIFIED. PG-3 compliant: §-anchor refs used throughout;
+  no bare L-numbers; no directional qualifiers. PG-4 sweep evidence: §Behavioral
+  Contract Summary (EXISTS heading), §Start Sequence (EXISTS heading), §Trace
+  (EXISTS heading). PG-5 sweep evidence: §Trace v1.0.8 "three" instances — classified
+  HISTORICAL (PG-5 exempt); no normative-current count changes introduced. Post-write
+  self-grep: 0 L[0-9]+ matches in this §Trace v1.0.11 entry.
 
 v1.0.10 changes (consistency R3 R3-001 closure + oscillation-prevention sweep):
 - R3-001 RESOLVED (MEDIUM — consistency-validator R3 finding, commit ba62a15):
