@@ -2,16 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.8"
+version: "1.0.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T22:00:00Z
+timestamp: 2026-05-14T23:59:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c)"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs)"
 project: monocle
 ---
 
@@ -295,9 +297,12 @@ let app = public_router.merge(authed_router);
    - **BC-AUTH-001:** The auth token written to the lock file has format
      `monocle-v1:<64-hex>` when read back from the lock file and presented to
      the daemon. The lock file `authToken` field stores only the 64-char hex
-     part. Verification: integration test reads the lock file after daemon start
-     and asserts `authToken` matches `/^[0-9a-f]{64}$/`; presents
+     part. Verification: integration test in
+     `monocle-runtime/tests/auth_token_lifecycle.rs` reads the lock file after
+     daemon start and asserts `authToken` matches `/^[0-9a-f]{64}$/`; presents
      `monocle-v1:<authToken>` to `/status` and asserts HTTP 200.
+     Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
+     (PRD v1.1 §7 RTM canonical path; F-R62-4).
 
    - **BC-AUTH-002:** Three auth failure modes are specified:
 
@@ -315,7 +320,12 @@ let app = public_router.merge(authed_router);
      receive HTTP 401 `{"error":"invalid_auth_token"}` (header present but
      `Authorization: Bearer ...` does not begin with `monocle-v1:`).
 
-     Verification: integration test in `monocle-runtime/tests/auth.rs`:
+     Verification: integration test in
+     `monocle-runtime/tests/auth_header_rejection.rs` (rejection probes;
+     F-R62-4 canonical path per PRD v1.1 §7 RTM). Round-trip happy-path covered
+     in `monocle-runtime/tests/auth_token_lifecycle.rs` per BC-AUTH-001
+     verification above.
+     Test name: `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
      - No header → HTTP 401 `{"error":"missing_auth_token"}`
      - `X-Monocle-Authorization: baretoken` → HTTP 401 `{"error":"invalid_auth_token"}`
      - `X-Monocle-Authorization: monocle-v2:abc` → HTTP 401 `{"error":"invalid_auth_token"}`
@@ -583,9 +593,12 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-AUTH-002 | Three auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed, no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
 | BC-LOCK-001 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
-The Phase 1 PRD will formalize these as full BC entries with postconditions,
-evidence, and verification harness stubs. This artifact pre-stages them for
-the Phase 1 architecture gate.
+The Phase 1 PRD has formalized these as full BC entries with preconditions,
+postconditions, invariants, edge cases, canonical test vectors, and verification
+harness stubs (PRD v1.1, commit f855835). This architecture artifact remains
+the source-of-truth for invariants, protocol decisions, and security rationale;
+the PRD remains the source-of-truth for canonical test names, test-file paths,
+error taxonomy, and edge case catalog.
 
 ## Phase 4 Notes
 
@@ -602,6 +615,37 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.9 changes (F-R62-4 back-propagation closure, adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3):
+- F-R63-cons-3 RESOLVED (MEDIUM — consistency-validator R2 finding): §Behavioral
+  Contract Summary footer contained future-tense language ("The Phase 1 PRD will
+  formalize...") that became retrospectively false when PRD v1.1 (commit f855835)
+  formalized all 10 daemon-lifecycle BCs with preconditions, postconditions,
+  invariants, edge cases, canonical test vectors, and verification stubs. Footer
+  updated to past-tense with explicit authority split: this architecture artifact
+  remains source-of-truth for invariants, protocol decisions, and security
+  rationale; PRD v1.1 is source-of-truth for canonical test names, test-file
+  paths, error taxonomy, and edge case catalog.
+- F-R63-adv-2 partial RESOLVED (MEDIUM — adversary R63 stale path): BC-AUTH-002
+  §Behavioral contracts §Verification block cited `monocle-runtime/tests/auth.rs`
+  (the pre-F-R62-4 single-file path). F-R62-4 (PRD v1.1 §7 RTM) canonicalized
+  the split: BC-AUTH-001 → `monocle-runtime/tests/auth_token_lifecycle.rs`;
+  BC-AUTH-002 → `monocle-runtime/tests/auth_header_rejection.rs`. Architecture is
+  the last artifact on the old single-file path. Change: BC-AUTH-002 §Verification
+  updated to `auth_header_rejection.rs` with cross-reference to
+  `auth_token_lifecycle.rs` for BC-AUTH-001 round-trip coverage; test name
+  `test_BC_AUTH_002_auth_header_validation_all_failure_modes` added inline (PRD
+  v1.1 §7 RTM canonical). BC-AUTH-001 §Verification sentence updated to add
+  explicit test file path `auth_token_lifecycle.rs` and test name
+  `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip` (PRD v1.1 §7 RTM
+  canonical; F-R62-4). Source-of-truth: PRD v1.1 §7 RTM + VP v1.1
+  §Coverage Matrix (commit 8454ff2). PG-3 compliant: §-anchor refs used;
+  no bare L-numbers; no directional qualifiers. PG-4 sweep evidence:
+  §Behavioral Contract Summary (EXISTS ✓ heading), §Daemon Lifecycle Protocol
+  (EXISTS ✓ heading), §Start Sequence (EXISTS ✓ heading). Note: "§Behavioral
+  contracts" cited in §Trace v1.0.8 final sentence is a bold-prose label within
+  §Start Sequence — not a heading; cited here only as a prose location reference,
+  consistent with the pre-existing v1.0.8 precedent in this document.
 
 v1.0.8 changes (fix-burst F-R62, finding F-R62-8 MED — architect adjudication):
 - F-R62-8 RESOLVED (MED — adversary finding R62): PRD at commit c69518d introduced
