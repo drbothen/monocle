@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.4"
+version: "1.5"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-14T23:45:00Z
+timestamp: 2026-05-14T03:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.11; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.11; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding)"
 project: monocle
 supplements: []
 ---
@@ -225,7 +225,7 @@ EC-044: `last_hook_ts` values use ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ` UT
 
 **Edge Cases:**
 
-EC-045: Request body is exactly 262,144 bytes: HTTP 413 (limit is strictly exclusive — `> limit` triggers the rejection; axum's `DefaultBodyLimit::max(N)` rejects bodies strictly exceeding N bytes).
+EC-045: Request body is exactly 262,145 bytes: HTTP 413 (limit is strictly exclusive — `> limit` triggers the rejection; axum's `DefaultBodyLimit::max(N)` rejects bodies strictly exceeding N bytes; body of exactly N=262,144 returns HTTP 200).
 
 EC-046: Request body is 262,143 bytes: HTTP 200 (within limit).
 
@@ -1626,3 +1626,42 @@ All §-anchor references: PASS. Zero mis-anchors in v1.1.
 - Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
 - Production-grade default: PASS — bounded scope; all 31 propagation sites updated; no deferred occurrences.
 - Correct agent routing: PASS — VP file not touched; architecture files not touched (architect owns); STATE.md not touched (state-manager owns).
+
+## §Trace v1.5
+
+**v1.5 (2026-05-14):** F-R67-2 closure — PRD EC-045 off-by-one fix. Trigger: adversary R67 fresh-context pass (finding F-R67-2 HIGH). This is a single-site content correction; no architecture version pins changed; no BC postconditions changed.
+
+- **F-R67-2 RESOLVED (HIGH) — EC-045 prose off-by-one corrected:** §3 BC-DAEMON-003 EC-045 prose (formerly at line 228) said "exactly 262,144 bytes: HTTP 413" — a logical contradiction of its own rationale clause ("strictly exceeding N bytes"). For N=262,144, strictly exceeding means ≥ 262,145. Body of exactly 262,144 should return HTTP 200. The sole fix: "262,144" changed to "262,145" and a clarifying parenthetical added: "body of exactly N=262,144 returns HTTP 200." This makes the boundary semantics explicit, matching VP-DAEMON-003 mechanical property 3, BC-DAEMON-003 postcondition 2, and §9 EC-045 catalog row (which already said 262,145 correctly). Root cause: boundary-condition prose introduced in the F-R62 BC expansion burst was outside the semantic-propagation-sweep coverage established at that time. The Obs-1 discipline (intra-document same-ID consistency sweep before commit) now applied codifies the lesson.
+
+**Intra-document EC consistency sweep (Obs-1-discipline, v1.5):** Grep sweep for all EC-0NN IDs in §3 prose vs §9 catalog. Boundary-numeric ECs checked:
+
+- EC-045 (BC-DAEMON-003): §3 prose now "262,145 bytes: HTTP 413" ✓; §9 catalog "262,145 bytes → HTTP 413" ✓ — CONSISTENT post-fix.
+- EC-046 (BC-DAEMON-003): §3 prose "262,143 bytes: HTTP 200" ✓; §9 catalog "Body 262,143 bytes → HTTP 200" ✓ — CONSISTENT (no change needed).
+- EC-002 (BC-RING-001): §3 prose "256 KiB line" (qualitative); §9 catalog "Near-maximum payload size (256 KiB line); rotation handles without truncation" ✓ — CONSISTENT.
+
+All other ECs (EC-001 through EC-056 except EC-045, EC-046, EC-002) are non-numeric boundary descriptions; no off-by-one risk class applies. No further inconsistencies found by this sweep.
+
+**D-042 sweep (v1.5):** 4-pattern recursive sweep on this document. Pattern 1 (SS-*.md v): SS-daemon-lifecycle.md v1.0.11 ✓ (no pin change in this burst), SS-core-types-and-abi.md v1.2.8 ✓, SS-engine-module.md v1.1.15 ✓. No new SS-*.md version citations introduced. No normative architecture version changes in this burst; all prior v1.4 pin records intact.
+
+**PG-2 count coherence (v1.5):** 22 BCs unchanged ✓. 13 error codes unchanged ✓. 56 edge cases (EC-001 through EC-056) unchanged ✓. 22 test names unchanged ✓. No structural elements added or removed; this is a single-word content correction.
+
+**PG-3 §Trace directional refs (v1.5):** No `above`, `below`, or bare L-numbers appear in this §Trace v1.5 entry. All references use section heading anchors (§-form) or finding references.
+
+**PG-3-TRACE-NEW-ENTRY (v1.5):** Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.5 entry.
+
+**F-R60-corpus-sweep (v1.5):** Zero stale "262,144" occurrences in EC-045 normative prose. The value 262,144 still appears correctly in other contexts: BC-DAEMON-003 precondition 2 (the trigger threshold description), postcondition 1 (the `limit_bytes` response field value), §5 error taxonomy E-DAEMON-001, §7 RTM differentiator traceability, NFR-005, and §9 EC-047 prose — all of these reference 262,144 as the configured limit constant (N), which is correct. Only EC-045 references the boundary-crossing value (N+1 = 262,145). Sweep confirms no other stale occurrences.
+
+**18+ META rule checklist (v1.5):**
+- D-042 (4-pattern citation sweep): PASS — no SS-*.md version changes; all current pointers from v1.4 unchanged.
+- PG-1 (no ambiguous requirements): PASS — EC-045 is now unambiguous; boundary semantics explicitly stated with parenthetical.
+- PG-2 (noun-agnostic count coherence): PASS — 22 BCs, 13 error codes, 56 edge cases, 22 test names all unchanged.
+- PG-3 (no L-number pinpoints in §Trace): PASS — all §Trace v1.5 references use section heading anchors.
+- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS — v1.5 entry uses only section heading anchors. Post-write self-grep: 0 L[0-9]+ matches.
+- PG-4 (§-heading-existence sweep): PASS — no new §-anchor references introduced; all existing §-anchor references unchanged from v1.4 sweep.
+- PG-5 (historical-anchor framing): PASS — §Trace v1.4 historical entries preserved; no version qualifiers changed on stable section refs.
+- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS — sweep not narrowed.
+- append_only_numbering: PASS — no BC IDs or EC IDs renumbered or retired in this burst.
+- lift_invariants_to_bcs: PASS — no new invariants; existing invariant coverage unchanged.
+- Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — single-site content fix applied; boundary semantics explicit; no deferred occurrences.
+- Correct agent routing: PASS — VP file not touched (VP-DAEMON-003 already correct; no change needed); architecture files not touched (architect owns); STATE.md not touched (state-manager owns).
