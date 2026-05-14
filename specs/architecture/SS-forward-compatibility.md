@@ -4,7 +4,7 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.8"
+version: "1.2.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21; v1.2.9 round-53.1: F-R53-adv-3 brief §-anchor mis-anchors — 5 corrections: §Phase Plan → §Phase Plan Rationale (§Scope), §Explicit Non-Goals → §Out of Scope (Explicit Non-Goals) (§P2-1 analysis), §Phase Plan Phase 2 → §Phase Plan Rationale (Phase 2 objectives) (§P2-2 analysis), §Phase Plan Phase 3 → §Phase Plan Rationale (Phase 3 objectives) (§P3-2 Verdict), §Phase 4 notes → §Scope (Phase 4 — PostToolUse revisit note) (§P3-1 analysis). D-042 cascade: dtu-assessment.md v1.5 → v1.6 (§P2-1 session_id, §P2-2 pid, §P2-2 join-key); SS-core-types-and-abi.md v1.2.7 citation. Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 sibling patterns)"
 project: monocle
 ---
 
@@ -35,7 +35,7 @@ This artifact answers a single question: does any Phase 2, 3, or 4 requirement, 
 
 Phase 1 spec decisions are locked by: brief v1.4.5 (product-owner), oq-research.md (OQ-01..OQ-11, SOQ-1..SOQ-4), SS-daemon-lifecycle.md, SS-permissions-phase1.md, SS-deps-pin-manifest.md, and the three ADRs. Anything already locked in those artifacts is not subject to this scan. The scan targets decisions that are still open at the Phase 1 architecture (PRD + behavioral contracts) level.
 
-Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan:
+Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan Rationale:
 
 - **Phase 2:** customization-aware overlays, trigger-trace (`[t]` from permission overlay to defining settings.json line), expanded TUI (full AppMode state machine, 5-level binding precedence, telescope overlay), `monocle-static` crate, `redb 2.x` for transcript indexing.
 - **Phase 3:** workflow plane (`monocle-workflow` crate, `VsddFactoryAdapter` promoted to WASM-loadable, `notify 8` FS watcher), `monocle-plugin-sdk` crate (WASM ABI via wasmtime 44), MSRV bump to Rust 1.92.
@@ -47,14 +47,14 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan:
 
 **Question:** Phase 2 indexes Claude Code session transcripts via `redb 2.x` to support `[t]` jump-to-source from the permission overlay. The Phase 1 daemon ingests hook events into a hybrid RAM ring + async JSONL flush (OQ-06: `<runtime_dir>/monocle-events.jsonl`, 100MB × 5 rotation). Does the Phase 1 JSONL ring format need additional metadata fields or a version field so Phase 2 can read Phase 1 history without a migration step?
 
-**Analysis:** The JSONL ring format is defined by the Phase 1 architecture as a retention log of hook events fired against the 5 endpoints. Phase 2 trigger-trace requires correlating a permission prompt (`permission_prompt` Notification) with the settings.json rule that generated it. This correlation is done by reading the `Notification` body fields — `tool_name`, `tool_input`, `message` — and joining against the static customization tree parsed from `settings.json` by `monocle-static`. It does NOT require transcript IDs or parent message IDs from Claude Code's internal session model; monocle is explicitly observe-only and does NOT own session transcripts (brief §Explicit Non-Goals: "hook events are ephemeral ingestion signals; full transcript storage belongs to each harness's own persistence layer").
+**Analysis:** The JSONL ring format is defined by the Phase 1 architecture as a retention log of hook events fired against the 5 endpoints. Phase 2 trigger-trace requires correlating a permission prompt (`permission_prompt` Notification) with the settings.json rule that generated it. This correlation is done by reading the `Notification` body fields — `tool_name`, `tool_input`, `message` — and joining against the static customization tree parsed from `settings.json` by `monocle-static`. It does NOT require transcript IDs or parent message IDs from Claude Code's internal session model; monocle is explicitly observe-only and does NOT own session transcripts (brief §Out of Scope (Explicit Non-Goals): "hook events are ephemeral ingestion signals; full transcript storage belongs to each harness's own persistence layer").
 
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.5 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.6 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.6 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.7 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.5 §monocle-canonical column)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.6 §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -66,11 +66,11 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 **Question:** Phase 2 surfaces which customization (Builtin, Global, PerContext, UserCustomCommand, SearchPrompt) is active for the session in focus. Does Phase 1 daemon need to expose a customization-context field to Phase 2 readers?
 
-**Analysis:** The 5-level binding precedence (brief §Phase Plan Phase 2, vision §Key Abstractions `BindingSource`) is managed entirely by `monocle-tui` in Phase 2 — it is a TUI-side concern, not a daemon-side concern. The daemon's job is hook ingestion; it has no visibility into which binding resolved a keystroke. The `monocle-static` crate (Phase 2) reads `settings.json`, `CLAUDE.md`, `keybindings.json`, and hook scripts directly from the filesystem — it does not query the daemon for customization state.
+**Analysis:** The 5-level binding precedence (brief §Phase Plan Rationale (Phase 2 objectives), vision §Key Abstractions `BindingSource`) is managed entirely by `monocle-tui` in Phase 2 — it is a TUI-side concern, not a daemon-side concern. The daemon's job is hook ingestion; it has no visibility into which binding resolved a keystroke. The `monocle-static` crate (Phase 2) reads `settings.json`, `CLAUDE.md`, `keybindings.json`, and hook scripts directly from the filesystem — it does not query the daemon for customization state.
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.5 §monocle-canonical column).
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.6 §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -102,7 +102,7 @@ The relevant Phase 1 enums are:
 1. `Phase1Permission` (SS-permissions-phase1.md) — exhaustive by design; `#[non_exhaustive]` is EXPLICITLY FORBIDDEN per SS-permissions-phase1.md §Decision. Phase 3 introduces a categorically DISTINCT `monocle-plugin-sdk::PluginPermission` enum (not an extension of `Phase1Permission`). No conflict.
 2. `AppMode` (vision §AppMode state machine) — Phase 3 does not add new `AppMode` variants; it adds a new panel (`Workflow`) rendered within the existing `Dashboard` variant. No extension needed.
 3. `Action` (vision §Action enum) — Phase 3 may add new `Action` variants for plugin-management operations. However, `Action` is defined in `monocle-core` and used by the `monocle-tui` dispatcher; both are first-party monocle crates under the same workspace MSRV. The Phase 3 WASM plugin SDK does NOT expose `Action` to guest plugins — plugins produce `FactoryState` and `EnrichedSession` data; the host (monocle) decides what `Action` to dispatch. No `#[non_exhaustive]` needed on `Action`.
-4. `HookEvent` / hook type enum — If Phase 1 defines an enum over hook types (PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit), Phase 4 may add `PostToolUse` (brief §Phase 4 notes: "revisit PostToolUse endpoint need at this point"). `#[non_exhaustive]` on a `HookType` enum would allow Phase 4 to add the variant without breaking match sites. **PHASE 1 MUST DO: apply `#[non_exhaustive]` to any `HookType` or `HookEvent` enum that Phase 1 defines, EXCEPT for the `Phase1Permission` enum which is explicitly exhaustive by design (different concern).** Severity: IMPORTANT.
+4. `HookEvent` / hook type enum — If Phase 1 defines an enum over hook types (PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit), Phase 4 may add `PostToolUse` (brief §Scope (Phase 4 — PostToolUse revisit note): "revisit PostToolUse endpoint need at this point"). `#[non_exhaustive]` on a `HookType` enum would allow Phase 4 to add the variant without breaking match sites. **PHASE 1 MUST DO: apply `#[non_exhaustive]` to any `HookType` or `HookEvent` enum that Phase 1 defines, EXCEPT for the `Phase1Permission` enum which is explicitly exhaustive by design (different concern).** Severity: IMPORTANT.
 
 **Analysis — ABI version field:**
 
@@ -120,7 +120,7 @@ However: Phase 1 `monocle-core` SHOULD declare a `MONOCLE_ABI_VERSION: u32 = 1` 
 
 The Phase 1 static bundle must implement the same trait that Phase 3 will expose via WASM. If Phase 1 defines `VsddFactoryAdapter` as a struct that does NOT implement the `FactoryAdapter` trait (e.g., it is wired inline without a trait), Phase 3 has no clean extraction path.
 
-**Verdict: PHASE 1 MUST DO — `VsddFactoryAdapter` must implement the `FactoryAdapter` trait from day one**, even though Phase 1 statically bundles it. The trait must be defined in `monocle-workflow` (or `monocle-core` if cross-crate visibility requires it) with the exact interface Phase 3 will use for WASM. This is already implied by vision §FactoryAdapter and brief §Phase Plan Phase 3, but must be an explicit Phase 1 PRD behavioral contract. Severity: CRITICAL. Owner: architect.
+**Verdict: PHASE 1 MUST DO — `VsddFactoryAdapter` must implement the `FactoryAdapter` trait from day one**, even though Phase 1 statically bundles it. The trait must be defined in `monocle-workflow` (or `monocle-core` if cross-crate visibility requires it) with the exact interface Phase 3 will use for WASM. This is already implied by vision §FactoryAdapter and brief §Phase Plan Rationale (Phase 3 objectives), but must be an explicit Phase 1 PRD behavioral contract. Severity: CRITICAL. Owner: architect.
 
 #### Item P3-3: Permission enum forward path
 
@@ -215,7 +215,7 @@ artifacts BEFORE Phase 1 PRD dispatch. Phase 1 agents operating from a fresh
 context will find complete, unambiguous specs in:
 
 - `SS-core-types-and-abi.md` — FC-02, FC-03, FC-04 (CRITICAL), FC-05
-- `SS-daemon-lifecycle.md v1.0.6` — FC-01, FC-06
+- `SS-daemon-lifecycle.md v1.0.7` — FC-01, FC-06
 
 None of the patches changes Phase 1 delivery scope, crate count, or external
 behavior. They are additions that prevent silent forward-compatibility failures
@@ -259,6 +259,33 @@ SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 (round-23 micro-fix burst).
 
 ## §Trace
+
+v1.2.9 changes (round-53.1 F-R53-adv-3 brief §-anchor mis-anchors + comprehensive expanded-scope PG-4 sweep):
+
+- F-R53-adv-3 RESOLVED (LOW — adversary finding R53): Five brief §-anchor mis-anchors
+  corrected. Brief has no `## Phase Plan` heading; the actual heading is `### Phase Plan
+  Rationale`. Brief has no `## Phase 4` or `## Explicit Non-Goals` headings; the bold
+  labels for these appear within `## Scope` and `### Out of Scope` respectively. Per
+  PG-4 §-heading-existence convention, parenthetical-descriptor form used where the
+  enclosing heading is broad. Option (b) `§Phase Plan Rationale` chosen for Phase Plan
+  sites (most specific actual heading). Option (a) `§Out of Scope (Explicit Non-Goals)`
+  chosen for the non-goals site (brief §Out of Scope is the actual heading; parenthetical
+  descriptor preserves the original semantic intent). Option parenthetical-descriptor
+  `§Scope (Phase 4 — PostToolUse revisit note)` chosen for the Phase 4 note site;
+  `§Phase Plan Rationale (Phase 2/3 objectives)` for the two Phase-Plan-Phase-N sites.
+  Five corrections in this file: §Scope header, §P2-1 analysis, §P2-2 analysis,
+  §P3-1 analysis, §P3-2 Verdict.
+
+- Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 companion): brief.md §-anchors
+  verified across all 8 architecture spec files. All brief §-anchor citations now resolve
+  to actual headings in product-brief.md. No additional SS-*.md mis-anchors found beyond
+  those captured in this burst.
+
+- D-042 CASCADE: SS-core-types-and-abi.md bumped from v1.2.6 to v1.2.7 in this burst
+  (F-R53-adv-3/4 co-edits). One body citation in this file updated at §P2-1 analysis
+  session_id prose. dtu-assessment.md bumped from v1.5 to v1.6 (D-042 cascade from
+  SS-core-types-and-abi.md v1.2.7 bump). Three body citations in this file updated:
+  §P2-1 analysis session_id, §P2-2 Verdict pid, §P2-2 Verdict join-key.
 
 v1.2.8 changes (round-52.2 F-R52R-1 D-042 cascade + F-R52R-2 §Trace reorder + PG-D042-DTU-SCOPE companion):
 

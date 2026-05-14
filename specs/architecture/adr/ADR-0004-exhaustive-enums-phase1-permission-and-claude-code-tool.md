@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.1"
+version: "1.0.2"
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-13T12:00:00Z
@@ -17,7 +17,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
 input-hash: "[live-state]"
-traces_to: "F-FC-C001 adversary finding; F-FC-I004 adversary finding; BC-TYPES-001 exemption mechanism; SS-permissions-phase1.md §Decision; brief v1.4.7 §Public enum extensibility"
+traces_to: "F-FC-C001 adversary finding; F-FC-I004 adversary finding; BC-TYPES-001 exemption mechanism; SS-permissions-phase1.md §Decision; brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract)"
 project: monocle
 ---
 
@@ -172,9 +172,20 @@ design of `PluginPermission`.
   as the ADR-exemption source but is not an ADR; BC-TYPES-001 exemption requires an ADR.
 - **SS-permissions-phase1.md §Decision:** Canonical definition of both enums; documents
   the exhaustiveness invariant and the extension protocol.
-- **Brief v1.4.7 §Public enum extensibility:** Lists both enums as exhaustive-by-design
-  and refers to this ADR.
+- **Brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract):** Lists
+  both enums as exhaustive-by-design and refers to this ADR.
 - **BC-TYPES-001:** The behavioral contract requiring ADR documentation for all
   `#[non_exhaustive]` exemptions.
 - **Canonical principle (CLAUDE.md):** Production-grade correctness; compile-time
   exhaustiveness enforcement is production-grade; silent wildcard routing is not.
+
+## Amendment History
+
+v1.0.2 changes (round-53.1 F-R53-adv-5 brief §-anchor fix):
+- F-R53-adv-5 RESOLVED (LOW — adversary finding R53): `traces_to` frontmatter and
+  §Source / Origin body cited `brief v1.4.7 §Public enum extensibility`. Brief has no
+  heading named "Public enum extensibility"; the text appears only as a bold-label
+  sub-bullet (`**Public enum extensibility:**`) within `## Scope`. Per PG-4
+  §-heading-existence convention, corrected to `brief §Scope (Public enum extensibility
+  forward-compatibility contract)` using the parenthetical-descriptor form. Two sites
+  corrected: `traces_to` frontmatter and §Source / Origin body.

@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "conventions"
-version: "1.21"
+version: "1.22"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -11,7 +11,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include \"monocle-*/src/**/*.rs\" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift; v1.14 round-47: F-R46-2 MEDIUM phantom BC-HOOK-001-006 replaced with attested gene-source reference; F-R46-3 LOW stale step-6 pinpoint reworded to position-free; PG-1 D-042 extension: schema-fact citation convention added; PG-2 META rule extended to cover step-renumbering events; v1.15 round-48: F-R48-cons-1 LOW directional typo in §Trace v1.14 corrected (Convention below → Convention above); v1.16 round-48: F-NEW-PG-1-direction LOW directional typo in §Trace v1.14 PG-1 entry corrected (Citation Convention below → above); PG-3 §Cross-Section Directional Reference Convention codified; SS-engine-module.md v1.1.12 co-edit (audit table rows below → above); v1.17 round-47.3: F-R48R-1 + F-R48R-2 L-number pinpoint sweep; PG-3 §Trace-prose authoring sub-rule codified; SS-engine-module.md v1.1.13 co-edit (§Trace L-numbers → position-free); v1.18 round-49: F-R48-adv-1 PG-2 noun-agnostic generalization + count fix (five→seven); F-R48-adv-2 PG-3 all-prose expansion + main-body L-number sweep; F-R48-adv-3 BC-HOOK-018 gene-source qualifier; D-042 scope codified (.factory/specs/ recursive); SS-engine-module.md v1.1.14 + SS-core-types-and-abi.md v1.2.4 co-edits; v1.19 round-51.1: F-R51-adv-1 PG-4 §-heading-existence convention codified; §Option A mis-anchor (2 sites) → §Trace; §Future audit maintenance mis-anchor → §Cross-Crate Constructor Audit; comprehensive PG-4 sweep across corpus; SS-engine-module.md v1.1.15 + SS-core-types-and-abi.md v1.2.5 + SS-forward-compatibility.md v1.2.6 co-edits; v1.20 round-52.1: F-R52-cons-1 PG-3 self-violation in §Trace v1.19 item (3) fixed (L487 dropped); PG-3-TRACE-NEW-ENTRY META-rule application discipline codified; R51.1 §Trace sweep: SS-core-types-and-abi.md v1.2.6 (at L487 dropped) + SS-forward-compatibility.md v1.2.7 ((L55)/(L57)/(L73) → position-free) + dtu-assessment.md v1.5 (D-042 cascade) co-edits; v1.21 round-52.2: PG-D042-DTU-SCOPE codified — D-042 recipe extended with sibling patterns for dtu-assessment.md and domain-monocle-vision-synthesis.md (8th META-pattern recurrence root-cause closure); example citations refreshed dtu-assessment.md v1.4 → v1.5 and SS-core-types-and-abi.md v1.2.5 → v1.2.6; SS-forward-compatibility.md v1.2.8 co-edit"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 3; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; adversary F-NEW-08 cargo-deny CI gate; ADR-0003 license selection; adversary F-R6-002 + consistency G-02 (round-6 bec535d); human Q-3 weekly R-001 monitoring; brief v1.4.6 §Competitive Positioning; v1.4 round-24 F-R24-adv-5: Test Conventions section added mandating temp-env for all env-mutating tests; v1.5 round-27: F-R26-adv-2 semgrep env-mutation pattern expanded (path-sensitive idioms); F-R26-adv-3 positive-coverage fixture corpus requirement added (POL-11); F-R26-adv-6 Test Conventions semgrep rule consolidated into §Semgrep Rules; v1.6 round-30: F-R30-3 monocle-non-exhaustive-struct-audit-completeness semgrep rule added + fixture corpus entry; v1.7 round-33: F-R32-2 fixture corpus dual-shape requirement for production-code attribute cluster + rule pattern hardening; F-R32-4 Python script edge-case contract (header/separator handling, missing file, malformed delimiters, duplicate delimiters, empty table); v1.8 round-35: F-R34-1 line-anchored delimiter regex for duplicate-detection (defense-in-depth with SS-engine-module §Trace prose de-quoting); F-R34-2 Shape B wildcard corrected from #[...] to #[$ATTR(...)] (standard semgrep metavariable); F-R34-3 paths.include expanded from 4 to 11 workspace crates + binary; v1.9 round-37: F-R36-2 §Trace v1.6 entry de-quoted (Partial-Fix Regression Discipline S-7.01 — v1.8 convention introduction failed to propagate no-verbatim-quoting rule to existing §Trace entries in same file); v1.10 round-39: F-R38-1 Option B — clause 4 Convention rule amended with explicit exception for regex constant definitions in §Trace (delimiter pattern string IS the spec content; cannot be expressed by name alone; narrowly scoped to code-specification blocks defining the constants, not narrative prose); v1.11 round-41: F-R40-1 Option A — CLI --include glob removed from Step 3 check_audit_table.py invocation; the rule's paths.include (expanded to all 12 workspace paths in F-R34-3) is the authoritative scope governor; CLI --include \"monocle-*/src/**/*.rs\" silently excluded the binary crate monocle/src/**/*.rs (no hyphen after monocle); v1.12 round-43: F-R42-adv-1 S-7.01 propagation — F-R32-2 dual-shape fixture discipline propagated to 3 sibling rules (monocle-no-shell-injection, monocle-no-naked-fs-write, monocle-no-raw-env-mutation-in-tests); all-arm fixture coverage made mandatory; expected counts computed from arm counts; Step 1 CI assertion language made normative (MUST); optional CI arm-count sanity check added; v1.13 round-45: F-R44-adv-1 paths.include fixture path + F-R44-adv-2/3/4 narrative count drift; v1.14 round-47: F-R46-2 MEDIUM phantom BC-HOOK-001-006 replaced with attested gene-source reference; F-R46-3 LOW stale step-6 pinpoint reworded to position-free; PG-1 D-042 extension: schema-fact citation convention added; PG-2 META rule extended to cover step-renumbering events; v1.15 round-48: F-R48-cons-1 LOW directional typo in §Trace v1.14 corrected (Convention below → Convention above); v1.16 round-48: F-NEW-PG-1-direction LOW directional typo in §Trace v1.14 PG-1 entry corrected (Citation Convention below → above); PG-3 §Cross-Section Directional Reference Convention codified; SS-engine-module.md v1.1.12 co-edit (audit table rows below → above); v1.17 round-47.3: F-R48R-1 + F-R48R-2 L-number pinpoint sweep; PG-3 §Trace-prose authoring sub-rule codified; SS-engine-module.md v1.1.13 co-edit (§Trace L-numbers → position-free); v1.18 round-49: F-R48-adv-1 PG-2 noun-agnostic generalization + count fix (five→seven); F-R48-adv-2 PG-3 all-prose expansion + main-body L-number sweep; F-R48-adv-3 BC-HOOK-018 gene-source qualifier; D-042 scope codified (.factory/specs/ recursive); SS-engine-module.md v1.1.14 + SS-core-types-and-abi.md v1.2.4 co-edits; v1.19 round-51.1: F-R51-adv-1 PG-4 §-heading-existence convention codified; §Option A mis-anchor (2 sites) → §Trace; §Future audit maintenance mis-anchor → §Cross-Crate Constructor Audit; comprehensive PG-4 sweep across corpus; SS-engine-module.md v1.1.15 + SS-core-types-and-abi.md v1.2.5 + SS-forward-compatibility.md v1.2.6 co-edits; v1.20 round-52.1: F-R52-cons-1 PG-3 self-violation in §Trace v1.19 item (3) fixed (L487 dropped); PG-3-TRACE-NEW-ENTRY META-rule application discipline codified; R51.1 §Trace sweep: SS-core-types-and-abi.md v1.2.6 (at L487 dropped) + SS-forward-compatibility.md v1.2.7 ((L55)/(L57)/(L73) → position-free) + dtu-assessment.md v1.5 (D-042 cascade) co-edits; v1.21 round-52.2: PG-D042-DTU-SCOPE codified — D-042 recipe extended with sibling patterns for dtu-assessment.md and domain-monocle-vision-synthesis.md (8th META-pattern recurrence root-cause closure); example citations refreshed dtu-assessment.md v1.4 → v1.5 and SS-core-types-and-abi.md v1.2.5 → v1.2.6; SS-forward-compatibility.md v1.2.8 co-edit; v1.22 round-53.1: F-R53-adv-2 PG-4 sibling-pattern expansion (brief/dtu/vision/ADR patterns added); PG-RECIPE-SCOPE META-META rule codified — 9th recurrence root-cause closure; SS-daemon-lifecycle.md v1.0.7 + SS-forward-compatibility.md v1.2.9 + SS-core-types-and-abi.md v1.2.7 + ADR-0004 v1.0.2 co-edits"
 project: monocle
 ---
 
@@ -842,8 +842,8 @@ matrix." (Ambiguous anchor; does not distinguish gene-source vs monocle-canonica
 validation pattern.)
 
 **Correct form:** "field X is present in all 5 monocle-canonical hook body schemas per
-dtu-assessment.md v1.5 §monocle-canonical column, verified against SS-core-types-and-abi.md
-v1.2.6 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
+dtu-assessment.md v1.6 §monocle-canonical column, verified against SS-core-types-and-abi.md
+v1.2.7 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
 
 **D-042 integration:** The D-042 workflow (primary and secondary grep patterns, documented in
 SS-forward-compatibility.md §Trace §D-042 WORKFLOW RULE corrected) covers version-citation
@@ -1082,12 +1082,39 @@ a grep/code context. Example: the secondary D-042 grep description quotes
 `"SS-daemon-lifecycle.md §HookEventRecord at v1.0.5"` as a sample match string — this is
 meta-prose describing a pattern, not a navigation citation.
 
-**Pre-commit grep (PG-4 sweep):**
+**Pre-commit grep (PG-4 sweep — expanded scope, codified v1.22, round-53.1):**
+
+**Pattern 1 — SS-*.md §-anchor citations (original v1.19 scope):**
 ```
 grep -nE 'SS-[a-z-]+\.md §[A-Z][a-zA-Z0-9 -]+' <file>
 ```
-For each match, open the cited SS-*.md file and verify the §-named portion corresponds to an
-actual heading. Use:
+
+**Pattern 2 — brief.md §-anchor citations (sibling, codified v1.22):**
+```
+grep -nE 'brief[^ ]*\.md §[A-Z][a-zA-Z0-9 -]+|brief v[0-9.]+ §[A-Z][a-zA-Z0-9 -]+' <file>
+```
+Or using the simpler form that catches inline brief citations without .md extension:
+```
+grep -nE 'brief[^.]*§[A-Z][a-zA-Z0-9 -]+' <file>
+```
+
+**Pattern 3 — dtu-assessment.md §-anchor citations (sibling, codified v1.22):**
+```
+grep -nE 'dtu-assessment[^ ]*\.md §[A-Z][a-zA-Z0-9 -]+' <file>
+```
+
+**Pattern 4 — domain-monocle-vision §-anchor citations (sibling, codified v1.22):**
+```
+grep -nE 'domain-monocle-vision[^ ]*\.md §[A-Z][a-zA-Z0-9 -]+|vision §[A-Z][a-zA-Z0-9 -]+' <file>
+```
+
+**Pattern 5 — ADR-N.md §-anchor citations (sibling, codified v1.22):**
+```
+grep -nE 'ADR-[0-9]+[^ ]*\.md §[A-Z][a-zA-Z0-9 -]+' <file>
+```
+
+For each match from any pattern, open the cited file and verify the §-named portion
+corresponds to an actual `#`/`##`/`###`/`####` heading. Use:
 ```
 grep -n "^#\|^##\|^###\|^####" <cited-file> | grep "<Name>"
 ```
@@ -1101,15 +1128,88 @@ only as inline prose in §Status ("human-directed per Q-A-permission-enum Option
 paragraph prefix in §Trace ("Option A. Gene-source: ... BC-HOOK-018"). No `##` or `###`
 heading named "Option A" existed. This was missed by two prior CLEAN consistency audits and
 one CLEAN adversary pass; only a fresh-context Semantic Anchoring Audit caught it. PG-4 closes
-the class: any `§<Name>` must resolve to a real heading, not prose.
+the class: any `§<Name>` must resolve to a real heading, not prose. The original v1.19
+recipe covered only SS-*.md citations; F-R53-adv-2 (round-53.1) confirmed at least 5
+brief-§-anchor mis-anchors across the corpus that the SS-only pattern never caught. The
+sibling patterns above extend PG-4 sweep to all versioned spec artifacts.
 
-**Relationship to PG-1/PG-2/PG-3:** PG-4 is the fourth META-pattern class:
+**Relationship to PG-1/PG-2/PG-3/PG-RECIPE-SCOPE:** PG-4 is the fourth META-pattern class:
 - PG-1: Schema-fact citations must include version pin (§Schema-Fact Citation Convention)
 - PG-2: Narrative counts must match structural reality (§Schema-Fact Citation Convention, generalized PG-2 sub-rule)
 - PG-3: Directional qualifiers above/below must be position-accurate (§Cross-Section Directional Reference Convention)
 - PG-4: §<Name> citations must resolve to actual headings (this section)
+- PG-RECIPE-SCOPE: Every new META-rule's sweep recipe must include sibling patterns for all versioned spec artifacts (§META-Rule Recipe Sibling-Pattern Convention)
+
+## §META-Rule Recipe Sibling-Pattern Convention (PG-RECIPE-SCOPE)
+
+Added in v1.22 (round-53.1, F-R53-adv-2 root-cause closure at the META-META level).
+
+**Rule:** When codifying any new META-rule with a pre-commit grep recipe, the recipe MUST
+include sibling patterns covering ALL versioned spec artifacts, not just `SS-*` files, as
+part of the initial codification — not as a follow-up burst.
+
+**Versioned spec artifacts in this corpus:**
+- `SS-*.md` (8 architecture spec files)
+- `dtu-assessment.md`
+- `domain-monocle-vision-synthesis.md`
+- `product-brief.md` (D-041 routing — read-only for automated sweeps; cited by architecture)
+- `ADR-N-*.md` (architecture decision records)
+
+**Root cause:** D-042 (v1.18 PG-D042-BURST-SKIP closure → v1.21 PG-D042-DTU-SCOPE) and PG-4
+(v1.19 codification → v1.22 sibling extension) both required follow-up bursts to add sibling
+patterns. The defect is structural: an SS-only recipe matches the bulk of the corpus but
+silently excludes sibling artifacts. PG-RECIPE-SCOPE prevents recurrence at the META-META
+level — the 9th META-pattern recurrence root-cause closure.
+
+**Self-audit at codification time:** Before committing a new META-rule with a sweep recipe,
+run the recipe against all versioned spec artifact classes. If the recipe pattern would
+match `SS-foo.md` but not `product-brief.md`, `dtu-assessment.md`,
+`domain-monocle-vision-synthesis.md`, or `ADR-N-*.md`, the recipe is INCOMPLETE — add the
+sibling patterns before merge.
+
+**Anti-pattern:**
+```
+# WRONG — SS-only scope, silently excludes sibling artifacts
+grep -nE 'SS-[a-z-]+\.md §[A-Z][a-zA-Z0-9 -]+' <file>
+```
+
+**Correct form (PG-RECIPE-SCOPE compliant):** Include a sibling pattern for each artifact
+class in the corpus. See §Section-Anchor Citation Convention §PG-4 sweep for the reference
+implementation with all 5 patterns.
+
+**Historical recurrence log:**
+- Round-51.1 (v1.19): PG-4 codified with SS-only grep. No sibling patterns.
+- Round-53.1 (v1.22): F-R53-adv-2 confirmed 5+ brief-§-anchor mis-anchors that the
+  SS-only pattern never caught. Sibling patterns added; PG-RECIPE-SCOPE codified.
+- Analogous to D-042 scope hole: v1.18 D-042 recipe was SS-only; v1.21 PG-D042-DTU-SCOPE
+  added dtu-assessment.md and vision sibling patterns after F-R52R-1.
 
 ## §Trace
+
+v1.22 changes (round-53.1 F-R53-adv-2 PG-RECIPE-SCOPE codification + PG-4 sibling-pattern expansion):
+
+- F-R53-adv-2 RESOLVED (MEDIUM process-gap — adversary finding R53): PG-4 pre-commit
+  grep recipe was scoped to `SS-[a-z-]+` filenames only, silently excluding
+  `product-brief.md`, `dtu-assessment.md`, `domain-monocle-vision-synthesis.md`, and
+  `ADR-N-*.md`. Same root-cause class as D-042's pre-R51.1 scope hole (§PG-D042-DTU-SCOPE)
+  and the META-META structural pattern confirmed across 9 recurrences. Recipe expanded with
+  4 sibling patterns (brief, dtu-assessment, vision, ADR-N). Each sibling pattern verified
+  against actual citation patterns in the corpus.
+
+- PG-RECIPE-SCOPE META-META rule codified: new §META-Rule Recipe Sibling-Pattern Convention
+  added. When codifying any new META-rule with a sweep recipe, the recipe MUST include
+  sibling patterns for all versioned spec artifacts at codification time — not as a follow-up
+  burst. Self-audit at codification time specified. This closes the 9th recurrence of the
+  SS-only recipe scope hole at the META-META level.
+
+- PG-4 §Relationship updated to reference PG-RECIPE-SCOPE as the 5th META-pattern class.
+
+- Comprehensive brief-§-anchor sweep (expanded PG-4 scope): All brief §-anchor citations
+  verified across 8 architecture spec files + ADR-0004. Mis-anchors corrected in:
+  SS-daemon-lifecycle.md v1.0.6 → v1.0.7 (F-R53-adv-1; §Item P3-1 fix),
+  SS-forward-compatibility.md v1.2.8 → v1.2.9 (F-R53-adv-3; 5 brief §-anchor fixes),
+  SS-core-types-and-abi.md v1.2.6 → v1.2.7 (F-R53-adv-3 + F-R53-adv-4; 3 brief
+  §-anchor fixes), ADR-0004 v1.0.1 → v1.0.2 (F-R53-adv-5; brief §Scope fix).
 
 v1.21 changes (round-52.2 PG-D042-DTU-SCOPE codification + D-042 example citation refresh):
 

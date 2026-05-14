@@ -1,7 +1,7 @@
 ---
 document_type: dtu-assessment
 level: L3
-version: "1.5"
+version: "1.6"
 status: complete
 producer: architect
 timestamp: 2026-05-14T08:00:00Z
@@ -12,7 +12,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1; human Q-2 clone build effort (v1.1); v1.2 round-47: F-R46-1 HIGH — endpoint matrix split into gene-source canonical vs monocle-canonical columns to reflect session_id on all 5 events and EX-2 extensions (cwd, transcript_path, prompt) verified against SS-core-types-and-abi.md v1.2.3 struct definitions; v1.3 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in all 3 body citation sites (endpoint matrix column header, monocle-canonical struct definition prose, schema provenance sentence); v1.4 round-51.1: D-042 citation refresh — SS-core-types-and-abi.md v1.2.4 → v1.2.5 in all 3 body citation sites (bump triggered by PG-4 sweep that bumped SS-core-types-and-abi.md); v1.5 round-52.1: D-042 citation refresh — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in all 3 body citation sites (bump triggered by PG-3-TRACE-NEW-ENTRY sweep that bumped SS-core-types-and-abi.md)"
+traces_to: "OQ-M1, OQ-M3 resolutions (brief v1.4); adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 6; brief v1.4 commit 70286e1; human Q-2 clone build effort (v1.1); v1.2 round-47: F-R46-1 HIGH — endpoint matrix split into gene-source canonical vs monocle-canonical columns to reflect session_id on all 5 events and EX-2 extensions (cwd, transcript_path, prompt) verified against SS-core-types-and-abi.md v1.2.3 struct definitions; v1.3 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in all 3 body citation sites (endpoint matrix column header, monocle-canonical struct definition prose, schema provenance sentence); v1.4 round-51.1: D-042 citation refresh — SS-core-types-and-abi.md v1.2.4 → v1.2.5 in all 3 body citation sites (bump triggered by PG-4 sweep that bumped SS-core-types-and-abi.md); v1.5 round-52.1: D-042 citation refresh — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in all 3 body citation sites (bump triggered by PG-3-TRACE-NEW-ENTRY sweep that bumped SS-core-types-and-abi.md); v1.6 round-53.1: D-042 citation refresh — SS-core-types-and-abi.md v1.2.6 → v1.2.7 in all 3 body citation sites (bump triggered by F-R53-adv-3/4 brief §-anchor fixes that bumped SS-core-types-and-abi.md)"
 dtu_required: true
 project: monocle
 ---
@@ -93,7 +93,7 @@ None identified — rationale: monocle does not call external enrichment service
 **Endpoint matrix the clone synthesizes:**
 
 The matrix below has two body-field columns: the gene-source canonical fields (from BC-HOOK-007,
-any-context ingest) and monocle-canonical fields (from SS-core-types-and-abi.md v1.2.6 struct
+any-context ingest) and monocle-canonical fields (from SS-core-types-and-abi.md v1.2.7 struct
 definitions). The DTU clone MUST produce monocle-canonical payloads — the gene-source column is
 retained for provenance traceability only. The monocle-canonical column is the authoritative serde
 contract; clone payloads built from the gene-source column alone will fail deserialization at the
@@ -102,7 +102,7 @@ monocle daemon.
 EX-2 denotes architect-extension fields added beyond the gene-source body (cwd, transcript_path,
 prompt) — specified in SS-core-types-and-abi.md §Non-Exhaustive Inner Structs.
 
-| Hook type | HTTP method | Path | Auth header | Gene-source body fields (BC-HOOK-007) | Monocle-canonical body fields (SS-core-types-and-abi.md v1.2.6) |
+| Hook type | HTTP method | Path | Auth header | Gene-source body fields (BC-HOOK-007) | Monocle-canonical body fields (SS-core-types-and-abi.md v1.2.7) |
 |-----------|-------------|------|-------------|--------------------------------------|------------------------------------------------------------------|
 | PreToolUse | POST | `/hooks/pre-tool-use` | `X-Claude-Code-Ide-Authorization` | `type, pid, tool_name, tool_input` | `session_id, pid, tool_name, tool_input` |
 | Notification | POST | `/hooks/notification` | `X-Claude-Code-Ide-Authorization` | `pid, tool_name, tool_input, message` | `session_id, pid, notification_type, tool_name, tool_input, message` |
@@ -112,7 +112,7 @@ prompt) — specified in SS-core-types-and-abi.md §Non-Exhaustive Inner Structs
 
 Schema provenance: gene-source column from canonical 5-endpoint matrix in any-context
 BC-HOOK-001..BC-HOOK-041 (hooks-r1/r2 ingest rounds). Monocle-canonical column from
-SS-core-types-and-abi.md v1.2.6 §Non-Exhaustive Inner Structs — the authoritative Rust struct
+SS-core-types-and-abi.md v1.2.7 §Non-Exhaustive Inner Structs — the authoritative Rust struct
 field list used by the daemon's serde deserialization path. Note: monocle's canonical Phase 1
 paths (`/hooks/pre-tool-use` etc.) differ from any-context gene-source paths (`/notify`,
 `/stop`, etc.); the clone must target monocle's paths.
@@ -395,6 +395,16 @@ test harness benefits from container isolation across daemon instances). The Pha
 binary-first decision does not constrain Phase 4 packaging choices.
 
 ## §Trace
+
+v1.6 changes (round-53.1 D-042 citation refresh):
+
+- D-042 CITATION REFRESH: SS-core-types-and-abi.md version citation updated from v1.2.6
+  to v1.2.7 in all three body citation sites: (1) endpoint matrix monocle-canonical
+  column header; (2) monocle-canonical struct definition prose sentence; (3) schema
+  provenance sentence. SS-core-types-and-abi.md was bumped from v1.2.6 to v1.2.7 in
+  round-53.1 F-R53-adv-3/4 brief §-anchor fixes. D-042 full-scope grep
+  (`.factory/specs/` recursive, including new sibling pattern for `SS-core-types-and-abi`)
+  surfaced all three sites in this burst.
 
 v1.5 changes (round-52.1 D-042 citation refresh):
 
