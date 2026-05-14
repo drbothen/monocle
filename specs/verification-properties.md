@@ -2,12 +2,13 @@
 document_type: verification-properties
 level: L3
 section: "verification-properties"
-version: "1.0"
-status: complete
+version: "1.1"
+status: draft
 producer: formal-verifier
-phase: pre-phase-1-architecture
-timestamp: 2026-05-14T20:30:00Z
+phase: phase-1-spec-crystallization
+timestamp: 2026-05-14T23:30:00Z
 inputs:
+  - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-engine-module.md
@@ -21,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "16 BCs pre-staged across SS-daemon-lifecycle v1.0.7 (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001), SS-core-types-and-abi v1.2.8 (BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), and SS-engine-module v1.1.15 (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003); dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE"
+traces_to: "22 BCs after F-R62 fix-burst — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources: SS-daemon-lifecycle v1.0.8 (BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001), SS-core-types-and-abi v1.2.8 (BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), SS-engine-module v1.1.15 (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003). PRD v1.1 commit f855835 — canonical test-file path source for fix-burst (BC contracts authored 1:1 against PRD BC sections). Adversary R62 commit 5713ccc — 10 findings catalogued; this v1.1 closes VP-owned findings F-R62-1, F-R62-4, F-R62-5, F-R62-7, F-R62-8, F-R62-9. Architect adjudication commit 2db408f — BC-AUTH-002 disposition (c) collapsed taxonomy (missing_auth_token vs invalid_auth_token; invalid_auth_token_format retired). Consistency audit commit 0e322da — Phase 1 entry gaps catalogued and routed. dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE"
 project: monocle
 ---
 
@@ -30,12 +31,13 @@ project: monocle
 ## §Purpose
 
 This artifact authors formally-testable Verification Properties (VPs) against
-the 16 Behavioral Contracts (BCs) pre-staged in the Phase 1 architecture
-artifacts. Each VP states a mechanical, executable property that asserts the
-BC holds under a precisely scoped pre-condition. Each VP is bound to a
-verification mechanism — Kani proof, fuzz harness, unit test, or mutation test
-— and includes counter-example sketches that an adversary or fuzzer should
-generate to refute the property.
+the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.1 (commit
+f855835) and pre-staged across the Phase 1 architecture artifacts. Each VP
+states a mechanical, executable property that asserts the BC holds under a
+precisely scoped pre-condition. Each VP is bound to a verification mechanism —
+Kani proof, fuzz harness, unit test, or mutation test — and includes
+counter-example sketches that an adversary or fuzzer should generate to refute
+the property.
 
 The VP catalog is the input to Phase 6 (Formal Hardening). Every VP whose
 mechanism is `unit-test` or `fuzz` is also a TDD target during Phase 3. Kani
@@ -47,14 +49,31 @@ covered by at least one VP. No BC is deferred to "Phase 2 verification" or "we
 can add tests later." Where a BC has both a wire-format facet and a Rust-surface
 facet (BC-PROTO-001 family), each facet receives its own VP.
 
+This v1.1 revision is the formal-verifier side of the F-R62 fix-burst. The
+v1.0 catalog covered the 16 architecture-staged BCs but excluded the 6
+daemon-endpoint BCs that the PRD v1.0 had not yet formalized as full contract
+sections. After the architect's BC-AUTH-002 adjudication (commit 2db408f)
+and the product-owner's PRD v1.1 expansion to 22 BCs (commit f855835), this
+catalog is now in 1:1 correspondence with the PRD's BC scope: VP-DAEMON-001
+through VP-DAEMON-006 are added; VP-AUTH-001/002 are updated to the
+collapsed two-body taxonomy; VP-PROTO-002 is reframed to be Phase 4-scoped
+without fabricating Phase 1 code surface; and all test-file paths are
+adopted verbatim from PRD v1.1 §7. Requirements Traceability Matrix to eliminate the prior PRD/VP
+drift catalogued as F-R62-4.
+
 ---
 
 ## §Scope
 
 In scope:
 
-- All 16 Phase 1 BCs pre-staged across `SS-daemon-lifecycle.md` v1.0.7,
-  `SS-core-types-and-abi.md` v1.2.8, and `SS-engine-module.md` v1.1.15.
+- All 22 Phase 1 BCs — 6 daemon-endpoint BCs formalized in PRD v1.1
+  (BC-DAEMON-001..006) plus 16 BCs pre-staged across `SS-daemon-lifecycle.md`
+  v1.0.8 (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001),
+  `SS-core-types-and-abi.md` v1.2.8 (BC-ABI-001/002, BC-TYPES-001,
+  BC-FACTORY-001/002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), and
+  `SS-engine-module.md` v1.1.15 (BC-ENGINE-001, BC-ENGINE-002,
+  BC-ENGINE-002-ERR, BC-ENGINE-003).
 - Mechanical property statements (deterministic, executable assertions).
 - Verification mechanism selection per VP — Kani / fuzz / unit / mutation.
 - Pre-condition / post-condition pairs per VP.
@@ -76,17 +95,25 @@ Out of scope:
 
 ## §VP Catalog Overview
 
-The catalog contains exactly 16 VPs, one per BC. Three VPs (VP-AUTH-001,
-VP-AUTH-002, VP-FACTORY-002) admit auxiliary fuzz harnesses in addition to
-their primary unit-test mechanism — see §Per-VP Detail and §Coverage Matrix
-for the mechanism distribution.
+The catalog contains exactly 22 VPs, one per BC. Five VPs (VP-AUTH-001,
+VP-AUTH-002, VP-FACTORY-002, VP-PROTO-002 Phase-4-deferred, VP-DAEMON-003) admit auxiliary
+fuzz harnesses in addition to their primary unit-test mechanism. Four VPs
+(VP-RING-001, VP-LOCK-001, VP-TYPES-001, VP-DAEMON-005) admit auxiliary
+mutation-test harnesses — see §Per-VP Detail and §Coverage Matrix for the
+mechanism distribution.
 
 | VP ID | BC Source | Property Domain | Primary Mechanism | Auxiliary Mechanism |
 |-------|-----------|-----------------|-------------------|---------------------|
-| VP-RING-001 | BC-RING-001 (SS-daemon-lifecycle v1.0.7) | JSONL ring record format-version is first key | unit-test | mutation-test |
-| VP-AUTH-001 | BC-AUTH-001 (SS-daemon-lifecycle v1.0.7) | Wire format `monocle-v1:<64-hex>`; constant-time comparison | unit-test | fuzz |
-| VP-AUTH-002 | BC-AUTH-002 (SS-daemon-lifecycle v1.0.7) | Non-prefixed tokens rejected with HTTP 401 + JSON error body | unit-test | fuzz |
-| VP-LOCK-001 | BC-LOCK-001 (SS-daemon-lifecycle v1.0.7) | Lock-file `contract_version: 1` first key; readers gate on field | unit-test | mutation-test |
+| VP-DAEMON-001 | BC-DAEMON-001 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | `/healthz` unauthenticated 200/503 with uptime + version | unit-test | — |
+| VP-DAEMON-002 | BC-DAEMON-002 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | `/status` authenticated daemon-state JSON with 10 required fields incl `abi_version: 1` | unit-test | — |
+| VP-DAEMON-003 | BC-DAEMON-003 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | 256 KiB request-body limit; HTTP 413 + `payload_too_large` body on excess | unit-test | fuzz |
+| VP-DAEMON-004 | BC-DAEMON-004 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | 10-second graceful drain on SIGTERM / SIGINT / `POST /shutdown`; 503 + `Retry-After: 10` on new hook POSTs during drain | unit-test | — |
+| VP-DAEMON-005 | BC-DAEMON-005 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | Lock-file lifecycle atomically via `tempfile::persist`; pid-liveness gate; mode 0o600; removed on clean shutdown | unit-test | mutation-test |
+| VP-DAEMON-006 | BC-DAEMON-006 (PRD v1.1 / SS-daemon-lifecycle v1.0.8) | Crash-recovery checkpoint JSON written before lock removal; 60-second TUI offer window; cleanup on accept/decline/timeout | unit-test | — |
+| VP-RING-001 | BC-RING-001 (SS-daemon-lifecycle v1.0.8) | JSONL ring record format-version is first key | unit-test | mutation-test |
+| VP-AUTH-001 | BC-AUTH-001 (SS-daemon-lifecycle v1.0.8) | Wire format `monocle-v1:<64-hex>`; constant-time comparison | unit-test | fuzz |
+| VP-AUTH-002 | BC-AUTH-002 (SS-daemon-lifecycle v1.0.8) | Two-body taxonomy: absent header → `missing_auth_token`; any value-present failure → `invalid_auth_token` (collapsed) | unit-test | fuzz |
+| VP-LOCK-001 | BC-LOCK-001 (SS-daemon-lifecycle v1.0.8) | Lock-file `contract_version: 1` first key; readers gate on field | unit-test | mutation-test |
 | VP-ABI-001 | BC-ABI-001 (SS-core-types-and-abi v1.2.8) | `/status` response body contains `abi_version: 1` | unit-test | — |
 | VP-ABI-002 | BC-ABI-002 (SS-core-types-and-abi v1.2.8) | `monocle_core::MONOCLE_ABI_VERSION` pub const equals `1` | unit-test | — |
 | VP-TYPES-001 | BC-TYPES-001 (SS-core-types-and-abi v1.2.8) | Every pub enum in `monocle-core` carries `#[non_exhaustive]` modulo ADR-0004 exemptions | unit-test | mutation-test |
@@ -94,7 +121,7 @@ for the mechanism distribution.
 | VP-FACTORY-002 | BC-FACTORY-002 (SS-core-types-and-abi v1.2.8) | `VsddFactoryAdapter::new` + self-referential detection; `None` for absent optionals | unit-test | fuzz |
 | VP-PROTO-001a | BC-PROTO-001a (SS-core-types-and-abi v1.2.8) | Proto field number 1 in `HookEnvelope` is `schema_version` | unit-test | — |
 | VP-PROTO-001b | BC-PROTO-001b (SS-core-types-and-abi v1.2.8) | Rust `HookEnvelope` struct exposes `pub schema_version: u32`; value `1` | unit-test | — |
-| VP-PROTO-002 | BC-PROTO-002 (SS-core-types-and-abi v1.2.8) | Unknown `schema_version` is skipped with warning; no panic | unit-test | fuzz |
+| VP-PROTO-002 | BC-PROTO-002 (SS-core-types-and-abi v1.2.8) | Phase 1 verification: `schema_version` field exists at proto field 1 (structural recap of VP-PROTO-001a/001b); Phase 4 runtime: unknown `schema_version` is skipped with warning, no panic | unit-test (Phase 1 structural) | fuzz (Phase 4-only) |
 | VP-ENGINE-001 | BC-ENGINE-001 (SS-engine-module v1.1.15) | `EngineModule` trait signature stable; `last_event_micros: Option<i64>`; no silent fallback | unit-test | — |
 | VP-ENGINE-002 | BC-ENGINE-002 (SS-engine-module v1.1.15) | `ClaudeCodeModule::detect` strict basename match; cmdline ignored | unit-test | — |
 | VP-ENGINE-002-ERR | BC-ENGINE-002-ERR (SS-engine-module v1.1.15) | `metadata`/`enrich` return `HomeUnresolvable` with all four home-env vars unset | unit-test | — |
@@ -104,9 +131,9 @@ for the mechanism distribution.
 
 | Mechanism | Count (primary) | Count (auxiliary) | Total VPs touched |
 |-----------|-----------------|-------------------|-------------------|
-| unit-test | 16 | 0 | 16 |
-| fuzz | 0 | 4 | 4 |
-| mutation-test | 0 | 3 | 3 |
+| unit-test | 22 | 0 | 22 |
+| fuzz | 0 | 5 | 5 |
+| mutation-test | 0 | 4 | 4 |
 | Kani proof | 0 | 0 | 0 (deferred — see §Open Verification Gaps §G-1) |
 
 Kani proof harnesses are NOT used in Phase 1 because the Phase 1 BCs do not
@@ -117,6 +144,17 @@ the first phases where Kani's strengths (arithmetic overflow, state-machine
 invariants on arbitrary inputs) become load-bearing. See §Open Verification
 Gaps §G-1 for the Phase 2 trigger Kani pre-stage.
 
+Note on VP-PROTO-002 (post-F-R62-7 reframing): the Phase 1 verification is
+purely structural and is in fact a compile-time recap of VP-PROTO-001a +
+VP-PROTO-001b (the `schema_version` field exists at proto-tag-1 with type
+`uint32`). The runtime behavior — unknown `schema_version` is logged and
+skipped, no panic, no error propagation — is exclusively a Phase 4 concern
+and its dispatch surface (`monocle-ipc::dispatch`) is a Phase 4 deliverable.
+This catalog does NOT mandate any Phase 1 code surface (no
+`dispatch_envelope` function, no `DispatchError` type) for VP-PROTO-002. The
+Phase 4 fuzz harness is documented for future implementation; it is not a
+Phase 1 TDD target.
+
 ---
 
 ## §Per-VP Detail
@@ -124,7 +162,530 @@ Gaps §G-1 for the Phase 2 trigger Kani pre-stage.
 Each VP below states: the mechanical property; the verification mechanism;
 pre-conditions (test setup); post-conditions (assertions that must hold); and
 counter-example sketches (adversarial inputs that, if accepted, would refute
-the property).
+the property). The VPs are presented in PRD §Section 7 RTM row order — daemon
+endpoints first (BC-DAEMON-001..006), then the original 16 architecture-staged
+BCs in the order they appear in the PRD.
+
+### §VP-DAEMON-001 — `/healthz` Unauthenticated Liveness 200/503 with Uptime + Version
+
+**Traces to:** BC-DAEMON-001 (PRD v1.1 §BC-DAEMON-001; SS-daemon-lifecycle.md
+v1.0.8 §Health and Status Endpoints).
+
+**Mechanical property:**
+
+1. A `GET /healthz` request with NO `X-Monocle-Authorization` header returns
+   HTTP 200 when AppMode is normal and the hook-receiver task is alive.
+2. The response body is structurally a JSON object with exactly the keys
+   `status`, `uptime_sec`, `version`. The `status` value is the literal string
+   `"alive"`; `uptime_sec` is an integer ≥ 0; `version` is a non-empty semver
+   string matching the daemon binary's compile-time `CARGO_PKG_VERSION`.
+3. When AppMode is `ShuttingDown` (drain in progress), the same request
+   returns HTTP 503 with body `{"status":"shutting_down"}` — exactly two keys
+   in the object (no `uptime_sec`, no `version`).
+4. The endpoint is registered on the unauthenticated router; it is NOT
+   subject to the `DefaultBodyLimit::max(256 * 1024)` layer (BC-DAEMON-003)
+   because that layer is mounted only on the authenticated router.
+5. Presenting any `X-Monocle-Authorization` header (valid or invalid) does
+   NOT change the response — the endpoint ignores the header entirely.
+
+**Mechanism:** unit-test.
+
+**Pre-conditions:**
+
+- Daemon running with a normal AppMode (not `ShuttingDown`).
+- Hook-receiver task is alive (no abnormal exit).
+- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md).
+
+**Post-conditions:**
+
+1. `GET /healthz` (no auth header) returns status code `200`.
+2. Response body parsed as JSON has keys exactly `{"status", "uptime_sec",
+   "version"}`. `status == "alive"`. `uptime_sec` is a JSON integer ≥ 0.
+   `version` equals `env!("CARGO_PKG_VERSION")` from the daemon binary
+   crate at compile time.
+3. With the daemon transitioned to `ShuttingDown` (via SIGTERM or `POST
+   /shutdown`), `GET /healthz` returns status code `503` and body
+   `{"status":"shutting_down"}` (exactly two keys).
+4. `GET /healthz` with `X-Monocle-Authorization: monocle-v1:<valid-token>`
+   produces the same response as without the header (header is ignored).
+5. `GET /healthz` with `X-Monocle-Authorization: garbage` produces the same
+   response (no 401 — unauthenticated router does not run the auth
+   middleware).
+6. The two routers' construction (`unauth_router` and `auth_router`) is
+   inspected: the `DefaultBodyLimit::max(256 * 1024)` layer is added to
+   `auth_router` only. A `cargo expand` or source-grep test asserts this
+   structural property.
+
+**Counter-example sketches:**
+
+1. `/healthz` mounted on the authenticated router by mistake — a no-auth
+   probe would return HTTP 401 instead of 200; the test must assert 200
+   on the no-auth probe.
+2. Body returned as `{"status":"alive"}` only (uptime + version dropped) —
+   fails the 3-key structural assertion.
+3. `uptime_sec` returned as a JSON string (`"42"`) instead of integer — fails
+   the integer type assertion.
+4. `version` field returned as the build profile (`"debug"`) instead of
+   semver — fails the semver-regex assertion.
+5. Drain-state body returned as `{"status":"alive","uptime_sec":N,"version":
+   "<v>","drain":true}` (4 keys with drain flag) — fails the exact two-key
+   assertion under `ShuttingDown`.
+
+**Harness location:** `monocle-runtime/tests/healthz_endpoint.rs`.
+
+**Test name:** `test_BC_DAEMON_001_healthz_unauthenticated_alive` (per PRD
+v1.1 §BC-DAEMON-001, Verification subsection).
+
+---
+
+### §VP-DAEMON-002 — `/status` Authenticated Daemon-State JSON with 10 Required Fields
+
+**Traces to:** BC-DAEMON-002 (PRD v1.1 §BC-DAEMON-002; SS-daemon-lifecycle.md
+v1.0.8 §Health and Status Endpoints).
+
+**Mechanical property:**
+
+1. A `GET /status` request with valid `X-Monocle-Authorization: monocle-v1:
+   <64-hex>` returns HTTP 200 with a JSON body containing exactly the 10
+   required fields: `pid` (integer), `uptime_sec` (integer), `version`
+   (semver string), `abi_version` (integer 1), `lock_file` (absolute path
+   string), `hook_endpoints` (JSON array of exactly 5 hook path strings),
+   `ring_buffer_fill_pct` (float 0.0..=100.0), `channel_saturation_pct`
+   (float 0.0..=100.0), `last_hook_ts` (JSON object with per-hook-type ISO
+   8601 timestamps or `null`), `tui_attached` (boolean).
+2. The `abi_version` value equals `monocle_core::MONOCLE_ABI_VERSION` at
+   compile time (compile-time const-assert in the daemon binary crate
+   ensures drift between binary and constant is impossible).
+3. The `hook_endpoints` array contains exactly the 5 strings
+   `["/hooks/pre-tool-use", "/hooks/notification", "/hooks/stop",
+   "/hooks/session-start", "/hooks/prompt-submit"]` (order-insensitive set
+   equality; the test sorts before compare).
+4. A `GET /status` request without the auth header returns HTTP 401 with
+   body `{"error":"missing_auth_token"}` (per VP-AUTH-002 cross-property).
+5. A `GET /status` request with a malformed auth header returns HTTP 401
+   with body `{"error":"invalid_auth_token"}` (per VP-AUTH-002).
+6. `GET /status` continues to serve during graceful drain — the response
+   includes the same 10 fields with `tui_attached` reflecting the live
+   state. The endpoint is read-only and DOES NOT block on drain.
+
+**Mechanism:** unit-test.
+
+**Pre-conditions:**
+
+- Daemon running with a valid lock file.
+- Test client reads the auth token from the lock file before issuing the
+  request (the canonical client-side pattern per SS-daemon-lifecycle.md
+  §Daemon Lifecycle Protocol §Start Sequence).
+- `monocle_core::MONOCLE_ABI_VERSION` equals `1` at the time the daemon
+  binary is compiled.
+
+**Post-conditions:**
+
+1. `GET /status` with valid header → HTTP 200; JSON body parses; field set
+   equals exactly the 10 keys above; `abi_version == 1`;
+   `hook_endpoints.len() == 5`.
+2. `GET /status` with no header → HTTP 401 + `{"error":"missing_auth_token"}`.
+3. `GET /status` with `monocle-v2:<hex>` → HTTP 401 + `{"error":"invalid_auth_token"}`.
+4. `last_hook_ts` is a JSON object; each value is either an ISO 8601 string
+   matching `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$` or JSON `null`.
+5. Request body exceeding 256 KiB returns HTTP 413 + `payload_too_large`
+   body (cross-check VP-DAEMON-003 since `/status` is on the authenticated
+   router and inherits the body-limit layer).
+
+**Counter-example sketches:**
+
+1. Response body has only 9 fields (one of the 10 dropped) — fails the
+   exact-field-set assertion.
+2. `abi_version` returned as `2` while the compiled `MONOCLE_ABI_VERSION`
+   is `1` — fails the integer equality with the const.
+3. `hook_endpoints` returns 4 paths (one missing) — fails the
+   `.len() == 5` assertion.
+4. `last_hook_ts` returns an empty string `""` instead of JSON `null` for
+   hook types that have not fired — fails the null-or-iso8601 assertion.
+5. Auth middleware accidentally returns `invalid_auth_token_format` body
+   (the retired v1.0 taxonomy) for any case — fails because that body is
+   no longer defined (the test asserts the exact two-body taxonomy from
+   the post-2db408f BC-AUTH-002 contract).
+
+**Harness location:** `monocle-runtime/tests/status_endpoint_auth.rs`.
+
+**Test name:** `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version`
+(per PRD v1.1 §BC-DAEMON-002, Verification subsection).
+
+---
+
+### §VP-DAEMON-003 — 256 KiB Body Limit; HTTP 413 on Excess
+
+**Traces to:** BC-DAEMON-003 (PRD v1.1 §BC-DAEMON-003; SS-daemon-lifecycle.md
+v1.0.8 §Body Size Limit).
+
+**Mechanical property:**
+
+1. A POST to any of the 5 hook endpoints (`/hooks/pre-tool-use`,
+   `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`,
+   `/hooks/prompt-submit`) with a request body of **262,145** bytes (one
+   byte over the 256 KiB limit) returns HTTP 413 with body
+   `{"error":"payload_too_large","limit_bytes":262144}`.
+2. The same endpoints with a request body of **262,143** bytes (one byte
+   under the limit) succeed (HTTP 200, no 413).
+3. The same endpoints with a request body of exactly **262,144** bytes
+   (the boundary value) also succeed (axum's `DefaultBodyLimit::max(N)`
+   semantics: bodies strictly exceeding N bytes are rejected; bodies
+   equal to N pass).
+4. `/healthz` (unauthenticated, no body) is NOT subject to the limit; a
+   POST `/healthz` is rejected with method-not-allowed (it is a GET-only
+   endpoint, not via the body-limit layer).
+5. `/status` (authenticated, GET) inherits the body-limit layer at the
+   request path — though GET requests typically have no body, a manually
+   crafted oversized request body to `/status` also returns HTTP 413.
+
+**Mechanism:** unit-test (primary); fuzz (auxiliary — boundary
+exploration).
+
+**Pre-conditions:**
+
+- Daemon running with a valid lock file.
+- `axum::extract::DefaultBodyLimit::max(256 * 1024)` is the layer pinned
+  to the authenticated router at construction time. The unit test
+  asserts the layer is present via a `cargo expand` or source-grep
+  inspection of `monocle-runtime/src/server.rs`.
+- Test client holds the auth token for the positive controls.
+
+**Post-conditions:**
+
+1. POST 262,145-byte body to any of the 5 hook endpoints with valid auth →
+   HTTP 413 with exact body
+   `{"error":"payload_too_large","limit_bytes":262144}`.
+2. POST 262,144-byte body (boundary) to any hook endpoint with valid auth →
+   HTTP 200 (within limit; processed normally).
+3. POST 262,143-byte body (one under) to any hook endpoint with valid auth →
+   HTTP 200.
+4. POST 262,145-byte body to `/status` with valid auth → HTTP 413
+   (cross-route limit coverage).
+5. Source-grep asserts `DefaultBodyLimit::max(256 * 1024)` appears
+   exactly once in `monocle-runtime/src/server.rs` and is applied to the
+   authenticated router only (not the `/healthz` route).
+
+**Counter-example sketches:**
+
+1. `DefaultBodyLimit` layer omitted — 262,145-byte body returns HTTP 200
+   (the request is processed, exposing unbounded memory); the test must
+   assert 413.
+2. `DefaultBodyLimit::max(256 * 1024)` applied to the unauthenticated
+   router by mistake — `/healthz` would reject oversized bodies but
+   `/healthz` is GET-only; benign drift but still wrong; the source-grep
+   asserts the layer is on the authenticated router only.
+3. Limit set to `262_144` instead of `256 * 1024` (off-by-one constant) —
+   functionally identical (both equal 262,144) but the literal constant
+   form `256 * 1024` is preferred for readability; the source-grep
+   tolerates either form.
+4. Error body returns `{"error":"too_large"}` (typo / non-canonical) —
+   fails the exact-body assertion.
+
+**Fuzz harness:** `cargo fuzz add fuzz_body_size_boundary`. The fuzz
+target constructs request bodies of varying lengths around the boundary
+(262,140 to 262,150) and asserts the daemon returns HTTP 200 for
+length ≤ 262,144 and HTTP 413 for length > 262,144. The fuzzer should
+never produce an input that causes a daemon panic or unbounded memory
+allocation.
+
+**Harness location:** `monocle-runtime/tests/body_size_limit.rs` (unit);
+`fuzz/fuzz_targets/fuzz_body_size_boundary.rs` (fuzz, Phase 6 deliverable).
+
+**Test name:** `test_BC_DAEMON_003_body_size_limit_413_on_excess` (per PRD
+v1.1 §BC-DAEMON-003, Verification subsection).
+
+---
+
+### §VP-DAEMON-004 — 10-Second Graceful Shutdown Drain
+
+**Traces to:** BC-DAEMON-004 (PRD v1.1 §BC-DAEMON-004; SS-daemon-lifecycle.md
+v1.0.8 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain).
+
+**Mechanical property:**
+
+1. Upon receiving SIGTERM, SIGINT, or an authenticated `POST /shutdown`,
+   the daemon's AppMode transitions to `ShuttingDown` immediately
+   (within < 10 ms of signal delivery).
+2. After AppMode is `ShuttingDown`, any new POST to `/hooks/*` returns
+   HTTP 503 with header `Retry-After: 10` and body
+   `{"error":"daemon_shutting_down"}`.
+3. `/healthz` returns HTTP 503 with body `{"status":"shutting_down"}`
+   during drain (cross-property with VP-DAEMON-001 post-condition 3).
+4. `/status` continues to serve normally during drain (read-only path is
+   unaffected — cross-property with VP-DAEMON-002 post-condition 6).
+5. In-flight `/hooks/*` POSTs that began before the signal continue to
+   completion, bounded by a `tokio::time::timeout(Duration::from_secs(10),
+   drain_inflight())`. After 10 seconds OR all in-flight requests
+   complete (whichever comes first), the daemon proceeds to lock-file
+   removal and exit.
+6. Exit code is `0` if drain succeeded within the 10-second window
+   without a hard kill; `130` if a second SIGTERM arrived during drain
+   (forcing immediate exit).
+7. `POST /shutdown` without a valid auth header returns HTTP 401 (per
+   VP-AUTH-002) — unauthenticated shutdown requests are rejected.
+
+**Mechanism:** unit-test.
+
+**Pre-conditions:**
+
+- Daemon running with a valid lock file.
+- `tokio::signal::unix::signal(SignalKind::terminate())` is the SIGTERM
+  receiver; `tokio::signal::ctrl_c()` is the SIGINT receiver.
+- A test-only `oneshot::channel` is used to inject a synthetic shutdown
+  signal (avoiding real OS signal delivery in unit tests).
+- `axum 0.8`, `tokio 1`, `tower 0.5` are the project pins (per
+  SS-deps-pin-manifest.md).
+
+**Post-conditions:**
+
+1. Synthetic shutdown signal injected → AppMode is `ShuttingDown` within
+   10 ms (asserted via a `tokio::sync::watch` channel exposing the
+   current mode).
+2. POST `/hooks/pre-tool-use` after AppMode transition → HTTP 503 with
+   header `Retry-After: 10` (exact integer value) and body
+   `{"error":"daemon_shutting_down"}`.
+3. `GET /healthz` during drain → HTTP 503 + `{"status":"shutting_down"}`.
+4. `GET /status` with valid auth during drain → HTTP 200 + full 10-field
+   body (read-only continues).
+5. With one synthetic in-flight `/hooks/*` POST that holds a 5-second
+   sleep, the drain completes within 10 seconds and the daemon exits
+   cleanly (exit code 0).
+6. With one synthetic in-flight POST that holds a 15-second sleep, the
+   drain hits the 10-second timeout, the daemon force-exits, and the
+   exit code observed via a test-harness wrapper is non-zero (test
+   tolerates either 0 if the late completion still managed clean exit
+   or 130 if hard-killed; the canonical assertion is `exit_code != 0`
+   under the over-budget scenario).
+7. `POST /shutdown` with no auth header → HTTP 401 +
+   `{"error":"missing_auth_token"}` (VP-AUTH-002 cross-property).
+
+**Counter-example sketches:**
+
+1. New hook POSTs during drain return HTTP 200 (drain logic not
+   short-circuiting accepts) — fails post-condition 2.
+2. `Retry-After` header omitted or set to a different value (e.g., `5`) —
+   fails the exact-value assertion.
+3. `/status` blocks during drain (returns no response or 503) — fails
+   post-condition 4.
+4. Drain timeout not enforced (in-flight 15-second sleep allowed to
+   complete) — fails the 10-second bound; the test must assert
+   `elapsed < 11 seconds` for the over-budget scenario.
+5. `POST /shutdown` accepted without auth — fails post-condition 7
+   (auth middleware must run on this route).
+
+**Harness location:** `monocle-runtime/tests/graceful_shutdown.rs`.
+
+**Test name:** `test_BC_DAEMON_004_graceful_shutdown_503_on_new_requests`
+(per PRD v1.1 §BC-DAEMON-004, Verification subsection).
+
+---
+
+### §VP-DAEMON-005 — Lock File Lifecycle: Atomic Create, Pid-Liveness Gate, Mode 0o600, Cleanup
+
+**Traces to:** BC-DAEMON-005 (PRD v1.1 §BC-DAEMON-005; SS-daemon-lifecycle.md
+v1.0.8 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown).
+
+**Mechanical property:**
+
+1. On daemon start, if no lock file exists at `<runtime_dir>/monocle.lock`,
+   the daemon creates one atomically via `tempfile::persist` after binding
+   its listener. The created lock file has file mode `0o600` (octal
+   value: owner read+write; no group, no other).
+2. On daemon start, if a lock file exists with a `pid` value for which
+   `kill(pid, 0)` succeeds (process is alive), the daemon logs
+   `ERROR: daemon already running at pid=<N>; exiting` and exits with
+   code 1. No new lock file is written.
+3. On daemon start, if a lock file exists with a `pid` value for which
+   `kill(pid, 0)` returns `ESRCH` (no such process), the daemon logs
+   `WARN: stale lock file removed`, removes the stale file, and proceeds
+   with the atomic-write start-up path.
+4. On clean shutdown (drain completes within 10 seconds or hard signal
+   after drain), the daemon removes `<runtime_dir>/monocle.lock` and
+   `<runtime_dir>/monocle.sock` before exiting.
+5. The lock file is written via `tempfile::persist` (NOT via naked
+   `std::fs::write`) — verified by source-grep asserting that
+   `monocle-runtime/src/lock.rs` contains `tempfile::persist` and does
+   NOT contain `std::fs::write` for the lock-file path.
+6. On a hard SIGKILL (no graceful path), the lock file is NOT removed —
+   the next daemon start exercises the stale-pid recovery path
+   (post-condition 3).
+
+**Mechanism:** unit-test (primary); mutation-test (auxiliary — the
+0o600 mode value and the `kill(pid, 0)` gate are mutation surfaces).
+
+**Pre-conditions:**
+
+- Runtime directory `<runtime_dir>` exists or can be created with mode
+  `0o700`.
+- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md).
+- `nix 0.30` (for `kill(pid, Signal::None)`) is the project pin OR
+  `libc 0.2` is used directly for `kill(pid, 0)` — the test asserts
+  the chosen mechanism in the source.
+- Tests use `tempfile::TempDir` to isolate `<runtime_dir>` per test.
+
+**Post-conditions:**
+
+1. Fresh start with no lock file → lock file created at
+   `<temp_runtime>/monocle.lock`; `stat().mode() & 0o777 == 0o600`;
+   JSON content begins with `{"contract_version":1,` (cross-property
+   with VP-LOCK-001).
+2. Daemon already running (mock: PID file contains current test
+   process PID, which is alive) → daemon start returns exit code 1;
+   stderr contains the substring `daemon already running at pid=`.
+3. Stale lock file (PID file contains `1` or another known-dead PID
+   for the test environment, or contains a PID that `kill(0)` ESRCHes)
+   → daemon start succeeds; the old file is replaced; the new file
+   has the live daemon's PID.
+4. Daemon graceful shutdown via synthetic SIGTERM → after drain
+   completes, `<temp_runtime>/monocle.lock` does not exist
+   (`Path::exists()` returns `false`).
+5. Daemon graceful shutdown → `<temp_runtime>/monocle.sock` does not
+   exist (`Path::exists()` returns `false`).
+6. Source-grep over `monocle-runtime/src/lock.rs`:
+   - `tempfile::persist` appears at least once.
+   - `std::fs::write` does NOT appear for the lock file path
+     (an exception list may permit `std::fs::write` for non-lock paths,
+     e.g., the recovery checkpoint file via separate path; the test
+     restricts the negative match to lines mentioning `"monocle.lock"`).
+
+**Counter-example sketches:**
+
+1. Lock file written via naked `std::fs::write` — would expose a
+   partial-write window between truncate and content-write; the
+   source-grep negative assertion catches this. (This is also a
+   semgrep rule per SS-conventions-anti-patterns.md §Semgrep Rules.)
+2. Lock file written with mode `0o644` (group/other readable) — fails
+   the `0o600` mode assertion; this is critical because the auth token
+   is in the lock file and group/other readability would expose it to
+   other OS users.
+3. Stale-pid handling skipped (daemon refuses to start because lock
+   file exists, without checking liveness) — fails post-condition 3.
+4. Lock file not removed on clean shutdown — fails post-condition 4;
+   subsequent starts would exercise the stale-pid path unnecessarily.
+5. `tempfile::persist` argument `dest_path` set to a path that differs
+   from the canonical `<runtime_dir>/monocle.lock` — fails the
+   canonical-path assertion in post-condition 1.
+
+**Mutation-test rationale:** the `0o600` literal in the lock-file
+creation call and the `kill(pid, 0)` syscall result check are
+prime mutation targets. `cargo-mutants` will attempt to mutate the
+mode to `0o644` (passing functional tests that don't check mode) and
+to flip the `kill` result interpretation; both must be caught.
+
+**Harness location:** `monocle-runtime/tests/lock_file_lifecycle.rs`.
+
+**Test name:** `test_BC_DAEMON_005_lock_file_create_and_cleanup` (per PRD
+v1.1 §BC-DAEMON-005, Verification subsection).
+
+---
+
+### §VP-DAEMON-006 — Crash-Recovery Checkpoint JSON: Write, Offer, Cleanup
+
+**Traces to:** BC-DAEMON-006 (PRD v1.1 §BC-DAEMON-006; SS-daemon-lifecycle.md
+v1.0.8 §Daemon Lifecycle Protocol §Crash Recovery).
+
+**Mechanical property:**
+
+1. During graceful drain (after AppMode transition to `ShuttingDown`
+   but before lock-file removal), the daemon writes
+   `<runtime_dir>/monocle.recovery.json` atomically via `tempfile::persist`
+   with content matching the schema:
+   ```json
+   {
+     "pid": <int>,
+     "shutdown_reason": "graceful" | "signal" | "forced",
+     "last_app_mode": "<string>",
+     "shutdown_utc": "<ISO8601 string matching ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$>"
+   }
+   ```
+   The 4 keys above are the complete schema — no additional keys.
+2. On the next daemon startup, if `<runtime_dir>/monocle.recovery.json`
+   exists AND the pid in the lock file (or absence of a lock file) is
+   consistent with a non-graceful prior exit, the daemon logs
+   `WARN: recovery checkpoint found; prior daemon exited without clean
+   shutdown` and reads `last_app_mode` + `shutdown_reason` into memory.
+3. If a TUI client attaches via the UDS control socket within 60 seconds
+   of daemon start, the daemon sends a recovery-offer message:
+   `{"type":"recovery_available","last_app_mode":"<string>"}` and awaits
+   the TUI's acknowledgment.
+4. On TUI ACCEPT (`Y`): the daemon deletes `monocle.recovery.json` and
+   transmits the recovery state to the TUI via the same UDS channel.
+5. On TUI DECLINE (`N`): the daemon deletes `monocle.recovery.json`
+   without transmitting state.
+6. If no TUI attaches within 60 seconds of daemon start: the daemon
+   silently deletes `monocle.recovery.json` and proceeds with normal
+   operation.
+7. The 60-second window is measured from daemon start time (not from
+   UDS-readiness time). The clock source is `std::time::Instant::now()`
+   captured at daemon start.
+8. Recovery file with malformed JSON (truncated, mismatched braces,
+   non-UTF-8 bytes) → daemon logs `WARN: recovery file malformed;
+   starting fresh` and deletes the file; no UDS recovery offer is sent.
+
+**Mechanism:** unit-test.
+
+**Pre-conditions:**
+
+- Daemon binary supports the synthetic test mode where the recovery
+  file is written eagerly on AppMode → `ShuttingDown` (covered by the
+  drain code path).
+- `tempfile 3`, `serde_json 1`, and `tokio 1` are the project pins.
+- Tests use `tempfile::TempDir` to isolate the runtime directory and
+  a `tokio::time::pause()` + `tokio::time::advance()` clock to drive
+  the 60-second window deterministically.
+
+**Post-conditions:**
+
+1. Synthetic shutdown signal injected → after the drain code path
+   completes, `<temp_runtime>/monocle.recovery.json` exists with content
+   matching the 4-key schema and `shutdown_reason == "graceful"`.
+2. Pre-created recovery file at daemon start (with an absent or
+   stale-pid lock file) → daemon log captures the WARN
+   `recovery checkpoint found; prior daemon exited without clean shutdown`.
+3. Pre-created recovery file + a mock TUI client attached within 60
+   simulated seconds via `tokio::time::advance` → mock TUI receives
+   the UDS message `{"type":"recovery_available","last_app_mode":
+   "<expected>"}`; after sending `Y`, the recovery file no longer
+   exists.
+4. Pre-created recovery file + mock TUI sends `N` → recovery file no
+   longer exists; mock TUI did NOT receive a state-transmission
+   payload after the ACK.
+5. Pre-created recovery file + no TUI attaches; 61 simulated seconds
+   advance → recovery file no longer exists; daemon log captures
+   `WARN: recovery offer expired; deleting checkpoint`.
+6. Pre-created recovery file with truncated content (e.g., the closing
+   `}` removed) → daemon log captures `WARN: recovery file malformed;
+   starting fresh`; recovery file no longer exists; no UDS message sent.
+7. Recovery file's `shutdown_utc` value matches the strict ISO 8601
+   regex above (no millisecond truncation, no missing `Z` suffix).
+8. Recovery file is written BEFORE the lock file is removed during
+   drain — the test traces the order of filesystem ops via a `tracing`
+   subscriber configured to capture file-write events.
+
+**Counter-example sketches:**
+
+1. Recovery file written AFTER lock-file removal — on a hard SIGKILL
+   between the two writes, no recovery file exists; the next daemon
+   start has no recovery path. The test asserts the recovery file
+   comes first (post-condition 8).
+2. Recovery file has an extra key (e.g., `tui_attached: false`) — fails
+   the exact-4-key schema assertion.
+3. `shutdown_utc` format is `YYYY-MM-DD HH:MM:SS` (space separator
+   instead of `T`) — fails the strict ISO 8601 regex.
+4. 60-second window started from UDS-readiness rather than daemon start
+   — under high startup latency the effective window would be
+   stretched; the test asserts the start-time baseline by advancing
+   the clock past `start_time + 60s` and asserting expiration.
+5. TUI declines (`N`) but state is still transmitted — fails
+   post-condition 4.
+
+**Harness location:** `monocle-runtime/tests/crash_recovery.rs`.
+
+**Test name:** `test_BC_DAEMON_006_crash_recovery_checkpoint_offer_and_cleanup`
+(per PRD v1.1 §BC-DAEMON-006, Verification subsection).
+
+---
 
 ### §VP-RING-001 — JSONL Ring Record Format-Version First Key
 
@@ -239,52 +800,108 @@ NO panic and NO `true` return for any input differing from the expected secret.
 
 ---
 
-### §VP-AUTH-002 — Non-Prefixed Tokens Rejected with HTTP 401 + Error Body
+### §VP-AUTH-002 — Auth Header Two-Body Taxonomy: `missing_auth_token` vs `invalid_auth_token`
 
-**Traces to:** BC-AUTH-002 (SS-daemon-lifecycle.md §Start Sequence).
+**Traces to:** BC-AUTH-002 (PRD v1.1 §BC-AUTH-002; SS-daemon-lifecycle.md
+v1.0.8 §Daemon Lifecycle Protocol §Start Sequence; architect adjudication
+commit 2db408f — disposition (c) collapsed error taxonomy).
 
-**Mechanical property:** Any `X-Monocle-Authorization` header value not
-beginning with the literal prefix `monocle-v1:` causes the daemon to respond
-with HTTP 401 and the JSON body
-`{"error":"invalid_auth_token_format"}`. Additionally, any
-`Authorization: Bearer <anything>` header on a Phase 1 HTTP endpoint is
-rejected with HTTP 401 (the Bearer header is not a recognized auth mechanism
-on Phase 1 routes).
+**Mechanical property:**
+
+1. **Absent header:** If the `X-Monocle-Authorization` header is absent
+   entirely on an authenticated route (`/hooks/*`, `/status`, `/shutdown`),
+   the daemon responds with HTTP 401 and the JSON body
+   `{"error":"missing_auth_token"}`.
+2. **Any value-present failure:** If the `X-Monocle-Authorization` header
+   IS present but its value fails validation for ANY reason — wrong prefix
+   (not `monocle-v1:`), malformed format, empty suffix, length mismatch,
+   or correct-format-but-wrong-secret — the daemon responds with HTTP 401
+   and the JSON body `{"error":"invalid_auth_token"}`. All value-present
+   failure modes return the same body intentionally; the daemon does NOT
+   distinguish format-fail from secret-mismatch in the response (preventing
+   a timing- or body-oracle).
+3. **Bearer header without X-Monocle-Authorization:** An `Authorization:
+   Bearer <anything>` header with NO `X-Monocle-Authorization` header is
+   treated as absent header → HTTP 401 + `{"error":"missing_auth_token"}`.
+   (Phase 4 federation uses Bearer on a separate channel; Phase 1 routes
+   do not recognize Bearer.)
+4. **Retired body:** The body `{"error":"invalid_auth_token_format"}` from
+   v1.0 of this catalog is RETIRED per architect commit 2db408f. It MUST
+   NOT appear in any Phase 1 daemon response. The auth middleware's
+   `AuthError` enum has exactly two variants: `Missing` and `Invalid`.
 
 **Mechanism:** unit-test (primary); fuzz (auxiliary).
 
 **Pre-conditions:**
 
 - Daemon is running with a valid `monocle-v1:` secret in the lock file.
-- Authenticated test client has access to the secret for the positive control.
+- Authenticated test client has access to the secret for the positive
+  control (probe 7).
+- The auth middleware's `AuthError` enum is defined as exactly:
+  ```rust
+  pub enum AuthError {
+      Missing,  // → HTTP 401 {"error":"missing_auth_token"}
+      Invalid,  // → HTTP 401 {"error":"invalid_auth_token"}
+  }
+  ```
+  No third variant exists.
 
 **Post-conditions (per probe):**
 
 | Probe | Header | Expected status | Expected body |
 |-------|--------|-----------------|---------------|
-| 1 | `Authorization: Bearer fake` | 401 | `{"error":"invalid_auth_token_format"}` |
-| 2 | `X-Monocle-Authorization: baretoken` | 401 | `{"error":"invalid_auth_token_format"}` |
-| 3 | `X-Monocle-Authorization: monocle-v2:abc` | 401 | `{"error":"invalid_auth_token_format"}` |
-| 4 | `X-Monocle-Authorization: monocle-v1:` followed by 64 chars not matching the secret | 401 | (token-mismatch path; not the format-rejection body) |
-| 5 | `X-Monocle-Authorization: monocle-v1:` followed by the secret | 200 | (positive control) |
+| 1 | (no `X-Monocle-Authorization` header) | 401 | `{"error":"missing_auth_token"}` |
+| 2 | `X-Monocle-Authorization: deadbeef...64chars` (bare token, no prefix) | 401 | `{"error":"invalid_auth_token"}` |
+| 3 | `X-Monocle-Authorization: monocle-v2:deadbeef...64chars` (wrong version prefix) | 401 | `{"error":"invalid_auth_token"}` |
+| 4 | `X-Monocle-Authorization: monocle-v1:` (prefix only, no hex suffix) | 401 | `{"error":"invalid_auth_token"}` |
+| 5 | `Authorization: Bearer fake-token` with no `X-Monocle-Authorization` (wrong header name) | 401 | `{"error":"missing_auth_token"}` |
+| 6 | `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` (correct format, wrong secret) | 401 | `{"error":"invalid_auth_token"}` |
+| 7 | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` (positive control) | 200 | (route's normal body) |
 
 **Counter-example sketches:**
 
 1. Auth middleware accepts `Authorization: Bearer` as a fallback path —
-   probe 1 would return 200; the unit test must assert 401.
-2. Auth middleware does `presented.contains("monocle-v1:")` instead of
+   probe 5 would return 200; the unit test must assert 401 +
+   `missing_auth_token`.
+2. Auth middleware uses `presented.contains("monocle-v1:")` instead of
    `strip_prefix("monocle-v1:")` — probe `X-Monocle-Authorization:
    junk-monocle-v1:abc` would be accepted; the unit test asserts strict
-   `strip_prefix` behavior.
-3. Empty `X-Monocle-Authorization` header value — must return 401 (covered by
-   probe 2 with the empty-string variant).
+   `strip_prefix` behavior (returns 401 + `invalid_auth_token` for any
+   value not starting with the literal prefix).
+3. Auth middleware returns the retired `invalid_auth_token_format` body for
+   probe 2/3/4 — fails the exact-body assertion (the retired taxonomy is
+   forbidden post-2db408f).
+4. Auth middleware returns `invalid_auth_token` for probe 1 (absent header
+   treated as invalid) — fails the missing-vs-invalid distinction; the
+   structural precondition (header absence) must produce the
+   diagnostic-friendly `missing_auth_token` body.
+5. Auth middleware returns `missing_auth_token` for probe 6 (correct-format
+   wrong-secret) — fails the value-present unification; secret mismatch
+   must produce `invalid_auth_token`, not `missing_auth_token` (an attacker
+   probing the secret space must not learn that their format was correct).
 
-**Fuzz harness:** the `fuzz_auth_token_validation` target from VP-AUTH-001
-also covers this property because the format-rejection path runs BEFORE the
-constant-time comparison — non-prefixed inputs MUST short-circuit-fail with
-the `invalid_auth_token_format` error code.
+**Fuzz harness:** the `fuzz_auth_token_validation` target shared with
+VP-AUTH-001 is updated to assert the post-2db408f two-body taxonomy. The
+fuzzer constructs arbitrary byte sequences as the `X-Monocle-Authorization`
+value (including the absent-header case via `Option<Vec<u8>>`) and asserts:
 
-**Harness location:** `monocle-runtime/tests/auth_header_rejection.rs`.
+- No panic.
+- If header is absent: response body is exactly
+  `{"error":"missing_auth_token"}`.
+- If header is present but token validation fails for any reason: response
+  body is exactly `{"error":"invalid_auth_token"}`.
+- Response body is NEVER `{"error":"invalid_auth_token_format"}` (the
+  retired body — fuzz harness asserts this body string never appears in
+  any response).
+- The fuzzer should never produce an input that returns 200 except for
+  the exact expected secret with the `monocle-v1:` prefix.
+
+**Harness location:** `monocle-runtime/tests/auth_header_rejection.rs`
+(unit); `fuzz/fuzz_targets/fuzz_auth_token_validation.rs` (fuzz, shared
+with VP-AUTH-001).
+
+**Test name:** `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
+(per PRD v1.1 §BC-AUTH-002, Verification subsection).
 
 ---
 
@@ -372,7 +989,10 @@ top-level `abi_version` key has the integer value `1` (equal to
    the compile-time assert catches drift; without the assert, the unit test
    would still catch the runtime mismatch.
 
-**Harness location:** `monocle-runtime/tests/status_endpoint.rs`.
+**Harness location:** `monocle-runtime/tests/status_abi_version.rs`.
+
+**Test name:** `test_BC_ABI_001_status_endpoint_returns_abi_version_1` (per
+PRD v1.1 §BC-ABI-001, Verification subsection).
 
 ---
 
@@ -513,7 +1133,7 @@ the public trait surface).
 **Post-conditions:**
 
 1. `cargo check --workspace` passes.
-2. A `monocle-core/tests/factory_adapter_surface.rs` test uses `syn 2` to
+2. A `monocle-core/tests/factory_trait_surface.rs` test uses `syn 2` to
    parse `monocle-core/src/factory.rs`, locates the `trait FactoryAdapter`
    item, and asserts:
    - method count equals 7;
@@ -537,7 +1157,7 @@ the public trait surface).
 4. A `FactoryState` field is renamed (e.g., `phase` → `pipeline_phase`) —
    must fail the field-name HashSet equality.
 
-**Harness location:** `monocle-core/tests/factory_adapter_surface.rs`.
+**Harness location:** `monocle-core/tests/factory_trait_surface.rs`.
 
 ---
 
@@ -695,59 +1315,125 @@ inside Phase 1 monocle code), the value of `schema_version` is `1`.
 
 ---
 
-### §VP-PROTO-002 — Unknown `schema_version` Skipped with Warning; No Panic
+### §VP-PROTO-002 — `schema_version` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch)
 
-**Traces to:** BC-PROTO-002 (SS-core-types-and-abi.md §Prost Wire Schemas).
+**Traces to:** BC-PROTO-002 (PRD v1.1 §BC-PROTO-002; SS-core-types-and-abi.md
+v1.2.8 §Prost Wire Schemas).
 
-**Mechanical property:** A `HookEnvelope` message with `schema_version = 0`
-(or any unrecognized value other than `1`) is processed by the Phase 4
-deserialization layer (`monocle-ipc::dispatch`) by:
+**Reframing rationale (F-R62-7):** v1.0 of this catalog required
+`monocle-proto` to export a Phase 1 stub
+`pub fn dispatch_envelope(env: &HookEnvelope) -> Result<(), DispatchError>`
+with a Phase 1 runtime semantics. That requirement fabricated a Phase 1
+code surface — neither `SS-core-types-and-abi.md` nor any other
+architecture artifact specifies a Phase 1 dispatcher; PRD v1.1
+§BC-PROTO-002 explicitly classifies the runtime test as Phase 4.
 
-1. Logging a `tracing::warn!` event with structured field
-   `schema_version = <unknown_value>` and a descriptive message.
-2. Returning `Ok(())` (skip) — NOT a panic, NOT an error propagated to the
-   caller, NOT a fallback parse with `schema_version = 1` assumed.
+This v1.1 reframing splits the VP into a Phase 1 structural contract
+(verifiable now without fabricating new code surface) and a Phase 4
+runtime-dispatch contract (verifiable when the Phase 4 IPC dispatcher
+exists).
 
-Phase 1 stubs this behavior via a trivial dispatch function that exists in
-`monocle-proto` for Phase 1 testing; Phase 4 inherits and extends it.
+**Phase 1 Mechanical property (structural):**
 
-**Mechanism:** unit-test (primary); fuzz (auxiliary).
+1. The compiled proto schema has a field named `schema_version` at proto
+   field number `1` of `HookEnvelope` with type `uint32`. This is the
+   structural precondition for any future runtime dispatcher.
+2. The generated Rust struct `monocle_proto::v1::HookEnvelope` exposes
+   `pub schema_version: u32` and the value `1` is the Phase 1 canonical
+   value.
 
-**Pre-conditions:**
+These two properties are already covered by VP-PROTO-001a (wire-format)
+and VP-PROTO-001b (Rust surface). VP-PROTO-002's Phase 1 verification is
+therefore a structural recap that asserts these two properties IN
+COMBINATION — both must hold for any future dispatcher to function. The
+Phase 1 unit test simply re-invokes the two cross-property assertions in
+a single harness file to make the cross-property dependency explicit and
+greppable.
 
-- `monocle-proto` exports `pub fn dispatch_envelope(env: &HookEnvelope) ->
-  Result<(), DispatchError>` with the Phase 1 stub behavior above.
-- `tracing-subscriber` is configured in tests to capture warnings.
+**Phase 4 Mechanical property (runtime dispatch — deferred):**
 
-**Post-conditions:**
+1. When Phase 4's `monocle-ipc` crate exists with its dispatcher (to be
+   designed in Phase 4 architecture), a `HookEnvelope` message with
+   `schema_version = 0` or any unrecognized value other than `1` MUST be
+   processed by:
+   - Emitting a `tracing::warn!` event with the structured field
+     `schema_version = <unknown_value>` and a descriptive message.
+   - Returning success (skip) without panic and without propagating an
+     error to the caller. The exact dispatcher API (function signature,
+     error type, return type) is a Phase 4 design decision.
+2. The forward-compatibility contract is: a Phase 1 daemon talking to a
+   future Phase 4 peer that sends an unknown `schema_version` MUST NOT
+   crash; conversely, a Phase 4 daemon receiving a Phase 1
+   `schema_version = 1` message MUST process it normally.
 
-1. `dispatch_envelope(&envelope_with_schema_version_0)` returns `Ok(())`.
-2. A `tracing` warning event is emitted with `schema_version = 0` in its
-   structured fields (captured via `tracing_subscriber::fmt::layer()` and
-   asserted in the test).
-3. `dispatch_envelope(&envelope_with_schema_version_99)` returns `Ok(())`
-   with an analogous warning.
-4. `dispatch_envelope(&envelope_with_schema_version_1)` returns `Ok(())`
-   with NO warning emitted (positive control).
-5. Calling `dispatch_envelope` 10,000 times with `schema_version = 0`
-   does NOT panic, deadlock, or allocate unbounded memory (loose smoke test).
+The Phase 4 mechanical property does NOT mandate a Phase 1 code surface
+in `monocle-proto`. The `monocle-ipc::dispatch` crate, the
+`dispatch_envelope` function signature, and the `DispatchError` type
+(or equivalent) are Phase 4 deliverables and will be specified by the
+Phase 4 architecture artifact. This catalog will be extended in a
+Phase 4 v2.0 revision with a `VP-IPC-DISPATCH-001` (or similar) entry
+to author the runtime mechanical property against the Phase 4 dispatcher.
 
-**Counter-example sketches:**
+**Mechanism:**
 
-1. Dispatch panics on unknown version — fails post-condition 1.
-2. Dispatch propagates `DispatchError::UnknownSchemaVersion` — fails
-   post-condition 1 (Phase 4 must not crash on unknown versions per proto3
-   forward-compat semantics).
-3. Dispatch silently accepts unknown version (no warning emitted) — fails
-   post-condition 2; this is the "silent acceptance" regression.
+- **Phase 1:** unit-test (structural — cross-property recap of
+  VP-PROTO-001a + VP-PROTO-001b).
+- **Phase 4 (deferred):** unit-test (runtime warn-and-skip behavior) +
+  fuzz (auxiliary — arbitrary `u32` value space for `schema_version`).
 
-**Fuzz harness:** `cargo fuzz add fuzz_envelope_dispatch`. The fuzz target
-constructs `HookEnvelope { schema_version: u32::arbitrary(u)?, event: ... }`
-for arbitrary `schema_version` values from `0..u32::MAX` and asserts:
-no panic; `dispatch_envelope` returns `Ok(())` for all inputs.
+**Phase 1 Pre-conditions:**
 
-**Harness location:** `monocle-proto/tests/dispatch_unknown_version.rs`
-(unit); `fuzz/fuzz_targets/fuzz_envelope_dispatch.rs` (fuzz).
+- `monocle-proto` builds cleanly.
+- `prost-build` emits a Rust struct for `HookEnvelope` with
+  `pub schema_version: u32` (verified by VP-PROTO-001b).
+- The compiled proto descriptor has `schema_version` at field number `1`
+  (verified by VP-PROTO-001a).
+
+**Phase 1 Post-conditions:**
+
+1. The cross-property recap test instantiates a `HookEnvelope {
+   schema_version: 1, event: <any oneof variant> }` and asserts
+   `envelope.schema_version == 1` (cross-link to VP-PROTO-001b).
+2. The same test inspects the FileDescriptorSet emitted by `build.rs` and
+   asserts field number 1 is named `schema_version` (cross-link to
+   VP-PROTO-001a). The test fails CLOSED if either underlying property is
+   regressed — i.e., if VP-PROTO-001a or VP-PROTO-001b would fail, this
+   structural recap also fails.
+3. The test file is empty of any Phase 1 dispatcher invocation. It does
+   NOT import a `dispatch_envelope` function (none is mandated).
+
+**Phase 1 Counter-example sketches:**
+
+1. `schema_version` field renumbered to `2` (proto-tag change) — fails
+   the field-number assertion (cross-property regression detected here
+   even if VP-PROTO-001a's primary harness was disabled).
+2. `schema_version` removed from the Rust struct (e.g., made private) —
+   fails the Rust-surface assertion (cross-property regression).
+
+**Phase 4 Counter-example sketches (deferred):**
+
+1. Phase 4 dispatcher panics on unknown version.
+2. Phase 4 dispatcher propagates an error to the caller instead of
+   logging + skipping.
+3. Phase 4 dispatcher silently accepts unknown versions without emitting
+   a `tracing::warn!` event (the "silent acceptance" regression).
+
+**Phase 4 Fuzz harness (deferred):** when Phase 4 lands, a `cargo fuzz
+add fuzz_envelope_dispatch` target will exercise arbitrary `u32`
+`schema_version` values and assert the no-panic + warn-and-skip
+behavior. This harness is NOT a Phase 1 deliverable.
+
+**Open gap reference:** §G-3 catalogues the Phase 4 federation auth as
+out-of-Phase-1 scope; the same out-of-scope boundary applies to the
+Phase 4 runtime dispatch behavior of this VP. §G-3 is the
+future-attachment anchor for both items.
+
+**Harness location:** Phase 4 (no Phase 1 harness — the structural recap
+is discharged by VP-PROTO-001a's `monocle-proto/tests/wire_field_order.rs`
+and VP-PROTO-001b's `monocle-proto/tests/schema_version.rs`). Per PRD
+v1.1 §Section 7 RTM, BC-PROTO-002 has no Phase 1 test file path; the
+Phase 4 test file will be authored against `monocle-ipc/tests/...` when
+that crate exists.
 
 ---
 
@@ -847,7 +1533,10 @@ p.file_name() == Some("claude.js")`. The method NEVER consults
 3. `detect` uses `exe_path.contains("claude")` — probes (b), (e), (f) all
    return `true`; the unit test asserts `false` for each.
 
-**Harness location:** `monocle-runtime/tests/engine_module.rs`.
+**Harness location:** `monocle-runtime/tests/engine_module_claude_detect.rs`.
+
+**Test name:** `test_BC_ENGINE_002_claude_code_module_strict_basename_detect`
+(per PRD v1.1 §BC-ENGINE-002, Verification subsection).
 
 ---
 
@@ -904,8 +1593,10 @@ SS-deps-pin-manifest pin).
    — Windows may resolve via `USERPROFILE` even on Linux containers with
    `wine`-style env shimming; the test must clear all four.
 
-**Harness location:** `monocle-runtime/tests/engine_module.rs` (alongside
-VP-ENGINE-002).
+**Harness location:** `monocle-runtime/tests/engine_module_home_unresolvable.rs`.
+
+**Test name:** `test_BC_ENGINE_002_ERR_home_unresolvable_sync_and_async`
+(per PRD v1.1 §BC-ENGINE-002-ERR, Verification subsection).
 
 ---
 
@@ -960,45 +1651,56 @@ are exactly:
    instead of `monocle_core::MONOCLE_ABI_VERSION` const — fails an
    orthogonal source-grep check.
 
-**Harness location:** `monocle-runtime/tests/engine_module.rs` (alongside
-VP-ENGINE-002 and VP-ENGINE-002-ERR).
+**Harness location:** `monocle-runtime/tests/engine_module_claude_methods.rs`.
+
+**Test name:** `test_BC_ENGINE_003_claude_module_inherent_hook_paths` (per
+PRD v1.1 §BC-ENGINE-003, Verification subsection).
 
 ---
 
 ## §Coverage Matrix (BC → VP)
 
-| BC ID | BC Source File | VP ID | Mechanism (primary) |
-|-------|----------------|-------|---------------------|
-| BC-RING-001 | SS-daemon-lifecycle.md v1.0.7 | VP-RING-001 | unit-test |
-| BC-AUTH-001 | SS-daemon-lifecycle.md v1.0.7 | VP-AUTH-001 | unit-test |
-| BC-AUTH-002 | SS-daemon-lifecycle.md v1.0.7 | VP-AUTH-002 | unit-test |
-| BC-LOCK-001 | SS-daemon-lifecycle.md v1.0.7 | VP-LOCK-001 | unit-test |
-| BC-ABI-001 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-001 | unit-test |
-| BC-ABI-002 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-002 | unit-test |
-| BC-TYPES-001 | SS-core-types-and-abi.md v1.2.8 | VP-TYPES-001 | unit-test |
-| BC-FACTORY-001 | SS-core-types-and-abi.md v1.2.8 | VP-FACTORY-001 | unit-test |
-| BC-FACTORY-002 | SS-core-types-and-abi.md v1.2.8 | VP-FACTORY-002 | unit-test |
-| BC-PROTO-001a | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-001a | unit-test |
-| BC-PROTO-001b | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-001b | unit-test |
-| BC-PROTO-002 | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-002 | unit-test |
-| BC-ENGINE-001 | SS-engine-module.md v1.1.15 | VP-ENGINE-001 | unit-test |
-| BC-ENGINE-002 | SS-engine-module.md v1.1.15 | VP-ENGINE-002 | unit-test |
-| BC-ENGINE-002-ERR | SS-engine-module.md v1.1.15 | VP-ENGINE-002-ERR | unit-test |
-| BC-ENGINE-003 | SS-engine-module.md v1.1.15 | VP-ENGINE-003 | unit-test |
+| BC ID | BC Source File | VP ID | Mechanism (primary) | Phase 1 Test File |
+|-------|----------------|-------|---------------------|-------------------|
+| BC-DAEMON-001 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-001 | unit-test | `monocle-runtime/tests/healthz_endpoint.rs` |
+| BC-DAEMON-002 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-002 | unit-test | `monocle-runtime/tests/status_endpoint_auth.rs` |
+| BC-DAEMON-003 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-003 | unit-test | `monocle-runtime/tests/body_size_limit.rs` |
+| BC-DAEMON-004 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-004 | unit-test | `monocle-runtime/tests/graceful_shutdown.rs` |
+| BC-DAEMON-005 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-005 | unit-test | `monocle-runtime/tests/lock_file_lifecycle.rs` |
+| BC-DAEMON-006 | PRD v1.1 / SS-daemon-lifecycle.md v1.0.8 | VP-DAEMON-006 | unit-test | `monocle-runtime/tests/crash_recovery.rs` |
+| BC-RING-001 | SS-daemon-lifecycle.md v1.0.8 | VP-RING-001 | unit-test | `monocle-runtime/tests/jsonl_ring.rs` |
+| BC-AUTH-001 | SS-daemon-lifecycle.md v1.0.8 | VP-AUTH-001 | unit-test | `monocle-runtime/tests/auth_token_lifecycle.rs` |
+| BC-AUTH-002 | SS-daemon-lifecycle.md v1.0.8 | VP-AUTH-002 | unit-test | `monocle-runtime/tests/auth_header_rejection.rs` |
+| BC-LOCK-001 | SS-daemon-lifecycle.md v1.0.8 | VP-LOCK-001 | unit-test | `monocle-runtime/tests/lock_file_contract.rs` |
+| BC-ABI-001 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-001 | unit-test | `monocle-runtime/tests/status_abi_version.rs` |
+| BC-ABI-002 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-002 | unit-test | `monocle-core/tests/abi_stability.rs` |
+| BC-TYPES-001 | SS-core-types-and-abi.md v1.2.8 | VP-TYPES-001 | unit-test | `monocle-core/tests/enum_audit.rs` |
+| BC-FACTORY-001 | SS-core-types-and-abi.md v1.2.8 | VP-FACTORY-001 | unit-test | `monocle-core/tests/factory_trait_surface.rs` |
+| BC-FACTORY-002 | SS-core-types-and-abi.md v1.2.8 | VP-FACTORY-002 | unit-test | `monocle-core/tests/factory_self_referential.rs` |
+| BC-PROTO-001a | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-001a | unit-test | `monocle-proto/tests/wire_field_order.rs` |
+| BC-PROTO-001b | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-001b | unit-test | `monocle-proto/tests/schema_version.rs` |
+| BC-PROTO-002 | SS-core-types-and-abi.md v1.2.8 | VP-PROTO-002 | unit-test (structural recap) | Phase 4 (no Phase 1 harness) |
+| BC-ENGINE-001 | SS-engine-module.md v1.1.15 | VP-ENGINE-001 | unit-test | `monocle-core/tests/engine_module_surface.rs` |
+| BC-ENGINE-002 | SS-engine-module.md v1.1.15 | VP-ENGINE-002 | unit-test | `monocle-runtime/tests/engine_module_claude_detect.rs` |
+| BC-ENGINE-002-ERR | SS-engine-module.md v1.1.15 | VP-ENGINE-002-ERR | unit-test | `monocle-runtime/tests/engine_module_home_unresolvable.rs` |
+| BC-ENGINE-003 | SS-engine-module.md v1.1.15 | VP-ENGINE-003 | unit-test | `monocle-runtime/tests/engine_module_claude_methods.rs` |
 
-**Coverage:** 16 BCs → 16 VPs (one-to-one). Zero BCs without a VP.
+**Coverage:** 22 BCs → 22 VPs (one-to-one). Zero BCs without a VP. Every
+test-file path matches PRD v1.1 §7. Requirements Traceability Matrix verbatim (F-R62-4 closure).
 
 ### §Auxiliary Mechanism Coverage
 
 | VP ID | Auxiliary mechanism | Rationale |
 |-------|---------------------|-----------|
+| VP-DAEMON-003 | fuzz | Boundary exploration around the 262,144-byte body-size cutoff; ensures no panic / no unbounded alloc across body-length space |
+| VP-DAEMON-005 | mutation-test | The `0o600` file-mode literal and the `kill(pid, 0)` syscall result interpretation are high-leverage mutation targets |
 | VP-RING-001 | mutation-test | `format_version: u32 = 1` is a high-leverage value-mutation target |
 | VP-AUTH-001 | fuzz | Adversarial inputs to `validate_auth_token` must never produce a false-`true` |
-| VP-AUTH-002 | fuzz | Same fuzz target as VP-AUTH-001 — exercises the prefix-rejection path |
+| VP-AUTH-002 | fuzz | Same fuzz target as VP-AUTH-001 — exercises the two-body taxonomy (missing vs invalid) and asserts the retired `invalid_auth_token_format` body never appears |
 | VP-LOCK-001 | mutation-test | `contract_version: u32 = 1` is a high-leverage value-mutation target |
 | VP-TYPES-001 | mutation-test | EXEMPT list length and attribute-presence check are mutation surfaces |
 | VP-FACTORY-002 | fuzz | `parse_frontmatter_field` was the v1.2.3 (F-R20-2) regression site; permanent fuzz harness prevents recurrence |
-| VP-PROTO-002 | fuzz | Unknown schema-version dispatch must never panic across `u32::MAX` value space |
+| VP-PROTO-002 | fuzz (Phase 4 deferred) | Unknown schema-version dispatch must never panic across `u32::MAX` value space; Phase 4 harness only |
 
 ---
 
@@ -1027,9 +1729,9 @@ explicitly enumerates this as a Phase 2 deliverable.
 
 **Compensating Phase 1 coverage:** None required — there is no Phase 1
 state machine. The Phase 1 daemon-lifecycle protocol is governed by
-BC-DAEMON-004 (graceful shutdown) which has a `unit-test` Phase 6 coverage
-plan; the daemon lifecycle is small enough that exhaustive unit testing
-suffices.
+BC-DAEMON-004 (graceful shutdown), formally verified by VP-DAEMON-004
+in this catalog with a `unit-test` mechanism; the daemon lifecycle is
+small enough that exhaustive unit testing suffices.
 
 ### §G-2 — DTU Fidelity Scoring
 
@@ -1058,22 +1760,25 @@ Phase 4 spec crystallization).
 
 ### §G-4 — `BC-DAEMON-001` through `BC-DAEMON-006` Verification
 
-**Status:** SCOPED — covered by Phase 1 PRD verification-harness stubs;
-not in this VP catalog because the task scope is the 16 architect-staged BCs.
+**Status:** RESOLVED in VP v1.1 + PRD v1.1. The v1.0 forward-projection
+that this catalog "SHOULD be extended in a v1.1 revision" is now closed:
+BC-DAEMON-001..006 are formalized as VP-DAEMON-001..006 in §Per-VP Detail,
+traced 1:1 to PRD v1.1 commit f855835 §BC-DAEMON-001..006, and registered
+in §Coverage Matrix.
 
-**Description:** The daemon endpoints (BC-DAEMON-001 through
-BC-DAEMON-006) are pre-staged in `SS-daemon-lifecycle.md` but are NOT in the
-16-BC scope of this VP catalog (the architect's task allocation focuses on
-the 16 cross-cutting type/auth/lock/ABI/factory/engine BCs). The Phase 1 PRD
-will formalize them with the same per-BC verification-harness pattern used in
-this artifact.
+**Description (historical):** The daemon endpoints (BC-DAEMON-001 through
+BC-DAEMON-006) were pre-staged in `SS-daemon-lifecycle.md` but were NOT in
+the 16-BC scope of the v1.0 VP catalog (the architect's initial task
+allocation focused on the 16 cross-cutting type/auth/lock/ABI/factory/engine
+BCs). The F-R62-1 finding (adversary R62, commit 5713ccc) identified that
+this scoping created PRD forward-references to undefined BCs and a 22-BC
+gap. The F-R62 fix-burst closed the gap on both sides: PRD v1.1 formalized
+BC-DAEMON-001..006 as full contract sections, and this VP v1.1 catalogs
+VP-DAEMON-001..006 with mechanical properties, post-conditions, and
+counter-example sketches at parity with the original 16.
 
-**Future-attachment:** Phase 1 PRD authoring (T-1, concurrent with this
-task per orchestrator dispatch). The product-owner's PRD synthesis includes
-verification-harness stubs for BC-DAEMON-* per the same `unit-test`
-mechanism pattern. This VP catalog SHOULD be extended in a v1.1 revision to
-include `VP-DAEMON-001` through `VP-DAEMON-006` once the PRD lands, OR the
-PRD can register them as separate `VP-PRD-DAEMON-*` rows.
+**Future-attachment:** No further future work — gap closed in this v1.1
+revision.
 
 ### §G-5 — Phase 1 Permission Enum Match-Site Coverage
 
@@ -1097,22 +1802,30 @@ The following cross-artifact references use position-free §-anchors and
 either current-pointer version pinning or version-free anchors per
 `SS-conventions-anti-patterns.md` §Historical-Anchor Framing Convention
 (PG-5). All version pins below are current as of timestamp
-`2026-05-14T20:30:00Z`.
+`2026-05-14T23:30:00Z`.
 
-1. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.7 — source of
-   BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001. Anchors:
-   §Drain (BC-RING-001), §Start Sequence (BC-AUTH-001 + BC-AUTH-002 +
-   BC-LOCK-001), §Behavioral Contract Summary (BC table).
-2. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.8 — source of
+1. `.factory/specs/prd.md` v1.1 (commit f855835) — canonical BC source for
+   the 22 Phase 1 BCs in this catalog. Anchors: BC sections BC-DAEMON-001
+   through BC-ENGINE-003 (22 sub-§s under §Behavioral Contracts), §Section 7
+   Requirements Traceability Matrix (canonical test-file path source for
+   F-R62-4 closure).
+2. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.8 — source of
+   BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001.
+   Anchors: §Health and Status Endpoints (BC-DAEMON-001 + BC-DAEMON-002),
+   §Body Size Limit (BC-DAEMON-003), §Daemon Lifecycle Protocol
+   (BC-DAEMON-004 + BC-DAEMON-005 + BC-DAEMON-006), §Drain (BC-RING-001),
+   §Start Sequence (BC-AUTH-001 + BC-AUTH-002 + BC-LOCK-001),
+   §Behavioral Contract Summary (10-BC table).
+3. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.8 — source of
    BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002,
    BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002. Anchors:
    §ABI Version Constant, §Enum Extensibility, §FactoryAdapter Trait,
    §Prost Wire Schemas, §Phase 1 PRD BC Pre-Staging.
-3. `.factory/specs/architecture/SS-engine-module.md` v1.1.15 — source of
+4. `.factory/specs/architecture/SS-engine-module.md` v1.1.15 — source of
    BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003. Anchors:
    §EngineModule Trait Signature, §Behavioral Contracts, §Phase 1
    Implementation, §Struct-level inherent operations.
-4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` —
+5. `.factory/specs/architecture/SS-conventions-anti-patterns.md` —
    §Historical-Anchor Framing Convention (PG-5),
    §Section-Anchor Citation Convention (PG-4),
    §Cross-Section Directional Reference Convention (PG-3),
@@ -1120,33 +1833,223 @@ either current-pointer version pinning or version-free anchors per
    §Phantom-ID Convention (PG-2),
    §META-Rule Recipe Sibling-Pattern Convention (PG-RECIPE-SCOPE),
    §Semgrep Rules, §Test Conventions.
-5. `.factory/specs/architecture/SS-deps-pin-manifest.md` — canonical pins for
+6. `.factory/specs/architecture/SS-deps-pin-manifest.md` — canonical pins for
    `constant_time_eq ^0.3`, `temp-env ^0.3` (features = ["async_closure"]),
-   `prost 0.14`, `serde_yaml_ng 0.10`, `serde_json 1`, `tracing 0.1`.
-6. `.factory/specs/architecture/SS-permissions-phase1.md` — §Phase 1
+   `prost 0.14`, `serde_yaml_ng 0.10`, `serde_json 1`, `tracing 0.1`,
+   `tempfile 3`, `axum 0.8`, `tokio 1`, `nix 0.30`.
+7. `.factory/specs/architecture/SS-permissions-phase1.md` — §Phase 1
    Permission Enum, §Exhaustiveness Invariant.
-7. `.factory/specs/architecture/SS-forward-compatibility.md` — §Item P3-1 —
-   Verdict on Sealed (open-trait rationale referenced by VP-FACTORY-001 and
-   VP-ENGINE-001).
-8. `.factory/specs/dtu-assessment.md` — §DTU Architecture (hook protocol
+8. `.factory/specs/architecture/SS-forward-compatibility.md` — §Item P3-1
+   (open-trait rationale referenced by VP-FACTORY-001 and VP-ENGINE-001).
+9. `.factory/specs/dtu-assessment.md` — §DTU Architecture (hook protocol
    surface), §DTU Fidelity Measurement Procedure (§G-2 deferral target).
-9. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — Phase 3
-   wasmtime 44 selection (informs §G-1 future Phase 2/Phase 3 Kani harness
-   scope).
-10. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
+10. `.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md` — Phase 3
+    wasmtime 44 selection (informs §G-1 future Phase 2/Phase 3 Kani harness
+    scope).
+11. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
     — nucleo 0.5 acceptance (no Phase 1 VP impact; referenced for
     completeness).
-11. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` —
+12. `.factory/specs/architecture/adr/ADR-0003-license-selection.md` —
     license posture (no Phase 1 VP impact; referenced for completeness).
-12. `.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md`
+13. `.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md`
     — VP-TYPES-001 exemption authority. The EXEMPT set
     `{Phase1Permission, ClaudeCodeTool}` is normatively defined here.
-13. `CLAUDE.md` — §CANONICAL PRINCIPLE — Production-Grade Default,
+14. `CLAUDE.md` — §CANONICAL PRINCIPLE — Production-Grade Default,
     §Correct Agent Routing — The Production-Grade Companion Principle.
 
 ---
 
 ## §Trace
+
+v1.1 (F-R62 fix-burst, 2026-05-14):
+
+- **F-R62-1 closure (CRITICAL):** expanded VP catalog from 16 → 22 VPs.
+  Added VP-DAEMON-001..006 with full mechanical properties, pre/post-conditions,
+  counter-example sketches, and harness locations in §Per-VP Detail in PRD
+  §7. Requirements Traceability Matrix row order. Each VP-DAEMON-NNN traces
+  to the corresponding PRD v1.1 §BC-DAEMON-NNN section. §VP Catalog Overview
+  table, §Mechanism Distribution table, §Coverage Matrix table, and §Purpose
+  count claim all updated to 22 VPs. §G-4 status updated RESOLVED.
+- **F-R62-4 closure (HIGH):** test-file paths reconciled with PRD v1.1
+  §7. Requirements Traceability Matrix verbatim. 6 path changes against v1.0:
+  VP-ABI-001 `status_endpoint.rs` → `status_abi_version.rs`;
+  VP-FACTORY-001 `factory_adapter_surface.rs` → `factory_trait_surface.rs`;
+  VP-ENGINE-002 `engine_module.rs` → `engine_module_claude_detect.rs`;
+  VP-ENGINE-002-ERR `engine_module.rs` → `engine_module_home_unresolvable.rs`;
+  VP-ENGINE-003 `engine_module.rs` → `engine_module_claude_methods.rs`;
+  VP-PROTO-002 `dispatch_unknown_version.rs` → Phase 4 (no Phase 1 harness).
+  All 22 VP harness paths now match PRD v1.1 RTM exactly.
+- **F-R62-5 closure (HIGH):** frontmatter `phase` changed from
+  `pre-phase-1-architecture` → `phase-1-spec-crystallization` (matching the
+  PRD's frontmatter); `status` changed from `complete` → `draft` (the catalog
+  is `draft` until the human Phase 1 approval gate fires, regardless of
+  §G-4's closure).
+- **F-R62-7 closure (MED):** VP-PROTO-002 reframed to remove the v1.0
+  fabrication of a Phase 1 `monocle-proto::dispatch_envelope` function and
+  `DispatchError` type. The Phase 1 verification is now an explicit
+  structural recap of VP-PROTO-001a + VP-PROTO-001b (no new Phase 1 code
+  surface); the runtime warn-and-skip behavior is documented as a Phase 4
+  deliverable bound to a future `monocle-ipc` crate (no Phase 1 harness).
+  Counter-example sketches split into Phase 1 (structural) and Phase 4
+  (runtime). §Coverage Matrix records VP-PROTO-002's Phase 1 test file as
+  "Phase 4 (no Phase 1 harness)" matching the PRD RTM.
+- **F-R62-8 closure (MED) per architect adjudication commit 2db408f:**
+  VP-AUTH-002 updated to the new two-body taxonomy. Mechanical property
+  rewritten: absent header → `{"error":"missing_auth_token"}`; any
+  value-present failure (bad prefix, bad format, secret mismatch) →
+  `{"error":"invalid_auth_token"}` (collapsed). 6-probe post-condition table
+  authored to exercise all failure modes plus the positive control. Retired
+  `invalid_auth_token_format` body explicitly forbidden by counter-example
+  sketch 3 ("Auth middleware returns the retired `invalid_auth_token_format`
+  body for probe 2/3/4 — fails the exact-body assertion"). VP-AUTH-001's
+  shared fuzz harness `fuzz_auth_token_validation` updated to assert the
+  new 2-body taxonomy and to assert the retired body string never appears
+  in any response.
+- **F-R62-9 closure (LOW):** §G-4 status updated from "SCOPED — covered by
+  Phase 1 PRD verification-harness stubs" (stale v1.0 forward-projection)
+  to "RESOLVED in VP v1.1 + PRD v1.1" with description of the actual
+  closure path.
+- **Frontmatter `inputs` updated** to add the PRD as a canonical input.
+  `traces_to` rewritten to document the 22-BC source decomposition,
+  the F-R62 fix-burst commits (5713ccc adversary, 2db408f architect,
+  f855835 PRD, 0e322da consistency), and the v1.1 closures.
+- **§References updated:** added PRD as item 1 (canonical BC source);
+  SS-daemon-lifecycle.md bumped v1.0.7 → v1.0.8 (architect's new BC-AUTH-002
+  taxonomy); SS-deps-pin-manifest pin list expanded with `tempfile 3`,
+  `axum 0.8`, `tokio 1`, `nix 0.30` (used by new VP-DAEMON-* harnesses).
+- **PG-4 §-heading-existence sweep — REAL (not falsified):**
+  - SS-daemon-lifecycle.md §Health and Status Endpoints — PASS (prefix-match
+    to `## Health and Status Endpoints (F-NEW-05)`).
+  - SS-daemon-lifecycle.md §Body Size Limit — PASS (prefix-match to
+    `## Body Size Limit (F-NEW-06)`).
+  - SS-daemon-lifecycle.md §Daemon Lifecycle Protocol — PASS (prefix-match
+    to `## Daemon Lifecycle Protocol (F-NEW-09)`).
+  - SS-daemon-lifecycle.md §Shutdown Signal Handling — PASS
+    (`### Shutdown Signal Handling`).
+  - SS-daemon-lifecycle.md §Drain — PASS (prefix-match to
+    `### Drain (10-Second Timeout)`).
+  - SS-daemon-lifecycle.md §Start Sequence — PASS (`### Start Sequence`).
+  - SS-daemon-lifecycle.md §Hard Shutdown — PASS (`### Hard Shutdown`).
+  - SS-daemon-lifecycle.md §Crash Recovery — PASS (`### Crash Recovery`).
+  - SS-daemon-lifecycle.md §Behavioral Contract Summary — PASS
+    (`## Behavioral Contract Summary`).
+  - SS-core-types-and-abi.md §ABI Version Constant — PASS (prefix-match to
+    `## §ABI Version Constant (FC-03 resolution)`).
+  - SS-core-types-and-abi.md §Enum Extensibility — PASS (prefix-match to
+    `## §Enum Extensibility — \`#[non_exhaustive]\` Markers (FC-02 resolution)`).
+  - SS-core-types-and-abi.md §FactoryAdapter Trait — PASS (prefix-match to
+    `## §FactoryAdapter Trait (FC-04 resolution — CRITICAL)`).
+  - SS-core-types-and-abi.md §Prost Wire Schemas — PASS (prefix-match to
+    `## §Prost Wire Schemas (FC-05 resolution)`).
+  - SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging — PASS
+    (`## §Phase 1 PRD BC Pre-Staging`).
+  - SS-core-types-and-abi.md §Forward Compatibility Guarantees — PASS
+    (`## §Forward Compatibility Guarantees`).
+  - SS-engine-module.md §EngineModule Trait Signature — PASS
+    (`## §EngineModule Trait Signature`).
+  - SS-engine-module.md §Behavioral Contracts — PASS
+    (`## §Behavioral Contracts`).
+  - SS-engine-module.md §Phase 1 Implementation — PASS (prefix-match to
+    `## §Phase 1 Implementation: \`ClaudeCodeModule\``).
+  - SS-engine-module.md §Struct-level inherent operations — PASS
+    (prefix-match to `### Struct-level inherent operations (NOT trait methods)`).
+  - SS-conventions-anti-patterns.md §Historical-Anchor Framing Convention —
+    PASS (prefix-match to `## §Historical-Anchor Framing Convention (PG-5)`).
+  - SS-conventions-anti-patterns.md §Section-Anchor Citation Convention —
+    PASS (prefix-match to `## §Section-Anchor Citation Convention (PG-4)`).
+  - SS-conventions-anti-patterns.md §Cross-Section Directional Reference
+    Convention — PASS (`## Cross-Section Directional Reference Convention`).
+  - SS-conventions-anti-patterns.md §Schema-Fact Citation Convention — PASS
+    (`## Schema-Fact Citation Convention`).
+  - SS-conventions-anti-patterns.md §Phantom-ID Convention — PASS
+    (`## Phantom-ID Convention`).
+  - SS-conventions-anti-patterns.md §META-Rule Recipe Sibling-Pattern
+    Convention — PASS (prefix-match to
+    `## §META-Rule Recipe Sibling-Pattern Convention (PG-RECIPE-SCOPE)`).
+  - SS-conventions-anti-patterns.md §Semgrep Rules — PASS
+    (`### Semgrep Rules`).
+  - SS-conventions-anti-patterns.md §Test Conventions — PASS
+    (`## Test Conventions`).
+  - SS-permissions-phase1.md §Phase 1 Permission Enum — PASS
+    (`## Phase 1 Permission Enum`).
+  - SS-permissions-phase1.md §Exhaustiveness Invariant — PASS
+    (`### Exhaustiveness Invariant`).
+  - SS-forward-compatibility.md §Item P3-1 — PASS (prefix-match to
+    `#### Item P3-1: \`monocle-core\` trait stability for WASM ABI`).
+  - dtu-assessment.md §DTU Architecture — PASS (`## DTU Architecture`).
+  - dtu-assessment.md §DTU Fidelity Measurement Procedure — PASS
+    (`## DTU Fidelity Measurement Procedure`).
+  - dtu-assessment.md §Clone Development Approach — PASS
+    (`## Clone Development Approach`).
+  - CLAUDE.md §CANONICAL PRINCIPLE — PASS (`## CANONICAL PRINCIPLE — Production-Grade Default`,
+    prefix-match exempt under PG-4 §Scope clause for non-versioned project
+    documentation with unambiguous enumerated items).
+  - CLAUDE.md §Correct Agent Routing — PASS (`## Correct Agent Routing — The Production-Grade Companion Principle`,
+    same exempt clause).
+  - PRD §7. Requirements Traceability Matrix — PASS
+    (`## 7. Requirements Traceability Matrix`).
+  - PRD §BC-DAEMON-001..006 — PASS each (prefix-match to
+    `### BC-DAEMON-NNN — <title>` for each of the 6).
+  - PRD §BC-AUTH-002 — PASS (`### BC-AUTH-002 — Auth Header Validation...`).
+  - PRD §BC-PROTO-002 — PASS (`### BC-PROTO-002 — Phase 4 schema_version...`).
+  - PRD §BC-ABI-001 — PASS (`### BC-ABI-001 — ABI Version in /status...`).
+  - PRD §BC-ENGINE-002 — PASS (`### BC-ENGINE-002 — ClaudeCodeModule...`).
+  - PRD §BC-ENGINE-002-ERR — PASS (`### BC-ENGINE-002-ERR — HomeUnresolvable...`).
+  - PRD §BC-ENGINE-003 — PASS (`### BC-ENGINE-003 — ClaudeCodeModule Inherent Methods`).
+  - No `§Verification` standalone citations remain (rewritten as
+    "§BC-NNN, Verification subsection" position-free descriptions per PG-4
+    anti-pattern table — Verification is a bold-label inside each BC
+    section, not a heading).
+- **PG-2 count coherence:** 22 VPs appears in §Purpose ("22 Behavioral
+  Contracts"), §Scope ("All 22 Phase 1 BCs"), §VP Catalog Overview prose
+  ("exactly 22 VPs"), §VP Catalog Overview table (22 data rows),
+  §Mechanism Distribution table (22 unit-test primary), §Coverage Matrix
+  table (22 data rows + "22 BCs → 22 VPs (one-to-one)" footer), frontmatter
+  traces_to ("22 BCs after F-R62 fix-burst"). Sweep verified by manual
+  inspection of all instances.
+- **PG-5 historical-anchor compliance:** §References uses current-pointer
+  version pins (PRD v1.1 commit f855835, SS-daemon-lifecycle v1.0.8,
+  SS-core-types-and-abi v1.2.8, SS-engine-module v1.1.15). No version-less
+  cross-artifact citations in main-body prose. Frontmatter `inputs` field
+  uses version-free file paths per PG-5 §Frontmatter Carve-Out (Option B).
+- **PG-3 compliance:** no `above`/`below` directional qualifiers appear in
+  §References or in any main-body prose. §-anchor citations include
+  position-free descriptions where needed (e.g., "§BC-DAEMON-001,
+  Verification subsection").
+- **F-R60-corpus-sweep:** no count-drift sites identified in this revision;
+  the v1.0 §G-1 reference to BC-DAEMON-004 is updated to acknowledge that
+  the contract is now formally verified by VP-DAEMON-004 in this catalog.
+- **§Trace-Heading-Convention:** this §Trace block uses `## §Trace` heading
+  (not `## Trace`) matching the convention.
+- **BC-H1-is-title-source-of-truth:** the document title `# Verification
+  Properties: Phase 1 Behavioral Contract Catalog` is unchanged across v1.0
+  → v1.1; the v1.1 expansion adds 6 daemon BCs which fall under "Phase 1
+  Behavioral Contract Catalog" scope.
+- **append_only_numbering:** VP-DAEMON-001..006 are append-only additions.
+  No existing VP ID was renumbered or removed. VP-PROTO-002 reframing kept
+  the ID stable; only the mechanical property and harness location changed.
+- **Self-audit checklist (CLAUDE.md §CANONICAL PRINCIPLE):**
+  - No MVP/for-now/good-enough/fix-later rationalizations. PASS.
+  - No tech-debt-register entries added. PASS.
+  - No "TODO for architect" / "pending architect review" placeholders.
+    The architect adjudication is COMPLETE (commit 2db408f); this catalog
+    consumes the adjudication as a fait accompli. PASS.
+  - No silent fix outside formal-verifier scope. VP-PROTO-002 reframing
+    REMOVES a v1.0 fabrication that was outside architect-authorized
+    Phase 1 surface; this is a corrective in-scope action. F-R62-7's
+    secondary disposition (architect-could-add Phase 1 stub) was NOT
+    pursued because the architect did not commit that route; this VP
+    revision respects the architect's commit boundary. PASS.
+  - No cheap-mechanism defaults. The fuzz auxiliary for VP-DAEMON-003 is
+    a Phase 6 deliverable but is documented now to ensure the boundary
+    exploration is not lost; the primary unit-test is in scope for Phase 3
+    TDD. PASS.
+  - No advisory-severity downgrades. All F-R62 findings under this
+    catalog's scope were treated as BLOCKERS and fixed. PASS.
+- **Production-grade default:** every BC has a VP; every VP has a
+  mechanical property, pre/post-conditions, counter-example sketches, and
+  a harness location (or explicit Phase 4 deferral for VP-PROTO-002).
+  Zero MVP shortcuts, zero falsified self-checks.
 
 v1.0 (initial author, 2026-05-14):
 
