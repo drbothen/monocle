@@ -4,7 +4,7 @@ level: L3
 section: "forward-compat"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: "forward-compat"
-version: "1.2.11"
+version: "1.2.12"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21; v1.2.9 round-53.1: F-R53-adv-3 brief §-anchor mis-anchors — 5 corrections: §Phase Plan → §Phase Plan Rationale (§Scope), §Explicit Non-Goals → §Out of Scope (Explicit Non-Goals) (§P2-1 analysis), §Phase Plan Phase 2 → §Phase Plan Rationale (Phase 2 objectives) (§P2-2 analysis), §Phase Plan Phase 3 → §Phase Plan Rationale (Phase 3 objectives) (§P3-2 Verdict), §Phase 4 notes → §Scope (Phase 4 — PostToolUse revisit note) (§P3-1 analysis). D-042 cascade: dtu-assessment.md v1.5 → v1.6 (§P2-1 session_id, §P2-2 pid, §P2-2 join-key); SS-core-types-and-abi.md v1.2.7 citation. Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 sibling patterns); v1.2.10 round-54.1: F-R54-adv-1 D-042 same-file partial cascade — FC-01 and FC-06 table col 4 (Phase 1 Spec Change) citations of SS-daemon-lifecycle.md updated v1.0.6 → v1.0.7; FC-01 and FC-06 Disposition column citations left at v1.0.6 (intentionally historical — records lock-in version, not current spec version); §Verdict citation already correct at v1.0.7 since R53.1. 10th D-042 recurrence; first within-file-partial cascade; v1.2.11 round-55.1: F-R55-adv-2 MEDIUM content — §Scope false-currency rewrite: opening sentence 'currently specified in brief v1.4.5 and vision v1.1.2' → historical-anchor form 'per scan performed against brief v1.4.5 + vision v1.1'; §Scope second sentence → 'brief v1.4.5 at scan time (product-owner)'; §Scope objectives header → 'per brief v1.4.5 §Phase Plan Rationale (scan-time reference)'. Brief is at v1.4.23; vision v1.1.2 does not exist (canonical v1.1). Historical provenance preserved; false 'currently' claim removed. D-053 option (b) bounded residuals F-R55-adv-1 + F-R55-adv-3 NOT fixed here; state-manager catalogs in close-out"
+traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21; v1.2.9 round-53.1: F-R53-adv-3 brief §-anchor mis-anchors — 5 corrections: §Phase Plan → §Phase Plan Rationale (§Scope), §Explicit Non-Goals → §Out of Scope (Explicit Non-Goals) (§P2-1 analysis), §Phase Plan Phase 2 → §Phase Plan Rationale (Phase 2 objectives) (§P2-2 analysis), §Phase Plan Phase 3 → §Phase Plan Rationale (Phase 3 objectives) (§P3-2 Verdict), §Phase 4 notes → §Scope (Phase 4 — PostToolUse revisit note) (§P3-1 analysis). D-042 cascade: dtu-assessment.md v1.5 → v1.6 (§P2-1 session_id, §P2-2 pid, §P2-2 join-key); SS-core-types-and-abi.md v1.2.7 citation. Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 sibling patterns); v1.2.10 round-54.1: F-R54-adv-1 D-042 same-file partial cascade — FC-01 and FC-06 table col 4 (Phase 1 Spec Change) citations of SS-daemon-lifecycle.md updated v1.0.6 → v1.0.7; FC-01 and FC-06 Disposition column citations left at v1.0.6 (intentionally historical — records lock-in version, not current spec version); §Verdict citation already correct at v1.0.7 since R53.1. 10th D-042 recurrence; first within-file-partial cascade; v1.2.11 round-55.1: F-R55-adv-2 MEDIUM content — §Scope false-currency rewrite on brief side (brief was v1.4.5 at scan time vs current v1.4.23); vision v1.1.2 is and was canonical. §Scope second sentence → historical-anchor form; objectives header → scan-time qualifier. D-053 option (b) bounded residuals F-R55-adv-1 + F-R55-adv-3 NOT fixed here; state-manager catalogs in close-out; v1.2.12 round-56.1: F-R56-1 MEDIUM content — §Trace v1.2.11 factual error corrected: claim 'vision v1.1.2 does not exist; canonical is v1.1' was false; vision IS at v1.1.2 per domain-monocle-vision-synthesis.md frontmatter. §Scope vision version restored to v1.1.2 historical-anchor form. D-042 cascade — dtu-assessment.md v1.6 → v1.7 in §P2-1 session_id prose, §P2-2 pid prose, §P2-2 join-key sentence (3 sites); SS-core-types-and-abi.md v1.2.7 → v1.2.8 in §P2-1 session_id prose (1 site). PG-5 §Historical-Anchor Framing Convention co-codified in SS-conventions-anti-patterns.md v1.24"
 project: monocle
 ---
 
@@ -31,7 +31,7 @@ project: monocle
 
 ### Scope
 
-This artifact answers a single question: does any Phase 2, 3, or 4 requirement, per scan performed against brief v1.4.5 + vision v1.1, constrain a Phase 1 spec decision that has NOT yet been locked?
+This artifact answers a single question: does any Phase 2, 3, or 4 requirement, per scan performed against brief v1.4.5 + vision v1.1.2 at scan time, constrain a Phase 1 spec decision that has NOT yet been locked?
 
 Phase 1 spec decisions are locked by: brief v1.4.5 at scan time (product-owner), oq-research.md (OQ-01..OQ-11, SOQ-1..SOQ-4), SS-daemon-lifecycle.md, SS-permissions-phase1.md, SS-deps-pin-manifest.md, and the three ADRs. Anything already locked in those artifacts is not subject to this scan. The scan targets decisions that are still open at the Phase 1 architecture (PRD + behavioral contracts) level.
 
@@ -52,9 +52,9 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan Rationale (scan-ti
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.6 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.7 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.7 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.8 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.6 §monocle-canonical column)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.7 §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -70,7 +70,7 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.6 §monocle-canonical column).
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.7 §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -260,21 +260,42 @@ SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 
 ## §Trace
 
+v1.2.12 changes (round-56.1 F-R56-1 §Trace factual correction):
+
+- F-R56-1 RESOLVED (MEDIUM content — adversary finding R56): §Trace v1.2.11 entry contained
+  factually-false claim "vision v1.1.2 does not exist; canonical is v1.1". Vision IS at
+  v1.1.2 per domain-monocle-vision-synthesis.md frontmatter (version: "1.1.2", approved
+  2026-05-12). The false claim was introduced without verifying the vision file frontmatter.
+  The R55.1 fix correctly identified the brief side as false-currency (brief v1.4.5 vs
+  current v1.4.23) but incorrectly characterized the vision side; vision v1.1.2 was and
+  remains the canonical version at scan time and at present. §Scope §Trace v1.2.11
+  description corrected to reflect that only the brief side was a false-currency claim.
+  §Scope opening sentence restored to historical-anchor form with the correct vision
+  version: "per scan performed against brief v1.4.5 + vision v1.1.2 at scan time".
+  PG-5 §Historical-Anchor Framing Convention codified in SS-conventions-anti-patterns.md
+  v1.24 as part of same burst. D-042 cascade: dtu-assessment.md v1.6 → v1.7 in §P2-1
+  session_id prose, §P2-2 pid prose, §P2-2 join-key sentence (3 sites; both SS-core-types
+  bump and dtu bump triggered by this burst); SS-core-types-and-abi.md v1.2.7 → v1.2.8 in
+  §P2-1 session_id prose (1 site). D-053 option (b) bounded residuals F-R55-adv-1 and
+  F-R55-adv-3 unchanged.
+
 v1.2.11 changes (round-55.1 F-R55-adv-2 historical-anchor rewrite under D-053 option b):
 
 - F-R55-adv-2 RESOLVED (MEDIUM content — adversary finding R55): §Scope opening sentence
   contained "as currently specified in brief v1.4.5 and vision v1.1.2" — a false currency
-  claim (brief is at v1.4.23; vision v1.1.2 does not exist; canonical is v1.1). §Scope
-  second sentence cited "brief v1.4.5 (product-owner)" without historical-anchor framing.
-  §Scope Phase 2-4 objectives list header cited "per brief v1.4.5 §Phase Plan Rationale"
-  without scan-time qualifier. All three sites rewritten as explicit historical anchors:
-  opening sentence → "per scan performed against brief v1.4.5 + vision v1.1"; second
-  sentence → "brief v1.4.5 at scan time (product-owner)"; objectives header → "per brief
-  v1.4.5 §Phase Plan Rationale (scan-time reference)". Provenance preserved; false
-  "currently" claim removed. Under D-053 (human-ratified 2026-05-14, pre-Phase-1 scope
-  only) option (b) convergence relaxation: F-R55-adv-1 (PG-4 em-dash separator
-  codification gap) and F-R55-adv-3 (PG-4 intra-document scope hole) are bounded META
-  residuals per option (b) — not fixed in this burst; state-manager catalogs in close-out.
+  claim on the brief side (brief is at v1.4.23; vision v1.1.2 is and was the canonical
+  version). §Scope second sentence cited "brief v1.4.5 (product-owner)" without
+  historical-anchor framing. §Scope Phase 2-4 objectives list header cited
+  "per brief v1.4.5 §Phase Plan Rationale" without scan-time qualifier. Three sites
+  rewritten as explicit historical anchors: opening sentence → historical-anchor form
+  (vision version erroneously changed to v1.1; corrected back to v1.1.2 in v1.2.12);
+  second sentence → "brief v1.4.5 at scan time (product-owner)"; objectives header →
+  "per brief v1.4.5 §Phase Plan Rationale (scan-time reference)". Provenance preserved;
+  false "currently" claim on brief side removed. Under D-053 (human-ratified 2026-05-14,
+  pre-Phase-1 scope only) option (b) convergence relaxation: F-R55-adv-1 (PG-4 em-dash
+  separator codification gap) and F-R55-adv-3 (PG-4 intra-document scope hole) are bounded
+  META residuals per option (b) — not fixed in this burst; state-manager catalogs in
+  close-out.
 
 v1.2.10 changes (round-54.1 F-R54-adv-1 D-042 same-file partial cascade fix):
 

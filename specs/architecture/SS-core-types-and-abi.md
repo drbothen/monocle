@@ -4,7 +4,7 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2.7"
+version: "1.2.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs; v1.2.5: F-R51-adv-1 PG-4 sweep — §Analysis — Sealed trait prefix corrected to §Item P3-1 in §FactoryAdapter Trait §Trait Signature rustdoc; v1.2.6: F-R52-cons-1 PG-3-TRACE-NEW-ENTRY sweep — at L487 intra-doc bare L-number dropped from §Trace v1.2.5 entry; v1.2.7: F-R53-adv-3 brief §Phase Plan → §Phase Plan Rationale in §HookType rustdoc (§Scope header); F-R53-adv-4 brief §Phase 1 Success Criteria → §Success Criteria at 2 sites in §VsddFactoryAdapter Phase 1 Implementation rustdoc and §BC-FACTORY-002 Traceability"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs; v1.2.5: F-R51-adv-1 PG-4 sweep — §Analysis — Sealed trait prefix corrected to §Item P3-1 in §FactoryAdapter Trait §Trait Signature rustdoc; v1.2.6: F-R52-cons-1 PG-3-TRACE-NEW-ENTRY sweep — at L487 intra-doc bare L-number dropped from §Trace v1.2.5 entry; v1.2.7: F-R53-adv-3 brief §Phase Plan → §Phase Plan Rationale in §HookType rustdoc (§Scope header); F-R53-adv-4 brief §Phase 1 Success Criteria → §Success Criteria at 2 sites in §VsddFactoryAdapter Phase 1 Implementation rustdoc and §BC-FACTORY-002 Traceability (PG-4 fix — heading does not exist; corrected to actual heading); v1.2.8: F-R56-2 PG-5 historical-anchor framing — brief v1.4.6 version qualifier dropped at both §VsddFactoryAdapter rustdoc and §BC-FACTORY-002 Traceability sites per option (c): §Success Criteria is stable since v1.4.0; version qualifier adds no value and was false-currency (brief at v1.4.23)"
 project: monocle
 ---
 
@@ -573,7 +573,7 @@ pub trait FactoryAdapter: Send + Sync + 'static {
 /// frontmatter block that includes `document_type: pipeline-state`. This is the
 /// exact format written by `vsdd-factory:state-manager` — monocle's own
 /// `.factory/STATE.md` satisfies this criterion (self-referential test per
-/// brief v1.4.6 §Success Criteria).
+/// brief §Success Criteria).
 pub struct VsddFactoryAdapter {
     workspace_root: PathBuf,
     state_file: PathBuf,
@@ -876,7 +876,7 @@ it derives `state_file = workspace_root.join(".factory/STATE.md")`. The `detect`
 static method returns `Some(FactoryDetection)` when called against monocle's own
 workspace root (the directory containing `.factory/STATE.md` with
 `document_type: pipeline-state` frontmatter). This is the self-referential detection
-test from brief v1.4.6 §Success Criteria. When `read_state` encounters
+test from brief §Success Criteria. When `read_state` encounters
 absent optional fields, the returned `FactoryState` carries `None` rather than
 placeholder strings: absent `current_cycle:` → `cycle: None`; absent §Session
 Resume Checkpoint → `convergence: None`. Consumers (Workflow TUI panel) display
@@ -1078,6 +1078,17 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.8 changes (round-56.1 F-R56-2 PG-5 historical-anchor framing — 2 sites):
+
+- F-R56-2 RESOLVED (MEDIUM content — 2 sites in this file): §VsddFactoryAdapter Phase 1
+  Implementation rustdoc and §BC-FACTORY-002 Traceability both cited
+  `brief v1.4.6 §Success Criteria`. PG-5 §Historical-Anchor Framing Convention (codified
+  in SS-conventions-anti-patterns.md v1.24 same burst): `brief v1.4.6` is neither current
+  (brief is at v1.4.23) nor explicitly framed as historical. §Success Criteria is a stable
+  brief section that has existed since v1.4.0; version qualifier adds no navigational value.
+  Fix: option (c) — version qualifier dropped at both sites. Both now read
+  `brief §Success Criteria`.
 
 v1.2.7 changes (round-53.1 F-R53-adv-3/4 brief §-anchor mis-anchors):
 
