@@ -4,11 +4,11 @@ level: L3
 section: "core"
 slug: "types-and-abi"
 subsystem: "core"
-version: "1.2.4"
+version: "1.2.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T03:00:00Z
+timestamp: 2026-05-14T08:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs"
+traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs; v1.2.5: F-R51-adv-1 PG-4 sweep — §Analysis — Sealed trait prefix corrected to §Item P3-1 in §FactoryAdapter Trait rustdoc"
 project: monocle
 ---
 
@@ -484,8 +484,8 @@ pub type StateChangeStream =
 ///
 /// The trait is OPEN — third-party crates may implement it. This is intentional:
 /// it is the mechanism by which the Phase 3 plugin SDK exposes factory adapter
-/// extensibility. Per SS-forward-compatibility.md §Analysis — Sealed trait
-/// §Item P3-1 — Verdict on Sealed: "Do not apply the Sealed pattern to
+/// extensibility. Per SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed:
+/// "Do not apply the Sealed pattern to
 /// `EngineModule` or `FactoryAdapter`." Sealing would prevent Phase 3 WASM plugin
 /// authors from implementing this trait, defeating its purpose.
 pub trait FactoryAdapter: Send + Sync + 'static {
@@ -1078,6 +1078,18 @@ Phase 2–4 work that needs to extend Phase 1 contracts proceeds by:
 
 Resolves FC-02, FC-03, FC-04 (CRITICAL), and FC-05 from the forward-compatibility
 scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
+
+v1.2.5 changes (round-51.1 PG-4 §-heading-existence sweep):
+
+- F-R51-adv-1 COMPANION (PG-4 sweep): §FactoryAdapter Trait rustdoc at L487 cited
+  `SS-forward-compatibility.md §Analysis — Sealed trait §Item P3-1 — Verdict on Sealed`.
+  `§Analysis — Sealed trait` has no heading in SS-forward-compatibility.md; it is a bold
+  paragraph label within `#### Item P3-1`. The F-R48-adv-2 §Trace entry (v1.2.4) recorded
+  the removal of the line-number pinpoint but inadvertently left `§Analysis — Sealed trait`
+  as a residual prefix. Corrected to `§Item P3-1 — Verdict on Sealed` — the actual heading
+  uniquely identified by prefix `Item P3-1`. Chain-resolvability confirmed: reader navigates
+  to `#### Item P3-1` in SS-forward-compatibility.md and reads the Verdict on Sealed bold
+  paragraph directly.
 
 v1.2.4 changes (round-49 F-R48-adv-2 root-cause fix — PG-3 all-prose expansion):
 
