@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.7"
+version: "1.1.8"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T12:00:00Z
+timestamp: 2026-05-14T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites)"
 project: monocle
 ---
 
@@ -24,7 +24,7 @@ This file is the canonical dependency manifest for monocle. All version pins, pi
 
 ## Authority / Supersession
 
-This document is the canonical, authoritative tech-stack version manifest for monocle. The vision document (`.factory/specs/research/domain-monocle-vision-synthesis.md`) §Tech Stack section was produced before OQ-01..OQ-11 resolution and carries pre-OQ version examples. Where this document and the vision disagree on a crate version, this document wins. Where this document and brief v1.4 disagree, this document wins. Trace: D-018 (oq-research.md commit b3c68ca), JC-1/JC-2/JC-3 resolutions.
+This document is the canonical, authoritative tech-stack version manifest for monocle. The vision document (`.factory/specs/research/domain-monocle-vision-synthesis.md`) §Tech Stack section was produced before OQ-01..OQ-11 resolution and carries pre-OQ version examples. Where this document and the vision disagree on a crate version, this document wins. Where this document and brief v1.4 at manifest authoring time disagree, this document wins. Trace: D-018 (oq-research.md commit b3c68ca), JC-1/JC-2/JC-3 resolutions.
 
 ## Phase 1 Pin Manifest
 
@@ -137,7 +137,7 @@ Operationally:
 
 **`rmcp 1.6` is PINNED in this manifest but NOT instantiated in the Phase 1 Cargo workspace.** Per OQ-09 resolution, MCP bridge functionality is Phase 4 scope. Pinning here locks the version into the manifest for security audit purposes, but the `monocle-mcp-bridge` crate — which will declare `rmcp` as a dependency — does not exist in the Phase 1 workspace.
 
-Phase 1 workspace: 11 named crates + 1 binary = **12 crates total** (per brief v1.4 EX-1 ratification). Phase 4 workspace adds `monocle-mcp-bridge`, expanding to 13 crates total.
+Phase 1 workspace: 11 named crates + 1 binary = **12 crates total** (per brief v1.4 at time of manifest authoring, EX-1 ratification). Phase 4 workspace adds `monocle-mcp-bridge`, expanding to 13 crates total.
 
 ## Workspace Dependency Graph
 
@@ -250,6 +250,16 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.8 changes (round-57.1 PG-5 sweep — 2 brief version citations):
+- §Authority / Supersession: `brief v1.4 disagree` lacked PG-5 Form 2 qualifier. Fixed:
+  `brief v1.4 at manifest authoring time`. This is a standing authority statement; the
+  historical qualifier correctly frames it as established at the time this manifest was
+  authored (brief was at v1.4.x at manifest creation).
+- §Phase 1/4 Workspace Crate Count: `per brief v1.4 EX-1 ratification` lacked qualifier.
+  Fixed: `per brief v1.4 at time of manifest authoring, EX-1 ratification`. This records
+  the ratification source at the time the 12-crate count was confirmed.
+  `traces_to` frontmatter exempt per PG-5 Option B carve-out.
 
 v1.1.7 changes (round-24 fix F-R24-adv-1):
 - temp-env dev-dependency bumped from `^0.2` to `{ version = "^0.3", features =

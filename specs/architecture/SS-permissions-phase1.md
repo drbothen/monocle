@@ -2,16 +2,16 @@
 document_type: architecture-permissions
 level: L3
 section: "permissions"
-version: "1.1"
+version: "1.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T12:00:00Z
+timestamp: 2026-05-14T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved"
+traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved; v1.2: round-57.1 PG-5 sweep — brief v1.3 + v1.4.3 historical-anchor fix (§Context + §Consequences)"
 project: monocle
 ---
 
@@ -25,7 +25,7 @@ Accepted (architect-produced, human-directed per Q-A-permission-enum Option A).
 
 ## Context
 
-Brief v1.3 introduced `Permission token enum: 17 variants in monocle-core::permissions;
+Brief v1.3 at spec authoring time introduced `Permission token enum: 17 variants in monocle-core::permissions;
 dispatcher no-op until Phase 3 (SOQ-4)`. Those 17 variants were sourced verbatim from
 zellij's `PermissionType` enum, which models WASM plugin sandbox capabilities
 (`ReadApplicationState`, `OpenFiles`, `RunCommands`, `WebAccess`, etc.).
@@ -268,8 +268,8 @@ architecture cycle to define the `PluginPermission` enum surface.
 
 ## Consequences
 
-- **Brief v1.4.3:** the permission line will reference this artifact rather than
-  spelling out "17 variants."
+- **Brief v1.4.3 (at spec authoring time):** the permission line references this artifact
+  rather than spelling out "17 variants."
 - **Phase 1 implementation:** `monocle-core::permissions` has a small, fully-typed,
   exhaustive permission surface with no dead variants. Every variant maps to a
   concrete Phase 1 use case.
@@ -295,6 +295,19 @@ requiring an ADR — only new dispatch semantics require one.
 
 ## Trace
 
-Resolves F-NEW-03 (CRITICAL adversary finding, commit e2c224b). Human Q-A-permission-enum
-Option A. Gene-source: BC-HOOK-007 (canonical 5-hook matrix), BC-HOOK-018 (fail-open
-semantics), BC-HOOK-020 (Notification filter), BC-HOOK-022 (timeout matrix).
+v1.2 changes (round-57.1 PG-5 sweep — 2 brief version citations):
+- §Context L28: `Brief v1.3 introduced` lacked PG-5 Form 2 qualifier. Fixed: `Brief v1.3
+  at spec authoring time introduced`. Citation describes a historical event (what brief
+  said when this spec was first authored).
+- §Consequences L271: `Brief v1.4.3: the permission line will reference` was future-tense
+  provenance at time of authoring, now fulfilled. Fixed: `Brief v1.4.3 (at spec authoring
+  time): the permission line references`. Tense updated to past-accurate and historical
+  qualifier added. `traces_to` frontmatter exempt per PG-5 Option B carve-out.
+
+v1.1 changes: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005
+regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved.
+
+v1.0 (initial): Resolves F-NEW-03 (CRITICAL adversary finding, commit e2c224b). Human
+Q-A-permission-enum Option A. Gene-source: BC-HOOK-007 (canonical 5-hook matrix),
+BC-HOOK-018 (fail-open semantics), BC-HOOK-020 (Notification filter), BC-HOOK-022
+(timeout matrix).

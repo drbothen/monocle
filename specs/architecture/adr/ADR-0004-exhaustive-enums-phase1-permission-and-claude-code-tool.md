@@ -8,10 +8,10 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.2"
+version: "1.0.3"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-13T12:00:00Z
+timestamp: 2026-05-14T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
@@ -172,7 +172,7 @@ design of `PluginPermission`.
   as the ADR-exemption source but is not an ADR; BC-TYPES-001 exemption requires an ADR.
 - **SS-permissions-phase1.md §Decision:** Canonical definition of both enums; documents
   the exhaustiveness invariant and the extension protocol.
-- **Brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract):** Lists
+- **Brief v1.4.7 at time of ADR authoring §Scope (Public enum extensibility forward-compatibility contract):** Lists
   both enums as exhaustive-by-design and refers to this ADR.
 - **BC-TYPES-001:** The behavioral contract requiring ADR documentation for all
   `#[non_exhaustive]` exemptions.
@@ -180,6 +180,16 @@ design of `PluginPermission`.
   exhaustiveness enforcement is production-grade; silent wildcard routing is not.
 
 ## Amendment History
+
+v1.0.3 changes (round-57.1 F-R57-1 PG-5 historical-anchor fix):
+- F-R57-1 RESOLVED (MEDIUM content — adversary finding R57): §Source / Origin body at
+  `Brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract)` failed
+  PG-5 — bare version, neither current (brief at v1.4.23) nor explicitly qualified as
+  historical. Fix: Form 2 historical-anchor applied. Now reads `Brief v1.4.7 at time of
+  ADR authoring §Scope (...)`. The R56.1 "comprehensive PG-5 sweep" missed the ADR class
+  entirely; this burst adds the explicit ADR-N sweep to the PG-5 sweep-evidence checklist.
+  Note: `traces_to` frontmatter citation remains unchanged — frontmatter is exempt per
+  PG-5 Option B carve-out (codified in SS-conventions-anti-patterns.md v1.25).
 
 v1.0.2 changes (round-53.1 F-R53-adv-5 brief §-anchor fix):
 - F-R53-adv-5 RESOLVED (LOW — adversary finding R53): `traces_to` frontmatter and

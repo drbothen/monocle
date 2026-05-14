@@ -7,10 +7,10 @@ subsystems_affected: []
 supersedes: null
 superseded_by: null
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T18:00:00Z
+timestamp: 2026-05-14T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
@@ -68,9 +68,9 @@ future fallback if binary-size pressure becomes a release constraint.
 
 ### Status as of 2026-05-12
 
-Pre-implementation (Phase 3 deliverable). Decision accepted at brief v1.1;
-rationale extracted to this ADR during brief v1.2 revision. wasmtime 44 pinned
-in SS-deps-pin-manifest.md; no code shipped yet.
+Pre-implementation (Phase 3 deliverable). Decision accepted at brief v1.1 (at time of
+ADR authoring); rationale extracted to this ADR during the brief v1.2 revision (also at
+time of ADR authoring). wasmtime 44 pinned in SS-deps-pin-manifest.md; no code shipped yet.
 
 ## Alternatives Considered
 
@@ -80,7 +80,18 @@ in SS-deps-pin-manifest.md; no code shipped yet.
 ## Source / Origin
 
 - **Master design doc:** vision §Tech Stack (human-approved, D-012) specifies wasmtime as the WASM runtime
-- **Product brief:** `/Users/jmagady/Dev/monocle/.factory/specs/product-brief.md` v1.1 Constraints & Integration Points, wasmtime vs wasmi rationale paragraph
+- **Product brief:** `/Users/jmagady/Dev/monocle/.factory/specs/product-brief.md` v1.1 at time of ADR authoring, Constraints & Integration Points, wasmtime vs wasmi rationale paragraph
 - **Dependencies manifest:** `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md` §Phase 1 Pin Manifest row wasmtime 44
 - **Gene source:** `/Users/jmagady/Dev/monocle/.factory/semport/zellij/zellij-pass-8-final-synthesis.md` §plugin (zellij-tile WASM plugin SDK model)
 - **RUSTSEC context:** RUSTSEC-2026-0114, 0095, 0096, 0006, 0020 on pre-44 wasmtime majors
+
+## Amendment History
+
+v1.0.2 changes (round-57.1 PG-5 ADR-class sweep):
+- PG-5 sweep: §Consequences `### Status as of 2026-05-12` cited `brief v1.1` (bare version,
+  neither current nor explicitly historical). Fix: Form 2 historical-anchor applied —
+  "at brief v1.1 (at time of ADR authoring)". §Source / Origin cited
+  `product-brief.md` v1.1 without historical qualifier. Fix: "v1.1 at time of ADR
+  authoring" added. Both citations are provenance records; historical framing is accurate.
+  `traces_to` frontmatter (also cites brief v1.1) is exempt per PG-5 Option B carve-out
+  (frontmatter exempted in SS-conventions-anti-patterns.md v1.25).
