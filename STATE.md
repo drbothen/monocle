@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "3.0"
+version: "3.1"
 status: active
 producer: state-manager
-timestamp: 2026-05-14T04:30:00Z
-phase: pre-phase-1-final-gate-round-46-adversary-needs-one-more-convergence-def-surface-pending
-current_step: surface-convergence-definition-to-human
+timestamp: 2026-05-14T06:00:00Z
+phase: pre-phase-1-final-gate-clean-pass-1-of-3-r51-audit-pending
+current_step: dispatch-R51-audit-cycle-for-clean-pass-2-of-3
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "R46 adversary NEEDS_ONE_MORE (1H+1M+1L); Pass A 4/4 R44 findings resolved; 0/3 clean passes after 13 rounds; convergence-definition question now surfaces to human"
-awaiting: "Human ratification of convergence-definition policy (options a/b/c/d per O-R44-1). If (a): R47 fix burst on F-R46-1/2/3 → R48 audit. If (b)/(c)/(d): record D-047 + orchestrator continues per chosen option."
+traces_to: "R50 audit cycle CLEAN both legs (consistency caa7165 + adversary caa7165). FIRST CLEAN PASS after 15 rounds (R22-R44 + R46 + R48 + R50). Clean-pass count: 1/3 under D-047 strict policy. Defense layers PG-1, PG-2 (R49 generalized noun-agnostic), PG-3 (R49 expanded all-prose), D-042 (R49 .factory/specs/ recursive) close root-cause coverage."
+awaiting: "R51 audit cycle dispatch (consistency + adversary on latest commit). Target: clean-pass 2-of-3. If R51 CLEAN: continue to R52 for clean-pass 3-of-3. Any R51 finding resets count per D-047 strict policy."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -22,12 +22,11 @@ current_cycle: cycle-001
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
 
-## READ THIS FIRST (fresh-context session)
+## READ THIS FIRST
 
-Context was cleared. This file is the only prior context. Do:
-1. Read this file completely before doing anything.
+1. Read this file completely.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle binds everything.
-3. Follow the Immediate Next Action in Session Resume Checkpoint below.
+3. Follow Immediate Next Action below.
 4. Verify: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -5`
 
 ## Project Metadata
@@ -37,53 +36,48 @@ Context was cleared. This file is the only prior context. Do:
 | **Product** | monocle — single-binary Rust TUI for AI coding harness sessions |
 | **Mode** | greenfield-with-reference-ingest (8 repos in semport/) |
 | **Language** | Rust; MSRV Phase 1: 1.86 |
-| **Current Phase** | pre-phase-1-final-gate-round-46-adversary-needs-one-more-convergence-def-surface-pending |
-| **Current Step** | surface-convergence-definition-to-human |
-| **Brief** | `.factory/specs/product-brief.md` v1.4.19 (commit c938364) |
+| **Current Phase** | pre-phase-1-final-gate-clean-pass-1-of-3-r51-audit-pending |
+| **Current Step** | dispatch-R51-audit-cycle-for-clean-pass-2-of-3 |
+| **Brief** | `.factory/specs/product-brief.md` v1.4.21 (commit caa7165) |
 | **Vision** | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 (approved) |
-| **Last Updated** | 2026-05-14T04:30:00Z |
+| **Last Updated** | 2026-05-14T06:00:00Z |
 
 ## Phase Progress
 
 | Phase | Status | Completed | Notes |
 |-------|--------|-----------|-------|
 | -1: Reference Ingest (8 repos) | DONE | 2026-05-11 | 57+ artifacts; semport/ |
-| 0.5-0.9: Brief v1.0→v1.4.19 + arch stubs | DONE | 2026-05-12 | |
+| 0.5-0.9: Brief v1.0→v1.4.21 + arch stubs | DONE | 2026-05-14 | |
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k: Round 20 validation | DONE | 2026-05-13 | consistency CLEAN; adv 0 CRIT+2 MED+1 LOW |
-| Pre-Phase-1 Final Gate | PENDING — R46 adversary NEEDS_ONE_MORE 1H+1M+1L (commit 0903d48). 0/3 clean passes after 13 rounds (R22-R44 + R46). Convergence-definition question SURFACING NOW per O-R44-1. D-040/D-041/D-042 conditional; Q-3 pending human refresh; gate retracted per D-043. | — | |
+| Pre-Phase-1 Final Gate | PENDING — R50 audit CLEAN both legs (commits c93/caa7165). 1/3 clean passes under D-047 strict policy. Defense layers PG-1/PG-2 noun-agnostic/PG-3 all-prose/D-042 .factory/specs/ recursive scope codified — root-cause coverage closed. | — | Finding trajectory: R44 4f, R46 3f, R48 3f LOW, R50 ZERO |
 | 1: Spec Crystallization | not-started | — | |
 | 2-7 | not-started | — | |
 
 ## Current Phase Steps
 
-<!-- Last 5 steps only. Older steps archived to cycles/cycle-001/burst-log.md. -->
-
 | Step | Agent | Status | Output |
 |------|-------|--------|--------|
-| R44 validation: adv F-R44-adv-1 HIGH (paths.include vs fixture corpus) + F-R44-adv-2/3 MED (narrative count drifts) + F-R44-adv-4 LOW; report persisted | adversary+state-manager | DONE | commit e281286 |
-| R45 fix burst: F-R44-adv-1 HIGH Option b (fixture path to paths.include + FIXTURE_STRUCT_NAMES exclusion) + F-R44-adv-2/3 narrative count drift (5 rules / 3 steps) + F-R44-adv-4 auto-resolved | architect | DONE | commit e7ef2b5 |
-| R45 state close-out: convergence-definition flagged post-R46; 0/3 after 12 rounds | state-manager | DONE | commit 705df28 |
-| R46 consistency: 0 findings CLEAN | consistency-validator | DONE | commit ceff2e6 |
-| R46 adversary retry: F-R46-1 HIGH (DTU schema-citation drift 3-doc) + F-R46-2 MED (phantom BC-HOOK-001–006) + F-R46-3 LOW (step-6→7 stale); Pass A 4/4 R44 RESOLVED | adversary+state-manager | DONE | commits ceff2e6 + 0903d48 |
+| R47 fix burst F-R46-1/2/3 + PG-1+PG-2 codified | architect | DONE | commit 1cbab1e |
+| R47.1-R47.4 sibling fixes + PG-3 codified + §Trace L-pinpoint sweep + brief refresh | architect+product-owner | DONE | commits 1dd9380, 42b0007, 83cd93f, 1dc5185 |
+| R48 audit cycle: 4 consistency passes (3 LOWs found+fixed) + adversary 3 LOW [process-gap] | consistency-validator+adversary | DONE | 4 plans/ files |
+| R49 fix burst: F-R48-adv-1/2/3 root-cause + PG-2 generalized + PG-3 all-prose + PG-D042-BURST-SKIP closed + 5 version bumps | architect | DONE | commit 07c1259 |
+| R49.1 brief cascade refresh (SS-engine-module v1.1.13→v1.1.14) | product-owner | DONE | commit caa7165 |
+| R50 audit CLEAN both legs (consistency + adversary 0 findings) | consistency-validator+adversary | DONE | **CLEAN-PASS 1 OF 3** |
 
 ## Decisions Log
 
-<!-- D-001..D-035 archived to cycles/cycle-001/burst-log.md. -->
-
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
-| D-036 | Round 33 fix: semgrep pattern-either Shape A+B POL-11 META-GAP closed; Python script edge cases (5 scenarios); brief delimiter strings corrected verbatim; F-R32-3 Q-3 staleness refreshed | 2026-05-13T19:15:00Z | state-manager |
-| D-037 | Round 35 fix: F-R34-1 CRITICAL META-pattern — line-anchored regex + §Trace de-quoted + v1.8 convention rule prohibits verbatim quoting; F-R34-2 `#[$ATTR(...)]` standard semgrep form; F-R34-3 paths.include 4→12 covering all 11 crates + binary | 2026-05-13T20:30:00Z | state-manager |
-| D-038 | Round 37 fix: F-R36-1 brief citation v1.1.9→v1.1.10; F-R36-2 v1.8 no-verbatim-quoting rule propagated to §Trace + brief revision-history entries; grep verified zero verbatim delimiter quotes; S-7.01 Partial-Fix Regression Discipline applied | 2026-05-13T21:15:00Z | state-manager |
-| D-039 | Round 39 fix: F-R38-1 Option B narrowly drawn exception to v1.10 clause 4 (code-spec blocks permitted); F-R38-2 SS-forward-compat v1.2.1→v1.2.2 FC-01/FC-06 lock-in cells; META-pattern workflow mitigation rule: grep before any version bump | 2026-05-13T22:00:00Z | state-manager |
-| D-040 | D-031 RATIFIED by human: architecture wins on Phase 1 surfaces; vision canonical for intent. No spec edits required. (CONDITIONAL on 3-clean-pass convergence + input-hash drift check.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-041 | D-032 RESOLVED by human: STRICT ROUTING — no narrow exemptions. Commit 688a5ed routing violation; product-owner v1.4.12 ratification was correct. Going forward: routing table binding without exemption. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-042 | O-R36-1 RESOLVED by human: OPTION (c) — manual workflow mitigation only; grep-before-version-bump rule canonical. No CI codification; no tech-debt entry. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
-| D-043 | Protocol violation: orchestrator presented Phase 1 gate before 3-clean-adversary-pass convergence threshold. Gate rolled back 2026-05-13T23:30:00Z. D-040/D-041/D-042 preserved as valid but conditional. | 2026-05-13T23:30:00Z | orchestrator (recorded by state-manager) |
-| D-044 | Round 41 fix: F-R40-1 Option (a) CLI flag removal (paths.include authoritative); F-R40-2 historical-pinpoint rewrite (narrative accuracy); D-042 retroactive sweep: 7 docs, 16 instances, 2 stale found | 2026-05-13T23:55:00Z | state-manager |
-| D-045 | Round 43 fix: F-R32-2 dual-shape to 3 sibling semgrep rules (S-7.01); F-R42-cons-1 brief citation sweep; D-042 scope hole closed (grep pattern → .factory/specs/ recursive + anchor-tolerant secondary pattern) | 2026-05-14T01:30:00Z | state-manager |
-| D-046 | Round 45 fix: F-R44-adv-1 Option (b) fixture path added to paths.include + FIXTURE_STRUCT_NAMES exclusion in Python script; F-R44-adv-2/3 narrative count drift fixed (4 stale refs); F-R44-adv-4 auto-resolved. SS-conventions v1.12→v1.13. | 2026-05-14T03:00:00Z | state-manager |
+| D-040 | D-031 RATIFIED: architecture wins on Phase 1 surfaces; vision canonical for intent. No spec edits required. (CONDITIONAL on 3-clean-pass convergence + input-hash drift check.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-041 | D-032 RESOLVED: STRICT ROUTING — no narrow exemptions. Routing table binding without exemption. (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-042 | O-R36-1 RESOLVED: OPTION (c) — manual workflow mitigation; grep-before-version-bump canonical. D-042 scope codified as .factory/specs/ recursive (R49). (CONDITIONAL on convergence.) | 2026-05-13T23:00:00Z | human (Josh Magady) |
+| D-043 | Protocol violation: orchestrator presented Phase 1 gate before 3-clean-adversary-pass threshold. Gate rolled back. D-040/D-041/D-042 preserved as conditional. | 2026-05-13T23:30:00Z | orchestrator |
+| D-044 | Round 41 fix: F-R40-1 CLI flag removal; F-R40-2 historical-pinpoint rewrite; D-042 retroactive sweep 7 docs 16 instances | 2026-05-13T23:55:00Z | state-manager |
+| D-045 | Round 43 fix: F-R32-2 dual-shape to 3 sibling semgrep rules; F-R42-cons-1 brief citation sweep; D-042 scope hole closed | 2026-05-14T01:30:00Z | state-manager |
+| D-046 | Round 45 fix: F-R44-adv-1 Option (b) fixture path + FIXTURE_STRUCT_NAMES exclusion; F-R44-adv-2/3 narrative count drift fixed; SS-conventions v1.12→v1.13 | 2026-05-14T03:00:00Z | state-manager |
+| D-047 | Human ratified option (a) strict 3-clean-pass policy per O-R44-1. No policy change. Convergence requires 3 consecutive 0+0+0+0 audit cycles. | 2026-05-14 | human (Josh Magady) |
+| D-048 | R47-R49 defense-layer coverage closure: PG-1 §Schema-Fact Citation Convention; PG-2 META rule generalized to noun-agnostic syntactic-shape; PG-3 expanded from §Trace-prose to all-spec-prose scope; PG-D042-BURST-SKIP closed (D-042 scope codified .factory/specs/ recursive). | 2026-05-14 | state-manager (recording R49 architect codifications) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 <10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1 is Phase 1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types; Q-Round-20 fix round-20 findings. All binding.
 
@@ -95,83 +89,54 @@ User decisions (Q-series): Q-A1 vision v1.1.2 re-approved; Q-B R-001 <10%; Q-lic
 
 ## Blocking Issues
 
-**O-R46-1 (CONVERGENCE-DEFINITION RATIFICATION):** Convergence-definition decision pending human (O-R44-1). R47 fix burst on F-R46-1/2/3 blocked until human ratifies convergence policy (a/b/c/d). Surfaced 2026-05-14T04:30:00Z.
+_None — R50 CLEAN both legs; R51 audit dispatch pending for clean-pass 2-of-3._
 
 ## Session Resume Checkpoint
 
-**DURABILITY-CHECKPOINT: fresh-context-resume-ready** | Cycle: cycle-001 | Phase: R46-adversary-complete-convergence-def-pending
+### Immediate Next Action — DISPATCH R51 AUDIT CYCLE
 
-### Reading order for fresh-context session
+R50 returned CLEAN on both legs (consistency + adversary). This is clean-pass 1 of 3 under D-047 strict policy. Next action: dispatch R51 audit cycle on the latest commit (post this state-manager commit).
 
-1. Read this file completely.
-2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` (canonical principle binds everything).
-3. Verify git: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Most recent commits: 0903d48 (R46 persist + state update), ceff2e6 (R46 consistency CLEAN), 705df28 (R45 close-out), e7ef2b5 (SS-conventions v1.13), e281286 (R44 adv persist).
+Per pattern (R50): dispatch consistency-validator AND adversary in **parallel** (single message, two Agent tool calls). Spec corpus unchanged from R50 — same 16 BCs implementable, same defense layers; R51 audit verifies convergence holds across an additional fresh-context probe.
 
-### Immediate Next Action — AWAIT HUMAN CONVERGENCE-DEFINITION RATIFICATION
+Target outcome: R51 CLEAN → clean-pass 2/3.
+Risk: any R51 finding resets count to 0/3 (D-047 strict). Trajectory novelty decayed to ZERO at R50; expectation is CLEAN with low probability of new findings.
 
-R46 adversary completed: NEEDS_ONE_MORE (1 HIGH + 1 MEDIUM + 1 LOW). Convergence count remains 0/3 after 13 rounds. Convergence-definition question is now surfaced to the human (mandatory per O-R44-1 + O-R42-2).
+After R51 CLEAN: dispatch R52 for clean-pass 3-of-3 → trigger Phase 1 final gate re-presentation to human (D-040/D-041/D-042 conditional ratifications become unconditional).
 
-Awaiting human ratification of one of:
-- (a) Continue strict 3-clean-pass iteration → R47 fix burst on F-R46-1/2/3 → R48 audit
-- (b) Redefine convergence: no HIGH+/CRITICAL for N consecutive passes with severity-decay metric
-- (c) Accept current state and proceed to Phase 1 gate with documented residual risk
-- (d) Hybrid: cap at N more rounds, then auto-escalate for (b)/(c) decision
-
-Upon human decision: state-manager records D-047 capturing the policy. Then orchestrator dispatches per chosen option.
-
-R46 findings for context:
-- F-R46-1 [HIGH] DTU schema-citation drift: dtu-assessment L96-100 endpoint matrix vs SS-core-types-and-abi L196-280 struct fields vs SS-forward-compatibility L55 factual claim. Route: architect.
-- F-R46-2 [MEDIUM] Phantom BC-HOOK-001–006 in SS-conventions L641. Route: architect.
-- F-R46-3 [LOW] Stale "step 6" → "step 7" in SS-conventions L1069 (post F-R44-adv-1 step renumber). Route: architect.
-
-Full report: `.factory/plans/adversary-pass-round-46.md`
-
-### Task Queue
-
-| Task | Status | Blocked by |
-|------|--------|-----------|
-| #32 R46 adversary retry | DONE | — |
-| #33 Surface convergence-definition to human (O-R44-1) | DONE — AWAITING HUMAN | — |
-| #34 R47 fix burst on F-R46-1/2/3 | blocked | human ratification of convergence policy |
-| #24 Achieve 3 consecutive clean adversary passes | blocked | human ratification |
-| #25 Pre-gate input-hash drift check | pending | #24 |
-| #26 Re-present Phase 1 gate to human (post-convergence) | pending | #25 |
+Read for R51: all 11 spec files at current versions (SS-engine-module v1.1.14, SS-conventions v1.18, SS-forward-compat v1.2.5, SS-core-types-and-abi v1.2.4, dtu-assessment v1.3, brief v1.4.21, others), this STATE.md, CLAUDE.md.
 
 ### Session Commit Chain (most-recent-first)
 
 ```
-0903d48 — R46 adversary persist + STATE.md update (convergence-def surfaces to human)
-ceff2e6 — R46 consistency CLEAN (0 findings)
-705df28 — R45 state-manager close-out (convergence-definition flagged post-R46)
-e7ef2b5 — R45 architect SS-conventions v1.13 (F-R44-adv-1 Option b + count drift)
-e281286 — R44 adversary report persist
-58394fd — R44 consistency CLEAN
-46541b1 — R43 state-manager close-out
-9f3da82 — R43 architect SS-forward-compat v1.2.3 (D-042 scope correction)
-9cfd799 — R43 architect SS-conventions v1.12 (sibling-rule dual-shape)
-c938364 — R43 product-owner brief v1.4.19
-c3440cf — R42 adversary report persist (1M)
-36c4175 — R42 consistency (1M)
-[...earlier commits in cycles/cycle-001/burst-log.md...]
+[this commit] — R50 CLEAN milestone: state close-out + plans persistence + burst-log + lessons
+caa7165 — R49.1 brief cascade refresh (SS-engine-module v1.1.13→v1.1.14)
+07c1259 — R49 architect F-R48-adv-1/2/3 root-cause + PG-2 generalized + PG-3 all-prose + PG-D042-BURST-SKIP
+1dc5185 — R47.4 brief refresh (F-R48TP-1)
+83cd93f — R47.3 §Trace L-pinpoint sweep + PG-3 §Trace-prose sub-rule
+42b0007 — R47.2 sibling directional sweep + PG-3 §Cross-Section Directional Reference Convention
+1dd9380 — R47.1 single-word directional fix (F-R48-cons-1)
+1cbab1e — R47 architect F-R46-1/2/3 + PG-1/PG-2 codified
+0903d48 — R46 adversary persist + state close-out
+[...earlier in cycles/cycle-001/burst-log.md...]
 ```
 
 ### Critical Artifacts (read for Phase 1)
 
 1. `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + agent routing
 2. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2
-3. `.factory/specs/product-brief.md` v1.4.19
-4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.3
-5. `.factory/specs/architecture/SS-engine-module.md` v1.1.11
+3. `.factory/specs/product-brief.md` v1.4.21
+4. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.4
+5. `.factory/specs/architecture/SS-engine-module.md` v1.1.14
 6. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.6
 7. `.factory/specs/architecture/SS-permissions-phase1.md` v1.1
 8. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.7
-9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.13
-10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.3
+9. `.factory/specs/architecture/SS-conventions-anti-patterns.md` v1.18
+10. `.factory/specs/architecture/SS-forward-compatibility.md` v1.2.5
 
 ### Key Tech Stack
 
-ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6, reqwest 0.13, nucleo 0.5, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), async-trait ^0.1, futures ^0.3, constant_time_eq ^0.3. 29 named workspace pins; 9 EXACT-pinned.
+ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14, serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6, reqwest 0.13, nucleo 0.5, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), async-trait ^0.1, futures ^0.3, constant_time_eq ^0.3.
 
 ### Critical Hook Lessons
 
@@ -183,20 +148,25 @@ ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14
 
 ## Phase 1 Gate Questions — SUSPENDED PENDING CONVERGENCE
 
-SUSPENDED. Convergence count: 0/3 after 13 rounds. Convergence-definition question NOW SURFACED to human (O-R46-1). Open items: D-040 (vision-vs-arch, conditionally ratified), D-041 (strict routing, conditionally ratified), Q-3 (CLAUDE.md pointer refresh, PENDING HUMAN ACTION — AI does not edit CLAUDE.md).
+SUSPENDED. Convergence count: 1/3 after 15 rounds. D-040/D-041/D-042 conditional; Q-3 (CLAUDE.md pointer refresh) PENDING HUMAN ACTION — not blocking. Gate re-presents after clean-pass 3-of-3 achieved.
 
 ## Pending Human Direction
 
-**O-R36-1:** Tentatively resolved by human (D-042) — option (c) manual mitigation; will be re-affirmed post-convergence.
+**O-R36-1:** RESOLVED 2026-05-14 via D-042 option (c) — manual mitigation canonical. Confirmed post-convergence.
 
-**O-R46-1 (CONVERGENCE-DEFINITION RATIFICATION — surfaced 2026-05-14T04:30:00Z):** Awaiting human choice of (a)/(b)/(c)/(d) per options in Immediate Next Action. Blocks all further pre-Phase-1 work. 13 adversary rounds yielded zero clean passes (R22-R44 + R46). O-R44-1 hypothesis: defense-layer interactions are asymptotically inexhaustible under fresh-context adversarial review.
+**O-R46-1 (CONVERGENCE-DEFINITION RATIFICATION):** RESOLVED 2026-05-14 — human ratified option (a) strict 3-clean-pass policy; recorded as D-047. No further action required from human until clean-pass 3-of-3 achieved (Phase 1 final gate re-presentation).
+
+**Q-3 (CLAUDE.md operational pointer refresh — brief v1.4.21, vision v1.1.2):** PENDING HUMAN ACTION. NOT BLOCKING. AI does not edit CLAUDE.md.
 
 ## Historical Content
 
 | Content | Location |
 |---------|----------|
-| Burst history (all bursts) | `cycles/cycle-001/burst-log.md` |
+| Burst history (R1-R46) | `cycles/cycle-001/burst-log.md` |
+| R47-R50 burst summary | `cycles/cycle-001/burst-log.md` (appended this session) |
+| Lessons learned | `cycles/cycle-001/lessons.md` |
+| Decisions D-001..D-035 | `cycles/cycle-001/burst-log.md` |
+| Decisions D-036..D-039 | `cycles/cycle-001/burst-log.md` (archived this session) |
 | Prior session checkpoints | `cycles/cycle-001/session-checkpoints.md` |
-| Full decisions D-001..D-024 | `cycles/cycle-001/burst-log.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 | Consistency audits | `.factory/plans/consistency-audit-*.md` |

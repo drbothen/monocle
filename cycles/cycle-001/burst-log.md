@@ -1529,3 +1529,188 @@ Round 45 fix burst complete. Round 46 validation chain pending: dispatch consist
 ### Status
 
 R46 adversary complete. NEEDS_ONE_MORE: F-R46-1 HIGH (DTU schema-citation drift, 3-doc inconsistency), F-R46-2 MEDIUM (phantom BC-HOOK-001–006), F-R46-3 LOW (step-6→7 stale after F-R44-adv-1 renumber). Convergence count: 0/3 after 13 rounds (R22-R44 + R46). Convergence-definition question surfaced to human per O-R44-1 + O-R42-2 (MANDATORY). O-R46-1 added to Pending Human Direction. All further pre-Phase-1 work blocked pending human ratification of convergence policy (a/b/c/d).
+
+---
+
+## Decisions Archived from STATE.md (D-036..D-039)
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-036 | Round 33 fix: semgrep pattern-either Shape A+B POL-11 META-GAP closed; Python script edge cases (5 scenarios); brief delimiter strings corrected verbatim; F-R32-3 Q-3 staleness refreshed | 2026-05-13T19:15:00Z | state-manager |
+| D-037 | Round 35 fix: F-R34-1 CRITICAL META-pattern — line-anchored regex + §Trace de-quoted + v1.8 convention rule prohibits verbatim quoting; F-R34-2 `#[$ATTR(...)]` standard semgrep form; F-R34-3 paths.include 4→12 covering all 11 crates + binary | 2026-05-13T20:30:00Z | state-manager |
+| D-038 | Round 37 fix: F-R36-1 brief citation v1.1.9→v1.1.10; F-R36-2 v1.8 no-verbatim-quoting rule propagated to §Trace + brief revision-history entries; grep verified zero verbatim delimiter quotes; S-7.01 Partial-Fix Regression Discipline applied | 2026-05-13T21:15:00Z | state-manager |
+| D-039 | Round 39 fix: F-R38-1 Option B narrowly drawn exception to v1.10 clause 4 (code-spec blocks permitted); F-R38-2 SS-forward-compat v1.2.1→v1.2.2 FC-01/FC-06 lock-in cells; META-pattern workflow mitigation rule: grep before any version bump | 2026-05-13T22:00:00Z | state-manager |
+
+---
+
+## R47 Burst — Human Ratifies D-047 Strict Policy + Fix Burst F-R46-1/2/3 (2026-05-14)
+
+### Human Direction Received
+
+Human ratified option (a) — strict 3-clean-pass policy (O-R44-1 → D-047). R47 fix burst unblocked.
+
+### Decisions
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-047 | Human ratified option (a) strict 3-clean-pass policy per O-R44-1. No policy change. Convergence requires 3 consecutive 0+0+0+0 audit cycles. | 2026-05-14 | human (Josh Magady) |
+
+### Fix Burst R47
+
+**Commit:** 1cbab1e
+
+**Findings fixed:**
+- F-R46-1 HIGH: DTU schema-citation drift — dtu-assessment.md v1.3, SS-core-types-and-abi.md v1.2.4, SS-forward-compatibility.md v1.2.5 aligned. PG-1 §Schema-Fact Citation Convention [codified].
+- F-R46-2 MEDIUM: Phantom BC-HOOK-001–006 in SS-conventions L641 — rewritten to remove phantom citations.
+- F-R46-3 LOW: Step-6→7 stale in SS-conventions L1069 — updated to step 7.
+- [codified] PG-2 META rule: count-verification sweep for numbered/counted lists.
+
+### Fix Burst R47.1-R47.4 (Sibling Fixes)
+
+**Commits:** 1dd9380, 42b0007, 83cd93f, 1dc5185
+
+- R47.1 (commit 1dd9380): F-R48-cons-1 directional typo fix (SS-conventions v1.14→v1.15).
+- R47.2 (commit 42b0007): Sibling directional sweep + [codified] PG-3 §Cross-Section Directional Reference Convention.
+- R47.3 (commit 83cd93f): §Trace L-pinpoint sweep + [codified] PG-3 §Trace-prose sub-rule.
+- R47.4 (commit 1dc5185): Brief refresh F-R48TP-1 (SS-engine-module v1.1.11→v1.1.13 pointer in brief).
+
+### Agents
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R46-1/2/3 root-cause fixes + PG-1/PG-2 codification | commit 1cbab1e |
+| architect | Sibling directional sweep + PG-3 codification (§Trace-prose sub-rule) | commits 42b0007, 83cd93f |
+| architect | F-R48-cons-1 directional typo fix | commit 1dd9380 |
+| product-owner | Brief cascade refresh (SS-engine-module v1.1.11→v1.1.13 pointer) | commit 1dc5185 |
+
+### Status
+
+R47 fix burst complete (4 commits). R48 audit cycle dispatched.
+
+---
+
+## R48 Burst — 4-Pass Consistency Audit + Adversary 3 LOW [process-gap] (2026-05-14)
+
+### R48 Consistency (4 passes)
+
+4 consistency audit passes ran:
+- Pass 1 (plans/consistency-audit-round-48.md): F-R48-cons-1 LOW directional typo found → fixed in R47.1.
+- Pass 2 / reaudit (plans/consistency-audit-round-48-reaudit.md): additional sibling check.
+- Pass 3 (plans/consistency-audit-round-48-thirdpass.md): further sibling sweep.
+- Pass 4 (plans/consistency-audit-round-48-fourthpass.md): CLEAN — confirmed fixes applied.
+
+### R48 Adversary: 3 LOW [process-gap]
+
+**Commit reviewed:** 1cbab1e
+**Report:** plans/adversary-pass-round-48.md
+
+| ID | Severity | Tag | Summary |
+|----|----------|-----|---------|
+| F-R48-adv-1 | LOW | [process-gap] | PG-2 enumerated-noun scope too narrow — "mechanisms" not in enumerated list |
+| F-R48-adv-2 | LOW | [process-gap] | PG-3 scope limited to §Trace-prose — main-body prose at 4 sites used L-numbers |
+| F-R48-adv-3 | LOW | [process-gap] | gene-source qualifier at SS-engine-module L654 confirm-all-instances sweep not prescribed |
+
+Verdict: NEEDS_ONE_MORE. All findings are meta-layer refinements (PG rule completeness gaps). Convergence count: 0/3 after 14 rounds.
+
+### Agents
+
+| Agent | Work | Output |
+|-------|------|--------|
+| consistency-validator | 4-pass R48 consistency audit | plans/consistency-audit-round-48*.md (4 files) |
+| adversary | R48 fresh-context review on commit 1cbab1e | plans/adversary-pass-round-48.md |
+
+### Status
+
+R48 audit complete. R49 fix burst dispatched to address F-R48-adv-1/2/3 root-cause generalizations.
+
+---
+
+## R49 Burst — Root-Cause Generalizations + 5 Version Bumps (2026-05-14)
+
+### Fix Burst R49
+
+**Commit:** 07c1259
+
+**Findings fixed:**
+- F-R48-adv-1 [process-gap]: PG-2 generalized to noun-agnostic syntactic shape (any ordinal/count-word near any structural element, regardless of specific noun). [codified]
+- F-R48-adv-2 [process-gap]: PG-3 expanded from §Trace-prose to all-spec-prose scope. [codified]
+- F-R48-adv-3 [process-gap]: SS-engine-module L654 gene-source qualifier confirmed applied. PG-D042-BURST-SKIP closure: D-042 scope codified as .factory/specs/ recursive in convention text. [codified]
+- 5 version bumps accompanying the convention updates (SS-engine-module v1.1.13, SS-conventions v1.18, SS-forward-compat v1.2.5, SS-core-types-and-abi v1.2.4 confirmed, others).
+
+### Fix Burst R49.1
+
+**Commit:** caa7165
+
+- product-owner brief cascade refresh: SS-engine-module v1.1.13→v1.1.14 pointer in product-brief.md (v1.4.20→v1.4.21).
+
+### Decisions
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-048 | R47-R49 defense-layer coverage closure: PG-1 §Schema-Fact Citation Convention; PG-2 META rule generalized to noun-agnostic syntactic-shape; PG-3 expanded from §Trace-prose to all-spec-prose; PG-D042-BURST-SKIP closed (.factory/specs/ recursive codified). | 2026-05-14 | state-manager (recording R49 architect codifications) |
+
+### Agents
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R48-adv-1/2/3 root-cause generalizations + PG-2/PG-3 codification + D-042 scope + 5 version bumps | commit 07c1259 |
+| product-owner | Brief cascade refresh (SS-engine-module v1.1.13→v1.1.14 pointer) | commit caa7165 |
+
+### Status
+
+R49 fix burst complete (2 commits). R50 audit dispatched.
+
+---
+
+## R50 Burst — FIRST CLEAN PASS (Clean-Pass 1 of 3) (2026-05-14)
+
+### R50 Consistency: CLEAN
+
+**Commit:** caa7165
+**Report:** plans/consistency-audit-round-50.md
+
+9 passes + M-CASCADE-SCOPE + M-TRACE-HISTORICAL-VS-CURRENT: ALL PASS. Zero findings.
+
+### R50 Adversary: CLEAN (0 findings)
+
+**Commit:** caa7165
+**Report:** plans/adversary-pass-round-50.md
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 0 |
+| HIGH | 0 |
+| MEDIUM | 0 |
+| LOW | 0 |
+
+Pass A: All 4 R48/R49 findings genuinely resolved. Pass B: No new META-pattern instances. Pass C: 16 BCs implementable. Pass D: Novelty ZERO. Convergence floor reached.
+
+**Clean-pass count: 1 of 3 (D-047 strict policy).**
+
+### [codified] Defense Layers — Root-Cause Coverage Closed
+
+| Tag | Layer | Codified In | Round |
+|-----|-------|-------------|-------|
+| [codified] | PG-1 §Schema-Fact Citation Convention | SS-conventions-anti-patterns.md | R47 |
+| [codified] | PG-2 META rule: step-renumbering scope expansion | SS-conventions-anti-patterns.md | R47 |
+| [codified] | PG-3 §Cross-Section Directional Reference Convention | SS-conventions-anti-patterns.md | R47.2 |
+| [codified] | PG-3 §Trace-prose sub-rule | SS-conventions-anti-patterns.md | R47.3 |
+| [codified] | PG-2 generalized to noun-agnostic syntactic shape | SS-conventions-anti-patterns.md | R49 |
+| [codified] | PG-3 expanded to all-spec-prose scope | SS-conventions-anti-patterns.md | R49 |
+| [codified] | PG-D042-BURST-SKIP closure (.factory/specs/ recursive scope) | SS-conventions-anti-patterns.md | R49 |
+
+### Agents
+
+| Agent | Work | Output |
+|-------|------|--------|
+| consistency-validator | R50 9-pass audit + M-CASCADE + M-TRACE on commit caa7165 | plans/consistency-audit-round-50.md |
+| adversary | R50 fresh-context review on commit caa7165 | plans/adversary-pass-round-50.md |
+| state-manager | R50 milestone close-out: persist plans/ files, update STATE.md, append burst-log, create lessons.md | STATE.md + lessons.md + burst-log.md |
+
+### Status
+
+**MILESTONE: First clean pass after 15 rounds (R22-R44 + R46 + R48 + R50). Clean-pass 1 of 3 under D-047 strict policy.**
+
+Convergence trajectory: R44 4f, R46 3f (1H+1M+1L), R48 3f (LOW only, all [process-gap]), R50 ZERO. Novelty exhausted. Defense layer coverage closed.
+
+Next: R51 audit cycle (consistency + adversary in parallel on post-state-commit). Target: clean-pass 2 of 3. After R51 CLEAN → R52 for 3 of 3 → Phase 1 final gate re-presentation to human.
