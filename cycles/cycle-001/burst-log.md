@@ -1498,3 +1498,34 @@ Round 43 fix burst complete. Round 44 validation chain pending: dispatch consist
 ### Status
 
 Round 45 fix burst complete. Round 46 validation chain pending: dispatch consistency-validator + adversary in parallel (fresh context) against post-R45 state (SS-conventions v1.13 + SS-forward-compatibility v1.2.3 + brief v1.4.19 + SS-engine-module v1.1.11). CRITICAL: regardless of R46 outcome, orchestrator surfaces convergence-definition question to human (O-R44-1). If CLEAN: 1-of-3 required consecutive clean passes. Continue until human ratifies convergence definition or 3 CONSECUTIVE clean passes achieved, then run check-input-drift, then re-present gate.
+
+---
+
+## R46 Burst — Adversary Persist + State Update (2026-05-14T04:30:00Z)
+
+### Decisions archived from STATE.md (D-025..D-035)
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-025 | FC lock-in: 6 FC items as Phase 1 contracts; SS-core-types-and-abi.md (700 lines); 10 BCs pre-staged | 2026-05-12 | state-manager |
+| D-026 | Round 13 fix: 13 FC adversary defects; SS-engine-module.md NEW; ADR-0004 NEW; BC 10→13 | 2026-05-12 | state-manager |
+| D-027 | Round 15 fix: vision authority restored; sealing removed; BC-ENGINE-003; BC 13→15 | 2026-05-13 | state-manager |
+| D-028 | Round 17 fix: 8 round-16 findings; directories crate; constructors; ProcessSnapshot ppid+exe_path | 2026-05-13 | state-manager |
+| D-029 | Round 19 fix: F-R18-1 CRITICAL BaseDirs::home_dir/.claude; F-R18-2 rustdoc+InvalidHookUrl; F-R18-3 frontmatter parser | 2026-05-13 | state-manager |
+| D-030 | Round 21 fix: F-R20-1 typed EngineMetadataError; F-R20-2 parse_frontmatter_field guard parity; F-R20-3 url crate ref removed | 2026-05-13 | state-manager |
+| D-031 | Round 23 fix: vision non-authoritative for Phase 1 trait signatures per CLAUDE.md §Architectural Authority; BC-ENGINE-002-ERR added; temp-env ^0.2 added | 2026-05-13 | state-manager |
+| D-032 | Round 25 fix: temp-env ^0.2→^0.3; env-var unset list corrected; Test Conventions subsection added to SS-conventions v1.4; product-owner ratified v1.4.12; routing-precedent flagged for gate (Q-2) | 2026-05-13 | state-manager |
+| D-033 | Round 27 fix: E0639 cross-crate struct-literal CRITICAL resolved via constructors on 4 structs; semgrep pattern-either expanded; §Semgrep Coverage Hardening specified per POL-11; brief v1.4.13 ratifies | 2026-05-13 | state-manager |
+| D-034 | Round 29 fix: EnrichedSession last_event_micros i64→Option<i64>; SpawnArgs/SessionHandle/EngineVersion constructors; HookResponse builder; HookEventRecord ring struct + RING_FORMAT_VERSION; brief v1.4.15 codifies Cross-Crate Constructor Audit table | 2026-05-13 | state-manager |
+| D-035 | Round 31 fix: Constructor Audit table 7→17 structs with HTML delimiters; HookEventRecord #[non_exhaustive]; new semgrep rule + Python script for audit-completeness CI; ISO-8601 timestamps adopted | 2026-05-13T18:30:00Z | state-manager |
+
+### Agents
+
+| Agent | Work | Output |
+|-------|------|--------|
+| adversary | R46 retry (post-rate-limit): NEEDS_ONE_MORE 1H+1M+1L; Pass A 4/4 R44 RESOLVED | returned inline |
+| state-manager | Persist adversary-pass-round-46.md verbatim; update STATE.md (phase, checkpoint, blocking issues, pending human direction, decisions archive) | plans/adversary-pass-round-46.md + STATE.md |
+
+### Status
+
+R46 adversary complete. NEEDS_ONE_MORE: F-R46-1 HIGH (DTU schema-citation drift, 3-doc inconsistency), F-R46-2 MEDIUM (phantom BC-HOOK-001–006), F-R46-3 LOW (step-6→7 stale after F-R44-adv-1 renumber). Convergence count: 0/3 after 13 rounds (R22-R44 + R46). Convergence-definition question surfaced to human per O-R44-1 + O-R42-2 (MANDATORY). O-R46-1 added to Pending Human Direction. All further pre-Phase-1 work blocked pending human ratification of convergence policy (a/b/c/d).
