@@ -1912,3 +1912,111 @@ Convergence count reset: 0/3.
 | Clean passes | 0/3 (R50 remains only clean round under D-047) |
 | Defense layers | 12 codified (PG-1 through PG-4 + PG-RECIPE-SCOPE META-META + D-042 4-pattern + constructor + BC attestation + DTU split-column) |
 | Next | R54 audit cycle dispatch (consistency + adversary truly-parallel on commit 0d0b0db) |
+
+---
+
+## R54 Cycle — NEEDS_ONE_MORE (1 LOW consistency + 1 MED + 1 LOW adversary) (2026-05-14)
+
+**Consistency leg:** a772b6d — 1 LOW finding (F-R54-1)
+**Adversary leg:** a772b6d — 1 MEDIUM + 1 LOW finding (F-R54-adv-1, F-R54-adv-2)
+**Reports:** plans/consistency-audit-round-54.md, plans/adversary-pass-round-54.md
+
+Both legs independently surfaced the FC table cell staleness (F-R54-1 / F-R54-adv-1);
+adversary escalated to MEDIUM via the within-file scope hole framing and additionally
+found F-R54-adv-2 (PG-4 scope-alignment gap).
+
+### R54 Findings
+
+| ID | Severity | Source | Description |
+|----|----------|--------|-------------|
+| F-R54-1 | LOW | consistency | SS-forward-compatibility.md FC table cells cite SS-daemon-lifecycle.md v1.0.6 — actual v1.0.7. D-042 citation staleness. |
+| F-R54-adv-1 | MEDIUM | adversary | D-042 within-file scope hole: R53.1 updated §Verdict (L218) but not FC table cells (L198, L203) in same file. PG-D042-WITHIN-FILE codification required. |
+| F-R54-adv-2 | LOW [process-gap] | adversary | PG-4 lacks explicit Scope clause; PG-RECIPE-SCOPE alignment gap; exempt classes undefined. |
+
+---
+
+## R54.1 Architect Fix Burst (2026-05-14)
+
+**Commit:** ee1fa67
+**Agent:** architect
+
+**Fixes:**
+- F-R54-adv-1 (MEDIUM) + F-R54-1 (LOW): FC table cells L198/L203 v1.0.6 → v1.0.7;
+  §Verdict L218 already correct. Disposition column historical pinpoints preserved at v1.0.6.
+- F-R54-adv-2 (LOW): Scope clause added to PG-4 in SS-conventions v1.23; CLAUDE.md exemption codified.
+- PG-D042-WITHIN-FILE codified: each-file completeness audit sub-rule; selective within-file updates FORBIDDEN.
+- Retroactive PG-D042-WITHIN-FILE audit on R51-R53 cascades: 0 additional partial-cascade misses.
+
+**Version bumps:** SS-forward-compatibility v1.2.9 → v1.2.10; SS-conventions v1.22 → v1.23.
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R54-adv-1/2 + PG-D042-WITHIN-FILE codified + PG-4 scope clause + retroactive sweep | commit ee1fa67 |
+
+---
+
+## R55 Cycle — NEEDS_ONE_MORE (consistency CLEAN + adversary 1 MED + 2 LOW META) (2026-05-14)
+
+**Consistency leg:** ee1fa67 — CLEAN (clean-pass 1/3 under D-047 strict, reset by adversary)
+**Adversary leg:** ee1fa67 — 1 MEDIUM + 2 LOW findings (F-R55-adv-1, F-R55-adv-2, F-R55-adv-3)
+**Reports:** plans/consistency-audit-round-55.md, plans/adversary-pass-round-55.md
+
+R55 consistency confirmed CLEAN: Pass A verified F-R54-adv-1/2 RESOLVED; Pass 14 (NEW) PG-D042-WITHIN-FILE corpus audit CLEAN. All 14 passes PASS (1 ADVISORY: STATE.md version pointers stale, non-blocking).
+
+R55 adversary: all 3 findings are META-rule scope-clause instances exploiting rules newly codified in R54.1 itself. Adversary explicitly invoked R55-gate commitment.
+
+### R55 Findings
+
+| ID | Severity | Source | Description |
+|----|----------|--------|-------------|
+| F-R55-adv-1 | LOW | adversary | PG-4 em-dash separator convention gap (16 sites use em-dash form; convention doesn't authorize/forbid it vs paren form shown in examples). Exploits R54.1 scope clause. |
+| F-R55-adv-2 | MEDIUM [content] | adversary | SS-forward-compatibility.md §Scope "currently specified in brief v1.4.5" — false present-tense claim (brief is v1.4.23; FC items are historical-lock-in anchors). |
+| F-R55-adv-3 | LOW | adversary | PG-4 intra-document scope hole (rule scoped "cross-document" only; bold-paragraph-label §-citations within same doc escape PG-4 enforcement). Exploits R54.1 scope clause. |
+
+**R55-gate commitment INVOKED** by adversary: orchestrator surfaced convergence-definition
+question to human. Meta-recursion pattern confirmed: each codification burst's scope
+clauses are themselves exploitable surfaces under D-047 strict.
+
+---
+
+## D-053 RATIFICATION (2026-05-14) — Human Decision
+
+**Human (Josh Magady) ratified option (b)** — phase-scoped convergence relaxation.
+
+- Pre-Phase-1 ONLY: 0 CRIT/HIGH + 0 MED-content + bounded LOW META residuals allowed.
+- Subsequent phases (Phase 1+): revert to D-047 strict 3-clean-pass.
+- Bounded LOW META residual catalog (frozen): F-R55-adv-1, F-R55-adv-3.
+- Catalog must not grow; if R56+ surfaces NEW META pattern, that is NEEDS_ONE_MORE.
+
+---
+
+## R55.1 Architect Fix Burst (2026-05-14)
+
+**Commit:** d870280
+**Agent:** architect
+
+**Fixes:**
+- F-R55-adv-2 (MEDIUM content): §Scope "currently specified in brief v1.4.5 and vision v1.1.2"
+  rewritten as historical anchor. Three sites: opening sentence, lock-source list, Phase 2-4
+  objectives header. Preserves provenance; removes false "currently" claim.
+- F-R55-adv-1 and F-R55-adv-3: explicitly left untouched as BOUNDED META RESIDUALS per D-053.
+  State-manager catalogs in this close-out commit.
+
+**Version bump:** SS-forward-compatibility v1.2.10 → v1.2.11.
+
+| Agent | Work | Output |
+|-------|------|--------|
+| architect | F-R55-adv-2 historical-anchor rewrite (under D-053 option b) | commit d870280 |
+
+### R54-R55 Cycle Summary
+
+| Metric | Value |
+|--------|-------|
+| Audit cycles | 2 (R54 + R55) |
+| Spec commits | 2 (ee1fa67, d870280) |
+| META-rule codifications | 2 (PG-D042-WITHIN-FILE layer 13; PG-4 scope clause — no new standalone rule, scope extension of existing) |
+| Human policy decisions | D-053 (convergence relaxation option (b) phase-scoped) |
+| Bounded META residuals | 2 (F-R55-adv-1, F-R55-adv-3 — frozen catalog) |
+| Clean passes | 0/3 (D-047); resetting to 0/3 under D-053 option (b) |
+| Defense layers | 13 codified (PG-D042-WITHIN-FILE added as layer 13 in R54.1) |
+| Next | R56 audit cycle dispatch under D-053 option (b) criterion on commit d870280 |

@@ -284,3 +284,121 @@ The trajectory is: R50 ZERO → R51 1 MED → R52 2 LOW → R53 5 findings (META
 This is not divergence — it is convergence at a higher level of abstraction. PG-RECIPE-SCOPE
 closes the recursion class. R54 should be the first audit to benefit from the full 12-layer
 defense stack including the META-META rule.
+
+---
+
+## R54 Codifications
+
+### [codified] PG-D042-WITHIN-FILE — D-042 Each-File Completeness Audit (R54.1)
+
+**Pattern:** When a sibling-file bump triggers a D-042 cascade, the architect MUST run
+a file-level grep within each citing file to verify ALL occurrences of the cited
+document's version string are handled (not just previously-known ones). Selective
+within-file updates are FORBIDDEN. Historical pinpoints in §Trace or Disposition columns
+must be explicitly preserved and documented in §Trace.
+
+**Anti-pattern (F-R54-adv-1 / F-R54-1):** SS-forward-compatibility.md §Verdict at line 218
+was updated to SS-daemon-lifecycle.md v1.0.7 in R53.1, but FC table cells at lines 198/203
+(same file, same document, 20 lines above) were not updated in the same burst. Both the
+consistency leg and adversary leg independently found this as the same D-042 cascade
+within-file partial miss.
+
+**Codified in:** SS-conventions-anti-patterns.md §PG-D042-WITHIN-FILE sub-rule (R54.1 fix
+burst, commit ee1fa67). This is the 10th D-042 recurrence pattern and the first
+within-file-partial instance.
+
+**Retroactive audit:** R51-R53 cascades re-audited against PG-D042-WITHIN-FILE criterion:
+0 additional partial-cascade misses found. R54.1 within-file sweep: CLEAN.
+
+---
+
+### [codified] PG-4 Scope Clause — Aligning with PG-RECIPE-SCOPE (R54.1)
+
+**Pattern:** META-rule rule statements must have explicit Scope clauses that align with
+PG-RECIPE-SCOPE (versioned spec artifacts in .factory/specs/). Without an explicit Scope
+clause, an auditor reading a META-rule cold cannot determine which document classes are
+governed. CLAUDE.md enumerated-item citations are exempt from PG-4 enforcement.
+
+**Anti-pattern (F-R54-adv-2):** PG-4 §Section-Anchor Citation Convention had no Scope
+clause after initial codification (R51.1) and recipe expansion (R53.1). The absence
+created potential for over-broad application to non-versioned documents.
+
+**Codified in:** SS-conventions-anti-patterns.md §Section-Anchor Citation Convention —
+Scope clause added immediately after rule paragraph (R54.1 fix burst, commit ee1fa67).
+
+---
+
+## R54-R55 Convergence Pattern Lessons
+
+### Both-legs independent finding validation
+
+R54 consistency leg and adversary leg independently surfaced the same FC table cell
+staleness (F-R54-1 / F-R54-adv-1). This is expected behavior — it validates that
+both auditors are reading the same corpus and the finding is genuine. The adversary's
+escalation to MEDIUM (from consistency's LOW) via the within-file scope hole framing
+is also expected — the adversary's role is to identify the root cause and codification
+gap, not just the surface symptom.
+
+### Scope-clause boundary recursion is a known stable class
+
+F-R55-adv-1 and F-R55-adv-3 both exploit the scope clause added to PG-4 in R54.1.
+The recursion pattern: a new rule or scope boundary introduces its own ambiguities,
+which the next adversary pass exploits. This is the same class as:
+R51.1 → R53 (PG-4 SS-only scope), R52.2 → R54 (PG-D042-WITHIN-FILE gap), R53.1 → R54
+(PG-4 scope-clause alignment), R54.1 → R55 (em-dash separator + intra-doc scope hole).
+
+PG-RECIPE-SCOPE closes cross-file scope recursion. D-053 option (b) closes the policy
+problem: bounded LOW META residuals are acceptable; the set must not grow.
+
+---
+
+## R55 Bounded Residuals (per D-053)
+
+### [bounded-residual] F-R55-adv-1 — PG-4 Em-Dash Separator Codification Gap
+
+**Pattern:** PG-4 does not address the em-dash separator form `§HeadingName — Qualifier`
+(16 sites in corpus) vs the paren form `§HeadingName (Qualifier)` shown in examples.
+Neither form is explicitly authorized or prohibited. Auditors must currently decide
+ad hoc whether to strip the em-dash suffix before verifying heading existence.
+
+**Status:** BOUNDED RESIDUAL per D-053 option (b). Deferred to Phase 1 burndown OR
+ratification as alternate separator form. Must not recur as a NEW finding class in
+pre-Phase-1 audits; if re-flagged from this catalog entry, that is expected and allowed.
+
+**Sites:** SS-engine-module.md, SS-daemon-lifecycle.md, SS-forward-compatibility.md
+(§Trace entries and FC table column 4).
+
+---
+
+### [bounded-residual] F-R55-adv-3 — PG-4 Intra-Document Scope Hole
+
+**Pattern:** PG-4 scope clause (added R54.1) scopes the rule to "cross-document"
+citations. This inadvertently creates an intra-document scope hole: §-citations within
+the same file to bold-paragraph labels (not headings) escape PG-4 enforcement entirely.
+Sites in SS-conventions v1.23 §PG-D042-WITHIN-FILE may cite numbered-step bold labels.
+
+**Status:** BOUNDED RESIDUAL per D-053 option (b). Deferred to Phase 1 burndown OR
+PG-4 scope extension (add intra-document coverage with appropriate bold-label exemptions).
+Must not recur as a NEW finding class in pre-Phase-1 audits.
+
+---
+
+## [policy] D-053 — Convergence Relaxation to Option (b) Phase-Scoped (2026-05-14)
+
+**Decision:** Human (Josh Magady) ratified option (b) for pre-Phase-1 phase only.
+
+**Criterion (pre-Phase-1):** 3 consecutive passes with:
+- 0 CRIT/HIGH (hard block)
+- 0 MED content-affecting findings (hard block)
+- LOW META-rule-codification gaps: allowed IF within the frozen bounded residual catalog
+
+**Scope:** Pre-Phase-1 final gate only. Subsequent phases (Phase 1+) revert to D-047
+strict 3-clean-pass (0 findings of any severity).
+
+**Trigger:** R55-gate commitment — adversary passed NEEDS_ONE_MORE with F-R55-adv-1/3
+being scope-clause exploits of R54.1 rules, continuing the META-recursion class that
+PG-RECIPE-SCOPE was expected to close but could not close at the within-rule boundary
+level. Orchestrator surfaced O-R55-gate to human; human ratified option (b).
+
+**Bounded residual catalog (frozen during pre-Phase-1):** F-R55-adv-1, F-R55-adv-3.
+If R56+ surfaces a NEW META pattern not in this catalog, that is NEEDS_ONE_MORE.
