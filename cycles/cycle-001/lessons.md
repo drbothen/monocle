@@ -712,3 +712,19 @@ Every formal-verifier dispatch (and any agent doing pin propagation) MUST includ
 3. **Surface any out-of-scope discoveries** — if a stale pin is found that requires a sibling-agent fix, route to orchestrator (do not silently fix outside scope unless trivial single-line correction in same domain).
 
 **Application precedent:** F-R71 VP burst (commit 296b044) applied the discipline and verifiably caught 3 carry-forward stale `PRD v1.5/v1.6` pin annotations on top of the explicit F-R71 findings. The discipline is operationally feasible and finds real defects.
+
+### Extension 4: Schema-Sketch Precision Propagation (2026-05-15)
+
+F-R72-1 demonstrated that L-F-R63 Extension 1 (semantic propagation discipline) was applied to BC content + VP content but NOT to arch JSON schema sketches. F-R70-2 tightened the BC (millisecond mandatory) but arch §Drain step 5 + §Health and Status Endpoints schema sketches retained generic `<ISO8601>` placeholders.
+
+**Extended discipline:** When a fix-burst tightens any contract field (precision, format, range, semantic), propagate to ALL representations of that field across:
+1. BC postcondition / invariant in PRD body
+2. VP mechanical property / regex / probe table
+3. **Arch JSON schema sketch (NEW emphasis post-R72)**
+4. Edge case catalog references
+5. Test vector tables
+6. §Trace narratives describing the tightening
+
+The arch JSON schema sketch dimension was missed in F-R70-2 because the dispatch prompt focused on PRD/VP body. Future fix-bursts on contract-precision tightening must include arch schema sketch as explicit propagation target.
+
+**Application precedent:** F-R72 closure chain (architect arch v1.0.14 + product-owner PRD v1.8 + formal-verifier VP v1.8) applied this dimension explicitly. All 3 arch schema sketch sites tightened to match BC + VP.
