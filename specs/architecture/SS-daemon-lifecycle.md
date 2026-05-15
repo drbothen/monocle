@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.12"
+version: "1.0.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T01:00:00Z
+timestamp: 2026-05-15T04:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2)"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions"
 project: monocle
 ---
 
@@ -32,7 +32,7 @@ attach/detach commands. Runtime directory is resolved via a platform-aware chain
 `/run/user/<uid>/monocle/` path); then `directories::ProjectDirs::data_local_dir()`
 on macOS (returns `~/Library/Application Support/monocle/`) and Windows (returns
 `%APPDATA%/monocle/`) — because `runtime_dir()` returns `None` on those platforms
-by design. NFR-008 lists macOS as the primary target; the fallback chain ensures
+by design. NFR-008 lists macOS among the primary targets (`macOS + Linux`, darwin/linux × amd64/arm64); the fallback chain ensures
 monocle starts correctly on macOS without operator intervention. All lifecycle state
 (port, pid, auth token, start time) is written to a single lock file at
 `<runtime_dir>/monocle.lock` using `tempfile::persist` for atomic write.
@@ -194,8 +194,8 @@ let app = public_router.merge(authed_router);
       This is the fail-fast path for genuinely unresolvable environments.
 
    **Rationale:** `ProjectDirs::runtime_dir()` returns `None` on macOS and Windows
-   by design — not due to misconfiguration. macOS is the primary target platform
-   (NFR-008). A fail-fast-only approach would require every macOS user to set
+   by design — not due to misconfiguration. macOS is among the primary target platforms
+   (NFR-008: `macOS + Linux`, darwin/linux × amd64/arm64). A fail-fast-only approach would require every macOS user to set
    `MONOCLE_RUNTIME_DIR` before starting monocle, which violates the zero-config
    startup requirement. The `data_local_dir()` fallback provides a correct,
    standards-compliant runtime state location on macOS (`~/Library/Application Support/monocle/`)
@@ -632,7 +632,7 @@ table on daemon termination MUST match the trigger:
 - startup failure → `1`
 
 Verification: integration test in `monocle-runtime/tests/daemon_lifecycle.rs`
-(`test_BC_DAEMON_004_exit_codes`) sends SIGTERM twice (expects 143), SIGINT twice
+(`test_BC_DAEMON_004_exit_codes_posix_distinct`) sends SIGTERM twice (expects 143), SIGINT twice
 (expects 130), and two sequential `POST /shutdown` calls (expects 2). The PRD
 BC-DAEMON-004 postcondition is the canonical error-taxonomy source; this architecture
 document is the canonical rationale source for the code selection.
@@ -724,12 +724,70 @@ fields are stable across Phase 1 → Phase 4.
 
 ## §Trace
 
+v1.0.13 changes (adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure):
+- F-R71-2 RESOLVED (HIGH — adversary R71 stale test name): Two arch sites cited
+  `test_BC_DAEMON_004_exit_codes` as the BC-DAEMON-004 verification test name. The
+  canonical name per PRD v1.6 §3 BC-DAEMON-004 §Verification and VP v1.6 is
+  `test_BC_DAEMON_004_exit_codes_posix_distinct`. Authority per §BC Summary footer:
+  "the PRD is source-of-truth for canonical test names." Fixed at both arch sites:
+  (1) §Hard Shutdown BC-DAEMON-004 verification prose block; (2) §Trace v1.0.12
+  BC-DAEMON-004 rationale sentence. No behavioral change — only the test-name
+  citation corrected to match the PRD/VP canonical identifier.
+- F-R71-3 RESOLVED (MEDIUM — adversary R71 NFR-008 mis-anchor): Four arch sites
+  used "macOS is the primary target" / "lists macOS as the primary target" framing
+  that implies macOS is the sole primary target. PRD NFR-008 (line 1210) specifies
+  `macOS + Linux (darwin/linux × amd64/arm64)` — coequal, no sole-primary
+  designation. Architect disposition: **(a)** rephrase all four sites to make
+  explicit that NFR-008 lists macOS among the primary targets alongside Linux.
+  Fixed sites:
+  (1) §Scope line: "NFR-008 lists macOS as the primary target" →
+      "NFR-008 lists macOS among the primary targets (`macOS + Linux`, darwin/linux × amd64/arm64)".
+  (2) §Start Sequence step 1 Rationale: "macOS is the primary target platform (NFR-008)" →
+      "macOS is among the primary target platforms (NFR-008: `macOS + Linux`, darwin/linux × amd64/arm64)".
+  (3) §Trace v1.0.12 F-R70-1 sentence: "NFR-008 lists macOS as the primary target" →
+      "NFR-008 lists macOS among the primary targets (`macOS + Linux`)".
+  (4) §Trace v1.0.12 F-R70-1 rationale: "forcing every macOS user (primary target)" →
+      "forcing every macOS user (a primary target, per NFR-008 `macOS + Linux`)".
+  All normative prose and historical trace citations now accurately reflect
+  NFR-008's coequal macOS + Linux scope. The runtime_dir fallback chain rationale
+  is unaffected — the fallback is still required because `runtime_dir()` returns
+  `None` on macOS regardless of whether macOS is sole-primary or co-primary.
+- F-R71-4 RESOLVED (MEDIUM — adversary R71 dep-pin ambiguity):
+  F-R71-4a: VP-DAEMON-005 cited `tower 0.5` with "per SS-deps-pin-manifest.md" but
+  tower is not pinned in the manifest — it is a transitive dependency of axum 0.8 and
+  never used directly as a workspace dependency in monocle. Architect disposition:
+  **(b)** leave manifest unchanged; tower remains appropriately transitive through
+  axum 0.8. The formal-verifier / test-writer must drop the "per manifest" citation
+  from any VP referencing tower; tower's version is constrained by axum 0.8's
+  dependency resolution, not by a direct workspace pin. No manifest change required.
+  F-R71-4b: VP-DAEMON-005 contained a "pending-architect-review" Principle 6
+  violation — an unresolved choice between `nix 0.30` and `libc 0.2` for POSIX
+  signal handling in BC-DAEMON-005 postcondition 3 (stale-pid detection).
+  Architect disposition: **`nix 0.30`** (typed wrapper crate preferred over raw
+  `libc` for `Signal::None` send pattern). Rationale: `nix::sys::signal::kill(pid,
+  None)` is the idiomatic, type-safe Rust API for pid-liveness testing without
+  signal delivery; using raw `libc::kill(pid, 0)` bypasses the type system and
+  requires unsafe. `nix 0.30` is the latest stable release (verified 2026-05-14
+  against crates.io). `nix 0.30` added to SS-deps-pin-manifest.md as a workspace
+  caret pin. BC-DAEMON-005 postcondition 3 implementation MUST use
+  `nix::sys::signal::kill(Pid::from_raw(pid), None)`.
+- Propagation requirements for orchestrator:
+  PRD: NFR-008 description at PRD line 328 may carry the same sole-primary framing;
+  product-owner to audit and correct if present.
+  PRD: arch pin bump v1.0.12 → v1.0.13 to record in any PRD traceability matrix.
+  VP: F-R71-1 (directories 5→6, 2 VP sites) — out of current arch scope; VP owner
+  to resolve. F-R71-4a: formal-verifier to drop "per manifest" tower citation from
+  VP-DAEMON-005. F-R71-4b: formal-verifier to update VP-DAEMON-005 to name `nix 0.30`
+  as the binding crate. F-R71-5 (if any VP placeholder present) — VP owner to resolve.
+  VP and PRD changes require product-owner / formal-verifier dispatch; not in arch scope.
+  BC count: **22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
 v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-code semantics):
 - F-R70-1 RESOLVED (HIGH — adversary R70 cross-platform invariant): §Scope and §Start
   Sequence step 1 mandated `directories::ProjectDirs::runtime_dir()` as the sole runtime
   directory resolution source with no fallback. `runtime_dir()` returns `None` on macOS
   and Windows by platform-ABI design, not due to misconfiguration. NFR-008 lists macOS
-  as the primary target. An implementer following the prior step 1 spec had no defined
+  among the primary targets (`macOS + Linux`). An implementer following the prior step 1 spec had no defined
   behavior when `None` was returned — bifurcated implementations would result, breaking
   BC-DAEMON-005 and BC-LOCK-001 on macOS. Architect disposition: **(c) hybrid platform
   fallback chain with env override.** Step 1 replaced with a four-path resolution chain:
@@ -741,7 +799,7 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   resolution paths return `None` (e.g., no home directory at all). Rationale for
   disposition (c) over (a) pure fail-fast: `runtime_dir()` returning `None` on macOS
   is a platform design choice, not a configuration failure; forcing every macOS user
-  (primary target) to set `MONOCLE_RUNTIME_DIR` violates the zero-config startup
+  (a primary target, per NFR-008 `macOS + Linux`) to set `MONOCLE_RUNTIME_DIR` violates the zero-config startup
   requirement. Rationale for disposition (c) over (b) silent fallback: the env override
   is a necessary operator escape hatch for containerized and custom deployments.
   Asymmetry with BC-ENGINE-002-ERR is intentional: `BaseDirs::new() == None` signals
@@ -767,7 +825,7 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   BC-DAEMON-004 summary row updated to enumerate all five exit codes. Hard Shutdown
   step 6 updated to distinguish signal type for exit-code selection. BC-DAEMON-004
   postcondition added inline in §Hard Shutdown with verification test reference
-  (`test_BC_DAEMON_004_exit_codes` in `monocle-runtime/tests/daemon_lifecycle.rs`).
+  (`test_BC_DAEMON_004_exit_codes_posix_distinct` in `monocle-runtime/tests/daemon_lifecycle.rs`).
   Rationale for disposition (c) over (a) simple 143 substitution: distinguishing SIGINT
   vs SIGTERM vs admin-API force-stop preserves maximum diagnostic information for ops
   tooling; the code paths through the `tokio::select!` loop already distinguish SIGTERM

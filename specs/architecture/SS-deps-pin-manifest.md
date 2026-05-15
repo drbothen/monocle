@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.8"
+version: "1.1.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T14:00:00Z
+timestamp: 2026-05-15T04:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required)"
 project: monocle
 ---
 
@@ -58,6 +58,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | thiserror | 2 | Error type derivation | caret pin; 2.x major — do NOT pin to 1.x |
 | anyhow | 1 | Error propagation in binary crate | caret pin |
 | constant_time_eq | 0.3 | Timing-safe byte comparison for auth token validation per BC-AUTH-001 (SS-daemon-lifecycle.md) | caret pin (utility crate; not on untrusted-input deserialization path) |
+| nix | 0.30 | POSIX signal handling for pid-liveness check in BC-DAEMON-005 postcondition 3; `nix::sys::signal::kill(Pid::from_raw(pid), None)` used instead of raw `libc::kill(pid, 0)` to preserve type safety and avoid unsafe blocks | caret pin; NOT `libc` direct usage (bypasses type system); `nix 0.30` is the current stable release (verified 2026-05-14 against crates.io); binding crate decision per F-R71-4b (SS-daemon-lifecycle.md v1.0.13 §Trace) |
 | futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
@@ -250,6 +251,35 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.9 changes (adversary R71 F-R71-4a + F-R71-4b dep-pin dispositions):
+- F-R71-4b RESOLVED: `nix 0.30` added to Phase 1 Pin Manifest as a workspace caret
+  pin. Rationale: BC-DAEMON-005 postcondition 3 (stale-pid detection) requires a
+  POSIX `kill(pid, 0)` liveness probe. The type-safe API `nix::sys::signal::kill(
+  Pid::from_raw(pid), None)` is preferred over `libc::kill(pid, 0)` because it (a)
+  avoids `unsafe` blocks in monocle-runtime, (b) uses the `Signal::None` typed
+  constant rather than a raw integer 0 that could be confused with a real signal,
+  and (c) returns a typed `Result<(), Errno>` that integrates cleanly with the
+  `thiserror`-based `DaemonStartError` taxonomy. `nix 0.30` is the current stable
+  release (verified 2026-05-14 against crates.io). Caret pin (`^0.30`) is
+  appropriate: nix is not on an untrusted-input deserialization path, not a
+  security-protocol boundary, and not an async runtime; it is a thin typed wrapper
+  over POSIX syscalls with stable API surface. Pin: `nix = "0.30"` in workspace
+  `[dependencies]`. Add `monocle-runtime` as the declaring crate (where the
+  pid-liveness check lives in the start-sequence code path).
+- F-R71-4a RESOLVED (no manifest change): `tower 0.5` is NOT added to the manifest.
+  tower is a transitive dependency of `axum 0.8` and is never used directly as a
+  workspace-level dependency in monocle. Axum 0.8 declares `tower` as a re-exported
+  dependency; monocle code uses `axum`-level abstractions (Router, handler, layer)
+  not the raw tower Service/Layer traits directly. Adding a direct workspace pin on
+  tower would create a false impression of direct dependency and a maintenance burden
+  (keeping tower pin synchronized with axum 0.8's transitive constraint). The correct
+  disposition is: axum 0.8's exact pin controls the tower version transitively;
+  any VP or test code citing tower should reference it as "axum 0.8 transitive dep"
+  rather than "per SS-deps-pin-manifest.md."
+- Crate count: Phase 1 manifest now lists **30 production crates + 1 dev-dep** (was
+  29 + 1). The SS-daemon-lifecycle.md v1.0.13 §Trace documents the binding decision
+  for nix over libc per Principle 6.
 
 v1.1.8 changes (round-57.1 PG-5 sweep — 2 brief version citations):
 - §Authority / Supersession: `brief v1.4 disagree` lacked PG-5 Form 2 qualifier. Fixed:
