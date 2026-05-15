@@ -1367,6 +1367,67 @@ Combined with Extension 17 (sweep-evidence pair-grep-command), the SERIAL Extens
 
 **Codified in:** cycle-001/lessons.md §SE-15e (this entry).
 
+---
+
+## SE-14b: Per-Probe BC-VP Coherence Discipline (Extension 14 Sub-Extension)
+
+**Discovery:** R91 adversary (4-finding pattern I-R91-3/4/5/6 + 1 CRITICAL C-R91-1 + 1 HIGH I-R91-2). Attempt 24, D-047 strict pass 1. Cons R30 CLEAN.
+
+**Root cause:** Newly added VP §Post-condition probes in VP v1.24 (I-R90-1: VP-DAEMON-006 pid integer + shutdown_reason enum + last_app_mode non-empty; I-R90-2: VP-DAEMON-001 semver regex; I-R90-4: VP-FACTORY-002 empty-string idempotency probe) introduced stronger constraints than the corresponding BC text specifies. This is the lift_invariants_to_bcs discipline applied REVERSE — BC text needs to be lifted UP to match VP's tightening.
+
+**Extension 14 lineage:** Per Extension 14 codification body: "When a contract is lifted between tiers (e.g., EC → BC §Postcondition, NFR → BC, JC → BC), the lift MUST propagate to ALL summary-table sibling sites in the SAME architectural layer." SE-14b extends this discipline at PER-PROBE granularity:
+
+### SE-14b Rule (codified 2026-05-15, R91 discovery)
+
+**When a VP introduces a new §Post-condition probe that asserts a TYPED-FIELD constraint not yet specified in the corresponding BC text:**
+
+**(a)** The probe is a VP-side tightening of a BC contract.
+
+**(b)** The corresponding BC §Postcondition or §Invariant MUST be extended in the SAME burst (or the immediately preceding PO burst per Extension 15 SERIAL protocol) to specify the same constraint.
+
+**(c)** If no BC element with the matching contract exists, the burst MUST include an Extension 14 BC lift (append a new BC §Postcondition or §Invariant naming the constraint).
+
+**(d)** The VP's per-VP `Traces to:` field MUST cite the BC element that explicitly covers the matching constraint (NOT a non-existent EC or wrong subsection).
+
+### Anchor Verification Sub-Rule (codified per C-R91-1)
+
+Every VP §Post-condition that cites `(per BC-XXX §Postcondition N)` or `(per BC-XXX §Invariant N)` MUST resolve to a real existing element. The adversary's "Semantic Anchoring Audit" CRITICAL severity threshold applies.
+
+**Coverage map regression prevention:** Before any FV burst lands a new VP probe, the FV agent MUST run:
+```
+grep -nA 5 "§Post-condition" .factory/specs/verification-properties.md | grep "per BC-"
+```
+to enumerate all anchor cites, then grep each cited BC element in the PRD to verify existence. Fabricated or wrong-subsection anchors are CRITICAL defects.
+
+**SE-14b applies at the FV agent scope:** When the FV agent introduces new VP §Post-condition probes (either via probe-matrix expansion bursts like I-R90-1/2/4 or via fix bursts), the agent MUST:
+1. Identify the corresponding BC element for each new probe.
+2. Check that the BC text explicitly specifies the typed constraint (not just the concept).
+3. If BC text does not specify the typed constraint: either (a) route to PO for BC lift first (preferred), or (b) include a BC lift in the same burst (if FV is authorized to write PRD in that burst context).
+
+### Discipline-Axis Lineage
+
+- Extension 14 = within-layer propagation (EC→BC lift propagates to summary table siblings)
+- **SE-14b = per-probe granularity at BC-VP coherence axis** (VP tightening requires BC-text lift to match VP precision)
+
+SE-14b is a sub-extension of Extension 14 in the same discipline family: both address the invariant that BC and VP must agree at the constraint level, not just at the conceptual level. Extension 14 addresses FORWARD lift (EC→BC); SE-14b addresses the REVERSE coherence check (VP precision → BC text equivalence).
+
+### Finding Summary (R91 pattern)
+
+| Finding | Site | VP Constraint | BC Gap |
+|---------|------|---------------|--------|
+| C-R91-1 | VP-FACTORY-002 §Post-cond 7 | idempotency invariant | Fabricated anchor `BC-FACTORY-002 EC "idempotency invariant"` — does not exist |
+| I-R91-2 | VP-DAEMON-006 §Post-cond 10 | shutdown_reason enum | Cites BC-DAEMON-006 §Postcondition 1 (wrong — is §Invariant 1) |
+| I-R91-3 | VP-DAEMON-006 §Post-cond 9 | pid ≥ 1 integer | BC-DAEMON-006 §Postcondition 2 says "exposed" but not "≥ 1" |
+| I-R91-4 | VP-DAEMON-006 §Post-cond 11 | last_app_mode non-empty string | BC-DAEMON-006 §Postcondition 3 implies but does not specify "non-empty" |
+| I-R91-5 | VP-DAEMON-001 §Post-cond 7 | semver regex `^(0\|[1-9]\d*)\.(...)$` | BC-DAEMON-001 §Invariant 2 says "semantic versioning format" without regex |
+| I-R91-6 | VP-DAEMON-001 §Post-cond 8 | shutdown_reason 4-value enum | BC-DAEMON-001 §Postcondition 3 says "valid shutdown reason string" without enumeration |
+
+All 6 sites were introduced by the F-R90 serial fix-burst VP v1.24 (I-R90-1/2/4 closures). The root cause is the same: FV added VP probe precision without simultaneously lifting BC text to match.
+
+**27 codified disciplines now in force** (was 26: Extensions 1-17 + SE-15a/b/c/d + SE-16a/b/c + SE-17a/b + SE-15e → + SE-14b = 27).
+
+**Codified in:** cycle-001/lessons.md §SE-14b (this entry).
+
 **Trigger:** C-R90-1 — 5th recurrence of SERIAL Extension 15 propagation META; R90 adversary pass 1 attempt 23; F-R89 serial chain skipped PO step; 20+ normative-current PRD sites cite stale arch v1.0.18 (61a0064) when current arch is v1.0.19 (8a68cc9).
 
 **25 codified disciplines now in force** (was 24 + Extension 17 + SE-17a + SE-17b).
