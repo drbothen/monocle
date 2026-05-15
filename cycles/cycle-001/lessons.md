@@ -1071,4 +1071,80 @@ Extensions 15 and 16 both share the same root-cause fingerprint: a discipline wa
 
 Future orchestration-protocol disciplines (Extensions 17+) are expected at the intersection of the codification-protocol and evidence-discipline axes, as the discipline ratchet continues tightening.
 
+---
+
+## R86 Codifications
+
+### Sub-Extension SE-16a: In-Burst-Added Citation Discipline (Extension 16 sub-extension)
+
+**Discovery:** C-R86-1 (R86 adversary, attempt 19). The F-R85 fix-burst (VP v1.19) audited all 9 pre-existing cross-property/cross-check citation pairs for SE-15d reciprocity compliance — correctly satisfying Extension 16's mandatory backfill sweep requirement. However, the burst then introduced 5 NEW citations as part of the SE-15d reciprocation work. One of those 5 new citations (VP-DAEMON-005 §Post-cond 4 → VP-DAEMON-004 §Mech 5) was described in §Trace v1.19 as a "reciprocation," but VP-DAEMON-004 §Mech 5 contains NO reciprocal reference back to VP-DAEMON-005. The in-burst-added citation was unidirectional.
+
+**Root cause:** Extension 16's mandatory backfill sweep rule (#3) specifies "pre-existing sites" as the audit scope. Citations added WITHIN the same burst are not "pre-existing" — they were created after the pre-burst audit table was constructed. No rule required the FV agent to run a second audit pass at burst-end that verified the newly-added citations for bidirectionality. The burst-end §Trace SE-15d backfill section documented the 9 pre-existing pairs; the 5 in-burst-added pairs were not re-audited.
+
+**META-pattern META-3:** "Apply audit rule to pre-existing instances, not to in-burst-added instances." This is finer-grained than META-1 (apply rule to trigger site, not pre-existing history) and META-2 (parallel-dispatch coordination). META-3 operates within a single burst: the audit scope partitions into pre-existing and in-burst-added, and only pre-existing citations were verified.
+
+**Rule (SE-16a):** Extension 16's mandatory backfill sweep MUST cover BOTH:
+
+1. **(a) Pre-existing sites:** All instances in the artifact set that existed BEFORE the burst began (original Extension 16 scope).
+2. **(b) In-burst-added sites (NEW — SE-16a):** ALL citations, annotations, or structural references added WITHIN the same burst.
+
+**Mandatory burst-end re-audit step:** Every burst that introduces new cross-property/cross-check citations (whether as SE-15d reciprocations, new VP content, or any other mechanism) MUST include a burst-end re-audit pass AFTER all new content lands. This re-audit must:
+
+- Enumerate every citation added in the burst (not just the intended reciprocation sites).
+- Verify bidirectionality for each new cross-property/cross-check citation pair.
+- Document results in §Trace as: `### Burst-end re-audit: in-burst-added SE-15d citations` with grep -nE transcripts showing the new citation AND the reciprocal citation (or explicit notation if the reciprocal is missing and must be added).
+
+**Extension 16 rule addendum:** Rule #3 of Extension 16 is amended to read: "Every §Trace narrative for a burst that introduces a new Extension/SE codification must include:
+  - `### Backfill sweep: Extension N / SE-Nx pre-existing sites` — covers pre-existing instances
+  - `### Burst-end re-audit: in-burst-added [rule-name] citations` — covers citations added within the burst (NEW per SE-16a)"
+
+Omitting the burst-end re-audit step is treated as a HIGH-severity process gap in the next adversary pass (same severity level as Extension 16 backfill omission).
+
+**Orchestrator coordination:** Dispatch prompts for fix-bursts that include SE-15d reciprocation work MUST explicitly instruct the agent to run the burst-end re-audit step on all in-burst-added citations, not only the pre-existing-site backfill sweep.
+
+**Application precedent:** F-R86 FV burst (VP v1.20) must: (1) add reciprocal citation to VP-DAEMON-004 §Mech 5, and (2) include `### Burst-end re-audit: in-burst-added SE-15d citations` section in §Trace v1.20 verifying all 5 F-R85-added citation pairs for bidirectionality.
+
+---
+
+#### Sub-Extension SE-16b: Frontmatter Timestamp Monotonicity Guard (Extension 16 sub-extension)
+
+**Discovery:** O-R86-1 (R86 adversary, attempt 19). VP v1.18 was timestamped `2026-05-16T08:00:00Z` — a future date relative to the session date `2026-05-15`. VP v1.19 corrected this to `2026-05-15T20:00:00Z`. The correction itself is appropriate and was documented in §Trace v1.19 items (f)/(g). However, the correction introduced a timestamp regression: v1.19's timestamp (`2026-05-15T20:00:00Z`) is EARLIER than v1.18's timestamp (`2026-05-16T08:00:00Z`). Tooling that sorts artifacts by frontmatter timestamp (filesystem `ls -lt`, JSON-based reporters, audit trail tools) would order v1.19 BEFORE v1.18 — inverting the version sequence.
+
+**OBS-R25-001 from cons R25** identified that §Trace v1.19 items (f)/(g) document the correction with rationale but do not explicitly state that v1.18 was future-dated. The documentation is incomplete for the SE-16b audit requirement.
+
+**Rule (SE-16b):** Every burst's frontmatter timestamp MUST satisfy one of two conditions:
+
+1. **(a) Monotonic increase:** The new version's timestamp `≥` the predecessor version's timestamp. No additional documentation required.
+2. **(b) Documented correction (clock-skew / session-date-drift):** If the predecessor version was future-dated (due to clock-skew, session-date-drift, or other anomaly), and the correction would produce a timestamp regression, the correcting burst's §Trace MUST include a section:
+
+```
+### Timestamp monotonicity correction
+- Predecessor version: v1.X
+- Predecessor timestamp: [stale-ts]
+- Predecessor timestamp status: FUTURE-DATED (session date: YYYY-MM-DD; predecessor timestamp was YYYY-MM-DD which is in the future)
+- New version: v1.Y
+- New timestamp: [new-ts]
+- Timestamp regression introduced: YES (v1.Y timestamp < v1.X timestamp)
+- Rationale: [clock-skew | session-date-drift | other: explanation]
+- Tooling impact: artifacts sorted by frontmatter timestamp will order v1.Y before v1.X; audit trail tools that rely on timestamp monotonicity may report false ordering warnings.
+```
+
+**Application precedent:** F-R86 FV burst (VP v1.20) must add the `### Timestamp monotonicity correction` section to §Trace v1.20, explicitly documenting that VP v1.18's `2026-05-16T08:00:00Z` timestamp was future-dated, and justifying the v1.19 regression timestamp. This closes OBS-R25-001 from cons R25.
+
+**Backfill:** VP §Trace v1.19 items (f)/(g) already document the correction with rationale but are missing the explicit "predecessor was future-dated" statement. The F-R86 fix-burst should add the missing statement to the existing §Trace v1.19 documentation (or document it in §Trace v1.20 as a retrospective notation on v1.19).
+
+---
+
+### Companion META observation (post-SE-16a + SE-16b)
+
+SE-16a and SE-16b are both sub-extensions of Extension 16 (orchestration-protocol-axis). They extend Extension 16 in complementary directions:
+
+- **SE-16a** closes the in-burst-added citation audit scope gap — the audit ratchet must sweep not only "pre-existing instances before the burst" but also "in-burst-added instances after the burst." The audit must follow the content as it is written, not only audit the content that existed before writing began.
+
+- **SE-16b** introduces timestamp monotonicity as a new audit axis. Prior audit disciplines focused on citation correctness, version pin correctness, and evidence quality. Timestamp ordering is a different dimension: it governs tooling-coherent sequencing of the artifact version history.
+
+Together, SE-16a and SE-16b bring the codified discipline count to **23** (Extensions 1–16 with sub-extensions SE-15a/b/c/d + SE-16a/b + agent-id-routing-existence + §Trace audit-row integrity).
+
+**META-3 pattern closure:** SE-16a closes META-3 ("apply audit rule to pre-existing instances, not to in-burst-added instances"). META-1 was closed by Extension 16. META-2 was closed by Extension 15. META-3 operates at a finer granularity than META-1 and META-2 — within a single burst rather than across burst boundaries. The discipline ratchet has now closed audit-scope gaps at three levels: cross-session (Extension 13 machine-greppable evidence), cross-burst (Extension 16 mandatory backfill), and intra-burst (SE-16a burst-end re-audit).
+
 Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": F-R84's 6 of 7 findings share a single root cause (orchestration protocol gap), not new content defects. Content quality of Phase 1 specs remains production-grade; the remaining convergence work is process-discipline enforcement.
