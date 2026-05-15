@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.10"
+version: "1.11"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-14T23:00:00Z
+timestamp: 2026-05-15T22:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.16; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.10; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.16; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer"
 project: monocle
 supplements: []
 ---
@@ -2038,3 +2038,44 @@ All §-anchor references: PASS.
 - Correct agent routing: PASS — VP file not touched (F-R75-1 VP probe and F-R75-2 VP probe are formal-verifier scope); architecture files not touched (arch v1.0.16 is the source, not the target); STATE.md not touched (state-manager owns).
 
 **VP propagation note (v1.10):** VP-DAEMON-005 requires two updates from the R75 closure chain: (a) F-R75-1 — add 0o700 runtime-dir mode probe; (b) F-R75-2 — update VP-DAEMON-005 probe 5.c from "happy-path on macOS/Windows" to align with NFR-008 `macOS + Linux` target scope. Both are formal-verifier scope. Routing noted per L-F-R63 Extension 3.
+
+## §Trace v1.11
+
+**v1.11 (2026-05-15):** GAP-R16-001 closure — frontmatter `traces_to` manifest pin housekeeping. Trigger: consistency audit R16 (commit b79f8cd) found GAP-R16-001 [LOW]: PRD frontmatter `traces_to` cited manifest v1.1.10 (stale by two architect bursts). The F-R76 burst (architect commit 7860e78) bumped manifest v1.1.10 → v1.1.11 but did not propagate the pin to PRD frontmatter because the PRD body contains no normative-current manifest version citation (confirmed by GAP-R16-001 evidence: body citations all in historical §Trace context). A parallel architect burst (R77 fixes) brings manifest to v1.1.12. PRD frontmatter updated speculatively to v1.1.12 to absorb both missed bumps in a single atomic commit.
+
+- **GAP-R16-001 RESOLVED (LOW — PRD frontmatter manifest pin stale):** `traces_to` field updated: `SS-deps-pin-manifest.md v1.1.10` → `SS-deps-pin-manifest.md v1.1.12`. This is a frontmatter-only housekeeping fix. No BC body content, postconditions, invariants, edge cases, or error codes are affected.
+
+- **Manifest version history summarized in traces_to:** v1.1.10 (F-R74 dep-graph edges, 4 missing runtime edges), v1.1.11 (F-R76-1 serde+chrono pins; F-R76-2 runtime→axum edge correction), v1.1.12 (architect R77 fixes — parallel burst).
+
+- **Frontmatter version bump:** `version: "1.10"` → `"1.11"`. `timestamp` updated to 2026-05-15T22:30:00Z.
+
+**Count changes (v1.11):** 22 BCs unchanged. 14 error codes unchanged. 59 edge cases unchanged. 23 test names unchanged. No IDs renumbered or retired. No body content changed.
+
+**D-042 sweep (v1.11):** Frontmatter-only change. Zero normative body modifications. All 31 arch citation sites (SS-daemon-lifecycle.md v1.0.16) carry forward unchanged from v1.10. SS-deps-pin-manifest.md v1.1.12 now current in frontmatter.
+
+**PG-2 count coherence (v1.11):** 22 BCs unchanged. 14 error codes unchanged. 59 edge cases unchanged. 23 test names unchanged. No IDs renumbered or retired.
+
+**PG-3 §Trace directional refs (v1.11):** No `above`, `below`, or bare L-numbers appear in this §Trace v1.11 entry. All references use section heading anchors (§-form) or commit/finding references.
+
+**PG-3-TRACE-NEW-ENTRY (v1.11):** Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.11 entry.
+
+**PG-4 §-heading-existence sweep (v1.11):** No new §-anchor references introduced. All carry-forwards from v1.10.
+
+**PG-5 (historical-anchor framing):** §Trace v1.10 historical occurrence of v1.1.10 manifest pin preserved. Frontmatter now cites v1.1.12 as current-pointer.
+
+**L-F-R63 Extension 3 Enforcement — deps-pin sweep (mandatory pre-commit, v1.11):** Frontmatter-only burst — no new crate-version mentions in body. All 8 existing crate-version mentions carry forward from v1.10 and remain CONSISTENT with manifest v1.1.12 (v1.1.12 is a superset of v1.1.10; no pin removals or regressions).
+
+**18+ META rule checklist (v1.11):**
+- D-042 (4-pattern citation sweep): PASS — frontmatter-only change; no normative body modifications. SS-daemon-lifecycle.md v1.0.16 current (unchanged); SS-core-types-and-abi.md v1.2.8 unchanged; SS-engine-module.md v1.1.15 unchanged; SS-deps-pin-manifest.md v1.1.12 updated in frontmatter.
+- PG-1 (no ambiguous requirements): PASS — no requirements changed.
+- PG-2 (count coherence): PASS — 22 BCs / 14 errors / 59 ECs / 23 test names unchanged.
+- PG-3 (no L-number pinpoints in §Trace): PASS — all §Trace v1.11 references use section heading anchors or commit/finding references.
+- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS — v1.11 entry uses only section heading anchors. Post-write self-grep: 0 L[0-9]+ matches.
+- PG-4 (§-heading-existence sweep): PASS — no new §-anchor references introduced in this burst.
+- PG-5 (historical-anchor framing): PASS — §Trace v1.10 historical manifest v1.1.10 reference preserved; frontmatter uses v1.1.12 as current-pointer.
+- lift_invariants_to_bcs: PASS — no new domain invariants; frontmatter-only burst.
+- L-F-R63 Extension 3 Enforcement (deps-pin sweep): PASS — 8 crate-version mentions carried forward; all CONSISTENT with manifest v1.1.12 (superset of v1.1.10).
+- append_only_numbering: PASS — no IDs created, retired, or renumbered.
+- Correct agent routing: PASS — VP files not touched; architecture files not touched; STATE.md not touched (state-manager owns).
+
+**VP propagation note (v1.11):** No VP changes required. This is a frontmatter housekeeping burst with no behavioral contract modifications.
