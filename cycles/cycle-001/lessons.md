@@ -1431,3 +1431,62 @@ All 6 sites were introduced by the F-R90 serial fix-burst VP v1.24 (I-R90-1/2/4 
 **Trigger:** C-R90-1 — 5th recurrence of SERIAL Extension 15 propagation META; R90 adversary pass 1 attempt 23; F-R89 serial chain skipped PO step; 20+ normative-current PRD sites cite stale arch v1.0.18 (61a0064) when current arch is v1.0.19 (8a68cc9).
 
 **25 codified disciplines now in force** (was 24 + Extension 17 + SE-17a + SE-17b).
+
+---
+
+### SE-14b Extension: AUTHORING-Discipline Mandatory Sub-Rule (R92 discovery)
+
+**Discovery:** I-R92-5 (R92 adversary, attempt 25, D-047 strict pass 1).
+
+**Root cause:** The F-R91 PO burst (PRD v1.19 2e24e09) lifted 5 BC content items: BC-DAEMON-001 Postcondition 1 (semver regex), BC-DAEMON-002 Postcondition 1 (pid≥1 + semver regex), BC-DAEMON-006 Invariant 1 (4 field constraints: app_mode last_app_mode shutdown_reason version), BC-FACTORY-002 EC-061 (empty-string current_cycle), EC-030 (trait-level rewording). The FV burst (VP v1.25 ba8eea4) was expected per SE-14b to add NEW BC-anchor citations to the corresponding 5 VP probes. Only 2 of 5 sites received new citations:
+
+- VP-DAEMON-006 §Post-10 → BC-DAEMON-006 §Invariant 1: **ADDED** (correct)
+- VP-FACTORY-002 §Post-7 → EC-061: **ADDED** (correct)
+
+3 sites did NOT receive new citations:
+- VP-DAEMON-001 §Post-7 semver: **MISSING** `per BC-DAEMON-001 §Postcondition 1`
+- VP-DAEMON-002 §Post-7 numeric pid: **MISSING** `per BC-DAEMON-002 §Postcondition 1`
+- VP-DAEMON-002 §Post-8 string-format: **MISSING** `per BC-DAEMON-002 §Postcondition 1`
+
+**Structural diagnosis:** SE-14b was codified as VERIFICATION discipline (audit existing citations for anchor resolution) but NOT as AUTHORING discipline (mandate new citations when BC lifts happen). The FV agent applied SE-14b's verification sub-rule correctly (ran anchor-existence grep, confirmed all existing cites resolve) but had no authoring sub-rule to follow for identifying VP probes that needed NEW citations due to BC content lifts.
+
+### SE-14b AUTHORING Sub-Rule (MANDATORY — extends SE-14b, codified 2026-05-15 R92 discovery)
+
+**When a serial fix-burst chain includes BC content lifts (PO burst extending BC §Postcondition, §Invariant, or §Edge Case), the subsequent FV burst MUST:**
+
+**(a)** Identify every NEW BC element introduced by the PO burst, using:
+- The PO §Trace narrative (which lists what was changed), AND
+- A targeted grep against the PRD comparing the new version against the previous version's known content.
+
+**(b)** For each NEW BC element, identify the corresponding VP §Post-condition probe(s) that test the same constraint. Use:
+```
+grep -n "per BC-<XXX>" .factory/specs/verification-properties.md
+grep -nE "§Post-condition [0-9]+" .factory/specs/verification-properties.md | grep -A2 "<constraint-keyword>"
+```
+
+**(c)** For each identified VP probe that tests the lifted BC constraint, ADD the `per BC-XXX §<Section> N` anchor citation in the VP probe text. This is the AUTHORING step — adding new citations, not just verifying existing ones.
+
+**(d)** The §Trace v1.Y MUST embed an explicit `### SE-14b authoring audit` section enumerating:
+- NEW BC elements (from PO burst) — list each BC ID + element type + new content
+- MATCHING VP probes — list each VP-ID + §Post-condition N that tests the same constraint
+- ANCHOR CITATIONS ADDED — list each new `per BC-XXX §Section N` citation added, OR state "no matching VP probe exists; future-Phase" with explicit rationale
+
+### Combined SE-14b Rule (verification + authoring — BOTH mandatory)
+
+SE-14b is now a TWO-PART discipline:
+
+**Part 1 (VERIFICATION — codified b15effb, R91):** Every VP §Post-condition that cites `(per BC-XXX §Postcondition N)` or `(per BC-XXX §Invariant N)` MUST resolve to a real existing element. Anchor-existence grep required pre-commit.
+
+**Part 2 (AUTHORING — codified via SE-14b extension, R92):** When BC content is freshly lifted (PO burst), identify VP probes that test the lifted constraint and ADD new BC-anchor citations. §Trace v1.Y MUST include explicit `### SE-14b authoring audit` section.
+
+Without BOTH parts, the BC-VP coherence axis is asymmetric — BC tightens but VP doesn't trace it (authoring gap) OR VP cites non-existent anchors (verification gap).
+
+### Discipline-Axis Extension
+
+This extension makes SE-14b BIDIRECTIONAL at the authoring level:
+- BC lift → VP citation REQUIRED (authoring sub-rule, NEW)
+- VP cite → BC element MUST EXIST (verification sub-rule, prior codification b15effb)
+
+**Codified in:** cycle-001/lessons.md §SE-14b extension (this entry, R92 discovery).
+
+**27 codified disciplines remain in force** — SE-14b extension is a sub-rule of existing SE-14b, not a new numbered discipline.
