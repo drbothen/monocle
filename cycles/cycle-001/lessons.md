@@ -1516,4 +1516,33 @@ This is the third META audit-discipline codification under Extension 17 (after S
 
 **Codified in:** cycle-001/lessons.md §SE-17c (this entry, R95 discovery).
 
+---
+
+## SE-17c-d: Body-scope grep convention (Extension 17 sub-extension)
+
+**Discovery:** I-R96-2 (R96 adversary, attempt 29) — F-R95 FV burst applied SE-17c first application, embedded a Step 2 final-state grep `grep -n "PRD v1\.20/21" file` and claimed "(no hits — Fix 5 closed I-R95-1)". But the §Trace narrative ITSELF quotes the searched pattern `PRD v1\.20/21` as evidence (in Fix 5 heading, in pre-burst grep transcript, in SE-16a in-burst audit, in dual-version simplification narrative). The final-state grep returns 4 §Trace-narrative hits, contradicting the "(no hits)" claim.
+
+The SE-17c discipline correctly mandated "re-run final-state greps" but did NOT scope the greps to pre-§Trace body content. The §Trace narrative is ITSELF post-burst final state, and it correctly quotes pre-burst evidence — but those quotes show up as hits to the literal final-state grep.
+
+**Rule:** Every SE-17c Step 2 final-state grep that asserts "no hits" or "N hits" for a string-class fix MUST be scoped to pre-§Trace body content via:
+
+```bash
+$ BOUNDARY=$(grep -n "^## §Trace" file.md | head -1 | cut -d: -f1)
+$ grep -n "<PATTERN>" file.md | awk -F: -v B="$BOUNDARY" '$1 < B && $1 != 25'
+```
+
+where `<DERIVED_BOUNDARY>` is computed via `grep -n "^## §Trace" file.md | head -1 | cut -d: -f1` (per SE-17c-b boundary derivation) and `$1 != 25` excludes frontmatter narrative line.
+
+The §Trace narrative may legitimately quote the searched pattern as PG-5 historical evidence — those quotes are NOT defects. They simply must be excluded from the "no-hits" count.
+
+**Alternative formulation:** if a fix INTENDS to leave §Trace narrative quotes in place (per PG-5 framing), the post-burst grep should report "N hits in pre-§Trace body; M hits in §Trace narrative-evidence blocks per PG-5" rather than asserting "(no hits)".
+
+This is the 4th sub-rule of Extension 17 (after SE-17a multi-line patterns, SE-17b self-verification, SE-17c final-state revalidation). It refines SE-17c by adding scope-discipline.
+
+**CRITICAL META-IRONY:** R96 demonstrates third-order META-irony: the first application of META-discipline N+1 introduces a META-N+2 gap. The pattern is genuinely asymptotic at the META-discipline-codification layer. However: R96 secondary lenses (substantive content — cross-property + glossary + coverage matrix + triple pin coherence) ALL PASS, indicating substantive content layer is structurally converged. The remaining defects are exclusively META audit-narrative consistency.
+
+**29 codified disciplines in force** after SE-17c-d (was 28 + SE-17c-d as 4th sub-rule of Extension 17).
+
+**Codified in:** cycle-001/lessons.md §SE-17c-d (this entry, R96 discovery).
+
 **28 codified disciplines now in force** (was 27 + SE-17c). SE-17c is a sub-extension of Extension 17, not a new numbered discipline.
