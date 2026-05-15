@@ -2,11 +2,11 @@
 document_type: verification-properties
 level: L3
 section: "verification-properties"
-version: "1.5"
+version: "1.5.1"
 status: draft
 producer: formal-verifier
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-15T05:30:00Z
+timestamp: 2026-05-15T07:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "22 BCs unchanged across F-R67-1 §Mechanism prose fix + PRD v1.5 pin propagation + intra-block consistency sweep — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current, unchanged): SS-daemon-lifecycle v1.0.11 (commit af2101d, F-R65 content closure carried forward — BC-AUTH-002 2-body taxonomy count + Bearer disposition correctly stated; BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001), SS-core-types-and-abi v1.2.8 (BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), SS-engine-module v1.1.15 (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003). PRD v1.5 commit d321935 — current canonical BC source (F-R67-2 closure — EC-045 off-by-one fix 262,144 → 262,145 in PRD §BC-DAEMON-003 boundary narrative; VP-DAEMON-003 boundary semantics already correct, no content change). F-R67 closure chain: adversary round-67 commit 3d15abf (R67 verdict with 1 HIGH content defect F-R67-1 + 1 MED PRD off-by-one F-R67-2 + Obs-1 process-gap recommendation); product-owner PRD v1.5 commit d321935 (F-R67-2 closure); this v1.5 VP catalog (F-R67-1 closure — VP-TYPES-001 §Mechanism prose corrected from `cargo clippy` lint primary to `syn 2` AST audit primary per PRD v1.5 §BC-TYPES-001 invariant 1; PRD v1.4 → v1.5 pin propagation across all normative-current citation sites; intra-block consistency sweep applied per Obs-1 preview discipline). Per L-F-R63-PARTIAL-FIX (cycle-001 lessons §META process-gap codification), an explicit propagation checklist was applied with grep-sweep verification AND intra-block §Mechanism vs §Post-conditions consistency check executed against all 22 VPs (only VP-TYPES-001 carried the contradiction; no other intra-block inconsistencies found). Prior fix-burst context preserved in §Trace v1.4: F-R65 closure chain (77fccb7 + 3d33937 + af2101d + e704b50) + R4-001 closure (5 missed `PRD v1.2 §BC-<ID>` test-name annotations); §Trace v1.3: R3-001 closure (ba62a15 + dc3af71 + d8e66c3) — arch v1.0.9 → v1.0.10 + PRD v1.2 → v1.3 pin propagation; §Trace v1.2: F-R63 closures (F-R63-adv-1 + F-R63-cons-1); architect SS-daemon-lifecycle v1.0.9 commit 8bf3759 (F-R62-4 back-propagation closure); product-owner PRD v1.2 commit 5a49b0b (4 test-name adjudications + error-count correction). Prior fix-burst context preserved in §Trace v1.1: F-R62 closures (F-R62-1, F-R62-4, F-R62-5, F-R62-7, F-R62-8, F-R62-9); architect BC-AUTH-002 disposition (c) (commit 2db408f); consistency audit commit 0e322da. dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; L-F-R63-PARTIAL-FIX recurrence-guard discipline + Obs-1 intra-block consistency preview discipline per cycle-001 lessons §META."
+traces_to: "v1.5.1 single-line R7-001 closure (consistency-validator round-7 commit 5f7c4e0 LOW finding — VP-DAEMON-001 line 249 Test name annotation cited PRD v1.4 instead of PRD v1.5; single-character version bump applied, content byte-identical, no other normative-current PRD v1.4 sites remaining per re-verified grep sweep). 22 BCs unchanged across F-R67-1 §Mechanism prose fix + PRD v1.5 pin propagation + intra-block consistency sweep — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current, unchanged): SS-daemon-lifecycle v1.0.11 (commit af2101d, F-R65 content closure carried forward — BC-AUTH-002 2-body taxonomy count + Bearer disposition correctly stated; BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001), SS-core-types-and-abi v1.2.8 (BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), SS-engine-module v1.1.15 (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003). PRD v1.5 commit d321935 — current canonical BC source (F-R67-2 closure — EC-045 off-by-one fix 262,144 → 262,145 in PRD §BC-DAEMON-003 boundary narrative; VP-DAEMON-003 boundary semantics already correct, no content change). F-R67 closure chain: adversary round-67 commit 3d15abf (R67 verdict with 1 HIGH content defect F-R67-1 + 1 MED PRD off-by-one F-R67-2 + Obs-1 process-gap recommendation); product-owner PRD v1.5 commit d321935 (F-R67-2 closure); this v1.5 VP catalog (F-R67-1 closure — VP-TYPES-001 §Mechanism prose corrected from `cargo clippy` lint primary to `syn 2` AST audit primary per PRD v1.5 §BC-TYPES-001 invariant 1; PRD v1.4 → v1.5 pin propagation across all normative-current citation sites; intra-block consistency sweep applied per Obs-1 preview discipline). Per L-F-R63-PARTIAL-FIX (cycle-001 lessons §META process-gap codification), an explicit propagation checklist was applied with grep-sweep verification AND intra-block §Mechanism vs §Post-conditions consistency check executed against all 22 VPs (only VP-TYPES-001 carried the contradiction; no other intra-block inconsistencies found). Prior fix-burst context preserved in §Trace v1.4: F-R65 closure chain (77fccb7 + 3d33937 + af2101d + e704b50) + R4-001 closure (5 missed `PRD v1.2 §BC-<ID>` test-name annotations); §Trace v1.3: R3-001 closure (ba62a15 + dc3af71 + d8e66c3) — arch v1.0.9 → v1.0.10 + PRD v1.2 → v1.3 pin propagation; §Trace v1.2: F-R63 closures (F-R63-adv-1 + F-R63-cons-1); architect SS-daemon-lifecycle v1.0.9 commit 8bf3759 (F-R62-4 back-propagation closure); product-owner PRD v1.2 commit 5a49b0b (4 test-name adjudications + error-count correction). Prior fix-burst context preserved in §Trace v1.1: F-R62 closures (F-R62-1, F-R62-4, F-R62-5, F-R62-7, F-R62-8, F-R62-9); architect BC-AUTH-002 disposition (c) (commit 2db408f); consistency audit commit 0e322da. dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; L-F-R63-PARTIAL-FIX recurrence-guard discipline + Obs-1 intra-block consistency preview discipline per cycle-001 lessons §META."
 project: monocle
 ---
 
@@ -246,7 +246,7 @@ v1.0.11 §Health and Status Endpoints).
 **Harness location:** `monocle-runtime/tests/healthz_endpoint.rs`.
 
 **Test name:** `test_BC_DAEMON_001_healthz_unauthenticated_alive` (per PRD
-v1.4 §BC-DAEMON-001, Verification subsection).
+v1.5 §BC-DAEMON-001, Verification subsection).
 
 ---
 
@@ -1939,6 +1939,156 @@ either current-pointer version pinning or version-free anchors per
 ---
 
 ## §Trace
+
+v1.5.1 (R7-001 single-line PRD pin propagation closure, 2026-05-15):
+
+- **Trigger:** Consistency-validator round-7 commit 5f7c4e0 raised R7-001
+  (LOW): VP-DAEMON-001 §Test name line citation read `(per PRD v1.4
+  §BC-DAEMON-001, Verification subsection)` instead of `(per PRD v1.5
+  §BC-DAEMON-001, Verification subsection)`. This was a single missed
+  propagation site from the v1.5 burst (commit 6831e23) that updated ~40
+  normative-current PRD v1.5 citation sites but missed this one. Cons R7
+  classified it LOW severity — citation accuracy only; zero semantic
+  impact since PRD v1.5 BC-DAEMON-001 content is byte-identical to PRD
+  v1.4 BC-DAEMON-001 (PRD v1.4 → v1.5 was a single EC-045 off-by-one fix
+  in §BC-DAEMON-003 prose; BC-DAEMON-001 unchanged across that bump).
+- **Single-site fix (no content change):** §Test name line citation
+  `(per PRD v1.4 §BC-DAEMON-001, Verification subsection)` →
+  `(per PRD v1.5 §BC-DAEMON-001, Verification subsection)`. One
+  version-pin character change. Test name string
+  `test_BC_DAEMON_001_healthz_unauthenticated_alive` unchanged. No
+  other line in VP-DAEMON-001's body touched. No other VP touched.
+- **Root cause confirms L-F-R63-PARTIAL-FIX Extension 2 discipline still
+  needed:** the v1.5 burst applied an explicit propagation checklist
+  with grep-sweep verification (per L-F-R63-PARTIAL-FIX) and the
+  Obs-1 intra-block consistency preview discipline, yet still missed
+  one citation site. The 22-row intra-block sweep table executed by
+  the v1.5 burst caught the F-R67-1 §Mechanism vs §Post-conditions
+  contradiction in VP-TYPES-001 but did not catch this single Test name
+  line citation drift in VP-DAEMON-001 (the sweep was scoped to
+  §Mechanism vs §Post-conditions consistency, not §Test name citation
+  accuracy). This v1.5.1 closure validates the L-F-R63-PARTIAL-FIX
+  Extension 2 ratchet — every pin-propagation burst needs a final
+  per-line grep re-verification AND a Test-name-line specific sweep,
+  not just an intra-block consistency sweep. The post-v1.5.1 grep
+  re-verification below confirms zero remaining normative-current
+  `PRD v1.4` sites.
+- **Version bump:** `version: "1.5"` → `version: "1.5.1"` (patch-level
+  bump per established semver pattern — single-line citation-only
+  correction with zero content change; analogous to a minor typo fix
+  in a long-form document). `timestamp` bumped to
+  `2026-05-15T07:30:00Z`. `inputs:` list unchanged — PRD v1.5 still
+  current, arch v1.0.11 still current, all other inputs unchanged.
+  `traces_to:` prefixed with R7-001 closure narrative; prior burst
+  context preserved verbatim.
+- **PG-3 directional compliance (R7-001 closure context):** no
+  `above`/`below`/L-number qualifiers used in this §Trace v1.5.1 entry
+  except as explicit citation anchors for the R7-001 fix site (the
+  pre-fix line number 249 is cited as the R7-001 finding location;
+  the post-fix line may shift if §Trace v1.5.1 insertions push it but
+  the line-249 prior-burst citation is the authoritative anchor
+  matching cons R7's finding evidence at commit 5f7c4e0). All §-anchor
+  references position-free.
+- **PG-4 §-heading-existence sweep — REAL (not falsified):** no new
+  §-anchor references introduced in v1.5.1; the v1.5 PG-4 sweep
+  entries remain valid (PRD v1.5 §BC-DAEMON-001 PASS, etc.). The
+  single-line citation `(per PRD v1.5 §BC-DAEMON-001, Verification
+  subsection)` resolves to PRD v1.5 commit d321935 §BC-DAEMON-001
+  Verification subsection — already PG-4 verified in v1.5 sweep.
+- **PG-5 historical-anchor compliance:** the one normative-current
+  pin updated atomically (PRD v1.4 → v1.5 in VP-DAEMON-001 Test name
+  line). §References intro timestamp NOT bumped (still
+  `2026-05-15T05:30:00Z` from v1.5) because §References content is
+  unchanged in v1.5.1 — only the frontmatter timestamp is bumped to
+  record the v1.5.1 commit time. §Trace v1.5 / v1.4 / v1.3 / v1.2 /
+  v1.1 historical entries preserved verbatim — their PRD v1.4 / PRD
+  v1.3 / PRD v1.2 citations are correct historical record per PG-5
+  (these document the state at past authoring time and the burst
+  activity itself, not current normative state). All other PRD v1.4
+  occurrences in the file post-fix are exclusively within these
+  §Trace historical entries plus §References item 1 historical
+  lineage describing PRD v1.4's role as the pre-v1.5 pin propagation
+  burst.
+- **PG-2 count coherence (v1.5.1):** 22 VPs unchanged (no VP added,
+  retired, or renumbered). 22 `**Test name:**` lines unchanged in
+  count (21 active + 1 explicit Phase 4-deferred for VP-PROTO-002);
+  only one Test name line's citation version pin changed (one
+  character difference in one citation; test name string itself
+  unchanged across all 22). Mechanism distribution unchanged (22
+  unit-test primary, 5 fuzz auxiliary, 4 mutation-test auxiliary, 0
+  Kani). Auxiliary mechanism coverage table unchanged (9 entries).
+  Coverage matrix unchanged (22 rows). §G-1..§G-5 status unchanged
+  (§G-4 still RESOLVED, §G-1/§G-3 still OPEN/OUT-OF-SCOPE, §G-2/§G-5
+  still COVERED ELSEWHERE). Frontmatter `phase` and `status`
+  unchanged. VP-PROTO-002 Phase 4-only classification unchanged.
+- **F-R60-corpus-sweep (v1.5.1) — REAL grep verification (not
+  falsified):** post-fix grep sweep executed against this file with
+  pattern `PRD v1.4`. Every remaining hit classified:
+  - Line 1885: §References item 1 historical lineage describing PRD
+    v1.4's pre-v1.5 role — HISTORICAL (preserved per PG-5).
+  - Lines 2017, 2030, 2058, 2104, 2124, 2128, 2153: all within
+    §Trace v1.5 entry narrative describing the v1.4 → v1.5
+    propagation activity that occurred in the v1.5 burst —
+    HISTORICAL (preserved per PG-5).
+  - Lines 2222, 2230, 2273-2274, 2279-2288 (5 R4-001 site citations
+    in §Trace v1.4), 2317-2334 (PG-4 sweep entries from v1.4 burst),
+    2352, 2385, 2420: all within §Trace v1.4 entry narrative
+    documenting the v1.4 burst itself — HISTORICAL (preserved per
+    PG-5).
+  - Frontmatter line 25 `traces_to`: not in this re-verification
+    scope (frontmatter history bookkeeping per PG-5 §Frontmatter
+    Carve-Out).
+  - Zero remaining normative-current `PRD v1.4` references in active
+    VP body (per-VP Test name lines, per-VP Traces to lines, §VP
+    Catalog Overview table, §Coverage Matrix table, §References item 1
+    current pointer). R7-001 closure verified complete.
+- **§Trace-Heading-Convention:** this §Trace v1.5.1 sub-block sits
+  under the same `## §Trace` parent heading (matching the v1.5, v1.4,
+  v1.3, v1.2, and v1.1 entry pattern).
+- **BC-H1-is-title-source-of-truth:** document title `# Verification
+  Properties: Phase 1 Behavioral Contract Catalog` unchanged across
+  v1.5 → v1.5.1.
+- **append_only_numbering:** no VP added, retired, or renumbered. The
+  22-VP catalog identifier set is identical to v1.5. The R7-001 fix
+  is a citation-pin character change inside VP-DAEMON-001's Test name
+  line — not a VP boundary change, not a content change, not a test
+  name change.
+- **VP-PROTO-002 Phase-4-only carve-out preserved:** unchanged from
+  v1.5 — no citation pin in VP-PROTO-002 touched by this burst.
+- **Frozen META catalog status (D-054):** F-R55-adv-1, F-R55-adv-3,
+  F-R61-adv-1, F-R61-2 — none reintroduced in v1.5.1 changes.
+  Frozen-residual discipline preserved.
+- **Self-audit checklist (CLAUDE.md §CANONICAL PRINCIPLE):**
+  - No MVP / for-now / good-enough / fix-later rationalizations. PASS.
+  - No tech-debt-register entries added. PASS.
+  - No "TODO for architect" / "pending architect review" placeholders.
+    The cons R7 R7-001 finding is fully addressed by the verbatim
+    single-character citation fix; no human routing required. PASS.
+  - No silent fix outside formal-verifier scope. PRD content not
+    edited; arch content not edited; STATE.md not edited; lessons.md
+    not edited (lesson codification is state-manager work; this burst
+    only references L-F-R63-PARTIAL-FIX Extension 2 as the
+    process-gap interpretation, does not modify the lesson entry).
+    PASS.
+  - No cheap-mechanism defaults. The fix applied is the exact
+    single-line correction enumerated in cons R7 commit 5f7c4e0
+    remediation guidance; no scope creep, no batched additional
+    changes. PASS.
+  - No advisory-severity downgrades. R7-001 was LOW severity but the
+    production-grade default mandates closure in scope rather than
+    deferral to a future burst; closure executed in this atomic
+    commit. PASS.
+- **Correct agent routing (CLAUDE.md companion principle):** VP
+  catalog body — formal-verifier scope (this burst, single-line
+  citation fix). PRD — product-owner scope (not touched; v1.5 commit
+  d321935 still current). Architecture — architect scope (not
+  touched; arch v1.0.11 still current). STATE.md — state-manager
+  scope (not touched; runs after this burst). cycle-001 lessons —
+  state-manager scope (not touched in this burst; L-F-R63-PARTIAL-FIX
+  Extension 2 is referenced as analytical interpretation, not
+  authored anew). Consistency-validator R7 (commit 5f7c4e0) —
+  consistency-validator scope (the R7-001 finding triggered this
+  closure work). No cross-domain silent edits.
 
 v1.5 (F-R67-1 §Mechanism prose fix + PRD v1.5 pin propagation + intra-block consistency sweep, 2026-05-15):
 
