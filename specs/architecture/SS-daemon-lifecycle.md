@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.15"
+version: "1.0.16"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -13,7 +13,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern"
 project: monocle
 ---
 
@@ -209,8 +209,11 @@ let app = public_router.merge(authed_router);
    (NFR-008: `macOS + Linux`, darwin/linux × amd64/arm64). A fail-fast-only approach would require every macOS user to set
    `MONOCLE_RUNTIME_DIR` before starting monocle, which violates the zero-config
    startup requirement. The `data_local_dir()` fallback provides a correct,
-   standards-compliant runtime state location on macOS (`~/Library/Application Support/monocle/`)
-   and Windows (`%APPDATA%/monocle/`). The env override preserves operator
+   standards-compliant runtime state location on macOS (`~/Library/Application Support/monocle/`).
+   Windows is a secondary build target per PRD §8.7; the same `data_local_dir()`
+   fallback resolves to `%APPDATA%/monocle/` on Windows but Phase 1 CI does not
+   formally validate Windows behavior per NFR-008's `macOS + Linux` target scope.
+   The env override preserves operator
    control for non-standard deployments without burdening default users. The
    asymmetry with `BC-ENGINE-002-ERR` (which fail-fasts on `BaseDirs::new() == None`)
    is correct: `BaseDirs::new()` returns `None` only when there is no home directory
@@ -476,8 +479,13 @@ On receiving any shutdown signal:
 3. Wait up to 10 seconds for in-flight hook POSTs to complete
    (`tokio::time::timeout(Duration::from_secs(10), drain_inflight())`).
 4. If `--persistent-events` flag is set, flush the JSONL ring buffer to disk at
-   `<runtime_dir>/monocle-events.jsonl` (append mode, `tempfile::persist` for
-   the current-segment file).
+   `<runtime_dir>/monocle-events.jsonl`. The flush uses a two-phase write: read
+   the existing file content (if any) into memory, append the in-memory ring
+   buffer records, then write the combined content via `tempfile::persist` over
+   the destination path. This preserves prior events while guaranteeing an
+   atomic replace — `tempfile::persist` is not append-mode; it is an atomic
+   rename from a temp file, so the two-phase pattern is required to retain
+   existing file content.
 
    **Format versioning (FC-01 resolution):** every JSONL event record carries a
    top-level `format_version: u32 = 1` field as the first key. Phase 2
@@ -800,6 +808,61 @@ v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis place
   (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 `"..."` array
       placeholder defects remain in normative-current JSON schema sketches. 0 L[0-9]+
       matches in this §Trace v1.0.15 entry.
+
+v1.0.16 changes (adversary R75 F-R75-2 closure + Obs-R75-1 drain clarification):
+- F-R75-2 RESOLVED (MEDIUM — adversary R75 §Start Sequence Rationale Windows scope
+  overstatement vs PRD NFR-008): The §Start Sequence step 1(c) Rationale paragraph
+  previously stated the `data_local_dir()` fallback "provides a correct,
+  standards-compliant runtime state location on macOS (`~/Library/Application
+  Support/monocle/`) and Windows (`%APPDATA%/monocle/`)" without qualification.
+  PRD NFR-008 (line 1210) lists `macOS + Linux` as the primary platform targets
+  (darwin/linux × amd64/arm64). PRD §8.7 (line 1320) explicitly states "Windows is
+  a secondary build target." The unqualified Windows claim in the arch rationale
+  overstated Phase 1 Windows support beyond what the PRD contracts.
+
+  Fix (disposition **(a)** — tighten rationale to match PRD scope):
+  - Before: "...standards-compliant runtime state location on macOS
+    (`~/Library/Application Support/monocle/`) and Windows (`%APPDATA%/monocle/`)."
+  - After: "...standards-compliant runtime state location on macOS
+    (`~/Library/Application Support/monocle/`). Windows is a secondary build target
+    per PRD §8.7; the same `data_local_dir()` fallback resolves to
+    `%APPDATA%/monocle/` on Windows but Phase 1 CI does not formally validate
+    Windows behavior per NFR-008's `macOS + Linux` target scope."
+
+  The `data_local_dir()` fallback code itself is unchanged — Windows still resolves
+  correctly at runtime; only the rationale is tightened to accurately represent the
+  validation scope.
+
+- Obs-R75-1 RESOLVED (ADVISORY — §Drain step 4 "append mode" + `tempfile::persist`
+  internal contradiction): The original prose described the ring buffer flush as
+  "append mode, `tempfile::persist` for the current-segment file." These two
+  descriptions are contradictory: `tempfile::persist` is an atomic rename (replace),
+  not append-mode I/O. A reader implementing against this spec could not determine
+  which semantic was intended.
+
+  Fix (disposition **(a)** — explicit two-phase write pattern):
+  The prose now describes the correct implementation: read existing file content
+  into memory, append the in-memory ring buffer records, then write the combined
+  result via `tempfile::persist` over the destination path. This is atomic-replace
+  semantics with preserved prior content — both properties hold, with no ambiguity.
+  The `tempfile::persist` atomic-replace convention from SS-conventions-anti-patterns.md
+  §Atomic Writes is preserved; the "append mode" description is retired.
+
+- Propagation requirements for orchestrator:
+  **PRD:** PRD `traces_to` frontmatter cites arch pin `v1.0.15`; product-owner
+  must propagate arch pin v1.0.15 → v1.0.16 at normative-current PRD sites
+  (traces_to field). No BC content change required — this fix affects only
+  arch rationale prose and §Drain step 4 implementation description.
+  **VP:** VP `traces_to` frontmatter citing arch pin `v1.0.15`; formal-verifier
+  must propagate pin v1.0.15 → v1.0.16. No VP content change required.
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Start Sequence (EXISTS), §Drain (EXISTS), §Trace (EXISTS) — all
+      §-anchor refs verified against actual headings in this document.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
+      matches in this §Trace v1.0.16 entry.
 
 v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R70-2):
 - F-R72-1 RESOLVED (HIGH — adversary R72 JSON schema sketch timestamp format
