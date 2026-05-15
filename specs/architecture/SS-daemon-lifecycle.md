@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.16"
+version: "1.0.17"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -13,7 +13,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier"
 project: monocle
 ---
 
@@ -720,7 +720,7 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-002 | `/status` returns full daemon state JSON; requires auth token | Health and Status Endpoints |
 | BC-DAEMON-003 | All `/hooks/*` and `/status` enforce 256 KiB body limit; 413 on excess | Body Size Limit |
 | BC-DAEMON-004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint; exit codes: 0 (clean), 130 (SIGINT hard-kill), 143 (SIGTERM hard-kill), 2 (admin /shutdown force-stop), 1 (startup failure) | Daemon Lifecycle Protocol |
-| BC-DAEMON-005 | Runtime dir resolved via platform-aware chain: MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() (Linux/XDG) → ProjectDirs::data_local_dir() (macOS/Windows fallback); lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
+| BC-DAEMON-005 | Runtime dir resolved via platform-aware chain: MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() (Linux/XDG) → ProjectDirs::data_local_dir() (macOS/Windows fallback); runtime_dir created with mode `0o700` owner-only (defense-in-depth with lock file `0o600`); lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
@@ -808,6 +808,50 @@ v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis place
   (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 `"..."` array
       placeholder defects remain in normative-current JSON schema sketches. 0 L[0-9]+
       matches in this §Trace v1.0.15 entry.
+
+v1.0.17 changes (adversary R83 F-R83-1 site 2 closure — §BC Summary footer BC-DAEMON-005 0o700 propagation):
+- F-R83-1 site 2 RESOLVED (HIGH — adversary R83 multi-site propagation gap): The
+  F-R79-3 closure (v1.0.x chain) lifted the runtime_dir `0o700` owner-only mode
+  contract from EC-052 into BC-DAEMON-005 §Postcondition 8. The §Start Sequence
+  step 1 body at line 255 correctly states "Create the resolved directory with
+  mode `0o700` if absent." However, the §BC Summary footer BC-DAEMON-005 row was
+  NOT updated in the same burst — it described only the resolution chain and
+  lock-file semantics, omitting the directory permission contract.
+
+  Fix (disposition **(a)** — extend summary row to match body tier):
+  - Before: "...platform-aware chain: <chain>; lock file created atomically via
+    `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown"
+  - After: "...platform-aware chain: <chain>; runtime_dir created with mode `0o700`
+    owner-only (defense-in-depth with lock file `0o600`); lock file created atomically
+    via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown"
+
+  The `0o600` lock-file mode is established by §Start Sequence step 6 and
+  SS-conventions-anti-patterns.md §Atomic Writes. Naming it alongside `0o700`
+  in the summary row captures the layered defense-in-depth posture: even if the
+  runtime_dir permissions were somehow bypassed, the lock file itself would block
+  reads by other users. Both modes were already specified in the arch body;
+  this change propagates them to the summary-table tier for completeness.
+
+  Adversary R83 report: `.factory/plans/adversary-pass-r83-phase1-fixed.md`.
+
+- Propagation requirements for orchestrator:
+  **PRD:** PRD `traces_to` frontmatter cites arch pin `v1.0.16`; product-owner
+  must propagate arch pin v1.0.16 → v1.0.17 at normative-current PRD sites
+  (traces_to field). No BC content change required — BC-DAEMON-005 postcondition 8
+  already specifies 0o700; this fix brings the summary-table footer into alignment
+  with the body.
+  **VP:** VP `traces_to` frontmatter citing arch pin `v1.0.16`; formal-verifier
+  must propagate pin v1.0.16 → v1.0.17. No VP content change required from this
+  arch fix (sibling formal-verifier agent handles VP §Catalog Overview + §Extension 14
+  codification in parallel).
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Start Sequence (EXISTS), §Behavioral Contract Summary (EXISTS),
+      §Trace (EXISTS) — all §-anchor refs verified against actual headings.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
+      matches in this §Trace v1.0.17 entry.
 
 v1.0.16 changes (adversary R75 F-R75-2 closure + Obs-R75-1 drain clarification):
 - F-R75-2 RESOLVED (MEDIUM — adversary R75 §Start Sequence Rationale Windows scope
