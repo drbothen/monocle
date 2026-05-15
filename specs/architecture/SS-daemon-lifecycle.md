@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.17"
+version: "1.0.18"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T00:00:00Z
+timestamp: 2026-05-15T00:01:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields"
 project: monocle
 ---
 
@@ -744,8 +744,12 @@ daemon only, not a cluster health check. The multi-host health view is `/status`
 scope only.
 
 The lock file format gains a `"peers"` array in Phase 4 (federation peer list)
-but the `"app"`, `"pid"`, `"port"`, `"authToken"`, `"startTimeUtc"`, `"version"`
-fields are stable across Phase 1 → Phase 4.
+but the 7 Phase 1 fields are stable across Phase 1 → Phase 4: `"contract_version"`
+(forward-compatibility version sentinel, always FIRST key per BC-LOCK-001
+Postcondition 2; Phase 4 readers MUST validate `contract_version == 1` before
+consuming other fields), `"pid"`, `"port"`, `"authToken"`, `"startTimeUtc"`,
+`"app"`, `"version"`. Phase 4 readers that encounter `contract_version > 1` MUST
+fail gracefully (do not attempt parse of unknown-version JSON).
 
 ---
 
@@ -808,6 +812,69 @@ v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis place
   (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 `"..."` array
       placeholder defects remain in normative-current JSON schema sketches. 0 L[0-9]+
       matches in this §Trace v1.0.15 entry.
+
+v1.0.18 changes (adversary R88 F-R88-1 closure — §Phase 4 Notes contract_version enumeration):
+- F-R88-1 RESOLVED (HIGH — adversary R88 §Phase 4 Notes lock-file field enumeration
+  incomplete): The §Phase 4 Notes paragraph stated that the fields `"app"`, `"pid"`,
+  `"port"`, `"authToken"`, `"startTimeUtc"`, `"version"` are stable across Phase 1 →
+  Phase 4. This 6-field enumeration omitted `contract_version`, which is the seventh
+  and most critical Phase 1 lock-file field. Per BC-LOCK-001 Postcondition 1 (PRD line
+  602) the Phase 1 lock-file schema has 7 fields. Per BC-LOCK-001 Postcondition 2 (PRD
+  line 606) `contract_version` is always the FIRST key in the JSON object. Per
+  BC-DAEMON-005 Postcondition 4 (PRD line 334) the lock-file contains all 7 fields
+  including `contract_version`. The omission created two failure modes for Phase 4
+  implementers: (a) treating `contract_version` as a Phase-1-only field and removing
+  it in Phase 4, breaking BC-LOCK-001 forward-compat; (b) assuming `contract_version`
+  is implicit/non-contractual and not validating it.
+
+  Fix (disposition **(a)** — extend §Phase 4 Notes enumeration to all 7 fields):
+  - Before: "...the `\"app\"`, `\"pid\"`, `\"port\"`, `\"authToken\"`,
+    `\"startTimeUtc\"`, `\"version\"` fields are stable across Phase 1 → Phase 4."
+    (6 fields, `contract_version` absent)
+  - After: "...the 7 Phase 1 fields are stable across Phase 1 → Phase 4:
+    `\"contract_version\"` (forward-compatibility version sentinel, always FIRST key
+    per BC-LOCK-001 Postcondition 2; Phase 4 readers MUST validate
+    `contract_version == 1` before consuming other fields), `\"pid\"`, `\"port\"`,
+    `\"authToken\"`, `\"startTimeUtc\"`, `\"app\"`, `\"version\"`. Phase 4 readers
+    that encounter `contract_version > 1` MUST fail gracefully (do not attempt parse
+    of unknown-version JSON)."
+
+  The field ordering in the fix follows BC-LOCK-001 Postcondition 1 canonical order
+  exactly: `contract_version` first (sentinel), then `pid`, `port`, `authToken`,
+  `startTimeUtc`, `app`, `version`.
+
+  Pre-burst grep for `contract_version` in this file confirmed the field was present
+  at §Lock File Format (lines 437, 446, 449) and §BC Summary RTM (line 728) but NOT
+  in §Phase 4 Notes — the fix adds it to §Phase 4 Notes for the first time.
+  Post-burst grep confirms the new occurrence at the corrected §Phase 4 Notes
+  paragraph.
+
+  Adversary R88 report: `.factory/plans/adversary-pass-r88-phase1-fixed.md`.
+
+- Propagation requirements (Extension 15):
+
+  This burst bumps arch from v1.0.17 → v1.0.18. Downstream agents must propagate:
+
+  **PRD (product-owner):** PRD frontmatter `traces_to` cites arch pin v1.0.17;
+  product-owner must propagate v1.0.17 → v1.0.18 in PRD frontmatter + §7 RTM
+  Architecture Source column + body lineage citations. Use canonical grep target:
+  `grep -nE "v1\.0\.17|commit a798d51" /Users/jmagady/Dev/monocle/.factory/specs/prd.md`
+  to enumerate sites.
+
+  **VP (formal-verifier):** VP frontmatter `traces_to` cites arch pin v1.0.17;
+  formal-verifier must propagate v1.0.17 → v1.0.18 in VP frontmatter + §Catalog
+  Overview + per-VP `Traces to:` lines + §Coverage Matrix + §References item 2 +
+  §Trace amendment. Use canonical grep target:
+  `grep -nE "v1\.0\.17|commit a798d51" /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md`
+
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Phase 4 Notes (EXISTS), §Lock File Format (EXISTS), §Trace (EXISTS) —
+      all §-anchor refs verified against actual headings in this document.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
+      matches in this §Trace v1.0.18 entry.
 
 v1.0.17 changes (adversary R83 F-R83-1 site 2 closure — §BC Summary footer BC-DAEMON-005 0o700 propagation):
 - F-R83-1 site 2 RESOLVED (HIGH — adversary R83 multi-site propagation gap): The
