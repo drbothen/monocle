@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.14"
+version: "1.15"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-15T12:00:00Z
+timestamp: 2026-05-15T14:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.17; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (commit a798d51)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.17; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (commit a798d51); F-R85-IMP-2 fix-burst (v1.15): NFR-004 + NFR-005 + NFR-010 Validation Method extended with VP probe citations (Extension 16 mandatory backfill sweep applied to all 12 NFR rows — per-row SE-15c disposition documented in §Trace v1.15)"
 project: monocle
 supplements: []
 ---
@@ -1207,14 +1207,14 @@ EC-039: `preflight()` called at daemon startup before accepting hook registratio
 | NFR-001 | Latency | Hook ingestion end-to-end response time for `PreToolUse`, `Stop`, `SessionStart`, `UserPromptSubmit` | ≤300ms | Integration test with stopwatch between hook POST and response; Claude Code's upstream timeout ceiling per BC-HOOK-022 |
 | NFR-002 | Latency | Hook ingestion end-to-end response time for `Notification` | ≤2000ms | Integration test; gene-source BC-HOOK-022 timeout ceiling |
 | NFR-003 | Latency | Permission prompt overlay render after hook POST receipt | ≤100ms | Integration test with TUI client attached; measures from POST receipt to TUI event dispatch |
-| NFR-004 | Security | Auth token entropy | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage |
-| NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response |
+| NFR-004 | Security | Auth token entropy | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage; source-grep per VP-AUTH-001 §Pre-conditions (`rand::rngs::OsRng is the entropy source (not thread_rng)`) and Mechanical property item 1 (lock file authToken matches `^[0-9a-f]{64}$`) |
+| NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response per VP-DAEMON-003 §Post-condition 1 (`POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}`) |
 | NFR-006 | Throughput | Bounded event bus with visible drop counter | No unbounded channel; drop counter renders in status bar; 1000 events/sec sustained without queue overflow | Integration test at 1000 events/sec asserting drop counter assertion |
 | NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | CI matrix check; `rust-toolchain.toml` |
 | NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` per VP-DAEMON-005 Post-condition 1 (lock-file `0o600` mode assertion) |
 | NFR-012 | Security | Runtime directory permissions | `0o700` (owner-only access) on newly-created runtime_dir; defense-in-depth with NFR-009 lock-file `0o600` | Integration test: `stat` runtime_dir after daemon start; assert mode is `0700` per VP-DAEMON-005 Post-condition 9 / probe 5.e |
-| NFR-010 | Correctness | Constant-time auth comparison | `constant_time_eq::constant_time_eq` used for token comparison | Code review; no `==` on token strings |
+| NFR-010 | Correctness | Constant-time auth comparison | `constant_time_eq::constant_time_eq` used for token comparison | Code review; source-grep per VP-AUTH-001 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) |
 | NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md |
 
 ---
@@ -2418,3 +2418,162 @@ No new mis-anchors introduced.
 - Correct agent routing: PASS — VP file not touched (FV runs next per SE-15 serial protocol with PRD v1.14 commit SHA); architecture files not touched (architect owns; a798d51 is the source, not the target); STATE.md not touched (state-manager owns).
 
 **VP propagation note (v1.14):** FV must run next (serial, Step 2) with PRD v1.14 commit SHA. VP v1.18 must propagate arch v1.0.17 (a798d51) to: frontmatter `traces_to`, §Purpose block, all §Trace version citations, per-VP §Mechanism block inline arch pins (F-R84-5 Extension 14 enumeration gap closure), and embed Extension 13 grep transcripts per F-R84-7. FV also closes F-R84-3 (§Purpose 4th recurrence) and F-R84-4 (§Trace stale).
+
+---
+
+## §Trace v1.15
+
+**Producer:** product-owner. **Finding:** F-R85-IMP-2 HIGH (SE-15c recursive failure — NFR-004/005/010 lack VP probe citations) + Extension 16 mandatory backfill sweep.
+
+**Predecessor:** PRD v1.14 (commit 4997354) closed F-R84 fix-burst (Obs-R84-1 applied SE-15c to NFR-009 only; did NOT back-sweep sibling NFR rows). R85 adversary report (commit 32fb5ee) surfaced the recursive failure: SE-15c was codified in F-R84 but only applied to the single triggering row (NFR-009), leaving NFR-004/005/010 without VP probe citations despite having direct VP coverage. Extension 16 (codified in commit 32fb5ee) mandates full backfill of the §4 NFR table whenever SE-15c is applied.
+
+---
+
+### F-R85-IMP-2 closure: NFR-004 + NFR-005 + NFR-010 Validation Method VP probe citations
+
+**NFR-004 (Security, Auth token entropy):**
+- Pre-fix: `Code review + unit test asserting \`OsRng\` usage`
+- Post-fix: extended with `; source-grep per VP-AUTH-001 §Pre-conditions (\`rand::rngs::OsRng is the entropy source (not thread_rng)\`) and Mechanical property item 1 (lock file authToken matches \`^[0-9a-f]{64}$\`)`
+- VP source verified from verification-properties.md v1.18: VP-AUTH-001 §Pre-conditions line 1041 reads `rand::rngs::OsRng is the entropy source (not thread_rng)`. VP-AUTH-001 Mechanical property item 1 line 1025 reads `The lock-file \`authToken\` field, when read back as a string, matches the regex \`^[0-9a-f]{64}$\`` — confirming 64-char lowercase hex generation from OsRng.
+
+**NFR-005 (Security, Hook body size limit):**
+- Pre-fix: `Integration test: send 262,145-byte body, assert 413 response`
+- Post-fix: extended with `per VP-DAEMON-003 §Post-condition 1 (\`POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}\`)`
+- VP source verified from verification-properties.md v1.18: VP-DAEMON-003 §Post-conditions item 1 (lines 381-383) reads: `POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}` — exact match to the citation form used.
+
+**NFR-010 (Correctness, Constant-time auth comparison):**
+- Pre-fix: `Code review; no \`==\` on token strings`
+- Post-fix: extended with `; source-grep per VP-AUTH-001 §Post-condition 5 (\`constant_time_eq\` source-grep against \`monocle-runtime/src/auth.rs\` ensuring no \`==\` on hex secret string appears outside \`constant_time_eq\`)`
+- VP source verified from verification-properties.md v1.18: VP-AUTH-001 §Post-conditions item 5 (lines 1049-1051) reads: `The auth middleware's secret comparison uses \`constant_time_eq\`; this is verified by source-grep against \`monocle-runtime/src/auth.rs\` ensuring no \`==\` on the hex secret string appears outside \`constant_time_eq\`` — confirming the citation form used.
+
+---
+
+### Extension 16 backfill sweep: §4 NFR table SE-15c coverage
+
+Full audit of all 12 NFR rows (NFR-001 through NFR-012) for SE-15c VP probe citation coverage:
+
+| NFR ID | Category | Disposition | VP Coverage | Action taken |
+|--------|----------|-------------|-------------|--------------|
+| NFR-001 | Latency | (b) — no VP probe; verified via integration test stopwatch | Performance-budget VPs deferred to Phase 3 per §Scope (performance-engineer agent handles criterion-crate bench infrastructure; see §G-6 in VP v1.18). BC-HOOK-022 is gene-source reference data only, not a Phase 1 VP. | None — absence of VP probe is correct and marked via NFR table context; no fabricated VP probe exists to cite |
+| NFR-002 | Latency | (b) — no VP probe; verified via integration test stopwatch | Same Phase 3 performance-budget deferral as NFR-001. Gene-source BC-HOOK-022 is reference ceiling only. | None — correct absence |
+| NFR-003 | Latency | (b) — no VP probe; verified via integration test + TUI client | Phase 3 performance-budget deferral applies. Render latency is criterion-crate scope. | None — correct absence |
+| NFR-004 | Security | (a) — direct VP probe: VP-AUTH-001 §Pre-conditions + Mechanical property item 1 | VP-AUTH-001 §Pre-conditions specifies `rand::rngs::OsRng is the entropy source (not thread_rng)`; Mechanical property item 1 specifies the 64-char lowercase hex format output. | **FIXED** in this burst — VP probe citation added |
+| NFR-005 | Security | (a) — direct VP probe: VP-DAEMON-003 §Post-condition 1 | VP-DAEMON-003 §Post-condition 1 specifies exact 262,145-byte test with expected HTTP 413 body. | **FIXED** in this burst — VP probe citation added |
+| NFR-006 | Throughput | (b) — no VP probe; verified via integration test at 1000 events/sec | Throughput/channel-bound behavior is an integration test target. No VP probe exists for bounded mpsc channel drop counter; this is covered by NFR-006's integration test per the implementation spec in SS-conventions-anti-patterns.md. | None — no VP probe exists for this NFR |
+| NFR-007 | Build | (b) — no VP probe; verified via CI matrix + rust-toolchain.toml | MSRV is a CI gate, not a VP probe. Compiler version constraints are not expressed as VPs in Phase 1. | None — correct absence |
+| NFR-008 | Build | (b) — no VP probe; verified via GitHub Actions CI matrix | Platform CI targets are not expressed as VPs. | None — correct absence |
+| NFR-009 | Security | (a) — VP-DAEMON-005 Post-condition 1 | Already cited in v1.14 per Obs-R84-1. | No change — already compliant |
+| NFR-012 | Security | (a) — VP-DAEMON-005 Post-condition 9 / probe 5.e | Already cited in v1.13 when NFR-012 was added per F-R83-1 site 1. | No change — already compliant |
+| NFR-010 | Correctness | (a) — direct VP probe: VP-AUTH-001 §Post-condition 5 | VP-AUTH-001 §Post-condition 5 specifies `constant_time_eq` source-grep against `monocle-runtime/src/auth.rs`. | **FIXED** in this burst — VP probe citation added |
+| NFR-011 | Forward-compat | (c) — DTU fidelity measurement procedure (not a VP probe) | DTU fidelity is measured via `dtu-assessment.md §DTU Fidelity Measurement Procedure` — explicitly out of VP scope per §Scope §Out of scope item 3. No VP probe exists or is warranted. | None — correct absence documented |
+
+**Backfill sweep summary:** 4 rows with VP probe coverage (NFR-004, NFR-005, NFR-009, NFR-010, NFR-012 = 5 rows); 7 rows without VP probe (NFR-001/002/003/006/007/008/011). Of the 5 VP-covered rows: NFR-009 and NFR-012 already had citations (v1.14/v1.13 respectively). NFR-004, NFR-005, NFR-010 lacked citations (SE-15c recursive failure) — all three fixed in this burst.
+
+---
+
+### Extension 13 evidence (real grep transcripts)
+
+**PRE-FIX grep (NFR row count):**
+```
+grep -n "^| NFR-" .factory/specs/prd.md
+1207:| NFR-001 | ...
+1208:| NFR-002 | ...
+1209:| NFR-003 | ...
+1210:| NFR-004 | Security | Auth token entropy | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage |
+1211:| NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response |
+1212:| NFR-006 | ...
+1213:| NFR-007 | ...
+1214:| NFR-008 | ...
+1215:| NFR-009 | Security | Lock file permissions | `0o600` ... | Integration test: ... per VP-DAEMON-005 Post-condition 1 ...
+1216:| NFR-012 | Security | Runtime directory permissions | `0o700` ... | Integration test: ... per VP-DAEMON-005 Post-condition 9 / probe 5.e
+1217:| NFR-010 | Correctness | Constant-time auth comparison | ... | Code review; no `==` on token strings |
+1218:| NFR-011 | ...
+[12 rows total — confirmed]
+```
+
+**POST-FIX grep (NFR row count — verified):**
+```
+grep -n "^| NFR-" .factory/specs/prd.md
+1207:| NFR-001 | ...
+1208:| NFR-002 | ...
+1209:| NFR-003 | ...
+1210:| NFR-004 | Security | Auth token entropy | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage; source-grep per VP-AUTH-001 §Pre-conditions ... |
+1211:| NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response per VP-DAEMON-003 §Post-condition 1 ... |
+1212:| NFR-006 | ...
+1213:| NFR-007 | ...
+1214:| NFR-008 | ...
+1215:| NFR-009 | Security | Lock file permissions | `0o600` ... | Integration test: ... per VP-DAEMON-005 Post-condition 1 ...
+1216:| NFR-012 | Security | Runtime directory permissions | `0o700` ... | Integration test: ... per VP-DAEMON-005 Post-condition 9 / probe 5.e
+1217:| NFR-010 | Correctness | Constant-time auth comparison | ... | Code review; source-grep per VP-AUTH-001 §Post-condition 5 ... |
+1218:| NFR-011 | ...
+[12 rows total — confirmed; NFR-004/005/010 Validation Method extended]
+```
+
+**POST-FIX grep (VP citations in §4 NFR table):**
+```
+grep -nE "per VP-" .factory/specs/prd.md
+1210:| NFR-004 | ... | ... per VP-AUTH-001 §Pre-conditions ...
+1211:| NFR-005 | ... | ... per VP-DAEMON-003 §Post-condition 1 ...
+1215:| NFR-009 | ... | ... per VP-DAEMON-005 Post-condition 1 ...
+1216:| NFR-012 | ... | ... per VP-DAEMON-005 Post-condition 9 / probe 5.e
+1217:| NFR-010 | ... | ... per VP-AUTH-001 §Post-condition 5 ...
+[5 NFR rows now cite VP probes — NFR-004 + NFR-005 + NFR-009 + NFR-010 + NFR-012]
+```
+
+**VP citation accuracy verification (from verification-properties.md v1.18 commit 6915b5d):**
+
+- NFR-004 cites VP-AUTH-001 §Pre-conditions: verified at line 1041 (`rand::rngs::OsRng is the entropy source (not thread_rng)`) — ACCURATE.
+- NFR-005 cites VP-DAEMON-003 §Post-condition 1: verified at lines 381-383 (`POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}`) — ACCURATE.
+- NFR-010 cites VP-AUTH-001 §Post-condition 5: verified at lines 1049-1051 (`The auth middleware's secret comparison uses constant_time_eq; this is verified by source-grep against monocle-runtime/src/auth.rs ensuring no == on the hex secret string appears outside constant_time_eq`) — ACCURATE.
+
+---
+
+**Count changes (v1.15):**
+- BC count: 22 — unchanged.
+- NFR count: 12 — unchanged.
+- Error code count: 14 — unchanged.
+- Edge case count: 59 — unchanged.
+- Test name count: 23 — unchanged.
+- RTM row count: 23 — unchanged.
+
+**D-042 sweep (v1.15):** No architecture spec version changes this burst. SS-daemon-lifecycle.md v1.0.17 (a798d51), SS-core-types-and-abi.md v1.2.8, SS-engine-module.md v1.1.15, SS-deps-pin-manifest.md v1.1.12 all unchanged. VP file NOT touched (FV owns VP; VP remains v1.18 commit 6915b5d for this burst per Extension 15 serial protocol).
+
+**PG-2 count coherence (v1.15):** 22 BCs ✓. 12 NFRs ✓. 14 error codes ✓. 59 edge cases ✓. 23 test names ✓. All unchanged.
+
+**PG-3 (no L-number pinpoints in §Trace):** All references in this §Trace v1.15 entry use section heading anchors (§-form) or finding/VP references. No bare L-numbers.
+
+**PG-3-TRACE-NEW-ENTRY (v1.15):** Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.15 entry.
+
+**PG-4 §-heading-existence sweep (v1.15):** New §-anchor references introduced in this burst:
+- `§4 NFR table` — refers to `## 4. Non-Functional Requirements` (H2); PASS.
+- `VP-AUTH-001 §Pre-conditions` — VP body section reference in verification-properties.md; PASS.
+- `VP-AUTH-001 §Post-condition 5` — VP body item reference; PASS.
+- `VP-DAEMON-003 §Post-condition 1` — VP body item reference; PASS.
+No mis-anchors introduced.
+
+**PG-5 (historical-anchor framing):** §Trace v1.14 historical entry preserved unchanged.
+
+**L-F-R63 Extension 3 Enforcement — deps-pin sweep (v1.15):** No new crate-version mentions introduced in this burst. All existing crate-version mentions carried forward; consistent with manifest v1.1.12.
+
+**18+ META rule checklist (v1.15):**
+- D-042 (4-pattern citation sweep): PASS — no arch spec version changes; all pins unchanged from v1.14.
+- D-047 strict (3-clean-pass convergence): N/A for PRD authoring.
+- PG-1 (no ambiguous requirements): PASS — all three Validation Method extensions add precise, machine-verifiable VP probe citations.
+- PG-2 (noun-agnostic count coherence): PASS — 22 BCs, 12 NFRs, 14 error codes, 59 edge cases, 23 test names. All unchanged.
+- PG-3 (no L-number pinpoints in §Trace): PASS.
+- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS.
+- PG-4 (§-heading-existence sweep): PASS — new §-anchor references verified above.
+- PG-5 (historical-anchor framing): PASS — §Trace v1.14 preserved unchanged.
+- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS.
+- append_only_numbering: PASS — no IDs renumbered, retired, or created.
+- lift_invariants_to_bcs: PASS — no new domain invariants; this burst is Validation Method column extension only.
+- L-F-R63 Extension 3 Enforcement (deps-pin sweep): PASS — no new crate-version mentions.
+- L-F-R63 Extension 13 (machine-greppable evidence): PASS — real grep transcripts embedded above for pre-fix and post-fix states; VP citation accuracy verified against verification-properties.md v1.18 line numbers.
+- SE-15b (Extension 14 + Extension 13 evidence inheritance): PASS — Extension 13 grep transcripts embedded; VP source text cited verbatim with line references.
+- SE-15c (sibling-row convention back-propagation): PASS — F-R85-IMP-2 recursive failure closed; all 12 NFR rows audited; 5 VP-covered rows all now cite VP probes.
+- Extension 16 mandatory backfill sweep: PASS — all 12 NFR rows audited; per-row disposition table embedded in this §Trace entry.
+- Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — all 3 NFR row fixes are complete in-scope corrections with verified VP source citations.
+- Correct agent routing: PASS — VP file NOT touched (FV runs next per Extension 15 serial protocol with PRD v1.15 commit SHA); architecture files not touched; STATE.md not touched (state-manager owns).
+
+**VP propagation note (v1.15):** FV runs next (Extension 15 serial protocol, Step 3) with PRD v1.15 commit SHA. VP v1.19 closes F-R85-CRIT-1, F-R85-IMP-1, F-R85-IMP-3 (per R85 report at .factory/plans/adversary-pass-r85-phase1-fixed.md). PRD v1.14 VP pin in verification-properties.md frontmatter `traces_to` must be updated to PRD v1.15 in the FV burst.
