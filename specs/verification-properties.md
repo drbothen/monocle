@@ -2,11 +2,11 @@
 document_type: verification-properties
 level: L3
 section: "verification-properties"
-version: "1.27"
+version: "1.28"
 status: draft
 producer: formal-verifier
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-16T05:30:00Z
+timestamp: 2026-05-16T07:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "v1.27 R93 fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b + SE-14b (with AUTHORING-mandatory sub-rule, no-op this burst) + SE-15e + SE-16b application; FV runs SOLO as final agent in F-R93 chain after state-manager STATE.md v5.37 commit 4039afa + architect arch v1.0.20 commit 8533ea2 + product-owner PRD v1.20 commit 9371348). v1.27 closes the R93 LOW finding set: O-R93-1 LOW closure — VP-RING-001 §Mechanism PRD-discrepancy disclaimer (`PRD v1.19 §7 RTM Test Type column labels this BC \\`Unit\\` referring to conceptual scope, but the harness layout is cargo-integration per file location`) removed; the disclaimer's reason for existence was the temporary mismatch between PRD §7 RTM `Unit` label and the VP's `integration-test` §Mechanism, and the C-R93-1 PRD-side closure in PRD v1.20 commit 9371348 updated §7 RTM `Unit` → `Integration` for BC-RING-001, retiring the disclaimer. O-R93-2 LOW closure — `the unit test` colloquial prose normalized to `integration test` across 13 VP body sites (lines 521, 655, 1283, 1289, 1292, 1481, 1485, 1592, 1600, 1641, 2029, 2040, 2108, 2309, 2311, 2314) per F-R88-5 §Mechanism Distribution discipline; line 38 vocabulary listing (`Kani proof, fuzz harness, unit test, or mutation test`) preserved verbatim as §Mechanism vocabulary anchor for future Phase-2/3 VPs; line 2538 §G-1 stale-mechanism-label reference to VP-DAEMON-004 normalized from `unit-test` to `integration-test` (production-grade default per CLAUDE.md §CANONICAL PRINCIPLE — VP-DAEMON-004 mechanism is `integration-test` per §Coverage Matrix); line 8568 §Trace v1.22 historical-narrative quote of §Counter-example sketch 4 preserved verbatim per PG-5. Fix 3 PRD pin v1.19 → v1.20 propagation (per F-R93 PO PRD-pin sweep result landed in commit 9371348): SE-16c canonical grep target `grep -nE \"PRD v1\\.19|commit 2e24e09\" .factory/specs/verification-properties.md` — pre-sweep evidence: 95 normative-current body hits (= 93 line-hits in pre-§Trace body 26..3031; frontmatter `traces_to` narrative on line 25 was about to be replaced with v1.27 narrative) + 6 wrap-continuation `(per PRD\\nv1.19)` multi-line hits via SE-17a Python `re.compile(r\"\\(per PRD\\n\\s*v1\\.19\", re.MULTILINE)`. Pre-burst wrap-continuation hits at: 304 (VP-DAEMON-001 Test name), 575 (VP-DAEMON-003), 739 (VP-DAEMON-004 graceful_shutdown bullet), 998 (VP-DAEMON-005), 1763 (VP-TYPES-001), 1991 (VP-PROTO-001a). Post-sweep evidence: 0 normative-current `PRD v1.19` or `commit 2e24e09` hits in pre-§Trace body (lines 1..3045 post body-grow); 96 normative-current `PRD v1.20` / `9371348` hits post-sweep + 6 wrap-continuation `(per PRD\\nv1.20)` hits post-sweep at the same site lines. Remaining `commit 2e24e09` hits in body (post-sweep) — 2 historical-anchor narrative sites per PG-5 at line 1905 (VP-FACTORY-002 §Post-condition 7 narrative documenting EC-061 introduction) + line 2824 (§References item 1 historical predecessor chain step demoting v1.19 from current-pointer at v1.26 to historical-chain-step at v1.27). Fix 4 arch pin v1.0.19 → v1.0.20 propagation (per F-R93 architect closure landed in commit 8533ea2): SE-16c canonical grep target `grep -nE \"v1\\.0\\.19|commit 8a68cc9\" .factory/specs/verification-properties.md` — pre-sweep evidence: 38 normative-current body hits (= 38 line-hits in pre-§Trace body 26..3031). Post-sweep evidence: 0 normative-current `v1.0.19` or `commit 8a68cc9` hits in pre-§Trace body (lines 1..3045 post body-grow); 37 normative-current `v1.0.20` / `8533ea2` hits post-sweep (one site at §References item 2 line 2909 was a wrap-continuation `v1.0.20 (commit\\n   8a68cc9)` requiring a separate explicit Edit to update the wrapped commit hash; the bulk Python replace caught all single-line patterns). Fix 5 SE-14b AUTHORING audit (post-F-R93 chain): NEW BC content elements introduced by F-R93 chain — NONE. arch v1.0.20 (commit 8533ea2) is implementation-example correctness (resolve_runtime_dir signature simplification) + mechanism-tier prose correction (line 624 `integration test in`); PRD v1.20 (commit 9371348) is mechanism-tier terminology correction (§7 RTM Test Type 6 row updates `Unit` → `Integration` + §Verification body 4 prose updates `Unit test` → `Integration test`); neither is a new BC content lift. MATCHING VP probes requiring new anchor citations — NONE. Conclusion: SE-14b AUTHORING is a no-op for this F-R93 burst; SE-14b VERIFICATION still applied with every existing BC-anchor citation resolved against PRD v1.20 commit 9371348 by direct line lookup (VP-DAEMON-001/002 Postcondition 1 cites, VP-DAEMON-006 §Invariant 1 cite, VP-FACTORY-002 §Edge Case EC-061 cite, §VP Catalog Overview + §Coverage Matrix VP-DAEMON-005 Postcondition 8 cite — all CORRECT). Extension 17 SE-17a/b evidence discipline applied throughout this burst: every grep target has a literal command transcript paired with real output in §Trace. §Purpose META recurrence guard 14th-attempt application (line 34-35 now cites PRD v1.20 commit 9371348 per SE-15b evidence discipline; recurrence history extended: R13-001 1st + GAP-R19-001 2nd + F-R81-2 3rd + F-R84-3 4th + v1.18 5th + v1.19 6th + v1.20 7th + v1.21 8th + v1.22 9th + v1.23 10th + v1.24 11th + v1.25 12th + v1.26 13th + v1.27 14th — the 14th-attempt application of the META guard is substantive because PRD pin actually bumped this burst per F-R93 PO closure). §References intro current-as-of timestamp bumped `2026-05-16T04:00:00Z` → `2026-05-16T05:30:00Z` to match v1.27 frontmatter timestamp (Extension 14 SUB-EXTENSION §References-intro propagation grep target applied — tenth consecutive burst where this sibling-anchor is grepped per the v1.17 codification). SE-16b monotonicity check: v1.27 timestamp `2026-05-16T05:30:00Z` ≥ v1.26 timestamp `2026-05-16T04:00:00Z` (monotonic continuation per SE-16b; 90 minutes after the v1.26 burst). SE-16a in-burst-added citation audit: this burst introduces ZERO new cross-property / cross-anchor citation pairs (the v1.27 burst is mechanism-tier disclaimer-removal + colloquial prose normalization + dual pin propagation — no new VP Post-conditions added, no new §Counter-example sketches added, no new cross-VP citations introduced). All v1.26 in-burst-added citation pairs preserved verbatim. 22 BCs unchanged across F-R93 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs (unchanged from v1.26 / v1.25 / v1.24). Architecture sources (current): SS-daemon-lifecycle v1.0.20 (commit 8533ea2 — F-R93 closure); SS-core-types-and-abi v1.2.8 (unchanged); SS-engine-module v1.1.15 (unchanged); SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.20 — current canonical BC source (commit 9371348 — PRD bumped this burst by PO to close F-R93 chain mechanism-tier corrections; 22 BCs unchanged; edge-case count unchanged at 61; test-name count unchanged). Predecessor v1.26 narrative preserved verbatim in §Trace v1.26 entry below per PG-5 historical-anchor framing convention. Predecessor v1.26 R92 FV-only fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b + SE-14b (with new AUTHORING-mandatory sub-rule) + SE-15e + SE-16b application; FV runs SOLO this burst — no PRD bump, no arch bump, no manifest bump; PRD v1.19 commit 2e24e09 unchanged, arch v1.0.19 commit 8a68cc9 unchanged, manifest v1.1.12 commit 8005075 unchanged; STATE.md v5.35 cycle lessons §SE-14b AUTHORING-mandatory sub-rule extension landed in commit 68bf374 — this v1.26 burst is the first substantive application of the AUTHORING sub-rule). v1.26 closes the R92 finding set: I-R92-1 HIGH closure — VP-DAEMON-005 §Post-condition 9 line 883 stale parenthetical `PRD pin now bumped to v1.18 commit 2e24e09 per C-R90-1 PO PRD-pin propagation sweep` corrected to `PRD pin now bumped to v1.19 commit 2e24e09 per C-R91-1 PO PRD-pin propagation sweep` (forensic root: the parenthetical was authored during F-R90 with v1.18 as the then-current PRD pin and the C-R90-1 trigger label; the v1.18→v1.19 sweep in F-R91 missed this site because the parenthetical references the prior burst's trigger label rather than current pin form; v1.19 commit 2e24e09 is the canonical current pin and C-R91-1 was the actual trigger of the latest PO closure). I-R92-3 HIGH [pattern] closure — 4 VP §Harness location annotations relabeled from `(unit)` to `(integration)` to match cargo file-layout taxonomy (the F-R88-5 §Mechanism Distribution discipline: tests in `<crate>/tests/*.rs` are cargo integration tests, not unit tests; unit tests live in `#[cfg(test)] mod tests {...}` inside `src/*.rs`). The 4 affected sites: VP-DAEMON-003 §Harness body_size_limit.rs (line 550 in v1.25); VP-AUTH-001 §Harness auth_token_lifecycle.rs (line 1367 in v1.25); VP-AUTH-002 §Harness auth_header_rejection.rs (lines 1494-1495 wrap-continuation in v1.25); VP-FACTORY-002 §Harness factory_self_referential.rs (line 1921 in v1.25). Counter-pattern sites (10 other VPs with tests/*.rs harnesses that correctly omit the annotation) preserved verbatim — the production-grade default is explicit `(integration)` annotation for clarity. SE-17a pre-burst grep target `grep -nE 'tests/[A-Za-z_]+\\.rs[^a-zA-Z]*\\(unit\\)|^\\(unit\\)' .factory/specs/verification-properties.md` enumerated 4 hits (lines 550, 1367, 1495 wrap-continuation, 1921). SE-17a Python multi-line regex `re.compile(r'tests/[A-Za-z_]+\\.rs[^a-zA-Z]*\\n\\s*\\(unit\\)', re.MULTILINE)` enumerated 1 wrap-continuation hit at lines 1494-1495 (VP-AUTH-002 §Harness location). Post-burst grep target identical to pre-burst returned 0 hits. I-R92-5 HIGH [pattern] closure + SE-14b AUTHORING first application (per cycle lessons §SE-14b AUTHORING-mandatory sub-rule, STATE.md v5.35 commit 68bf374) — 3 NEW BC-anchor citations added at VP probes that correspond to F-R91 BC lifts in PRD v1.19: (i) VP-DAEMON-001 §Post-condition 7 — semver-regex format probe extended with `per BC-DAEMON-001 Postcondition 1 — semver regex constraint lifted in F-R91 / PRD v1.19 commit 2e24e09 via I-R91-3 HIGH closure`; (ii) VP-DAEMON-002 §Post-condition 7 — numeric-type and range probes extended with `per BC-DAEMON-002 Postcondition 1 — pid ≥ 1 constraint lifted in F-R91 / PRD v1.19 commit 2e24e09 via I-R91-3 HIGH closure`; (iii) VP-DAEMON-002 §Post-condition 8 — string-format probes extended with `per BC-DAEMON-002 Postcondition 1 — semver regex constraint lifted in F-R91 / PRD v1.19 commit 2e24e09 via I-R91-3 HIGH closure`. Already-cited sites preserved verbatim: VP-DAEMON-006 §Post-condition 10 (cites `BC-DAEMON-006 §Invariant 1`, added in v1.25 F-R91 closure); VP-FACTORY-002 §Post-condition 7 (cites `BC-FACTORY-002 §Edge Case EC-061`, added in v1.25 F-R91 closure). EC-030 lift (PRD v1.19 line 1042 trait-level rewording + BC-ENGINE-002 xref) does NOT require a new VP probe — EC-030 is a trait-level edge case with no Phase 1 VP probe site; the existing VP-ENGINE-002 catalogue contains stub VP-ENGINE-001-EC for future Phase 4 trait-level EC exhaustiveness. O-R92-1 LOW closure — §Trace v1.25 boundary claim `0 normative-current PRD v1.18 or 3a18306 hits in pre-§Trace body (lines 1..2993)` was off by 16 lines (actual §Trace heading at line 3010 in v1.25, not 2993); the claim in this v1.26 frontmatter narrative is updated to reflect the post-v1.26 §Trace boundary at line 3032 (grew by 22 lines from v1.25 due to the 3 new BC-anchor citation paragraphs and the wrap-continuation rewording for VP-AUTH-002 §Harness). Extension 17 SE-17a/b evidence discipline applied throughout this burst: every grep target has a literal command transcript paired with real output in §Trace. §Purpose META recurrence guard 13th-attempt application (line 34-35 still cites PRD v1.19 commit 2e24e09 — unchanged from v1.25 since PRD did not bump this burst; recurrence history extended: R13-001 1st + GAP-R19-001 2nd + F-R81-2 3rd + F-R84-3 4th + v1.18 5th + v1.19 6th + v1.20 7th + v1.21 8th + v1.22 9th + v1.23 10th + v1.24 11th + v1.25 12th + v1.26 13th — the 13th-attempt application of the META guard is a recurrence-discipline-only step because PRD pin did not bump this burst; the META guard verifies that §Purpose line 34-35 still reflects the current PRD pin even when the burst is FV-only). §References intro current-as-of timestamp unchanged at `2026-05-16T04:00:00Z` (matches v1.26 frontmatter timestamp `2026-05-16T04:00:00Z` — the timestamp is preserved equal to the v1.25 burst per SE-16b monotonicity allowing equal timestamps for same-day successive bursts). SE-16b monotonicity check: v1.26 timestamp `2026-05-16T04:00:00Z` ≥ v1.25 timestamp `2026-05-16T04:00:00Z` (equal — monotonic per SE-16b: equal timestamps are valid for same-day successive bursts). SE-16a in-burst-added citation audit: this burst introduces 3 new in-burst-added citation pairs — (1) VP-DAEMON-001 §Post-condition 7 → BC-DAEMON-001 Postcondition 1; (2) VP-DAEMON-002 §Post-condition 7 → BC-DAEMON-002 Postcondition 1; (3) VP-DAEMON-002 §Post-condition 8 → BC-DAEMON-002 Postcondition 1. All 3 are BC-anchor citations (VP → BC direction); per SE-15d sibling-row backfill, the reciprocal BC-side back-cite (PRD §BC-DAEMON-001/002 Postcondition 1 → corresponding VP) is the PO/architect's responsibility on the next PRD pump and is not in scope for this FV-only burst; documented here for future-burst pickup. SE-14b AUTHORING audit section embedded in §Trace v1.26 enumerating NEW BC elements + MATCHING VP probes + ANCHOR CITATIONS ADDED per the mandatory sub-rule. 22 BCs unchanged across R92 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs (unchanged from v1.25). Architecture sources (current): SS-daemon-lifecycle v1.0.19 (commit 8a68cc9 unchanged); SS-core-types-and-abi v1.2.8 (unchanged); SS-engine-module v1.1.15 (unchanged); SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.19 — current canonical BC source (commit 2e24e09 unchanged this burst). Predecessor v1.25 narrative preserved verbatim in §Trace v1.25 entry below per PG-5 historical-anchor framing convention. Predecessor v1.25 F-R91 fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b + SE-14b + SE-15e + SE-16b application; final agent in SERIAL F-R91 chain after state-manager STATE.md v5.33 cycle lessons SE-14b codification + architect arch v1.0.19 commit 8a68cc9 stable + product-owner PRD v1.19 commit 2e24e09 — PRD bumped this burst by PO to close C-R91-1 CRITICAL + I-R91-3/4/5/7 lift_invariants_to_bcs + O-R91-4 glossary; arch v1.0.19 unchanged) — C-R91-1 CRITICAL VP-side closure: VP-FACTORY-002 §Post-condition 7 anchor citation re-anchored from fabricated `BC-FACTORY-002 EC normative semantics` (v1.24 forensic root: a fabricated anchor introduced in F-R90 I-R90-4 closure pointing to a non-existent EC) → real existing element `BC-FACTORY-002 §Edge Case EC-061` (PRD line 862 — added by PO R91 closure burst commit 2e24e09 to close C-R91-1 with `parse_frontmatter_field` empty-value guard semantics + Post-condition `state.cycle == None` collapse rule). I-R91-2 HIGH VP-side closure: VP-DAEMON-006 §Post-condition 10 anchor citation re-anchored from wrong-subsection `BC-DAEMON-006 Postcondition 1` (v1.24 forensic root: §Postcondition 1 is the health-endpoint WARN-log Postcondition, not the enum-values site) → correct subsection `BC-DAEMON-006 §Invariant 1` (PRD lines 411-421 — Invariant 1 schema enumerates the 3-element `shutdown_reason` closed-set `\"graceful\"|\"signal\"|\"forced\"` and the four typed-field constraints lifted by PO R91 closure burst per I-R91-3/4 closures). O-R91-1 LOW closure: §Trace v1.24 narrative boundary claim tightened — v1.24 frontmatter `traces_to` narrative previously claimed `boundary at line 2962` and `lines ≥ 2962` for the §Trace block opening; actual §Trace block opening `## §Trace` heading lives at line 2974 (verified via `grep -n \"^## §Trace\"`); also clarified that 2 of the 18 PRD v1.17/27e663c retained hits are in body provenance narrative (line 735 VP-DAEMON-005 `Traces to:` historical chain + line 2777 §References item 1 historical chain) — both body hits are PG-5-preserved historical-narrative anchoring; the other 16 hits are in the §Trace block (lines ≥ 2974) per PG-5. SE-14b anchor verification (mandatory sub-rule per cycle lessons §SE-14b codification b15effb): grep target `grep -nE \"per BC-[A-Z]+-[0-9]+ (Postcondition|Invariant|Precondition|Postconditions|Invariants|Edge Case) [0-9]+\" .factory/specs/verification-properties.md` enumerated all BC-anchor citations in VP §Post-conditions; each citation resolved against PRD v1.19 commit 2e24e09 by direct line lookup; results — VP §VP Catalog Overview row VP-DAEMON-005 cite `BC-DAEMON-005 Postcondition 8` resolves to PRD line 342 (0o700 runtime-dir owner-only Postcondition, CORRECT); VP-DAEMON-006 §Post-condition 10 cite `BC-DAEMON-006 §Invariant 1` resolves to PRD line 411-421 (typed-field schema Invariant, CORRECT POST-FIX); VP-FACTORY-002 §Post-condition 7 cite `BC-FACTORY-002 §Edge Case EC-061` resolves to PRD line 862 (EC-061 empty-string current_cycle Edge Case, CORRECT POST-FIX); §Mutation matrix VP-DAEMON-005 row cite `BC-DAEMON-005 Postcondition 8` resolves to PRD line 342 (same Postcondition, CORRECT). All current-tier BC-anchor citations in VP body verified post-R91. Fix 5 PRD pin v1.18 → v1.19 propagation (per R91 PO PRD-pin sweep result landed in commit 2e24e09): SE-16c canonical grep target `grep -nE \"PRD v1\\.18|commit 3a18306\" .factory/specs/verification-properties.md` — pre-sweep evidence: 90 normative-current body hits (= 88 line-hits + 2 wrap-continuation-second-line hits; some lines contain multiple instances) before §Trace (boundary at line 2974) + 6 wrap-continuation `(per PRD\nv1.18)` multi-line hits via SE-17a Python `re.compile(r\"\\(per PRD\\n\\s*v1\\.18\", re.MULTILINE)`. Pre-burst wrap-continuation hits at: 296-297 (VP-DAEMON-001 Test name), 553-554 (VP-DAEMON-003), 717-718 (VP-DAEMON-004 graceful_shutdown bullet), 976-977 (VP-DAEMON-005), 1741-1742 (VP-TYPES-001), 1969-1970 (VP-PROTO-001a). Post-sweep evidence: 0 normative-current `PRD v1.18` or `3a18306` hits in pre-§Trace body (lines 1..2993 since the body grew by ~20 lines for the C-R91-1/I-R91-2 closure narrative); 96 normative-current `PRD v1.19` / `2e24e09` hits post-sweep + 6 wrap-continuation `(per PRD\nv1.19)` hits post-sweep at same site lines (numbering preserved because the single-line replacement preserves line count). Remaining `PRD v1.18` / `3a18306` hits in body (pre-§Trace lines 1..3009) — 1 hit in VP-FACTORY-002 §Post-condition 7 narrative (line 1883 — historical reference `no such EC existed in PRD v1.18` documenting the C-R91-1 fabricated-anchor closure context) + 1 historical chain step in §Coverage Matrix footer narrative (line 2471 — `PRD v1.18 was the C-R90-1 CRITICAL closure burst (commit 3a18306)` as a historical predecessor chain step per PG-5) + 1 historical predecessor chain step in §References item 1 spanning 2 lines (lines 2802-2803 — `predecessor PRD v1.18 was the C-R90-1 CRITICAL closure burst (commit 3a18306)` demoted from current-pointer at v1.24 to historical-chain-step at v1.25 per PG-5). 4 body hits total + frontmatter `traces_to` narrative on line 25 documenting the sweep itself (= 5 line-hits; all PG-5-preserved historical anchoring or current-burst-narrative-self-reference, NOT stale current pointers). Current-pointer sites swept: frontmatter `traces_to`, §Purpose, §Scope item 1, §VP Catalog Overview 6 BC-DAEMON rows (Property Domain + Mechanism cells with PRD source citation), 22 per-VP `Traces to:` lines where PRD-pin appears (9 lines — daemon BCs), VP-DAEMON-004 §Mechanical property item references, VP-DAEMON-005 §Mechanical property item refs + §Mechanism, all 22 §Test name lines (per PRD v1.18/19 §BC-XXX → §BC-XXX), §G-6 NFR-001/002/003 prose, §G-7 NFR-006 prose, §Coverage Matrix 6 BC-DAEMON rows + 22 BC test-file rows + §Coverage Matrix footer current claim, §References item 1 current-pointer (extended with PRD v1.19 commit 2e24e09 narrative + v1.18 demoted to historical predecessor chain step per PG-5). §Purpose META recurrence guard 12th-attempt application (line 34-35 now cites PRD v1.19 commit 2e24e09 per SE-15b evidence discipline; recurrence history extended: R13-001 1st + GAP-R19-001 2nd + F-R81-2 3rd + F-R84-3 4th + v1.18 5th + v1.19 6th + v1.20 7th + v1.21 8th + v1.22 9th + v1.23 10th + v1.24 11th + v1.25 12th — this v1.25 burst exercises the META guard substantively because PRD pin actually bumped this burst per R91 PO closure). §References intro current-as-of timestamp bumped `2026-05-16T02:30:00Z` → `2026-05-16T04:00:00Z` to match v1.25 frontmatter timestamp (Extension 14 SUB-EXTENSION §References-intro propagation grep target applied — ninth consecutive burst where this sibling-anchor is grepped per the v1.17 codification). SE-16b monotonicity check: v1.25 timestamp `2026-05-16T04:00:00Z` ≥ v1.24 timestamp `2026-05-16T02:30:00Z` (monotonic continuation per SE-16b; 90 minutes after the v1.24 burst). SE-16a in-burst-added citation audit: this burst introduces ZERO new cross-property / cross-anchor citation pairs (the v1.25 burst is anchor-correction + pin-propagation only — no new VP Post-conditions added, no new §Counter-example sketches added, no new cross-VP citations introduced). All v1.24 in-burst-added citation pairs (1) VP-DAEMON-006 §Post-condition 9 ↔ VP-DAEMON-002 §Post-condition 7; (2) VP-DAEMON-001 §Post-condition 7 ↔ VP-DAEMON-002 §Post-condition 8; (3) VP-FACTORY-002 §Post-condition 7 ↔ §Post-condition 6 preserved verbatim; the deferred SE-15d sibling-row backfill for pairs (1) and (2) remains documented in §Trace v1.24 for closure in a future maintenance burst (no SE-15d violation in v1.25 because the burst scope is anchor-corrections + pin-propagation only — no new citations to backfill). 22 BCs unchanged across F-R91 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs (unchanged from v1.24). Architecture sources (current): SS-daemon-lifecycle v1.0.19 (commit 8a68cc9 unchanged this burst — arch held); SS-core-types-and-abi v1.2.8 (unchanged); SS-engine-module v1.1.15 (unchanged); SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.19 — current canonical BC source (commit 2e24e09 — PRD bumped this burst by PO to close R91 findings per C-R91-1 CRITICAL + I-R91-3/4/5/7 HIGH/MED + O-R91-4 LOW; 22 BCs unchanged; edge-case count 60 → 61 (EC-061 added); test-name count unchanged). Predecessor v1.24 narrative preserved verbatim in §Trace v1.24 entry below per PG-5 historical-anchor framing convention. Predecessor v1.24 F-R90 fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b + SE-15e application; arch v1.0.19 commit 8a68cc9 stable + PRD v1.18 commit 3a18306 propagation + VP-DAEMON-006 §Post-conditions 9/10/11 probe-matrix exhaustiveness recursive + VP-DAEMON-001 §Post-condition 7 semver-regex format probe + VP-FACTORY-002 §Post-condition 7 empty-string current_cycle probe + 6 wrap-continuation `(per PRD\nv1.17)` → `(per PRD\nv1.18)` sweep via SE-17a multi-line regex). Predecessor v1.23 F-R89 fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b application; arch v1.0.18 → v1.0.19 commit 8a68cc9 propagation + VP-RING-001 §Post-condition 4 + §Counter-example 5 absence-of-field probes + VP-DAEMON-002 §Post-conditions 7/8/9 probe-matrix exhaustiveness + 6 wrap-continuation `(per PRD\nv1.16)` → `(per PRD\nv1.17)` sweep via SE-17a multi-line regex + GAP-R28-001 §Purpose + §VP Catalog Overview intro prose fixes). Predecessor v1.22 F-R88 fix-burst (SERIAL Extension 15 + Extension 16 + SE-16a/b/c application; arch v1.0.17 → v1.0.18 + PRD v1.16 → v1.17 propagation + VP-DAEMON-005 §Mechanical property item (d) wording mirrored from corrected PRD form + §Mechanism integration-test vs unit-test relabel across all 22 VPs per Rust cargo test-file-layout taxonomy). Predecessor v1.21 F-R87 fix-burst (FV-only, no PRD bump; SE-16c canonical-grep audit-table application; I-R87-1 audit-table row-dropping META failure closed; I-R87-2 arithmetic ambiguity rewritten). Predecessor v1.20 F-R86 fix-burst (SE-16a in-burst-added citation audit codification; SE-16b timestamp monotonicity discipline; generic-pattern grep extension; VP-PROTO-002 §Harness location stale pin closure). Predecessor v1.19 F-R85 fix-burst (NEW VP-DAEMON-002 Post-condition 6 lift_invariants_to_bcs at VP layer; 5 SE-15d cross-property/cross-check reciprocations added; Extension 16 mandatory backfill sweep codified). Predecessor v1.18 was the F-R84 fix-burst (PRD v1.14 + arch v1.0.17 propagation + VP-DAEMON-005 §Mechanism 0o700 enumeration + VP-AUTH-001 reciprocal cross-property + §Trace Extension 13 evidence inheritance + Extension 15 SERIAL protocol codification). Predecessor v1.17 was the F-R83 + Extension 14 codification burst (lift_invariants_to_bcs sibling-site propagation discipline codified). Predecessor v1.16 was the F-R81 + GAP-R20 consolidated closure burst (Extension 11 canonical body update; §Purpose META recurrence guard codified; §G-6 residual normative framing rewrite; Extension 13 evidence form clarified). Predecessor v1.15 was the F-R80 CRITICAL META-class fabrication closure burst (Extension 3 sweep table rewritten with ACTUAL 33-crate grep transcript; NFR-001/NFR-002 BC-HOOK-022 normative-cite retirement; Postcondition 9 anchor citation corrections; ISO 8601 timestamp correction; Extension 11 grep pattern extension). Predecessor v1.14 was the F-R79 closure chain (PRD v1.11 → v1.12 pin propagation + VP-DAEMON-005 Postcondition 9 anchor lift + L-F-R63 Extension 11 NEW codified). Predecessor §Trace v1.13 R78 + R17 closure chain (F-R78-1 §Coverage Matrix footer narrative fabrication closure + GAP-R17-001 6 missed Test-name PRD pin propagations + L-F-R63 Extension 9 codified). §Trace v1.12 R77 + GAP-R16 closure chain (L-F-R63 Extension 8 codified). §Trace v1.11 R76 (L-F-R63 Extension 7 codified). §Trace v1.10 (F-R75-1 0o700 probe + F-R75-2 Windows tightening + arch v1.0.16 + PRD v1.10 pin propagation). §Trace v1.9 (R13-001 SHA fix + F-R74 VP-side pin propagation chain). §Trace v1.8 (F-R72 4 substantive + Obs-R72-1 process-gap deps-pin sweep enforcement). §Trace v1.7 (F-R71 closure chain). §Trace v1.6 (F-R70 closure chain). §Trace v1.5.1 (R7-001). §Trace v1.5 (F-R67-1 + PRD v1.5). §Trace v1.4 (F-R65 + R4-001). §Trace v1.3 (R3-001 + arch v1.0.10 + PRD v1.3). §Trace v1.2 (F-R63 closures). §Trace v1.1 (F-R62 closures). dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; correct agent routing per CLAUDE.md §Correct Agent Routing companion principle; L-F-R63-PARTIAL-FIX Extension 2 + Extension 3 + Extension 7 + Extension 8 + Extension 9 + Extension 11 + Extension 14 + Extension 15 + Extension 16 + Extension 17 (with SE-14b + SE-15a/b/c/d/e + SE-16a/b/c + SE-17a/b) recurrence-guard discipline applied per cycle-001 lessons §META; §G-6 latency-VP Phase 3 deferral (authored in v1.8, descriptions rewritten in v1.14 per F-R79-2 closure) preserved; §G-7 NFR-006 throughput Phase 3 deferral (authored in v1.12 per F-R77-3 closure) preserved unchanged in v1.25."
+traces_to: "v1.28 F-R94 fix-burst (SERIAL Extension 15 + Extension 16 + Extension 17 + SE-17a/b + SE-14b (with AUTHORING-mandatory sub-rule, no-op this burst) + SE-15e + SE-16b application; FV runs SOLO as final agent in F-R94 chain after state-manager STATE.md v5.39 + architect arch v1.0.21 commit 42504b4 + manifest v1.1.13 commit 42504b4 + product-owner PRD v1.21 commit 0f124a9). v1.28 closes the R94 finding set + cons R33 GAP-R33-001: C-R94-2 HIGH closure — VP-RING-001 §Post-condition 4 + §Counter-example sketch 5 corrected to use canonical no-tool-surface hook set (SessionStart, UserPromptSubmit, Stop); pre-burst the VP incorrectly listed `Notification` as a no-tool-surface example, but per gene-source BC-HOOK-019 wire schema + arch + PRD, `Notification` carries `tool_name`/`tool_input` (Some values) and is NOT a no-tool-surface hook type. Both VP-RING-001 §Post-condition 4 and §Counter-example sketch 5 amended to reference the correct (SessionStart, UserPromptSubmit, Stop) triple with F-R94 C-R94-2 attribution. I-R94-2 MED closure — VP-RING-001 §Pre-conditions extended with explicit `serde_json` `preserve_order` feature precondition; pre-burst the §Counter-example sketch 3 (`serde_json::to_value` alphabetic-reorder counter-example) implicitly assumed default-features-only `serde_json`, but the `preserve_order` feature (IndexMap-backed) would silently invalidate the counter-example. New §Pre-conditions bullet documents `cargo tree -e features | grep preserve_order` empty-result verification and the SS-deps-pin-manifest.md v1.1.13 default-features-only invariant. GAP-R33-001 LOW closure (cons R33) — VP line ~909 `v1.19 commit 9371348` corrected to `v1.20 commit 9371348` (forensic root: the parenthetical was authored during F-R91 PRD pin sweep but used the wrong version label paired with the v1.20 SHA; single-word fix v1.19 → v1.20 reconciles the version/SHA pairing within the historical narrative; SE-16c++ supplementary grep `grep -nE \"v1\\.[0-9]+ commit [0-9a-f]{7}\" .factory/specs/verification-properties.md | awk -F: '$1 < 3060 && $1 != 25'` catches such standalone version+SHA mismatches that the canonical SE-16c grep `PRD v1\\.19|commit 2e24e09` would miss because the offending pattern lacked the `PRD ` prefix). Fix 4 triple pin propagation: PRD v1.20 → v1.21 (per F-R94 PO PRD-pin sweep landed in commit 0f124a9), arch v1.0.20 → v1.0.21 (per F-R94 architect closure landed in commit 42504b4), manifest v1.1.12 → v1.1.13 (per F-R94 architect manifest closure landed in commit 42504b4). SE-16c canonical grep targets: `grep -nE \"PRD v1\\.20|commit 9371348\" .factory/specs/verification-properties.md` — pre-sweep evidence: 98 normative-current body line-hits in pre-§Trace body (lines 26..3059) + 6 wrap-continuation `(per PRD\\nv1.20)` multi-line hits via SE-17a Python `re.compile(r\"\\(per PRD\\n\\s*v1\\.20\", re.MULTILINE)`. Post-sweep evidence: 0 normative-current `PRD v1.20` or `commit 9371348` hits in pre-§Trace body. `grep -nE \"v1\\.0\\.20|commit 8533ea2\" .factory/specs/verification-properties.md` — pre-sweep: 37 normative-current body line-hits. Post-sweep: 0 normative-current hits in pre-§Trace body. `grep -nE \"v1\\.1\\.12|commit 8005075\" .factory/specs/verification-properties.md` — pre-sweep: 22 normative-current body line-hits. Post-sweep: 0 normative-current hits in pre-§Trace body. Wrap-continuation cases that escaped the bulk Python single-line replace were caught and explicitly fixed: (i) §Purpose lines 34-35 — `PRD v1.21 (commit\\n9371348)` → `PRD v1.21 (commit\\n0f124a9)`; (ii) Post-condition 7 lines 266-267 — `F-R91 / PRD\\n   v1.20 commit 0f124a9` → `F-R91 / PRD\\n   v1.21 commit 0f124a9` (the bulk sweep updated only contiguous `PRD v1.20`; wrap-continuation required separate edit); (iii) Post-condition 7 lines 283-287 forensic narrative — historical refs to `PRD v1.20 commit 9371348` preserved as F-R93 historical attribution; new sentence added for F-R94 PO closure to v1.21 commit 0f124a9. Fix 5 SE-16c++ supplementary grep target `grep -nE \"v1\\.[0-9]+ commit [0-9a-f]{7}\" .factory/specs/verification-properties.md | awk -F: '$1 < 3086 && $1 != 25'` enumerated all standalone version+SHA pairs in body — 8 sites surfaced; each manually verified to be either normative-current (updated to v1.21/0f124a9 or v1.0.21/42504b4) or historical-predecessor (retained verbatim per PG-5 historical-anchor framing). Historical-anchor sites preserved verbatim per PG-5: §Coverage Matrix footer (line 2527) historical chain referencing F-R93 → arch v1.0.20 commit 8533ea2 (now demoted to historical predecessor) + F-R93 → PRD v1.20 commit 9371348 (now demoted to historical predecessor); §References item 1 historical predecessor chain references PRD v1.20 commit 9371348 as F-R93 closure; §References item 2 historical predecessor chain references arch v1.0.20 commit 8533ea2 as F-R93 closure; §References item 6 historical predecessor chain references manifest v1.1.12 commit 8005075 as F-R77-2 closure. Current-canonical pointers updated: §Coverage Matrix footer + §References item 1 (`v1.21 (commit 0f124a9) — canonical BC source ... PRD v1.21 is the F-R94 pin-propagation closure (commit 0f124a9)`); §References item 2 (`v1.0.21 (commit 42504b4) — current canonical arch source per F-R94 fix-burst closure chain`); §References item 6 (`v1.1.13 (commit 42504b4) — current canonical manifest source per F-R94 fix-burst closure`). SE-14b AUTHORING audit (post-F-R94 chain): NEW BC content elements introduced by F-R94 chain — NONE. arch v1.0.21 (commit 42504b4) is doc-comment correctness (resolve_runtime_dir doc-comment rewrite + HookEventRecord docstring fix) + visibility hygiene (pub enum AuthError); PRD v1.21 (commit 0f124a9) is pin-propagation only (no PRD normative content change); manifest v1.1.13 (commit 42504b4) is chrono row BC-DAEMON-006 attribution refinement (metadata-only). None of these introduce new BC normative content lift requiring new VP probe citations. MATCHING VP probes requiring new anchor citations — NONE. Conclusion: SE-14b AUTHORING is a no-op for this F-R94 burst; SE-14b VERIFICATION still applied with every existing BC-anchor citation resolved against PRD v1.21 commit 0f124a9 by direct line lookup. Extension 17 SE-17a/b evidence discipline applied throughout this burst: every grep target has a literal command transcript paired with real output in §Trace. §Purpose META recurrence guard 15th-attempt application (line 34-35 now cites PRD v1.21 commit 0f124a9 per SE-15b evidence discipline; recurrence history extended: R13-001 1st + GAP-R19-001 2nd + F-R81-2 3rd + F-R84-3 4th + v1.18 5th + v1.19 6th + v1.20 7th + v1.21 8th + v1.22 9th + v1.23 10th + v1.24 11th + v1.25 12th + v1.26 13th + v1.27 14th + v1.28 15th — the 15th-attempt application of the META guard is substantive because PRD pin actually bumped this burst per F-R94 PO closure). §References intro current-as-of timestamp bumped `2026-05-16T05:30:00Z` → `2026-05-16T07:00:00Z` to match v1.28 frontmatter timestamp (Extension 14 SUB-EXTENSION §References-intro propagation grep target applied — eleventh consecutive burst where this sibling-anchor is grepped per the v1.17 codification). SE-16b monotonicity check: v1.28 timestamp `2026-05-16T07:00:00Z` ≥ v1.27 timestamp `2026-05-16T05:30:00Z` (monotonic continuation per SE-16b; 90 minutes after the v1.27 burst). SE-16a in-burst-added citation audit: this burst introduces ZERO new cross-property / cross-anchor citation pairs (the v1.28 burst is normative-correction (Notification → SessionStart/UserPromptSubmit/Stop) + preserve_order feature precondition addition + GAP-R33-001 single-word fix + triple pin propagation only — no new VP Post-conditions added, no new §Counter-example sketches added, no new cross-VP citations introduced). 22 BCs unchanged across F-R94 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs (unchanged from v1.27 / v1.26 / v1.25 / v1.24). Architecture sources (current): SS-daemon-lifecycle v1.0.21 (commit 42504b4 — F-R94 closure); SS-core-types-and-abi v1.2.8 (unchanged); SS-engine-module v1.1.15 (unchanged); SS-deps-pin-manifest v1.1.13 (commit 42504b4 — F-R94 closure). PRD v1.21 — current canonical BC source (commit 0f124a9 — PRD pin propagation only this burst per F-R94 PO closure; 22 BCs unchanged; edge-case count unchanged at 61; test-name count unchanged). Predecessor v1.27 narrative preserved verbatim in §Trace v1.27 entry below per PG-5 historical-anchor framing convention. Predecessor v1.27 R93 fix-burst closed O-R93-1 LOW (VP-RING-001 §Mechanism disclaimer removal) + O-R93-2 LOW (unit-test prose normalization 13 sites) + dual pin propagation PRD v1.19 → v1.20 + arch v1.0.19 → v1.0.20. Predecessor v1.26 R92 FV-only burst closed I-R92-1 HIGH (VP-DAEMON-005 §Post-condition 9 line 883 stale parenthetical) + I-R92-3 HIGH [pattern] (4 VP §Harness location annotations `(unit)` → `(integration)`) + I-R92-5 HIGH [pattern] + SE-14b AUTHORING first application (3 new BC-anchor citations) + O-R92-1 LOW (§Trace boundary claim). Predecessor v1.25 F-R91 burst closed C-R91-1 CRITICAL + I-R91-2 HIGH + O-R91-1 LOW + PRD v1.18 → v1.19 sweep. Predecessor v1.24 F-R90 burst (arch v1.0.19 stable + PRD v1.18 propagation + VP-DAEMON-006 §Post-conditions 9/10/11 probe-matrix exhaustiveness recursive). Predecessor v1.23 F-R89 burst (arch v1.0.18 → v1.0.19 + VP-RING-001 absence-of-field probes + VP-DAEMON-002 §Post-conditions 7/8/9 exhaustiveness). Predecessor §Trace v1.22 F-R88 burst (arch v1.0.17 → v1.0.18 + PRD v1.16 → v1.17 + §Mechanism integration-test relabel). Predecessor v1.21 F-R87 (SE-16c canonical-grep audit). Predecessor v1.20 F-R86 (SE-16a + SE-16b codification). Predecessor v1.19 F-R85 (NEW VP-DAEMON-002 Postcondition 6 + Extension 16 backfill). Predecessor v1.18 F-R84 (PRD v1.14 + arch v1.0.17 + Extension 15 SERIAL codification). Predecessor v1.17 F-R83 + Extension 14 codification. Predecessor v1.16 F-R81 + GAP-R20 + Extension 11. Predecessor v1.15 F-R80 CRITICAL META-class fabrication closure. Predecessor v1.14 F-R79 closure chain. §Trace v1.13 R78 + R17 chain. §Trace v1.12 R77 + GAP-R16 chain. §Trace v1.11 R76. §Trace v1.10 (F-R75 + arch v1.0.16 + PRD v1.10). §Trace v1.9 (R13-001 SHA fix + F-R74 chain). §Trace v1.8 (F-R72 + Obs-R72-1). §Trace v1.7 (F-R71). §Trace v1.6 (F-R70). §Trace v1.5.1 (R7-001). §Trace v1.5 (F-R67-1 + PRD v1.5). §Trace v1.4 (F-R65 + R4-001). §Trace v1.3 (R3-001 + arch v1.0.10 + PRD v1.3). §Trace v1.2 (F-R63 closures). §Trace v1.1 (F-R62 closures). dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; correct agent routing per CLAUDE.md §Correct Agent Routing companion principle; L-F-R63-PARTIAL-FIX Extension 2 + Extension 3 + Extension 7 + Extension 8 + Extension 9 + Extension 11 + Extension 14 + Extension 15 + Extension 16 + Extension 17 (with SE-14b + SE-15a/b/c/d/e + SE-16a/b/c + SE-16c++ + SE-17a/b) recurrence-guard discipline applied per cycle-001 lessons §META; §G-6 latency-VP Phase 3 deferral (authored in v1.8, descriptions rewritten in v1.14 per F-R79-2 closure) preserved; §G-7 NFR-006 throughput Phase 3 deferral (authored in v1.12 per F-R77-3 closure) preserved unchanged in v1.28."
 project: monocle
 ---
 
@@ -31,8 +31,8 @@ project: monocle
 ## §Purpose
 
 This artifact authors formally-testable Verification Properties (VPs) against
-the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.20 (commit
-9371348) and pre-staged across the Phase 1 architecture artifacts. Each VP
+the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.21 (commit
+0f124a9) and pre-staged across the Phase 1 architecture artifacts. Each VP
 states a mechanical, executable property that asserts the BC holds under a
 precisely scoped pre-condition. Each VP is bound to a verification mechanism —
 Kani proof, fuzz harness, unit test, or mutation test — and includes
@@ -84,9 +84,9 @@ adopted verbatim from the PRD §7. Requirements Traceability Matrix.
 
 In scope:
 
-- All 22 Phase 1 BCs — 6 daemon-endpoint BCs formalized in PRD v1.20
+- All 22 Phase 1 BCs — 6 daemon-endpoint BCs formalized in PRD v1.21
   (BC-DAEMON-001..006) plus 16 BCs pre-staged across `SS-daemon-lifecycle.md`
-  v1.0.20 (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001),
+  v1.0.21 (BC-RING-001, BC-AUTH-001, BC-AUTH-002, BC-LOCK-001),
   `SS-core-types-and-abi.md` v1.2.8 (BC-ABI-001/002, BC-TYPES-001,
   BC-FACTORY-001/002, BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002), and
   `SS-engine-module.md` v1.1.15 (BC-ENGINE-001, BC-ENGINE-002,
@@ -126,16 +126,16 @@ mechanism distribution.
 
 | VP ID | BC Source | Property Domain | Primary Mechanism | Auxiliary Mechanism |
 |-------|-----------|-----------------|-------------------|---------------------|
-| VP-DAEMON-001 | BC-DAEMON-001 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | `/healthz` unauthenticated 200/503 with uptime + version | integration-test | — |
-| VP-DAEMON-002 | BC-DAEMON-002 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | `/status` authenticated daemon-state JSON with 10 required fields incl `abi_version: 1` | integration-test | — |
-| VP-DAEMON-003 | BC-DAEMON-003 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | 256 KiB request-body limit; HTTP 413 + `payload_too_large` body on excess | integration-test | fuzz |
-| VP-DAEMON-004 | BC-DAEMON-004 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | 10-second graceful drain on SIGTERM / SIGINT / `POST /shutdown`; 503 + `Retry-After: 10` on new hook POSTs during drain; 5-code POSIX exit taxonomy (0/130/143/2/1) per cause | integration-test | — |
-| VP-DAEMON-005 | BC-DAEMON-005 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | 4-path runtime-dir resolution chain (MONOCLE_RUNTIME_DIR env → ProjectDirs::runtime_dir() Linux → ProjectDirs::data_local_dir() macOS/Windows → DaemonStartError::RuntimeDirUnresolvable fail-fast); lock-file lifecycle atomically via `tempfile::persist`; pid-liveness gate; mode 0o600 lock-file + 0o700 runtime-dir owner-only (defense-in-depth per BC-DAEMON-005 Postcondition 8 / VP-DAEMON-005 Post-condition 9); removed on clean shutdown | integration-test | mutation-test |
-| VP-DAEMON-006 | BC-DAEMON-006 (PRD v1.20 / SS-daemon-lifecycle v1.0.20) | Crash-recovery checkpoint JSON written before lock removal with mandatory millisecond `shutdown_utc` (YYYY-MM-DDTHH:MM:SS.sssZ); 60-second TUI offer window; cleanup on accept/decline/timeout | integration-test | — |
-| VP-RING-001 | BC-RING-001 (SS-daemon-lifecycle v1.0.20) | JSONL ring record format-version is first key | integration-test | mutation-test |
-| VP-AUTH-001 | BC-AUTH-001 (SS-daemon-lifecycle v1.0.20) | Wire format `monocle-v1:<64-hex>`; constant-time comparison | integration-test | fuzz |
-| VP-AUTH-002 | BC-AUTH-002 (SS-daemon-lifecycle v1.0.20) | Two-body taxonomy: absent header → `missing_auth_token`; any value-present failure → `invalid_auth_token` (collapsed) | integration-test | fuzz |
-| VP-LOCK-001 | BC-LOCK-001 (SS-daemon-lifecycle v1.0.20) | Lock-file `contract_version: 1` first key; readers gate on field | integration-test | mutation-test |
+| VP-DAEMON-001 | BC-DAEMON-001 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | `/healthz` unauthenticated 200/503 with uptime + version | integration-test | — |
+| VP-DAEMON-002 | BC-DAEMON-002 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | `/status` authenticated daemon-state JSON with 10 required fields incl `abi_version: 1` | integration-test | — |
+| VP-DAEMON-003 | BC-DAEMON-003 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | 256 KiB request-body limit; HTTP 413 + `payload_too_large` body on excess | integration-test | fuzz |
+| VP-DAEMON-004 | BC-DAEMON-004 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | 10-second graceful drain on SIGTERM / SIGINT / `POST /shutdown`; 503 + `Retry-After: 10` on new hook POSTs during drain; 5-code POSIX exit taxonomy (0/130/143/2/1) per cause | integration-test | — |
+| VP-DAEMON-005 | BC-DAEMON-005 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | 4-path runtime-dir resolution chain (MONOCLE_RUNTIME_DIR env → ProjectDirs::runtime_dir() Linux → ProjectDirs::data_local_dir() macOS/Windows → DaemonStartError::RuntimeDirUnresolvable fail-fast); lock-file lifecycle atomically via `tempfile::persist`; pid-liveness gate; mode 0o600 lock-file + 0o700 runtime-dir owner-only (defense-in-depth per BC-DAEMON-005 Postcondition 8 / VP-DAEMON-005 Post-condition 9); removed on clean shutdown | integration-test | mutation-test |
+| VP-DAEMON-006 | BC-DAEMON-006 (PRD v1.21 / SS-daemon-lifecycle v1.0.21) | Crash-recovery checkpoint JSON written before lock removal with mandatory millisecond `shutdown_utc` (YYYY-MM-DDTHH:MM:SS.sssZ); 60-second TUI offer window; cleanup on accept/decline/timeout | integration-test | — |
+| VP-RING-001 | BC-RING-001 (SS-daemon-lifecycle v1.0.21) | JSONL ring record format-version is first key | integration-test | mutation-test |
+| VP-AUTH-001 | BC-AUTH-001 (SS-daemon-lifecycle v1.0.21) | Wire format `monocle-v1:<64-hex>`; constant-time comparison | integration-test | fuzz |
+| VP-AUTH-002 | BC-AUTH-002 (SS-daemon-lifecycle v1.0.21) | Two-body taxonomy: absent header → `missing_auth_token`; any value-present failure → `invalid_auth_token` (collapsed) | integration-test | fuzz |
+| VP-LOCK-001 | BC-LOCK-001 (SS-daemon-lifecycle v1.0.21) | Lock-file `contract_version: 1` first key; readers gate on field | integration-test | mutation-test |
 | VP-ABI-001 | BC-ABI-001 (SS-core-types-and-abi v1.2.8) | `/status` response body contains `abi_version: 1` | integration-test | — |
 | VP-ABI-002 | BC-ABI-002 (SS-core-types-and-abi v1.2.8) | `monocle_core::MONOCLE_ABI_VERSION` pub const equals `1` | compile-time-check | — |
 | VP-TYPES-001 | BC-TYPES-001 (SS-core-types-and-abi v1.2.8) | Every pub enum in `monocle-core` carries `#[non_exhaustive]` modulo ADR-0004 exemptions | ast-audit | mutation-test |
@@ -167,7 +167,7 @@ preserved; the relabel is a taxonomy correction per Rust cargo
 test-file-layout convention — files in `<crate>/tests/<name>.rs` are
 cargo integration tests, AST-audit harnesses use `syn 2` parse over
 source files, and compile-time `const _:` assertions are
-compile-time-check probes). Cross-reference: PRD v1.20 §7 RTM Test Type
+compile-time-check probes). Cross-reference: PRD v1.21 §7 RTM Test Type
 column for the canonical type-per-BC labels; this VP catalog's
 Mechanism column is the per-VP verification mechanism whose label
 matches the file-layout taxonomy rather than the conceptual test-type
@@ -206,8 +206,8 @@ BCs in the order they appear in the PRD.
 
 ### §VP-DAEMON-001 — `/healthz` Unauthenticated Liveness 200/503 with Uptime + Version
 
-**Traces to:** BC-DAEMON-001 (PRD v1.20 §BC-DAEMON-001; SS-daemon-lifecycle.md
-v1.0.20 §Health and Status Endpoints).
+**Traces to:** BC-DAEMON-001 (PRD v1.21 §BC-DAEMON-001; SS-daemon-lifecycle.md
+v1.0.21 §Health and Status Endpoints).
 
 **Mechanical property:**
 
@@ -228,14 +228,14 @@ v1.0.20 §Health and Status Endpoints).
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/healthz_endpoint.rs` — files in `<crate>/tests/`
-are cargo integration tests per Rust convention; PRD v1.20 §7 RTM Test
+are cargo integration tests per Rust convention; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`).
 
 **Pre-conditions:**
 
 - Daemon running with a normal AppMode (not `ShuttingDown`).
 - Hook-receiver task is alive (no abnormal exit).
-- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md v1.1.12).
+- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md v1.1.13).
 
 **Post-conditions:**
 
@@ -264,7 +264,7 @@ Type column labels this BC `Integration`).
    structural property.
 7. **Semver-regex format for `version` field** (per BC-DAEMON-001
    Postcondition 1 — semver regex constraint lifted in F-R91 / PRD
-   v1.20 commit 9371348 via I-R91-3 HIGH closure):
+   v1.21 commit 0f124a9 via I-R91-3 HIGH closure):
    `version` MUST match the regex
    `^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`
    (cross-VP uniformity with VP-DAEMON-002 §Post-condition 8
@@ -281,10 +281,11 @@ Type column labels this BC `Integration`).
    AUTHORING-mandatory sub-rule, STATE.md v5.35 commit 68bf374):
    anchor citation added in v1.26 burst to match F-R91 BC lift of the
    semver-regex constraint into BC-DAEMON-001 Postcondition 1 in PRD
-   v1.20 (the v1.26 burst was authored against PRD v1.19 commit
+   v1.21 (the v1.26 burst was authored against PRD v1.19 commit
    2e24e09; F-R93 PO closure bumped PRD to v1.20 commit 9371348 with
-   no BC content change; the constraint reference is current per PRD
-   v1.20).
+   no BC content change; F-R94 PO closure (this burst) bumped PRD to
+   v1.21 commit 0f124a9 — pin propagation only, no BC content change;
+   the constraint reference is current per PRD v1.21).
 
 **Counter-example sketches:**
 
@@ -305,14 +306,14 @@ Type column labels this BC `Integration`).
 **Harness location:** `monocle-runtime/tests/healthz_endpoint.rs`.
 
 **Test name:** `test_BC_DAEMON_001_healthz_unauthenticated_alive` (per PRD
-v1.20 §BC-DAEMON-001, Verification subsection).
+v1.21 §BC-DAEMON-001, Verification subsection).
 
 ---
 
 ### §VP-DAEMON-002 — `/status` Authenticated Daemon-State JSON with 10 Required Fields
 
-**Traces to:** BC-DAEMON-002 (PRD v1.20 §BC-DAEMON-002; SS-daemon-lifecycle.md
-v1.0.20 §Health and Status Endpoints).
+**Traces to:** BC-DAEMON-002 (PRD v1.21 §BC-DAEMON-002; SS-daemon-lifecycle.md
+v1.0.21 §Health and Status Endpoints).
 
 **Mechanical property:**
 
@@ -342,7 +343,7 @@ v1.0.20 §Health and Status Endpoints).
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/status_endpoint_auth.rs` — files in
 `<crate>/tests/` are cargo integration tests per Rust convention;
-PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
+PRD v1.21 §7 RTM Test Type column labels this BC `Integration`).
 
 **Pre-conditions:**
 
@@ -352,7 +353,7 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
   §Daemon Lifecycle Protocol §Start Sequence).
 - `monocle_core::MONOCLE_ABI_VERSION` equals `1` at the time the daemon
   binary is compiled.
-- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12) for
+- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.13) for
   the `last_hook_ts` ISO 8601 millisecond timestamp formatter. The daemon
   emits each per-hook-type timestamp via
   `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` per
@@ -360,7 +361,7 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
   uniformity with `startTimeUtc` and `shutdown_utc`); the regex assertion
   in §Post-conditions item 4 is exactly the format string this generator
   produces. (Extension 7 net-new discovery — `chrono 0.4` added to manifest
-  v1.1.11 alongside the F-R76-1 `serde 1` addition; manifest v1.1.12
+  v1.1.11 alongside the F-R76-1 `serde 1` addition; manifest v1.1.13
   preserves the chrono pin with corrected Role-column BC attribution per
   F-R77-2.)
 
@@ -395,7 +396,7 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
    so the VP-DAEMON-004 cross-property anchor resolves.
 7. **Numeric-type and range probes (F-R89-4 closure — probe-matrix
    exhaustiveness; per BC-DAEMON-002 Postcondition 1 — pid ≥ 1
-   constraint lifted in F-R91 / PRD v1.20 commit 9371348 via I-R91-3
+   constraint lifted in F-R91 / PRD v1.21 commit 0f124a9 via I-R91-3
    HIGH closure):** for the JSON response body of a successful
    `GET /status`:
    - `pid` is parsed as an integer and `pid >= 1` (PID values are
@@ -417,10 +418,10 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
    §SE-14b AUTHORING-mandatory sub-rule, STATE.md v5.35 commit 68bf374):
    anchor citation added in v1.26 burst to match F-R91 BC lift of the
    pid ≥ 1 typed-field constraint into BC-DAEMON-002 Postcondition 1
-   in PRD v1.20.
+   in PRD v1.21.
 8. **String-format probes (F-R89-4 closure — probe-matrix
    exhaustiveness; per BC-DAEMON-002 Postcondition 1 — semver regex
-   constraint lifted in F-R91 / PRD v1.20 commit 9371348 via I-R91-3
+   constraint lifted in F-R91 / PRD v1.21 commit 0f124a9 via I-R91-3
    HIGH closure):** for the JSON response body:
    - `version` is parsed as a JSON string and matches the semver regex
      `^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$` (the daemon
@@ -437,7 +438,7 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
    §SE-14b AUTHORING-mandatory sub-rule, STATE.md v5.35 commit 68bf374):
    anchor citation added in v1.26 burst to match F-R91 BC lift of the
    semver-regex string-format constraint into BC-DAEMON-002 Postcondition
-   1 in PRD v1.20.
+   1 in PRD v1.21.
 9. **Boolean-type probe (F-R89-4 closure — probe-matrix
    exhaustiveness):** the `tui_attached` field in the response body is
    parsed as a JSON boolean (`true` or `false`); the integration test
@@ -483,14 +484,14 @@ PRD v1.20 §7 RTM Test Type column labels this BC `Integration`).
 **Harness location:** `monocle-runtime/tests/status_endpoint_auth.rs`.
 
 **Test name:** `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version`
-(per PRD v1.20 §BC-DAEMON-002, Verification subsection).
+(per PRD v1.21 §BC-DAEMON-002, Verification subsection).
 
 ---
 
 ### §VP-DAEMON-003 — 256 KiB Body Limit; HTTP 413 on Excess
 
-**Traces to:** BC-DAEMON-003 (PRD v1.20 §BC-DAEMON-003; SS-daemon-lifecycle.md
-v1.0.20 §Body Size Limit).
+**Traces to:** BC-DAEMON-003 (PRD v1.21 §BC-DAEMON-003; SS-daemon-lifecycle.md
+v1.0.21 §Body Size Limit).
 
 **Mechanical property:**
 
@@ -514,7 +515,7 @@ v1.0.20 §Body Size Limit).
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/body_size_limit.rs` — files in `<crate>/tests/`
-are cargo integration tests; PRD v1.20 §7 RTM Test Type column labels
+are cargo integration tests; PRD v1.21 §7 RTM Test Type column labels
 this BC `Integration`); fuzz (auxiliary — boundary exploration).
 
 **Pre-conditions:**
@@ -576,14 +577,14 @@ allocation.
 `fuzz/fuzz_targets/fuzz_body_size_boundary.rs` (fuzz, Phase 6 deliverable).
 
 **Test name:** `test_BC_DAEMON_003_body_size_limit_413_on_excess` (per PRD
-v1.20 §BC-DAEMON-003, Verification subsection).
+v1.21 §BC-DAEMON-003, Verification subsection).
 
 ---
 
 ### §VP-DAEMON-004 — 10-Second Graceful Shutdown Drain
 
-**Traces to:** BC-DAEMON-004 (PRD v1.20 §BC-DAEMON-004; SS-daemon-lifecycle.md
-v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling, §Drain, and §Hard Shutdown).
+**Traces to:** BC-DAEMON-004 (PRD v1.21 §BC-DAEMON-004; SS-daemon-lifecycle.md
+v1.0.21 §Daemon Lifecycle Protocol §Shutdown Signal Handling, §Drain, and §Hard Shutdown).
 
 **Mechanical property:**
 
@@ -615,7 +616,7 @@ v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling, §Drain, and §H
    citation; the v1.20 burst closes the recursive Extension 16 failure
    and restores bidirectional reciprocity per SE-16a in-burst-added
    citation audit discipline).
-6. **Exit-code taxonomy (5-code POSIX 128+N per PRD v1.20 §BC-DAEMON-004
+6. **Exit-code taxonomy (5-code POSIX 128+N per PRD v1.21 §BC-DAEMON-004
    postcondition 8; F-R70-3 closure):** the exit code written to the OS
    process table MUST match the trigger:
    - `0` — graceful drain succeeded; all in-flight requests completed
@@ -644,7 +645,7 @@ v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling, §Drain, and §H
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/graceful_shutdown.rs` and
 `monocle-runtime/tests/daemon_lifecycle.rs` — files in `<crate>/tests/`
-are cargo integration tests; PRD v1.20 §7 RTM Test Type column labels
+are cargo integration tests; PRD v1.21 §7 RTM Test Type column labels
 this BC `Integration`).
 
 **Pre-conditions:**
@@ -653,14 +654,14 @@ this BC `Integration`).
 - `tokio::signal::unix::signal(SignalKind::terminate())` is the SIGTERM
   receiver; `tokio::signal::ctrl_c()` is the SIGINT receiver. The
   signal type that triggered hard shutdown is recorded for exit-code
-  selection (per arch v1.0.20 §Hard Shutdown step 6d).
+  selection (per arch v1.0.21 §Hard Shutdown step 6d).
 - A test-only `oneshot::channel` is used to inject a synthetic shutdown
   signal (avoiding real OS signal delivery in integration tests).
   Test-harness wrappers inject SIGTERM-flavored and SIGINT-flavored
   synthetic signals to exercise the 130-vs-143 distinction without real
   OS-signal delivery.
 - `axum 0.8` and `tokio 1` are the project pins (per
-  SS-deps-pin-manifest.md v1.1.12); `tower` is a transitive dependency of
+  SS-deps-pin-manifest.md v1.1.13); `tower` is a transitive dependency of
   `axum 0.8` (no direct workspace pin).
 
 **Post-conditions:**
@@ -677,7 +678,7 @@ this BC `Integration`).
 5. With one synthetic in-flight `/hooks/*` POST that holds a 5-second
    sleep, the drain completes within 10 seconds and the daemon exits
    cleanly with exit code `0` (deterministic; graceful drain success).
-6. **5-code POSIX exit taxonomy probe matrix (per PRD v1.20 §BC-DAEMON-004
+6. **5-code POSIX exit taxonomy probe matrix (per PRD v1.21 §BC-DAEMON-004
    canonical test vectors; Obs-R70-2 closure):**
 
    | Scenario | Synthetic input | Expected exit code |
@@ -736,14 +737,14 @@ this BC `Integration`).
 
 **Harness location:** `monocle-runtime/tests/graceful_shutdown.rs` (primary
 HTTP 503 / `Retry-After` probes); `monocle-runtime/tests/daemon_lifecycle.rs`
-(exit-code 5-code POSIX taxonomy probes per PRD v1.20 §BC-DAEMON-004
+(exit-code 5-code POSIX taxonomy probes per PRD v1.21 §BC-DAEMON-004
 canonical test vectors).
 
 **Test names:**
 - `test_BC_DAEMON_004_graceful_shutdown_503_on_new_requests` (per PRD
-  v1.20 §BC-DAEMON-004, Verification subsection — primary HTTP 503 +
+  v1.21 §BC-DAEMON-004, Verification subsection — primary HTTP 503 +
   `Retry-After: 10` + body taxonomy assertion).
-- `test_BC_DAEMON_004_exit_codes_posix_distinct` (per PRD v1.20
+- `test_BC_DAEMON_004_exit_codes_posix_distinct` (per PRD v1.21
   §BC-DAEMON-004, Verification subsection — F-R70-3 + Obs-R70-2
   closure: 5-code POSIX exit taxonomy probe matrix; sends SIGTERM
   twice → asserts exit 143; sends SIGINT twice → asserts exit 130;
@@ -755,17 +756,17 @@ canonical test vectors).
 
 ### §VP-DAEMON-005 — Lock File Lifecycle: Atomic Create, Pid-Liveness Gate, Mode 0o600, Cleanup
 
-**Traces to:** BC-DAEMON-005 (PRD v1.20 §BC-DAEMON-005; SS-daemon-lifecycle.md
-v1.0.20 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown;
+**Traces to:** BC-DAEMON-005 (PRD v1.21 §BC-DAEMON-005; SS-daemon-lifecycle.md
+v1.0.21 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown;
 F-R70-1 closure — hybrid runtime-dir resolution chain disposition (c);
 F-R88-2 wording correction landed in PRD v1.17 commit 27e663c and carried
-forward verbatim into PRD v1.20 commit 9371348 per C-R90-1 PO PRD-pin
+forward verbatim into PRD v1.21 commit 0f124a9 per C-R90-1 PO PRD-pin
 propagation sweep).
 
 **Mechanical property:**
 
-0. **Runtime-dir resolution chain (per PRD v1.20 §BC-DAEMON-005 precondition
-   2 + arch v1.0.20 §Start Sequence step 1; F-R70-1 closure):** before any
+0. **Runtime-dir resolution chain (per PRD v1.21 §BC-DAEMON-005 precondition
+   2 + arch v1.0.21 §Start Sequence step 1; F-R70-1 closure):** before any
    lock-file work, the daemon resolves `<runtime_dir>` via the following
    4-path chain (evaluated in order; first `Some` result wins):
    - (a) `MONOCLE_RUNTIME_DIR` environment variable — if set and
@@ -817,7 +818,7 @@ propagation sweep).
    the next daemon start exercises the stale-pid recovery path
    (post-condition 3).
 7. **Asymmetry with BC-ENGINE-002-ERR `HomeUnresolvable` is intentional**
-   (per PRD v1.20 §BC-DAEMON-005 invariant 4 + arch v1.0.20 §Start
+   (per PRD v1.21 §BC-DAEMON-005 invariant 4 + arch v1.0.21 §Start
    Sequence rationale): `BaseDirs::new() == None` signals a genuine
    system-configuration failure (no home directory at all), warranting
    immediate fail-fast in BC-ENGINE-002-ERR. `ProjectDirs::runtime_dir()
@@ -828,7 +829,7 @@ propagation sweep).
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/lock_file_lifecycle.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`); mutation-test (auxiliary —
 the `0o600` lock-file mode value, the `0o700` runtime-dir mode value
 (defense-in-depth pairing per Post-condition 9 / BC-DAEMON-005
@@ -842,10 +843,10 @@ resolution-chain ordering are mutation surfaces).
   test AND mock the `directories::ProjectDirs` API (via dependency
   injection or `temp-env`-controlled env vars) to exercise paths
   (a)-(d) deterministically.
-- `directories 6` (per SS-deps-pin-manifest.md v1.1.12) is the project pin for
+- `directories 6` (per SS-deps-pin-manifest.md v1.1.13) is the project pin for
   `ProjectDirs::runtime_dir()` and `ProjectDirs::data_local_dir()`.
-- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.12).
-- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.12) for the
+- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.13).
+- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.13) for the
   pid-liveness probe; the test asserts `nix::sys::signal::kill(Pid::from_raw(pid), None)`
   per BC-DAEMON-005 postcondition 3.
 - `temp-env ^0.3` is the project pin for `MONOCLE_RUNTIME_DIR` env
@@ -877,7 +878,7 @@ resolution-chain ordering are mutation surfaces).
    sweep — bidirectional drain-interaction linkage between
    VP-DAEMON-004's drain bound and VP-DAEMON-005's lock-file lifecycle
    post-drain).
-5. **4-path resolution chain probe matrix (per PRD v1.20 §BC-DAEMON-005
+5. **4-path resolution chain probe matrix (per PRD v1.21 §BC-DAEMON-005
    canonical test vectors EC-057/058/059; F-R70-1 closure):**
 
    | Probe | Setup | Expected resolution path | Expected log | Expected outcome |
@@ -901,12 +902,12 @@ resolution-chain ordering are mutation surfaces).
    `RuntimeDirUnresolvable` is preserved (the chain MUST evaluate env
    override first; flipping the order would silently break the
    operator escape hatch).
-9. **Runtime-dir mode 0o700 owner-only enforcement (per PRD v1.20
-   §BC-DAEMON-005 Postcondition 8 + EC-052 + arch v1.0.20 §Start
+9. **Runtime-dir mode 0o700 owner-only enforcement (per PRD v1.21
+   §BC-DAEMON-005 Postcondition 8 + EC-052 + arch v1.0.21 §Start
    Sequence step 1; F-R75-1 VP-side closure + F-R79-3 PRD-side
    lift_invariants_to_bcs closure that elevated the 0o700 contract
-   from EC-052 to §Postcondition tier in PRD v1.20 commit 9371348
-   (PRD pin now bumped to v1.19 commit 9371348 per C-R91-1 PO PRD-pin
+   from EC-052 to §Postcondition tier in PRD v1.21 commit 0f124a9
+   (PRD pin now bumped to v1.21 commit 0f124a9 per C-R91-1 PO PRD-pin
    propagation sweep; the PRD §3 BC-DAEMON-005 §Postconditions list ends
    at item 8; F-R80-3 closure corrects prior fabricated `Postcondition 9`
    BC anchor citation; the VP's own §Post-condition 9 numbering remains
@@ -1000,17 +1001,17 @@ conditionals; all must be caught.
 **Harness location:** `monocle-runtime/tests/lock_file_lifecycle.rs`.
 
 **Test name:** `test_BC_DAEMON_005_lock_file_create_and_cleanup` (per PRD
-v1.20 §BC-DAEMON-005, Verification subsection — covers the lock-file
+v1.21 §BC-DAEMON-005, Verification subsection — covers the lock-file
 mode/lifecycle assertions AND the EC-057/058/059 resolution-chain
-probes via the canonical test-vector matrix in PRD v1.20 §BC-DAEMON-005
+probes via the canonical test-vector matrix in PRD v1.21 §BC-DAEMON-005
 Verification subsection).
 
 ---
 
 ### §VP-DAEMON-006 — Crash-Recovery Checkpoint JSON: Write, Offer, Cleanup
 
-**Traces to:** BC-DAEMON-006 (PRD v1.20 §BC-DAEMON-006; SS-daemon-lifecycle.md
-v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery).
+**Traces to:** BC-DAEMON-006 (PRD v1.21 §BC-DAEMON-006; SS-daemon-lifecycle.md
+v1.0.21 §Daemon Lifecycle Protocol §Crash Recovery).
 
 **F-R70-2 BC-VP alignment note:** the millisecond-precision regex
 `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$` enforced by this VP
@@ -1067,7 +1068,7 @@ with the VP, not vice versa.
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/crash_recovery.rs` — files in `<crate>/tests/`
-are cargo integration tests; PRD v1.20 §7 RTM Test Type column labels
+are cargo integration tests; PRD v1.21 §7 RTM Test Type column labels
 this BC `Integration`).
 
 **Pre-conditions:**
@@ -1076,8 +1077,8 @@ this BC `Integration`).
   file is written eagerly on AppMode → `ShuttingDown` (covered by the
   drain code path).
 - `tempfile 3`, `serde_json 1`, and `tokio 1` are the project pins (per
-  SS-deps-pin-manifest.md v1.1.12).
-- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12)
+  SS-deps-pin-manifest.md v1.1.13).
+- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.13)
   for the `shutdown_utc` ISO 8601 millisecond timestamp formatter. The
   recovery checkpoint emits `shutdown_utc` via
   `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` per
@@ -1086,7 +1087,7 @@ this BC `Integration`).
   regex assertion in §Mechanical property item 1 + §Post-conditions item 7
   is exactly the format string this generator produces. (Extension 7
   net-new discovery — `chrono 0.4` added to manifest v1.1.11 alongside the
-  F-R76-1 `serde 1` addition; manifest v1.1.12 preserves the chrono pin
+  F-R76-1 `serde 1` addition; manifest v1.1.13 preserves the chrono pin
   with corrected Role-column BC attribution per F-R77-2 — `shutdown_utc`
   is correctly attributed to BC-DAEMON-006.)
 - Tests use `tempfile::TempDir` to isolate the runtime directory and
@@ -1144,13 +1145,13 @@ this BC `Integration`).
     assertion a numbered probe (a regression replacing the enum with a
     raw string would slip Post-conditions 1-8 but fail this one). BC
     anchor verified post-R91: BC-DAEMON-006 §Invariant 1 explicitly
-    enumerates the 3-element `shutdown_reason` closed-set in PRD v1.20
-    commit 9371348 (PRD line 419) — `closed-set enum — exactly one of
+    enumerates the 3-element `shutdown_reason` closed-set in PRD v1.21
+    commit 0f124a9 (PRD line 419) — `closed-set enum — exactly one of
     "graceful", "signal", or "forced" (no other value permitted)`. The
     prior v1.24 anchor citation `BC-DAEMON-006 Postcondition 1` was a
     wrong-subsection mis-cite (I-R91-2 HIGH): §Postcondition 1 is the
     health-endpoint WARN-log Postcondition, not the enum-values
-    Invariant. R91 PO closure burst (commit 9371348) lifted the four
+    Invariant. R91 PO closure burst (commit 0f124a9) lifted the four
     typed-field constraints (pid ≥ 1, shutdown_reason enum,
     last_app_mode non-empty, shutdown_utc regex) into BC-DAEMON-006
     §Invariant 1 explicitly to match the v1.24 VP probe precision per
@@ -1213,7 +1214,7 @@ this BC `Integration`).
 **Harness location:** `monocle-runtime/tests/crash_recovery.rs`.
 
 **Test name:** `test_BC_DAEMON_006_crash_recovery_checkpoint_offer_and_cleanup`
-(per PRD v1.20 §BC-DAEMON-006, Verification subsection).
+(per PRD v1.21 §BC-DAEMON-006, Verification subsection).
 
 ---
 
@@ -1233,7 +1234,7 @@ forall record: HookEventRecord constructed via HookEventRecord::new(...),
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/jsonl_ring.rs` — cargo integration test per file
-location; PRD v1.20 §7 RTM Test Type column labels this BC
+location; PRD v1.21 §7 RTM Test Type column labels this BC
 `Integration` consistent with the harness file layout); mutation-test
 (auxiliary).
 
@@ -1245,19 +1246,35 @@ location; PRD v1.20 §7 RTM Test Type column labels this BC
   property).
 - `serde 1` (with `derive` feature, declared as
   `serde = { version = "1", features = ["derive"] }`) is the project pin
-  (per SS-deps-pin-manifest.md v1.1.12). The `derive` feature is mandatory:
+  (per SS-deps-pin-manifest.md v1.1.13). The `derive` feature is mandatory:
   `HookEventRecord` carries `#[derive(serde::Serialize, serde::Deserialize)]`
   per SS-daemon-lifecycle.md §Drain, and without the `derive` feature the
   proc-macros `Serialize`/`Deserialize` do not compile. This is a distinct
   crate from `serde_json` (the JSON parser) and `serde_yaml_ng` (the YAML
   parser); all three are direct workspace dependencies serving distinct
   roles. (F-R76-1 closure — bare `serde` was added to manifest v1.1.11;
-  manifest v1.1.12 preserves the bare-serde pin with no content change.)
-- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.12)
+  manifest v1.1.13 preserves the bare-serde pin with no content change.)
+- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.13)
   for emission of the JSONL ring record via
   `serde_json::to_string(&record)`. `serde_json` depends on `serde` but the
   two pins are tracked independently because `serde_json` does not
   re-export the `derive` macros.
+- **`serde_json`'s `preserve_order` feature is NOT enabled
+  (default-features-only; F-R94 I-R94-2 MED closure).** Verified by
+  `cargo tree -e features | grep preserve_order` returning empty.
+  This precondition ensures the alphabetic-reorder counter-example
+  (§Counter-example sketch 3 below — `serde_json::to_value(&record)`
+  alphabetic key reordering) remains valid. The `preserve_order`
+  feature would back `serde_json::Value` with `IndexMap` (preserving
+  insertion order rather than the default alphabetic-sort behavior of
+  the BTreeMap-backed `serde_json::Map`), which would silently
+  invalidate the counter-example because `to_value().to_string()`
+  would then preserve declaration order rather than alphabetize the
+  keys. Per SS-deps-pin-manifest.md v1.1.13 `serde_json 1` pin is
+  default-features (no explicit `features = [...]` override), and
+  per `Cargo.toml` review the workspace dependency declaration is
+  `serde_json = "1"` (bare version, no features array), confirming
+  the default-features-only invariant at the build-input layer.
 
 **Post-conditions:**
 
@@ -1265,16 +1282,20 @@ location; PRD v1.20 §7 RTM Test Type column labels this BC
 2. Serialized prefix is exactly `{"format_version":1,` (literal string match).
 3. Round-trip preservation: `serde_json::from_str::<HookEventRecord>(&s).unwrap().format_version == 1`.
 4. **Absence-of-field for `None` Options (BC-RING-001 EC-001 normative
-   form; F-R89-3 closure):** For a `HookEventRecord` constructed with
-   `tool_name: None` and `tool_input: None` (e.g., a `SessionStart` or
-   `Notification` event that has no associated tool surface), the
-   serialized output `serde_json::to_string(&record).unwrap()` MUST NOT
-   contain the substrings `"tool_name":null` or `"tool_input":null`.
+   form; F-R89-3 closure; F-R94 C-R94-2 HIGH correction —
+   `Notification` carries `tool_name` + `tool_input` per gene-source
+   BC-HOOK-019 wire schema, so it is NOT a no-tool-surface hook type;
+   the canonical no-tool-surface set is `(SessionStart,
+   UserPromptSubmit, Stop)`):** For a `HookEventRecord` constructed with
+   `tool_name: None` and `tool_input: None` (e.g., a `SessionStart`,
+   `UserPromptSubmit`, or `Stop` event that has no associated tool
+   surface), the serialized output `serde_json::to_string(&record).unwrap()`
+   MUST NOT contain the substrings `"tool_name":null` or `"tool_input":null`.
    The fields are omitted entirely from the JSON object because the
    struct declaration carries `#[serde(skip_serializing_if = "Option::is_none")]`
-   on `tool_name` and `tool_input` (per arch v1.0.20 commit 8533ea2
+   on `tool_name` and `tool_input` (per arch v1.0.21 commit 42504b4
    `HookEventRecord` struct definition + SessionStart None-case
-   serialization example; PRD v1.20 §BC-RING-001 EC-001 normative
+   serialization example; PRD v1.21 §BC-RING-001 EC-001 normative
    `skip_serializing_if` pin). Verified by integration test: construct a
    `HookEventRecord::new(...)` for a hook type with no tool surface,
    serialize, and assert the absence of both `null` substrings AND the
@@ -1297,8 +1318,14 @@ location; PRD v1.20 §7 RTM Test Type column labels this BC
    alphabetical order — must cause the integration test to fail.
 5. **Implementer omits the `#[serde(skip_serializing_if = "Option::is_none")]`
    annotation on the `tool_name` and/or `tool_input` fields (F-R89-3
-   counter-example):** the resulting `HookEventRecord` for a hook type
-   with no tool surface (e.g., `SessionStart` or `Notification`) would
+   counter-example; F-R94 C-R94-2 HIGH correction — corrected
+   no-tool-surface example set; `Notification` carries
+   `tool_name`/`tool_input` per gene-source BC-HOOK-019 wire schema,
+   so it is NOT a no-tool-surface hook type; the canonical
+   no-tool-surface set is `(SessionStart, UserPromptSubmit, Stop)`):**
+   the resulting `HookEventRecord` for a hook type
+   with no tool surface (e.g., `SessionStart`, `UserPromptSubmit`, or
+   `Stop`) would
    serialize to a JSON object containing the literal `"tool_name":null`
    and/or `"tool_input":null` substrings instead of omitting the fields
    entirely. The Post-condition 4 absence-of-field assertion (literal
@@ -1310,7 +1337,7 @@ location; PRD v1.20 §7 RTM Test Type column labels this BC
 
 **Harness location:** `monocle-runtime/tests/jsonl_ring.rs`.
 
-**Test name:** `test_BC_RING_001_format_version_first_key` (per PRD v1.20
+**Test name:** `test_BC_RING_001_format_version_first_key` (per PRD v1.21
 §BC-RING-001, Verification subsection).
 
 **Mutation-test rationale:** the `format_version: u32` field value `1` is a
@@ -1339,13 +1366,13 @@ key-discriminating.
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/auth_token_lifecycle.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`); fuzz (auxiliary).
 
 **Pre-conditions:**
 
 - Daemon has completed start sequence and written `monocle.lock`.
-- `constant_time_eq ^0.3` is the project pin (per SS-deps-pin-manifest.md v1.1.12).
+- `constant_time_eq ^0.3` is the project pin (per SS-deps-pin-manifest.md v1.1.13).
 - `rand::rngs::OsRng` is the entropy source (not `thread_rng`).
 
 **Post-conditions:**
@@ -1395,14 +1422,14 @@ NO panic and NO `true` return for any input differing from the expected secret.
 `fuzz/fuzz_targets/fuzz_auth_token_validation.rs` (fuzz).
 
 **Test name:** `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
-(per PRD v1.20 §BC-AUTH-001, Verification subsection).
+(per PRD v1.21 §BC-AUTH-001, Verification subsection).
 
 ---
 
 ### §VP-AUTH-002 — Auth Header Two-Body Taxonomy: `missing_auth_token` vs `invalid_auth_token`
 
-**Traces to:** BC-AUTH-002 (PRD v1.20 §BC-AUTH-002; SS-daemon-lifecycle.md
-v1.0.20 §Daemon Lifecycle Protocol §Start Sequence; architect adjudication
+**Traces to:** BC-AUTH-002 (PRD v1.21 §BC-AUTH-002; SS-daemon-lifecycle.md
+v1.0.21 §Daemon Lifecycle Protocol §Start Sequence; architect adjudication
 commit 2db408f — disposition (c) collapsed error taxonomy; F-R62-4
 back-propagation closure landed in arch v1.0.9 commit 8bf3759).
 
@@ -1432,7 +1459,7 @@ back-propagation closure landed in arch v1.0.9 commit 8bf3759).
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/auth_header_rejection.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`); fuzz (auxiliary).
 
 **Pre-conditions:**
@@ -1523,7 +1550,7 @@ value (including the absent-header case via `Option<Vec<u8>>`) and asserts:
 shared with VP-AUTH-001).
 
 **Test name:** `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
-(per PRD v1.20 §BC-AUTH-002, Verification subsection).
+(per PRD v1.21 §BC-AUTH-002, Verification subsection).
 
 ---
 
@@ -1543,14 +1570,14 @@ shared with VP-AUTH-001).
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-runtime/tests/lock_file_contract.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`); mutation-test (auxiliary).
 
 **Pre-conditions:**
 
 - Daemon start sequence completes; lock file is written via `tempfile::persist`.
 - Lock-file reader code is `pub fn read_lock_file(path: &Path) -> Result<LockFile, LockFileError>`.
-- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12)
+- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.13)
   for the lock-file `startTimeUtc` ISO 8601 millisecond timestamp
   formatter. The daemon emits `startTimeUtc` via
   `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` per
@@ -1562,7 +1589,7 @@ Type column labels this BC `Integration`); mutation-test (auxiliary).
   `serde_json::from_str::<LockFile>`) requires the deserialization path to
   accept the chrono-emitted format. (Extension 7 net-new discovery —
   `chrono 0.4` added to manifest v1.1.11 alongside the F-R76-1 `serde 1`
-  addition; manifest v1.1.12 F-R77-2 correctly attributes `startTimeUtc`
+  addition; manifest v1.1.13 F-R77-2 correctly attributes `startTimeUtc`
   to BC-DAEMON-005 / BC-LOCK-001 in the chrono row Role column — this VP
   is one of the two normative owners of the `startTimeUtc` field.)
 
@@ -1606,7 +1633,7 @@ by the integration test.
 
 **Harness location:** `monocle-runtime/tests/lock_file_contract.rs`.
 
-**Test name:** `test_BC_LOCK_001_contract_version_first_key` (per PRD v1.20
+**Test name:** `test_BC_LOCK_001_contract_version_first_key` (per PRD v1.21
 §BC-LOCK-001, Verification subsection).
 
 ---
@@ -1622,7 +1649,7 @@ top-level `abi_version` key has the integer value `1` (equal to
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/status_abi_version.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`).
 
 **Pre-conditions:**
@@ -1649,7 +1676,7 @@ Type column labels this BC `Integration`).
 **Harness location:** `monocle-runtime/tests/status_abi_version.rs`.
 
 **Test name:** `test_BC_ABI_001_status_endpoint_returns_abi_version_1` (per
-PRD v1.20 §BC-ABI-001, Verification subsection).
+PRD v1.21 §BC-ABI-001, Verification subsection).
 
 ---
 
@@ -1669,7 +1696,7 @@ PRD v1.20 §BC-ABI-001, Verification subsection).
 **Mechanism:** compile-time-check (compile-time `const _: () = assert!(...)`
 assertion in `monocle-core/tests/abi_stability.rs`; this is a build-gate
 probe rather than a runtime test — `cargo check --tests` is the
-verification driver; PRD v1.20 §7 RTM Test Type column labels this BC
+verification driver; PRD v1.21 §7 RTM Test Type column labels this BC
 `Lint/compile`).
 
 **Pre-conditions:**
@@ -1697,7 +1724,7 @@ verification driver; PRD v1.20 §7 RTM Test Type column labels this BC
 
 **Harness location:** `monocle-core/tests/abi_stability.rs`.
 
-**Test name:** `test_BC_ABI_002_abi_version_const_exported` (per PRD v1.20
+**Test name:** `test_BC_ABI_002_abi_version_const_exported` (per PRD v1.21
 §BC-ABI-002, Verification subsection).
 
 ---
@@ -1717,8 +1744,8 @@ No other exemption is allowed without a new ADR superseding ADR-0004.
 
 **Mechanism:** ast-audit (primary, via a `syn 2` AST audit harness at
 `monocle-core/tests/enum_audit.rs` parsing every `monocle-core/src/**/*.rs`
-file and walking all `Item::Enum` nodes; per PRD v1.20 §BC-TYPES-001
-invariant 1; PRD v1.20 §7 RTM Test Type column labels this BC
+file and walking all `Item::Enum` nodes; per PRD v1.21 §BC-TYPES-001
+invariant 1; PRD v1.21 §7 RTM Test Type column labels this BC
 `AST audit (syn 2)`); mutation-test (auxiliary); clippy
 `non_exhaustive_omitted_patterns` lint configuration (supplementary).
 
@@ -1766,7 +1793,7 @@ harness — this is a high-leverage mutation surface.
 **Harness location:** `monocle-core/tests/enum_audit.rs`.
 
 **Test name:** `test_BC_TYPES_001_non_exhaustive_enum_coverage` (per PRD
-v1.20 §BC-TYPES-001, Verification subsection).
+v1.21 §BC-TYPES-001, Verification subsection).
 
 ---
 
@@ -1794,7 +1821,7 @@ v1.20 §BC-TYPES-001, Verification subsection).
 
 **Mechanism:** ast-audit (specifically a `cargo check` + `syn 2` parse
 over the public trait surface in
-`monocle-core/tests/factory_trait_surface.rs`; PRD v1.20 §7 RTM Test
+`monocle-core/tests/factory_trait_surface.rs`; PRD v1.21 §7 RTM Test
 Type column labels this BC `AST audit (syn 2)`).
 
 **Pre-conditions:**
@@ -1832,7 +1859,7 @@ Type column labels this BC `AST audit (syn 2)`).
 **Harness location:** `monocle-core/tests/factory_trait_surface.rs`.
 
 **Test name:** `test_BC_FACTORY_001_trait_defined_open_no_sealed_bound`
-(per PRD v1.20 §BC-FACTORY-001, Verification subsection).
+(per PRD v1.21 §BC-FACTORY-001, Verification subsection).
 
 ---
 
@@ -1858,7 +1885,7 @@ Type column labels this BC `AST audit (syn 2)`).
 
 **Mechanism:** integration-test (primary; harness located at
 `monocle-core/tests/factory_self_referential.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Integration`); fuzz (auxiliary).
 
 **Pre-conditions:**
@@ -1903,7 +1930,7 @@ Type column labels this BC `Integration`); fuzz (auxiliary).
    §Post-condition 3 covers absent-key (key omitted entirely), but the
    present-but-empty-value case (`current_cycle: ""`) is a distinct
    probe surface that must also collapse to `None`. BC anchor
-   verified post-R91: EC-061 was added to PRD v1.20 §BC-FACTORY-002
+   verified post-R91: EC-061 was added to PRD v1.21 §BC-FACTORY-002
    §Edge Cases (PRD line 862) by the R91 PO closure burst (commit
    2e24e09) to close C-R91-1 CRITICAL — the prior v1.24 anchor
    citation `BC-FACTORY-002 EC normative semantics` was a fabricated
@@ -1949,7 +1976,7 @@ Unicode direction overrides, deep nesting markers).
 `fuzz/fuzz_targets/fuzz_state_md_parser.rs` (fuzz).
 
 **Test name:** `test_BC_FACTORY_002_vsdd_adapter_self_referential_detection`
-(per PRD v1.20 §BC-FACTORY-002, Verification subsection).
+(per PRD v1.21 §BC-FACTORY-002, Verification subsection).
 
 ---
 
@@ -1964,7 +1991,7 @@ verified by encoding a `HookEnvelope` and decoding the first field tag.
 
 **Mechanism:** integration-test (harness located at
 `monocle-proto/tests/wire_field_order.rs` — files in `<crate>/tests/`
-are cargo integration tests; PRD v1.20 §7 RTM Test Type column labels
+are cargo integration tests; PRD v1.21 §7 RTM Test Type column labels
 this BC `Unit` referring to conceptual scope, but the harness layout is
 cargo-integration per file location).
 
@@ -1994,7 +2021,7 @@ cargo-integration per file location).
 **Harness location:** `monocle-proto/tests/wire_field_order.rs`.
 
 **Test name:** `test_BC_PROTO_001a_schema_version_field_number_1` (per PRD
-v1.20 §BC-PROTO-001a, Verification subsection).
+v1.21 §BC-PROTO-001a, Verification subsection).
 
 ---
 
@@ -2009,7 +2036,7 @@ inside Phase 1 monocle code), the value of `schema_version` is `1`.
 
 **Mechanism:** integration-test (harness located at
 `monocle-proto/tests/schema_version.rs` — files in `<crate>/tests/` are
-cargo integration tests; PRD v1.20 §7 RTM Test Type column labels this
+cargo integration tests; PRD v1.21 §7 RTM Test Type column labels this
 BC `Unit` referring to conceptual scope, but the harness layout is
 cargo-integration per file location).
 
@@ -2018,7 +2045,7 @@ cargo-integration per file location).
 - `monocle-proto` builds cleanly.
 - The `pub use monocle::v1` re-export is present so callers can access
   `monocle_proto::v1::HookEnvelope`.
-- `prost 0.14` is the project pin (per SS-deps-pin-manifest.md v1.1.12) for
+- `prost 0.14` is the project pin (per SS-deps-pin-manifest.md v1.1.13) for
   the prost-build-generated `HookEnvelope` struct. The struct exposes
   `#[derive(prost::Message)]` to enable wire-format `encode_to_vec()` /
   `decode()` round-trips asserted in §Post-conditions 1 and 2.
@@ -2026,7 +2053,7 @@ cargo-integration per file location).
   prost-build-generated `HookEnvelope` struct uses `prost::Message` derives
   (which provide protobuf wire-format encode/decode) and does NOT derive
   `serde::Serialize` / `serde::Deserialize`. The `monocle-proto` crate
-  declares `prost` and `bytes` only (per SS-deps-pin-manifest.md v1.1.12
+  declares `prost` and `bytes` only (per SS-deps-pin-manifest.md v1.1.13
   workspace dep graph: `proto → prost`, `proto → bytes`) and has no
   workspace edge to `serde`. The F-R76-1 closure (architect v1.1.10 →
   v1.1.11) added bare `serde 1` to the manifest for `monocle-runtime` and
@@ -2064,14 +2091,14 @@ cargo-integration per file location).
 
 **Harness location:** `monocle-proto/tests/schema_version.rs`.
 
-**Test name:** `test_BC_PROTO_001b_schema_version_rust_field` (per PRD v1.20
+**Test name:** `test_BC_PROTO_001b_schema_version_rust_field` (per PRD v1.21
 §BC-PROTO-001b, Verification subsection).
 
 ---
 
 ### §VP-PROTO-002 — `schema_version` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch)
 
-**Traces to:** BC-PROTO-002 (PRD v1.20 §BC-PROTO-002; SS-core-types-and-abi.md
+**Traces to:** BC-PROTO-002 (PRD v1.21 §BC-PROTO-002; SS-core-types-and-abi.md
 v1.2.8 §Prost Wire Schemas).
 
 **Reframing rationale (F-R62-7):** v1.0 of this catalog required
@@ -2079,7 +2106,7 @@ v1.2.8 §Prost Wire Schemas).
 `pub fn dispatch_envelope(env: &HookEnvelope) -> Result<(), DispatchError>`
 with a Phase 1 runtime semantics. That requirement fabricated a Phase 1
 code surface — neither `SS-core-types-and-abi.md` nor any other
-architecture artifact specifies a Phase 1 dispatcher; PRD v1.20
+architecture artifact specifies a Phase 1 dispatcher; PRD v1.21
 §BC-PROTO-002 explicitly classifies the runtime test as Phase 4
 (BC-PROTO-002 unchanged from PRD v1.1 → v1.2 → v1.3 → v1.4 → v1.5 → v1.6 → v1.7 → v1.8 → v1.9 → v1.10;
 classification preserved across the v1.2 test-name adjudication burst, the
@@ -2146,7 +2173,7 @@ to author the runtime mechanical property against the Phase 4 dispatcher.
   VP-PROTO-001a + VP-PROTO-001b; the structural recap is discharged by
   the VP-PROTO-001a + VP-PROTO-001b cargo-integration harnesses at
   `monocle-proto/tests/wire_field_order.rs` and
-  `monocle-proto/tests/schema_version.rs` per PRD v1.20 §7 RTM Test Type
+  `monocle-proto/tests/schema_version.rs` per PRD v1.21 §7 RTM Test Type
   column `Integration` for BC-PROTO-002).
 - **Phase 4 (deferred):** integration-test (runtime warn-and-skip
   behavior; will live in the Phase 4 `monocle-ipc/tests/` crate) +
@@ -2207,8 +2234,8 @@ Phase 4 test file will be authored against `monocle-ipc/tests/...` when
 that crate exists.
 
 **Test name:** No Phase 1 test name — BC-PROTO-002 is Phase 4-deferred per
-PRD v1.20 §BC-PROTO-002 (Phase 4 test name `test_BC_PROTO_002_schema_version_validation_skip_unknown`
-documented in PRD v1.20 §BC-PROTO-002 Verification subsection for Phase 4
+PRD v1.21 §BC-PROTO-002 (Phase 4 test name `test_BC_PROTO_002_schema_version_validation_skip_unknown`
+documented in PRD v1.21 §BC-PROTO-002 Verification subsection for Phase 4
 implementation only; not a Phase 1 deliverable).
 
 ---
@@ -2234,7 +2261,7 @@ implementation only; not a Phase 1 deliverable).
 
 **Mechanism:** ast-audit (via `syn 2` parse of
 `monocle-core/src/engine.rs` from the harness at
-`monocle-core/tests/engine_module_surface.rs`; PRD v1.20 §7 RTM Test
+`monocle-core/tests/engine_module_surface.rs`; PRD v1.21 §7 RTM Test
 Type column labels this BC `AST audit (syn 2)`).
 
 **Pre-conditions:**
@@ -2274,7 +2301,7 @@ Type column labels this BC `AST audit (syn 2)`).
 **Harness location:** `monocle-core/tests/engine_module_surface.rs`.
 
 **Test name:** `test_BC_ENGINE_001_trait_defined_all_methods_no_sealed_bound`
-(per PRD v1.20 §BC-ENGINE-001, Verification subsection).
+(per PRD v1.21 §BC-ENGINE-001, Verification subsection).
 
 ---
 
@@ -2289,7 +2316,7 @@ p.file_name() == Some("claude.js")`. The method NEVER consults
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/engine_module_claude_detect.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Unit` referring to conceptual scope, but
 the harness layout is cargo-integration per file location).
 
@@ -2323,7 +2350,7 @@ the harness layout is cargo-integration per file location).
 **Harness location:** `monocle-runtime/tests/engine_module_claude_detect.rs`.
 
 **Test name:** `test_BC_ENGINE_002_claude_code_module_strict_basename_detect`
-(per PRD v1.20 §BC-ENGINE-002, Verification subsection).
+(per PRD v1.21 §BC-ENGINE-002, Verification subsection).
 
 ---
 
@@ -2341,8 +2368,8 @@ non-`HomeUnresolvable` error path.
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/engine_module_home_unresolvable.rs` with
-`temp-env ^0.3` env-isolation per SS-deps-pin-manifest.md v1.1.12 pin;
-files in `<crate>/tests/` are cargo integration tests; PRD v1.20 §7
+`temp-env ^0.3` env-isolation per SS-deps-pin-manifest.md v1.1.13 pin;
+files in `<crate>/tests/` are cargo integration tests; PRD v1.21 §7
 RTM Test Type column labels this BC `Unit (env-isolation)` referring to
 conceptual scope, but the harness layout is cargo-integration per file
 location).
@@ -2388,7 +2415,7 @@ location).
 **Harness location:** `monocle-runtime/tests/engine_module_home_unresolvable.rs`.
 
 **Test name:** `test_BC_ENGINE_002_ERR_home_unresolvable_metadata_and_enrich`
-(per PRD v1.20 §BC-ENGINE-002-ERR, Verification subsection).
+(per PRD v1.21 §BC-ENGINE-002-ERR, Verification subsection).
 
 **Test design (per PRD v1.2 §Trace v1.2 adjudication):** the test name
 identifies the two behavioral surfaces under contract — `metadata()` and
@@ -2421,7 +2448,7 @@ are exactly:
 
 **Mechanism:** integration-test (harness located at
 `monocle-runtime/tests/engine_module_claude_methods.rs` — files in
-`<crate>/tests/` are cargo integration tests; PRD v1.20 §7 RTM Test
+`<crate>/tests/` are cargo integration tests; PRD v1.21 §7 RTM Test
 Type column labels this BC `Unit` referring to conceptual scope, but
 the harness layout is cargo-integration per file location).
 
@@ -2461,7 +2488,7 @@ the harness layout is cargo-integration per file location).
 **Harness location:** `monocle-runtime/tests/engine_module_claude_methods.rs`.
 
 **Test name:** `test_BC_ENGINE_003_claude_module_hook_paths_five_entries`
-(per PRD v1.20 §BC-ENGINE-003, Verification subsection — hybrid name
+(per PRD v1.21 §BC-ENGINE-003, Verification subsection — hybrid name
 adjudicated by product-owner combining `claude_module` (concrete struct
 under test, not the trait), `hook_paths` (the inherent method), and
 `five_entries` (the count assertion); see PRD v1.2 §Trace v1.2 for the
@@ -2473,16 +2500,16 @@ adjudication reasoning).
 
 | BC ID | BC Source File | VP ID | Mechanism (primary) | Phase 1 Test File |
 |-------|----------------|-------|---------------------|-------------------|
-| BC-DAEMON-001 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-001 | integration-test | `monocle-runtime/tests/healthz_endpoint.rs` |
-| BC-DAEMON-002 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-002 | integration-test | `monocle-runtime/tests/status_endpoint_auth.rs` |
-| BC-DAEMON-003 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-003 | integration-test | `monocle-runtime/tests/body_size_limit.rs` |
-| BC-DAEMON-004 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-004 | integration-test | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` |
-| BC-DAEMON-005 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-005 | integration-test | `monocle-runtime/tests/lock_file_lifecycle.rs` |
-| BC-DAEMON-006 | PRD v1.20 / SS-daemon-lifecycle.md v1.0.20 | VP-DAEMON-006 | integration-test | `monocle-runtime/tests/crash_recovery.rs` |
-| BC-RING-001 | SS-daemon-lifecycle.md v1.0.20 | VP-RING-001 | integration-test | `monocle-runtime/tests/jsonl_ring.rs` |
-| BC-AUTH-001 | SS-daemon-lifecycle.md v1.0.20 | VP-AUTH-001 | integration-test | `monocle-runtime/tests/auth_token_lifecycle.rs` |
-| BC-AUTH-002 | SS-daemon-lifecycle.md v1.0.20 | VP-AUTH-002 | integration-test | `monocle-runtime/tests/auth_header_rejection.rs` |
-| BC-LOCK-001 | SS-daemon-lifecycle.md v1.0.20 | VP-LOCK-001 | integration-test | `monocle-runtime/tests/lock_file_contract.rs` |
+| BC-DAEMON-001 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-001 | integration-test | `monocle-runtime/tests/healthz_endpoint.rs` |
+| BC-DAEMON-002 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-002 | integration-test | `monocle-runtime/tests/status_endpoint_auth.rs` |
+| BC-DAEMON-003 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-003 | integration-test | `monocle-runtime/tests/body_size_limit.rs` |
+| BC-DAEMON-004 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-004 | integration-test | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` |
+| BC-DAEMON-005 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-005 | integration-test | `monocle-runtime/tests/lock_file_lifecycle.rs` |
+| BC-DAEMON-006 | PRD v1.21 / SS-daemon-lifecycle.md v1.0.21 | VP-DAEMON-006 | integration-test | `monocle-runtime/tests/crash_recovery.rs` |
+| BC-RING-001 | SS-daemon-lifecycle.md v1.0.21 | VP-RING-001 | integration-test | `monocle-runtime/tests/jsonl_ring.rs` |
+| BC-AUTH-001 | SS-daemon-lifecycle.md v1.0.21 | VP-AUTH-001 | integration-test | `monocle-runtime/tests/auth_token_lifecycle.rs` |
+| BC-AUTH-002 | SS-daemon-lifecycle.md v1.0.21 | VP-AUTH-002 | integration-test | `monocle-runtime/tests/auth_header_rejection.rs` |
+| BC-LOCK-001 | SS-daemon-lifecycle.md v1.0.21 | VP-LOCK-001 | integration-test | `monocle-runtime/tests/lock_file_contract.rs` |
 | BC-ABI-001 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-001 | integration-test | `monocle-runtime/tests/status_abi_version.rs` |
 | BC-ABI-002 | SS-core-types-and-abi.md v1.2.8 | VP-ABI-002 | compile-time-check | `monocle-core/tests/abi_stability.rs` |
 | BC-TYPES-001 | SS-core-types-and-abi.md v1.2.8 | VP-TYPES-001 | ast-audit | `monocle-core/tests/enum_audit.rs` |
@@ -2497,7 +2524,7 @@ adjudication reasoning).
 | BC-ENGINE-003 | SS-engine-module.md v1.1.15 | VP-ENGINE-003 | integration-test | `monocle-runtime/tests/engine_module_claude_methods.rs` |
 
 **Coverage:** 22 BCs → 22 VPs (one-to-one). Zero BCs without a VP. Every
-test-file path matches PRD v1.20 §7. Requirements Traceability Matrix verbatim (F-R62-4 closure carried forward in v1.2/v1.3/v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.10; arch back-propagation closed by SS-daemon-lifecycle.md v1.0.9 commit 8bf3759, with version-stable phrasing landed in arch v1.0.10 commit dc3af71 per R3-001 closure; F-R65 content closure landed in arch v1.0.11 commit af2101d per F-R65 closure chain; F-R70-1 + F-R70-3 closure chain landed in arch v1.0.12 commit 727c826; F-R71-2 + F-R71-3 + F-R71-4 disposition chain landed in arch v1.0.13 commit 1f53d47; F-R72-1 schema-sketch timestamp propagation landed in arch v1.0.14 commit e4ce2f0; F-R74-1 hook_endpoints ellipsis fix + F-R74-3 runtime dep-graph 4 edges landed in arch v1.0.15 + manifest v1.1.10 commit 7d8d0de; F-R75-2 §Start Sequence Rationale Windows scope tightening + Obs-R75-1 §Drain step 4 two-phase write clarification landed in arch v1.0.16 commit 6bb93e2; F-R83-1 site 2 §BC Summary footer 0o700 propagation landed in arch v1.0.17 commit a798d51; F-R88-1 §Phase 4 Notes lock-file field enumeration extended to 7 fields including `contract_version` landed in arch v1.0.18 commit 61a0064; F-R89-2 + O-R89-3 closure chain landed in arch v1.0.19 commit 8a68cc9 (now demoted to historical predecessor chain step per PG-5) — HookEventRecord struct `tool_name` + `tool_input` fields annotated with `#[serde(skip_serializing_if = "Option::is_none")]` (BC-RING-001 EC-001 normative absence-of-field form) plus SessionStart None-case serialization example demonstrating field absence (not explicit null); F-R93 closure landed in arch v1.0.20 commit 8533ea2 — current canonical arch source per F-R93 fix-burst closure chain — resolve_runtime_dir implementation-example signature simplification + line 624 mechanism-tier prose correction; no BC content lift in v1.0.20). Every per-VP `Test name:` line matches PRD v1.20 §Section 7 RTM and the corresponding BC `Verification` subsection verbatim (F-R63-adv-1 + F-R63-cons-1 + R4-001 closures carried forward; PRD v1.5 content was a content edit of v1.4 commit e704b50 — EC-045 off-by-one fix 262,144 → 262,145 in §BC-DAEMON-003 boundary narrative per F-R67-2 closure; PRD v1.6 content is a content edit of v1.5 commit d321935 — F-R70-1/2/3 + Obs-R70-1 propagations + new EC-057/058/059 + new E-DAEMON-004 + new test name `test_BC_DAEMON_004_exit_codes_posix_distinct`; PRD v1.7 content was a content edit of v1.6 commit 76570ac — F-R71-3 NFR-008 phrasing + arch v1.0.13 + manifest v1.1.9 pin propagation; PRD v1.8 content is a pin-only edit of v1.7 commit 3024bd3 — arch v1.0.13 → v1.0.14 pin propagation per F-R72-1 closure; PRD v1.9 content is a content edit of v1.8 commit bf11194 — F-R74-2 BC-ENGINE-001 invariant 3 rewrite (Send propagation + dyn-compatibility rationale replacing the wrong MSRV stability claim) + arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 pin propagation per F-R74 closure chain; PRD v1.10 content was a content edit of v1.9 commit 32927f6 — F-R75-2 BC-DAEMON-005 precondition 2 Rationale Windows-scope correction + arch v1.0.15 → v1.0.16 pin propagation per F-R75 closure chain (commit 8feecad); PRD v1.11 was a frontmatter-only housekeeping fix per GAP-R16-001 — manifest pin v1.1.10 → v1.1.11 in frontmatter `traces_to` (commit 1f90b64); PRD normative body unchanged between v1.10 and v1.11; PRD v1.12 was the F-R79-1 + F-R79-3 closure chain (commit db7f50e) — F-R79-1 §7 RTM Test File column propagation of the BC-DAEMON-004 second test file `monocle-runtime/tests/daemon_lifecycle.rs` (closes the v1.6 burst gap that landed daemon_lifecycle.rs in §3 BC-DAEMON-004 Verification but missed §7 RTM Test File column) AND F-R79-3 new BC-DAEMON-005 Postcondition 8 lifting the 0o700 runtime-dir owner-only contract from EC-052 to §Postcondition tier (closes the lift_invariants_to_bcs gap that left the security defense-in-depth invariant anchored only to an EC entry; F-R80-3 closure corrects the prior fabricated `Postcondition 9` BC anchor citation — the literal PRD §Postcondition numbering is 8, verifiable via `grep -nE '^8\. .*0o700' .factory/specs/prd.md` hits PRD line 342); PRD v1.13 was the F-R83-1 sites 1+2 PRD closure (commit dcae9d5) — §4 NFR table sibling row + §7 RTM row + Obs-R83-1 NFR-012 addition + DirBuilder snippet form; PRD v1.14 was the F-R84 fix-burst (commit 4997354) — §7 RTM column header rename `BC ID` → `Requirement ID`, NFR-012 Brief Section corrected, NFR-009 Validation Method now cites VP-DAEMON-005 Post-condition 1, arch v1.0.16 → v1.0.17 swept in PRD body; PRD v1.15 was the F-R85-IMP-2 + Extension 16 backfill sweep closure chain (commit 80bfe86) — NFR-004/005/010 Validation Method cells extended with VP probe citations per SE-15c sibling-row back-propagation; §Trace v1.15 documents Extension 16 mandatory backfill sweep discipline (codified by state-manager commit 32fb5ee); PRD v1.16 was the F-R86 fix-burst closure chain (commit cd6541f) — I-R86-2 count fix at PRD §Trace v1.16 line 2470 `4 rows` → `5 rows`; SE-16a (in-burst-added citation audit) + SE-16b (generic-pattern grep + timestamp monotonicity) codification application documented in PRD §Trace v1.16; PRD v1.17 was the F-R88 fix-burst closure chain (commit 27e663c) — F-R88-2 [MED] BC-DAEMON-005 Precondition 2(d) wording corrected (the prior wording implied path (c) `data_local_dir()` could itself return `None` which is impossible per the `directories 6` API; corrected wording clarifies the fail-fast triggers only when `ProjectDirs::new()` itself returns `None`); EC-001 serde annotation pinned; new EC-060 added; §9 header note added; arch v1.0.17 → v1.0.18 swept in PRD body per F-R88-1 lock-file field enumeration; PRD v1.18 was the C-R90-1 CRITICAL closure burst (commit 3a18306) — SE-15e orchestrator-dispatch SERIAL-cascade enforcement gap: arch v1.0.18 → v1.0.19 pin propagation swept across 32 normative-current PRD body sites; 22 BCs unchanged at v1.18; PRD normative body content unchanged from v1.17 except the arch-pin sweep at v1.18; PRD v1.19 was the R91 fix-burst closure (commit 2e24e09) — C-R91-1 CRITICAL EC-061 added (BC-FACTORY-002 empty-string `current_cycle` collapses to `None`) + I-R91-3/4/5 HIGH BC-DAEMON-001/002/006 typed-field constraints lifted (pid ≥ 1; semver regex; shutdown_reason enum; last_app_mode non-empty; shutdown_utc regex) + I-R91-7 MED EC-030 re-anchored to trait-level BC-ENGINE-002 §Postcondition 5 cross-reference + O-R91-4 LOW §10 Glossary entries added for MONOCLE_RUNTIME_DIR + DaemonStartError::RuntimeDirUnresolvable; 22 BCs unchanged at v1.19; edge-case count 60 → 61 (EC-061 added); SE-14b discipline retroactively applied to v1.24 VP probes per per-probe BC-VP coherence enforcement; PRD v1.20 was the F-R93 fix-burst closure (commit 9371348 — current canonical PRD source) — C-R93-1 mechanism-tier closure: §7 RTM Test Type column 6 row updates `Unit` → `Integration` for BC-RING-001 + BC-AUTH-001 + BC-AUTH-002 + BC-LOCK-001 + BC-FACTORY-002 + BC-ENGINE-002-ERR + §Verification body 4 prose updates `Unit test` → `Integration test` aligning the PRD-side mechanism labels with the F-R88-5 §Mechanism Distribution discipline; 22 BCs unchanged at v1.20; edge-case count unchanged at 61; PRD normative body content unchanged from v1.19 except the F-R93 mechanism-tier terminology corrections. VP-DAEMON-004/005/006 received the F-R70 closure content changes in the v1.6 burst; VP-DAEMON-003 boundary semantics already correct from v1.5 sweep, no v1.6 VP-DAEMON-003 content change required; VP-ENGINE-001 invariant phrasing on the VP side cites the BC trace symbolically — no VP body content change required by F-R74-2 since the corrected technical rationale lives in PRD §BC-ENGINE-001 invariant 3; VP-DAEMON-005 received F-R75-1 new 0o700 runtime-dir mode postcondition + counter-example sketch + probe matrix row + F-R75-2 probe 5.c Windows-secondary-target phrasing tightening in the v1.10 burst). BC-DAEMON-004 now has two co-resident test files (graceful_shutdown.rs for HTTP 503 + Retry-After probes; daemon_lifecycle.rs for the 5-code POSIX exit-code taxonomy probes per PRD v1.20 §7 RTM).
+test-file path matches PRD v1.21 §7. Requirements Traceability Matrix verbatim (F-R62-4 closure carried forward in v1.2/v1.3/v1.4/v1.5/v1.6/v1.7/v1.8/v1.9/v1.10; arch back-propagation closed by SS-daemon-lifecycle.md v1.0.9 commit 8bf3759, with version-stable phrasing landed in arch v1.0.10 commit dc3af71 per R3-001 closure; F-R65 content closure landed in arch v1.0.11 commit af2101d per F-R65 closure chain; F-R70-1 + F-R70-3 closure chain landed in arch v1.0.12 commit 727c826; F-R71-2 + F-R71-3 + F-R71-4 disposition chain landed in arch v1.0.13 commit 1f53d47; F-R72-1 schema-sketch timestamp propagation landed in arch v1.0.14 commit e4ce2f0; F-R74-1 hook_endpoints ellipsis fix + F-R74-3 runtime dep-graph 4 edges landed in arch v1.0.15 + manifest v1.1.10 commit 7d8d0de; F-R75-2 §Start Sequence Rationale Windows scope tightening + Obs-R75-1 §Drain step 4 two-phase write clarification landed in arch v1.0.16 commit 6bb93e2; F-R83-1 site 2 §BC Summary footer 0o700 propagation landed in arch v1.0.17 commit a798d51; F-R88-1 §Phase 4 Notes lock-file field enumeration extended to 7 fields including `contract_version` landed in arch v1.0.18 commit 61a0064; F-R89-2 + O-R89-3 closure chain landed in arch v1.0.19 commit 8a68cc9 (now demoted to historical predecessor chain step per PG-5) — HookEventRecord struct `tool_name` + `tool_input` fields annotated with `#[serde(skip_serializing_if = "Option::is_none")]` (BC-RING-001 EC-001 normative absence-of-field form) plus SessionStart None-case serialization example demonstrating field absence (not explicit null); F-R93 closure landed in arch v1.0.20 commit 8533ea2 (now demoted to historical predecessor chain step per PG-5) — resolve_runtime_dir implementation-example signature simplification + line 624 mechanism-tier prose correction; no BC content lift in v1.0.20; F-R94 closure landed in arch v1.0.21 commit 42504b4 — current canonical arch source per F-R94 fix-burst closure chain — resolve_runtime_dir doc-comment correctness rewrite + HookEventRecord docstring fix + pub enum AuthError visibility lift; no BC content lift in v1.0.21). Every per-VP `Test name:` line matches PRD v1.21 §Section 7 RTM and the corresponding BC `Verification` subsection verbatim (F-R63-adv-1 + F-R63-cons-1 + R4-001 closures carried forward; PRD v1.5 content was a content edit of v1.4 commit e704b50 — EC-045 off-by-one fix 262,144 → 262,145 in §BC-DAEMON-003 boundary narrative per F-R67-2 closure; PRD v1.6 content is a content edit of v1.5 commit d321935 — F-R70-1/2/3 + Obs-R70-1 propagations + new EC-057/058/059 + new E-DAEMON-004 + new test name `test_BC_DAEMON_004_exit_codes_posix_distinct`; PRD v1.7 content was a content edit of v1.6 commit 76570ac — F-R71-3 NFR-008 phrasing + arch v1.0.13 + manifest v1.1.9 pin propagation; PRD v1.8 content is a pin-only edit of v1.7 commit 3024bd3 — arch v1.0.13 → v1.0.14 pin propagation per F-R72-1 closure; PRD v1.9 content is a content edit of v1.8 commit bf11194 — F-R74-2 BC-ENGINE-001 invariant 3 rewrite (Send propagation + dyn-compatibility rationale replacing the wrong MSRV stability claim) + arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 pin propagation per F-R74 closure chain; PRD v1.10 content was a content edit of v1.9 commit 32927f6 — F-R75-2 BC-DAEMON-005 precondition 2 Rationale Windows-scope correction + arch v1.0.15 → v1.0.16 pin propagation per F-R75 closure chain (commit 8feecad); PRD v1.11 was a frontmatter-only housekeeping fix per GAP-R16-001 — manifest pin v1.1.10 → v1.1.11 in frontmatter `traces_to` (commit 1f90b64); PRD normative body unchanged between v1.10 and v1.11; PRD v1.12 was the F-R79-1 + F-R79-3 closure chain (commit db7f50e) — F-R79-1 §7 RTM Test File column propagation of the BC-DAEMON-004 second test file `monocle-runtime/tests/daemon_lifecycle.rs` (closes the v1.6 burst gap that landed daemon_lifecycle.rs in §3 BC-DAEMON-004 Verification but missed §7 RTM Test File column) AND F-R79-3 new BC-DAEMON-005 Postcondition 8 lifting the 0o700 runtime-dir owner-only contract from EC-052 to §Postcondition tier (closes the lift_invariants_to_bcs gap that left the security defense-in-depth invariant anchored only to an EC entry; F-R80-3 closure corrects the prior fabricated `Postcondition 9` BC anchor citation — the literal PRD §Postcondition numbering is 8, verifiable via `grep -nE '^8\. .*0o700' .factory/specs/prd.md` hits PRD line 342); PRD v1.13 was the F-R83-1 sites 1+2 PRD closure (commit dcae9d5) — §4 NFR table sibling row + §7 RTM row + Obs-R83-1 NFR-012 addition + DirBuilder snippet form; PRD v1.14 was the F-R84 fix-burst (commit 4997354) — §7 RTM column header rename `BC ID` → `Requirement ID`, NFR-012 Brief Section corrected, NFR-009 Validation Method now cites VP-DAEMON-005 Post-condition 1, arch v1.0.16 → v1.0.17 swept in PRD body; PRD v1.15 was the F-R85-IMP-2 + Extension 16 backfill sweep closure chain (commit 80bfe86) — NFR-004/005/010 Validation Method cells extended with VP probe citations per SE-15c sibling-row back-propagation; §Trace v1.15 documents Extension 16 mandatory backfill sweep discipline (codified by state-manager commit 32fb5ee); PRD v1.16 was the F-R86 fix-burst closure chain (commit cd6541f) — I-R86-2 count fix at PRD §Trace v1.16 line 2470 `4 rows` → `5 rows`; SE-16a (in-burst-added citation audit) + SE-16b (generic-pattern grep + timestamp monotonicity) codification application documented in PRD §Trace v1.16; PRD v1.17 was the F-R88 fix-burst closure chain (commit 27e663c) — F-R88-2 [MED] BC-DAEMON-005 Precondition 2(d) wording corrected (the prior wording implied path (c) `data_local_dir()` could itself return `None` which is impossible per the `directories 6` API; corrected wording clarifies the fail-fast triggers only when `ProjectDirs::new()` itself returns `None`); EC-001 serde annotation pinned; new EC-060 added; §9 header note added; arch v1.0.17 → v1.0.18 swept in PRD body per F-R88-1 lock-file field enumeration; PRD v1.18 was the C-R90-1 CRITICAL closure burst (commit 3a18306) — SE-15e orchestrator-dispatch SERIAL-cascade enforcement gap: arch v1.0.18 → v1.0.19 pin propagation swept across 32 normative-current PRD body sites; 22 BCs unchanged at v1.18; PRD normative body content unchanged from v1.17 except the arch-pin sweep at v1.18; PRD v1.19 was the R91 fix-burst closure (commit 2e24e09) — C-R91-1 CRITICAL EC-061 added (BC-FACTORY-002 empty-string `current_cycle` collapses to `None`) + I-R91-3/4/5 HIGH BC-DAEMON-001/002/006 typed-field constraints lifted (pid ≥ 1; semver regex; shutdown_reason enum; last_app_mode non-empty; shutdown_utc regex) + I-R91-7 MED EC-030 re-anchored to trait-level BC-ENGINE-002 §Postcondition 5 cross-reference + O-R91-4 LOW §10 Glossary entries added for MONOCLE_RUNTIME_DIR + DaemonStartError::RuntimeDirUnresolvable; 22 BCs unchanged at v1.19; edge-case count 60 → 61 (EC-061 added); SE-14b discipline retroactively applied to v1.24 VP probes per per-probe BC-VP coherence enforcement; PRD v1.20 was the F-R93 fix-burst closure (commit 9371348 — now demoted to historical predecessor chain step per PG-5) — C-R93-1 mechanism-tier closure: §7 RTM Test Type column 6 row updates `Unit` → `Integration` for BC-RING-001 + BC-AUTH-001 + BC-AUTH-002 + BC-LOCK-001 + BC-FACTORY-002 + BC-ENGINE-002-ERR + §Verification body 4 prose updates `Unit test` → `Integration test` aligning the PRD-side mechanism labels with the F-R88-5 §Mechanism Distribution discipline; 22 BCs unchanged at v1.20; edge-case count unchanged at 61; PRD normative body content unchanged from v1.19 except the F-R93 mechanism-tier terminology corrections; PRD v1.21 was the F-R94 pin-propagation closure (commit 0f124a9 — current canonical PRD source) — arch v1.0.20 → v1.0.21 + manifest v1.1.12 → v1.1.13 pin propagation only; no PRD normative content change; 22 BCs unchanged at v1.21; edge-case count unchanged at 61. VP-DAEMON-004/005/006 received the F-R70 closure content changes in the v1.6 burst; VP-DAEMON-003 boundary semantics already correct from v1.5 sweep, no v1.6 VP-DAEMON-003 content change required; VP-ENGINE-001 invariant phrasing on the VP side cites the BC trace symbolically — no VP body content change required by F-R74-2 since the corrected technical rationale lives in PRD §BC-ENGINE-001 invariant 3; VP-DAEMON-005 received F-R75-1 new 0o700 runtime-dir mode postcondition + counter-example sketch + probe matrix row + F-R75-2 probe 5.c Windows-secondary-target phrasing tightening in the v1.10 burst). BC-DAEMON-004 now has two co-resident test files (graceful_shutdown.rs for HTTP 503 + Retry-After probes; daemon_lifecycle.rs for the 5-code POSIX exit-code taxonomy probes per PRD v1.21 §7 RTM).
 
 ### §Auxiliary Mechanism Coverage
 
@@ -2617,20 +2644,20 @@ PRINCIPLE rule 3 future-attachment discipline).
 CORRECTNESS (not aspirational) and require formal verification:
 
 - **NFR-001 — hook latency p99 ≤ 300 ms (`PreToolUse`, `Stop`,
-  `SessionStart`, `UserPromptSubmit` hook surfaces per PRD v1.20
-  §NFR-001).** Per brief §Success Criteria latency target and PRD v1.20
+  `SessionStart`, `UserPromptSubmit` hook surfaces per PRD v1.21
+  §NFR-001).** Per brief §Success Criteria latency target and PRD v1.21
   §NFR-001 specification; events that exceed the ceiling are dropped per
   PRD §4 NFR-006 (bounded mpsc channel with surfaced drop counter;
   upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is
   the reference data point for NFR-001's value, but NFR-006 is the
   Phase 1 monocle BC enforcing drop semantics).
 - **NFR-002 — hook latency p99 ≤ 2000 ms (`Notification` hook surface,
-  per PRD v1.20 §NFR-002 — scoped to `/hooks/notification` only;
+  per PRD v1.21 §NFR-002 — scoped to `/hooks/notification` only;
   `PreToolUse` / `Stop` / `SessionStart` / `UserPromptSubmit` are bound
   by NFR-001's ≤300 ms ceiling per the row above; `PostToolUse` is
   JC-2-OMITTED from Phase 1 per PRD §1.5 + brief §Explicit Non-Goals and
   is NOT in the Phase 1 hook surface).** Same drop semantics per NFR-006.
-- **NFR-003 — permission overlay first-paint ≤ 100 ms.** Per PRD v1.20
+- **NFR-003 — permission overlay first-paint ≤ 100 ms.** Per PRD v1.21
   §NFR-003 and brief §TUI responsiveness target; TUI render-time
   measured at the VecDeque<PromptModal> overlay layer.
 
@@ -2691,7 +2718,7 @@ independently verified by its own VP." That claim was a fabrication:
 (a) `BC-HOOK-022` is a gene-source identifier from
 `.factory/semport/any-context-lazyclaude/*` describing Claude Code's
 upstream hook-timeout ceilings used as a NFR-001/002 measurement
-reference; it is NOT a Phase 1 monocle BC in PRD v1.20 §2.1 or §7 RTM
+reference; it is NOT a Phase 1 monocle BC in PRD v1.21 §2.1 or §7 RTM
 (those 22 BCs are listed in this catalog's §VP Catalog Overview); (b)
 no `VP-HOOK-*` exists in the §Per-VP Detail section. The correct
 disposition is the §G-7 deferral entry below.
@@ -2720,7 +2747,7 @@ CORRECTNESS (not aspirational) and requires formal verification:
 
 - **NFR-006 — bounded event bus with visible drop counter; 1000
   events/sec sustained without queue overflow; drop counter renders in
-  status bar.** Per PRD v1.20 §NFR-006 specification (PRD line 1208);
+  status bar.** Per PRD v1.21 §NFR-006 specification (PRD line 1208);
   validation method per PRD §4 Validation Method column: "Integration
   test at 1000 events/sec asserting drop counter assertion".
 
@@ -2802,9 +2829,9 @@ The following cross-artifact references use position-free §-anchors and
 either current-pointer version pinning or version-free anchors per
 `SS-conventions-anti-patterns.md` §Historical-Anchor Framing Convention
 (PG-5). All version pins below are current as of timestamp
-`2026-05-16T05:30:00Z`.
+`2026-05-16T07:00:00Z`.
 
-1. `.factory/specs/prd.md` v1.20 (commit 9371348) — canonical BC source
+1. `.factory/specs/prd.md` v1.21 (commit 0f124a9) — canonical BC source
    for the 22 Phase 1 BCs in this catalog and canonical test-name +
    test-file path source. Anchors: BC sections BC-DAEMON-001 through
    BC-ENGINE-003 (22 sub-§s under §Behavioral Contracts), §Section 7
@@ -2813,7 +2840,11 @@ either current-pointer version pinning or version-free anchors per
    column propagation of the BC-DAEMON-004 second test file
    `monocle-runtime/tests/daemon_lifecycle.rs`; canonical test-name
    source per §Trace v1.2 for the 4 F-R63-adv-1 / F-R63-cons-1
-   adjudications; PRD v1.20 is the F-R93 fix-burst closure (commit
+   adjudications; PRD v1.21 is the F-R94 pin-propagation closure
+   (commit 0f124a9) — arch v1.0.20 → v1.0.21 + manifest v1.1.12 →
+   v1.1.13 pin propagation only; no PRD normative content change; 22
+   BCs unchanged at v1.21; edge-case count unchanged at 61;
+   predecessor PRD v1.20 was the F-R93 fix-burst closure (commit
    9371348) — C-R93-1 closure: §7 RTM Test Type column 6 row updates
    from `Unit` to `Integration` for BC-RING-001 + BC-AUTH-001 +
    BC-AUTH-002 + BC-LOCK-001 + BC-FACTORY-002 + BC-ENGINE-002-ERR
@@ -2908,8 +2939,8 @@ either current-pointer version pinning or version-free anchors per
    per F-R65 closure chain; PRD v1.3 was the pure arch v1.0.10 pin
    propagation per R3-001 closure; PRD v1.2 commit 5a49b0b was the
    test-name adjudication baseline).
-2. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.20 (commit
-   8533ea2) — source of BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001,
+2. `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.21 (commit
+   42504b4) — source of BC-DAEMON-001..006, BC-RING-001, BC-AUTH-001,
    BC-AUTH-002, BC-LOCK-001. Anchors: §Health and Status Endpoints
    (BC-DAEMON-001 + BC-DAEMON-002), §Body Size Limit (BC-DAEMON-003),
    §Daemon Lifecycle Protocol (BC-DAEMON-004 + BC-DAEMON-005 +
@@ -2955,15 +2986,15 @@ either current-pointer version pinning or version-free anchors per
    `HookEventRecord` struct definition in §Drain annotates
    `tool_name` and `tool_input` `Option<...>` fields with
    `#[serde(skip_serializing_if = "Option::is_none")]` per BC-RING-001
-   EC-001 normative absence-of-field form (PRD v1.20 §BC-RING-001
+   EC-001 normative absence-of-field form (PRD v1.21 §BC-RING-001
    EC-001 serde annotation pin) and a SessionStart None-case
    serialization example was added demonstrating that `tool_name` and
    `tool_input` are OMITTED from the serialized JSON rather than
    emitted as explicit `null` — this is the producer-side anchor for
    VP-RING-001 §Post-condition 4 + §Counter-example sketch 5
    absence-of-field probes added in the v1.23 burst; F-R93 closure
-   landed in arch v1.0.20 commit 8533ea2 — current canonical arch
-   source per F-R93 fix-burst closure chain — resolve_runtime_dir
+   landed in arch v1.0.20 commit 8533ea2 (now demoted to historical
+   predecessor chain step per PG-5) — resolve_runtime_dir
    implementation-example signature simplification from
    `Result<PathBuf, ...>` to bare `PathBuf` (the function never
    returns an error path; the error is encoded in the
@@ -2972,7 +3003,16 @@ either current-pointer version pinning or version-free anchors per
    arch-side mechanism-tier prose with the F-R88-5 §Mechanism
    Distribution discipline; no BC content lift in v1.0.20 — F-R93 is
    mechanism-tier propagation + implementation-example correctness
-   only).
+   only; F-R94 closure landed in arch v1.0.21 commit 42504b4 —
+   current canonical arch source per F-R94 fix-burst closure chain —
+   resolve_runtime_dir doc-comment correctness rewrite (R94 C-R94-1
+   PRD-side gene-source delta closure) + HookEventRecord docstring
+   fix (R94 C-R94-3 closure documenting that BC-RING-001 EC-001
+   absence-of-field also applies to UserPromptSubmit/Stop in addition
+   to SessionStart) + pub enum AuthError visibility lift (R94 I-R94-1
+   closure exposing the error type so downstream crates can match on
+   variants); no BC content lift in v1.0.21 — F-R94 is doc-comment
+   correctness + visibility hygiene only).
 3. `.factory/specs/architecture/SS-core-types-and-abi.md` v1.2.8 — source of
    BC-ABI-001, BC-ABI-002, BC-TYPES-001, BC-FACTORY-001, BC-FACTORY-002,
    BC-PROTO-001a, BC-PROTO-001b, BC-PROTO-002. Anchors:
@@ -2990,8 +3030,8 @@ either current-pointer version pinning or version-free anchors per
    §Phantom-ID Convention (PG-2),
    §META-Rule Recipe Sibling-Pattern Convention (PG-RECIPE-SCOPE),
    §Semgrep Rules, §Test Conventions.
-6. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.12 (commit
-   8005075) — canonical pins for
+6. `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.13 (commit
+   42504b4) — canonical pins for
    `constant_time_eq ^0.3`, `temp-env ^0.3` (features = ["async_closure"]),
    `prost 0.14`, `serde_yaml_ng 0.10`, `serde_json 1`, `serde 1` (features
    = ["derive"]), `chrono 0.4`, `tracing 0.1`, `tempfile 3`, `axum 0.8`,
@@ -3023,7 +3063,8 @@ either current-pointer version pinning or version-free anchors per
    (legacy pre-decomposition artifact — monocle-ipc is the Phase 4
    federation russh tunnel, not an axum HTTP server). Manifest crate
    count: 30 + 1 dev-dep (v1.1.10) → 32 + 1 dev-dep (v1.1.11). v1.1.12
-   closes F-R77-2 (HIGH — chrono row Role column BC attribution corrected
+   (commit 8005075 — now demoted to historical predecessor chain step
+   per PG-5) closes F-R77-2 (HIGH — chrono row Role column BC attribution corrected
    `startTimeUtc` from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001;
    BC-DAEMON-006 retains sole ownership of `shutdown_utc` — crash-recovery
    checkpoint per PRD §BC-DAEMON-006; BC-DAEMON-005 + BC-LOCK-001 are the
@@ -3032,9 +3073,16 @@ either current-pointer version pinning or version-free anchors per
    GAP-R16-002 (LOW — §Trace v1.1.11 prose numeral correction
    `6 outbound edges` → `5 outbound edges` for the `core` node enumeration
    — the mermaid graph itself was already correct at 5; prose-only fix).
-   v1.1.12 is a metadata-only burst: no pin table content change, no
+   v1.1.12 was a metadata-only burst: no pin table content change, no
    dep-graph edge change, no crate count change (32 + 1 dev-dep
-   unchanged).
+   unchanged). v1.1.13 (commit 42504b4 — current canonical manifest
+   source per F-R94 fix-burst closure) is the F-R94 closure burst —
+   chrono row attribution refinement for BC-DAEMON-006 (consistent
+   with the F-R77-2 v1.1.12 closure framing — BC-DAEMON-006 retains
+   sole ownership of `shutdown_utc`; BC-DAEMON-005 + BC-LOCK-001 own
+   `startTimeUtc` per the v1.1.12 closure); v1.1.13 is a metadata-only
+   burst: no pin table content change, no dep-graph edge change, no
+   crate count change (32 + 1 dev-dep unchanged).
 7. `.factory/specs/architecture/SS-permissions-phase1.md` — §Phase 1
    Permission Enum, §Exhaustiveness Invariant.
 8. `.factory/specs/architecture/SS-forward-compatibility.md` — §Item P3-1
@@ -3058,6 +3106,281 @@ either current-pointer version pinning or version-free anchors per
 ---
 
 ## §Trace
+
+v1.28 (F-R94 fix-burst — SERIAL Extension 15 + Extension 16 + Extension 17
++ SE-17a/b + SE-14b (with AUTHORING-mandatory sub-rule, no-op this
+burst) + SE-15e + SE-16b application; FV runs SOLO as final agent in
+F-R94 chain after state-manager STATE.md v5.39 + architect arch v1.0.21
+commit 42504b4 + manifest v1.1.13 commit 42504b4 + product-owner PRD
+v1.21 commit 0f124a9; 2026-05-16T07:00:00Z):
+
+- **Trigger:** Adversary R94 surfaced C-R94-2 HIGH (VP-RING-001
+  §Post-condition 4 + §Counter-example sketch 5 incorrectly listed
+  `Notification` as a no-tool-surface hook type, contradicting
+  gene-source BC-HOOK-019 wire schema which confirms `Notification`
+  carries `tool_name`/`tool_input`) + I-R94-2 MED (VP-RING-001
+  §Pre-conditions did not document the `serde_json` `preserve_order`
+  feature dependency that the §Counter-example sketch 3 alphabetic-reorder
+  proof rests on). Consistency R33 also surfaced GAP-R33-001 LOW
+  (VP line ~909 had `v1.19 commit 9371348` — wrong version label
+  paired with v1.20 SHA; single-character fix). R94 report at
+  `.factory/plans/adversary-pass-r94-phase1-fixed.md` (commit ca90269).
+  F-R94 chain closure: state-manager STATE.md v5.39 + architect arch
+  v1.0.21 commit 42504b4 (resolve_runtime_dir doc-comment correctness
+  rewrite + HookEventRecord docstring fix + pub enum AuthError
+  visibility lift) + manifest v1.1.13 commit 42504b4 (chrono row
+  BC-DAEMON-006 attribution refinement) + product-owner PRD v1.21
+  commit 0f124a9 (pin propagation only) + FV v1.28 (this burst —
+  closure of remaining R94 VP-side findings + cons R33 GAP-R33-001 +
+  triple pin propagation).
+
+- **Fix 1 — C-R94-2 HIGH closure: VP-RING-001 §Post-condition 4 +
+  §Counter-example sketch 5 corrected to canonical no-tool-surface
+  hook set.** Pre-burst (v1.27) both sites referenced `SessionStart or
+  Notification` as no-tool-surface examples. Per gene-source
+  BC-HOOK-019 wire schema (and confirmed by arch + PRD), `Notification`
+  is a tool-surface event: it carries `tool_name` and `tool_input`
+  (Some values), specifically the tool that triggered the notification.
+  The canonical no-tool-surface set is the triple `(SessionStart,
+  UserPromptSubmit, Stop)`. Post-burst both sites reference the correct
+  triple with F-R94 C-R94-2 attribution embedded in the parenthetical.
+  SE-17a pre-burst grep target
+  `grep -nE "SessionStart.*Notification|Notification\` event that has no" .factory/specs/verification-properties.md`
+  enumerated 2 hits (lines 1270 + 1301 — VP-RING-001 §Post-condition 4
+  + §Counter-example sketch 5). Post-burst grep at same target
+  returned 0 hits in body.
+
+  ```
+  $ grep -nE "SessionStart.*Notification|Notification\` event that has no" .factory/specs/verification-properties.md
+  ```
+  Pre-burst output:
+  ```
+  1270:   `Notification` event that has no associated tool surface), the
+  1301:   with no tool surface (e.g., `SessionStart` or `Notification`) would
+  ```
+  Post-burst output:
+  ```
+  (no hits)
+  ```
+
+- **Fix 2 — I-R94-2 MED closure: VP-RING-001 §Pre-conditions
+  preserve_order feature precondition documented.** Pre-burst (v1.27)
+  the §Counter-example sketch 3 asserted that `serde_json::to_value(&record)
+  .to_string()` would alphabetically reorder JSON keys — but this
+  property holds only when `serde_json` is built with default features.
+  The `preserve_order` feature swaps the BTreeMap-backed
+  `serde_json::Map` for an IndexMap-backed map preserving insertion
+  order, which would silently invalidate the counter-example.
+  Post-burst §Pre-conditions extended with new bullet documenting
+  the `cargo tree -e features | grep preserve_order` empty-result
+  verification + the SS-deps-pin-manifest.md v1.1.13 default-features-only
+  invariant for `serde_json 1`.
+
+- **Fix 3 — GAP-R33-001 LOW closure (cons R33): VP line ~909 corrected
+  `v1.19 commit 9371348` → `v1.20 commit 9371348`.** Forensic root: the
+  parenthetical was authored during F-R91 PRD pin sweep but used the
+  wrong version label paired with the v1.20 SHA. The canonical SE-16c
+  grep `grep -nE "PRD v1\.19|commit 2e24e09"` did NOT catch this site
+  because the offending pattern lacked the `PRD ` prefix (the literal
+  text was `v1.19 commit 9371348` without `PRD` in front). SE-16c++
+  supplementary grep target catches such standalone version+SHA
+  mismatches.
+
+  ```
+  $ grep -n "v1\.19 commit 9371348\|v1\.20 commit 9371348" .factory/specs/verification-properties.md
+  ```
+  Pre-burst (relevant body line):
+  ```
+  909:   (PRD pin now bumped to v1.19 commit 9371348 per C-R91-1 PO PRD-pin
+  ```
+  Post-burst (after both Fix 3 and subsequent triple pin propagation
+  Fix 4 the line reads as v1.21 commit 0f124a9):
+  ```
+  909:   (PRD pin now bumped to v1.21 commit 0f124a9 per C-R91-1 PO PRD-pin
+  ```
+
+- **Fix 4 — Triple pin propagation: PRD v1.20 → v1.21 + arch v1.0.20 →
+  v1.0.21 + manifest v1.1.12 → v1.1.13.**
+
+  - **PRD pin v1.20 → v1.21 propagation** (per F-R94 PO PRD-pin
+    sweep landed in commit 0f124a9):
+
+    ```
+    $ grep -nE "PRD v1\.20|commit 9371348" .factory/specs/verification-properties.md | awk -F: '$1 < 3086 && $1 != 25' | wc -l
+    ```
+    Pre-burst: `98` (normative-current body line-hits in pre-§Trace
+    body 26..3085 — pre-§Trace boundary line 3086 after Fix 1 + Fix 2
+    body growth) + 6 wrap-continuation `(per PRD\nv1.20)` multi-line
+    hits via SE-17a Python `re.compile(r"\(per PRD\n\s*v1\.20",
+    re.MULTILINE)`. Pre-burst wrap-continuation hits at lines 304,
+    575, 739, 998, 1763, 1991. Post-sweep: `0` normative-current
+    `PRD v1.20` or `commit 9371348` hits in pre-§Trace body; 98
+    normative-current `PRD v1.21` / `0f124a9` hits post-sweep +
+    6 wrap-continuation `(per PRD\nv1.21)` hits post-sweep at the
+    same site lines (numbering preserved because the single-line
+    replacement preserves line count).
+
+  - **arch pin v1.0.20 → v1.0.21 propagation** (per F-R94 architect
+    closure landed in commit 42504b4):
+
+    ```
+    $ grep -nE "v1\.0\.20|commit 8533ea2" .factory/specs/verification-properties.md | awk -F: '$1 < 3086 && $1 != 25' | wc -l
+    ```
+    Pre-burst: `37` (normative-current body line-hits). Post-sweep:
+    `0` normative-current `v1.0.20` or `commit 8533ea2` hits in
+    pre-§Trace body; 37 normative-current `v1.0.21` / `42504b4` hits
+    post-sweep.
+
+  - **manifest pin v1.1.12 → v1.1.13 propagation** (per F-R94
+    architect manifest closure landed in commit 42504b4):
+
+    ```
+    $ grep -nE "v1\.1\.12|commit 8005075" .factory/specs/verification-properties.md | awk -F: '$1 < 3086 && $1 != 25' | wc -l
+    ```
+    Pre-burst: `22` (normative-current body line-hits). Post-sweep:
+    `0` normative-current `v1.1.12` or `commit 8005075` hits in
+    pre-§Trace body; 23 normative-current `v1.1.13` hits post-sweep
+    (count increment from explicit §References item 6 narrative
+    expansion adding v1.1.13 current-canonical pointer alongside
+    v1.1.12 historical predecessor demotion).
+
+  Current-pointer sites swept across all three pin propagations:
+  frontmatter `traces_to` (replaced with v1.28 narrative), §Purpose
+  line 34-35, §Scope item 1, §VP Catalog Overview 6 BC-DAEMON rows
+  (Property Domain + Mechanism cells with PRD/arch source citations),
+  all 22 per-VP `Traces to:` lines where pins appear, VP-DAEMON-004
+  + VP-DAEMON-005 §Mechanical property item refs, all 22 §Test name
+  lines (per PRD v1.20/21 §BC-XXX → §BC-XXX), §G-6 NFR-001/002/003
+  prose, §G-7 NFR-006 prose, §Coverage Matrix 6 BC-DAEMON rows + 22
+  BC test-file rows + §Coverage Matrix footer current claim,
+  §References items 1, 2, and 6 (current-pointer extended with v1.21
+  / v1.0.21 / v1.1.13 narrative + v1.20 / v1.0.20 / v1.1.12 demoted
+  to historical predecessor chain step per PG-5).
+
+- **Fix 5 — SE-16c++ supplementary grep applied (per cons R33
+  recommendation).** GAP-R33-001 escaped the canonical SE-16c grep
+  because the offending pattern lacked the `PRD ` prefix. The
+  supplementary grep target catches standalone version+SHA pairs:
+
+  ```
+  $ grep -nE "v1\.[0-9]+ commit [0-9a-f]{7}" .factory/specs/verification-properties.md | awk -F: '$1 < 3086 && $1 != 25'
+  ```
+  Post-burst output (each pair manually verified — normative-current
+  pairs use v1.21/0f124a9 or v1.0.21/42504b4; historical-predecessor
+  pairs retain their period-correct pin/SHA per PG-5):
+  ```
+  L267:   v1.21 commit 0f124a9 via I-R91-3 HIGH closure):     [normative-current]
+  L285:   2e24e09; F-R93 PO closure bumped PRD to v1.20 commit 9371348 with  [historical-predecessor]
+  L398:   constraint lifted in F-R91 / PRD v1.21 commit 0f124a9 via I-R91-3  [normative-current]
+  L423:   constraint lifted in F-R91 / PRD v1.21 commit 0f124a9 via I-R91-3  [normative-current]
+  L761:   F-R88-2 wording correction landed in PRD v1.17 commit 27e663c     [historical-predecessor]
+  L762:   carried forward verbatim into PRD v1.21 commit 0f124a9 per ...    [normative-current]
+  L909:   (PRD pin now bumped to v1.21 commit 0f124a9 per C-R91-1 PO ...    [normative-current — GAP-R33-001 closed]
+  L2527: arch v1.0.10 commit dc3af71 ... arch v1.0.20 commit 8533ea2 (...)   [historical-predecessor chain]
+  L2611: traced 1:1 to PRD v1.1 commit f855835 §BC-DAEMON-001..006 (...)     [historical-predecessor — v1.1 → v1.21]
+  L2935+: PRD v1.9 commit 32927f6 ... PRD v1.2 commit 5a49b0b (...)         [historical-predecessor chain]
+  ```
+  All standalone version+SHA pairs verified — no further GAP-R33-class
+  defects in body. SE-16c++ supplementary grep added to the canonical
+  per-burst evidence discipline.
+
+- **§Purpose META recurrence guard 15th-attempt application.** Pre-burst
+  (v1.27) §Purpose line 34-35 cited `PRD v1.20 (commit 9371348)` per
+  the F-R93 closure burst. Post-burst (v1.28) §Purpose cites `PRD
+  v1.21 (commit 0f124a9)` per the F-R94 pin propagation. SE-17a grep
+  evidence:
+
+  ```
+  $ awk 'NR==34 || NR==35' .factory/specs/verification-properties.md
+  ```
+  Pre-burst:
+  ```
+  the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.21 (commit
+  9371348) and pre-staged across the Phase 1 architecture artifacts. Each VP
+  ```
+  Wait — the body had been pre-swept by Python (`PRD v1.20` → `PRD
+  v1.21`) but the wrap-continuation `commit\n9371348` was missed by
+  the bulk replace because `commit 9371348` and `commit` separated
+  from `9371348` by newline are distinct strings; the bulk sweep
+  caught `commit 9371348` on single lines but not the §Purpose
+  wrap-continuation where `commit` ends line 34 and `9371348` begins
+  line 35. An explicit second Edit corrected the wrap-continuation
+  to `0f124a9`. Post-burst:
+  ```
+  the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.21 (commit
+  0f124a9) and pre-staged across the Phase 1 architecture artifacts. Each VP
+  ```
+
+- **SE-14b AUTHORING audit (post-F-R94 chain).** NEW BC content
+  elements introduced by F-R94 chain: NONE.
+  - arch v1.0.21 (commit 42504b4) — doc-comment correctness rewrite
+    (`resolve_runtime_dir` doc-comment) + HookEventRecord docstring
+    fix (clarifying the absence-of-field set as
+    `(SessionStart, UserPromptSubmit, Stop)`, mirroring the F-R94
+    R94 C-R94-3 closure) + `pub enum AuthError` visibility lift
+    (downstream crates can now match on variants).
+  - PRD v1.21 (commit 0f124a9) — pin propagation only; arch v1.0.20
+    → v1.0.21 + manifest v1.1.12 → v1.1.13 swept across normative
+    PRD body sites; no PRD normative content change.
+  - manifest v1.1.13 (commit 42504b4) — chrono row BC-DAEMON-006
+    attribution refinement (consistent with the F-R77-2 v1.1.12
+    closure; metadata-only).
+  - None of these introduce new BC normative content lift. MATCHING
+    VP probes requiring new anchor citations: NONE.
+  - Conclusion: SE-14b AUTHORING is a no-op for this F-R94 burst;
+    SE-14b VERIFICATION still applied — every existing BC-anchor
+    citation in VP body resolved against PRD v1.21 commit 0f124a9
+    by direct line lookup:
+    - VP-DAEMON-001 §Post-condition 7 cite `BC-DAEMON-001
+      Postcondition 1` — semver-regex constraint, CORRECT against
+      PRD v1.21.
+    - VP-DAEMON-002 §Post-condition 7 cite `BC-DAEMON-002
+      Postcondition 1` — pid ≥ 1 constraint, CORRECT against PRD
+      v1.21.
+    - VP-DAEMON-002 §Post-condition 8 cite `BC-DAEMON-002
+      Postcondition 1` — semver-regex constraint, CORRECT against
+      PRD v1.21.
+    - VP-DAEMON-006 §Post-condition 10 cite `BC-DAEMON-006
+      §Invariant 1` — typed-field schema, CORRECT against PRD v1.21.
+    - VP-FACTORY-002 §Post-condition 7 cite `BC-FACTORY-002 §Edge
+      Case EC-061` — empty-string current_cycle, CORRECT against
+      PRD v1.21.
+    - §VP Catalog Overview + §Coverage Matrix VP-DAEMON-005 cite
+      `BC-DAEMON-005 Postcondition 8` — 0o700 runtime-dir mode,
+      CORRECT against PRD v1.21.
+
+- **SE-16a in-burst-added citation audit.** This burst introduces
+  ZERO new cross-property / cross-anchor citation pairs. The v1.28
+  burst scope is: (a) normative-correction (VP-RING-001
+  no-tool-surface set Notification → SessionStart/UserPromptSubmit/Stop);
+  (b) preserve_order feature precondition addition; (c) GAP-R33-001
+  single-character fix; (d) triple pin propagation. No new VP
+  Post-conditions added, no new §Counter-example sketches added,
+  no new cross-VP citations introduced. All v1.26 in-burst-added
+  citation pairs (the 3 BC-anchor citations at VP-DAEMON-001
+  §Post-condition 7 + VP-DAEMON-002 §Post-conditions 7/8) preserved
+  verbatim with their per-burst attribution unchanged; the deferred
+  SE-15d sibling-row backfill for the BC-side back-cite remains
+  PO/architect's responsibility on the next BC-content burst per
+  the v1.26 §Trace deferral note.
+
+- **SE-16b monotonicity check.** v1.28 timestamp `2026-05-16T07:00:00Z`
+  ≥ v1.27 timestamp `2026-05-16T05:30:00Z` (monotonic continuation
+  per SE-16b; 90 minutes after the v1.27 burst).
+
+- **22 BCs unchanged across F-R94 closure.** 16 architecture-staged
+  + 6 PRD-formalized daemon BCs (unchanged from v1.27 / v1.26 /
+  v1.25 / v1.24). Architecture sources (current): SS-daemon-lifecycle
+  v1.0.21 (commit 42504b4 — F-R94 closure); SS-core-types-and-abi
+  v1.2.8 (unchanged); SS-engine-module v1.1.15 (unchanged);
+  SS-deps-pin-manifest v1.1.13 (commit 42504b4 — F-R94 closure).
+  PRD v1.21 — current canonical BC source (commit 0f124a9 — F-R94
+  PO pin propagation only; 22 BCs unchanged; edge-case count
+  unchanged at 61; test-name count unchanged).
+
+- **Extension 17 SE-17a/b evidence discipline.** Every grep target
+  in this §Trace v1.28 entry is paired with a literal command
+  transcript and real output per the SE-17a/b canonical form.
 
 v1.27 (R93 fix-burst — SERIAL Extension 15 + Extension 16 + Extension 17
 + SE-17a/b + SE-14b (with AUTHORING-mandatory sub-rule, no-op this
