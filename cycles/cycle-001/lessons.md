@@ -728,3 +728,18 @@ F-R72-1 demonstrated that L-F-R63 Extension 1 (semantic propagation discipline) 
 The arch JSON schema sketch dimension was missed in F-R70-2 because the dispatch prompt focused on PRD/VP body. Future fix-bursts on contract-precision tightening must include arch schema sketch as explicit propagation target.
 
 **Application precedent:** F-R72 closure chain (architect arch v1.0.14 + product-owner PRD v1.8 + formal-verifier VP v1.8) applied this dimension explicitly. All 3 arch schema sketch sites tightened to match BC + VP.
+
+#### Extension 4 Expansion: Ellipsis-Placeholder Pattern (2026-05-15)
+
+F-R74-1 demonstrated that the placeholder-discipline sweep (which was previously defined around `<X>` generic-placeholder forms) also needs to cover `"..."` ellipsis-shorthand in array and JSON fields.
+
+**Finding:** arch `GET /status` response body had `hook_endpoints: [..., "...", ...]` (3-element ellipsis) instead of the canonical 5-string enumeration (`"PreToolUse"`, `"PostToolUse"`, `"Notification"`, `"Stop"`, `"SubagentStop"`). The ellipsis form is a placeholder-discipline violation of the same class as `<X>` generic placeholders: it reduces a spec artifact to a sketch that cannot be verified against the gene source or the BCs.
+
+**Expanded placeholder-discipline definition:** ANY of the following forms in a JSON schema sketch, array literal, or field value in a spec artifact is a placeholder-discipline violation requiring remediation:
+- `<TypeName>` / `<placeholder>` / `<description>` (generic angle-bracket form — original)
+- `"..."` / `...` / `[..., "...", ...]` (ellipsis shorthand — NEW per F-R74-1)
+- `/* ... */` / `// ...` inline comments used as value placeholders
+
+All JSON schema sketches and array literals in arch files must use actual production values, not placeholder forms of any kind.
+
+**Application precedent:** F-R74 closure chain (architect arch v1.0.15 + SS-deps-pin-manifest.md v1.1.10 at 7d8d0de) corrected the hook_endpoints ellipsis to the canonical 5-string enumeration per SS-daemon-lifecycle.md §Hook Endpoints gene source.

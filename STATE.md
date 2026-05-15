@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.9"
+version: "5.10"
 status: active
 producer: state-manager
-timestamp: 2026-05-15T14:30:00Z
+timestamp: 2026-05-15T16:00:00Z
 phase: phase-1-spec-crystallization
-current_step: phase-1-f-r72-fix-burst-complete-r73-pending
+current_step: phase-1-f-r74-fix-burst-complete-r75-pending
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 26 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 0 content defects. 18+ META defense layers. Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass."
-awaiting: "Adversary R73 + consistency-validator round 12 fresh-context re-review of PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9. D-047 strict pass 1 attempt 8."
+awaiting: "Adversary R75 + consistency-validator round 14 fresh-context re-review of PRD v1.9 + VP v1.9 + arch v1.0.15 + manifest v1.1.10. D-047 strict pass 1 attempt 9."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -24,7 +24,7 @@ current_cycle: cycle-001
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
 Cycle: cycle-001 (ACTIVE — Phase 1 Spec Crystallization)
 Phase: phase-1-spec-crystallization
-Step: phase-1-f-r72-fix-burst-complete-r73-pending
+Step: phase-1-f-r74-fix-burst-complete-r75-pending
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -45,8 +45,9 @@ Context was cleared. This file is your only prior context. Do:
 10. **R68+cons R7 burst COMPLETE (2026-05-15):** R68 (180e964) CLEAN (retry; first attempt API 529) — counter HELD at 0/3 (new attempt chain). Cons R7 (5f7c4e0) GAPS — 1 LOW R7-001 (VP-DAEMON-001 line 249 missed PRD v1.4→v1.5 pin propagation). VP v1.5.1 (f07d66c) closed R7-001 via single-line citation fix (patch-bump; zero semantic change; D-060). D-047 strict pass 1 attempt 5 restarted; R69 + cons R8 dispatched.
 11. **R69+cons R8+R70+cons R9 burst COMPLETE (2026-05-15):** R69 (587dd0d) CLEAN (counter 1/3) + cons R8 (d75d15a) CLEAN. R70 (4b4aea1) FAIL — 3 substantive (F-R70-1: macOS runtime_dir None + F-R70-3: POSIX exit-code 130 SIGTERM mis-encoding + F-R70-2: sub-second timestamp precision) + 2 obs. Cons R9 (d8a61f2) CLEAN. Counter reset to 0/3. Arch v1.0.12 (727c826) closed F-R70-1+F-R70-3 (D-061). PRD v1.6 (76570ac) closed F-R70-2+BC-DAEMON-004/005 content propagation+E-DAEMON-004+EC-057/058/059. VP v1.6 (7ba155a) closed VP-DAEMON-004/005/006 content propagation+Obs-R70-2. D-047 strict pass 1 attempt 6 restarted; R71 + cons R10 dispatched.
 12. **R71+cons R10+F-R71 closure chain COMPLETE (2026-05-15):** Cons R10 (5c5db4c) GAPS — 2 findings overlapping R71 (R10-001 stale arch test name + R10-002 directories 5 in VP). R71 (2710ab4) FAIL — 5 substantive (F-R71-1: VP directories 5→6; F-R71-2: stale test name in arch; F-R71-3: NFR-008 macOS anchor mis-cited; F-R71-4a: tower fabricated workspace citation; F-R71-4b: nix-OR-libc disjunction violation Principle 6) + 1 process-gap Obs-R71-1 (Extension 3 unenforced in dispatch). Counter reset to 0/3. Arch v1.0.13 (1f53d47) closed F-R71-2 (test name at 2 sites) + F-R71-3 (NFR-008 anchor at 4 arch + 1 PRD sites) + F-R71-4a (tower transitive documented) + F-R71-4b (nix 0.30 caret added). SS-deps-pin-manifest.md v1.1.9 (1f53d47). PRD v1.7 (3024bd3) closed F-R71-3 NFR-008 phrasing + propagated arch v1.0.13 pin at 31 sites. VP v1.7 (296b044) closed F-R71-1 (directories 6) + tower transitive + nix 0.30 binding + arch v1.0.13 + PRD v1.7 pins + Extension 3 enforcement sweep (3 stale PRD v1.5/v1.6 annotations caught + corrected; D-062). D-047 strict pass 1 attempt 7 restarted; R72 + cons R11 dispatched.
-13. **R72+cons R11+F-R72 closure chain COMPLETE (2026-05-15):** Cons R11 (c3f1ae0) CLEAN. R72 (27ba850) FAIL — 1 HIGH + 1 MED + 1 process-gap: (F-R72-1 HIGH: F-R70-2 BC timestamp tightening not propagated to arch JSON schema sketches at 3 sites — last_hook_ts, startTimeUtc, shutdown_utc; F-R72-2 MED: VP §Scope — NFR-001/002/003 latency contracts uncovered; Obs-R72-1: VP §Scope cited non-existent agent `vsdd-factory:perf-check`). Counter RESET to 0/3. Arch v1.0.14 (e4ce2f0) closed F-R72-1 (schema-sketch millisecond precision at 3 sites; disposition (a) cross-field uniformity for startTimeUtc). PRD v1.8 (bf11194) propagated arch v1.0.14 pin at 31 sites. VP v1.8 (d80749c) closed F-R72-2 option (b) — defer NFR-001/002/003 latency VPs to Phase 3 with concrete future-attachment + recurrence guard in new §G-6; closed Obs-R72-1 (renamed `vsdd-factory:perf-check` → `vsdd-factory:performance-engineer` — canonical agent ID). D-047 strict pass 1 attempt 8 restarted; R73 + cons R12 pending.
-14. Phase 1+ reverts to D-047 strict 3-clean-pass convergence (option b/c relaxations were pre-Phase-1 ONLY).
+13. **R72+cons R11+F-R72 closure chain COMPLETE (2026-05-15):** Cons R11 (c3f1ae0) CLEAN. R72 (27ba850) FAIL — 1 HIGH + 1 MED + 1 process-gap: (F-R72-1 HIGH: F-R70-2 BC timestamp tightening not propagated to arch JSON schema sketches at 3 sites — last_hook_ts, startTimeUtc, shutdown_utc; F-R72-2 MED: VP §Scope — NFR-001/002/003 latency contracts uncovered; Obs-R72-1: VP §Scope cited non-existent agent `vsdd-factory:perf-check`). Counter RESET to 0/3. Arch v1.0.14 (e4ce2f0) closed F-R72-1 (schema-sketch millisecond precision at 3 sites; disposition (a) cross-field uniformity for startTimeUtc). PRD v1.8 (bf11194) propagated arch v1.0.14 pin at 31 sites. VP v1.8 (d80749c) closed F-R72-2 option (b) — defer NFR-001/002/003 latency VPs to Phase 3 with concrete future-attachment + recurrence guard in new §G-6; closed Obs-R72-1 (renamed `vsdd-factory:perf-check` → `vsdd-factory:performance-engineer` — canonical agent ID). D-047 strict pass 1 attempt 8 restarted; R73 + cons R12 dispatched.
+14. **Cons R13+R73+R74+F-R74 closure chain COMPLETE (2026-05-15):** Cons R13 (f1d906f) GAPS — 1 MED R13-001 (VP §Purpose cited PRD v1.8 at bf11194; stale SHA). R73 CLEAN (counter advanced 0→1/3). R74 (d718c58) FAIL — 3 HIGH: (F-R74-1 HIGH: arch `GET /status` hook_endpoints array was 3-element `[..., "...", ...]` ellipsis placeholder vs canonical 5-string enumeration); (F-R74-2 HIGH: BC-ENGINE-001 invariant 3 rationale stated `#[async_trait]` needed for "MSRV stability" — factually incorrect; async fn in traits stable Rust 1.75; MSRV 1.86 >> 1.75; actual reasons are dyn-compatibility + Send-propagation); (F-R74-3 HIGH: workspace dep graph for `runtime` crate missing 4 edges: tempfile, serde_json, directories, nix — F-R71-4b partial-fix regression). Counter RESET to 0/3. Arch SS-daemon-lifecycle.md v1.0.15 + SS-deps-pin-manifest.md v1.1.10 (7d8d0de) closed F-R74-1 + F-R74-3. PRD v1.9 (32927f6) closed F-R74-2 (BC-ENGINE-001 inv 3 rationale rewrite). VP v1.9 (eb6eb93) closed R13-001 + propagated arch v1.0.15 + PRD v1.9 pins. D-047 strict pass 1 attempt 9 restarted; R75 + cons R14 pending.
+15. Phase 1+ reverts to D-047 strict 3-clean-pass convergence (option b/c relaxations were pre-Phase-1 ONLY).
 
 ## Task Queue (active)
 
@@ -75,13 +76,15 @@ Context was cleared. This file is your only prior context. Do:
 | T-21 | Consistency round 10 on PRD v1.6 + VP v1.6 + arch v1.0.12 | COMPLETE GAPS — 2 findings R10-001/R10-002 (overlapping R71; commit 5c5db4c) → F-R71 fix-burst applied | consistency-validator |
 | T-22 | Adversary R72 (D-047 strict pass 1 attempt 7) on PRD v1.7 + VP v1.7 + arch v1.0.13 + manifest v1.1.9 | COMPLETE FAIL — 1 HIGH + 1 MED + 1 process-gap → F-R72 closure chain applied | adversary (commit 27ba850) |
 | T-23 | Consistency round 11 on PRD v1.7 + VP v1.7 + arch v1.0.13 + manifest v1.1.9 | COMPLETE CLEAN | consistency-validator (commit c3f1ae0) |
-| T-24 | Adversary pass 2 (D-047 strict) | blocked: T-29 must produce CLEAN | adversary |
-| T-25 | Adversary pass 3 (D-047 strict — convergence) | blocked: T-24 must produce CLEAN | adversary |
-| T-26 | Input-hash drift check pre-human-gate | blocked: T-29..T-25 + T-30 | devops-engineer |
+| T-24 | Adversary R73 (D-047 strict pass 1 attempt 8) on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | COMPLETE CLEAN — counter advanced 0→1/3 | adversary |
+| T-25 | Consistency round 13 on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | COMPLETE GAPS — 1 MED R13-001 (VP §Purpose stale SHA) → closed in VP v1.9 | consistency-validator (commit f1d906f) |
+| T-26 | Input-hash drift check pre-human-gate | blocked: T-31..T-33 + T-34 | devops-engineer |
 | T-27 | Human Phase 1 approval gate | blocked: T-26 | human |
 | T-28 | Phase 2 entry (Story Decomposition) | blocked: T-27 | story-writer |
-| T-29 | Adversary R73 (D-047 strict pass 1 attempt 8) on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | pending dispatch | adversary |
-| T-30 | Consistency round 12 on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | pending dispatch | consistency-validator |
+| T-29 | Adversary R74 (D-047 strict pass 2 attempt 8) on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | COMPLETE FAIL — 3 HIGH (F-R74-1/2/3) → F-R74 closure chain applied; counter RESET 0/3 | adversary (commit d718c58) |
+| T-30 | Consistency round 12 on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9 | COMPLETE (folded into T-25 dispatch) | consistency-validator |
+| T-31 | Adversary R75 (D-047 strict pass 1 attempt 9) on PRD v1.9 + VP v1.9 + arch v1.0.15 + manifest v1.1.10 | pending dispatch | adversary |
+| T-32 | Consistency round 14 on PRD v1.9 + VP v1.9 + arch v1.0.15 + manifest v1.1.10 | pending dispatch | consistency-validator |
 
 ## Phase Progress
 
@@ -92,7 +95,7 @@ Context was cleared. This file is your only prior context. Do:
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k-m: Rounds 20-26 (R20-R61) | DONE | 2026-05-14 | see cycles/cycle-001/burst-log.md |
 | Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054**. 26 adv rounds. 18+ defense layers. 22 BCs; 0 content defects. 4-entry frozen META catalog. |
-| 1: Spec Crystallization | **IN PROGRESS** | — | PRD v1.0+VP v1.0 → R62 FAIL(10f) → F-R62(v1.1) → R63 adv FAIL(2f)+cons R2 GAPS(3f) → F-R63(v1.2) → R64 CLEAN(adv)/GAPS 1 MED R3-001(cons R3) → arch v1.0.10(D-057) → PRD v1.3+VP v1.3 → R65 FAIL(3f)+cons R4 GAPS(1f) → F-R65(arch v1.0.11+PRD v1.4+VP v1.4) → R66 CLEAN(1/3)+cons R5+R6 CLEAN → R67 FAIL(2H; RESET 0/3) → F-R67(PRD v1.5+VP v1.5) → R68 CLEAN(HELD 0/3)+cons R7 GAPS(1f) → VP v1.5.1(D-060) → R69 CLEAN(1/3)+cons R8 CLEAN → R70 FAIL(3f; RESET 0/3)+cons R9 CLEAN → F-R70(arch v1.0.12+PRD v1.6+VP v1.6; D-061) → cons R10 GAPS(2f)+R71 FAIL(5f; RESET 0/3) → F-R71(arch v1.0.13+manifest v1.1.9+PRD v1.7+VP v1.7; D-062) → cons R11 CLEAN+R72 FAIL(1H+1M+1proc-gap; RESET 0/3) → F-R72(arch v1.0.14+PRD v1.8+VP v1.8; D-063) → R73+cons R12 pending. Convergence trajectory (12 attempts): 13→5→1→4→0→2→1→0→0→3→5→3. Pattern: NOT monotone. All findings genuine substantive defects. Agent-id-routing-existence META codified (Obs-R72-1). Extension 4 + agent-id-routing-existence sweep codified. Cycle-health observation (12 attempts; options a/b/c) surfaced for T-27 gate. |
+| 1: Spec Crystallization | **IN PROGRESS** | — | PRD v1.0+VP v1.0 → R62 FAIL(10f) → F-R62(v1.1) → R63 adv FAIL(2f)+cons R2 GAPS(3f) → F-R63(v1.2) → R64 CLEAN(adv)/GAPS 1 MED R3-001(cons R3) → arch v1.0.10(D-057) → PRD v1.3+VP v1.3 → R65 FAIL(3f)+cons R4 GAPS(1f) → F-R65(arch v1.0.11+PRD v1.4+VP v1.4) → R66 CLEAN(1/3)+cons R5+R6 CLEAN → R67 FAIL(2H; RESET 0/3) → F-R67(PRD v1.5+VP v1.5) → R68 CLEAN(HELD 0/3)+cons R7 GAPS(1f) → VP v1.5.1(D-060) → R69 CLEAN(1/3)+cons R8 CLEAN → R70 FAIL(3f; RESET 0/3)+cons R9 CLEAN → F-R70(arch v1.0.12+PRD v1.6+VP v1.6; D-061) → cons R10 GAPS(2f)+R71 FAIL(5f; RESET 0/3) → F-R71(arch v1.0.13+manifest v1.1.9+PRD v1.7+VP v1.7; D-062) → cons R11 CLEAN+R72 FAIL(1H+1M+1proc-gap; RESET 0/3) → F-R72(arch v1.0.14+PRD v1.8+VP v1.8; D-063) → R73 CLEAN(1/3)+cons R13 GAPS(1 MED R13-001) → R74 FAIL(3H; RESET 0/3)+F-R74(arch v1.0.15+manifest v1.1.10+PRD v1.9+VP v1.9; D-064) → R75+cons R14 pending. Convergence trajectory (14 attempts): 13→5→1→4→0→2→1→0→0→3→5→3→0→3. Pattern: NOT monotone. Counter hit 1/3 three times (R66, R69, R73); never reached 2/3. All findings genuine substantive defects. `"..."` ellipsis placeholder added to Extension 4 coverage. Cycle-health observation (14 attempts; options a/b/c) updated for T-27 gate. |
 | 2-7 | not-started | — | |
 
 ## Pre-Phase-1 Final Gate — PASS (2026-05-14 per D-054)
@@ -126,13 +129,13 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 |----------|------|--------|
 | Domain spec / Vision | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 | EXISTS |
 | Product brief | `.factory/specs/product-brief.md` v1.4.23 | EXISTS |
-| PRD with 22 BCs + 14 error codes + 59 edge cases | `.factory/specs/prd.md` v1.8 | EXISTS (commit bf11194; was v1.7 at 3024bd3) |
-| Verification properties (22 VPs + §G-6 latency deferred) | `.factory/specs/verification-properties.md` v1.8 | EXISTS (commit d80749c; was v1.7 at 296b044) |
-| Architecture (7 SS files) | `.factory/specs/architecture/SS-*.md` | EXISTS (SS-daemon-lifecycle v1.0.14 at e4ce2f0; SS-deps-pin-manifest v1.1.9 at 1f53d47; was v1.0.13 at 1f53d47) |
+| PRD with 22 BCs + 14 error codes + 59 edge cases | `.factory/specs/prd.md` v1.9 | EXISTS (commit 32927f6; was v1.8 at bf11194) |
+| Verification properties (22 VPs + §G-6 latency deferred) | `.factory/specs/verification-properties.md` v1.9 | EXISTS (commit eb6eb93; was v1.8 at d80749c) |
+| Architecture (7 SS files) | `.factory/specs/architecture/SS-*.md` | EXISTS (SS-daemon-lifecycle v1.0.15 at 7d8d0de; SS-deps-pin-manifest v1.1.10 at 7d8d0de; was v1.0.14 at e4ce2f0) |
 | DTU assessment | `.factory/specs/dtu-assessment.md` v1.7 | EXISTS |
 | ADRs (4) | `.factory/specs/architecture/adr/ADR-0001..0004` | EXISTS |
 | CI/CD setup | `.github/workflows/` | MISSING — devops-engineer scope at Phase 3 |
-| Phase 1d adversarial spec review | cons R11 CLEAN+R72 FAIL(1H+1M+1proc; RESET 0/3) → F-R72(arch v1.0.14+PRD v1.8+VP v1.8; D-063) → R73+cons R12 pending | IN PROGRESS |
+| Phase 1d adversarial spec review | R73 CLEAN(1/3)+cons R13 GAPS(R13-001)+R74 FAIL(3H; RESET 0/3) → F-R74(arch v1.0.15+manifest v1.1.10+PRD v1.9+VP v1.9; D-064) → R75+cons R14 pending | IN PROGRESS |
 | Human Phase 1 gate approval | pending T-22..T-26 | PENDING (T-27) |
 
 ## Decisions Log
@@ -151,18 +154,19 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | D-061 | Architect closed F-R70-1 + F-R70-3 with disposition (c) on both: (c) hybrid runtime-dir resolution chain (MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() → ProjectDirs::data_local_dir() macOS/Win fallback → fail-fast DaemonStartError::RuntimeDirUnresolvable); (c) POSIX-correct distinct exit codes (0 graceful / 130 SIGINT / 143 SIGTERM / 2 admin shutdown / 1 startup fail). BC count UNCHANGED at 22 (BC-DAEMON-004 + BC-DAEMON-005 updated in place). Rationale: production-grade diagnostic information; macOS deployment unblocked without forcing operator env config; systemd/k8s/CI integrations receive distinguishable POSIX-correct exit codes. SS-daemon-lifecycle.md v1.0.12 commit 727c826. | 2026-05-15 | architect (delegated via orchestrator) |
 | D-062 | Architect closed F-R71-2/3/4: (F-R71-2) corrected stale `test_BC_DAEMON_004_exit_codes` → canonical `test_BC_DAEMON_004_exit_codes_posix_distinct` at 2 arch sites; (F-R71-3) disposition (a) — "NFR-008 lists macOS among the primary target platforms (`macOS + Linux`)" at 4 arch sites + 1 PRD site; (F-R71-4a) tower stays transitive via axum 0.8 (no workspace pin; VP rephrased); (F-R71-4b) nix 0.30 added as canonical pin (caret), libc 0.2 disjunction retired (Principle 6 violation closed). SS-daemon-lifecycle.md v1.0.13 commit 1f53d47 + SS-deps-pin-manifest.md v1.1.9 commit 1f53d47. | 2026-05-15 | architect (delegated via orchestrator) |
 | D-063 | F-R72 closure chain: (F-R72-1 HIGH) Architect propagated F-R70-2 BC tightening to arch JSON schema sketches at 3 sites (last_hook_ts, startTimeUtc, shutdown_utc — all now `YYYY-MM-DDTHH:MM:SS.sssZ` mandatory millisecond); disposition (a) cross-field uniformity for startTimeUtc. (F-R72-2 MED) Formal-verifier chose option (b) — defer NFR-001/002/003 latency VPs to Phase 3 with concrete future-attachment + recurrence guard in new §G-6; rationale: bench infrastructure (criterion, baselines, regression detection) is legitimately Phase 3 territory. (Obs-R72-1) VP §Scope agent ID renamed `vsdd-factory:perf-check` (non-existent) → `vsdd-factory:performance-engineer` (canonical). SS-daemon-lifecycle.md v1.0.14 commit e4ce2f0 + PRD v1.8 commit bf11194 + VP v1.8 commit d80749c. | 2026-05-15 | architect + formal-verifier (delegated via orchestrator) |
+| D-064 | F-R74 closure chain: (F-R74-1 HIGH) arch `GET /status` hook_endpoints array changed from 3-element `[..., "...", ...]` ellipsis placeholder to canonical 5-string enumeration (`"PreToolUse"`, `"PostToolUse"`, `"Notification"`, `"Stop"`, `"SubagentStop"`); L-F-R63 Extension 4 expanded to cover `"..."` ellipsis pattern (was previously only `<X>` generic-placeholder forms). (F-R74-2 HIGH) BC-ENGINE-001 invariant 3 rationale rewritten: actual reasons for `#[async_trait]` are dyn-compatibility + Send-propagation, NOT MSRV stability (async fn in traits stable since Rust 1.75; MSRV 1.86 >> 1.75; prior rationale was factually incorrect). (F-R74-3 HIGH) Workspace dep graph for `runtime` crate gained 4 missing edges (tempfile, serde_json, directories, nix); F-R71-4b partial-fix regression closed. SS-daemon-lifecycle.md v1.0.15 + SS-deps-pin-manifest.md v1.1.10 commit 7d8d0de + PRD v1.9 commit 32927f6 + VP v1.9 commit eb6eb93. (R13-001 MED) VP §Purpose §SHA stale-citation corrected to PRD v1.9 (32927f6). | 2026-05-15 | architect + product-owner + formal-verifier (delegated via orchestrator) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types. D-048..D-052 in `cycles/cycle-001/burst-log.md`. All binding.
 
 ## Blocking Issues
 
-_None — F-R72 closure chain complete (arch v1.0.14 at e4ce2f0, PRD v1.8 at bf11194, VP v1.8 at d80749c). R73 adversary pass 1 attempt 8 + consistency round 12 pending (T-29, T-30)._
+_None — F-R74 closure chain complete (arch v1.0.15 + manifest v1.1.10 at 7d8d0de, PRD v1.9 at 32927f6, VP v1.9 at eb6eb93). R75 adversary pass 1 attempt 9 + consistency round 14 pending (T-31, T-32)._
 
 ## Session Resume Checkpoint
 
-**F-R72 closure chain COMPLETE:** Cons R11 (c3f1ae0) CLEAN. R72 (27ba850) FAIL — 1 HIGH + 1 MED + 1 process-gap: (F-R72-1 HIGH: F-R70-2 BC timestamp tightening propagated to PRD/VP but NOT to arch JSON schema sketches — last_hook_ts/startTimeUtc/shutdown_utc retained generic `<ISO8601>` placeholder vs mandatory `YYYY-MM-DDTHH:MM:SS.sssZ`); (F-R72-2 MED: VP §Scope did not cover NFR-001/002/003 latency contracts); (Obs-R72-1: VP §Scope cited non-existent agent `vsdd-factory:perf-check`; canonical is `vsdd-factory:performance-engineer`). Counter RESET to 0/3. Arch v1.0.14 (e4ce2f0) closed F-R72-1 — schema-sketch timestamp tightened at 3 sites; disposition (a) cross-field uniformity for startTimeUtc. PRD v1.8 (bf11194) propagated arch v1.0.14 pin at 31 sites (content unchanged). VP v1.8 (d80749c) closed F-R72-2 via option (b) — NFR-001/002/003 latency deferred to Phase 3 with concrete future-attachment + new §G-6 recurrence guard; closed Obs-R72-1 (agent ID corrected). Open Verification Gaps: 6 (was 5; new §G-6 NFR-001/002/003 latency deferred to Phase 3 per F-R72-2 option (b)). BC count UNCHANGED at 22; error codes 14; edge cases 59.
+**F-R74 closure chain COMPLETE:** Cons R13 (f1d906f) GAPS — 1 MED R13-001 (VP §Purpose cited PRD v1.8 commit bf11194; stale SHA after PRD bumped to v1.8 in F-R72 chain). R73 CLEAN — counter advanced 0→1/3. R74 (d718c58) FAIL — 3 HIGH findings: (F-R74-1 HIGH: arch `GET /status` response body hook_endpoints used 3-element ellipsis placeholder `[..., "...", ...]` instead of canonical 5-string enumeration; `"..."` ellipsis pattern is a placeholder-discipline violation, same class as `<X>` generic placeholder); (F-R74-2 HIGH: BC-ENGINE-001 invariant 3 stated `#[async_trait]` required for "MSRV stability" — factually wrong; async fn in traits stable Rust 1.75, MSRV 1.86; actual reasons are dyn-compatibility + Send-propagation); (F-R74-3 HIGH: dep graph for `runtime` crate missing 4 direct deps: tempfile, serde_json, directories, nix — F-R71-4b partial-fix regression). Counter RESET to 0/3. SS-daemon-lifecycle.md v1.0.15 + SS-deps-pin-manifest.md v1.1.10 (7d8d0de) closed F-R74-1 (hook_endpoints array enumerated; Extension 4 expanded to cover ellipsis pattern) + F-R74-3 (4 dep graph edges added). PRD v1.9 (32927f6) closed F-R74-2 (BC-ENGINE-001 inv 3 rewrite: dyn-compatibility + Send-propagation rationale). VP v1.9 (eb6eb93) closed R13-001 (SHA updated to 32927f6) + propagated arch v1.0.15 + manifest v1.1.10 + PRD v1.9 pins. BC count UNCHANGED at 22; error codes 14; edge cases 59.
 
-Next actions: dispatch T-29 (adversary R73, D-047 strict pass 1 attempt 8) + T-30 (consistency round 12) concurrently on PRD v1.8 + VP v1.8 + arch v1.0.14 + manifest v1.1.9. Both fresh-context. D-047: 0 findings of any severity required for 3 consecutive passes. Convergence trajectory: 13→5→1→4→0→2→1→0→0→3→5→3 (12 attempts). Agent-id-routing-existence META codified (Obs-R72-1). Extension 4 schema-sketch precision propagation codified. Cycle-health observation (12 attempts; options a/b/c) updated for T-27 gate.
+Next actions: dispatch T-31 (adversary R75, D-047 strict pass 1 attempt 9) + T-32 (consistency round 14) concurrently on PRD v1.9 + VP v1.9 + arch v1.0.15 + manifest v1.1.10. Both fresh-context. D-047: 0 findings of any severity required for 3 consecutive passes. Convergence trajectory: 13→5→1→4→0→2→1→0→0→3→5→3→0→3 (14 attempts). `"..."` ellipsis pattern added to Extension 4 placeholder-discipline coverage. D-064 records F-R74 closure dispositions. Cycle-health observation (14 attempts; options a/b/c) updated for T-27 gate.
 
 ## Surfaced for Human Gate Decision
 
@@ -182,23 +186,23 @@ Routing for resolution: product-owner (option b PRD update) OR architect (option
 
 **Cycle-health observation — D-047 strict convergence trajectory (surfaced for T-27 human gate):**
 
-Convergence cycle has now run **12 attempts** (R62 through R72). Trajectory: 13→5→1→4→0→2→1→0→0→3→5→3. Pattern: NOT monotone.
+Convergence cycle has now run **14 attempts** (R62 through R74). Trajectory: 13→5→1→4→0→2→1→0→0→3→5→3→0→3. Pattern: NOT monotone.
 
-R72 findings continue to be GENUINELY substantive — F-R72-1 was a partial-fix regression of F-R70-2 (BC tightening propagated to PRD/VP but not to arch SoT JSON schema sketches); F-R72-2 surfaced uncovered NFR correctness contracts. Both fixes are real value-adds.
+R74 findings continue to be GENUINELY substantive — F-R74-2 was a factual error in a P0 BC technical rationale (wrong reason for `#[async_trait]`); F-R74-1 caught a canonical 5-endpoint enumeration reduced to 3-element ellipsis placeholder in arch; F-R74-3 closed a dep-graph partial-fix regression from F-R71-4b. All three fixes are real correctness value-adds.
 
-The codification ratchet (Extension 1 → 2 → 3 → 3-Enforcement → 4 → agent-id-routing-existence) is producing higher-quality dispatches each cycle. R72's deps-pin sweep (Extension 3 Enforcement) was applied successfully and found no new pin defects.
+Counter has hit 1/3 exactly three times (R66, R69, R73) and never reached 2/3. Each pass-2 attempt resets the counter with new lens-rotation defects. The codification ratchet (Extension 1 → 2 → 3 → 3-Enforcement → 4 + ellipsis expansion → agent-id-routing-existence) continues to strengthen dispatch quality each cycle.
 
-**Cost-benefit (12 attempts):**
-- ~95-110 specialist dispatches consumed
-- Real defects caught include: macOS deployment blocker (F-R70-1), POSIX exit code misencoding (F-R70-3), Bearer-header security disposition (F-R65-2), off-by-one boundary (F-R67-2), and 6+ propagation regressions
+**Cost-benefit (14 attempts):**
+- ~110-130 specialist dispatches consumed
+- Real defects caught include: macOS deployment blocker (F-R70-1), POSIX exit code misencoding (F-R70-3), Bearer-header security disposition (F-R65-2), off-by-one boundary (F-R67-2), factually incorrect BC rationale (F-R74-2), canonical endpoint enumeration loss (F-R74-1), and 8+ propagation regressions
 - Each codified lesson STRENGTHENS future dispatches; the cycle is producing process improvement, not just artifact fixes
 
 **Three options for human at T-27:**
 - **(a)** Continue strict D-047 — defects continue to be GENUINELY substantive
-- **(b)** Declare CONVERGENCE-WITH-DOCUMENTED-RESIDUALS at current state (PRD v1.8, VP v1.8, arch v1.0.14, manifest v1.1.9) — risk: F-R72-1 was a real partial-fix regression that would have caused implementer confusion if shipped
+- **(b)** Declare CONVERGENCE-WITH-DOCUMENTED-RESIDUALS at current checkpoint (PRD v1.9, VP v1.9, arch v1.0.15, manifest v1.1.10) — current state is a legitimate convergence checkpoint: all 4 F-R74 findings closed in scope, no MVP-style deferrals, all closure work production-grade. Residual risk is "future pass-2 attempts MAY find new lens-rotation defects" — a meta-claim about adversary behavior, not a specific known defect.
 - **(c)** Tighten further
 
-The data strongly supports (a). (b) is risk-acceptance. Human decision recommended at T-27.
+The data strongly supports (a). (b) is a credible risk-acceptance position given the current checkpoint quality. Human decision recommended at T-27.
 
 ## Critical Hook Lessons
 
@@ -216,6 +220,7 @@ The data strongly supports (a). (b) is risk-acceptance. Human decision recommend
 - **Cross-platform + POSIX-convention sweep discipline (codified per F-R70-1 + F-R70-3):** Spec authors and review agents MUST verify (a) every dependency-crate platform-behavior claim against the crate's documented platform-specific behavior (`directories::runtime_dir()` returns None on macOS/Windows; OS-specific paths differ for cache/data/runtime dirs); (b) every signal-handling exit-code claim against POSIX 128+N convention; (c) every cross-platform-invariant claim against NFR platform targets. Codified after F-R70-1 (macOS runtime_dir() blocker) and F-R70-3 (exit code 130 misencoding SIGTERM as SIGINT origin).
 - **Mandatory deps-pin-manifest sweep in formal-verifier dispatch templates (codified per Obs-R71-1 enforcement gap):** Every formal-verifier dispatch (and any agent doing pin propagation) MUST include a REAL grep sweep against SS-deps-pin-manifest.md as a mandatory checklist item BEFORE commit. Pattern: `grep -nE "\b(nix|libc|tower|directories|axum|tokio|prost|tempfile|tracing|temp-env|constant_time_eq|serde_json|serde_yaml_ng|rand|notify|interprocess|crossterm|ratatui|reqwest|russh|rmcp|nucleo|wasmtime|thiserror|anyhow)\s+[0-9]" .factory/specs/<artifact>.md`. For each match, classify against SS-deps-pin-manifest.md (current version). Document the classification table in the burst's §Trace entry. Converts L-F-R63 Extension 3 from codified-but-unenforced (R70→R71 gap) to codified-and-enforced. Application precedent: VP burst (commit 296b044) applied the discipline and caught 3 stale PRD v1.5/v1.6 annotations that would otherwise have been R72 findings.
 - **Agent-id-routing-existence sweep (codified per Obs-R72-1):** Every `vsdd-factory:*` agent ID reference in any spec artifact (PRD, VP, arch, manifest, STATE.md, lessons.md, plans/) MUST resolve to an entry in CLAUDE.md Agent Routing Table. Codified after Obs-R72-1 caught VP §Scope citing non-existent `vsdd-factory:perf-check` (canonical: `vsdd-factory:performance-engineer`). Review agents include this as a sweep checklist item; orchestrator dispatch prompts to spec authors include "no-fabricated-agent-IDs" reminder. The authoritative routing table is §Agent Routing Table in `/Users/jmagady/Dev/monocle/CLAUDE.md`.
+- **Placeholder-discipline covers `"..."` ellipsis pattern (codified per F-R74-1 / L-F-R63 Extension 4 expansion):** The placeholder-discipline sweep must cover BOTH `<X>` generic-placeholder forms AND `"..."` / `[..., "...", ...]` ellipsis-shorthand forms in array/JSON fields. F-R74-1 caught arch `GET /status` hook_endpoints using `[..., "...", ...]` (3-element ellipsis) instead of canonical 5-string enumeration. Extension 4 (schema-sketch precision propagation) now explicitly includes ellipsis pattern as a forbidden shorthand. All JSON schema sketches in arch must use actual values, not placeholders of any form.
 
 ## Key Tech Stack
 
