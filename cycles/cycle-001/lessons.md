@@ -1020,4 +1020,55 @@ The fabrication-pattern + axis-rotation META class has now produced 15 codified 
 
 F-R84 root cause is a SINGLE process defect (parallel-dispatch coordination gap) producing 6 of 7 findings. This is atypical — prior rounds produced diverse-axis findings. The serial-cascade rule (SE-15) should close this class definitively. After F-R84 serial fix-burst, the remaining asymptotic residuals are expected to return to diverse-axis audit-table self-attestation patterns (Extensions 1–14 axes).
 
+---
+
+## R85 Codifications
+
+### L-F-R63 Extension 16: Codification-Protocol Mandatory Backfill Sweep
+
+**Discovery:** R85 adversary (Obs-R85-1, F-R85-IMP-2, F-R85-IMP-3). Each new Sub-Extension codified in the F-R84 burst (SE-15a, SE-15b, SE-15c, SE-15d) was applied to ONE concrete site (the trigger finding's site), but no codification-protocol step required a recursive backfill sweep of pre-existing sites in the same artifact. R85 found 3 NFR sibling rows missing SE-15c convention back-propagation (NFR-004, NFR-005, NFR-010) AND 4 cross-property citations missing SE-15d reciprocation — both regressions of the just-codified discipline.
+
+**Class:** Orchestration-protocol-axis discipline (second in this class, after Extension 15). The discipline class has matured:
+- spec-content rules (Extensions 1–13)
+- spec-structural rules (Extension 14)
+- orchestration-protocol rules (Extensions 15+)
+
+**Rule:**
+
+1. **Codification triggers mandatory backfill:** When the state-manager codifies a new Extension or Sub-Extension (SE-Nx) in cycle lessons, the IMMEDIATELY NEXT fix-burst that closes the trigger finding MUST also include a mandatory backfill sweep of all pre-existing sites in the same artifact set where the new rule applies. The backfill sweep covers every existing instance of the pattern the new rule governs — not only the trigger site.
+
+2. **Backfill sweep evidence (SE-15b inheritance):** The backfill sweep must emit `grep -nE` transcripts inline in the burst's §Trace forensic block, listing ALL candidate sites BEFORE the burst (potential backfill targets) and showing post-burst compliance. Count-only output (`grep -cE`) is insufficient per Extension 13.
+
+3. **Explicit backfill section in §Trace:** Every §Trace narrative for a burst that introduces a new Extension/SE codification must include a section titled `### Backfill sweep: Extension N / SE-Nx pre-existing sites` listing each pre-existing site and its disposition (`applied` / `not-applicable-because-X`). No pre-existing site may be left undocumented.
+
+4. **Orchestrator coordination:** When the orchestrator dispatches the trigger fix-burst, it must include in the agent's task prompt the explicit instruction to perform the mandatory backfill sweep for any newly codified rule. The dispatch prompt MUST enumerate which artifact classes contain pre-existing instances (based on the adversary report Observations). Omitting the backfill instruction from the dispatch prompt is an orchestration-protocol defect equivalent to the Extension 15 parallel-dispatch anti-pattern.
+
+5. **State-manager logs backfill compliance:** After the burst lands, state-manager records backfill-sweep adherence (or non-compliance with justification) in cycle lessons. Non-compliance without justification is treated as a HIGH-severity process gap in the next adversary pass.
+
+**Adjudication of `cross-check` vs `cross-property` form (Obs-R85-2):**
+
+SE-15d was codified referencing only the `cross-property` citation form. VP-DAEMON-002 §Post-condition 5 uses `cross-check VP-DAEMON-003` — a citation form that creates an implicit dependency without using the canonical `cross-property` keyword. The adversary surfaced this as a potential escape from SE-15d's reciprocity requirement.
+
+**Adjudication (in-scope per CLAUDE.md §CANONICAL PRINCIPLE):** SE-15d applies UNIFORMLY to BOTH `cross-property` AND `cross-check` citation forms. Both forms establish a bidirectional dependency that must be reciprocated. The distinction in phrasing is a stylistic variation, not a semantic distinction that exempts a citation from the reciprocity requirement. Any citation in a VP §Mechanism block that explicitly names another VP as a dependency — regardless of the exact syntactic form used (`cross-property with`, `cross-check`, `see also`, `depends on`, or similar normative dependency language) — creates a bidirectional traceability link that SE-15d requires to be reciprocated.
+
+This adjudication is codified here as a mandatory addendum to SE-15d. Formal-verifier dispatch prompts for VP sweeps must grep for BOTH forms.
+
+**Application precedent:** F-R85 serial fix-burst (PO PRD v1.15 → FV VP v1.19) MUST apply Extension 16 to close F-R85-IMP-2 and F-R85-IMP-3. The orchestrator dispatch prompt MUST include:
+- For PO: perform backfill sweep of ALL 12 rows in PRD §4 NFR table for SE-15c VP probe citation gaps; emit §Trace `### Backfill sweep: SE-15c pre-existing sites` with grep -nE transcripts.
+- For FV: perform backfill sweep of ALL cross-property AND cross-check citation pairs in VP for SE-15d reciprocity; emit §Trace `### Backfill sweep: SE-15d pre-existing pairs` with grep -nE transcripts.
+
+---
+
+### Companion META observation (post-Extension-16)
+
+Extension 16 is the SECOND orchestration-protocol-axis discipline (after Extension 15 cross-layer parallel-dispatch). This confirms the discipline class is gaining sophistication:
+
+- **spec-content rules (Extensions 1–13):** Address what goes INTO spec artifacts — version pins, grep evidence, BC anchors, VP coverage, etc.
+- **spec-structural rules (Extension 14):** Address how spec artifacts are ORGANIZED — sibling-table propagation, tier-lifting, summary-table targeting.
+- **orchestration-protocol rules (Extensions 15+):** Address how AGENTS are COORDINATED — serial cascade for version bumps (Extension 15), mandatory backfill for codification bursts (Extension 16).
+
+Extensions 15 and 16 both share the same root-cause fingerprint: a discipline was codified on the trigger site and not applied to pre-existing context. Extension 15 closed this for parallel agent dispatch; Extension 16 closes it for codification-protocol itself. The meta-pattern is: "apply to trigger site, not to pre-existing siblings" — which appears at both the orchestration level (dispatching agents) and the content level (applying rules within a burst).
+
+Future orchestration-protocol disciplines (Extensions 17+) are expected at the intersection of the codification-protocol and evidence-discipline axes, as the discipline ratchet continues tightening.
+
 Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": F-R84's 6 of 7 findings share a single root cause (orchestration protocol gap), not new content defects. Content quality of Phase 1 specs remains production-grade; the remaining convergence work is process-discipline enforcement.
