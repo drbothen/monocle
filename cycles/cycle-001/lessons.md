@@ -698,3 +698,17 @@ R70 caught defects in a NEW dimension: **dependency-crate platform-behavior inva
 - Every implicit assumption about cross-platform behavior: verify it's explicitly documented or surfaced as a non-portability.
 
 **Application precedent:** F-R70-1 surfaced because R70 specifically pivoted to cross-platform invariant lens after 9 prior passes focused on identifier consistency. Future adversarial passes should rotate review lenses systematically — identifier consistency, intra-block consistency, semantic propagation, cross-platform invariants, security-critical defaults, performance-budget claims, etc. — to maximize defect surface coverage.
+
+### Extension 3 Enforcement (2026-05-15)
+
+Obs-R71-1 demonstrated that Extension 3 (dependency-crate sweep) was CODIFIED post-R70 but NOT enforced in subsequent dispatch prompts. The F-R70 closure burst (architect arch v1.0.12 + product-owner PRD v1.6 + formal-verifier VP v1.6) dispatch prompts did not include the deps-pin sweep checklist. Result: F-R71-1 (VP cites directories 5; canonical directories 6) and F-R71-4 (fabricated tower citation + nix-OR-libc disjunction) were direct misses by Extension 3.
+
+**Enforcement mechanism (added in F-R71 VP burst commit 296b044):**
+
+Every formal-verifier dispatch (and any agent doing pin propagation) MUST include this discipline in their burst:
+
+1. **Pre-commit grep sweep** against the 25-crate canonical pattern (see STATE.md §Critical Hook Lessons "Mandatory deps-pin-manifest sweep").
+2. **Classification table** in burst §Trace entry — every match classified PASS / HISTORICAL / CORRECTED with site references.
+3. **Surface any out-of-scope discoveries** — if a stale pin is found that requires a sibling-agent fix, route to orchestrator (do not silently fix outside scope unless trivial single-line correction in same domain).
+
+**Application precedent:** F-R71 VP burst (commit 296b044) applied the discipline and verifiably caught 3 carry-forward stale `PRD v1.5/v1.6` pin annotations on top of the explicit F-R71 findings. The discipline is operationally feasible and finds real defects.
