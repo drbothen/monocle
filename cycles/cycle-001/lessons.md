@@ -743,3 +743,37 @@ F-R74-1 demonstrated that the placeholder-discipline sweep (which was previously
 All JSON schema sketches and array literals in arch files must use actual production values, not placeholder forms of any kind.
 
 **Application precedent:** F-R74 closure chain (architect arch v1.0.15 + SS-deps-pin-manifest.md v1.1.10 at 7d8d0de) corrected the hook_endpoints ellipsis to the canonical 5-string enumeration per SS-daemon-lifecycle.md §Hook Endpoints gene source.
+
+### Extension 5: VP-Coverage-vs-BC-EC-Security-Property Sweep (2026-05-15, post-R75)
+
+Obs-R75-2 part 1 demonstrated that BC EC-NNN entries can specify security-relevant properties (e.g., BC-DAEMON-005 EC-052 mandates runtime-dir mode 0o700 owner-only) without corresponding VP probes verifying them. R75 (pass 1 attempt 9) caught this gap on attempt 9 — the property had survived 14 prior adversary and consistency passes.
+
+**Finding class:** F-R75-1 (MED — VP-DAEMON-005 missing postcondition 9 + probe row 5.e + counter-example 10 + mutation-test rationale extension to verify 0o700 mode after creation). Security-relevant verification coverage gap.
+
+**Extended discipline:** For every BC EC-NNN entry that mandates a security-relevant property — including mode bits (0o700, 0o600), atomicity guarantees, constant-time comparisons, minimum/maximum length constraints, ordering invariants — grep the VP catalog for a probe explicitly verifying that property. Missing probe is a MEDIUM finding minimum. If the security property is privilege-related (owner-only access, secret-size enforcement, timing side-channel prevention), the missing probe is CRITICAL.
+
+**New review axis:** Adversary and consistency-validator dispatch prompts MUST include this sweep as a checklist item:
+```
+VP-Coverage-vs-BC-EC-Security sweep:
+For each BC EC entry with a security property (mode bits / atomicity / constant-time /
+length / ordering), verify VP has a corresponding probe. Missing = MED finding minimum.
+```
+
+**Application precedent:** F-R75 closure chain (formal-verifier VP v1.10 at 03a1293) added VP-DAEMON-005 postcondition 9 + probe row 5.e + counter-example 10 + mutation-test rationale extension verifying runtime-dir 0o700 owner-only mode per BC-DAEMON-005 EC-052.
+
+### Extension 6: Rationale-Prose-vs-NFR-Canonical-Contract Sweep (2026-05-15, post-R75)
+
+Obs-R75-2 part 2 demonstrated that BC rationale prose can drift from the canonical NFR/§Scope/brief contracts. E.g., BC-DAEMON-005 rationale claimed Windows "zero-config" behavior, but NFR-008 lists only macOS + Linux as primary CI targets; Phase 1 CI does not formally validate Windows behavior. This drift survived 14 prior adversary and consistency passes and was caught only on attempt 9.
+
+**Finding class:** F-R75-2 (MED — Windows scope drift at 4 sites in arch + PRD + VP). Three-artifact alignment required.
+
+**Extended discipline:** For every BC rationale prose that claims a platform/scope/CI support contract (e.g., "works on Windows," "validated on macOS," "CI-tested on Linux"), cross-validate against the canonical source: NFR-NNN, §Scope/§Constraints, or product-brief §Constraints. Any rationale claim not grounded in a canonical contract artifact is a MEDIUM finding. Disposition must either (a) cite the canonical contract evidence, or (b) qualify the claim as "secondary target / not formally CI-validated per NFR-NNN."
+
+**New review axis:** Adversary and consistency-validator dispatch prompts MUST include this sweep as a checklist item:
+```
+Rationale-vs-NFR-Canonical-Contract sweep:
+For each BC rationale prose claim about platform / scope / CI support, grep against
+NFRs / §Scope / brief for canonical contract evidence. Ungrounded claim = MED finding.
+```
+
+**Application precedent:** F-R75 closure chain (architect SS-daemon-lifecycle.md v1.0.16 at 6bb93e2, product-owner PRD v1.10 at 8feecad, formal-verifier VP v1.10 at 03a1293) tightened Windows scope at 4 sites to: "Windows is a secondary build target per PRD §8.7; Phase 1 CI does not formally validate Windows behavior per NFR-008's macOS + Linux target scope." Three-artifact alignment achieved.
