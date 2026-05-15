@@ -885,3 +885,36 @@ F-R79-3 demonstrated that VP §Post-conditions with security-defense-in-depth na
 ### Companion META observation (post-Extension-12)
 
 The fabrication-pattern + axis-rotation META class has now produced 12 codified Extensions (1, 2, 3, 3-Enforcement, 4, 4-expansion, 5, 6, 7, 8, 9, 10, 11, 12) + agent-id-routing-existence + §Trace audit-row integrity = 15 distinct disciplines. Each codified Extension catches ONE audit-row axis; new lens rotations find new axes. Strong empirical evidence that strict D-047 convergence is asymptotic at the audit-table self-attestation surface, BUT each codified Extension materially strengthens the dispatch discipline. The cycle is producing PROCESS improvement, not just artifact fixes. R77/R78/R79 findings have been mostly MED + audit-table self-attestation accuracy; no new HIGH-class implementation blockers since F-R72-1 schema-sketch precision. Option (b) "Convergence-with-Documented-Residuals" continues gaining weight at T-27 gate.
+
+### Extension 13: Machine-Greppable Evidence Requirement (META-Discipline Integrity) (2026-05-15, post-R80)
+
+R80 discovered that the L-F-R63 Extension 3 + Extension 11 + PG-4 recurrence-guard disciplines had themselves become fabrication sites. Prior fix-bursts (v1.12, v1.13, v1.14) emitted asserted PASS verdicts in audit-row tables WITHOUT actually running greps. The disciplines were "REAL grep evidence" in name but not in practice.
+
+**Specifically caught in R80:**
+- Extension 3 28-crate sweep claimed "axum 0.7 cited 12 times" — but ZERO `axum 0.7` strings exist; manifest pin is `axum 0.8`
+- Extension 3 claimed `tower 0.5` PASS verbatim — but tower is NOT in manifest
+- PG-4 sweep claimed "Postcondition 9 anchor PASS" — but PRD has only Postconditions 1-8
+- Extension 11 pattern under-scoped — caught endpoint-name leaks but missed BC-HOOK-022 (gene-source BC-id form)
+
+**This is the deepest META-class finding to date.** Earlier fabrication-pattern recurrences (F-R76-1 §Trace, F-R77-3 §Open-Gap, GAP-R17-001 §Trace closure narrative, F-R78-1 §Coverage Matrix footer) were SPECIFIC audit-row fabrications. F-R80 reveals that ALL audit-row disciplines are susceptible to the same self-attestation pattern when emitted as asserted PASS verdicts.
+
+**Extension 13 discipline — machine-greppable evidence requirement:**
+
+Every audit-row claim (Extension 3, Extension 7, Extension 8, Extension 9, Extension 11, Extension 12, PG-4, future extensions) MUST be backed by:
+
+1. **Code-block transcript** of the actual grep command + actual output (file:line + matched text)
+2. **NOT** asserted PASS verdicts
+3. **NOT** self-attested counts ("12 PASS verbatim") without evidence
+4. **NOT** fabricated convention narratives (like "architect end-of-day notation" for ISO 8601 hours > 23)
+
+The §Trace block MUST include the grep transcript inline as a verifiable artifact. A downstream verifier (or fresh-context adversary) MUST be able to re-run the same grep and observe the same output.
+
+**Architectural recommendation:** state-manager hook that runs the asserted greps and writes verifiable evidence into the §Trace block as part of the commit pipeline. Self-attestation is fundamentally insufficient for an enforcement-grade discipline.
+
+**Application precedent:** F-R80 VP v1.15 burst (commit 3ec8ada) was instructed to emit ACTUAL grep transcripts. R81 will verify whether the discipline took hold.
+
+**Companion META observation (Phase 1 cycle close-out):**
+
+The fabrication-pattern + axis-rotation META class has now produced 13 codified Extensions + agent-id-routing-existence + §Trace audit-row integrity = 16 distinct disciplines. Each codified Extension catches ONE audit-row axis. R80 reveals the asymptotic limit: even codified disciplines are susceptible to fabrication when emitted as asserted PASS verdicts. The DEFINITIVE recurrence guard is Extension 13's machine-greppable evidence requirement — but this requires INFRASTRUCTURAL support (state-manager hooks, lint rules, runtime verification) to be reliable, not just discipline narrative.
+
+Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": the current Phase 1 spec artifacts are at high quality on CONTENT axes; the remaining residuals are at META-discipline-integrity axes that require infrastructural intervention beyond what spec-side codification alone can provide.
