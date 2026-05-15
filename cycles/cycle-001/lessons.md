@@ -667,3 +667,17 @@ R3-001 was the first post-codification application of this lesson. Consistency R
 ### Recurrence Note 2 (2026-05-14)
 
 F-R65 demonstrated a SECOND failure mode of incomplete propagation: F-R62-8 collapsed the 3-body auth taxonomy to 2-body in the architecture's BC-AUTH-002 block but did NOT propagate the count change ("Three auth failure modes") OR the Bearer-disposition reconciliation. These defects survived R62, R63, R64 adversary passes — R65's deeper semantic content review caught them. Lesson STRENGTHENED: propagation-checklist discipline must include not just metadata sweeps (paths, names, versions) but also SEMANTIC sweeps (count claims, prose lead-ins, related test vectors, cross-paragraph consistency). When a fix-burst touches taxonomy/enumeration size, the orchestrator dispatch prompt MUST enumerate ALL prose sites that reference the count or enumeration as propagation targets.
+
+### Extension 2: Intra-block / Intra-artifact Same-ID Consistency (2026-05-15)
+
+R67 demonstrated a THIRD failure mode that the original L-F-R63-PARTIAL-FIX recurrence-note did not anticipate. The semantic propagation sweep (Recurrence Note 2 from R65) called for sweeping count claims and prose lead-ins. R67 caught two cases that survived:
+
+1. **Intra-block contradiction:** VP-TYPES-001 §Mechanism prose (line 1080) said "clippy primary" while the SAME VP's §Post-conditions (lines 1091-1099) AND the upstream PRD invariant 1 said "syn 2 AST audit primary; clippy supplement only." Different sections of the same block contradicting each other.
+
+2. **Same-ID multi-instance contradiction:** PRD §3 EC-045 prose said "262,144 → 413" while PRD §9 EC-045 catalog row said "262,145 → 413." Same edge-case ID, different numeric claims, both within the same PRD document.
+
+**Extended discipline:** Every fix-burst must include, in its grep-sweep protocol:
+- For every BC/VP/NFR block touched: cross-check §Mechanism / §Post-conditions / §Verification / §Edge Cases / §Traceability for internal consistency.
+- For every catalog/index ID (EC-NNN, BC-NNN, VP-NNN, NFR-NNN) referenced in both a centralized catalog AND in body prose: verify all instances agree on numeric/outcome content.
+
+**Application precedent:** The F-R67-1 closure burst (commit 6831e23) preemptively applied the discipline to all 22 VPs and found exactly 1 contradiction (VP-TYPES-001, which was the F-R67-1 finding itself); 21 VPs were clean. The application demonstrated the discipline is operationally feasible.
