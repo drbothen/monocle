@@ -1490,3 +1490,30 @@ This extension makes SE-14b BIDIRECTIONAL at the authoring level:
 **Codified in:** cycle-001/lessons.md §SE-14b extension (this entry, R92 discovery).
 
 **27 codified disciplines remain in force** — SE-14b extension is a sub-rule of existing SE-14b, not a new numbered discipline.
+
+---
+
+## SE-17c: Final-state line-number revalidation (Extension 17 sub-extension)
+
+**Discovery:** R95 adversary (attempt 28) surfaced a 3-finding pattern (C-R95-1 + C-R95-2 + C-R95-4) — VP v1.28 §Trace contained stale audit metadata: 7 of 10 L-number citations in the SE-16c++ supplementary grep audit-table were off-by-1 to off-by-17 from actual file state; the awk boundary `$1 < 3086` was hardcoded but the actual §Trace heading was at line 3108 (22-line drift); the frontmatter "8 sites" count claim mismatched the audit-table's 10 rows. Pattern cause: audit metadata was authored mid-burst (against partial-edit state) and not re-validated against final post-burst file state.
+
+**Rule:** Every §Trace audit-table or audit-claim that cites line numbers, boundaries, or counts MUST be re-validated by re-running the cited grep/awk command as the LAST step of the burst, AFTER all other edits (including the §Trace narrative's own additions) are settled. Specifically:
+
+- **(a) Line-number revalidation:** every `L<N>` citation in audit-table prose MUST be verified by Read of actual line N against the current file state.
+- **(b) Boundary derivation:** every awk boundary filter `$1 < <BOUNDARY>` MUST derive `<BOUNDARY>` at burst-finalization time via `grep -n "^## §Trace" file.md | head -1 | cut -d: -f1`, NOT hardcode from a prior burst.
+- **(c) Count consistency:** every frontmatter narrative count claim ("N sites surfaced") MUST equal the audit-table row count in the body.
+
+**SE-17c application order:**
+1. Author all body content + §Trace narrative.
+2. Run all final-state greps with current line numbers.
+3. Update audit-table L-numbers + awk boundary + counts to match final-state.
+4. Re-verify all claims against the final-state.
+5. Commit.
+
+This is the third META audit-discipline codification under Extension 17 (after SE-17a multi-line patterns, SE-17b self-verification). The discipline class matures via observed defect patterns: C-R95-1 (L-numbers), C-R95-2 (awk boundary), C-R95-4 (count claim) are three distinct forms of the same root cause (mid-burst authoring without final-state revalidation).
+
+**Context:** Cons R34 was CLEAN. Counter stays at 0/3. C-R95-3 MED (VP line 910 stale `per C-R91-1` attribution) is a separate finding class from the SE-17c cluster. I-R95-1 (PRD v1.20/v1.21 dual-version pattern) is informational. arch↔PRD round-trip secondary lens: all 11 sampled BCs resolve CLEAN — strong empirical signal that substantive content is converged; remaining defects are exclusively META audit-discipline.
+
+**Codified in:** cycle-001/lessons.md §SE-17c (this entry, R95 discovery).
+
+**28 codified disciplines now in force** (was 27 + SE-17c). SE-17c is a sub-extension of Extension 17, not a new numbered discipline.
