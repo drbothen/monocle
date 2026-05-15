@@ -836,3 +836,24 @@ Document the audit result in §Trace with the per-NFR classification.
 - (potential future axis): §References, §Coverage Matrix, §Mechanism Distribution, etc.
 
 The META class is "self-attested verification claims that are not independently audited." Recurrence-guard discipline: every verification-claim cell in any audit table or gap entry MUST include REAL grep evidence (file:line citation) of what was actually verified. No self-attestation accepted.
+
+### Extension 9: §Coverage Matrix Footer + Closure-Chain Narrative Audit (2026-05-15, post-R78)
+
+F-R78-1 demonstrated that the §Coverage Matrix footer narrative — a free-text "Coverage:" prose paragraph summarizing the version-chain of the artifact — can fabricate closure-chain claims that contradict the same artifact's §Trace and §References blocks. The v1.12 footer claimed "PRD v1.11 content is a content edit of v1.9 — F-R75-2" but PRD v1.10 was the F-R75-2 content edit and v1.11 was the GAP-R16-001 frontmatter-only housekeeping. The same artifact's §Trace v1.12 + §References item 1 documented the correct chain. The Coverage Matrix footer was structurally NOT included in Extension 2 intra-block consistency sweep.
+
+**This is the FOURTH recurrence of the fabrication-pattern META class:**
+- F-R76-1: §Trace audit-row fabrication ("serde 1 cited verbatim")
+- F-R77-3: §Open-Gap false-positive ("BC-HOOK-022 verified by its own VP")
+- GAP-R17-001: §Trace closure-narrative fabrication ("all 22 Test name annotations updated")
+- F-R78-1: §Coverage Matrix footer narrative fabrication (v1.10→v1.11 chain)
+
+**Discipline:** Every fresh-context adversarial pass MUST include three-way consistency check between:
+1. §Coverage Matrix footer closure-chain narrative
+2. §Trace v(current) closure-chain narrative
+3. §References item 1 historical lineage
+
+Any divergence is a HIGH-severity fabrication-pattern finding. Apply to ALL audit-table style claims: §Coverage Matrix, §Scope, §Purpose, §References lineage, §Mechanism Distribution, §Open Verification Gaps — anywhere the artifact self-attests its own provenance or coverage state.
+
+**Companion META observation:** The fabrication-pattern class has now recurred at 4 different audit-row axes (F-R76-1, F-R77-3, GAP-R17-001, F-R78-1). Each codified Extension catches ONE axis; new lens rotations find new instances. This is asymptotic convergence: any audit-table style claim without REAL grep evidence per row will eventually be fabricated. The DEFINITIVE recurrence guard is to require REAL grep evidence (file:line citation of independently-verified state) for EVERY claim cell in EVERY audit table — never accept self-attestation.
+
+**Application precedent:** F-R78 closure burst (VP v1.13 commit 5367f2c) applied Extension 9 preemptively and audited all 14 closure-chain narrative claims; 1 fabrication closed, 13 PASS.
