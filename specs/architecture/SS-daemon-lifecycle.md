@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.11"
+version: "1.0.12"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T23:30:00Z
+timestamp: 2026-05-15T01:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token)"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2)"
 project: monocle
 ---
 
@@ -26,8 +26,14 @@ project: monocle
 Phase 1 daemon: a single-process Rust binary (`monocle daemon start`) running an
 axum 0.8 HTTP server over `127.0.0.1:<OS-assigned-port>` for hook ingestion,
 plus a Unix domain socket (UDS) at `<runtime_dir>/monocle.sock` for TUI client
-attach/detach commands. Runtime directory is resolved via
-`directories::ProjectDirs::runtime_dir()` per OQ-10. All lifecycle state
+attach/detach commands. Runtime directory is resolved via a platform-aware chain
+(see §Start Sequence step 1): `MONOCLE_RUNTIME_DIR` env override first; then
+`directories::ProjectDirs::runtime_dir()` on Linux (returns an XDG-compliant
+`/run/user/<uid>/monocle/` path); then `directories::ProjectDirs::data_local_dir()`
+on macOS (returns `~/Library/Application Support/monocle/`) and Windows (returns
+`%APPDATA%/monocle/`) — because `runtime_dir()` returns `None` on those platforms
+by design. NFR-008 lists macOS as the primary target; the fallback chain ensures
+monocle starts correctly on macOS without operator intervention. All lifecycle state
 (port, pid, auth token, start time) is written to a single lock file at
 `<runtime_dir>/monocle.lock` using `tempfile::persist` for atomic write.
 
@@ -162,8 +168,77 @@ let app = public_router.merge(authed_router);
 
 ### Start Sequence
 
-1. Resolve `runtime_dir` via `directories::ProjectDirs::runtime_dir()` (OQ-10).
-   Create directory with mode `0o700` if absent.
+1. Resolve `runtime_dir` via the following platform-aware chain (F-R70-1 closure):
+
+   **Resolution chain (evaluated in order; first `Some` result wins):**
+
+   a. `MONOCLE_RUNTIME_DIR` environment variable — if set and non-empty, use as
+      the runtime directory path verbatim. This is the operator escape hatch for
+      containers, NixOS, and any deployment where platform defaults are
+      inappropriate. Log `INFO: runtime_dir from MONOCLE_RUNTIME_DIR env var`.
+
+   b. `directories::ProjectDirs::runtime_dir()` — returns `Some` on Linux (XDG
+      `$XDG_RUNTIME_DIR/monocle`, e.g., `/run/user/1000/monocle`); returns `None`
+      on macOS and Windows by design of the platform ABI. If `Some`, use this path.
+      Log `INFO: runtime_dir from ProjectDirs::runtime_dir()`.
+
+   c. `directories::ProjectDirs::data_local_dir()` — platform fallback for macOS
+      and Windows (and any Linux environment where `XDG_RUNTIME_DIR` is not set):
+      macOS → `~/Library/Application Support/monocle/`; Windows →
+      `%APPDATA%/monocle/`. If `Some`, use this path. Log
+      `INFO: runtime_dir fallback to data_local_dir (platform: <os>)`.
+
+   d. If all three resolution paths return `None` (e.g., no home directory AND no
+      `MONOCLE_RUNTIME_DIR`), exit 1 with:
+      `ERROR: cannot resolve runtime directory; set MONOCLE_RUNTIME_DIR to specify an explicit path`.
+      This is the fail-fast path for genuinely unresolvable environments.
+
+   **Rationale:** `ProjectDirs::runtime_dir()` returns `None` on macOS and Windows
+   by design — not due to misconfiguration. macOS is the primary target platform
+   (NFR-008). A fail-fast-only approach would require every macOS user to set
+   `MONOCLE_RUNTIME_DIR` before starting monocle, which violates the zero-config
+   startup requirement. The `data_local_dir()` fallback provides a correct,
+   standards-compliant runtime state location on macOS (`~/Library/Application Support/monocle/`)
+   and Windows (`%APPDATA%/monocle/`). The env override preserves operator
+   control for non-standard deployments without burdening default users. The
+   asymmetry with `BC-ENGINE-002-ERR` (which fail-fasts on `BaseDirs::new() == None`)
+   is correct: `BaseDirs::new()` returns `None` only when there is no home directory
+   at all — a genuine system-configuration failure; `ProjectDirs::runtime_dir()`
+   returns `None` on macOS as a platform design choice, not a failure.
+
+   Implementation:
+
+   ```rust
+   fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> Result<PathBuf, DaemonStartError> {
+       // (a) Operator env override
+       if let Ok(env_path) = std::env::var("MONOCLE_RUNTIME_DIR") {
+           if !env_path.is_empty() {
+               tracing::info!(source = "MONOCLE_RUNTIME_DIR", "runtime_dir resolved");
+               return Ok(PathBuf::from(env_path));
+           }
+       }
+       // (b) XDG runtime dir (Linux only in practice)
+       if let Some(rd) = project_dirs.runtime_dir() {
+           tracing::info!(source = "ProjectDirs::runtime_dir()", "runtime_dir resolved");
+           return Ok(rd.to_path_buf());
+       }
+       // (c) data_local_dir fallback (macOS / Windows / XDG-less Linux)
+       let fallback = project_dirs.data_local_dir().to_path_buf();
+       tracing::info!(
+           source = "ProjectDirs::data_local_dir()",
+           platform = std::env::consts::OS,
+           "runtime_dir fallback resolved"
+       );
+       Ok(fallback)
+   }
+   ```
+
+   If `ProjectDirs::new("monocle", "monocle", "monocle")` itself returns `None`
+   (which requires no home directory), the daemon exits with
+   `DaemonStartError::RuntimeDirUnresolvable` before `resolve_runtime_dir` is called.
+   This is the fail-fast path (d) above.
+
+   Create the resolved directory with mode `0o700` if absent.
 2. Check for existing lock file at `<runtime_dir>/monocle.lock`. If it exists:
    a. Parse the JSON lock content.
    b. Send `kill(pid, 0)` to the pid in the lock. If the pid is alive, log
@@ -514,23 +589,53 @@ On receiving any shutdown signal:
 
 ### Hard Shutdown
 
-6. After 10-second drain timeout OR on receipt of a second SIGTERM:
+6. After 10-second drain timeout OR on receipt of a second signal OR on a second
+   authenticated `POST /shutdown` during drain:
    a. Force-close all axum connections. In axum 0.8, `axum::Server` was removed;
       the correct idiom is `axum::serve(listener, app).with_graceful_shutdown(shutdown_rx)`
       where `shutdown_rx` is a `tokio::sync::oneshot::Receiver<()>` sent by the
-      signal handler. On hard shutdown (second SIGTERM or drain timeout expiry), drop
-      the sender half to unblock the receiver and trigger immediate connection close.
+      signal handler. On hard shutdown (second signal, second admin `/shutdown`, or
+      drain timeout expiry), drop the sender half to unblock the receiver and trigger
+      immediate connection close.
+
       Signal handling uses `tokio::signal::unix::signal(SignalKind::terminate())` for
       SIGTERM and `tokio::signal::ctrl_c()` for SIGINT; both are `async fn` futures
-      awaited in a `tokio::select!` loop alongside the oneshot receiver.
+      awaited in a `tokio::select!` loop alongside the oneshot receiver. The signal
+      type that triggered hard shutdown is recorded for exit-code selection in step 6d.
+
    b. Close UDS socket; remove `<runtime_dir>/monocle.sock`.
    c. Remove `<runtime_dir>/monocle.lock`.
-   d. Exit.
+   d. Exit with the code appropriate to the hard-shutdown trigger (see Exit codes below).
 
-Exit codes:
-- `0`: drain succeeded; all in-flight requests completed; ring buffer flushed.
-- `130`: second SIGTERM received during drain; hard-killed; some in-flight
-  requests may have been dropped.
+Exit codes (F-R70-3 closure — POSIX 128+N convention; disposition c):
+- `0`: graceful drain succeeded; all in-flight requests completed; ring buffer flushed.
+- `130`: hard-killed by SIGINT (signal 2) during drain — POSIX convention 128+2.
+  Typical cause: user pressed Ctrl-C a second time while draining.
+- `143`: hard-killed by SIGTERM (signal 15) during drain — POSIX convention 128+15.
+  Typical cause: systemd/k8s sent a second SIGTERM after the graceful-shutdown window.
+  External monitoring (systemd `ExecStop=`, k8s `terminationGracePeriodSeconds`) MUST
+  interpret exit 143, not 130, as the SIGTERM hard-kill outcome.
+- `2`: hard-killed by a second authenticated `POST /shutdown` during drain (admin
+  forced-stop). This is a monocle-specific programmatic code, not a POSIX signal code.
+  Value 2 was chosen because it does not collide with POSIX 128+N space (which starts
+  at 129) and is distinct from exit 1 (daemon start failure). External monitoring should
+  treat exit 2 as "operator-initiated force-stop via admin API."
+- `1`: daemon failed to start (see step 1d — `RuntimeDirUnresolvable`, port bind failure,
+  existing live lock file, etc.).
+
+**BC-DAEMON-004** (exit-code postcondition): The exit code written to the OS process
+table on daemon termination MUST match the trigger:
+- graceful drain complete → `0`
+- SIGINT hard-kill during drain → `130`
+- SIGTERM hard-kill during drain → `143`
+- admin `/shutdown` second-call during drain → `2`
+- startup failure → `1`
+
+Verification: integration test in `monocle-runtime/tests/daemon_lifecycle.rs`
+(`test_BC_DAEMON_004_exit_codes`) sends SIGTERM twice (expects 143), SIGINT twice
+(expects 130), and two sequential `POST /shutdown` calls (expects 2). The PRD
+BC-DAEMON-004 postcondition is the canonical error-taxonomy source; this architecture
+document is the canonical rationale source for the code selection.
 
 ### Crash Recovery
 
@@ -587,8 +692,8 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-DAEMON-001 | `/healthz` returns 200/503 with uptime + version; unauthenticated | Health and Status Endpoints |
 | BC-DAEMON-002 | `/status` returns full daemon state JSON; requires auth token | Health and Status Endpoints |
 | BC-DAEMON-003 | All `/hooks/*` and `/status` enforce 256 KiB body limit; 413 on excess | Body Size Limit |
-| BC-DAEMON-004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint | Daemon Lifecycle Protocol |
-| BC-DAEMON-005 | Lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
+| BC-DAEMON-004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint; exit codes: 0 (clean), 130 (SIGINT hard-kill), 143 (SIGTERM hard-kill), 2 (admin /shutdown force-stop), 1 (startup failure) | Daemon Lifecycle Protocol |
+| BC-DAEMON-005 | Runtime dir resolved via platform-aware chain: MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() (Linux/XDG) → ProjectDirs::data_local_dir() (macOS/Windows fallback); lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
 | BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
@@ -618,6 +723,80 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-code semantics):
+- F-R70-1 RESOLVED (HIGH — adversary R70 cross-platform invariant): §Scope and §Start
+  Sequence step 1 mandated `directories::ProjectDirs::runtime_dir()` as the sole runtime
+  directory resolution source with no fallback. `runtime_dir()` returns `None` on macOS
+  and Windows by platform-ABI design, not due to misconfiguration. NFR-008 lists macOS
+  as the primary target. An implementer following the prior step 1 spec had no defined
+  behavior when `None` was returned — bifurcated implementations would result, breaking
+  BC-DAEMON-005 and BC-LOCK-001 on macOS. Architect disposition: **(c) hybrid platform
+  fallback chain with env override.** Step 1 replaced with a four-path resolution chain:
+  (a) `MONOCLE_RUNTIME_DIR` env override — operator escape hatch for containers and
+  non-standard deployments; (b) `ProjectDirs::runtime_dir()` — XDG-compliant path used
+  on Linux; (c) `ProjectDirs::data_local_dir()` — platform-appropriate fallback used on
+  macOS (`~/Library/Application Support/monocle/`) and Windows (`%APPDATA%/monocle/`);
+  (d) fail-fast with `DaemonStartError::RuntimeDirUnresolvable` + exit 1 if all three
+  resolution paths return `None` (e.g., no home directory at all). Rationale for
+  disposition (c) over (a) pure fail-fast: `runtime_dir()` returning `None` on macOS
+  is a platform design choice, not a configuration failure; forcing every macOS user
+  (primary target) to set `MONOCLE_RUNTIME_DIR` violates the zero-config startup
+  requirement. Rationale for disposition (c) over (b) silent fallback: the env override
+  is a necessary operator escape hatch for containerized and custom deployments.
+  Asymmetry with BC-ENGINE-002-ERR is intentional: `BaseDirs::new() == None` signals
+  a genuine system-configuration failure (no home directory), warranting fail-fast;
+  `ProjectDirs::runtime_dir() == None` on macOS is expected platform behavior,
+  warranting a documented fallback. BC count: **22 unchanged** — BC-DAEMON-005 is
+  updated in place (precondition 2 + §Start Sequence step 1 elaboration); no new BC
+  added. §Scope updated to describe the resolution chain. `resolve_runtime_dir()`
+  implementation sketch added to step 1 for implementer clarity.
+- F-R70-3 RESOLVED (MEDIUM — adversary R70 POSIX exit-code semantic correctness):
+  §Hard Shutdown exit codes block specified exit `130` for "second SIGTERM during
+  drain." POSIX convention: signal N → exit 128+N; SIGINT=2 → 130; SIGTERM=15 → 143.
+  The prior spec encoded Ctrl-C (SIGINT) semantics for a SIGTERM hard-kill scenario.
+  systemd, k8s, and CI monitoring would misinterpret exit 130 as SIGINT when the
+  actual trigger was SIGTERM. Architect disposition: **(c) distinguish three hard-kill
+  triggers.** Exit codes now:
+  - `0` — graceful drain complete (unchanged).
+  - `130` — SIGINT (signal 2) hard-kill during drain (128+2 POSIX; Ctrl-C second press).
+  - `143` — SIGTERM (signal 15) hard-kill during drain (128+15 POSIX; systemd/k8s second SIGTERM).
+  - `2` — admin `POST /shutdown` second-call during drain (monocle-specific programmatic
+    code; chosen outside POSIX 128+N space and distinct from startup-failure exit 1).
+  - `1` — daemon startup failure (unchanged semantic; now explicitly listed).
+  BC-DAEMON-004 summary row updated to enumerate all five exit codes. Hard Shutdown
+  step 6 updated to distinguish signal type for exit-code selection. BC-DAEMON-004
+  postcondition added inline in §Hard Shutdown with verification test reference
+  (`test_BC_DAEMON_004_exit_codes` in `monocle-runtime/tests/daemon_lifecycle.rs`).
+  Rationale for disposition (c) over (a) simple 143 substitution: distinguishing SIGINT
+  vs SIGTERM vs admin-API force-stop preserves maximum diagnostic information for ops
+  tooling; the code paths through the `tokio::select!` loop already distinguish SIGTERM
+  vs `ctrl_c()` signals, so the only implementation delta is writing the correct exit
+  code at the callsite.
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) §Scope updated — version-stable description of resolution chain added; no bare
+  L-numbers; no directional qualifiers.
+  (b) §Behavioral Contract Summary — BC-DAEMON-004 and BC-DAEMON-005 rows updated
+  in place; no new rows; BC count 22 verified (10 daemon-lifecycle IDs: DAEMON-001
+  through DAEMON-006, RING-001, AUTH-001, AUTH-002, LOCK-001).
+  (c) PG-3 sweep: §Start Sequence (EXISTS heading), §Hard Shutdown (EXISTS heading),
+  §Behavioral Contract Summary (EXISTS heading), §Scope (EXISTS heading), §Trace
+  (EXISTS heading) — all §-anchor refs verified against actual headings.
+  (d) PG-4 sweep evidence: §Scope EXISTS, §Start Sequence EXISTS, §Hard Shutdown
+  EXISTS, §Behavioral Contract Summary EXISTS, §Trace EXISTS.
+  (e) PG-5 sweep: no historical normative-current claims modified; §Trace v1.0.11
+  and earlier entries unchanged.
+  (f) Cross-artifact propagation requirements (for orchestrator dispatch):
+  **PRD propagation required:** BC-DAEMON-004 postcondition (exit codes) must be
+  updated to enumerate all five codes (0/130/143/2/1) with POSIX rationale; the PRD
+  is the canonical test-vector source. BC-DAEMON-005 precondition 2 (runtime dir
+  resolution) must be updated to reflect the three-path chain + env override. These
+  are content changes in the PRD requiring `product-owner` dispatch.
+  **VP propagation required:** VP-DAEMON-004 and VP-DAEMON-005 (if they exist) must
+  be updated to reflect the new exit codes and resolution chain in their proof
+  strategies and test vectors. `formal-verifier` / `test-writer` dispatch as applicable.
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs added; no BCs removed.
+  Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.0.12 entry.
 
 v1.0.11 changes (adversary R65 F-R65-1/2/3 content closure + propagation sweep):
 - F-R65-1 RESOLVED (HIGH — adversary R65 pass 1 attempt 2): BC-AUTH-002 lead-in prose
