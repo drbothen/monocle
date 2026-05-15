@@ -857,3 +857,31 @@ Any divergence is a HIGH-severity fabrication-pattern finding. Apply to ALL audi
 **Companion META observation:** The fabrication-pattern class has now recurred at 4 different audit-row axes (F-R76-1, F-R77-3, GAP-R17-001, F-R78-1). Each codified Extension catches ONE axis; new lens rotations find new instances. This is asymptotic convergence: any audit-table style claim without REAL grep evidence per row will eventually be fabricated. The DEFINITIVE recurrence guard is to require REAL grep evidence (file:line citation of independently-verified state) for EVERY claim cell in EVERY audit table — never accept self-attestation.
 
 **Application precedent:** F-R78 closure burst (VP v1.13 commit 5367f2c) applied Extension 9 preemptively and audited all 14 closure-chain narrative claims; 1 fabrication closed, 13 PASS.
+
+### Extension 10: PRD §3 §Verification → §7 RTM Test File Column Propagation (2026-05-15, post-R79)
+
+F-R79-1 demonstrated that when a closure burst adds a test file to a BC's §3 Verification subsection, the test-file change must propagate atomically to the §7 RTM Test File column. The F-R70 closure added `daemon_lifecycle.rs` for `test_BC_DAEMON_004_exit_codes_posix_distinct` but the §7 RTM column was not updated. VP §Coverage Matrix correctly mirrored both files; only PRD §7 RTM diverged.
+
+**Discipline:** For every BC in PRD §3, §3 §Verification test-file list MUST match §7 RTM Test File column exactly. Apply 22-row audit on every PRD fix-burst.
+
+**Application precedent:** F-R79 PO burst applied Extension 10 preemptively (22-row classification: post-burst 22 MATCH, 0 GAP).
+
+### Extension 11: BC-vs-Brief/Vision JC-Closure Alignment Audit (2026-05-15, post-R79)
+
+F-R79-2 demonstrated that gene-source identifiers (upstream Claude Code endpoint names like `PostToolUse`) can leak into VP normative prose without explicit JC-N closure marking. VP §G-6 NFR-002 description fabricated a `post-tool-use` example surface despite JC-2 omission per PRD §1.5 + brief §Explicit Non-Goals.
+
+**Discipline:** Every VP-side normative description of an NFR or BC surface MUST cross-verify hook variant names against the canonical 5-endpoint matrix (BC-ENGINE-003 + BC-DAEMON-002). Gene-source variants (PostToolUse, PermissionRequest, etc.) appearing in normative-current VP prose MUST be explicitly marked as JC-N-OMITTED with PRD + brief citation, OR removed.
+
+**Application precedent:** F-R79 FV burst applied Extension 11 preemptively (PostToolUse audit: 2 occurrences, both correctly framed — 1 counter-example, 1 explicit JC-2-OMITTED marking).
+
+### Extension 12: VP-to-BC §Postcondition Anchor Audit (lift_invariants_to_bcs) (2026-05-15, post-R79)
+
+F-R79-3 demonstrated that VP §Post-conditions with security-defense-in-depth narrative + counter-example sketches + mutation-test rationale can anchor only to PRD EC entries (Edge Case tier) without lifting to §Postcondition or §Invariant tier. VP-DAEMON-005 Post-condition 9 (0o700 runtime-dir mode, F-R75-1) anchored only to EC-052 — easy to skip on fast PRD read.
+
+**Discipline:** Every VP §Post-condition with normative-tier narrative (defense-in-depth, mutation-test rationale, counter-example sketch) MUST anchor to a BC §Postcondition or §Invariant in PRD. EC-only anchoring is insufficient for security-critical invariants.
+
+**Application precedent:** F-R79 PO burst lifted EC-052 0o700 contract to new BC-DAEMON-005 Postcondition 8 with explicit cross-reference to VP-DAEMON-005 Post-condition 9 + probe 5.e.
+
+### Companion META observation (post-Extension-12)
+
+The fabrication-pattern + axis-rotation META class has now produced 12 codified Extensions (1, 2, 3, 3-Enforcement, 4, 4-expansion, 5, 6, 7, 8, 9, 10, 11, 12) + agent-id-routing-existence + §Trace audit-row integrity = 15 distinct disciplines. Each codified Extension catches ONE audit-row axis; new lens rotations find new axes. Strong empirical evidence that strict D-047 convergence is asymptotic at the audit-table self-attestation surface, BUT each codified Extension materially strengthens the dispatch discipline. The cycle is producing PROCESS improvement, not just artifact fixes. R77/R78/R79 findings have been mostly MED + audit-table self-attestation accuracy; no new HIGH-class implementation blockers since F-R72-1 schema-sketch precision. Option (b) "Convergence-with-Documented-Residuals" continues gaining weight at T-27 gate.
