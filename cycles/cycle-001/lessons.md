@@ -942,3 +942,82 @@ The D-071 §Purpose META recurrence guard grepped §Purpose + §Trace + §Refere
 2. `§Trace` — version citations + entry headers
 3. `§References item 1` — historical lineage SHA
 4. `§References intro` — `current-as-of` timestamp (NEW per Sub-extension)
+
+### Extension 15: Cross-Layer Parallel-Dispatch Coordination (2026-05-15, post-R84)
+
+**Discovery:** F-R84-1 CRITICAL (R84 adversary, post-F-R83 fix-burst). F-R83 fix-burst dispatched PO + arch + FV agents in parallel. The architect agent bumped arch v1.0.16 → v1.0.17 (a798d51). The parallel PO and FV agents completed believing arch was unchanged at v1.0.16. Result: ~93 stale arch-pin sites across PRD v1.13 + VP v1.17 (frontmatter `traces_to`, body lineage citations, §Trace narratives, per-VP §Mechanism blocks, §Purpose).
+
+Extension 14 codified WITHIN-layer sibling propagation but did NOT cover CROSS-layer parallel-dispatch coordination. When the architect bumps an arch version mid-parallel-burst, sibling-layer agents that have already been dispatched cannot self-correct — they have no mechanism to discover the bump.
+
+**Rule — cross-layer parallel-dispatch coordination:**
+
+1. **Pre-announcement:** Before parallel-dispatching sibling-layer bursts, the orchestrator MUST determine whether ANY burst will bump that artifact's version. If yes, that agent is dispatched FIRST (serial cascade), and sibling agents are dispatched only AFTER the version-bump burst lands, with the new version pin in their prompt.
+
+2. **Serial cascade for multi-bump fix-bursts:** If multiple bursts will bump (e.g., PRD AND arch AND VP), serialize in dependency order — most-upstream first (arch → PRD → VP), so each downstream agent sees the final upstream pins.
+
+3. **Default to serial for ambiguous bursts:** When in doubt about whether a burst includes a version bump, default to SERIAL dispatch. Parallel is the exception, not the default.
+
+4. **Parallel-safe bursts:** Only when ALL sibling agents are doing in-place edits with NO version bumps may parallel dispatch be used. Even then, agents MUST NOT assume sibling files are unchanged — they must re-read sibling frontmatter at the END of their burst before declaring done.
+
+5. **Process-gap closure:** This is an ORCHESTRATOR-behavior discipline, not a spec-content rule. State-manager logs adherence/violations in cycle lessons; orchestrator self-checks before every multi-agent dispatch.
+
+**Application precedent:** F-R84 serial fix-burst protocol adopted: PO (PRD v1.14) dispatched first; FV (VP v1.18) dispatched only after PRD v1.14 lands with confirmed arch v1.0.17 pin.
+
+---
+
+#### Sub-Extension SE-15a: Extension 14 VP-Layer Enumeration Expansion (per-VP §Mechanism block)
+
+**Discovery:** F-R84-5 MEDIUM (R84 adversary). Extension 14's VP-layer propagation target enumeration listed:
+
+> §Catalog Overview row + §Auxiliary Mechanism Coverage row + §Coverage Matrix footer row
+
+This enumeration was INCOMPLETE. Per-VP §Mechanism blocks (inside each individual VP body) contain inline arch version citations and cross-VP dependency claims. These are a FOURTH VP-layer propagation target that Extension 14 failed to enumerate.
+
+**Extension 14 VP-layer propagation targets (corrected, SE-15a):**
+
+- §Catalog Overview row
+- §Auxiliary Mechanism Coverage row
+- §Coverage Matrix footer row
+- **per-VP §Mechanism block (NEW — SE-15a)**
+
+Any `lift_invariants_to_bcs` fix-burst that bumps arch version or adds/modifies BC §Postconditions MUST sweep all four VP-layer targets.
+
+---
+
+#### Sub-Extension SE-15b: Extension 13 Evidence Requirement Inherited by Extension 14 Sweeps
+
+**Discovery:** F-R84-7 LOW (R84 adversary). Extension 14's codification body in VP v1.17 did NOT emit machine-greppable grep transcripts per Extension 13's discipline. The extension that governs propagation sweeps did not itself comply with the evidence requirement — creating a self-referential discipline gap.
+
+**Rule (SE-15b):** Every propagation sweep governed by Extension 14 MUST emit `grep -nE` transcripts inline in the burst's §Trace forensic block, listing all hits BEFORE the burst + all hits AFTER, for each of the four VP-layer propagation targets and each PRD-layer + arch-layer propagation target. Enumeration-without-evidence is structurally insufficient. Extension 14's own codification body must include grep transcript evidence per Extension 13.
+
+Extension 14 did NOT inherit Extension 13's evidence requirement at codification time. SE-15b retroactively closes this inheritance gap for ALL propagation-sweep extensions (Extension 9, 10, 11, 12, 14, and future extensions). Any new extension governing sweep disciplines MUST include Extension 13 evidence transcripts at codification time.
+
+---
+
+#### Sub-Extension SE-15c: Convention Back-Propagation to Sibling Rows (per Obs-R84-1)
+
+**Discovery:** Obs-R84-1 (R84 adversary). When a fix-burst establishes a new citation convention on one row of a homogeneous table (e.g., NFR-012 Validation Method cites VP probe 5.e), the convention must back-propagate to ALL sibling rows in the same section that have equivalent VP probe coverage.
+
+**Rule (SE-15c):** Every fix-burst that establishes a new citation form on any row of a multi-row table (§4 NFR table, §3 BC table, §7 RTM) MUST include a sibling-site sweep to identify other rows in the same table that should adopt the same form. Add this sibling-row convention back-propagation to the Extension 14 post-burst checklist alongside the existing four VP-layer and three PRD/arch-layer sweep targets.
+
+**Application precedent:** F-R84 PO burst (PRD v1.14) must audit NFR-009 and other NFR table rows for missing VP probe citations, using NFR-012 as the convention-setting row.
+
+---
+
+#### Sub-Extension SE-15d: Cross-Property VP Reciprocity (per Obs-R84-2)
+
+**Discovery:** Obs-R84-2 (R84 adversary). VP-DAEMON-005 §Mechanism block cites VP-LOCK-001 in a cross-property dependency note. VP-LOCK-001 §Mechanism block does NOT cite VP-DAEMON-005 back. Asymmetric cross-VP citation creates unresolvable traceability gaps for fresh-context agents following the dependency chain.
+
+**Rule (SE-15d):** When VP-A §Mechanism block normatively cites VP-B in a cross-property dependency, VP-B MUST reciprocate with a citation back to VP-A. This bidirectional reciprocity MUST be verified by the FV burst at the time any new cross-property citation is established. Add cross-VP reciprocity to the Extension 14 post-burst propagation sweep checklist.
+
+**Application precedent:** F-R84 FV burst (VP v1.18) must verify and close the VP-DAEMON-005 ↔ VP-LOCK-001 reciprocity gap, and sweep all other cross-property citation pairs for the same asymmetry.
+
+---
+
+### Companion META observation (post-Extension-15)
+
+The fabrication-pattern + axis-rotation META class has now produced 15 codified Extensions (1–15, with sub-extensions SE-15a/b/c/d) + agent-id-routing-existence + §Trace audit-row integrity = 18+ distinct disciplines. Extension 15 is the first ORCHESTRATOR-behavior discipline (all prior extensions addressed spec-content rules). This marks a qualitative shift: the process gap axis has moved from spec-authoring discipline to orchestration protocol.
+
+F-R84 root cause is a SINGLE process defect (parallel-dispatch coordination gap) producing 6 of 7 findings. This is atypical — prior rounds produced diverse-axis findings. The serial-cascade rule (SE-15) should close this class definitively. After F-R84 serial fix-burst, the remaining asymptotic residuals are expected to return to diverse-axis audit-table self-attestation patterns (Extensions 1–14 axes).
+
+Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": F-R84's 6 of 7 findings share a single root cause (orchestration protocol gap), not new content defects. Content quality of Phase 1 specs remains production-grade; the remaining convergence work is process-discipline enforcement.
