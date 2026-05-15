@@ -2,7 +2,7 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.12"
+version: "1.1.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -12,7 +12,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server); v1.1.12 F-R77-2: chrono row startTimeUtc attribution corrected from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001 (lock file owns startTimeUtc; BC-DAEMON-006 owns shutdown_utc); GAP-R16-002: §Trace v1.1.11 core node edge count corrected from 6 to 5"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server); v1.1.12 F-R77-2: chrono row startTimeUtc attribution corrected from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001 (lock file owns startTimeUtc; BC-DAEMON-006 owns shutdown_utc); GAP-R16-002: §Trace v1.1.11 core node edge count corrected from 6 to 5; v1.1.13 adversary R94 O-R94-1 closure: chrono row shutdown_utc attribution parenthetical (BC-DAEMON-006) added to complete sibling-field BC-attribution consistency"
 project: monocle
 ---
 
@@ -63,7 +63,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
 | serde | 1 | Serialize/Deserialize derive macros for `HookEventRecord` in `monocle-runtime::ring` (`#[derive(serde::Serialize, serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain) and multiple core types in `monocle-core` (HookEvent, EnrichedSession, SessionStatus, EngineMetadata, ProcessSnapshot, HookResponse, HookType per SS-core-types-and-abi.md and SS-engine-module.md) | caret pin; feature `derive` required — declare as `serde = { version = "1", features = ["derive"] }` in workspace `[dependencies]`; bare `serde` is a separate crate from `serde_json` and `serde_yaml_ng`; the `derive` feature activates the `Serialize`/`Deserialize` proc-macro; `serde 1.x` is the current stable series (no RUSTSEC advisories on 1.x line); not on untrusted-input deserialization path (that is `serde_json`'s role); F-R76-1 closure |
-| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint; `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision) | caret pin; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; Extension 7 comprehensive audit discovery |
+| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision) | caret pin; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; Extension 7 comprehensive audit discovery |
 
 ## Dev Dependencies
 
@@ -260,6 +260,53 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.13 changes (adversary R94 O-R94-1 closure — chrono row shutdown_utc BC attribution):
+
+- O-R94-1 RESOLVED (LOW — chrono row `shutdown_utc` missing BC parenthetical attribution):
+  The Phase 1 Pin Manifest chrono row Role column listed three timestamp fields with their
+  governing BCs. The sibling fields had explicit parenthetical attributions:
+  - `startTimeUtc` — `(BC-DAEMON-005 / BC-LOCK-001)`
+  - `last_hook_ts` — `(BC-DAEMON-002 / EC-044)`
+  - `shutdown_utc` — no parenthetical attribution (inconsistently omitted)
+
+  The v1.1.12 §Trace entry (F-R77-2) explicitly confirmed: "BC-DAEMON-006 retains sole
+  ownership of `shutdown_utc` (crash-recovery checkpoint)." The fix was made at that time
+  to the `startTimeUtc` attribution but the `shutdown_utc` parenthetical was not added
+  in the same burst.
+
+  Fix: `shutdown_utc` now reads "...and `shutdown_utc` in crash-recovery checkpoint
+  (BC-DAEMON-006);" — matching the form of sibling attributions. The three timestamp
+  fields now have complete, consistent BC-attribution across all three sites:
+  - `startTimeUtc` → `(BC-DAEMON-005 / BC-LOCK-001)` (lock file lifecycle)
+  - `last_hook_ts` → `(BC-DAEMON-002 / EC-044)` (`/status` response)
+  - `shutdown_utc` → `(BC-DAEMON-006)` (crash-recovery checkpoint)
+
+- SE-16b monotonicity check PASS: v1.1.12 → v1.1.13 is a monotonic increment.
+  No version regression. No prior §Trace entry modified.
+
+- Extension 17 evidence discipline — real grep transcripts:
+
+  Fix 4 PRE (shutdown_utc attribution):
+  ```
+  $ grep -n "shutdown_utc" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
+  15:traces_to: "...v1.1.12 F-R77-2: ...BC-DAEMON-006 owns shutdown_utc)..."
+  66:| chrono | 0.4 | ...and `shutdown_utc` in crash-recovery checkpoint; ...
+  271:  (`monocle.recovery.json`), which owns `shutdown_utc` — not `startTimeUtc`.
+  282:  Invariant confirmed: BC-DAEMON-006 retains sole ownership of `shutdown_utc`
+  288:  - `shutdown_utc` → BC-DAEMON-006 (crash-recovery checkpoint)
+  ```
+
+  Fix 4 POST (shutdown_utc attribution):
+  ```
+  $ grep -n "shutdown_utc" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
+  66:| chrono | 0.4 | ...and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); ...
+  ```
+  (Line 66 now contains the `(BC-DAEMON-006)` parenthetical. All other shutdown_utc
+  occurrences are in the §Trace prose and are not the subject of this fix.)
+
+- No crate additions, graph edge changes, or manifest table changes. Crate count
+  unchanged at 32 production crates + 1 dev-dep.
 
 v1.1.12 changes (F-R77-2 chrono row BC attribution fix + GAP-R16-002 §Trace numeral fix):
 
