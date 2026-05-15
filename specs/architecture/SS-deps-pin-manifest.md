@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.10"
+version: "1.1.11"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T05:00:00Z
+timestamp: 2026-05-15T22:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server)"
 project: monocle
 ---
 
@@ -62,6 +62,8 @@ All versions verified against crates.io REST API on 2026-05-12.
 | futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
+| serde | 1 | Serialize/Deserialize derive macros for `HookEventRecord` in `monocle-runtime::ring` (`#[derive(serde::Serialize, serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain) and multiple core types in `monocle-core` (HookEvent, EnrichedSession, SessionStatus, EngineMetadata, ProcessSnapshot, HookResponse, HookType per SS-core-types-and-abi.md and SS-engine-module.md) | caret pin; feature `derive` required — declare as `serde = { version = "1", features = ["derive"] }` in workspace `[dependencies]`; bare `serde` is a separate crate from `serde_json` and `serde_yaml_ng`; the `derive` feature activates the `Serialize`/`Deserialize` proc-macro; `serde 1.x` is the current stable series (no RUSTSEC advisories on 1.x line); not on untrusted-input deserialization path (that is `serde_json`'s role); F-R76-1 closure |
+| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-006), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint; `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision) | caret pin; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; Extension 7 comprehensive audit discovery |
 
 ## Dev Dependencies
 
@@ -170,8 +172,10 @@ graph TD
     runtime --> serde_json
     runtime --> directories
     runtime --> nix
+    runtime --> axum
+    runtime --> serde
+    runtime --> chrono
 
-    ipc --> axum
     ipc --> interprocess
     ipc --> tokio
     ipc --> core
@@ -195,6 +199,7 @@ graph TD
     core --> semver
     core --> futures
     core --> async_trait[async-trait]
+    core --> serde
     runtime --> async_trait
 
     static[monocle-static] -.->|Phase 2| core
@@ -255,6 +260,115 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.11 changes (adversary R76 F-R76-1 + F-R76-2 closure + Extension 7 comprehensive crate-prefix audit):
+
+- F-R76-1 RESOLVED (HIGH — bare `serde` absent from pin table despite being a direct
+  dependency of `monocle-runtime` and `monocle-core` for Serialize/Deserialize derives):
+
+  The adversary R76 identified a triple-false-positive audit fabrication: VP §Trace
+  audit tables (v1.8/v1.9/v1.10) claimed `serde 1 cited verbatim` in VP-RING-001 and
+  VP-PROTO-001b, but (a) the manifest had no bare `serde` row, (b) VP-RING-001 §Pre-
+  conditions cites `serde_json 1` (not `serde 1`), and (c) VP-PROTO-001b cites neither.
+  The root cause is that `serde` (the derive-macro crate) is separate from `serde_json`
+  (the JSON parser) and `serde_yaml_ng` (the YAML parser). All three serve distinct roles.
+
+  1. `serde 1` added to Phase 1 Pin Manifest as a caret pin with `derive` feature:
+     `serde = { version = "1", features = ["derive"] }`. The `derive` feature is
+     mandatory — without it, `#[derive(Serialize, Deserialize)]` fails to compile.
+
+  2. `HookEventRecord` in `monocle-runtime::ring` uses `#[derive(serde::Serialize,
+     serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain (lines 506-527). This
+     makes `monocle-runtime` a direct consumer of the bare `serde` crate. Added
+     dep graph edge: `runtime → serde`.
+
+  3. Multiple types in `monocle-core` use `#[derive(serde::Serialize, serde::Deserialize)]`
+     per SS-core-types-and-abi.md (HookEvent, EnrichedSession, SessionStatus,
+     EngineMetadata, ProcessSnapshot, HookResponse, HookType) and SS-engine-module.md
+     (SessionStatus enum). Added dep graph edge: `core → serde`.
+
+- F-R76-2 RESOLVED (HIGH — `runtime → axum` edge missing from workspace dep graph;
+  legacy `ipc → axum` edge from pre-decomposition artifact):
+
+  The adversary R76 identified that the F-R74-3 partial-fix (which added 4 runtime
+  edges in v1.1.10) missed axum — the primary daemon dependency. Evidence:
+  SS-daemon-lifecycle.md contains 3 direct `axum::` invocations in normative code
+  samples: (a) `Router::new().route(...).layer(DefaultBodyLimit::max(...))` in
+  §Body Size Limit, (b) `axum::Router::merge(...)` in the same section, (c)
+  `axum::serve(listener, app).with_graceful_shutdown(shutdown_rx)` in §Hard Shutdown.
+  VP-DAEMON-001 §Pre-conditions cites "axum 0.8 is the project pin" with harness at
+  `monocle-runtime/tests/healthz_endpoint.rs` — requiring monocle-runtime to declare
+  axum directly.
+
+  The legacy `ipc → axum` edge was a pre-decomposition artifact: monocle-ipc is the
+  Phase 4 federation russh SSH tunnel (SS-daemon-lifecycle.md §Phase 4 Notes: "Phase 4
+  federation introduces OAuth2 bearer tokens; federation tokens use the STANDARD
+  Authorization: Bearer header on a SEPARATE monocle-ipc federation channel (russh
+  tunnel)"). monocle-ipc has no axum HTTP server role and must NOT declare axum as a
+  dependency.
+
+  Changes:
+  - Added dep graph edge: `runtime → axum` (axum is a direct monocle-runtime dep)
+  - Removed dep graph edge: `ipc → axum` (monocle-ipc is russh federation, not HTTP)
+  - Added dep graph edge: `runtime → chrono` (see Extension 7 below)
+
+- EXTENSION 7 COMPREHENSIVE CRATE-PREFIX AUDIT (Obs-R76-1 closure — exhaustive grep
+  discipline codified as L-F-R63 Extension 7):
+
+  Audit command executed:
+  ```
+  grep -oE '\b[a-z_][a-z_0-9]*::' SS-daemon-lifecycle.md | sort -u
+  ```
+
+  Results and classification against dep graph:
+
+  | Crate prefix | Source | Manifest? | Graph edge? | Disposition |
+  |---|---|---|---|---|
+  | `axum::` | Router, serve, DefaultBodyLimit in normative code | YES (0.8 exact) | Added `runtime→axum` | F-R76-2 fixed |
+  | `chrono::` | `Utc::now().format(...)` in §Trace v1.0.14 F-R72-1 rationale | NO before v1.1.11 | Added `runtime→chrono` | Extension 7 new finding — added below |
+  | `constant_time_eq::` | auth middleware normative code | YES (^0.3) | `runtime→constant_time_eq` exists | PASS |
+  | `consts::` | `std::env::consts::OS` — standard library | N/A | N/A | stdlib, no dep |
+  | `directories::` | `ProjectDirs` in §Start Sequence normative code | YES (^6) | `runtime→directories` added v1.1.10 | PASS |
+  | `env::` | `std::env::var` — standard library | N/A | N/A | stdlib, no dep |
+  | `libc::` | Appears only in rationale as forbidden pattern ("do NOT use `libc::kill`") | N/A | N/A | Negative example, not a dep |
+  | `monocle_core::` | Intra-workspace dep | YES (workspace crate) | `runtime→core` exists | PASS |
+  | `nix::` | `signal::kill(Pid::from_raw(pid), None)` in normative code | YES (^0.30) | `runtime→nix` added v1.1.10 | PASS |
+  | `oneshot::` | `tokio::sync::oneshot` — sub-module of tokio | N/A | Part of tokio | PASS (tokio re-exports) |
+  | `rand::` | `rand::rngs::OsRng` in normative code | YES (=0.8.6 exact) | `runtime→rand` exists | PASS |
+  | `rngs::` | `rand::rngs` sub-module | N/A | Part of rand | PASS |
+  | `runtime::` | `monocle-runtime` intra-module references | N/A | Intra-crate | PASS |
+  | `serde_json::` | `serde_json::Value`, `serde_json::to_string` in normative code | YES (=1.0.149 exact) | `runtime→serde_json` added v1.1.10 | PASS |
+  | `serde::` | `#[derive(serde::Serialize, serde::Deserialize)]` in normative code | NO before v1.1.11 | Added `runtime→serde`, `core→serde` | F-R76-1 fixed |
+  | `signal::` | `nix::sys::signal` sub-module | N/A | Part of nix | PASS |
+  | `std::` | Standard library | N/A | N/A | stdlib, no dep |
+  | `sync::` | `tokio::sync` sub-module | N/A | Part of tokio | PASS |
+  | `sys::` | `nix::sys` sub-module | N/A | Part of nix | PASS |
+  | `tempfile::` | `tempfile::persist` in normative code | YES (^3) | `runtime→tempfile` added v1.1.10 | PASS |
+  | `time::` | `tokio::time::timeout` — tokio sub-module | N/A | Part of tokio | PASS |
+  | `tokio::` | Async runtime throughout | YES (=1.52 exact) | `runtime→tokio` exists | PASS |
+  | `tracing::` | `tracing::info!`, `tracing::warn!` in normative code | YES (^0.1) | `runtime→tracing` exists | PASS |
+  | `unix::` | `std::os::unix` — standard library | N/A | N/A | stdlib, no dep |
+
+  **Extension 7 net-new finding: `chrono 0.4` missing from manifest:**
+  The `chrono::` prefix appears in SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1
+  rationale: "The Phase 1 Rust implementation will use
+  `chrono::Utc::now().format(\"%Y-%m-%dT%H:%M:%S%.3fZ\")` uniformly across all
+  three timestamp fields." This is a normative specification of the implementation
+  mechanism — the §Trace states definitively which crate the runtime WILL use for
+  ISO 8601 timestamp formatting. `std::time::SystemTime` has no built-in ISO 8601
+  formatter; manual formatting over duration-since-epoch arithmetic would re-introduce
+  the precision inconsistency F-R72-1 was authored to prevent. `chrono 0.4` is the
+  canonical solution and must be declared as a manifest dependency.
+
+  `chrono 0.4` added to Phase 1 Pin Manifest (caret pin). Added dep graph edge:
+  `runtime → chrono`.
+
+- Crate count: Phase 1 manifest now lists **32 production crates + 1 dev-dep**
+  (was 30 + 1). Added: `serde 1` (F-R76-1), `chrono 0.4` (Extension 7 discovery).
+  `runtime` node now has 15 outbound edges: tokio, tracing, rand, constant_time_eq,
+  core, proto, ipc, async_trait, tempfile, serde_json, directories, nix, axum, serde,
+  chrono. `core` node now has 6 outbound edges: thiserror, semver, futures, async_trait,
+  serde (new).
 
 v1.1.10 changes (adversary R74 F-R74-3 closure — 4 missing runtime edges in workspace dependency graph):
 - F-R74-3 RESOLVED (HIGH — adversary R74 workspace dependency graph missing edges for
