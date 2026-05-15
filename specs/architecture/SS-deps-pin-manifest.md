@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.9"
+version: "1.1.10"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T04:00:00Z
+timestamp: 2026-05-15T05:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required)"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix)"
 project: monocle
 ---
 
@@ -166,6 +166,10 @@ graph TD
     runtime --> core
     runtime --> proto[monocle-proto]
     runtime --> ipc
+    runtime --> tempfile
+    runtime --> serde_json
+    runtime --> directories
+    runtime --> nix
 
     ipc --> axum
     ipc --> interprocess
@@ -251,6 +255,44 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.10 changes (adversary R74 F-R74-3 closure — 4 missing runtime edges in workspace dependency graph):
+- F-R74-3 RESOLVED (HIGH — adversary R74 workspace dependency graph missing edges for
+  `monocle-runtime`): The Phase 1 workspace dependency graph showed 8 edges for the
+  `runtime` node but was missing 4 edges to crates that `monocle-runtime` directly
+  uses per its behavioral contracts:
+
+  1. `runtime → tempfile`: BC-DAEMON-005 mandates atomic lock-file creation and
+     atomic JSONL ring segment flush via `tempfile::persist`. The tempfile crate
+     is in the Phase 1 pin manifest (caret pin) and is used directly in
+     `monocle-runtime` (not indirectly through `monocle-config`).
+
+  2. `runtime → serde_json`: `monocle-runtime::ring::HookEventRecord` uses
+     `serde_json::Value` for the `tool_input` field and `serde_json::to_string`
+     for JSONL serialization (BC-RING-001). The lock-file JSON (BC-LOCK-001)
+     is also produced by serde_json in the runtime start sequence. serde_json is
+     an exact-pinned crate (`=1.0.149`) in the Phase 1 pin manifest; `monocle-runtime`
+     is a direct consumer, not merely a transitive dependent.
+
+  3. `runtime → directories`: BC-DAEMON-005 platform-aware runtime_dir resolution
+     uses `directories::ProjectDirs::runtime_dir()` and `ProjectDirs::data_local_dir()`
+     directly in the `resolve_runtime_dir()` function in `monocle-runtime`. The
+     `monocle-config` crate ALSO uses `directories` (for config dir resolution) but
+     that is a separate, independent edge — the `runtime` edge is required for the
+     daemon start-sequence path.
+
+  4. `runtime → nix`: BC-DAEMON-005 postcondition 3 (stale-pid detection) uses
+     `nix::sys::signal::kill(Pid::from_raw(pid), None)` for the liveness probe.
+     `nix 0.30` was added to the Phase 1 pin manifest in v1.1.9 (F-R71-4b) with
+     `monocle-runtime` explicitly named as the declaring crate. The graph in v1.1.9
+     added the nix pin row to the manifest table but did not add the `runtime → nix`
+     graph edge in the same burst — this is the graph-level gap closed here.
+
+- Crate count: Phase 1 manifest pin table unchanged (no new crates); only the graph
+  edges for `monocle-runtime` are updated. The `runtime` node now has 12 outbound edges:
+  tokio, tracing, rand, constant_time_eq, core, proto, ipc, async_trait, tempfile,
+  serde_json, directories, nix. (async_trait was already present via the bottom of the
+  graph block.)
 
 v1.1.9 changes (adversary R71 F-R71-4a + F-R71-4b dep-pin dispositions):
 - F-R71-4b RESOLVED: `nix 0.30` added to Phase 1 Pin Manifest as a workspace caret

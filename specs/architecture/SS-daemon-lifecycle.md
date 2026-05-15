@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.14"
+version: "1.0.15"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T20:00:00Z
+timestamp: 2026-05-15T00:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders"
 project: monocle
 ---
 
@@ -79,7 +79,13 @@ initiates normal auto-start (lock file is stale).
   "version": "<semver>",
   "abi_version": <N>,
   "lock_file": "<path>",
-  "hook_endpoints": ["/hooks/pre-tool-use", "/hooks/notification", "..."],
+  "hook_endpoints": [
+    "/hooks/pre-tool-use",
+    "/hooks/notification",
+    "/hooks/stop",
+    "/hooks/session-start",
+    "/hooks/prompt-submit"
+  ],
   "ring_buffer_fill_pct": <0.0-100.0>,
   "channel_saturation_pct": <0.0-100.0>,
   "last_hook_ts": {
@@ -736,6 +742,64 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis placeholder + L-F-R63 Extension 4):
+- F-R74-1 RESOLVED (HIGH — adversary R74 JSON array ellipsis placeholder in §GET /status
+  schema sketch): The `hook_endpoints` field in the BC-DAEMON-002 JSON schema sketch
+  (§Health and Status Endpoints) carried a literal `"..."` string as the third array
+  element — a textual ellipsis placeholder instead of the full canonical enumeration.
+  The canonical 5-endpoint set is established by BC-DAEMON-002 postcondition 1
+  (PRD v1.8) and the §Body Size Limit router construction sketch (lines 157–161),
+  which explicitly names all five routes:
+  `/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`,
+  `/hooks/session-start`, `/hooks/prompt-submit`.
+  Fix: replaced `["/hooks/pre-tool-use", "/hooks/notification", "..."]` with
+  the explicit 5-element array. The serialized array format is expanded to one
+  string per line for readability.
+
+- L-F-R63 Extension 4 — placeholder discipline extended to JSON array ellipsis:
+  Prior placeholder discipline (L-F-R63 Extension 1 from v1.0.14) covered only
+  ISO8601 timestamp format placeholders (`<ISO8601>`). F-R74-1 reveals a second
+  category: JSON array ellipsis patterns (`"..."` as a stand-in for omitted array
+  elements). Extension 4 codifies: any arch JSON schema sketch that represents an
+  enumerable, finite array (all elements known at spec authoring time) MUST enumerate
+  all elements explicitly. The `"..."` convention is acceptable ONLY when the array
+  genuinely contains variable-length content (e.g., line 727 `"peers"` list in
+  §Phase 4 Notes, where peer hostnames are runtime-variable). Arch-level enumerations
+  like `hook_endpoints` (whose elements are fixed by router construction) are NOT
+  variable-length and must not use `"..."`.
+
+- Placeholder sweep (L-F-R63 Extension 4 scope — `"..."` patterns in arch JSON schemas):
+  Post-fix grep results for `'"..."'` in `.factory/specs/architecture/`:
+  (a) `SS-daemon-lifecycle.md` line 82: FIXED by this change (the subject of F-R74-1).
+  (b) `SS-daemon-lifecycle.md` line 727 (Phase 4 Notes `"peers"` array): NOT a defect.
+      `"..."` represents a variable host string value in an illustrative JSON object
+      (runtime peer hostnames are unknowable at spec time). This is correct notation.
+  (c) `SS-engine-module.md` line 1349: `"..."` in method-chaining prose example for
+      `HookResponse::new(decision).with_diagnostic("...")`. This is a diagnostic
+      message placeholder in a code prose example — not a schema enumeration defect.
+      The `"..."` here means "some diagnostic string"; the actual value is caller-defined.
+      NOT a defect under Extension 4.
+  Result: 0 defective `"..."` ellipsis patterns remain in normative-current arch JSON
+  schema sketches after this fix. The 2 remaining occurrences are each correctly
+  variable-content and are explicitly documented above.
+
+- Propagation requirements for orchestrator:
+  **PRD:** PRD v1.8 `traces_to` frontmatter cites arch pin `v1.0.14`; product-owner
+  must propagate arch pin v1.0.14 → v1.0.15 at normative-current PRD sites (traces_to
+  field). No BC content change required — BC-DAEMON-002 postcondition already
+  enumerates the 5 endpoints correctly; this fix brings the arch schema sketch into
+  alignment with the BC.
+  **VP:** VP `traces_to` frontmatter citing arch pin `v1.0.14`; formal-verifier must
+  propagate pin v1.0.14 → v1.0.15. No VP content change required.
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Health and Status Endpoints (EXISTS), §Phase 4 Notes (EXISTS), §Trace
+      (EXISTS) — all §-anchor refs verified against actual headings in this document.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 `"..."` array
+      placeholder defects remain in normative-current JSON schema sketches. 0 L[0-9]+
+      matches in this §Trace v1.0.15 entry.
 
 v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R70-2):
 - F-R72-1 RESOLVED (HIGH — adversary R72 JSON schema sketch timestamp format
