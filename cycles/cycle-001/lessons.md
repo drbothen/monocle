@@ -918,3 +918,27 @@ The §Trace block MUST include the grep transcript inline as a verifiable artifa
 The fabrication-pattern + axis-rotation META class has now produced 13 codified Extensions + agent-id-routing-existence + §Trace audit-row integrity = 16 distinct disciplines. Each codified Extension catches ONE audit-row axis. R80 reveals the asymptotic limit: even codified disciplines are susceptible to fabrication when emitted as asserted PASS verdicts. The DEFINITIVE recurrence guard is Extension 13's machine-greppable evidence requirement — but this requires INFRASTRUCTURAL support (state-manager hooks, lint rules, runtime verification) to be reliable, not just discipline narrative.
 
 Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": the current Phase 1 spec artifacts are at high quality on CONTENT axes; the remaining residuals are at META-discipline-integrity axes that require infrastructural intervention beyond what spec-side codification alone can provide.
+
+### Extension 14: lift_invariants_to_bcs sibling-site propagation discipline (2026-05-15, post-R83)
+
+**Discovery:** R83 D-047 strict pass 2 attempt 1. Commits dcae9d5 (PRD v1.13) + a798d51 (arch v1.0.17) + 1d21fd0 (VP v1.17) landed the F-R83-1 sites 1+2+3+4 closures + F-R83-2 closure.
+
+**Pattern:** When a contract is lifted between tiers (e.g., EC → BC §Postcondition, NFR → BC, JC → BC), the lift MUST propagate to ALL summary-table sibling sites in the SAME architectural layer:
+
+- **PRD layer:** §4 NFR table sibling row, §7 RTM row, §Edge Case Catalog cross-reference
+- **arch layer:** §BC Summary footer row
+- **VP layer:** §VP Catalog Overview row, §Auxiliary Mechanism Coverage row, §Coverage Matrix footer row
+
+The propagation discipline codifies the F-R83-1 finding pattern: 4-site 0o700 propagation gap discovered after F-R79-3 lifted EC-052 to BC-DAEMON-005 §Postcondition 8. The lift correctly updated the BC body. It did NOT propagate to the PRD §4 NFR table row (Site 1), the arch §BC Summary footer row (Site 2), the VP §Catalog Overview row (Site 3), or the VP §Auxiliary Mechanism Coverage row (Site 4).
+
+**Burst-emit grep-target:** Any `lift_invariants_to_bcs` change must yield >= N edits to sibling summary tables (N = number of summary surfaces in the architectural layer). Minimum N for Phase 1 monocle layer = 4 (PRD NFR table + arch §BC Summary footer + VP §Catalog Overview + VP §Auxiliary Mechanism Coverage).
+
+**SUB-EXTENSION (extending the §Purpose-class META recurrence guard from F-R81-2 / D-071):**
+
+EXTEND the propagation grep target list to include `§References intro current-as-of timestamp` alongside `§Purpose commit-SHA` and `§Trace version-pin`. Both §Purpose SHA and §References intro timestamp are "current-as-of" pointers that fall stale together when frontmatter `timestamp` bumps. F-R83-2 discovered VP v1.16 §References intro timestamp was 3 hours behind frontmatter after the F-R81 + GAP-R20 burst (b0dd7b6).
+
+The D-071 §Purpose META recurrence guard grepped §Purpose + §Trace + §References-lineage for stale SHA. Sub-extension adds §References intro current-as-of timestamp as a FOURTH propagation target alongside the existing three. Future fix-bursts that bump any "current-as-of" anchor MUST sweep all four targets:
+1. `§Purpose` — commit-SHA + version pin
+2. `§Trace` — version citations + entry headers
+3. `§References item 1` — historical lineage SHA
+4. `§References intro` — `current-as-of` timestamp (NEW per Sub-extension)
