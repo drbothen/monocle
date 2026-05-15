@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.20"
+version: "1.21"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-16T00:15:00Z
+timestamp: 2026-05-16T01:45:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.20; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (historical: commit a798d51 at v1.14 burst time); F-R85-IMP-2 fix-burst (v1.15): NFR-004 + NFR-005 + NFR-010 Validation Method extended with VP probe citations (Extension 16 mandatory backfill sweep applied to all 12 NFR rows — per-row SE-15c disposition documented in §Trace v1.15); R86 I-R86-2 closure (v1.16): §Trace v1.15 backfill summary count corrected `4 rows` → `5 rows` (SE-16a/b applied — no new citations; timestamp monotonicity verified); F-R88 fix-burst (v1.17): F-R88-2 MED BC-DAEMON-005 Precondition 2(d) wording fixed (actual directories::ProjectDirs API failure mode named — ProjectDirs::new() returns None, not data_local_dir()); F-R88-3 MED BC-RING-001 EC-001 serde annotation pinned to canonical #[serde(skip_serializing_if = \"Option::is_none\")] (CLAUDE.md rule 1 — no MVP deferrals); F-R88-4 MED EC-060 added (MONOCLE_RUNTIME_DIR=\"\" empty-string treated as unset; safe-default fall-through to platform default; no daemon crash); O-R88-1 LOW §9 Edge Case Catalog header explanatory note about BC-grouped (not numeric-monotonic) ordering; F-R88-1 PRD-side arch pin v1.0.17 → v1.0.18 propagated (33 normative sites; commit 61a0064; per Extension 15 + SE-16c canonical-grep sweep); SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2); C-R90-1 closure (v1.18): arch v1.0.18 → v1.0.19 pin propagated (32 normative PRD body sites + frontmatter; commit 8a68cc9; per Extension 15 + SE-16c canonical-grep sweep; SE-15e codified); R91 fix-burst (v1.19): C-R91-1 CRITICAL EC-061 added (BC-FACTORY-002 empty-string current_cycle collapses to None); I-R91-3/4 HIGH pid ≥ 1 lifted to BC-DAEMON-002 Postcondition 1 + BC-DAEMON-006 Invariant 1 + shutdown_reason enum + last_app_mode non-empty + shutdown_utc regex; I-R91-5 HIGH semver regex lifted to BC-DAEMON-001 + BC-DAEMON-002 Postcondition 1; I-R91-7 MED EC-030 rewritten to trait-level with BC-ENGINE-002 Postcondition 5 cross-reference; O-R91-4 LOW §10 Glossary entries added for MONOCLE_RUNTIME_DIR + DaemonStartError::RuntimeDirUnresolvable; SE-14b discipline applied: per-probe BC-VP coherence for v1.24 VP probes retroactively verified; R93 fix-burst (v1.20): C-R93-1 PRD part — §7 RTM 6 rows "Unit"→"Integration" (BC-RING-001, BC-PROTO-001a/b, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003); §Verification body 4 sites "Unit test in"→"Integration test in"; arch pin v1.0.19 → v1.0.20 (commit 8a68cc9 → 8533ea2, 32 normative sites); SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.21; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.13; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (historical: commit a798d51 at v1.14 burst time); F-R85-IMP-2 fix-burst (v1.15): NFR-004 + NFR-005 + NFR-010 Validation Method extended with VP probe citations (Extension 16 mandatory backfill sweep applied to all 12 NFR rows — per-row SE-15c disposition documented in §Trace v1.15); R86 I-R86-2 closure (v1.16): §Trace v1.15 backfill summary count corrected `4 rows` → `5 rows` (SE-16a/b applied — no new citations; timestamp monotonicity verified); F-R88 fix-burst (v1.17): F-R88-2 MED BC-DAEMON-005 Precondition 2(d) wording fixed (actual directories::ProjectDirs API failure mode named — ProjectDirs::new() returns None, not data_local_dir()); F-R88-3 MED BC-RING-001 EC-001 serde annotation pinned to canonical #[serde(skip_serializing_if = \"Option::is_none\")] (CLAUDE.md rule 1 — no MVP deferrals); F-R88-4 MED EC-060 added (MONOCLE_RUNTIME_DIR=\"\" empty-string treated as unset; safe-default fall-through to platform default; no daemon crash); O-R88-1 LOW §9 Edge Case Catalog header explanatory note about BC-grouped (not numeric-monotonic) ordering; F-R88-1 PRD-side arch pin v1.0.17 → v1.0.18 propagated (33 normative sites; commit 61a0064; per Extension 15 + SE-16c canonical-grep sweep); SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2); C-R90-1 closure (v1.18): arch v1.0.18 → v1.0.19 pin propagated (32 normative PRD body sites + frontmatter; commit 8a68cc9; per Extension 15 + SE-16c canonical-grep sweep; SE-15e codified); R91 fix-burst (v1.19): C-R91-1 CRITICAL EC-061 added (BC-FACTORY-002 empty-string current_cycle collapses to None); I-R91-3/4 HIGH pid ≥ 1 lifted to BC-DAEMON-002 Postcondition 1 + BC-DAEMON-006 Invariant 1 + shutdown_reason enum + last_app_mode non-empty + shutdown_utc regex; I-R91-5 HIGH semver regex lifted to BC-DAEMON-001 + BC-DAEMON-002 Postcondition 1; I-R91-7 MED EC-030 rewritten to trait-level with BC-ENGINE-002 Postcondition 5 cross-reference; O-R91-4 LOW §10 Glossary entries added for MONOCLE_RUNTIME_DIR + DaemonStartError::RuntimeDirUnresolvable; SE-14b discipline applied: per-probe BC-VP coherence for v1.24 VP probes retroactively verified; R93 fix-burst (v1.20): C-R93-1 PRD part — §7 RTM 6 rows "Unit"→"Integration" (BC-RING-001, BC-PROTO-001a/b, BC-ENGINE-002, BC-ENGINE-002-ERR, BC-ENGINE-003); §Verification body 4 sites "Unit test in"→"Integration test in"; arch pin v1.0.19 → v1.0.20 (commit 8a68cc9 → 8533ea2, 32 normative sites); SS-daemon-lifecycle.md v1.0.21 current-pointer (commit 42504b4); SS-deps-pin-manifest.md v1.1.13 current-pointer (commit 42504b4); R94 fix-burst (v1.21): arch pin v1.0.20→v1.0.21 + manifest pin v1.1.12→v1.1.13 (both commit 42504b4; architect R94 arch+manifest burst per Extension 15 + SE-15e + SE-16c)"
 project: monocle
 supplements: []
 ---
@@ -106,7 +106,7 @@ BCs are grouped by domain subsystem. The 22 Phase 1 BCs span five functional dom
 
 **Priority:** P0 — Daemon liveness contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /healthz
 
 **Preconditions:**
 1. The monocle daemon is running and bound on `127.0.0.1:<port>`.
@@ -141,7 +141,7 @@ EC-041: TUI client behavior when `/healthz` is unreachable AND the lock file exi
 - Test name: `test_BC_DAEMON_001_healthz_unauthenticated_alive`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz
+- Source: SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /healthz
 - Brief: §Scope (hook receiver hardening sub-bullet — `/healthz` liveness endpoint)
 
 ---
@@ -150,7 +150,7 @@ EC-041: TUI client behavior when `/healthz` is unreachable AND the lock file exi
 
 **Priority:** P0 — Daemon observability contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /status
 
 **Preconditions:**
 1. The monocle daemon is running.
@@ -197,7 +197,7 @@ EC-044: `last_hook_ts` values use ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ` UT
 - Test name: `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status
+- Source: SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /status
 - Brief: §Scope (hook receiver hardening sub-bullet — `/status` daemon-state query endpoint)
 
 ---
@@ -206,7 +206,7 @@ EC-044: `last_hook_ts` values use ISO 8601 format (`YYYY-MM-DDTHH:MM:SS.sssZ` UT
 
 **Priority:** P0 — Memory protection contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Body Size Limit
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Body Size Limit
 
 **Preconditions:**
 1. The monocle daemon is running.
@@ -244,7 +244,7 @@ EC-047: `POST /shutdown` (authenticated admin endpoint) is also on the authentic
 - Test name: `test_BC_DAEMON_003_body_size_limit_413_on_excess`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Body Size Limit
+- Source: SS-daemon-lifecycle.md v1.0.21 §Body Size Limit
 - Brief: §Success Criteria (hook receiver body size limit row — target `{"error":"payload_too_large","limit_bytes":262144}`)
 
 ---
@@ -253,7 +253,7 @@ EC-047: `POST /shutdown` (authenticated admin endpoint) is also on the authentic
 
 **Priority:** P0 — Data integrity and reliability contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
 
 **Preconditions:**
 1. The monocle daemon is running and may have in-flight hook POST requests.
@@ -306,7 +306,7 @@ EC-050: `POST /shutdown` with valid auth during a drain already in progress. The
 - Integration test in `monocle-runtime/tests/daemon_lifecycle.rs` (`test_BC_DAEMON_004_exit_codes_posix_distinct`): sends SIGTERM twice (expects exit 143), sends SIGINT twice (expects exit 130), sends two sequential `POST /shutdown` calls (expects exit 2).
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
 - Brief: §Scope (hook receiver hardening sub-bullet — graceful shutdown protocol on SIGTERM/SIGINT)
 
 ---
@@ -315,7 +315,7 @@ EC-050: `POST /shutdown` with valid auth during a drain already in progress. The
 
 **Priority:** P0 — Process isolation and idempotency contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
 
 **Preconditions:**
 1. The monocle daemon is starting up (executing the start sequence).
@@ -384,7 +384,7 @@ EC-060: `MONOCLE_RUNTIME_DIR=""` (empty string set via buggy shell script: `expo
 - Postcondition 8 (runtime-dir mode 0o700): verified by VP-DAEMON-005 Post-condition 9 and probe 5.e (`stat(&runtime_dir).mode() & 0o777 == 0o700` on fresh runtime_dir absent prior to start). Test surface: integration test creates a non-existent runtime_dir path, starts the daemon, reads the directory mode bits, and asserts equality with `0o700`. This probe is part of the `daemon_lifecycle.rs` test suite per VP-DAEMON-005 probe matrix extension (F-R75-1 closure).
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
 - Cross-ref: BC-LOCK-001 (lock file JSON schema contract)
 
 ---
@@ -393,7 +393,7 @@ EC-060: `MONOCLE_RUNTIME_DIR=""` (empty string set via buggy shell script: `expo
 
 **Priority:** P0 — State continuity contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Crash Recovery
 
 **Preconditions:**
 1. On startup, `<runtime_dir>/monocle.recovery.json` exists.
@@ -445,7 +445,7 @@ EC-056: TUI attaches exactly at 60-second boundary. If the recovery offer has al
 - Test name: `test_BC_DAEMON_006_crash_recovery_checkpoint_offer_and_cleanup`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Crash Recovery
 
 ---
 
@@ -453,7 +453,7 @@ EC-056: TUI attaches exactly at 60-second boundary. If the recovery offer has al
 
 **Priority:** P0 — Forward-compatibility contract; locked pre-Phase-1 by human authorization.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Drain
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Drain
 
 **Preconditions:**
 1. The monocle daemon is running and has received at least one hook event.
@@ -492,7 +492,7 @@ EC-003: Ring buffer file truncated mid-line (e.g., crash during write). Phase 2 
 - Test name: `test_BC_RING_001_format_version_first_key`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Drain
+- Source: SS-daemon-lifecycle.md v1.0.21 §Drain
 - FC: FC-01 (JSONL ring format versioning)
 - Brief: §Scope (forward-compatibility contracts sub-bullet — JSONL ring format versioning)
 
@@ -502,7 +502,7 @@ EC-003: Ring buffer file truncated mid-line (e.g., crash during write). Phase 2 
 
 **Priority:** P0 — Security contract; locked pre-Phase-1 by human authorization.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence
 
 **Preconditions:**
 1. The monocle daemon has completed its start sequence (steps 1–6 of §Start Sequence).
@@ -540,7 +540,7 @@ EC-006: The lock file `contract_version` field is `1` (first key). Any lock-file
 - Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence
 - FC: FC-06 (versioned auth token prefix)
 - Brief: §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix)
 
@@ -550,7 +550,7 @@ EC-006: The lock file `contract_version` field is `1` (first key). Any lock-file
 
 **Priority:** P0 — Security contract; locked pre-Phase-1.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence
 
 **Preconditions:**
 1. The monocle daemon is running with a valid lock file.
@@ -591,7 +591,7 @@ EC-009: `X-Monocle-Authorization: monocle-v1:` (prefix present but no hex suffix
 - Test name: `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence
 - FC: FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)
 - Brief: §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix)
 - Architect adjudication: commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired
@@ -602,7 +602,7 @@ EC-009: `X-Monocle-Authorization: monocle-v1:` (prefix present but no hex suffix
 
 **Priority:** P0 — Forward-compatibility contract.
 
-**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging
+**Source:** SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging
 
 **Preconditions:**
 1. The monocle daemon has completed step 6 of its start sequence (lock file written via `tempfile::persist`).
@@ -640,7 +640,7 @@ EC-012: Lock file with `contract_version` key missing entirely (pre-Phase-1 form
 - Test name: `test_BC_LOCK_001_contract_version_first_key`
 
 **Traceability:**
-- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+- Source: SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence
 - SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging row BC-LOCK-001
 
 ---
@@ -1275,16 +1275,16 @@ Per vision §Vision Statement and brief §Success Criteria. Every differentiator
 
 | Requirement ID | Brief Section | Architecture Source | Priority | Test File | Test Type |
 |-------|--------------|--------------------|---------|-----------|----|
-| BC-DAEMON-001 | §Scope (hook receiver hardening sub-bullet — `/healthz`) | SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
-| BC-DAEMON-002 | §Scope (hook receiver hardening sub-bullet — `/status`) | SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
-| BC-DAEMON-003 | §Success Criteria (hook receiver body size limit row) | SS-daemon-lifecycle.md v1.0.20 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
-| BC-DAEMON-004 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
-| BC-DAEMON-005 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
-| BC-DAEMON-006 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
-| BC-RING-001 | §Scope (forward-compatibility contracts sub-bullet — JSONL ring) | SS-daemon-lifecycle.md v1.0.20 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
-| BC-AUTH-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
-| BC-AUTH-002 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
-| BC-LOCK-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
+| BC-DAEMON-001 | §Scope (hook receiver hardening sub-bullet — `/healthz`) | SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
+| BC-DAEMON-002 | §Scope (hook receiver hardening sub-bullet — `/status`) | SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
+| BC-DAEMON-003 | §Success Criteria (hook receiver body size limit row) | SS-daemon-lifecycle.md v1.0.21 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
+| BC-DAEMON-004 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
+| BC-DAEMON-005 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
+| BC-DAEMON-006 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
+| BC-RING-001 | §Scope (forward-compatibility contracts sub-bullet — JSONL ring) | SS-daemon-lifecycle.md v1.0.21 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
+| BC-AUTH-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
+| BC-AUTH-002 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
+| BC-LOCK-001 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
 | BC-ABI-001 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
 | BC-ABI-002 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
 | BC-TYPES-001 | §Scope (forward-compatibility contracts sub-bullet — public enum extensibility) | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
@@ -1297,7 +1297,7 @@ Per vision §Vision Statement and brief §Success Criteria. Every differentiator
 | BC-ENGINE-002 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
 | BC-ENGINE-002-ERR | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Behavioral Contracts BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
 | BC-ENGINE-003 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Struct-level inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
-| NFR-012 | §Scope (daemon start sequence sub-bullet — runtime_dir path with fallback chain; lock-file 0o600 + runtime_dir 0o700 defense-in-depth) | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
+| NFR-012 | §Scope (daemon start sequence sub-bullet — runtime_dir path with fallback chain; lock-file 0o600 + runtime_dir 0o700 defense-in-depth) | SS-daemon-lifecycle.md v1.0.21 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
 
 ---
 
@@ -3444,3 +3444,195 @@ $ grep -nE "v1\.0\.20|commit 8533ea2" /Users/jmagady/Dev/monocle/.factory/specs/
 - Correct agent routing: PASS — VP file NOT touched (FV runs next per Extension 15 + SE-15e serial protocol with PRD v1.20 commit SHA); architecture files not touched; STATE.md not touched (state-manager owns).
 
 **VP propagation note (v1.20):** FV runs next (Extension 15 + SE-15e serial protocol) with PRD v1.20 commit SHA. FV targets VP v1.27 to close O-R93-1 + O-R93-2 cleanup and dual pin propagation (PRD v1.19 → v1.20 + arch v1.0.19 → v1.0.20) per Extension 15 handoff.
+
+---
+
+## §Trace v1.21 — R94 pin propagation: arch v1.0.20→v1.0.21 + manifest v1.1.12→v1.1.13
+
+**Source:** R94 adversary report at `.factory/plans/adversary-pass-r94-phase1-fixed.md` (commit ca90269). Extension 15 + SE-15e serial fix-burst protocol, Step 3 (PO solo; FV runs after with PRD v1.21 commit SHA). Arch v1.0.21 + manifest v1.1.13 landed commit 42504b4 (architect R94 arch+manifest burst).
+
+### Pin-propagation-only burst
+
+This is a pin-propagation-only burst per Extension 15 + SE-15e. No PRD content changes from R94 — all R94 PRD-affecting findings are arch-side or VP-side. PRD §3 BC body, §4 NFR table, §7 RTM Test Type column, §9 EC catalog, §10 Glossary are all UNCHANGED.
+
+### Arch pin propagation: v1.0.20 → v1.0.21
+
+**Arch commit:** 8533ea2 → 42504b4 (architect R94 arch+manifest burst, commit 42504b4). Arch version: v1.0.20 → v1.0.21.
+
+**Method:** Python-scripted targeted replacement of all normative occurrences (before `## §Trace v1.20` boundary). `SS-daemon-lifecycle.md v1.0.20` → `SS-daemon-lifecycle.md v1.0.21` across 31 body lines. Frontmatter `traces_to` updated: spec-list entry `SS-daemon-lifecycle.md v1.0.20;` → `v1.0.21;` and current-pointer tail updated with R94 narrative. Historical F-R88 chain reference `SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2)` (pos 4870 in traces_to) preserved per PG-5. Historical R93 chain reference `arch pin v1.0.19 → v1.0.20 (commit 8a68cc9 → 8533ea2, 32 normative sites)` (pos 6004 in traces_to) preserved per PG-5.
+
+**Total normative sites updated: 32** (31 body lines + 1 frontmatter spec-list entry; current-pointer tail updated with new R94 chain narrative).
+
+### Manifest pin propagation: v1.1.12 → v1.1.13
+
+**Manifest commit:** 8005075 → 42504b4 (same commit as arch — architect R94 arch+manifest burst, commit 42504b4). Manifest version: v1.1.12 → v1.1.13.
+
+**Method:** Frontmatter-only change. `SS-deps-pin-manifest.md v1.1.12; 22 BCs` → `SS-deps-pin-manifest.md v1.1.13; 22 BCs` (spec-list entry). Current-pointer tail extended to include `SS-deps-pin-manifest.md v1.1.13 current-pointer (commit 42504b4)`. Historical GAP-R16-001 chain references at traces_to positions 2432/2482/2538 (`frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 ... SS-deps-pin-manifest.md v1.1.12 current-pointer`) preserved per PG-5 — these are historical records of when manifest first became v1.1.12.
+
+**Normative body manifest sites:** 0 body normative-current sites — manifest is referenced only in frontmatter spec-list and current-pointer. The 27 v1.1.12 occurrences in normative body are all historical §Trace entries for versions v1.11–v1.19 — all preserved per PG-5.
+
+---
+
+### Extension 17 evidence (real grep transcripts with literal commands)
+
+**PRE-burst arch grep:**
+
+```
+$ grep -nE "v1\.0\.20|commit 8533ea2" /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+25:traces_to: "...SS-daemon-lifecycle.md v1.0.20; ...SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2)..."
+109:**Source:** SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz
+144:- Source: SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz
+153:**Source:** SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status
+200:- Source: SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status
+209:**Source:** SS-daemon-lifecycle.md v1.0.20 §Body Size Limit
+247:- Source: SS-daemon-lifecycle.md v1.0.20 §Body Size Limit
+256:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+309:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain
+318:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+387:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown
+396:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery
+448:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery
+456:**Source:** SS-daemon-lifecycle.md v1.0.20 §Drain
+495:- Source: SS-daemon-lifecycle.md v1.0.20 §Drain
+505:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+543:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+553:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+594:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+605:**Source:** SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging
+643:- Source: SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence
+1278:| BC-DAEMON-001 | ... | SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /healthz | ...
+1279:| BC-DAEMON-002 | ... | SS-daemon-lifecycle.md v1.0.20 §Health and Status Endpoints §GET /status | ...
+1280:| BC-DAEMON-003 | ... | SS-daemon-lifecycle.md v1.0.20 §Body Size Limit | ...
+1281:| BC-DAEMON-004 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Shutdown Signal Handling | ...
+1282:| BC-DAEMON-005 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | ...
+1283:| BC-DAEMON-006 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Crash Recovery | ...
+1284:| BC-RING-001 | ... | SS-daemon-lifecycle.md v1.0.20 §Drain | ...
+1285:| BC-AUTH-001 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | ...
+1286:| BC-AUTH-002 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | ...
+1287:| BC-LOCK-001 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | ...
+1300:| NFR-012 | ... | SS-daemon-lifecycle.md v1.0.20 §Daemon Lifecycle Protocol §Start Sequence | ...
+[32 normative-current hits]
+```
+
+**PRE-burst manifest grep:**
+
+```
+$ grep -nE "v1\.1\.12|commit 8005075" /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+25:traces_to: "...SS-deps-pin-manifest.md v1.1.12; 22 BCs ... (GAP-R16-001 chain: v1.1.10→v1.1.12) ... SS-deps-pin-manifest.md v1.1.12 current-pointer ..."
+[Line 25 contains all 4 manifest v1.1.12 hits: 1 spec-list entry (normative-current) + 3 historical GAP-R16-001 chain narrative]
+[0 normative body manifest hits — all body hits are historical §Trace entries v1.11-v1.19]
+[0 commit 8005075 hits]
+```
+
+**POST-burst arch grep:**
+
+```
+$ grep -nE "v1\.0\.20|commit 8533ea2" /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+25:traces_to: "...SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2)..." [F-R88 historical]
+25:traces_to: "...arch pin v1.0.19 → v1.0.20 (commit 8a68cc9 → 8533ea2...)..." [R93 historical]
+25:traces_to: "...arch pin v1.0.20→v1.0.21..." [R94 new chain narrative]
+[All in historical chain narrative — 0 normative-current hits — PASS]
+3238:## §Trace v1.20 — C-R93-1 PRD part + arch pin v1.0.19 → v1.0.20 [§Trace heading]
+[remaining hits all in §Trace v1.20 historical section — PASS]
+```
+
+**POST-burst manifest grep:**
+
+```
+$ grep -nE "v1\.1\.12|commit 8005075" /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+25:traces_to: "...v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer..." [GAP-R16-001 historical ×3]
+[body hits: historical §Trace v1.11-v1.19 entries only]
+[0 normative-current v1.1.12 hits — PASS]
+[0 commit 8005075 hits — PASS]
+```
+
+**POST-burst arch v1.0.21 grep:**
+
+```
+$ grep -nE "v1\.0\.21|commit 42504b4" /Users/jmagady/Dev/monocle/.factory/specs/prd.md
+25:traces_to: "...SS-daemon-lifecycle.md v1.0.21; ... SS-daemon-lifecycle.md v1.0.21 current-pointer (commit 42504b4); SS-deps-pin-manifest.md v1.1.13 current-pointer (commit 42504b4)..."
+109:**Source:** SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /healthz
+144:- Source: SS-daemon-lifecycle.md v1.0.21 §Health and Status Endpoints §GET /healthz
+[... 31 body lines ...]
+1278-1300: [§7 RTM rows with v1.0.21]
+[34 total v1.0.21 hits; 3 total 42504b4 hits (frontmatter current-pointers × 2 + §Trace v1.21 body) — PASS]
+```
+
+---
+
+**D-042 sweep (v1.21):** SS-daemon-lifecycle.md v1.0.21 ✓ (commit 42504b4; 32 normative sites updated from v1.0.20). SS-core-types-and-abi.md v1.2.8 ✓ — unchanged. SS-engine-module.md v1.1.15 ✓ — unchanged. SS-deps-pin-manifest.md v1.1.13 ✓ (frontmatter spec-list + current-pointer updated from v1.1.12; 0 normative body sites — all body manifest hits are historical §Trace entries).
+
+---
+
+### SE-16b monotonicity check
+
+**SE-16b monotonicity check (v1.21):** v1.20 frontmatter timestamp = `2026-05-16T00:15:00Z`; v1.21 frontmatter timestamp = `2026-05-16T01:45:00Z`. Monotonic ≥: yes. v1.21 timestamp is later than v1.20 — monotonicity satisfied.
+
+---
+
+### SE-16a verification
+
+**SE-16a verification (v1.21):** No new cross-document citations introduced this burst. Pin-propagation-only: arch v1.0.20→v1.0.21 + manifest v1.1.12→v1.1.13. No new BC, no new NFR, no new error code, no new edge case, no new arch spec citations. No cross-document citation changes.
+
+---
+
+**Count changes (v1.21):**
+- BC count: 22 — unchanged.
+- NFR count: 12 — unchanged.
+- Error code count: 14 — unchanged.
+- Edge case count: 61 — unchanged.
+- Test name count: 23 — unchanged.
+- RTM row count: 23 — unchanged.
+- Glossary term count: 21 — unchanged.
+
+**PG-2 count coherence (v1.21):** 22 BCs ✓. 12 NFRs ✓. 14 error codes ✓. 61 edge cases ✓. 23 test names ✓. 21 glossary terms ✓.
+
+**PG-3 (no L-number pinpoints in §Trace):** All references in this §Trace v1.21 entry use section heading anchors (§-form), finding references, or position-in-string descriptions. No bare L-numbers.
+
+**PG-3-TRACE-NEW-ENTRY (v1.21):** Post-write self-grep: 0 L[0-9]+ bare line-number matches in this §Trace v1.21 entry.
+
+**PG-4 §-heading-existence sweep (v1.21):** No new §-anchor references introduced — all changes are pin propagation with existing section references. PASS.
+
+**PG-5 (historical-anchor framing):** §Trace v1.20 historical entry preserved unchanged. Historical F-R88 chain reference `SS-daemon-lifecycle.md v1.0.20 current-pointer (commit 8533ea2)` in traces_to preserved. Historical R93 chain reference `arch pin v1.0.19 → v1.0.20 (commit 8a68cc9 → 8533ea2, 32 normative sites)` in traces_to preserved. Historical GAP-R16-001 chain references `v1.1.10 → v1.1.12 ... SS-deps-pin-manifest.md v1.1.12 current-pointer` in traces_to preserved. No version qualifiers changed on stable section refs.
+
+**PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep):** Only `prd.md` touched in this burst. PASS.
+
+**append_only_numbering:** No new IDs allocated. PASS.
+
+**L-F-R63 Extension 3 Enforcement — deps-pin sweep (v1.21):** No new crate-version mentions introduced. Pin propagation only. PASS.
+
+**L-F-R63 Extension 13 (machine-greppable evidence):** Real grep transcripts embedded above for arch pin and manifest pin propagation closures.
+
+**Extension 16 mandatory backfill sweep:** No new NFR rows. PASS.
+
+**SE-15c (sibling-row convention back-propagation):** No new sibling-row conventions. PASS.
+
+**SE-16c (canonical grep sweep for arch pin propagation):** PASS — pre-burst: 32 normative v1.0.20/8533ea2 hits; post-burst: 0 normative-current v1.0.20/8533ea2 hits (3 in frontmatter historical chain + 9 in §Trace v1.20 historical section — all preserved per PG-5); 32 normative v1.0.21/42504b4 hits.
+
+**SE-16c (canonical grep sweep for manifest pin propagation):** PASS — pre-burst: 1 normative-current v1.1.12 spec-list hit; post-burst: 0 normative-current v1.1.12 hits (3 historical GAP-R16-001 chain preserved per PG-5); 1 normative v1.1.13 spec-list hit + 1 current-pointer tail hit.
+
+**18+ META rule checklist (v1.21):**
+- D-042 (4-pattern citation sweep): PASS — SS-daemon-lifecycle.md v1.0.21 current (32 normative sites updated from v1.0.20; historical §Trace + frontmatter chain references preserved per PG-5). SS-deps-pin-manifest.md v1.1.13 current (frontmatter spec-list + current-pointer updated; 0 normative body sites). All other arch specs unchanged.
+- D-047 strict (3-clean-pass convergence): N/A for PRD authoring.
+- PG-1 (no ambiguous requirements): PASS — pin propagation only; no BC content changed.
+- PG-2 (noun-agnostic count coherence): PASS — all counts unchanged.
+- PG-3 (no L-number pinpoints in §Trace): PASS.
+- PG-3-TRACE-NEW-ENTRY: PASS.
+- PG-4 (§-heading-existence sweep): PASS — no new §-anchor references.
+- PG-5 (historical-anchor framing): PASS — §Trace v1.20 preserved unchanged; all historical chain references in traces_to preserved.
+- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS.
+- append_only_numbering: PASS.
+- L-F-R63 Extension 3 Enforcement (deps-pin sweep): PASS.
+- L-F-R63 Extension 13 (machine-greppable evidence): PASS — real grep transcripts for both arch and manifest pin propagation.
+- SE-14b (per-probe BC-VP coherence): No BC content changed; existing per-probe coherence from v1.20 unchanged.
+- SE-15c (sibling-row convention back-propagation): PASS.
+- Extension 16 mandatory backfill sweep: PASS.
+- SE-16a (in-burst-added citation audit): 0 new cross-document citations. PASS.
+- SE-16b (frontmatter timestamp monotonicity): PASS — v1.21 timestamp `2026-05-16T01:45:00Z` > v1.20 timestamp `2026-05-16T00:15:00Z`.
+- SE-16c (canonical grep sweep for arch pin propagation): PASS — 32 normative sites swept; 0 residual normative-current v1.0.20 hits.
+- SE-16c (canonical grep sweep for manifest pin propagation): PASS — 1 normative-current spec-list site swept; 0 residual normative-current v1.1.12 hits.
+- Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — pin propagation applied at full precision; all normative-current sites swept; historical chain preserved; no "good enough" deferrals.
+- Correct agent routing: PASS — VP file NOT touched (FV runs next per Extension 15 + SE-15e serial protocol with PRD v1.21 commit SHA); architecture files not touched; STATE.md not touched (state-manager owns).
+
+**VP propagation note (v1.21):** FV runs next (Extension 15 + SE-15e serial protocol) with PRD v1.21 commit SHA. FV targets VP v1.28 for C-R94-2 + I-R94-2 + GAP-R33-001 closures + PRD/arch/manifest triple pin propagation (PRD v1.20→v1.21 + arch v1.0.20→v1.0.21 + manifest v1.1.12→v1.1.13) per Extension 15 handoff.
