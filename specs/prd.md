@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.15"
+version: "1.16"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-15T14:00:00Z
+timestamp: 2026-05-15T18:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.17; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (commit a798d51); F-R85-IMP-2 fix-burst (v1.15): NFR-004 + NFR-005 + NFR-010 Validation Method extended with VP probe citations (Extension 16 mandatory backfill sweep applied to all 12 NFR rows — per-row SE-15c disposition documented in §Trace v1.15)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.17; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized; F-R84 fix-burst (adversary R84 commit + cons R23 GAP-R23-001): F-R84-1 CRITICAL arch v1.0.16 → v1.0.17 propagation (a798d51; 32 normative PRD sites); F-R84-2 HIGH §7 RTM column-header rename BC ID → Requirement ID; F-R84-6 NFR-012 §7 RTM Brief Section anchor corrected (runtime_dir path, not graceful shutdown); Obs-R84-1 NFR-009 Validation Method VP probe back-propagation; SS-daemon-lifecycle.md v1.0.17 current-pointer (commit a798d51); F-R85-IMP-2 fix-burst (v1.15): NFR-004 + NFR-005 + NFR-010 Validation Method extended with VP probe citations (Extension 16 mandatory backfill sweep applied to all 12 NFR rows — per-row SE-15c disposition documented in §Trace v1.15); R86 I-R86-2 closure (v1.16): §Trace v1.15 backfill summary count corrected `4 rows` → `5 rows` (SE-16a/b applied — no new citations; timestamp monotonicity verified)"
 project: monocle
 supplements: []
 ---
@@ -2467,7 +2467,7 @@ Full audit of all 12 NFR rows (NFR-001 through NFR-012) for SE-15c VP probe cita
 | NFR-010 | Correctness | (a) — direct VP probe: VP-AUTH-001 §Post-condition 5 | VP-AUTH-001 §Post-condition 5 specifies `constant_time_eq` source-grep against `monocle-runtime/src/auth.rs`. | **FIXED** in this burst — VP probe citation added |
 | NFR-011 | Forward-compat | (c) — DTU fidelity measurement procedure (not a VP probe) | DTU fidelity is measured via `dtu-assessment.md §DTU Fidelity Measurement Procedure` — explicitly out of VP scope per §Scope §Out of scope item 3. No VP probe exists or is warranted. | None — correct absence documented |
 
-**Backfill sweep summary:** 4 rows with VP probe coverage (NFR-004, NFR-005, NFR-009, NFR-010, NFR-012 = 5 rows); 7 rows without VP probe (NFR-001/002/003/006/007/008/011). Of the 5 VP-covered rows: NFR-009 and NFR-012 already had citations (v1.14/v1.13 respectively). NFR-004, NFR-005, NFR-010 lacked citations (SE-15c recursive failure) — all three fixed in this burst.
+**Backfill sweep summary:** 5 rows with VP probe coverage (NFR-004, NFR-005, NFR-009, NFR-010, NFR-012 = 5 rows); 7 rows without VP probe (NFR-001/002/003/006/007/008/011). Of the 5 VP-covered rows: NFR-009 and NFR-012 already had citations (v1.14/v1.13 respectively). NFR-004, NFR-005, NFR-010 lacked citations (SE-15c recursive failure) — all three fixed in this burst.
 
 ---
 
@@ -2577,3 +2577,70 @@ No mis-anchors introduced.
 - Correct agent routing: PASS — VP file NOT touched (FV runs next per Extension 15 serial protocol with PRD v1.15 commit SHA); architecture files not touched; STATE.md not touched (state-manager owns).
 
 **VP propagation note (v1.15):** FV runs next (Extension 15 serial protocol, Step 3) with PRD v1.15 commit SHA. VP v1.19 closes F-R85-CRIT-1, F-R85-IMP-1, F-R85-IMP-3 (per R85 report at .factory/plans/adversary-pass-r85-phase1-fixed.md). PRD v1.14 VP pin in verification-properties.md frontmatter `traces_to` must be updated to PRD v1.15 in the FV burst.
+
+---
+
+## §Trace v1.16 — F-R86 PO burst (I-R86-2 closure + SE-16a/b application)
+
+**Source:** R86 adversary report at `.factory/plans/adversary-pass-r86-phase1-fixed.md` (commit 7224e58). Extension 15 serial fix-burst protocol, Step 1 (PO first, FV second).
+
+### I-R86-2 closure: §Trace v1.15 backfill summary count corrected
+
+**§Trace v1.15 in-place correction (R86 I-R86-2 closure):** Line 2470 backfill summary count corrected from `4 rows` to `5 rows`. The enumeration (NFR-004 + NFR-005 + NFR-009 + NFR-010 + NFR-012) was correct at 5; the leading count was a transcription error. PG-5 preservation discipline applies to verbatim past-evidence (grep transcripts, commit citations); count narratives are correctable.
+
+### SE-16b monotonicity check
+
+**SE-16b monotonicity check:** v1.15 frontmatter timestamp = `2026-05-15T14:00:00Z`; v1.16 frontmatter timestamp = `2026-05-15T18:30:00Z`. Monotonic ≥: yes. Rationale: current-burst write-time (`2026-05-15T18:30:00Z`) is later than v1.15 timestamp (`2026-05-15T14:00:00Z`) — monotonicity satisfied without advancement.
+
+### SE-16a verification
+
+**SE-16a verification:** This burst introduces ZERO new cross-property or cross-check citations. The only substantive content change is a count-correction in §Trace v1.15 (NFR backfill summary `4 rows` → `5 rows`). The backfill audit is therefore a no-op for SE-16a scope — no new citations to verify for bidirectional reciprocity.
+
+### Extension 13 evidence (real grep transcript)
+
+**POST-FIX grep (§Trace v1.15 backfill summary count — verified `5 rows`):**
+```
+grep -n "rows with VP probe coverage" .factory/specs/prd.md
+2470: **Backfill sweep summary:** 5 rows with VP probe coverage (NFR-004, NFR-005, NFR-009, NFR-010, NFR-012 = 5 rows); ...
+```
+
+---
+
+**Count changes (v1.16):**
+- BC count: 22 — unchanged.
+- NFR count: 12 — unchanged.
+- Error code count: 14 — unchanged.
+- Edge case count: 59 — unchanged.
+- Test name count: 23 — unchanged.
+- RTM row count: 23 — unchanged.
+
+**D-042 sweep (v1.16):** No architecture spec version changes this burst. All arch pins unchanged from v1.15.
+
+**PG-2 count coherence (v1.16):** 22 BCs ✓. 12 NFRs ✓. 14 error codes ✓. 59 edge cases ✓. 23 test names ✓. All unchanged.
+
+**PG-3 (no L-number pinpoints in §Trace):** All references in this §Trace v1.16 entry use section heading anchors (§-form), finding references, or timestamp strings. No bare L-numbers.
+
+**PG-3-TRACE-NEW-ENTRY (v1.16):** Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.16 entry.
+
+**PG-4 §-heading-existence sweep (v1.16):** No new §-anchor references introduced in this burst beyond §Trace v1.15 (which exists). PASS.
+
+**PG-5 (historical-anchor framing):** §Trace v1.15 historical entry preserved except for the in-place count-correction at line 2470 (PG-5 exception: count narratives are correctable; verbatim forensic evidence preserved). In-place correction documented above with explicit R86 I-R86-2 reference.
+
+**L-F-R63 Extension 3 Enforcement — deps-pin sweep (v1.16):** No new crate-version mentions introduced in this burst. PASS.
+
+**18+ META rule checklist (v1.16):**
+- D-042 (4-pattern citation sweep): PASS — no arch spec version changes.
+- PG-1 (no ambiguous requirements): PASS — no requirement text changed; count-correction only.
+- PG-2 (noun-agnostic count coherence): PASS — all counts unchanged at 22 BCs / 12 NFRs / 14 error codes / 59 edge cases / 23 test names.
+- PG-3 (no L-number pinpoints in §Trace): PASS.
+- PG-3-TRACE-NEW-ENTRY: PASS.
+- PG-4 (§-heading-existence sweep): PASS.
+- PG-5 (historical-anchor framing): PASS — in-place correction justified and documented.
+- SE-16a (in-burst-added citation audit): PASS — zero new cross-property/cross-check citations added.
+- SE-16b (frontmatter timestamp monotonicity): PASS — v1.16 timestamp `2026-05-15T18:30:00Z` ≥ v1.15 timestamp `2026-05-15T14:00:00Z`.
+- L-F-R63 Extension 13 (machine-greppable evidence): PASS — real grep transcript embedded above for post-fix state.
+- Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — single count correction applied in-scope.
+- Correct agent routing: PASS — VP file NOT touched (FV runs next per Extension 15 serial protocol with PRD v1.16 commit SHA); architecture files not touched; STATE.md not touched (state-manager owns).
+
+**VP propagation note (v1.16):** FV runs next (Extension 15 serial protocol, Step 2) with PRD v1.16 commit SHA. FV targets VP v1.20 to close C-R86-1 (VP-DAEMON-004 §Mech 5 missing reciprocal citation) + I-R86-1 (VP-PROTO-002 §Harness location stale PRD v1.10 citation) + O-R86-1 (VP §Trace v1.19 timestamp monotonicity correction documentation).
