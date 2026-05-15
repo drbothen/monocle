@@ -777,3 +777,32 @@ NFRs / §Scope / brief for canonical contract evidence. Ungrounded claim = MED f
 ```
 
 **Application precedent:** F-R75 closure chain (architect SS-daemon-lifecycle.md v1.0.16 at 6bb93e2, product-owner PRD v1.10 at 8feecad, formal-verifier VP v1.10 at 03a1293) tightened Windows scope at 4 sites to: "Windows is a secondary build target per PRD §8.7; Phase 1 CI does not formally validate Windows behavior per NFR-008's macOS + Linux target scope." Three-artifact alignment achieved.
+
+### Extension 7: Automated Crate-Prefix Grep Audit + §Trace Audit-Row Integrity (2026-05-15, post-R76)
+
+Obs-R76-1 demonstrated that "exhaustive grep" applied to F-R74-3 closure was actually "enumerate the crates I remembered" — missing `axum` (the most-visible daemon dependency) despite axum being called in 3 arch code blocks and named in 6 VPs. The §Trace v1.1.10 enumerated 12 outbound edges but the 13th (axum) was absent without anyone noticing.
+
+**Discipline:** Every fix-burst that touches the workspace dependency graph MUST include:
+
+```bash
+grep -oE '\b[a-z_][a-z_0-9]*::' .factory/specs/architecture/SS-daemon-lifecycle.md | sort -u
+# AND for every other arch file under .factory/specs/architecture/
+```
+
+Cross-reference EVERY result against the dep graph. Classify each as:
+- PASS (already in graph)
+- N/A (stdlib, sub-module of parent crate, intra-workspace crate)
+- MISSING (must be added to graph + manifest pin table if absent)
+
+Document the audit in §Trace with the per-prefix classification table.
+
+**Application precedent:** F-R76 closure burst applied Extension 7 for the first time and IMMEDIATELY found a net-new gap: `chrono` was used in §Trace v1.0.14 F-R72-1 rationale (Utc::now() for ISO 8601 millisecond format) but `chrono` was not in the manifest pin table. The discovery propagated to 3 VPs (DAEMON-002, DAEMON-006, LOCK-001). This validates Extension 7 as a high-leverage recurrence guard against the "exhaustive grep gap" failure mode.
+
+**Companion lesson — §Trace audit-row integrity:** F-R76-1 also demonstrated that §Trace audit rows can fabricate PASS verdicts (the "`serde 1` cited verbatim" claim was triple-false-positive). Future §Trace audits MUST include REAL grep evidence per row (file:line citation of what was actually grepped, not a self-attestation). This is the trust-perimeter recurrence guard.
+
+**New review axis:** Every fix-burst agent performing a deps-pin sweep MUST include in the §Trace entry:
+1. The exact grep command run.
+2. The per-crate-prefix classification table (PASS / N/A-stdlib / N/A-sub-module / MISSING).
+3. For each PASS verdict: the specific file:line that confirms the pin exists (not "cited verbatim").
+
+**Application precedent:** manifest v1.1.11 (commit 7860e78) + VP v1.11 (commit ebd50a0) applied the full Extension 7 discipline including the §Trace audit-row integrity companion, producing a 28-crate audit with real grep evidence.
