@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.13"
+version: "1.0.14"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T04:00:00Z
+timestamp: 2026-05-14T20:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT"
 project: monocle
 ---
 
@@ -83,15 +83,20 @@ initiates normal auto-start (lock file is stale).
   "ring_buffer_fill_pct": <0.0-100.0>,
   "channel_saturation_pct": <0.0-100.0>,
   "last_hook_ts": {
-    "pre_tool_use": "<ISO8601 or null>",
-    "notification": "<ISO8601 or null>",
-    "stop": "<ISO8601 or null>",
-    "session_start": "<ISO8601 or null>",
-    "prompt_submit": "<ISO8601 or null>"
+    "pre_tool_use": "<YYYY-MM-DDTHH:MM:SS.sssZ or null>",
+    "notification": "<YYYY-MM-DDTHH:MM:SS.sssZ or null>",
+    "stop": "<YYYY-MM-DDTHH:MM:SS.sssZ or null>",
+    "session_start": "<YYYY-MM-DDTHH:MM:SS.sssZ or null>",
+    "prompt_submit": "<YYYY-MM-DDTHH:MM:SS.sssZ or null>"
   },
   "tui_attached": <bool>
 }
 ```
+
+`last_hook_ts` values use ISO 8601 UTC format with mandatory millisecond precision
+(`YYYY-MM-DDTHH:MM:SS.sssZ`). A hook type that has not fired since daemon start has
+value `null` (JSON null), not an empty string. Format matches EC-044 (PRD v1.7)
+and the `shutdown_utc` format in BC-DAEMON-006 — cross-field uniformity per F-R72-1.
 
 The `abi_version` field carries `monocle_core::MONOCLE_ABI_VERSION` as compiled
 into this binary. Required by BC-ABI-001 (see SS-core-types-and-abi.md §ABI Version
@@ -424,7 +429,7 @@ let app = public_router.merge(authed_router);
      "pid": <N>,
      "port": <N>,
      "authToken": "<64-char hex>",
-     "startTimeUtc": "<ISO8601>",
+     "startTimeUtc": "<YYYY-MM-DDTHH:MM:SS.sssZ>",
      "app": "monocle",
      "version": "<semver>"
    }
@@ -435,6 +440,9 @@ let app = public_router.merge(authed_router);
    BC-LOCK-001: any lock-file reader MUST check `contract_version == 1` before
    consuming other fields; an unrecognized version triggers a graceful skip with
    a log warning.
+   `startTimeUtc` uses ISO 8601 UTC format with mandatory millisecond precision
+   (`YYYY-MM-DDTHH:MM:SS.sssZ`) — matching `last_hook_ts` (BC-DAEMON-002 / EC-044)
+   and `shutdown_utc` (BC-DAEMON-006) for cross-field uniformity per F-R72-1.
    Lock file mode: `0o600` (owner-only read/write).
 7. Spawn hook-receiver task (axum server on the bound listener).
 8. Spawn UDS control task.
@@ -583,9 +591,14 @@ On receiving any shutdown signal:
      "pid": <N>,
      "shutdown_reason": "graceful|signal|forced",
      "last_app_mode": "<string>",
-     "shutdown_utc": "<ISO8601>"
+     "shutdown_utc": "<YYYY-MM-DDTHH:MM:SS.sssZ>"
    }
    ```
+   `shutdown_utc` MUST use ISO 8601 UTC format with mandatory millisecond precision
+   (`YYYY-MM-DDTHH:MM:SS.sssZ`). A seconds-only value (e.g., `2026-05-15T07:30:00Z`) is
+   non-compliant per BC-DAEMON-006 invariant 1 (PRD v1.7). VP-DAEMON-006 enforces this
+   with regex `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`. Matches `last_hook_ts`
+   format (EC-044) and `startTimeUtc` (§Start Sequence step 6) for cross-field uniformity.
 
 ### Hard Shutdown
 
@@ -723,6 +736,81 @@ fields are stable across Phase 1 → Phase 4.
 ---
 
 ## §Trace
+
+v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R70-2):
+- F-R72-1 RESOLVED (HIGH — adversary R72 JSON schema sketch timestamp format
+  propagation gap): F-R70-2 (PRD v1.6/v1.7 + VP v1.6/v1.7 closure chain) tightened
+  BC-DAEMON-006 invariant 1 and the VP-DAEMON-006 regex to mandate
+  `YYYY-MM-DDTHH:MM:SS.sssZ` (mandatory millisecond precision). The §BC Summary
+  footer declares this architecture document as "source-of-truth for invariants,
+  protocol decisions, and security rationale." Three JSON schema sketches in this
+  document still carried the generic `<ISO8601>` placeholder, leaving the arch SoT
+  inconsistent with the tighter BC + VP. This constitutes a partial-fix regression:
+  the BC and VP were tightened but the arch schema sketches were not propagated in
+  the same burst. F-R72-1 closes the gap.
+
+  Three sites tightened (disposition **(a)** for all — cross-field uniformity):
+
+  **Site 1 — §Health and Status Endpoints /status `last_hook_ts` block (5 fields):**
+  - Before: `"<ISO8601 or null>"` (5 occurrences, one per hook type)
+  - After: `"<YYYY-MM-DDTHH:MM:SS.sssZ or null>"` + inline annotation referencing
+    EC-044 (PRD v1.7), BC-DAEMON-002, and F-R72-1 cross-field uniformity.
+  - Rationale: EC-044 (PRD v1.7 line 185) already specifies this exact format for
+    `last_hook_ts`; the arch sketch now matches its own downstream BC/EC.
+
+  **Site 2 — §Start Sequence step 6 lock file `startTimeUtc`:**
+  - Before: `"startTimeUtc": "<ISO8601>"`
+  - After: `"startTimeUtc": "<YYYY-MM-DDTHH:MM:SS.sssZ>"` + inline annotation
+    referencing BC-DAEMON-002 / EC-044, BC-DAEMON-006, and F-R72-1 uniformity.
+  - Disposition: **(a) tighten to millisecond precision for cross-field uniformity.**
+    Rationale: no architectural reason for `startTimeUtc` to carry seconds-only
+    precision while `last_hook_ts` and `shutdown_utc` both mandate milliseconds.
+    Cross-field uniformity eliminates a parser asymmetry (a parser that handles all
+    three fields can use a single `chrono` format string). The Phase 1 Rust
+    implementation will use `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")`
+    uniformly across all three timestamp fields. Seconds-only precision would require
+    a distinct format string for `startTimeUtc` alone — unnecessary complexity.
+
+  **Site 3 — §Drain step 5 crash-recovery `shutdown_utc`:**
+  - Before: `"shutdown_utc": "<ISO8601>"`
+  - After: `"shutdown_utc": "<YYYY-MM-DDTHH:MM:SS.sssZ>"` + inline annotation
+    referencing BC-DAEMON-006 invariant 1 (PRD v1.7), VP-DAEMON-006 regex
+    (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`), and cross-field uniformity.
+  - This site is directly mandated by BC-DAEMON-006 invariant 1; the prior generic
+    placeholder was the root cause of F-R72-1 (the BC was tightened but the arch
+    sketch was not updated in the same burst).
+
+- L-F-R63 Extension 1 propagation discipline applied to arch JSON schema sketches:
+  All three timestamp fields in schema sketches are now the SoT-authoritative precise
+  format. Future BC/VP tightening of timestamp formats MUST propagate to all schema
+  sketches in the same burst (Extension 1: update all normative-current sites).
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3 sweep: §-anchor refs used throughout; no bare L-numbers; no directional
+      qualifiers (after/above/below).
+  (b) PG-4 sweep evidence: §Health and Status Endpoints (EXISTS), §Start Sequence
+      (EXISTS), §Drain (within §Daemon Lifecycle Protocol, EXISTS), §BC Summary
+      (EXISTS), §Trace (EXISTS).
+  (c) PG-5 sweep: historical §Trace entries unchanged. `<ISO8601>` grep result: 0
+      remaining occurrences in normative-current body (all three sites resolved). 0
+      remaining generic timestamp placeholders in any JSON schema sketch. VERIFIED.
+  (d) §Behavioral Contract Summary BC-DAEMON-006 row: prose description does not
+      carry a timestamp format claim (references §Daemon Lifecycle Protocol for
+      detail) — no change needed to summary table.
+  (e) Phase 4 Notes paragraph: references `startTimeUtc` by field name only, no
+      format claim — no change needed.
+  (f) Post-write self-grep: 0 `<ISO8601>` matches in normative-current body. 0
+      `L[0-9]+` matches in this §Trace v1.0.14 entry.
+- Propagation requirements for orchestrator:
+  **PRD:** PRD v1.7 `traces_to` frontmatter cites arch pin `v1.0.13`; product-owner
+  must propagate arch pin v1.0.13 → v1.0.14 at all normative-current PRD sites
+  (traces_to field + any §Trace entry that cites the arch version). EC-044
+  (last_hook_ts format) is already correctly specified in PRD v1.7 — no BC content
+  change required.
+  **VP:** VP v1.7 `traces_to` frontmatter cites arch pin `v1.0.13`; formal-verifier
+  must propagate arch pin v1.0.13 → v1.0.14 at all normative-current VP sites. No VP
+  content change required — VP-DAEMON-006 regex and BC-DAEMON-006 invariant 1 are
+  already correctly specified. Pin propagation only.
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs added; no BCs removed.
 
 v1.0.13 changes (adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure):
 - F-R71-2 RESOLVED (HIGH — adversary R71 stale test name): Two arch sites cited
