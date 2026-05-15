@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.12"
+version: "1.13"
 status: draft
 producer: product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-15T23:30:00Z
+timestamp: 2026-05-15T23:59:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.16; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.16; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.12; 22 BCs (16 original + 6 new BC-DAEMON-001..006); D-047 strict; 18+ META defense layers; STATE.md phase-1-spec-crystallization-entry-pending; F-R62 fix-burst (adversary commit 5713ccc); T-4 consistency audit (commit 0e322da); architect auth adjudication (commit 2db408f); F-R63 fix-burst (adversary R63 commit 11a98c4; consistency R2 commit 200eb68; arch v1.0.9 commit 8bf3759); R3-001 closure (consistency R3 commit ba62a15; arch v1.0.10 commit dc3af71); L-F-R63-PARTIAL-FIX propagation discipline applied; F-R65 closure chain (adversary R65 commit 77fccb7; consistency R4 commit 3d33937; arch v1.0.11 commit af2101d); L-F-R63-PARTIAL-FIX pin propagation applied; F-R67-2 closure (PRD EC-045 off-by-one fix; adversary R67 finding); F-R70 closure chain (adversary R70 commit 4b4aea1; arch v1.0.12 commit 727c826): BC-DAEMON-004 POSIX exit-code correction + BC-DAEMON-005 platform-aware runtime-dir fallback + BC-DAEMON-006 timestamp precision tightening + EC-031 fail-open security rationale; F-R71 closure chain (adversary R71 commit 2710ab4; arch v1.0.13 commit 1f53d47): F-R71-3 NFR-008 phrasing fix (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.12 → v1.0.13 (31 normative sites); F-R72-1 closure chain (adversary R72 commit 27ba850; arch v1.0.14 commit e4ce2f0): arch JSON schema sketches tightened to mandatory millisecond precision — arch pin propagation v1.0.13 → v1.0.14 (31 normative sites); F-R74 closure chain (adversary R74 commit d718c58; arch v1.0.14 → v1.0.15 + manifest v1.1.9 → v1.1.10 commit 7d8d0de): F-R74-2 BC-ENGINE-001 invariant 3 correct technical rationale (dyn-compatibility + Send propagation); F-R74-1 SS-daemon-lifecycle hook_endpoints ellipsis fix (arch); F-R74-3 runtime dep-graph 4 missing edges (arch + manifest); arch pin propagation v1.0.14 → v1.0.15 (31 normative sites); manifest v1.1.10 added to traces_to current-pointer; F-R75 closure chain (adversary R75 commit 5ce855b; architect arch v1.0.15 → v1.0.16 commit 6bb93e2): F-R75-2 PRD-side Windows scope tightening (BC-DAEMON-005 precondition 2 rationale) + arch pin propagation v1.0.15 → v1.0.16 (31 normative sites); GAP-R16-001 closure (consistency audit R16 commit b79f8cd): frontmatter traces_to manifest pin bumped v1.1.10 → v1.1.12 (v1.1.11 = serde+chrono pins F-R76 burst; v1.1.12 = architect R77 fixes); SS-deps-pin-manifest.md v1.1.12 current-pointer; F-R79 closure (adversary pass R79): F-R79-1 §7 RTM BC-DAEMON-004 Test File column extended with daemon_lifecycle.rs; F-R79-3 BC-DAEMON-005 §Postconditions new Postcondition 8 (0o700 runtime-dir mode lifted from EC-052 to BC postcondition tier; cross-ref VP-DAEMON-005 Post-condition 9 + probe 5.e + F-R75-1); Extension 10 §3↔§7 RTM propagation audit (22-row classification: 21 MATCH, 1 GAP=F-R79-1 now closed); F-R83-1 PRD site 1 closure (adversary pass R83): NFR-012 added (runtime_dir 0o700 owner-only, defense-in-depth with NFR-009); §7 RTM NFR-012 row added; Obs-R83-1 BC-DAEMON-005 Postcondition 8 DirBuilder::new().mode(0o700) receiver form normalized"
 project: monocle
 supplements: []
 ---
@@ -339,7 +339,7 @@ EC-050: `POST /shutdown` with valid auth during a drain already in progress. The
 7. On successful graceful shutdown, `<runtime_dir>/monocle.sock` is removed.
 
 **Postconditions (runtime directory creation):**
-8. If `<runtime_dir>` does not exist at start, daemon creates it with mode `0o700` (owner-only access) using `DirBuilderExt::mode(0o700).recursive(true).create(&runtime_dir)` — NOT `std::fs::create_dir_all` (which honors umask defaults, typically 0o755). This is defense-in-depth alongside the lock-file `0o600` mode (BC-LOCK-001): both the containing directory AND the lock file must be owner-only to prevent other OS users from enumerating or reading auth-token-bearing paths. F-R75-1 establishes this contract. Cross-reference: VP-DAEMON-005 Post-condition 9 and probe 5.e verify this with `stat(&runtime_dir).mode() & 0o777 == 0o700`. Cross-platform note: the `0o700` mode assertion applies to Linux/macOS (primary targets per NFR-008); Windows does not expose Unix mode bits and is a secondary build target per §8.7.
+8. If `<runtime_dir>` does not exist at start, daemon creates it with mode `0o700` (owner-only access) using `DirBuilder::new().mode(0o700).recursive(true).create(&runtime_dir)` (with `use std::os::unix::fs::DirBuilderExt` to bring the `mode` method into scope) — NOT `std::fs::create_dir_all` (which honors umask defaults, typically 0o755). This is defense-in-depth alongside the lock-file `0o600` mode (BC-LOCK-001): both the containing directory AND the lock file must be owner-only to prevent other OS users from enumerating or reading auth-token-bearing paths. F-R75-1 establishes this contract. Cross-reference: VP-DAEMON-005 Post-condition 9 and probe 5.e verify this with `stat(&runtime_dir).mode() & 0o777 == 0o700`. Cross-platform note: the `0o700` mode assertion applies to Linux/macOS (primary targets per NFR-008); Windows does not expose Unix mode bits and is a secondary build target per §8.7.
 
 **Invariants:**
 1. Only one monocle daemon instance runs per runtime directory. The pid-liveness check (step 1) enforces this.
@@ -1213,6 +1213,7 @@ EC-039: `preflight()` called at daemon startup before accepting hook registratio
 | NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | CI matrix check; `rust-toolchain.toml` |
 | NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` |
+| NFR-012 | Security | Runtime directory permissions | `0o700` (owner-only access) on newly-created runtime_dir; defense-in-depth with NFR-009 lock-file `0o600` | Integration test: `stat` runtime_dir after daemon start; assert mode is `0700` per VP-DAEMON-005 Post-condition 9 / probe 5.e |
 | NFR-010 | Correctness | Constant-time auth comparison | `constant_time_eq::constant_time_eq` used for token comparison | Code review; no `==` on token strings |
 | NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md |
 
@@ -1284,6 +1285,7 @@ Per vision §Vision Statement and brief §Success Criteria. Every differentiator
 | BC-ENGINE-002 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Unit |
 | BC-ENGINE-002-ERR | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Behavioral Contracts BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Unit (env-isolation) |
 | BC-ENGINE-003 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Struct-level inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Unit |
+| NFR-012 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.16 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
 
 ---
 
@@ -2170,3 +2172,62 @@ No new mis-anchors introduced.
 - Correct agent routing: PASS — VP file not touched (formal-verifier owns VP; VP-DAEMON-005 Post-condition 9 + probe 5.e already exist and are cross-referenced only); architecture files not touched (architect owns); STATE.md not touched (state-manager owns).
 
 **VP propagation note (v1.12):** No VP changes required. VP-DAEMON-005 Post-condition 9 and probe 5.e (F-R75-1 closure) already correctly specify the 0o700 contract. This §Trace v1.12 entry documents that the PRD §3 BC-DAEMON-005 postcondition tier has been raised to match — the VP was already ahead of the PRD on this contract.
+
+## §Trace v1.13
+
+**v1.13 (2026-05-15):** F-R83-1 PRD site 1 closure + Obs-R83-1 closure. Trigger: adversary pass R83 (adversary-pass-r82-phase1-fixed.md; R83 counter reset to 0/3). No architecture version pins changed; no SS-daemon-lifecycle.md version change in this burst (v1.0.16 current unchanged). No SS-deps-pin-manifest.md change. Three PRD-scope changes only.
+
+- **F-R83-1 PRD site 1 RESOLVED (HIGH — §4 NFR table missing NFR-012 for 0o700 runtime_dir permission):** The F-R79-3 closure (PRD v1.12) lifted the 0o700 runtime_dir contract from EC-tier to BC-DAEMON-005 Postcondition 8. However, the §4 NFR table was NOT updated in that burst to add a sibling Security row alongside NFR-009 (lock-file `0o600`). This created an asymmetry: the lock-file permission had a dedicated NFR row (NFR-009) while the runtime-dir permission had only a BC postcondition — no NFR-tier summary entry. Fix: **NFR-012** added to §4 NFR table, Security category, immediately after NFR-009. NFR-012 specifies `0o700` (owner-only access) on newly-created runtime_dir with defense-in-depth citation to NFR-009. Validation method cites VP-DAEMON-005 Post-condition 9 / probe 5.e. Pattern: L-F-R63-PARTIAL-FIX recurrence prevention — sibling summary-table propagation discipline: when a contract is lifted to BC postcondition tier, the corresponding NFR-tier summary row must also be added in the same burst. **NFR-012 row also added to §7 RTM** (row after BC-ENGINE-003), citing VP-DAEMON-005 Post-condition 9 / probe 5.e as the verifying property and `monocle-runtime/tests/daemon_lifecycle.rs` as the test file (probe 5.e is part of the daemon_lifecycle.rs probe matrix per VP-DAEMON-005 §Coverage Matrix).
+
+- **Obs-R83-1 RESOLVED (LOW — BC-DAEMON-005 Postcondition 8 code-snippet receiver form):** The code snippet in BC-DAEMON-005 §Postconditions (runtime directory creation) Postcondition 8 read `DirBuilderExt::mode(0o700).recursive(true).create(&runtime_dir)`. This form implies a static method call, but `mode` is a `&self` method on `DirBuilder` (via the `DirBuilderExt` trait). The correct receiver form is `DirBuilder::new().mode(0o700).recursive(true).create(&runtime_dir)` with an explicit `use std::os::unix::fs::DirBuilderExt` import to bring the `mode` method into scope. The corrected snippet matches the VP counter-example sketch 10 pattern. Fix: snippet updated in place; use-declaration added parenthetically. No behavioral change — the 0o700 contract is unchanged; only the code-example correctness is improved.
+
+**Count changes (v1.13):**
+- BC count: 22 — unchanged.
+- Error code count: 14 — unchanged.
+- Edge case count: 59 — unchanged.
+- Test name count: 23 — unchanged.
+- NFR count: 11 → 12. NFR-012 added (Security; runtime_dir 0o700).
+- RTM row count: 22 BC rows + 1 NFR row (NFR-012). The RTM now includes NFR-012 as a non-BC requirement row.
+
+**D-042 sweep (v1.13):** No SS-*.md version changes. All 31 arch citation sites (SS-daemon-lifecycle.md v1.0.16) carry forward unchanged from v1.12. SS-deps-pin-manifest.md v1.1.12 unchanged. Zero new version pin introductions.
+
+**PG-2 count coherence (v1.13):** 22 BCs unchanged ✓. 12 NFRs (NFR-001 through NFR-012; NFR-012 new) ✓. 14 error codes unchanged ✓. 59 edge cases unchanged ✓. 23 test names unchanged ✓. No IDs renumbered or retired.
+
+**PG-3 §Trace directional refs (v1.13):** No `above`, `below`, or bare L-numbers appear in this §Trace v1.13 entry. All references use section heading anchors (§-form) or finding/VP references.
+
+**PG-3-TRACE-NEW-ENTRY (v1.13):** Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.13 entry.
+
+**PG-4 §-heading-existence sweep (v1.13):** New §-anchor references introduced in this burst:
+- `§4 NFR table` — refers to `## 4. Non-Functional Requirements` (H2); PASS.
+- `§7 RTM` — refers to `## 7. Requirements Traceability Matrix` (H2); PASS.
+- `§Postconditions (runtime directory creation)` — existing BC-DAEMON-005 subsection; PASS.
+- `VP-DAEMON-005 Post-condition 9 / probe 5.e` — VP body cross-reference (not PRD heading); PASS.
+No new mis-anchors introduced.
+
+**PG-5 (historical-anchor framing):** §Trace v1.12 historical entries preserved unchanged. No stable section refs changed.
+
+**Intra-document consistency sweep (L-F-R63-PARTIAL-FIX Extension 2, v1.13):**
+- NFR-012 §4 table row ↔ §7 RTM NFR-012 row: both cite VP-DAEMON-005 Post-condition 9 / probe 5.e and `monocle-runtime/tests/daemon_lifecycle.rs` ✓ — CONSISTENT.
+- BC-DAEMON-005 Postcondition 8 API snippet: `DirBuilder::new().mode(0o700).recursive(true).create(&runtime_dir)` with use-declaration ✓ — matches VP counter-example sketch 10 pattern ✓ — CONSISTENT.
+- NFR-009 (lock-file 0o600) ↔ NFR-012 (runtime_dir 0o700): sibling Security rows; both reference integration test + stat assertion ✓ — CONSISTENT. Defense-in-depth pair now fully represented at NFR tier.
+
+**L-F-R63 Extension 3 Enforcement — deps-pin sweep (v1.13):** No new crate-version mentions introduced in this burst. All 8 existing crate-version mentions carry forward from v1.12 and remain CONSISTENT with manifest v1.1.12.
+
+**18+ META rule checklist (v1.13):**
+- D-042 (4-pattern citation sweep): PASS — no SS-*.md version changes; all current pointers from v1.12 unchanged.
+- D-047 strict (3-clean-pass convergence): N/A for PRD authoring; applies to adversarial review passes.
+- PG-1 (no ambiguous requirements): PASS — NFR-012 has numerical target (`0o700`), named validation method (integration test + VP-DAEMON-005 Post-condition 9 / probe 5.e), and production-grade defense-in-depth rationale. Obs-R83-1 code snippet is unambiguous correct Rust receiver-form with use-declaration.
+- PG-2 (noun-agnostic count coherence): PASS — 22 BCs, 12 NFRs, 14 error codes, 59 edge cases, 23 test names.
+- PG-3 (no L-number pinpoints in §Trace): PASS — all §Trace v1.13 references use section heading anchors or finding/VP references.
+- PG-3-TRACE-NEW-ENTRY (position-free references in new §Trace entries): PASS — v1.13 entry uses only section heading anchors. Post-write self-grep: 0 L[0-9]+ matches.
+- PG-4 (§-heading-existence sweep): PASS — new §-anchor references verified above; zero mis-anchors.
+- PG-5 (historical-anchor framing): PASS — §Trace v1.12 historical entries preserved; no stable section refs changed.
+- PG-RECIPE-SCOPE (`.factory/specs/` recursive sweep): PASS — sweep not narrowed.
+- append_only_numbering: PASS — NFR-012 is a new sequential ID; no IDs renumbered or retired.
+- lift_invariants_to_bcs: PASS — NFR-012 lift completes the sibling-table propagation that F-R79-3 initiated; domain invariant coverage is now at NFR tier as well as BC postcondition tier.
+- L-F-R63 Extension 3 Enforcement (deps-pin sweep): PASS — 8 crate-version mentions carried forward; all CONSISTENT with manifest v1.1.12.
+- Self-audit (CLAUDE.md §Self-Audit Checklist): All 6 items checked — no MVP rationalizations, no tech-debt-register entries, no pending-architect-review markers, no deferred defects, no cheapest-path defaults, no advisories that should be blockers.
+- Production-grade default: PASS — NFR-012 adds the correct NFR-tier summary entry that was missing; Obs-R83-1 corrects the code snippet to production-grade Rust receiver form; no deferred occurrences.
+- Correct agent routing: PASS — VP files not touched (formal-verifier owns VP; VP-DAEMON-005 Post-condition 9 + probe 5.e already exist and are cross-referenced only); architecture files not touched (architect owns); STATE.md not touched (state-manager owns).
+
+**VP propagation note (v1.13):** No VP changes required. VP-DAEMON-005 Post-condition 9 and probe 5.e already correctly specify the 0o700 contract and are cross-referenced by NFR-012 Validation Method. The VP was already ahead of the PRD NFR tier on this contract; this burst closes the remaining gap.
