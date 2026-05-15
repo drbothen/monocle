@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.19"
+version: "1.0.20"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-15T00:01:00Z
+timestamp: 2026-05-15T22:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields; v1.0.19 adversary R89 F-R89-2 + O-R89-3 closures: HookEventRecord struct tool_name + tool_input fields annotated with #[serde(skip_serializing_if = \"Option::is_none\")] (PRD v1.17 BC-RING-001 EC-001 normative form); SessionStart None-case serialization example added demonstrating field absence (not explicit null); Extension 17 evidence discipline applied"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields; v1.0.19 adversary R89 F-R89-2 + O-R89-3 closures: HookEventRecord struct tool_name + tool_input fields annotated with #[serde(skip_serializing_if = \"Option::is_none\")] (PRD v1.17 BC-RING-001 EC-001 normative form); SessionStart None-case serialization example added demonstrating field absence (not explicit null); Extension 17 evidence discipline applied; v1.0.20 adversary R93 I-R93-1 + C-R93-1 arch part closures: resolve_runtime_dir signature changed from Result<PathBuf, DaemonStartError> to PathBuf (dead Err variant removed; caller fail-fast path documented; clippy unnecessary_wraps eliminated); BC-RING-001 verification clause line 624 corrected from unit test to integration test per F-R88-5 Mechanism Distribution discipline; Extension 17 evidence embedded + Extension 15 propagation requirements added"
 project: monocle
 ---
 
@@ -223,27 +223,38 @@ let app = public_router.merge(authed_router);
    Implementation:
 
    ```rust
-   fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> Result<PathBuf, DaemonStartError> {
+   /// Resolve the runtime directory per BC-DAEMON-005 Precondition 2 chain
+   /// (a) MONOCLE_RUNTIME_DIR env override
+   /// (b) ProjectDirs::runtime_dir() platform-aware
+   /// (c) data_local_dir() fallback
+   ///
+   /// Note: path (d) "fail-fast on ProjectDirs::new() == None" is handled
+   /// in the CALLER (daemon main) BEFORE this function is invoked. This function
+   /// is infallible given a valid ProjectDirs instance — paths (b) and (c) can
+   /// only return None/empty IF ProjectDirs::new() returned None, which is
+   /// checked earlier. Hence the return type is PathBuf, not Result<PathBuf, _>.
+   fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> PathBuf {
        // (a) Operator env override
        if let Ok(env_path) = std::env::var("MONOCLE_RUNTIME_DIR") {
            if !env_path.is_empty() {
                tracing::info!(source = "MONOCLE_RUNTIME_DIR", "runtime_dir resolved");
-               return Ok(PathBuf::from(env_path));
+               return PathBuf::from(env_path);
            }
        }
        // (b) XDG runtime dir (Linux only in practice)
        if let Some(rd) = project_dirs.runtime_dir() {
            tracing::info!(source = "ProjectDirs::runtime_dir()", "runtime_dir resolved");
-           return Ok(rd.to_path_buf());
+           return rd.to_path_buf();
        }
        // (c) data_local_dir fallback (macOS / Windows / XDG-less Linux)
+       // data_local_dir() returns &Path (never Option) — this branch is infallible.
        let fallback = project_dirs.data_local_dir().to_path_buf();
        tracing::info!(
            source = "ProjectDirs::data_local_dir()",
            platform = std::env::consts::OS,
            "runtime_dir fallback resolved"
        );
-       Ok(fallback)
+       fallback
    }
    ```
 
@@ -610,7 +621,7 @@ On receiving any shutdown signal:
 
    **Behavioral contract: BC-RING-001** — every JSONL record's first key is
    `format_version` with value `1` for all Phase 1-origin records. Verification:
-   unit test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
+   integration test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
    `HookEventRecord` via `HookEventRecord::new(...)` and asserts the resulting
    JSON string begins with `{"format_version":1,`.
 5. Persist last-known AppMode to crash-recovery checkpoint:
@@ -769,6 +780,116 @@ fail gracefully (do not attempt parse of unknown-version JSON).
 ---
 
 ## §Trace
+
+v1.0.20 changes (adversary R93 I-R93-1 + C-R93-1 arch part closures — resolve_runtime_dir signature + integration-test prose):
+- I-R93-1 RESOLVED (MED — adversary R93 resolve_runtime_dir dead Err variant): The
+  `resolve_runtime_dir` function was declared with signature
+  `fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> Result<PathBuf, DaemonStartError>`
+  but the function body contained zero `Err(...)` return paths — all branches returned
+  `Ok(path)`. The only `DaemonStartError::RuntimeDirUnresolvable` construction site is
+  in the CALLER (daemon main), which checks `ProjectDirs::new() == None` and fails fast
+  BEFORE invoking `resolve_runtime_dir`. This is explicitly documented in the prose at
+  §Start Sequence step 1 (lines 250-253): "If `ProjectDirs::new(...)` itself returns
+  `None`... the daemon exits with `DaemonStartError::RuntimeDirUnresolvable` before
+  `resolve_runtime_dir` is called." The Result wrapper was therefore dead code — the
+  function could never return `Err(_)`.
+
+  Fix (disposition **(a)** — clean signature change to PathBuf):
+  - Before: `fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> Result<PathBuf, DaemonStartError>`
+    with all branches returning `Ok(path)` (three sites: `return Ok(PathBuf::from(env_path))`,
+    `return Ok(rd.to_path_buf())`, `Ok(fallback)`).
+  - After: `fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> PathBuf`
+    with all branches returning bare `PathBuf` (three sites: `return PathBuf::from(env_path)`,
+    `return rd.to_path_buf()`, `fallback`).
+  - A clarifying doc-comment block added above the function explicitly stating:
+    (a) paths (b) and (c) are infallible given a valid `ProjectDirs` instance;
+    (b) `data_local_dir()` returns `&Path` (never `Option`) — branch (c) cannot fail;
+    (c) `DaemonStartError::RuntimeDirUnresolvable` is exclusively a caller-side
+    `ProjectDirs::new() == None` failure mode — no construction site exists inside
+    `resolve_runtime_dir` itself.
+
+  This eliminates the clippy `unnecessary_wraps` lint warning that this signature
+  would produce if Clippy were run. The semantic correctness of the resolution chain
+  is unchanged — only the return type annotation is corrected to match actual behavior.
+
+- C-R93-1 arch part RESOLVED (HIGH/arch-site — adversary R93 F-R88-5 §Mechanism
+  Distribution partial-fix propagation gap): The BC-RING-001 verification clause in
+  §Daemon Lifecycle Protocol §Drain read "unit test in `monocle-runtime/tests/jsonl_ring.rs`".
+  Tests under `<crate>/tests/*.rs` are cargo integration tests (executed in a separate
+  test binary against the crate's public API), not unit tests (which reside in
+  `#[cfg(test)]` modules inside `src/**/*.rs`). This is the F-R88-5 §Mechanism
+  Distribution discipline: VP §Mechanism Distribution was corrected at R88 (unit-test=0),
+  VP §Harness annotations corrected at R92, and this arch verification-clause site is
+  the third and final layer identified at R93.
+
+  Fix (disposition **(a)** — single word substitution):
+  - Before: "unit test in `monocle-runtime/tests/jsonl_ring.rs` constructs a..."
+  - After: "integration test in `monocle-runtime/tests/jsonl_ring.rs` constructs a..."
+
+- SE-16b monotonicity check PASS: v1.0.19 → v1.0.20 is a monotonic increment.
+  No version regression. No prior version entry in §Trace modified.
+
+- Extension 17 evidence discipline — real grep transcripts:
+
+  Fix 1 PRE:
+  ```
+  $ grep -n "fn resolve_runtime_dir\|Result<PathBuf, DaemonStartError>\|Ok(fallback)\|return Ok(" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  226:   fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> Result<PathBuf, DaemonStartError> {
+  231:               return Ok(PathBuf::from(env_path));
+  237:           return Ok(rd.to_path_buf());
+  246:       Ok(fallback)
+  ```
+
+  Fix 1 POST:
+  ```
+  $ grep -n "fn resolve_runtime_dir\|-> PathBuf\|Result<PathBuf" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  235:   /// checked earlier. Hence the return type is PathBuf, not Result<PathBuf, _>.
+  236:   fn resolve_runtime_dir(project_dirs: &directories::ProjectDirs) -> PathBuf {
+  ```
+
+  Fix 2 PRE:
+  ```
+  $ grep -n "unit test in.*jsonl_ring" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  613:   unit test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
+  ```
+
+  Fix 2 POST:
+  ```
+  $ grep -n "integration test in.*jsonl_ring\|unit test in.*jsonl_ring" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  624:   integration test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
+  ```
+
+  (Line number shift of +11 in Fix 2 POST vs PRE is correct: the clarifying doc-comment
+  block added for Fix 1 inserts 11 new lines above the target site.)
+
+### Propagation requirements (Extension 15 + SE-15e)
+
+This burst bumps arch v1.0.19 → v1.0.20. Downstream agents must propagate:
+
+- **PO (PRD):** PRD frontmatter `traces_to` cites arch pin v1.0.19; PO must propagate
+  v1.0.19 → v1.0.20 across PRD body (~32 sites per F-R90 precedent). Canonical grep:
+  `grep -nE "v1\.0\.19|commit 8a68cc9" /Users/jmagady/Dev/monocle/.factory/specs/prd.md`.
+  ALSO: C-R93-1 PRD part — §7 RTM 6 rows "Unit"→"Integration" + §Verification 4 prose
+  sites: BC-DAEMON-001, BC-DAEMON-002, BC-DAEMON-003, BC-DAEMON-004 §Verification
+  paragraphs that carry "unit test at `tests/...`" language.
+
+- **FV (VP):** VP frontmatter `traces_to` cites arch v1.0.19; FV must propagate
+  v1.0.19 → v1.0.20. Canonical grep:
+  `grep -nE "v1\.0\.19|commit 8a68cc9" /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md`.
+  ALSO: O-R93-1 + O-R93-2 cleanup; PRD pin propagation v1.19 → v1.20 (after PO
+  delivers PRD v1.20, FV picks up the new PRD pin in the same VP v1.27 burst).
+
+Per SE-15e: orchestrator MUST dispatch PO before FV.
+
+- **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Start Sequence (EXISTS), §Daemon Lifecycle Protocol §Drain (EXISTS),
+      §Trace (EXISTS) — all §-anchor refs verified against actual headings in this
+      document.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
+      matches in this §Trace v1.0.20 entry.
 
 v1.0.19 changes (adversary R89 F-R89-2 + O-R89-3 closures — HookEventRecord serde annotation + SessionStart None example):
 - F-R89-2 RESOLVED (MED — adversary R89 HookEventRecord struct missing
