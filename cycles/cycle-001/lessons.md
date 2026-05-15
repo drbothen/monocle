@@ -1298,4 +1298,75 @@ This closes the bypass: Extension 13 covers AUDIT TABLES; Extension 17 covers §
 - Extension 16 = mandatory backfill sweep
 - Extension 17 = grep-evidence command-pair discipline (SE-17a multi-line patterns; SE-17b self-verification)
 
+---
+
+## SE-15e: Orchestrator SERIAL-cascade dispatch enforcement (Extension 15 sub-extension)
+
+**Discovery:** C-R90-1 (R90 adversary) — 5th recurrence of the SERIAL Extension 15 pin-propagation META failure.
+
+**Pattern history:**
+
+| Recurrence | Finding | Pattern | Resolution |
+|---|---|---|---|
+| 1 | F-R84-1 CRITICAL | arch v1.0.16→v1.0.17 NOT propagated to PRD + VP; parallel-dispatch root cause | Closed by Extension 15 codification |
+| 2 | F-R85 | Similar wrap-continuation escape from F-R84 sweep | Closed by Extension 16 mandatory backfill |
+| 3 | F-R88-1 HIGH | arch v1.0.17→v1.0.18 propagation gap | Closed by F-R88 serial fix-burst |
+| 4 | GAP-R23-001 / F-R85-IMP-1 | Wrap-continuation stale cites escaped F-R84 sweep (parallel-dispatch root cause variant) | Closed in F-R85 serial |
+| 5 | C-R90-1 CRITICAL | arch v1.0.18→v1.0.19 NOT propagated to PRD body; F-R89 chain dispatched `arch → FV`, skipping PO | Requires SE-15e |
+
+**Root cause of C-R90-1:** Orchestrator dispatched F-R89 chain as `SM → architect → FV`, skipping PO PRD pin propagation. The reasoning was "PRD has no R89 findings; therefore no PRD burst needed." This reasoning is WRONG under Extension 15 SERIAL cascade: **the trigger for PO PRD dispatch is the arch version bump itself**, not whether the adversary names PRD-side normative findings.
+
+### SE-15e Rule (codified 2026-05-16, C-R90-1)
+
+**When any agent dispatched in a serial chain bumps an artifact version, the orchestrator MUST dispatch ALL downstream-layer agents in dependency order BEFORE proceeding, regardless of whether the original adversary report names findings in those downstream layers.**
+
+**Specifically for arch version bumps in a serial chain:**
+
+- **MANDATORY:** architect bumps arch v1.0.X → v1.0.Y → orchestrator MUST dispatch PO for PRD pin propagation sweep:
+  ```
+  grep -nE "v1\.0\.X|commit <old-sha>" .factory/specs/prd.md
+  ```
+  Sweep all normative-current sites. PO commits PRD bump → orchestrator dispatches FV.
+- **FORBIDDEN:** orchestrator dispatches FV directly after architect without PO step (regardless of adversary report scope).
+
+**For PRD version bumps in a serial chain:**
+
+- **MANDATORY:** PO bumps PRD vX.Y → vX.Z → orchestrator MUST dispatch FV for VP pin propagation sweep.
+- **FORBIDDEN:** orchestrator dispatches without FV step.
+
+**For all serial chains — pre-dispatch enforcement check:**
+
+Before dispatching the FINAL agent in any serial chain, the orchestrator MUST run:
+```
+grep -nE "<predecessor-pin>|<predecessor-sha>" .factory/specs/<sibling-files>
+```
+and verify ZERO normative-current hits. If hits exist, dispatch the missing intermediate agent first.
+
+**Canonical predecessor-pin grep for arch-bump chains:**
+```
+grep -nE "v1\.0\.(X-1)|<old-sha>" .factory/specs/prd.md | grep -v "§Trace\|§References\|Historical"
+```
+where `(X-1)` is the pre-bump arch version. The `grep -v §Trace|§References|Historical` exclusion filters historical-record citations that are correct to retain (they reference immutable past states). The normative-current sites must be zero.
+
+### Companion META observation
+
+SE-15e closes the orchestrator-side bypass of Extension 15. Prior Extensions 14/15/16/17 + sub-extensions codified spec-content and §Trace-evidence disciplines, but the meta-discipline of "orchestrator-driven serial cascade enforcement" was implicit. SE-15e makes it explicit.
+
+Combined with Extension 17 (sweep-evidence pair-grep-command), the SERIAL Extension 15 META failure class is now structurally closed at **both** the agent-output level (Extension 17) **AND** the orchestrator-dispatch level (SE-15e).
+
+**6th orchestration/discipline axis:**
+
+- Extension 14 = within-layer propagation (lift_invariants_to_bcs sibling sites)
+- Extension 15 = cross-layer parallel-dispatch (arch→PRD→VP serial cascade)
+- Extension 16 = mandatory backfill sweep (codification-protocol non-backfill closed)
+- SE-16a/b/c = in-burst-added citations + timestamp monotonicity + canonical grep target
+- Extension 17 = grep-evidence command-pair discipline (SE-17a multi-line; SE-17b self-verification)
+- **SE-15e = orchestrator SERIAL-cascade dispatch enforcement (this entry)**
+
+**26 codified disciplines now in force** (was 25: Extensions 1-17 + SE-15a/b/c/d + SE-16a/b/c + SE-17a/b → + SE-15e = 26).
+
+**Codified in:** cycle-001/lessons.md §SE-15e (this entry).
+
+**Trigger:** C-R90-1 — 5th recurrence of SERIAL Extension 15 propagation META; R90 adversary pass 1 attempt 23; F-R89 serial chain skipped PO step; 20+ normative-current PRD sites cite stale arch v1.0.18 (61a0064) when current arch is v1.0.19 (8a68cc9).
+
 **25 codified disciplines now in force** (was 24 + Extension 17 + SE-17a + SE-17b).
