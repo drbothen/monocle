@@ -681,3 +681,20 @@ R67 demonstrated a THIRD failure mode that the original L-F-R63-PARTIAL-FIX recu
 - For every catalog/index ID (EC-NNN, BC-NNN, VP-NNN, NFR-NNN) referenced in both a centralized catalog AND in body prose: verify all instances agree on numeric/outcome content.
 
 **Application precedent:** The F-R67-1 closure burst (commit 6831e23) preemptively applied the discipline to all 22 VPs and found exactly 1 contradiction (VP-TYPES-001, which was the F-R67-1 finding itself); 21 VPs were clean. The application demonstrated the discipline is operationally feasible.
+
+### Extension 3: Cross-Platform + Dependency-Crate Invariants (2026-05-15)
+
+R70 demonstrated a FOURTH failure mode. Prior lessons covered:
+- Original L-F-R63: cross-artifact propagation (paths, names, taxonomies, versions, counts)
+- Extension 1 (Recurrence Note 2): semantic propagation (count claims, prose lead-ins)
+- Extension 2: intra-block + same-ID consistency (catalog row vs body prose)
+
+R70 caught defects in a NEW dimension: **dependency-crate platform-behavior invariants**. The `directories` crate's `ProjectDirs::runtime_dir()` returns `None` on macOS/Windows by design — this is documented behavior of the crate. The spec mandated the call without acknowledging the platform-specific return. Similarly, POSIX exit-code convention (signal-N → 128+N) is an external invariant that the spec ignored (using 130 for SIGTERM).
+
+**Extended discipline:** Spec authors and review agents must verify against EXTERNAL invariants:
+- Every dependency-crate API call: check the crate's documented platform-specific behavior matches the spec's usage.
+- Every signal-handling exit-code claim: check against POSIX 128+N convention.
+- Every platform-conditional claim: check against NFR platform targets.
+- Every implicit assumption about cross-platform behavior: verify it's explicitly documented or surfaced as a non-portability.
+
+**Application precedent:** F-R70-1 surfaced because R70 specifically pivoted to cross-platform invariant lens after 9 prior passes focused on identifier consistency. Future adversarial passes should rotate review lenses systematically — identifier consistency, intra-block consistency, semantic propagation, cross-platform invariants, security-critical defaults, performance-budget claims, etc. — to maximize defect surface coverage.
