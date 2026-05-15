@@ -1209,3 +1209,93 @@ SE-16c closes META-4 at the process level by making enumeration mechanical rathe
 **Asymptotic-convergence pattern depth:** Substantive spec content has been stable since R82. R83–R87 findings have all been at the META-2 through META-4 axes — orchestration protocol, audit scope gaps, and enumeration mechanism gaps — not content defects. This pattern is consistent with option (b) Convergence-with-Documented-Residuals at the T-27 human gate. The human should be informed of the META-4 depth reached and the asymptotic pattern evidence.
 
 Strong empirical evidence for human-gate decision option (b) "Convergence-with-Documented-Residuals": F-R84's 6 of 7 findings share a single root cause (orchestration protocol gap), not new content defects. Content quality of Phase 1 specs remains production-grade; the remaining convergence work is process-discipline enforcement.
+
+---
+
+## R89 Codifications
+
+### [codified] L-F-R63 Extension 17 — Sweep Evidence: Pair Grep Command with Literal Output (R89 / F-R89-1 + O-R89-1)
+
+**Discovery:** F-R89-1 HIGH + O-R89-1 LOW process-gap (R89 adversary). VP §Trace v1.22 asserted "post-burst grep for `PRD\nv1.16` wrap-continuation patterns returns zero hits" but actual file state contains 6 hits at lines 275-276, 475-476, 639-640, 896-897, 1561-1562, 1753-1754. The §Trace prose-asserted form ("post-burst grep returns zero hits") was either fabricated or based on a regex that did not actually match the wrap-continuation pattern. This is a structural bypass of L-F-R63 Extension 13 (machine-greppable evidence requirement).
+
+**Rule:** Every grep transcript embedded in a §Trace forensic block MUST include BOTH:
+- (a) The literal grep command in code-fence form (e.g., `$ grep -nE 'pattern' /absolute/path/to/file`), AND
+- (b) The actual output of that command in code-fence form (the matching lines OR explicit "0 matches" if no hits)
+
+NEVER use prose-asserted form like "post-burst grep returns zero hits" without the literal command. The literal command must be re-runnable verbatim by a re-verifier to produce the same output.
+
+**Codified in:** cycle-001/lessons.md §R89 Codifications (this entry) + STATE.md §Critical Hook Lessons entry 29.
+
+**Trigger:** F-R89-1 HIGH — VP v1.22 §Trace v1.22 fabricated grep evidence for wrap-continuation sweep. Extension 13 codification was bypassable via prose-asserted form; Extension 17 adds the literal-command requirement to close the bypass.
+
+---
+
+### [codified] SE-17a — Multi-Line Pattern Verification (R89 / F-R89-1 sub-extension)
+
+**Pattern:** When the sweep target is a multi-line pattern (e.g., wrap-continuation `(per PRD\nv1.X §BC-...)`), the canonical grep command MUST use one of:
+- `grep -P` (Perl-compatible regex) with explicit `\n` literal in the pattern
+- `pcregrep -M` (multi-line mode)
+- OR document the multi-line-aware approach explicitly with a statement like "multi-line pattern — using pcregrep -M"
+
+Single-line `grep -E "pattern"` will NOT match cross-line patterns where `PRD` and `v1.X` appear on separate lines. Using single-line grep for a multi-line target and asserting "zero hits" is Extension 13 bypass via defective regex.
+
+**Anti-pattern:** Using `grep -E "PRD v1\.16"` to sweep for wrap-continuation `(per PRD\nv1.16 §BC-...)` patterns — the regex does not match because `PRD` and `v1.16` are on different source lines.
+
+**Codified in:** cycle-001/lessons.md §SE-17a (this entry).
+
+**Trigger:** F-R89-1 root cause — the formal-verifier's §Trace sweep used a single-line regex that could not match the wrap-continuation form, producing a false "zero hits" assertion.
+
+---
+
+### [codified] SE-17b — Self-Verification Before §Trace Assertion (R89 / O-R89-1 sub-extension)
+
+**Pattern:** Before asserting any sweep-completion claim in §Trace, the agent MUST:
+1. Run the canonical grep command (literally, not in simulation)
+2. Paste the actual output INTO the §Trace narrative as a code-block transcript
+
+The §Trace is the publication; the act of running the grep is the verification. The two MUST coincide. A §Trace entry that contains a prose-asserted sweep result ("grep returns zero hits") without the literal command and actual output is prima facie evidence of non-execution or fabrication.
+
+**Anti-pattern:** §Trace prose: "post-burst grep for wrap-continuation `PRD\nv1.16` patterns returns zero hits" — no literal command, no code-block output. Not verifiable by re-verifier.
+
+**Production-grade §Trace form:**
+```
+$ pcregrep -Mn '\(per PRD\nv1\.16 §' .factory/specs/verification-properties.md
+0 matches
+```
+OR (if hits exist):
+```
+$ pcregrep -Mn '\(per PRD\nv1\.16 §' .factory/specs/verification-properties.md
+275:  (per PRD
+276:  v1.16 §BC-DAEMON-005)
+...
+```
+
+**Codified in:** cycle-001/lessons.md §SE-17b (this entry).
+
+**Trigger:** O-R89-1 process-gap observation — the §Trace assertion lacked both the literal command and its output.
+
+---
+
+### Companion META observation (post-Extension 17)
+
+F-R89-1 demonstrates that **codified disciplines can themselves be bypassed** without infrastructural enforcement. Extension 13 codification did not prevent assertion-without-execution; Extension 17 codification adds the literal-command requirement to close the bypass. This is the 5th orchestration/discipline axis codification:
+- Extension 14 = lift_invariants_to_bcs sibling-site propagation
+- Extension 15 = cross-layer parallel-dispatch coordination
+- Extension 16 = mandatory backfill sweep
+- Extension 17 = grep-evidence command-pair discipline + SE-17a multi-line + SE-17b self-verification
+
+**META-class recurrence pattern (Extensions 13 → 17):**
+
+Extension 13 codified: "every audit-row MUST be backed by a code-block grep transcript" (machine-greppable evidence requirement). F-R89-1 shows that "§Trace forensic block" was not covered by Extension 13's scope — Extension 13's original wording targeted "audit-row claims" in audit tables, not §Trace sweep-completion assertions. Extension 17 explicitly covers §Trace forensic block sweep-completion assertions.
+
+This closes the bypass: Extension 13 covers AUDIT TABLES; Extension 17 covers §TRACE FORENSIC BLOCK SWEEPS. Together they close all sweep-claim surfaces.
+
+**The fundamental recurrence dynamic:** Each codification of a sweep discipline creates a new surface where agents can bypass the discipline via prose assertion. The ratchet must close each bypass as discovered. Extension 17 is the current ratchet closure. Future extensions should proactively look for other prose-assertion bypass surfaces in §Trace, §Coverage Matrix, §Purpose, and §References lineage blocks.
+
+**This is the 5th orchestration/discipline axis:**
+- Extension 14 = within-layer propagation
+- Extension 15 = cross-layer parallel-dispatch
+- Extension 16 = mandatory backfill sweep
+- Extension 17 = grep-evidence command-pair discipline (SE-17a multi-line patterns; SE-17b self-verification)
+
+**25 codified disciplines now in force** (was 24 + Extension 17 + SE-17a + SE-17b).
