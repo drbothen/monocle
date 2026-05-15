@@ -2,7 +2,7 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.18"
+version: "1.0.19"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -13,7 +13,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields; v1.0.19 adversary R89 F-R89-2 + O-R89-3 closures: HookEventRecord struct tool_name + tool_input fields annotated with #[serde(skip_serializing_if = \"Option::is_none\")] (PRD v1.17 BC-RING-001 EC-001 normative form); SessionStart None-case serialization example added demonstrating field absence (not explicit null); Extension 17 evidence discipline applied"
 project: monocle
 ---
 
@@ -543,10 +543,12 @@ On receiving any shutdown signal:
        pub hook_type: String,
        /// Tool name; populated for `PreToolUse` and `Notification` events.
        /// `None` for `SessionStart`, `UserPromptSubmit`, and `Stop`.
+       #[serde(skip_serializing_if = "Option::is_none")]
        pub tool_name: Option<String>,
        /// JSON-encoded tool input; populated for `PreToolUse` and `Notification` events.
        /// `None` for events without tool context.
        /// Stored as `serde_json::Value` to avoid double-deserialization.
+       #[serde(skip_serializing_if = "Option::is_none")]
        pub tool_input: Option<serde_json::Value>,
    }
 
@@ -592,6 +594,19 @@ On receiving any shutdown signal:
    ```json
    {"format_version":1,"session_id":"<uuid>","timestamp_micros":1747094400000000,"pid":12345,"hook_type":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cargo test"}}
    ```
+
+   For hook types without tool context (`SessionStart`, `UserPromptSubmit`, `Stop`), per
+   BC-RING-001 EC-001 the `#[serde(skip_serializing_if = "Option::is_none")]` annotation
+   causes the `tool_name` and `tool_input` fields to be OMITTED entirely from the JSONL
+   record:
+
+   ```json
+   {"format_version":1,"session_id":"<uuid>","timestamp_micros":1747094400000000,"pid":12345,"hook_type":"SessionStart"}
+   ```
+
+   Note the absence (not explicit null) of `tool_name` and `tool_input` keys. Phase 1
+   emitters MUST emit absence; Phase 2+ readers MUST tolerate both absence and explicit
+   null per forward-compat.
 
    **Behavioral contract: BC-RING-001** — every JSONL record's first key is
    `format_version` with value `1` for all Phase 1-origin records. Verification:
@@ -754,6 +769,106 @@ fail gracefully (do not attempt parse of unknown-version JSON).
 ---
 
 ## §Trace
+
+v1.0.19 changes (adversary R89 F-R89-2 + O-R89-3 closures — HookEventRecord serde annotation + SessionStart None example):
+- F-R89-2 RESOLVED (MED — adversary R89 HookEventRecord struct missing
+  `#[serde(skip_serializing_if = "Option::is_none")]` annotation): The
+  `HookEventRecord` struct in §Drain carried `tool_name: Option<String>` and
+  `tool_input: Option<serde_json::Value>` fields without the serde annotation.
+  PRD v1.17 BC-RING-001 EC-001 declares: "When `tool_name` or `tool_input` is
+  `None`, the key MUST be absent from the serialized JSONL record (not present as
+  `null`)." The annotation is normative — omitting it causes `serde_json` to
+  serialize absent-tool-context records with explicit `"tool_name":null` and
+  `"tool_input":null` keys, violating EC-001. This is a sibling-site propagation
+  gap from F-R88-3 (arch layer), which established the serde normative form in PRD
+  but did not backfill the arch struct definition.
+
+  Fix (disposition **(a)** — add annotation to struct field declarations):
+  - Before: `pub tool_name: Option<String>,` and `pub tool_input: Option<serde_json::Value>,`
+    (no serde annotation on either field)
+  - After: `#[serde(skip_serializing_if = "Option::is_none")]` added immediately
+    above each Option field in the struct declaration. The `#[derive(Debug, Clone,
+    Serialize, Deserialize)]` derive macro already present on the struct provides
+    the required `Serialize` implementation; no import changes required.
+
+  Pre-burst grep confirmed 0 occurrences of `skip_serializing_if` in this file
+  before the fix. Post-burst grep confirms 2 occurrences at the struct field
+  annotations (see Evidence block below).
+
+- O-R89-3 RESOLVED (LOW — bundled): SessionStart absence-form example added
+  immediately after the PreToolUse (Some-valued) example in §Drain. The new
+  example demonstrates that for hook types without tool context (`SessionStart`,
+  `UserPromptSubmit`, `Stop`), the `tool_name` and `tool_input` keys are ABSENT
+  entirely from the JSONL record (not present as explicit `null`). The
+  accompanying prose explicitly states:
+  - "Phase 1 emitters MUST emit absence"
+  - "Phase 2+ readers MUST tolerate both absence and explicit null per forward-compat"
+  This closes the O-R89-3 observation that only the Some-valued example was
+  present, leaving the None-case emitter behavior undocumented at the arch layer.
+
+- SE-16b monotonicity check PASS: v1.0.18 → v1.0.19 is a monotonic increment.
+  No version regression. No prior version entry in §Trace modified.
+
+- Extension 17 evidence discipline — real grep transcripts:
+
+  Pre-burst verification:
+  ```
+  $ grep -n "skip_serializing_if" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  [0 matches — confirmed absent before fix]
+
+  $ grep -n "tool_name\|tool_input" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  523:   /// `tool_name` and `tool_input` are `Option` because only `PreToolUse` and
+  546:       pub tool_name: Option<String>,
+  550:       pub tool_input: Option<serde_json::Value>,
+  560:       /// `tool_name` and `tool_input` are `None` for hook types that carry no tool
+  568:           tool_name: Option<String>,
+  569:           tool_input: Option<serde_json::Value>,
+  577:               tool_name,
+  578:               tool_input,
+  593:   {"format_version":1,...,"hook_type":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cargo test"}}
+  1367:  `timestamp_micros: i64`, `pid: u32`, `hook_type: String`, `tool_name: Option<String>`,
+  1368:  `tool_input: Option<serde_json::Value>`. A `pub fn new(...)` constructor is provided
+  ```
+
+  Post-burst verification (Fix 1):
+  ```
+  $ grep -n "skip_serializing_if" .../SS-daemon-lifecycle.md
+  546:       #[serde(skip_serializing_if = "Option::is_none")]
+  551:       #[serde(skip_serializing_if = "Option::is_none")]
+  [2 matches — at struct field annotations for tool_name (line 546) and tool_input (line 551)]
+  ```
+
+  Post-burst verification (Fix 2):
+  ```
+  $ grep -nE "hook_type.*SessionStart|hook_type.*PreToolUse" .../SS-daemon-lifecycle.md
+  595:   {"format_version":1,"session_id":"<uuid>","timestamp_micros":...,"hook_type":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cargo test"}}
+  604:   {"format_version":1,"session_id":"<uuid>","timestamp_micros":...,"hook_type":"SessionStart"}
+  [2 matches — PreToolUse (Some-valued) + SessionStart (None-case / absence form)]
+  ```
+
+- Propagation requirements (Extension 15):
+
+  This burst bumps arch v1.0.18 → v1.0.19. Downstream agents must propagate:
+
+  **VP (formal-verifier):** VP frontmatter `traces_to` cites arch pin v1.0.18;
+  formal-verifier must propagate v1.0.18 → v1.0.19 in VP frontmatter + §References
+  item 2 + §VP Catalog Overview + per-VP `Traces to:` lines + §Coverage Matrix.
+  Use canonical grep:
+  `grep -nE "v1\.0\.18|commit 61a0064" /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md`
+  to enumerate sites.
+
+  **PRD (product-owner):** NOT required for this burst — PRD already cites arch
+  v1.0.18 + serde normative annotation (PRD v1.17 BC-RING-001 EC-001). PRD pin
+  propagation only needed if PRD itself bumps.
+
+  **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
+
+- Propagation sweep (PG-3/PG-4/PG-5 compliance):
+  (a) PG-3: §Drain (EXISTS), §Trace (EXISTS) — all §-anchor refs verified
+      against actual headings in this document.
+  (b) PG-4: all referenced sections confirmed to exist in normative body.
+  (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
+      matches in this §Trace v1.0.19 entry.
 
 v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis placeholder + L-F-R63 Extension 4):
 - F-R74-1 RESOLVED (HIGH — adversary R74 JSON array ellipsis placeholder in §GET /status
