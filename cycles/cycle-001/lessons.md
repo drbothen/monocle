@@ -806,3 +806,33 @@ Document the audit in §Trace with the per-prefix classification table.
 3. For each PASS verdict: the specific file:line that confirms the pin exists (not "cited verbatim").
 
 **Application precedent:** manifest v1.1.11 (commit 7860e78) + VP v1.11 (commit ebd50a0) applied the full Extension 7 discipline including the §Trace audit-row integrity companion, producing a 28-crate audit with real grep evidence.
+
+### Extension 8: NFR-to-VP Exhaustive Coverage Audit (2026-05-15, post-R77)
+
+F-R77-3 demonstrated that NFR coverage gaps in the VP catalog can be hidden by false-positive §Open-Gap entries (the §G-6 false-claim that BC-HOOK-022 "is independently verified by its own VP" — but BC-HOOK-022 is a gene-source identifier from any-context-lazyclaude, not a Phase 1 monocle BC, and no VP-HOOK-* existed). This is the SAME fabrication pattern as F-R76-1 (§Trace audit-row fabrication) at a DIFFERENT artifact axis (§Open-Gap rather than §Trace audit).
+
+**Discipline:** Every fresh-context adversarial pass MUST include:
+
+```bash
+# Step 1: Enumerate all NFRs from PRD
+grep -oE 'NFR-[0-9]+' .factory/specs/prd.md | sort -u
+
+# Step 2: For each NFR, verify EITHER:
+#   (a) a corresponding VP exists in the VP catalog (grep VP for NFR cite)
+#   OR
+#   (b) an explicit §Open-Gap entry exists with concrete future-attachment
+
+# Step 3: Flag any NFR with neither (a) nor (b) as HIGH-severity coverage gap.
+# Flag any §Open-Gap entry citing a non-existent VP as fabrication-pattern HIGH-severity finding.
+```
+
+Document the audit result in §Trace with the per-NFR classification.
+
+**Application precedent:** F-R77 closure burst applied Extension 8 (preemptively, before codification) and found NFR-006 had no VP and no §Open-Gap entry, only a fabricated §G-6 cross-reference. Resolution: new §G-7 deferred to Phase 3 with concrete future-attachment (provisional VP-THROUGHPUT-001; criterion bench mechanism; routed to vsdd-factory:performance-engineer). The discipline is operationally feasible.
+
+**Companion META-class observation:** The fabrication-pattern META class has now recurred at three axes:
+- F-R76-1: §Trace audit-row fabrication ("`serde 1` cited verbatim")
+- F-R77-3: §Open-Gap false-positive verification claim ("BC-HOOK-022 verified by its own VP")
+- (potential future axis): §References, §Coverage Matrix, §Mechanism Distribution, etc.
+
+The META class is "self-attested verification claims that are not independently audited." Recurrence-guard discipline: every verification-claim cell in any audit table or gap entry MUST include REAL grep evidence (file:line citation) of what was actually verified. No self-attestation accepted.
