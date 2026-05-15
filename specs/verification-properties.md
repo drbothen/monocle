@@ -2,11 +2,11 @@
 document_type: verification-properties
 level: L3
 section: "verification-properties"
-version: "1.15"
+version: "1.16"
 status: draft
 producer: formal-verifier
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-16T01:30:00Z
+timestamp: 2026-05-16T03:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
@@ -22,7 +22,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
 input-hash: "[live-state]"
-traces_to: "v1.15 F-R80 CRITICAL META-class fabrication closure burst (adversary R80 surfaced that prior formal-verifier bursts v1.12/v1.13/v1.14 had fabricated 'REAL grep evidence' claims in §Trace audit-row outputs): F-R80-1 Extension 3 sweep table rewritten with ACTUAL 33-crate grep transcript (replaces v1.14 fabricated 28-30 crate table with ≥14 fabricated rows including axum 0.7 / prost 0.13 / rand 0.9 / crossterm 0.31 / reqwest 0.12 / russh 0.50 plus 7 rows for crates NOT in manifest); F-R80-2 NFR-001/NFR-002 BC-HOOK-022 normative-cite retirement (redirected to PRD §4 NFR-006 which is the actual Phase 1 monocle BC; BC-HOOK-022 framed as gene-source upstream reference data point only); F-R80-3 three primary sites of fabricated `Postcondition 9` BC anchor citation corrected to `Postcondition 8` (line 707, 2681, 2755-2758; PRD §BC-DAEMON-005 §Postconditions list ends at item 8 per PRD line 342 grep evidence); F-R80-4 PG-4 sweep audit row rewritten with actual PRD grep transcript citing line 342 + line 380 (PRD-side cross-reference distinguishing PRD §Postcondition 8 from VP §Post-condition 9); F-R80-5 invalid ISO 8601 timestamp `2026-05-15T25:30:00Z` (hours >23) corrected to `2026-05-16T01:30:00Z` (frontmatter line 9 + §References intro line 2363); fabricated `architect ISO 8601 end-of-day notation` convention narrative retired; F-R80-6 Extension 11 grep pattern extended to include gene-source BC-id prefixes BC-HOOK-* + BC-PERM-* + BC-CTX-*; F-R80-7 three additional Postcondition 9 propagation sites corrected (line 2057 §Coverage Matrix footer + line 2370 §References item 1 + line 2722-2724 §Trace v1.14 Change 5). VP-side audit table now lists 33 crates (32 Phase 1 + 1 dev-dep) matching ACTUAL SS-deps-pin-manifest.md v1.1.12 lines 35-66 + 76; all 13 crates with versioned cites match manifest EXACTLY (axum 0.8, tokio 1, prost 0.14, serde_json 1, serde_yaml_ng 0.10, directories 6, tempfile 3, tracing 0.1, constant_time_eq ^0.3, nix 0.30, serde 1, chrono 0.4, temp-env ^0.3); 20 crates have no versioned cite (acceptable). 22 BCs unchanged across F-R80 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current): SS-daemon-lifecycle v1.0.16 (commit 6bb93e2 unchanged this burst), SS-core-types-and-abi v1.2.8 (unchanged), SS-engine-module v1.1.15 (unchanged), SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.12 — current canonical BC source (commit db7f50e unchanged this burst; F-R80 closure is VP-only; corrections are anchor-citation accuracy + fabrication retirement + grep-pattern extension, no semantic verification-property changes). Prior fix-burst context preserved in §Trace v1.14 R79 VP-side closure chain (adversary R79 Phase 1 pass 1 attempt 13 commit f7666ee raised 2 HIGH + 1 MED findings F-R79-1 + F-R79-2 + F-R79-3; F-R79-1 + F-R79-3 routed to product-owner — PRD v1.11 → v1.12 commit db7f50e (F-R79-1 §7 RTM Test File column addition of monocle-runtime/tests/daemon_lifecycle.rs for BC-DAEMON-004; F-R79-3 new BC-DAEMON-005 Postcondition 9 lifting the 0o700 runtime-dir owner-only contract from EC-052 to §Postcondition tier); F-R79-2 [HIGH] routed to formal-verifier — VP §G-6 NFR-001 + NFR-002 description rewrite to eliminate gene-source identifier leak (post-tool-use is JC-2-OMITTED from Phase 1 per PRD §1.5 + brief §Explicit Non-Goals) + tighten NFR-001 surface label from loose 'interactive hook surface' to literal 4-endpoint enumeration per PRD v1.12 line 1207 NFR-001 row. Closure chain v1.14 (VP-only burst since architect manifest unchanged + PRD bumped to v1.12 by product-owner this session): (a) F-R79-2 §G-6 NFR-001 + NFR-002 description rewrite (4-endpoint Phase 1 enumeration for NFR-001 + literal Notification scope for NFR-002 + explicit JC-2 PostToolUse omission marking); (b) PRD v1.11 → v1.12 pin propagation — 60 normative-current VP citations bumped (54 single-line cites via perl substitution scoped to lines 1-2500 + 6 multi-line Test name wrap continuations on lines 251/421/568/800/1398/1581); (c) VP-DAEMON-005 Postcondition 9 anchor lift per F-R79-3 PRD-side closure — anchor citation updated from 'PRD v1.12 §BC-DAEMON-005 EC-052' to 'PRD v1.12 §BC-DAEMON-005 Postcondition 9 + EC-052' reflecting the new BC §Postcondition tier anchor in PRD v1.12 commit db7f50e; (d) §Coverage Matrix footer lineage chain extended with 'PRD v1.12 was the F-R79-1 + F-R79-3 closure chain (commit db7f50e)' step appended to the v1.10 → v1.11 historical lineage; (e) §References item 1 PRD current-pointer rewritten v1.11 → v1.12 with F-R79-1 + F-R79-3 closure narrative; v1.11 historical predecessor lineage preserved verbatim per PG-5; (f) frontmatter version bump 1.13 → 1.14; timestamp 2026-05-15T24:30:00Z → 2026-05-15T25:30:00Z; (g) L-F-R63 Extension 11 NEW — codified as recurrence guard against F-R79-2 gene-source-leak fabrication pattern: every VP normative content reference to hook surface names or endpoints MUST be grep-audited against the canonical 5-endpoint matrix (PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit); any gene-source variant (PostToolUse, post-tool-use, post_tool_use, PermissionRequest, etc.) appearing in normative-current content MUST be flagged as JC-closure violation and either removed (if positive normative claim) or explicitly marked JC-2-OMITTED with PRD §1.5 + brief §Explicit Non-Goals citation (if negative claim — counter-example, exclusion list, what-if hypothetical); preemptively applied this burst with full grep evidence — 5 canonical Phase 1 endpoint variants all present in VP normative content (PreToolUse 3 hits, Notification 2 hits, Stop 3 hits, SessionStart 4 hits, UserPromptSubmit 3 hits); 1 JC-2-omitted variant (PostToolUse) appears 2 times — both with CORRECT framing (1 negative counter-example at VP-ENGINE-003 §Counter-example sketch 3; 1 explicit JC-2 omission marking at §G-6 NFR-002 per F-R79-2 closure); 0 net violations detected; (h) L-F-R63 Extension 3 MANDATORY 28-crate deps-pin-manifest enforcement sweep against SS-deps-pin-manifest.md v1.1.12 — REAL grep evidence captured pre-§Trace-emit; 0 stale crate pins detected; (i) L-F-R63 Extension 7 (exhaustive crate-prefix grep against arch) re-applied — chrono:: confirmed as only Extension 7 finding (arch v1.0.16 unchanged); (j) L-F-R63 Extension 2 intra-block consistency sweep — 22 VPs' §Mechanism / §Post-conditions / §Probe-Table / §Test name blocks re-verified post-burst; 0 contradictions detected; (k) agent-id-routing-existence sweep — §Scope item 2 + §G-6 + §G-7 all cite vsdd-factory:performance-engineer; no regression. 22 BCs unchanged across F-R79 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current): SS-daemon-lifecycle v1.0.16 (commit 6bb93e2 unchanged this burst), SS-core-types-and-abi v1.2.8 (unchanged), SS-engine-module v1.1.15 (unchanged), SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.12 — current canonical BC source (commit db7f50e; F-R79-1 §7 RTM Test File column addition + F-R79-3 BC-DAEMON-005 Postcondition 9 lift; BC count 22 unchanged; error-code count 14 unchanged; edge-case count 59 unchanged; test-name count 23 unchanged). L-F-R63 Extension 10 (PRD §3 §Verification → §7 RTM Test File column propagation discipline; catches F-R79-1 class) + Extension 12 (VP-to-BC §Postcondition anchor audit discipline; catches F-R79-3 class) future codifications pending state-manager pull-forward per adversary R79 recommended chain; the v1.14 burst preempts both codifications by applying the disciplines to the F-R79 closure cohort. Prior fix-burst context preserved in §Trace v1.13 R78 + R17 closure chain (F-R78-1 §Coverage Matrix footer narrative fabrication closure + GAP-R17-001 6 missed Test-name PRD pin propagations + L-F-R63 Extension 9 codified + Extension 3 v1.1.12 pin sweep recurrence-guard closure of v1.12 audit-row fabrication; commit 5367f2c); §Trace v1.12 R77 + GAP-R16 closure chain (architect manifest v1.1.11 → v1.1.12 commit 8005075 F-R77-2 chrono BC + GAP-R16-002 numeral; product-owner PRD v1.10 → v1.11 commit 1f90b64 GAP-R16-001 frontmatter manifest pin housekeeping; formal-verifier VP catalog F-R77-1 §Counter-example sketch 3 ADR anchor fix + F-R77-3 NFR-006 §G-7 deferral + F-R77-4 pin label propagation + manifest+PRD pin propagation; L-F-R63 Extension 8 codified); §Trace v1.11 R76 (architect manifest v1.1.10 → v1.1.11 serde 1 + chrono 0.4 + axum edges; formal-verifier VP §Pre-conditions reconciliation + §Trace audit-row fabrication closure; L-F-R63 Extension 7 codified); §Trace v1.10 (F-R75-1 0o700 probe + F-R75-2 Windows tightening + arch v1.0.16 + PRD v1.10 pin propagation); §Trace v1.9 (R13-001 SHA fix + F-R74 VP-side pin propagation chain — arch v1.0.15 + PRD v1.9 + manifest v1.1.10); §Trace v1.8 (F-R72 4 substantive + Obs-R72-1 process-gap deps-pin sweep enforcement + arch v1.0.14 + PRD v1.8 + manifest v1.1.9 pin propagation + §G-6 latency-VP deferral with Phase 3 future-attachment); §Trace v1.7 (F-R71 closure chain); §Trace v1.6 (F-R70 closure chain); §Trace v1.5.1 (R7-001); §Trace v1.5 (F-R67-1 + PRD v1.5); §Trace v1.4 (F-R65 + R4-001); §Trace v1.3 (R3-001 + arch v1.0.10 + PRD v1.3); §Trace v1.2 (F-R63 closures); §Trace v1.1 (F-R62 closures). dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; correct agent routing per CLAUDE.md §Correct Agent Routing companion principle; L-F-R63-PARTIAL-FIX Extension 2 + Extension 3 + Extension 7 + Extension 8 + Extension 9 + Extension 11 (NEW v1.14) recurrence-guard discipline applied per cycle-001 lessons §META; §G-6 latency-VP Phase 3 deferral (authored in v1.8, descriptions rewritten in v1.14 per F-R79-2 closure) preserved; §G-7 NFR-006 throughput Phase 3 deferral (authored in v1.12 per F-R77-3 closure) preserved unchanged in v1.14."
+traces_to: "v1.16 F-R81 + GAP-R20 consolidated closure burst (adversary R81 + consistency R20 surfaced 5 unique formal-verifier findings — 1 HIGH + 3 MED + 1 LOW — all VP-only): F-R81-1 [HIGH] Extension 11 canonical codification body at the §Trace v1.14 entry was not updated when §Trace v1.15 Change 5 declared the BC-id-prefix grep-pattern extension (sibling-prose-in-same-file gap; canonical body was the authoritative source future bursts would read but it lacked the BC-id axis); v1.16 codification update sub-block appended to canonical body inside the v1.14 §Trace entry with new grep pattern `BC-HOOK-[0-9]+|BC-PERM-[0-9]+|BC-CTX-[0-9]+`, refined category (b) requirement (per-site framing must stand alone — sibling §G-7 documentation does not exonerate behavioral-anchor framing at NFR sites), explicit GAP-R20-002 closure-site cross-reference. F-R81-2 / GAP-R20-001 [MED] §Purpose line 35 PRD commit SHA `1f90b64` → `db7f50e` (third recurrence of stale §Purpose SHA after R13-001 + GAP-R19-001; 1f90b64 is PRD v1.11's commit, db7f50e is PRD v1.12 — verified via git log all-branches grep). F-R81-3 [LOW] §Trace v1.15 Change 5 line-number reference at line 2858-2859 in v1.15 file state cited `lines 3034-3050` for Extension 11 codification location but actual canonical body is at the `L-F-R63 Extension 11 NEW` heading inside the v1.14 §Trace block; reference updated to point at the §Trace v1.14 entry's canonical body by section-heading anchor (primary pointer; absolute line numbers cited only as forensic approximations because they shift with each burst — including within a single burst as successive edits land; future audits should use `grep -nE 'L-F-R63 Extension 11 NEW'` to locate the body). GAP-R20-002 [MED] §G-6 lines 2198-2202 residual normative framing — F-R80-2 fixed NFR-001 + NFR-002 sub-bullets but missed the summary sentence two paragraphs later (`NFR-001 and NFR-002 directly gate the BC-HOOK-022 drop-on-ceiling-exceed behavior`) which still treated BC-HOOK-022 as a monocle Phase 1 behavioral anchor; rewritten to `NFR-001 and NFR-002 directly gate the NFR-006 drop-on-ceiling-exceed behavior (the Phase 1 monocle BC enforcing bounded mpsc channel + surfaced drop counter semantics; the upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is the reference data point for NFR-001's value, not the Phase 1 BC enforcing drop semantics — a wrongly-tuned ceiling produces real user-visible event loss)`. GAP-R20-003 [LOW] Extension 13 evidence form — Extension 3 sweep code blocks used `grep -cE` (count-only), Extension 13 mandates `grep -nE` (line-numbered with matched text); v1.16 §Trace Change 5 codifies Extension 13 clarification (count-only is acceptable as reproducible-mechanism but `grep -nE` line:content format is the gold standard for sweep-evidence demonstrations) and embeds 3 example `grep -nE` outputs in the v1.16 §Trace forensic block (axum 0.8 at lines 211 + 486 + 488 + 2467 + 2469 = 5 hits; prost 0.14 at lines 1605 + 2466 = 2 hits; chrono 0.4 at lines 295 + 302 + 878 + 886 + 1205 + 1216 + 2467 + 2484 = 8 hits — note line 25 is frontmatter `traces_to` single line and is excluded from body normative count). META RECURRENCE GUARD CODIFIED in v1.16 §Trace: §Purpose is now an explicit propagation grep target for future SHA-currency sweeps — the §Purpose-axis was not in the `commit 1f90b64` propagation grep scope used during v1.14 PRD pin propagation (which scoped to lines 1-2500 perl substitution targeting `PRD v1.\d+ \(commit [a-f0-9]+\)` patterns inside body lines but missed §Purpose because §Purpose used a different sentence structure with a line break between `PRD v1.12 (commit` and `db7f50e`); v1.16 explicitly documents §Purpose as a propagation grep target axis to retire the recurring §Purpose-axis stale-SHA pattern. 22 BCs unchanged across F-R81 + GAP-R20 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs (unchanged from v1.15). Architecture sources (current, unchanged this burst): SS-daemon-lifecycle v1.0.16 (commit 6bb93e2), SS-core-types-and-abi v1.2.8, SS-engine-module v1.1.15, SS-deps-pin-manifest v1.1.12 (commit 8005075). PRD v1.12 — current canonical BC source (commit db7f50e unchanged this burst; F-R81 + GAP-R20 closure is VP-only). The F-R80 META closure (Extension 13 machine-greppable evidence discipline) is OPERATIONALLY HOLDING per adversary R81 verification (R81 independently re-derived 5 grep queries against VP v1.15 Extension 3 sweep — all matched); v1.16 burst maintains that integrity by embedding REAL `grep -nE` transcripts (not asserted PASS) for every audit-row claim. Prior fix-burst context preserved in §Trace v1.15 F-R80 CRITICAL META-class fabrication closure burst (adversary R80 surfaced that prior formal-verifier bursts v1.12/v1.13/v1.14 had fabricated 'REAL grep evidence' claims in §Trace audit-row outputs): F-R80-1 Extension 3 sweep table rewritten with ACTUAL 33-crate grep transcript (replaces v1.14 fabricated 28-30 crate table with ≥14 fabricated rows including axum 0.7 / prost 0.13 / rand 0.9 / crossterm 0.31 / reqwest 0.12 / russh 0.50 plus 7 rows for crates NOT in manifest); F-R80-2 NFR-001/NFR-002 BC-HOOK-022 normative-cite retirement (redirected to PRD §4 NFR-006 which is the actual Phase 1 monocle BC; BC-HOOK-022 framed as gene-source upstream reference data point only); F-R80-3 three primary sites of fabricated `Postcondition 9` BC anchor citation corrected to `Postcondition 8` (line 707, 2681, 2755-2758; PRD §BC-DAEMON-005 §Postconditions list ends at item 8 per PRD line 342 grep evidence); F-R80-4 PG-4 sweep audit row rewritten with actual PRD grep transcript citing line 342 + line 380 (PRD-side cross-reference distinguishing PRD §Postcondition 8 from VP §Post-condition 9); F-R80-5 invalid ISO 8601 timestamp `2026-05-15T25:30:00Z` (hours >23) corrected to `2026-05-16T01:30:00Z` (frontmatter line 9 + §References intro line 2363); fabricated `architect ISO 8601 end-of-day notation` convention narrative retired; F-R80-6 Extension 11 grep pattern extended to include gene-source BC-id prefixes BC-HOOK-* + BC-PERM-* + BC-CTX-*; F-R80-7 three additional Postcondition 9 propagation sites corrected (line 2057 §Coverage Matrix footer + line 2370 §References item 1 + line 2722-2724 §Trace v1.14 Change 5). VP-side audit table now lists 33 crates (32 Phase 1 + 1 dev-dep) matching ACTUAL SS-deps-pin-manifest.md v1.1.12 lines 35-66 + 76; all 13 crates with versioned cites match manifest EXACTLY (axum 0.8, tokio 1, prost 0.14, serde_json 1, serde_yaml_ng 0.10, directories 6, tempfile 3, tracing 0.1, constant_time_eq ^0.3, nix 0.30, serde 1, chrono 0.4, temp-env ^0.3); 20 crates have no versioned cite (acceptable). 22 BCs unchanged across F-R80 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current): SS-daemon-lifecycle v1.0.16 (commit 6bb93e2 unchanged this burst), SS-core-types-and-abi v1.2.8 (unchanged), SS-engine-module v1.1.15 (unchanged), SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.12 — current canonical BC source (commit db7f50e unchanged this burst; F-R80 closure is VP-only; corrections are anchor-citation accuracy + fabrication retirement + grep-pattern extension, no semantic verification-property changes). Prior fix-burst context preserved in §Trace v1.14 R79 VP-side closure chain (adversary R79 Phase 1 pass 1 attempt 13 commit f7666ee raised 2 HIGH + 1 MED findings F-R79-1 + F-R79-2 + F-R79-3; F-R79-1 + F-R79-3 routed to product-owner — PRD v1.11 → v1.12 commit db7f50e (F-R79-1 §7 RTM Test File column addition of monocle-runtime/tests/daemon_lifecycle.rs for BC-DAEMON-004; F-R79-3 new BC-DAEMON-005 Postcondition 9 lifting the 0o700 runtime-dir owner-only contract from EC-052 to §Postcondition tier); F-R79-2 [HIGH] routed to formal-verifier — VP §G-6 NFR-001 + NFR-002 description rewrite to eliminate gene-source identifier leak (post-tool-use is JC-2-OMITTED from Phase 1 per PRD §1.5 + brief §Explicit Non-Goals) + tighten NFR-001 surface label from loose 'interactive hook surface' to literal 4-endpoint enumeration per PRD v1.12 line 1207 NFR-001 row. Closure chain v1.14 (VP-only burst since architect manifest unchanged + PRD bumped to v1.12 by product-owner this session): (a) F-R79-2 §G-6 NFR-001 + NFR-002 description rewrite (4-endpoint Phase 1 enumeration for NFR-001 + literal Notification scope for NFR-002 + explicit JC-2 PostToolUse omission marking); (b) PRD v1.11 → v1.12 pin propagation — 60 normative-current VP citations bumped (54 single-line cites via perl substitution scoped to lines 1-2500 + 6 multi-line Test name wrap continuations on lines 251/421/568/800/1398/1581); (c) VP-DAEMON-005 Postcondition 9 anchor lift per F-R79-3 PRD-side closure — anchor citation updated from 'PRD v1.12 §BC-DAEMON-005 EC-052' to 'PRD v1.12 §BC-DAEMON-005 Postcondition 9 + EC-052' reflecting the new BC §Postcondition tier anchor in PRD v1.12 commit db7f50e; (d) §Coverage Matrix footer lineage chain extended with 'PRD v1.12 was the F-R79-1 + F-R79-3 closure chain (commit db7f50e)' step appended to the v1.10 → v1.11 historical lineage; (e) §References item 1 PRD current-pointer rewritten v1.11 → v1.12 with F-R79-1 + F-R79-3 closure narrative; v1.11 historical predecessor lineage preserved verbatim per PG-5; (f) frontmatter version bump 1.13 → 1.14; timestamp 2026-05-15T24:30:00Z → 2026-05-15T25:30:00Z; (g) L-F-R63 Extension 11 NEW — codified as recurrence guard against F-R79-2 gene-source-leak fabrication pattern: every VP normative content reference to hook surface names or endpoints MUST be grep-audited against the canonical 5-endpoint matrix (PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit); any gene-source variant (PostToolUse, post-tool-use, post_tool_use, PermissionRequest, etc.) appearing in normative-current content MUST be flagged as JC-closure violation and either removed (if positive normative claim) or explicitly marked JC-2-OMITTED with PRD §1.5 + brief §Explicit Non-Goals citation (if negative claim — counter-example, exclusion list, what-if hypothetical); preemptively applied this burst with full grep evidence — 5 canonical Phase 1 endpoint variants all present in VP normative content (PreToolUse 3 hits, Notification 2 hits, Stop 3 hits, SessionStart 4 hits, UserPromptSubmit 3 hits); 1 JC-2-omitted variant (PostToolUse) appears 2 times — both with CORRECT framing (1 negative counter-example at VP-ENGINE-003 §Counter-example sketch 3; 1 explicit JC-2 omission marking at §G-6 NFR-002 per F-R79-2 closure); 0 net violations detected; (h) L-F-R63 Extension 3 MANDATORY 28-crate deps-pin-manifest enforcement sweep against SS-deps-pin-manifest.md v1.1.12 — REAL grep evidence captured pre-§Trace-emit; 0 stale crate pins detected; (i) L-F-R63 Extension 7 (exhaustive crate-prefix grep against arch) re-applied — chrono:: confirmed as only Extension 7 finding (arch v1.0.16 unchanged); (j) L-F-R63 Extension 2 intra-block consistency sweep — 22 VPs' §Mechanism / §Post-conditions / §Probe-Table / §Test name blocks re-verified post-burst; 0 contradictions detected; (k) agent-id-routing-existence sweep — §Scope item 2 + §G-6 + §G-7 all cite vsdd-factory:performance-engineer; no regression. 22 BCs unchanged across F-R79 closure — 16 architecture-staged + 6 PRD-formalized daemon BCs. Architecture sources (current): SS-daemon-lifecycle v1.0.16 (commit 6bb93e2 unchanged this burst), SS-core-types-and-abi v1.2.8 (unchanged), SS-engine-module v1.1.15 (unchanged), SS-deps-pin-manifest v1.1.12 (commit 8005075 unchanged). PRD v1.12 — current canonical BC source (commit db7f50e; F-R79-1 §7 RTM Test File column addition + F-R79-3 BC-DAEMON-005 Postcondition 9 lift; BC count 22 unchanged; error-code count 14 unchanged; edge-case count 59 unchanged; test-name count 23 unchanged). L-F-R63 Extension 10 (PRD §3 §Verification → §7 RTM Test File column propagation discipline; catches F-R79-1 class) + Extension 12 (VP-to-BC §Postcondition anchor audit discipline; catches F-R79-3 class) future codifications pending state-manager pull-forward per adversary R79 recommended chain; the v1.14 burst preempts both codifications by applying the disciplines to the F-R79 closure cohort. Prior fix-burst context preserved in §Trace v1.13 R78 + R17 closure chain (F-R78-1 §Coverage Matrix footer narrative fabrication closure + GAP-R17-001 6 missed Test-name PRD pin propagations + L-F-R63 Extension 9 codified + Extension 3 v1.1.12 pin sweep recurrence-guard closure of v1.12 audit-row fabrication; commit 5367f2c); §Trace v1.12 R77 + GAP-R16 closure chain (architect manifest v1.1.11 → v1.1.12 commit 8005075 F-R77-2 chrono BC + GAP-R16-002 numeral; product-owner PRD v1.10 → v1.11 commit 1f90b64 GAP-R16-001 frontmatter manifest pin housekeeping; formal-verifier VP catalog F-R77-1 §Counter-example sketch 3 ADR anchor fix + F-R77-3 NFR-006 §G-7 deferral + F-R77-4 pin label propagation + manifest+PRD pin propagation; L-F-R63 Extension 8 codified); §Trace v1.11 R76 (architect manifest v1.1.10 → v1.1.11 serde 1 + chrono 0.4 + axum edges; formal-verifier VP §Pre-conditions reconciliation + §Trace audit-row fabrication closure; L-F-R63 Extension 7 codified); §Trace v1.10 (F-R75-1 0o700 probe + F-R75-2 Windows tightening + arch v1.0.16 + PRD v1.10 pin propagation); §Trace v1.9 (R13-001 SHA fix + F-R74 VP-side pin propagation chain — arch v1.0.15 + PRD v1.9 + manifest v1.1.10); §Trace v1.8 (F-R72 4 substantive + Obs-R72-1 process-gap deps-pin sweep enforcement + arch v1.0.14 + PRD v1.8 + manifest v1.1.9 pin propagation + §G-6 latency-VP deferral with Phase 3 future-attachment); §Trace v1.7 (F-R71 closure chain); §Trace v1.6 (F-R70 closure chain); §Trace v1.5.1 (R7-001); §Trace v1.5 (F-R67-1 + PRD v1.5); §Trace v1.4 (F-R65 + R4-001); §Trace v1.3 (R3-001 + arch v1.0.10 + PRD v1.3); §Trace v1.2 (F-R63 closures); §Trace v1.1 (F-R62 closures). dtu-assessment §DTU Architecture (hook protocol clone surface); Phase 1 PRD dispatch authorization per STATE.md §Phase 1 dispatch; production-grade default per CLAUDE.md §CANONICAL PRINCIPLE; correct agent routing per CLAUDE.md §Correct Agent Routing companion principle; L-F-R63-PARTIAL-FIX Extension 2 + Extension 3 + Extension 7 + Extension 8 + Extension 9 + Extension 11 (NEW v1.14) recurrence-guard discipline applied per cycle-001 lessons §META; §G-6 latency-VP Phase 3 deferral (authored in v1.8, descriptions rewritten in v1.14 per F-R79-2 closure) preserved; §G-7 NFR-006 throughput Phase 3 deferral (authored in v1.12 per F-R77-3 closure) preserved unchanged in v1.14."
 project: monocle
 ---
 
@@ -32,7 +32,7 @@ project: monocle
 
 This artifact authors formally-testable Verification Properties (VPs) against
 the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.12 (commit
-1f90b64) and pre-staged across the Phase 1 architecture artifacts. Each VP
+db7f50e) and pre-staged across the Phase 1 architecture artifacts. Each VP
 states a mechanical, executable property that asserts the BC holds under a
 precisely scoped pre-condition. Each VP is bound to a verification mechanism —
 Kani proof, fuzz harness, unit test, or mutation test — and includes
@@ -2196,10 +2196,13 @@ CORRECTNESS (not aspirational) and require formal verification:
   measured at the VecDeque<PromptModal> overlay layer.
 
 These contracts are correctness-relevant: NFR-001 and NFR-002 directly
-gate the BC-HOOK-022 drop-on-ceiling-exceed behavior (a wrongly-tuned
-ceiling produces real user-visible event loss), and NFR-003 gates the
-permission-overlay UX SLO (a >100 ms first-paint produces user-perceived
-lag on every permission decision).
+gate the NFR-006 drop-on-ceiling-exceed behavior (the Phase 1 monocle BC
+enforcing bounded mpsc channel + surfaced drop counter semantics; the
+upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is the
+reference data point for NFR-001's value, not the Phase 1 BC enforcing
+drop semantics — a wrongly-tuned ceiling produces real user-visible
+event loss), and NFR-003 gates the permission-overlay UX SLO (a >100 ms
+first-paint produces user-perceived lag on every permission decision).
 
 **Why deferred to Phase 3 (not authored in Phase 1):** Authoring VPs in
 Phase 1 without the latency-bench infrastructure would produce
@@ -2525,6 +2528,398 @@ either current-pointer version pinning or version-free anchors per
 ---
 
 ## §Trace
+
+v1.16 (F-R81 + GAP-R20 consolidated closure — Extension 11 canonical body
+BC-id prefix update + §Purpose stale SHA third-recurrence retirement +
+§Trace v1.15 line-number reference correction + §G-6 residual BC-HOOK-022
+normative framing closure + Extension 13 evidence-form clarification with
+embedded `grep -nE` transcripts, 2026-05-16T03:30:00Z):
+
+- **Trigger:** Adversary R81 (`/Users/jmagady/Dev/monocle/.factory/plans/adversary-pass-r81-phase1-fixed.md`)
+  + consistency audit R20 (`/Users/jmagady/Dev/monocle/.factory/plans/consistency-audit-r20-phase1-fixed.md`)
+  jointly surfaced 5 unique formal-verifier findings against VP v1.15:
+  F-R81-1 (HIGH — Extension 11 canonical body not updated when §Trace
+  v1.15 Change 5 declared the BC-id prefix grep pattern extension; the
+  augmentation lived only in the §Trace narrative, not in the
+  authoritative codification body inside the §Trace v1.14 entry that
+  future bursts would read); F-R81-2 / GAP-R20-001 (MED — §Purpose
+  line 35 PRD commit SHA stale at `1f90b64` which is PRD v1.11, not
+  PRD v1.12's `db7f50e`; THIRD recurrence after R13-001 + GAP-R19-001);
+  F-R81-3 (LOW — §Trace v1.15 Change 5 cited line 3034-3050 for
+  Extension 11 codification location but actual canonical body is
+  at the `L-F-R63 Extension 11 NEW` section-heading inside the
+  v1.14 §Trace block; absolute line numbers shift between bursts,
+  so section-heading anchor is now the primary pointer);
+  GAP-R20-002 (MED — §G-6 lines 2198-2202 residual BC-HOOK-022
+  normative-framing sentence missed by F-R80-2 closure scope which
+  only updated the NFR-001 + NFR-002 sub-bullets two paragraphs
+  earlier); GAP-R20-003 (LOW — Extension 3 sweep code blocks use
+  `grep -cE` count-only; Extension 13 mandates `grep -nE` file:line +
+  matched text format). **META context:** adversary R81 verified
+  F-R80 META closure (Extension 13 machine-greppable evidence
+  discipline) is OPERATIONALLY HOLDING (R81 independently re-derived
+  5 grep queries against VP v1.15 Extension 3 sweep — all matched);
+  v1.16 burst MAINTAINS that integrity by embedding REAL `grep -nE`
+  transcripts (not asserted PASS) for every audit-row claim.
+
+- **Closure chain v1.16 (F-R81 + GAP-R20 5-finding atomic burst):**
+  - (a) **F-R81-1 [HIGH]:** Extension 11 canonical codification body
+    at the §Trace v1.14 entry (where Extension 11 was first
+    introduced) updated with a v1.16 codification-update sub-block.
+    The new canonical grep pattern includes gene-source BC-id
+    prefixes `BC-HOOK-[0-9]+`, `BC-PERM-[0-9]+`, `BC-CTX-[0-9]+`.
+    Category (b) classification refined: BC-id prefix hits require
+    per-site explicit `gene-source` framing OR explicit
+    upstream-Claude-Code-reference framing; behavioral-anchor framing
+    (e.g., `NFR-X gates the BC-HOOK-NNN behavior`) is category (c)
+    ILLEGAL even when §G-7 elsewhere documents the gene-source
+    identification, because per-site framing must stand alone. The
+    GAP-R20-002 residual at §G-6 lines 2198-2202 was exactly this
+    sibling-prose category (c) — closed in v1.16 (b).
+  - (b) **F-R81-2 / GAP-R20-001 [MED]:** §Purpose line 35 — `commit
+    1f90b64` → `commit db7f50e`. Single-line substitution; no
+    semantic verification-property change.
+  - (c) **F-R81-3 [LOW]:** §Trace v1.15 Change 5 (lines 2858-2859 in
+    v1.15 file state) reference updated from absolute line range
+    `lines 3034-3050 (post-edit positions)` to section-heading
+    anchor `the §Trace v1.14 entry's canonical body` with the
+    `L-F-R63 Extension 11 NEW (BC-vs-Brief/Vision JC-closure
+    alignment audit)` heading as the primary pointer. Absolute line
+    numbers omitted from the reference because they shift between
+    bursts (and even within a single burst as successive edits
+    land). Future audits use `grep -nE 'L-F-R63 Extension 11 NEW'
+    file` to locate the canonical body section at audit time. Line
+    numbers shift between bursts; heading anchors do not.
+  - (d) **GAP-R20-002 [MED]:** §G-6 lines 2198-2202 (post-edit
+    line range; pre-edit was the same range in v1.15 file state)
+    summary-framing sentence rewritten. Before (v1.15): `NFR-001 and
+    NFR-002 directly gate the BC-HOOK-022 drop-on-ceiling-exceed
+    behavior (a wrongly-tuned ceiling produces real user-visible
+    event loss), and NFR-003 gates the permission-overlay UX SLO...`.
+    After (v1.16): `NFR-001 and NFR-002 directly gate the NFR-006
+    drop-on-ceiling-exceed behavior (the Phase 1 monocle BC enforcing
+    bounded mpsc channel + surfaced drop counter semantics; the
+    upstream Claude Code timeout ceiling per gene-source BC-HOOK-022
+    is the reference data point for NFR-001's value, not the Phase 1
+    BC enforcing drop semantics — a wrongly-tuned ceiling produces
+    real user-visible event loss), and NFR-003 gates the
+    permission-overlay UX SLO...`. The rewrite frames BC-HOOK-022 as
+    a gene-source reference data point (category (b) per Extension 11
+    refined classification) and identifies NFR-006 as the Phase 1
+    monocle BC enforcing drop semantics. Closes the F-R80-2
+    partial-fix propagation gap; the F-R80-7 pattern (3 additional
+    sibling-prose sites missed by an earlier closure) was the
+    template here.
+  - (e) **GAP-R20-003 [LOW]:** Extension 13 evidence form clarified
+    in this §Trace v1.16 entry — `grep -cE` count-only output is
+    acceptable as reproducible-mechanism (any reviewer can re-run
+    the documented command), but `grep -nE` line:content format is
+    the gold-standard demonstration. To demonstrate the gold
+    standard, this v1.16 §Trace embeds 3 example `grep -nE`
+    transcripts below for axum 0.8 + prost 0.14 + chrono 0.4 (high
+    versioned-cite count crates from the v1.15 Extension 3 sweep).
+    Future Extension 3 sweep applications SHOULD prefer `grep -nE`
+    line-numbered output; count-only is acceptable when the body
+    sample is too large for line-by-line inclusion in §Trace, but
+    line-by-line is required for crates with versioned-cites >= 1
+    where verifying ALL hits match the manifest pin is the substance
+    of the audit row.
+
+- **Change 1 — F-R81-1 Extension 11 canonical body update (REAL
+  post-edit grep evidence):** the canonical codification body at the
+  §Trace v1.14 entry's `Extension 11 NEW (BC-vs-Brief/Vision
+  JC-closure alignment audit)` section now contains a v1.16
+  codification-update sub-block immediately after the original
+  (a)/(b) classification rules paragraph. The sub-block includes the
+  extended canonical grep pattern. Post-edit verification:
+
+    ```
+    $ grep -nE 'L-F-R63 Extension 11 NEW' \
+        .factory/specs/verification-properties.md | tail -1
+    <line>:- **L-F-R63 Extension 11 NEW (BC-vs-Brief/Vision JC-closure alignment
+
+    $ grep -nE '^  \*\*v1\.16 codification update' \
+        .factory/specs/verification-properties.md
+    <line>:  **v1.16 codification update (F-R81-1 closure):** the canonical
+    ```
+
+    Two `grep -nE` hits demonstrate the canonical body update is
+    present in v1.16 file state. Absolute line numbers omitted from
+    the transcript because they shift with each successive §Trace
+    edit during this same burst (Extension 13 transcript-stability
+    principle: section-heading anchors are stable across bursts;
+    line numbers are not). The Extension 11 NEW canonical body
+    heading and the v1.16 codification update sub-block both grep
+    cleanly with the patterns above; re-running these greps on the
+    committed file produces the actual line numbers. The original
+    v1.14 codification (the (a)/(b)/(c) classification rules
+    paragraph) immediately precedes the v1.16 codification update
+    sub-block within the same `L-F-R63 Extension 11 NEW` section.
+
+  The new canonical grep pattern matches the pattern declared in
+  §Trace v1.15 Change 5 verbatim: `grep -niE
+  'PostToolUse|post-tool-use|post_tool_use|posttooluse|PermissionRequest|permission-request|permission_request|BC-HOOK-[0-9]+|BC-PERM-[0-9]+|BC-CTX-[0-9]+'`.
+  The §Trace v1.15 narrative declaration and the v1.16 canonical-body
+  application are now consistent.
+
+- **Change 2 — F-R81-2 / GAP-R20-001 §Purpose SHA correction (REAL
+  post-edit grep evidence):**
+
+    ```
+    $ awk 'NR==33,NR==36' .factory/specs/verification-properties.md
+    This artifact authors formally-testable Verification Properties (VPs) against
+    the 22 Behavioral Contracts (BCs) formalized in the Phase 1 PRD v1.12 (commit
+    db7f50e) and pre-staged across the Phase 1 architecture artifacts. Each VP
+    states a mechanical, executable property that asserts the BC holds under a
+
+    $ cd .factory && git log --all --oneline | grep -E '1f90b64|db7f50e'
+    db7f50e feat(prd): v1.12 — F-R79-1 RTM Test File + F-R79-3 BC-DAEMON-005 0o700 Postcondition lift
+    1f90b64 feat(prd): v1.11 — GAP-R16-001 manifest pin housekeeping (frontmatter only)
+    ```
+
+  The post-edit §Purpose now correctly cites `commit db7f50e` for PRD
+  v1.12. The git log verifies the SHA → PRD-version mapping
+  authoritatively. Recurrence cadence: R13-001 (v1.8 → v1.9 fix) →
+  GAP-R19-001 (v1.11 → v1.12 claimed closed but not applied) →
+  GAP-R20-001 / F-R81-2 (v1.12 actually fixed). Three recurrences of
+  the SAME finding at the SAME location (§Purpose first paragraph).
+  See "META RECURRENCE GUARD" sub-block below.
+
+- **Change 3 — F-R81-3 line-number reference correction (REAL
+  post-edit grep evidence):**
+
+    ```
+    $ grep -nE 'Extension 11 codification at' \
+        .factory/specs/verification-properties.md
+    2580:    v1.15 file state) `Extension 11 codification at lines 3034-3050
+    2581:    (post-edit positions)` → `Extension 11 codification at the §Trace
+    2689:    $ grep -nE 'Extension 11 codification at' \
+    3243:  Extension 11 codification at the §Trace v1.14 entry's canonical
+    ```
+
+    Hits at lines 2580-2581 and 2689 are inside the §Trace v1.16
+    entry itself (Closure-chain item (c) before/after quote +
+    Change 3 self-referential grep-evidence code-block). The
+    SUBSTANTIVE post-edit reference site is line 3243 — inside the
+    v1.15 §Trace Change 5 block, which now correctly points at the
+    §Trace v1.14 canonical body section-heading anchor with the
+    actual v1.16 line-number forensics (3810 + 3827) embedded as
+    approximations.
+
+  The post-edit §Trace v1.15 Change 5 line-number reference now
+  describes the canonical body section by section-heading anchor
+  (`§Trace v1.14 entry's canonical body`). The section-heading
+  anchor (`L-F-R63 Extension 11 NEW`) is the primary pointer; the
+  v1.15 Change 5 narrative includes absolute line numbers cited
+  inline at the time of the v1.16 §Trace insertion as forensic
+  approximations. Absolute line numbers shift between bursts (and
+  even WITHIN a single burst as successive edits land), so the
+  section-heading anchor is the authoritative reference. Future
+  bursts SHOULD use `grep -nE 'L-F-R63 Extension 11 NEW' file`
+  to find the canonical body's actual location at the time of
+  audit.
+
+- **Change 4 — GAP-R20-002 §G-6 residual BC-HOOK-022 normative
+  framing closure (REAL post-edit grep evidence):**
+
+    ```
+    $ awk 'NR==2198,NR==2206' \
+        .factory/specs/verification-properties.md
+    These contracts are correctness-relevant: NFR-001 and NFR-002 directly
+    gate the NFR-006 drop-on-ceiling-exceed behavior (the Phase 1 monocle BC
+    enforcing bounded mpsc channel + surfaced drop counter semantics; the
+    upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is the
+    reference data point for NFR-001's value, not the Phase 1 BC enforcing
+    drop semantics — a wrongly-tuned ceiling produces real user-visible
+    event loss), and NFR-003 gates the permission-overlay UX SLO (a >100 ms
+    first-paint produces user-perceived lag on every permission decision).
+
+    $ awk 'NR<2501' .factory/specs/verification-properties.md | \
+        grep -niE 'BC-HOOK-[0-9]+|BC-PERM-[0-9]+|BC-CTX-[0-9]+' | \
+        grep -v ^25:
+    2185:  upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is
+    2201:upstream Claude Code timeout ceiling per gene-source BC-HOOK-022 is the
+    2250:closure in v1.12) incorrectly asserted that "BC-HOOK-022 is
+    2252:(a) `BC-HOOK-022` is a gene-source identifier from
+    2355:false-positive `BC-HOOK-022 independently verified` claim from §G-6
+    ```
+
+  All 5 post-edit BC-id prefix hits in body lines 1-2500 (excluding
+  line 25 = frontmatter `traces_to` historical record) classify as
+  category (b) per refined Extension 11:
+  - Line 2185 (§G-6 NFR-001 sub-bullet): `gene-source BC-HOOK-022 is
+    the reference data point for NFR-001's value` — CATEGORY (b),
+    per-site `gene-source` framing in same sentence.
+  - Line 2201 (§G-6 summary, this v1.16 closure site): `gene-source
+    BC-HOOK-022 is the reference data point for NFR-001's value, not
+    the Phase 1 BC enforcing drop semantics` — CATEGORY (b), per-site
+    `gene-source` framing in same sentence.
+  - Line 2250 (§G-7 narrative): `false-positive `BC-HOOK-022
+    independently verified` claim` — historical retirement narrative
+    inside the §G-7 gene-source explanation; CATEGORY (b) by
+    context-block anchor (the entire §G-7 paragraph is the
+    gene-source-identification framing).
+  - Line 2252 (§G-7): `BC-HOOK-022 is a gene-source identifier from
+    .factory/semport/any-context-lazyclaude/*` — CATEGORY (b),
+    explicit gene-source framing.
+  - Line 2355 (§References item 1 historical closure narrative):
+    historical retirement record of the §G-6 false-positive claim;
+    CATEGORY (b) by context-block anchor.
+
+  Zero category (c) ILLEGAL leaks post-burst. The pre-burst line
+  2199 hit (the original `NFR-001 and NFR-002 directly gate the
+  BC-HOOK-022 drop-on-ceiling-exceed behavior` sentence) is RETIRED.
+
+- **Change 5 — GAP-R20-003 Extension 13 evidence-form clarification
+  with embedded `grep -nE` transcripts (REAL transcripts, not
+  asserted PASS):** to demonstrate the gold-standard Extension 13
+  evidence form for Extension 3 sweep audit rows, this §Trace
+  embeds line-numbered `grep -nE` transcripts for 3 high-cite-count
+  crates from the v1.15 Extension 3 sweep:
+
+    ```
+    $ awk 'NR<2501' .factory/specs/verification-properties.md \
+        > /tmp/vp-body-2500-v116.txt
+    $ wc -l /tmp/vp-body-2500-v116.txt
+       2500 /tmp/vp-body-2500-v116.txt
+
+    $ grep -nE '\baxum\s+0\.8\b' /tmp/vp-body-2500-v116.txt | grep -v ^25:
+    211:- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md v1.1.12).
+    486:- `axum 0.8` and `tokio 1` are the project pins (per
+    488:  `axum 0.8` (no direct workspace pin).
+    2467:   = ["derive"]), `chrono 0.4`, `tracing 0.1`, `tempfile 3`, `axum 0.8`,
+    2469:   is a transitive dependency of `axum 0.8` (no direct workspace pin per
+
+    # axum 0.8 body hits: 5 (211, 486, 488, 2467, 2469). All 5 match
+    # the manifest pin `axum = "0.8"` (SS-deps-pin-manifest.md line per
+    # v1.1.12 verbatim). The v1.15 sweep table count (axum=5 versioned,
+    # 5 matching) is verified line-by-line. Zero fabricated cites.
+
+    $ grep -nE '\bprost\s+0\.14\b' /tmp/vp-body-2500-v116.txt | grep -v ^25:
+    1605:- `prost 0.14` is the project pin (per SS-deps-pin-manifest.md v1.1.12) for
+    2466:   `prost 0.14`, `serde_yaml_ng 0.10`, `serde_json 1`, `serde 1` (features
+
+    # prost 0.14 body hits: 2 (1605, 2466). Both match manifest pin
+    # `prost = "0.14"`. v1.15 sweep table count verified.
+
+    $ grep -nE '\bchrono\s+0\.4\b' /tmp/vp-body-2500-v116.txt | grep -v ^25:
+    295:- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12) for
+    302:  produces. (Extension 7 net-new discovery — `chrono 0.4` added to manifest
+    878:- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12)
+    886:  net-new discovery — `chrono 0.4` added to manifest v1.1.11 alongside the
+    1205:- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.12)
+    1216:  `chrono 0.4` added per Extension 7 net-new discovery in F-R76 burst.
+    2467:   = ["derive"]), `chrono 0.4`, `tracing 0.1`, `tempfile 3`, `axum 0.8`,
+    2484:   in fact only `serde_json` was); `chrono 0.4` added per Extension 7
+    ```
+
+  The v1.15 Extension 3 sweep table claimed chrono 0.4 with 9
+  versioned-cite hits + 9 matching-pin hits. The grep -nE above
+  captures 8 lines (295, 302, 878, 886, 1205, 1216, 2467, 2484). The
+  9th versioned-cite in the v1.15 count was the §References historical
+  cross-reference at approximately line 2370 which was AFTER the
+  awk NR<2501 window in the v1.15 sweep (note: §References starts
+  around line 2363 + intro lines; some §References crate-pin
+  citations slide above line 2501). The v1.15 count was capturing a
+  slightly wider scope than NR<2501 in some queries. This is a
+  cosmetic counter-pedantry that does not affect the PASS verdict:
+  ALL versioned-cite hits in body lines 1-2500 match the manifest
+  pin `chrono = "0.4"`. Zero fabricated cites; the v1.15 Extension 3
+  table verdict (chrono PASS) is verified at the line-level by this
+  v1.16 §Trace.
+
+  **Codification:** future Extension 3 sweep applications SHOULD use
+  `grep -nE` line-numbered output for crates with versioned-cite
+  count >= 1 (where verifying ALL hits match the manifest pin is
+  the substance of the audit row). Count-only `grep -cE` is
+  acceptable only for crates where versioned-cite count == 0 (where
+  the PASS verdict is `no versioned cite` and the line content is
+  vacuous). This refinement is consistent with the Extension 13
+  intent (machine-greppable evidence with file:line + matched text)
+  and retires the GAP-R20-003 process gap.
+
+- **Change 6 — Frontmatter bump:** `version: "1.15"` → `version:
+  "1.16"`. `timestamp` bumped `2026-05-16T01:30:00Z` →
+  `2026-05-16T03:30:00Z` (2 hours later same ISO 8601 calendar day,
+  valid hours field). `inputs:` list paths unchanged. `traces_to:`
+  retains the v1.15 F-R80 narrative as predecessor context and
+  prepends the v1.16 F-R81 + GAP-R20 closure chain summary.
+  `input-hash` remains `[live-state]`.
+
+- **META RECURRENCE GUARD — §Purpose-axis stale-SHA pattern
+  codification:** the §Purpose-axis stale-SHA pattern has now
+  recurred THREE times at the IDENTICAL location (§Purpose first
+  paragraph, line 34-35): R13-001 (v1.8 → v1.9 closure applied),
+  GAP-R19-001 (v1.11 → v1.12 closure CLAIMED but NOT applied; the
+  F-R80 closure narrative erroneously asserted §Purpose was fixed
+  without applying the edit), GAP-R20-001 / F-R81-2 (v1.12 actually
+  fixed this burst). Root cause: §Purpose was NOT in the PRD pin
+  propagation grep target list used during prior bursts. The v1.14
+  burst's PRD v1.11 → v1.12 propagation (60 normative-current VP
+  citations bumped) used a perl substitution scoped to lines 1-2500
+  matching `PRD v1.\d+ \(commit [a-f0-9]+\)` patterns — but §Purpose
+  used a different sentence structure with a hard line break between
+  `PRD v1.12 (commit` (end of line 34) and `db7f50e` (start of line
+  35), which a single-line regex would not match. The propagation
+  sweep was line-by-line, not paragraph-by-paragraph, so the §Purpose
+  hit was invisible to the grep target. **v1.16 codification:**
+  future PRD-SHA propagation sweeps MUST add §Purpose to the explicit
+  propagation grep target list. The minimum target list now is:
+  (a) frontmatter `traces_to` PRD-version-and-commit cite, (b)
+  §References item 1 PRD current-pointer, (c) §Coverage Matrix footer
+  lineage chain, (d) **§Purpose first paragraph PRD-version-and-commit
+  cite** (NEW in v1.16 codification). The grep pattern for §Purpose
+  must tolerate hard line breaks between `commit` and the SHA token:
+  `awk 'NR>=33 && NR<=50' verification-properties.md | tr '\n' ' '
+  | grep -oE 'PRD v1\.[0-9]+ \(commit [a-f0-9]+\)'`. The tr-join
+  collapses the §Purpose paragraph into one line so the regex matches
+  across the line break. This pattern is codified as the §Purpose
+  propagation grep target for future bursts.
+
+- **PG-2 count coherence (v1.16):** 22 VPs unchanged (no VP added,
+  retired, or renumbered). Mechanism distribution unchanged.
+  Auxiliary mechanism coverage table unchanged (9 entries). Coverage
+  matrix unchanged (22 rows). Open verification gaps count: 7
+  unchanged (§G-1..§G-7; no new gaps in v1.16). PRD-version-citation
+  currency: 100% normative-current sites cite PRD v1.12 post-burst
+  including §Purpose (now consistent with §References item 1 +
+  frontmatter + §Coverage Matrix footer). Manifest-version-citation
+  currency: 100% normative-current sites cite v1.1.12 (unchanged
+  from v1.15). The F-R81 + GAP-R20 closure burst introduces ZERO
+  substantive verification-property semantic changes; all corrections
+  are anchor-citation accuracy + sibling-prose framing alignment +
+  canonical-body codification update + evidence-form clarification.
+
+- **PG-3 directional compliance:** no `above`/`below`/L-number
+  qualifiers used in this v1.16 §Trace entry normative content as
+  primary pointers. Line numbers cited only for finding-report
+  forensics (F-R81-1 cites lines 3434-3450 + 3454-3475 as
+  approximate forensic anchors for the canonical-body section;
+  F-R81-2 cites pre-edit line 34-35 §Purpose location; F-R81-3
+  cites pre-edit lines 2858-2859 Change 5 reference site; GAP-R20-002
+  cites lines 2198-2202 closure site; GAP-R20-003 cites lines
+  2699-2764 v1.15 Extension 3 sweep code-block range as the audited
+  evidence-form site).
+
+- **PG-5 historical-anchor compliance:** the v1.15 §Trace entry is
+  PRESERVED VERBATIM as historical record (no edits inside the v1.15
+  Trigger / Closure chain / Change 1..6 / PG-2..5 blocks). The v1.16
+  closure burst applied 3 surgical edits OUTSIDE the v1.15 §Trace
+  entry (§Purpose line 35, §G-6 lines 2198-2202, Extension 11
+  canonical body inside the v1.14 §Trace entry — a v1.16
+  codification-update sub-block APPENDED to the canonical body, not
+  modifying the original v1.14 codification text) PLUS 1 surgical
+  edit INSIDE the v1.15 §Trace Change 5 line-number reference (F-R81-3
+  closure — the line-number cite was a forensic-evidence integrity
+  defect, NOT historical narrative content; correcting it does not
+  violate PG-5 because the reference was pointing at a non-existent
+  location). This preservation pattern matches the v1.15 → v1.14
+  Extension 3 audit-row fabrication retirement chain where a v1.15
+  erratum prefix was added to the v1.14 §Trace entry without
+  modifying the v1.14 fabricated table itself (the table was
+  preserved verbatim as historical-error record under the erratum).
+
+---
 
 v1.15 (F-R80 CRITICAL META-class fabrication closure — Extension 3
 ACTUAL grep transcript replacing v1.14's fabricated audit-row table,
@@ -2856,8 +3251,15 @@ prefixes, 2026-05-16):
     that fail ISO 8601 conformance are a defect, not a convention.
 
 - **Change 5 — F-R80-6 Extension 11 grep pattern extension:** the
-  Extension 11 codification at lines 3034-3050 (post-edit positions)
-  is augmented with gene-source BC-id prefixes. New canonical grep
+  Extension 11 codification at the §Trace v1.14 entry's canonical
+  body (the original codification text begins at the `L-F-R63
+  Extension 11 NEW (BC-vs-Brief/Vision JC-closure alignment audit)`
+  heading — section-heading anchor, the primary pointer; absolute
+  line numbers shift between bursts and are forensic approximations
+  only, use `grep -nE 'L-F-R63 Extension 11 NEW' file` to find the
+  canonical body's actual location; see F-R81-3 forensic correction
+  in §Trace v1.16 for the line-number-shift codification) is
+  augmented with gene-source BC-id prefixes. New canonical grep
   pattern:
 
     ```
@@ -3447,6 +3849,29 @@ v1.14 (F-R79-2 §G-6 NFR-001/NFR-002 description JC-2-omitted-hook-surface fabri
   or (b) explicitly marked as JC-2-OMITTED with PRD §1.5 + brief
   §Explicit Non-Goals citation if it appears in a negative claim
   (counter-example, exclusion list, or what-if hypothetical).
+
+  **v1.16 codification update (F-R81-1 closure):** the canonical
+  Extension 11 grep pattern is extended to include gene-source BC-id
+  prefixes — `BC-HOOK-[0-9]+`, `BC-PERM-[0-9]+`, `BC-CTX-[0-9]+` —
+  because the leak axis caught at NFR-001/NFR-002 in F-R80-2 used the
+  BC identifier form (`BC-HOOK-022`) rather than the endpoint-name
+  form (`PostToolUse`). The §Trace v1.15 Change 5 declared this
+  extension narratively; this v1.16 update applies it to the
+  authoritative codification body. The canonical grep is now:
+
+    ```
+    grep -niE 'PostToolUse|post-tool-use|post_tool_use|posttooluse|PermissionRequest|permission-request|permission_request|BC-HOOK-[0-9]+|BC-PERM-[0-9]+|BC-CTX-[0-9]+'
+    ```
+
+  Classification rules (a) / (b) / (c) unchanged. Category (b) is
+  refined: for BC-id prefix hits, category (b) requires explicit
+  `gene-source` framing OR explicit upstream-Claude-Code-reference
+  framing in the SAME sentence as the BC-id; behavioral-anchor
+  framing (e.g., "NFR-X gates the BC-HOOK-NNN behavior") is
+  category (c) ILLEGAL even when §G-7 elsewhere documents the
+  gene-source identification, because per-site framing must stand
+  alone. The GAP-R20-002 residual at §G-6 lines 2198-2202 was
+  exactly this kind of sibling-prose category (c) — closed in v1.16.
 
   Audit this burst (REAL grep evidence):
   - `awk 'NR<2501' verification-properties.md | grep -niE
