@@ -890,15 +890,20 @@ v1.0.23 changes (F-R99 Burst 2 — F-R99-1 HIGH closure: §Trace v1.0.22 SE-17c-
   Step 2: verify production-code hits at 235/238 — CONFIRMED. Lines 235/238 are in the
   body section above BOUNDARY=790. They do not shift regardless of §Trace insertions.
 
-  Step 3: verify §Trace v1.0.22 PRE block (stale 233/236 defect record) — CONFIRMED at
-  lines 907–908 in post-insertion state. (Pre-insertion: 800–801; shifted by the ~107-line
-  §Trace v1.0.23 insertion.)
+  Step 3: verify §Trace v1.0.22 PRE block (stale 233/236 defect record) — CONFIRMED present
+  in §Trace body. Informational line-number reference: approximately lines 930–935 range
+  post-commit (exact line shifts with each SE-17f self-revalidation edit; §Trace-body
+  narrative line numbers are informational, not normative — SE-17c-d precision requirement
+  applies to production-code hits only). Production-code hits at 235/238 confirmed stable.
 
-  Step 4: verify §Trace v1.0.22 POST grep lines — CONFIRMED at lines 916–918 in
-  post-insertion state. (Pre-insertion: 809–811; shifted by §Trace v1.0.23 insertion.)
+  Step 4: verify §Trace v1.0.22 POST grep lines — CONFIRMED present in §Trace body.
+  Informational line-number reference: approximately lines 940–945 range post-commit.
+  Same self-referential caveat as Step 3 applies.
 
-  Step 5: verify §Trace v1.0.21 Fix 1 POST block — CONFIRMED at lines 1028–1030.
-  (Pre-insertion: 921–923 at pre-commit state before §Trace v1.0.23 was written.)
+  Step 5: verify §Trace v1.0.21 Fix 1 POST block — CONFIRMED present in §Trace body.
+  Informational line-number reference: approximately lines 1050–1060 range post-commit.
+  Same self-referential caveat applies. SE-17f requires re-verification of these
+  §Trace-body positions at each future burst that inserts a new §Trace entry before v1.0.22.
 
   Step 6: verify §Trace v1.0.22 SE-17c-d note no longer cites stale 864–866/864–872 —
   CONFIRMED. The note defers to this §Trace v1.0.23 entry as authoritative.
