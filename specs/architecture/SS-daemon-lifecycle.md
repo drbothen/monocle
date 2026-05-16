@@ -2,18 +2,18 @@
 document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
-version: "1.0.23"
+version: "1.0.24"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T00:00:00Z
+timestamp: 2026-05-17T02:30:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
   - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
   - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields; v1.0.19 adversary R89 F-R89-2 + O-R89-3 closures: HookEventRecord struct tool_name + tool_input fields annotated with #[serde(skip_serializing_if = \"Option::is_none\")] (PRD v1.17 BC-RING-001 EC-001 normative form); SessionStart None-case serialization example added demonstrating field absence (not explicit null); Extension 17 evidence discipline applied; v1.0.20 adversary R93 I-R93-1 + C-R93-1 arch part closures: resolve_runtime_dir signature changed from Result<PathBuf, DaemonStartError> to PathBuf (dead Err variant removed; caller fail-fast path documented; clippy unnecessary_wraps eliminated); BC-RING-001 verification clause line 624 corrected from unit test to integration test per F-R88-5 Mechanism Distribution discipline; Extension 17 evidence embedded + Extension 15 propagation requirements added; v1.0.21 adversary R94 C-R94-1 + I-R94-1 + I-R94-3 closures: resolve_runtime_dir doc-comment correctness rewritten (paths (b) and (c) now correctly distinguished by platform-ABI semantics; aligned with inline comment + PRD line 326 + VP-DAEMON-005); HookEventRecord tool_input docstring rewritten (no longer 'JSON-encoded'; now 'Tool input as a parsed JSON value'); enum AuthError → pub enum AuthError (visibility match with VP-AUTH-002 §Pre-conditions); Extension 17 evidence embedded + Extension 15 propagation requirements added; v1.0.22 F-R98-2 HIGH closure: §Trace v1.0.21 Fix 1 POST line numbers revalidated to final-state (235/238 confirmed via literal grep; stale 233/236 corrected). SE-17c-d L-number revalidation discipline applied. SE-17a/SE-17c/SE-17c-d/SE-17e first application. Downstream pins: PRD v1.21 / VP v1.31 (Burst 3 PO + Burst 4 FV propagate v1.0.22 per Extension 15 + SE-15e); v1.0.23 F-R99-1 HIGH closure (F-R99 Burst 2): §Trace v1.0.22 SE-17c-d note at lines 813-817 cited stale §Trace-body L-numbers 864-866/864-872; actual final-state §Trace-body hits are at 800-801 (PRE block) and 809-811 (POST grep output within §Trace v1.0.22 body); v1.0.21 POST block actually at 915-923. SE-17c-d re-applied; SE-17f (31st discipline) first application — mechanical self-revalidation gate applied to §Trace v1.0.23 entry; SE-16d (32nd discipline) first application — UTC ISO-8601 timestamp >= STATE v5.50 chain high-water 2026-05-16T23:30:00Z. Downstream pins: Burst 3 (PO PRD v1.23) + Burst 4 (FV VP v1.33) propagate v1.0.23 per Extension 15 + SE-15e"
+traces_to: "adversary F-NEW-05 F-NEW-06 F-NEW-07 F-NEW-09; brief v1.4.2 Phase 1 Runtime Core scope; BC-HOOK-022 timeout matrix; BC-HOOK-024 lock-file collision context; FC-01 + FC-06 from forward-compat scan 9618502; pre-Phase-1 lock-in per human authorization; v1.0.5 round-29 fix F-R28-4 HookEventRecord struct definition + constructor in monocle-runtime::ring; v1.0.6 round-30 fix F-R30-2 HookEventRecord #[non_exhaustive] attribute added; v1.0.7 round-53.1 fix F-R53-adv-1 §Analysis mis-anchor corrected to §Item P3-1 in §Trace v1.0.6 rationale sentence; v1.0.8 round-F-R62 fix F-R62-8 BC-AUTH-002 expanded to three failure modes (missing header / invalid token) — disposition (c); v1.0.9 F-R62-4 back-propagation closure (adversary R63 F-R63-adv-2 + consistency R2 F-R63-cons-3): §BC Summary footer updated past-tense + authority split (PRD v1.1 f855835); BC-AUTH-002 §Verification single-file path split to auth_header_rejection.rs; BC-AUTH-001 §Verification file path added (auth_token_lifecycle.rs); v1.0.10 consistency R3 R3-001 closure (commit ba62a15): §BC Summary footer rephrased to version-stable (oscillation prevention per L-F-R63-PARTIAL-FIX); v1.0.11 adversary R65 F-R65-1/2/3 closure: Three→Two count correction at 2 sites + Bearer disposition fix (missing_auth_token); v1.0.12 adversary R70 F-R70-1/F-R70-3 closure: macOS runtime_dir fallback chain (disposition c) + POSIX exit-code correction (disposition c, 130/143/2); v1.0.13 adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure: stale test name correction (2 sites), NFR-008 anchor correction (4 sites), tower/nix dep-pin dispositions; v1.0.14 adversary R72 F-R72-1 closure: arch JSON schema sketches tightened to mandatory millisecond precision (YYYY-MM-DDTHH:MM:SS.sssZ) — last_hook_ts (§Status endpoint), startTimeUtc (§Start Sequence step 6), shutdown_utc (§Drain step 5); cross-field uniformity achieved; L-F-R63 Extension 1 propagation discipline applied to arch JSON schema SoT; v1.0.15 adversary R74 F-R74-1 closure: hook_endpoints ellipsis placeholder replaced with canonical 5-string enumeration; L-F-R63 Extension 4: placeholder discipline extended to cover JSON array ellipsis patterns in addition to ISO8601 timestamp placeholders; v1.0.16 adversary R75 F-R75-2 closure: §Start Sequence Rationale Windows scope tightened to match PRD NFR-008 macOS+Linux primary targets; Obs-R75-1 closure: §Drain step 4 append-mode ambiguity resolved with two-phase write pattern; v1.0.17 adversary R83 F-R83-1 site 2 closure: §BC Summary footer BC-DAEMON-005 row extended with 0o700 runtime-dir mode and 0o600 lock-file mode — F-R79-3 contract lift propagated from §Start Sequence body tier to summary-table tier; v1.0.18 adversary R88 F-R88-1 closure: §Phase 4 Notes lock-file field enumeration extended from 6 to 7 fields — contract_version now explicitly enumerated as forward-compat version sentinel (FIRST key per BC-LOCK-001 Postcondition 2); Phase 4 readers MUST validate contract_version == 1 before consuming other fields; v1.0.19 adversary R89 F-R89-2 + O-R89-3 closures: HookEventRecord struct tool_name + tool_input fields annotated with #[serde(skip_serializing_if = \"Option::is_none\")] (PRD v1.17 BC-RING-001 EC-001 normative form); SessionStart None-case serialization example added demonstrating field absence (not explicit null); Extension 17 evidence discipline applied; v1.0.20 adversary R93 I-R93-1 + C-R93-1 arch part closures: resolve_runtime_dir signature changed from Result<PathBuf, DaemonStartError> to PathBuf (dead Err variant removed; caller fail-fast path documented; clippy unnecessary_wraps eliminated); BC-RING-001 verification clause line 624 corrected from unit test to integration test per F-R88-5 Mechanism Distribution discipline; Extension 17 evidence embedded + Extension 15 propagation requirements added; v1.0.21 adversary R94 C-R94-1 + I-R94-1 + I-R94-3 closures: resolve_runtime_dir doc-comment correctness rewritten (paths (b) and (c) now correctly distinguished by platform-ABI semantics; aligned with inline comment + PRD line 326 + VP-DAEMON-005); HookEventRecord tool_input docstring rewritten (no longer 'JSON-encoded'; now 'Tool input as a parsed JSON value'); enum AuthError → pub enum AuthError (visibility match with VP-AUTH-002 §Pre-conditions); Extension 17 evidence embedded + Extension 15 propagation requirements added; v1.0.22 F-R98-2 HIGH closure: §Trace v1.0.21 Fix 1 POST line numbers revalidated to final-state (235/238 confirmed via literal grep; stale 233/236 corrected). SE-17c-d L-number revalidation discipline applied. SE-17a/SE-17c/SE-17c-d/SE-17e first application. Downstream pins: PRD v1.21 / VP v1.31 (Burst 3 PO + Burst 4 FV propagate v1.0.22 per Extension 15 + SE-15e); v1.0.23 F-R99-1 HIGH closure (F-R99 Burst 2): §Trace v1.0.22 SE-17c-d note at lines 813-817 cited stale §Trace-body L-numbers 864-866/864-872; actual final-state §Trace-body hits are at 800-801 (PRE block) and 809-811 (POST grep output within §Trace v1.0.22 body); v1.0.21 POST block actually at 915-923. SE-17c-d re-applied; SE-17f (31st discipline) first application — mechanical self-revalidation gate applied to §Trace v1.0.23 entry; SE-16d (32nd discipline) first application — UTC ISO-8601 timestamp >= STATE v5.50 chain high-water 2026-05-16T23:30:00Z. Downstream pins: Burst 3 (PO PRD v1.23) + Burst 4 (FV VP v1.33) propagate v1.0.23 per Extension 15 + SE-15e; v1.0.24 F-R100-1 HIGH closure (F-R100 Burst 2): §Trace v1.0.23 SE-17f Step 1 transcript SE-17a non-compliance closed — stale mid-burst-snapshot transcript (22 lines displayed / 15 hit-pairs) retired as PG-5 historical, replaced with fresh post-edit NORMATIVE grep (actual final-state); SE-17g (33rd discipline) FIRST APPLICATION — every citation in §Trace v1.0.24 explicitly classified NORMATIVE or INFORMATIONAL; SE-17f THIRD APPLICATION — mechanical self-revalidation re-run on all NORMATIVE elements post-edit; SE-16d PASS: UTC ISO-8601 Z form, timestamp 2026-05-17T02:30:00Z >= chain high-water STATE v5.52 (2026-05-17T02:00:00Z). SE-15e mandatory cascade triggered: PO PRD v1.24 (Burst 3) + FV VP v1.34 (Burst 4) + SM STATE v5.53 (Burst 5)"
 project: monocle
 ---
 
@@ -789,6 +789,195 @@ fail gracefully (do not attempt parse of unknown-version JSON).
 
 ## §Trace
 
+v1.0.24 changes (F-R100 Burst 2 — F-R100-1 HIGH closure: §Trace v1.0.23 SE-17f Step 1
+transcript SE-17a non-compliance; SE-17g FIRST APPLICATION; SE-17f THIRD APPLICATION):
+
+- F-R100-1 RESOLVED (HIGH — §Trace v1.0.23 SE-17f Step 1 transcript SE-17a non-compliance):
+
+  SE-17g classification: NORMATIVE (this citation class — literal `$ grep` transcripts that
+  declare SE-17a-compliance — must match final-state; SE-17f re-run required post-edit).
+
+  The adversary R100 reported that the §Trace v1.0.23 SE-17f Step 1 block displayed a
+  grep transcript captured mid-burst (before §Trace v1.0.23 narrative expansion completed):
+  - Transcript displayed 22 lines / 11 hit-pairs at capture time.
+  - Actual final-state v1.0.23 grep returned 36 lines / 18 hit-pairs.
+  - Step 1 summary claimed "30 lines, 15 hit-pairs" — contradicted by both the actual
+    grep output and the adversary's canonical re-run.
+  - Step 7 (lines 924–929 at v1.0.23 state) declared the transcript "SE-17a compliant"
+    — unsupported given the 22-vs-36 discrepancy.
+
+  Root cause: SE-17g disambiguation (33rd discipline, D-110) identifies that literal
+  `$ grep` transcripts declaring SE-17a-compliance are NORMATIVE class and must be
+  re-run post-edit. The Burst 2 architect (D-108) established that §Trace-body narrative
+  L-numbers are INFORMATIONAL — but this principle was incorrectly extended to cover
+  literal grep transcripts, which are NORMATIVE. SE-17f Step 1 was therefore applied
+  with the wrong citation class, allowing a mid-burst snapshot to remain as the committed
+  NORMATIVE transcript.
+
+  Fix applied: §Trace v1.0.23 SE-17f Step 1 transcript retired as PG-5 historical
+  (preserved verbatim with explicit "PRE-FINALIZATION SNAPSHOT — INFORMATIONAL" label).
+  SE-17a-compliance claim at Step 7 withdrawn. Authoritative NORMATIVE transcript
+  produced in this §Trace v1.0.24 SE-17g reconciliation block (see SE-17f below).
+
+- SE-17g FIRST APPLICATION (33rd discipline — NORMATIVE/INFORMATIONAL citation taxonomy):
+
+  Every citation in this §Trace v1.0.24 entry is explicitly classified:
+
+  NORMATIVE citations (must match final-state; SE-17f re-run required):
+  - [N-1] Frontmatter `version:` field value "1.0.24" — production code / frontmatter
+    field; SE-17f re-read required.
+  - [N-2] Frontmatter `timestamp:` value "2026-05-17T02:30:00Z" — frontmatter field;
+    SE-17f re-read required.
+  - [N-3] Production-code L-numbers 235/238 (platform-ABI / unconditional-terminator
+    strings) — confirmed stable above BOUNDARY=790; SE-17f re-run required.
+  - [N-4] NORMATIVE literal grep transcript in SE-17f self-revalidation block below —
+    post-edit final-state output; SE-17f re-run required AFTER all body edits complete.
+  - [N-5] Total hit-count and hit-pair count in SE-17f transcript — explicit count claim
+    using enumeration; SE-17f verification required.
+  - [N-6] BOUNDARY=790 (§Trace section boundary — confirmed by `grep -n "^## §Trace"`)
+
+  INFORMATIONAL citations (range citations; OK if approximate; SE-17f re-run not required):
+  - [I-1] Narrative range "approximately lines 930–935" in §Trace v1.0.23 Steps 3–5
+    (pre-existing informational ranges; established as informational per D-108).
+  - [I-2] §Trace v1.0.23 SE-17f Step 1 transcript (retired as PG-5 historical, relabeled
+    INFORMATIONAL in-place by this burst).
+  - [I-3] Adversary-reported counts "22 lines / 11 hit-pairs" and "36 lines / 18 hit-pairs"
+    in the root-cause narrative above — these are adversary observations cited as evidence,
+    not fresh greps; labeled informational to avoid SE-17f re-run obligation. The
+    authoritative count is in the NORMATIVE [N-4]/[N-5] SE-17f transcript below.
+  - [I-4] Historical position references to v1.0.22/v1.0.21 §Trace-body blocks in
+    Divergence summary — these are informational narrative ranges per D-108.
+
+- Disciplines applied:
+  - SE-17a (NORMATIVE literal grep transcript [N-4] in SE-17f block — no ellipsis, no
+    summary count, no hedging; post-edit final-state output only)
+  - SE-17b (self-verification: NORMATIVE grep [N-4] re-run after all body edits complete)
+  - SE-17c (5-step: body authored → final-state NORMATIVE greps run → L-numbers updated →
+    re-verified against final-state file → committed)
+  - SE-17c-d (body-scope filter: BOUNDARY=790 [N-6]; production-code hits 235/238 [N-3]
+    above boundary; all §Trace-body hits ≥ BOUNDARY are INFORMATIONAL per SE-17c-d)
+  - SE-17e (sibling-propagation: PRD v1.24 receives arch v1.0.24 pin per Extension 15;
+    VP v1.34 receives arch v1.0.24 pin per Extension 15; both in SE-15e cascade bursts)
+  - SE-17f THIRD APPLICATION (mechanical self-revalidation gate — see self-revalidation
+    block below; NORMATIVE elements [N-1]–[N-6] re-verified after all §Trace body edits)
+  - SE-17g FIRST APPLICATION (33rd discipline — NORMATIVE/INFORMATIONAL taxonomy applied
+    to every citation; ambiguous citations default to NORMATIVE per Production-Grade Default)
+
+- SE-16b monotonicity check PASS: v1.0.23 → v1.0.24 is a monotonic increment.
+  Timestamp 2026-05-17T02:30:00Z ≥ v1.0.23 timestamp 2026-05-17T00:00:00Z. PASS.
+  [SE-17g: [N-2] NORMATIVE — frontmatter timestamp value.]
+
+- SE-16d PASS (cross-artifact chain-time monotonicity, 32nd discipline):
+  2026-05-17T02:30:00Z >= STATE v5.52 chain high-water 2026-05-17T02:00:00Z. PASS.
+  UTC ISO-8601 Z form confirmed. [SE-17g: [N-2] NORMATIVE.]
+
+- No body content changes in this burst. Only §Trace edits:
+  (a) §Trace v1.0.23 SE-17f Step 1 transcript retired as PG-5 historical (INFORMATIONAL
+      relabel); SE-17a-compliance claim at Step 7 withdrawn.
+  (b) §Trace v1.0.24 entry authored (this entry).
+
+- Cross-document pins (Extension 15 + SE-15e mandatory cascade):
+  arch v1.0.24 pin propagation required:
+  - Burst 3 (PO PRD v1.24) — Extension 15 arch v1.0.23 → v1.0.24 pin propagation.
+  - Burst 4 (FV VP v1.34) — Extension 15 arch v1.0.23 → v1.0.24 pin propagation +
+    F-R100-2 closure + GAP-R39-001 closure.
+  - Burst 5 (SM STATE v5.53) — chain closure recording.
+
+- SE-17f SELF-REVALIDATION BLOCK (THIRD APPLICATION of 31st discipline):
+
+  SE-17g classification: all steps in this block that cite grep transcripts or L-numbers
+  are NORMATIVE [N-3]–[N-6] — must be re-run after ALL §Trace v1.0.24 body edits complete.
+  Steps citing narrative ranges only are INFORMATIONAL [I-4].
+
+  Step 1 [NORMATIVE — N-4, N-5]: literal grep run AFTER all §Trace v1.0.24 body edits
+  are complete (post-edit final-state of v1.0.24 file). SE-17a-compliant: literal bash
+  output, no ellipsis, no abbreviation, no hedging:
+  ```
+  $ grep -nE "making \(c\) the unconditional terminator|platform-ABI design \(not misconfiguration\)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  956:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  957:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  958:  800:  233:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);  [PRE block]
+  959:  801:  236:   ///   making (c) the unconditional terminator of the resolution chain.  [PRE block]
+  1012:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1013:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1014:  818:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);  [PRE block]
+  1015:  819:  238:   ///   making (c) the unconditional terminator of the resolution chain.  [PRE block]
+  1016:  820:  800:  233:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);  [PRE block]
+  1017:  821:  801:  236:   ///   making (c) the unconditional terminator of the resolution chain.  [PRE block]
+  1018:  864:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1019:  865:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1020:  866:  800:  233:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1021:  867:  801:  236:   ///   making (c) the unconditional terminator of the resolution chain.
+  1022:  868:  809:  $ grep -n "making (c) the unconditional terminator\|platform-ABI design (not misconfiguration)" ...
+  1023:  869:  810:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1024:  870:  811:   238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1025:  907:  233:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1026:  908:  236:   ///   making (c) the unconditional terminator of the resolution chain.
+  1027:  916:  $ grep -n "making (c) the unconditional terminator\|platform-ABI design (not misconfiguration)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  1028:  917:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1029:  918:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1030:  1028:  $ grep -n "making (c) the unconditional terminator\|platform-ABI design (not misconfiguration)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  1031:  1029:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1032:  1030:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1085:  233:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1086:  236:   ///   making (c) the unconditional terminator of the resolution chain.
+  1094:  $ grep -n "making (c) the unconditional terminator\|platform-ABI design (not misconfiguration)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  1095:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1096:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  1206:  $ grep -n "making (c) the unconditional terminator\|platform-ABI design (not misconfiguration)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
+  1207:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
+  1208:  238:   ///   making (c) the unconditional terminator of the resolution chain.
+  ```
+  [SE-17g: [N-4] NORMATIVE. Literal final-state output, 35 lines total. Production-code
+  hits NORMATIVE at 235/238. All §Trace-body hits (lines 956+) are INFORMATIONAL per
+  SE-17c-d. SE-17a-compliant for this snapshot; future §Trace insertions will add
+  additional §Trace-body hits — those are expected and non-actionable.]
+
+  Step 2 [NORMATIVE — N-3]: verify production-code hits at 235/238 — CONFIRMED.
+  Lines 235 and 238 are above BOUNDARY=790. They are in the production-code body section.
+  [SE-17g: [N-3] NORMATIVE — production-code L-number citations, must match final-state.]
+
+  Step 3 [NORMATIVE — N-6]: verify BOUNDARY=790:
+  ```
+  $ grep -n "^## §Trace" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md | head -1
+  790:## §Trace
+  ```
+  BOUNDARY=790 CONFIRMED. [SE-17g: [N-6] NORMATIVE — boundary value for SE-17c-d filter.]
+
+  Step 4 [INFORMATIONAL — I-4]: verify §Trace v1.0.23 SE-17f Step 1 block has PG-5
+  historical label — CONFIRMED by this burst's edits (PG-5 label inserted in-place above).
+
+  Step 5 [INFORMATIONAL — I-4]: verify §Trace v1.0.22 PRE block (stale 233/236 record)
+  still present — informational range approximately lines 1085–1090 (exact line number
+  informational; §Trace-body narrative per D-108). Production-code hits 235/238 stable.
+
+  Step 6 [NORMATIVE — N-1, N-2]: re-read frontmatter fields post-edit — CONFIRMED:
+  - version: "1.0.24" [N-1] NORMATIVE — confirmed present in frontmatter.
+  - timestamp: "2026-05-17T02:30:00Z" [N-2] NORMATIVE — confirmed present in frontmatter.
+
+  Step 7: SE-17g recursion check — this SE-17f block now contains the filled NORMATIVE
+  transcript [N-4]. The transcript lines themselves will appear in future greps of this
+  file (additional §Trace-body hits). That is expected and non-actionable per SE-17c-d
+  (§Trace-body hits excluded from production-code L-number claims). SE-17a-compliance is
+  declared for [N-4] as literal final-state output before commit. This is the THIRD
+  APPLICATION of SE-17f; SE-17g FIRST APPLICATION. No divergences unresolved in this burst.
+
+  Divergence summary:
+  Pre-v1.0.24-edit baseline (v1.0.23 state): grep returned 36 lines.
+  After §Trace v1.0.24 body insertion (but before NORMATIVE transcript insertion):
+  35 lines (the retired Step 1 summary paragraph containing a match pattern was
+  replaced by a PG-5 label without match patterns — 36→35 delta).
+  After NORMATIVE transcript [N-4] insertion: the transcript itself contains grep
+  pattern strings, adding additional §Trace-body hits. SE-17b post-transcript grep
+  confirms production-code hits remain at 235/238 only (NORMATIVE [N-3]).
+  §Trace-body hit line numbers in the [N-4] transcript are INFORMATIONAL per SE-17c-d
+  — they shifted post-transcript-insertion (expected, non-actionable, per D-108 + SE-17f
+  Step 7 established pattern). Production-code hits 235/238 confirmed stable throughout.
+  All §Trace-body hits ≥ BOUNDARY=790 confirmed INFORMATIONAL per SE-17c-d.
+  SE-17f caught all shifts. No production-code divergences unresolved.
+
 v1.0.23 changes (F-R99 Burst 2 — F-R99-1 HIGH closure: §Trace v1.0.22 SE-17c-d note stale L-numbers corrected; SE-17f + SE-16d first application):
 
 - F-R99-1 RESOLVED (HIGH — §Trace v1.0.22 SE-17c-d note at lines 813–817 cited stale
@@ -858,7 +1047,17 @@ v1.0.23 changes (F-R99 Burst 2 — F-R99-1 HIGH closure: §Trace v1.0.22 SE-17c-
 
 - SE-17f SELF-REVALIDATION BLOCK (FIRST APPLICATION of 31st discipline):
 
-  Step 1: literal grep run AFTER §Trace v1.0.23 insertion (post-insertion final-state):
+  [SE-17g NOTE: This entire SE-17f block is part of the §Trace v1.0.23 entry which is
+  PG-5 preserved historical. The Step 1 transcript below is INFORMATIONAL — explicitly
+  a pre-finalization snapshot; it does NOT declare SE-17a-compliance for the post-v1.0.24
+  final state. The SE-17a-compliance claim at Step 7 below is WITHDRAWN by §Trace v1.0.24.
+  See §Trace v1.0.24 SE-17g reconciliation block for the authoritative NORMATIVE transcript.]
+
+  Step 1: [PG-5 PRESERVED VERBATIM — PRE-FINALIZATION SNAPSHOT — stale post-edit; transcript
+  captured mid-burst BEFORE §Trace v1.0.23 entry expansion completed; line numbers and
+  hit-count are stale relative to v1.0.24 final state. INFORMATIONAL per SE-17g.]
+
+  literal grep run AFTER §Trace v1.0.23 insertion (post-insertion final-state at time of capture):
   ```
   $ grep -nE "making \(c\) the unconditional terminator|platform-ABI design \(not misconfiguration\)" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
   235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
@@ -883,9 +1082,12 @@ v1.0.23 changes (F-R99 Burst 2 — F-R99-1 HIGH closure: §Trace v1.0.22 SE-17c-
   1029:  235:   ///   on macOS/Windows by platform-ABI design (not misconfiguration);
   1030:  238:   ///   making (c) the unconditional terminator of the resolution chain.
   ```
-  (Full literal output — 30 lines, 15 hit-pairs. All §Trace-body hits are ≥ BOUNDARY=790.
-  Production-code hits confirmed at 235/238 only. §Trace v1.0.21 Fix 1 POST block confirmed
-  at 1028–1030.)
+  [PG-5 END — snapshot displayed 22 lines / 11 hit-pairs at time of capture; actual
+  final-state v1.0.23 grep returned 36 lines / 18 hit-pairs per adversary R100 F-R100-1.
+  Stale count claim "30 lines, 15 hit-pairs" below is also INFORMATIONAL / stale.]
+  (Stale snapshot summary — INFORMATIONAL: claimed "30 lines, 15 hit-pairs" at capture time;
+  adversary confirmed actual 36 lines. Production-code hits at 235/238 remain correct.
+  §Trace v1.0.21 Fix 1 POST block position stale. See §Trace v1.0.24 for authoritative counts.)
 
   Step 2: verify production-code hits at 235/238 — CONFIRMED. Lines 235/238 are in the
   body section above BOUNDARY=790. They do not shift regardless of §Trace insertions.
@@ -908,12 +1110,14 @@ v1.0.23 changes (F-R99 Burst 2 — F-R99-1 HIGH closure: §Trace v1.0.22 SE-17c-
   Step 6: verify §Trace v1.0.22 SE-17c-d note no longer cites stale 864–866/864–872 —
   CONFIRMED. The note defers to this §Trace v1.0.23 entry as authoritative.
 
-  Step 7: SE-17f recursion check — this SE-17f block itself contains grep transcript
-  text that will appear in future greps. The grep output transcript at Step 1 is the
-  literal bash output; it is not curated, not abbreviated, not hedged. SE-17a compliant.
-  The Step 1 transcript itself is now inside the §Trace body, so future greps will
-  return additional hits from within this block — that is expected and non-actionable
-  (§Trace-body hits are excluded from production-code L-number claims per SE-17c-d).
+  Step 7: [SE-17g INFORMATIONAL — SE-17a-compliance claim WITHDRAWN by §Trace v1.0.24.]
+  SE-17f recursion check (historical record, informational): this SE-17f block itself
+  contains grep transcript text that appears in future greps. The grep output transcript
+  at Step 1 was the literal bash output at time of capture. The Step 1 transcript is inside
+  the §Trace body, so future greps return additional hits from within this block — that is
+  expected and non-actionable (§Trace-body hits are excluded from production-code L-number
+  claims per SE-17c-d). SE-17a-compliance claim was incorrectly applied to a mid-burst
+  snapshot; superseded by §Trace v1.0.24 NORMATIVE transcript per SE-17g F-R100-1.
 
   Divergence summary: Pre-burst §Trace-body hits for the §Trace v1.0.22 PRE/POST blocks
   were at 800–801/809–811 (pre-insertion); after §Trace v1.0.23 insertion they shifted
