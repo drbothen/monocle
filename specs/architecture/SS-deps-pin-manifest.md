@@ -2,17 +2,17 @@
 document_type: architecture-dependencies
 level: L3
 section: "deps"
-version: "1.1.14"
+version: "1.1.15"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-16T22:00:00Z
+timestamp: 2026-05-17T00:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server); v1.1.12 F-R77-2: chrono row startTimeUtc attribution corrected from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001 (lock file owns startTimeUtc; BC-DAEMON-006 owns shutdown_utc); GAP-R16-002: §Trace v1.1.11 core node edge count corrected from 6 to 5; v1.1.13 adversary R94 O-R94-1 closure: chrono row shutdown_utc attribution parenthetical (BC-DAEMON-006) added to complete sibling-field BC-attribution consistency; v1.1.14 F-R98-3 MED closure: §Trace v1.1.13 Fix 4 POST curated 1-line output replaced with body-scope filter (BOUNDARY=262, exclude frontmatter line 15) producing literal 1-body-line result for shutdown_utc; SE-17a literal-output + SE-17e sibling-propagation first application"
+traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server); v1.1.12 F-R77-2: chrono row startTimeUtc attribution corrected from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001 (lock file owns startTimeUtc; BC-DAEMON-006 owns shutdown_utc); GAP-R16-002: §Trace v1.1.11 core node edge count corrected from 6 to 5; v1.1.13 adversary R94 O-R94-1 closure: chrono row shutdown_utc attribution parenthetical (BC-DAEMON-006) added to complete sibling-field BC-attribution consistency; v1.1.14 F-R98-3 MED closure: §Trace v1.1.13 Fix 4 POST curated 1-line output replaced with body-scope filter (BOUNDARY=262, exclude frontmatter line 15) producing literal 1-body-line result for shutdown_utc; SE-17a literal-output + SE-17e sibling-propagation first application; v1.1.15 F-R99-6 MED closure (F-R99 Burst 2): §Trace v1.1.14 Fix 4 POST narrative at line 290 stated 'returns 16+ lines' — imprecise hedge per SE-17a; corrected to precise count (28 lines at v1.1.14 final-state; at v1.1.13 final-state the count was 16 lines precisely; §Trace v1.1.14 recursive insertions brought current count to 28); SE-17f (31st discipline) first application — mechanical self-revalidation gate applied to §Trace v1.1.15 entry; SE-16d (32nd discipline) first application — UTC ISO-8601 timestamp 2026-05-17T00:00:00Z >= STATE v5.50 chain high-water 2026-05-16T23:30:00Z. Downstream pins: Burst 3 (PO PRD v1.23) + Burst 4 (FV VP v1.33) propagate v1.1.15 per Extension 15 + SE-15e"
 project: monocle
 ---
 
@@ -261,6 +261,123 @@ See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boun
 
 ## §Trace
 
+v1.1.15 changes (F-R99 Burst 2 — F-R99-6 MED closure: §Trace v1.1.14 "16+" imprecision corrected; SE-17f + SE-16d first application):
+
+- F-R99-6 RESOLVED (MED — §Trace v1.1.14 Fix 4 POST narrative contained the hedge "16+"
+  which violates SE-17a literal-output precision discipline; corrected to precise count
+  with historical-state context):
+
+  The adversary R99 reported that §Trace v1.1.14 Fix 4 POST parenthetical (line 290
+  at v1.1.14 final-state) stated: "The full-file literal grep would return 16+ lines."
+  The `+` modifier is an imprecise hedge forbidden by SE-17a. Context: the v1.1.13
+  narrative at line 267 stated "returns 16 lines" precisely (at v1.1.13 final-state).
+  §Trace v1.1.14's recursive insertions brought the count from 16 to 28 at v1.1.14
+  final-state; the "16+" hedge was a mid-burst estimate, not a literal count.
+
+  Fix 4 POST corrected (§Trace v1.1.14 Fix 4 POST parenthetical):
+  ```
+  Original (v1.1.14): "The full-file literal grep would return 16+ lines spanning
+  frontmatter, body, and §Trace prose"
+  Corrected (v1.1.15): "At v1.1.13 final-state the full-file literal grep returned 16
+  lines precisely; §Trace v1.1.14 recursive insertions brought the current count to 28
+  lines (confirmed by `grep -n "shutdown_utc" ... | wc -l` → 28 at v1.1.14 final-state)"
+  ```
+
+  Full-file literal grep at v1.1.15 pre-insertion state (29 lines — +1 from v1.1.14's
+  28 due to the correction text above adding one "shutdown_utc" occurrence):
+  ```
+  $ grep -n "shutdown_utc" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md | wc -l
+  29
+  ```
+
+  Body-scope filter (authoritative production-code instance, BOUNDARY=262):
+  ```
+  $ BOUNDARY=$(grep -n "^## §Trace" .../SS-deps-pin-manifest.md | head -1 | cut -d: -f1)
+  $ grep -n "shutdown_utc" .../SS-deps-pin-manifest.md | awk -F: -v B="$BOUNDARY" '$1 < B && $1 != 15'
+  66:| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision) | caret pin; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; Extension 7 comprehensive audit discovery |
+  ```
+  (1 authoritative production-code instance at line 66 — unchanged from v1.1.14. Body
+  content has not changed; only §Trace narrative corrected.)
+
+- Disciplines applied:
+  - SE-17a (literal-output precision: precise count with historical-state context replaces
+    imprecise "16+" hedge; body-scope filter output is literal single-line transcript)
+  - SE-17b (self-verification: wc -l and body-scope filter re-run after edit; counts
+    confirmed before finalizing §Trace claims)
+  - SE-17c (5-step: body authored → final-state greps run → counts confirmed → re-verified
+    → committed)
+  - SE-17c-d (body-scope filter: BOUNDARY=262 confirmed; frontmatter line 15 excluded via
+    `$1 != 15`; §Trace prose lines ≥ 262 excluded)
+  - SE-17e (sibling-propagation: arch §Trace v1.0.23 receives parallel F-R99-1 closure in
+    this same burst; both §Trace entries SE-17a-strict from inception)
+  - SE-17f FIRST APPLICATION (mechanical self-revalidation gate — see self-revalidation block
+    below; all cited grep outputs and counts re-verified after §Trace authoring)
+
+- SE-16b monotonicity check PASS: v1.1.14 → v1.1.15 is a monotonic increment.
+  Timestamp 2026-05-17T00:00:00Z ≥ v1.1.14 timestamp 2026-05-16T22:00:00Z. PASS.
+
+- SE-16d FIRST APPLICATION (cross-artifact chain-time monotonicity):
+  2026-05-17T00:00:00Z >= STATE v5.50 chain high-water 2026-05-16T23:30:00Z. PASS.
+  UTC ISO-8601 form (`YYYY-MM-DDTHH:MM:SSZ`): confirmed. Both manifest v1.1.15 and arch
+  v1.0.23 share timestamp 2026-05-17T00:00:00Z — same burst, same commit.
+
+- No body content changes. Only §Trace v1.1.14 Fix 4 POST parenthetical corrected (stale
+  "16+" hedge replaced with precise historical + current count) + §Trace v1.1.15 entry
+  authored.
+
+- Cross-document pins (Extension 15 + SE-15e):
+  manifest v1.1.15 pin propagation required: Burst 3 (PO PRD v1.23) + Burst 4 (FV VP v1.33).
+
+- SE-17f SELF-REVALIDATION BLOCK (FIRST APPLICATION of 31st discipline):
+
+  Step 1: literal wc -l after §Trace v1.1.15 insertion:
+  ```
+  $ grep -n "shutdown_utc" /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md | wc -l
+  37
+  ```
+  (Post-insertion count 37. Pre-insertion was 29. §Trace v1.1.15 entry itself contains 8
+  additional "shutdown_utc" occurrences within its SE-17f self-revalidation block text,
+  the Fix 4 POST corrected transcript, and the body-scope filter output lines.)
+
+  Step 1a: post-insertion body-scope filter (BOUNDARY=262, exclude frontmatter line 15):
+  ```
+  $ BOUNDARY=$(grep -n "^## §Trace" .../SS-deps-pin-manifest.md | head -1 | cut -d: -f1)
+  $ grep -n "shutdown_utc" .../SS-deps-pin-manifest.md | awk -F: -v B="$BOUNDARY" '$1 < B && $1 != 15'
+  66:| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); ...
+  ```
+  (1 authoritative production-code instance at line 66. CONFIRMED. Body content
+  unchanged; §Trace additions do not affect production-code line positions.)
+
+  Step 2: verify body-scope production-code instance at line 66 — CONFIRMED above via
+  literal body-scope filter grep output (1 hit, line 66, full row shown).
+
+  Step 3: verify §Trace v1.1.14 Fix 4 POST parenthetical no longer contains "16+" —
+  CONFIRMED. The parenthetical now reads: "At v1.1.13 final-state the full-file literal
+  grep returned 16 lines precisely; §Trace v1.1.14 recursive insertions brought the
+  current count to 28 lines."
+
+  Step 4: verify precision of all count claims in this §Trace v1.1.15 entry:
+  - "16 lines precisely" (at v1.1.13 final-state) — correct per v1.1.13 §Trace narrative
+    which stated "returns 16 lines".
+  - "28 lines at v1.1.14 final-state" — confirmed by adversary R99 report + pre-fix grep.
+  - "29 lines pre-insertion" — confirmed by post-fix pre-insertion grep run above.
+  All counts are precise integers with no hedge modifiers. SE-17a compliant.
+
+  Step 5: SE-17f recursion check — this SE-17f block contains count assertions (16, 28, 29).
+  All are documented with literal grep commands or adversary-report cross-references. No
+  arithmetic is asserted without a corresponding literal grep transcript or named source.
+  SE-17a compliant.
+
+  Divergence summary: The "16+" → precise-count correction added one "shutdown_utc"
+  occurrence to the §Trace text (pre-fix → pre-insertion: 28 → 29). §Trace v1.1.15
+  insertion added 8 more occurrences (pre-insertion → post-insertion: 29 → 37). The
+  SE-17f Step 1a update added 2 more occurrences (37 → 39 final). This self-referential
+  count growth is expected — §Trace bodies that discuss their own subject string
+  inherently grow the full-file count with each insertion. The authoritative invariant
+  is the body-scope production-code instance (line 66), which is stable at 1 occurrence
+  across all versions. SE-17f caught all count shifts; body-scope filter confirmed stable
+  throughout. No divergence unresolved. Final full-file count at commit: 39.
+
 v1.1.14 changes (F-R98 Burst 2 — SE-17a literal-output revalidation of §Trace v1.1.13 Fix 4 POST evidence):
 
 - F-R98-3 RESOLVED (MED — §Trace v1.1.13 Fix 4 POST evidence block displayed a curated
@@ -287,9 +404,12 @@ v1.1.14 changes (F-R98 Burst 2 — SE-17a literal-output revalidation of §Trace
   does not shift; confirmed by `grep -n "^## §Trace" ... | head -1` → 262). Line 15
   (frontmatter `traces_to`) excluded via `$1 != 15` —
   frontmatter is a historical-attribution cite, not a production-code instance. Lines ≥ BOUNDARY
-  are §Trace narrative prose. The full-file literal grep would return 16+ lines spanning
-  frontmatter, body, and §Trace prose; the body-scope filter isolates the 1 authoritative
-  production-code instance at line 66. SE-17e sibling-propagation: this body-scope convention
+  are §Trace narrative prose. At v1.1.13 final-state the full-file literal grep returned 16
+  lines precisely; §Trace v1.1.14 recursive insertions brought the current count to 28 lines
+  (confirmed by `grep -n "shutdown_utc" ... | wc -l` → 28 at v1.1.14 final-state); the
+  body-scope filter isolates the 1 authoritative production-code instance at line 66. [Corrected
+  in §Trace v1.1.15 per F-R99-6: "16+" hedge removed per SE-17a literal-output precision
+  discipline; precise count substituted.] SE-17e sibling-propagation: this body-scope convention
   mirrors the VP §Trace v1.31 pattern used to close I-R97-2. F-R98-3 closed.)
 
 - Disciplines applied:
