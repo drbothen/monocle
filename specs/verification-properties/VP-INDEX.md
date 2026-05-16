@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T13:00:00Z
+timestamp: 2026-05-17T13:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "[live-state]"
@@ -55,14 +55,14 @@ traces_to: prd.md
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
 |-------|-------|-----------|--------------|------|---------------|
-| VP-011 | ABI Version in `/status` Endpoint | BC-2.02.001 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ABI-001 |
-| VP-012 | `MONOCLE_ABI_VERSION` Pub Const Equals `1` | BC-2.02.002 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ABI-002 |
-| VP-013 | Non-Exhaustive Enum Policy (Modulo ADR-0004 Exemptions) | BC-2.02.003 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-TYPES-001 |
-| VP-014 | `FactoryAdapter` Trait Signature Stable | BC-2.02.004 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-FACTORY-001 |
-| VP-015 | `VsddFactoryAdapter::new` + Self-Reference Detection | BC-2.02.005 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-FACTORY-002 |
-| VP-016 | Proto Field Number 1 = `schema_version` in `HookEnvelope` | BC-2.02.006 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-PROTO-001a |
-| VP-017 | Rust `HookEnvelope` Struct `pub schema_version: u32 = 1` | BC-2.02.007 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-PROTO-001b |
-| VP-018 | `schema_version` Forward-Compat Contract (Phase 4 Dispatch) | BC-2.02.008 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-PROTO-002 |
+| VP-011 | ABI Version in `/status` Endpoint | BC-2.02.001 | integration-test | vp-011-abi-version-status-endpoint.md | VP-ABI-001 |
+| VP-012 | `MONOCLE_ABI_VERSION` Pub Const Equals `1` | BC-2.02.002 | compile-time-check | vp-012-abi-version-crate-root.md | VP-ABI-002 |
+| VP-013 | Non-Exhaustive Enum Policy (Modulo ADR-0004 Exemptions) | BC-2.02.003 | ast-audit+mutation-test | vp-013-non-exhaustive-enum-policy.md | VP-TYPES-001 |
+| VP-014 | `FactoryAdapter` Trait Signature Stable | BC-2.02.004 | ast-audit | vp-014-factory-adapter-trait.md | VP-FACTORY-001 |
+| VP-015 | `VsddFactoryAdapter::new` + Self-Reference Detection | BC-2.02.005 | integration-test+fuzz | vp-015-vsdd-factory-adapter.md | VP-FACTORY-002 |
+| VP-016 | Proto Field Number 1 = `schema_version` in `HookEnvelope` | BC-2.02.006 | integration-test | vp-016-hook-envelope-proto-field-numbers.md | VP-PROTO-001a |
+| VP-017 | Rust `HookEnvelope` Struct `pub schema_version: u32 = 1` | BC-2.02.007 | integration-test | vp-017-hook-envelope-schema-version-field.md | VP-PROTO-001b |
+| VP-018 | `schema_version` Forward-Compat Contract (Phase 4 Dispatch) | BC-2.02.008 | integration-test+fuzz | vp-018-phase4-schema-version-validation.md | VP-PROTO-002 |
 
 ---
 
@@ -74,20 +74,21 @@ traces_to: prd.md
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
 |-------|-------|-----------|--------------|------|---------------|
-| VP-019 | `EngineModule` Trait Signature Stable; `last_event_micros: Option<i64>` | BC-2.03.001 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ENGINE-001 |
-| VP-020 | `ClaudeCodeModule::detect` Strict Basename Match | BC-2.03.002 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ENGINE-002 |
-| VP-021 | `metadata`/`enrich` Return `HomeUnresolvable` (All Four Home-Env Vars Unset) | BC-2.03.003 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ENGINE-002-ERR |
-| VP-022 | `hook_paths()` Returns Exactly 5 Entries — One per `HookType` Variant | BC-2.03.004 | (pending Dispatch 5b) | (pending Dispatch 5b) | VP-ENGINE-003 |
+| VP-019 | `EngineModule` Trait Signature Stable; `last_event_micros: Option<i64>` | BC-2.03.001 | ast-audit | vp-019-engine-module-trait.md | VP-ENGINE-001 |
+| VP-020 | `ClaudeCodeModule::detect` Strict Basename Match | BC-2.03.002 | integration-test | vp-020-claude-code-module-impl.md | VP-ENGINE-002 |
+| VP-021 | `metadata`/`enrich` Return `HomeUnresolvable` (All Four Home-Env Vars Unset) | BC-2.03.003 | integration-test | vp-021-home-unresolvable-error.md | VP-ENGINE-002-ERR |
+| VP-022 | `hook_paths()` Returns Exactly 5 Entries — One per `HookType` Variant | BC-2.03.004 | integration-test | vp-022-claude-code-module-inherent-methods.md | VP-ENGINE-003 |
 
 ---
 
 ## Summary
 
-- **SS-01 (Daemon Lifecycle):** 10 VPs sharded into individual files (this dispatch — Dispatch 5a).
-- **SS-02 (Core Types and ABI):** 8 VPs PENDING — Dispatch 5b will shard these from the monolithic
-  `verification-properties.md` and complete this index.
-- **SS-03 (Engine Module):** 4 VPs PENDING — Dispatch 5b will shard these.
-- **Total Phase 1 VPs:** 22 (10 SS-01 sharded + 12 SS-02/SS-03 pending).
+- **SS-01 (Daemon Lifecycle):** 10 VPs sharded into individual files (Dispatch 5a).
+- **SS-02 (Core Types and ABI):** 8 VPs sharded into individual files (Dispatch 5b — this dispatch).
+- **SS-03 (Engine Module):** 4 VPs sharded into individual files (Dispatch 5b — this dispatch).
+- **Total active Phase 1 VPs:** 22 (all sharded; monolithic
+  `verification-properties.md` retired in Dispatch 5b).
+- **Pending:** 0
 - **Withdrawn:** 0
 - **Retired:** 0
 
@@ -96,7 +97,7 @@ traces_to: prd.md
 ## Renumbering Appendix (Append-Only Protection)
 
 This appendix preserves the PG-5 historical VP IDs against the new per-file
-canonical IDs introduced in Dispatch 5a (this dispatch) and Dispatch 5b.
+canonical IDs introduced in Dispatch 5a and Dispatch 5b.
 Old IDs are NEVER reused for new properties; this table is the canonical
 mapping for traceability into pre-Dispatch-5a artifacts.
 
@@ -112,28 +113,31 @@ mapping for traceability into pre-Dispatch-5a artifacts.
 | VP-AUTH-001 | VP-008 | vp-008-auth-token-wire-format.md | 5a | sharded |
 | VP-AUTH-002 | VP-009 | vp-009-auth-header-validation.md | 5a | sharded |
 | VP-LOCK-001 | VP-010 | vp-010-lock-file-contract-version.md | 5a | sharded |
-| VP-ABI-001 | VP-011 | (pending) | 5b | pending |
-| VP-ABI-002 | VP-012 | (pending) | 5b | pending |
-| VP-TYPES-001 | VP-013 | (pending) | 5b | pending |
-| VP-FACTORY-001 | VP-014 | (pending) | 5b | pending |
-| VP-FACTORY-002 | VP-015 | (pending) | 5b | pending |
-| VP-PROTO-001a | VP-016 | (pending) | 5b | pending |
-| VP-PROTO-001b | VP-017 | (pending) | 5b | pending |
-| VP-PROTO-002 | VP-018 | (pending) | 5b | pending |
-| VP-ENGINE-001 | VP-019 | (pending) | 5b | pending |
-| VP-ENGINE-002 | VP-020 | (pending) | 5b | pending |
-| VP-ENGINE-002-ERR | VP-021 | (pending) | 5b | pending |
-| VP-ENGINE-003 | VP-022 | (pending) | 5b | pending |
+| VP-ABI-001 | VP-011 | vp-011-abi-version-status-endpoint.md | 5b | sharded |
+| VP-ABI-002 | VP-012 | vp-012-abi-version-crate-root.md | 5b | sharded |
+| VP-TYPES-001 | VP-013 | vp-013-non-exhaustive-enum-policy.md | 5b | sharded |
+| VP-FACTORY-001 | VP-014 | vp-014-factory-adapter-trait.md | 5b | sharded |
+| VP-FACTORY-002 | VP-015 | vp-015-vsdd-factory-adapter.md | 5b | sharded |
+| VP-PROTO-001a | VP-016 | vp-016-hook-envelope-proto-field-numbers.md | 5b | sharded |
+| VP-PROTO-001b | VP-017 | vp-017-hook-envelope-schema-version-field.md | 5b | sharded |
+| VP-PROTO-002 | VP-018 | vp-018-phase4-schema-version-validation.md | 5b | sharded |
+| VP-ENGINE-001 | VP-019 | vp-019-engine-module-trait.md | 5b | sharded |
+| VP-ENGINE-002 | VP-020 | vp-020-claude-code-module-impl.md | 5b | sharded |
+| VP-ENGINE-002-ERR | VP-021 | vp-021-home-unresolvable-error.md | 5b | sharded |
+| VP-ENGINE-003 | VP-022 | vp-022-claude-code-module-inherent-methods.md | 5b | sharded |
 
 ---
 
 ## References
 
-- Current as of `2026-05-17T13:00:00Z` (Dispatch 5a).
-- Source monolith (predecessor):
-  `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
-  pre-Dispatch-5a state; to be retired in Dispatch 5b along with SS-02/SS-03
-  sharding completion).
+- Current as of `2026-05-17T13:30:00Z` (Dispatch 5b).
+- Source monolith (retired): `.factory/specs/verification-properties.md`
+  v1.35 was the predecessor (commit 842402c). The monolith was deleted
+  from the working tree in Dispatch 5b; per PG-5 historical preservation
+  policy, the full content remains accessible via
+  `git show 842402c:.factory/specs/verification-properties.md` and
+  earlier commits. VP-INDEX.md is now the canonical entry point for
+  Phase 1 verification properties.
 - BC index: `behavioral-contracts/BC-INDEX.md` v1.1 (Dispatch 3 commit f259ade).
 - PRD: `.factory/specs/prd.md` v1.26 (Dispatch 4 commit 1030c65).
 - Architecture index: `architecture/ARCH-INDEX.md`.
