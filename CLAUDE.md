@@ -45,7 +45,7 @@ When two artifacts disagree, the LATER, MORE-SPECIFIC artifact wins:
 4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` — code conventions, anti-patterns, clippy + semgrep + PR-template + CI enforcement specs.
 5. `.factory/specs/dtu-assessment.md` — DTU clone scope for hook protocol surface (DTU_REQUIRED: true for Phase 1).
 6. `.factory/specs/product-brief.md` v1.4.23 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view. R-001 (Anthropic commoditization risk) reassessed at <10% probability; informational only, no mitigation scaffolding required.
-7. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.1 — re-approved 2026-05-12 with refreshed endpoint set (canonical 5) and tech-stack pointer to `SS-deps-pin-manifest.md`. Captures human intent including all JC/EX/OQ-M closures. v1.1.1 is a surgical patch of v1.1 (path refs + frontmatter date); substantive content unchanged.
+7. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 — re-approved 2026-05-12 with refreshed endpoint set (canonical 5) and tech-stack pointer to `SS-deps-pin-manifest.md`. Captures human intent including all JC/EX/OQ-M closures. v1.1.2 is a surgical patch of v1.1 (path refs + frontmatter date); substantive content unchanged.
 8. `.factory/tech-debt-register.md` — tech debt register (see Principle 3 below; not for AI-driven deferrals).
 
 ---
