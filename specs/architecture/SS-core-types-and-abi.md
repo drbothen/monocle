@@ -1,14 +1,14 @@
 ---
-document_type: architecture-core-types
+document_type: architecture-section
 level: L3
-section: "core"
+section: "core-types-and-abi"
 slug: "types-and-abi"
-subsystem: "core"
-version: "1.2.8"
+subsystem: SS-02
+version: "1.2.9"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T08:00:00Z
+timestamp: 2026-05-17T11:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -19,7 +19,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
 input-hash: "[live-state]"
-traces_to: "FC-02 + FC-03 + FC-04 + FC-05 from forward-compat scan 9618502; human authorization to lock pre-Phase-1; v1.2: FactoryAdapter sealing removed per SS-forward-compatibility §Item P3-1 veto + human Q-15-1; N2/N9 round-14 adversary findings resolved; v1.2.1: N16-2 VsddFactoryAdapter::new constructor; N16-5 FactoryAdapter divergence documented per human Q-16-5; N16-6 Option types + serde_yaml_ng::Value in FactoryState; N16-8 BC footer 9→8 with cross-ref; v1.2.2: F-R18-2 VsddFactoryAdapter::new rustdoc; F-R18-3 parse_frontmatter_field quote-stripping + parse_frontmatter_extra_fields list/block-scalar skipping; v1.2.3: F-R20-2 parse_frontmatter_field safety guards parity with sibling; v1.2.4: F-R48-adv-2 PG-3 all-prose expansion — 2 cross-doc L-number pinpoints converted to position-free section refs; v1.2.5: F-R51-adv-1 PG-4 sweep — §Analysis — Sealed trait prefix corrected to §Item P3-1 in §FactoryAdapter Trait §Trait Signature rustdoc; v1.2.6: F-R52-cons-1 PG-3-TRACE-NEW-ENTRY sweep — at L487 intra-doc bare L-number dropped from §Trace v1.2.5 entry; v1.2.7: F-R53-adv-3 brief §Phase Plan → §Phase Plan Rationale in §HookType rustdoc (§Scope header); F-R53-adv-4 brief §Phase 1 Success Criteria → §Success Criteria at 2 sites in §VsddFactoryAdapter Phase 1 Implementation rustdoc and §BC-FACTORY-002 Traceability (PG-4 fix — heading does not exist; corrected to actual heading); v1.2.8: F-R56-2 PG-5 historical-anchor framing — brief v1.4.6 version qualifier dropped at both §VsddFactoryAdapter rustdoc and §BC-FACTORY-002 Traceability sites per option (c): §Success Criteria is stable since v1.4.0; version qualifier adds no value and was false-currency (brief at v1.4.23)"
+traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
 
@@ -1273,3 +1273,19 @@ Cross-references:
   `serde_json` for tool_input fields
 - `oq-research.md` OQ-03 (`VsddFactoryAdapter` as Phase 1 static bundle),
   OQ-07 (protobuf seams v1)
+
+**§Trace v1.2.9** (2026-05-17T11:00:00Z) — Template compliance Dispatch 1:
+- NORMATIVE: `document_type` corrected from `architecture-core-types` → `architecture-section`
+  per audit §5 (SS-core-types-and-abi.md L1 verdict: FAIL; wrong document_type).
+- NORMATIVE: `section` field corrected from `"core"` → `"core-types-and-abi"` (full section name
+  per template; `"core"` was a partial identifier per audit §5 WARN).
+- NORMATIVE: `subsystem` field corrected from `"core"` → `SS-02` (canonical SS-NN format per
+  ARCH-INDEX.md Subsystem Registry; `"core"` pre-dated ARCH-INDEX existence).
+- NORMATIVE: `traces_to` corrected to `architecture/ARCH-INDEX.md` (was long trace-history
+  string; ARCH-INDEX.md now created in this dispatch).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T11:00:00Z (>= chain high-water 2026-05-17T10:30:00Z;
+  SE-16d PASS).
+- INFORMATIONAL: Version bump 1.2.8 → 1.2.9 records structural fix; no content changes.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md` §6 (SS-core-types-and-abi).
+- SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.

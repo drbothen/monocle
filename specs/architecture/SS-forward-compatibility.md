@@ -1,14 +1,14 @@
 ---
 document_type: architecture-section
 level: L3
-section: "forward-compat"
+section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
-subsystem: "forward-compat"
-version: "1.2.13"
+subsystem: cross-cutting
+version: "1.2.14"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T20:00:00Z
+timestamp: 2026-05-17T11:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
@@ -21,7 +21,7 @@ inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "human Q-4 forward-compat scan authorization; production-grade canonical principle CLAUDE.md; FC-01..FC-06 RESOLVED pre-Phase-1 per human authorization (v1.1); v1.2.1: N16-7 stale sealed-pattern prose swept: FC-04 Disposition + Verdict paragraph updated to reflect open-trait resolution (sealing removed round-15 per Q-15-1); v1.2.2 round-39: F-R38-2 stale SS-daemon-lifecycle.md v1.0.3 citations updated to v1.0.6 (4th recurrence of cross-artifact version-citation staleness META-pattern; 3 sites: FC-01 table cell, FC-06 table cell, Verdict bullet); v1.2.3 round-43: D-042 grep scope corrected from .factory/specs/architecture/ to .factory/specs/ (6th recurrence closure); O-R42-1 anchor-tolerant secondary pattern added; v1.2.4 round-47: F-R46-1 HIGH — corrected factually-false schema-fact claim at P2-1 analysis: session_id NOT present in all 5 hook body schemas per gene-source DTU endpoint matrix (gene-source PreToolUse and Notification lack it); session_id IS present in all 5 monocle-canonical schemas per SS-core-types-and-abi.md v1.2.3; citation updated to reference monocle-canonical column of dtu-assessment.md v1.2; v1.2.5 round-49: D-042 citation refresh — SS-core-types-and-abi.md v1.2.3 → v1.2.4 in 2 main-body citation sites (§P2-1 analysis session_id prose; §F-R46-1 §Trace co-authoritative sources reference); dtu-assessment.md v1.2 → v1.3 in 3 main-body citation sites (§P2-1 analysis session_id prose; §P2-2 Verdict pid prose; §P2-2 Verdict join-key sentence); v1.2.6 round-51.1: PG-4 §-heading-existence sweep — §Phase 4 Additions corrected to §Phase 4 — Federation, MCP Bridge; D-042 cascade — dtu-assessment.md v1.3 → v1.4 (3 sites); SS-core-types-and-abi.md v1.2.4 → v1.2.5 (1 site); v1.2.7 round-52.1: PG-3-TRACE-NEW-ENTRY sweep — (L55)/(L57)/(L73) bare L-number tokens dropped from §Trace v1.2.6 D-042 entry; D-042 cascade — SS-core-types-and-abi.md v1.2.5 → v1.2.6 in §P2-1 analysis session_id prose; v1.2.8 round-52.2: F-R52R-1 D-042 cascade — dtu-assessment.md v1.4 → v1.5 in §P2-1 analysis session_id prose, §P2-2 Verdict pid prose, §P2-2 Verdict join-key sentence (3 sites; missed by R52.1 because D-042 primary grep matches only SS-prefixed filenames); F-R52R-2 §Trace ordering — v1.2.2 moved to after v1.2.3 (strict descending); PG-D042-DTU-SCOPE companion in SS-conventions-anti-patterns.md v1.21; v1.2.9 round-53.1: F-R53-adv-3 brief §-anchor mis-anchors — 5 corrections: §Phase Plan → §Phase Plan Rationale (§Scope), §Explicit Non-Goals → §Out of Scope (Explicit Non-Goals) (§P2-1 analysis), §Phase Plan Phase 2 → §Phase Plan Rationale (Phase 2 objectives) (§P2-2 analysis), §Phase Plan Phase 3 → §Phase Plan Rationale (Phase 3 objectives) (§P3-2 Verdict), §Phase 4 notes → §Scope (Phase 4 — PostToolUse revisit note) (§P3-1 analysis). D-042 cascade: dtu-assessment.md v1.5 → v1.6 (§P2-1 session_id, §P2-2 pid, §P2-2 join-key); SS-core-types-and-abi.md v1.2.7 citation. Comprehensive expanded-scope PG-4 sweep (F-R53-adv-2 sibling patterns); v1.2.10 round-54.1: F-R54-adv-1 D-042 same-file partial cascade — FC-01 and FC-06 table col 4 (Phase 1 Spec Change) citations of SS-daemon-lifecycle.md updated v1.0.6 → v1.0.7; FC-01 and FC-06 Disposition column citations left at v1.0.6 (intentionally historical — records lock-in version, not current spec version); §Verdict citation already correct at v1.0.7 since R53.1. 10th D-042 recurrence; first within-file-partial cascade; v1.2.11 round-55.1: F-R55-adv-2 MEDIUM content — §Scope false-currency rewrite on brief side (brief was v1.4.5 at scan time vs current v1.4.23); vision v1.1.2 is and was canonical. §Scope second sentence → historical-anchor form; objectives header → scan-time qualifier. D-053 option (b) bounded residuals F-R55-adv-1 + F-R55-adv-3 NOT fixed here; state-manager catalogs in close-out; v1.2.12 round-56.1: F-R56-1 MEDIUM content — §Trace v1.2.11 factual error corrected: claim 'vision v1.1.2 does not exist; canonical is v1.1' was false; vision IS at v1.1.2 per domain-monocle-vision-synthesis.md frontmatter. §Scope vision version restored to v1.1.2 historical-anchor form. D-042 cascade — dtu-assessment.md v1.6 → v1.7 in §P2-1 session_id prose, §P2-2 pid prose, §P2-2 join-key sentence (3 sites); SS-core-types-and-abi.md v1.2.7 → v1.2.8 in §P2-1 session_id prose (1 site). PG-5 §Historical-Anchor Framing Convention co-codified in SS-conventions-anti-patterns.md v1.24"
+traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
 
@@ -516,3 +516,20 @@ v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
   SS-daemon-lifecycle.md version bump to enumerate all citation sites in one pass.
   NOTE: the grep scope above (.factory/specs/architecture/) was defective — see
   v1.2.3 above for the corrected D-042 workflow rule.
+
+**§Trace v1.2.14** (2026-05-17T11:00:00Z) — Template compliance Dispatch 1:
+- NORMATIVE: `section` field corrected from `"forward-compat"` → `"forward-compatibility"`
+  (full, unambiguous section name matching filename per template convention).
+- NORMATIVE: `subsystem` corrected from `"forward-compat"` → `cross-cutting` (canonical
+  designation per ARCH-INDEX.md §Cross-Cutting Files; forward-compatibility is not a runtime
+  subsystem, it is a cross-cutting constraint layer over all subsystems).
+- NORMATIVE: `traces_to` corrected to `architecture/ARCH-INDEX.md` (was long trace-history
+  string; ARCH-INDEX.md created in this dispatch).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T11:00:00Z (>= chain high-water 2026-05-17T10:30:00Z;
+  SE-16d PASS).
+- INFORMATIONAL: `document_type` already `architecture-section` — no change required (audit §10
+  confirmed PASS for forward-compatibility document_type).
+- INFORMATIONAL: Version bump 1.2.13 → 1.2.14 records structural fix; no content changes.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md` §10 (SS-forward-compat).
+- SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.

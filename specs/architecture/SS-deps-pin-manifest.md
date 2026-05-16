@@ -1,18 +1,19 @@
 ---
-document_type: architecture-dependencies
+document_type: architecture-section
 level: L3
-section: "deps"
-version: "1.1.15"
+section: "deps-pin-manifest"
+subsystem: cross-cutting
+version: "1.1.16"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T00:00:00Z
+timestamp: 2026-05-17T11:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
 input-hash: "[live-state]"
-traces_to: "adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT items 1,2; canonical principle CLAUDE.md commit 3366d58; brief v1.4 commit 70286e1; vision v1.1 commit 0e4b0f4; consistency-audit 0f28619; validate-brief v4 38b8e8f; commit 4f5d4ff FC burst follow-on; BC-AUTH-001 + BC-FACTORY-001 implicit dependencies; v1.1.6 round-22 F-R22-3: temp-env dev-dep added for BC-ENGINE-002-ERR test isolation; v1.1.7 round-24 F-R24-adv-1: temp-env ^0.2 → ^0.3 with async_closure feature for async_with_vars API; v1.1.8 round-57.1 PG-5 sweep — brief v1.4 historical-anchor fix §Authority + §Crate Count (2 sites); v1.1.9 adversary R71 F-R71-4b: nix 0.30 added as workspace pin for POSIX signal handling (BC-DAEMON-005 pid-liveness); F-R71-4a: tower disposition documented (transitive via axum 0.8, no direct workspace pin required); v1.1.10 adversary R74 F-R74-3: 4 missing runtime edges added to workspace dependency graph (runtime→tempfile, runtime→serde_json, runtime→directories, runtime→nix); v1.1.11 adversary R76 F-R76-1: serde 1 + chrono 0.4 added to pin table; runtime→serde, core→serde, runtime→chrono dep edges added; F-R76-2: runtime→axum added, ipc→axum removed (monocle-ipc is Phase 4 russh federation tunnel, not axum HTTP server); v1.1.12 F-R77-2: chrono row startTimeUtc attribution corrected from BC-DAEMON-006 to BC-DAEMON-005 / BC-LOCK-001 (lock file owns startTimeUtc; BC-DAEMON-006 owns shutdown_utc); GAP-R16-002: §Trace v1.1.11 core node edge count corrected from 6 to 5; v1.1.13 adversary R94 O-R94-1 closure: chrono row shutdown_utc attribution parenthetical (BC-DAEMON-006) added to complete sibling-field BC-attribution consistency; v1.1.14 F-R98-3 MED closure: §Trace v1.1.13 Fix 4 POST curated 1-line output replaced with body-scope filter (BOUNDARY=262, exclude frontmatter line 15) producing literal 1-body-line result for shutdown_utc; SE-17a literal-output + SE-17e sibling-propagation first application; v1.1.15 F-R99-6 MED closure (F-R99 Burst 2): §Trace v1.1.14 Fix 4 POST narrative at line 290 stated 'returns 16+ lines' — imprecise hedge per SE-17a; corrected to precise count (28 lines at v1.1.14 final-state; at v1.1.13 final-state the count was 16 lines precisely; §Trace v1.1.14 recursive insertions brought current count to 28); SE-17f (31st discipline) first application — mechanical self-revalidation gate applied to §Trace v1.1.15 entry; SE-16d (32nd discipline) first application — UTC ISO-8601 timestamp 2026-05-17T00:00:00Z >= STATE v5.50 chain high-water 2026-05-16T23:30:00Z. Downstream pins: Burst 3 (PO PRD v1.23) + Burst 4 (FV VP v1.33) propagate v1.1.15 per Extension 15 + SE-15e"
+traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
 
@@ -734,3 +735,19 @@ v1.1.6 changes (round-22 fix F-R22-3):
   isolation in `monocle-runtime/tests/engine_module.rs`. Chosen over `serial_test` +
   manual `remove_var` because `temp-env` restores env vars on both normal and panic
   exit paths (RAII cleanup), making it safe for multi-threaded Rust test harnesses.
+
+**§Trace v1.1.16** (2026-05-17T11:00:00Z) — Template compliance Dispatch 1:
+- NORMATIVE: `document_type` corrected from `architecture-dependencies` → `architecture-section`
+  per audit §8 (SS-deps-pin-manifest.md L1 verdict: FAIL; wrong document_type).
+- NORMATIVE: `section` field corrected from `"deps"` → `"deps-pin-manifest"` (full section name
+  per template; `"deps"` was a partial identifier per audit §8 WARN).
+- NORMATIVE: `subsystem: cross-cutting` added (cross-cutting file per ARCH-INDEX.md §Cross-Cutting
+  Files; not a runtime subsystem; template allows `cross-cutting` designation).
+- NORMATIVE: `traces_to` corrected to `architecture/ARCH-INDEX.md` (was long trace-history string;
+  ARCH-INDEX.md now created in this dispatch).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T11:00:00Z (>= chain high-water 2026-05-17T10:30:00Z;
+  SE-16d PASS).
+- INFORMATIONAL: Version bump 1.1.15 → 1.1.16 records structural fix; no content changes.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md` §8 (SS-deps-pin-manifest).
+- SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.

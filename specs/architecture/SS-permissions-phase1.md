@@ -1,17 +1,18 @@
 ---
-document_type: architecture-permissions
+document_type: architecture-section
 level: L3
-section: "permissions"
-version: "1.4"
+section: "permissions-phase1"
+subsystem: cross-cutting
+version: "1.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T16:00:00Z
+timestamp: 2026-05-17T11:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
 input-hash: "[live-state]"
-traces_to: "adversary F-NEW-03 (CRITICAL); human Q-A-permission-enum Option A; gene-source BC-HOOK-007 and Claude Code hook semantics; brief v1.4.2; v1.1: #[non_exhaustive] on DenyReason/AllowPattern/DenyPattern per F-FC-O005 regression + G-R14-002; §Consequences scope corrected; round-14 adversary N7 resolved; v1.2: round-57.1 PG-5 sweep — brief v1.3 + v1.4.3 historical-anchor fix (§Context + §Consequences); v1.3: round-58.1 F-R58-1-cons — PG-3-TRACE-NEW-ENTRY self-violation in §Trace v1.2 entries; bare L-numbers removed, position-free rewrite; v1.4: round-59.1 F-R59-adv-2 — §Trace heading ## Trace → ## §Trace; §Trace-Heading-Convention (SS-conventions-anti-patterns.md v1.27)"
+traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
 
@@ -323,3 +324,19 @@ v1.0 (initial): Resolves F-NEW-03 (CRITICAL adversary finding, commit e2c224b). 
 Q-A-permission-enum Option A. Gene-source: BC-HOOK-007 (canonical 5-hook matrix),
 BC-HOOK-018 (fail-open semantics), BC-HOOK-020 (Notification filter), BC-HOOK-022
 (timeout matrix).
+
+**§Trace v1.5** (2026-05-17T11:00:00Z) — Template compliance Dispatch 1:
+- NORMATIVE: `document_type` corrected from `architecture-permissions` → `architecture-section`
+  per audit §11 (SS-permissions-phase1.md L1 verdict: FAIL; wrong document_type).
+- NORMATIVE: `section` field corrected from `"permissions"` → `"permissions-phase1"` (full,
+  unambiguous section name per template convention).
+- NORMATIVE: `subsystem: cross-cutting` added (cross-cutting file per ARCH-INDEX.md §Cross-Cutting
+  Files; Phase1Permission enum applies across all subsystems).
+- NORMATIVE: `traces_to` corrected to `architecture/ARCH-INDEX.md` (was long trace-history string;
+  ARCH-INDEX.md now created in this dispatch).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T11:00:00Z (>= chain high-water 2026-05-17T10:30:00Z;
+  SE-16d PASS).
+- INFORMATIONAL: Version bump 1.4 → 1.5 records structural fix; no content changes.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md` §11 (SS-permissions-phase1).
+- SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.

@@ -3,18 +3,18 @@ document_type: architecture-section
 level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
-subsystem: "core"
-version: "1.1.15"
+subsystem: SS-03
+version: "1.1.16"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T08:00:00Z
+timestamp: 2026-05-17T11:00:00Z
 inputs:
   - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
   - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
 input-hash: "[live-state]"
-traces_to: "vision authority restoration per human Q-15-1; round-14 adversary N1/N2; SS-forward-compatibility §Item P3-1 veto honored; F-FC-I003 adversary finding; vision §EngineModule; brief v1.4.7 §Harness plane; v1.1.1 round-16 fixes: N16-1 dirs→directories::ProjectDirs; N16-2 ClaudeCodeModule::new; N16-3 EngineMetadata claim clarified; N16-4 exe_path+ppid in ProcessSnapshot; v1.1.2 round-19 fixes: F-R18-1 ProjectDirs→BaseDirs::home_dir().join(.claude); F-R18-2 ClaudeCodeModule::new rustdoc; F-R18-4 BC-ENGINE-002 exe_path=None wording; v1.1.3 round-20 fixes: F-R20-1 metadata/enrich Result<_,EngineMetadataError> typed error; F-R20-3 url-crate rustdoc removed; v1.1.4 round-22 fixes: F-R22-1/2 vision-verbatim vs vision-spirit-aligned provenance precision; F-R22-3 BC-ENGINE-002-ERR HomeUnresolvable error-path test spec with temp-env isolation; v1.1.5 round-23 micro-fix: BC-ENGINE-002-ERR added to Phase 1 PRD BC Pre-Staging table (3→4 engine BCs); v1.1.6 round-24 fixes: F-R24-adv-1 BC-ENGINE-002-ERR enrich() half split to async_with_vars (temp-env async_closure feature; ^0.3 pin); F-R24-adv-3 env-var unset list corrected to HOME+USERPROFILE+HOMEDRIVE+HOMEPATH (removed irrelevant XDG_* entries); v1.1.7 round-27 fixes: F-R26-adv-1 CRITICAL constructors added to EngineMetadata/ProcessSnapshot/EnrichedSession/HookResponse (E0639 fix — #[non_exhaustive] forbids cross-crate struct literal); F-R26-adv-5 test spec updated with full ProcessSnapshot::new() args; F-R26-2 supersession annotations on v1.1.4 and v1.1.5 trace entries; v1.1.8 round-29 fixes: F-R28-1 EnrichedSession::last_event_micros i64→Option<i64> (epoch sentinel eliminated); F-R28-2 SpawnArgs/SessionHandle/EngineVersion constructors + Cross-Crate Constructor Audit table + HookEvent inner struct audit (serde-deserialize-only safe); F-R28-3 HookResponse with_diagnostic/with_redirect builder methods (pub-field mutation pattern eliminated from rustdoc); F-R28-5 v1.1.5 trace supersession annotation corrected; v1.1.9 round-30 fixes: F-R30-1 audit table expanded from 7 to 17 structs (FactoryDetection/FactoryState/BlockingIssue/ConvergenceMetrics from SS-core-types-and-abi.md + HookEventRecord from SS-daemon-lifecycle.md + 5 HookEvent inner structs merged from separate sub-section); HTML delimiters added for CI machine-parsing; F-R30-3 enforcement spec added (semgrep rule + CI Python parser); v1.1.10 round-35 fixes: F-R34-1 §Trace prose de-quoted — verbatim delimiter strings in v1.1.9 §Trace lines now replaced by name-references per SS-conventions §Semgrep Coverage Hardening convention; v1.1.11 round-41 fixes: F-R40-2 stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints (HookEventRecord introduced at SS-daemon-lifecycle.md v1.0.5; #[non_exhaustive] added in v1.0.6 per F-R30-2); v1.1.12 round-48: directional typo in §Future audit maintenance corrected (audit table rows below → above; PG-3 sweep); v1.1.13 round-47.3: §Trace v1.1.12 L-number pinpoints converted to position-free section refs per PG-3 §Trace-prose sub-rule; v1.1.14 round-49: F-R48-adv-2 PG-3 all-prose expansion (4 cross-doc L-number pinpoints → §Item P3-1 section refs; vision lines 111-128 → §EngineModule); F-R48-adv-3 BC-HOOK-018 gene-source qualifier added; v1.1.15 round-51.1: F-R51-adv-1 PG-4 §-heading-existence sweep — §Option A mis-anchor (2 sites) corrected to §Trace; §HookEventRecord mis-anchor corrected to §Drain"
+traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
 
@@ -1554,3 +1554,18 @@ Cross-references:
 - `SS-deps-pin-manifest.md` — `async-trait = "^0.1"` (Phase 1 Pin Manifest)
 - Vision `domain-monocle-vision-synthesis.md` §EngineModule (original sketch; non-authoritative for Phase 1 signatures — this document supersedes it per CLAUDE.md §Architectural Authority)
 - `SS-forward-compatibility.md` §Item P3-1 — Verdict on Sealed (sealing veto)
+
+**§Trace v1.1.16** (2026-05-17T11:00:00Z) — Template compliance Dispatch 1:
+- NORMATIVE: `subsystem` corrected from `"core"` → `SS-03` (canonical SS-NN format per
+  ARCH-INDEX.md Subsystem Registry; `"core"` pre-dated ARCH-INDEX existence and was ambiguous
+  between SS-02 and SS-03; SS-03 is the correct assignment for the EngineModule trait).
+- NORMATIVE: `traces_to` corrected to `architecture/ARCH-INDEX.md` (was long trace-history
+  string; ARCH-INDEX.md created in this dispatch).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T11:00:00Z (>= chain high-water 2026-05-17T10:30:00Z;
+  SE-16d PASS).
+- INFORMATIONAL: `document_type` already `architecture-section` — no change required (audit §7
+  confirmed PASS for engine-module document_type).
+- INFORMATIONAL: Version bump 1.1.15 → 1.1.16 records structural fix; no content changes.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md` §7 (SS-engine-module).
+- SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
