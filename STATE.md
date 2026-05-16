@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.46"
+version: "5.47"
 status: active
 producer: state-manager
-timestamp: 2026-05-15T23:59:00Z
+timestamp: 2026-05-16T00:30:00Z
 phase: phase-1-spec-crystallization
-current_step: pre-phase-1-final-gate-AWAITING-HUMAN-DECISION
+current_step: pre-phase-1-final-gate-RESUMING-OPTION-A-D-047-strict
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 30 adversary rounds + 17 fix bursts in cycle-001. 22 BCs implementable; 29 META defense disciplines. Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass."
-awaiting: "**HUMAN PHASE 1 APPROVAL GATE DECISION.** F-R97 FV-only fix-burst COMPLETE (SM v5.45 2527a73; FV VP v1.31 a3a68a4). All 4 R97 findings closed. Three independent voices (R97 adversary, state-manager, orchestrator) recommend option (b) Convergence-with-Documented-Residuals. 30 adversary attempts + 17 fix-bursts complete. META-asymptote EMPIRICALLY CONFIRMED at META-N+2."
+awaiting: "**D-101 RECORDED. Human selected OPTION (a) Continue strict D-047.** Context cleared; new session will resume with R98 + cons R37 (D-047 pass 1 attempt 31) against artifact set PRD v1.21 0f124a9 + VP v1.31 a3a68a4 + arch v1.0.21 42504b4 + manifest v1.1.13 42504b4 + STATE v5.47 (this commit). Counter restart at 0/3. All 29 codified disciplines remain in force."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -24,7 +24,7 @@ current_cycle: cycle-001
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
 Cycle: cycle-001 (ACTIVE — Phase 1 Spec Crystallization)
 Phase: phase-1-spec-crystallization
-Step: pre-phase-1-final-gate-post-f-r96-fix-burst
+Step: pre-phase-1-final-gate-RESUMING-OPTION-A-D-047-strict
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -291,6 +291,7 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | D-099 | R97 D-047 strict pass 1 attempt 30 — FINDINGS (2 HIGH + 2 MED + 5 LOW). Cons R36 CLEAN. Counter stays at 0/3. **META-ASYMPTOTE TEST CONFIRMED PATTERN CONTINUES at META-N+2.** I-R97-1 HIGH: SE-17a violation — `<N>` placeholder unfilled in Fix 2 transparency block. I-R97-2 HIGH: SE-17a violation — Fix 1 "full-file count" lists 8 of 16 actual grep hits (curated subset masquerading as literal). I-R97-3 MED: self-referential mis-anchoring in Fix 1 evidence rows. I-R97-4 MED: counting inconsistency "4 in-§Trace MED sites". Prior-closure stability sample (F-R88/R91/R93/R94) all HOLDING; substantive content CLEAN. **Adversary R97 explicitly recommends option (b) Convergence-with-Documented-Residuals.** FV-only fix-burst (VP v1.31) next closes 4 findings. | 2026-05-15 | adversary + state-manager |
 
 | D-100 | **F-R97 FV-only fix-burst COMPLETE. HUMAN GATE DECISION REQUIRED.** SM v5.45 (2527a73) + FV VP v1.31 (a3a68a4). All 4 R97 findings closed: I-R97-1 `<N>` placeholder filled; I-R97-2 grep enumeration corrected to 16 hits; I-R97-3 body-scope refilter applied to Fix 1 evidence rows; I-R97-4 count reconciled post-Fix-1 §Trace MED sites. §Purpose META 18th-attempt. SE-16b PASS. **Substantive content layer: CONVERGED** (R88–R97 secondary lenses ALL PASS — cross-property bidirectional, glossary, coverage matrix, manifest/arch/VP triple pin, content-centric BC/VP/NFR/EC semantics). **META audit-discipline framework: 29 codified disciplines, mature, asymptotic at META-N+2.** Counter remains 0/3. **ORCHESTRATOR'S FINAL RECOMMENDATION: option (b) Convergence-with-Documented-Residuals.** Adversary R97 explicit recommendation: option (b). State-manager echoes: option (b). 30 adversary passes + 17 fix-bursts complete. META-asymptote empirically confirmed: each codification produces META-N+2 findings on first application. Continuing strict D-047 will produce more codifications without breaking the asymptote. Residuals are process-gap class only (VP §Trace audit-narrative evidence-fidelity); zero implementation-blocking content defects. | 2026-05-15 | state-manager (recording F-R97 closure + surfacing human gate) |
+| D-101 | **Human selected OPTION (a) Continue strict D-047.** Context being cleared; new session will resume with R98 + cons R37 (D-047 pass 1 attempt 31) against artifact set PRD v1.21 0f124a9 + VP v1.31 a3a68a4 + arch v1.0.21 42504b4 + manifest v1.1.13 42504b4 + STATE v5.47 (this commit). Counter restart at 0/3. All 29 codified disciplines remain in force. Substantive content layer CONVERGED (R88-R97 lenses CLEAN). META-asymptote at META-N+2 EMPIRICALLY CONFIRMED but human directs continued iteration. No further unilateral surfacing of option (b) — human chose (a). | 2026-05-16 | human (Josh Magady) |
 
 | D-097 | R96 D-047 strict pass 1 attempt 29 — FINDINGS (1 HIGH + 1 MED + 5 LOW). Cons R35 CLEAN. Counter stays at 0/3. **CRITICAL META-IRONY:** SE-17c first application introduced the pattern it was designed to prevent — I-R96-2 reveals self-referential §Trace narrative hits not accounted for in "no hits" grep claims. **I-R96-1 HIGH:** §Trace v1.29 severity-label inconsistency for I-R95-1 (5 sites; canonical LOW per D-095). **I-R96-2 MED:** SE-17c Step 2 grep scope undefined — final-state grep asserts "(no hits)" but 4 §Trace-narrative hits exist by construction (§Trace correctly quotes pre-burst evidence per PG-5). **O-R96-2/3/4/5 LOW (substantive lenses):** cross-property bidirectional + glossary completeness + coverage matrix coherence + triple-pin manifest coherence ALL PASS — substantive content CLEAN. **SE-17c-d codified:** body-scope grep convention — SE-17c Step 2 final-state greps MUST be scoped to pre-§Trace body via derived-boundary awk filter + frontmatter-line exclusion; §Trace-narrative hits per PG-5 are expected and MUST NOT be counted as "(no hits)" violations. 29 codified disciplines in force (was 28 + SE-17c-d as 4th sub-rule of Extension 17). **STRONG RECOMMENDATION TO HUMAN: present Phase 1 approval gate with option (b) Convergence-with-Documented-Residuals — R95+R96 = 8 consecutive substantive-content PASS lenses; META layer is genuinely asymptotic; further D-047 strict passes will produce more META codifications without resolving the asymptote.** FV-only fix-burst (VP v1.30) next — I-R96-1 + I-R96-2 + SE-17c-d first application. | 2026-05-15 | adversary + state-manager |
 
@@ -313,71 +314,54 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | I-R97-3 | Fix 1 evidence rows self-reference §Trace line numbers not pre-§Trace body | MED | CLOSED — VP v1.31 (a3a68a4) |
 | I-R97-4 | Fix 2 count "4 in-§Trace MED sites" stale post-Fix-1 | MED | CLOSED — VP v1.31 (a3a68a4) |
 
-## Session Resume Checkpoint
+## Session Resume Checkpoint — DURABLE (v5.47)
 
-**F-R97 COMPLETE + PIPELINE AWAITING HUMAN PHASE 1 APPROVAL GATE DECISION (2026-05-15):** SM v5.46 (this commit). F-R97 FV-only fix-burst COMPLETE: SM v5.45 (2527a73) + FV VP v1.31 (a3a68a4). All 4 R97 findings closed (I-R97-1/2/3/4). §Purpose META 18th-attempt. SE-16b PASS. D-100 recorded.
+### Context-clear timestamp
+Cleared at: 2026-05-16T00:30:00Z (FINAL state recording before context clear; human directed OPTION (a))
 
-**META-ASYMPTOTE EMPIRICALLY CONFIRMED at META-N+2.** 30 adversary attempts + 17 fix-bursts complete. Substantive content layer CONVERGED. META audit-discipline stack MATURE (29 codified disciplines). Asymptote pattern: each codification of META-discipline N produces META-N+2 defects on first application. Prior-closure sample (F-R88/R91/R93/R94) ALL HOLDING. R88-R97 secondary substantive content lenses ALL PASS.
+### Immediate next action (NEW SESSION)
+Dispatch in parallel via Agent tool:
+1. Adversary R98 (subagent_type=vsdd-factory:adversary) for D-047 strict pass 1 attempt 31 on the artifact set below.
+2. Consistency-validator round 37 (subagent_type=vsdd-factory:consistency-validator) for cons R37 against same artifact set.
 
-**THREE INDEPENDENT VOICES RECOMMEND OPTION (b) Convergence-with-Documented-Residuals:** adversary R97 (explicitly), state-manager, orchestrator. See §Surfaced for Human Gate Decision for full decision presentation with options a/b/c.
+### Current artifact pins (CANONICAL)
+- PRD: `.factory/specs/prd.md` v1.21 commit 0f124a9
+- VP: `.factory/specs/verification-properties.md` v1.31 commit a3a68a4
+- arch: `.factory/specs/architecture/SS-daemon-lifecycle.md` v1.0.21 commit 42504b4
+- manifest: `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.13 commit 42504b4
+- STATE: this file v5.47 (current commit)
+- CLAUDE.md: brief v1.4.23 cite
 
-Current artifact pins: PRD v1.21 (0f124a9). Arch v1.0.21 (42504b4). Manifest v1.1.13 (42504b4). VP v1.31 (a3a68a4). Counter: 0/3. 29 disciplines in force.
+### Active disciplines (29 codified)
+L-F-R63 Extensions 1-13, 14+SE-14b (verification + authoring), 15+SE-15a/b/c/d/e, 16+SE-16a/b/c (+ supplementary), 17+SE-17a/b/c/d. Plus 4 baseline disciplines.
 
-Convergence trajectory FINAL STATE: 13→5→1→4→0→2→1→0→0→3→5→3→0→3→2→2→6→2→3→7(CRIT spike)→3→0(R82 CLEAN, 1/3)→R83→F-R83→R84→F-R84 serial→R85→F-R85 serial→R86→F-R86 serial→R87→F-R87 FV-only→R88 FINDINGS (CONTENT-CENTRIC)→F-R88 serial COMPLETE→R89 FINDINGS→F-R89 serial COMPLETE→R90 FINDINGS (SE-15e codified)→F-R90 serial COMPLETE→R91 FINDINGS (SE-14b codified)→F-R91 serial COMPLETE→R92 FINDINGS→F-R92 FV-only COMPLETE→R93 FINDINGS→F-R93 serial COMPLETE→R94 FINDINGS→F-R94 4-step serial COMPLETE→R95 FINDINGS (SE-17c codified; 28 disciplines)→F-R95 FV-only COMPLETE→R96 FINDINGS (SE-17c-d codified; 29 disciplines)→F-R96 FV-only COMPLETE→R97 META-asymptote test FINDINGS (D-099; META-ASYMPTOTE CONFIRMED; adversary recommends option (b))→**F-R97 FV-only COMPLETE (D-100; VP v1.31 a3a68a4; all 4 findings closed)**→**PIPELINE AWAITS HUMAN PHASE 1 APPROVAL GATE DECISION**. PRD: v1.21 (0f124a9). Arch: v1.0.21 (42504b4). Manifest: v1.1.13 (42504b4). VP: v1.31 (a3a68a4). Counter: 0/3. 29 disciplines in force.
+### Counter state
+0/3. R97 returned FINDINGS; F-R97 fix-burst landed; cons R36 was CLEAN; R98 is next adversary pass.
 
-## Surfaced for Human Gate Decision
+### Expected R98 outcome
+Per asymptote pattern: META-N+3 likely in §Trace v1.31 transparency blocks. Adversary will likely apply CONTENT-CENTRIC lens (PASS since R95) AND META lens (N+1 each burst).
 
-### FINAL CYCLE STATE (as of 2026-05-15, post-F-R97 fix-burst)
+### Continuation protocol (OPTION (a))
+- Continue strict D-047 (counter must reach 3/3 consecutive CLEAN for convergence)
+- Apply SERIAL fix-burst protocol per Extension 15 + SE-15e
+- No further unilateral surfacing of option (b) — human chose (a)
 
-**Substantive content layer:** CONVERGED (R88-R97 all secondary lenses CLEAN — cross-property bidirectional, glossary, coverage matrix, manifest/arch/VP triple pin, content-centric BC/VP/NFR/EC semantics).
+### Working directory + branches
+- WD: `/Users/jmagady/Dev/monocle`
+- factory-artifacts branch: specs + STATE.md (push remote)
+- main branch: CLAUDE.md (push remote)
 
-**META audit-discipline framework:** 29 codified disciplines in force. Internally consistent. Producing diminishing returns (META-asymptote at META-N+2).
+### Recovery if corrupt
+1. Run `/vsdd-factory:recover-state`
+2. Read git log: `git log --oneline -50 -- .factory/STATE.md`
 
-**Counter state:** Stuck at 0-1/3 oscillation across 30 attempts. Strict D-047 convergence (3 consecutive CLEAN passes) has NOT been reached in 30+ tries.
+## Surfaced for Human Gate Decision — DECISION RECORDED
 
-### Empirical Observations (cumulative)
+### Human's decision (2026-05-16)
+**OPTION (a) — Continue strict D-047**
 
-1. R88 onward introduced CONTENT-CENTRIC lens rotations alongside META lenses. R88-R94 closed 30+ substantive content defects across BC text + VP probes + arch + manifest.
-2. R95-R97 secondary lenses (substantive content axes) ALL PASS — no remaining substantive defects.
-3. R94-R97 each surfaced new META findings in §Trace audit-narrative evidence-fidelity class.
-4. Each new META codification (SE-14b/SE-15e/SE-16a-c/SE-17a-c-d + agent-id-routing + §Trace integrity + §Purpose META guard + §References timestamp guard) has been PROVEN effective on first application BUT introduces META-N+1 findings within its own first-application transparency blocks.
-5. Severity of META findings has trended downward (CRITICAL → HIGH → MED) but counter has not advanced past 1/3.
-
-### Three Options
-
-**(a) Continue strict D-047** — likely 1-3 more passes to produce new META codifications. The asymptote will produce new META-N+M findings on each codification's first application. Substantive content unchanged.
-
-**(b) Convergence-with-Documented-Residuals (RECOMMENDED by 3 independent voices)** — accept current state with R97 closures as final cycle artifacts. Document remaining META audit-narrative residuals as known-issues for Phase 2-3 spec authors to be aware of. Phase 1 approval gate proceeds NOW.
-
-**(c) Hybrid** — One additional adversary pass (R98 + cons R37). If both CLEAN, option (b). If FINDINGS, option (b) anyway since the META-asymptote is empirically confirmed.
-
-### Recommendation: Option (b)
-
-The orchestrator's honest assessment after 30 adversary passes + 17 fix-bursts:
-- Substantive spec content is production-grade quality
-- META audit-discipline framework is mature and structurally sound
-- Continuing iteration produces diminishing returns + diminishing severity
-- Phase 2/3 (story decomposition + TDD implementation) can proceed from current artifacts without consuming META audit residuals
-
-### Documented Residuals (if option (b) accepted)
-
-1. §Trace audit-narrative evidence-fidelity is asymptotic at META-N+2. Future Phase 1 spec bursts (if any are required for post-Phase-1 fix-bursts) should apply SE-17a/b/c/d strictly but acknowledge new META findings may emerge on first application of any future SE codification.
-2. cycle-001/lessons.md contains 29 codifications. Future cycles may simplify the SE-17 family by reformulating "literal grep transcript" to "stated count or transcript, whichever the author chose."
-3. O-R96-1/O-R97-1 process-gap observations recommend SE-17c-e codification but NOT in this cycle.
-
-### Secondary Decision Item: Obs-R68-D2 (non-blocking)
-
-PRD §1.3/§6 Differentiator D-2 ("VecDeque overlay stack") cites BC-ENGINE-001 + BC-ENGINE-002 as supporting BCs. TUI VecDeque overlay rendering is Phase 2 scope. Three paths: (a) accept current framing — no PRD change; (b) relabel D-2 to disclaim Phase-1 BC verification; (c) add new BC-RENDER-001 (restarts counter). Route to product-owner (b) or architect (c) or no-action (a).
-
-### Awaiting Human Decision
-
-Pipeline is now AWAITING explicit human approval of:
-
-- **Option (a)** Continue strict D-047 — R98 + cons R37 next.
-- **Option (b)** Approve Phase 1 gate — Convergence-with-Documented-Residuals. Phase 2 entry proceeds.
-- **Option (c)** Hybrid — one additional adversary pass (R98 + cons R37); if CLEAN, option (b); if findings, option (b) anyway.
-
-If no response received, pipeline remains in `pre-phase-1-final-gate-AWAITING-HUMAN-DECISION` state.
+### Resume directive
+Next session orchestrator: dispatch R98 + cons R37 in parallel on the CANONICAL artifact set in §Session Resume Checkpoint above. No further surfacing of option (b).
 
 ## Critical Hook Lessons
 
@@ -441,6 +425,7 @@ If no response received, pipeline remains in `pre-phase-1-final-gate-AWAITING-HU
 - **SE-17c-d: Body-scope grep convention — SE-17c Step 2 final-state greps MUST be scoped to pre-§Trace body content (per I-R96-2 / R96 / 2026-05-15):** R96 adversary (attempt 29) found SE-17c first application in F-R95 embedded a `grep -n "PRD v1\.20/21"` final-state grep asserting "(no hits)" — but the §Trace narrative ITSELF quotes this pattern at 4 sites as PG-5 historical evidence. Root cause: SE-17c Step 2 ("run all final-state greps") did NOT scope greps to pre-§Trace body. SE-17c-d rule: every SE-17c Step 2 final-state grep asserting "no hits" MUST use `awk -F: -v B="$BOUNDARY" '$1 < B && $1 != 25'` scoped to pre-§Trace body. The §Trace narrative may legitimately quote the pattern as PG-5 evidence; those hits are NOT defects and MUST NOT be counted as "(no hits)" violations. **META-IRONY:** R96 demonstrates that the first application of META-discipline N+1 introduces a META-N+2 gap — genuine asymptotic convergence at the META-codification layer. R96 substantive secondary lenses ALL PASS (cross-property + glossary + coverage matrix + triple pin). 29 codified disciplines in force (was 28 + SE-17c-d as 4th sub-rule of Extension 17). Full codification in `cycles/cycle-001/lessons.md §SE-17c-d`.
 
 - **META-asymptote pattern CONFIRMED at META-N+2 — SE-17c-d codification (29-discipline) FIRST application introduces SE-17a defects (per D-099 / R97 / 2026-05-15):** R97 adversary (D-047 strict pass 1 attempt 30 — META-asymptote test) confirmed the pattern empirically across 4 consecutive cycles. SE-17c-d was designed to enforce body-scope grep convention. Its FIRST application (VP v1.30 §Trace Fix 1 + Fix 2 transparency blocks) introduced 4 new SE-17a evidence-fidelity defects: (1) `<N>` placeholder unfilled in Fix 2; (2) Fix 1 "full-file grep" claims 8 of 16 actual hits; (3) Fix 1 evidence rows self-reference §Trace line numbers; (4) Fix 2 count "4 in-§Trace MED sites" stale post-Fix-1. Pattern confirmed: each codification of META-discipline N enables META-discipline N+1 defects on FIRST application (SE-17c → SE-17c-d gap R96; SE-17c-d → SE-17a violations R97). The substantive spec content (22 BCs / 22 VPs / arch / manifest) remains stable across ALL META-discipline iterations — no regression in sampled prior closures (F-R88/R91/R93/R94 all HOLDING). ADVERSARY R97 EXPLICITLY RECOMMENDS option (b) Convergence-with-Documented-Residuals. This is the first time the adversary itself issued an explicit gate recommendation. State-manager concurs. After F-R97 fix-burst (VP v1.31), human gate decision pending. Full codification in `cycles/cycle-001/lessons.md §META-asymptote`. 29 codified disciplines remain in force.
+- **Human gate decision recorded as OPTION (a) (per D-101 / 2026-05-16):** Human directed OPTION (a) Continue strict D-047. Context cleared after STATE.md v5.47 written. State-manager resumes from this STATE.md v5.47 in next session. Orchestrator will dispatch R98 (adversary D-047 strict pass 1 attempt 31) + cons R37 (consistency-validator round 37) in parallel as first action after context restore. Counter at 0/3. All 29 codified disciplines remain in force. Artifact set locked: PRD v1.21 (0f124a9) + VP v1.31 (a3a68a4) + arch v1.0.21 (42504b4) + manifest v1.1.13 (42504b4). No further unilateral surfacing of option (b) — human chose (a). See §Session Resume Checkpoint — DURABLE (v5.47) for full resume instructions.
 
 - **SE-17c-d FIRST application PROVEN effective — discipline chain Extension 13 → 17 → SE-17a/b/c/d now closes body-scope grep convention gap (per F-R96 / D-098 / 2026-05-15):** F-R96 FV-only fix-burst (SM v5.43 63b5151 + VP v1.30 40248d4) is the first fix-burst to apply SE-17c-d end-to-end. I-R96-1: 5 severity-label sites normalized to MED (correcting I-R95-1 tracking inconsistency across §Trace narrative sites). I-R96-2: SE-17c Step 2 grep evidence rephrased per PG-5 framing — body-scope awk filter derives boundary 3110, correctly excludes 3 §Trace PG-5 historical quotes as expected-by-construction. §Purpose META 17th-attempt; SE-16b PASS. R97 adversary subsequently confirmed: SE-17c-d FIRST application introduced SE-17a defects in Fix 1 + Fix 2 transparency blocks. META-asymptote continues at META-N+2. 29 codified disciplines remain in force.
 
