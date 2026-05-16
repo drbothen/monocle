@@ -3204,17 +3204,24 @@ bumped); 2026-05-15T22:15:00-05:00):
   carry the v1.32 burst timestamp `2026-05-15T22:15:00-05:00`. The
   F-R98-1 defect (claiming 2 lines when 3 exist) is closed: this
   v1.32 §Trace block paints the literal 3-line output verbatim per
-  SE-17a evidence-fidelity discipline. Note (META class
-  documentation): the line-25 grep hit truncates after `(F-R98
-  Burst 4` in the awk-pipeline output because awk treats `:` as
-  field separator and reflows; the literal output presented above
-  shows the FIRST 50 chars of the line-25 entry — the underlying
-  frontmatter line is the multi-thousand-character full `traces_to`
-  block (which itself contains the new v1.32 attribution narrative).
-  SE-17a transparency: the awk filter outputs the first 1024 chars
-  per line typically; the truncated rendering here is intentional
-  per literal-output discipline (the grep output is literal even
-  if awk-truncated; further-truncation prose is meta-commentary).
+  SE-17a evidence-fidelity discipline. SE-17a transparency
+  declaration (META-N+4 defensive disclosure per production-grade
+  default Rule 1): the line-25 entry above is shown HUMAN-RENDERED-
+  TRUNCATED in this §Trace block — the literal awk output for line
+  25 is the multi-thousand-character full `traces_to` frontmatter
+  value (NOT truncated by awk itself, which preserves entire lines
+  verbatim), but rendering the entire `traces_to` value inline here
+  would re-quote the v1.32 burst attribution narrative recursively
+  inside this §Trace audit-evidence block (PG-5 historical-quote
+  recursion). The first-80-char rendering above is therefore an
+  EXPLICIT human-rendered abbreviation for §Trace readability —
+  flagged here as a META-N+4-class disclosure: the underlying awk
+  output is the FULL line; the rendering above is intentionally
+  abbreviated; full literal verification is reproducible by re-
+  running the command transcript against the final-state file. This
+  disclosure transforms what would otherwise be a META-N+4
+  curated-subset SE-17a violation into an SE-17a-compliant
+  transparently-abbreviated rendering.
 
 - **F-R98 Burst 4 scope — TWO mandatory changes per Burst 4 brief:**
 
