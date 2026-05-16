@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "[live-state]"
@@ -48,20 +48,17 @@ traces_to: prd.md
 > Architecture source: `architecture/SS-core-types-and-abi.md`
 > ARCH-INDEX subsystem: SS-02
 > Capability: CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction")
->
-> **Status: Pending Dispatch 3** — BC files for SS-02 will be created in Dispatch 3.
-> The rows below are placeholders derived from PRD §3 BC-ABI-001..BC-FACTORY-002, BC-PROTO-001a/b, BC-PROTO-002.
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
-| BC-2.02.001 | ABI Version in /status Endpoint (FC-03) | P0 | pending-dispatch-3 | ss-02/BC-2.02.001.md | BC-ABI-001 |
-| BC-2.02.002 | ABI Version Constant at Crate Root (FC-03) | P0 | pending-dispatch-3 | ss-02/BC-2.02.002.md | BC-ABI-002 |
-| BC-2.02.003 | Non-Exhaustive Enum Policy (FC-02) | P0 | pending-dispatch-3 | ss-02/BC-2.02.003.md | BC-TYPES-001 |
-| BC-2.02.004 | FactoryAdapter Trait Definition (FC-04 CRITICAL) | P0 | pending-dispatch-3 | ss-02/BC-2.02.004.md | BC-FACTORY-001 |
-| BC-2.02.005 | VsddFactoryAdapter Implementation | P0 | pending-dispatch-3 | ss-02/BC-2.02.005.md | BC-FACTORY-002 |
-| BC-2.02.006 | HookEnvelope Proto Field Number Contract (FC-05, wire-format) | P0 | pending-dispatch-3 | ss-02/BC-2.02.006.md | BC-PROTO-001a |
-| BC-2.02.007 | HookEnvelope Rust Struct schema_version Field (FC-05, Rust surface) | P0 | pending-dispatch-3 | ss-02/BC-2.02.007.md | BC-PROTO-001b |
-| BC-2.02.008 | Phase 4 schema_version Validation Requirement (FC-05) | P1 | pending-dispatch-3 | ss-02/BC-2.02.008.md | BC-PROTO-002 |
+| BC-2.02.001 | ABI Version in /status Endpoint (FC-03) | P0 | active | ss-02/BC-2.02.001.md | BC-ABI-001 |
+| BC-2.02.002 | ABI Version Constant at Crate Root (FC-03) | P0 | active | ss-02/BC-2.02.002.md | BC-ABI-002 |
+| BC-2.02.003 | Non-Exhaustive Enum Policy (FC-02) | P0 | active | ss-02/BC-2.02.003.md | BC-TYPES-001 |
+| BC-2.02.004 | FactoryAdapter Trait Definition (FC-04 CRITICAL) | P0 | active | ss-02/BC-2.02.004.md | BC-FACTORY-001 |
+| BC-2.02.005 | VsddFactoryAdapter Implementation | P0 | active | ss-02/BC-2.02.005.md | BC-FACTORY-002 |
+| BC-2.02.006 | HookEnvelope Proto Field Number Contract (FC-05, wire-format) | P0 | active | ss-02/BC-2.02.006.md | BC-PROTO-001a |
+| BC-2.02.007 | HookEnvelope Rust Struct schema_version Field (FC-05, Rust surface) | P0 | active | ss-02/BC-2.02.007.md | BC-PROTO-001b |
+| BC-2.02.008 | Phase 4 schema_version Validation Requirement (FC-05) | P1 | active | ss-02/BC-2.02.008.md | BC-PROTO-002 |
 
 ---
 
@@ -70,16 +67,13 @@ traces_to: prd.md
 > Architecture source: `architecture/SS-engine-module.md`
 > ARCH-INDEX subsystem: SS-03
 > Capability: CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter")
->
-> **Status: Pending Dispatch 3** — BC files for SS-03 will be created in Dispatch 3.
-> The rows below are placeholders derived from PRD §3 BC-ENGINE-001..BC-ENGINE-003.
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
-| BC-2.03.001 | EngineModule Trait Definition | P0 | pending-dispatch-3 | ss-03/BC-2.03.001.md | BC-ENGINE-001 |
-| BC-2.03.002 | ClaudeCodeModule Implementation (Strict-Basename Detect) | P0 | pending-dispatch-3 | ss-03/BC-2.03.002.md | BC-ENGINE-002 |
-| BC-2.03.003 | HomeUnresolvable Error Contract | P0 | pending-dispatch-3 | ss-03/BC-2.03.003.md | BC-ENGINE-002-ERR |
-| BC-2.03.004 | ClaudeCodeModule Inherent Methods (hook_paths, spawn, preflight) | P0 | pending-dispatch-3 | ss-03/BC-2.03.004.md | BC-ENGINE-003 |
+| BC-2.03.001 | EngineModule Trait Definition | P0 | active | ss-03/BC-2.03.001.md | BC-ENGINE-001 |
+| BC-2.03.002 | ClaudeCodeModule Implementation (Strict-Basename Detect) | P0 | active | ss-03/BC-2.03.002.md | BC-ENGINE-002 |
+| BC-2.03.003 | HomeUnresolvable Error Contract | P0 | active | ss-03/BC-2.03.003.md | BC-ENGINE-002-ERR |
+| BC-2.03.004 | ClaudeCodeModule Inherent Methods (hook_paths, spawn, preflight) | P0 | active | ss-03/BC-2.03.004.md | BC-ENGINE-003 |
 
 ---
 
@@ -88,9 +82,9 @@ traces_to: prd.md
 | Subsystem | Total BCs | Active | Pending |
 |-----------|-----------|--------|---------|
 | SS-01 Daemon Lifecycle | 10 | 10 | 0 |
-| SS-02 Core Types and ABI | 8 | 0 | 8 |
-| SS-03 Engine Module | 4 | 0 | 4 |
-| **Total** | **22** | **10** | **12** |
+| SS-02 Core Types and ABI | 8 | 8 | 0 |
+| SS-03 Engine Module | 4 | 4 | 0 |
+| **Total** | **22** | **22** | **0** |
 
 ---
 
@@ -127,7 +121,18 @@ traces_to: prd.md
 
 ---
 
-## §Trace v1.0
+## §Trace v1.1
+
+**Template compliance Dispatch 3 of 7+** (2026-05-17T12:00:00Z):
+- SS-02 section: 8 BC rows flipped from `pending-dispatch-3` to `active`.
+  Files created at `.factory/specs/behavioral-contracts/ss-02/` (BC-2.02.001..BC-2.02.008).
+- SS-03 section: 4 BC rows flipped from `pending-dispatch-3` to `active`.
+  Files created at `.factory/specs/behavioral-contracts/ss-03/` (BC-2.03.001..BC-2.03.004).
+- Summary table: all 22 BCs active (10 SS-01 + 8 SS-02 + 4 SS-03); 0 pending.
+- Index version bumped: 1.0 → 1.1.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T12:00:00Z >= chain high-water 2026-05-17T11:30:00Z.
+- Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
+- Next: Dispatch 4 (PO) reduces PRD §3/§4/§5 to index + creates 4 prd-supplements.
 
 **Template compliance Dispatch 2 of 7+** (2026-05-17T11:30:00Z):
 - Created as new artifact; no prior version.
@@ -139,5 +144,3 @@ traces_to: prd.md
   append-only ID protection (audit §663-714).
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:30:00Z >= chain high-water 2026-05-17T11:00:00Z.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
-- Next: Dispatch 3 (PO) will create ss-02/ and ss-03/ BC files and update this index
-  to flip pending rows to active with correct file paths.
