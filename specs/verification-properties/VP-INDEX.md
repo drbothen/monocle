@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-18T07:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "02147fc"
@@ -680,3 +680,59 @@ UTC ISO-8601 `Z` form: `2026-05-18T05:00:00Z` >= chain high-water `2026-05-18T05
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical timestamp correction + citation refresh + cross-SS pin symmetry + Conventions documentation executed in-scope of R110 Round 9C rather than deferred. Rule 4: 5 coupled cascade fixes consolidated into single v1.8 bump rather than fragmented across 5 separate dispatches. Rule 5: cheapest path (treat 678 `commit pending` grep matches as advisory and defer convention documentation) rejected in favor of correct path (document the SE-17g convention in writing as new §Conventions section so future R-passes can apply the SE-17g-aware grep pattern). PRD v1.26.8 and BC-INDEX v1.8 cites are post-PO-9B targets (commit pending — will resolve to concrete SHAs during R110 Round 9E SM pass after parallel dispatches converge). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 chain continuity preserved verbatim (v1.7 SE-17f BEFORE evidence preserved; only the wrong-date timestamps within v1.7 narrative are corrected per F-R110-1 documented SE-17g exception).
+
+
+---
+
+## §Trace v1.9 — F-R111-2 HIGH + F-R111-3 HIGH + F-R111-4 HIGH: VP-INDEX R111 Round 10 FV Fix Burst (22-VP Source-Contract Pin Symmetry Cascade Documentation)
+
+**Bump:** v1.8 → v1.9.
+**Predecessor pin:** v1.8 (commit pending — R110 Round 9C FV cascade: §Conventions section + active cite forward refresh + SS-02/SS-03 §References Architecture-pin symmetry).
+**Scope of v1.9 (NORMATIVE — VP-INDEX cascade-tail documentation for R111 Round 10 22-VP source-contract pin symmetry sweep; small focused round per user direction Option A, counter 0/3):**
+
+### Change 1 — F-R111-2 HIGH (Cascade Cross-Reference; NORMATIVE)
+
+- **Cross-VP scope (this VP-INDEX change is the cascade documentation; per-VP-file edits are the actual fix):** 10 SS-01 VPs (vp-001..vp-010) had their §Source Contract `Traces to (historical)` SS-daemon-lifecycle pins refreshed from v1.0.31 → v1.0.32 (7 VPs: vp-001..vp-006, vp-009) or added v1.0.32 pins where previously unpinned (3 VPs: vp-007, vp-008, vp-010) for intra-SS-01 symmetry.
+- **Rationale:** Active §References `Architecture:` pins for SS-01 VPs were forward-refreshed to v1.0.32 in R109 Round 8C and confirmed in R110 Round 9C. The parallel `§Source Contract Traces to (historical)` body cite is a second active-citation surface that was missed in prior cascades and remained at v1.0.31 (for 7 VPs) or unpinned (for 3 VPs). R111 Round 10 closes both gaps in a single bump per CLAUDE.md Production-Grade Rule 1+5. Symmetric to F-R110-8 §References pin symmetry precedent established for SS-02/SS-03.
+
+### Change 2 — F-R111-3 HIGH (Cascade Cross-Reference; NORMATIVE)
+
+- **Cross-VP scope (this VP-INDEX change is the cascade documentation; the per-VP-file edit is the actual fix):** vp-009 §References Source-contract pin refreshed from BC-2.01.009 v1.0.5 → v1.0.6 (current canonical per PO 9B R110 Round 9B BC scope dispatch commit 68304e3).
+- **Rationale:** PO 9B bumped BC-2.01.009 v1.0.5 → v1.0.6 in commit 68304e3. R110 Round 9C FV §Trace v1.8 refreshed VP-INDEX BC-INDEX and PRD active cites but missed the per-VP §References Source-contract line cascade. R111 Round 10 closes this gap.
+
+### Change 3 — F-R111-4 HIGH (Cascade Cross-Reference; NORMATIVE)
+
+- **Cross-VP scope (this VP-INDEX change is the cascade documentation; per-VP-file edits are the actual fix):** 21 VPs (vp-001..vp-008, vp-010..vp-022) added `Source contract: behavioral-contracts/ss-NN/BC-2.NN.NNN.md v<current> (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch)` pins to active §References for sweep-wide cross-VP source-contract pin symmetry. Combined with Change 2 (vp-009 refresh), all 22 VPs now carry pinned `Source contract:` cites in active §References.
+- **Per-VP-table:** No per-VP-row content change in this §Trace; cite additions are in each VP's §References section (per-VP-file edits).
+- **Rationale:** Sweep-wide audit revealed structural asymmetry — 21 of 22 VPs carried unpinned `Source contract:` cites in active §References while only vp-009 carried a pinned cite with concrete commit SHA. This blocked uniform cross-VP source-contract staleness audits (a one-liner `grep "Source contract:.* v" .factory/specs/verification-properties/vp-*.md` produced only 1 match). F-R111-4 closure adds the missing pins for symmetry at the current canonical BC versions per VP-INDEX rows. Per CLAUDE.md Production-Grade Rule 1+5: cheapest path (leave 21 VPs unpinned as "no functional impact") rejected in favor of correct path (enable future audits). Symmetric to F-R110-8 cross-SS architecture-source pin symmetry precedent.
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -rn "Source contract:" .factory/specs/verification-properties/vp-*.md | grep -c " v"` → 22 (all 22 VPs now carry pinned `Source contract:` cites in active §References).
+- Post-edit `grep -rnE "SS-daemon-lifecycle\.md v1\.0\.31" .factory/specs/verification-properties/vp-00*.md` §Source Contract body scope → 0 matches (the only remaining `v1.0.31` cites are inside §Trace SE-17f BEFORE evidence blocks per SE-17g audit-trail preservation; new §Trace v1.0.9 blocks contain `v1.0.31 → v1.0.32` SE-17f BEFORE/AFTER refresh evidence).
+- Post-edit `grep -nE "commit 68304e3" .factory/specs/verification-properties/vp-*.md | wc -l` → 22+ (active §References Source contract lines + new §Trace v1.0.9 cite blocks).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content:** UNCHANGED — no source-BC, proof-method, file-path, or VP-ID cell modified.
+- **§Conventions section:** UNCHANGED — pin-symmetry convention from R110 Round 9C (F-R110-10 MED) extended de-facto to §References Source-contract cites; explicit §Conventions documentation deferred to next maintenance pass per scope minimization.
+
+### Authoritative cross-references
+
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.8 (commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch).
+- **All 22 source BCs (BC-2.01.001 through BC-2.03.004):** commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch (single commit landing all BC bumps).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A bump; Architect 9A R110 Round 9A keeps at v1.0.32 (commit 159d123)).
+- **R111 closure chain:** F-R111-2 HIGH (SS-01 §Source Contract Traces-to SS pin refresh + 3-VP pin addition for intra-SS-01 symmetry, 10 VPs touched) + F-R111-3 HIGH (vp-009 §References Source-contract pin refresh BC-2.01.009 v1.0.5 → v1.0.6) + F-R111-4 HIGH (sweep-wide §References Source-contract pin addition across 21 unpinned VPs for cross-VP symmetry). Per-VP cascade.
+- **Concurrent dispatches (R111 Round 10):** FV-only fix burst per user direction (small focused round; counter 0/3).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T07:00:00Z` >= chain high-water `2026-05-18T05:00:00Z` (VP-INDEX v1.8 frontmatter timestamp post-R110 Round 9C). SE-16d PASS (strict-greater satisfied).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: 22-VP cascade documentation (per-VP-file §References Source-contract pin add/refresh; SS-01 §Source Contract Traces-to SS pin refresh/addition); frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection.
+- **SE-17g audit-trail preservation:** All prior §Trace SE-17f BEFORE evidence preserved verbatim per §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical cross-VP pin symmetry sweep executed in-scope of R111 Round 10 rather than deferred. Rule 4: 3 coupled cascade fixes (F-R111-2 + F-R111-3 + F-R111-4) consolidated into single v1.9 bump rather than fragmented across 3 separate dispatches. Rule 5: cheapest path (preserve 21-of-22 unpinned source-contract asymmetry as "advisory") rejected in favor of correct path (enable cross-VP source-contract staleness audits via sweep-wide pin symmetry). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 chain continuity preserved verbatim per SE-17g audit-trail discipline.

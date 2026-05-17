@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.9"
+version: "1.0.10"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-18T07:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "5d86eaa"
@@ -98,12 +98,13 @@ alias).
   `/status`, `/shutdown`); Bearer-fallback (or any unrecognized header)
   rejection as missing; retired-body absence.
 - **Traces to (historical):** BC-AUTH-002 (PRD v1.25 §BC-AUTH-002;
-  SS-daemon-lifecycle.md v1.0.31 §Start Sequence; architect adjudication
+  SS-daemon-lifecycle.md v1.0.32 §Start Sequence; architect adjudication
   commit 2db408f — disposition (c) collapsed error taxonomy; F-R62-4
   back-propagation closure landed in arch v1.0.9 commit 8bf3759; ADR-0005
   T-128m R3 dual-accept decision adopted in arch v1.0.29; F-FC-I005
   fabricated-ID removal in arch v1.0.30 architect 5E dispatch; SS pin
-  re-bump v1.0.30 → v1.0.31 in architect 6D commit 98396fe).
+  re-bump v1.0.30 → v1.0.31 in architect 6D commit 98396fe; SS pin
+  re-bump v1.0.31 → v1.0.32 in architect 8A commit 6e72995).
 
 ## Proof Method
 
@@ -430,7 +431,7 @@ fn verify_bc_2_01_009() {
 - Predecessor: monolithic VP-AUTH-002 at
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
-- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.5 (commit 22579ac — PO 7A R108 Round 7A finding-ID correction; supersedes v1.0.4 commit d92e4a7 R6A F-R107-9 ADR-0005 v1.0.2 pin addition + F-R107-10 EC-013 Bearer-fallback addition; supersedes v1.0.3 commit d92e4a7 intermediate — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
+- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.6 (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.0.5 commit 22579ac — PO 7A R108 Round 7A finding-ID correction; supersedes v1.0.4 commit d92e4a7 R6A F-R107-9 ADR-0005 v1.0.2 pin addition + F-R107-10 EC-013 Bearer-fallback addition; supersedes v1.0.3 commit d92e4a7 intermediate — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
 - ADR: `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal; supersedes v1.0.1 commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).
 - BC index: `behavioral-contracts/BC-INDEX.md` v1.8 (commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.7 commit 517c7ee — F-R109 Round 8B PO sweep; supersedes v1.6 commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.32 §Start
@@ -983,3 +984,56 @@ UTC ISO-8601 `Z` form: `2026-05-18T05:00:00Z` >= chain high-water `2026-05-18T05
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical timestamp correction + active cite forward refresh executed in-scope of R110 Round 9C rather than deferred. Rule 4: coupled cascade fixes consolidated into single v1.0.9 bump rather than fragmented. Rule 5: cheapest path (preserve wrong-date timestamp as "stale but acceptable") rejected in favor of correct path (correct in-place under documented SE-17g exception). PRD v1.26.8 and BC-INDEX v1.8 cites are post-PO-9B targets (commit pending — will resolve to concrete SHAs during R110 Round 9E SM pass after parallel dispatches converge). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline (except the F-R110-1 in-place timestamp correction per documented SE-17g exception).
+
+---
+
+## §Trace v1.0.10 — F-R111-2 HIGH + F-R111-3 HIGH: R111 Round 10 FV Fix Burst (Active Citation Cross-SS Source-Contract Pin Symmetry + SS-Pin Cascade Tail)
+
+**Bump:** v1.0.9 → v1.0.10.
+**Predecessor pin:** v1.0.9 (commit pending — R110 Round 9C FV cascade: §Conventions section + active cite forward refresh + SS-02/SS-03 §References Architecture-pin symmetry).
+
+**Scope of v1.0.10 (NORMATIVE — R111 Round 10 FV fix burst per user direction Option A; small focused round; counter 0/3):**
+
+### Change 1 — F-R111-2 HIGH: SS-01 SS-daemon-lifecycle.md Pin Refresh in §Source Contract Traces-to (v1.0.31 → v1.0.32) (NORMATIVE)
+
+- **SE-17f §Source Contract `Traces to (historical)` line:** body cite `SS-daemon-lifecycle.md v1.0.31 §<section>` refreshed in-place to `SS-daemon-lifecycle.md v1.0.32 §<section>` (per-VP section name preserved verbatim).
+- **Rationale:** Architect 8A bumped SS-daemon-lifecycle v1.0.31 → v1.0.32 in commit 6e72995 (Round 8A); Architect 9A R110 Round 9A keeps at v1.0.32 (commit 159d123). The active §References `Architecture:` line was forward-refreshed to v1.0.32 in §Trace v1.0.7 / v1.0.8 cascades. The §Source Contract `Traces to (historical)` body cite is a parallel active-citation surface that was missed in the prior cascades and remained at v1.0.31, blocking sweep-wide pin-symmetry audits. R111 Round 10 corrects in-place per CLAUDE.md Production-Grade Rule 1 (fix-in-scope rather than defer). Cascade-tail symmetric to F-R110-8 §References pin sweep precedent.
+
+### Change 2 — F-R111-3 HIGH: §References Source-Contract Pin Refresh (BC-009 v1.0.5 → v1.0.6) (NORMATIVE)
+
+- **SE-17f §References Source contract line:**
+  - Before: `Source contract: \`behavioral-contracts/ss-01/BC-2.01.009.md\` v1.0.5 (commit 22579ac — PO 7A R108 Round 7A finding-ID correction; ...).`
+  - After: `Source contract: \`behavioral-contracts/ss-01/BC-2.01.009.md\` v1.0.6 (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.0.5 commit 22579ac — PO 7A R108 Round 7A finding-ID correction; supersedes v1.0.4 commit d92e4a7 R6A F-R107-9 ADR-0005 v1.0.2 pin addition + F-R107-10 EC-013 Bearer-fallback addition; supersedes v1.0.3 commit d92e4a7 intermediate — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).`
+- **Rationale:** PO 9B (R110 Round 9B BC scope dispatch) bumped BC-2.01.009 v1.0.5 → v1.0.6 in commit 68304e3. R110 Round 9C FV §Trace v1.0.8 refreshed BC-INDEX and PRD active cites but missed the per-VP §References Source-contract line cascade. R111 Round 10 closes this gap.
+
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -nE "SS-daemon-lifecycle\.md v1.0.31" <this-vp-file>` §Source Contract body scope → 0 matches (the only remaining `v1.0.31` cites in this file are inside §Trace SE-17f BEFORE evidence blocks, preserved per SE-17g audit-trail discipline).
+- Post-edit `grep -nE "SS-daemon-lifecycle\.md v1.0.32" <this-vp-file>` §Source Contract body scope → 1 match (§Source Contract `Traces to (historical)` line).
+- Post-edit `grep -nE "BC-2.01.009\.md\` v1.0.6" <this-vp-file>` §References body scope → 1 match (active §References Source contract line).
+- Post-edit `grep -nE "BC-2.01.009\.md\` v1.0.5" <this-vp-file>` §References body scope → 0 matches (only remaining `v1.0.5` cites are inside §Trace SE-17f BEFORE evidence blocks, preserved per SE-17g).
+- Post-edit `grep -nE "commit 68304e3" <this-vp-file>` body scope → 1+ matches (active §References Source contract line; concrete PO 9B R110 Round 9B commit SHA resolved).
+
+### Authoritative cross-references
+
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.8 (commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch).
+- **Source BC (BC-2.01.009):** `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.6 (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A bump; Architect 9A R110 Round 9A keeps at v1.0.32 (commit 159d123)).
+- **R111 closure chain:** F-R111-2 HIGH (SS-01 §Source Contract Traces-to SS pin refresh + 3-VP pin addition for intra-SS-01 symmetry) + F-R111-3 HIGH (vp-009 §References Source-contract v1.0.5 → v1.0.6 refresh) + F-R111-4 HIGH (sweep-wide §References Source-contract pin addition across 21 unpinned VPs for cross-VP symmetry). Per-VP cascade.
+- **Concurrent dispatches (R111 Round 10):** FV-only fix burst per user direction (small focused round).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T07:00:00Z` >= chain high-water `2026-05-18T05:00:00Z` (this VP's prior §Trace v1.0.9 frontmatter timestamp). SE-16d PASS (strict-greater satisfied).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References Source-contract pin addition/refresh; §Source Contract Traces-to SS-daemon-lifecycle pin refresh/addition; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection.
+- **SE-17g audit-trail preservation:** All prior §Trace SE-17f BEFORE evidence preserved verbatim per VP-INDEX §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical citation pin add/refresh executed in-scope of R111 Round 10 rather than deferred. Rule 4: 3 coupled cascade fixes (F-R111-2 + F-R111-3 + F-R111-4) consolidated into single v1.0.10 bump rather than fragmented across 3 separate dispatches. Rule 5: cheapest path (preserve 21-of-22 unpinned source-contract asymmetry as "advisory") rejected in favor of correct path (enable cross-VP source-contract staleness audits via sweep-wide pin symmetry). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.
+
