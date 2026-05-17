@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-17T19:00:00Z
 phase: 1a
 inputs: [prd.md]
-input-hash: "742464a"
+input-hash: "6787573"
 traces_to: prd.md
 ---
 
