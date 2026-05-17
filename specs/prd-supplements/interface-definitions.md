@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-interface-definitions
 level: L3
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T19:00:00Z
+timestamp: 2026-05-17T22:05:00Z
 phase: 1a
-inputs: [prd.md]
+inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
 input-hash: "6787573"
 traces_to: prd.md
 ---
@@ -161,6 +161,49 @@ The 5 hook endpoints match Claude Code's canonical hook protocol (JC-2 gene-sour
 
 ---
 
+### Endpoint: POST /shutdown (Authenticated, Admin)
+
+**Contract:** BC-2.01.004, BC-2.01.008, BC-2.01.009
+**Router:** Authenticated router (subject to 256 KiB `DefaultBodyLimit`)
+**Auth:** Canonical `X-Monocle-Authorization: monocle-v1:<64-hex-token>` **or** alias `X-Claude-Code-Ide-Authorization: <64-hex>` (ADR-0005 dual-accept applies; WARN log emitted on alias path)
+
+**Request:**
+```
+POST /shutdown HTTP/1.1
+Host: 127.0.0.1:<port>
+X-Monocle-Authorization: monocle-v1:<64-hex-token>
+Content-Length: 0
+```
+Request body: empty or JSON `null`. Daemon ignores the body entirely.
+
+**Response (200 — drain initiated):**
+```json
+{"status":"shutting_down"}
+```
+The daemon begins the 10-second graceful drain window (BC-2.01.004). In-flight hook requests in the drain window complete normally. New hook arrivals during drain receive HTTP 503 with `Retry-After: 10` (E-DAEMON-002).
+
+**Response (503 — already draining, EC-050 second /shutdown):**
+```json
+{"error":"daemon_shutting_down"}
+```
+A second `POST /shutdown` received **during** the active drain window triggers EC-050: daemon forces exit 2 immediately without waiting for the drain to complete. The HTTP 503 response is sent before the forced exit.
+
+**Field Constraints:**
+| Field | Type | Constraint |
+|-------|------|------------|
+| `status` | string | `"shutting_down"` (200 response only) |
+| `error` | string | `"daemon_shutting_down"` (503 response only) |
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| `POST /shutdown` without auth | HTTP 401 per BC-2.01.009 (auth middleware runs before shutdown handler) |
+| `POST /shutdown` during drain (EC-050) | HTTP 503 `{"error":"daemon_shutting_down"}`; daemon forces exit 2 |
+| `POST /shutdown` with alias header only | HTTP 200 + drain initiated + WARN deprecation log (ADR-0005 alias path) |
+
+---
+
 ## Exit Code Semantics (Daemon Process)
 
 | Code | Meaning | Trigger |
@@ -173,13 +216,60 @@ The 5 hook endpoints match Claude Code's canonical hook protocol (JC-2 gene-sour
 
 ## Authentication Header Format
 
-**Contract:** BC-2.01.008, BC-2.01.009
+**Contract:** BC-2.01.008, BC-2.01.009; **Dual-accept decision:** ADR-0005
+
+### Canonical Header (Priority)
+
 **Header name:** `X-Monocle-Authorization`
 **Value format:** `monocle-v1:<64-hex-lowercase>`
 **Token entropy:** 32 bytes from `rand::rngs::OsRng` encoded as 64-character lowercase hex
 **Token regex:** `^monocle-v1:[0-9a-f]{64}$`
 
 Token is written to lock file on daemon start. Token rotates on every daemon restart (BC-2.01.008). Hook scripts read the lock file to obtain the current token.
+
+### Compatibility Alias Header (ADR-0005)
+
+**Header name:** `X-Claude-Code-Ide-Authorization`
+**Value format:** `<64-hex-lowercase>` (raw hex; **no** `monocle-v1:` prefix)
+**Accepted when:** canonical `X-Monocle-Authorization` is absent
+**Priority:** canonical header takes priority when both are present; alias is ignored in that case
+**WARN log:** whenever the alias path is entered (header present, whether the secret matches or not), the daemon emits a `tracing::warn!` deprecation log: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`
+**Constant-time comparison:** alias-path secret comparison uses `constant_time_eq` identically to the canonical path (NFR-010, INV-7 of BC-2.01.009)
+**Phase-out:** alias is a Phase 1 compatibility shim per ADR-0005; removal target is Phase 2 or on operator opt-in configuration
+
+### Dual-Absence Semantics
+
+When **both** `X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization` are absent, the daemon returns HTTP 401 `{"error":"missing_auth_token"}` with **no WARN log**. The missing-auth response is not an alias-path response and does not trigger the deprecation log.
+
+### Auth Response Examples
+
+**Both headers absent:**
+```json
+HTTP/1.1 401 Unauthorized
+{"error":"missing_auth_token"}
+```
+No WARN log emitted.
+
+**Canonical header present, wrong secret:**
+```json
+HTTP/1.1 401 Unauthorized
+{"error":"invalid_auth_token"}
+```
+No WARN log emitted (canonical path, no alias deprecation).
+
+**Alias header present, wrong secret (canonical absent):**
+```json
+HTTP/1.1 401 Unauthorized
+{"error":"invalid_auth_token"}
+```
+WARN log emitted: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`.
+
+**Alias header present, correct secret (canonical absent):**
+```json
+HTTP/1.1 200 OK
+<endpoint response body>
+```
+WARN log emitted: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`.
 
 ---
 
@@ -375,3 +465,88 @@ grep result — §JSONL Ring Buffer Schema field table (post-fix): 7 rows
 **Note on `ver` vs `version`:** The task brief cited the missing field as `ver`, but BC-2.01.010 Postcondition 1 uses `version` as the authoritative field name. BC-2.01.010 is the canonical source of truth; `version` is used here per BC authority, not the brief's informal note.
 
 **Scope:** PO-only. No changes to BC-2.01.010, VP-010, or any other artifact. PRD top-level bumped to v1.26.2 in same burst (F-R105-7 manifest pin).
+
+---
+
+### F-R106-5 + F-R106-6 PO closure — 2026-05-17T22:05:00Z
+
+**Findings:**
+- F-R106-5 HIGH — §Authentication Header Format only referenced canonical `X-Monocle-Authorization`; no dual-accept semantics, no WARN log behavior, no alias-path response examples per ADR-0005.
+- F-R106-6 HIGH — `POST /shutdown` endpoint missing from interface-definitions despite BC-2.01.004, BC-2.01.008, BC-2.01.009, VP-004, and VP-009 all citing it.
+
+**Canonical sources:** BC-2.01.009 v1.0.2 (INV-6 WARN log, INV-7 constant-time on both paths, EC-010 alias-path behavior, EC-011 canonical priority); BC-2.01.004 (10-second drain, EC-050 second-shutdown forced exit 2); ADR-0005 (dual-accept decision, alias header name, format constraint, phase-out rationale).
+
+**SE-17c — Before (§Authentication Header Format — single-header, no dual-accept):**
+
+```
+## Authentication Header Format
+
+**Contract:** BC-2.01.008, BC-2.01.009
+**Header name:** `X-Monocle-Authorization`
+**Value format:** `monocle-v1:<64-hex-lowercase>`
+**Token entropy:** 32 bytes from `rand::rngs::OsRng` encoded as 64-character lowercase hex
+**Token regex:** `^monocle-v1:[0-9a-f]{64}$`
+
+Token is written to lock file on daemon start. Token rotates on every daemon restart (BC-2.01.008).
+Hook scripts read the lock file to obtain the current token.
+```
+
+**SE-17d — After (§Authentication Header Format — dual-accept with canonical priority, alias WARN, dual-absence semantics, 4 response examples):**
+
+```
+## Authentication Header Format
+
+**Contract:** BC-2.01.008, BC-2.01.009; **Dual-accept decision:** ADR-0005
+
+### Canonical Header (Priority)
+...`X-Monocle-Authorization: monocle-v1:<64-hex>` (unchanged spec)...
+
+### Compatibility Alias Header (ADR-0005)
+**Header name:** `X-Claude-Code-Ide-Authorization`
+**Value format:** `<64-hex-lowercase>` (raw hex; no monocle-v1: prefix)
+**Accepted when:** canonical absent. **Priority:** canonical wins when both present.
+**WARN log:** emitted whenever alias path is entered (success or failure).
+**Constant-time comparison:** alias path uses constant_time_eq identically to canonical.
+**Phase-out:** Phase 2 or operator opt-in configuration.
+
+### Dual-Absence Semantics
+Both headers absent → HTTP 401 {"error":"missing_auth_token"}; no WARN log.
+
+### Auth Response Examples
+[4 examples: both-absent, canonical-wrong, alias-wrong+WARN, alias-correct+WARN]
+```
+
+**SE-17c — Before (/shutdown endpoint — absent from §HTTP API):**
+
+```
+§HTTP API endpoints documented: GET /healthz, GET /status, POST /hooks/* (5 endpoints).
+POST /shutdown: mentioned only in Exit Code Semantics table (line 170) as the trigger for exit code 2.
+No request/response schema, no field constraints, no edge cases.
+```
+
+**SE-17d — After (/shutdown endpoint — full §Endpoint: POST /shutdown (Authenticated, Admin) section):**
+
+```
+### Endpoint: POST /shutdown (Authenticated, Admin)
+
+**Contract:** BC-2.01.004, BC-2.01.008, BC-2.01.009
+**Router:** Authenticated router (256 KiB DefaultBodyLimit applies)
+**Auth:** Canonical or alias (ADR-0005 dual-accept; WARN on alias)
+**Request body:** empty or JSON null (ignored)
+**Response 200:** {"status":"shutting_down"} — drain initiated
+**Response 503 (EC-050):** {"error":"daemon_shutting_down"} — second /shutdown during drain → forced exit 2
+**Edge cases table:** unauthenticated (→ 401), second /shutdown during drain (→ 503 + exit 2), alias header (→ 200 + WARN)
+```
+
+**Changes made:**
+- §Authentication Header Format restructured into ### Canonical Header / ### Compatibility Alias Header / ### Dual-Absence Semantics / ### Auth Response Examples subsections
+- Added `X-Claude-Code-Ide-Authorization` alias documentation (ADR-0005 scope)
+- Added WARN log behavior documentation (BC-2.01.009 INV-6)
+- Added constant-time note for alias path (BC-2.01.009 INV-7)
+- Added dual-absence semantics paragraph (both-absent → missing_auth_token, no WARN)
+- Added 4 auth response examples covering all auth-path branches
+- Added full `### Endpoint: POST /shutdown (Authenticated, Admin)` section
+- Added EC-050 (second /shutdown → exit 2) to /shutdown edge cases table
+- Version bumped: 1.2 → 1.3; timestamp refreshed; ADR-0005 added to inputs
+
+**Scope:** PO-only. No changes to BC-2.01.004, BC-2.01.008, BC-2.01.009, ADR-0005, or any other artifact.

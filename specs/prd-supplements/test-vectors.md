@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-test-vectors
 level: L3
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:30:00Z
+timestamp: 2026-05-17T22:00:00Z
 phase: 1a
-inputs: [prd.md, behavioral-contracts/]
+inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-dual-accept-auth-header.md]
 input-hash: "6a384ad"
 traces_to: prd.md
 ---
@@ -35,7 +35,7 @@ traces_to: prd.md
 | BC-2.01.006 | `ss-01/BC-2.01.006.md` | 3 | `monocle-runtime/tests/crash_recovery.rs` |
 | BC-2.01.007 | `ss-01/BC-2.01.007.md` | 3 | `monocle-runtime/tests/jsonl_ring.rs` |
 | BC-2.01.008 | `ss-01/BC-2.01.008.md` | 3 | `monocle-runtime/tests/auth_token_lifecycle.rs` |
-| BC-2.01.009 | `ss-01/BC-2.01.009.md` | 6 | `monocle-runtime/tests/auth_header_rejection.rs` |
+| BC-2.01.009 | `ss-01/BC-2.01.009.md` | 8 | `monocle-runtime/tests/auth_header_rejection.rs` |
 | BC-2.01.010 | `ss-01/BC-2.01.010.md` | 3 | `monocle-runtime/tests/lock_file_contract.rs` |
 
 ### SS-02: Core Types and ABI (CAP-002)
@@ -69,14 +69,20 @@ traces_to: prd.md
 
 ### Auth Header Validation (BC-2.01.009)
 
+> ADR-0005: dual-accept auth. Canonical header `X-Monocle-Authorization: monocle-v1:<64-hex>` takes priority.
+> Compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>` accepted with WARN deprecation log.
+> Both headers absent → `missing_auth_token`. Alias-path entries are EC-010 from BC-2.01.009 v1.0.2.
+
 | Input | Expected | Category |
 |-------|----------|----------|
-| No `X-Monocle-Authorization` header | HTTP 401 `{"error":"missing_auth_token"}` | error |
+| No `X-Monocle-Authorization` header, no `X-Claude-Code-Ide-Authorization` header | HTTP 401 `{"error":"missing_auth_token"}` | error |
 | `X-Monocle-Authorization: ` (empty value) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
 | `X-Monocle-Authorization: monocle-v1:` (no hex suffix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
 | `X-Monocle-Authorization: bearer:<token>` (wrong version prefix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
-| `Authorization: monocle-v1:<token>` (wrong header name) | HTTP 401 `{"error":"missing_auth_token"}` | edge-case |
+| `Authorization: monocle-v1:<token>` (wrong header name, no alias header) | HTTP 401 `{"error":"missing_auth_token"}` | edge-case |
 | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` | HTTP 200 (passes auth middleware) | happy-path |
+| `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (alias path, wrong secret); no canonical header | HTTP 401 `{"error":"invalid_auth_token"}` + WARN deprecation log emitted | error |
+| `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (alias path, correct secret); no canonical header | HTTP 200 (auth passes) + WARN deprecation log emitted | happy-path (alias) |
 
 ### Body Size Limit (BC-2.01.003)
 
@@ -158,3 +164,51 @@ traces_to: prd.md
 
 > Note: `test-data/` directory is a Phase 1 test deliverable. test-writer creates these files
 > as part of story implementation. This table defines what must exist before Phase 3 closes.
+
+---
+
+## §Trace
+
+### F-R106-3 PO closure — 2026-05-17T22:00:00Z
+
+**Finding:** F-R106-3 CRITICAL — test-vectors.md fully stale wrt ADR-0005 dual-accept auth. BC-2.01.009 v1.0.2 added 2 alias-path vectors (EC-010), bringing canonical vector count from 6 to 8. The BC Vector Index count was 6; the critical-vector table had zero alias-path rows; the canonical header description was missing dual-accept context.
+
+**Canonical source:** BC-2.01.009 v1.0.2 §Canonical Test Vectors (lines 79-86) and §Edge Cases EC-010, EC-011, EC-012; ADR-0005 dual-accept auth header decision.
+
+**SE-17f — Count change:**
+
+**Before:** `| BC-2.01.009 | ... | 6 | ...`
+**After:** `| BC-2.01.009 | ... | 8 | ...`
+
+**SE-17c — Before (§Auth Header Validation critical-vector table — 6 rows):**
+
+```
+| No `X-Monocle-Authorization` header | HTTP 401 `{"error":"missing_auth_token"}` | error |
+| `X-Monocle-Authorization: ` (empty value) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: monocle-v1:` (no hex suffix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: bearer:<token>` (wrong version prefix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `Authorization: monocle-v1:<token>` (wrong header name) | HTTP 401 `{"error":"missing_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` | HTTP 200 (passes auth middleware) | happy-path |
+```
+
+**SE-17d — After (§Auth Header Validation critical-vector table — 8 rows, 2 alias-path rows added):**
+
+```
+| No `X-Monocle-Authorization` header, no `X-Claude-Code-Ide-Authorization` header | HTTP 401 `{"error":"missing_auth_token"}` | error |
+| `X-Monocle-Authorization: ` (empty value) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: monocle-v1:` (no hex suffix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: bearer:<token>` (wrong version prefix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `Authorization: monocle-v1:<token>` (wrong header name, no alias header) | HTTP 401 `{"error":"missing_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` | HTTP 200 (passes auth middleware) | happy-path |
+| `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (alias path, wrong secret); no canonical header | HTTP 401 `{"error":"invalid_auth_token"}` + WARN deprecation log emitted | error |
+| `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (alias path, correct secret); no canonical header | HTTP 200 (auth passes) + WARN deprecation log emitted | happy-path (alias) |
+```
+
+**Changes made:**
+- BC Vector Index count for BC-2.01.009: 6 → 8
+- §Auth Header Validation critical-vector table: 6 rows → 8 rows (added 2 alias-path rows)
+- Row 1 input updated: "No `X-Monocle-Authorization` header" → explicit dual-absence ("no canonical header, no alias header") to match BC-2.01.009 line 79
+- Row 5 (wrong header name) clarified: appended "(no alias header)" to avoid ambiguity with dual-header scenarios
+- Added ADR-0005 context note above critical-vector table
+- Frontmatter: v1.0 → v1.1; timestamp refreshed; ADR-0005 added to inputs
+- Version bump: v1.0 → v1.1

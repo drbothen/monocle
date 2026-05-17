@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.3"
+version: "1.26.4"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T19:30:00Z
-inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md]
+timestamp: 2026-05-17T22:20:00Z
+inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
 input-hash: "4172379"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.17; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; SS-deps-pin-manifest.md v1.1.17; ADR-0005-dual-accept-auth-header.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -138,7 +138,7 @@ Per vision §Explicit Non-Goals (hard boundaries):
 > **Supplement:** Full interface definitions are in `prd-supplements/interface-definitions.md`.
 > Primary consumers: implementer, test-writer.
 
-Phase 1 interface surfaces: HTTP API (5 hook POST endpoints + `/healthz` + `/status`), lock file JSON schema, JSONL ring buffer schema. Daemon binds on `127.0.0.1:<os-assigned-port>`. Auth header: `X-Monocle-Authorization: monocle-v1:<64-hex>` (32 bytes `OsRng`). Body limit: 256 KiB on authenticated router only. See `prd-supplements/interface-definitions.md` for full schemas, exit codes, and field constraints.
+Phase 1 interface surfaces: HTTP API (5 hook POST endpoints + `/healthz` + `/status` + `/shutdown`), lock file JSON schema, JSONL ring buffer schema. Daemon binds on `127.0.0.1:<os-assigned-port>`. Auth header: canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` (32 bytes `OsRng`); compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>` accepted per ADR-0005 with WARN deprecation log. Body limit: 256 KiB on authenticated router only. See `prd-supplements/interface-definitions.md` for full schemas, exit codes, dual-accept semantics, and field constraints.
 
 ---
 
@@ -156,7 +156,7 @@ Phase 1 defines 12 NFRs covering performance (NFR-001/002/003 latency, NFR-006 t
 > **Supplement:** Full error taxonomy is in `prd-supplements/error-taxonomy.md`.
 > Primary consumers: implementer, test-writer.
 
-Phase 1 defines 14 error codes across 7 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`). Convention: `E-<SUBSYSTEM>-<NNN>`. Severity levels: Broken (fatal, non-zero exit or 4xx/5xx), Degraded (WARN log + graceful continue). See `prd-supplements/error-taxonomy.md` for the complete catalog including BC source citations, implementation sites, and test file mappings.
+Phase 1 defines 15 error codes across 7 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`). Convention: `E-<SUBSYSTEM>-<NNN>`. Severity levels: Broken (fatal, non-zero exit or 4xx/5xx), Degraded (WARN log + graceful continue), Cosmetic (WARN log, zero exit, no functional impact; E-AUTH-003 alias deprecation log). See `prd-supplements/error-taxonomy.md` for the complete catalog including BC source citations, implementation sites, and test file mappings.
 
 ---
 
@@ -258,29 +258,87 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 
 | BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |
 |-------|----------------|-----------|----------|-----------|-----------|
-| BC-2.01.001 | §Scope (hook receiver hardening — `/healthz`) | SS-daemon-lifecycle.md v1.0.25 §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
-| BC-2.01.002 | §Scope (hook receiver hardening — `/status`) | SS-daemon-lifecycle.md v1.0.25 §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
-| BC-2.01.003 | §Success Criteria (body size limit) | SS-daemon-lifecycle.md v1.0.25 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
-| BC-2.01.004 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
-| BC-2.01.005 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
-| BC-2.01.006 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
-| BC-2.01.007 | §Scope (forward-compatibility — JSONL ring) | SS-daemon-lifecycle.md v1.0.25 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
-| BC-2.01.008 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
-| BC-2.01.009 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
-| BC-2.01.010 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
-| BC-2.02.001 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
-| BC-2.02.002 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
-| BC-2.02.003 | §Scope (forward-compatibility — public enum extensibility) | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
-| BC-2.02.004 | §Scope (forward-compatibility — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
-| BC-2.02.005 | §Success Criteria (factory pattern detection) | SS-core-types-and-abi.md v1.2.8 §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
-| BC-2.02.006 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
-| BC-2.02.007 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
-| BC-2.02.008 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
-| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
-| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
-| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
-| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
-| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+| BC-2.01.001 | §Scope (hook receiver hardening — `/healthz`) | SS-daemon-lifecycle.md v1.0.30 §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
+| BC-2.01.002 | §Scope (hook receiver hardening — `/status`) | SS-daemon-lifecycle.md v1.0.30 §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
+| BC-2.01.003 | §Success Criteria (body size limit) | SS-daemon-lifecycle.md v1.0.30 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
+| BC-2.01.004 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
+| BC-2.01.005 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
+| BC-2.01.006 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
+| BC-2.01.007 | §Scope (forward-compatibility — JSONL ring) | SS-daemon-lifecycle.md v1.0.30 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
+| BC-2.01.008 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
+| BC-2.01.009 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
+| BC-2.01.010 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
+| BC-2.02.001 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
+| BC-2.02.002 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
+| BC-2.02.003 | §Scope (forward-compatibility — public enum extensibility) | SS-core-types-and-abi.md v1.2.11 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
+| BC-2.02.004 | §Scope (forward-compatibility — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.11 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
+| BC-2.02.005 | §Success Criteria (factory pattern detection) | SS-core-types-and-abi.md v1.2.11 §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
+| BC-2.02.006 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
+| BC-2.02.007 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
+| BC-2.02.008 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
+| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
+| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
+| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
+| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
+| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+
+---
+
+## §Trace v1.26.4 — F-R106-4 (RTM pin refresh + ADR-0005 input + E-AUTH-003 count)
+
+**Bump:** v1.26.3 → v1.26.4.
+**Predecessor pin:** v1.26.3 (VP alias + abbreviation count; commit on factory-artifacts).
+**Timestamp:** 2026-05-17T22:20:00Z
+
+**Scope of v1.26.4 (three-part patch: architecture version pin refresh, ADR-0005 traceability, error count update):**
+
+**Finding F-R106-4 HIGH — §7 RTM + traces_to stale architecture pins:**
+
+Pin replacement summary:
+
+| Field | Before | After | Occurrence Count |
+|-------|--------|-------|-----------------|
+| `SS-daemon-lifecycle.md` (traces_to + §7 RTM) | v1.0.25 | v1.0.30 | 12 (1 traces_to + 11 RTM rows: BC-2.01.001–BC-2.01.010 + NFR-012) |
+| `SS-core-types-and-abi.md` (traces_to + §7 RTM) | v1.2.8 | v1.2.11 | 9 (1 traces_to + 8 RTM rows: BC-2.02.001–BC-2.02.008) |
+| `SS-engine-module.md` (traces_to + §7 RTM) | v1.1.15 | v1.1.18 | 5 (1 traces_to + 4 RTM rows: BC-2.03.001–BC-2.03.004) |
+
+**Cross-dispatch coordination:** `SS-daemon-lifecycle.md v1.0.30` is the target version per architect 5E (F-FC-I005 removal + ADR-0005 auth-middleware section). v1.0.30 is the architect 5E commit target for the same burst. This PRD traces_to pins to v1.0.30 as coordinated.
+
+SE-17f before/after evidence:
+
+**Before (traces_to):** `SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15`
+**After (traces_to):** `SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18`
+
+SE-17c — before (§7 RTM rows — representative sample):
+```
+| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.25 §GET /healthz | ... |
+| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | ... |
+| BC-2.03.001 | ... | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | ... |
+```
+
+SE-17d — after (§7 RTM rows — representative sample):
+```
+| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.30 §GET /healthz | ... |
+| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | ... |
+| BC-2.03.001 | ... | SS-engine-module.md v1.1.18 §EngineModule Trait Signature | ... |
+```
+
+**Finding GAP-R45-2 — ADR-0005 missing from inputs/traces_to:**
+
+ADR-0005 (dual-accept auth header) is a canonical architecture decision that affects BC-2.01.008, BC-2.01.009, SS-daemon-lifecycle.md v1.0.30, and all 4 prd-supplements in this burst. It must appear in the PRD's inputs and traces_to fields.
+
+SE-17f: Added `architecture/adr/ADR-0005-dual-accept-auth-header.md` to both `inputs:` array and `traces_to:` string.
+
+**Error count update — E-AUTH-003 addition:**
+
+error-taxonomy.md v1.1 (same burst) adds E-AUTH-003 (Cosmetic, WARN log, alias deprecation per BC-2.01.009 INV-6). Total error codes: 14 → 15.
+
+SE-17f before/after:
+
+**Before:** `Phase 1 defines 14 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded...`
+**After:** `Phase 1 defines 15 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded..., Cosmetic (WARN log, zero exit, no functional impact; E-AUTH-003 alias deprecation log)`
+
+**Concurrent:** Parallel PO 5A (BC scope), PO 5C (brief), FV 5D (VPs — VP-009 alias-path expansion), Architect 5E (ADR-0005 path + SS-daemon-lifecycle v1.0.30). All in same R106 Round 5 burst.
 
 ---
 
@@ -355,7 +413,7 @@ traces_to field: "...SS-deps-pin-manifest.md v1.1.17;..."
 
 **Manifest pin replacement count:** 1 occurrence (`traces_to` frontmatter field in prd.md).
 
-**Note:** References to `SS-engine-module.md v1.1.15` in §7 RTM rows (BC-2.03.001 through BC-2.03.004) are the ENGINE MODULE version, NOT the deps-pin-manifest version. These are correct and unchanged.
+**Note:** References to `SS-engine-module.md v1.1.18` in §7 RTM rows (BC-2.03.001 through BC-2.03.004) are the ENGINE MODULE version, NOT the deps-pin-manifest version. These are correct and unchanged.
 
 **Concurrent:** nfr-catalog.md v1.0 → v1.1 (F-R105-2 + GAP-R44-1 VP ID sweep; same burst). interface-definitions.md v1.1 → v1.2 (F-R105-10/11 + GAP-R44-3 lock file schema; same burst).
 

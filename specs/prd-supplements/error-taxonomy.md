@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:30:00Z
+timestamp: 2026-05-17T22:15:00Z
 phase: 1a
-inputs: [prd.md]
+inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
 input-hash: "6787573"
 traces_to: prd.md
 ---
@@ -35,8 +35,9 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 
 | Code | Category | Severity | Exit / HTTP | Message Format | Source BC |
 |------|----------|----------|-------------|---------------|-----------|
-| E-AUTH-001 | Authentication | Broken | HTTP 401 | `{"error":"missing_auth_token"}` | BC-2.01.009 (absent header; old: BC-AUTH-002) |
-| E-AUTH-002 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token"}` | BC-2.01.009 (any value-present failure; old: BC-AUTH-002) |
+| E-AUTH-001 | Authentication | Broken | HTTP 401 | `{"error":"missing_auth_token"}` | BC-2.01.009 (both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` absent; dual-absence per ADR-0005; old: BC-AUTH-002) |
+| E-AUTH-002 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token"}` | BC-2.01.009 (any value-present failure on canonical or alias path; wrong format, wrong secret, or empty value; old: BC-AUTH-002) |
+| E-AUTH-003 | Authentication | Cosmetic | WARN log | `WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization` | BC-2.01.009 INV-6 (alias path entered — emitted on every alias-path request regardless of auth success or failure; per ADR-0005 dual-accept deprecation signaling) |
 | E-DAEMON-001 | Body Size | Broken | HTTP 413 | `{"error":"payload_too_large","limit_bytes":262144}` | BC-2.01.003 (old: BC-DAEMON-003) |
 | E-DAEMON-002 | Shutdown | Degraded | HTTP 503 | `{"error":"daemon_shutting_down"}` with `Retry-After: 10` header | BC-2.01.004 §Shutdown Signal Handling (old: BC-DAEMON-004) |
 | E-DAEMON-003 | Liveness | Broken | HTTP 503 | `{"status":"shutting_down"}` | BC-2.01.001 (healthz during shutdown; old: BC-DAEMON-001) |
@@ -62,8 +63,9 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 
 | Error Code | Implementation Site | Test File |
 |-----------|---------------------|-----------|
-| E-AUTH-001 | `monocle-runtime/src/auth.rs` (missing header branch) | `monocle-runtime/tests/auth_header_rejection.rs` |
-| E-AUTH-002 | `monocle-runtime/src/auth.rs` (invalid format/value branch) | `monocle-runtime/tests/auth_header_rejection.rs` |
+| E-AUTH-001 | `monocle-runtime/src/auth.rs` (both-headers-absent branch; canonical checked first, then alias) | `monocle-runtime/tests/auth_header_rejection.rs` |
+| E-AUTH-002 | `monocle-runtime/src/auth.rs` (invalid format/value branch — canonical path OR alias path) | `monocle-runtime/tests/auth_header_rejection.rs` |
+| E-AUTH-003 | `monocle-runtime/src/auth.rs` (alias-path WARN log; emitted before constant-time comparison result is known) | `monocle-runtime/tests/auth_header_rejection.rs` |
 | E-DAEMON-001 | `monocle-runtime/src/router.rs` (`DefaultBodyLimit::max(256 * 1024)` rejection) | `monocle-runtime/tests/body_size_limit.rs` |
 | E-DAEMON-002 | `monocle-runtime/src/lifecycle.rs` (shutdown drain — hook handler returns 503) | `monocle-runtime/tests/graceful_shutdown.rs` |
 | E-DAEMON-003 | `monocle-runtime/src/handlers/healthz.rs` (ShuttingDown arm → 503) | `monocle-runtime/tests/healthz_endpoint.rs` |
@@ -86,3 +88,66 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 - All error JSON bodies use snake_case keys
 - HTTP error bodies are valid JSON; always parseable as `{"error": "<code>"}` minimum
 - WARN log entries use `tracing::warn!` structured format; not returned to callers
+
+---
+
+## §Trace
+
+### F-R106-16 PO closure — 2026-05-17T22:15:00Z
+
+**Finding:** F-R106-16 MED — error-taxonomy.md not updated for ADR-0005 dual-accept auth. E-AUTH-001 described "absent header" without dual-header semantics (should be: both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` absent). E-AUTH-003 for WARN deprecation log was missing from the catalog entirely.
+
+**Canonical sources:** BC-2.01.009 INV-6 (WARN on alias path), INV-7 (constant-time on both paths), EC-010 (alias wrong secret), EC-011 (both present → canonical wins), EC-012 (alias empty value); ADR-0005 §Deprecation Signaling.
+
+**Decision — E-AUTH-003 catalog entry vs. §Severity Definitions Cosmetic row:**
+
+Production-grade default applied: E-AUTH-003 is a defined, documented behavior per BC-2.01.009 INV-6 and ADR-0005. It deserves an explicit catalog entry. The Cosmetic-row approach would leave the behavior undiscoverable via error-code lookup. E-AUTH-003 is classified as **Cosmetic** severity (INV-6 is a deprecation signal; it does not affect the auth outcome and has zero exit-code impact). Adding it as E-AUTH-003 satisfies the append-only numbering policy and makes the behavior machine-referenceable by implementer and test-writer.
+
+**SE-17c — Before (E-AUTH-001 Source BC + Error-to-Module Mapping — single-header semantics):**
+
+```
+Error Catalog:
+| E-AUTH-001 | Authentication | Broken | HTTP 401 | {"error":"missing_auth_token"} |
+  BC-2.01.009 (absent header; old: BC-AUTH-002) |
+| E-AUTH-002 | Authentication | Broken | HTTP 401 | {"error":"invalid_auth_token"} |
+  BC-2.01.009 (any value-present failure; old: BC-AUTH-002) |
+[E-AUTH-003: absent]
+
+Error-to-Module Mapping:
+| E-AUTH-001 | monocle-runtime/src/auth.rs (missing header branch) | ... |
+| E-AUTH-002 | monocle-runtime/src/auth.rs (invalid format/value branch) | ... |
+[E-AUTH-003: absent]
+```
+
+**SE-17d — After (E-AUTH-001 dual-absence semantics + E-AUTH-003 Cosmetic WARN entry):**
+
+```
+Error Catalog:
+| E-AUTH-001 | Authentication | Broken | HTTP 401 | {"error":"missing_auth_token"} |
+  BC-2.01.009 (both X-Monocle-Authorization AND X-Claude-Code-Ide-Authorization absent;
+  dual-absence per ADR-0005; old: BC-AUTH-002) |
+| E-AUTH-002 | Authentication | Broken | HTTP 401 | {"error":"invalid_auth_token"} |
+  BC-2.01.009 (any value-present failure on canonical or alias path; wrong format,
+  wrong secret, or empty value; old: BC-AUTH-002) |
+| E-AUTH-003 | Authentication | Cosmetic | WARN log |
+  "WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization" |
+  BC-2.01.009 INV-6 (alias path entered — emitted on every alias-path request regardless
+  of auth success or failure; per ADR-0005 dual-accept deprecation signaling) |
+
+Error-to-Module Mapping:
+| E-AUTH-001 | monocle-runtime/src/auth.rs (both-headers-absent branch; canonical checked first, then alias) | ... |
+| E-AUTH-002 | monocle-runtime/src/auth.rs (invalid format/value branch — canonical path OR alias path) | ... |
+| E-AUTH-003 | monocle-runtime/src/auth.rs (alias-path WARN log; emitted before constant-time comparison result is known) | ... |
+```
+
+**Changes made:**
+- E-AUTH-001 Source BC: "absent header" → "both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` absent; dual-absence per ADR-0005"
+- E-AUTH-002 Source BC: added "on canonical or alias path" to clarify value-present failures apply to both paths
+- E-AUTH-003 added to Error Catalog (Cosmetic severity, WARN log, BC-2.01.009 INV-6, ADR-0005)
+- E-AUTH-003 added to Error-to-Module Mapping (auth.rs alias-path WARN branch)
+- Error count: 14 → 15 (E-AUTH-003 addition)
+- Version bumped: v1.0 → v1.1; timestamp refreshed; ADR-0005 added to inputs
+
+**PRD §5 prose impact:** PRD §5 states "14 error codes across 7 subsystem abbreviations". With E-AUTH-003, the count is 15. PRD v1.26.3 → v1.26.4 bump in same burst updates this count.
+
+**Scope:** PO-only. No changes to BC-2.01.009, ADR-0005, or any other artifact.

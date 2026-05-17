@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T19:00:00Z
+timestamp: 2026-05-17T22:10:00Z
 phase: 1a
-inputs: [prd.md]
+inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
 input-hash: "6787573"
 traces_to: prd.md
 ---
@@ -30,7 +30,7 @@ traces_to: prd.md
 | NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | CI matrix check; `rust-toolchain.toml` | P0 | N/A |
 | NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix | P0 | N/A |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` per VP-005 Post-condition 1 (lock-file `0o600` mode assertion) | P0 | N/A |
-| NFR-010 | Correctness | Constant-time auth comparison | `constant_time_eq::constant_time_eq` used for token comparison | Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) | P0 | N/A |
+| NFR-010 | Correctness | Constant-time auth comparison on ALL auth paths (canonical + alias) | `constant_time_eq::constant_time_eq` used for token comparison on both canonical (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7 | Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) AND VP-009 §"alias-path constant-time comparison" probe (alias path verifies constant_time_eq is also used on `X-Claude-Code-Ide-Authorization` token; FV 5D expanding VP-009 in this same burst) | P0 | N/A |
 | NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md | P1 | N/A |
 | NFR-012 | Security | Runtime directory permissions | `0o700` (owner-only access) on newly-created runtime_dir; defense-in-depth with NFR-009 lock-file `0o600` | Integration test: `stat` runtime_dir after daemon start; assert mode is `0700` per VP-005 Post-condition 9 / probe 5.e | P0 | N/A |
 
@@ -78,7 +78,7 @@ traces_to: prd.md
 | NFR-007 | Phase 6 formal hardening pending — MSRV CI matrix check is a Phase 6 (formal hardening) deliverable verified by CI matrix configuration. No verification property file required for CI matrix checks; validation is the `rust-toolchain.toml` pin + GitHub Actions matrix config. FV to confirm VP scope in Phase 6 preflight. |
 | NFR-008 | Phase 6 formal hardening pending — platform matrix check is a Phase 6 (formal hardening) deliverable verified by CI matrix configuration. No verification property file required for CI matrix checks; validation is the GitHub Actions `[darwin, linux] × [amd64, arm64]` matrix. FV to confirm VP scope in Phase 6 preflight. |
 | NFR-009 | VP-005 Post-condition 1 (lock-file 0o600 mode assertion) |
-| NFR-010 | VP-008 §Post-condition 5 (constant_time_eq source-grep) |
+| NFR-010 | VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009) |
 | NFR-011 | Phase 4 holdout evaluation pending — DTU clone fidelity measurement against fixture corpus is a Phase 4 deliverable (holdout-evaluator agent scope). FV to create VP-023+ in Phase 4 when DTU clone is operational per dtu-assessment.md §Evaluation Criteria. |
 | NFR-012 | VP-005 Post-condition 9 / probe 5.e (runtime_dir 0o700 mode assertion) |
 
@@ -159,3 +159,48 @@ VP Probe Citations table (canonical + phase-deferral markers):
 | VP-DAEMON-005 | VP-005 | 4 | NFR-009 Validation + NFR-012 Validation + VP Probe Citations NFR-009 + NFR-012 |
 | VP-DAEMON-006 | VP-006 | 1 | VP Probe Citations NFR-006 |
 | VP-AUTH-001 | VP-008 | 4 | NFR-004 Validation + NFR-010 Validation + VP Probe Citations NFR-004 + NFR-010 |
+
+---
+
+### F-R106-15 PO closure — 2026-05-17T22:10:00Z
+
+**Finding:** F-R106-15 MED — NFR-010 Validation Method cited VP-008 §Post-condition 5 only. Per BC-2.01.009 INV-7, constant-time comparison is required on **both** the canonical path and the alias path (ADR-0005). VP-009 (alias-path constant-time probe) must also be cited. FV 5D is expanding VP-009 in parallel to include this probe.
+
+**Canonical source:** BC-2.01.009 INV-7 ("Constant-time comparison applies to BOTH canonical and alias paths"); ADR-0005 §Security Properties.
+
+**SE-17c — Before (NFR-010 Validation Method + VP Probe Citations row):**
+
+```
+NFR Registry row NFR-010 Validation Method:
+  "Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against
+   `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`)"
+
+VP Probe Citations NFR-010:
+  "VP-008 §Post-condition 5 (constant_time_eq source-grep)"
+```
+
+**SE-17d — After (NFR-010 Validation Method + Requirement + VP Probe Citations row):**
+
+```
+NFR Registry row NFR-010 Requirement:
+  "`constant_time_eq::constant_time_eq` used for token comparison on both canonical
+   (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7"
+
+NFR Registry row NFR-010 Validation Method:
+  "Code review; source-grep per VP-008 §Post-condition 5 AND VP-009 §"alias-path constant-time comparison"
+   probe (FV 5D expanding VP-009 in same burst)"
+
+VP Probe Citations NFR-010:
+  "VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND
+   VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009)"
+```
+
+**Changes made:**
+- NFR-010 Requirement column: added "on ALL auth paths (canonical + alias)" and ADR-0005 + INV-7 citation
+- NFR-010 Validation Method: added VP-009 alias-path probe citation alongside existing VP-008 citation
+- VP Probe Citations table NFR-010: updated to cite both VP-008 and VP-009 with path-specific descriptions
+- Version bumped: v1.1 → v1.2; timestamp refreshed; ADR-0005 added to inputs
+
+**Note for FV (5D):** VP-009 must include an alias-path constant-time comparison probe to fulfill this NFR-010 citation. The probe should source-grep `monocle-runtime/src/auth.rs` for the alias-path comparison branch and assert `constant_time_eq` is used there as well.
+
+**Scope:** PO-only. No changes to VP-009, VP-008, VP-INDEX.md, or any BC file. NFR-010 update only.
