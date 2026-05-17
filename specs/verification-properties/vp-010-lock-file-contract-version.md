@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.9"
+version: "1.0.10"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T07:00:00Z
+timestamp: 2026-05-18T09:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "5d86eaa"
@@ -225,10 +225,10 @@ fn verify_bc_2_01_010() {
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.010.md` v1.0.3 (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch).
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.8 (commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.7 commit 517c7ee — F-R109 Round 8B PO sweep; supersedes v1.6 commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.9 (commit c0c6b99 — PO 10A R111 Round 10A timestamp pathology fix + L2-INDEX pin refresh; supersedes v1.8 commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.7 commit 517c7ee — F-R109 Round 8B PO sweep; supersedes v1.6 commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.32 §Start
   Sequence (commit 6e72995 — Architect 8A R109 Round 8A bump; Architect 9A R110 Round 9A keeps at v1.0.32 (commit 159d123); supersedes v1.0.31 commit 98396fe).
-- PRD: `.factory/specs/prd.md` v1.26.8 §BC-2.01.010 (Dispatch 4 commit 1030c65; refreshed to v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure commit d92e4a7; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).
+- PRD: `.factory/specs/prd.md` v1.26.9 §BC-2.01.010 (Dispatch 4 commit 1030c65; refreshed to v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure commit d92e4a7; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-005 §Post-condition 1 (producer-side joint
   mode-and-content assertion).
@@ -722,3 +722,67 @@ UTC ISO-8601 `Z` form: `2026-05-18T07:00:00Z` >= chain high-water `2026-05-18T05
 
 Rule 1: mechanical citation pin add/refresh executed in-scope of R111 Round 10 rather than deferred. Rule 4: 3 coupled cascade fixes (F-R111-2 + F-R111-3 + F-R111-4) consolidated into single v1.0.9 bump rather than fragmented across 3 separate dispatches. Rule 5: cheapest path (preserve 21-of-22 unpinned source-contract asymmetry as "advisory") rejected in favor of correct path (enable cross-VP source-contract staleness audits via sweep-wide pin symmetry). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.
 
+
+---
+
+## §Trace v1.0.10 — F-R112-1 HIGH + F-R112-2 HIGH + F-R112-3 HIGH + F-R112-4 LOW: R112 Round 11 FV Fix Burst (Cascade-Tail Active §References Refresh to BC-INDEX v1.9 + PRD v1.26.9)
+
+**Bump:** v1.0.9 → v1.0.10.
+**Predecessor pin:** v1.0.9 (commit pending — R111 Round 10 FV fix burst: cross-VP source-contract pin symmetry sweep).
+
+**Scope of v1.0.10 (NORMATIVE — R112 Round 11 FV fix burst per user direction; tiny cascade-tail sweep; trajectory 14→25→18→27→29→18→6→4→converging):**
+
+### Change 1 — F-R112-2 HIGH (Cascade-Tail): §References BC-INDEX Cite Refresh v1.8 → v1.9 (NORMATIVE)
+
+- **SE-17f §References BC-INDEX line:**
+  - Before: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.8 (commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; ...).`
+  - After: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.9 (commit c0c6b99 — PO 10A R111 Round 10A timestamp pathology fix + L2-INDEX pin refresh; supersedes v1.8 commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; ...).`
+- **Rationale:** PO 10A (R111 Round 10A) bumped BC-INDEX v1.8 → v1.9 in commit c0c6b99 (timestamp pathology fix + L2-INDEX v1.0.8 pin). R111 Round 10 FV cascade missed the BC-INDEX cite-tail refresh in the per-VP §References sweep; R112 Round 11 closes the cascade-tail gap. SAME-CLASS to F-R109-7 / F-R110-3 / F-R111-3 prior cascade-tail miss occurrences (this is the 4th occurrence per O-R112-1 process-gap observation).
+
+### Change 2 — F-R112-3 HIGH (Cascade-Tail): §References PRD Cite Refresh v1.26.8 → v1.26.9 (NORMATIVE)
+
+- **SE-17f §References PRD line:**
+  - Before: `PRD: \`.factory/specs/prd.md\` v1.26.8 §BC-X.XX.XXX (Dispatch 4 commit 1030c65; refreshed to v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; ...).`
+  - After: `PRD: \`.factory/specs/prd.md\` v1.26.9 §BC-X.XX.XXX (Dispatch 4 commit 1030c65; refreshed to v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; ...).`
+- **Rationale:** PO 10A bumped PRD v1.26.8 → v1.26.9 in commit c0c6b99 (same dispatch as BC-INDEX). Cascade-tail symmetric to Change 1.
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -nE "BC-INDEX\.md\` v1\.9" <this-vp-file>` §References body scope → 1 match (active §References BC index line).
+- Post-edit `grep -nE "BC-INDEX\.md\` v1\.8" <this-vp-file>` §References body scope (excluding §Trace SE-17f BEFORE evidence) → 0 matches (only remaining `v1.8` cites are inside §Trace blocks v1.0.8 through v1.0.9 per SE-17g audit-trail preservation).
+- Post-edit `grep -nE "prd\.md\` v1\.26\.9" <this-vp-file>` §References body scope → 1 match (active §References PRD line).
+- Post-edit `grep -nE "prd\.md\` v1\.26\.8" <this-vp-file>` §References body scope (excluding §Trace) → 0 matches.
+- Post-edit `grep -nE "commit c0c6b99" <this-vp-file>` body scope → 2+ matches (active §References BC-INDEX + PRD lines; new §Trace v1.0.10 narrative).
+
+### Trace — recommend codification of SE-21 cross-agent cascade discipline (NORMATIVE OBSERVATION)
+
+**O-R112-1 process-gap observation (4th occurrence — should trigger SM codification next burst):**
+
+This is the 4th occurrence of the same-class cascade-tail miss pattern:
+- F-R109-7 (R109 Round 8) — SS-pin cascade-tail miss
+- F-R110-3 (R110 Round 9) — active cite forward refresh miss
+- F-R111-3 (R111 Round 10) — vp-009 §References Source-contract pin miss
+- F-R112-2/3 (R112 Round 11) — BC-INDEX + PRD cascade-tail miss across 22 VPs
+
+**Recommendation — codify SE-21 (Cross-Agent Cascade Discipline):** When PO bumps PRD or BC-INDEX, the subsequent FV burst MUST execute a sweep-wide §References cascade refresh across all 22 VP files + VP-INDEX before declaring the burst closed. The cascade-tail sweep is NOT optional. Currently a tribal-knowledge convention; needs to be codified as a formal discipline in next SM burst per Production-Grade Rule 1 (4-occurrence threshold per D-114 trigger pattern).
+
+### Authoritative cross-references
+
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.9 (commit c0c6b99 — PO 10A R111 Round 10A timestamp pathology fix + L2-INDEX v1.0.8 pin).
+- **PRD:** `.factory/specs/prd.md` v1.26.9 (commit c0c6b99 — PO 10A R111 Round 10A dispatch).
+- **R112 closure chain:** F-R112-1 HIGH (VP-INDEX cascade-tail v1.9 → v1.10 + active cite forward refresh) + F-R112-2 HIGH (22-VP §References BC-INDEX cite refresh v1.8 → v1.9) + F-R112-3 HIGH (22-VP §References PRD cite refresh v1.26.8 → v1.26.9) + F-R112-4 LOW (VP-INDEX Current-as-of refresh).
+- **Concurrent dispatches (R112 Round 11):** FV-only fix burst per user direction (cascade-tail sweep; tiny round).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T09:00:00Z` >= chain high-water `2026-05-18T07:00:00Z` (this VP's prior §Trace frontmatter timestamp). SE-16d PASS (strict-greater satisfied).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References BC-INDEX + PRD active citation pin refresh; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; O-R112-1 process-gap observation.
+- **SE-17g audit-trail preservation:** All prior §Trace SE-17f BEFORE evidence preserved verbatim per VP-INDEX §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical cascade-tail citation refresh executed in-scope of R112 Round 11 rather than deferred. Rule 4: coupled cascade fixes (F-R112-2 + F-R112-3) consolidated into single v1.0.10 bump. Rule 5: cheapest path (defer cascade-tail to next round as "low-impact stale cite") rejected in favor of correct path (close cascade-tail in-scope per 4-occurrence pattern requiring SE-21 codification). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.
