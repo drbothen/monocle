@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T20:00:00Z
+timestamp: 2026-05-18T05:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -340,3 +340,22 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
 - SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior v1.2 2026-05-17T18:00:00Z.
 - CAP-001 version: 1.2 → 1.3.
 - L2-INDEX.md version: cascaded to 1.0.5 → 1.0.6 (CAP-001 version bump in §CAP Files registry).
+
+## §Trace v1.4
+
+**F-R110-5 BA closure — brief cite verification per current brief v1.4.27** (2026-05-18T05:00:00Z):
+- SE-17c body-scope grep: searched CAP-001-daemon-lifecycle.md for all occurrences of `v1.4.` —
+  zero matches found. No brief version cite exists anywhere in the non-trace body of this file.
+- Analysis: CAP-001 cites the product brief by section anchor (§Phase 1 Scope, §Success Criteria,
+  §Phase 1 Constraints SOQ-2, §Out of Scope), not by version number. All anchors verified against
+  current product-brief.md v1.4.27 — all cited section headings present and substance unchanged.
+  No stale content to refresh.
+- Anchor justification re-verification (per current v1.4.27):
+  - CAP-001 §Anchor justification: "§Phase 1 Scope names monocle daemon start/stop, lock-file
+    lifecycle, five hook ingestion endpoints, hook tmpfile, event ribbon ring storage, and graceful
+    shutdown" — confirmed present in brief v1.4.27 §Scope → In Scope → Phase 1 — Runtime Core.
+  - Vision §Process Topology reference: unchanged in vision-synthesis v1.1.2.
+- No body content changed. §Trace entry added to close F-R110-5 per round 9D dispatch.
+- SE-16d monotonicity PASS: 2026-05-18T05:00:00Z > prior v1.3 2026-05-17T20:00:00Z.
+- CAP-001 version: 1.3 → 1.4.
+- L2-INDEX.md version: cascaded to 1.0.7 → 1.0.8 (F-R110-4 brief cite fix).
