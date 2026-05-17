@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.2"
+version: "1.26.3"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T19:00:00Z
+timestamp: 2026-05-17T19:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md]
 input-hash: "7cd466f"
 traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.17; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
@@ -156,7 +156,7 @@ Phase 1 defines 12 NFRs covering performance (NFR-001/002/003 latency, NFR-006 t
 > **Supplement:** Full error taxonomy is in `prd-supplements/error-taxonomy.md`.
 > Primary consumers: implementer, test-writer.
 
-Phase 1 defines 14 error codes across 6 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`). Convention: `E-<SUBSYSTEM>-<NNN>`. Severity levels: Broken (fatal, non-zero exit or 4xx/5xx), Degraded (WARN log + graceful continue). See `prd-supplements/error-taxonomy.md` for the complete catalog including BC source citations, implementation sites, and test file mappings.
+Phase 1 defines 14 error codes across 7 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`). Convention: `E-<SUBSYSTEM>-<NNN>`. Severity levels: Broken (fatal, non-zero exit or 4xx/5xx), Degraded (WARN log + graceful continue). See `prd-supplements/error-taxonomy.md` for the complete catalog including BC source citations, implementation sites, and test file mappings.
 
 ---
 
@@ -280,7 +280,57 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 | BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
 | BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
 | BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
-| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
+| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+
+---
+
+## §Trace v1.26.3 — F-R105-12 + GAP-R44-4 (VP alias + abbreviation count)
+
+**Bump:** v1.26.2 → v1.26.3.
+**Predecessor pin:** v1.26.2 (F-R105-7 manifest pin refresh; commit 39082b0 on factory-artifacts).
+**Timestamp:** 2026-05-17T19:30:00Z
+
+**Scope of v1.26.3 (patch — two surgical corrections; no content added or removed):**
+
+**Finding F-R105-12 LOW — §7 NFR-012 row stale VP alias:**
+
+SE-17f before/after evidence:
+
+**Before:** `Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e)`
+**After:** `Integration (VP-005 Post-condition 9 / probe 5.e)`
+
+Rationale: `VP-DAEMON-005` is the legacy subsystem-scoped alias. VP-INDEX v1.1 §SS-01 table (line 110) maps `VP-DAEMON-005 → VP-005`. The canonical ID per VP-INDEX v1.1 (source of truth) is `VP-005` (title: "Lock File Lifecycle — Atomic Create, Pid Gate, Mode 0o600/0o700"). All VP cross-references must use the canonical VP-NNN form.
+
+SE-17c — before (body-scope grep evidence):
+```
+§7 NFR-012 row Test Type column: "Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e)"
+```
+
+SE-17d — after (body-scope grep evidence):
+```
+§7 NFR-012 row Test Type column: "Integration (VP-005 Post-condition 9 / probe 5.e)"
+```
+
+**Finding GAP-R44-4 LOW — §5a prose "6 subsystem abbreviations" count incorrect:**
+
+SE-17f before/after evidence:
+
+**Before:** `Phase 1 defines 14 error codes across 6 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`).`
+**After:** `Phase 1 defines 14 error codes across 7 subsystem abbreviations (`DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`).`
+
+Rationale: Actual enumeration contains 7 distinct abbreviations: `DAEMON`, `AUTH`, `LOCK`, `RING`, `FACT`, `ENG`, `PROTO`. Verified against `prd-supplements/error-taxonomy.md` §Error Catalog (14 rows: E-AUTH-001/002, E-DAEMON-001/002/003/004, E-LOCK-001/002/003, E-ENG-001, E-FACT-001/002, E-RING-001, E-PROTO-001). Count was 6, correct count is 7. The list itself was already correct — only the numeric count required correction.
+
+SE-17c — before (body-scope grep evidence):
+```
+§5a line: "14 error codes across 6 subsystem abbreviations"
+```
+
+SE-17d — after (body-scope grep evidence):
+```
+§5a line: "14 error codes across 7 subsystem abbreviations"
+```
+
+**Concurrent:** Parallel FV dispatch sweeping 22 VP §References to cite PRD v1.26.3. Parallel architect dispatch adjudicating auth-header interop (not in PRD scope). Parallel BA dispatch fixing L2-INDEX anchors (not in PRD scope).
 
 ---
 
