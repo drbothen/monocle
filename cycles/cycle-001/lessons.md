@@ -1583,3 +1583,86 @@ Before any parallel-dispatch round, the orchestrator MUST:
 **34 codified disciplines now in force** (was 33 + SE-18).
 
 **Codified in:** cycle-001/lessons.md §SE-18 (this entry, Round 7 cross-dispatch coordination failure — 2026-05-18 SM closure burst v5.68).
+
+---
+
+## SE-19: NFR-VP Phantom-Anchor Audit (CODIFIED — 2026-05-18)
+
+**Discovery:** 3rd occurrence per D-114 Goodhart's law trigger threshold (3-occurrence rule). Three occurrences:
+
+1. **R107 (F-R107-phantom-nfr):** NFR-007, NFR-008, NFR-011 in nfr-catalog.md cited VP files by number (VP-NNN) in their Verification column. Adversary R107 found that the cited VPs did not contain probes actually covering the NFR's stated latency/performance/capability requirement — only that VP-NNN existed. Classified as phantom-anchor finding.
+
+2. **R109 (F-R109-phantom-anchor):** NFR-001 and NFR-002 cited VP-001 and VP-002 respectively in nfr-catalog.md Verification column. Adversary R109 found that while VP-001 and VP-002 exist, neither VP contained a probe row asserting the specific NFR-001/002 startup-latency and permission-overlay-latency budget requirements. The VPs had generic daemon-start probes but not NFR-specific latency-budget probes.
+
+3. **R110 (F-R110-phantom-anchor):** Same NFR-001/002 pattern recurred in Round 10 audit — Round 9 closure had not yet been verified. This 3rd occurrence triggered D-114 codification threshold.
+
+**Discipline (SE-19):**
+
+Every NFR row in nfr-catalog.md that cites `VP-NNN` in its Verification column MUST be verified by adversary (and by FV on each nfr-catalog touch) to confirm that:
+
+1. **VP-NNN exists** on disk (not a phantom file reference).
+2. **VP-NNN contains a probe row** whose assertion text covers the NFR's stated behavioral requirement — not merely a generic probe for the same system component.
+3. **The probe's pass criterion** is traceable to the specific metric or threshold stated in the NFR (e.g., if NFR-001 says "startup within 2 seconds," VP-NNN must have a probe with pass criterion `startup_elapsed_ms < 2000` or equivalent).
+
+The adversary's NFR-VP anchor check is NOT satisfied by confirming VP-NNN exists. It requires confirming that VP-NNN contains a semantically covering probe for the NFR's stated requirement.
+
+**Adversary audit recipe:**
+
+```bash
+# For each NFR row citing VP-NNN in nfr-catalog.md:
+# 1. Confirm VP file exists:
+ls .factory/specs/verification-properties/VP-NNN-*.md
+# 2. Extract NFR requirement text; grep VP file for coverage:
+grep -n "<key_metric_from_NFR>" .factory/specs/verification-properties/VP-NNN-*.md
+# If grep returns 0 hits: PHANTOM ANCHOR — cite as finding.
+```
+
+**Application:** This discipline applies to every adversary pass AND to every FV dispatch that touches nfr-catalog.md. FV must include an explicit SE-19 compliance attestation in its dispatch report: "SE-19 NFR-VP anchor check: [list of NFR→VP pairs verified with grep evidence]."
+
+**Related observations held per D-114:**
+- O-R109-C: phantom NFR-VP anchor — this SE-19 codification absorbs O-R109-C as its formal rule.
+
+**35 codified disciplines now in force after SE-19** (was 34 + SE-19 = 35; SE-20 follows in the same burst, bringing total to 36).
+
+**Codified in:** cycle-001/lessons.md §SE-19 (this entry, 3rd occurrence NFR-001/002 R107+R109+R110 — 2026-05-18 SM closure burst v5.71 D-134).
+
+---
+
+## SE-20: Timestamp Monotonicity Hook (CODIFIED — 2026-05-18)
+
+**Discovery:** 1st occurrence triggering codification as defensive measure (Production-Grade Default Rule 1 — not MVP-defer). R110 adversary surfaced a systematic SE-16d violation in the Round 8 closure chain: Round 8 commits (159d123 Arch 8A, 3334fb6 PO 8B, 72d863e FV 8C, 5ee763d SM 8D) all used timestamps rooted at the real-clock date 2026-05-17 (commit author's local date) rather than the chain high-water date 2026-05-18 (established by STATE v5.69 at 2026-05-18T03:00:00Z). This caused at least 4 §Trace timestamps in Round 8 artifacts to violate cross-artifact monotonicity — they pre-dated the chain's established high-water mark.
+
+**Root cause:** SE-16d requires cross-artifact timestamp monotonicity but does not specify a hook-time enforcement mechanism. Agents authoring §Trace entries during a closure burst use the real-clock date unless explicitly instructed otherwise. When a burst spans midnight UTC or when the agent's local clock date differs from the chain high-water date, silent violations occur.
+
+**Discipline (SE-20):**
+
+Every §Trace timestamp in any spec artifact MUST satisfy:
+
+1. **Intra-artifact monotonicity (existing SE-16b):** Each §Trace entry timestamp > all prior §Trace entry timestamps in the same artifact.
+
+2. **Cross-artifact chain-time monotonicity (existing SE-16d):** Each artifact's newest §Trace entry timestamp >= all prior-burst artifact timestamps in the same closure chain.
+
+3. **Chain high-water floor (NEW — SE-20):** The chain high-water is defined as `max(STATE.md frontmatter timestamp at burst start, all prior-burst artifact §Trace timestamps)`. Every §Trace entry authored in a closure burst MUST have timestamp >= chain high-water floor, regardless of the authoring agent's real-clock date.
+
+**Hook-time enforcement (proposed):**
+
+Add to `.claude/settings.json` hooks a `validate-timestamp-monotonicity` pre-commit hook that:
+
+```bash
+# For each modified spec file with §Trace section:
+# 1. Extract newest §Trace timestamp from the file.
+# 2. Extract chain high-water from STATE.md frontmatter timestamp field.
+# 3. If file_newest_trace_ts < chain_high_water: REJECT commit with message:
+#    "SE-20 VIOLATION: <file> §Trace timestamp <X> < chain high-water <Y>.
+#     Bump §Trace timestamp to >= <Y> before committing."
+```
+
+Until the hook is implemented, the SM closure burst MUST include an explicit SE-20 compliance check: read STATE.md frontmatter timestamp (chain high-water), then verify that every §Trace timestamp in every artifact touched in the current burst is >= that value.
+
+**Application:** This discipline applies to every closure burst. The SM must record the SE-20 cross-chain monotonicity matrix in the Session Resume Checkpoint (as SE-16d is already recorded) — specifically noting the chain high-water value and confirming all burst artifacts are >= it.
+
+**Codification rationale:** R110 demonstrated that SE-16d is easy to violate silently when real-clock date diverges from chain high-water. A single-occurrence codification is justified under CLAUDE.md Production-Grade Default Rule 1 ("no MVP-driven deferrals") — this is not a "wait for 3 occurrences" case; it is a structural enforcement gap that will recur systematically until the hook exists. Codifying at 1st occurrence is the production-grade default.
+
+**36 codified disciplines now in force** (was 35 after SE-19 + SE-20 = 36 total. SE-18 was 34th; SE-19 is 35th; SE-20 is 36th).
+
+**Codified in:** cycle-001/lessons.md §SE-20 (this entry, R110 Round 8 timestamp pathology — 2026-05-18 SM closure burst v5.71 D-134).
