@@ -19,7 +19,7 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 ## Current Pipeline State
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
-- Brief: `v1.4.25` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
+- Brief: `v1.4.26` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
 - Phase: `pre-phase-1-final-gate-post-fix-burst` (round-4 consistency audit complete; adversary fresh pass pending).
 - Mode: greenfield-with-reference-ingest.
 
@@ -44,7 +44,7 @@ When two artifacts disagree, the LATER, MORE-SPECIFIC artifact wins:
 3. `.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md` — nucleo 0.5 dormancy risk accepted with explicit re-eval trigger (retires TD-001).
 4. `.factory/specs/architecture/SS-conventions-anti-patterns.md` — code conventions, anti-patterns, clippy + semgrep + PR-template + CI enforcement specs.
 5. `.factory/specs/dtu-assessment.md` — DTU clone scope for hook protocol surface (DTU_REQUIRED: true for Phase 1).
-6. `.factory/specs/product-brief.md` v1.4.25 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view. R-001 (Anthropic commoditization risk) reassessed at <10% probability; informational only, no mitigation scaffolding required.
+6. `.factory/specs/product-brief.md` v1.4.26 — Phase 1-4 scope, success criteria, competitive positioning vs Anthropic agent view. R-001 (Anthropic commoditization risk) reassessed at <10% probability; informational only, no mitigation scaffolding required.
 7. `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 — re-approved 2026-05-12 with refreshed endpoint set (canonical 5) and tech-stack pointer to `SS-deps-pin-manifest.md`. Captures human intent including all JC/EX/OQ-M closures. v1.1.2 is a surgical patch of v1.1 (path refs + frontmatter date); substantive content unchanged.
 8. `.factory/tech-debt-register.md` — tech debt register (see Principle 3 below; not for AI-driven deferrals).
 
