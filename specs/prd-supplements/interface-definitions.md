@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-interface-definitions
 level: L3
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:30:00Z
+timestamp: 2026-05-17T19:00:00Z
 phase: 1a
 inputs: [prd.md]
 input-hash: "742464a"
@@ -195,9 +195,10 @@ Token is written to lock file on daemon start. Token rotates on every daemon res
   "contract_version": 1,
   "pid": <integer>,
   "port": <integer>,
-  "auth_token": "<64-hex-lowercase>",
-  "runtime_dir": "<absolute-path>",
-  "started_at": "<ISO8601>"
+  "authToken": "<64-hex-lowercase>",
+  "startTimeUtc": "<ISO8601>",
+  "app": "monocle",
+  "version": "<semver>"
 }
 ```
 
@@ -207,9 +208,10 @@ Token is written to lock file on daemon start. Token rotates on every daemon res
 | `contract_version` | integer | `1`; MUST be first key in serialized JSON |
 | `pid` | integer | ≥ 1 |
 | `port` | integer | OS-assigned ephemeral port (> 1024) |
-| `auth_token` | string | 64-char lowercase hex |
-| `runtime_dir` | string | absolute path to runtime directory |
-| `started_at` | string | ISO 8601 UTC `YYYY-MM-DDTHH:MM:SS.sssZ` |
+| `authToken` | string | 64-char lowercase hex; matches `^[0-9a-f]{64}$` |
+| `startTimeUtc` | string | ISO 8601 UTC `YYYY-MM-DDTHH:MM:SS.sssZ` (millisecond precision via `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")`) |
+| `app` | string | `"monocle"` (exact); allows future hook-discovery tooling to filter lock files by app name |
+| `version` | string | semver 2.0 of the daemon binary; same format as `/healthz` `version` field |
 
 **Write protocol:** Written atomically via `tempfile::persist` (SS-conventions-anti-patterns.md §Atomic Writes). No exceptions.
 
@@ -305,3 +307,71 @@ grep result — §JSONL Ring Buffer Schema field table (post-fix): 7 rows
 - Version bumped: `1.0` → `1.1`
 
 **Scope:** PO-only. No changes to BC-2.01.007, CAP-001-daemon-lifecycle.md, PRD top-level, or any other artifact. BA parallel track (CAP-001) untouched.
+
+---
+
+### F-R105-10/11 + GAP-R44-3 PO closure — 2026-05-17T19:00:00Z
+
+**Finding:** F-R105-10/11 + GAP-R44-3 MED — Lock file schema used `auth_token` (snake_case) and was missing fields `startTimeUtc`, `app`, `version`. BC-2.01.010 Postcondition 1 is the authoritative field list and order: `contract_version`, `pid`, `port`, `authToken`, `startTimeUtc`, `app`, `version`.
+
+**Canonical source (BC-2.01.010 Postcondition 1):**
+> The lock file JSON is a valid JSON object containing at minimum these fields in the stated order: `contract_version` (first), `pid`, `port`, `authToken`, `startTimeUtc`, `app`, `version`.
+
+**SE-17c — Before (body-scope grep evidence):**
+
+```
+§Lock File Schema JSON block (pre-fix):
+{
+  "contract_version": 1,
+  "pid": <integer>,
+  "port": <integer>,
+  "auth_token": "<64-hex-lowercase>",
+  "runtime_dir": "<absolute-path>",
+  "started_at": "<ISO8601>"
+}
+
+§Lock File Schema field table (pre-fix): 6 rows
+| contract_version | integer | `1`; MUST be first key in serialized JSON |
+| pid              | integer | >= 1 |
+| port             | integer | OS-assigned ephemeral port (> 1024) |
+| auth_token       | string  | 64-char lowercase hex |
+| runtime_dir      | string  | absolute path to runtime directory |
+| started_at       | string  | ISO 8601 UTC `YYYY-MM-DDTHH:MM:SS.sssZ` |
+```
+
+**SE-17d — After (body-scope grep evidence):**
+
+```
+§Lock File Schema JSON block (post-fix):
+{
+  "contract_version": 1,
+  "pid": <integer>,
+  "port": <integer>,
+  "authToken": "<64-hex-lowercase>",
+  "startTimeUtc": "<ISO8601>",
+  "app": "monocle",
+  "version": "<semver>"
+}
+
+§Lock File Schema field table (post-fix): 7 rows
+| contract_version | integer | `1`; MUST be first key in serialized JSON |
+| pid              | integer | >= 1 |
+| port             | integer | OS-assigned ephemeral port (> 1024) |
+| authToken        | string  | 64-char lowercase hex; matches `^[0-9a-f]{64}$` |
+| startTimeUtc     | string  | ISO 8601 UTC `YYYY-MM-DDTHH:MM:SS.sssZ` (millisecond precision via chrono) |
+| app              | string  | `"monocle"` (exact) |
+| version          | string  | semver 2.0 of the daemon binary |
+```
+
+**Changes made:**
+- `auth_token` (snake_case) → `authToken` (camelCase) — per project convention (Claude Code IDE standard) and BC-2.01.010 Postcondition 1
+- `runtime_dir` → removed (not in BC-2.01.010 Postcondition 1 canonical field list)
+- `started_at` → renamed to `startTimeUtc` (camelCase; canonical field name per BC-2.01.010 Postcondition 1 and vp-010-lock-file-contract-version.md §Pre-conditions)
+- Added `app: "monocle"` — per BC-2.01.010 Postcondition 3 (hook-discovery tooling filter field)
+- Added `version: "<semver>"` — per BC-2.01.010 Postcondition 1 canonical field list
+- `startTimeUtc` constraint updated with chrono format string per vp-010 §Pre-conditions
+- Version bumped: `1.1` → `1.2`
+
+**Note on `ver` vs `version`:** The task brief cited the missing field as `ver`, but BC-2.01.010 Postcondition 1 uses `version` as the authoritative field name. BC-2.01.010 is the canonical source of truth; `version` is used here per BC authority, not the brief's informal note.
+
+**Scope:** PO-only. No changes to BC-2.01.010, VP-010, or any other artifact. PRD top-level bumped to v1.26.2 in same burst (F-R105-7 manifest pin).

@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.1"
+version: "1.26.2"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T17:30:00Z
+timestamp: 2026-05-17T19:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md]
 input-hash: "7cd466f"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.15; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
+traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.17; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -281,6 +281,33 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 | BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
 | BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
 | NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
+
+---
+
+## §Trace v1.26.2 — F-R105-7 Manifest Pin Refresh (v1.1.15 → v1.1.17)
+
+**Bump:** v1.26.1 → v1.26.2.
+**Predecessor pin:** v1.26.1 (Audit R2 residual §6/§7 column schema reconciliation; commit in factory-artifacts branch).
+
+**Scope of v1.26.2 (patch — manifest pin only, no content added or removed):**
+
+**Finding:** F-R105-7 MED — PRD `traces_to` frontmatter cited `SS-deps-pin-manifest.md v1.1.15`; architect confirmed delta v1.1.15 → v1.1.17 is structural only (pin-number swap, no content cascade required).
+
+**SE-17c — Before (body-scope grep evidence):**
+```
+traces_to field: "...SS-deps-pin-manifest.md v1.1.15;..."
+```
+
+**SE-17d — After (body-scope grep evidence):**
+```
+traces_to field: "...SS-deps-pin-manifest.md v1.1.17;..."
+```
+
+**Manifest pin replacement count:** 1 occurrence (`traces_to` frontmatter field in prd.md).
+
+**Note:** References to `SS-engine-module.md v1.1.15` in §7 RTM rows (BC-2.03.001 through BC-2.03.004) are the ENGINE MODULE version, NOT the deps-pin-manifest version. These are correct and unchanged.
+
+**Concurrent:** nfr-catalog.md v1.0 → v1.1 (F-R105-2 + GAP-R44-1 VP ID sweep; same burst). interface-definitions.md v1.1 → v1.2 (F-R105-10/11 + GAP-R44-3 lock file schema; same burst).
 
 ---
 
