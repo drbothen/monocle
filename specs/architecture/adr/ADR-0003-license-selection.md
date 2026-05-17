@@ -13,7 +13,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [SS-deps-pin-manifest.md, product-brief.md]
-input-hash: "3dc7e82"
+input-hash: "b17dfbf"
 traces_to: "adversary F-NEW-08 (IMPORTANT); human Q-license (MIT/Apache-2.0 dual); devops-engineer companion: cargo-deny CI gate"
 project: monocle
 ---

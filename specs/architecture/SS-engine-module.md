@@ -10,7 +10,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T17:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
-input-hash: "980a3a4"
+input-hash: "83059df"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
