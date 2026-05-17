@@ -9,7 +9,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T19:00:00Z
 inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
-input-hash: "74ca5e2"
+input-hash: "825e4e5"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

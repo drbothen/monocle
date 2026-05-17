@@ -7,7 +7,7 @@ producer: orchestrator
 phase: pre-phase-0-vision
 timestamp: 2026-05-17T16:30:00Z
 inputs: [semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, product-brief.md, architecture/SS-deps-pin-manifest.md, planning/oq-research.md]
-input-hash: "e07e097"
+input-hash: "4b70485"
 traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; SS-deps-pin-manifest.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
 project: monocle
 approved_by: human
