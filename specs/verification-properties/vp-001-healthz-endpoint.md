@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.6"
+version: "1.0.7"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-18T02:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "01ed5ca"
+input-hash: "ee09189"
 traces_to: prd.md
 source_bc: BC-2.01.001
 module: monocle-runtime
@@ -222,9 +222,9 @@ fn verify_bc_2_01_001() {
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.001.md`.
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.6 (commit pending — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
-- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.31 (commit 98396fe — Architect 6D SS pin bump; Architect 7C keeps at v1.0.31).
-- PRD: `.factory/specs/prd.md` v1.26.6 §BC-2.01.001 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch — commit pending; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure commit d92e4a7; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
+- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.0.31 commit 98396fe).
+- PRD: `.factory/specs/prd.md` v1.26.6 §BC-2.01.001 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure commit d92e4a7; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 
 ---
@@ -540,3 +540,62 @@ UTC ISO-8601 `Z` form: `2026-05-18T01:00:00Z` >= chain high-water `2026-05-17T23
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical citation refresh + pin sweep executed in-scope rather than deferred. Rule 4: 3 coupled cascade fixes consolidated into single v1.0.6 bump rather than fragmented. Rule 5: cheapest path (defer pin refresh as "stale by 1 minor version, acceptable") rejected in favor of correct path (refresh all active cites to current canonical versions). PRD v1.26.6 and BC-INDEX v1.6 cites are post-PO-7A and post-PO-7B targets (commit pending — will resolve to concrete SHAs during R108 Round 7E SM pass after parallel dispatches converge). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace v1.0.4 / v1.0.5 blocks preserved per SE-17g audit-trail discipline — historical state-at-time-of-bump snapshots are immutable; refreshing them would erase audit trail.
+
+---
+
+## §Trace v1.0.7 — F-R109-15 MED + F-R109-18 MED + F-R109-7 HIGH: R109 Round 8C FV Cascade (commit-pending SHA Resolution + SS Pin Refresh + Active Cite Forward Refresh)
+
+**Bump:** v1.0.6 → v1.0.7.
+**Predecessor pin:** v1.0.6 (commit 6436da7 — F-R108 Round 7D FV — 22-VP input-hash cascade).
+**Scope of v1.0.7 (NORMATIVE — 3-fix coordinated cascade in R109 Round 8C FV parallel dispatch with Architect 8A SS pin bump + PO 8B BC/PRD/supplements/brief refresh):**
+
+### Change 1 — F-R109-15 MED: §References BC-INDEX commit-pending SHA Resolution (NORMATIVE)
+
+- **SE-17f §References BC-INDEX line:**
+  - Before: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.6 (commit pending — PO 7A R108 Round 7A BC scope dispatch; ...).`
+  - After: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; ...).`
+- **Rationale:** R108 Round 7 `commit pending` placeholder (active BC-INDEX v1.6 cite) resolved to concrete SHA `22579ac` (PO 7A landed in commit 22579ac per `git log --oneline -- specs/behavioral-contracts/BC-INDEX.md` 2026-05-18T02:30:00Z). Per CLAUDE.md Production-Grade Rule 1+4: mechanical SHA resolution executed in-scope rather than deferred.
+
+### Change 2 — F-R109-15 MED + F-R109-18 MED: §References PRD commit-pending SHA Resolution (NORMATIVE)
+
+- **SE-17f §References PRD line:**
+  - Before: `PRD: \`.factory/specs/prd.md\` v1.26.6 §BC-2.01.001 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch — commit pending; ...).`
+  - After: `PRD: \`.factory/specs/prd.md\` v1.26.6 §BC-2.01.001 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; ...).`
+- **Rationale:** R108 Round 7 `commit pending` placeholder (active PRD v1.26.6 cite) resolved to concrete SHA `c307f2a` (PO 7B landed in commit c307f2a per `git log --oneline -- specs/prd.md` 2026-05-18T02:30:00Z). Per CLAUDE.md Production-Grade Rule 1+4: mechanical SHA resolution executed in-scope rather than deferred.
+
+### Change 3 — F-R109-7 HIGH (SS-01 VPs only): SS-daemon-lifecycle Pin Refresh (NORMATIVE)
+
+- **SE-17f §References Architecture line:**
+  - Before: `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.31 ... (commit 98396fe — Architect 6D SS pin bump; Architect 7C keeps at v1.0.31).`
+  - After: `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.32 ... (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.0.31 commit 98396fe).`
+- **Rationale:** Architect 8A (parallel R109 Round 8A dispatch) bumps SS-daemon-lifecycle v1.0.31 → v1.0.32 per F-R109 architect-scope fixes. SS-daemon-lifecycle.md is verified at v1.0.32 at audit time (`grep ^version:` 2026-05-18T02:30:00Z). The active Architecture cite is refreshed forward to v1.0.32 per cross-dispatch coordination convention. SHA resolved to Architect 8A commit `6e72995` (verified at audit time).
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -n "commit pending" <this-vp-file>` body-scope active §References → 0 matches (R108 placeholders resolved; Architecture pin resolved to Architect 8A commit `6e72995`).
+- Post-edit `grep -n "commit 22579ac" <this-vp-file>` body scope → 1 match (active §References BC-INDEX line).
+- Post-edit `grep -n "commit c307f2a" <this-vp-file>` body scope → 1 match (active §References PRD line).Post-edit `grep -n "SS-daemon-lifecycle.md` v1.0.32" <this-vp-file>` body scope → 1 match (active §References Architecture line).
+
+### Authoritative cross-references
+
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch).
+- **PRD:** `.factory/specs/prd.md` v1.26.6 (commit c307f2a — PO 7B R108 Round 7B PRD + supplements dispatch).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.0.31 commit 98396fe).
+- **R109 closure chain:** F-R109-15 MED (commit-pending SHA resolution) + F-R109-7 HIGH (SS-daemon-lifecycle pin refresh — SS-01 VPs only) + F-R109-18 MED (commit-pending residuals).
+- **Concurrent dispatches (R109 Round 8):**
+  - Architect 8A: SS pin bumps v1.0.31→v1.0.32 / v1.2.12→v1.2.13 / v1.1.19→v1.1.20 — separate scope.
+  - PO 8B: BC + supplements + PRD + brief refresh — separate scope.
+  - FV 8C: this dispatch (22-VP cascade + VP-INDEX v1.7 — THIS file).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T02:30:00Z` >= chain high-water `2026-05-18T01:30:00Z`. SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References BC-INDEX `commit pending` → `commit 22579ac`; §References PRD `commit pending` → `commit c307f2a`; §References Architecture pin refresh `v1.0.31` → `v1.0.32`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical citation refresh + SHA resolution + SS pin refresh executed in-scope of R109 Round 8C rather than deferred. Rule 4: 3 coupled cascade fixes consolidated into single v1.0.7 bump rather than fragmented. Rule 5: cheapest path (defer SHA resolution as "stale by 1 dispatch, acceptable") rejected in favor of correct path (resolve all R108 placeholders to concrete SHAs in scope). SS-01 active Architecture cite resolved to Architect 8A commit `6e72995` (observed COMPLETE at audit time 2026-05-18T02:30:00Z). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.

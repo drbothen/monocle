@@ -1,13 +1,13 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T01:30:00Z
+timestamp: 2026-05-18T02:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "b09f325"
+input-hash: "ee09189"
 traces_to: prd.md
 ---
 
@@ -29,7 +29,7 @@ traces_to: prd.md
 ## SS-01: Daemon Lifecycle VPs (10)
 
 > Source-contract subsystem: BC-2.01.* (see `behavioral-contracts/BC-INDEX.md` §SS-01)
-> Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.31
+> Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.32
 > Capability: CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -50,7 +50,7 @@ traces_to: prd.md
 ## SS-02: Core Types and ABI VPs (8)
 
 > Source-contract subsystem: BC-2.02.* (see `behavioral-contracts/BC-INDEX.md` §SS-02)
-> Architecture source: `architecture/SS-core-types-and-abi.md` v1.2.12
+> Architecture source: `architecture/SS-core-types-and-abi.md` v1.2.13
 > Capability: CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -69,7 +69,7 @@ traces_to: prd.md
 ## SS-03: Engine Module VPs (4)
 
 > Source-contract subsystem: BC-2.03.* (see `behavioral-contracts/BC-INDEX.md` §SS-03)
-> Architecture source: `architecture/SS-engine-module.md` v1.1.19
+> Architecture source: `architecture/SS-engine-module.md` v1.1.20
 > Capability: CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -130,7 +130,7 @@ mapping for traceability into pre-Dispatch-5a artifacts.
 
 ## References
 
-- Current as of `2026-05-18T01:30:00Z` (R108 Round 7D — F-R108-5/6/13/15 closure).
+- Current as of `2026-05-18T02:30:00Z` (R109 Round 8C — F-R109-7/10/15/16/18 closure).
 - Source monolith (retired): `.factory/specs/verification-properties.md`
   v1.35 was the predecessor (commit 842402c). The monolith was deleted
   from the working tree in Dispatch 5b; per PG-5 historical preservation
@@ -138,8 +138,8 @@ mapping for traceability into pre-Dispatch-5a artifacts.
   `git show 842402c:.factory/specs/verification-properties.md` and
   earlier commits. VP-INDEX.md is now the canonical entry point for
   Phase 1 verification properties.
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.6 (commit pending — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
-- PRD: `.factory/specs/prd.md` v1.26.6 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch — commit pending; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
+- PRD: `.factory/specs/prd.md` v1.26.6 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Architecture index: `architecture/ARCH-INDEX.md`.
 - Template: `templates/L4-verification-property-template.md`.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
@@ -461,3 +461,93 @@ Sweep-wide post-edit re-grep across all 22 VP files for body-scope (excluding §
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical citation refresh + pin sweep + timestamp refresh executed in-scope of R108 Round 7D rather than deferred. Rule 4: 5 coupled cascade fixes consolidated into single v1.6 bump rather than fragmented across 5 separate dispatches. Rule 5: cheapest path (defer SS-pin refresh as "stale by 1 minor version, acceptable") rejected in favor of correct path (refresh all 3 SS pins to current canonical versions). PRD v1.26.6 and BC-INDEX v1.6 cites are post-PO-7A and post-PO-7B targets (commit pending — will resolve to concrete SHAs during R108 Round 7E SM pass after parallel dispatches converge). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 chain continuity preserved verbatim.
+
+---
+
+## §Trace v1.7 — F-R109-7 HIGH + F-R109-15 MED + F-R109-16 MED: VP-INDEX R109 Round 8C FV Cascade (SS Pin Refresh + commit-pending SHA Resolution + Current-as-of Refresh)
+
+**Bump:** v1.6 → v1.7.
+**Predecessor pin:** v1.6 (commit 2095388 — F-R108 Round 7D FV — VP commit-pending sweep + SS pin refresh + VP-009 probe renumber + VP-INDEX cascade).
+**Scope of v1.7 (NORMATIVE — 3-fix coordinated cascade in R109 Round 8C FV parallel dispatch with Architect 8A SS pin bump + PO 8B BC/PRD/supplements/brief refresh):**
+
+### Change 1 — F-R109-7 HIGH: SS architecture-source pin sweep (NORMATIVE)
+
+- **SE-17f §SS-01 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-daemon-lifecycle.md\` v1.0.31`
+  - After: `Architecture source: \`architecture/SS-daemon-lifecycle.md\` v1.0.32`
+- **SE-17f §SS-02 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-core-types-and-abi.md\` v1.2.12`
+  - After: `Architecture source: \`architecture/SS-core-types-and-abi.md\` v1.2.13`
+- **SE-17f §SS-03 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-engine-module.md\` v1.1.19`
+  - After: `Architecture source: \`architecture/SS-engine-module.md\` v1.1.20`
+- **Rationale:** Architect 8A (parallel R109 Round 8 dispatch) bumped SS-daemon-lifecycle v1.0.31 → v1.0.32, SS-core-types-and-abi v1.2.12 → v1.2.13, and SS-engine-module v1.1.19 → v1.1.20 in commit `6e72995` (F-R109 architect-scope fixes — verified `git log --oneline -- specs/architecture/SS-*` 2026-05-18T02:30:00Z). VP-INDEX SS-NN architecture-source pins refreshed to the post-8A canonical targets per cross-dispatch coordination convention. All four SS files (SS-daemon-lifecycle v1.0.32 + SS-core-types-and-abi v1.2.13 + SS-engine-module v1.1.20 + SS-forward-compatibility v1.2.17) verified via `grep ^version:` at audit time.
+
+### Change 2 — F-R109-15 MED + F-R109-18 MED: §References commit-pending placeholder resolution (NORMATIVE)
+
+- **SE-17f §References BC-INDEX line:**
+  - Before: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.6 (commit pending — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A BC scope dispatch; ...).`
+  - After: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A BC scope dispatch; ...).`
+- **SE-17f §References PRD line:**
+  - Before: `PRD: \`.factory/specs/prd.md\` v1.26.6 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch — commit pending; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; ...).`
+  - After: `PRD: \`.factory/specs/prd.md\` v1.26.6 (Dispatch 4 commit 1030c65; refreshed to v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; ...).`
+- **Rationale:** Two R108 Round 7 `commit pending` placeholders (active BC-INDEX v1.6 + active PRD v1.26.6 cites) resolved to concrete SHAs:
+  - BC-INDEX v1.6: PO 7A landed in commit `22579ac` (verified via `git log --oneline -- specs/behavioral-contracts/BC-INDEX.md` 2026-05-18T02:30:00Z).
+  - PRD v1.26.6: PO 7B landed in commit `c307f2a` (verified via `git log --oneline -- specs/prd.md` 2026-05-18T02:30:00Z).
+  Per CLAUDE.md Production-Grade Rule 1+4: mechanical SHA resolution executed in-scope rather than deferred.
+
+### Change 3 — F-R109-15 MED: §References "Current as of" timestamp refresh (NORMATIVE)
+
+- **SE-17f §References Current-as-of line:**
+  - Before: `Current as of \`2026-05-18T01:30:00Z\` (R108 Round 7D — F-R108-5/6/13/15 closure).`
+  - After: `Current as of \`2026-05-18T02:30:00Z\` (R109 Round 8C — F-R109-7/10/15/16/18 closure).`
+- **Rationale:** Stale R108 Round 7D timestamp predated R109 Round 8 cascade. Refreshed to match this dispatch's frontmatter `timestamp` (SE-16d-compliant: `2026-05-18T02:30:00Z` >= chain high-water).
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -n "commit pending" VP-INDEX.md` body scope (excluding §Trace v1.4/v1.5/v1.6/v1.7 SE-17f BEFORE evidence) → 0 matches.
+- Post-edit `grep -n "SS-daemon-lifecycle.md\` v1.0.31" VP-INDEX.md` body scope → 0 matches (residual is §Trace v1.7 SE-17f BEFORE evidence + §Trace v1.6 SE-17f AFTER evidence only).
+- Post-edit `grep -n "SS-daemon-lifecycle.md\` v1.0.32" VP-INDEX.md` body scope → 1 match (§SS-01 architecture-source line).
+- Post-edit `grep -n "SS-core-types-and-abi.md\` v1.2.13" VP-INDEX.md` body scope → 1 match (§SS-02 architecture-source line).
+- Post-edit `grep -n "SS-engine-module.md\` v1.1.20" VP-INDEX.md` body scope → 1 match (§SS-03 architecture-source line).
+- Post-edit `grep -n "commit 22579ac" VP-INDEX.md` body scope → 1 match (§References BC-INDEX line).
+- Post-edit `grep -n "commit c307f2a" VP-INDEX.md` body scope → 1 match (§References PRD line).
+- Post-edit `grep -n "2026-05-18T02:30:00Z" VP-INDEX.md` body scope → 2 matches (frontmatter timestamp + Current-as-of line).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content:** UNCHANGED — no source-BC, proof-method, file-path, or VP-ID cell modified.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.6 (commit c307f2a — PO 7B R108 Round 7B PRD + supplements dispatch; supersedes v1.26.5 commit d92e4a7). PO 8B R109 Round 8B refresh in-flight (separate concurrent scope; will cascade in subsequent VP-INDEX bump if PO 8B bumps PRD).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.6 (commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7). PO 8B R109 Round 8B refresh in-flight (separate concurrent scope).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.0.31 commit 98396fe).
+- **Architecture (SS-02):** `architecture/SS-core-types-and-abi.md` v1.2.13 (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.2.12 commit 98396fe).
+- **Architecture (SS-03):** `architecture/SS-engine-module.md` v1.1.20 (commit 6e72995 — Architect 8A R109 Round 8A bump; supersedes v1.1.19 commit 98396fe).
+- **R109 closure chain:** F-R109-7 HIGH (VP-INDEX SS pin sweep — handled in this v1.7); F-R109-15 MED (commit-pending residuals + Current-as-of refresh); F-R109-16 MED (SS pin ambiguity resolved via Change 1 cascade); F-R109-18 MED (commit-pending residuals — VP-009 closure handled in per-VP file).
+- **Concurrent dispatches (R109 Round 8):**
+  - Architect 8A: SS pin bumps v1.0.31→v1.0.32 / v1.2.12→v1.2.13 / v1.1.19→v1.1.20 — separate scope.
+  - PO 8B: BC + supplements + PRD + brief refresh — separate scope.
+  - FV 8C: this dispatch (VP-INDEX SS pin refresh + commit-pending resolution + 22-VP cascade — THIS file).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T02:30:00Z` >= chain high-water `2026-05-18T01:30:00Z` (VP-INDEX v1.6 frontmatter timestamp + §Trace v1.6 timestamp). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §SS-01 pin refresh `v1.0.31` → `v1.0.32`; §SS-02 pin refresh `v1.2.12` → `v1.2.13`; §SS-03 pin refresh `v1.1.19` → `v1.1.20`; §References BC-INDEX `commit pending` → `commit 22579ac`; §References PRD `commit pending` → `commit c307f2a`; §References Current-as-of refresh; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; concurrent dispatch context.
+
+### SE-17g META audit (NORMATIVE)
+
+Sweep-wide post-edit re-grep across all 22 VP files for body-scope (excluding §Trace SE-17f BEFORE evidence blocks):
+- `grep -nE "commit pending" .factory/specs/verification-properties/vp-*.md` body-scope active §References → 0 matches (all R108 Round 7 placeholders resolved to 22579ac + c307f2a + R109 Round 8A architect targets resolved to 6e72995 + R108 prior placeholders to 03a4c57 + 98396fe).
+- `grep -nE "SS-daemon-lifecycle\.md\` v1\.0\.31" .factory/specs/verification-properties/vp-*.md` body scope → 0 matches in active §References (residual matches are §Trace SE-17f BEFORE evidence only per audit-trail preservation).
+- `grep -nE "SS-core-types-and-abi\.md\` v1\.2\.12" .factory/specs/verification-properties/vp-*.md` body scope → 0 matches in active §References body lines.
+- `grep -nE "SS-engine-module\.md\` v1\.1\.19" .factory/specs/verification-properties/vp-*.md` body scope → 0 matches in active §References body lines.
+
+F-R109-7/10/15/16/18 closure verified across sweep.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical citation refresh + pin sweep + timestamp refresh + commit-pending resolution executed in-scope of R109 Round 8C rather than deferred. Rule 4: 3 coupled cascade fixes consolidated into single v1.7 bump rather than fragmented across 3 separate dispatches. Rule 5: cheapest path (defer SS-pin refresh as "stale by 1 patch version, acceptable") rejected in favor of correct path (refresh all 3 SS pins to current canonical targets matching Architect 8A's parallel dispatch). All SS pin references resolved to Architect 8A's commit `6e72995` (observed COMPLETE at audit time `2026-05-18T02:30:00Z`). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 chain continuity preserved verbatim.
