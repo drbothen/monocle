@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:20:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -111,7 +111,7 @@ directory is created with mode `0o700` (owner-only) for defense-in-depth.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the lock file lifecycle that is the single-instance enforcement mechanism for the daemon lifecycle subsystem |
 | L2 Domain Invariants | DI-002 (the lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — this BC directly implements that requirement: Postconditions 1–5 govern creation, liveness check, and content; Postconditions 6–7 govern clean removal; Postcondition 8 governs runtime directory mode); DI-003 (the auth token must be written to the lock file after the port is bound — Postcondition 3 states the lock file is written after the listener is bound and a port is obtained, enforcing the DI-003 ordering invariant) |
 | Architecture Module | monocle-runtime (daemon binary, lock file, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown |
 | Cross-Ref | BC-2.01.010 (lock file JSON schema contract) |
 | Test File | `monocle-runtime/tests/lock_file_lifecycle.rs` |
 | Test Name | `test_BC_DAEMON_005_lock_file_create_and_cleanup` |
@@ -136,6 +136,16 @@ S-TBD — Implement daemon lock file lifecycle with platform-aware runtime direc
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-005-lock-file-lifecycle.md` — VP-005 lock file lifecycle integration tests
+
+## §Trace v1.0.3
+
+**F-R107-2 CRITICAL — Architecture Source pin refresh v1.0.25 → v1.0.30** (2026-05-17T23:30:00Z):
+- F-R107-2: Sibling-layer cascade miss from Round 5D (VPs swept but BCs not). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown`
+  - Canonical version per architect 5E commit 03a4c57 post-R106 closure.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:20:00Z (v1.0.2).
 
 ## §Trace v1.0.2
 

@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.4"
+version: "1.26.5"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
 timestamp: 2026-05-17T22:20:00Z
-inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
+inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "4172379"
-traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; SS-deps-pin-manifest.md v1.1.17; ADR-0005-dual-accept-auth-header.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
+traces_to: "product-brief.md v1.4.25; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.5; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -284,6 +284,42 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 
 ---
 
+## §Trace v1.26.5 — F-R107 Round 6B (fabricated ADR path + traces_to refresh)
+
+**Bump:** v1.26.4 → v1.26.5.
+**Predecessor pin:** v1.26.4 (F-R106-4 RTM pin refresh + ADR-0005 input + E-AUTH-003 count; commit on factory-artifacts).
+**Timestamp:** 2026-05-17T23:00:00Z
+
+**Scope of v1.26.5 (three-part patch: ADR path correction, traces_to refresh, body §Trace correction):**
+
+**Finding F-R107-1 CRITICAL — Fabricated ADR-0005 path in inputs/traces_to/body:**
+
+SE-17f before/after evidence:
+
+**Before (frontmatter `inputs:`):** `architecture/adr/ADR-0005-dual-accept-auth-header.md`
+**After (frontmatter `inputs:`):** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`
+
+**Before (frontmatter `traces_to:`):** `...ADR-0005-dual-accept-auth-header.md;...`
+**After (frontmatter `traces_to:`):** `...ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md;...`
+
+**Before (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-dual-accept-auth-header.md\``
+**After (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\``
+
+Canonical filename verified via ARCH-INDEX and `ls .factory/specs/architecture/adr/`. All 3 occurrences in prd.md corrected.
+
+**Finding F-R107-3 HIGH — traces_to stale pins (brief + BC-INDEX):**
+
+SE-17f before/after evidence:
+
+**Before:** `product-brief.md v1.4.23; ...; behavioral-contracts/BC-INDEX.md v1.1`
+**After:** `product-brief.md v1.4.25; ...; behavioral-contracts/BC-INDEX.md v1.5`
+
+Rationale: product-brief.md v1.4.25 and BC-INDEX.md v1.5 are the post-PO-6A Round 6 target versions per dispatch instructions.
+
+**Concurrent:** Parallel PO 6A (BC scope), FV 6C (VPs), Architect 6D (SS-forward-compatibility), BA 6E (L2-INDEX). All in same R107 Round 6 burst.
+
+---
+
 ## §Trace v1.26.4 — F-R106-4 (RTM pin refresh + ADR-0005 input + E-AUTH-003 count)
 
 **Bump:** v1.26.3 → v1.26.4.
@@ -327,7 +363,7 @@ SE-17d — after (§7 RTM rows — representative sample):
 
 ADR-0005 (dual-accept auth header) is a canonical architecture decision that affects BC-2.01.008, BC-2.01.009, SS-daemon-lifecycle.md v1.0.30, and all 4 prd-supplements in this burst. It must appear in the PRD's inputs and traces_to fields.
 
-SE-17f: Added `architecture/adr/ADR-0005-dual-accept-auth-header.md` to both `inputs:` array and `traces_to:` string.
+SE-17f: Added `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` to both `inputs:` array and `traces_to:` string.
 
 **Error count update — E-AUTH-003 addition:**
 

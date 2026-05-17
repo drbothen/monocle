@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-interface-definitions
 level: L3
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:05:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1a
-inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
+inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "6787573"
 traces_to: prd.md
 ---
@@ -465,6 +465,21 @@ grep result — §JSONL Ring Buffer Schema field table (post-fix): 7 rows
 **Note on `ver` vs `version`:** The task brief cited the missing field as `ver`, but BC-2.01.010 Postcondition 1 uses `version` as the authoritative field name. BC-2.01.010 is the canonical source of truth; `version` is used here per BC authority, not the brief's informal note.
 
 **Scope:** PO-only. No changes to BC-2.01.010, VP-010, or any other artifact. PRD top-level bumped to v1.26.2 in same burst (F-R105-7 manifest pin).
+
+---
+
+### F-R107-1 PO closure — 2026-05-17T23:00:00Z
+
+**Finding:** F-R107-1 CRITICAL — fabricated ADR-0005 path in frontmatter `inputs:`.
+
+**SE-17f before/after evidence:**
+
+**Before:** `inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]`
+**After:** `inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]`
+
+Canonical filename verified via ARCH-INDEX and disk. Version bumped: 1.3 → 1.4; timestamp refreshed.
+
+**Scope:** Frontmatter `inputs:` only. No body content changed.
 
 ---
 

@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-test-vectors
 level: L3
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:00:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1a
-inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-dual-accept-auth-header.md]
+inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "6a384ad"
 traces_to: prd.md
 ---
@@ -71,7 +71,7 @@ traces_to: prd.md
 
 > ADR-0005: dual-accept auth. Canonical header `X-Monocle-Authorization: monocle-v1:<64-hex>` takes priority.
 > Compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>` accepted with WARN deprecation log.
-> Both headers absent → `missing_auth_token`. Alias-path entries are EC-010 from BC-2.01.009 v1.0.2.
+> Both headers absent → `missing_auth_token`. Alias-path entries are EC-010 from BC-2.01.009 v1.0.4.
 
 | Input | Expected | Category |
 |-------|----------|----------|
@@ -168,6 +168,28 @@ traces_to: prd.md
 ---
 
 ## §Trace
+
+### F-R107-1 + GAP-R46-4 PO closure — 2026-05-17T23:00:00Z
+
+**Findings:**
+- F-R107-1 CRITICAL — fabricated ADR-0005 path in frontmatter `inputs:`.
+- GAP-R46-4 LOW — BC-2.01.009 version pin stale (v1.0.2; current is v1.0.4 post-PO-6A).
+
+**F-R107-1 SE-17f before/after (inputs):**
+
+**Before:** `inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-dual-accept-auth-header.md]`
+**After:** `inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]`
+
+**GAP-R46-4 SE-17f before/after (line 74 active body reference):**
+
+**Before:** `Alias-path entries are EC-010 from BC-2.01.009 v1.0.2.`
+**After:** `Alias-path entries are EC-010 from BC-2.01.009 v1.0.4.`
+
+Note: v1.0.3 was the PO 5A bump target per the finding description, but actual current BC-2.01.009 version post-PO-6A is v1.0.4. The active citation is updated to the actual current version. Historical §Trace prose (lines 174, 176) preserves the original v1.0.2 reference as historical context — those are not updated (they document what version existed at that trace point).
+
+**Changes made:** frontmatter `inputs:` ADR path corrected; line 74 version pin refreshed; version bumped 1.1 → 1.2; timestamp refreshed.
+
+---
 
 ### F-R106-3 PO closure — 2026-05-17T22:00:00Z
 

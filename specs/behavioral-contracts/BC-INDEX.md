@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:00:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -164,6 +164,26 @@ traces_to: prd.md
 - BC-INDEX title for BC-2.01.009 unchanged: "Auth Header Validation (Missing and Invalid Token)" — H1 is stable.
 - BC-INDEX status unchanged: active. No BC removals or retirements in this burst.
 - SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-17T18:00:00Z (v1.2).
+
+## §Trace v1.5
+
+**F-R107 Round 6A — 10-BC pin sweep (CRITICAL F-R107-2) + ADR pins (F-R107-9) + EC-013 (F-R107-10) + INV-3 dual-accept (GAP-R46-5)** (2026-05-17T23:30:00Z):
+
+BC version bumps in this dispatch:
+- BC-2.01.001: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.002: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.003: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.004: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; GAP-R46-5: INV-3 updated to dual-accept per ADR-0005 — `/shutdown` requires either canonical or alias header, not X-Monocle-Authorization only)
+- BC-2.01.005: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.006: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.007: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.008: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; F-R107-9: ADR-0005 citation updated to ADR-0005 v1.0.2)
+- BC-2.01.009: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.29 → v1.0.30; F-R107-9: ADR-0005 citation updated to ADR-0005 v1.0.2; F-R107-10: EC-013 added — Bearer header dual-absence case)
+- BC-2.01.010: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-17g META audit post-sweep: `grep -r "SS-daemon-lifecycle.md v1\.0\.25\|SS-daemon-lifecycle.md v1\.0\.29" .factory/specs/behavioral-contracts/ss-01/` → 0 matches. All 10 ss-01 BCs now pin v1.0.30.
+SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T23:00:00Z (v1.4).
 
 ## §Trace v1.4
 

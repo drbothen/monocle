@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:00:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -84,7 +84,7 @@ timing oracle attacks.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth token wire format that secures authenticated access to the hook ingestion daemon's endpoints |
 | L2 Domain Invariants | DI-003 (the auth token must be written to the lock file after the port is bound — never before — Postcondition 1 states the lock file authToken is written as part of the start sequence after the listener is bound, per BC-2.01.005 Postcondition 3 which this BC specifies the content for); DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC defines the wire format monocle-v1:<64-hex> that is the canonical prefix, which DI-005 requires to be enforced on all auth checks) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Test File | `monocle-runtime/tests/auth_token_lifecycle.rs` |
@@ -110,6 +110,22 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-008-auth-token-wire-format.md` — VP-008 auth token wire format integration tests
+
+## §Trace v1.0.4
+
+**F-R107-2 CRITICAL + F-R107-9 MEDIUM** (2026-05-17T23:30:00Z):
+
+**F-R107-2 — Architecture Source pin refresh v1.0.25 → v1.0.30:**
+- SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
+- SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure.
+
+**F-R107-9 — ADR-0005 version pin added:**
+- Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
+- SE-17f: Added `v1.0.2` version pin to ADR-0005 citation. ADR-0005 current version is v1.0.2 (per architect 5E commit confirming v1.0.2 as final accepted state for Phase 1).
+- Rationale: Architecture Source version pins are required for all referenced architecture documents to enable drift detection at adversarial review time. A bare ADR-0005 citation without a version pin is unresolvable if the ADR is amended in a future cycle.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Architecture Source row is the sole normative change in this version.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:00:00Z (v1.0.3).
 
 ## §Trace v1.0.3
 

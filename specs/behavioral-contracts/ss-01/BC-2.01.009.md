@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:10:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -71,6 +71,7 @@ any Phase 1 response.
 | EC-010 | `X-Claude-Code-Ide-Authorization` present with wrong secret (correct 64-hex format); `X-Monocle-Authorization` absent | Alias path: WARN log emitted, constant-time comparison fails → HTTP 401 `{"error":"invalid_auth_token"}`. No format rejection — raw 64-hex is the expected alias format; the value fails by secret mismatch only. |
 | EC-011 | Both `X-Monocle-Authorization` (valid canonical token) and `X-Claude-Code-Ide-Authorization` (valid raw token) present | Canonical takes priority per ADR-0005. `X-Monocle-Authorization` is validated (succeeds). `X-Claude-Code-Ide-Authorization` is ignored. No WARN log emitted. → HTTP 200 / auth passes. |
 | EC-012 | `X-Claude-Code-Ide-Authorization` empty value; `X-Monocle-Authorization` absent | Alias path entered: WARN log emitted, empty string fails constant-time comparison → HTTP 401 `{"error":"invalid_auth_token"}` (value-present failure on alias path). |
+| EC-013 | `Authorization: Bearer <token>` present; neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present | BOTH recognized headers are absent — falls into PC-1 (missing-header case, not a value-present failure). Returns HTTP 401 `{"error":"missing_auth_token"}`. The `Authorization` header name is unrecognized by the auth middleware and is ignored. This case is the dual-absence path even though a header IS present; it is not treated as a value-present failure for any recognized header. |
 
 ## Canonical Test Vectors
 
@@ -103,7 +104,7 @@ any Phase 1 response.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth header validation logic protecting all authenticated hook ingestion daemon endpoints |
 | L2 Domain Invariants | DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC is the primary enforcer of DI-005: all value-present failures including wrong prefix, bad format, and secret mismatch return HTTP 401; the two-body taxonomy ensures the monocle-v1: prefix requirement is enforced without leaking structural information to attackers) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Architect Adjudication | commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired |
@@ -129,6 +130,28 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
+
+## §Trace v1.0.4
+
+**F-R107-2 CRITICAL + F-R107-9 MEDIUM + F-R107-10 MEDIUM** (2026-05-17T23:30:00Z):
+
+**F-R107-2 — Architecture Source pin refresh v1.0.29 → v1.0.30:**
+- SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
+- SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure. (Note: this BC was at v1.0.29, not v1.0.25 — it had been previously refreshed in the T-128n Round 4 update. Refreshed to v1.0.30 per SE-17g sweep requirement.)
+
+**F-R107-9 — ADR-0005 version pin added:**
+- Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
+- SE-17f: Added `v1.0.2` version pin to ADR-0005 citation.
+- Rationale: See BC-2.01.008 §Trace v1.0.4 F-R107-9 rationale (identical requirement applies here).
+
+**F-R107-10 — EC-013 Bearer-fallback edge case added:**
+- VP-009 probe 9.5 and test-vectors row 5 both reference `Authorization: Bearer <token>` (wrong header name, neither canonical nor alias recognized). No EC covered this in the BC prior to this version — EC-007 through EC-012 existed.
+- EC-013 BEFORE: absent.
+- EC-013 AFTER: `Authorization: Bearer <token>` present; neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present → HTTP 401 `{"error":"missing_auth_token"}` per PC-1 dual-absence semantics (both recognized headers absent; `Authorization` header name is unrecognized and ignored by the auth middleware).
+- Alignment: EC-013 is consistent with PC-1 ("BOTH `X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization` are absent") and the existing test vector row 5 (`Authorization: Bearer fake-token` → `{"error":"missing_auth_token"}`). The Bearer header is NOT a value-present failure for any recognized header — it is the dual-absence case with an irrelevant third header present.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Architecture Source and EC table are the only normative changes in this version.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:10:00Z (v1.0.3).
 
 ## §Trace v1.0.3
 

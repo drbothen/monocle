@@ -1,12 +1,12 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:15:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1a
-inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]
+inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "6787573"
 traces_to: prd.md
 ---
@@ -92,6 +92,21 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 ---
 
 ## §Trace
+
+### F-R107-1 PO closure — 2026-05-17T23:00:00Z
+
+**Finding:** F-R107-1 CRITICAL — fabricated ADR-0005 path in frontmatter `inputs:`.
+
+**SE-17f before/after evidence:**
+
+**Before:** `inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]`
+**After:** `inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]`
+
+Canonical filename verified via ARCH-INDEX and disk. Version bumped: 1.1 → 1.2; timestamp refreshed.
+
+**Scope:** Frontmatter `inputs:` only. No body content changed.
+
+---
 
 ### F-R106-16 PO closure — 2026-05-17T22:15:00Z
 

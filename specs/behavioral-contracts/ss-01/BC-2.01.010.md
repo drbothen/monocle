@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -86,7 +86,7 @@ and skip the file gracefully (no crash).
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the lock file forward-compatibility contract that enables future daemon versions and tooling to safely interoperate with the hook ingestion subsystem |
 | L2 Domain Invariants | DI-002 (the lock file must contain a valid port and auth token before any hook endpoint accepts connections — this BC defines the JSON schema of that lock file, including the contract_version first-key convention that allows readers to validate the format before consuming port and authToken); DI-004 (all public wire types must carry a version discriminant as their first field — contract_version as the first key in the lock file JSON directly implements DI-004 for the lock file wire format, paralleling the format_version convention in BC-2.01.007) |
 | Architecture Module | monocle-runtime (daemon binary, lock file) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging |
 | Test File | `monocle-runtime/tests/lock_file_contract.rs` |
 | Test Name | `test_BC_LOCK_001_contract_version_first_key` |
 | Stories | S-TBD (filled by story-writer) |
@@ -110,6 +110,16 @@ S-TBD — Implement lock file JSON schema with contract_version first-key (fille
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-010-lock-file-contract-version.md` — VP-010 lock file contract version integration tests
+
+## §Trace v1.0.2
+
+**F-R107-2 CRITICAL — Architecture Source pin refresh v1.0.25 → v1.0.30** (2026-05-17T23:30:00Z):
+- F-R107-2: Sibling-layer cascade miss from Round 5D (VPs swept but BCs not). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging`
+  - Canonical version per architect 5E commit 03a4c57 post-R106 closure. (Note: SS-core-types-and-abi.md pin is not updated here — it is a different architecture document not in scope of F-R107-2 which is specifically about SS-daemon-lifecycle.md version pins.)
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

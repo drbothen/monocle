@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -59,7 +59,7 @@ admin forced-stop (2), and startup failure (1) per POSIX 128+N conventions.
 
 1. The 10-second drain window is a hard timeout. A second SIGTERM during drain triggers immediate hard shutdown without waiting for in-flight requests.
 2. Signal handling uses `tokio::signal::unix::signal(SignalKind::terminate())` for SIGTERM and `tokio::signal::ctrl_c()` for SIGINT. Both are awaited in a `tokio::select!` loop alongside the oneshot shutdown receiver. The signal type that triggered hard shutdown is recorded for exit-code selection.
-3. The `POST /shutdown` endpoint requires `X-Monocle-Authorization` authentication — unauthenticated shutdown requests receive HTTP 401.
+3. The `POST /shutdown` endpoint requires authentication via the dual-accept protocol per ADR-0005 v1.0.2: either `X-Monocle-Authorization: monocle-v1:<64-hex>` (canonical) or `X-Claude-Code-Ide-Authorization: <64-hex>` (compatibility alias) — unauthenticated shutdown requests (neither header present) receive HTTP 401 `{"error":"missing_auth_token"}` per BC-2.01.009 PC-1; value-present failures receive HTTP 401 `{"error":"invalid_auth_token"}` per BC-2.01.009 PC-2/PC-3.
 4. External monitoring systems (systemd `Restart=on-failure`, k8s `terminationGracePeriodSeconds`, CI status parsers) MUST use exit code 143 (not 130) to detect SIGTERM hard-kill during drain. Exit 130 encodes SIGINT (Ctrl-C second press), not SIGTERM.
 
 ## Edge Cases
@@ -99,7 +99,7 @@ admin forced-stop (2), and startup failure (1) per POSIX 128+N conventions.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the graceful shutdown protocol which is core daemon lifecycle management for the hook ingestion subsystem |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — the 10-second drain window ensures in-flight hook POSTs complete their ring writes before the daemon acknowledges shutdown; Postcondition 6 explicitly flushes the ring buffer during drain before exit) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — graceful shutdown protocol on SIGTERM/SIGINT) |
 | Test File | `monocle-runtime/tests/graceful_shutdown.rs`; `monocle-runtime/tests/daemon_lifecycle.rs` |
 | Test Name | `test_BC_DAEMON_004_graceful_shutdown_503_on_new_requests`; `test_BC_DAEMON_004_exit_codes_posix_distinct` |
@@ -125,6 +125,23 @@ S-TBD — Implement graceful shutdown drain with POSIX exit codes (filled by sto
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-004-graceful-shutdown.md` — VP-004 shutdown drain integration tests
+
+## §Trace v1.0.2
+
+**F-R107-2 CRITICAL + GAP-R46-5 MEDIUM** (2026-05-17T23:30:00Z):
+
+**F-R107-2 — Architecture Source pin refresh v1.0.25 → v1.0.30:**
+- SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+- SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+- Canonical version per architect 5E commit 03a4c57 post-R106 closure.
+
+**GAP-R46-5 — INV-3 dual-accept fix for /shutdown (ADR-0005 alignment):**
+- Defect: INV-3 specified `/shutdown` requires only `X-Monocle-Authorization`. This contradicts ADR-0005 dual-accept protocol which applies to ALL authenticated endpoints including `/shutdown`, and is inconsistent with BC-2.01.009 PC-1/PC-2/PC-3 which govern the auth middleware applied to `/shutdown` on the authenticated router.
+- SE-17f INV-3 BEFORE: `The POST /shutdown endpoint requires X-Monocle-Authorization authentication — unauthenticated shutdown requests receive HTTP 401.`
+- SE-17f INV-3 AFTER: `The POST /shutdown endpoint requires authentication via the dual-accept protocol per ADR-0005 v1.0.2: either X-Monocle-Authorization: monocle-v1:<64-hex> (canonical) or X-Claude-Code-Ide-Authorization: <64-hex> (compatibility alias) — unauthenticated shutdown requests (neither header present) receive HTTP 401 {"error":"missing_auth_token"} per BC-2.01.009 PC-1; value-present failures receive HTTP 401 {"error":"invalid_auth_token"} per BC-2.01.009 PC-2/PC-3.`
+- Rationale: ADR-0005 §Decision applies the dual-accept middleware to the entire authenticated router (hook endpoints + `/status` + `/shutdown`). The single-header-only INV-3 was a propagation gap — the BC-2.01.009 update (T-128n Round 4) that added dual-accept semantics was not mirrored into BC-2.01.004's description of `/shutdown`'s auth requirement.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. INV-3 and Architecture Source are the only normative changes in this version.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T22:50:00Z
+timestamp: 2026-05-17T23:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "0fad9fc"
@@ -86,7 +86,7 @@ the format version before deserializing remaining fields.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the JSONL ring format versioning for hook event records, which is the persistence layer of hook ingestion |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — this BC defines the JSONL ring write format and enforces that every serialized HookEventRecord is committed to the ring on each hook POST, which is the write operation that DI-001 requires complete before ack); DI-004 (all public wire types must carry a version discriminant as their first field — format_version as the first key in every JSONL record directly implements DI-004 for the ring wire format, enabling Phase 2 readers to detect format evolution without parsing the full record) |
 | Architecture Module | monocle-runtime (ring buffer) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Drain |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Drain |
 | Forward Compat Contract | FC-01 (JSONL ring format versioning) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — JSONL ring format versioning) |
 | Test File | `monocle-runtime/tests/jsonl_ring.rs` |
@@ -112,6 +112,16 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
+
+## §Trace v1.0.3
+
+**F-R107-2 CRITICAL — Architecture Source pin refresh v1.0.25 → v1.0.30** (2026-05-17T23:30:00Z):
+- F-R107-2: Sibling-layer cascade miss from Round 5D (VPs swept but BCs not). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Drain`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Drain`
+  - Canonical version per architect 5E commit 03a4c57 post-R106 closure.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:50:00Z (v1.0.2).
 
 ## §Trace v1.0.2
 
