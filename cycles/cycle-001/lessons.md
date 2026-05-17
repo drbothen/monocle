@@ -1546,3 +1546,40 @@ This is the 4th sub-rule of Extension 17 (after SE-17a multi-line patterns, SE-1
 **Codified in:** cycle-001/lessons.md §SE-17c-d (this entry, R96 discovery).
 
 **28 codified disciplines now in force** (was 27 + SE-17c). SE-17c is a sub-extension of Extension 17, not a new numbered discipline.
+
+---
+
+## SE-18: Commit-Burst Hygiene (CODIFIED — 2026-05-18)
+
+**Discovery:** 3rd occurrence per D-114 Goodhart's law trigger threshold. Three prior recurrences:
+
+1. **Round 3 commit 932f4e0** (F-R105 closure chain): commit co-mingled FV T-128k work + architect T-128m ADR-0005 dual-accept into a single commit; sandbox-denied `git reset HEAD~1` left co-mingling unrecoverable without force.
+2. **Round 6 commit d92e4a7** (F-R107 Round 6A+6B): PO 6A + PO 6B work co-mingled in a single commit; worktree state was already at staging boundary when discovered; recovered by proceeding rather than splitting.
+3. **Round 7 cross-dispatch coordination failure**: Architect 7C edited SS doc content (F-R108-1 "current canonical" removal), which bumped SS document versions (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment). PO 7B and FV 7D were dispatched with pin targets citing the pre-bump versions because the coordination directive did not anticipate that "content correction" in Architect 7C would cascade into version bumps. Result: 10 BC arch-source rows + PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins all cite stale pre-bump versions. Carryforward for R109 to surface and Round 8 to fix.
+
+**Discipline:**
+
+Before any parallel-dispatch round, the orchestrator MUST:
+
+1. **Identify cross-dispatch artifact-version dependencies.** For each dispatch scope, ask: "Does this dispatch's edit bump a version that another dispatch in the same round cites?"
+
+2. **If dispatch A's edit bumps an artifact version that dispatch B cites, EITHER:**
+   - **(a) Serialize A → B** with explicit version target in B's prompt (B reads A's output and uses the post-bump version), OR
+   - **(b) Use "commit pending — dispatch A" placeholder convention** with mandatory SM resolution pass that sweeps and corrects all stale citations before committing.
+
+3. **SM closure burst MUST sweep all "commit pending" placeholders** in the artifact set and verify all cross-dispatch pins before committing. The sweep uses the Defensive Sweep Discipline (S-7.02): grep for the old version string across STATE.md, all INDEX files, all prd-supplements, and all BCs/VPs that cite the bumped artifacts.
+
+4. **Architect MUST surface any anticipated version bump** from "content-correcting" work (including §Trace fixups, fabrication removals, schema corrections) BEFORE accepting dispatch scope. Version bumps from content corrections are NOT zero-impact — they cascade to every artifact that cites the bumped document.
+
+**Application:** This discipline applies to all future Round-N closure chains. Each dispatch report MUST include a section: "Cross-dispatch version-bump dependencies identified: [list or NONE]."
+
+**Related codification candidates (held per D-114 — not yet at 3-occurrence threshold):**
+- O-R107-1 (input-hash path-existence hook): 2nd occurrence — needs 1 more.
+- O-R107-2 (semantic anchor existence check): 2nd occurrence — needs 1 more.
+- O-R108-3 ("current canonical" §Trace fabrication): 2nd occurrence as process-gap (but manifested as 2× CRIT findings F-R107-1 + F-R108-1) — approaching threshold.
+
+**O-R108-1 (commit-pending resolution mechanism):** This SE-18 codification absorbs O-R108-1 as its Step 3 (SM closure burst sweeps "commit pending" placeholders). The O-R108-1 pattern (commit-pending placeholders not resolved before SM burst commit) is a specific instance of SE-18 commit-burst hygiene — the root cause is the same cross-dispatch coordination failure that leaves stale pins unresolved at commit time.
+
+**34 codified disciplines now in force** (was 33 + SE-18).
+
+**Codified in:** cycle-001/lessons.md §SE-18 (this entry, Round 7 cross-dispatch coordination failure — 2026-05-18 SM closure burst v5.68).
