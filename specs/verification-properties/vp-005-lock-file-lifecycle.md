@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.10"
+version: "1.0.11"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T09:00:00Z
+timestamp: 2026-05-18T12:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "90ece31"
@@ -30,7 +30,7 @@ removed: null
 removal_reason: null
 ---
 
-# VP-005: Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600, Cleanup, 4-Path Resolution
+# VP-005: Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution
 
 > **One-per-file:** Each verification property lives in its own file.
 > Renumbered from VP-DAEMON-005 (PG-5 historical) per template-compliance Dispatch 5a.
@@ -899,3 +899,26 @@ UTC ISO-8601 `Z` form: `2026-05-18T09:00:00Z` >= chain high-water `2026-05-18T07
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical cascade-tail citation refresh executed in-scope of R112 Round 11 rather than deferred. Rule 4: coupled cascade fixes (F-R112-2 + F-R112-3) consolidated into single v1.0.10 bump. Rule 5: cheapest path (defer cascade-tail to next round as "low-impact stale cite") rejected in favor of correct path (close cascade-tail in-scope per 4-occurrence pattern requiring SE-21 codification). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.
+
+## §Trace v1.0.11 — F-R115-1 HIGH: H1 Title Mode-Coverage Alignment (0o600 → 0o600/0o700)
+
+### Change — F-R115-1 HIGH: H1 Title mode coverage correction (NORMATIVE)
+
+- **Finding:** VP-005 H1 heading read "...Mode 0o600, Cleanup, 4-Path Resolution", omitting the `0o700` runtime-dir mode which is fully covered in the Property Statement, Post-conditions (Post-condition 1 `stat().mode() & 0o777 == 0o600` + defense-in-depth `0o700` runtime-dir pairing per BC-2.01.005 Postcondition 8), Mechanism (mutation surface list), and Proof Method table. VP-INDEX.md title for VP-005 already reads "Mode 0o600/0o700" — the H1 lagged behind.
+- **Fix:** H1 updated from "...Mode 0o600, Cleanup, 4-Path Resolution" to "...Mode 0o600/0o700, Cleanup, 4-Path Resolution" to match VP-INDEX.md canonical title and body coverage.
+- **SE-17c BEFORE:** `# VP-005: Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600, Cleanup, 4-Path Resolution`
+- **SE-17c AFTER:** `# VP-005: Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution`
+- **SE-17g:** NORMATIVE — H1 heading is load-bearing (VP-INDEX cross-reference anchor).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T12:00:00Z` > chain high-water `2026-05-18T09:00:00Z` (this VP's prior §Trace v1.0.10 frontmatter timestamp). SE-16d PASS (strict-greater satisfied).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: H1 heading mode-coverage alignment; frontmatter `version` / `timestamp` updates.
+- **SE-17g audit-trail preservation:** All prior §Trace SE-17f BEFORE evidence preserved verbatim per VP-INDEX §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical H1 title alignment executed in-scope of F-R115-1 rather than deferred. Rule 4: single targeted fix — H1 title only, no other content modified. Rule 5: cheapest path (treat H1/VP-INDEX title mismatch as "cosmetic advisory") rejected in favor of correct path (H1 is the canonical anchor for VP-INDEX cross-references; mismatch is a structural defect). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.

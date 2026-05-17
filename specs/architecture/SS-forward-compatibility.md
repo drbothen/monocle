@@ -4,11 +4,11 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.18"
+version: "1.2.19"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T11:00:00Z
+timestamp: 2026-05-18T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
 input-hash: "446f2fb"
 traces_to: architecture/ARCH-INDEX.md
@@ -185,12 +185,12 @@ items resolved pre-Phase-1 per human authorization (commit in same burst as v1.1
 
 | ID | Finding | Severity | Phase 1 Spec Change | Owner | Disposition |
 |----|---------|----------|---------------------|-------|-------------|
-| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-2.01.007: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.7 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
+| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-2.01.007: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.32 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
 | FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | BC-2.02.003: `#[non_exhaustive]` default for all pub enums; exemption policy documented; specified in SS-core-types-and-abi.md §Enum Extensibility | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | BC-2.02.001 + BC-2.02.002: constant declared in `monocle-core::abi`; exposed via `/status`; specified in SS-core-types-and-abi.md §ABI Version Constant | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-2.02.004 + BC-2.02.005: trait defined in `monocle-core::factory`; full open-trait signature (no sealed bound; see §Item P3-1 Sealed trait analysis above), self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
 | FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | BC-2.02.006 + BC-2.02.007 + BC-2.02.008: full HookEnvelope proto schema with field-number reservation convention; BC-2.02.006 = wire field number contract (old BC-PROTO-001a), BC-2.02.007 = Rust struct schema_version field (old BC-PROTO-001b), BC-2.02.008 = Phase 4 validation requirement (old BC-PROTO-002); specified in SS-core-types-and-abi.md §Prost Wire Schemas | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-2.01.008 + BC-2.01.009: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.7 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
+| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-2.01.008 + BC-2.01.009: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.32 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
 
 No findings require REWORK-level severity. All 6 findings are resolved with
 complete, production-grade spec text — not deferred, not advisory, not TODO.
@@ -205,7 +205,7 @@ artifacts BEFORE Phase 1 PRD dispatch. Phase 1 agents operating from a fresh
 context will find complete, unambiguous specs in:
 
 - `SS-core-types-and-abi.md` — FC-02, FC-03, FC-04 (CRITICAL), FC-05
-- `SS-daemon-lifecycle.md v1.0.7` — FC-01, FC-06
+- `SS-daemon-lifecycle.md v1.0.32` — FC-01, FC-06
 
 None of the patches changes Phase 1 delivery scope, crate count, or external
 behavior. They are additions that prevent silent forward-compatibility failures
@@ -252,6 +252,17 @@ Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical a
 over time per F-R107-8 historical-pin discipline).
 
 ## §Trace
+
+**§Trace v1.2.19** (2026-05-18T12:00:00Z) — F-R115-1 HIGH back-cascade miss closure (SS-daemon-lifecycle v1.0.7 → v1.0.32):
+- NORMATIVE (F-R115-1 HIGH): Three active current-pointer citations to SS-daemon-lifecycle.md refreshed from stale v1.0.7 to canonical v1.0.32:
+  (1) FC-01 Phase 1 Spec Change column: `SS-daemon-lifecycle.md v1.0.7 §Drain` → `v1.0.32 §Drain`.
+  (2) FC-06 Phase 1 Spec Change column: `SS-daemon-lifecycle.md v1.0.7 §Start Sequence` → `v1.0.32 §Start Sequence`.
+  (3) §Verdict bullet list: `SS-daemon-lifecycle.md v1.0.7` → `v1.0.32`.
+  Historical §Trace pinpoints and Disposition column citations (`v1.0.6`) are immutable audit records — preserved unchanged per PG-D042-WITHIN-FILE historical-pinpoint carve-out.
+- PG-D042-BACK-CASCADE APPLIED: This file is itself a D-042 back-cascade dispatch target (per PG-D042-BACK-CASCADE as codified in SS-conventions-anti-patterns.md §D-042 CANONICAL SCOPE in Round 13). The irony is noted: the document that codified back-cascade obligation in §Trace v1.2.18 had its own stale SS-daemon-lifecycle citations (v1.0.7, unrefreshed since FC table authoring) that required a back-cascade correction. F-R115-1 closes this residual.
+- SE-17c BEFORE: `SS-daemon-lifecycle.md v1.0.7` (3 active sites — FC-01 column 4, FC-06 column 4, §Verdict bullet).
+- SE-17c AFTER: `SS-daemon-lifecycle.md v1.0.32` (3 active sites corrected).
+- SE-16d PASS: 2026-05-18T12:00:00Z > chain high-water 2026-05-18T11:00:00Z (monotonic).
 
 **§Trace v1.2.18** (2026-05-18T11:00:00Z) — F-R114-1 D-042 back-cascade: citation refresh (active sites only):
 - NORMATIVE (F-R114-1 MED): Three active current-pointer citations refreshed to canonical versions:
