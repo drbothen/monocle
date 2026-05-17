@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:45:00Z
+timestamp: 2026-05-18T07:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -331,3 +331,13 @@ SE-16d monotonicity PASS: 2026-05-18T05:45:00Z > prior 2026-05-18T01:15:00Z (v1.
 
 BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
 SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:45:00Z (v1.7). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:45:00Z PASS.
+
+## §Trace v1.9
+
+**F-R111 Round 10 — timestamp pathology fix** (2026-05-18T07:00:00Z):
+
+**F-R111-1 CRITICAL — v1.8 frontmatter timestamp corrected:**
+- v1.8 frontmatter timestamp was `2026-05-18T05:45:00Z`. This is the timestamp of the v1.7 §Trace body (the value that was being corrected in v1.8). The v1.8 burst itself ran at `2026-05-18T06:00:00Z`. Corrected frontmatter to `2026-05-18T07:00:00Z` (Round 10 fix burst timestamp).
+- **BC-INDEX titles unchanged:** all 22 BC H1 headings are stable. No BC retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.8). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.

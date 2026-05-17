@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:31:00Z
+timestamp: 2026-05-18T07:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "e61ac23"
@@ -212,3 +212,13 @@ SE-16d monotonicity PASS: 2026-05-18T05:31:00Z > prior 2026-05-18T01:00:00Z (v1.
 **Changes made:** frontmatter timestamp corrected to `2026-05-18T05:31:00Z`; §Trace v1.4 header corrected to `2026-05-18T05:31:00Z`; SE-17f order line T04:31 → T05:31; SE-16d PASS added. No version bump (timestamp-only fix per F-R110 instructions).
 
 SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:31:00Z (v1.4). ARITHMETICALLY TRUE.
+
+---
+
+### F-R111 Round 10 PO closure — 2026-05-18T07:00:00Z
+
+**Finding:** F-R111-1 CRITICAL — v1.4 frontmatter timestamp was `2026-05-18T05:31:00Z`. This is the corrected v1.3 timestamp value, not the v1.4 burst timestamp. The v1.4 burst (F-R109-12) ran at `2026-05-18T05:31:00Z`, but the v1.4 §Trace shows the F-R110-1 closure at `2026-05-18T06:00:00Z` — meaning the frontmatter should have been advanced to `2026-05-18T06:00:00Z` at that point. Corrected frontmatter to `2026-05-18T07:00:00Z` (Round 10 fix burst timestamp).
+
+**Changes made:** frontmatter version v1.4 → v1.5; frontmatter timestamp refreshed. No error catalog content changed.
+
+SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.4 F-R110-1 closure). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.

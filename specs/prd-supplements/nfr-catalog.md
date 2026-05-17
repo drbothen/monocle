@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:30:00Z
+timestamp: 2026-05-18T07:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "e61ac23"
@@ -370,3 +370,13 @@ SE-16d monotonicity PASS: 2026-05-18T05:30:00Z > prior 2026-05-18T01:00:00Z (v1.
 **Changes made:** frontmatter version v1.5 → v1.6; frontmatter timestamp refreshed; §Trace v1.5 timestamp corrected; NFR-011 Priority P1 → P0; 4 "cycle-3" → "Phase 3" replacements in VP Probe Citations.
 
 SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:30:00Z (v1.5). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:30:00Z PASS.
+
+---
+
+### F-R111 Round 10 PO closure — 2026-05-18T07:00:00Z
+
+**Finding:** F-R111-1 CRITICAL — v1.6 frontmatter timestamp was `2026-05-18T05:30:00Z`. This is the corrected v1.5 timestamp value, not the v1.6 burst timestamp. The v1.6 burst (F-R110) ran at `2026-05-18T06:00:00Z`. Corrected frontmatter to `2026-05-18T07:00:00Z` (Round 10 fix burst timestamp).
+
+**Changes made:** frontmatter version v1.6 → v1.7; frontmatter timestamp refreshed. No NFR catalog content changed.
+
+SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.6 F-R110 closure). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.

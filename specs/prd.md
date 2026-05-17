@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.8"
+version: "1.26.9"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T05:35:00Z
+timestamp: 2026-05-18T07:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "a57108b"
-traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.8; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
+traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.9; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.8"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -609,6 +609,25 @@ Pin replacement summary:
 **Changes made:** frontmatter version v1.26.7 → v1.26.8; frontmatter timestamp refreshed; §Trace v1.26.7 timestamp corrected; F-R110-13 NOTE added; traces_to BC-INDEX pin updated.
 
 SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:35:00Z (v1.26.7). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:35:00Z PASS.
+
+## §Trace v1.26.9
+
+**F-R111 Round 10 — timestamp pathology fix + L2-INDEX pin update** (2026-05-18T07:00:00Z):
+
+**Bump:** v1.26.8 → v1.26.9.
+**Predecessor pin:** v1.26.8 (F-R110 Round 9B; timestamp `2026-05-18T06:00:00Z`).
+**Timestamp:** 2026-05-18T07:00:00Z
+
+**F-R111-1 CRITICAL — v1.26.8 frontmatter timestamp corrected:**
+- v1.26.8 frontmatter timestamp was `2026-05-18T05:35:00Z`. This is the corrected v1.26.7 timestamp, not the v1.26.8 burst timestamp. The v1.26.8 burst ran at `2026-05-18T06:00:00Z`. Corrected frontmatter to `2026-05-18T07:00:00Z` (Round 10 fix burst timestamp).
+
+**F-R111-5 MED — traces_to L2-INDEX pin updated:**
+- `domain-spec/L2-INDEX.md v1.0.7` → `domain-spec/L2-INDEX.md v1.0.8` (current version per L2-INDEX frontmatter).
+- BC-INDEX pin updated: `behavioral-contracts/BC-INDEX.md v1.8` → `behavioral-contracts/BC-INDEX.md v1.9`.
+
+**Changes made:** frontmatter version v1.26.8 → v1.26.9; frontmatter timestamp refreshed; traces_to L2-INDEX and BC-INDEX pins updated.
+
+SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.26.8). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.
 
 ---
 
