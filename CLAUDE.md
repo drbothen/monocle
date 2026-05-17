@@ -19,7 +19,7 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 ## Current Pipeline State
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
-- Brief: `v1.4.26` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
+- Brief: `v1.4.27` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
 - Phase: `pre-phase-1-final-gate-post-fix-burst` (round-4 consistency audit complete; adversary fresh pass pending).
 - Mode: greenfield-with-reference-ingest.
 
