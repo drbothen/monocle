@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.27"
+version: "1.0.28"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
 input-hash: "325a9cd"
 traces_to: architecture/ARCH-INDEX.md
@@ -40,7 +40,7 @@ Both endpoints are registered on the same axum router as the 5 hook endpoints.
 
 ### GET /healthz
 
-**Contract (BC-DAEMON-001):** Returns HTTP 200 with body:
+**Contract (BC-2.01.001):** Returns HTTP 200 with body:
 
 ```json
 {"status":"alive","uptime_sec":<N>,"version":"<semver>"}
@@ -67,7 +67,7 @@ initiates normal auto-start (lock file is stale).
 
 ### GET /status
 
-**Contract (BC-DAEMON-002):** Returns HTTP 200 with body:
+**Contract (BC-2.01.002):** Returns HTTP 200 with body:
 
 ```json
 {
@@ -99,10 +99,10 @@ initiates normal auto-start (lock file is stale).
 `last_hook_ts` values use ISO 8601 UTC format with mandatory millisecond precision
 (`YYYY-MM-DDTHH:MM:SS.sssZ`). A hook type that has not fired since daemon start has
 value `null` (JSON null), not an empty string. Format matches EC-044 (PRD v1.7)
-and the `shutdown_utc` format in BC-DAEMON-006 — cross-field uniformity per F-R72-1.
+and the `shutdown_utc` format in BC-2.01.006 — cross-field uniformity per F-R72-1.
 
 The `abi_version` field carries `monocle_core::MONOCLE_ABI_VERSION` as compiled
-into this binary. Required by BC-ABI-001 (see SS-core-types-and-abi.md §ABI Version
+into this binary. Required by BC-2.02.001 (see SS-core-types-and-abi.md §ABI Version
 Constant). Phase 3 plugin SDK and Phase 4 federation use this field to verify
 ABI compatibility before handshake.
 
@@ -117,7 +117,7 @@ state mutations.
 
 ## Body Size Limit (F-NEW-06)
 
-**Contract (BC-DAEMON-003):** All hook POST endpoints (`/hooks/*`) and `/status`
+**Contract (BC-2.01.003):** All hook POST endpoints (`/hooks/*`) and `/status`
 enforce `DefaultBodyLimit::max(256 * 1024)` (256 KiB = 262,144 bytes) via axum's
 `DefaultBodyLimit` layer applied at router construction time.
 
@@ -140,7 +140,7 @@ workstation.
 
 **Implementation note:** axum 0.8 does NOT apply a body limit by default.
 `DefaultBodyLimit` must be explicitly added as a layer. The auth middleware must
-NOT be applied to `/healthz` (unauthenticated per BC-DAEMON-001). The correct
+NOT be applied to `/healthz` (unauthenticated per BC-2.01.001). The correct
 axum 0.8 pattern is to declare two routers — one unauthenticated, one authenticated
 — and merge them. Hook endpoints and admin endpoints (`/status`, `/shutdown`)
 share the same `X-Monocle-Authorization` middleware layer (single auth layer on the
@@ -212,7 +212,7 @@ let app = public_router.merge(authed_router);
    formally validate Windows behavior per NFR-008's `macOS + Linux` target scope.
    The env override preserves operator
    control for non-standard deployments without burdening default users. The
-   asymmetry with `BC-ENGINE-002-ERR` (which fail-fasts on `BaseDirs::new() == None`)
+   asymmetry with `BC-2.03.003` (which fail-fasts on `BaseDirs::new() == None`)
    is correct: `BaseDirs::new()` returns `None` only when there is no home directory
    at all — a genuine system-configuration failure; `ProjectDirs::runtime_dir()`
    returns `None` on macOS as a platform design choice, not a failure.
@@ -220,7 +220,7 @@ let app = public_router.merge(authed_router);
    Implementation:
 
    ```rust
-   /// Resolve the runtime directory per BC-DAEMON-005 Precondition 2 chain
+   /// Resolve the runtime directory per BC-2.01.005 Precondition 2 chain
    /// (a) MONOCLE_RUNTIME_DIR env override
    /// (b) ProjectDirs::runtime_dir() platform-aware
    /// (c) data_local_dir() fallback
@@ -303,7 +303,7 @@ let app = public_router.merge(authed_router);
 
    Phase 4 daemon adds a separate federation middleware path on the russh/`monocle-ipc`
    channel gated by a `federation` feature flag. The Phase 1 HTTP routes remain
-   `X-Monocle-Authorization`-only with no Bearer support. BC-AUTH-002 applies
+   `X-Monocle-Authorization`-only with no Bearer support. BC-2.01.009 applies
    only to the Phase 1 `X-Monocle-Authorization` surface.
 
    Auth middleware validation rules in Phase 1 (applied in this order):
@@ -398,7 +398,7 @@ let app = public_router.merge(authed_router);
 
    **Behavioral contracts:**
 
-   - **BC-AUTH-001:** The auth token written to the lock file has format
+   - **BC-2.01.008:** The auth token written to the lock file has format
      `monocle-v1:<64-hex>` when read back from the lock file and presented to
      the daemon. The lock file `authToken` field stores only the 64-char hex
      part. Verification: integration test in
@@ -408,7 +408,7 @@ let app = public_router.merge(authed_router);
      Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
      (PRD v1.1 §7 RTM canonical path; F-R62-4).
 
-   - **BC-AUTH-002:** Two auth failure modes are specified:
+   - **BC-2.01.009:** Two auth failure modes are specified:
 
      | Failure mode | Header state | HTTP body |
      |---|---|---|
@@ -429,7 +429,7 @@ let app = public_router.merge(authed_router);
      Verification: integration test in
      `monocle-runtime/tests/auth_header_rejection.rs` (rejection probes;
      F-R62-4 canonical path per PRD v1.1 §7 RTM). Round-trip happy-path covered
-     in `monocle-runtime/tests/auth_token_lifecycle.rs` per BC-AUTH-001
+     in `monocle-runtime/tests/auth_token_lifecycle.rs` per BC-2.01.008
      verification above.
      Test name: `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
      - No header → HTTP 401 `{"error":"missing_auth_token"}`
@@ -461,12 +461,12 @@ let app = public_router.merge(authed_router);
    The `contract_version` field is always the first key (parallel to the JSONL
    ring `format_version` convention). Phase 4 and future tooling check this field
    before parsing remaining lock-file fields. Value `1` is the Phase 1 contract.
-   BC-LOCK-001: any lock-file reader MUST check `contract_version == 1` before
+   BC-2.01.010: any lock-file reader MUST check `contract_version == 1` before
    consuming other fields; an unrecognized version triggers a graceful skip with
    a log warning.
    `startTimeUtc` uses ISO 8601 UTC format with mandatory millisecond precision
-   (`YYYY-MM-DDTHH:MM:SS.sssZ`) — matching `last_hook_ts` (BC-DAEMON-002 / EC-044)
-   and `shutdown_utc` (BC-DAEMON-006) for cross-field uniformity per F-R72-1.
+   (`YYYY-MM-DDTHH:MM:SS.sssZ`) — matching `last_hook_ts` (BC-2.01.002 / EC-044)
+   and `shutdown_utc` (BC-2.01.006) for cross-field uniformity per F-R72-1.
    Lock file mode: `0o600` (owner-only read/write).
 7. Spawn hook-receiver task (axum server on the bound listener).
 8. Spawn UDS control task.
@@ -612,7 +612,7 @@ On receiving any shutdown signal:
    ```
 
    For hook types without tool context (`SessionStart`, `UserPromptSubmit`, `Stop`), per
-   BC-RING-001 EC-001 the `#[serde(skip_serializing_if = "Option::is_none")]` annotation
+   BC-2.01.007 EC-001 the `#[serde(skip_serializing_if = "Option::is_none")]` annotation
    causes the `tool_name` and `tool_input` fields to be OMITTED entirely from the JSONL
    record:
 
@@ -624,7 +624,7 @@ On receiving any shutdown signal:
    emitters MUST emit absence; Phase 2+ readers MUST tolerate both absence and explicit
    null per forward-compat.
 
-   **Behavioral contract: BC-RING-001** — every JSONL record's first key is
+   **Behavioral contract: BC-2.01.007** — every JSONL record's first key is
    `format_version` with value `1` for all Phase 1-origin records. Verification:
    integration test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
    `HookEventRecord` via `HookEventRecord::new(...)` and asserts the resulting
@@ -641,7 +641,7 @@ On receiving any shutdown signal:
    ```
    `shutdown_utc` MUST use ISO 8601 UTC format with mandatory millisecond precision
    (`YYYY-MM-DDTHH:MM:SS.sssZ`). A seconds-only value (e.g., `2026-05-15T07:30:00Z`) is
-   non-compliant per BC-DAEMON-006 invariant 1 (PRD v1.7). VP-DAEMON-006 enforces this
+   non-compliant per BC-2.01.006 invariant 1 (PRD v1.7). VP-DAEMON-006 enforces this
    with regex `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`. Matches `last_hook_ts`
    format (EC-044) and `startTimeUtc` (§Start Sequence step 6) for cross-field uniformity.
 
@@ -681,7 +681,7 @@ Exit codes (F-R70-3 closure — POSIX 128+N convention; disposition c):
 - `1`: daemon failed to start (see step 1d — `RuntimeDirUnresolvable`, port bind failure,
   existing live lock file, etc.).
 
-**BC-DAEMON-004** (exit-code postcondition): The exit code written to the OS process
+**BC-2.01.004** (exit-code postcondition): The exit code written to the OS process
 table on daemon termination MUST match the trigger:
 - graceful drain complete → `0`
 - SIGINT hard-kill during drain → `130`
@@ -692,7 +692,7 @@ table on daemon termination MUST match the trigger:
 Verification: integration test in `monocle-runtime/tests/daemon_lifecycle.rs`
 (`test_BC_DAEMON_004_exit_codes_posix_distinct`) sends SIGTERM twice (expects 143), SIGINT twice
 (expects 130), and two sequential `POST /shutdown` calls (expects 2). The PRD
-BC-DAEMON-004 postcondition is the canonical error-taxonomy source; this architecture
+BC-2.01.004 postcondition is the canonical error-taxonomy source; this architecture
 document is the canonical rationale source for the code selection.
 
 ### Crash Recovery
@@ -700,7 +700,7 @@ document is the canonical rationale source for the code selection.
 On startup, if `<runtime_dir>/monocle.recovery.json` exists AND the pid in the
 (now-stale or absent) lock file is dead:
 
-**Contract (BC-DAEMON-006):**
+**Contract (BC-2.01.006):**
 1. Log `WARN: recovery checkpoint found; prior daemon exited without clean shutdown`.
 2. Read `last_app_mode` and `shutdown_reason` from the recovery file.
 3. If a TUI client attaches within 60 seconds of daemon start, offer the recovery
@@ -747,16 +747,16 @@ this collision in practice. monocle eliminates the risk entirely by:
 
 | ID | Contract | Section |
 |----|----------|---------|
-| BC-DAEMON-001 | `/healthz` returns 200/503 with uptime + version; unauthenticated | Health and Status Endpoints |
-| BC-DAEMON-002 | `/status` returns full daemon state JSON; requires auth token | Health and Status Endpoints |
-| BC-DAEMON-003 | All `/hooks/*` and `/status` enforce 256 KiB body limit; 413 on excess | Body Size Limit |
-| BC-DAEMON-004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint; exit codes: 0 (clean), 130 (SIGINT hard-kill), 143 (SIGTERM hard-kill), 2 (admin /shutdown force-stop), 1 (startup failure) | Daemon Lifecycle Protocol |
-| BC-DAEMON-005 | Runtime dir resolved via platform-aware chain: MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() (Linux/XDG) → ProjectDirs::data_local_dir() (macOS/Windows fallback); runtime_dir created with mode `0o700` owner-only (defense-in-depth with lock file `0o600`); lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
-| BC-DAEMON-006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
-| BC-RING-001 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
-| BC-AUTH-001 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-AUTH-002 | Two auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-LOCK-001 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-2.01.001 | `/healthz` returns 200/503 with uptime + version; unauthenticated | Health and Status Endpoints |
+| BC-2.01.002 | `/status` returns full daemon state JSON; requires auth token | Health and Status Endpoints |
+| BC-2.01.003 | All `/hooks/*` and `/status` enforce 256 KiB body limit; 413 on excess | Body Size Limit |
+| BC-2.01.004 | Graceful shutdown: 10-second drain, ring buffer flush, recovery checkpoint; exit codes: 0 (clean), 130 (SIGINT hard-kill), 143 (SIGTERM hard-kill), 2 (admin /shutdown force-stop), 1 (startup failure) | Daemon Lifecycle Protocol |
+| BC-2.01.005 | Runtime dir resolved via platform-aware chain: MONOCLE_RUNTIME_DIR env override → ProjectDirs::runtime_dir() (Linux/XDG) → ProjectDirs::data_local_dir() (macOS/Windows fallback); runtime_dir created with mode `0o700` owner-only (defense-in-depth with lock file `0o600`); lock file created atomically via `tempfile::persist`; pid-liveness checked on startup; removed on clean shutdown | Daemon Lifecycle Protocol |
+| BC-2.01.006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
+| BC-2.01.007 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
+| BC-2.01.008 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-2.01.009 | Two auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-2.01.010 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD has formalized these as full BC entries with preconditions,
 postconditions, invariants, edge cases, canonical test vectors, and verification
@@ -776,7 +776,7 @@ scope only.
 
 The lock file format gains a `"peers"` array in Phase 4 (federation peer list)
 but the 7 Phase 1 fields are stable across Phase 1 → Phase 4: `"contract_version"`
-(forward-compatibility version sentinel, always FIRST key per BC-LOCK-001
+(forward-compatibility version sentinel, always FIRST key per BC-2.01.010
 Postcondition 2; Phase 4 readers MUST validate `contract_version == 1` before
 consuming other fields), `"pid"`, `"port"`, `"authToken"`, `"startTimeUtc"`,
 `"app"`, `"version"`. Phase 4 readers that encounter `contract_version > 1` MUST
@@ -1395,7 +1395,7 @@ v1.0.21 changes (adversary R94 C-R94-1 + I-R94-1 + I-R94-3 closures — resolve_
 - I-R94-3 RESOLVED (MED — adversary R94 `enum AuthError` private visibility mismatch
   with VP-AUTH-002): The `AuthError` enum was declared `enum AuthError` (private to the
   module). VP-AUTH-002 §Pre-conditions declares `pub enum AuthError` in the harness
-  context. Integration tests for `BC-AUTH-002` are compiled as separate `[[test]]` binaries
+  context. Integration tests for `BC-2.01.009` are compiled as separate `[[test]]` binaries
   that import from `monocle-runtime`'s public API. For integration tests to assert on
   `AuthError` variants, `AuthError` must be `pub` — a private enum cannot be named in a
   test binary outside the defining module.
@@ -1513,7 +1513,7 @@ v1.0.20 changes (adversary R93 I-R93-1 + C-R93-1 arch part closures — resolve_
   is unchanged — only the return type annotation is corrected to match actual behavior.
 
 - C-R93-1 arch part RESOLVED (HIGH/arch-site — adversary R93 F-R88-5 §Mechanism
-  Distribution partial-fix propagation gap): The BC-RING-001 verification clause in
+  Distribution partial-fix propagation gap): The BC-2.01.007 verification clause in
   §Daemon Lifecycle Protocol §Drain read "unit test in `monocle-runtime/tests/jsonl_ring.rs`".
   Tests under `<crate>/tests/*.rs` are cargo integration tests (executed in a separate
   test binary against the crate's public API), not unit tests (which reside in
@@ -1570,7 +1570,7 @@ This burst bumps arch v1.0.19 → v1.0.20. Downstream agents must propagate:
   v1.0.19 → v1.0.20 across PRD body (~32 sites per F-R90 precedent). Canonical grep:
   `grep -nE "v1\.0\.19|commit 8a68cc9" /Users/jmagady/Dev/monocle/.factory/specs/prd.md`.
   ALSO: C-R93-1 PRD part — §7 RTM 6 rows "Unit"→"Integration" + §Verification 4 prose
-  sites: BC-DAEMON-001, BC-DAEMON-002, BC-DAEMON-003, BC-DAEMON-004 §Verification
+  sites: BC-2.01.001, BC-2.01.002, BC-2.01.003, BC-2.01.004 §Verification
   paragraphs that carry "unit test at `tests/...`" language.
 
 - **FV (VP):** VP frontmatter `traces_to` cites arch v1.0.19; FV must propagate
@@ -1596,7 +1596,7 @@ v1.0.19 changes (adversary R89 F-R89-2 + O-R89-3 closures — HookEventRecord se
   `#[serde(skip_serializing_if = "Option::is_none")]` annotation): The
   `HookEventRecord` struct in §Drain carried `tool_name: Option<String>` and
   `tool_input: Option<serde_json::Value>` fields without the serde annotation.
-  PRD v1.17 BC-RING-001 EC-001 declares: "When `tool_name` or `tool_input` is
+  PRD v1.17 BC-2.01.007 EC-001 declares: "When `tool_name` or `tool_input` is
   `None`, the key MUST be absent from the serialized JSONL record (not present as
   `null`)." The annotation is normative — omitting it causes `serde_json` to
   serialize absent-tool-context records with explicit `"tool_name":null` and
@@ -1679,7 +1679,7 @@ v1.0.19 changes (adversary R89 F-R89-2 + O-R89-3 closures — HookEventRecord se
   to enumerate sites.
 
   **PRD (product-owner):** NOT required for this burst — PRD already cites arch
-  v1.0.18 + serde normative annotation (PRD v1.17 BC-RING-001 EC-001). PRD pin
+  v1.0.18 + serde normative annotation (PRD v1.17 BC-2.01.007 EC-001). PRD pin
   propagation only needed if PRD itself bumps.
 
   **BC count: 22 — CONFIRMED unchanged.** No new BCs; no BCs removed.
@@ -1693,10 +1693,10 @@ v1.0.19 changes (adversary R89 F-R89-2 + O-R89-3 closures — HookEventRecord se
 
 v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis placeholder + L-F-R63 Extension 4):
 - F-R74-1 RESOLVED (HIGH — adversary R74 JSON array ellipsis placeholder in §GET /status
-  schema sketch): The `hook_endpoints` field in the BC-DAEMON-002 JSON schema sketch
+  schema sketch): The `hook_endpoints` field in the BC-2.01.002 JSON schema sketch
   (§Health and Status Endpoints) carried a literal `"..."` string as the third array
   element — a textual ellipsis placeholder instead of the full canonical enumeration.
-  The canonical 5-endpoint set is established by BC-DAEMON-002 postcondition 1
+  The canonical 5-endpoint set is established by BC-2.01.002 postcondition 1
   (PRD v1.8) and the §Body Size Limit router construction sketch (lines 157–161),
   which explicitly names all five routes:
   `/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`,
@@ -1735,7 +1735,7 @@ v1.0.15 changes (adversary R74 F-R74-1 closure — hook_endpoints ellipsis place
 - Propagation requirements for orchestrator:
   **PRD:** PRD v1.8 `traces_to` frontmatter cites arch pin `v1.0.14`; product-owner
   must propagate arch pin v1.0.14 → v1.0.15 at normative-current PRD sites (traces_to
-  field). No BC content change required — BC-DAEMON-002 postcondition already
+  field). No BC content change required — BC-2.01.002 postcondition already
   enumerates the 5 endpoints correctly; this fix brings the arch schema sketch into
   alignment with the BC.
   **VP:** VP `traces_to` frontmatter citing arch pin `v1.0.14`; formal-verifier must
@@ -1754,13 +1754,13 @@ v1.0.18 changes (adversary R88 F-R88-1 closure — §Phase 4 Notes contract_vers
   incomplete): The §Phase 4 Notes paragraph stated that the fields `"app"`, `"pid"`,
   `"port"`, `"authToken"`, `"startTimeUtc"`, `"version"` are stable across Phase 1 →
   Phase 4. This 6-field enumeration omitted `contract_version`, which is the seventh
-  and most critical Phase 1 lock-file field. Per BC-LOCK-001 Postcondition 1 (PRD line
-  602) the Phase 1 lock-file schema has 7 fields. Per BC-LOCK-001 Postcondition 2 (PRD
+  and most critical Phase 1 lock-file field. Per BC-2.01.010 Postcondition 1 (PRD line
+  602) the Phase 1 lock-file schema has 7 fields. Per BC-2.01.010 Postcondition 2 (PRD
   line 606) `contract_version` is always the FIRST key in the JSON object. Per
-  BC-DAEMON-005 Postcondition 4 (PRD line 334) the lock-file contains all 7 fields
+  BC-2.01.005 Postcondition 4 (PRD line 334) the lock-file contains all 7 fields
   including `contract_version`. The omission created two failure modes for Phase 4
   implementers: (a) treating `contract_version` as a Phase-1-only field and removing
-  it in Phase 4, breaking BC-LOCK-001 forward-compat; (b) assuming `contract_version`
+  it in Phase 4, breaking BC-2.01.010 forward-compat; (b) assuming `contract_version`
   is implicit/non-contractual and not validating it.
 
   Fix (disposition **(a)** — extend §Phase 4 Notes enumeration to all 7 fields):
@@ -1769,13 +1769,13 @@ v1.0.18 changes (adversary R88 F-R88-1 closure — §Phase 4 Notes contract_vers
     (6 fields, `contract_version` absent)
   - After: "...the 7 Phase 1 fields are stable across Phase 1 → Phase 4:
     `\"contract_version\"` (forward-compatibility version sentinel, always FIRST key
-    per BC-LOCK-001 Postcondition 2; Phase 4 readers MUST validate
+    per BC-2.01.010 Postcondition 2; Phase 4 readers MUST validate
     `contract_version == 1` before consuming other fields), `\"pid\"`, `\"port\"`,
     `\"authToken\"`, `\"startTimeUtc\"`, `\"app\"`, `\"version\"`. Phase 4 readers
     that encounter `contract_version > 1` MUST fail gracefully (do not attempt parse
     of unknown-version JSON)."
 
-  The field ordering in the fix follows BC-LOCK-001 Postcondition 1 canonical order
+  The field ordering in the fix follows BC-2.01.010 Postcondition 1 canonical order
   exactly: `contract_version` first (sentinel), then `pid`, `port`, `authToken`,
   `startTimeUtc`, `app`, `version`.
 
@@ -1812,12 +1812,12 @@ v1.0.18 changes (adversary R88 F-R88-1 closure — §Phase 4 Notes contract_vers
   (c) PG-5: historical §Trace entries unchanged. Post-write self-grep: 0 L[0-9]+
       matches in this §Trace v1.0.18 entry.
 
-v1.0.17 changes (adversary R83 F-R83-1 site 2 closure — §BC Summary footer BC-DAEMON-005 0o700 propagation):
+v1.0.17 changes (adversary R83 F-R83-1 site 2 closure — §BC Summary footer BC-2.01.005 0o700 propagation):
 - F-R83-1 site 2 RESOLVED (HIGH — adversary R83 multi-site propagation gap): The
   F-R79-3 closure (v1.0.x chain) lifted the runtime_dir `0o700` owner-only mode
-  contract from EC-052 into BC-DAEMON-005 §Postcondition 8. The §Start Sequence
+  contract from EC-052 into BC-2.01.005 §Postcondition 8. The §Start Sequence
   step 1 body at line 255 correctly states "Create the resolved directory with
-  mode `0o700` if absent." However, the §BC Summary footer BC-DAEMON-005 row was
+  mode `0o700` if absent." However, the §BC Summary footer BC-2.01.005 row was
   NOT updated in the same burst — it described only the resolution chain and
   lock-file semantics, omitting the directory permission contract.
 
@@ -1840,7 +1840,7 @@ v1.0.17 changes (adversary R83 F-R83-1 site 2 closure — §BC Summary footer BC
 - Propagation requirements for orchestrator:
   **PRD:** PRD `traces_to` frontmatter cites arch pin `v1.0.16`; product-owner
   must propagate arch pin v1.0.16 → v1.0.17 at normative-current PRD sites
-  (traces_to field). No BC content change required — BC-DAEMON-005 postcondition 8
+  (traces_to field). No BC content change required — BC-2.01.005 postcondition 8
   already specifies 0o700; this fix brings the summary-table footer into alignment
   with the body.
   **VP:** VP `traces_to` frontmatter citing arch pin `v1.0.16`; formal-verifier
@@ -1914,7 +1914,7 @@ v1.0.16 changes (adversary R75 F-R75-2 closure + Obs-R75-1 drain clarification):
 v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R70-2):
 - F-R72-1 RESOLVED (HIGH — adversary R72 JSON schema sketch timestamp format
   propagation gap): F-R70-2 (PRD v1.6/v1.7 + VP v1.6/v1.7 closure chain) tightened
-  BC-DAEMON-006 invariant 1 and the VP-DAEMON-006 regex to mandate
+  BC-2.01.006 invariant 1 and the VP-DAEMON-006 regex to mandate
   `YYYY-MM-DDTHH:MM:SS.sssZ` (mandatory millisecond precision). The §BC Summary
   footer declares this architecture document as "source-of-truth for invariants,
   protocol decisions, and security rationale." Three JSON schema sketches in this
@@ -1928,14 +1928,14 @@ v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R
   **Site 1 — §Health and Status Endpoints /status `last_hook_ts` block (5 fields):**
   - Before: `"<ISO8601 or null>"` (5 occurrences, one per hook type)
   - After: `"<YYYY-MM-DDTHH:MM:SS.sssZ or null>"` + inline annotation referencing
-    EC-044 (PRD v1.7), BC-DAEMON-002, and F-R72-1 cross-field uniformity.
+    EC-044 (PRD v1.7), BC-2.01.002, and F-R72-1 cross-field uniformity.
   - Rationale: EC-044 (PRD v1.7 line 185) already specifies this exact format for
     `last_hook_ts`; the arch sketch now matches its own downstream BC/EC.
 
   **Site 2 — §Start Sequence step 6 lock file `startTimeUtc`:**
   - Before: `"startTimeUtc": "<ISO8601>"`
   - After: `"startTimeUtc": "<YYYY-MM-DDTHH:MM:SS.sssZ>"` + inline annotation
-    referencing BC-DAEMON-002 / EC-044, BC-DAEMON-006, and F-R72-1 uniformity.
+    referencing BC-2.01.002 / EC-044, BC-2.01.006, and F-R72-1 uniformity.
   - Disposition: **(a) tighten to millisecond precision for cross-field uniformity.**
     Rationale: no architectural reason for `startTimeUtc` to carry seconds-only
     precision while `last_hook_ts` and `shutdown_utc` both mandate milliseconds.
@@ -1948,9 +1948,9 @@ v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R
   **Site 3 — §Drain step 5 crash-recovery `shutdown_utc`:**
   - Before: `"shutdown_utc": "<ISO8601>"`
   - After: `"shutdown_utc": "<YYYY-MM-DDTHH:MM:SS.sssZ>"` + inline annotation
-    referencing BC-DAEMON-006 invariant 1 (PRD v1.7), VP-DAEMON-006 regex
+    referencing BC-2.01.006 invariant 1 (PRD v1.7), VP-DAEMON-006 regex
     (`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`), and cross-field uniformity.
-  - This site is directly mandated by BC-DAEMON-006 invariant 1; the prior generic
+  - This site is directly mandated by BC-2.01.006 invariant 1; the prior generic
     placeholder was the root cause of F-R72-1 (the BC was tightened but the arch
     sketch was not updated in the same burst).
 
@@ -1967,7 +1967,7 @@ v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R
   (c) PG-5 sweep: historical §Trace entries unchanged. `<ISO8601>` grep result: 0
       remaining occurrences in normative-current body (all three sites resolved). 0
       remaining generic timestamp placeholders in any JSON schema sketch. VERIFIED.
-  (d) §Behavioral Contract Summary BC-DAEMON-006 row: prose description does not
+  (d) §Behavioral Contract Summary BC-2.01.006 row: prose description does not
       carry a timestamp format claim (references §Daemon Lifecycle Protocol for
       detail) — no change needed to summary table.
   (e) Phase 4 Notes paragraph: references `startTimeUtc` by field name only, no
@@ -1982,18 +1982,18 @@ v1.0.14 changes (adversary R72 F-R72-1 closure — partial-fix regression of F-R
   change required.
   **VP:** VP v1.7 `traces_to` frontmatter cites arch pin `v1.0.13`; formal-verifier
   must propagate arch pin v1.0.13 → v1.0.14 at all normative-current VP sites. No VP
-  content change required — VP-DAEMON-006 regex and BC-DAEMON-006 invariant 1 are
+  content change required — VP-DAEMON-006 regex and BC-2.01.006 invariant 1 are
   already correctly specified. Pin propagation only.
   **BC count: 22 — CONFIRMED unchanged.** No new BCs added; no BCs removed.
 
 v1.0.13 changes (adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure):
 - F-R71-2 RESOLVED (HIGH — adversary R71 stale test name): Two arch sites cited
-  `test_BC_DAEMON_004_exit_codes` as the BC-DAEMON-004 verification test name. The
-  canonical name per PRD v1.6 §3 BC-DAEMON-004 §Verification and VP v1.6 is
+  `test_BC_DAEMON_004_exit_codes` as the BC-2.01.004 verification test name. The
+  canonical name per PRD v1.6 §3 BC-2.01.004 §Verification and VP v1.6 is
   `test_BC_DAEMON_004_exit_codes_posix_distinct`. Authority per §BC Summary footer:
   "the PRD is source-of-truth for canonical test names." Fixed at both arch sites:
-  (1) §Hard Shutdown BC-DAEMON-004 verification prose block; (2) §Trace v1.0.12
-  BC-DAEMON-004 rationale sentence. No behavioral change — only the test-name
+  (1) §Hard Shutdown BC-2.01.004 verification prose block; (2) §Trace v1.0.12
+  BC-2.01.004 rationale sentence. No behavioral change — only the test-name
   citation corrected to match the PRD/VP canonical identifier.
 - F-R71-3 RESOLVED (MEDIUM — adversary R71 NFR-008 mis-anchor): Four arch sites
   used "macOS is the primary target" / "lists macOS as the primary target" framing
@@ -2024,14 +2024,14 @@ v1.0.13 changes (adversary R71 F-R71-2 + F-R71-3 + F-R71-4 closure):
   dependency resolution, not by a direct workspace pin. No manifest change required.
   F-R71-4b: VP-DAEMON-005 contained a "pending-architect-review" Principle 6
   violation — an unresolved choice between `nix 0.30` and `libc 0.2` for POSIX
-  signal handling in BC-DAEMON-005 postcondition 3 (stale-pid detection).
+  signal handling in BC-2.01.005 postcondition 3 (stale-pid detection).
   Architect disposition: **`nix 0.30`** (typed wrapper crate preferred over raw
   `libc` for `Signal::None` send pattern). Rationale: `nix::sys::signal::kill(pid,
   None)` is the idiomatic, type-safe Rust API for pid-liveness testing without
   signal delivery; using raw `libc::kill(pid, 0)` bypasses the type system and
   requires unsafe. `nix 0.30` is the latest stable release (verified 2026-05-14
   against crates.io). `nix 0.30` added to SS-deps-pin-manifest.md as a workspace
-  caret pin. BC-DAEMON-005 postcondition 3 implementation MUST use
+  caret pin. BC-2.01.005 postcondition 3 implementation MUST use
   `nix::sys::signal::kill(Pid::from_raw(pid), None)`.
 - Propagation requirements for orchestrator:
   PRD: NFR-008 description at PRD line 328 may carry the same sole-primary framing;
@@ -2051,7 +2051,7 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   and Windows by platform-ABI design, not due to misconfiguration. NFR-008 lists macOS
   among the primary targets (`macOS + Linux`). An implementer following the prior step 1 spec had no defined
   behavior when `None` was returned — bifurcated implementations would result, breaking
-  BC-DAEMON-005 and BC-LOCK-001 on macOS. Architect disposition: **(c) hybrid platform
+  BC-2.01.005 and BC-2.01.010 on macOS. Architect disposition: **(c) hybrid platform
   fallback chain with env override.** Step 1 replaced with a four-path resolution chain:
   (a) `MONOCLE_RUNTIME_DIR` env override — operator escape hatch for containers and
   non-standard deployments; (b) `ProjectDirs::runtime_dir()` — XDG-compliant path used
@@ -2064,10 +2064,10 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   (a primary target, per NFR-008 `macOS + Linux`) to set `MONOCLE_RUNTIME_DIR` violates the zero-config startup
   requirement. Rationale for disposition (c) over (b) silent fallback: the env override
   is a necessary operator escape hatch for containerized and custom deployments.
-  Asymmetry with BC-ENGINE-002-ERR is intentional: `BaseDirs::new() == None` signals
+  Asymmetry with BC-2.03.003 is intentional: `BaseDirs::new() == None` signals
   a genuine system-configuration failure (no home directory), warranting fail-fast;
   `ProjectDirs::runtime_dir() == None` on macOS is expected platform behavior,
-  warranting a documented fallback. BC count: **22 unchanged** — BC-DAEMON-005 is
+  warranting a documented fallback. BC count: **22 unchanged** — BC-2.01.005 is
   updated in place (precondition 2 + §Start Sequence step 1 elaboration); no new BC
   added. §Scope updated to describe the resolution chain. `resolve_runtime_dir()`
   implementation sketch added to step 1 for implementer clarity.
@@ -2084,8 +2084,8 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   - `2` — admin `POST /shutdown` second-call during drain (monocle-specific programmatic
     code; chosen outside POSIX 128+N space and distinct from startup-failure exit 1).
   - `1` — daemon startup failure (unchanged semantic; now explicitly listed).
-  BC-DAEMON-004 summary row updated to enumerate all five exit codes. Hard Shutdown
-  step 6 updated to distinguish signal type for exit-code selection. BC-DAEMON-004
+  BC-2.01.004 summary row updated to enumerate all five exit codes. Hard Shutdown
+  step 6 updated to distinguish signal type for exit-code selection. BC-2.01.004
   postcondition added inline in §Hard Shutdown with verification test reference
   (`test_BC_DAEMON_004_exit_codes_posix_distinct` in `monocle-runtime/tests/daemon_lifecycle.rs`).
   Rationale for disposition (c) over (a) simple 143 substitution: distinguishing SIGINT
@@ -2096,7 +2096,7 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
 - Propagation sweep (PG-3/PG-4/PG-5 compliance):
   (a) §Scope updated — version-stable description of resolution chain added; no bare
   L-numbers; no directional qualifiers.
-  (b) §Behavioral Contract Summary — BC-DAEMON-004 and BC-DAEMON-005 rows updated
+  (b) §Behavioral Contract Summary — BC-2.01.004 and BC-2.01.005 rows updated
   in place; no new rows; BC count 22 verified (10 daemon-lifecycle IDs: DAEMON-001
   through DAEMON-006, RING-001, AUTH-001, AUTH-002, LOCK-001).
   (c) PG-3 sweep: §Start Sequence (EXISTS heading), §Hard Shutdown (EXISTS heading),
@@ -2107,9 +2107,9 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   (e) PG-5 sweep: no historical normative-current claims modified; §Trace v1.0.11
   and earlier entries unchanged.
   (f) Cross-artifact propagation requirements (for orchestrator dispatch):
-  **PRD propagation required:** BC-DAEMON-004 postcondition (exit codes) must be
+  **PRD propagation required:** BC-2.01.004 postcondition (exit codes) must be
   updated to enumerate all five codes (0/130/143/2/1) with POSIX rationale; the PRD
-  is the canonical test-vector source. BC-DAEMON-005 precondition 2 (runtime dir
+  is the canonical test-vector source. BC-2.01.005 precondition 2 (runtime dir
   resolution) must be updated to reflect the three-path chain + env override. These
   are content changes in the PRD requiring `product-owner` dispatch.
   **VP propagation required:** VP-DAEMON-004 and VP-DAEMON-005 (if they exist) must
@@ -2119,17 +2119,17 @@ v1.0.12 changes (adversary R70 F-R70-1 macOS runtime_dir + F-R70-3 POSIX exit-co
   Post-write self-grep: 0 L[0-9]+ matches in this §Trace v1.0.12 entry.
 
 v1.0.11 changes (adversary R65 F-R65-1/2/3 content closure + propagation sweep):
-- F-R65-1 RESOLVED (HIGH — adversary R65 pass 1 attempt 2): BC-AUTH-002 lead-in prose
+- F-R65-1 RESOLVED (HIGH — adversary R65 pass 1 attempt 2): BC-2.01.009 lead-in prose
   at §Behavioral contracts stated "Three auth failure modes are specified:" but the
-  BC-AUTH-002 table immediately below contained exactly two rows (Missing header /
-  Invalid token). Similarly, §Behavioral Contract Summary BC-AUTH-002 row opened with
+  BC-2.01.009 table immediately below contained exactly two rows (Missing header /
+  Invalid token). Similarly, §Behavioral Contract Summary BC-2.01.009 row opened with
   "Three auth failure modes:". Root cause: F-R62-8 (v1.0.8) collapsed the originally
   distinct format / mismatch rows into a single "Invalid token" row — reducing the table
   to 2 rows — but the lead-in count words at both sibling sites were not updated in that
   same burst. The L-F-R63-PARTIAL-FIX propagation discipline was not yet codified at the
   time of F-R62-8; these sibling sites were therefore a pre-codification gap. Fix: "Three"
   → "Two" at both body-prose sites.
-- F-R65-2 RESOLVED (CRITICAL — adversary R65 pass 1 attempt 2): BC-AUTH-002 §Behavioral
+- F-R65-2 RESOLVED (CRITICAL — adversary R65 pass 1 attempt 2): BC-2.01.009 §Behavioral
   contracts §Verification block contained two conflicting statements about the same
   scenario (an inbound request carrying `Authorization: Bearer` instead of
   `X-Monocle-Authorization`). The paragraph describing Phase 4 OAuth2 federation
@@ -2148,14 +2148,14 @@ v1.0.11 changes (adversary R65 F-R65-1/2/3 content closure + propagation sweep):
   "(no `X-Monocle-Authorization` header present; `Authorization: Bearer` is a different,
   unrecognized header — Phase 4 OAuth2 uses a separate federation channel and does not
   reuse the Phase 1 HTTP endpoints)". Aligns with: test vector bullet in same block
-  (`Authorization: Bearer fake` → missing); PRD v1.3 BC-AUTH-002 postcondition 3 +
+  (`Authorization: Bearer fake` → missing); PRD v1.3 BC-2.01.009 postcondition 3 +
   Canonical Test Vector row 5; VP v1.3 §VP-AUTH-002 probe 5.
 - F-R65-3 RESOLVED (HIGH — closed by F-R65-2 fix): Cross-artifact contradiction between
   arch and PRD/VP on Bearer disposition. After F-R65-2 fix, arch aligns with PRD v1.3
-  BC-AUTH-002 and VP v1.3 VP-AUTH-002. No independent change required.
+  BC-2.01.009 and VP v1.3 VP-AUTH-002. No independent change required.
 - Propagation sweep (L-F-R63-PARTIAL-FIX discipline applied):
   (a) "Three/three" auth failure modes — body prose grep result: 2 sites fixed
-  (BC-AUTH-002 lead-in at §Behavioral contracts; §Behavioral Contract Summary row);
+  (BC-2.01.009 lead-in at §Behavioral contracts; §Behavioral Contract Summary row);
   §Trace v1.0.8 contains "three-case table" and "three middleware branches" —
   HISTORICAL per PG-5 (describing what was introduced at v1.0.8 time); NOT changed.
   (b) Bearer disposition `invalid_auth_token` — body prose grep result: 1 site fixed
@@ -2166,7 +2166,7 @@ v1.0.11 changes (adversary R65 F-R65-1/2/3 content closure + propagation sweep):
   (d) SS-deps-pin-manifest.md — grep for "SS-daemon-lifecycle\.md v" confirmed 0
   version-pinned citations (matches prior v1.0.10 sweep finding); no update needed.
   PG-2 count-verification sweep: "Two" count matches 2 actual table rows in
-  BC-AUTH-002 table — VERIFIED. PG-3 compliant: §-anchor refs used throughout;
+  BC-2.01.009 table — VERIFIED. PG-3 compliant: §-anchor refs used throughout;
   no bare L-numbers; no directional qualifiers. PG-4 sweep evidence: §Behavioral
   Contract Summary (EXISTS heading), §Start Sequence (EXISTS heading), §Trace
   (EXISTS heading). PG-5 sweep evidence: §Trace v1.0.8 "three" instances — classified
@@ -2187,7 +2187,7 @@ v1.0.10 changes (consistency R3 R3-001 closure + oscillation-prevention sweep):
   L-F-R63-PARTIAL-FIX (cycles/cycle-001/lessons.md) propagation discipline — the
   full propagation checklist was applied:
   (a) §Behavioral Contract Summary footer — normative-current version pin removed;
-  (b) normative body lines for BC-AUTH-001 and BC-AUTH-002 §Verification cite
+  (b) normative body lines for BC-2.01.008 and BC-2.01.009 §Verification cite
   "PRD v1.1 §7 RTM" as historical fix-provenance for the F-R62-4 path
   canonicalization — classified as PG-5 historical anchors, not normative-current
   claims; kept unchanged;
@@ -2199,7 +2199,7 @@ v1.0.10 changes (consistency R3 R3-001 closure + oscillation-prevention sweep):
   PG-4 sweep evidence: §Behavioral Contract Summary (EXISTS heading), §Start Sequence
   (EXISTS heading), §Trace (EXISTS heading). PG-5 sweep evidence: §Behavioral
   Contract Summary footer — 1 normative-current pin fixed to version-stable;
-  body lines BC-AUTH-001/002 §Verification — classified historical (PG-5 compliant,
+  body lines BC-2.01.008/002 §Verification — classified historical (PG-5 compliant,
   retained); §Trace history entries — PG-5 exemption confirmed. Post-write self-grep:
   0 L[0-9]+ matches in this §Trace v1.0.10 entry.
 
@@ -2213,16 +2213,16 @@ v1.0.9 changes (F-R62-4 back-propagation closure, adversary R63 F-R63-adv-2 + co
   remains source-of-truth for invariants, protocol decisions, and security
   rationale; PRD v1.1 is source-of-truth for canonical test names, test-file
   paths, error taxonomy, and edge case catalog.
-- F-R63-adv-2 partial RESOLVED (MEDIUM — adversary R63 stale path): BC-AUTH-002
+- F-R63-adv-2 partial RESOLVED (MEDIUM — adversary R63 stale path): BC-2.01.009
   §Behavioral contracts §Verification block cited `monocle-runtime/tests/auth.rs`
   (the pre-F-R62-4 single-file path). F-R62-4 (PRD v1.1 §7 RTM) canonicalized
-  the split: BC-AUTH-001 → `monocle-runtime/tests/auth_token_lifecycle.rs`;
-  BC-AUTH-002 → `monocle-runtime/tests/auth_header_rejection.rs`. Architecture is
-  the last artifact on the old single-file path. Change: BC-AUTH-002 §Verification
+  the split: BC-2.01.008 → `monocle-runtime/tests/auth_token_lifecycle.rs`;
+  BC-2.01.009 → `monocle-runtime/tests/auth_header_rejection.rs`. Architecture is
+  the last artifact on the old single-file path. Change: BC-2.01.009 §Verification
   updated to `auth_header_rejection.rs` with cross-reference to
-  `auth_token_lifecycle.rs` for BC-AUTH-001 round-trip coverage; test name
+  `auth_token_lifecycle.rs` for BC-2.01.008 round-trip coverage; test name
   `test_BC_AUTH_002_auth_header_validation_all_failure_modes` added inline (PRD
-  v1.1 §7 RTM canonical). BC-AUTH-001 §Verification sentence updated to add
+  v1.1 §7 RTM canonical). BC-2.01.008 §Verification sentence updated to add
   explicit test file path `auth_token_lifecycle.rs` and test name
   `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip` (PRD v1.1 §7 RTM
   canonical; F-R62-4). Source-of-truth: PRD v1.1 §7 RTM + VP v1.1
@@ -2237,20 +2237,20 @@ v1.0.9 changes (F-R62-4 back-propagation closure, adversary R63 F-R63-adv-2 + co
 v1.0.8 changes (fix-burst F-R62, finding F-R62-8 MED — architect adjudication):
 - F-R62-8 RESOLVED (MED — adversary finding R62): PRD at commit c69518d introduced
   `E-AUTH-002 {"error":"missing_auth_token"}` and `E-AUTH-003 {"error":"invalid_auth_token"}`
-  in §Section 5 and edge cases EC-008/EC-009 in BC-AUTH-002, none of which were specified in
+  in §Section 5 and edge cases EC-008/EC-009 in BC-2.01.009, none of which were specified in
   SS-daemon-lifecycle.md v1.0.7. The architecture defined only `invalid_auth_token_format` for
-  the single BC-AUTH-002 case (non-prefixed header). This was a PRD invention of contract surface
+  the single BC-2.01.009 case (non-prefixed header). This was a PRD invention of contract surface
   beyond architecture authorization. Architect disposition chosen: **(c) mixed approach** —
   two distinct error bodies: `missing_auth_token` for absent header (structural precondition
   failure, not an auth attempt; diagnostic value with zero security cost) and `invalid_auth_token`
   for any value-present failure (format failure OR secret mismatch, intentionally collapsed into
   one body to eliminate the format-vs-mismatch enumeration vector). The third PRD invention
   `invalid_auth_token_format` is RETIRED — no body of that name exists in the architecture.
-  Security rationale in §Start Sequence §Behavioral contracts BC-AUTH-002 (threat model:
+  Security rationale in §Start Sequence §Behavioral contracts BC-2.01.009 (threat model:
   localhost-only, same-user adversary already has lock-file read access; defence-in-depth
   collapse of Rules 2+3 blocks information leak to adversaries with unexpected network access
   but no filesystem access). Auth middleware implementation updated to `validate_auth_header`
-  returning `AuthError::Missing` or `AuthError::Invalid`. BC-AUTH-002 §Behavioral Contract
+  returning `AuthError::Missing` or `AuthError::Invalid`. BC-2.01.009 §Behavioral Contract
   Summary row expanded to reflect three-case table. Verification test vectors updated to 6
   cases covering all three middleware branches.
 
@@ -2292,11 +2292,11 @@ v1.0.6 changes (round-30 fix F-R30-2 MEDIUM):
 
 v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - F-R28-4 RESOLVED (MEDIUM — adversary finding): `HookEventRecord` was referenced by
-  BC-RING-001's verification body ("unit test serializes a `HookEventRecord`") but was
-  defined nowhere in the spec corpus. An implementer following BC-RING-001 would not know
+  BC-2.01.007's verification body ("unit test serializes a `HookEventRecord`") but was
+  defined nowhere in the spec corpus. An implementer following BC-2.01.007 would not know
   what `HookEventRecord` is, what fields it contains, or how to construct it. Fix: a full
   `HookEventRecord` struct definition added to §Daemon Lifecycle Protocol §Drain, immediately
-  preceding the BC-RING-001 contract statement. The struct is placed in `monocle-runtime::ring`
+  preceding the BC-2.01.007 contract statement. The struct is placed in `monocle-runtime::ring`
   (NOT `monocle-core`) because the ring buffer is a daemon runtime artifact, not part of the
   core ABI surface. Fields match the JSONL example record exactly:
   `format_version: u32` (first, always `1` in Phase 1), `session_id: String`,
@@ -2304,7 +2304,7 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
   `tool_input: Option<serde_json::Value>`. A `pub fn new(...)` constructor is provided (same
   `#[non_exhaustive]` / E0639 reasoning as engine-module structs — integration tests compile
   as separate binaries). The module-level const `RING_FORMAT_VERSION: u32 = 1` is the single
-  source of truth for the format version value. BC-RING-001 verification body updated to use
+  source of truth for the format version value. BC-2.01.007 verification body updated to use
   `HookEventRecord::new(...)` explicitly. Cross-reference: SS-engine-module.md §Trace v1.1.8
   F-R28-2 entry notes that F-R28-4 is resolved in this document.
 
@@ -2323,4 +2323,27 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-17f PASS: post-edit verification — `subsystem: SS-01` at frontmatter line 7; `traces_to:
   architecture/ARCH-INDEX.md` at frontmatter line 16; version `"1.0.26"` at frontmatter line 4.
+
+**§Trace v1.0.28** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
+- NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
+  per BC-INDEX.md v1.1 Renumbering Map. Finding: F-R105-8 MED.
+- SE-17c BEFORE: 95 lines / 102 occurrences with stale BC IDs (all old-form DAEMON/AUTH/RING/LOCK/ABI/ENGINE prefixes).
+- Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
+  BC-2.01.001 [old: DAEMON-001]: 4 occurrences
+  BC-2.01.002 [old: DAEMON-002]: 9 occurrences
+  BC-2.01.003 [old: DAEMON-003]: 3 occurrences
+  BC-2.01.004 [old: DAEMON-004]: 12 occurrences
+  BC-2.01.005 [old: DAEMON-005]: 13 occurrences
+  BC-2.01.006 [old: DAEMON-006]: 11 occurrences
+  BC-2.01.007 [old: RING-001]: 10 occurrences
+  BC-2.01.008 [old: AUTH-001]: 8 occurrences
+  BC-2.01.009 [old: AUTH-002]: 20 occurrences
+  BC-2.01.010 [old: LOCK-001]: 9 occurrences
+  BC-2.02.001 [old: ABI-001]: 1 occurrence (cross-ref to SS-02)
+  BC-2.03.003 [old: ENGINE-002-ERR]: 2 occurrences (cross-ref to SS-03)
+- SE-17d AFTER: 0 lines with stale BC IDs in normative body (SE-17g PASS — see ARCH-INDEX §Trace v1.0.3).
+- SE-17f PASS: sampled mapping verified — §Behavioral Contract Summary row 1 `BC-2.01.001`,
+  §Start Sequence BC-2.01.008, §Drain BC-2.01.007, §Lock File BC-2.01.010.
+- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
+- No retired BCs discovered. All 95 stale-ID lines resolved to active BCs in BC-INDEX v1.1.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.

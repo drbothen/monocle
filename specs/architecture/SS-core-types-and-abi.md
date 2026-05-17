@@ -4,11 +4,11 @@ level: L3
 section: "core-types-and-abi"
 slug: "types-and-abi"
 subsystem: SS-02
-version: "1.2.10"
+version: "1.2.11"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-forward-compatibility.md, SS-deps-pin-manifest.md, SS-daemon-lifecycle.md, SS-permissions-phase1.md, planning/oq-research.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
 input-hash: "bcf9f27"
 traces_to: architecture/ARCH-INDEX.md
@@ -82,12 +82,12 @@ Conflict to federation establishment requests if no compatibility shim is regist
 
 ### Behavioral Contracts
 
-**BC-ABI-001:** Every monocle binary exposes `abi_version: 1` in the `/status`
+**BC-2.02.001:** Every monocle binary exposes `abi_version: 1` in the `/status`
 JSON response body. The field is present and equals `MONOCLE_ABI_VERSION` as
 compiled into that binary. Verification: integration test asserts
 `GET /status | jq .abi_version == 1`.
 
-**BC-ABI-002:** `monocle-core` exports `MONOCLE_ABI_VERSION` as a `pub const u32`
+**BC-2.02.002:** `monocle-core` exports `MONOCLE_ABI_VERSION` as a `pub const u32`
 at the crate root (`monocle_core::MONOCLE_ABI_VERSION`). Downstream crates may
 compile-time-assert against it:
 
@@ -210,7 +210,7 @@ pub struct SessionStartEvent {
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UserPromptSubmitEvent {
-    /// The submitted prompt text. May be large; bounded by BC-DAEMON-003 (256 KiB).
+    /// The submitted prompt text. May be large; bounded by BC-2.01.003 (256 KiB).
     pub prompt: String,
     /// Claude Code's own session UUID.
     pub session_id: String,
@@ -249,7 +249,7 @@ pub struct NotificationEvent {
     pub tool_name: String,
     /// JSON tool input; populated for permission_prompt type.
     pub tool_input: serde_json::Value,
-    /// Human-readable notification body. May be large; bounded by BC-DAEMON-003.
+    /// Human-readable notification body. May be large; bounded by BC-2.01.003.
     pub message: String,
     /// Claude Code's own session UUID.
     pub session_id: String,
@@ -301,7 +301,7 @@ source files (see SS-conventions-anti-patterns.md).
 
 ### Behavioral Contract
 
-**BC-TYPES-001:** Every `pub` enum in `monocle-core` carries `#[non_exhaustive]`
+**BC-2.02.003:** Every `pub` enum in `monocle-core` carries `#[non_exhaustive]`
 unless an ADR documents the exhaustiveness requirement. At Phase 1 PRD dispatch,
 the exhaustive-enum forbidden list contains exactly two entries: `Phase1Permission`
 and `ClaudeCodeTool` (both documented in ADR-0004). Any future exemption requires
@@ -709,7 +709,7 @@ impl FactoryAdapter for VsddFactoryAdapter {
 /// Only a single layer of quoting is stripped; nested quotes are not processed.
 ///
 /// This function and `parse_frontmatter_extra_fields` share identical guard semantics.
-/// BC-FACTORY-002's `Some(_) or None` assertion is genuinely discriminating: `None`
+/// BC-2.02.005's `Some(_) or None` assertion is genuinely discriminating: `None`
 /// means "key absent or value unparseable as a simple scalar".
 fn parse_frontmatter_field(content: &str, key: &str) -> Option<String> {
     let mut lines = content.lines();
@@ -851,7 +851,7 @@ by third-party code. Openness is the right default for extension traits.
 
 ### Behavioral Contracts
 
-**BC-FACTORY-001:** `FactoryAdapter` trait is defined in `monocle-core::factory`
+**BC-2.02.004:** `FactoryAdapter` trait is defined in `monocle-core::factory`
 with the exact signature above (including `StateChangeStream` type alias,
 `FactoryDetection`, `FactoryState` (7-field canonical struct), `BlockingIssue`,
 `BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`, `FactorySubscribeError`
@@ -862,7 +862,7 @@ Verification: `cargo check` with the Phase 1 workspace; `rustdoc` output confirm
 public trait surface including all supporting types, and confirms no `private::Sealed`
 supertrait appears.
 
-**BC-FACTORY-002:** `VsddFactoryAdapter` implements `FactoryAdapter`. A public
+**BC-2.02.005:** `VsddFactoryAdapter` implements `FactoryAdapter`. A public
 `VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self` constructor is provided;
 it derives `state_file = workspace_root.join(".factory/STATE.md")`. The `detect`
 static method returns `Some(FactoryDetection)` when called against monocle's own
@@ -951,7 +951,7 @@ message NotificationEvent {
   string notification_type = 1; // "permission_prompt" or "assistant_message".
   string tool_name         = 2; // Populated when notification_type = "permission_prompt".
   bytes  tool_input        = 3; // JSON-encoded tool input; populated on permission prompts.
-  string message           = 4; // Human-readable notification body (may be large; see BC-DAEMON-003).
+  string message           = 4; // Human-readable notification body (may be large; see BC-2.01.003).
 }
 
 // Stop hook — fired when a Claude Code session ends (agentic loop complete).
@@ -974,7 +974,7 @@ message StopEvent {
 
 ### Behavioral Contracts
 
-**BC-PROTO-001a (proto schema contract):** The `.proto` message definition declares
+**BC-2.02.006 (proto schema contract):** The `.proto` message definition declares
 `schema_version` at proto field number 1 in `HookEnvelope`. This is a wire-format
 contract — it governs the binary encoding on the wire and the field number visible
 to every proto consumer regardless of language. Verification: `protoc --decode`
@@ -982,14 +982,14 @@ confirms field number 1 is `schema_version` in any encoded Phase 1 `HookEnvelope
 message; a `monocle-proto/tests/wire_field_order.rs` test round-trips a message and
 asserts the field number assignment via prost-build's generated descriptor.
 
-**BC-PROTO-001b (Rust surface contract):** The prost-build-generated `HookEnvelope`
+**BC-2.02.007 (Rust surface contract):** The prost-build-generated `HookEnvelope`
 Rust struct exposes `pub schema_version: u32`. The value is `1` for all Phase 1-origin
 messages. The generated Rust struct field order is an implementation detail of
 prost-build and is NOT a behavioral contract. Verification: a unit test in
 `monocle-proto/tests/schema_version.rs` constructs a `HookEnvelope` with
 `schema_version: 1` and asserts `envelope.schema_version == 1`.
 
-**BC-PROTO-002:** The Phase 1 `HookEnvelope` schema is the canonical wire
+**BC-2.02.008:** The Phase 1 `HookEnvelope` schema is the canonical wire
 representation for cross-host federation in Phase 4. Phase 4 federation nodes
 check `schema_version` before deserializing event payloads. A node receiving a
 message with an unrecognized `schema_version` MUST log a warning and skip the
@@ -1008,25 +1008,25 @@ stubs during PRD authoring.
 
 | BC ID | Description | Source Section |
 |-------|-------------|----------------|
-| BC-ABI-001 | Every monocle binary exposes `abi_version: 1` in `/status` response | §ABI Version Constant |
-| BC-ABI-002 | `monocle-core` exports `MONOCLE_ABI_VERSION` as pub const at crate root | §ABI Version Constant |
-| BC-TYPES-001 | Every pub enum in `monocle-core` carries `#[non_exhaustive]` unless ADR exempts it (two current exemptions: Phase1Permission and ClaudeCodeTool per ADR-0004) | §Enum Extensibility |
-| BC-FACTORY-001 | `FactoryAdapter` trait defined in `monocle-core::factory` with the 7-field FactoryState and all supporting types per this artifact | §FactoryAdapter Trait |
-| BC-FACTORY-002 | `VsddFactoryAdapter::new(workspace_root)` public constructor; passes self-referential detection test; `read_state` returns `None` for absent optional fields (cycle, convergence) | §FactoryAdapter Trait |
-| BC-PROTO-001a | `.proto` message definition declares `schema_version` at proto field number 1 (wire-format contract) | §Prost Wire Schemas |
-| BC-PROTO-001b | Prost-build-generated `HookEnvelope` Rust struct exposes `pub schema_version: u32` with value `1` for Phase 1 messages (Rust surface contract) | §Prost Wire Schemas |
-| BC-PROTO-002 | Phase 1 HookEnvelope schema is canonical wire representation; Phase 4 validates `schema_version` before deserializing | §Prost Wire Schemas |
-| BC-LOCK-001 | Lock-file JSON includes `contract_version: u32 = 1` as the first key (see SS-daemon-lifecycle.md §Lock File Discovery Policy) | Covered in SS-daemon-lifecycle.md |
+| BC-2.02.001 | Every monocle binary exposes `abi_version: 1` in `/status` response | §ABI Version Constant |
+| BC-2.02.002 | `monocle-core` exports `MONOCLE_ABI_VERSION` as pub const at crate root | §ABI Version Constant |
+| BC-2.02.003 | Every pub enum in `monocle-core` carries `#[non_exhaustive]` unless ADR exempts it (two current exemptions: Phase1Permission and ClaudeCodeTool per ADR-0004) | §Enum Extensibility |
+| BC-2.02.004 | `FactoryAdapter` trait defined in `monocle-core::factory` with the 7-field FactoryState and all supporting types per this artifact | §FactoryAdapter Trait |
+| BC-2.02.005 | `VsddFactoryAdapter::new(workspace_root)` public constructor; passes self-referential detection test; `read_state` returns `None` for absent optional fields (cycle, convergence) | §FactoryAdapter Trait |
+| BC-2.02.006 | `.proto` message definition declares `schema_version` at proto field number 1 (wire-format contract) | §Prost Wire Schemas |
+| BC-2.02.007 | Prost-build-generated `HookEnvelope` Rust struct exposes `pub schema_version: u32` with value `1` for Phase 1 messages (Rust surface contract) | §Prost Wire Schemas |
+| BC-2.02.008 | Phase 1 HookEnvelope schema is canonical wire representation; Phase 4 validates `schema_version` before deserializing | §Prost Wire Schemas |
+| BC-2.01.010 | Lock-file JSON includes `contract_version: u32 = 1` as the first key (see SS-daemon-lifecycle.md §Lock File Discovery Policy) | Covered in SS-daemon-lifecycle.md |
 
-**Total: 8 BCs authored in this artifact; BC-LOCK-001 cross-referenced from `SS-daemon-lifecycle.md`.**
+**Total: 8 BCs authored in this artifact; BC-2.01.010 cross-referenced from `SS-daemon-lifecycle.md`.**
 The product-owner MUST NOT renumber these BCs during PRD authoring; the IDs above are
 anchor identifiers that cross-references in this artifact and in SS-forward-compatibility.md
-rely upon. BC-PROTO-001 was split into BC-PROTO-001a (wire-format) and BC-PROTO-001b (Rust
+rely upon. The pre-split proto contract (retired per F-FC-O004) was divided into BC-2.02.006 (wire-format) and BC-2.02.007 (Rust
 surface) to eliminate the wire-vs-Rust conflation identified in F-FC-O004.
 
-Combined with SS-engine-module.md (BC-ENGINE-001, BC-ENGINE-002, BC-ENGINE-002-ERR,
-BC-ENGINE-003 = 4 BCs) and SS-daemon-lifecycle.md (BC-RING-001, BC-AUTH-001, BC-AUTH-002,
-BC-LOCK-001 = 4 BCs), the pre-Phase-1 pre-staged total is **16 BCs** across all
+Combined with SS-engine-module.md (BC-2.03.001, BC-2.03.002, BC-2.03.003,
+BC-2.03.004 = 4 BCs) and SS-daemon-lifecycle.md (BC-2.01.007, BC-2.01.008, BC-2.01.009,
+BC-2.01.010 = 4 BCs), the pre-Phase-1 pre-staged total is **16 BCs** across all
 architecture artifacts. The authoritative enumeration with source references is in
 SS-forward-compatibility.md §Cross-Phase Decisions Required closing paragraph.
 
@@ -1074,7 +1074,7 @@ scan in commit 9618502. Human-authorized pre-Phase-1 lock-in.
 v1.2.8 changes (round-56.1 F-R56-2 PG-5 historical-anchor framing — 2 sites):
 
 - F-R56-2 RESOLVED (MEDIUM content — 2 sites in this file): §VsddFactoryAdapter Phase 1
-  Implementation rustdoc and §BC-FACTORY-002 Traceability both cited
+  Implementation rustdoc and §BC-2.02.005 Traceability both cited
   `brief v1.4.6 §Success Criteria`. PG-5 §Historical-Anchor Framing Convention (codified
   in SS-conventions-anti-patterns.md v1.24 same burst): `brief v1.4.6` is neither current
   (brief is at v1.4.23) nor explicitly framed as historical. §Success Criteria is a stable
@@ -1091,7 +1091,7 @@ v1.2.7 changes (round-53.1 F-R53-adv-3/4 brief §-anchor mis-anchors):
   Phase 4 bold label within `## Scope`, not within `### Phase Plan Rationale`.
 
 - F-R53-adv-4 RESOLVED (LOW — adversary finding R53): Two sites in `VsddFactoryAdapter`
-  Phase 1 Implementation rustdoc and §BC-FACTORY-002 Traceability cited
+  Phase 1 Implementation rustdoc and §BC-2.02.005 Traceability cited
   `brief v1.4.6 §Phase 1 Success Criteria`. Brief has no `## Phase 1 Success Criteria`
   heading; the actual heading is `## Success Criteria`. The Phase 1 row is unambiguous
   (brief §Phase 2 Exit Criteria is a separate heading). Corrected to `brief §Success
@@ -1126,7 +1126,7 @@ v1.2.4 changes (round-49 F-R48-adv-2 root-cause fix — PG-3 all-prose expansion
   (1) §FactoryAdapter Trait rustdoc (§Phase 3 Forward-Compatibility Analysis inline):
   "Per SS-forward-compatibility.md §Analysis — Sealed trait (lines 95–97)" →
   "Per SS-forward-compatibility.md §Item P3-1 — Verdict on Sealed".
-  (2) §BC-FACTORY-001 Traceability prose: "open extension trait per
+  (2) §BC-2.02.004 Traceability prose: "open extension trait per
   SS-forward-compatibility.md lines 95–97" → "per SS-forward-compatibility.md
   §Item P3-1 — Verdict on Sealed".
 
@@ -1137,7 +1137,7 @@ v1.2.3 fixes (round-20 fix F-R20-2):
   before this fix: (1) `phase: |` block-scalar marker returned `Some("|")`, violating the
   rustdoc contract that promises `None` for block scalars; (2) `current_cycle: ` (empty
   value) returned `Some("")`, semantically indistinct from an absent key and defeating
-  BC-FACTORY-002's `Some(_) or None` assertion; (3) `awaiting: [a, b]` flow-list returned
+  BC-2.02.005's `Some(_) or None` assertion; (3) `awaiting: [a, b]` flow-list returned
   `Some("[a, b]")` rather than `None`. Fix: four guards added to `parse_frontmatter_field`
   matching `parse_frontmatter_extra_fields` exactly: (a) skip continuation lines (leading
   whitespace); (b) return `None` for empty value_str; (c) return `None` for values
@@ -1168,7 +1168,7 @@ v1.2.2 fixes (round-19 fixes F-R18-2/F-R18-3):
 v1.2.1 fixes (round-16 adversary N16-2/N16-5/N16-6/N16-8):
 - N16-2 RESOLVED: `VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self`
   public constructor added as an inherent `impl VsddFactoryAdapter` block.
-  BC-FACTORY-002 updated to require the constructor and verify it.
+  BC-2.02.005 updated to require the constructor and verify it.
 - N16-5 RESOLVED: FactoryAdapter divergence from vision §FactoryAdapter documented
   in §FactoryAdapter vs vision divergence subsection (below), per human Q-16-5
   authorization retaining architect's design over vision sketch.
@@ -1179,11 +1179,11 @@ v1.2.1 fixes (round-16 adversary N16-2/N16-5/N16-6/N16-8):
   (project pin `serde_yaml_ng 0.10`). `read_state` updated: absent `current_cycle:`
   yields `cycle: None` (not `"unknown"`); absent §Session Resume Checkpoint yields
   `convergence: None` (not zero-round stub). `parse_frontmatter_extra_fields`
-  return type updated to `serde_yaml_ng::Value`. BC-FACTORY-002 updated to require
-  None semantics and the constructor. BC pre-staging table row for BC-FACTORY-002
+  return type updated to `serde_yaml_ng::Value`. BC-2.02.005 updated to require
+  None semantics and the constructor. BC pre-staging table row for BC-2.02.005
   updated accordingly.
 - N16-8 RESOLVED: BC footer changed from "9 BCs pre-staged" to "8 BCs authored in
-  this artifact; BC-LOCK-001 cross-referenced from SS-daemon-lifecycle.md."
+  this artifact; BC-2.01.010 cross-referenced from SS-daemon-lifecycle.md."
   Grand total 15 = 8 (SS-core) + 4 (SS-daemon) + 3 (SS-engine) confirmed unchanged.
 
 ### FactoryAdapter vs vision divergence (intentional, human-authorized)
@@ -1234,7 +1234,7 @@ v1.2 fixes (human Q-15-1, round-14 adversary N2/N9):
   valid values ("active", "blocked", "converged", "draft", "complete") that align
   with STATE.md frontmatter convention, with an explicit note that consumers must
   handle unknown values gracefully.
-- BC-FACTORY-001 updated to remove `private::Sealed` reference.
+- BC-2.02.004 updated to remove `private::Sealed` reference.
 - BC pre-staging count note updated to reflect cross-artifact total.
 
 v1.1 fixes (adversary fresh-pass F-FC-C001/C002/C003/I001/I002/O002/O003/O004):
@@ -1252,14 +1252,14 @@ v1.1 fixes (adversary fresh-pass F-FC-C001/C002/C003/I001/I002/O002/O003/O004):
   dyn-dispatch. `detect` retains `where Self: Sized`.
 - F-FC-O003: `parse_frontmatter_field` now anchors `---` to first line of document
   only, preventing false matches on markdown horizontal rules in body.
-- F-FC-O004: BC-PROTO-001 split into BC-PROTO-001a (wire field number contract)
-  and BC-PROTO-001b (Rust struct surface contract); wire-vs-Rust conflation resolved.
+- F-FC-O004: The pre-split proto contract (retired; now BC-2.02.006 wire-format + BC-2.02.007 Rust surface);
+  wire-vs-Rust conflation resolved. Historical old-ID record in BC-INDEX.md §Renumbering Map.
 
 Cross-references:
 - `SS-permissions-phase1.md` — `Phase1Permission` and `ClaudeCodeTool` definitions
 - `ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md` — exemption rationale
-- `SS-daemon-lifecycle.md` — `/status` endpoint BC-DAEMON-002 extended by
-  BC-ABI-001 (`abi_version` field); lock-file `contract_version` (BC-LOCK-001)
+- `SS-daemon-lifecycle.md` — `/status` endpoint BC-2.01.002 extended by
+  BC-2.02.001 (`abi_version` field); lock-file `contract_version` (BC-2.01.010)
 - `SS-engine-module.md` — EngineModule trait (companion artifact, same fix burst)
 - `SS-deps-pin-manifest.md` — `prost 0.14` EXACT pin; `futures` caret pin;
   `serde_json` for tool_input fields
@@ -1280,4 +1280,38 @@ Cross-references:
 - INFORMATIONAL: Version bump 1.2.8 → 1.2.9 records structural fix; no content changes.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §6 (SS-core-types-and-abi).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
-- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.2.11** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
+- NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
+  per BC-INDEX.md v1.1 Renumbering Map. Finding: F-R105-8 MED.
+- SE-17c BEFORE: 39 lines / 46 occurrences with stale BC IDs (all old-form ABI/TYPES/FACTORY/PROTO/ENGINE prefixes).
+- Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
+  BC-2.01.002 [old: DAEMON-002]: 1 occurrence (cross-ref to SS-01)
+  BC-2.01.003 [old: DAEMON-003]: 3 occurrences (cross-ref to SS-01)
+  BC-2.01.007 [old: RING-001]: 1 occurrence (cross-ref to SS-01)
+  BC-2.01.008 [old: AUTH-001]: 1 occurrence (cross-ref to SS-01)
+  BC-2.01.009 [old: AUTH-002]: 1 occurrence (cross-ref to SS-01)
+  BC-2.01.010 [old: LOCK-001]: 5 occurrences (cross-ref to SS-01)
+  BC-2.02.001 [old: ABI-001]: 3 occurrences
+  BC-2.02.002 [old: ABI-002]: 2 occurrences
+  BC-2.02.003 [old: TYPES-001]: 2 occurrences
+  BC-2.02.004 [old: FACTORY-001]: 4 occurrences
+  BC-2.02.005 [old: FACTORY-002]: 9 occurrences
+  BC-2.02.006 [old: PROTO-001a]: 4 occurrences
+  BC-2.02.007 [old: PROTO-001b]: 4 occurrences
+  BC-2.02.008 [old: PROTO-002]: 2 occurrences
+  BC-2.03.001 [old: ENGINE-001]: 1 occurrence (cross-ref to SS-03)
+  BC-2.03.003 [old: ENGINE-002-ERR]: 1 occurrence (cross-ref to SS-03)
+  BC-2.03.002 [old: ENGINE-002]: 1 occurrence (cross-ref to SS-03)
+  BC-2.03.004 [old: ENGINE-003]: 1 occurrence (cross-ref to SS-03)
+- DISCOVERED: PROTO-001 (bare, pre-split) — 2 occurrences in historical §Trace prose.
+  This ID is retired (split into BC-2.02.006 + BC-2.02.007 per F-FC-O004); it has no canonical
+  new-form entry in BC-INDEX §Renumbering Map (only the a/b split variants are listed). Action:
+  rewritten to descriptive prose removing the stale ID; historical record delegated to
+  BC-INDEX.md §Renumbering Map (the append-only authority). Not a live BC reference.
+- SE-17d AFTER: 0 lines with stale BC IDs in normative body (SE-17g PASS — see ARCH-INDEX §Trace v1.0.3).
+- SE-17f PASS: sampled mapping verified — §ABI Version BC-2.02.001/BC-2.02.002, §Enum
+  Extensibility BC-2.02.003, §FactoryAdapter BC-2.02.004/BC-2.02.005, §Prost Wire BC-2.02.006/BC-2.02.007.
+- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
+- Retired BC discovered: PROTO-001 (bare pre-split form, historical only). Surfaced above.
+  Not in BC-INDEX Renumbering Map as standalone entry; treated as retired-by-split, no new ID needed.

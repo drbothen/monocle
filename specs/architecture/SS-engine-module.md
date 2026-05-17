@@ -4,11 +4,11 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.17"
+version: "1.1.18"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
 input-hash: "111077c"
 traces_to: architecture/ARCH-INDEX.md
@@ -277,7 +277,7 @@ impl ProcessSnapshot {
     ///
     /// Use this constructor in production process-scan code (where all fields are
     /// populated from the OS) and in test fixtures that exercise the enrichment path
-    /// (e.g., BC-ENGINE-002-ERR async half). For fixtures that only exercise `detect()`,
+    /// (e.g., BC-2.03.003 async half). For fixtures that only exercise `detect()`,
     /// `new` is sufficient.
     pub fn with_full_context(
         pid: u32,
@@ -932,7 +932,7 @@ implementation. These signatures are binding — the implementer must not alter 
 
 ## §Behavioral Contracts
 
-**BC-ENGINE-001:** The `EngineModule` trait is defined in `monocle-core::engine` with
+**BC-2.03.001:** The `EngineModule` trait is defined in `monocle-core::engine` with
 the exact vision-aligned signature in §EngineModule Trait Signature (methods: `id`,
 `metadata`, `detect`, `enrich`, `on_hook`). Method return types are:
 `id() -> &'static str`; `metadata() -> Result<EngineMetadata, EngineMetadataError>`;
@@ -950,7 +950,7 @@ distinguish `None` from any numeric value — treating `0` as a sentinel is forb
 Verification: `cargo check` with the Phase 1 workspace; `rustdoc` confirms all types
 are publicly accessible and the trait has no `private::Sealed` supertrait.
 
-**BC-ENGINE-002:** `ClaudeCodeModule` (defined in `monocle-runtime::engine::claude_code`)
+**BC-2.03.002:** `ClaudeCodeModule` (defined in `monocle-runtime::engine::claude_code`)
 implements `EngineModule`. A public `ClaudeCodeModule::new(hook_base_url: String) -> Self`
 constructor is provided. `id()` returns the string `"claude-code"`. `detect()` returns
 `true` for any process whose `exe_path` has a final basename component equal to `"claude"`
@@ -965,7 +965,7 @@ and tests `detect()` with three synthetic `ProcessSnapshot` instances constructe
 (c) `ProcessSnapshot::new(12347, None, vec!["claude".to_string()], 1_700_000_000)` → asserts `detect()` returns `false` (exe_path=None regardless of cmdline contents).
 Note: `detect()` consults ONLY `exe_path`; `cmdline` is preserved for engine-specific use in `enrich()` (e.g., reading `CLAUDE_SESSION_ID`) but is NOT used for engine identification — this avoids false positives from processes such as `claude-squad`, `claudio`, and `claude-code-router` that may place `"claude"` in `cmdline[0]`.
 
-**BC-ENGINE-002-ERR:** `ClaudeCodeModule::metadata()` and `ClaudeCodeModule::enrich()` MUST
+**BC-2.03.003:** `ClaudeCodeModule::metadata()` and `ClaudeCodeModule::enrich()` MUST
 return `Err(EngineMetadataError::HomeUnresolvable)` when the platform home directory is
 unresolvable (i.e., `directories::BaseDirs::new()` returns `None`). This contract enforces
 the no-silent-fallback guarantee of CLAUDE.md SOUL #4: neither method may substitute a
@@ -1056,7 +1056,7 @@ relative path for an unresolvable home directory. Verification: test in
    ).await;
    ```
 
-The test is placed in `monocle-runtime/tests/engine_module.rs` alongside the BC-ENGINE-002
+The test is placed in `monocle-runtime/tests/engine_module.rs` alongside the BC-2.03.002
 `detect()` tests. `temp-env` is a `[dev-dependencies]` entry with `features = ["async_closure"]`;
 it does not appear in the production binary. The Phase 1 implementer MUST NOT use `#[serial]`
 as a substitute for `temp-env` — serialisation mitigates the race but does not guarantee
@@ -1064,7 +1064,7 @@ cleanup on panic. The implementer MUST NOT use `tokio::runtime::Handle::current(
 inside the sync closure as a workaround — that pattern induces a nested-runtime panic under
 `#[tokio::test]` and is explicitly forbidden.
 
-**BC-ENGINE-003:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
+**BC-2.03.004:** `ClaudeCodeModule::hook_paths()` returns exactly 5 entries, one per
 `HookType` variant, with the exact path strings in §Struct-level inherent operations.
 `ClaudeCodeModule::spawn()` and `ClaudeCodeModule::preflight()` are inherent methods on
 the struct (NOT trait methods). The ABI version is read as
@@ -1091,7 +1091,7 @@ anticipated. The table is committed atomically with the struct definition — ne
 
 This table covers ALL `#[non_exhaustive]` structs in the monocle workspace, regardless of which
 spec file defines them. It is the single authoritative list. Enums with `#[non_exhaustive]` are
-governed by BC-TYPES-001 and ADR-0004 (separate concern — match pattern completeness vs struct
+governed by BC-2.02.003 and ADR-0004 (separate concern — match pattern completeness vs struct
 literal construction); they do not appear here. `#[non_exhaustive]` on a struct that is NEVER
 constructed via struct literal (only via serde deserialization) still needs the attribute for
 forward-compat field extension — the "Constructor present?" column records the construction path.
@@ -1147,10 +1147,10 @@ structs were missing).
 
 | BC ID | Description | Source Section |
 |-------|-------------|----------------|
-| BC-ENGINE-001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (id/detect/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>` (vision-spirit-aligned elaboration); `enrich()` returns `Result<EnrichedSession, EngineMetadataError>` (vision-spirit-aligned elaboration); no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
-| BC-ENGINE-002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
-| BC-ENGINE-002-ERR | `ClaudeCodeModule::metadata()` and `enrich()` MUST return `Err(EngineMetadataError::HomeUnresolvable)` when `BaseDirs::new()` returns `None`; no-silent-fallback contract enforced via test in `monocle-runtime/tests/engine_module.rs` with `temp-env ^0.3` (features=["async_closure"]) — `with_vars` for sync `metadata()` half, `async_with_vars` for async `enrich()` half; clears HOME, USERPROFILE, HOMEDRIVE, HOMEPATH | §Behavioral Contracts (BC-ENGINE-002-ERR) |
-| BC-ENGINE-003 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
+| BC-2.03.001 | `EngineModule` trait defined in `monocle-core::engine` with vision-exact signature (id/detect/on_hook) and no sealed bound; `metadata()` returns `Result<EngineMetadata, EngineMetadataError>` (vision-spirit-aligned elaboration); `enrich()` returns `Result<EnrichedSession, EngineMetadataError>` (vision-spirit-aligned elaboration); no-silent-fallback contract enforced on `HomeUnresolvable` | §EngineModule Trait Signature |
+| BC-2.03.002 | `ClaudeCodeModule::new(hook_base_url)` public constructor; implements `EngineModule`; `id()` returns "claude-code"; `detect()` performs strict basename match on `exe_path` (not cmdline) | §Phase 1 Implementation |
+| BC-2.03.003 | `ClaudeCodeModule::metadata()` and `enrich()` MUST return `Err(EngineMetadataError::HomeUnresolvable)` when `BaseDirs::new()` returns `None`; no-silent-fallback contract enforced via test in `monocle-runtime/tests/engine_module.rs` with `temp-env ^0.3` (features=["async_closure"]) — `with_vars` for sync `metadata()` half, `async_with_vars` for async `enrich()` half; clears HOME, USERPROFILE, HOMEDRIVE, HOMEPATH | §Behavioral Contracts (BC-2.03.003) |
+| BC-2.03.004 | `ClaudeCodeModule::hook_paths()` returns 5-path mapping; spawn/preflight as inherent struct methods; ABI version read from const | §Struct-level inherent operations |
 
 **Total: 4 BCs pre-staged.** Product-owner MUST use these exact IDs when formalizing
 contracts with postconditions and verification harness stubs.
@@ -1317,7 +1317,7 @@ v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-
   changed to `Option<i64>`. (3) `enrich()` call site updated from `0` to `None` with a
   comment: "None = no hook events received yet; daemon sets Some(t) on first hook." (4)
   Constructor rustdoc updated with the Option rationale (same epoch-sentinel reasoning as
-  ProcessSnapshot). (5) BC-ENGINE-001 updated to state the `Option<i64>` contract and
+  ProcessSnapshot). (5) BC-2.03.001 updated to state the `Option<i64>` contract and
   sentinel-is-forbidden rule.
 - F-R28-2 RESOLVED (HIGH — adversary finding): Three additional `#[non_exhaustive]` structs
   in `monocle-runtime` (`SpawnArgs`, `SessionHandle`, `EngineVersion`) lacked constructors.
@@ -1335,7 +1335,7 @@ v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-
   construction sites, and constructor status. (5) HookEvent inner structs audited: serde-
   deserialize-only construction — no cross-crate struct literal, no constructor required.
   (6) Also defines `HookEventRecord` (see F-R28-4 below) — the ring buffer serialization
-  struct referenced in SS-daemon-lifecycle.md BC-RING-001 (introduced at SS-daemon-lifecycle.md
+  struct referenced in SS-daemon-lifecycle.md BC-2.01.007 (introduced at SS-daemon-lifecycle.md
   v1.0.5; `#[non_exhaustive]` attribute added in v1.0.6 per F-R30-2).
 - F-R28-3 RESOLVED (MEDIUM — adversary finding): `HookResponse` rustdoc documented the
   canonical setter pattern as pub-field mutation (`let mut resp = HookResponse::new(...);
@@ -1350,11 +1350,11 @@ v1.1.8 changes (round-29 fixes F-R28-1 HIGH / F-R28-2 HIGH / F-R28-3 MEDIUM / F-
   SS-daemon-lifecycle.md §Drain (HookEventRecord struct, introduced at v1.0.5). The type is
   the concrete struct pushed onto the JSONL ring buffer, and its definition is in the
   daemon-lifecycle spec because the ring buffer is a daemon-lifecycle artifact.
-  Cross-reference: §Behavioral Contracts BC-RING-001 in SS-daemon-lifecycle.md now references
+  Cross-reference: §Behavioral Contracts BC-2.01.007 in SS-daemon-lifecycle.md now references
   `HookEventRecord` via a defined type, not a phantom reference.
 - F-R28-5 RESOLVED (LOW — adversary finding): The v1.1.5 trace block had a supersession
   annotation incorrectly implying its content was no longer applicable. v1.1.5's sole change
-  (adding BC-ENGINE-002-ERR to the Pre-Staging table) is still current and correct in v1.1.8.
+  (adding BC-2.03.003 to the Pre-Staging table) is still current and correct in v1.1.8.
   Fix: annotation rewritten to "v1.1.5 content remains current; subsequent versions add new
   content but do not supersede this entry."
 
@@ -1373,7 +1373,7 @@ v1.1.7 changes (round-27 fixes F-R26-adv-1 CRITICAL / F-R26-adv-5 LOW / F-R26-2 
   `decision` (the one required field) and defaults `redirect_url` and `diagnostic` to
   `None` (correct Phase 1 state). Constructor design rationale for each struct is documented
   in their respective `impl` block rustdocs inline in §Supporting Types.
-- F-R26-adv-5 RESOLVED (LOW — folded into F-R26-adv-1): The BC-ENGINE-002-ERR async half
+- F-R26-adv-5 RESOLVED (LOW — folded into F-R26-adv-1): The BC-2.03.003 async half
   test spec previously stated "construct a synthetic `ProcessSnapshot` with the same field
   values used in the detect() test cases (pid, exe_path, empty cmdline/env)" — an incomplete
   specification that left 3 of 7 field values unspecified and left the constructor form
@@ -1390,7 +1390,7 @@ v1.1.7 changes (round-27 fixes F-R26-adv-1 CRITICAL / F-R26-adv-5 LOW / F-R26-2 
   (same `#[non_exhaustive]` cross-crate struct literal pattern; constructor added in same burst).
 
 v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
-- F-R24-adv-1 RESOLVED (MEDIUM — adversary finding): BC-ENGINE-002-ERR verification block
+- F-R24-adv-1 RESOLVED (MEDIUM — adversary finding): BC-2.03.003 verification block
   previously called `temp_env::with_vars` (synchronous closure) and then used `.await`
   inside that closure for the `enrich()` assertion — an uncompilable pattern because
   `with_vars` accepts a synchronous `FnOnce` only. Fix: the test specification is now split
@@ -1422,19 +1422,19 @@ v1.1.6 changes (round-24 fixes F-R24-adv-1 + F-R24-adv-3):
 v1.1.5 changes (round-23 micro-fix):
 **NOTE: v1.1.5 content remains current. Subsequent versions (v1.1.6, v1.1.7, v1.1.8) add
 new content (test-spec corrections, constructors, builder methods) but do NOT supersede
-v1.1.5's contribution, which was a cross-reference table consistency fix — the BC-ENGINE-002-ERR
+v1.1.5's contribution, which was a cross-reference table consistency fix — the BC-2.03.003
 Pre-Staging row added here is still present and correct in the current version.**
-- BC-ENGINE-002-ERR ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-ENGINE-002 and
-  BC-ENGINE-003, preserving numerical order). Prior commit 563b573 added this BC to
+- BC-2.03.003 ADDED to §Phase 1 PRD BC Pre-Staging table (between BC-2.03.002 and
+  BC-2.03.004, preserving numerical order). Prior commit 563b573 added this BC to
   §Behavioral Contracts but missed the pre-staging cross-reference table. Total updated
   from "3 BCs pre-staged" to "4 BCs pre-staged". No behavioral content changed; this is
   a cross-reference consistency fix only. Downstream documents updated in same burst:
   SS-core-types-and-abi.md (BC count 3→4 for engine BCs, global total 15→16),
-  SS-forward-compatibility.md (BC-ENGINE-002-ERR row added, table intro 15→16),
+  SS-forward-compatibility.md (BC-2.03.003 row added, table intro 15→16),
   product-brief.md (BC list and count updated 15→16).
 
 v1.1.4 changes (round-22 fixes F-R22-1/F-R22-2/F-R22-3):
-**NOTE: Superseded by v1.1.5 (BC-ENGINE-002-ERR added to Pre-Staging table; cross-ref
+**NOTE: Superseded by v1.1.5 (BC-2.03.003 added to Pre-Staging table; cross-ref
 consistency fix) and v1.1.6 (test-spec async/sync split; temp-env ^0.2 → ^0.3; env-var
 list HOME+USERPROFILE+HOMEDRIVE+HOMEPATH; XDG_* removed). The v1.1.4 temp-env pin
 (^0.2) and XDG_* env-var list in this entry are SUPERSEDED — implementers MUST follow
@@ -1447,14 +1447,14 @@ the v1.1.6 (and later v1.1.7) specifications.**
   rationale. The vision is confirmed non-authoritative for this surface per CLAUDE.md
   §Architectural Authority. Implementers reading the vision sketch after this fix will
   see a clear statement that the Result signatures defined here supersede the infallible
-  vision sketch. BC-ENGINE-001 Pre-Staging table row corrected: "(detect/enrich/on_hook)"
+  vision sketch. BC-2.03.001 Pre-Staging table row corrected: "(detect/enrich/on_hook)"
   changed to "(id/detect/on_hook)" for the vision-verbatim claim; `metadata()` and
   `enrich()` explicitly marked as vision-spirit-aligned elaborations. The vision document
   was NOT edited (per authority decision in this fix burst — the vision is human-approved
   verbatim; the architecture document is the canonical source for Phase 1 signatures).
-- F-R22-3 RESOLVED (MEDIUM — adversary finding): BC-ENGINE-002 had no test specification
+- F-R22-3 RESOLVED (MEDIUM — adversary finding): BC-2.03.002 had no test specification
   for the `HomeUnresolvable` error paths in `metadata()` and `enrich()`. New sibling BC
-  BC-ENGINE-002-ERR added specifying the full test in
+  BC-2.03.003 added specifying the full test in
   `monocle-runtime/tests/engine_module.rs`. Test isolation strategy: `temp-env = "^0.2"`
   (new `[dev-dependencies]` pin in SS-deps-pin-manifest.md v1.1.6). `temp-env` uses RAII
   cleanup (automatic on both normal and panic exit) making it safe for multi-threaded
@@ -1476,7 +1476,7 @@ v1.1.3 changes (round-20 fixes F-R20-1/F-R20-3):
   `Result<EnrichedSession, EngineMetadataError>`. Both implementations use
   `BaseDirs::new().ok_or(EngineMetadataError::HomeUnresolvable)?` — daemon initialization
   must fail fast with a typed error and operator-visible diagnostic rather than silently
-  operating on a wrong relative path. BC-ENGINE-001 updated to document the Result return
+  operating on a wrong relative path. BC-2.03.001 updated to document the Result return
   types and the no-silent-fallback contract.
 - F-R20-3 RESOLVED (LOW): `ClaudeCodeModule::new` rustdoc previously recommended
   `Url::parse(&hook_base_url)` from the `url` crate for eager validation. The `url` crate
@@ -1502,7 +1502,7 @@ v1.1.2 changes (round-19 fixes F-R18-1/F-R18-2/F-R18-4):
   `PreflightError::InvalidHookUrl` from `preflight()`. `PreflightError::InvalidHookUrl`
   variant added to the enum (was missing; the rustdoc referenced it but the enum
   did not define it).
-- F-R18-4 RESOLVED: BC-ENGINE-002 test case (c) reworded from
+- F-R18-4 RESOLVED: BC-2.03.002 test case (c) reworded from
   `exe_path = None, cmdline[0] = "claude"` to `exe_path = None (regardless of
   cmdline contents)`. Explicit note added: `detect()` consults ONLY `exe_path`;
   `cmdline` is used only in `enrich()` for session enrichment, not for engine
@@ -1516,7 +1516,7 @@ v1.1.1 changes (round-16 adversary N16-1/N16-2/N16-3/N16-4):
   (NOTE: N16-1 was partially wrong — ProjectDirs resolves XDG paths, not `~/.claude/`.
   Corrected in v1.1.2 by F-R18-1 above.)
 - N16-2 RESOLVED: `ClaudeCodeModule::new(hook_base_url: String) -> Self` public
-  constructor added to the inherent `impl ClaudeCodeModule` block. BC-ENGINE-002
+  constructor added to the inherent `impl ClaudeCodeModule` block. BC-2.03.002
   updated to require the constructor and test it explicitly.
 - N16-3 RESOLVED: claim "matches vision exactly" replaced with precise text
   distinguishing which parts match verbatim (method signatures) vs which parts are
@@ -1528,7 +1528,7 @@ v1.1.1 changes (round-16 adversary N16-1/N16-2/N16-3/N16-4):
   `detect()` rewritten to perform strict basename match on `exe_path` instead of
   suffix match on `cmdline[0]`. Detection rule, false-positive avoidance, and `None`
   semantics documented in `ProcessSnapshot` doc-comment and `detect()` body comment.
-  BC-ENGINE-002 verification updated with three cases: true positive, false positive
+  BC-2.03.002 verification updated with three cases: true positive, false positive
   guard (`claude-squad`), and `exe_path=None` guard.
 
 v1.1 changes (human Q-15-1, round-14 adversary N1/N2):
@@ -1541,8 +1541,8 @@ v1.1 changes (human Q-15-1, round-14 adversary N1/N2):
 - Supporting types fully specified: `EngineMetadata`, `ProcessSnapshot`,
   `EnrichedSession`, `SessionStatus`, `HookResponse`, `HookDecision`, `DeferUntil`.
 - `SessionStatus`, `HookDecision`, `DeferUntil` carry `#[non_exhaustive]` per
-  BC-TYPES-001.
-- BC-ENGINE-003 added to capture the inherent-methods contract.
+  BC-2.02.003.
+- BC-2.03.004 added to capture the inherent-methods contract.
 
 Cross-references:
 - `SS-core-types-and-abi.md` — `FactoryAdapter`, `HookType` enum, `HookEvent` variants
@@ -1565,4 +1565,20 @@ Cross-references:
 - INFORMATIONAL: Version bump 1.1.15 → 1.1.16 records structural fix; no content changes.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §7 (SS-engine-module).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
-- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.1.18** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
+- NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
+  per BC-INDEX.md v1.1 Renumbering Map. Finding: F-R105-8 MED.
+- SE-17c BEFORE: 31 lines / 33 occurrences with stale BC IDs (all old-form ENGINE/RING/TYPES prefixes).
+- Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
+  BC-2.01.007 [old: RING-001]: 2 occurrences (cross-ref to SS-01)
+  BC-2.02.003 [old: TYPES-001]: 2 occurrences (cross-ref to SS-02)
+  BC-2.03.001 [old: ENGINE-001]: 5 occurrences
+  BC-2.03.003 [old: ENGINE-002-ERR]: 12 occurrences (replaced before ENGINE-002 to avoid partial-match corruption)
+  BC-2.03.002 [old: ENGINE-002]: 8 occurrences
+  BC-2.03.004 [old: ENGINE-003]: 4 occurrences
+- SE-17d AFTER: 0 lines with stale BC IDs in normative body (SE-17g PASS — see ARCH-INDEX §Trace v1.0.3).
+- SE-17f PASS: sampled mapping verified — §EngineModule Trait Signature BC-2.03.001,
+  §Phase 1 Implementation BC-2.03.002, BC-2.03.003 §Behavioral Contracts, BC-2.03.004 inherent methods.
+- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
+- No retired BCs discovered. All 31 stale-ID lines resolved to active BCs in BC-INDEX v1.1.

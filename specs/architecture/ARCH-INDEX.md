@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-17T17:00:00Z
@@ -92,6 +92,32 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
 for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
+
+## §Trace v1.0.3
+
+**T-128h BC ID canonicalization — F-R105-8 closure** (2026-05-17T17:00:00Z):
+- NORMATIVE: All stale pre-renumbering BC IDs propagated to canonical BC-2.SS.NNN forms
+  across 3 SS architecture documents per BC-INDEX.md v1.1 §Renumbering Map.
+  Scope: SS-daemon-lifecycle.md, SS-engine-module.md, SS-core-types-and-abi.md.
+- SE-17g META AUDIT — final re-grep confirms zero stale IDs remaining across all 3 docs
+  (grep pattern: old-form DAEMON/AUTH/RING/LOCK/ABI/TYPES/FACTORY/PROTO/ENGINE prefixes):
+  SS-daemon-lifecycle.md: 0 lines match (was 95 lines / 102 occurrences)
+  SS-engine-module.md: 0 lines match (was 31 lines / 33 occurrences)
+  SS-core-types-and-abi.md: 0 lines match (was 39 lines / 46 occurrences)
+  Grand total replaced: 181 occurrences across 165 lines. SE-17g PASS: 165 → 0.
+- DISCOVERED: PROTO-001 (bare pre-split form, old-style) — 2 occurrences in historical §Trace
+  prose in SS-core-types-and-abi.md. This ID is retired by split (F-FC-O004); it has no
+  canonical new-form entry in BC-INDEX §Renumbering Map (only the a/b split variants are
+  mapped to BC-2.02.006 and BC-2.02.007). Resolved: historical §Trace prose rewritten to
+  descriptive form; stale ID removed from SS doc body. Record preserved in BC-INDEX §Renumbering
+  Map per append-only policy.
+- SS doc versions bumped: SS-daemon-lifecycle.md 1.0.27 → 1.0.28; SS-engine-module.md
+  1.1.17 → 1.1.18; SS-core-types-and-abi.md 1.2.10 → 1.2.11.
+- ARCH-INDEX does not carry per-SS doc version numbers — no Document Map changes required.
+- INFORMATIONAL: Version bump 1.0.2 → 1.0.3 records SE-17g META audit; no content changes
+  to ARCH-INDEX body.
+- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T17:00:00Z (same burst;
+  ARCH-INDEX and SS docs updated in the same T-128h dispatch — monotonicity satisfied).
 
 ## §Trace v1.0.2
 
