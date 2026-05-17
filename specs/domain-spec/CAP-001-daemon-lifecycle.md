@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T20:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -132,6 +132,13 @@ without losing committed ring entries.
 
 1. A harness subprocess fires an HTTP POST to `POST /hooks/<type>` with the
    `X-Monocle-Authorization` header set to the token read from the lock file.
+   Note: For the Claude Code harness (Phase 1 primary), hook scripts send the
+   compatibility alias header `X-Claude-Code-Ide-Authorization: <raw-64-hex>`
+   (header name hardcoded in Claude Code's source per BC-HOOK-016 deep ingest).
+   The daemon dual-accepts both `X-Monocle-Authorization` (canonical, monocle-aware
+   harnesses) and `X-Claude-Code-Ide-Authorization` (compatibility alias) per
+   ADR-0005; canonical takes priority if both are present, and a WARN-level
+   deprecation log is emitted when the alias is used.
 2. Daemon validates the auth header (DI-005); rejects non-prefixed tokens with
    HTTP 401; rejects bodies over 256 KiB with HTTP 413 (BC-2.01.003).
 3. Daemon deserializes the hook payload into a `HookEvent`.
@@ -285,3 +292,51 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior v1.1 2026-05-17T17:00:00Z.
 - CAP-001 version: 1.1 → 1.2.
 - L2-INDEX.md version: 1.0.3 → 1.0.4.
+
+## §Trace v1.3
+
+**T-128o ADR-0005 alias note propagation — dual-accept auth header clarification** (2026-05-17T20:00:00Z):
+
+- Finding: Architect ADR-0005 (commit 932f4e0) established dual-accept for auth
+  headers: canonical `X-Monocle-Authorization` (monocle-aware harnesses) AND
+  compatibility alias `X-Claude-Code-Ide-Authorization` (real Claude Code hook
+  scripts, whose header name is hardcoded in Go source per BC-HOOK-016 deep ingest).
+  CAP-001 §P2 step 1 (at v1.2) only mentioned the canonical header, leaving the
+  alias undocumented at the domain level. This T-128o dispatch propagates the
+  dual-accept behavior into the L2 domain spec.
+- SE-17f before/after evidence:
+
+  BEFORE (v1.2, §P2 step 1):
+  ```
+  1. A harness subprocess fires an HTTP POST to `POST /hooks/<type>` with the
+     `X-Monocle-Authorization` header set to the token read from the lock file.
+  ```
+
+  AFTER (v1.3, §P2 step 1 with alias note):
+  ```
+  1. A harness subprocess fires an HTTP POST to `POST /hooks/<type>` with the
+     `X-Monocle-Authorization` header set to the token read from the lock file.
+     Note: For the Claude Code harness (Phase 1 primary), hook scripts send the
+     compatibility alias header `X-Claude-Code-Ide-Authorization: <raw-64-hex>`
+     (header name hardcoded in Claude Code's source per BC-HOOK-016 deep ingest).
+     The daemon dual-accepts both `X-Monocle-Authorization` (canonical, monocle-aware
+     harnesses) and `X-Claude-Code-Ide-Authorization` (compatibility alias) per
+     ADR-0005; canonical takes priority if both are present, and a WARN-level
+     deprecation log is emitted when the alias is used.
+  ```
+
+- SE-17c body-scope grep: searched CAP-001 for all auth header name references beyond
+  §P2 step 1. Findings:
+  - §P2 step 2: "Daemon validates the auth header (DI-005)" — names no specific header;
+    no change needed.
+  - BC-2.01.009 cross-reference row: "Auth Header Validation" title — no header name
+    spelled out; no change needed.
+  - HookEventRecord and DaemonLockFile entity tables: no auth header name reference;
+    no change needed.
+- SE-17d after grep: no remaining references to auth header naming that lack the
+  alias clarification. §P2 step 1 is the sole location where header naming is
+  specified at the domain level.
+- SE-17c-d body-scope: one location updated; all other CAP-001 sections clean.
+- SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior v1.2 2026-05-17T18:00:00Z.
+- CAP-001 version: 1.2 → 1.3.
+- L2-INDEX.md version: cascaded to 1.0.5 → 1.0.6 (CAP-001 version bump in §CAP Files registry).

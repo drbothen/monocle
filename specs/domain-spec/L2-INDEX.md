@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T19:00:00Z
+timestamp: 2026-05-17T20:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -226,3 +226,19 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
   references — none found beyond the §Trace v1.0 line corrected above.
 - L2-INDEX version bumped 1.0.4 → 1.0.5; timestamp advanced.
 - SE-16d monotonicity PASS: 2026-05-17T19:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.4).
+
+## §Trace v1.0.6
+
+**T-128o ADR-0005 alias note cascade — CAP-001 v1.2 → v1.3** (2026-05-17T20:00:00Z):
+- CAP-001-daemon-lifecycle.md bumped v1.2 → v1.3.
+- Change: §P2 Hook Event Ingestion step 1 augmented with dual-accept alias note for
+  `X-Claude-Code-Ide-Authorization` (Claude Code Phase 1 compatibility alias) per
+  ADR-0005. Canonical `X-Monocle-Authorization` remains primary; alias accepted with
+  WARN-level deprecation log; canonical takes priority when both are present.
+- No CAP registry table row changes required (CAP-001 version is not tracked in the
+  Capabilities Registry table; section file version lives in CAP-001 frontmatter only).
+- SE-17c-d body-scope grep: searched L2-INDEX.md for any reference to auth header
+  naming — none found in this index file; all auth header specifics live in
+  CAP-001-daemon-lifecycle.md. No index-level prose changes required beyond version bump.
+- L2-INDEX version bumped 1.0.5 → 1.0.6; timestamp advanced.
+- SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-17T19:00:00Z (v1.0.5).
