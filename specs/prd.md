@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.26"
+version: "1.26.1"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T12:30:00Z
+timestamp: 2026-05-17T17:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md]
 input-hash: "7cd466f"
 traces_to: "product-brief.md v1.4.23; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15; SS-deps-pin-manifest.md v1.1.15; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.1; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
@@ -173,46 +173,155 @@ Per-BC test vectors are embedded in each BC file's "Canonical Test Vectors" sect
 
 Per vision §Vision Statement and brief §Success Criteria. Every differentiator has BC backing — no unverifiable claims.
 
-| Differentiator | Description | BC Backing | Verification |
-|---------------|-------------|------------|-------------|
-| Hook-protocol ingestion at OS-assigned port | Daemon binds on OS-assigned port; port written to lock file; hook scripts read absolute lock file path (no directory scan, no "highest-port-wins" collision) | BC-2.01.008, BC-2.01.009, BC-2.01.010, BC-2.01.001, BC-2.01.002 | Integration test: lock file read after start; port confirmed reachable; no `~/.claude/ide/` scanning |
-| VecDeque overlay stack for concurrent prompts | Both permission prompts visible simultaneously; `[↑↓]` rotates stack; `Esc` hides without rejecting | BC-2.03.001, BC-2.03.002 (on_hook → HookDecision::Defer) | Killer scenario: 2 concurrent PreToolUse hooks arrive; TUI shows both prompts; 4 keystrokes resolve both |
-| Versioned ABI with forward-compatible extension | `MONOCLE_ABI_VERSION = 1` const; `#[non_exhaustive]` on all public enums; proto `schema_version = 1` first field | BC-2.02.001, BC-2.02.002, BC-2.02.003, BC-2.02.006, BC-2.02.007 | Compile-time assertions; AST audit (syn 2); wire-format round-trip test |
-| FactoryAdapter open trait — Phase 3 WASM extensibility | `VsddFactoryAdapter` ships Phase 1 as a static implementation; WASM plugin SDK in Phase 3 uses the same trait without code changes | BC-2.02.004, BC-2.02.005 | `cargo check` no sealed supertrait; self-referential detection test |
-| Strict-basename detection (no false positives) | `detect()` uses `exe_path.file_name()` == `"claude"` or `"claude.js"`; rejects `claude-squad`, `claudio`, `claude-code-router` | BC-2.03.002 | Unit tests with 5 synthetic ProcessSnapshot instances |
-| JSONL ring with format_version first key | Phase 2 trigger-trace can read Phase 1 history; version field allows future format evolution | BC-2.01.007 | Unit test: serialized JSONL line begins with `{"format_version":1,` |
-| 256 KiB body size limit with structured error | Bounded daemon memory exposure per connection; structured error body for machine-readable rejection | BC-2.01.003 | Integration test: 262,145-byte body returns HTTP 413 with correct error body |
-| Graceful 10-second drain with crash-recovery checkpoint | In-flight requests complete before daemon exits; crash-recovery state offered to TUI on reconnect | BC-2.01.004, BC-2.01.006 | Integration test: SIGTERM triggers drain; new hooks get 503 with Retry-After: 10 |
+> Project-specific extension: tables include a `Verification` column (beyond template minimum) documenting the specific test scenario that verifies the differentiator. Rationale: monocle's killer scenarios are described in the brief and vision; capturing them here prevents regression during adversarial review. See §Trace v1.26.1.
+
+### 6.1 KD-001 — Hook-Protocol Ingestion at OS-Assigned Port
+
+Daemon binds on OS-assigned port; port written to lock file; hook scripts read absolute lock file path (no directory scan, no "highest-port-wins" collision).
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.01.008 | Auth token generated with OsRng and written to lock file at start | Integration test: lock file read after start; port confirmed reachable |
+| BC-2.01.009 | Auth header validation rejects requests missing correct Bearer token | Integration test: port confirmed reachable; unauthorized access rejected |
+| BC-2.01.010 | Lock file schema contract version `"monocle-lock-v1"` encoded | Integration test: no `~/.claude/ide/` scanning; lock file path is absolute |
+| BC-2.01.001 | `/healthz` endpoint returns liveness signal on OS-assigned port | Integration test: lock file read after start; healthz reachable at recorded port |
+| BC-2.01.002 | `/status` endpoint authenticated on OS-assigned port | Integration test: port confirmed reachable with Bearer auth |
+
+### 6.2 KD-002 — VecDeque Overlay Stack for Concurrent Prompts
+
+Both permission prompts visible simultaneously; `[↑↓]` rotates stack; `Esc` hides without rejecting.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.03.001 | `EngineModule::on_hook()` returns `HookDecision::Defer` for queued hooks | Killer scenario: 2 concurrent PreToolUse hooks arrive; TUI shows both prompts; 4 keystrokes resolve both |
+| BC-2.03.002 | `ClaudeCodeModule::detect()` strict-basename prevents false positives in concurrent session disambiguation | Killer scenario: `on_hook → HookDecision::Defer` path exercises VecDeque routing |
+
+### 6.3 KD-003 — Versioned ABI with Forward-Compatible Extension
+
+`MONOCLE_ABI_VERSION = 1` const; `#[non_exhaustive]` on all public enums; proto `schema_version = 1` first field.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.02.001 | `/status` endpoint exposes `abi_version` field equal to `MONOCLE_ABI_VERSION` | Integration: ABI version in status response matches const; compile-time assertion |
+| BC-2.02.002 | `MONOCLE_ABI_VERSION = 1` const defined in `monocle-core` crate root | AST audit (syn 2); compile-time assertion |
+| BC-2.02.003 | All public enums carry `#[non_exhaustive]` attribute | AST audit (syn 2) verifies enum annotation policy |
+| BC-2.02.006 | `HookEnvelope` proto field numbers are pinned (field 1 = `schema_version`) | Wire-format round-trip test; prost encode/decode field number test |
+| BC-2.02.007 | `schema_version = 1` is first field in serialized HookEnvelope | Compile/integration test: schema_version field accessibility |
+
+### 6.4 KD-004 — FactoryAdapter Open Trait — Phase 3 WASM Extensibility
+
+`VsddFactoryAdapter` ships Phase 1 as a static implementation; WASM plugin SDK in Phase 3 uses the same trait without code changes.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.02.004 | `FactoryAdapter` trait surface has no sealed supertrait; open for external implementation | `cargo check` no sealed supertrait; AST audit (syn 2) |
+| BC-2.02.005 | `VsddFactoryAdapter` self-referential integration test confirms Phase 1 implementation | Self-referential detection test |
+
+### 6.5 KD-005 — Strict-Basename Detection (No False Positives)
+
+`detect()` uses `exe_path.file_name()` == `"claude"` or `"claude.js"`; rejects `claude-squad`, `claudio`, `claude-code-router`.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.03.002 | `ClaudeCodeModule::detect()` applies strict file_name() equality; rejects all non-exact basenames | Unit tests with 5 synthetic ProcessSnapshot instances (true positives: `claude`, `claude.js`; true negatives: `claude-squad`, `claudio`, `claude-code-router`) |
+
+### 6.6 KD-006 — JSONL Ring with format_version First Key
+
+Phase 2 trigger-trace can read Phase 1 history; version field allows future format evolution.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.01.007 | JSONL ring format version `format_version: 1` is first key in every serialized line | Unit test: serialized JSONL line begins with `{"format_version":1,` |
+
+### 6.7 KD-007 — 256 KiB Body Size Limit with Structured Error
+
+Bounded daemon memory exposure per connection; structured error body for machine-readable rejection.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.01.003 | Daemon rejects bodies > 262,144 bytes with HTTP 413 and structured JSON error body | Integration test: 262,145-byte body returns HTTP 413 with correct error body |
+
+### 6.8 KD-008 — Graceful 10-Second Drain with Crash-Recovery Checkpoint
+
+In-flight requests complete before daemon exits; crash-recovery state offered to TUI on reconnect.
+
+| BC ID | Contribution | Verification |
+|-------|-------------|-------------|
+| BC-2.01.004 | SIGTERM triggers 10-second drain window; new hooks receive HTTP 503 with `Retry-After: 10` | Integration test: SIGTERM triggers drain; new hooks get 503 with Retry-After: 10 |
+| BC-2.01.006 | Crash-recovery checkpoint written before shutdown; checkpoint offered to TUI on reconnect | Integration test: crash-recovery state offered to TUI on reconnect |
 
 ---
 
 ## 7. Requirements Traceability Matrix
 
-| Requirement ID | Brief Section | Architecture Source | Priority | Test File | Test Type |
-|----------------|--------------|--------------------|---------|-----------|----|
-| BC-2.01.001 | §Scope (hook receiver hardening sub-bullet — `/healthz`) | SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
-| BC-2.01.002 | §Scope (hook receiver hardening sub-bullet — `/status`) | SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
-| BC-2.01.003 | §Success Criteria (hook receiver body size limit row) | SS-daemon-lifecycle.md v1.0.25 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
-| BC-2.01.004 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
-| BC-2.01.005 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
-| BC-2.01.006 | §Scope (hook receiver hardening sub-bullet — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
-| BC-2.01.007 | §Scope (forward-compatibility contracts sub-bullet — JSONL ring) | SS-daemon-lifecycle.md v1.0.25 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
-| BC-2.01.008 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
-| BC-2.01.009 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
-| BC-2.01.010 | §Scope (forward-compatibility contracts sub-bullet — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
-| BC-2.02.001 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
-| BC-2.02.002 | §Scope (forward-compatibility contracts sub-bullet — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
-| BC-2.02.003 | §Scope (forward-compatibility contracts sub-bullet — public enum extensibility) | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
-| BC-2.02.004 | §Scope (forward-compatibility contracts sub-bullet — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
-| BC-2.02.005 | §Success Criteria (factory pattern detection row) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
-| BC-2.02.006 | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
-| BC-2.02.007 | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
-| BC-2.02.008 | §Scope (forward-compatibility contracts sub-bullet — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
-| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
-| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
-| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Behavioral Contracts BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
-| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule sub-bullet) | SS-engine-module.md v1.1.15 §Struct-level inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
-| NFR-012 | §Scope (daemon start sequence sub-bullet — runtime_dir path with fallback chain; lock-file 0o600 + runtime_dir 0o700 defense-in-depth) | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
+> Project-specific extensions: `Source (L2 CAP)` contains brief section citations (monocle L2 domain spec is pending BA Dispatch 6; brief sections serve as interim L2 traceability). `Module(s)` contains architecture subsystem file references. `Test File` is an additional column beyond the template minimum, providing direct test location traceability. See §Trace v1.26.1.
+
+| BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |
+|-------|----------------|-----------|----------|-----------|-----------|
+| BC-2.01.001 | §Scope (hook receiver hardening — `/healthz`) | SS-daemon-lifecycle.md v1.0.25 §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
+| BC-2.01.002 | §Scope (hook receiver hardening — `/status`) | SS-daemon-lifecycle.md v1.0.25 §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
+| BC-2.01.003 | §Success Criteria (body size limit) | SS-daemon-lifecycle.md v1.0.25 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
+| BC-2.01.004 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
+| BC-2.01.005 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
+| BC-2.01.006 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.25 §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
+| BC-2.01.007 | §Scope (forward-compatibility — JSONL ring) | SS-daemon-lifecycle.md v1.0.25 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
+| BC-2.01.008 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
+| BC-2.01.009 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
+| BC-2.01.010 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
+| BC-2.02.001 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
+| BC-2.02.002 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
+| BC-2.02.003 | §Scope (forward-compatibility — public enum extensibility) | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
+| BC-2.02.004 | §Scope (forward-compatibility — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
+| BC-2.02.005 | §Success Criteria (factory pattern detection) | SS-core-types-and-abi.md v1.2.8 §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
+| BC-2.02.006 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
+| BC-2.02.007 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
+| BC-2.02.008 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
+| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
+| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
+| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
+| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.15 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
+| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.25 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-DAEMON-005 Post-condition 9 / probe 5.e) |
+
+---
+
+## §Trace v1.26.1 — Audit R2 Residual RES-05: §6/§7 Column Schema Reconciliation
+
+**Bump:** v1.26 → v1.26.1.
+**Predecessor pin:** v1.26 commit (template-compliance-audit-r1 remediation; §3 deleted, BC sharding, supplement extraction).
+
+**Scope of v1.26.1 (patch — table schema only, no content added or removed):**
+
+### §6 Changes
+
+**From:** Single flat table with columns `Differentiator | Description | BC Backing | Verification`.
+
+**To:** Per-differentiator subsections (`### 6.N KD-NNN — Name`) each containing `| BC ID | Contribution | Verification |` tables, matching prd-template.md §6 pattern.
+
+**Project-specific extension retained:** `Verification` column (3rd column, beyond template's 2-column minimum). Rationale: monocle's killer scenarios are explicitly described in the vision document (v1.1.1) and product brief (v1.4.23). Capturing the verification scenario inline per differentiator prevents drift during adversarial review and ensures every claimed differentiator remains verifiable without cross-referencing the vision. This extension is additive (does not remove required template columns) and is self-documenting via the blockquote note at §6 head.
+
+**Content changes:** None. All 8 differentiators preserved. All BC ID citations preserved. All descriptions preserved (moved into subsection introductory text). All verification notes preserved (moved into `Verification` column).
+
+### §7 Changes
+
+**From:** `| Requirement ID | Brief Section | Architecture Source | Priority | Test File | Test Type |` (6 columns; `Requirement ID` non-template name; `Brief Section` and `Architecture Source` non-template names).
+
+**To:** `| BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |` (6 columns).
+
+Column mapping:
+- `Requirement ID` → `BC ID` (template column name; same data)
+- `Brief Section` → `Source (L2 CAP)` (template column name; monocle's interim L2 traceability pending BA Dispatch 6 domain spec; brief sections are the authoritative source until L2 CAP IDs are assigned)
+- `Architecture Source` → `Module(s)` (template column name; architecture file references preserved, shortened for readability)
+- `Priority` → `Priority` (unchanged)
+- `Test File` → `Test File` (project-specific extension, see below)
+- `Test Type` → `Test Type` (template column name; unchanged)
+
+**Project-specific extension retained:** `Test File` column (5th column, beyond template's 5-column schema). Rationale: direct test file path traceability is production-grade quality that reduces implementation ambiguity — implementers and test-writers have explicit file location targets. Extension is additive and self-documenting via the blockquote note at §7 head.
+
+**Content changes:** None. All 22 BC rows + NFR-012 row preserved. All architecture source citations preserved (abbreviated in `Module(s)` column for readability while retaining version pin and subsection reference).
+
+**Audit reference:** `.factory/plans/template-compliance-audit-r2.md` RES-05.
+**Dispatch:** Audit R2 residual fix — concurrent with RES-02 (BC VP anchor sweep) and RES-03 (FV VP template compliance).
+**Predecessors:** architect RES-01+RES-04 COMPLETE (0af206a).
 
 ---
 

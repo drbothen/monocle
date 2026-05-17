@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -102,4 +102,4 @@ S-TBD — Implement ABI version constant in monocle-core (filled by story-writer
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-012-abi-version-const.md` — VP-012 ABI constant lint/compile test
+- `verification-properties/vp-012-abi-version-crate-root.md` — VP-012 ABI version crate root lint/compile test

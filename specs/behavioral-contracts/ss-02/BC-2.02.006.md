@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -102,4 +102,4 @@ S-TBD — Implement monocle-proto crate with HookEnvelope proto definition (fill
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-016-hook-envelope-wire-format.md` — VP-016 prost encode/decode field number test
+- `verification-properties/vp-016-hook-envelope-proto-field-numbers.md` — VP-016 prost encode/decode field number test

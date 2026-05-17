@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -107,4 +107,4 @@ S-TBD — Implement ClaudeCodeModule with strict-basename detect (filled by stor
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-020-claude-code-module-detect.md` — VP-020 strict-basename detect integration test
+- `verification-properties/vp-020-claude-code-module-impl.md` — VP-020 ClaudeCodeModule implementation integration test

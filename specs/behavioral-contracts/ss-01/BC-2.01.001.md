@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -101,4 +101,4 @@ S-TBD — Implement daemon HTTP server with healthz endpoint (filled by story-wr
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-001-healthz-liveness.md` — VP-001 liveness probe integration test
+- `verification-properties/vp-001-healthz-endpoint.md` — VP-001 healthz endpoint integration test

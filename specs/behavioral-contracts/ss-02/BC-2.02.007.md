@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -99,4 +99,4 @@ S-TBD — Implement monocle-proto crate with prost-build type generation (filled
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-017-hook-envelope-rust-surface.md` — VP-017 Rust struct field accessibility compile/integration test
+- `verification-properties/vp-017-hook-envelope-schema-version-field.md` — VP-017 hook envelope schema version field compile/integration test

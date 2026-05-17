@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -122,4 +122,4 @@ S-TBD — Implement crash recovery checkpoint offer/cleanup protocol (filled by 
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-006-crash-recovery.md` — VP-006 crash recovery integration tests
+- `verification-properties/vp-006-crash-recovery-checkpoint.md` — VP-006 crash recovery checkpoint integration tests

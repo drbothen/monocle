@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -112,4 +112,4 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 
 ## VP Anchors (Recommended)
 
-- `verification-properties/vp-022-claude-module-hook-paths.md` — VP-022 hook_paths five-entry integration test
+- `verification-properties/vp-022-claude-code-module-inherent-methods.md` — VP-022 ClaudeCodeModule inherent methods integration test
