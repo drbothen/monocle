@@ -7,7 +7,7 @@ version: "1.0.32"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T04:30:00Z
+timestamp: 2026-05-18T05:00:00Z
 inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
 input-hash: "1279fd3"
 traces_to: architecture/ARCH-INDEX.md
@@ -2464,7 +2464,7 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
 - SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
 
-**§Trace v1.0.32-R109** (2026-05-17T04:30:00Z) — F-R109-1 + F-R109-8 frontmatter version reconciliation (Round 8A):
+**§Trace v1.0.32-R109** (2026-05-18T05:00:00Z) — F-R109-1 + F-R109-8 frontmatter version reconciliation (Round 8A):
 - NORMATIVE (F-R109-1 CRITICAL): frontmatter `version` bumped from "1.0.31" to "1.0.32" to
   match the §Trace v1.0.32 entry already present in the document body since Round 7C. The Round
   7C dispatch wrote §Trace v1.0.32 but withheld the frontmatter bump per cross-dispatch
@@ -2477,4 +2477,13 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - SE-17c BEFORE: "No version bump — content unchanged; timestamp-only correction".
 - SE-17c AFTER: "Version bump v1.0.31 → v1.0.32 applied in Round 8A (F-R109-1) to reconcile
   frontmatter with the §Trace version number this entry already claimed."
-- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).
+- SE-16d PASS: 2026-05-18T05:00:00Z > chain high-water 2026-05-18T01:00:00Z (monotonic; corrected from erroneous 2026-05-17T04:30:00Z per F-R110-1).
+
+**§Trace v1.0.32-R110** (2026-05-18T05:30:00Z) — F-R110-1 timestamp correction (Round 9A):
+- NORMATIVE (F-R110-1 CRITICAL): frontmatter `timestamp` and §Trace v1.0.32-R109 header corrected
+  from "2026-05-17T04:30:00Z" to "2026-05-18T05:00:00Z". The Round 8A dispatch used a wrong date
+  (2026-05-17T04 instead of monotonic post-Round-7C 2026-05-18T05+), causing a SE-16d chain
+  regression: 2026-05-17T04:30Z is before the prior §Trace v1.0.32 entry at 2026-05-18T01:00:00Z.
+  The SE-16d PASS claim "2026-05-17T04:30:00Z satisfies chain monotonicity" was arithmetically
+  false. All five affected files corrected in this burst (parallel Round 9A).
+- SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).

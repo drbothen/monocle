@@ -8,10 +8,10 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.3"
+version: "1.0.4"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-18T05:30:00Z
 inputs: [SS-deps-pin-manifest.md, ../tech-debt-register.md, ../plans/production-grade-reaudit.md]
 input-hash: "585c6a6"
 traces_to: "TD-001 retirement; adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 5; canonical principle CLAUDE.md commit 3366d58 §Rule 3"
@@ -135,7 +135,7 @@ decision, not an open tech-debt item.
 - **Tech-debt-register**: `/Users/jmagady/Dev/monocle/.factory/tech-debt-register.md` TD-001 (retired)
 - **Adversary re-audit**: `/Users/jmagady/Dev/monocle/.factory/plans/production-grade-reaudit.md` §Top 8 CRITICAL/IMPORTANT item 5
 - **Canonical principle**: `CLAUDE.md` §Rule 3 (AI-discovered deferrals must be fixed in-scope, not registered)
-- **Dependency manifest**: `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md` nucleo row
+- **Dependency manifest**: `SS-deps-pin-manifest.md` nucleo row (v1.1.17; relative to `.factory/specs/architecture/`)
 
 ## §Trace
 
@@ -151,3 +151,14 @@ decision, not an open tech-debt item.
 - SE-17c AFTER:  `inputs: [SS-deps-pin-manifest.md, ../tech-debt-register.md, ../plans/production-grade-reaudit.md]`
 - SE-17f PASS: verified both corrected paths resolve to existing files on disk.
 - SE-16d PASS: 2026-05-18T01:00:00Z > prior frontmatter timestamp 2026-05-17T16:30:00Z (monotonic).
+
+**§Trace v1.0.4** (2026-05-18T05:30:00Z) — F-R110-6 stale absolute-path citation fix (Round 9A):
+- NORMATIVE (F-R110-6 HIGH): §Source / Origin "Dependency manifest" entry replaced machine-local
+  absolute path `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md`
+  with repository-relative reference `SS-deps-pin-manifest.md` plus version pin annotation
+  `v1.1.17`. Absolute machine paths are stale by construction (break on any other machine or
+  directory layout). F-R109-21 (LOW) flagged the citation integrity concern; this Round 9A fix
+  resolves it at the correct severity level (HIGH per production-grade principle).
+- SE-17c BEFORE: `- **Dependency manifest**: \`/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md\` nucleo row`
+- SE-17c AFTER:  `- **Dependency manifest**: \`SS-deps-pin-manifest.md\` nucleo row (v1.1.17; relative to \`.factory/specs/architecture/\`)`
+- SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T01:00:00Z (monotonic).

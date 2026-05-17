@@ -1,13 +1,13 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.8"
+version: "1.0.9"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-17T04:30:00Z
+timestamp: 2026-05-18T05:30:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
-input-hash: "ee1f76a"
+input-hash: "da60462"
 traces_to: prd.md
 deployment_topology: single-service
 project: monocle
@@ -266,7 +266,7 @@ router-level auth middleware.
 
 ## §Trace v1.0.8
 
-**F-R109 Round 8A — SS frontmatter version reconciliation + §Trace ordering + v1.2.15 gap disposition** (2026-05-17T04:30:00Z):
+**F-R109 Round 8A — SS frontmatter version reconciliation + §Trace ordering + v1.2.15 gap disposition** (2026-05-18T05:00:00Z):
 - NORMATIVE (F-R109-1 CRITICAL + F-R109-2 CRITICAL): frontmatter `version` bumped on 4 SS docs
   to reconcile with §Trace version numbers already written in Round 7C. The Round 7C cross-dispatch
   coordination directive withheld frontmatter bumps to avoid PO 7B pin staleness; this created
@@ -293,4 +293,23 @@ router-level auth middleware.
   frontmatter bumps were deferred to Round 8A per cross-dispatch coordination directive.
 - SE-17c BEFORE (F-R109-13): "SS-forward-compatibility.md v1.2.15 → v1.2.16" in §Trace v1.0.6.
 - SE-17c AFTER (F-R109-13): "SS-forward-compatibility.md v1.2.14 → v1.2.16" in §Trace v1.0.6.
-- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).
+- SE-16d PASS: 2026-05-18T05:00:00Z > chain high-water 2026-05-18T01:00:00Z (monotonic; corrected from erroneous 2026-05-17T04:30:00Z per F-R110-1).
+
+## §Trace v1.0.9
+
+**F-R110 Round 9A — timestamp correction + ADR-0002 citation fix + ARCH-INDEX input-hash verification** (2026-05-18T05:30:00Z):
+- NORMATIVE (F-R110-1 CRITICAL): §Trace v1.0.8 header and frontmatter `timestamp` corrected from
+  "2026-05-17T04:30:00Z" to "2026-05-18T05:00:00Z". Round 8A dispatch used a date in the past
+  relative to Round 7C output (2026-05-18T01:00:00Z), breaking the SE-16d monotonic chain across
+  all 5 affected files (4 SS docs + this ARCH-INDEX). The erroneous SE-16d PASS claim
+  "2026-05-17T04:30:00Z satisfies chain monotonicity" was arithmetically false: 04:30 on May 17
+  precedes 01:00 on May 18 by nearly 21 hours. Corrected timestamps restore the chain:
+  01:00:00Z (Round 7C) < 05:00:00Z (Round 8A corrected) < 05:30:00Z (this entry).
+- NORMATIVE (F-R110-6 HIGH): ADR-0002 §Source / Origin section corrected absolute machine-local
+  path to relative path for SS-deps-pin-manifest.md. §Trace v1.0.4 added to ADR-0002.
+- NORMATIVE (F-R110-11 MED): ARCH-INDEX input-hash refreshed. Declared hash "ee1f76a" was stale;
+  compute-input-hash recomputed to "da60462" reflecting current state of inputs [product-brief.md,
+  prd.md] (both updated in Round 8B by PO scope; hash not refreshed in Round 8A arch scope).
+  Frontmatter `input-hash` updated from "ee1f76a" to "da60462".
+- ARCH-INDEX version: "1.0.8" → "1.0.9" (cascade from F-R110-1 normative timestamp correction).
+- SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).

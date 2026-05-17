@@ -8,7 +8,7 @@ version: "1.2.13"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T04:30:00Z
+timestamp: 2026-05-18T05:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-forward-compatibility.md, SS-deps-pin-manifest.md, SS-daemon-lifecycle.md, SS-permissions-phase1.md, planning/oq-research.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
 input-hash: "fb823a1"
 traces_to: architecture/ARCH-INDEX.md
@@ -1344,7 +1344,7 @@ Cross-references:
 - SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
 - SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
 
-**§Trace v1.2.13-R109** (2026-05-17T04:30:00Z) — F-R109-1 + F-R109-8 frontmatter version reconciliation (Round 8A):
+**§Trace v1.2.13-R109** (2026-05-18T05:00:00Z) — F-R109-1 + F-R109-8 frontmatter version reconciliation (Round 8A):
 - NORMATIVE (F-R109-1 CRITICAL): frontmatter `version` bumped from "1.2.12" to "1.2.13" to
   match the §Trace v1.2.13 entry already present in the document body since Round 7C. The Round
   7C dispatch wrote §Trace v1.2.13 but withheld the frontmatter bump per cross-dispatch
@@ -1357,4 +1357,11 @@ Cross-references:
 - SE-17c BEFORE: "No version bump — content unchanged; timestamp-only correction".
 - SE-17c AFTER: "Version bump v1.2.12 → v1.2.13 applied in Round 8A (F-R109-1) to reconcile
   frontmatter with the §Trace version number this entry already claimed."
-- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).
+- SE-16d PASS: 2026-05-18T05:00:00Z > chain high-water 2026-05-18T01:00:00Z (monotonic; corrected from erroneous 2026-05-17T04:30:00Z per F-R110-1).
+
+**§Trace v1.2.13-R110** (2026-05-18T05:30:00Z) — F-R110-1 timestamp correction (Round 9A):
+- NORMATIVE (F-R110-1 CRITICAL): frontmatter `timestamp` and §Trace v1.2.13-R109 header corrected
+  from "2026-05-17T04:30:00Z" to "2026-05-18T05:00:00Z". Round 8A used wrong date; SE-16d chain
+  regressed below prior §Trace v1.2.13 entry at 2026-05-18T01:00:00Z. Arithmetic correction
+  applied across all 5 affected files in parallel Round 9A burst.
+- SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).
