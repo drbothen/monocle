@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -131,7 +131,7 @@ without losing committed ring entries.
 ### P2: Hook Event Ingestion
 
 1. A harness subprocess fires an HTTP POST to `POST /hooks/<type>` with the
-   `X-Claude-Code-Ide-Authorization` header set to the token read from the lock file.
+   `X-Monocle-Authorization` header set to the token read from the lock file.
 2. Daemon validates the auth header (DI-005); rejects non-prefixed tokens with
    HTTP 401; rejects bodies over 256 KiB with HTTP 413 (BC-2.01.003).
 3. Daemon deserializes the hook payload into a `HookEvent`.
@@ -250,3 +250,38 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
 - Scope: BA-only. interface-definitions.md and BC-2.01.007.md not touched.
 - CAP-002 and CAP-003: no HookEventRecord table found — see report for details.
 - L2-INDEX.md version: bumped from 1.0.2 → 1.0.3 (§Trace entry added, entity registry unchanged).
+
+## §Trace v1.2
+
+**F-R105-6 + GAP-R44-2 BA closure — auth header rename** (2026-05-17T18:00:00Z):
+
+- Finding: F-R105-6 + GAP-R44-2 MED — hook ingestion auth header named
+  `X-Claude-Code-Ide-Authorization` but canonical project header is
+  `X-Monocle-Authorization`. monocle is not Claude Code; adopting their header
+  verbatim is a naming error at the domain level.
+- SE-17c before grep (CAP-001 only — confirmed unique occurrence):
+  ```
+  CAP-001-daemon-lifecycle.md:134: `X-Claude-Code-Ide-Authorization` header set to the token read from the lock file.
+  ```
+- SE-17d after grep (post-rename — no remaining occurrences in CAP files):
+  ```
+  CAP-001-daemon-lifecycle.md:134: `X-Monocle-Authorization` header set to the token read from the lock file.
+  ```
+- Change applied: P2 Hook Event Ingestion step 1 — `X-Claude-Code-Ide-Authorization`
+  → `X-Monocle-Authorization` (1 occurrence, 1 file).
+- CAP-002 scan: no auth header name occurrences found. No change.
+- CAP-003 scan: lines 59 and 89 contain the string `"claude-code"` as the stable
+  `id()` return value for `ClaudeCodeModule` — this is a domain identifier for the
+  Claude Code harness, NOT an HTTP header name. No rename applies.
+- Out-of-scope files with `X-Claude-Code-Ide-Authorization` surfaced for specialist
+  routing (not edited): `dtu-assessment.md` (×10), `product-brief.md` (×2),
+  `architecture/SS-daemon-lifecycle.md` (×1). These carry the header string as
+  the *wire value that Claude Code actually sends* — the correct rename there is an
+  architectural/PO decision, not a BA CAP fix. Surfaced to orchestrator.
+- Security-adjacent note: the header rename at the domain level does not change the
+  auth token format (`monocle-v1:<64-char-hex>`) — only the header name.
+  Token format security properties are unchanged. No security-reviewer escalation
+  required beyond the out-of-scope file list above.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior v1.1 2026-05-17T17:00:00Z.
+- CAP-001 version: 1.1 → 1.2.
+- L2-INDEX.md version: 1.0.3 → 1.0.4.

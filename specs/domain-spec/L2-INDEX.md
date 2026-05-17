@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -170,3 +170,13 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 - L2-INDEX version bumped 1.0.2 → 1.0.3; timestamp advanced.
 - CAP-002 and CAP-003: no HookEventRecord schema table present — no changes required.
 - SE-16d monotonicity PASS: 2026-05-17T17:00:00Z > prior 2026-05-17T16:30:00Z (v1.0.2).
+
+## §Trace v1.0.4
+
+**F-R105-6 + GAP-R44-2 BA closure — auth header rename cascade** (2026-05-17T18:00:00Z):
+- CAP-001-daemon-lifecycle.md bumped v1.1 → v1.2.
+- Auth header renamed in CAP-001 §P2 Hook Event Ingestion:
+  `X-Claude-Code-Ide-Authorization` → `X-Monocle-Authorization` (1 occurrence).
+- CAP-002 and CAP-003: zero auth header name occurrences — no changes required.
+- L2-INDEX version bumped 1.0.3 → 1.0.4; timestamp advanced.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.3).
