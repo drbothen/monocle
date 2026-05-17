@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.29"
+version: "1.0.30"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -295,7 +295,7 @@ let app = public_router.merge(authed_router);
    |--------|-----------|--------|-----------------|
    | `monocle-v1:` | Local shared secret (32-byte OsRng entropy) | `X-Monocle-Authorization` | Phase 1 |
 
-   **Phase 4 OAuth2 clarification (F-FC-I005):** Phase 4 federation does NOT
+   **Phase 4 OAuth2 clarification (FC-06):** Phase 4 federation does NOT
    extend `X-Monocle-Authorization` to carry OAuth2 tokens. Phase 4 federation
    tokens use the STANDARD `Authorization: Bearer <token>` header on a SEPARATE
    `monocle-ipc` federation channel (russh tunnel), which is distinct from the
@@ -797,7 +797,7 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-2.01.006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-2.01.007 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-2.01.008 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-2.01.009 | Dual-accept auth failure modes (ADR-0005): (1) BOTH recognized headers (`X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization`) absent → HTTP 401 `{"error":"missing_auth_token"}`; (2) either recognized header present but value fails validation for any reason → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005). PO Round 4 updates BC-2.01.009 postconditions to reflect dual-accept. | Daemon Lifecycle Protocol §Start Sequence |
+| BC-2.01.009 | Dual-accept auth failure modes (ADR-0005): (1) BOTH recognized headers (`X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization`) absent → HTTP 401 `{"error":"missing_auth_token"}`; (2) either recognized header present but value fails validation for any reason → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06). PO Round 4 updates BC-2.01.009 postconditions to reflect dual-accept. | Daemon Lifecycle Protocol §Start Sequence |
 | BC-2.01.010 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD has formalized these as full BC entries with preconditions,
@@ -2415,3 +2415,22 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - SE-17f PASS: post-edit verification — `validate_auth_header` stub contains both
   `CANONICAL_HEADER` and `COMPAT_ALIAS_HEADER` constants; BC-2.01.009 table has 3 rows.
 - SE-16d PASS: 2026-05-17T19:00:00Z > chain high-water 2026-05-17T17:00:00Z.
+
+**§Trace v1.0.30** (2026-05-17T22:00:00Z) — F-R106-7 fabrication removal (Round 5E):
+- NORMATIVE: F-FC-I005 fabricated ID removed from two sites in this document.
+  - SE-17f BEFORE (site 1, §Start Sequence body ~line 298):
+    `**Phase 4 OAuth2 clarification (F-FC-I005):** Phase 4 federation does NOT`
+    AFTER: `**Phase 4 OAuth2 clarification (FC-06):** Phase 4 federation does NOT`
+  - SE-17f BEFORE (site 2, §Behavioral Contract Summary BC-2.01.009 table row ~line 800):
+    `Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005).`
+    AFTER: `Phase 4 OAuth2 federation uses separate channel (FC-06).`
+  Rationale: F-FC-I005 does not exist in SS-forward-compatibility.md. FC convention is
+  FC-NN (two-digit); F-FC-INNN is a non-canonical sub-ID pattern with no registry entry.
+  FC-06 is the correct reference for Phase 4 auth forward-compatibility (see
+  SS-forward-compatibility.md §Cross-Phase Decisions table row FC-06). Pre-adjudicated
+  decision: remove fabricated sub-ID, retain FC-06 alone (Round 5E dispatch instructions).
+- SE-17c BODY-SCOPE GREP EVIDENCE:
+  BEFORE: 2 lines matched `F-FC-I005` (lines 298, 800).
+  AFTER: 0 lines match `F-FC-I005` in SS-daemon-lifecycle.md. SE-17g META AUDIT PASS.
+- SE-17d AFTER CONFIRMATION: zero `F-FC-I005` occurrences remain in this document.
+- SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).

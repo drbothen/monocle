@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-17T19:00:00Z
@@ -96,6 +96,22 @@ for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
 ADR-0005 resolves the auth header interop gap between monocle's canonical header and real
 Claude Code's hardcoded `X-Claude-Code-Ide-Authorization` (BC-HOOK-016); dual-accept at the
 router-level auth middleware.
+
+## §Trace v1.0.5
+
+**F-R106 Round 5E — ADR-0005 path fix + SS-daemon-lifecycle F-FC-I005 removal** (2026-05-17T22:00:00Z):
+- NORMATIVE: ADR-0005 v1.0.1 → v1.0.2 — frontmatter `inputs:` third entry normalized;
+  spurious `specs/` prefix removed from `behavioral-contracts/ss-01/BC-2.01.009.md`.
+  §Trace v1.0.2 added to ADR-0005.
+- NORMATIVE: SS-daemon-lifecycle.md v1.0.29 → v1.0.30 — F-FC-I005 fabricated ID removed
+  from two sites: §Start Sequence body (~line 298) and §Behavioral Contract Summary
+  BC-2.01.009 table row (~line 800). Replaced with FC-06 alone (canonical reference).
+  SE-17g META AUDIT PASS: zero F-FC-I005 occurrences remain in SS-daemon-lifecycle.md.
+  §Trace v1.0.30 added.
+- INFORMATIONAL: ARCH-INDEX ADR Registry table does not carry per-ADR version numbers;
+  no content change to ADR-0005 row required. ARCH-INDEX Document Map does not carry
+  per-SS doc version numbers (confirmed §Trace v1.0.3). Only §Trace version bumped here.
+- SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).
 
 ## §Trace v1.0.4
 

@@ -8,11 +8,11 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.1"
+version: "1.0.2"
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T19:00:00Z
-inputs: [product-brief.md, architecture/SS-daemon-lifecycle.md, specs/behavioral-contracts/ss-01/BC-2.01.009.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md]
+inputs: [product-brief.md, architecture/SS-daemon-lifecycle.md, behavioral-contracts/ss-01/BC-2.01.009.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md]
 input-hash: "5c74182"
 traces_to: "T-128m dispatch; BC-HOOK-016 deep ingest; CAP-001 v1.2 §P2; F-R105-6 + GAP-R44-2 BA closure"
 project: monocle
@@ -205,6 +205,17 @@ each harness brings unknown header conventions; premature generalization.
 - **Deep ingest evidence:** `semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md` BC-HOOK-016 — confirms `X-Claude-Code-Ide-Authorization` is hardcoded at `hooks.go:31`; no user-facing override.
 - **Architecture section:** `SS-daemon-lifecycle.md` lines 141-172 (router design) and lines 147-149 (IDE token description) — under-specified; this ADR resolves the ambiguity.
 - **Originating context:** T-128m R105 closure chain Round 3 (2026-05-17); interop gap first surfaced by BA in T-128f scan; frontmatter `traces_to:` cross-reference: "T-128m dispatch; BC-HOOK-016 deep ingest; CAP-001 v1.2 §P2; F-R105-6 + GAP-R44-2 BA closure".
+
+## §Trace v1.0.2
+
+**F-R106-14 inputs path normalization — Round 5E** (2026-05-17T22:00:00Z):
+- NORMATIVE: Frontmatter `inputs:` third entry corrected.
+  SE-17f BEFORE: `specs/behavioral-contracts/ss-01/BC-2.01.009.md`
+  SE-17f AFTER: `behavioral-contracts/ss-01/BC-2.01.009.md`
+  Defect: spurious `specs/` prefix. All `inputs:` entries are relative to `.factory/specs/`;
+  the other three entries (product-brief.md, architecture/SS-daemon-lifecycle.md, semport/…)
+  correctly omit the `specs/` prefix. Normalized to match convention.
+- SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T20:30:00Z (monotonic).
 
 ## §Trace v1.0.1
 
