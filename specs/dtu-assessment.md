@@ -1,10 +1,10 @@
 ---
 document_type: dtu-assessment
 level: L3
-version: "1.7.3"
+version: "1.7.4"
 status: complete
 producer: architect
-timestamp: 2026-05-17T19:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, architecture/SS-deps-pin-manifest.md, architecture/SS-core-types-and-abi.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
 input-hash: "ebfc982"
@@ -402,6 +402,18 @@ test harness benefits from container isolation across daemon instances). The Pha
 binary-first decision does not constrain Phase 4 packaging choices.
 
 ## §Trace
+
+v1.7.4 changes (F-R108-20 inputs path verification — 2026-05-18T01:00:00Z):
+
+- INFORMATIONAL (F-R108-20 LOW): frontmatter `inputs:` paths verified against filesystem.
+  All 4 paths resolve correctly from `.factory/specs/` context:
+  (1) `product-brief.md` → `.factory/specs/product-brief.md` PASS
+  (2) `architecture/SS-deps-pin-manifest.md` → `.factory/specs/architecture/SS-deps-pin-manifest.md` PASS
+  (3) `architecture/SS-core-types-and-abi.md` → `.factory/specs/architecture/SS-core-types-and-abi.md` PASS
+  (4) `semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md`
+      → `.factory/semport/any-context-lazyclaude/…-pass-8-final-synthesis-v2.md` PASS
+  No path corrections required. This verification record closes F-R108-20 LOW.
+- SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).
 
 v1.7.3 changes (T-128m ADR-0005 auth header annotation — 2026-05-17T19:00:00Z):
 

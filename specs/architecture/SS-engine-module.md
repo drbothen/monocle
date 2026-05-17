@@ -8,7 +8,7 @@ version: "1.1.19"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
 input-hash: "0e0151b"
 traces_to: architecture/ARCH-INDEX.md
@@ -1569,7 +1569,8 @@ Cross-references:
 **§Trace v1.1.18** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
 - NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
   per BC-INDEX.md v1.1 §Renumbering Map (canonical at T-128h dispatch time
-  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure).
+  2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
+  historical-pin discipline).
   Finding: F-R105-8 MED.
 - SE-17c BEFORE: 31 lines / 33 occurrences with stale BC IDs (all old-form ENGINE/RING/TYPES prefixes).
 - Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
@@ -1588,8 +1589,22 @@ Cross-references:
 **§Trace v1.1.19** (2026-05-17T23:00:00Z) — F-R107-8 historical-pin clarification (Round 6D):
 - INFORMATIONAL: §Trace v1.1.18 BC-INDEX cite `v1.1 Renumbering Map` expanded to explicit
   historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h dispatch time
-  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure)`.
+  2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
+  historical-pin discipline)`.
   Purpose: prevent future fresh-context audits from re-flagging the historical pin as stale;
   the cite records what was canonical at the time of the T-128h canonicalization sweep,
   not a live version claim. Finding: F-R107-8 architect part.
 - SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).
+
+**§Trace v1.1.20** (2026-05-18T01:00:00Z) — F-R108-1 + F-R108-9 historical-pin + frontmatter correction (Round 7C):
+- NORMATIVE (F-R108-1 CRITICAL): Two "current canonical BC-INDEX is v1.4 per F-R107-2 closure"
+  occurrences removed per O-R108-3 codification. Live-version claims in historical-pin §Trace
+  notes become false when BC-INDEX advances. Replaced with "current canonical advances over
+  time per F-R107-8 historical-pin discipline" in §Trace v1.1.18 body (1 occurrence) and
+  §Trace v1.1.19 historical-pin expansion prose (1 occurrence).
+- NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected from 2026-05-17T17:00:00Z to
+  2026-05-18T01:00:00Z. Prior timestamp lagged the latest §Trace entry (v1.1.19 at 23:00:00Z);
+  SE-16b violation. No version bump — content unchanged; timestamp-only correction.
+- SE-17c BEFORE: "current canonical BC-INDEX is v1.4 per F-R107-2 closure" (2 occurrences).
+- SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
+- SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).

@@ -8,11 +8,11 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.2"
+version: "1.0.3"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
-inputs: [SS-deps-pin-manifest.md, tech-debt-register.md, plans/production-grade-reaudit.md]
+timestamp: 2026-05-18T01:00:00Z
+inputs: [SS-deps-pin-manifest.md, ../tech-debt-register.md, ../plans/production-grade-reaudit.md]
 input-hash: "e8b317e"
 traces_to: "TD-001 retirement; adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 5; canonical principle CLAUDE.md commit 3366d58 §Rule 3"
 project: monocle
@@ -136,3 +136,18 @@ decision, not an open tech-debt item.
 - **Adversary re-audit**: `/Users/jmagady/Dev/monocle/.factory/plans/production-grade-reaudit.md` §Top 8 CRITICAL/IMPORTANT item 5
 - **Canonical principle**: `CLAUDE.md` §Rule 3 (AI-discovered deferrals must be fixed in-scope, not registered)
 - **Dependency manifest**: `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md` nucleo row
+
+## §Trace
+
+**§Trace v1.0.3** (2026-05-18T01:00:00Z) — F-R108-10 inputs path fix (Round 7C):
+- NORMATIVE (F-R108-10 HIGH): frontmatter `inputs:` entries for `tech-debt-register.md`
+  and `plans/production-grade-reaudit.md` did not resolve from the ADR's location context
+  (`.factory/specs/architecture/adr/`). Both files live one level above `specs/`:
+  `tech-debt-register.md` → `.factory/tech-debt-register.md`;
+  `plans/production-grade-reaudit.md` → `.factory/plans/production-grade-reaudit.md`.
+  Fix: prepended `../` to each path so they resolve correctly relative to `specs/` anchor.
+  This was a non-closure of F-R107-9 — the path defect was flagged but not corrected in Round 6.
+- SE-17c BEFORE: `inputs: [SS-deps-pin-manifest.md, tech-debt-register.md, plans/production-grade-reaudit.md]`
+- SE-17c AFTER:  `inputs: [SS-deps-pin-manifest.md, ../tech-debt-register.md, ../plans/production-grade-reaudit.md]`
+- SE-17f PASS: verified both corrected paths resolve to existing files on disk.
+- SE-16d PASS: 2026-05-18T01:00:00Z > prior frontmatter timestamp 2026-05-17T16:30:00Z (monotonic).

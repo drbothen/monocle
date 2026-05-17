@@ -8,7 +8,7 @@ version: "1.2.16"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-18T01:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
 input-hash: "3fa0e24"
 traces_to: architecture/ARCH-INDEX.md
@@ -248,10 +248,22 @@ BC-ENGINE-001/002/003 (now BC-2.03.001/002/004) added per round-14 fix burst
 (SS-engine-module.md v1.1; N5 BC count propagation). BC-ENGINE-002-ERR (now BC-2.03.003)
 added in SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
 (round-23 micro-fix burst). All old-form IDs retired per BC-INDEX.md v1.1 §Renumbering
-Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical BC-INDEX
-is v1.4 per F-R107-2 closure).
+Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical advances
+over time per F-R107-8 historical-pin discipline).
 
 ## §Trace
+
+**§Trace v1.2.17** (2026-05-18T01:00:00Z) — F-R108-1 + F-R108-9 frontmatter + historical-pin correction (Round 7C):
+- NORMATIVE (F-R108-1 CRITICAL): §BC-mapping notes (pre-§Trace body) "current canonical BC-INDEX is v1.4
+  per F-R107-2 closure" removed. O-R108-3 pattern codification: live-version claims in §Trace historical-pin
+  notes are structurally fragile. Replaced with "current canonical advances over time per F-R107-8
+  historical-pin discipline" — historical-pin-only language. Site: BC-mapping notes paragraph (1 occurrence).
+- NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected from 2026-05-17T16:30:00Z to
+  2026-05-18T01:00:00Z. Prior timestamp lagged the latest §Trace entry (v1.2.16 at 23:00:00Z);
+  SE-16b violation. No version bump — content unchanged; timestamp-only correction.
+- SE-17c BEFORE: "current canonical BC-INDEX is v1.4 per F-R107-2 closure" (1 occurrence).
+- SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
+- SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
 
 **§Trace v1.2.16** (2026-05-17T23:00:00Z) — F-R107-5 BC ID canonicalization (Round 6D):
 - NORMATIVE: All stale pre-renumbering BC IDs in FC table + BC-mapping table replaced with
