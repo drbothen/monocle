@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.28"
+version: "1.0.29"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T19:00:00Z
 inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
 input-hash: "325a9cd"
 traces_to: architecture/ARCH-INDEX.md
@@ -143,10 +143,14 @@ workstation.
 NOT be applied to `/healthz` (unauthenticated per BC-2.01.001). The correct
 axum 0.8 pattern is to declare two routers — one unauthenticated, one authenticated
 — and merge them. Hook endpoints and admin endpoints (`/status`, `/shutdown`)
-share the same `X-Monocle-Authorization` middleware layer (single auth layer on the
-authenticated router); the Claude Code IDE token (`X-Claude-Code-Ide-Authorization`)
-is checked per-handler inside the hook handlers, not as a separate router-level layer,
-because the IDE token is optional and absent on non-hook requests.
+share the same auth middleware layer on the authenticated router. The auth middleware
+implements **dual-accept** per ADR-0005: it accepts the canonical `X-Monocle-Authorization`
+header (required prefix `monocle-v1:`; monocle-aware tools and future harnesses) OR
+the compatibility alias `X-Claude-Code-Ide-Authorization` (raw 64-hex, no prefix;
+used by real Claude Code hook scripts whose header name is hardcoded per BC-HOOK-016
+deep ingest). `X-Monocle-Authorization` takes priority if both headers are present.
+When the compatibility alias is used, the middleware emits a WARN-level deprecation log.
+If neither header is present, the middleware returns HTTP 401 `{"error":"missing_auth_token"}`.
 
 ```rust
 // Unauthenticated router — liveness probe only; no body limit needed (no body).
@@ -302,88 +306,119 @@ let app = public_router.merge(authed_router);
      (the header is not a recognized auth mechanism for Phase 1 endpoints).
 
    Phase 4 daemon adds a separate federation middleware path on the russh/`monocle-ipc`
-   channel gated by a `federation` feature flag. The Phase 1 HTTP routes remain
-   `X-Monocle-Authorization`-only with no Bearer support. BC-2.01.009 applies
-   only to the Phase 1 `X-Monocle-Authorization` surface.
+   channel gated by a `federation` feature flag. The Phase 1 HTTP routes use
+   dual-accept auth (ADR-0005) with no Bearer support. BC-2.01.009 applies
+   to the Phase 1 auth surface; BC-2.01.009 postcondition 1 is being updated
+   by PO Round 4 to reflect dual-accept semantics (see ADR-0005 §BC Impact).
 
-   Auth middleware validation rules in Phase 1 (applied in this order):
+   Auth middleware validation rules in Phase 1 — **dual-accept protocol (ADR-0005)**
+   (applied in this order):
 
-   1. **Missing header:** if the `X-Monocle-Authorization` header is absent
-      entirely, return HTTP 401 `{"error":"missing_auth_token"}` immediately.
-      This is a structural precondition failure, not an authentication attempt.
+   1. **Canonical path (`X-Monocle-Authorization` present):** Validate value with
+      prefix check: MUST begin with `monocle-v1:`. Strip prefix; constant-time
+      compare hex suffix against stored secret. On success: proceed. On failure
+      (bad prefix, bad format, secret mismatch): return HTTP 401
+      `{"error":"invalid_auth_token"}`.
 
-   2. **Format check:** if the header is present but its value does NOT begin
-      with `monocle-v1:`, return HTTP 401 `{"error":"invalid_auth_token"}`
-      before any secret comparison occurs. This prevents timing-oracle attacks
-      where an attacker probes whether a non-prefixed string matches the secret.
+   2. **Compatibility alias (`X-Monocle-Authorization` absent, `X-Claude-Code-Ide-Authorization`
+      present):** Emit WARN deprecation log. Validate value as raw 64-hex
+      (no prefix required — real Claude Code sends the lock file `authToken` field
+      verbatim, which has no prefix per BC-HOOK-016 deep ingest). Constant-time
+      compare against stored secret. On success: proceed. On failure: return HTTP 401
+      `{"error":"invalid_auth_token"}`.
 
-   3. **Secret comparison:** strip the `monocle-v1:` prefix, then perform a
-      constant-time comparison of the remaining hex part against the stored
-      secret. If the comparison fails for any reason (wrong hex value, empty
-      suffix, length mismatch), return HTTP 401 `{"error":"invalid_auth_token"}`.
+   3. **Missing headers (both absent):** Return HTTP 401 `{"error":"missing_auth_token"}`
+      immediately. This is a structural precondition failure, not an authentication
+      attempt.
 
-   Rules 2 and 3 deliberately return the SAME error body (`invalid_auth_token`).
-   This collapses the "malformed format" and "correct format but wrong value"
-   failure modes into a single indistinguishable response, blocking an attacker
-   from determining whether their token had the structurally correct prefix even
-   if they could not read the lock file directly.
+   Rules 1 and 2 deliberately collapse all value-present failures into the SAME error
+   body (`invalid_auth_token`), blocking an attacker from determining whether their
+   token had the structurally correct prefix even if they could not read the lock file
+   directly. This applies equally to both the canonical and alias code paths.
 
    **Security rationale (threat model):** The monocle daemon binds exclusively
    to `127.0.0.1`. All callers are local processes running as the same OS user.
    An adversary co-located as the same user can read `monocle.lock` directly
    (0o600, same-user read access). Enumeration via distinct format-vs-mismatch
    error bodies provides zero marginal attack capability for a same-user
-   adversary. However, defence-in-depth is applied: collapsing Rules 2 and 3
-   costs nothing (both are auth failures) and prevents any information leak to
-   an attacker who has gained unexpected network access to 127.0.0.1 but has
-   NOT gained file-system access (e.g., a compromised subprocess with a
-   restricted sandbox).
+   adversary. However, defence-in-depth is applied: collapsing failure modes
+   costs nothing and prevents any information leak to an attacker who has gained
+   unexpected network access to 127.0.0.1 but has NOT gained file-system access
+   (e.g., a compromised subprocess with a restricted sandbox).
 
-   The `missing_auth_token` body for absent headers (Rule 1) is deliberately
-   distinct because: (a) absence of the header is a client-configuration error,
-   not an authentication attempt — the attacker who omits the header has
-   revealed nothing about knowledge of the secret; (b) the distinct body
+   The `missing_auth_token` body for absent headers (Rule 3) is deliberately
+   distinct because: (a) absence of both recognized headers is a client-configuration
+   error, not an authentication attempt — the attacker who omits recognized headers
+   has revealed nothing about knowledge of the secret; (b) the distinct body
    provides actionable diagnostics for developers debugging hook integration.
 
-   Auth middleware implementation:
+   Auth middleware implementation (dual-accept per ADR-0005):
 
    ```rust
    const TOKEN_PREFIX: &str = "monocle-v1:";
+   const CANONICAL_HEADER: &str = "X-Monocle-Authorization";
+   const COMPAT_ALIAS_HEADER: &str = "X-Claude-Code-Ide-Authorization";
 
    /// Extract and validate the monocle auth token from the request headers.
    ///
+   /// Dual-accept per ADR-0005:
+   /// - `X-Monocle-Authorization: monocle-v1:<hex>` — canonical; monocle-aware tools.
+   /// - `X-Claude-Code-Ide-Authorization: <hex>` — compatibility alias; real Claude Code
+   ///   hook scripts whose header name is hardcoded (BC-HOOK-016). Emits WARN log.
+   ///
    /// Returns:
-   /// - `Ok(())` if the token is present, well-formed, and matches the secret.
-   /// - `Err(AuthError::Missing)` if the `X-Monocle-Authorization` header is absent.
-   /// - `Err(AuthError::Invalid)` if the header is present but fails validation
-   ///   for any reason (bad prefix, bad format, or secret mismatch). These cases
-   ///   are intentionally collapsed into a single error variant to prevent
-   ///   information disclosure about which check failed.
+   /// - `Ok(())` if authentication succeeds via either path.
+   /// - `Err(AuthError::Missing)` if BOTH recognized headers are absent.
+   /// - `Err(AuthError::Invalid)` if a recognized header is present but fails
+   ///   validation for any reason. Intentionally collapsed to prevent information
+   ///   disclosure about which check failed.
    fn validate_auth_header(
        headers: &HeaderMap,
        expected_secret: &str,
    ) -> Result<(), AuthError> {
-       let Some(header_value) = headers.get("X-Monocle-Authorization") else {
-           return Err(AuthError::Missing);
-       };
-       let Ok(presented) = header_value.to_str() else {
-           return Err(AuthError::Invalid);
-       };
-       let Some(hex_part) = presented.strip_prefix(TOKEN_PREFIX) else {
-           return Err(AuthError::Invalid); // bad prefix — not an auth attempt
-       };
-       // Constant-time comparison to prevent timing oracle on the hex secret.
-       if constant_time_eq::constant_time_eq(hex_part.as_bytes(), expected_secret.as_bytes()) {
-           Ok(())
+       if let Some(header_value) = headers.get(CANONICAL_HEADER) {
+           // Canonical path: X-Monocle-Authorization with monocle-v1: prefix required.
+           let Ok(presented) = header_value.to_str() else {
+               return Err(AuthError::Invalid);
+           };
+           let Some(hex_part) = presented.strip_prefix(TOKEN_PREFIX) else {
+               return Err(AuthError::Invalid); // bad prefix — not a valid auth attempt
+           };
+           // Constant-time comparison to prevent timing oracle on the hex secret.
+           if constant_time_eq::constant_time_eq(hex_part.as_bytes(), expected_secret.as_bytes()) {
+               Ok(())
+           } else {
+               Err(AuthError::Invalid) // format OK but token mismatch — same body
+           }
+       } else if let Some(alias_value) = headers.get(COMPAT_ALIAS_HEADER) {
+           // Compatibility alias: X-Claude-Code-Ide-Authorization (raw hex, no prefix).
+           // Real Claude Code hook scripts send the lock file authToken field verbatim.
+           // ADR-0005: emit deprecation WARN to aid migration visibility.
+           tracing::warn!(
+               header = COMPAT_ALIAS_HEADER,
+               "hook auth via compatibility alias; \
+                monocle-aware harness should use X-Monocle-Authorization"
+           );
+           let Ok(raw_hex) = alias_value.to_str() else {
+               return Err(AuthError::Invalid);
+           };
+           // No prefix to strip — Claude Code sends the raw 64-hex secret directly.
+           // Constant-time comparison to prevent timing oracle.
+           if constant_time_eq::constant_time_eq(raw_hex.as_bytes(), expected_secret.as_bytes()) {
+               Ok(())
+           } else {
+               Err(AuthError::Invalid)
+           }
        } else {
-           Err(AuthError::Invalid) // format OK but token mismatch — same body
+           // Neither recognized header present — structural precondition failure.
+           Err(AuthError::Missing)
        }
    }
 
    #[derive(Debug)]
    pub enum AuthError {
-       Missing,  // → HTTP 401 {"error":"missing_auth_token"}
-       Invalid,  // → HTTP 401 {"error":"invalid_auth_token"} (all other failures)
+       Missing,  // → HTTP 401 {"error":"missing_auth_token"} (both headers absent)
+       Invalid,  // → HTTP 401 {"error":"invalid_auth_token"} (any value-present failure)
    }
    ```
 
@@ -408,23 +443,28 @@ let app = public_router.merge(authed_router);
      Test name: `test_BC_AUTH_001_lockfile_token_format_and_auth_round_trip`
      (PRD v1.1 §7 RTM canonical path; F-R62-4).
 
-   - **BC-2.01.009:** Two auth failure modes are specified:
+   - **BC-2.01.009 (dual-accept per ADR-0005):** Two auth failure modes are specified.
+     "Missing" means BOTH recognized headers are absent. BC-2.01.009 is being updated
+     by PO Round 4 to reflect dual-accept semantics; the two-body taxonomy is preserved:
 
      | Failure mode | Header state | HTTP body |
      |---|---|---|
-     | Missing header | `X-Monocle-Authorization` absent | `{"error":"missing_auth_token"}` |
-     | Invalid token | Header present; value fails for any reason (bad prefix, bad format, secret mismatch, or empty suffix) | `{"error":"invalid_auth_token"}` |
+     | Missing headers | BOTH `X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization` absent | `{"error":"missing_auth_token"}` |
+     | Invalid token (canonical path) | `X-Monocle-Authorization` present; value fails for any reason (bad prefix, bad format, secret mismatch, or empty suffix) | `{"error":"invalid_auth_token"}` |
+     | Invalid token (alias path) | `X-Monocle-Authorization` absent; `X-Claude-Code-Ide-Authorization` present; raw hex value fails constant-time comparison | `{"error":"invalid_auth_token"}` |
 
-     All "invalid token" failures return the same body regardless of whether
-     the format check or the secret comparison failed — this is a deliberate
-     security choice (see security rationale above).
+     All value-present failures return the same body regardless of code path —
+     canonical or alias — this is a deliberate security choice (see security
+     rationale above). The two-body taxonomy (`missing_auth_token` /
+     `invalid_auth_token`) is preserved; dual-accept expands "missing" to mean
+     "both recognized headers absent".
 
      Phase 4 OAuth2 federation tokens use `Authorization: Bearer` on a separate
      federation channel and are NOT valid on Phase 1 HTTP endpoints; they
-     receive HTTP 401 `{"error":"missing_auth_token"}` (no `X-Monocle-Authorization`
-     header present; `Authorization: Bearer` is a different, unrecognized header —
-     Phase 4 OAuth2 uses a separate federation channel and does not reuse the
-     Phase 1 HTTP endpoints).
+     receive HTTP 401 `{"error":"missing_auth_token"}` (neither recognized Phase 1
+     auth header is present; `Authorization: Bearer` is a different, unrecognized
+     header for Phase 1 endpoints — Phase 4 OAuth2 uses a separate federation
+     channel and does not reuse the Phase 1 HTTP endpoints).
 
      Verification: integration test in
      `monocle-runtime/tests/auth_header_rejection.rs` (rejection probes;
@@ -432,12 +472,14 @@ let app = public_router.merge(authed_router);
      in `monocle-runtime/tests/auth_token_lifecycle.rs` per BC-2.01.008
      verification above.
      Test name: `test_BC_AUTH_002_auth_header_validation_all_failure_modes`
-     - No header → HTTP 401 `{"error":"missing_auth_token"}`
+     - No header (neither recognized) → HTTP 401 `{"error":"missing_auth_token"}`
      - `X-Monocle-Authorization: baretoken` → HTTP 401 `{"error":"invalid_auth_token"}`
      - `X-Monocle-Authorization: monocle-v2:abc` → HTTP 401 `{"error":"invalid_auth_token"}`
      - `X-Monocle-Authorization: monocle-v1:` (empty suffix) → HTTP 401 `{"error":"invalid_auth_token"}`
-     - `Authorization: Bearer fake` (wrong header name) → HTTP 401 `{"error":"missing_auth_token"}`
+     - `Authorization: Bearer fake` (wrong header name, both recognized headers absent) → HTTP 401 `{"error":"missing_auth_token"}`
      - `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` → HTTP 401 `{"error":"invalid_auth_token"}`
+     - `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (alias path, wrong secret) → HTTP 401 `{"error":"invalid_auth_token"}`
+     - `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (alias path, correct secret) → HTTP 200 + WARN log emitted
 
    Note: `constant_time_eq` crate is added to the Phase 1 dependency manifest
    (caret pin `^0.3`; no untrusted-input deserialization; timing-safety is its
@@ -755,7 +797,7 @@ this collision in practice. monocle eliminates the risk entirely by:
 | BC-2.01.006 | Crash recovery checkpoint at `<runtime_dir>/monocle.recovery.json`; TUI offered recovery on next attach | Daemon Lifecycle Protocol |
 | BC-2.01.007 | Every JSONL ring buffer record's first key is `format_version` with value `1` for all Phase 1-origin records (FC-01) | Daemon Lifecycle Protocol §Drain |
 | BC-2.01.008 | Auth token wire format is `monocle-v1:<64-hex>`; lock file stores bare 64-hex; presented token validated with constant-time comparison after prefix strip (FC-06) | Daemon Lifecycle Protocol §Start Sequence |
-| BC-2.01.009 | Two auth failure modes: (1) absent header → HTTP 401 `{"error":"missing_auth_token"}`; (2) header present but fails for any reason (bad prefix, bad format, secret mismatch) → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005) | Daemon Lifecycle Protocol §Start Sequence |
+| BC-2.01.009 | Dual-accept auth failure modes (ADR-0005): (1) BOTH recognized headers (`X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization`) absent → HTTP 401 `{"error":"missing_auth_token"}`; (2) either recognized header present but value fails validation for any reason → HTTP 401 `{"error":"invalid_auth_token"}` (collapsed; no format/mismatch distinction); Phase 4 OAuth2 federation uses separate channel (FC-06 + F-FC-I005). PO Round 4 updates BC-2.01.009 postconditions to reflect dual-accept. | Daemon Lifecycle Protocol §Start Sequence |
 | BC-2.01.010 | Lock-file JSON includes `contract_version: 1` as the first key; readers must check this field before consuming other fields; unrecognized version triggers graceful skip with warning (F-FC-O001) | Daemon Lifecycle Protocol §Start Sequence |
 
 The Phase 1 PRD has formalized these as full BC entries with preconditions,
@@ -2347,3 +2389,29 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 - SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
 - No retired BCs discovered. All 95 stale-ID lines resolved to active BCs in BC-INDEX v1.1.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.0.29** (2026-05-17T19:00:00Z) — T-128m ADR-0005 dual-accept auth header:
+- NORMATIVE: Auth middleware spec updated to dual-accept protocol per ADR-0005.
+  - §Body Limit and Router Design (lines 141-174): rewritten. Prior text described
+    `X-Claude-Code-Ide-Authorization` as an optional per-handler IDE token check.
+    BEFORE: "the Claude Code IDE token (`X-Claude-Code-Ide-Authorization`) is checked
+    per-handler inside the hook handlers, not as a separate router-level layer, because
+    the IDE token is optional and absent on non-hook requests."
+    AFTER: "The auth middleware implements dual-accept per ADR-0005: it accepts the
+    canonical `X-Monocle-Authorization` header [...] OR the compatibility alias
+    `X-Claude-Code-Ide-Authorization` [...]."
+  - §Start Sequence — Auth middleware validation rules: rewritten from single-header
+    3-rule model to dual-accept 3-rule model. Rule 1 = canonical path, Rule 2 =
+    compatibility alias (with WARN log), Rule 3 = neither header present.
+  - BC-2.01.009 behavioral contracts table: expanded. "Missing header" row updated to
+    "both recognized headers absent". Two new rows added: canonical path invalid-token
+    and alias path invalid-token. Two new test vectors added (alias wrong secret →
+    invalid_auth_token; alias correct secret → HTTP 200 + WARN log).
+  - Rust implementation stub: rewritten to dual-accept with `CANONICAL_HEADER` and
+    `COMPAT_ALIAS_HEADER` constants, alias path emits `tracing::warn!`.
+- NORMATIVE: BC-2.01.009 update surfaced to PO for Round 4 (postcondition 1 "missing"
+  semantics change; alias validation postconditions 2-3 extension).
+- NORMATIVE: CAP-001 compatibility alias update surfaced to BA for Round 4 (§P2 step 1).
+- SE-17f PASS: post-edit verification — `validate_auth_header` stub contains both
+  `CANONICAL_HEADER` and `COMPAT_ALIAS_HEADER` constants; BC-2.01.009 table has 3 rows.
+- SE-16d PASS: 2026-05-17T19:00:00Z > chain high-water 2026-05-17T17:00:00Z.

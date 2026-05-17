@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T19:00:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
 input-hash: "ee1f76a"
@@ -88,10 +88,36 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 | ADR-0002 | Accept nucleo 0.5 Dormancy Risk with Explicit Re-eval Trigger | accepted | adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md |
 | ADR-0003 | MIT OR Apache-2.0 Dual-License Selection | accepted | adr/ADR-0003-license-selection.md |
 | ADR-0004 | Exhaustive Enums — Phase1Permission and ClaudeCodeTool | accepted | adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md |
+| ADR-0005 | Auth Header Dual-Accept — Canonical X-Monocle-Authorization with X-Claude-Code-Ide-Authorization Compatibility Alias | accepted | adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md |
 
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
 for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
+ADR-0005 resolves the auth header interop gap between monocle's canonical header and real
+Claude Code's hardcoded `X-Claude-Code-Ide-Authorization` (BC-HOOK-016); dual-accept at the
+router-level auth middleware.
+
+## §Trace v1.0.4
+
+**T-128m ADR-0005 auth header dual-accept — F-R105 closure chain Round 3** (2026-05-17T19:00:00Z):
+- NORMATIVE: ADR-0005 authored and registered. Decision: dual-accept (option a).
+  File: `adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`.
+  Resolves interop gap surfaced by BA in T-128f: real Claude Code hook scripts have
+  `X-Claude-Code-Ide-Authorization` hardcoded per BC-HOOK-016 deep ingest; they cannot
+  send `X-Monocle-Authorization`. ADR-0005 directs the daemon auth middleware to
+  dual-accept both headers with `X-Monocle-Authorization` as canonical priority.
+- NORMATIVE: ADR Registry updated — ADR-0005 row added.
+- NORMATIVE: SS-daemon-lifecycle.md v1.0.28 → v1.0.29 — auth middleware spec updated
+  to dual-accept; Rust stub rewritten; BC-2.01.009 table expanded; §Trace added.
+- NORMATIVE: dtu-assessment.md v1.7.2 → v1.7.3 — ADR-0005 auth header rationale block
+  added to endpoint matrix preamble; 10 `X-Claude-Code-Ide-Authorization` occurrences
+  confirmed correct (DTU tests compatibility alias path).
+- NORMATIVE: BC-2.01.009 update surfaced to PO for Round 4 (postcondition 1 "missing"
+  semantics; alias path postconditions 2-3 extension).
+- NORMATIVE: CAP-001 §P2 step 1 compatibility alias note surfaced to BA for Round 4.
+- INFORMATIONAL: product-brief.md occurrences (lines 116 and 239) out of scope for this
+  dispatch; surfaced to PO for Round 4 as noted.
+- SE-16d PASS: 2026-05-17T19:00:00Z > chain high-water 2026-05-17T17:00:00Z.
 
 ## §Trace v1.0.3
 

@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.1"
+version: "1.0.2"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T20:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -187,7 +187,7 @@ fn verify_bc_2_02_006() {
   pre-Dispatch-5a state; retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-02/BC-2.02.006.md`.
 - Architecture: `architecture/SS-core-types-and-abi.md` §Prost Wire Schemas.
-- PRD: `.factory/specs/prd.md` v1.26 §BC-2.02.006 (Dispatch 4 commit 1030c65).
+- PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.02.006 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Cross-VP: VP-017 (Rust surface; same wire contract from Rust side); VP-018
   (Phase 1 structural recap + Phase 4 runtime dispatch).
 
@@ -245,3 +245,52 @@ UTC ISO-8601 `Z` form: `2026-05-17T18:00:00Z` >= chain high-water `2026-05-17T17
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Chose **Option 3 (hybrid)** — template-aligned form with documented project-specific extensions — over Option 1 (template-strict rename + reorganize, which would risk content drift on the Phase-1-emergent probe enumeration discipline) and Option 2 (extension-only documentation without template heading adoption, which would leave the audit RES-03 WARN unresolved). Option 3 satisfies the L4 template heading requirements (all 6 required headings present) AND preserves the Phase-1 verification discipline (probe matrices, mechanism narratives, harness locations) that the adversarial review chain hardened.
+
+---
+
+## §Trace v1.0.2 — F-R105-13 LOW: VP §References PRD Citation Refresh v1.26 → v1.26.3
+
+**Bump:** v1.0.1 → v1.0.2.
+**Predecessor pin:** v1.0.1 (commit 4090d0b — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template).
+**Scope of v1.0.2 (NORMATIVE — §References PRD citation refresh; NO content cascade; NO BC-path changes — BC §References already cite canonical sharded `behavioral-contracts/ss-NN/BC-2.SS.NNN.md` paths):**
+
+### Change set 1 — §References PRD Citation Refresh `v1.26` → `v1.26.3` (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** §References cited `prd.md v1.26 §BC-2.02.006 (Dispatch 4 commit 1030c65).` (pre-edit grep).
+  - **After:** §References cites `prd.md v1.26.3 §BC-2.02.006 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).` (post-edit grep).
+- **SE-17c-d body-scope grep:** post-edit `grep -n "prd.md v1.26 " vp-016-hook-envelope-proto-field-numbers.md` → 0 matches; `grep -n "prd.md v1.26.3" vp-016-hook-envelope-proto-field-numbers.md` → 1 match (§References line).
+- **BC §References scope:** §References §Source contract entry already cites canonical sharded `behavioral-contracts/ss-02/BC-2.02.006.md` (per BC-INDEX.md v1.2). No BC-path changes required in this dispatch.
+- **Historical PRD v1.25 citations in body prose (Source Contract `Traces to (historical)`, Harness Location `to be migrated to`, Proof Harness Skeleton `to be migrated to`, where present):** UNCHANGED — these are explicitly historical predecessor citations pinned to the pre-Dispatch-4 PRD monolith and must not be refreshed.
+
+### Rationale
+
+PO commit b2b378b (T-128k Round-3 PO dispatch) bumped PRD `v1.26.2 → v1.26.3` for F-R105-12 VP alias + GAP-R44-4 closure. Parallel FV dispatch refreshes VP §References to cite the post-bump PRD version, preserving the stale-citation-zero invariant established in F-R105-7 (manifest pin refresh) and F-R105-11 (sister-VP reference reconciliation). Per CLAUDE.md Production-Grade Rule 1: no MVP-driven deferral; mechanical citation refresh executed in-scope of T-128k FV portion rather than left to post-Round-3 cleanup.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.3 (commit b2b378b — F-R105-12 VP alias + GAP-R44-4 closure).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7 — confirms canonical sharded path `ss-02/BC-2.02.006.md` for BC-2.02.006).
+- **R105 closure chain:** F-R105-13 LOW — 22-VP §References PRD citation refresh sweep.
+- **Concurrent dispatches (T-128k Round 3):**
+  - PO: PRD v1.26.2 → v1.26.3 (F-R105-12 + GAP-R44-4) — COMPLETE (commit b2b378b).
+  - architect: auth-header interop adjudication — separate scope.
+  - BA: L2-INDEX anchor fixes — separate scope.
+  - FV: this §Trace (F-R105-13 — 22-VP §References PRD citation refresh).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T20:30:00Z` >= chain high-water `2026-05-17T19:30:00Z` (this VP's prior v1.0.1 §Trace and PRD v1.26.3 frontmatter). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD citation `v1.26` → `v1.26.3`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### SE-17g META audit (NORMATIVE)
+
+Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[^.]|26\.[012])(\s|\$)" .factory/specs/verification-properties/vp-*.md` → 0 matches. Sweep-wide re-grep for non-sharded BC paths: `grep -rE "behavioral-contracts/BC-[^I]" .factory/specs/verification-properties/vp-*.md` → 0 matches. F-R105-13 closure verified.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail).

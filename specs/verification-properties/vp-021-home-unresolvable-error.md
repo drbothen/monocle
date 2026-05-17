@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.2"
+version: "1.0.3"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T19:30:00Z
+timestamp: 2026-05-17T20:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -231,7 +231,7 @@ fn verify_bc_2_03_003() {
   (`temp-env ^0.3` pin with `async_closure` feature).
 - Conventions: `architecture/SS-conventions-anti-patterns.md` §Semgrep Rules
   (`monocle-no-raw-env-mutation-in-tests`).
-- PRD: `.factory/specs/prd.md` v1.26 §BC-2.03.003 (Dispatch 4 commit 1030c65).
+- PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.03.003 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Cross-VP: VP-019 (trait method shapes — `metadata()` and `enrich()` typed
   `Result<_, EngineMetadataError>` returns are the no-silent-fallback
   property); VP-020 (env-isolation sibling — shared `monocle-runtime/tests/`
@@ -331,3 +331,52 @@ UTC ISO-8601 `Z` form: `2026-05-17T19:30:00Z` >= chain high-water `2026-05-17T19
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Refreshed the pin citation in-scope of T-128g rather than deferring or routing through a parallel dispatch. The architect's structural-only delta classification (T-128d) authorized this mechanical citation refresh without requiring per-VP content review. No tech-debt entries created.
+
+---
+
+## §Trace v1.0.3 — F-R105-13 LOW: VP §References PRD Citation Refresh v1.26 → v1.26.3
+
+**Bump:** v1.0.2 → v1.0.3.
+**Predecessor pin:** v1.0.2 (commit 927fcce — T-128g+T-128j FV — F-R105-7/10/11 (pin refresh + title sync + sister-VP reconciliation)).
+**Scope of v1.0.3 (NORMATIVE — §References PRD citation refresh; NO content cascade; NO BC-path changes — BC §References already cite canonical sharded `behavioral-contracts/ss-NN/BC-2.SS.NNN.md` paths):**
+
+### Change set 1 — §References PRD Citation Refresh `v1.26` → `v1.26.3` (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** §References cited `prd.md v1.26 §BC-2.03.003 (Dispatch 4 commit 1030c65).` (pre-edit grep).
+  - **After:** §References cites `prd.md v1.26.3 §BC-2.03.003 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).` (post-edit grep).
+- **SE-17c-d body-scope grep:** post-edit `grep -n "prd.md v1.26 " vp-021-home-unresolvable-error.md` → 0 matches; `grep -n "prd.md v1.26.3" vp-021-home-unresolvable-error.md` → 1 match (§References line).
+- **BC §References scope:** §References §Source contract entry already cites canonical sharded `behavioral-contracts/ss-03/BC-2.03.003.md` (per BC-INDEX.md v1.2). No BC-path changes required in this dispatch.
+- **Historical PRD v1.25 citations in body prose (Source Contract `Traces to (historical)`, Harness Location `to be migrated to`, Proof Harness Skeleton `to be migrated to`, where present):** UNCHANGED — these are explicitly historical predecessor citations pinned to the pre-Dispatch-4 PRD monolith and must not be refreshed.
+
+### Rationale
+
+PO commit b2b378b (T-128k Round-3 PO dispatch) bumped PRD `v1.26.2 → v1.26.3` for F-R105-12 VP alias + GAP-R44-4 closure. Parallel FV dispatch refreshes VP §References to cite the post-bump PRD version, preserving the stale-citation-zero invariant established in F-R105-7 (manifest pin refresh) and F-R105-11 (sister-VP reference reconciliation). Per CLAUDE.md Production-Grade Rule 1: no MVP-driven deferral; mechanical citation refresh executed in-scope of T-128k FV portion rather than left to post-Round-3 cleanup.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.3 (commit b2b378b — F-R105-12 VP alias + GAP-R44-4 closure).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7 — confirms canonical sharded path `ss-03/BC-2.03.003.md` for BC-2.03.003).
+- **R105 closure chain:** F-R105-13 LOW — 22-VP §References PRD citation refresh sweep.
+- **Concurrent dispatches (T-128k Round 3):**
+  - PO: PRD v1.26.2 → v1.26.3 (F-R105-12 + GAP-R44-4) — COMPLETE (commit b2b378b).
+  - architect: auth-header interop adjudication — separate scope.
+  - BA: L2-INDEX anchor fixes — separate scope.
+  - FV: this §Trace (F-R105-13 — 22-VP §References PRD citation refresh).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T20:30:00Z` >= chain high-water `2026-05-17T19:30:00Z` (this VP's prior v1.0.2 §Trace and PRD v1.26.3 frontmatter). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD citation `v1.26` → `v1.26.3`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### SE-17g META audit (NORMATIVE)
+
+Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[^.]|26\.[012])(\s|\$)" .factory/specs/verification-properties/vp-*.md` → 0 matches. Sweep-wide re-grep for non-sharded BC paths: `grep -rE "behavioral-contracts/BC-[^I]" .factory/specs/verification-properties/vp-*.md` → 0 matches. F-R105-13 closure verified.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail).

@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.2"
+version: "1.0.3"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T19:30:00Z
+timestamp: 2026-05-17T20:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -103,7 +103,7 @@ paths (a)-(d) deterministically.
   `nix::sys::signal::kill(Pid::from_raw(pid), None)` per BC-2.01.005
   postcondition 3.
 - `temp-env ^0.3` is the project pin for `MONOCLE_RUNTIME_DIR` env
-  isolation (shared with VP-ENGINE-002-ERR, see SS-03 VPs in Dispatch 5b).
+  isolation (shared with VP-021 (renumbered from VP-ENGINE-002-ERR per VP-INDEX.md §Renumbering Appendix), see SS-03 VPs in Dispatch 5b).
 
 ## Post-conditions
 
@@ -328,7 +328,7 @@ fn verify_bc_2_01_005() {
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.005.md`.
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.25 (commit 18fe265).
-- PRD: `.factory/specs/prd.md` v1.26 §BC-2.01.005 (Dispatch 4 commit 1030c65).
+- PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.01.005 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-004 (drain completion → lock removal; exit-code
   taxonomy with `1` for `RuntimeDirUnresolvable`), VP-008 (defense-in-depth
@@ -427,3 +427,63 @@ UTC ISO-8601 `Z` form: `2026-05-17T19:30:00Z` >= chain high-water `2026-05-17T19
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Refreshed the pin citation in-scope of T-128g rather than deferring or routing through a parallel dispatch. The architect's structural-only delta classification (T-128d) authorized this mechanical citation refresh without requiring per-VP content review. No tech-debt entries created.
+
+---
+
+## §Trace v1.0.3 — F-R105-13 LOW: VP §References PRD Citation Refresh v1.26 → v1.26.3 + Sister-VP Reference Reconciliation `VP-ENGINE-002-ERR` → `VP-021`
+
+**Bump:** v1.0.2 → v1.0.3.
+**Predecessor pin:** v1.0.2 (commit 927fcce — T-128g+T-128j FV — F-R105-7/10/11 (pin refresh + title sync + sister-VP reconciliation)).
+**Scope of v1.0.3 (NORMATIVE — §References PRD citation refresh + sister-VP body reconciliation; NO content cascade; NO BC-path changes — BC §References already cite canonical sharded `behavioral-contracts/ss-NN/BC-2.SS.NNN.md` paths):**
+
+### Change set 1 — §References PRD Citation Refresh `v1.26` → `v1.26.3` (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** §References cited `prd.md v1.26 §BC-2.01.005 (Dispatch 4 commit 1030c65).` (pre-edit grep).
+  - **After:** §References cites `prd.md v1.26.3 §BC-2.01.005 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).` (post-edit grep).
+- **SE-17c-d body-scope grep:** post-edit `grep -n "prd.md v1.26 " vp-005-lock-file-lifecycle.md` → 0 matches; `grep -n "prd.md v1.26.3" vp-005-lock-file-lifecycle.md` → 1 match (§References line).
+- **BC §References scope:** §References §Source contract entry already cites canonical sharded `behavioral-contracts/ss-01/BC-2.01.005.md` (per BC-INDEX.md v1.2). No BC-path changes required in this dispatch.
+- **Historical PRD v1.25 citations in body prose (Source Contract `Traces to (historical)`, Harness Location `to be migrated to`, Proof Harness Skeleton `to be migrated to`, where present):** UNCHANGED — these are explicitly historical predecessor citations pinned to the pre-Dispatch-4 PRD monolith and must not be refreshed.
+
+### Change set 2 — Sister-VP Reference Reconciliation `VP-ENGINE-002-ERR` → `VP-021` (F-R105-13 SURFACE) (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** Pre-conditions §`temp-env` pin note cited sister VP as `VP-ENGINE-002-ERR` (pre-renumbering form; line 106).
+  - **After:** Pre-conditions §`temp-env` pin note cites sister VP as `VP-021 (renumbered from VP-ENGINE-002-ERR per VP-INDEX.md §Renumbering Appendix)`, matching the F-R105-11 reconciliation pattern applied to VP-007 in commit 927fcce.
+- **SE-17c-d body-scope grep:** pre-§Trace-block body cites of `VP-ENGINE-002-ERR` → 0 remaining (the only remaining token is inside the §Trace block itself as historical before-evidence).
+- **Discovered in-scope:** F-R105-13 sweep grep `grep -nE "VP-(DAEMON|AUTH|RING|LOCK|ABI|TYPES|FACTORY|PROTO|ENGINE)-" vp-*.md` surfaced one residual stale sister-VP ID in VP-005 body prose that was missed by the F-R105-11 sweep (which targeted VP-007 only). Fixed in-scope per CLAUDE.md Production-Grade Rule 4 (AI-built defects are AI's responsibility to fix; same defect class as F-R105-11, same fix pattern).
+
+### Rationale
+
+PO commit b2b378b (T-128k Round-3 PO dispatch) bumped PRD `v1.26.2 → v1.26.3` for F-R105-12 VP alias + GAP-R44-4 closure. Parallel FV dispatch refreshes VP §References to cite the post-bump PRD version, preserving the stale-citation-zero invariant established in F-R105-7 (manifest pin refresh) and F-R105-11 (sister-VP reference reconciliation). Per CLAUDE.md Production-Grade Rule 1: no MVP-driven deferral; mechanical citation refresh executed in-scope of T-128k FV portion rather than left to post-Round-3 cleanup.
+
+**Change set 2 rationale:** Sweep grep for stale renumbered VP IDs surfaced one missed occurrence (VP-005 line 106). Same defect class and same fix pattern as the F-R105-11 reconciliation already applied to VP-007 (commit 927fcce). Per CLAUDE.md Routing Rule 3 ("Surface vs defer — the critical distinction"): fixed in-scope rather than deferring to a separate dispatch; same FV agent owns sister-VP body-prose reconciliation per F-R105-11 precedent.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.3 (commit b2b378b — F-R105-12 VP alias + GAP-R44-4 closure).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7 — confirms canonical sharded path `ss-01/BC-2.01.005.md` for BC-2.01.005).
+- **R105 closure chain:** F-R105-13 LOW — 22-VP §References PRD citation refresh sweep.
+- **R105 closure chain (additional):** F-R105-13 SURFACE — VP-005 sister-VP reference reconciliation `VP-ENGINE-002-ERR` → `VP-021` (F-R105-11 pattern application to one VP-005 body line missed by the original VP-007-targeted sweep).
+- **Concurrent dispatches (T-128k Round 3):**
+  - PO: PRD v1.26.2 → v1.26.3 (F-R105-12 + GAP-R44-4) — COMPLETE (commit b2b378b).
+  - architect: auth-header interop adjudication — separate scope.
+  - BA: L2-INDEX anchor fixes — separate scope.
+  - FV: this §Trace (F-R105-13 — 22-VP §References PRD citation refresh + VP-005 sister-VP reconciliation surface fix).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T20:30:00Z` >= chain high-water `2026-05-17T19:30:00Z` (this VP's prior v1.0.2 §Trace and PRD v1.26.3 frontmatter). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD citation `v1.26` → `v1.26.3`; sister-VP reference reconciliation `VP-ENGINE-002-ERR` → `VP-021`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### SE-17g META audit (NORMATIVE)
+
+Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[^.]|26\.[012])(\s|\$)" .factory/specs/verification-properties/vp-*.md` → 0 matches. Sweep-wide re-grep for non-sharded BC paths: `grep -rE "behavioral-contracts/BC-[^I]" .factory/specs/verification-properties/vp-*.md` → 0 matches. F-R105-13 closure verified.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail). Sister-VP body reconciliation co-located with PRD refresh per Routing Rule 3 (surface and fix in-scope, not defer).

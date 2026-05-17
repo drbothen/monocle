@@ -1,10 +1,10 @@
 ---
 document_type: dtu-assessment
 level: L3
-version: "1.7.2"
+version: "1.7.3"
 status: complete
 producer: architect
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T19:00:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, architecture/SS-deps-pin-manifest.md, architecture/SS-core-types-and-abi.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
 input-hash: "8ebf232"
@@ -97,6 +97,17 @@ monocle daemon.
 
 EX-2 denotes architect-extension fields added beyond the gene-source body (cwd, transcript_path,
 prompt) — specified in SS-core-types-and-abi.md §Non-Exhaustive Inner Structs.
+
+**Auth header column rationale (ADR-0005):** The Auth header column shows
+`X-Claude-Code-Ide-Authorization` because this is what real Claude Code hook scripts
+send — the header name is **hardcoded** in Claude Code's Go source (`hooks.go:31`)
+per BC-HOOK-016 deep ingest. Claude Code reads the lock file `authToken` field (raw
+64-hex, no prefix) and sends it verbatim in `X-Claude-Code-Ide-Authorization`. The
+DTU clone MUST replicate this behavior to exercise the daemon's compatibility alias
+code path. monocle's canonical header (`X-Monocle-Authorization: monocle-v1:<hex>`)
+is for monocle-aware tools and future harnesses; the daemon dual-accepts both per
+ADR-0005 (accepted 2026-05-17). The DTU clone tests the `X-Claude-Code-Ide-Authorization`
+alias path; a separate unit test exercises the `X-Monocle-Authorization` canonical path.
 
 | Hook type | HTTP method | Path | Auth header | Gene-source body fields (BC-HOOK-007) | Monocle-canonical body fields (SS-core-types-and-abi.md v1.2.8) |
 |-----------|-------------|------|-------------|--------------------------------------|------------------------------------------------------------------|
@@ -391,6 +402,24 @@ test harness benefits from container isolation across daemon instances). The Pha
 binary-first decision does not constrain Phase 4 packaging choices.
 
 ## §Trace
+
+v1.7.3 changes (T-128m ADR-0005 auth header annotation — 2026-05-17T19:00:00Z):
+
+- NORMATIVE: Auth header rationale block added to §DTU Architecture §Endpoint matrix preamble
+  (between EX-2 explanation and the endpoint matrix table). The 10 occurrences of
+  `X-Claude-Code-Ide-Authorization` in this document are correct and are NOT renamed.
+  Rationale: real Claude Code hook scripts have the header name hardcoded per BC-HOOK-016;
+  the DTU clone must send `X-Claude-Code-Ide-Authorization` to exercise the daemon's
+  compatibility alias code path (ADR-0005 option a — dual-accept). The monocle daemon
+  accepts this header as a compatibility alias; canonical header is `X-Monocle-Authorization`.
+- INFORMATIONAL: No occurrence count changes. 10 instances remain correct (describing real
+  Claude Code wire behavior and DTU testing the compatibility alias path):
+  - Line 37 (Integration Surface Inventory table — protocol column): describes Claude Code wire
+  - Lines 103-107 (endpoint matrix auth header column × 5): describes per-endpoint auth header
+  - Line 306 (Phase 1 Clone Build Effort §What Gets Built): DTU sends alias header
+  - Line 359 (Acceptance Criteria table — Auth header stamped): DTU acceptance criterion
+  The annotation text explains all 10 occurrences; no inline changes to those lines needed.
+- SE-16d PASS: 2026-05-17T19:00:00Z > prior chain high-water 2026-05-17T16:30:00Z.
 
 v1.7 changes (round-56.1 F-R56-2 PG-5 site + D-042 cascade):
 

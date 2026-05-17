@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T13:30:00Z
+timestamp: 2026-05-17T20:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "b09f325"
@@ -138,8 +138,57 @@ mapping for traceability into pre-Dispatch-5a artifacts.
   `git show 842402c:.factory/specs/verification-properties.md` and
   earlier commits. VP-INDEX.md is now the canonical entry point for
   Phase 1 verification properties.
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.1 (Dispatch 3 commit f259ade).
-- PRD: `.factory/specs/prd.md` v1.26 (Dispatch 4 commit 1030c65).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
+- PRD: `.factory/specs/prd.md` v1.26.3 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Architecture index: `architecture/ARCH-INDEX.md`.
 - Template: `templates/L4-verification-property-template.md`.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
+
+---
+
+## §Trace v1.2 — F-R105-13 LOW: VP-INDEX §References PRD + BC-INDEX Citation Refresh
+
+**Bump:** v1.1 → v1.2.
+**Predecessor pin:** v1.1 (Dispatch 5b commit e3824ec — SS-02 + SS-03 VP files + VP-INDEX complete + retire monolith).
+**Scope of v1.2 (NORMATIVE — §References citation refresh; NO per-VP-row content change; NO Renumbering Appendix cascade):**
+
+### Change set (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before §References:**
+    - `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.1 (Dispatch 3 commit f259ade).`
+    - `PRD: \`.factory/specs/prd.md\` v1.26 (Dispatch 4 commit 1030c65).`
+  - **After §References:**
+    - `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.2 (commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).`
+    - `PRD: \`.factory/specs/prd.md\` v1.26.3 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).`
+- **SE-17c-d body-scope grep:** post-edit `grep -n "BC-INDEX.md\` v1.1" VP-INDEX.md` → 0 matches (the only remaining `v1.1` cite is inside this §Trace as before-evidence); `grep -n "prd.md\` v1.26 " VP-INDEX.md` → 0 matches.
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+
+### Rationale
+
+VP-INDEX is the canonical entry point for L4 verification properties and is included in the F-R105-13 sweep scope per the task instruction "VP-INDEX final version (if cascaded)". The BC-INDEX cite became stale when BC-INDEX bumped to v1.2 in commit 61133a7 (F-R105-3 + F-R105-9 + OBS-R44-1 closure); the PRD cite became stale when PO bumped PRD to v1.26.3 in commit b2b378b (F-R105-12 + GAP-R44-4 closure). Both citation refreshes are mechanical version-string updates with no content cascade. Per CLAUDE.md Production-Grade Rule 1: fix in scope rather than deferring.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.3 (commit b2b378b).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7).
+- **R105 closure chain:** F-R105-13 LOW — VP-INDEX §References citation refresh as cascade-tail of 22-VP §References PRD citation refresh sweep.
+- **Concurrent dispatches (T-128k Round 3):**
+  - PO: PRD v1.26.2 → v1.26.3 (F-R105-12 + GAP-R44-4) — COMPLETE (commit b2b378b).
+  - architect: auth-header interop adjudication — separate scope.
+  - BA: L2-INDEX anchor fixes — separate scope.
+  - FV: 22 VP files (v1.0.2→v1.0.3 or v1.0.1→v1.0.2) + this VP-INDEX v1.1→v1.2.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T20:30:00Z` >= chain high-water `2026-05-17T19:30:00Z` (PRD v1.26.3 frontmatter and per-VP prior §Trace timestamps). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References BC-INDEX cite `v1.1` → `v1.2`; §References PRD cite `v1.26` → `v1.26.3`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Cascade-tail of the 22-VP sweep co-located in this dispatch rather than deferred to a separate VP-INDEX-only commit. No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection.
+
