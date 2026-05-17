@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.0"
+version: "1.0.1"
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T19:00:00Z
@@ -76,27 +76,6 @@ prefixed form in `X-Monocle-Authorization`. Real Claude Code sends the raw 64-he
 token (no prefix) in `X-Claude-Code-Ide-Authorization`; the daemon must handle the
 format difference at the compatibility layer (see §Decision below).
 
-### Options Considered
-
-**(a) Dual-accept at router middleware:** Daemon auth middleware checks BOTH header
-names. If `X-Monocle-Authorization` is present, validate as canonical (prefix
-required: `monocle-v1:<hex>`). If absent, fall through to check
-`X-Claude-Code-Ide-Authorization` with adapted validation (raw 64-hex, no prefix
-required — Claude Code sends the lock file token verbatim). A deprecation log line
-is emitted when the compatibility alias is used.
-
-**(b) Translation shim (separate process):** A separate adapter process receives Claude
-Code's header, validates, and re-issues `X-Monocle-Authorization` to the daemon. Daemon
-only accepts canonical.
-
-**(c) Reconfigure Claude Code:** Real Claude Code is configured (env var or settings)
-to send `X-Monocle-Authorization`. Not feasible — BC-HOOK-016 confirms the header name
-is hardcoded in Go source; no user-facing override exists.
-
-**(d) Multi-harness generic header pattern:** Daemon accepts `X-Harness-{NAME}-Authorization`
-where NAME is derived from session_id or lock file `app` field. Out-of-scope for Phase 1;
-each harness brings unknown header conventions; premature generalization.
-
 ## Decision
 
 **Option (a): Dual-accept at router middleware** with canonical `X-Monocle-Authorization`.
@@ -122,7 +101,7 @@ If `X-Monocle-Authorization` is absent AND `X-Claude-Code-Ide-Authorization` is 
 **Neither header present:**
 - Return HTTP 401 `{"error":"missing_auth_token"}` (unchanged from BC-2.01.009).
 
-### Rationale
+## Rationale
 
 | Criterion | Assessment |
 |-----------|-----------|
@@ -203,7 +182,39 @@ the Claude Code harness.
 - DTU clone (`dtu-claude-code-hooks-v1`) tests the alias path (it sends `X-Claude-Code-Ide-Authorization`).
 - A monocle-aware tool (e.g., CLI `monocle hook-test`) tests the canonical `X-Monocle-Authorization` path.
 
-## §Trace v1.0.0
+## Alternatives Considered
+
+**(a) Dual-accept at router middleware** — Chosen. See §Decision above.
+
+**(b) Translation shim (separate process):** A separate adapter process receives Claude
+Code's header, validates, and re-issues `X-Monocle-Authorization` to the daemon. Daemon
+only accepts canonical. Rejected: adds process complexity with zero security benefit over
+option (a).
+
+**(c) Reconfigure Claude Code:** Real Claude Code is configured (env var or settings)
+to send `X-Monocle-Authorization`. Not feasible — BC-HOOK-016 confirms the header name
+is hardcoded in Go source; no user-facing override exists.
+
+**(d) Multi-harness generic header pattern:** Daemon accepts `X-Harness-{NAME}-Authorization`
+where NAME is derived from session_id or lock file `app` field. Out-of-scope for Phase 1;
+each harness brings unknown header conventions; premature generalization.
+
+## Source / Origin
+
+- **Behavioral contract:** `BC-2.01.009` (daemon auth header semantics) — this ADR extends its postconditions to cover dual-accept.
+- **Deep ingest evidence:** `semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md` BC-HOOK-016 — confirms `X-Claude-Code-Ide-Authorization` is hardcoded at `hooks.go:31`; no user-facing override.
+- **Architecture section:** `SS-daemon-lifecycle.md` lines 141-172 (router design) and lines 147-149 (IDE token description) — under-specified; this ADR resolves the ambiguity.
+- **Originating context:** T-128m R105 closure chain Round 3 (2026-05-17); interop gap first surfaced by BA in T-128f scan; frontmatter `traces_to:` cross-reference: "T-128m dispatch; BC-HOOK-016 deep ingest; CAP-001 v1.2 §P2; F-R105-6 + GAP-R44-2 BA closure".
+
+## §Trace v1.0.1
+
+**T-128q R4-005 LOW heading hierarchy normalization** (2026-05-17T20:30:00Z):
+- SE-17f BEFORE: `### Rationale` at H3 under `## Decision`; `### Options Considered` at H3 under `## Context`; `## Source / Origin` absent.
+- SE-17f AFTER: `## Rationale` promoted to top-level H2 (template canonical position between Decision and Consequences); `## Alternatives Considered` promoted to top-level H2 (template canonical name and position after Consequences); `## Source / Origin` added as new top-level H2 with provenance citation.
+- SE-17c-d body-scope grep: all substantive content from the original `### Rationale`, `### Options Considered`, and inner subsections preserved verbatim — no text deleted, restructure only.
+- SE-16d PASS: 2026-05-17T20:30:00Z > prior chain high-water 2026-05-17T19:00:00Z.
+
+---
 
 **T-128m architectural decision — F-R105 closure chain Round 3** (2026-05-17T19:00:00Z):
 - NORMATIVE: ADR-0005 authored. Decision: dual-accept (option a).
