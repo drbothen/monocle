@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.1"
+version: "1.0.2"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T19:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -84,16 +84,17 @@ to attempt mutations on the `format_version: u32` value `1` and on the
 
 - `RING_FORMAT_VERSION` const equals `1` (loaded from `monocle-runtime::ring`).
 - `HookEventRecord` carries `#[non_exhaustive]` (otherwise the constructor
-  contract is moot — see VP-TYPES-001 / SS-02 VPs in Dispatch 5b for the
+  contract is moot — see VP-013 (renumbered from VP-TYPES-001 per
+  VP-INDEX.md §Renumbering Appendix) / SS-02 VPs in Dispatch 5b for the
   orthogonal exhaustive-enum property).
 - `serde 1` (with `derive` feature, declared as
   `serde = { version = "1", features = ["derive"] }`) is the project pin
-  (per SS-deps-pin-manifest.md v1.1.15). The `derive` feature is
+  (per SS-deps-pin-manifest.md v1.1.17). The `derive` feature is
   mandatory: `HookEventRecord` carries `#[derive(serde::Serialize,
   serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain, and without
   the `derive` feature the proc-macros `Serialize`/`Deserialize` do not
   compile.
-- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.15)
+- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.17)
   for emission of the JSONL ring record via
   `serde_json::to_string(&record)`. `serde_json` depends on `serde` but
   the two pins are tracked independently because `serde_json` does not
@@ -109,7 +110,7 @@ to attempt mutations on the `format_version: u32` value `1` and on the
   the BTreeMap-backed `serde_json::Map`), which would silently
   invalidate the counter-example because `to_value().to_string()`
   would then preserve declaration order rather than alphabetize the
-  keys. Per SS-deps-pin-manifest.md v1.1.15 `serde_json 1` pin is
+  keys. Per SS-deps-pin-manifest.md v1.1.17 `serde_json 1` pin is
   default-features (no explicit `features = [...]` override).
 
 ## Post-conditions
@@ -270,7 +271,7 @@ fn verify_bc_2_01_007() {
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.25 §Drain (commit
   18fe265).
 - PRD: `.factory/specs/prd.md` v1.26 §BC-2.01.007 (Dispatch 4 commit 1030c65).
-- Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.15.
+- Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 
 ---
 
@@ -326,3 +327,51 @@ UTC ISO-8601 `Z` form: `2026-05-17T18:00:00Z` >= chain high-water `2026-05-17T17
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Chose **Option 3 (hybrid)** — template-aligned form with documented project-specific extensions — over Option 1 (template-strict rename + reorganize, which would risk content drift on the Phase-1-emergent probe enumeration discipline) and Option 2 (extension-only documentation without template heading adoption, which would leave the audit RES-03 WARN unresolved). Option 3 satisfies the L4 template heading requirements (all 6 required headings present) AND preserves the Phase-1 verification discipline (probe matrices, mechanism narratives, harness locations) that the adversarial review chain hardened.
+
+---
+
+## §Trace v1.0.2 — F-R105-7 MED + F-R105-11 MED: Manifest Pin Refresh v1.1.15 → v1.1.17 + Sister-VP Reference Reconciliation `VP-TYPES-001` → `VP-013`
+
+**Bump:** v1.0.1 → v1.0.2.
+**Predecessor pin:** v1.0.1 (commit 4090d0b — RES-03 VP heading reconciliation).
+**Scope of v1.0.2 (NORMATIVE — two co-located fixes; NO content cascade):**
+
+### Change set 1 — Manifest Pin Refresh (F-R105-7 MED) (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** body cited `SS-deps-pin-manifest.md v1.1.15` at 4 locations (Pre-conditions §serde pin, §serde_json pin, Mechanism note on serde_json pin, References §Dependency pins; pre-edit grep).
+  - **After:** body cites `SS-deps-pin-manifest.md v1.1.17` at the same 4 locations (post-edit grep).
+- **SE-17c-d body-scope grep:** pre-§Trace-block body cites of `1.1.15` → 0 remaining; cites of `1.1.17` → 4.
+
+### Change set 2 — Sister-VP Reference Reconciliation (F-R105-11 MED) (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** Pre-conditions §HookEventRecord non-exhaustive note cited sister VP as `VP-TYPES-001` (pre-renumbering form; pre-edit grep at line 87).
+  - **After:** Pre-conditions §HookEventRecord non-exhaustive note cites sister VP as `VP-013` (canonical per VP-INDEX.md §Renumbering Appendix), with parenthetical noting the old-ID origin for traceability into pre-Dispatch-5b artifacts.
+- **SE-17c-d body-scope grep:** pre-§Trace-block body cites of `VP-TYPES-001` → 0 remaining (the only remaining `VP-TYPES-001` token is inside the §Trace block itself as historical before-evidence).
+
+### Rationale
+
+**Change set 1:** Architect confirmed (T-128d, commit 0d0c64b) the manifest delta v1.1.15 → v1.1.17 is **STRUCTURAL ONLY** — version-number swap with no content cascade. Mechanical citation refresh authorized.
+
+**Change set 2:** VP-INDEX.md v1.1 §Renumbering Appendix (Dispatch 5b) canonicalized the VP-TYPES-001 → VP-013 renumbering. The pre-existing VP-007 body sister-VP reference predated the renumbering and was stale. Reconciliation aligns VP-007 with the VP-INDEX canonical ID per VP-INDEX-as-source-of-truth discipline.
+
+### Authoritative cross-references
+
+- **Manifest:** `architecture/SS-deps-pin-manifest.md` v1.1.17 (commit 0d0c64b — T-128d §Trace reconciliation).
+- **VP-INDEX:** `verification-properties/VP-INDEX.md` v1.1 §Renumbering Appendix row `VP-TYPES-001 | VP-013 | vp-013-non-exhaustive-enum-policy.md | 5b | sharded`.
+- **R105 closure chain:** F-R105-7 MED (manifest pin refresh sweep across 14 pin-citing VP files) + F-R105-11 MED (VP-007 sister-VP reference reconciliation).
+- **Concurrent dispatch:** T-128j FV portion — VP-014 title sync to VP-INDEX canonical (separate VP file).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T19:30:00Z` >= chain high-water `2026-05-17T19:00:00Z` (nfr-catalog.md). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: pin refresh `v1.1.15` → `v1.1.17`; sister-VP reference reconciliation `VP-TYPES-001` → `VP-013`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Co-located both fixes in this dispatch rather than splitting across two commits. Both fixes are in-scope-of-T-128g+T-128j (FV-scope VP file edits), both consume the same cross-reference verification (VP-INDEX canonical), and both follow the same SE-17f before/after evidence + SE-17c-d body-scope grep discipline. No tech-debt entries created.

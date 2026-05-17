@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.1"
+version: "1.0.2"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T19:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -95,10 +95,10 @@ paths (a)-(d) deterministically.
   `directories::ProjectDirs` API (via dependency injection or
   `temp-env`-controlled env vars) to exercise paths (a)-(d)
   deterministically.
-- `directories 6` (per SS-deps-pin-manifest.md v1.1.15) is the project pin
+- `directories 6` (per SS-deps-pin-manifest.md v1.1.17) is the project pin
   for `ProjectDirs::runtime_dir()` and `ProjectDirs::data_local_dir()`.
-- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.15).
-- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.15) for
+- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.17).
+- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.17) for
   the pid-liveness probe; the test asserts
   `nix::sys::signal::kill(Pid::from_raw(pid), None)` per BC-2.01.005
   postcondition 3.
@@ -329,7 +329,7 @@ fn verify_bc_2_01_005() {
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.005.md`.
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.25 (commit 18fe265).
 - PRD: `.factory/specs/prd.md` v1.26 §BC-2.01.005 (Dispatch 4 commit 1030c65).
-- Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.15.
+- Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-004 (drain completion → lock removal; exit-code
   taxonomy with `1` for `RuntimeDirUnresolvable`), VP-008 (defense-in-depth
   with auth-token), VP-010 (`contract_version` JSON-content joint
@@ -389,3 +389,41 @@ UTC ISO-8601 `Z` form: `2026-05-17T18:00:00Z` >= chain high-water `2026-05-17T17
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Chose **Option 3 (hybrid)** — template-aligned form with documented project-specific extensions — over Option 1 (template-strict rename + reorganize, which would risk content drift on the Phase-1-emergent probe enumeration discipline) and Option 2 (extension-only documentation without template heading adoption, which would leave the audit RES-03 WARN unresolved). Option 3 satisfies the L4 template heading requirements (all 6 required headings present) AND preserves the Phase-1 verification discipline (probe matrices, mechanism narratives, harness locations) that the adversarial review chain hardened.
+
+---
+
+## §Trace v1.0.2 — F-R105-7 MED: Manifest Pin Refresh v1.1.15 → v1.1.17
+
+**Bump:** v1.0.1 → v1.0.2.
+**Predecessor pin:** v1.0.1 (commit 4090d0b — RES-03 VP heading reconciliation).
+**Scope of v1.0.2 (NORMATIVE — stale-pin refresh; NO content cascade):**
+
+### Change set (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** body cited `SS-deps-pin-manifest.md v1.1.15` at 4 locations (pre-edit grep).
+  - **After:** body cites `SS-deps-pin-manifest.md v1.1.17` at the same 4 locations (post-edit grep).
+- **SE-17c-d body-scope grep:** pre-§Trace-block body cites of `1.1.15` → 0 remaining; cites of `1.1.17` → 4 (Pre-conditions §directories pin, §tempfile pin, §nix pin, References §Dependency pins).
+
+### Rationale
+
+Architect confirmed (T-128d, commit 0d0c64b) the manifest delta v1.1.15 → v1.1.17 is **STRUCTURAL ONLY** — version-number swap with no content cascade. Therefore the only required downstream action across VP files is the pin-citation refresh; no substantive change to the VP property statement, proof method, mechanism, pre-conditions, post-conditions, counter-examples, probe matrix, or harness location.
+
+### Authoritative cross-references
+
+- **Manifest:** `architecture/SS-deps-pin-manifest.md` v1.1.17 (commit 0d0c64b — T-128d §Trace reconciliation).
+- **R105 closure chain:** F-R105-7 MED — manifest pin refresh sweep across 14 pin-citing VP files (the other 8 VP files do not cite the manifest pin and are unchanged in this T-128g dispatch).
+- **Concurrent dispatch:** T-128j FV portion — VP-014 title sync to VP-INDEX canonical + VP-007 sister-VP reference reconciliation `VP-TYPES-001` → `VP-013`.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T19:30:00Z` >= chain high-water `2026-05-17T19:00:00Z` (nfr-catalog.md). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: pin refresh `v1.1.15` → `v1.1.17`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Refreshed the pin citation in-scope of T-128g rather than deferring or routing through a parallel dispatch. The architect's structural-only delta classification (T-128d) authorized this mechanical citation refresh without requiring per-VP content review. No tech-debt entries created.

@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.1"
+version: "1.0.2"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T19:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -30,7 +30,7 @@ removed: null
 removal_reason: null
 ---
 
-# VP-014: `FactoryAdapter` Trait Signature Stable; No Sealed Bound
+# VP-014: `FactoryAdapter` Trait Signature Stable
 
 > **One-per-file:** Each verification property lives in its own file.
 > Renumbered from VP-FACTORY-001 (PG-5 historical) per template-compliance Dispatch 5b.
@@ -266,3 +266,44 @@ UTC ISO-8601 `Z` form: `2026-05-17T18:00:00Z` >= chain high-water `2026-05-17T17
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Chose **Option 3 (hybrid)** — template-aligned form with documented project-specific extensions — over Option 1 (template-strict rename + reorganize, which would risk content drift on the Phase-1-emergent probe enumeration discipline) and Option 2 (extension-only documentation without template heading adoption, which would leave the audit RES-03 WARN unresolved). Option 3 satisfies the L4 template heading requirements (all 6 required headings present) AND preserves the Phase-1 verification discipline (probe matrices, mechanism narratives, harness locations) that the adversarial review chain hardened.
+
+---
+
+## §Trace v1.0.2 — F-R105-10 MED: VP-014 Title Sync to VP-INDEX Canonical
+
+**Bump:** v1.0.1 → v1.0.2.
+**Predecessor pin:** v1.0.1 (commit 4090d0b — RES-03 VP heading reconciliation).
+**Scope of v1.0.2 (NORMATIVE — title sync to VP-INDEX canonical; NO substantive content change):**
+
+### Change set (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** body H1 heading at line 33: `# VP-014: \`FactoryAdapter\` Trait Signature Stable; No Sealed Bound` (pre-edit grep). VP-INDEX.md v1.1 row reads: `VP-014 | \`FactoryAdapter\` Trait Signature Stable`.
+  - **After:** body H1 heading at line 33: `# VP-014: \`FactoryAdapter\` Trait Signature Stable` — exact match with VP-INDEX canonical title (post-edit grep).
+- **SE-17c-d body-scope grep:** `grep -n "# VP-014:" vp-014-factory-adapter-trait.md` post-edit returns the single H1 with exact-match title.
+
+### Rationale
+
+VP-INDEX.md v1.1 §SS-02 table (Dispatch 5b, authored 2026-05-17T13:30:00Z) is the canonical source of truth for all VP titles per its frontmatter `> Source of truth for all verification property IDs, titles, source BCs, proof methods, and file paths.` and per the closure chain dispatch directive `default to VP-INDEX as canonical (it was authored in D-122 D5 dispatch with explicit VP renumbering)`.
+
+The pre-edit body H1 had an extended title (`; No Sealed Bound` suffix) that diverged from the VP-INDEX canonical short form. The divergence was a pre-Dispatch-5b residual; the substantive content (Property Statement invariant 2 — `private::Sealed` absence assertion) is preserved in the body Property Statement, Counter-examples §1, and BC-2.02.004 cross-reference (`FactoryAdapter Trait Surface (Open, No Sealed Bound)`). The H1 title is the discoverability label; the substantive "no sealed bound" content remains fully traceable through the body sections and the BC linkage.
+
+### Authoritative cross-references
+
+- **VP-INDEX:** `verification-properties/VP-INDEX.md` v1.1 §SS-02 row `VP-014 | \`FactoryAdapter\` Trait Signature Stable | BC-2.02.004 | ast-audit | vp-014-factory-adapter-trait.md | VP-FACTORY-001`.
+- **BC:** `behavioral-contracts/ss-02/BC-2.02.004.md` — `FactoryAdapter Trait Surface (Open, No Sealed Bound)` (BC carries the full "no sealed bound" semantics).
+- **R105 closure chain:** F-R105-10 MED — VP-014 title sync.
+- **Concurrent dispatch:** T-128g FV portion — F-R105-7 MED manifest pin refresh across 14 pin-citing VP files (this VP is NOT in the pin-citing set; T-128g leaves VP-014 untouched aside from this T-128j title sync).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T19:30:00Z` >= chain high-water `2026-05-17T19:00:00Z` (nfr-catalog.md). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: H1 title sync to VP-INDEX canonical; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection (explaining substantive-content preservation through body sections + BC linkage); cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Synced the H1 to VP-INDEX canonical in-scope of T-128j rather than deferring or routing through a parallel dispatch. The VP-INDEX-as-source-of-truth discipline (established in Dispatch 5b) authorized this mechanical title sync without requiring per-VP content review. The substantive "no sealed bound" semantics remain fully preserved in the body Property Statement, Counter-examples, and BC linkage; no tech-debt entries created.
