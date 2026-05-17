@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "cdb93fa"
@@ -27,11 +27,11 @@ traces_to: prd.md
 | NFR-004 | Security | Auth token entropy source | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage; source-grep per VP-008 §Pre-conditions (`rand::rngs::OsRng is the entropy source (not thread_rng)`) and Mechanical property item 1 (lock file authToken matches `^[0-9a-f]{64}$`) | P0 | N/A |
 | NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response per VP-003 §Post-condition 1 (`POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}`) | P0 | N/A |
 | NFR-006 | Throughput | Bounded event bus with visible drop counter | No unbounded channel; drop counter renders in status bar; 1000 events/sec sustained without queue overflow | Integration test at 1000 events/sec asserting drop counter assertion | P0 | N/A |
-| NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | CI matrix check; `rust-toolchain.toml` | P0 | N/A |
-| NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix | P0 | N/A |
+| NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | `rust-toolchain.toml` pin verified by `cargo check`; CI fails if toolchain pin is absent or incorrect; Phase 1 devops deliverable per product-brief.md line 162–163 | P0 | N/A |
+| NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix with `[darwin, linux] × [amd64, arm64]` matrix; Phase 1 devops deliverable per product-brief.md line 162–163 | P0 | N/A |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` per VP-005 Post-condition 1 (lock-file `0o600` mode assertion) | P0 | N/A |
 | NFR-010 | Correctness | Constant-time auth comparison on ALL auth paths (canonical + alias) | `constant_time_eq::constant_time_eq` used for token comparison on both canonical (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7 | Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) AND VP-009 §"alias-path constant-time comparison" probe (alias path verifies constant_time_eq is also used on `X-Claude-Code-Ide-Authorization` token; FV 5D expanding VP-009 in this same burst) | P0 | N/A |
-| NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md | P1 | N/A |
+| NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md §"DTU Fidelity Measurement Procedure"; Phase 1 requirement per product-brief.md §Success Criteria (DTU row, line 246) | P1 | N/A |
 | NFR-012 | Security | Runtime directory permissions | `0o700` (owner-only access) on newly-created runtime_dir; defense-in-depth with NFR-009 lock-file `0o600` | Integration test: `stat` runtime_dir after daemon start; assert mode is `0700` per VP-005 Post-condition 9 / probe 5.e | P0 | N/A |
 
 ## NFR Categories
@@ -71,15 +71,15 @@ traces_to: prd.md
 |--------|-------------|
 | NFR-001 | VP-001 (hook latency probe) |
 | NFR-002 | VP-002 (notification latency probe) |
-| NFR-003 | Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI plane is explicitly out of Phase 1 scope per product-brief.md §Out of Scope: "Does NOT include PM/Worker multi-agent orchestration" and §Phase 1 TUI scope boundary); human-approved deferral per product-brief.md §Out of Scope. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
+| NFR-003 | Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI permission overlay render is a Phase 3 — Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap); Phase 1 ships the daemon and hook ingestion layer but NOT the TUI planes). No Phase 1 VP covers TUI render latency. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
 | NFR-004 | VP-008 §Pre-conditions (OsRng source-grep) + Mechanical property 1 (token hex format) |
 | NFR-005 | VP-003 §Post-condition 1 (body size limit integration test) |
-| NFR-006 | Phase 3 verification — NFR validates bounded-channel throughput (1000 events/sec sustained) which requires integration-level load testing not achievable with Phase 1 unit/integration scope. VP-006 is Crash Recovery Checkpoint and does NOT cover throughput. No Phase 1 VP covers this probe. Human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; sustained throughput load tests are Phase 3 integration deliverables). VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
-| NFR-007 | Phase 6 verification — NFR validates a Phase 6-scoped gate (MSRV CI matrix check is a formal hardening deliverable per pipeline Phase 6 definition); human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; CI matrix gates are Phase 6 deliverables). Validation is `rust-toolchain.toml` pin + GitHub Actions matrix config; no VP file architecturally appropriate for a CI config artifact. VP scope confirmed at Phase 6 entry per cycle-6 story decomposition. |
-| NFR-008 | Phase 6 verification — NFR validates a Phase 6-scoped gate (platform matrix check is a formal hardening deliverable per pipeline Phase 6 definition); human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; platform matrix gates are Phase 6 deliverables). Validation is GitHub Actions `[darwin, linux] × [amd64, arm64]` matrix config; no VP file architecturally appropriate for a CI config artifact. VP scope confirmed at Phase 6 entry per cycle-6 story decomposition. |
+| NFR-006 | Phase 3 integration test scope — NFR validates bounded-channel throughput at 1000 events/sec sustained, which requires integration-level load testing infrastructure not available in Phase 1. VP-006 is Crash Recovery Checkpoint and does NOT cover throughput. No Phase 1 VP covers this probe. The bounded-channel and drop-counter DESIGN is a Phase 1 deliverable (per product-brief.md §Success Criteria "Drop counter active" row); the sustained load VALIDATION at 1000 events/sec is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
+| NFR-007 | Phase 1 devops deliverable — `rust-toolchain.toml` pin + `cargo check` in CI. Validation is CI-config artifact, not a VP file. devops-engineer creates the `rust-toolchain.toml` and GitHub Actions workflow in Phase 1 story decomposition. No VP file is architecturally appropriate for a CI toolchain config artifact. VP scope confirmed by devops-engineer at Phase 1 story delivery (per product-brief.md line 162–163: MSRV is a Phase 1 deliverable). |
+| NFR-008 | Phase 1 devops deliverable — GitHub Actions CI matrix `[darwin, linux] × [amd64, arm64]`. Validation is CI-config artifact, not a VP file. devops-engineer creates the matrix config in Phase 1 story decomposition. No VP file is architecturally appropriate for a CI matrix config artifact. VP scope confirmed by devops-engineer at Phase 1 story delivery (per product-brief.md line 162–163: CI matrix is a Phase 1 deliverable). |
 | NFR-009 | VP-005 Post-condition 1 (lock-file 0o600 mode assertion) |
 | NFR-010 | VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009) |
-| NFR-011 | Phase 4 verification — NFR validates a Phase 4-scoped behavior (DTU clone fidelity ≥0.95 against fixture corpus is explicitly a Phase 4 holdout-evaluator deliverable per dtu-assessment.md §Evaluation Criteria); human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; DTU clone fidelity measurement is a Phase 4 deliverable). VP and test will be authored at Phase 4 entry per cycle-4 story decomposition when DTU clone is operational. |
+| NFR-011 | Phase 1 requirement — DTU clone `dtu-claude-code-hooks-v1` is a Phase 1 deliverable per product-brief.md §Success Criteria (DTU row, line 246) and dtu-assessment.md. DTU fidelity measurement procedure is defined in dtu-assessment.md §"DTU Fidelity Measurement Procedure". The DTU clone must exist and score ≥0.95 against fixture corpus as a Phase 1 gate. Holdout-evaluator verifies fidelity during Phase 4 evaluation; however, the clone itself and CI integration are Phase 1 deliverables per dtu-assessment.md §"Phase 1 Clone Build Effort". VP to be authored by FV at Phase 1 story decomposition when DTU clone stories are scheduled. |
 | NFR-012 | VP-005 Post-condition 9 / probe 5.e (runtime_dir 0o700 mode assertion) |
 
 ---
@@ -264,3 +264,50 @@ VP Probe Citations NFR-010:
 **Note for FV (5D):** VP-009 must include an alias-path constant-time comparison probe to fulfill this NFR-010 citation. The probe should source-grep `monocle-runtime/src/auth.rs` for the alias-path comparison branch and assert `constant_time_eq` is used there as well.
 
 **Scope:** PO-only. No changes to VP-009, VP-008, VP-INDEX.md, or any BC file. NFR-010 update only.
+
+---
+
+### F-R108-3 PO closure — 2026-05-18T01:00:00Z
+
+**Finding:** F-R108-3 CRITICAL — NFR-003/006/007/008/011 had fabricated or incorrect brief section anchors. The citations to `product-brief.md §Out of Scope` did not correspond to content that actually exists in that section.
+
+**Pre-adjudicated decisions applied:**
+
+**NFR-003 (TUI overlay ≤100ms):** Phase 3 deferral is legitimate — TUI permission overlay is a Phase 3 Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap). However, the prior VP Probe Citations row falsely cited `§Out of Scope: "Does NOT include PM/Worker multi-agent orchestration"` — that Out of Scope item is about agent orchestration, not TUI planes. Corrected to cite the actual Phase 3 roadmap section.
+
+**NFR-006 (throughput 1000 events/sec):** The bounded-channel DESIGN is a Phase 1 deliverable (product-brief.md §Success Criteria "Drop counter active" row). The sustained load VALIDATION test is appropriately a Phase 3 integration test. Prior anchor `§Out of Scope` was wrong — the brief §Out of Scope does not cover throughput load tests. Corrected to distinguish design (Phase 1) from validation test (Phase 3 integration).
+
+**NFR-007 (MSRV Rust 1.86):** RESCOPED to Phase 1. Product-brief.md line 162–163 ("macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub Actions; MSRV Rust 1.86") places CI/MSRV squarely in Phase 1. The previous Phase 6 deferral contradicted the brief. The `rust-toolchain.toml` pin is a Phase 1 devops deliverable. No VP file needed — validation is via CI toolchain config.
+
+**NFR-008 (platform targets darwin/linux × amd64/arm64):** RESCOPED to Phase 1. Same rationale as NFR-007 — brief line 162 is unambiguous. The GitHub Actions CI matrix is a Phase 1 devops deliverable. No VP file needed — validation is via CI matrix config.
+
+**NFR-011 (DTU fidelity ≥0.95):** RESCOPED to Phase 1. Product-brief.md §Success Criteria "DTU clone exists and validates" row (line 246) explicitly requires the DTU clone in Phase 1, contradicting the prior Phase 4 deferral. The DTU clone build and CI integration are Phase 1 deliverables per dtu-assessment.md §"Phase 1 Clone Build Effort". Holdout-evaluator conducts the formal evaluation in Phase 4, but the artifact (clone + fidelity ≥0.95) must exist by end of Phase 1.
+
+**SE-17c — Before (VP Probe Citations rows, summary form):**
+
+```
+NFR-003: Phase 3 verification — ...human-approved deferral per product-brief.md §Out of Scope: "Does NOT include PM/Worker multi-agent orchestration"...
+NFR-006: ...human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; sustained throughput load tests are Phase 3 integration deliverables)...
+NFR-007: Phase 6 verification — ...human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; CI matrix gates are Phase 6 deliverables)...
+NFR-008: Phase 6 verification — ...human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; platform matrix gates are Phase 6 deliverables)...
+NFR-011: Phase 4 verification — ...human-approved deferral per product-brief.md §Out of Scope (Phase 1 scope = hook receiver hardening + forward-compatibility contracts; DTU clone fidelity measurement is a Phase 4 deliverable)...
+```
+
+**SE-17d — After (VP Probe Citations rows, summary form):**
+
+```
+NFR-003: Phase 3 verification — TUI permission overlay is Phase 3 Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap). No Phase 1 VP for TUI render latency.
+NFR-006: Phase 3 integration test scope — bounded-channel DESIGN is Phase 1; sustained 1000 events/sec VALIDATION is Phase 3 integration test per product-brief.md §Success Criteria "Drop counter active" row.
+NFR-007: Phase 1 devops deliverable — rust-toolchain.toml + CI per product-brief.md line 162–163. No VP file needed.
+NFR-008: Phase 1 devops deliverable — GitHub Actions CI matrix per product-brief.md line 162–163. No VP file needed.
+NFR-011: Phase 1 requirement — DTU clone Phase 1 deliverable per product-brief.md §Success Criteria DTU row (line 246) and dtu-assessment.md. Holdout-evaluator verifies in Phase 4.
+```
+
+**NFR Registry rows updated:**
+- NFR-007 Validation Method: updated from "CI matrix check; rust-toolchain.toml" to cite Phase 1 devops deliverable + brief anchor
+- NFR-008 Validation Method: updated from "GitHub Actions CI matrix" to cite Phase 1 devops deliverable + brief anchor
+- NFR-011 Validation Method: added brief §Success Criteria line 246 anchor
+
+**Changes made:** VP Probe Citations rows for NFR-003/006/007/008/011 corrected; NFR Registry Validation Method column updated for NFR-007/008/011; version bumped v1.3 → v1.4; timestamp refreshed.
+
+**Scope:** PO-only. No changes to VP files, BC files, ADR files, or any architecture artifact.

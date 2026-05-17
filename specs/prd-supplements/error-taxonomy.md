@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "cdb93fa"
@@ -37,7 +37,7 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 |------|----------|----------|-------------|---------------|-----------|
 | E-AUTH-001 | Authentication | Broken | HTTP 401 | `{"error":"missing_auth_token"}` | BC-2.01.009 (both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` absent; dual-absence per ADR-0005; old: BC-AUTH-002) |
 | E-AUTH-002 | Authentication | Broken | HTTP 401 | `{"error":"invalid_auth_token"}` | BC-2.01.009 (any value-present failure on canonical or alias path; wrong format, wrong secret, or empty value; old: BC-AUTH-002) |
-| E-AUTH-003 | Authentication | Cosmetic | WARN log | `WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization` | BC-2.01.009 INV-6 (alias path entered — emitted on every alias-path request regardless of auth success or failure; per ADR-0005 dual-accept deprecation signaling) |
+| E-AUTH-003 | Authentication | Cosmetic | WARN log | `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization` | BC-2.01.009 INV-6 (alias path entered — emitted on every alias-path request regardless of auth success or failure; per ADR-0005 dual-accept deprecation signaling) |
 | E-DAEMON-001 | Body Size | Broken | HTTP 413 | `{"error":"payload_too_large","limit_bytes":262144}` | BC-2.01.003 (old: BC-DAEMON-003) |
 | E-DAEMON-002 | Shutdown | Degraded | HTTP 503 | `{"error":"daemon_shutting_down"}` with `Retry-After: 10` header | BC-2.01.004 §Shutdown Signal Handling (old: BC-DAEMON-004) |
 | E-DAEMON-003 | Liveness | Broken | HTTP 503 | `{"status":"shutting_down"}` | BC-2.01.001 (healthz during shutdown; old: BC-DAEMON-001) |
@@ -166,3 +166,22 @@ Error-to-Module Mapping:
 **PRD §5 prose impact:** PRD §5 states "14 error codes across 7 subsystem abbreviations". With E-AUTH-003, the count is 15. PRD v1.26.3 → v1.26.4 bump in same burst updates this count.
 
 **Scope:** PO-only. No changes to BC-2.01.009, ADR-0005, or any other artifact.
+
+---
+
+### GAP-R47-1 PO closure — 2026-05-18T01:00:00Z
+
+**Finding:** GAP-R47-1 HIGH (PO part) — E-AUTH-003 Message Format used String B (`"WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`) instead of canonical String A from BC-2.01.009 INV-6. Per CLAUDE.md hierarchy, BC-2.01.009 is the canonical source for behavioral contracts; the error taxonomy must match the BC exactly.
+
+**Canonical source:** BC-2.01.009 INV-6 line: `"WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`.
+
+**SE-17f — Before/After (E-AUTH-003 Message Format):**
+
+**Before (String B):** `WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization`
+**After (String A, canonical per BC-2.01.009 INV-6):** `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization`
+
+**Note:** The §SE-17d historical record in the prior §Trace entry (F-R106-16) also shows String B — that was the state as of Round 6 (the divergence existed then). The historical record is preserved as-is; the active E-AUTH-003 table row is corrected to String A.
+
+**Changes made:** E-AUTH-003 Message Format column: String B → String A (canonical per BC-2.01.009 INV-6); version bumped v1.2 → v1.3; timestamp refreshed.
+
+**Scope:** PO-only. No changes to BC-2.01.009, ADR-0005, VP-009, or any architecture artifact. FV 7D handles VP-009 reconciliation in parallel (per task scope).

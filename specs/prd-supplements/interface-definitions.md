@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-interface-definitions
 level: L3
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "cdb93fa"
@@ -76,7 +76,7 @@ Host: 127.0.0.1:<port>
 
 **Contract:** BC-2.01.002
 **Router:** Authenticated router (subject to 256 KiB `DefaultBodyLimit`)
-**Auth:** `X-Monocle-Authorization: monocle-v1:<64-hex-token>`
+**Auth:** Canonical `X-Monocle-Authorization: monocle-v1:<64-hex-token>` **or** alias `X-Claude-Code-Ide-Authorization: <64-hex>` (ADR-0005 dual-accept applies; WARN log emitted on alias path)
 
 **Request:**
 ```
@@ -143,7 +143,7 @@ X-Monocle-Authorization: monocle-v1:<64-hex-token>
 
 **Contract:** BC-2.01.001 through BC-2.01.010 (hook ingestion surface)
 **Router:** Authenticated router (subject to 256 KiB `DefaultBodyLimit`)
-**Auth:** `X-Monocle-Authorization: monocle-v1:<64-hex-token>`
+**Auth:** Canonical `X-Monocle-Authorization: monocle-v1:<64-hex-token>` **or** alias `X-Claude-Code-Ide-Authorization: <64-hex>` (ADR-0005 dual-accept applies; WARN log emitted on alias path)
 
 The 5 hook endpoints match Claude Code's canonical hook protocol (JC-2 gene-source parity):
 
@@ -233,7 +233,7 @@ Token is written to lock file on daemon start. Token rotates on every daemon res
 **Value format:** `<64-hex-lowercase>` (raw hex; **no** `monocle-v1:` prefix)
 **Accepted when:** canonical `X-Monocle-Authorization` is absent
 **Priority:** canonical header takes priority when both are present; alias is ignored in that case
-**WARN log:** whenever the alias path is entered (header present, whether the secret matches or not), the daemon emits a `tracing::warn!` deprecation log: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`
+**WARN log:** whenever the alias path is entered (header present, whether the secret matches or not), the daemon emits a `tracing::warn!` deprecation log: `"hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`
 **Constant-time comparison:** alias-path secret comparison uses `constant_time_eq` identically to the canonical path (NFR-010, INV-7 of BC-2.01.009)
 **Phase-out:** alias is a Phase 1 compatibility shim per ADR-0005; removal target is Phase 2 or on operator opt-in configuration
 
@@ -262,14 +262,14 @@ No WARN log emitted (canonical path, no alias deprecation).
 HTTP/1.1 401 Unauthorized
 {"error":"invalid_auth_token"}
 ```
-WARN log emitted: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`.
+WARN log emitted: `"hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`.
 
 **Alias header present, correct secret (canonical absent):**
 ```json
 HTTP/1.1 200 OK
 <endpoint response body>
 ```
-WARN log emitted: `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`.
+WARN log emitted: `"hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`.
 
 ---
 
@@ -565,3 +565,36 @@ No request/response schema, no field constraints, no edge cases.
 - Version bumped: 1.2 → 1.3; timestamp refreshed; ADR-0005 added to inputs
 
 **Scope:** PO-only. No changes to BC-2.01.004, BC-2.01.008, BC-2.01.009, ADR-0005, or any other artifact.
+
+---
+
+### F-R108-2 + GAP-R47-1 PO closure — 2026-05-18T01:00:00Z
+
+**Findings resolved:**
+- F-R108-2 CRITICAL — `/status` and `/hooks/*` Auth specifications were single-header only. Per ADR-0005 §Decision: "router-level auth middleware for the authenticated router (hook endpoints + /status + /shutdown)" — all three endpoint groups share the same authenticated router middleware. `/shutdown` was corrected in Round 6B; this round extends dual-accept to `/status` and `/hooks/*`.
+- GAP-R47-1 HIGH (PO part) — WARN log string in `§Compatibility Alias Header` and both auth response examples used String B (`"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`) instead of canonical String A from BC-2.01.009 INV-6 (`"hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`). BC-2.01.009 is the canonical source per CLAUDE.md hierarchy.
+
+**SE-17f — F-R108-2 before/after (Auth field, /status):**
+
+**Before:** `**Auth:** \`X-Monocle-Authorization: monocle-v1:<64-hex-token>\``
+**After:** `**Auth:** Canonical \`X-Monocle-Authorization: monocle-v1:<64-hex-token>\` **or** alias \`X-Claude-Code-Ide-Authorization: <64-hex>\` (ADR-0005 dual-accept applies; WARN log emitted on alias path)`
+
+**SE-17f — F-R108-2 before/after (Auth field, /hooks/*):**
+
+**Before:** `**Auth:** \`X-Monocle-Authorization: monocle-v1:<64-hex-token>\``
+**After:** `**Auth:** Canonical \`X-Monocle-Authorization: monocle-v1:<64-hex-token>\` **or** alias \`X-Claude-Code-Ide-Authorization: <64-hex>\` (ADR-0005 dual-accept applies; WARN log emitted on alias path)`
+
+**SE-17f — GAP-R47-1 before/after (WARN log string — 3 occurrences replaced):**
+
+**Before (String B):** `"X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`
+**After (String A, canonical per BC-2.01.009 INV-6):** `"hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`
+
+Occurrences updated: §Compatibility Alias Header WARN log description (line 236); §Alias header present, wrong secret example (line 265); §Alias header present, correct secret example (line 272).
+
+**Changes made:**
+- `/status` endpoint Auth field: single-header → dual-accept per ADR-0005
+- `/hooks/*` endpoint Auth field: single-header → dual-accept per ADR-0005
+- WARN log string: String B → String A (canonical per BC-2.01.009 INV-6) at 3 body locations
+- Version bumped: 1.4 → 1.5; timestamp refreshed to 2026-05-18T01:00:00Z
+
+**Scope:** PO-only. No changes to BC files, VP files, ADR-0005, or ARCH-INDEX.

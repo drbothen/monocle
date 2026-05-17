@@ -1,7 +1,7 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.25"
+version: "1.4.26"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
@@ -78,6 +78,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4.23 | 2026-05-14T07:50:10Z | product-owner (F-R53-cascade-1 SS-daemon-lifecycle citations v1.0.6→v1.0.7; D-042 full-brief sweep clean; PG-4 §-heading-existence audit at expanded 5-pattern scope) | **F-R53-cascade-1 citation refresh (LOW).** `SS-daemon-lifecycle.md` version citations updated v1.0.6 → v1.0.7 at 3 body sites: §Forward-compatibility contracts / JSONL ring sub-bullet (line 177), §Forward-compatibility contracts / Versioned auth token sub-bullet (line 178), and Forward-compatibility Success Criteria table row (line 254). Architect bumped SS-daemon-lifecycle.md to v1.0.7 in R53.1 commit 8baec19 (10 hidden brief §-anchor mis-anchors fixed across architecture files; PG-RECIPE-SCOPE META-META rule codified); the brief lagged because brief edits require product-owner routing per D-041. This is the M-CASCADE-SCOPE pattern. **D-042 full-brief sweep result (R53.2).** 4-pattern sweep (SS-*.md v, dtu-assessment.md v, vision v, ADR v) across full `.factory/specs/product-brief.md`. Pattern 1 (SS-*.md v): 3 stale current-pointers found and fixed (all 3 at SS-daemon-lifecycle.md v1.0.6 → v1.0.7); `SS-engine-module.md v1.1.15` at line 253 confirmed CURRENT; all other SS-* hits are revision-history pinpoints — leave-alone per sweep protocol. Patterns 2/3/4 (dtu-assessment.md v, vision v, ADR v): no version citations found — CLEAN. **PG-4 §-heading-existence audit on brief outbound §-anchors (R53.2, expanded 5-pattern recipe).** All body-level §-anchor references verified against actual headings in cited files. SS-core-types-and-abi.md: §ABI Version Constant ✓, §Enum Extensibility ✓, §FactoryAdapter Trait ✓, §Prost Wire Schemas ✓. SS-daemon-lifecycle.md: §Daemon Lifecycle Protocol ✓ (fixed in R51.2; confirmed still resolves in v1.0.7). Vision: §Vision Statement ✓, §End-to-End Killer Scenario ✓, §Phase Plan ✓, §Process Topology ✓, §Explicit Non-Goals ✓, §Workspace Layout ✓, §Key Abstractions ✓. oq-research.md: §OQ-01 through §OQ-11 all resolve to `## OQ-NN:` headings ✓. market-intelligence.md: §Risk Register ✓. brief-validation-v2.md: §OQ-M1 and §OQ-M3 referenced in Trace column of Open Questions table — these are row-reference identifiers pointing to table rows in `### Market Intel Open Questions Raised` section (not navigable heading anchors); classification unchanged from R51.2 audit (trace-column references, not prose hyperlinks). Total §-anchors checked: 22. Broken navigable anchors: 0. No behavioral content changed. |
 | 1.4.24 | 2026-05-17T20:00:00Z | product-owner (T-128n Part 2 — F-R105 Round 4: ADR-0005 dual-accept propagation) | ADR-0005 dual-accept auth header propagated to 2 body sites: §Phase 1 constraints hook-ingestion bullet (line 116) and §Success Criteria Hook protocol parity row (line 239). D-042 sweep CLEAN. See §Trace v1.4.24 for SE-17f before/after detail. |
 | 1.4.25 | 2026-05-17T22:00:00Z | product-owner (F-R106-8 BC-DTU-001 orphan fix; F-R106-19 revision history readability; F-R106-20 old-form BC ID canonicalization; GAP-R45-3 SS-engine-module pin correction) | **F-R106-8 HIGH**: BC-DTU-001 orphan promise removed from §Success Criteria DTU row; replaced with NFR-011 anchor (DTU clone fidelity ≥0.95 per nfr-catalog.md). **F-R106-19 LOW**: v1.4.24 revision-history row split into terse table row + §Trace v1.4.24 narrative entry. **F-R106-20 LOW**: old-form BC IDs canonicalized — §Success Criteria rows (lines 244 + 246): BC-DAEMON-003 → BC-2.01.003; 16-item old-form list → canonical BC-2.SS.NNN form with old-ID parentheticals per BC-INDEX §Renumbering Map. BC count updated 16 → 22 to match BC-INDEX v1.3 actual total. **GAP-R45-3 MED**: SS-engine-module.md version pin in §Success Criteria Forward-compatibility row corrected v1.1.15 → v1.1.18. D-042 sweep CLEAN (see §Trace v1.4.25). |
+| 1.4.26 | 2026-05-18T01:00:00Z | product-owner (F-R108-8 §Success Criteria Forward-compatibility row stale pins) | **F-R108-8 HIGH**: §Success Criteria Forward-compatibility row (Target cell, line 247) had stale BC-INDEX v1.3, SS-daemon-lifecycle.md v1.0.7, SS-engine-module.md v1.1.18 pins; missing SS-core-types-and-abi.md version. Updated to BC-INDEX v1.6 (PO 7A bump), SS-daemon-lifecycle.md v1.0.31, SS-core-types-and-abi.md v1.2.12, SS-engine-module.md v1.1.19 (Architect 6D commit 98396fe canonical versions). See §Trace v1.4.26. |
 
 ## Who Is It For?
 
@@ -244,7 +245,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-2.01.003 "Body Size Limit (256 KiB, HTTP 413)" (per BC-INDEX §SS-01, renumbered from BC-DAEMON-003). |
 | DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | DTU clone fidelity verified per NFR-011 (≥0.95 against Claude Code real hooks fixture corpus, per nfr-catalog.md). |
-| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.3): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md`, `SS-daemon-lifecycle.md` v1.0.7, and `SS-engine-module.md` v1.1.18. |
+| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.6): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.12, `SS-daemon-lifecycle.md` v1.0.31, and `SS-engine-module.md` v1.1.19. |
 
 ## Phase 2 Exit Criteria
 
@@ -474,3 +475,32 @@ D-042 sweep result: all SS-* current-pointer hits classified; no stale current-p
 - No additional stale current-pointers found. CLEAN.
 
 SE-16d monotonicity PASS: 2026-05-17T22:00:00Z > prior 2026-05-17T20:00:00Z (v1.4.24).
+
+---
+
+## §Trace v1.4.26
+
+**F-R108-8 closure — brief scope only** (2026-05-18T01:00:00Z):
+
+**F-R108-8 HIGH — §Success Criteria Forward-compatibility row stale pins.**
+
+The §Success Criteria "Forward-compatibility contracts" row Target cell (line 247) had 3 stale version pins and was missing 1 version pin:
+- `BC-INDEX v1.3` → stale; current is v1.6 (PO 7A bump in same Round 7 burst)
+- `SS-daemon-lifecycle.md v1.0.7` → stale; the v1.0.7 pin was the historical value at v1.4.23 but Architect 6D bumped to v1.0.31 (commit 98396fe)
+- `SS-engine-module.md v1.1.18` → stale; Architect 6D bumped to v1.1.19 (commit 98396fe)
+- `SS-core-types-and-abi.md` was cited without version → now pinned to v1.2.12 (Architect 6D canonical)
+
+SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell:
+
+**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.3): ...Per \`SS-core-types-and-abi.md\`, \`SS-daemon-lifecycle.md\` v1.0.7, and \`SS-engine-module.md\` v1.1.18.`
+**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.6): ...Per \`SS-core-types-and-abi.md\` v1.2.12, \`SS-daemon-lifecycle.md\` v1.0.31, and \`SS-engine-module.md\` v1.1.19.`
+
+**D-042 full-brief sweep result (v1.4.26).** grep -nE `SS-[a-z-]*\.md v[0-9]` across full `.factory/specs/product-brief.md`. All SS-* current-pointer hits classified:
+- `SS-daemon-lifecycle.md v1.0.31` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
+- `SS-core-types-and-abi.md v1.2.12` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
+- `SS-engine-module.md v1.1.19` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
+- All other SS-* hits in body sub-bullets (§Phase 1 constraints references) are current-pointers per their respective SS file frontmatter as of Round 7 — classified leave-alone until a cascade fix-burst specifically targets them.
+- All revision-history rows contain historical pinpoints only — leave-alone per sweep protocol.
+- No additional stale current-pointers found beyond the three fixed in this burst. CLEAN.
+
+SE-16d monotonicity PASS: 2026-05-18T01:00:00Z > prior 2026-05-17T22:00:00Z (v1.4.25).

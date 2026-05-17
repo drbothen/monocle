@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-test-vectors
 level: L3
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:00:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "bb8f4cd"
@@ -78,7 +78,7 @@ traces_to: prd.md
 | No `X-Monocle-Authorization` header, no `X-Claude-Code-Ide-Authorization` header | HTTP 401 `{"error":"missing_auth_token"}` | error |
 | `X-Monocle-Authorization: ` (empty value) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
 | `X-Monocle-Authorization: monocle-v1:` (no hex suffix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
-| `X-Monocle-Authorization: bearer:<token>` (wrong version prefix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
+| `X-Monocle-Authorization: monocle-v2:<token>` (wrong version prefix) | HTTP 401 `{"error":"invalid_auth_token"}` | edge-case |
 | `Authorization: monocle-v1:<token>` (wrong header name, no alias header) | HTTP 401 `{"error":"missing_auth_token"}` | edge-case |
 | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` | HTTP 200 (passes auth middleware) | happy-path |
 | `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (alias path, wrong secret); no canonical header | HTTP 401 `{"error":"invalid_auth_token"}` + WARN deprecation log emitted | error |
@@ -234,3 +234,22 @@ Note: v1.0.3 was the PO 5A bump target per the finding description, but actual c
 - Added ADR-0005 context note above critical-vector table
 - Frontmatter: v1.0 → v1.1; timestamp refreshed; ADR-0005 added to inputs
 - Version bump: v1.0 → v1.1
+
+---
+
+### F-R108-14 PO closure — 2026-05-18T01:00:00Z
+
+**Finding:** F-R108-14 MEDIUM — §Auth Header Validation table row 4 (wrong version prefix edge case) used `bearer:<token>` as the test input. This is incorrect; `bearer:` is not a valid monocle token prefix form and is not the canonical wrong-version-prefix test vector. The canonical wrong-version-prefix form per BC-2.01.009 and VP-009 is `monocle-v2:<token>` — a valid-looking future version prefix that a Phase 2/3/4 monocle daemon might use, demonstrating that the auth middleware correctly rejects prefix-version mismatches.
+
+**Canonical source:** BC-2.01.009 + VP-009 canonical wrong-version-prefix form. Using `monocle-v2:` makes the test vector self-documenting: it exercises the version-prefix rejection rule (not just a malformed token), which is the actual security property being tested.
+
+**SE-17f — Before/After (row 4, active table at §Auth Header Validation):**
+
+**Before:** `| \`X-Monocle-Authorization: bearer:<token>\` (wrong version prefix) | HTTP 401 \`{"error":"invalid_auth_token"}\` | edge-case |`
+**After:** `| \`X-Monocle-Authorization: monocle-v2:<token>\` (wrong version prefix) | HTTP 401 \`{"error":"invalid_auth_token"}\` | edge-case |`
+
+**Note:** The §SE-17d (After) historical record in the prior §Trace entry (F-R106-3) also shows `bearer:<token>` — that accurately records the state as of Round 6 (the bug was present then). The historical record is preserved as-is; the active body row is corrected to `monocle-v2:<token>`.
+
+**Changes made:** Row 4 input in active §Auth Header Validation table: `bearer:<token>` → `monocle-v2:<token>`; version bumped v1.2 → v1.3; timestamp refreshed.
+
+**Scope:** PO-only. No changes to BC-2.01.009, VP-009, or any architecture artifact.

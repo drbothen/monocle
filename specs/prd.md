@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.5"
+version: "1.26.6"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T22:20:00Z
+timestamp: 2026-05-18T01:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "ccecddf"
-traces_to: "product-brief.md v1.4.25; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.5; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md (pending BA Dispatch 6)"
+traces_to: "product-brief.md v1.4.26; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.31; SS-core-types-and-abi.md v1.2.12; SS-engine-module.md v1.1.19; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.6; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -281,6 +281,40 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 | BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
 | BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
 | NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+
+---
+
+## §Trace v1.26.6 — F-R108-7 + GAP-R47-3 Round 7B (traces_to arch pin refresh + L2-INDEX resolve)
+
+**Bump:** v1.26.5 → v1.26.6.
+**Predecessor pin:** v1.26.5 (F-R107 Round 6B fabricated ADR path + traces_to refresh; commit on factory-artifacts).
+**Timestamp:** 2026-05-18T01:00:00Z
+
+**Scope of v1.26.6 (two-part patch: arch version pin refresh + L2-INDEX placeholder removal):**
+
+**Finding F-R108-7 HIGH — traces_to stale architecture pins (post-Architect-6D):**
+
+Architect 7C (Round 7 parallel) normalizes timestamps on SS-daemon-lifecycle, SS-core-types-and-abi, and SS-engine-module without version bumps; however the prior PRD `traces_to` was stale from pre-Architect-6D commit 98396fe which bumped those files to the versions now confirmed canonical.
+
+SE-17f before/after evidence:
+
+**Before:** `...SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; ...BC-INDEX.md v1.5; ...`
+**After:** `...SS-daemon-lifecycle.md v1.0.31; SS-core-types-and-abi.md v1.2.12; SS-engine-module.md v1.1.19; ...BC-INDEX.md v1.6; ...`
+
+Also refreshed `product-brief.md v1.4.25 → v1.4.26` (brief bumped in this same Round 7B burst per F-R108-8).
+
+**Finding GAP-R47-3 MEDIUM — traces_to "L2-INDEX.md (pending BA Dispatch 6)" placeholder:**
+
+BA Dispatch 6 was completed at commit fcf2b2d producing L2-INDEX v1.0.7. The `(pending BA Dispatch 6)` annotation is stale.
+
+SE-17f before/after evidence:
+
+**Before:** `domain-spec/L2-INDEX.md (pending BA Dispatch 6)`
+**After:** `domain-spec/L2-INDEX.md v1.0.7`
+
+**Changes made:** frontmatter `traces_to:` — 5 version pins refreshed (brief, SS-daemon-lifecycle, SS-core-types-and-abi, SS-engine-module, BC-INDEX) + L2-INDEX placeholder resolved; version bumped v1.26.5 → v1.26.6; timestamp refreshed.
+
+**Scope:** PO-only frontmatter patch. No body content changed. No BC, VP, or architecture file changes in this burst.
 
 ---
 
