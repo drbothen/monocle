@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-17T12:30:00Z
 phase: 1a
 inputs: [prd.md, behavioral-contracts/]
-input-hash: "[live-state]"
+input-hash: "572a46f"
 traces_to: prd.md
 ---
 
