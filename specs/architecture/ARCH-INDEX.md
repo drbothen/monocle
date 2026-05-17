@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:30:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
 input-hash: "ee1f76a"
@@ -97,129 +97,6 @@ ADR-0005 resolves the auth header interop gap between monocle's canonical header
 Claude Code's hardcoded `X-Claude-Code-Ide-Authorization` (BC-HOOK-016); dual-accept at the
 router-level auth middleware.
 
-## §Trace v1.0.7
-
-**F-R108 Round 7C — historical-pin live-version removal + frontmatter timestamp correction** (2026-05-18T01:00:00Z):
-- NORMATIVE (F-R108-1 CRITICAL): All "current canonical BC-INDEX is v1.4 per F-R107-2 closure"
-  live-version claims removed from 5 arch docs per O-R108-3 codification. Sites corrected:
-  - SS-forward-compatibility.md: 1 occurrence in BC-mapping notes (pre-§Trace body).
-  - SS-daemon-lifecycle.md: 2 occurrences — §Trace v1.0.28 body + §Trace v1.0.31 prose.
-  - SS-engine-module.md: 2 occurrences — §Trace v1.1.18 body + §Trace v1.1.19 prose.
-  - SS-core-types-and-abi.md: 2 occurrences — §Trace v1.2.11 body + §Trace v1.2.12 prose.
-  - ARCH-INDEX.md (this file): 3 occurrences — §Trace v1.0.6 (2 occurrences, corrected below)
-    + §Trace v1.0.3 (1 additional occurrence discovered during O-R108-3 corpus application).
-  Replacement language: "current canonical advances over time per F-R107-8 historical-pin discipline".
-- NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected on all 5 files from stale values
-  to 2026-05-18T01:00:00Z (matching chain high-water). SE-16b violation resolved on each.
-  No version bumps applied — content unchanged; timestamp-only correction per cross-dispatch
-  coordination protocol (PO 7B targeting current SS doc versions SS-daemon-lifecycle v1.0.31,
-  SS-core-types-and-abi v1.2.12, SS-engine-module v1.1.19).
-  SS docs that received new §Trace entries (content change): SS-daemon-lifecycle (v1.0.32 added),
-  SS-engine-module (v1.1.20 added), SS-core-types-and-abi (v1.2.13 added),
-  SS-forward-compatibility (v1.2.17 added).
-- NORMATIVE (F-R108-10 HIGH): ADR-0002 v1.0.2 → v1.0.3. frontmatter `inputs:` path fix:
-  `tech-debt-register.md` → `../tech-debt-register.md`; `plans/production-grade-reaudit.md`
-  → `../plans/production-grade-reaudit.md`. Both paths now resolve from `.factory/specs/`
-  context. §Trace v1.0.3 added to ADR-0002.
-- INFORMATIONAL (F-R108-20 LOW): dtu-assessment.md inputs paths verified: all 4 resolve correctly
-  from `.factory/specs/` context (product-brief.md, architecture/SS-deps-pin-manifest.md,
-  architecture/SS-core-types-and-abi.md, semport/any-context-lazyclaude/…-final-synthesis-v2.md).
-  No changes required. §Trace v1.7.4 added to dtu-assessment.md (verification record).
-- INFORMATIONAL (F-R108-21 LOW): §Trace v1.0.6 below split into 4 sub-bullets per artifact,
-  replacing the combined narrative. Content preserved; structure only.
-- SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
-
-## §Trace v1.0.6
-
-**F-R107 Round 6D — BC ID canonicalization + historical-pin clarification** (2026-05-17T23:00:00Z):
-- NORMATIVE (F-R107-5 HIGH / SS-forward-compatibility.md v1.2.15 → v1.2.16): All stale
-  pre-renumbering BC IDs in FC table (lines 188-193) and BC-mapping table (lines 225-242)
-  canonicalized to BC-2.SS.NNN forms per BC-INDEX.md v1.4 §Renumbering Map. FC-04 body prose
-  updated. BC-mapping table restructured: "Old-Form ID (retired)" column added; all 16 rows
-  carry canonical new IDs as primary. Notes paragraph updated with old→new cross-references.
-  SE-17g META AUDIT: zero normative stale BC IDs remain in SS-forward-compatibility.md.
-- INFORMATIONAL (F-R107-8 / ARCH-INDEX §Trace v1.0.3): BC-INDEX cite `v1.1 §Renumbering Map`
-  expanded to explicit historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h
-  dispatch time 2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
-  historical-pin discipline)`. Purpose: prevent future fresh-context audits from re-flagging
-  the historical pin. [Note: original "current canonical BC-INDEX is v1.4" language corrected
-  to historical-pin-only form by F-R108-1 Round 7C.]
-- INFORMATIONAL (F-R107-8 / SS-engine-module.md v1.1.18 → v1.1.19): Same historical-pin
-  expansion applied to §Trace v1.1.18. `v1.1 §Renumbering Map (canonical at T-128h dispatch
-  time 2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
-  historical-pin discipline)`. [Original live-version claim corrected by F-R108-1 Round 7C.]
-- INFORMATIONAL (F-R107-8 / SS-daemon-lifecycle.md v1.0.30 → v1.0.31): Same historical-pin
-  expansion applied to §Trace v1.0.28. [Original live-version claim corrected by F-R108-1 Round 7C.]
-- INFORMATIONAL (F-R107-8 / SS-core-types-and-abi.md v1.2.11 → v1.2.12): Same historical-pin
-  expansion applied to §Trace v1.2.11. [Original live-version claim corrected by F-R108-1 Round 7C.]
-- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).
-
-## §Trace v1.0.5
-
-**F-R106 Round 5E — ADR-0005 path fix + SS-daemon-lifecycle F-FC-I005 removal** (2026-05-17T22:00:00Z):
-- NORMATIVE: ADR-0005 v1.0.1 → v1.0.2 — frontmatter `inputs:` third entry normalized;
-  spurious `specs/` prefix removed from `behavioral-contracts/ss-01/BC-2.01.009.md`.
-  §Trace v1.0.2 added to ADR-0005.
-- NORMATIVE: SS-daemon-lifecycle.md v1.0.29 → v1.0.30 — F-FC-I005 fabricated ID removed
-  from two sites: §Start Sequence body (~line 298) and §Behavioral Contract Summary
-  BC-2.01.009 table row (~line 800). Replaced with FC-06 alone (canonical reference).
-  SE-17g META AUDIT PASS: zero F-FC-I005 occurrences remain in SS-daemon-lifecycle.md.
-  §Trace v1.0.30 added.
-- INFORMATIONAL: ARCH-INDEX ADR Registry table does not carry per-ADR version numbers;
-  no content change to ADR-0005 row required. ARCH-INDEX Document Map does not carry
-  per-SS doc version numbers (confirmed §Trace v1.0.3). Only §Trace version bumped here.
-- SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).
-
-## §Trace v1.0.4
-
-**T-128m ADR-0005 auth header dual-accept — F-R105 closure chain Round 3** (2026-05-17T19:00:00Z):
-- NORMATIVE: ADR-0005 authored and registered. Decision: dual-accept (option a).
-  File: `adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`.
-  Resolves interop gap surfaced by BA in T-128f: real Claude Code hook scripts have
-  `X-Claude-Code-Ide-Authorization` hardcoded per BC-HOOK-016 deep ingest; they cannot
-  send `X-Monocle-Authorization`. ADR-0005 directs the daemon auth middleware to
-  dual-accept both headers with `X-Monocle-Authorization` as canonical priority.
-- NORMATIVE: ADR Registry updated — ADR-0005 row added.
-- NORMATIVE: SS-daemon-lifecycle.md v1.0.28 → v1.0.29 — auth middleware spec updated
-  to dual-accept; Rust stub rewritten; BC-2.01.009 table expanded; §Trace added.
-- NORMATIVE: dtu-assessment.md v1.7.2 → v1.7.3 — ADR-0005 auth header rationale block
-  added to endpoint matrix preamble; 10 `X-Claude-Code-Ide-Authorization` occurrences
-  confirmed correct (DTU tests compatibility alias path).
-- NORMATIVE: BC-2.01.009 update surfaced to PO for Round 4 (postcondition 1 "missing"
-  semantics; alias path postconditions 2-3 extension).
-- NORMATIVE: CAP-001 §P2 step 1 compatibility alias note surfaced to BA for Round 4.
-- INFORMATIONAL: product-brief.md occurrences (lines 116 and 239) out of scope for this
-  dispatch; surfaced to PO for Round 4 as noted.
-- SE-16d PASS: 2026-05-17T19:00:00Z > chain high-water 2026-05-17T17:00:00Z.
-
-## §Trace v1.0.3
-
-**T-128h BC ID canonicalization — F-R105-8 closure** (2026-05-17T17:00:00Z):
-- NORMATIVE: All stale pre-renumbering BC IDs propagated to canonical BC-2.SS.NNN forms
-  across 3 SS architecture documents per BC-INDEX.md v1.1 §Renumbering Map (canonical
-  at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical advances over time
-  per F-R107-8 historical-pin discipline).
-  Scope: SS-daemon-lifecycle.md, SS-engine-module.md, SS-core-types-and-abi.md.
-- SE-17g META AUDIT — final re-grep confirms zero stale IDs remaining across all 3 docs
-  (grep pattern: old-form DAEMON/AUTH/RING/LOCK/ABI/TYPES/FACTORY/PROTO/ENGINE prefixes):
-  SS-daemon-lifecycle.md: 0 lines match (was 95 lines / 102 occurrences)
-  SS-engine-module.md: 0 lines match (was 31 lines / 33 occurrences)
-  SS-core-types-and-abi.md: 0 lines match (was 39 lines / 46 occurrences)
-  Grand total replaced: 181 occurrences across 165 lines. SE-17g PASS: 165 → 0.
-- DISCOVERED: PROTO-001 (bare pre-split form, old-style) — 2 occurrences in historical §Trace
-  prose in SS-core-types-and-abi.md. This ID is retired by split (F-FC-O004); it has no
-  canonical new-form entry in BC-INDEX §Renumbering Map (only the a/b split variants are
-  mapped to BC-2.02.006 and BC-2.02.007). Resolved: historical §Trace prose rewritten to
-  descriptive form; stale ID removed from SS doc body. Record preserved in BC-INDEX §Renumbering
-  Map per append-only policy.
-- SS doc versions bumped: SS-daemon-lifecycle.md 1.0.27 → 1.0.28; SS-engine-module.md
-  1.1.17 → 1.1.18; SS-core-types-and-abi.md 1.2.10 → 1.2.11.
-- ARCH-INDEX does not carry per-SS doc version numbers — no Document Map changes required.
-- INFORMATIONAL: Version bump 1.0.2 → 1.0.3 records SE-17g META audit; no content changes
-  to ARCH-INDEX body.
-- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T17:00:00Z (same burst;
-  ARCH-INDEX and SS docs updated in the same T-128h dispatch — monotonicity satisfied).
-
 ## §Trace v1.0.2
 
 **T-128e audit-trail reconciliation** (2026-05-17T17:00:00Z):
@@ -260,3 +137,160 @@ router-level auth middleware.
 - ADR Registry enumerates ADR-0001..ADR-0004 from `.factory/specs/architecture/adr/`.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §MISS-03.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+## §Trace v1.0.3
+
+**T-128h BC ID canonicalization — F-R105-8 closure** (2026-05-17T17:00:00Z):
+- NORMATIVE: All stale pre-renumbering BC IDs propagated to canonical BC-2.SS.NNN forms
+  across 3 SS architecture documents per BC-INDEX.md v1.1 §Renumbering Map (canonical
+  at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical advances over time
+  per F-R107-8 historical-pin discipline).
+  Scope: SS-daemon-lifecycle.md, SS-engine-module.md, SS-core-types-and-abi.md.
+- SE-17g META AUDIT — final re-grep confirms zero stale IDs remaining across all 3 docs
+  (grep pattern: old-form DAEMON/AUTH/RING/LOCK/ABI/TYPES/FACTORY/PROTO/ENGINE prefixes):
+  SS-daemon-lifecycle.md: 0 lines match (was 95 lines / 102 occurrences)
+  SS-engine-module.md: 0 lines match (was 31 lines / 33 occurrences)
+  SS-core-types-and-abi.md: 0 lines match (was 39 lines / 46 occurrences)
+  Grand total replaced: 181 occurrences across 165 lines. SE-17g PASS: 165 → 0.
+- DISCOVERED: PROTO-001 (bare pre-split form, old-style) — 2 occurrences in historical §Trace
+  prose in SS-core-types-and-abi.md. This ID is retired by split (F-FC-O004); it has no
+  canonical new-form entry in BC-INDEX §Renumbering Map (only the a/b split variants are
+  mapped to BC-2.02.006 and BC-2.02.007). Resolved: historical §Trace prose rewritten to
+  descriptive form; stale ID removed from SS doc body. Record preserved in BC-INDEX §Renumbering
+  Map per append-only policy.
+- SS doc versions bumped: SS-daemon-lifecycle.md 1.0.27 → 1.0.28; SS-engine-module.md
+  1.1.17 → 1.1.18; SS-core-types-and-abi.md 1.2.10 → 1.2.11.
+- ARCH-INDEX does not carry per-SS doc version numbers — no Document Map changes required.
+- INFORMATIONAL: Version bump 1.0.2 → 1.0.3 records SE-17g META audit; no content changes
+  to ARCH-INDEX body.
+- SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T17:00:00Z (same burst;
+  ARCH-INDEX and SS docs updated in the same T-128h dispatch — monotonicity satisfied).
+
+## §Trace v1.0.4
+
+**T-128m ADR-0005 auth header dual-accept — F-R105 closure chain Round 3** (2026-05-17T19:00:00Z):
+- NORMATIVE: ADR-0005 authored and registered. Decision: dual-accept (option a).
+  File: `adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`.
+  Resolves interop gap surfaced by BA in T-128f: real Claude Code hook scripts have
+  `X-Claude-Code-Ide-Authorization` hardcoded per BC-HOOK-016 deep ingest; they cannot
+  send `X-Monocle-Authorization`. ADR-0005 directs the daemon auth middleware to
+  dual-accept both headers with `X-Monocle-Authorization` as canonical priority.
+- NORMATIVE: ADR Registry updated — ADR-0005 row added.
+- NORMATIVE: SS-daemon-lifecycle.md v1.0.28 → v1.0.29 — auth middleware spec updated
+  to dual-accept; Rust stub rewritten; BC-2.01.009 table expanded; §Trace added.
+- NORMATIVE: dtu-assessment.md v1.7.2 → v1.7.3 — ADR-0005 auth header rationale block
+  added to endpoint matrix preamble; 10 `X-Claude-Code-Ide-Authorization` occurrences
+  confirmed correct (DTU tests compatibility alias path).
+- NORMATIVE: BC-2.01.009 update surfaced to PO for Round 4 (postcondition 1 "missing"
+  semantics; alias path postconditions 2-3 extension).
+- NORMATIVE: CAP-001 §P2 step 1 compatibility alias note surfaced to BA for Round 4.
+- INFORMATIONAL: product-brief.md occurrences (lines 116 and 239) out of scope for this
+  dispatch; surfaced to PO for Round 4 as noted.
+- SE-16d PASS: 2026-05-17T19:00:00Z > chain high-water 2026-05-17T17:00:00Z.
+
+## §Trace v1.0.5
+
+**F-R106 Round 5E — ADR-0005 path fix + SS-daemon-lifecycle F-FC-I005 removal** (2026-05-17T22:00:00Z):
+- NORMATIVE: ADR-0005 v1.0.1 → v1.0.2 — frontmatter `inputs:` third entry normalized;
+  spurious `specs/` prefix removed from `behavioral-contracts/ss-01/BC-2.01.009.md`.
+  §Trace v1.0.2 added to ADR-0005.
+- NORMATIVE: SS-daemon-lifecycle.md v1.0.29 → v1.0.30 — F-FC-I005 fabricated ID removed
+  from two sites: §Start Sequence body (~line 298) and §Behavioral Contract Summary
+  BC-2.01.009 table row (~line 800). Replaced with FC-06 alone (canonical reference).
+  SE-17g META AUDIT PASS: zero F-FC-I005 occurrences remain in SS-daemon-lifecycle.md.
+  §Trace v1.0.30 added.
+- INFORMATIONAL: ARCH-INDEX ADR Registry table does not carry per-ADR version numbers;
+  no content change to ADR-0005 row required. ARCH-INDEX Document Map does not carry
+  per-SS doc version numbers (confirmed §Trace v1.0.3). Only §Trace version bumped here.
+- SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).
+
+## §Trace v1.0.6
+
+**F-R107 Round 6D — BC ID canonicalization + historical-pin clarification** (2026-05-17T23:00:00Z):
+- NORMATIVE (F-R107-5 HIGH / SS-forward-compatibility.md v1.2.14 → v1.2.16): All stale
+  pre-renumbering BC IDs in FC table and BC-mapping table canonicalized to BC-2.SS.NNN forms
+  per BC-INDEX.md v1.4 §Renumbering Map. FC-04 body prose updated. BC-mapping table
+  restructured: "Old-Form ID (retired)" column added; all 16 rows carry canonical new IDs as
+  primary. Notes paragraph updated with old→new cross-references. SE-17g META AUDIT: zero
+  normative stale BC IDs remain in SS-forward-compatibility.md. [Note: this entry originally
+  cited "v1.2.15 → v1.2.16" — corrected to "v1.2.14 → v1.2.16" by F-R109-13 Round 8A.
+  Version v1.2.15 was never a real intermediate state; git evidence confirms the file went
+  directly from v1.2.14 to v1.2.16 in commit 98396fe. See SS-forward-compatibility.md
+  §Trace v1.2.17-R109 for full disposition.]
+- INFORMATIONAL (F-R107-8 / ARCH-INDEX §Trace v1.0.3): BC-INDEX cite `v1.1 §Renumbering Map`
+  expanded to explicit historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h
+  dispatch time 2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
+  historical-pin discipline)`. Purpose: prevent future fresh-context audits from re-flagging
+  the historical pin. [Note: original "current canonical BC-INDEX is v1.4" language corrected
+  to historical-pin-only form by F-R108-1 Round 7C.]
+- INFORMATIONAL (F-R107-8 / SS-engine-module.md v1.1.18 → v1.1.19): Same historical-pin
+  expansion applied to §Trace v1.1.18. `v1.1 §Renumbering Map (canonical at T-128h dispatch
+  time 2026-05-17T17:00:00Z; current canonical advances over time per F-R107-8
+  historical-pin discipline)`. [Original live-version claim corrected by F-R108-1 Round 7C.]
+- INFORMATIONAL (F-R107-8 / SS-daemon-lifecycle.md v1.0.30 → v1.0.31): Same historical-pin
+  expansion applied to §Trace v1.0.28. [Original live-version claim corrected by F-R108-1 Round 7C.]
+- INFORMATIONAL (F-R107-8 / SS-core-types-and-abi.md v1.2.11 → v1.2.12): Same historical-pin
+  expansion applied to §Trace v1.2.11. [Original live-version claim corrected by F-R108-1 Round 7C.]
+- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).
+
+## §Trace v1.0.7
+
+**F-R108 Round 7C — historical-pin live-version removal + frontmatter timestamp correction** (2026-05-18T01:00:00Z):
+- NORMATIVE (F-R108-1 CRITICAL): All "current canonical BC-INDEX is v1.4 per F-R107-2 closure"
+  live-version claims removed from 5 arch docs per O-R108-3 codification. Sites corrected:
+  - SS-forward-compatibility.md: 1 occurrence in BC-mapping notes (pre-§Trace body).
+  - SS-daemon-lifecycle.md: 2 occurrences — §Trace v1.0.28 body + §Trace v1.0.31 prose.
+  - SS-engine-module.md: 2 occurrences — §Trace v1.1.18 body + §Trace v1.1.19 prose.
+  - SS-core-types-and-abi.md: 2 occurrences — §Trace v1.2.11 body + §Trace v1.2.12 prose.
+  - ARCH-INDEX.md (this file): 3 occurrences — §Trace v1.0.6 (2 occurrences, corrected below)
+    + §Trace v1.0.3 (1 additional occurrence discovered during O-R108-3 corpus application).
+  Replacement language: "current canonical advances over time per F-R107-8 historical-pin discipline".
+- NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected on all 5 files from stale values
+  to 2026-05-18T01:00:00Z (matching chain high-water). SE-16b violation resolved on each.
+  No version bumps applied to SS docs — content-change §Trace entries written; frontmatter bumps
+  deferred to Round 8A per cross-dispatch coordination directive (F-R109-1 closure).
+  SS docs that received new §Trace entries (content change): SS-daemon-lifecycle (v1.0.32 added),
+  SS-engine-module (v1.1.20 added), SS-core-types-and-abi (v1.2.13 added),
+  SS-forward-compatibility (v1.2.17 added).
+- NORMATIVE (F-R108-10 HIGH): ADR-0002 v1.0.2 → v1.0.3. frontmatter `inputs:` path fix:
+  `tech-debt-register.md` → `../tech-debt-register.md`; `plans/production-grade-reaudit.md`
+  → `../plans/production-grade-reaudit.md`. Both paths now resolve from `.factory/specs/`
+  context. §Trace v1.0.3 added to ADR-0002.
+- INFORMATIONAL (F-R108-20 LOW): dtu-assessment.md inputs paths verified: all 4 resolve correctly
+  from `.factory/specs/` context (product-brief.md, architecture/SS-deps-pin-manifest.md,
+  architecture/SS-core-types-and-abi.md, semport/any-context-lazyclaude/…-final-synthesis-v2.md).
+  No changes required. §Trace v1.7.4 added to dtu-assessment.md (verification record).
+- INFORMATIONAL (F-R108-21 LOW): §Trace v1.0.6 above split into 4 sub-bullets per artifact,
+  replacing the combined narrative. Content preserved; structure only.
+- SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
+
+## §Trace v1.0.8
+
+**F-R109 Round 8A — SS frontmatter version reconciliation + §Trace ordering + v1.2.15 gap disposition** (2026-05-17T04:30:00Z):
+- NORMATIVE (F-R109-1 CRITICAL + F-R109-2 CRITICAL): frontmatter `version` bumped on 4 SS docs
+  to reconcile with §Trace version numbers already written in Round 7C. The Round 7C cross-dispatch
+  coordination directive withheld frontmatter bumps to avoid PO 7B pin staleness; this created
+  fabrication-class defects where frontmatter claimed prior versions while §Trace bodies documented
+  new versions. Bumps applied:
+  - SS-daemon-lifecycle.md: frontmatter "1.0.31" → "1.0.32" (§Trace v1.0.32 already present).
+  - SS-engine-module.md: frontmatter "1.1.19" → "1.1.20" (§Trace v1.1.20 already present).
+  - SS-core-types-and-abi.md: frontmatter "1.2.12" → "1.2.13" (§Trace v1.2.13 already present).
+  - SS-forward-compatibility.md: frontmatter "1.2.16" → "1.2.17" (§Trace v1.2.17 already present).
+  - ARCH-INDEX.md (this file): "1.0.7" → "1.0.8" (cascade from SS doc changes + F-R109-2/9/13).
+- NORMATIVE (F-R109-8 HIGH): §Trace v1.0.32/v1.1.20/v1.2.13/v1.2.17 bodies in all 4 SS docs
+  rewritten to remove "No version bump — content unchanged; timestamp-only correction"
+  self-contradiction. The F-R108-1 removals of live-version claim strings ARE normative content
+  changes. All 4 §Trace bodies now accurately describe the version bumps as applied in Round 8A.
+- NORMATIVE (F-R109-9 HIGH): §Trace ordering in ARCH-INDEX reordered from descending to ascending
+  (v1.0.2 → v1.0.3 → … → v1.0.8) to match BC-INDEX pattern per F-R109-9.
+- NORMATIVE (F-R109-13 MED): §Trace v1.0.6 above corrected: "v1.2.15 → v1.2.16" changed to
+  "v1.2.14 → v1.2.16". Version v1.2.15 of SS-forward-compatibility.md never existed; the file
+  transitioned directly from v1.2.14 to v1.2.16 in Round 6D (git commit 98396fe confirms). The
+  ARCH-INDEX v1.0.6 narrative fabricated the v1.2.15 intermediate. SS-forward-compatibility.md
+  §Trace v1.2.17-R109 carries the full disposition record.
+- NORMATIVE (F-R109-8 / ARCH-INDEX): §Trace v1.0.7 above updated to remove "No version bumps
+  applied — content unchanged" language for the SS doc frontmatter side; corrected to note that
+  frontmatter bumps were deferred to Round 8A per cross-dispatch coordination directive.
+- SE-17c BEFORE (F-R109-13): "SS-forward-compatibility.md v1.2.15 → v1.2.16" in §Trace v1.0.6.
+- SE-17c AFTER (F-R109-13): "SS-forward-compatibility.md v1.2.14 → v1.2.16" in §Trace v1.0.6.
+- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).

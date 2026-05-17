@@ -4,11 +4,11 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.19"
+version: "1.1.20"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
 input-hash: "d5908f1"
 traces_to: architecture/ARCH-INDEX.md
@@ -1601,10 +1601,27 @@ Cross-references:
   occurrences removed per O-R108-3 codification. Live-version claims in historical-pin §Trace
   notes become false when BC-INDEX advances. Replaced with "current canonical advances over
   time per F-R107-8 historical-pin discipline" in §Trace v1.1.18 body (1 occurrence) and
-  §Trace v1.1.19 historical-pin expansion prose (1 occurrence).
+  §Trace v1.1.19 historical-pin expansion prose (1 occurrence). This is a normative content
+  change: two live-version claim strings were removed from the document body.
 - NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected from 2026-05-17T17:00:00Z to
   2026-05-18T01:00:00Z. Prior timestamp lagged the latest §Trace entry (v1.1.19 at 23:00:00Z);
-  SE-16b violation. No version bump — content unchanged; timestamp-only correction.
+  SE-16b violation. Version bump v1.1.19 → v1.1.20 applied in Round 8A (F-R109-1) to
+  reconcile frontmatter with the §Trace version number this entry already claimed.
 - SE-17c BEFORE: "current canonical BC-INDEX is v1.4 per F-R107-2 closure" (2 occurrences).
 - SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
 - SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
+
+**§Trace v1.1.20-R109** (2026-05-17T04:30:00Z) — F-R109-1 + F-R109-8 frontmatter version reconciliation (Round 8A):
+- NORMATIVE (F-R109-1 CRITICAL): frontmatter `version` bumped from "1.1.19" to "1.1.20" to
+  match the §Trace v1.1.20 entry already present in the document body since Round 7C. The Round
+  7C dispatch wrote §Trace v1.1.20 but withheld the frontmatter bump per cross-dispatch
+  coordination directive (targeting current PO 7B SS pin). This created a fabrication-class
+  defect: frontmatter claimed v1.1.19 while §Trace body documented v1.1.20 as the current state.
+- NORMATIVE (F-R109-8 HIGH): §Trace v1.1.20 body rewritten to remove "No version bump —
+  content unchanged; timestamp-only correction" self-contradiction. The F-R108-1 removal of two
+  live-version claim strings IS normative content change. The body now accurately states that the
+  version bump v1.1.19 → v1.1.20 was applied in Round 8A to reconcile frontmatter with §Trace.
+- SE-17c BEFORE: "No version bump — content unchanged; timestamp-only correction".
+- SE-17c AFTER: "Version bump v1.1.19 → v1.1.20 applied in Round 8A (F-R109-1) to reconcile
+  frontmatter with the §Trace version number this entry already claimed."
+- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).

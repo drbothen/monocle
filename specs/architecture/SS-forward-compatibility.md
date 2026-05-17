@@ -4,11 +4,11 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.16"
+version: "1.2.17"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
 input-hash: "d2090e3"
 traces_to: architecture/ARCH-INDEX.md
@@ -258,12 +258,38 @@ over time per F-R107-8 historical-pin discipline).
   per F-R107-2 closure" removed. O-R108-3 pattern codification: live-version claims in §Trace historical-pin
   notes are structurally fragile. Replaced with "current canonical advances over time per F-R107-8
   historical-pin discipline" — historical-pin-only language. Site: BC-mapping notes paragraph (1 occurrence).
+  This is a normative content change: one live-version claim string was removed from the document body.
 - NORMATIVE (F-R108-9 HIGH): frontmatter `timestamp` corrected from 2026-05-17T16:30:00Z to
   2026-05-18T01:00:00Z. Prior timestamp lagged the latest §Trace entry (v1.2.16 at 23:00:00Z);
-  SE-16b violation. No version bump — content unchanged; timestamp-only correction.
+  SE-16b violation. Version bump v1.2.16 → v1.2.17 applied in Round 8A (F-R109-1) to
+  reconcile frontmatter with the §Trace version number this entry already claimed.
 - SE-17c BEFORE: "current canonical BC-INDEX is v1.4 per F-R107-2 closure" (1 occurrence).
 - SE-17c AFTER: "current canonical advances over time per F-R107-8 historical-pin discipline".
 - SE-16d PASS: 2026-05-18T01:00:00Z > chain high-water 2026-05-17T23:00:00Z (monotonic).
+
+**§Trace v1.2.17-R109** (2026-05-17T04:30:00Z) — F-R109-1 + F-R109-8 + F-R109-13 reconciliation (Round 8A):
+- NORMATIVE (F-R109-1 CRITICAL): frontmatter `version` bumped from "1.2.16" to "1.2.17" to
+  match the §Trace v1.2.17 entry already present in the document body since Round 7C. The Round
+  7C dispatch wrote §Trace v1.2.17 but withheld the frontmatter bump per cross-dispatch
+  coordination directive (targeting current PO 7B SS pin). This created a fabrication-class
+  defect: frontmatter claimed v1.2.16 while §Trace body documented v1.2.17 as the current state.
+- NORMATIVE (F-R109-8 HIGH): §Trace v1.2.17 body rewritten to remove "No version bump —
+  content unchanged; timestamp-only correction" self-contradiction. The F-R108-1 removal of one
+  live-version claim string IS normative content change. The body now accurately states that the
+  version bump v1.2.16 → v1.2.17 was applied in Round 8A to reconcile frontmatter with §Trace.
+- INFORMATIONAL (F-R109-13 MED — §Trace v1.2.15 gap): Version v1.2.15 was never a real
+  intermediate state of this document. ARCH-INDEX §Trace v1.0.6 erroneously claimed "SS-forward-
+  compatibility.md v1.2.15 → v1.2.16" for the Round 6D F-R107-5 BC ID canonicalization work.
+  Git evidence (commit 98396fe): this file was already at v1.2.16 in that commit; no v1.2.15
+  intermediate commit exists. The actual Round 6D transition was v1.2.14 → v1.2.16 (template-
+  compliance rename in v1.2.14; BC ID canonicalization directly to v1.2.16). The "v1.2.15"
+  reference in ARCH-INDEX §Trace v1.0.6 is a fabricated intermediate version; the gap in this
+  file's §Trace history between v1.2.14 and v1.2.16 is correct — v1.2.15 simply never existed.
+  ARCH-INDEX §Trace v1.0.8 (Round 8A) corrects the ARCH-INDEX narrative to "v1.2.14 → v1.2.16".
+- SE-17c BEFORE: "No version bump — content unchanged; timestamp-only correction".
+- SE-17c AFTER: "Version bump v1.2.16 → v1.2.17 applied in Round 8A (F-R109-1) to reconcile
+  frontmatter with the §Trace version number this entry already claimed."
+- SE-16d PASS: 2026-05-17T04:30:00Z satisfies chain monotonicity (Round 8A dispatch).
 
 **§Trace v1.2.16** (2026-05-17T23:00:00Z) — F-R107-5 BC ID canonicalization (Round 6D):
 - NORMATIVE: All stale pre-renumbering BC IDs in FC table + BC-mapping table replaced with
