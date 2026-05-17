@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T19:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -147,7 +147,7 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 **Template compliance Dispatch 6 of 7-8** (2026-05-17T14:00:00Z):
 - Created as new artifact. Directory `.factory/specs/domain-spec/` populated.
 - 3 capabilities extracted from product-brief.md v1.4.23 + vision-synthesis v1.1.2.
-- Capability anchors grounded: CAP-001 from brief §Tier 1 + vision §JC-1 hook capture;
+- Capability anchors grounded: CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture;
   CAP-002 from brief §Forward-compatibility contracts FC-01..FC-06; CAP-003 from
   brief §Phase 1 dual-engine + vision §Engine Module + §FactoryAdapter.
 - 7 domain invariants extracted. Ubiquitous Language table (14 terms) grounded in
@@ -158,6 +158,31 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
   2026-05-17T13:30:00Z (Dispatch 5b VP-INDEX).
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md §MISS-05`.
 - Next: Dispatch 7 (Architect runs compute-input-hash across all artifacts).
+
+## §Trace v1.0.1
+
+**RETROACTIVE BACKFILL — GAP-R44-5 closure** (2026-05-17T03:44:04Z, historical):
+- v1.0.1 was NEVER a distinct commit. In commit 0af206a (2026-05-16 22:44:04 -0500 =
+  2026-05-17T03:44:04Z UTC) the RES-01 input-hash normalization pass bumped L2-INDEX
+  directly from v1.0 → v1.0.2 (one-level skip). No v1.0.1 artifact ever existed on disk
+  or in git. This entry documents the skip for audit-trail completeness.
+- SE-17f evidence: commit message reads "L2-INDEX 1.0→1.0.2" — confirming the intermediate
+  v1.0.1 was never authored.
+- This retroactive entry closes the v1.0.1 audit-trail gap per GAP-R44-5.
+
+## §Trace v1.0.2
+
+**RETROACTIVE BACKFILL — GAP-R44-5 closure** (2026-05-17T03:44:04Z, historical):
+- Commit: 0af206a "spec(arch): RES-01 input-hash normalization + RES-04 ARCH-INDEX
+  Tokens column" (2026-05-16 22:44:04 -0500 = 2026-05-17T03:44:04Z UTC).
+- Changes to L2-INDEX.md (SE-17f before/after evidence from git diff 2a852d1..0af206a):
+  - BEFORE `version: "1.0"` → AFTER `version: "1.0.2"`
+  - BEFORE `timestamp: 2026-05-17T14:00:00Z` → AFTER `timestamp: 2026-05-17T16:30:00Z`
+  - BEFORE `input-hash: "[live-state]"` → AFTER `input-hash: "494c12d"`
+  - All other content unchanged (no section or prose edits).
+- Context: RES-01 normalization pass ran compute-input-hash --update across 19 artifacts;
+  L2-INDEX received its first real hash (`494c12d`), replacing the placeholder.
+- This retroactive entry closes the v1.0.2 audit-trail gap per GAP-R44-5.
 
 ## §Trace v1.0.3
 
@@ -180,3 +205,24 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 - CAP-002 and CAP-003: zero auth header name occurrences — no changes required.
 - L2-INDEX version bumped 1.0.3 → 1.0.4; timestamp advanced.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.3).
+
+## §Trace v1.0.5
+
+**F-R105-14 + GAP-R44-5 BA closure — anchor fix + retroactive trace backfill** (2026-05-17T19:00:00Z):
+- F-R105-14 anchor fix: §Trace v1.0 prose citation corrected.
+  - BEFORE: `CAP-001 from brief §Tier 1 + vision §JC-1 hook capture`
+  - AFTER: `CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture`
+  - Rationale: product-brief.md has no `## Tier 1` section. The correct section anchor is
+    `## Scope → ### In Scope → **Phase 1 — Runtime Core**`. "§Tier 1" was an invention;
+    "§Scope / In Scope / Phase 1 — Runtime Core" is the exact heading path in the brief.
+    Confirmed by grep: no match for "Tier 1" as a heading anywhere in product-brief.md.
+- GAP-R44-5 retroactive backfill: added §Trace v1.0.1 (documents the version skip — no
+  distinct v1.0.1 commit ever existed) and §Trace v1.0.2 (RES-01 input-hash normalization,
+  commit 0af206a, 2026-05-17T03:44:04Z). Both entries include SE-17f before/after diff
+  evidence. §Trace v1.0.3 was already present in the prior file but was positioned
+  out-of-sequence (between §Trace v1.0 and v1.0.4, before the retroactive v1.0.1 / v1.0.2
+  entries). This edit reordered the chain to restore sequential monotonicity.
+- SE-17c-d body-scope grep: searched L2-INDEX.md body for remaining stale §Tier 1
+  references — none found beyond the §Trace v1.0 line corrected above.
+- L2-INDEX version bumped 1.0.4 → 1.0.5; timestamp advanced.
+- SE-16d monotonicity PASS: 2026-05-17T19:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.4).
