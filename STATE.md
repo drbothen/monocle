@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.59"
+version: "5.60"
 status: active
 producer: state-manager
-timestamp: 2026-05-17T15:30:00Z
+timestamp: 2026-05-17T16:00:00Z
 phase: phase-1-spec-crystallization
 current_step: "TEMPLATE-COMPLIANCE-REMEDIATION-COMPLETE-AWAITING-RE-VALIDATION-AND-ADVERSARIAL-CYCLE"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 33 META defense disciplines (SE-17g codified D-110). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts.**"
-awaiting: "**Template compliance remediation chain COMPLETE (D-122).** 7-dispatch chain restructured monolithic Phase 1 spec package to template-compliant sharded layout: 22 BC files in `behavioral-contracts/ss-NN/`, 22 VP files in `verification-properties/`, 4 prd-supplements, L2 domain spec with 3 CAP shards, ARCH-INDEX/BC-INDEX/VP-INDEX/L2-INDEX, PRD reduced 4480 → 282 lines, VP monolith retired. BC IDs renumbered `BC-DOMAIN-NNN → BC-2.SS.NNN`; VP IDs renumbered `VP-DOMAIN-NNN → VP-NNN`. 59 input-hash placeholders replaced with real hashes (drift detection activated). D-047 STRICT CONVERGENCE achieved at D-120 was against the OLD monolithic structure — that convergence is RETIRED. A new adversarial review cycle must run against the restructured artifacts. **Next action: re-run /vsdd-factory:validate-template-compliance to confirm clean; if clean, dispatch new adversary R105 + cons R44 against PRD v1.26 + sharded BC/VP files + new INDEX files; counter resets to 0/3 against new artifact set.** Audit report at `.factory/plans/template-compliance-audit-r1.md`."
+awaiting: "**Commit message correction recorded at v5.60 (supersedes stale message on 4ec87e9 per user Option B).** **Template compliance remediation chain COMPLETE (D-122).** 7-dispatch chain restructured monolithic Phase 1 spec package to template-compliant sharded layout: 22 BC files in `behavioral-contracts/ss-NN/`, 22 VP files in `verification-properties/`, 4 prd-supplements, L2 domain spec with 3 CAP shards, ARCH-INDEX/BC-INDEX/VP-INDEX/L2-INDEX, PRD reduced 4480 → 282 lines, VP monolith retired. BC IDs renumbered `BC-DOMAIN-NNN → BC-2.SS.NNN`; VP IDs renumbered `VP-DOMAIN-NNN → VP-NNN`. 59 input-hash placeholders replaced with real hashes (drift detection activated). D-047 STRICT CONVERGENCE achieved at D-120 was against the OLD monolithic structure — that convergence is RETIRED. A new adversarial review cycle must run against the restructured artifacts. **Next action: re-run /vsdd-factory:validate-template-compliance to confirm clean; if clean, dispatch new adversary R105 + cons R44 against PRD v1.26 + sharded BC/VP files + new INDEX files; counter resets to 0/3 against new artifact set.** Audit report at `.factory/plans/template-compliance-audit-r1.md`."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -98,6 +98,7 @@ Context was cleared. This file is your only prior context. Do:
 61. **Template compliance remediation chain COMPLETE (D-122; 2026-05-17):** 7-dispatch remediation chain (D1-D7) restructured monolithic Phase 1 spec package to VSDD template compliance. **User-surfaced finding:** PRD was 4480-line monolith with 22 BCs inlined; VP was 15,612-line monolith. Both violated template's one-per-file + index pattern. The 33-discipline META audit caught NONE of this because it audits content WITHIN the perimeter; the perimeter itself was wrong. Spec-steward audit at `.factory/plans/template-compliance-audit-r1.md` identified 5 MISS classes + WRONG document_type values + WRONG BC ID format + ~224 cross-reference sites needing renumber. **D-047 STRICT CONVERGENCE at D-120 is HEREBY RETIRED** as it audited the wrong perimeter; new adversarial cycle required against restructured artifacts. **Severity insight:** the user-as-senior-architect lens caught what 37 strict-policy adversary attempts missed — `Structured Human Review Questions` per CLAUDE.md is essential. Goodhart's law: META audit disciplines were too narrow (perimeter-internal) — `validate-template-compliance` skill exists exactly for this class of structural-drift detection but was never invoked during R88-R104 cycle. **D-123 lesson:** add `/vsdd-factory:validate-template-compliance` to Phase 1d adversarial gate prerequisites BEFORE adversarial cycle starts; structural drift cannot be caught by META disciplines that operate within the artifact perimeter.
 62. **Remediation chain dispatches (2026-05-17):** D1 architect ARCH-INDEX.md + SS-* document_type fixes (commit 75501ba); D2 PO 10 SS-01 BC files + BC-INDEX skeleton (d02bf2a); D3 PO 8 SS-02 + 4 SS-03 BC files + BC-INDEX complete (f259ade; 22 BCs sharded); D4 PO PRD v1.26 restructure 4480 → 282 lines + 4 prd-supplements (1030c65); D5a FV 10 SS-01 VP files + VP-INDEX skeleton (7326ff5); D5b FV 12 SS-02/SS-03 VP files + VP-INDEX complete + retired 15,612-line VP monolith (e3824ec); D6 BA L2-INDEX.md + 3 CAP shards with 7 DI invariants + ubiquitous language (2a852d1); D7 architect compute-input-hash --update across 59 artifacts (51e77cb; STALE=0; drift detection activated). Total: ~150 new artifact files + 22 BC renames + 22 VP renames; ~94% PRD size reduction; ~99% VP monolith elimination (15,612 → 0).
 63. **D-122 + D-123 closure recording + Dispatch 8 COMPLETE (2026-05-17):** STATE v5.59 records template-compliance remediation chain completion. Untracked audit report `.factory/plans/template-compliance-audit-r1.md` committed in this burst. Pipeline transitions to RE-VALIDATION + NEW ADVERSARIAL CYCLE.
+64. **Commit message correction recorded (2026-05-17):** Prior commit `4ec87e9` content is CORRECT (STATE.md v5.59 with D-122/D-123 template-compliance remediation closure) but its message is STALE — it shows `state(meta): v5.42 — F-R95 fix-burst COMPLETE` from a leftover `/tmp/state-commit-msg.txt` file in a prior session. Per CLAUDE.md Production-Grade Default Rule 4 + Git Safety Protocol (no amend without explicit user direction), the user selected **Option B**: new commit superseding the stale message rather than amending the prior commit. **Reader guidance for `git log`:** when you see `4ec87e9 state(meta): v5.42 — F-R95 fix-burst COMPLETE`, the ACTUAL content is the D-122/D-123 template-compliance remediation closure (STATE.md v5.59); this current commit's message is the canonical descriptor of `4ec87e9`'s content. **Process lesson:** /tmp commit-message files should be `mktemp`'d per-commit or cleared after use to prevent silent-stale-message defects across sessions; codification candidate as a state-manager hook discipline (not codified yet — observation only).
 
 ## Task Queue (active)
 
@@ -417,10 +418,10 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | New cycle blockers | Re-run validate-template-compliance + R105 + cons R44 | PENDING | counter resets to 0/3 against restructured artifacts |
 | T-130 absolute-path inputs normalization | NOINPUT=146 in D7 scan; absolute paths in INDEX `inputs:` fields | TECH-DEBT | architect to normalize during Phase 1 architecture creation |
 
-## Session Resume Checkpoint — DURABLE (v5.59)
+## Session Resume Checkpoint — DURABLE (v5.60)
 
 ### Context-clear timestamp
-Cleared at: 2026-05-17T15:30:00Z (D-122/D-123 closure; STATE v5.59 committed on factory-artifacts).
+Cleared at: 2026-05-17T16:00:00Z (commit-message correction v5.60; supersedes stale message on 4ec87e9 per user Option B; no pipeline state change).
 
 ### Immediate next action (NEW SESSION)
 Run `/vsdd-factory:validate-template-compliance .factory/specs/` against the restructured artifacts (T-126). If clean, dispatch new adversary R105 + cons R44 (T-127) against restructured artifact set; counter resets to 0/3.
@@ -433,7 +434,7 @@ Run `/vsdd-factory:validate-template-compliance .factory/specs/` against the res
 - arch: 7 SS-* files (D1 minor fixes) + `.factory/specs/architecture/ARCH-INDEX.md` v1.0
 - L2 domain: `.factory/specs/domain-spec/L2-INDEX.md` + 3 CAP shards (CAP-001/002/003)
 - manifest: `.factory/specs/architecture/SS-deps-pin-manifest.md` v1.1.16 (D1 fix)
-- STATE: this file v5.59
+- STATE: this file v5.60
 
 ### Active disciplines
 33 codified (SE-17h HELD per D-114). Scoped-awk D-116 application discipline. **D-123 lesson:** `/vsdd-factory:validate-template-compliance` MUST run before each Phase gate adversarial cycle (not codified as a discipline; it is a workflow prerequisite addition).
