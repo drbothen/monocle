@@ -1,7 +1,7 @@
 ---
 document_type: prd-supplement-interface-definitions
 level: L3
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-17T12:30:00Z
@@ -222,18 +222,19 @@ Token is written to lock file on daemon start. Token rotates on every daemon res
 **Format:** One JSON object per line; `format_version` MUST be first key
 
 ```json
-{"format_version":1,"session_id":"<uuid>","hook_type":"<HookType>","received_at":"<ISO8601>","tool_name":"<string>"|null,"tool_input":"<object>"|null}
+{"format_version":1,"session_id":"<uuid>","timestamp_micros":<i64>,"pid":<u32>,"hook_type":"<HookType>","tool_name":"<string>"|null,"tool_input":"<object>"|null}
 ```
 
 **Field Constraints:**
 | Field | Type | Constraint |
 |-------|------|------------|
-| `format_version` | integer | `1`; MUST be first key in serialized JSON line |
-| `session_id` | string | Claude Code session UUID |
-| `hook_type` | string | one of: `PreToolUse`, `Notification`, `Stop`, `SessionStart`, `UserPromptSubmit` |
-| `received_at` | string | ISO 8601 UTC with millisecond precision |
-| `tool_name` | string or null | present for `PreToolUse`; `null` for non-tool hook types |
-| `tool_input` | object or null | present for `PreToolUse`; `null` for non-tool hook types |
+| `format_version` | u32 | `1`; MUST be first key in serialized JSON line |
+| `session_id` | String | Claude Code session UUID |
+| `timestamp_micros` | i64 | microseconds since Unix epoch; monotonically non-decreasing per session |
+| `pid` | u32 | daemon PID at time of event; ≥ 1 |
+| `hook_type` | String | one of: `PreToolUse`, `Notification`, `Stop`, `SessionStart`, `UserPromptSubmit` |
+| `tool_name` | Option\<String\> | present for `PreToolUse`; field absent (not explicit null) for non-tool hook types |
+| `tool_input` | Option\<serde_json::Value\> | present for `PreToolUse`; field absent (not explicit null) for non-tool hook types |
 
 **Write protocol:** Appended atomically per event. Phase 2 trigger-trace reads this file by scanning for lines beginning with `{"format_version":1,`.
 
@@ -252,3 +253,55 @@ Resolution priority (highest to lowest):
 `MONOCLE_RUNTIME_DIR=""` (empty string) is treated as unset — falls through to platform default (EC-060).
 
 **Permissions:** runtime_dir created with `0o700` (owner-only; NFR-012).
+
+---
+
+## §Trace
+
+### F-R105-1 PO closure — 2026-05-17T18:00:00Z
+
+**Finding:** F-R105-1 CRITICAL — 3-way HookEventRecord schema divergence. `interface-definitions.md` §JSONL Ring Buffer Schema used 6 fields including `received_at` instead of the canonical 7-field schema from BC-2.01.007.
+
+**Canonical source (BC-2.01.007 Postcondition 4):**
+> `HookEventRecord` is defined in `monocle-runtime::ring` (NOT `monocle-core`) with the fields declared in declaration order: `format_version: u32`, `session_id: String`, `timestamp_micros: i64`, `pid: u32`, `hook_type: String`, `tool_name: Option<String>`, `tool_input: Option<serde_json::Value>`.
+
+**SE-17c — Before (body-scope grep evidence):**
+
+```
+grep result — §JSONL Ring Buffer Schema inline JSON (pre-fix):
+{"format_version":1,"session_id":"<uuid>","hook_type":"<HookType>","received_at":"<ISO8601>","tool_name":"<string>"|null,"tool_input":"<object>"|null}
+
+grep result — §JSONL Ring Buffer Schema field table (pre-fix): 6 rows
+| format_version | integer | `1`; MUST be first key in serialized JSON line |
+| session_id     | string  | Claude Code session UUID |
+| hook_type      | string  | one of: PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit |
+| received_at    | string  | ISO 8601 UTC with millisecond precision |
+| tool_name      | string or null | present for PreToolUse; null for non-tool hook types |
+| tool_input     | object or null | present for PreToolUse; null for non-tool hook types |
+```
+
+**SE-17d — After (body-scope grep evidence):**
+
+```
+grep result — §JSONL Ring Buffer Schema inline JSON (post-fix):
+{"format_version":1,"session_id":"<uuid>","timestamp_micros":<i64>,"pid":<u32>,"hook_type":"<HookType>","tool_name":"<string>"|null,"tool_input":"<object>"|null}
+
+grep result — §JSONL Ring Buffer Schema field table (post-fix): 7 rows
+| format_version   | u32                    | `1`; MUST be first key in serialized JSON line |
+| session_id       | String                 | Claude Code session UUID |
+| timestamp_micros | i64                    | microseconds since Unix epoch; monotonically non-decreasing per session |
+| pid              | u32                    | daemon PID at time of event; >= 1 |
+| hook_type        | String                 | one of: PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit |
+| tool_name        | Option<String>         | present for PreToolUse; field absent (not explicit null) for non-tool hook types |
+| tool_input       | Option<serde_json::Value> | present for PreToolUse; field absent (not explicit null) for non-tool hook types |
+```
+
+**Changes made:**
+- Removed `received_at` field (was: string, ISO 8601 UTC)
+- Added `timestamp_micros: i64` (microseconds since Unix epoch)
+- Added `pid: u32` (daemon PID at time of event)
+- Corrected field type language from plain-English to Rust type signatures matching BC-2.01.007
+- Corrected `tool_name`/`tool_input` nullability prose: "field absent (not explicit null)" matches BC-2.01.007 EC-001 and the `#[serde(skip_serializing_if = "Option::is_none")]` invariant
+- Version bumped: `1.0` → `1.1`
+
+**Scope:** PO-only. No changes to BC-2.01.007, CAP-001-daemon-lifecycle.md, PRD top-level, or any other artifact. BA parallel track (CAP-001) untouched.
