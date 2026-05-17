@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.10"
+version: "1.11"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T09:00:00Z
+timestamp: 2026-05-18T10:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "02147fc"
@@ -62,7 +62,7 @@ traces_to: prd.md
 | VP-015 | `VsddFactoryAdapter::new` + Self-Reference Detection | BC-2.02.005 | integration-test+fuzz | vp-015-vsdd-factory-adapter.md | VP-FACTORY-002 |
 | VP-016 | Proto Field Number 1 = `schema_version` in `HookEnvelope` | BC-2.02.006 | integration-test | vp-016-hook-envelope-proto-field-numbers.md | VP-PROTO-001a |
 | VP-017 | Rust `HookEnvelope` Struct `pub schema_version: u32 = 1` | BC-2.02.007 | integration-test | vp-017-hook-envelope-schema-version-field.md | VP-PROTO-001b |
-| VP-018 | `schema_version` Forward-Compat Contract (Phase 4 Dispatch) | BC-2.02.008 | integration-test+fuzz | vp-018-phase4-schema-version-validation.md | VP-PROTO-002 |
+| VP-018 | `schema_version` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch) | BC-2.02.008 | integration-test+fuzz | vp-018-phase4-schema-version-validation.md | VP-PROTO-002 |
 
 ---
 
@@ -824,3 +824,49 @@ UTC ISO-8601 `Z` form: `2026-05-18T09:00:00Z` >= chain high-water `2026-05-18T07
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical cascade-tail citation refresh executed in-scope of R112 Round 11 rather than deferred. Rule 4: 5 coupled cascade fixes (F-R112-1 + F-R112-2 + F-R112-3 + F-R112-4 + vp-009 F-R107-4 third-surface) consolidated into single v1.10 bump rather than fragmented across 5 separate dispatches. Rule 5: cheapest path (defer cascade-tail to next round as "low-impact stale cite") rejected in favor of correct path (close cascade-tail in-scope per 4-occurrence pattern triggering SE-21 codification recommendation). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 chain continuity preserved verbatim per SE-17g audit-trail discipline.
+
+---
+
+## §Trace v1.11 — GAP-R52-001 MED: VP-018 Row Title Sync to Canonical H1 (R52 Round Tiny FV Fix Burst; CLEAN Trajectory Maintenance)
+
+**Bump:** v1.10 → v1.11.
+**Predecessor pin:** v1.10 (commit c865167 — R112 Round 11 FV cascade-tail burst: BC-INDEX v1.9 + PRD v1.26.9 + vp-009 §Source Contract third-surface closure).
+**Scope of v1.11 (NORMATIVE — R52 Round tiny FV fix burst per user direction; single-finding closure; CLEAN convergence trajectory):**
+
+### Change 1 — GAP-R52-001 MED: VP-018 SS-02 Table Row Title Sync to Canonical H1 (NORMATIVE)
+
+- **SS-02 §Core Types and ABI VPs table, VP-018 row Title cell:**
+  - Before: `\`schema_version\` Forward-Compat Contract (Phase 4 Dispatch)`
+  - After: `\`schema_version\` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch)`
+- **Rationale:** vp-018-phase4-schema-version-validation.md line 33 H1 reads `# VP-018: \`schema_version\` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch)` — VP-INDEX row title cell had drifted to abbreviated form omitting the Phase 1 structural recap clause. R52 closes the canonical-title drift in-scope per CLAUDE.md Production-Grade Rule 1 (no defer; mechanical title cite refresh executed in current cycle). Title-cell-to-H1 sync is established VP-INDEX discipline.
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -nE "Phase 1 Structural Recap; Phase 4 Runtime Dispatch" VP-INDEX.md` body scope → 1 match (VP-018 SS-02 table row).
+- Post-edit `grep -nE "Phase 4 Dispatch\)" VP-INDEX.md` body scope (excluding §Trace SE-17f BEFORE evidence) → 0 matches (only remaining occurrence is inside this §Trace v1.11 BEFORE evidence per SE-17g audit-trail preservation).
+- Cross-file `grep -n "Phase 1 Structural Recap; Phase 4 Runtime Dispatch" vp-018-phase4-schema-version-validation.md` → 1 match (line 33 H1 — canonical source unchanged).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content (other rows):** UNCHANGED — only VP-018 Title cell modified; source-BC, proof-method, file-path, and Old ID cells unchanged.
+- **§Conventions section:** UNCHANGED — pin-symmetry / SE-17g audit-trail conventions remain canonical.
+
+### Authoritative cross-references
+
+- **VP-018 canonical H1 source:** `vp-018-phase4-schema-version-validation.md` line 33 (frontmatter version `1.0.8`, unchanged this round).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.9 (commit c0c6b99 — PO 10A R111 Round 10A; unchanged this round).
+- **PRD:** `.factory/specs/prd.md` v1.26.9 (commit c0c6b99 — PO 10A R111 Round 10A; unchanged this round).
+- **R52 closure chain:** GAP-R52-001 MED (VP-018 SS-02 table row title sync to canonical H1) — single-finding tiny burst.
+- **Concurrent dispatches (R52 Round):** FV-only fix burst per user direction (single-finding closure; CLEAN trajectory).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T10:00:00Z` >= chain high-water `2026-05-18T09:00:00Z` (VP-INDEX v1.10 frontmatter timestamp post-R112 Round 11). SE-16d PASS (strict-greater satisfied; +1 hour over prior round).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: VP-018 SS-02 table row Title cell sync `(Phase 4 Dispatch)` → `(Phase 1 Structural Recap; Phase 4 Runtime Dispatch)`; frontmatter `version` v1.10 → v1.11 / `timestamp` 2026-05-18T09:00:00Z → 2026-05-18T10:00:00Z updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; CLEAN trajectory maintenance note.
+- **SE-17g audit-trail preservation:** All prior §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 BEFORE evidence preserved verbatim per §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Rule 1: mechanical row-title sync to canonical H1 executed in-scope of R52 Round rather than deferred. Rule 5: cheapest path (defer title-cell drift to next round as "cosmetic divergence") rejected in favor of correct path (close in-scope per established Title-to-H1 sync discipline; CLEAN trajectory maintenance). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 chain continuity preserved verbatim per SE-17g audit-trail discipline.
