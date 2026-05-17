@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -84,7 +84,7 @@ the format version before deserializing remaining fields.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the JSONL ring format versioning for hook event records, which is the persistence layer of hook ingestion |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — this BC defines the JSONL ring write format and enforces that every serialized HookEventRecord is committed to the ring on each hook POST, which is the write operation that DI-001 requires complete before ack); DI-004 (all public wire types must carry a version discriminant as their first field — format_version as the first key in every JSONL record directly implements DI-004 for the ring wire format, enabling Phase 2 readers to detect format evolution without parsing the full record) |
 | Architecture Module | monocle-runtime (ring buffer) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Drain |
 | Forward Compat Contract | FC-01 (JSONL ring format versioning) |
@@ -112,3 +112,13 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-001 ... ; DI-004 ...`
+  - DI-001 mapping: This BC governs the ring write itself — every HookEventRecord serialized to JSONL constitutes the ring write that DI-001 requires to complete before ack. DI-004 mapping: format_version as first key is the exact implementation of DI-004's "version discriminant as first field" requirement for the ring wire type.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

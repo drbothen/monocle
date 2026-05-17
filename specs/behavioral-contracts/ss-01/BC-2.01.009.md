@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -85,7 +85,7 @@ is retired and does not appear in any Phase 1 response.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth header validation logic protecting all authenticated hook ingestion daemon endpoints |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC is the primary enforcer of DI-005: all value-present failures including wrong prefix, bad format, and secret mismatch return HTTP 401; the two-body taxonomy ensures the monocle-v1: prefix requirement is enforced without leaking structural information to attackers) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence |
 | Forward Compat Contract | FC-06 (F-FC-I005 Phase 4 OAuth2 clarification) |
@@ -113,3 +113,13 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-005 ...`
+  - DI-005 mapping: This BC is the primary DI-005 enforcer — it defines the complete auth validation logic that rejects any token not beginning with monocle-v1:. The two-body taxonomy (missing vs. invalid) is the mechanism by which DI-005 is enforced without information leakage.
+- F-R105-9 (SE-17c-d body-scope grep): Postcondition 2 references `BC-2.01.009` (self-reference in canonical form). 0 stale BC IDs. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

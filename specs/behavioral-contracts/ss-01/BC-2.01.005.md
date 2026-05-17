@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -60,7 +60,7 @@ directory is created with mode `0o700` (owner-only) for defense-in-depth.
 7. On successful graceful shutdown, `<runtime_dir>/monocle.sock` is removed.
 
 **Runtime directory creation:**
-8. If `<runtime_dir>` does not exist at start, daemon creates it with mode `0o700` (owner-only access) using `DirBuilder::new().mode(0o700).recursive(true).create(&runtime_dir)` (with `use std::os::unix::fs::DirBuilderExt` to bring the `mode` method into scope) — NOT `std::fs::create_dir_all` (which honors umask defaults, typically 0o755). This is defense-in-depth alongside the lock-file `0o600` mode (BC-2.01.010): both the containing directory AND the lock file must be owner-only to prevent other OS users from enumerating or reading auth-token-bearing paths. F-R75-1 establishes this contract. Cross-reference: VP-DAEMON-005 Post-condition 9 and probe 5.e verify this with `stat(&runtime_dir).mode() & 0o777 == 0o700`. Cross-platform note: the `0o700` mode assertion applies to Linux/macOS (primary targets per NFR-008); Windows does not expose Unix mode bits and is a secondary build target per §8.7.
+8. If `<runtime_dir>` does not exist at start, daemon creates it with mode `0o700` (owner-only access) using `DirBuilder::new().mode(0o700).recursive(true).create(&runtime_dir)` (with `use std::os::unix::fs::DirBuilderExt` to bring the `mode` method into scope) — NOT `std::fs::create_dir_all` (which honors umask defaults, typically 0o755). This is defense-in-depth alongside the lock-file `0o600` mode (BC-2.01.010): both the containing directory AND the lock file must be owner-only to prevent other OS users from enumerating or reading auth-token-bearing paths. F-R75-1 establishes this contract. Cross-reference: VP-005 Post-condition 9 and probe 5.e verify this with `stat(&runtime_dir).mode() & 0o777 == 0o700`. Cross-platform note: the `0o700` mode assertion applies to Linux/macOS (primary targets per NFR-008); Windows does not expose Unix mode bits and is a secondary build target per §8.7.
 
 ## Invariants
 
@@ -109,7 +109,7 @@ directory is created with mode `0o700` (owner-only) for defense-in-depth.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the lock file lifecycle that is the single-instance enforcement mechanism for the daemon lifecycle subsystem |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-002 (the lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — this BC directly implements that requirement: Postconditions 1–5 govern creation, liveness check, and content; Postconditions 6–7 govern clean removal; Postcondition 8 governs runtime directory mode); DI-003 (the auth token must be written to the lock file after the port is bound — Postcondition 3 states the lock file is written after the listener is bound and a port is obtained, enforcing the DI-003 ordering invariant) |
 | Architecture Module | monocle-runtime (daemon binary, lock file, auth) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence and §Hard Shutdown |
 | Cross-Ref | BC-2.01.010 (lock file JSON schema contract) |
@@ -136,3 +136,15 @@ S-TBD — Implement daemon lock file lifecycle with platform-aware runtime direc
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-005-lock-file-lifecycle.md` — VP-005 lock file lifecycle integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 ... ; DI-003 ...`
+  - DI-002 mapping: This BC is the primary enforcer of DI-002 — it specifies the full lock file creation, content, and cleanup protocol that makes the lock file present and valid before any hook endpoint accepts connections. DI-003 mapping: Postcondition 3 explicitly states the lock file is written after the listener is bound and port is obtained — authToken is included at that point, enforcing DI-003's ordering constraint.
+- F-R105-9 (SE-17c-d body-scope grep): Stale VP ID found and corrected:
+  - Postcondition 8 body: `VP-DAEMON-005 Post-condition 9 and probe 5.e` → `VP-005 Post-condition 9 and probe 5.e`
+  - 0 stale BC IDs in non-historical body prose.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

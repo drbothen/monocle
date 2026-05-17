@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -56,7 +56,7 @@ timestamps to enable reliable automated parsing.
    ```json
    {"pid":<N>,"shutdown_reason":"graceful|signal|forced","last_app_mode":"<string>","shutdown_utc":"YYYY-MM-DDTHH:MM:SS.sssZ"}
    ```
-   The `shutdown_utc` field MUST use ISO 8601 UTC format with mandatory millisecond precision: `YYYY-MM-DDTHH:MM:SS.sssZ` (matching the `last_hook_ts` format in EC-044). A seconds-only timestamp (e.g., `2026-05-15T07:30:00Z`) is non-compliant. VP-DAEMON-006 enforces this with regex `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`.
+   The `shutdown_utc` field MUST use ISO 8601 UTC format with mandatory millisecond precision: `YYYY-MM-DDTHH:MM:SS.sssZ` (matching the `last_hook_ts` format in EC-044). A seconds-only timestamp (e.g., `2026-05-15T07:30:00Z`) is non-compliant. VP-006 enforces this with regex `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$`.
    Field constraints:
    - `pid`: positive integer (≥ 1) per POSIX (PID 0 is reserved for the scheduler)
    - `shutdown_reason`: closed-set enum — exactly one of `"graceful"`, `"signal"`, or `"forced"` (no other value permitted)
@@ -98,7 +98,7 @@ timestamps to enable reliable automated parsing.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs crash recovery state continuity which is part of daemon lifecycle management for the hook ingestion subsystem |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-002 (the lock file must be present before hook endpoints accept connections — this BC governs the recovery path when the lock file is absent or stale: the new daemon creates a fresh lock file before accepting any connections; the recovery file does not substitute for the lock file) |
 | Architecture Module | monocle-runtime (daemon binary) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Crash Recovery |
 | Test File | `monocle-runtime/tests/crash_recovery.rs` |
@@ -123,3 +123,15 @@ S-TBD — Implement crash recovery checkpoint offer/cleanup protocol (filled by 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-006-crash-recovery-checkpoint.md` — VP-006 crash recovery checkpoint integration tests
+
+## §Trace v1.0.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 ...`
+  - DI-002 mapping: The crash recovery path detects an absent or stale lock file and starts a new daemon which creates a fresh lock file before accepting any hook connections. The recovery file is ephemeral and does not serve as a substitute for the lock file. DI-002 compliance is maintained: lock file present before any endpoint is active.
+- F-R105-9 (SE-17c-d body-scope grep): Stale VP ID found and corrected:
+  - Invariant 1 body: `VP-DAEMON-006 enforces this with regex` → `VP-006 enforces this with regex`
+  - 0 stale BC IDs in non-historical body prose.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).

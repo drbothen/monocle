@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -79,7 +79,7 @@ crash recovery does not block liveness checks.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the liveness probe that is a prerequisite for hook ingestion and daemon lifecycle management |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-002 (lock file must be present before hook endpoints accept connections — healthz is on the unauthenticated router explicitly to remain reachable even when the lock file and auth token are being rotated, making it the observable complement of the DI-002 lock-file lifecycle) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /healthz |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — `/healthz` liveness endpoint) |
@@ -102,3 +102,13 @@ S-TBD — Implement daemon HTTP server with healthz endpoint (filled by story-wr
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-001-healthz-endpoint.md` — VP-001 healthz endpoint integration test
+
+## §Trace v1.0.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 (lock file must be present before hook endpoints accept connections — healthz is on the unauthenticated router explicitly to remain reachable even when the lock file and auth token are being rotated, making it the observable complement of the DI-002 lock-file lifecycle)`
+  - Mapping rationale: DI-002 requires the lock file present before hook endpoints accept connections. The healthz endpoint is structurally placed on the UNAUTHENTICATED router specifically so it remains reachable during lock-file lifecycle events (creation, crash recovery, token rotation). This BC is the observable complement of DI-002 enforcement.
+- F-R105-9 (SE-17c-d body-scope grep): NO stale BC IDs found (`grep BC-DAEMON\|BC-RING\|BC-AUTH` → 0 matches in body prose). NO stale VP IDs found (`grep VP-DAEMON\|VP-AUTH` → 0 matches). F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).

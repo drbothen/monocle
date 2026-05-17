@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -81,7 +81,7 @@ harnesses).
 |-------|-------|
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the no-silent-fallback error behavior of the ClaudeCodeModule adapter component of CAP-003 |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — metadata() and enrich() are non-detect methods, but DI-006's no-I/O and no-state-mutation constraints on the EngineModule interface require that error paths also be stateless: HomeUnresolvable fails fast without side effects, no retry state, no mutable shared variables); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — HomeUnresolvable prevents incorrect path substitution that could cause metadata() or enrich() to write to an unintended location; by failing fast with a diagnostic, no file write is attempted with a potentially wrong path) |
 | Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.15 §Behavioral Contracts BC-ENGINE-002-ERR |
 | CLAUDE.md SOUL | SOUL #4 (no silent fallback for unresolvable platform home directory) |
@@ -106,3 +106,13 @@ S-TBD — Implement HomeUnresolvable error path with temp-env test isolation (fi
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-021-home-unresolvable-error.md` — VP-021 HomeUnresolvable integration test (sync + async halves)
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source`
+  - After: `DI-006 ... ; DI-007 ...`
+  - DI-006 mapping: metadata() and enrich() fail-fast error returns are themselves stateless — no retry state, no mutable side effects. The Err(HomeUnresolvable) return is a pure computation on the absence of env vars. DI-007 mapping: the fail-fast prevents a potential write to a wrong path — no file write ever occurs on this error path, directly upholding DI-007.
+- F-R105-9 (SE-17c-d body-scope grep): Architecture Source row references `§Behavioral Contracts BC-ENGINE-002-ERR` — this is a section heading reference within SS-engine-module.md, not a stale BC cross-reference. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -84,7 +84,7 @@ The `parse_frontmatter_field` function applies four guards to handle YAML edge c
 |-------|-------|
 | L2 Capability | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability §SS-02 |
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC implements the factory-state abstraction component of CAP-002 for the VSDD factory format |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-002 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — VsddFactoryAdapter reads .factory/STATE.md via detect() and read_state() and must never write to it; Invariant 1 (detection criterion) and Invariant 3 (subscribe returns empty stream) enforce that no write path exists in Phase 1; the observe-only constraint is a core invariant of this implementation) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
 | Architecture Source | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter |
 | Brief Section | §Success Criteria (factory pattern detection row — "Detection succeeds on monocle's own `.factory/`") |
@@ -108,3 +108,13 @@ S-TBD — Implement VsddFactoryAdapter with frontmatter parser and self-referent
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-015-vsdd-factory-adapter.md` — VP-015 VsddFactoryAdapter self-referential integration test
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-002 per ARCH-INDEX is authoritative source`
+  - After: `DI-007 ...`
+  - DI-007 mapping: VsddFactoryAdapter is the concrete observe-only reader of .factory/STATE.md. It calls no write methods. Invariant 3 (subscribe returns empty stream) ensures no live watcher writes are triggered. This is the primary DI-007 enforcer for the factory state abstraction layer.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).

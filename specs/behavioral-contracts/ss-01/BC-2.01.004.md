@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -97,7 +97,7 @@ admin forced-stop (2), and startup failure (1) per POSIX 128+N conventions.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the graceful shutdown protocol which is core daemon lifecycle management for the hook ingestion subsystem |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — the 10-second drain window ensures in-flight hook POSTs complete their ring writes before the daemon acknowledges shutdown; Postcondition 6 explicitly flushes the ring buffer during drain before exit) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — graceful shutdown protocol on SIGTERM/SIGINT) |
@@ -125,3 +125,13 @@ S-TBD — Implement graceful shutdown drain with POSIX exit codes (filled by sto
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-004-graceful-shutdown.md` — VP-004 shutdown drain integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-001 ...`
+  - DI-001 mapping: The 10-second drain window and Postcondition 6 (ring buffer flush) directly enforce DI-001's requirement that every hook event reaches the JSONL ring before acknowledgement. The drain waits for in-flight writes; the flush persists them before exit.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

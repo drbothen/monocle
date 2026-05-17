@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -75,7 +75,7 @@ value is always the integer `1`. Changing this value requires an ADR.
 |-------|-------|
 | L2 Capability | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability §SS-02 |
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC governs the ABI version field in the /status endpoint, which is the primary forward-compatibility signal for the ABI contract |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-002 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-004 (all public wire types must carry a version discriminant as their first field — the abi_version field in the /status JSON response is the version discriminant for the daemon's ABI contract, enabling plugin SDKs and federation peers to detect ABI version before processing without parsing the full response) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
 | Architecture Source | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant |
 | FC | FC-03 |
@@ -100,3 +100,13 @@ S-TBD — Implement ABI version constant and /status endpoint abi_version field 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-011-abi-version-status-endpoint.md` — VP-011 ABI version in /status integration test
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-002 per ARCH-INDEX is authoritative source`
+  - After: `DI-004 ...`
+  - DI-004 mapping: The abi_version field in /status is the version discriminant for the daemon's public ABI — downstream consumers (plugin SDKs, federation peers) read this field before activating, enabling format evolution detection at the wire level.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).

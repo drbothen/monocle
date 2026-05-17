@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -88,7 +88,7 @@ set (JC-2 parity: `PostToolUse` is omitted). `spawn()` and `preflight()` are Pha
 |-------|-------|
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the hook path routing and operational method surface of the ClaudeCodeModule adapter named in CAP-003 |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — hook_paths() is synchronous, performs no I/O, and returns a static mapping from a pure in-memory HashMap construction; Invariant 3 explicitly states "no I/O, no async" for this method, satisfying DI-006's stateless detection requirement); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — hook_paths() returns read-only routing strings and writes to no files; spawn() and preflight() are stubs in Phase 1, preventing any write path from being exercised against harness-owned paths) |
 | Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.15 §Struct-level inherent operations |
 | FC | JC-2 (5-endpoint parity, PostToolUse omitted) |
@@ -113,3 +113,13 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-022-claude-code-module-inherent-methods.md` — VP-022 ClaudeCodeModule inherent methods integration test
+
+## §Trace v1.0.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source`
+  - After: `DI-006 ... ; DI-007 ...`
+  - DI-006 mapping: hook_paths() is the zero-side-effect method: synchronous, no I/O, returns a static map. It is the purest expression of DI-006 on this struct. DI-007 mapping: hook_paths() returns strings; spawn() and preflight() are stubs in Phase 1; no write path to harness-owned files exists in this BC's scope.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).

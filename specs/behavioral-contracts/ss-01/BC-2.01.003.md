@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -81,7 +81,7 @@ error body. This bounds worst-case daemon memory exposure per connection to
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the memory-protection contract for hook event ingestion, bounding daemon memory exposure during hook processing |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — the 256 KiB body size limit protects the ring write path from runaway memory pressure that would cause ring write failures or OOM before the ack is issued); DI-002 (applies to authenticated hook endpoints — the body limit is enforced on the authenticated router, which is the router governed by the DI-002 lock-file auth contract) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Body Size Limit |
 | Brief Section | §Success Criteria (hook receiver body size limit row — target `{"error":"payload_too_large","limit_bytes":262144}`) |
@@ -106,3 +106,13 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-003-body-size-limit.md` — VP-003 body size limit integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-001 ... ; DI-002 ...`
+  - DI-001 mapping: The 256 KiB limit guards the ring write path — without it, oversized payloads could exhaust memory during the ring write that must complete before the ack. DI-002 mapping: The limit is applied to the authenticated router, which is the same router governed by the lock-file auth contract.
+- F-R105-9 (SE-17c-d body-scope grep): Related BCs references `[BC-2.01.007]` and `[BC-2.01.001]` — canonical form. Inline prose references `BC-RING-001 EC-002` in a descriptive context — this is an EC reference label, not a stale BC cross-reference (the EC ID EC-002 is defined within BC-2.01.007). 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -84,7 +84,7 @@ substring. `cmdline` is retained for `enrich()` but is never the primary detecti
 |-------|-------|
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the ClaudeCodeModule, which is explicitly the Claude Code Phase 1 adapter named in CAP-003 |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — ClaudeCodeModule::detect() performs a pure in-memory comparison of exe_path.file_name() against two string literals; Invariant 1 explicitly states the strict-basename rule uses no I/O and Invariant 2 prohibits cmdline as a signal to further prevent any shared-state dependency) |
 | Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.15 §Phase 1 Implementation: ClaudeCodeModule |
 | Stories | S-TBD (filled by story-writer) |
@@ -108,3 +108,13 @@ S-TBD — Implement ClaudeCodeModule with strict-basename detect (filled by stor
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-020-claude-code-module-impl.md` — VP-020 ClaudeCodeModule implementation integration test
+
+## §Trace v1.0.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source`
+  - After: `DI-006 ...`
+  - DI-006 mapping: ClaudeCodeModule::detect() is a pure function over a ProcessSnapshot struct (in-memory data). No filesystem access, no network I/O, no state mutation. The strict-basename comparison is a string equality check — the simplest possible stateless predicate.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).

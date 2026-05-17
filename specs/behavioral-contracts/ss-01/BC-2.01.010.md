@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -84,7 +84,7 @@ and skip the file gracefully (no crash).
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the lock file forward-compatibility contract that enables future daemon versions and tooling to safely interoperate with the hook ingestion subsystem |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-002 (the lock file must contain a valid port and auth token before any hook endpoint accepts connections — this BC defines the JSON schema of that lock file, including the contract_version first-key convention that allows readers to validate the format before consuming port and authToken); DI-004 (all public wire types must carry a version discriminant as their first field — contract_version as the first key in the lock file JSON directly implements DI-004 for the lock file wire format, paralleling the format_version convention in BC-2.01.007) |
 | Architecture Module | monocle-runtime (daemon binary, lock file) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging |
 | Test File | `monocle-runtime/tests/lock_file_contract.rs` |
@@ -110,3 +110,13 @@ S-TBD — Implement lock file JSON schema with contract_version first-key (fille
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-010-lock-file-contract-version.md` — VP-010 lock file contract version integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 ... ; DI-004 ...`
+  - DI-002 mapping: This BC specifies the lock file schema that enables consumers to validate the format (contract_version) before extracting the port and authToken. It directly supports DI-002 by defining what "valid" lock file content means. DI-004 mapping: contract_version as the first key is the explicit first-field version discriminant implementation for the lock file wire type.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

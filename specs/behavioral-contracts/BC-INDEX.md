@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T12:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -133,6 +133,18 @@ traces_to: prd.md
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T12:00:00Z >= chain high-water 2026-05-17T11:30:00Z.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
 - Next: Dispatch 4 (PO) reduces PRD §3/§4/§5 to index + creates 4 prd-supplements.
+
+## §Trace v1.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure — 22-BC DI mapping sweep** (2026-05-17T18:00:00Z):
+- All 22 BC files updated (SS-01 × 10, SS-02 × 8, SS-03 × 4).
+- Per-file L2 Domain Invariants cells replaced from stale "N/A" text to canonical DI-NNN citations.
+- 2 stale VP IDs corrected in body prose: BC-2.01.005 (`VP-DAEMON-005` → `VP-005`) and BC-2.01.006 (`VP-DAEMON-006` → `VP-006`).
+- 0 stale BC IDs found in non-historical body prose across all 22 files.
+- Per-file version bumps: all files that were at v1.0 incremented to v1.0.1; files at v1.0.1 incremented to v1.0.2.
+- BC-INDEX version bumped: 1.1 → 1.2.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.1).
+- SE-17g META audit: see commit §Trace entry for zero-remaining "N/A — no domain-spec/invariants.md" re-grep result.
 
 **Template compliance Dispatch 2 of 7+** (2026-05-17T11:30:00Z):
 - Created as new artifact; no prior version.

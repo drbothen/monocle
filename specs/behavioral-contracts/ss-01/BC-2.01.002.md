@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T11:30:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -90,7 +90,7 @@ continues serving during graceful shutdown drain to allow drain monitoring.
 |-------|-------|
 | L2 Capability | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability §SS-01 |
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the daemon state observation endpoint that exposes lifecycle and ring buffer health required for managing hook ingestion |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-002 (lock file must be present with valid port and auth token before hook endpoints accept connections — /status requires valid auth token from lock file); DI-005 (daemon must not accept a token that does not begin with the canonical monocle-v1: prefix — /status auth requirement enforces this per Postcondition 2 and BC-2.01.009) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /status |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — `/status` daemon-state query endpoint) |
@@ -116,3 +116,13 @@ S-TBD — Implement daemon /status endpoint with full observability fields (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-002-status-endpoint.md` — VP-002 status endpoint integration tests
+
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 ... ; DI-005 ...`
+  - DI-002 mapping: /status requires authentication via a valid auth token read from the lock file — lock file must be present per DI-002. DI-005 mapping: /status enforces the monocle-v1: prefix requirement (Postcondition 2 delegates to BC-2.01.009 which enforces DI-005).
+- F-R105-9 (SE-17c-d body-scope grep): Stale test name `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version` in Traceability table — this is an intentional historical test name in the Old ID row, NOT a stale cross-reference. Body prose Related BCs use canonical `BC-2.01.NNN` form. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).

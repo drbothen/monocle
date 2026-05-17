@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-17T18:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "03a845a"
@@ -87,7 +87,7 @@ dyn-compatibility on MSRV 1.86 stable Rust. `metadata()` and `enrich()` must fai
 |-------|-------|
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the EngineModule trait, which is the explicit engine abstraction over AI coding harnesses named in CAP-003 |
-| L2 Domain Invariants | N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source |
+| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — this BC defines the EngineModule trait, including Postcondition 5 which mandates that detect() has no I/O and no shared state mutation; the trait contract itself is the DI-006 specification that all implementations must satisfy) |
 | Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.15 §EngineModule Trait Signature |
 | Vision | §EngineModule |
@@ -112,3 +112,13 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-019-engine-module-trait.md` — VP-019 EngineModule trait AST audit test
+
+## §Trace v1.0.2
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-003 per ARCH-INDEX is authoritative source`
+  - After: `DI-006 ...`
+  - DI-006 mapping: This BC defines the EngineModule trait whose detect() method carries the stateless, no-I/O, no-shared-state constraint that is DI-006. The trait definition IS the formal specification of DI-006 for all implementations.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
