@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:31:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "c104b34"
@@ -93,21 +93,6 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 
 ## §Trace
 
-### F-R107-1 PO closure — 2026-05-17T23:00:00Z
-
-**Finding:** F-R107-1 CRITICAL — fabricated ADR-0005 path in frontmatter `inputs:`.
-
-**SE-17f before/after evidence:**
-
-**Before:** `inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]`
-**After:** `inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]`
-
-Canonical filename verified via ARCH-INDEX and disk. Version bumped: 1.1 → 1.2; timestamp refreshed.
-
-**Scope:** Frontmatter `inputs:` only. No body content changed.
-
----
-
 ### F-R106-16 PO closure — 2026-05-17T22:15:00Z
 
 **Finding:** F-R106-16 MED — error-taxonomy.md not updated for ADR-0005 dual-accept auth. E-AUTH-001 described "absent header" without dual-header semantics (should be: both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` absent). E-AUTH-003 for WARN deprecation log was missing from the catalog entirely.
@@ -169,6 +154,21 @@ Error-to-Module Mapping:
 
 ---
 
+### F-R107-1 PO closure — 2026-05-17T23:00:00Z
+
+**Finding:** F-R107-1 CRITICAL — fabricated ADR-0005 path in frontmatter `inputs:`.
+
+**SE-17f before/after evidence:**
+
+**Before:** `inputs: [prd.md, architecture/adr/ADR-0005-dual-accept-auth-header.md]`
+**After:** `inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]`
+
+Canonical filename verified via ARCH-INDEX and disk. Version bumped: 1.1 → 1.2; timestamp refreshed.
+
+**Scope:** Frontmatter `inputs:` only. No body content changed.
+
+---
+
 ### GAP-R47-1 PO closure — 2026-05-18T01:00:00Z
 
 **Finding:** GAP-R47-1 HIGH (PO part) — E-AUTH-003 Message Format used String B (`"WARN: X-Claude-Code-Ide-Authorization alias used; migrate to X-Monocle-Authorization"`) instead of canonical String A from BC-2.01.009 INV-6. Per CLAUDE.md hierarchy, BC-2.01.009 is the canonical source for behavioral contracts; the error taxonomy must match the BC exactly.
@@ -185,3 +185,18 @@ Error-to-Module Mapping:
 **Changes made:** E-AUTH-003 Message Format column: String B → String A (canonical per BC-2.01.009 INV-6); version bumped v1.2 → v1.3; timestamp refreshed.
 
 **Scope:** PO-only. No changes to BC-2.01.009, ADR-0005, VP-009, or any architecture artifact. FV 7D handles VP-009 reconciliation in parallel (per task scope).
+
+---
+
+### F-R109-12 PO closure — 2026-05-17T04:31:00Z
+
+**Finding:** F-R109-12 HIGH — §Trace blocks were non-monotonic. F-R106-16 (T22:15) appeared AFTER F-R107-1 (T23:00) — the block was authored in Round 6 but inserted after the Round 7 block.
+
+**SE-17f BEFORE (§Trace order):** F-R107-1 (T23:00), F-R106-16 (T22:15), GAP-R47-1 (T01:00) — non-monotonic.
+**SE-17f AFTER (§Trace order):** F-R106-16 (T22:15), F-R107-1 (T23:00), GAP-R47-1 (T01:00), F-R109-12 (T04:31) — monotonic ascending.
+
+Content of each section preserved verbatim; only insertion order corrected.
+
+**Changes made:** §Trace blocks reordered monotonic ascending; version bumped v1.3 → v1.4; timestamp refreshed.
+
+**Scope:** PO-only. No body content (error catalog, mappings) changed.

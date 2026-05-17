@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T04:10:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -77,7 +77,7 @@ value is always the integer `1`. Changing this value requires an ADR.
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC governs the ABI version field in the /status endpoint, which is the primary forward-compatibility signal for the ABI contract |
 | L2 Domain Invariants | DI-004 (all public wire types must carry a version discriminant as their first field — the abi_version field in the /status JSON response is the version discriminant for the daemon's ABI contract, enabling plugin SDKs and federation peers to detect ABI version before processing without parsing the full response) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
-| Architecture Source | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant |
+| Architecture Source | SS-core-types-and-abi.md v1.2.13 §ABI Version Constant |
 | FC | FC-03 |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — ABI version constant) |
 | Stories | S-TBD (filled by story-writer) |
@@ -110,3 +110,12 @@ S-TBD — Implement ABI version constant and /status endpoint abi_version field 
   - DI-004 mapping: The abi_version field in /status is the version discriminant for the daemon's public ABI — downstream consumers (plugin SDKs, federation peers) read this field before activating, enabling format evolution detection at the wire level.
 - F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).
+
+## §Trace v1.0.2
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:10:00Z):
+- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §ABI Version Constant`
+  - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §ABI Version Constant`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:10:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).

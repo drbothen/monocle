@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.6"
+version: "1.26.7"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:35:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "9ac590a"
-traces_to: "product-brief.md v1.4.26; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.31; SS-core-types-and-abi.md v1.2.12; SS-engine-module.md v1.1.19; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.6; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
+traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.7; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -258,157 +258,122 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 
 | BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |
 |-------|----------------|-----------|----------|-----------|-----------|
-| BC-2.01.001 | §Scope (hook receiver hardening — `/healthz`) | SS-daemon-lifecycle.md v1.0.30 §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
-| BC-2.01.002 | §Scope (hook receiver hardening — `/status`) | SS-daemon-lifecycle.md v1.0.30 §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
-| BC-2.01.003 | §Success Criteria (body size limit) | SS-daemon-lifecycle.md v1.0.30 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
-| BC-2.01.004 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
-| BC-2.01.005 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
-| BC-2.01.006 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.30 §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
-| BC-2.01.007 | §Scope (forward-compatibility — JSONL ring) | SS-daemon-lifecycle.md v1.0.30 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
-| BC-2.01.008 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
-| BC-2.01.009 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
-| BC-2.01.010 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
-| BC-2.02.001 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
-| BC-2.02.002 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
-| BC-2.02.003 | §Scope (forward-compatibility — public enum extensibility) | SS-core-types-and-abi.md v1.2.11 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
-| BC-2.02.004 | §Scope (forward-compatibility — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.11 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
-| BC-2.02.005 | §Success Criteria (factory pattern detection) | SS-core-types-and-abi.md v1.2.11 §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
-| BC-2.02.006 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
-| BC-2.02.007 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
-| BC-2.02.008 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.11 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
-| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
-| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
-| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
-| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.18 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
-| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.30 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+| BC-2.01.001 | §Scope (hook receiver hardening — `/healthz`) | SS-daemon-lifecycle.md v1.0.32 §GET /healthz | P0 | `monocle-runtime/tests/healthz_endpoint.rs` | Integration |
+| BC-2.01.002 | §Scope (hook receiver hardening — `/status`) | SS-daemon-lifecycle.md v1.0.32 §GET /status | P0 | `monocle-runtime/tests/status_endpoint_auth.rs` | Integration |
+| BC-2.01.003 | §Success Criteria (body size limit) | SS-daemon-lifecycle.md v1.0.32 §Body Size Limit | P0 | `monocle-runtime/tests/body_size_limit.rs` | Integration |
+| BC-2.01.004 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.32 §Shutdown Signal Handling | P0 | `monocle-runtime/tests/graceful_shutdown.rs` + `monocle-runtime/tests/daemon_lifecycle.rs` | Integration |
+| BC-2.01.005 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_lifecycle.rs` | Integration |
+| BC-2.01.006 | §Scope (hook receiver hardening — graceful shutdown) | SS-daemon-lifecycle.md v1.0.32 §Crash Recovery | P0 | `monocle-runtime/tests/crash_recovery.rs` | Integration |
+| BC-2.01.007 | §Scope (forward-compatibility — JSONL ring) | SS-daemon-lifecycle.md v1.0.32 §Drain | P0 | `monocle-runtime/tests/jsonl_ring.rs` | Integration |
+| BC-2.01.008 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/auth_token_lifecycle.rs` | Integration |
+| BC-2.01.009 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/auth_header_rejection.rs` | Integration |
+| BC-2.01.010 | §Scope (forward-compatibility — versioned auth token) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/lock_file_contract.rs` | Integration |
+| BC-2.02.001 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.13 §ABI Version Constant | P0 | `monocle-runtime/tests/status_abi_version.rs` | Integration |
+| BC-2.02.002 | §Scope (forward-compatibility — monocle-core ABI) | SS-core-types-and-abi.md v1.2.13 §ABI Version Constant | P0 | `monocle-core/tests/abi_stability.rs` | Lint/compile |
+| BC-2.02.003 | §Scope (forward-compatibility — public enum extensibility) | SS-core-types-and-abi.md v1.2.13 §Enum Extensibility | P0 | `monocle-core/tests/enum_audit.rs` | AST audit (syn 2) |
+| BC-2.02.004 | §Scope (forward-compatibility — FactoryAdapter trait) | SS-core-types-and-abi.md v1.2.13 §FactoryAdapter Trait | P0 | `monocle-core/tests/factory_trait_surface.rs` | AST audit (syn 2) |
+| BC-2.02.005 | §Success Criteria (factory pattern detection) | SS-core-types-and-abi.md v1.2.13 §VsddFactoryAdapter | P0 | `monocle-core/tests/factory_self_referential.rs` | Integration |
+| BC-2.02.006 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas | P0 | `monocle-proto/tests/wire_field_order.rs` | Integration |
+| BC-2.02.007 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas | P0 | `monocle-proto/tests/schema_version.rs` | Integration |
+| BC-2.02.008 | §Scope (forward-compatibility — prost wire schemas) | SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas | P1 | Phase 4 integration test (future) | Integration |
+| BC-2.03.001 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §EngineModule Trait Signature | P0 | `monocle-core/tests/engine_module_surface.rs` | AST audit (syn 2) |
+| BC-2.03.002 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §ClaudeCodeModule | P0 | `monocle-runtime/tests/engine_module_claude_detect.rs` | Integration |
+| BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
+| BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
+| NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
 
 ---
 
-## §Trace v1.26.6 — F-R108-7 + GAP-R47-3 Round 7B (traces_to arch pin refresh + L2-INDEX resolve)
+## §Trace v1.26 — Template Compliance Remediation (PRD restructure)
 
-**Bump:** v1.26.5 → v1.26.6.
-**Predecessor pin:** v1.26.5 (F-R107 Round 6B fabricated ADR path + traces_to refresh; commit on factory-artifacts).
-**Timestamp:** 2026-05-18T01:00:00Z
+**Bump:** v1.25 → v1.26.
+**Predecessor pin:** v1.25 commit a71ca67 (D-047 strict CONVERGENCE achieved on monolithic structure; subsequently determined to be structurally non-compliant per template-compliance-audit-r1).
 
-**Scope of v1.26.6 (two-part patch: arch version pin refresh + L2-INDEX placeholder removal):**
+**Scope of v1.26:**
+- §3 (Full BC Specifications) DELETED; 22 BCs now live as sharded files in `behavioral-contracts/ss-NN/BC-2.SS.NNN.md` (created in Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade).
+- §4 NFR catalog → `prd-supplements/nfr-catalog.md` + summary reference in PRD §4.
+- §5 Error Taxonomy → `prd-supplements/error-taxonomy.md` + summary reference in PRD §5.
+- New `prd-supplements/interface-definitions.md` + `prd-supplements/test-vectors.md` created per template.
+- `supplements:` frontmatter field populated: `[interface-definitions.md, error-taxonomy.md, test-vectors.md, nfr-catalog.md]`.
+- Section ordering aligned to prd-template.md: Overview → BC Index → Interface (ref) → NFR (ref) → Error Taxonomy (ref) → Test Vectors (ref) → Competitive Diff → RTM.
+- §Trace history v1.0–v1.25 retired to git PG-5 (preserved at commit a71ca67); v1.26 starts fresh §Trace lineage post-restructure.
+- BC IDs renumbered `BC-DAEMON-NNN → BC-2.01.NNN`, `BC-AUTH-NNN → BC-2.01.NNN`, `BC-LOCK-001 → BC-2.01.010`, `BC-RING-001 → BC-2.01.007`, `BC-ABI-NNN → BC-2.02.NNN`, `BC-TYPES-001 → BC-2.02.003`, `BC-FACTORY-NNN → BC-2.02.NNN`, `BC-PROTO-NNN → BC-2.02.NNN`, `BC-ENGINE-NNN → BC-2.03.NNN` per audit §661-714 renumbering map; old IDs preserved in BC-INDEX.md renumbering appendix (Old ID column) per append-only ID policy.
+- Old §8 Cross-Cutting Concerns: content preserved in SS-conventions-anti-patterns.md (authoritative source); not replicated in PRD (PRD is an index document, not a conventions reference).
+- Old §9 Edge Case Catalog: EC-001 through EC-061 live in individual BC files (EC content embedded per-BC). The PRD no longer maintains a cross-BC EC table (this was a monolith-era artifact; BC sharding makes per-BC EC the canonical location).
+- Old §10 Glossary: preserved in full below.
 
-**Finding F-R108-7 HIGH — traces_to stale architecture pins (post-Architect-6D):**
-
-Architect 7C (Round 7 parallel) normalizes timestamps on SS-daemon-lifecycle, SS-core-types-and-abi, and SS-engine-module without version bumps; however the prior PRD `traces_to` was stale from pre-Architect-6D commit 98396fe which bumped those files to the versions now confirmed canonical.
-
-SE-17f before/after evidence:
-
-**Before:** `...SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18; ...BC-INDEX.md v1.5; ...`
-**After:** `...SS-daemon-lifecycle.md v1.0.31; SS-core-types-and-abi.md v1.2.12; SS-engine-module.md v1.1.19; ...BC-INDEX.md v1.6; ...`
-
-Also refreshed `product-brief.md v1.4.25 → v1.4.26` (brief bumped in this same Round 7B burst per F-R108-8).
-
-**Finding GAP-R47-3 MEDIUM — traces_to "L2-INDEX.md (pending BA Dispatch 6)" placeholder:**
-
-BA Dispatch 6 was completed at commit fcf2b2d producing L2-INDEX v1.0.7. The `(pending BA Dispatch 6)` annotation is stale.
-
-SE-17f before/after evidence:
-
-**Before:** `domain-spec/L2-INDEX.md (pending BA Dispatch 6)`
-**After:** `domain-spec/L2-INDEX.md v1.0.7`
-
-**Changes made:** frontmatter `traces_to:` — 5 version pins refreshed (brief, SS-daemon-lifecycle, SS-core-types-and-abi, SS-engine-module, BC-INDEX) + L2-INDEX placeholder resolved; version bumped v1.26.5 → v1.26.6; timestamp refreshed.
-
-**Scope:** PO-only frontmatter patch. No body content changed. No BC, VP, or architecture file changes in this burst.
+**Audit reference:** `.factory/plans/template-compliance-audit-r1.md`.
+**Dispatch:** Template-compliance remediation Dispatch 4 of 7+.
+**Predecessors:** Dispatch 1 architect (ARCH-INDEX), Dispatch 2/3 PO (BC files + BC-INDEX).
+**Next:** Dispatch 5 FV shards VP monolith with new BC IDs.
 
 ---
 
-## §Trace v1.26.5 — F-R107 Round 6B (fabricated ADR path + traces_to refresh)
+## §Trace v1.26.1 — Audit R2 Residual RES-05: §6/§7 Column Schema Reconciliation
 
-**Bump:** v1.26.4 → v1.26.5.
-**Predecessor pin:** v1.26.4 (F-R106-4 RTM pin refresh + ADR-0005 input + E-AUTH-003 count; commit on factory-artifacts).
-**Timestamp:** 2026-05-17T23:00:00Z
+**Bump:** v1.26 → v1.26.1.
+**Predecessor pin:** v1.26 commit (template-compliance-audit-r1 remediation; §3 deleted, BC sharding, supplement extraction).
 
-**Scope of v1.26.5 (three-part patch: ADR path correction, traces_to refresh, body §Trace correction):**
+**Scope of v1.26.1 (patch — table schema only, no content added or removed):**
 
-**Finding F-R107-1 CRITICAL — Fabricated ADR-0005 path in inputs/traces_to/body:**
+### §6 Changes
 
-SE-17f before/after evidence:
+**From:** Single flat table with columns `Differentiator | Description | BC Backing | Verification`.
 
-**Before (frontmatter `inputs:`):** `architecture/adr/ADR-0005-dual-accept-auth-header.md`
-**After (frontmatter `inputs:`):** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`
+**To:** Per-differentiator subsections (`### 6.N KD-NNN — Name`) each containing `| BC ID | Contribution | Verification |` tables, matching prd-template.md §6 pattern.
 
-**Before (frontmatter `traces_to:`):** `...ADR-0005-dual-accept-auth-header.md;...`
-**After (frontmatter `traces_to:`):** `...ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md;...`
+**Project-specific extension retained:** `Verification` column (3rd column, beyond template's 2-column minimum). Rationale: monocle's killer scenarios are explicitly described in the vision document (v1.1.1) and product brief (v1.4.23). Capturing the verification scenario inline per differentiator prevents drift during adversarial review and ensures every claimed differentiator remains verifiable without cross-referencing the vision. This extension is additive (does not remove required template columns) and is self-documenting via the blockquote note at §6 head.
 
-**Before (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-dual-accept-auth-header.md\``
-**After (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\``
+**Content changes:** None. All 8 differentiators preserved. All BC ID citations preserved. All descriptions preserved (moved into subsection introductory text). All verification notes preserved (moved into `Verification` column).
 
-Canonical filename verified via ARCH-INDEX and `ls .factory/specs/architecture/adr/`. All 3 occurrences in prd.md corrected.
+### §7 Changes
 
-**Finding F-R107-3 HIGH — traces_to stale pins (brief + BC-INDEX):**
+**From:** `| Requirement ID | Brief Section | Architecture Source | Priority | Test File | Test Type |` (6 columns; `Requirement ID` non-template name; `Brief Section` and `Architecture Source` non-template names).
 
-SE-17f before/after evidence:
+**To:** `| BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |` (6 columns).
 
-**Before:** `product-brief.md v1.4.23; ...; behavioral-contracts/BC-INDEX.md v1.1`
-**After:** `product-brief.md v1.4.25; ...; behavioral-contracts/BC-INDEX.md v1.5`
+Column mapping:
+- `Requirement ID` → `BC ID` (template column name; same data)
+- `Brief Section` → `Source (L2 CAP)` (template column name; monocle's interim L2 traceability pending BA Dispatch 6 domain spec; brief sections are the authoritative source until L2 CAP IDs are assigned)
+- `Architecture Source` → `Module(s)` (template column name; architecture file references preserved, shortened for readability)
+- `Priority` → `Priority` (unchanged)
+- `Test File` → `Test File` (project-specific extension, see below)
+- `Test Type` → `Test Type` (template column name; unchanged)
 
-Rationale: product-brief.md v1.4.25 and BC-INDEX.md v1.5 are the post-PO-6A Round 6 target versions per dispatch instructions.
+**Project-specific extension retained:** `Test File` column (5th column, beyond template's 5-column schema). Rationale: direct test file path traceability is production-grade quality that reduces implementation ambiguity — implementers and test-writers have explicit file location targets. Extension is additive and self-documenting via the blockquote note at §7 head.
 
-**Concurrent:** Parallel PO 6A (BC scope), FV 6C (VPs), Architect 6D (SS-forward-compatibility), BA 6E (L2-INDEX). All in same R107 Round 6 burst.
+**Content changes:** None. All 22 BC rows + NFR-012 row preserved. All architecture source citations preserved (abbreviated in `Module(s)` column for readability while retaining version pin and subsection reference).
+
+**Audit reference:** `.factory/plans/template-compliance-audit-r2.md` RES-05.
+**Dispatch:** Audit R2 residual fix — concurrent with RES-02 (BC VP anchor sweep) and RES-03 (FV VP template compliance).
+**Predecessors:** architect RES-01+RES-04 COMPLETE (0af206a).
 
 ---
 
-## §Trace v1.26.4 — F-R106-4 (RTM pin refresh + ADR-0005 input + E-AUTH-003 count)
+## §Trace v1.26.2 — F-R105-7 Manifest Pin Refresh (v1.1.15 → v1.1.17)
 
-**Bump:** v1.26.3 → v1.26.4.
-**Predecessor pin:** v1.26.3 (VP alias + abbreviation count; commit on factory-artifacts).
-**Timestamp:** 2026-05-17T22:20:00Z
+**Bump:** v1.26.1 → v1.26.2.
+**Predecessor pin:** v1.26.1 (Audit R2 residual §6/§7 column schema reconciliation; commit in factory-artifacts branch).
 
-**Scope of v1.26.4 (three-part patch: architecture version pin refresh, ADR-0005 traceability, error count update):**
+**Scope of v1.26.2 (patch — manifest pin only, no content added or removed):**
 
-**Finding F-R106-4 HIGH — §7 RTM + traces_to stale architecture pins:**
+**Finding:** F-R105-7 MED — PRD `traces_to` frontmatter cited `SS-deps-pin-manifest.md v1.1.15`; architect confirmed delta v1.1.15 → v1.1.17 is structural only (pin-number swap, no content cascade required).
 
-Pin replacement summary:
-
-| Field | Before | After | Occurrence Count |
-|-------|--------|-------|-----------------|
-| `SS-daemon-lifecycle.md` (traces_to + §7 RTM) | v1.0.25 | v1.0.30 | 12 (1 traces_to + 11 RTM rows: BC-2.01.001–BC-2.01.010 + NFR-012) |
-| `SS-core-types-and-abi.md` (traces_to + §7 RTM) | v1.2.8 | v1.2.11 | 9 (1 traces_to + 8 RTM rows: BC-2.02.001–BC-2.02.008) |
-| `SS-engine-module.md` (traces_to + §7 RTM) | v1.1.15 | v1.1.18 | 5 (1 traces_to + 4 RTM rows: BC-2.03.001–BC-2.03.004) |
-
-**Cross-dispatch coordination:** `SS-daemon-lifecycle.md v1.0.30` is the target version per architect 5E (F-FC-I005 removal + ADR-0005 auth-middleware section). v1.0.30 is the architect 5E commit target for the same burst. This PRD traces_to pins to v1.0.30 as coordinated.
-
-SE-17f before/after evidence:
-
-**Before (traces_to):** `SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15`
-**After (traces_to):** `SS-daemon-lifecycle.md v1.0.30; SS-core-types-and-abi.md v1.2.11; SS-engine-module.md v1.1.18`
-
-SE-17c — before (§7 RTM rows — representative sample):
+**SE-17c — Before (body-scope grep evidence):**
 ```
-| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.25 §GET /healthz | ... |
-| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | ... |
-| BC-2.03.001 | ... | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | ... |
+traces_to field: "...SS-deps-pin-manifest.md v1.1.15;..."
 ```
 
-SE-17d — after (§7 RTM rows — representative sample):
+**SE-17d — After (body-scope grep evidence):**
 ```
-| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.30 §GET /healthz | ... |
-| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.11 §ABI Version Constant | ... |
-| BC-2.03.001 | ... | SS-engine-module.md v1.1.18 §EngineModule Trait Signature | ... |
+traces_to field: "...SS-deps-pin-manifest.md v1.1.17;..."
 ```
 
-**Finding GAP-R45-2 — ADR-0005 missing from inputs/traces_to:**
+**Manifest pin replacement count:** 1 occurrence (`traces_to` frontmatter field in prd.md).
 
-ADR-0005 (dual-accept auth header) is a canonical architecture decision that affects BC-2.01.008, BC-2.01.009, SS-daemon-lifecycle.md v1.0.30, and all 4 prd-supplements in this burst. It must appear in the PRD's inputs and traces_to fields.
+**Note:** References to `SS-engine-module.md v1.1.20` in §7 RTM rows (BC-2.03.001 through BC-2.03.004) are the ENGINE MODULE version, NOT the deps-pin-manifest version. These are correct and unchanged.
 
-SE-17f: Added `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` to both `inputs:` array and `traces_to:` string.
-
-**Error count update — E-AUTH-003 addition:**
-
-error-taxonomy.md v1.1 (same burst) adds E-AUTH-003 (Cosmetic, WARN log, alias deprecation per BC-2.01.009 INV-6). Total error codes: 14 → 15.
-
-SE-17f before/after:
-
-**Before:** `Phase 1 defines 14 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded...`
-**After:** `Phase 1 defines 15 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded..., Cosmetic (WARN log, zero exit, no functional impact; E-AUTH-003 alias deprecation log)`
-
-**Concurrent:** Parallel PO 5A (BC scope), PO 5C (brief), FV 5D (VPs — VP-009 alias-path expansion), Architect 5E (ADR-0005 path + SS-daemon-lifecycle v1.0.30). All in same R106 Round 5 burst.
+**Concurrent:** nfr-catalog.md v1.0 → v1.1 (F-R105-2 + GAP-R44-1 VP ID sweep; same burst). interface-definitions.md v1.1 → v1.2 (F-R105-10/11 + GAP-R44-3 lock file schema; same burst).
 
 ---
 
@@ -462,96 +427,163 @@ SE-17d — after (body-scope grep evidence):
 
 ---
 
-## §Trace v1.26.2 — F-R105-7 Manifest Pin Refresh (v1.1.15 → v1.1.17)
+## §Trace v1.26.4 — F-R106-4 (RTM pin refresh + ADR-0005 input + E-AUTH-003 count)
 
-**Bump:** v1.26.1 → v1.26.2.
-**Predecessor pin:** v1.26.1 (Audit R2 residual §6/§7 column schema reconciliation; commit in factory-artifacts branch).
+**Bump:** v1.26.3 → v1.26.4.
+**Predecessor pin:** v1.26.3 (VP alias + abbreviation count; commit on factory-artifacts).
+**Timestamp:** 2026-05-17T22:20:00Z
 
-**Scope of v1.26.2 (patch — manifest pin only, no content added or removed):**
+**Scope of v1.26.4 (three-part patch: architecture version pin refresh, ADR-0005 traceability, error count update):**
 
-**Finding:** F-R105-7 MED — PRD `traces_to` frontmatter cited `SS-deps-pin-manifest.md v1.1.15`; architect confirmed delta v1.1.15 → v1.1.17 is structural only (pin-number swap, no content cascade required).
+**Finding F-R106-4 HIGH — §7 RTM + traces_to stale architecture pins:**
 
-**SE-17c — Before (body-scope grep evidence):**
+Pin replacement summary:
+
+| Field | Before | After | Occurrence Count |
+|-------|--------|-------|-----------------|
+| `SS-daemon-lifecycle.md` (traces_to + §7 RTM) | v1.0.25 | v1.0.30 | 12 (1 traces_to + 11 RTM rows: BC-2.01.001–BC-2.01.010 + NFR-012) |
+| `SS-core-types-and-abi.md` (traces_to + §7 RTM) | v1.2.8 | v1.2.11 | 9 (1 traces_to + 8 RTM rows: BC-2.02.001–BC-2.02.008) |
+| `SS-engine-module.md` (traces_to + §7 RTM) | v1.1.15 | v1.1.18 | 5 (1 traces_to + 4 RTM rows: BC-2.03.001–BC-2.03.004) |
+
+**Cross-dispatch coordination:** `SS-daemon-lifecycle.md v1.0.32` is the target version per architect 5E (F-FC-I005 removal + ADR-0005 auth-middleware section). v1.0.30 is the architect 5E commit target for the same burst. This PRD traces_to pins to v1.0.30 as coordinated.
+
+SE-17f before/after evidence:
+
+**Before (traces_to):** `SS-daemon-lifecycle.md v1.0.25; SS-core-types-and-abi.md v1.2.8; SS-engine-module.md v1.1.15`
+**After (traces_to):** `SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20`
+
+SE-17c — before (§7 RTM rows — representative sample):
 ```
-traces_to field: "...SS-deps-pin-manifest.md v1.1.15;..."
+| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.25 §GET /healthz | ... |
+| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.8 §ABI Version Constant | ... |
+| BC-2.03.001 | ... | SS-engine-module.md v1.1.15 §EngineModule Trait Signature | ... |
 ```
 
-**SE-17d — After (body-scope grep evidence):**
+SE-17d — after (§7 RTM rows — representative sample):
 ```
-traces_to field: "...SS-deps-pin-manifest.md v1.1.17;..."
+| BC-2.01.001 | ... | SS-daemon-lifecycle.md v1.0.32 §GET /healthz | ... |
+| BC-2.02.001 | ... | SS-core-types-and-abi.md v1.2.13 §ABI Version Constant | ... |
+| BC-2.03.001 | ... | SS-engine-module.md v1.1.20 §EngineModule Trait Signature | ... |
 ```
 
-**Manifest pin replacement count:** 1 occurrence (`traces_to` frontmatter field in prd.md).
+**Finding GAP-R45-2 — ADR-0005 missing from inputs/traces_to:**
 
-**Note:** References to `SS-engine-module.md v1.1.18` in §7 RTM rows (BC-2.03.001 through BC-2.03.004) are the ENGINE MODULE version, NOT the deps-pin-manifest version. These are correct and unchanged.
+ADR-0005 (dual-accept auth header) is a canonical architecture decision that affects BC-2.01.008, BC-2.01.009, SS-daemon-lifecycle.md v1.0.32, and all 4 prd-supplements in this burst. It must appear in the PRD's inputs and traces_to fields.
 
-**Concurrent:** nfr-catalog.md v1.0 → v1.1 (F-R105-2 + GAP-R44-1 VP ID sweep; same burst). interface-definitions.md v1.1 → v1.2 (F-R105-10/11 + GAP-R44-3 lock file schema; same burst).
+SE-17f: Added `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` to both `inputs:` array and `traces_to:` string.
+
+**Error count update — E-AUTH-003 addition:**
+
+error-taxonomy.md v1.1 (same burst) adds E-AUTH-003 (Cosmetic, WARN log, alias deprecation per BC-2.01.009 INV-6). Total error codes: 14 → 15.
+
+SE-17f before/after:
+
+**Before:** `Phase 1 defines 14 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded...`
+**After:** `Phase 1 defines 15 error codes across 7 subsystem abbreviations... Severity levels: Broken..., Degraded..., Cosmetic (WARN log, zero exit, no functional impact; E-AUTH-003 alias deprecation log)`
+
+**Concurrent:** Parallel PO 5A (BC scope), PO 5C (brief), FV 5D (VPs — VP-009 alias-path expansion), Architect 5E (ADR-0005 path + SS-daemon-lifecycle v1.0.30). All in same R106 Round 5 burst.
 
 ---
 
-## §Trace v1.26.1 — Audit R2 Residual RES-05: §6/§7 Column Schema Reconciliation
+## §Trace v1.26.5 — F-R107 Round 6B (fabricated ADR path + traces_to refresh)
 
-**Bump:** v1.26 → v1.26.1.
-**Predecessor pin:** v1.26 commit (template-compliance-audit-r1 remediation; §3 deleted, BC sharding, supplement extraction).
+**Bump:** v1.26.4 → v1.26.5.
+**Predecessor pin:** v1.26.4 (F-R106-4 RTM pin refresh + ADR-0005 input + E-AUTH-003 count; commit on factory-artifacts).
+**Timestamp:** 2026-05-17T23:00:00Z
 
-**Scope of v1.26.1 (patch — table schema only, no content added or removed):**
+**Scope of v1.26.5 (three-part patch: ADR path correction, traces_to refresh, body §Trace correction):**
 
-### §6 Changes
+**Finding F-R107-1 CRITICAL — Fabricated ADR-0005 path in inputs/traces_to/body:**
 
-**From:** Single flat table with columns `Differentiator | Description | BC Backing | Verification`.
+SE-17f before/after evidence:
 
-**To:** Per-differentiator subsections (`### 6.N KD-NNN — Name`) each containing `| BC ID | Contribution | Verification |` tables, matching prd-template.md §6 pattern.
+**Before (frontmatter `inputs:`):** `architecture/adr/ADR-0005-dual-accept-auth-header.md`
+**After (frontmatter `inputs:`):** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md`
 
-**Project-specific extension retained:** `Verification` column (3rd column, beyond template's 2-column minimum). Rationale: monocle's killer scenarios are explicitly described in the vision document (v1.1.1) and product brief (v1.4.23). Capturing the verification scenario inline per differentiator prevents drift during adversarial review and ensures every claimed differentiator remains verifiable without cross-referencing the vision. This extension is additive (does not remove required template columns) and is self-documenting via the blockquote note at §6 head.
+**Before (frontmatter `traces_to:`):** `...ADR-0005-dual-accept-auth-header.md;...`
+**After (frontmatter `traces_to:`):** `...ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md;...`
 
-**Content changes:** None. All 8 differentiators preserved. All BC ID citations preserved. All descriptions preserved (moved into subsection introductory text). All verification notes preserved (moved into `Verification` column).
+**Before (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-dual-accept-auth-header.md\``
+**After (body §Trace v1.26.4 SE-17f prose):** `Added \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\``
 
-### §7 Changes
+Canonical filename verified via ARCH-INDEX and `ls .factory/specs/architecture/adr/`. All 3 occurrences in prd.md corrected.
 
-**From:** `| Requirement ID | Brief Section | Architecture Source | Priority | Test File | Test Type |` (6 columns; `Requirement ID` non-template name; `Brief Section` and `Architecture Source` non-template names).
+**Finding F-R107-3 HIGH — traces_to stale pins (brief + BC-INDEX):**
 
-**To:** `| BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |` (6 columns).
+SE-17f before/after evidence:
 
-Column mapping:
-- `Requirement ID` → `BC ID` (template column name; same data)
-- `Brief Section` → `Source (L2 CAP)` (template column name; monocle's interim L2 traceability pending BA Dispatch 6 domain spec; brief sections are the authoritative source until L2 CAP IDs are assigned)
-- `Architecture Source` → `Module(s)` (template column name; architecture file references preserved, shortened for readability)
-- `Priority` → `Priority` (unchanged)
-- `Test File` → `Test File` (project-specific extension, see below)
-- `Test Type` → `Test Type` (template column name; unchanged)
+**Before:** `product-brief.md v1.4.23; ...; behavioral-contracts/BC-INDEX.md v1.1`
+**After:** `product-brief.md v1.4.25; ...; behavioral-contracts/BC-INDEX.md v1.5`
 
-**Project-specific extension retained:** `Test File` column (5th column, beyond template's 5-column schema). Rationale: direct test file path traceability is production-grade quality that reduces implementation ambiguity — implementers and test-writers have explicit file location targets. Extension is additive and self-documenting via the blockquote note at §7 head.
+Rationale: product-brief.md v1.4.25 and BC-INDEX.md v1.5 are the post-PO-6A Round 6 target versions per dispatch instructions.
 
-**Content changes:** None. All 22 BC rows + NFR-012 row preserved. All architecture source citations preserved (abbreviated in `Module(s)` column for readability while retaining version pin and subsection reference).
-
-**Audit reference:** `.factory/plans/template-compliance-audit-r2.md` RES-05.
-**Dispatch:** Audit R2 residual fix — concurrent with RES-02 (BC VP anchor sweep) and RES-03 (FV VP template compliance).
-**Predecessors:** architect RES-01+RES-04 COMPLETE (0af206a).
+**Concurrent:** Parallel PO 6A (BC scope), FV 6C (VPs), Architect 6D (SS-forward-compatibility), BA 6E (L2-INDEX). All in same R107 Round 6 burst.
 
 ---
 
-## §Trace v1.26 — Template Compliance Remediation (PRD restructure)
+## §Trace v1.26.6 — F-R108-7 + GAP-R47-3 Round 7B (traces_to arch pin refresh + L2-INDEX resolve)
 
-**Bump:** v1.25 → v1.26.
-**Predecessor pin:** v1.25 commit a71ca67 (D-047 strict CONVERGENCE achieved on monolithic structure; subsequently determined to be structurally non-compliant per template-compliance-audit-r1).
+**Bump:** v1.26.5 → v1.26.6.
+**Predecessor pin:** v1.26.5 (F-R107 Round 6B fabricated ADR path + traces_to refresh; commit on factory-artifacts).
+**Timestamp:** 2026-05-18T01:00:00Z
 
-**Scope of v1.26:**
-- §3 (Full BC Specifications) DELETED; 22 BCs now live as sharded files in `behavioral-contracts/ss-NN/BC-2.SS.NNN.md` (created in Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade).
-- §4 NFR catalog → `prd-supplements/nfr-catalog.md` + summary reference in PRD §4.
-- §5 Error Taxonomy → `prd-supplements/error-taxonomy.md` + summary reference in PRD §5.
-- New `prd-supplements/interface-definitions.md` + `prd-supplements/test-vectors.md` created per template.
-- `supplements:` frontmatter field populated: `[interface-definitions.md, error-taxonomy.md, test-vectors.md, nfr-catalog.md]`.
-- Section ordering aligned to prd-template.md: Overview → BC Index → Interface (ref) → NFR (ref) → Error Taxonomy (ref) → Test Vectors (ref) → Competitive Diff → RTM.
-- §Trace history v1.0–v1.25 retired to git PG-5 (preserved at commit a71ca67); v1.26 starts fresh §Trace lineage post-restructure.
-- BC IDs renumbered `BC-DAEMON-NNN → BC-2.01.NNN`, `BC-AUTH-NNN → BC-2.01.NNN`, `BC-LOCK-001 → BC-2.01.010`, `BC-RING-001 → BC-2.01.007`, `BC-ABI-NNN → BC-2.02.NNN`, `BC-TYPES-001 → BC-2.02.003`, `BC-FACTORY-NNN → BC-2.02.NNN`, `BC-PROTO-NNN → BC-2.02.NNN`, `BC-ENGINE-NNN → BC-2.03.NNN` per audit §661-714 renumbering map; old IDs preserved in BC-INDEX.md renumbering appendix (Old ID column) per append-only ID policy.
-- Old §8 Cross-Cutting Concerns: content preserved in SS-conventions-anti-patterns.md (authoritative source); not replicated in PRD (PRD is an index document, not a conventions reference).
-- Old §9 Edge Case Catalog: EC-001 through EC-061 live in individual BC files (EC content embedded per-BC). The PRD no longer maintains a cross-BC EC table (this was a monolith-era artifact; BC sharding makes per-BC EC the canonical location).
-- Old §10 Glossary: preserved in full below.
+**Scope of v1.26.6 (two-part patch: arch version pin refresh + L2-INDEX placeholder removal):**
 
-**Audit reference:** `.factory/plans/template-compliance-audit-r1.md`.
-**Dispatch:** Template-compliance remediation Dispatch 4 of 7+.
-**Predecessors:** Dispatch 1 architect (ARCH-INDEX), Dispatch 2/3 PO (BC files + BC-INDEX).
-**Next:** Dispatch 5 FV shards VP monolith with new BC IDs.
+**Finding F-R108-7 HIGH — traces_to stale architecture pins (post-Architect-6D):**
+
+Architect 7C (Round 7 parallel) normalizes timestamps on SS-daemon-lifecycle, SS-core-types-and-abi, and SS-engine-module without version bumps; however the prior PRD `traces_to` was stale from pre-Architect-6D commit 98396fe which bumped those files to the versions now confirmed canonical.
+
+SE-17f before/after evidence:
+
+**Before:** `...SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; ...BC-INDEX.md v1.5; ...`
+**After:** `...SS-daemon-lifecycle.md v1.0.31; SS-core-types-and-abi.md v1.2.12; SS-engine-module.md v1.1.19; ...BC-INDEX.md v1.6; ...`
+
+Also refreshed `product-brief.md v1.4.25 → v1.4.26` (brief bumped in this same Round 7B burst per F-R108-8).
+
+**Finding GAP-R47-3 MEDIUM — traces_to "L2-INDEX.md (pending BA Dispatch 6)" placeholder:**
+
+BA Dispatch 6 was completed at commit fcf2b2d producing L2-INDEX v1.0.7. The `(pending BA Dispatch 6)` annotation is stale.
+
+SE-17f before/after evidence:
+
+**Before:** `domain-spec/L2-INDEX.md (pending BA Dispatch 6)`
+**After:** `domain-spec/L2-INDEX.md v1.0.7`
+
+**Changes made:** frontmatter `traces_to:` — 5 version pins refreshed (brief, SS-daemon-lifecycle, SS-core-types-and-abi, SS-engine-module, BC-INDEX) + L2-INDEX placeholder resolved; version bumped v1.26.5 → v1.26.6; timestamp refreshed.
+
+**Scope:** PO-only frontmatter patch. No body content changed. No BC, VP, or architecture file changes in this burst.
+
+---
+
+## §Trace v1.26.7 — F-R109 Round 8B (SS pin refresh + §Trace ascending + RTM pins + brief bump)
+
+**Bump:** v1.26.6 → v1.26.7.
+**Predecessor pin:** v1.26.6 (F-R108-7 + GAP-R47-3 traces_to arch pin refresh; commit on factory-artifacts).
+**Timestamp:** 2026-05-17T04:35:00Z
+
+**Scope of v1.26.7 (three-part patch: RTM SS pin refresh, traces_to update, §Trace ascending reorder):**
+
+**Finding F-R109-5 HIGH — PRD body RTM SS pins stale:**
+
+Architect 8A bumped SS-daemon-lifecycle.md v1.0.30 → v1.0.32, SS-core-types-and-abi.md v1.2.11→v1.2.13 (actually from v1.2.8 stale per §7), SS-engine-module.md v1.1.18 → v1.1.20 (actually from v1.1.15 stale). PRD §7 RTM rows and traces_to refreshed.
+
+Pin replacement summary:
+
+| Field | Before | After | Occurrence Count |
+|-------|--------|-------|-----------------|
+| `SS-daemon-lifecycle.md` (traces_to + §7 RTM) | v1.0.30 (body) / v1.0.31 (traces_to) | v1.0.32 | 12 body + 1 traces_to |
+| `SS-core-types-and-abi.md` (traces_to + §7 RTM) | v1.2.11 (body) / v1.2.12 (traces_to) | v1.2.13 | 9 body + 1 traces_to |
+| `SS-engine-module.md` (traces_to + §7 RTM) | v1.1.18 (body) / v1.1.19 (traces_to) | v1.1.20 | 5 body + 1 traces_to |
+| `product-brief.md` (traces_to) | v1.4.26 | v1.4.27 | 1 traces_to |
+| `BC-INDEX.md` (traces_to) | v1.6 | v1.7 | 1 traces_to |
+
+**Finding F-R109-9 HIGH — §Trace blocks descending → ascending:**
+
+§Trace blocks were descending (v1.26.6, v1.26.5, ..., v1.26). Reordered to ascending (v1.26 → v1.26.6 → v1.26.7). Content of each section preserved verbatim; only insertion order corrected.
+
+**Changes made:** §7 RTM SS pins refreshed (3 subsystem docs × 11+8+4 rows); traces_to frontmatter refreshed (5 pins); §Trace blocks reordered ascending; version bumped v1.26.6 → v1.26.7; timestamp refreshed.
+
+**Scope:** PO-only. No BC, VP, or architecture file changes in this burst. Concurrent with Architect 8A (SS doc bumps) and FV 8C.
 
 ---
 

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T04:12:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -81,7 +81,7 @@ exemptions.
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC enforces the enum extensibility policy that is a core mechanism of the forward-compatible ABI contract |
 | L2 Domain Invariants | DI-004 (all public wire types must carry a version discriminant as their first field — #[non_exhaustive] is the type-system mechanism that makes adding new variants non-breaking, which is the prerequisite for DI-004's "format evolution without parsing the full record" guarantee; enum extensibility and version discriminants are complementary halves of the forward-compatibility contract) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
-| Architecture Source | SS-core-types-and-abi.md v1.2.8 §Enum Extensibility |
+| Architecture Source | SS-core-types-and-abi.md v1.2.13 §Enum Extensibility |
 | ADR | ADR-0004 (exhaustive-enum exemption rationale) |
 | FC | FC-02 |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — non-exhaustive enum policy) |
@@ -115,3 +115,12 @@ S-TBD — Implement syn 2 enum audit test in monocle-core (filled by story-write
   - DI-004 mapping: #[non_exhaustive] on public enums ensures new variants can be added without breaking downstream consumers. This is the type-system enforcement of DI-004's format evolution guarantee — adding a variant is equivalent to adding a new wire field, and non-exhaustive ensures consumers handle it without recompilation (wildcard arm). DI-004 and #[non_exhaustive] are complementary: DI-004 requires a version discriminant to detect change; #[non_exhaustive] ensures change is non-breaking.
 - F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).
+
+## §Trace v1.0.2
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:12:00Z):
+- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §Enum Extensibility`
+  - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §Enum Extensibility`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:12:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).

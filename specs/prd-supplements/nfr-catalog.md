@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "c104b34"
@@ -69,17 +69,17 @@ traces_to: prd.md
 
 | NFR ID | VP Probe(s) |
 |--------|-------------|
-| NFR-001 | VP-001 (hook latency probe) |
-| NFR-002 | VP-002 (notification latency probe) |
+| NFR-001 | Phase 3 integration test scope — hook ingestion end-to-end latency ≤300ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-001 is the Healthz Endpoint correctness probe; it does NOT measure hook POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable (product-brief.md §Success Criteria hook receiver hardening rows); the end-to-end latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
+| NFR-002 | Phase 3 integration test scope — Notification hook end-to-end latency ≤2000ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-002 is the Status Endpoint correctness probe; it does NOT measure notification POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable; the sustained latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
 | NFR-003 | Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI permission overlay render is a Phase 3 — Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap); Phase 1 ships the daemon and hook ingestion layer but NOT the TUI planes). No Phase 1 VP covers TUI render latency. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
 | NFR-004 | VP-008 §Pre-conditions (OsRng source-grep) + Mechanical property 1 (token hex format) |
 | NFR-005 | VP-003 §Post-condition 1 (body size limit integration test) |
 | NFR-006 | Phase 3 integration test scope — NFR validates bounded-channel throughput at 1000 events/sec sustained, which requires integration-level load testing infrastructure not available in Phase 1. VP-006 is Crash Recovery Checkpoint and does NOT cover throughput. No Phase 1 VP covers this probe. The bounded-channel and drop-counter DESIGN is a Phase 1 deliverable (per product-brief.md §Success Criteria "Drop counter active" row); the sustained load VALIDATION at 1000 events/sec is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
-| NFR-007 | Phase 1 devops deliverable — `rust-toolchain.toml` pin + `cargo check` in CI. Validation is CI-config artifact, not a VP file. devops-engineer creates the `rust-toolchain.toml` and GitHub Actions workflow in Phase 1 story decomposition. No VP file is architecturally appropriate for a CI toolchain config artifact. VP scope confirmed by devops-engineer at Phase 1 story delivery (per product-brief.md line 162–163: MSRV is a Phase 1 deliverable). |
-| NFR-008 | Phase 1 devops deliverable — GitHub Actions CI matrix `[darwin, linux] × [amd64, arm64]`. Validation is CI-config artifact, not a VP file. devops-engineer creates the matrix config in Phase 1 story decomposition. No VP file is architecturally appropriate for a CI matrix config artifact. VP scope confirmed by devops-engineer at Phase 1 story delivery (per product-brief.md line 162–163: CI matrix is a Phase 1 deliverable). |
+| NFR-007 | Phase 1 devops deliverable — `rust-toolchain.toml` pin + `cargo check` in CI. Validation is CI-config artifact, not a VP file. devops-engineer creates the `rust-toolchain.toml` and GitHub Actions workflow as a Wave 1 Phase 1 story deliverable (per product-brief.md line 162–163: MSRV is a Phase 1 deliverable). No VP file is architecturally appropriate for a CI toolchain config artifact — validation gate is CI green on Wave 1 devops-engineer story delivery, not a FV-authored VP. |
+| NFR-008 | Phase 1 devops deliverable — GitHub Actions CI matrix `[darwin, linux] × [amd64, arm64]`. Validation is CI-config artifact, not a VP file. devops-engineer creates the matrix config as a Wave 1 Phase 1 story deliverable (per product-brief.md line 162–163: CI matrix is a Phase 1 deliverable). No VP file is architecturally appropriate for a CI matrix config artifact — validation gate is CI green on Wave 1 devops-engineer story delivery, not a FV-authored VP. |
 | NFR-009 | VP-005 Post-condition 1 (lock-file 0o600 mode assertion) |
 | NFR-010 | VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009) |
-| NFR-011 | Phase 1 requirement — DTU clone `dtu-claude-code-hooks-v1` is a Phase 1 deliverable per product-brief.md §Success Criteria (DTU row, line 246) and dtu-assessment.md. DTU fidelity measurement procedure is defined in dtu-assessment.md §"DTU Fidelity Measurement Procedure". The DTU clone must exist and score ≥0.95 against fixture corpus as a Phase 1 gate. Holdout-evaluator verifies fidelity during Phase 4 evaluation; however, the clone itself and CI integration are Phase 1 deliverables per dtu-assessment.md §"Phase 1 Clone Build Effort". VP to be authored by FV at Phase 1 story decomposition when DTU clone stories are scheduled. |
+| NFR-011 | Phase 1 requirement — DTU clone `dtu-claude-code-hooks-v1` is a Phase 1 deliverable per product-brief.md §Success Criteria (DTU row, line 246) and dtu-assessment.md. DTU fidelity measurement procedure is defined in dtu-assessment.md §"DTU Fidelity Measurement Procedure". The DTU clone must exist and score ≥0.95 against fixture corpus as a Phase 1 gate. Holdout-evaluator verifies fidelity during Phase 4 evaluation; however, the clone itself and CI integration are Phase 1 deliverables per dtu-assessment.md §"Phase 1 Clone Build Effort". VP-NNN (TBD by FV at Phase 1 story decomposition entry) will be authored in Wave 1 when the DTU clone story is implemented — DTU clone is a Wave 1 priority per dtu-assessment.md §"Phase 1 Clone Build Effort"; FV must create the VP as a Wave 1 Phase 1 gate deliverable, not a post-decomposition optional action. |
 | NFR-012 | VP-005 Post-condition 9 / probe 5.e (runtime_dir 0o700 mode assertion) |
 
 ---
@@ -162,6 +162,51 @@ VP Probe Citations table (canonical + phase-deferral markers):
 
 ---
 
+### F-R106-15 PO closure — 2026-05-17T22:10:00Z
+
+**Finding:** F-R106-15 MED — NFR-010 Validation Method cited VP-008 §Post-condition 5 only. Per BC-2.01.009 INV-7, constant-time comparison is required on **both** the canonical path and the alias path (ADR-0005). VP-009 (alias-path constant-time probe) must also be cited. FV 5D is expanding VP-009 in parallel to include this probe.
+
+**Canonical source:** BC-2.01.009 INV-7 ("Constant-time comparison applies to BOTH canonical and alias paths"); ADR-0005 §Security Properties.
+
+**SE-17c — Before (NFR-010 Validation Method + VP Probe Citations row):**
+
+```
+NFR Registry row NFR-010 Validation Method:
+  "Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against
+   `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`)"
+
+VP Probe Citations NFR-010:
+  "VP-008 §Post-condition 5 (constant_time_eq source-grep)"
+```
+
+**SE-17d — After (NFR-010 Validation Method + Requirement + VP Probe Citations row):**
+
+```
+NFR Registry row NFR-010 Requirement:
+  "`constant_time_eq::constant_time_eq` used for token comparison on both canonical
+   (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7"
+
+NFR Registry row NFR-010 Validation Method:
+  "Code review; source-grep per VP-008 §Post-condition 5 AND VP-009 §"alias-path constant-time comparison"
+   probe (FV 5D expanding VP-009 in same burst)"
+
+VP Probe Citations NFR-010:
+  "VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND
+   VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009)"
+```
+
+**Changes made:**
+- NFR-010 Requirement column: added "on ALL auth paths (canonical + alias)" and ADR-0005 + INV-7 citation
+- NFR-010 Validation Method: added VP-009 alias-path probe citation alongside existing VP-008 citation
+- VP Probe Citations table NFR-010: updated to cite both VP-008 and VP-009 with path-specific descriptions
+- Version bumped: v1.1 → v1.2; timestamp refreshed; ADR-0005 added to inputs
+
+**Note for FV (5D):** VP-009 must include an alias-path constant-time comparison probe to fulfill this NFR-010 citation. The probe should source-grep `monocle-runtime/src/auth.rs` for the alias-path comparison branch and assert `constant_time_eq` is used there as well.
+
+**Scope:** PO-only. No changes to VP-009, VP-008, VP-INDEX.md, or any BC file. NFR-010 update only.
+
+---
+
 ### F-R107 Round 6B PO closure — 2026-05-17T23:00:00Z
 
 **Findings resolved:** F-R107-1 CRITICAL, F-R107-6 HIGH, F-R107-7 HIGH, F-R107-11 MEDIUM.
@@ -222,51 +267,6 @@ NFR-002 Validation Method: "...gene-source BC-HOOK-022 timeout ceiling (gene-sou
 
 ---
 
-### F-R106-15 PO closure — 2026-05-17T22:10:00Z
-
-**Finding:** F-R106-15 MED — NFR-010 Validation Method cited VP-008 §Post-condition 5 only. Per BC-2.01.009 INV-7, constant-time comparison is required on **both** the canonical path and the alias path (ADR-0005). VP-009 (alias-path constant-time probe) must also be cited. FV 5D is expanding VP-009 in parallel to include this probe.
-
-**Canonical source:** BC-2.01.009 INV-7 ("Constant-time comparison applies to BOTH canonical and alias paths"); ADR-0005 §Security Properties.
-
-**SE-17c — Before (NFR-010 Validation Method + VP Probe Citations row):**
-
-```
-NFR Registry row NFR-010 Validation Method:
-  "Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against
-   `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`)"
-
-VP Probe Citations NFR-010:
-  "VP-008 §Post-condition 5 (constant_time_eq source-grep)"
-```
-
-**SE-17d — After (NFR-010 Validation Method + Requirement + VP Probe Citations row):**
-
-```
-NFR Registry row NFR-010 Requirement:
-  "`constant_time_eq::constant_time_eq` used for token comparison on both canonical
-   (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7"
-
-NFR Registry row NFR-010 Validation Method:
-  "Code review; source-grep per VP-008 §Post-condition 5 AND VP-009 §"alias-path constant-time comparison"
-   probe (FV 5D expanding VP-009 in same burst)"
-
-VP Probe Citations NFR-010:
-  "VP-008 §Post-condition 5 (constant_time_eq source-grep on canonical path) AND
-   VP-009 §"alias-path constant-time comparison" probe (alias path; FV 5D expanding VP-009)"
-```
-
-**Changes made:**
-- NFR-010 Requirement column: added "on ALL auth paths (canonical + alias)" and ADR-0005 + INV-7 citation
-- NFR-010 Validation Method: added VP-009 alias-path probe citation alongside existing VP-008 citation
-- VP Probe Citations table NFR-010: updated to cite both VP-008 and VP-009 with path-specific descriptions
-- Version bumped: v1.1 → v1.2; timestamp refreshed; ADR-0005 added to inputs
-
-**Note for FV (5D):** VP-009 must include an alias-path constant-time comparison probe to fulfill this NFR-010 citation. The probe should source-grep `monocle-runtime/src/auth.rs` for the alias-path comparison branch and assert `constant_time_eq` is used there as well.
-
-**Scope:** PO-only. No changes to VP-009, VP-008, VP-INDEX.md, or any BC file. NFR-010 update only.
-
----
-
 ### F-R108-3 PO closure — 2026-05-18T01:00:00Z
 
 **Finding:** F-R108-3 CRITICAL — NFR-003/006/007/008/011 had fabricated or incorrect brief section anchors. The citations to `product-brief.md §Out of Scope` did not correspond to content that actually exists in that section.
@@ -311,3 +311,39 @@ NFR-011: Phase 1 requirement — DTU clone Phase 1 deliverable per product-brief
 **Changes made:** VP Probe Citations rows for NFR-003/006/007/008/011 corrected; NFR Registry Validation Method column updated for NFR-007/008/011; version bumped v1.3 → v1.4; timestamp refreshed.
 
 **Scope:** PO-only. No changes to VP files, BC files, ADR files, or any architecture artifact.
+
+---
+
+### F-R109 Round 8B PO closure — 2026-05-17T04:30:00Z
+
+**Findings resolved:** F-R109-3 CRITICAL (NFR-001/002 phantom VP anchors), F-R109-11 HIGH (NFR-007/008/011 narrative anchor tightening), F-R109-12 HIGH (§Trace non-monotonic ordering).
+
+**Bump:** v1.4 → v1.5.
+
+**F-R109-3 CRITICAL — NFR-001/002 phantom VP anchor correction:**
+
+NFR-001 cited `VP-001 (hook latency probe)` but VP-001 is the Healthz Endpoint correctness probe — it does NOT implement hook ingestion latency measurement. NFR-002 cited `VP-002 (notification latency probe)` but VP-002 is the Status Endpoint correctness probe — it does NOT implement notification latency measurement. Both citations were phantom anchors.
+
+Decision: Phase-defer both to Phase 3 integration testing per the pattern established for NFR-006 (R107 Round 6B). Hook receiver implementation is a Phase 1 deliverable; latency VALIDATION requires stopwatch load-test infrastructure which is a Phase 3 integration deliverable.
+
+SE-17f before/after (VP Probe Citations):
+- NFR-001: `VP-001 (hook latency probe)` → Phase 3 integration test scope with concrete brief anchor
+- NFR-002: `VP-002 (notification latency probe)` → Phase 3 integration test scope with concrete brief anchor
+
+**F-R109-11 HIGH — NFR-007/008/011 anchor tightening (narrative → concrete):**
+
+Round 7B introduced concrete phase anchors but VP Probe Citations rows for NFR-007/008 still ended with "VP scope confirmed by devops-engineer at Phase 1 story delivery" (passive future) and NFR-011 ended with "VP to be authored by FV at Phase 1 story decomposition when DTU clone stories are scheduled" (open-ended).
+
+SE-17f tightening applied:
+- NFR-007/008: `VP scope confirmed by devops-engineer at Phase 1 story delivery` → `Wave 1 Phase 1 story deliverable; validation gate is CI green on Wave 1 devops-engineer story delivery`
+- NFR-011: `VP to be authored by FV at Phase 1 story decomposition when DTU clone stories are scheduled` → `VP-NNN (TBD by FV at Phase 1 story decomposition entry) will be authored in Wave 1 when the DTU clone story is implemented — DTU clone is a Wave 1 priority per dtu-assessment.md; FV must create the VP as a Wave 1 Phase 1 gate deliverable`
+
+**F-R109-12 HIGH — §Trace non-monotonic ordering corrected:**
+
+§Trace blocks were in non-monotonic order: F-R105-2 (T19:00), F-R107 (T23:00), F-R106-15 (T22:10), F-R108-3 (T01:00). The F-R106-15 block at T22:10 appeared AFTER F-R107 at T23:00 (a non-monotonic insertion — the block was authored in a different burst but inserted out of order).
+
+SE-17f: Reordered to monotonic ascending: F-R105-2 (T19:00) → F-R106-15 (T22:10) → F-R107 (T23:00) → F-R108-3 (T01:00) → F-R109 (T04:30). Content of each section preserved verbatim; only insertion order corrected.
+
+**Changes made:** VP Probe Citations NFR-001/002 rescoped to Phase 3; NFR-007/008 VP anchor tightened; NFR-011 VP anchor tightened; §Trace blocks reordered monotonic ascending; version bumped v1.4 → v1.5; timestamp refreshed.
+
+**Scope:** PO-only. No changes to VP files, BC files, ADR files, or architecture artifacts.

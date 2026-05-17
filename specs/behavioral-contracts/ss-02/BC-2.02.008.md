@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T04:17:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -79,7 +79,7 @@ permitted without bumping `schema_version` and producing an ADR.
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC ensures the wire format stability requirement extends into Phase 4 federation by mandating schema_version validation at message ingestion |
 | L2 Domain Invariants | DI-004 (all public wire types must carry a version discriminant as their first field — this BC specifies how the schema_version discriminant defined by BC-2.02.006/BC-2.02.007 is consumed at runtime: readers check it BEFORE deserializing remaining fields, which is exactly "detect format evolution without parsing the full record"; unrecognized values log-and-skip rather than crash) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
-| Architecture Source | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas |
+| Architecture Source | SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas |
 | FC | FC-05 |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — prost wire format) |
 | Stories | S-TBD (filled by story-writer) |
@@ -112,3 +112,12 @@ S-TBD — Phase 4 federation schema_version validation (filled by story-writer; 
   - DI-004 mapping: This BC is the runtime consumption half of DI-004 — it specifies how Phase 4 readers use the schema_version discriminant to gate deserialization. Postcondition 1 ("check schema_version before deserializing") is the behavioral expression of DI-004's "detect format evolution without parsing the full record."
 - F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
+
+## §Trace v1.0.3
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:17:00Z):
+- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas`
+  - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:17:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).

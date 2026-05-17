@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T04:14:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -86,7 +86,7 @@ The `parse_frontmatter_field` function applies four guards to handle YAML edge c
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC implements the factory-state abstraction component of CAP-002 for the VSDD factory format |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — VsddFactoryAdapter reads .factory/STATE.md via detect() and read_state() and must never write to it; Invariant 1 (detection criterion) and Invariant 3 (subscribe returns empty stream) enforce that no write path exists in Phase 1; the observe-only constraint is a core invariant of this implementation) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
-| Architecture Source | SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter |
+| Architecture Source | SS-core-types-and-abi.md v1.2.13 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter |
 | Brief Section | §Success Criteria (factory pattern detection row — "Detection succeeds on monocle's own `.factory/`") |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-FACTORY-002 |
@@ -118,3 +118,12 @@ S-TBD — Implement VsddFactoryAdapter with frontmatter parser and self-referent
   - DI-007 mapping: VsddFactoryAdapter is the concrete observe-only reader of .factory/STATE.md. It calls no write methods. Invariant 3 (subscribe returns empty stream) ensures no live watcher writes are triggered. This is the primary DI-007 enforcer for the factory state abstraction layer.
 - F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).
+
+## §Trace v1.0.2
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:14:00Z):
+- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter`
+  - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §FactoryAdapter Trait §Phase 1 Implementation: VsddFactoryAdapter`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:14:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).

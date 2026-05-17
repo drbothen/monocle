@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:05:00Z
+timestamp: 2026-05-17T04:07:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -84,7 +84,7 @@ timing oracle attacks.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth token wire format that secures authenticated access to the hook ingestion daemon's endpoints |
 | L2 Domain Invariants | DI-003 (the auth token must be written to the lock file after the port is bound — never before — Postcondition 1 states the lock file authToken is written as part of the start sequence after the listener is bound, per BC-2.01.005 Postcondition 3 which this BC specifies the content for); DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC defines the wire format monocle-v1:<64-hex> that is the canonical prefix, which DI-005 requires to be enforced on all auth checks) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Test File | `monocle-runtime/tests/auth_token_lifecycle.rs` |
@@ -111,14 +111,26 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 
 - `verification-properties/vp-008-auth-token-wire-format.md` — VP-008 auth token wire format integration tests
 
-## §Trace v1.0.5
+## §Trace v1.0.2
 
-**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:05:00Z):
-- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
-- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
-- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
-- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
-- SE-16d monotonicity PASS: 2026-05-18T01:05:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-003 ... ; DI-005 ...`
+  - DI-003 mapping: This BC specifies the content written to the lock file authToken field as part of the start sequence that BC-2.01.005 governs; the DI-003 ordering (after port bound) is enforced by BC-2.01.005 Postcondition 3. DI-005 mapping: This BC defines the monocle-v1: canonical prefix — the exact prefix DI-005 requires the daemon to enforce.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
+
+## §Trace v1.0.3
+
+**F-R106-2 CRITICAL — PC-4 ADR-0005 alignment** (2026-05-17T22:00:00Z):
+- F-R106-2: Postcondition 4 contradicted ADR-0005 by specifying `X-Monocle-Authorization` as the ONLY valid auth mechanism, which directly conflicts with the dual-accept protocol ADR-0005 mandates for real Claude Code interoperability.
+- **SE-17f PC-4 before/after:**
+  - Before: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use ONLY X-Monocle-Authorization: monocle-v1:<64-hex>. No other header format is a valid auth mechanism on Phase 1 endpoints.`
+  - After: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use the canonical X-Monocle-Authorization: monocle-v1:<64-hex> header (preferred, for monocle-aware tools) OR the X-Claude-Code-Ide-Authorization: <64-hex> compatibility alias (for real Claude Code, which sends the raw lock file authToken field with no prefix) per ADR-0005 dual-accept protocol. The canonical header takes priority; when both are present, X-Monocle-Authorization is validated and the alias is ignored. The alias path emits a WARN-level deprecation log on every use. No other header format is a valid auth mechanism on Phase 1 endpoints.`
+- **Architecture Source** row updated: added `ADR-0005 (dual-accept auth header decision)` alongside SS-daemon-lifecycle.md citation.
+- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. PC-4 update is the sole normative change in this version.
+- SE-16d monotonicity PASS: 2026-05-17T22:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).
 
 ## §Trace v1.0.4
 
@@ -137,23 +149,21 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Architecture Source row is the sole normative change in this version.
 - SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:00:00Z (v1.0.3).
 
-## §Trace v1.0.3
+## §Trace v1.0.5
 
-**F-R106-2 CRITICAL — PC-4 ADR-0005 alignment** (2026-05-17T22:00:00Z):
-- F-R106-2: Postcondition 4 contradicted ADR-0005 by specifying `X-Monocle-Authorization` as the ONLY valid auth mechanism, which directly conflicts with the dual-accept protocol ADR-0005 mandates for real Claude Code interoperability.
-- **SE-17f PC-4 before/after:**
-  - Before: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use ONLY X-Monocle-Authorization: monocle-v1:<64-hex>. No other header format is a valid auth mechanism on Phase 1 endpoints.`
-  - After: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use the canonical X-Monocle-Authorization: monocle-v1:<64-hex> header (preferred, for monocle-aware tools) OR the X-Claude-Code-Ide-Authorization: <64-hex> compatibility alias (for real Claude Code, which sends the raw lock file authToken field with no prefix) per ADR-0005 dual-accept protocol. The canonical header takes priority; when both are present, X-Monocle-Authorization is validated and the alias is ignored. The alias path emits a WARN-level deprecation log on every use. No other header format is a valid auth mechanism on Phase 1 endpoints.`
-- **Architecture Source** row updated: added `ADR-0005 (dual-accept auth header decision)` alongside SS-daemon-lifecycle.md citation.
-- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. PC-4 update is the sole normative change in this version.
-- SE-16d monotonicity PASS: 2026-05-17T22:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).
+**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:05:00Z):
+- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
+- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
+- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
+- SE-16d monotonicity PASS: 2026-05-18T01:05:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
 
-## §Trace v1.0.2
+## §Trace v1.0.6
 
-**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
-- F-R105-3: L2 Domain Invariants cell updated.
-  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
-  - After: `DI-003 ... ; DI-005 ...`
-  - DI-003 mapping: This BC specifies the content written to the lock file authToken field as part of the start sequence that BC-2.01.005 governs; the DI-003 ordering (after port bound) is enforced by BC-2.01.005 Postcondition 3. DI-005 mapping: This BC defines the monocle-v1: canonical prefix — the exact prefix DI-005 requires the daemon to enforce.
-- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
-- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.0.30 → v1.0.32; F-R109-14 MED — §Trace reordered ascending** (2026-05-17T04:07:00Z):
+- F-R109-4: Architect 8A bumped SS-daemon-lifecycle.md v1.0.30 → v1.0.32 (Round 8A). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- F-R109-14: §Trace blocks were descending (v1.0.5, v1.0.4, v1.0.3, v1.0.2). Reordered to ascending (v1.0.2 → v1.0.5 → v1.0.6). Content of each section preserved verbatim; only insertion order corrected.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:07:00Z > prior 2026-05-18T01:05:00Z (v1.0.5).

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:10:00Z
+timestamp: 2026-05-17T04:08:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -104,7 +104,7 @@ any Phase 1 response.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth header validation logic protecting all authenticated hook ingestion daemon endpoints |
 | L2 Domain Invariants | DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC is the primary enforcer of DI-005: all value-present failures including wrong prefix, bad format, and secret mismatch return HTTP 401; the two-body taxonomy ensures the monocle-v1: prefix requirement is enforced without leaking structural information to attackers) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Architect Adjudication | commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired |
@@ -121,7 +121,7 @@ any Phase 1 response.
 ## Architecture Anchors (Recommended)
 
 - `architecture/SS-daemon-lifecycle.md#daemon-lifecycle-protocol` — auth middleware placement on authenticated router, `AuthError` enum
-- `architecture/SS-forward-compatibility.md` — FC-06 contract (Phase 4 OAuth2 clarification)
+- `architecture/SS-forward-compatibility.md` — FC-06 contract (versioned auth token prefix)
 
 ## Story Anchor (Recommended)
 
@@ -131,49 +131,15 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
 
-## §Trace v1.0.5
+## §Trace v1.0.1
 
-**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:10:00Z):
-- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
-- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
-- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
-- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
-- SE-16d monotonicity PASS: 2026-05-18T01:10:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
-
-## §Trace v1.0.4
-
-**F-R107-2 CRITICAL + F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion + F-R107-10 MEDIUM** (2026-05-17T23:30:00Z):
-*(NOTE: v1.0.4 originally cited "F-R107-9" for the ADR version pin. That was a misattribution — see §Trace v1.0.5 for correction. F-R107-9 in the R107 report describes ADR-0002 inputs path; the ADR-0005 pin addition is F-R107-2 closure part. Finding-ID corrected in v1.0.5; v1.0.4 content preserved verbatim below.)*
-
-**F-R107-2 — Architecture Source pin refresh v1.0.29 → v1.0.30:**
-- SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
-- SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
-- Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure. (Note: this BC was at v1.0.29, not v1.0.25 — it had been previously refreshed in the T-128n Round 4 update. Refreshed to v1.0.30 per SE-17g sweep requirement.)
-
-**F-R107-2 closure part (BC ADR pin add) — ADR-0005 version pin added:**
-- Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
-- SE-17f: Added `v1.0.2` version pin to ADR-0005 citation.
-- Rationale: See BC-2.01.008 §Trace v1.0.4 (identical requirement applies here; both BCs had the same bare-ADR citation gap).
-
-**F-R107-10 — EC-013 Bearer-fallback edge case added:**
-- VP-009 probe 9.5 and test-vectors row 5 both reference `Authorization: Bearer <token>` (wrong header name, neither canonical nor alias recognized). No EC covered this in the BC prior to this version — EC-007 through EC-012 existed.
-- EC-013 BEFORE: absent.
-- EC-013 AFTER: `Authorization: Bearer <token>` present; neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present → HTTP 401 `{"error":"missing_auth_token"}` per PC-1 dual-absence semantics (both recognized headers absent; `Authorization` header name is unrecognized and ignored by the auth middleware).
-- Alignment: EC-013 is consistent with PC-1 ("BOTH `X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization` are absent") and the existing test vector row 5 (`Authorization: Bearer fake-token` → `{"error":"missing_auth_token"}`). The Bearer header is NOT a value-present failure for any recognized header — it is the dual-absence case with an irrelevant third header present.
-- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Architecture Source and EC table are the only normative changes in this version.
-- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:10:00Z (v1.0.3).
-
-## §Trace v1.0.3
-
-**F-R106-7 HIGH — Fabricated F-FC-I005 parenthetical removal** (2026-05-17T22:10:00Z):
-- F-R106-7: Forward Compat Contract row contained `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`. The ID `F-FC-I005` does not exist in `SS-forward-compatibility.md`; the FC convention is `FC-NN` (two-digit numeric), not `F-FC-INNN`. The parenthetical is a fabricated identifier with no referent.
-- **SE-17f Forward Compat Contract row before/after:**
-  - Before: `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`
-  - After: `FC-06 (versioned auth token prefix)`
-  - Rationale: `FC-06 (versioned auth token prefix)` is the canonical form used in BC-2.01.008 Traceability table and the BC-INDEX §SS-01 FC reference. The parenthetical was removed and replaced with the correct FC-06 description.
-- Note: Architect 5E is performing the mirror removal in SS-daemon-lifecycle.md in the same round (pre-adjudicated to REMOVE).
-- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. Forward Compat Contract row is the sole normative change in this version.
-- SE-16d monotonicity PASS: 2026-05-17T22:10:00Z > prior 2026-05-17T20:00:00Z (v1.0.2).
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-005 ...`
+  - DI-005 mapping: This BC is the primary DI-005 enforcer — it defines the complete auth validation logic that rejects any token not beginning with monocle-v1:. The two-body taxonomy (missing vs. invalid) is the mechanism by which DI-005 is enforced without information leakage.
+- F-R105-9 (SE-17c-d body-scope grep): Postcondition 2 references `BC-2.01.009` (self-reference in canonical form). 0 stale BC IDs. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
 
 ## §Trace v1.0.2
 
@@ -202,12 +168,59 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 - **Traceability §Architecture Source** updated: SS-daemon-lifecycle.md v1.0.29; ADR-0005 added.
 - SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
-## §Trace v1.0.1
+## §Trace v1.0.3
 
-**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
-- F-R105-3: L2 Domain Invariants cell updated.
-  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
-  - After: `DI-005 ...`
-  - DI-005 mapping: This BC is the primary DI-005 enforcer — it defines the complete auth validation logic that rejects any token not beginning with monocle-v1:. The two-body taxonomy (missing vs. invalid) is the mechanism by which DI-005 is enforced without information leakage.
-- F-R105-9 (SE-17c-d body-scope grep): Postcondition 2 references `BC-2.01.009` (self-reference in canonical form). 0 stale BC IDs. 0 stale VP IDs. F-R105-9 NO-OP for this file.
-- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
+**F-R106-7 HIGH — Fabricated F-FC-I005 parenthetical removal** (2026-05-17T22:10:00Z):
+- F-R106-7: Forward Compat Contract row contained `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`. The ID `F-FC-I005` does not exist in `SS-forward-compatibility.md`; the FC convention is `FC-NN` (two-digit numeric), not `F-FC-INNN`. The parenthetical is a fabricated identifier with no referent.
+- **SE-17f Forward Compat Contract row before/after:**
+  - Before: `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`
+  - After: `FC-06 (versioned auth token prefix)`
+  - Rationale: `FC-06 (versioned auth token prefix)` is the canonical form used in BC-2.01.008 Traceability table and the BC-INDEX §SS-01 FC reference. The parenthetical was removed and replaced with the correct FC-06 description.
+- Note: Architect 5E is performing the mirror removal in SS-daemon-lifecycle.md in the same round (pre-adjudicated to REMOVE).
+- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. Forward Compat Contract row is the sole normative change in this version.
+- SE-16d monotonicity PASS: 2026-05-17T22:10:00Z > prior 2026-05-17T20:00:00Z (v1.0.2).
+
+## §Trace v1.0.4
+
+**F-R107-2 CRITICAL + F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion + F-R107-10 MEDIUM** (2026-05-17T23:30:00Z):
+*(NOTE: v1.0.4 originally cited "F-R107-9" for the ADR version pin. That was a misattribution — see §Trace v1.0.5 for correction. F-R107-9 in the R107 report describes ADR-0002 inputs path; the ADR-0005 pin addition is F-R107-2 closure part. Finding-ID corrected in v1.0.5; v1.0.4 content preserved verbatim below.)*
+
+**F-R107-2 — Architecture Source pin refresh v1.0.29 → v1.0.30:**
+- SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
+- SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure. (Note: this BC was at v1.0.29, not v1.0.25 — it had been previously refreshed in the T-128n Round 4 update. Refreshed to v1.0.30 per SE-17g sweep requirement.)
+
+**F-R107-2 closure part (BC ADR pin add) — ADR-0005 version pin added:**
+- Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
+- SE-17f: Added `v1.0.2` version pin to ADR-0005 citation.
+- Rationale: See BC-2.01.008 §Trace v1.0.4 (identical requirement applies here; both BCs had the same bare-ADR citation gap).
+
+**F-R107-10 — EC-013 Bearer-fallback edge case added:**
+- VP-009 probe 9.5 and test-vectors row 5 both reference `Authorization: Bearer <token>` (wrong header name, neither canonical nor alias recognized). No EC covered this in the BC prior to this version — EC-007 through EC-012 existed.
+- EC-013 BEFORE: absent.
+- EC-013 AFTER: `Authorization: Bearer <token>` present; neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present → HTTP 401 `{"error":"missing_auth_token"}` per PC-1 dual-absence semantics (both recognized headers absent; `Authorization` header name is unrecognized and ignored by the auth middleware).
+- Alignment: EC-013 is consistent with PC-1 ("BOTH `X-Monocle-Authorization` and `X-Claude-Code-Ide-Authorization` are absent") and the existing test vector row 5 (`Authorization: Bearer fake-token` → `{"error":"missing_auth_token"}`). The Bearer header is NOT a value-present failure for any recognized header — it is the dual-absence case with an irrelevant third header present.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Architecture Source and EC table are the only normative changes in this version.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:10:00Z (v1.0.3).
+
+## §Trace v1.0.5
+
+**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:10:00Z):
+- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
+- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
+- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
+- SE-16d monotonicity PASS: 2026-05-18T01:10:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
+
+## §Trace v1.0.6
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.0.30 → v1.0.32; F-R109-14 MED — §Trace reordered ascending; F-R109-20 LOW — residual "(Phase 4 OAuth2 clarification)" fabrication removed** (2026-05-17T04:08:00Z):
+- F-R109-4: Architect 8A bumped SS-daemon-lifecycle.md v1.0.30 → v1.0.32 (Round 8A). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- F-R109-14: §Trace blocks were descending (v1.0.5, v1.0.4, v1.0.3, v1.0.2, v1.0.1). Reordered to ascending (v1.0.1 → v1.0.5 → v1.0.6). Content of each section preserved verbatim; only insertion order corrected.
+- F-R109-20: Architecture Anchors line contained `FC-06 contract (Phase 4 OAuth2 clarification)`. F-R106-7 removed the identical fabricated parenthetical from the Forward Compat Contract Traceability row but missed this Architecture Anchors line. Residual removed.
+  - SE-17f BEFORE: `architecture/SS-forward-compatibility.md — FC-06 contract (Phase 4 OAuth2 clarification)`
+  - SE-17f AFTER: `architecture/SS-forward-compatibility.md — FC-06 contract (versioned auth token prefix)`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:08:00Z > prior 2026-05-18T01:10:00Z (v1.0.5).

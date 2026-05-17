@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T04:16:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -77,7 +77,7 @@ generated Rust API between builds.
 | Capability Anchor Justification | CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction") per ARCH-INDEX §Capability traceability — this BC governs the Rust API surface of the wire format type, ensuring downstream Rust crates can access the schema_version field as part of the stable ABI contract |
 | L2 Domain Invariants | DI-004 (all public wire types must carry a version discriminant as their first field — pub schema_version: u32 on the HookEnvelope Rust struct is the Rust API surface of the version discriminant; downstream crates access it as a typed field rather than parsing raw bytes, making DI-004's "detect format evolution without parsing the full record" requirement ergonomic in Rust) |
 | Architecture Module | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) per ARCH-INDEX Subsystem Registry SS-02 |
-| Architecture Source | SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas |
+| Architecture Source | SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas |
 | FC | FC-05 (Rust surface; wire-format covered by BC-2.02.006) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — prost wire format) |
 | Stories | S-TBD (filled by story-writer) |
@@ -110,3 +110,12 @@ S-TBD — Implement monocle-proto crate with prost-build type generation (filled
   - DI-004 mapping: This BC governs the Rust API surface of the wire-format version discriminant. Where BC-2.02.006 governs the proto encoding, this BC governs the Rust ergonomics that make it accessible. Both are required for DI-004 to be operable in Rust code.
 - F-R105-9 (SE-17c-d body-scope grep): Verification Properties table references `BC-2.02.006/BC-2.02.007` (canonical form). 0 stale BC IDs. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
+
+## §Trace v1.0.3
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:16:00Z):
+- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §Prost Wire Schemas`
+  - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §Prost Wire Schemas`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:16:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).

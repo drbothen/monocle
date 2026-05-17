@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-17T04:01:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "875113e"
@@ -96,7 +96,7 @@ shutdown drain to allow drain monitoring.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the daemon state observation endpoint that exposes lifecycle and ring buffer health required for managing hook ingestion |
 | L2 Domain Invariants | DI-002 (lock file must be present with valid port and auth token before hook endpoints accept connections — /status requires valid auth token from lock file); DI-005 (daemon must not accept a token that does not begin with the canonical monocle-v1: prefix — /status auth requirement enforces this per Postcondition 2 and BC-2.01.009) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.30 §Health and Status Endpoints §GET /status |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Health and Status Endpoints §GET /status |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — `/status` daemon-state query endpoint) |
 | Test File | `monocle-runtime/tests/status_endpoint_auth.rs` |
 | Test Name | `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version` |
@@ -121,6 +121,37 @@ S-TBD — Implement daemon /status endpoint with full observability fields (fill
 
 - `verification-properties/vp-002-status-endpoint.md` — VP-002 status endpoint integration tests
 
+## §Trace v1.0.1
+
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-002 ... ; DI-005 ...`
+  - DI-002 mapping: /status requires authentication via a valid auth token read from the lock file — lock file must be present per DI-002. DI-005 mapping: /status enforces the monocle-v1: prefix requirement (Postcondition 2 delegates to BC-2.01.009 which enforces DI-005).
+- F-R105-9 (SE-17c-d body-scope grep): Stale test name `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version` in Traceability table — this is an intentional historical test name in the Old ID row, NOT a stale cross-reference. Body prose Related BCs use canonical `BC-2.01.NNN` form. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
+
+## §Trace v1.0.2
+
+**F-R106-12 MED — Stale (BC-AUTH-002) parenthetical removal in Postcondition 2** (2026-05-17T22:30:00Z):
+- F-R106-12: Postcondition 2 contained `BC-2.01.009 (BC-AUTH-002)`. The `(BC-AUTH-002)` parenthetical is redundant renumbering noise — BC-INDEX §Renumbering Map preserves the old-ID→new-ID mapping; inline parentheticals in body prose are not needed and accumulate as noise in future adversarial sweeps.
+- **SE-17f Postcondition 2 before/after:**
+  - Before: `If the auth token is invalid: HTTP 401 per BC-2.01.009 (BC-AUTH-002).`
+  - After: `If the auth token is invalid: HTTP 401 per BC-2.01.009.`
+  - Rationale: canonical form `BC-2.01.009` is sufficient; old ID is preserved only in the Old ID (historical) row of the referenced BC file and in BC-INDEX §Renumbering Map, not in cross-reference prose.
+- SE-17c-d body-scope grep: `(BC-AUTH-002)` in Postcondition 2 was the only stale old-form parenthetical in non-historical body prose. Historical row `BC-DAEMON-002` in Traceability remains (correct; that is BC-2.01.002's own old ID). 0 stale VP IDs. 0 other stale BC IDs.
+- SE-16d monotonicity PASS: 2026-05-17T22:30:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
+
+## §Trace v1.0.3
+
+**F-R107-2 CRITICAL — Architecture Source pin refresh v1.0.25 → v1.0.30** (2026-05-17T23:30:00Z):
+- F-R107-2: Sibling-layer cascade miss from Round 5D (VPs swept but BCs not). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /status`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Health and Status Endpoints §GET /status`
+  - Canonical version per architect 5E commit 03a4c57 post-R106 closure.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:30:00Z (v1.0.2).
+
 ## §Trace v1.0.4
 
 **F-R108-17 MEDIUM — Dual-accept alignment: Description, Precondition 2, test vector** (2026-05-18T01:00:00Z):
@@ -134,33 +165,12 @@ S-TBD — Implement daemon /status endpoint with full observability fields (fill
 - SE-17c-d body-scope grep: Description, Precondition 2, and test vector table are the only normative changes in this version. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Postconditions 1-3 and Invariants 1-3 are unchanged — they correctly delegate auth-failure semantics to BC-2.01.009.
 - SE-16d monotonicity PASS: 2026-05-18T01:00:00Z > prior 2026-05-17T23:30:00Z (v1.0.3).
 
-## §Trace v1.0.3
+## §Trace v1.0.5
 
-**F-R107-2 CRITICAL — Architecture Source pin refresh v1.0.25 → v1.0.30** (2026-05-17T23:30:00Z):
-- F-R107-2: Sibling-layer cascade miss from Round 5D (VPs swept but BCs not). Architecture Source row updated.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Health and Status Endpoints §GET /status`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Health and Status Endpoints §GET /status`
-  - Canonical version per architect 5E commit 03a4c57 post-R106 closure.
-- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T22:30:00Z (v1.0.2).
-
-## §Trace v1.0.2
-
-**F-R106-12 MED — Stale (BC-AUTH-002) parenthetical removal in Postcondition 2** (2026-05-17T22:30:00Z):
-- F-R106-12: Postcondition 2 contained `BC-2.01.009 (BC-AUTH-002)`. The `(BC-AUTH-002)` parenthetical is redundant renumbering noise — BC-INDEX §Renumbering Map preserves the old-ID→new-ID mapping; inline parentheticals in body prose are not needed and accumulate as noise in future adversarial sweeps.
-- **SE-17f Postcondition 2 before/after:**
-  - Before: `If the auth token is invalid: HTTP 401 per BC-2.01.009 (BC-AUTH-002).`
-  - After: `If the auth token is invalid: HTTP 401 per BC-2.01.009.`
-  - Rationale: canonical form `BC-2.01.009` is sufficient; old ID is preserved only in the Old ID (historical) row of the referenced BC file and in BC-INDEX §Renumbering Map, not in cross-reference prose.
-- SE-17c-d body-scope grep: `(BC-AUTH-002)` in Postcondition 2 was the only stale old-form parenthetical in non-historical body prose. Historical row `BC-DAEMON-002` in Traceability remains (correct; that is BC-2.01.002's own old ID). 0 stale VP IDs. 0 other stale BC IDs.
-- SE-16d monotonicity PASS: 2026-05-17T22:30:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
-
-## §Trace v1.0.1
-
-**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
-- F-R105-3: L2 Domain Invariants cell updated.
-  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
-  - After: `DI-002 ... ; DI-005 ...`
-  - DI-002 mapping: /status requires authentication via a valid auth token read from the lock file — lock file must be present per DI-002. DI-005 mapping: /status enforces the monocle-v1: prefix requirement (Postcondition 2 delegates to BC-2.01.009 which enforces DI-005).
-- F-R105-9 (SE-17c-d body-scope grep): Stale test name `test_BC_DAEMON_002_status_endpoint_requires_auth_and_returns_abi_version` in Traceability table — this is an intentional historical test name in the Old ID row, NOT a stale cross-reference. Body prose Related BCs use canonical `BC-2.01.NNN` form. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
-- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.0.30 → v1.0.32; F-R109-14 MED — §Trace reordered ascending** (2026-05-17T04:01:00Z):
+- F-R109-4: Architect 8A bumped SS-daemon-lifecycle.md v1.0.30 → v1.0.32 (Round 8A). Architecture Source row updated.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.30 §Health and Status Endpoints §GET /status`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.32 §Health and Status Endpoints §GET /status`
+- F-R109-14: §Trace blocks were descending (v1.0.4, v1.0.3, v1.0.2, v1.0.1). Reordered to ascending (v1.0.1 → v1.0.4 → v1.0.5). Content of each section preserved verbatim; only insertion order corrected.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-17T04:01:00Z > prior 2026-05-18T01:00:00Z (v1.0.4).

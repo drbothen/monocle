@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T01:15:00Z
+timestamp: 2026-05-17T04:45:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -230,3 +230,71 @@ SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T23:00:00Z (v1.
 BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
 SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs across all modified files.
 SE-16d monotonicity PASS: 2026-05-18T01:15:00Z > prior 2026-05-17T23:30:00Z (v1.5).
+
+## §Conventions
+
+> F-R109-17 + F-R109-21 codified conventions (v1.7). Production-grade; these conventions apply retroactively to all 22 BCs and must be upheld in all future BC additions.
+
+### EC Namespace Convention (F-R109-17)
+
+Edge case IDs (EC-NNN) are scoped **per-BC**. EC-013 in BC-2.01.009 and EC-013 in BC-2.02.001 are distinct and NOT in conflict — the per-BC scoping is intentional and sound. No global EC namespace exists or is required.
+
+**Rationale:** EC IDs serve as local cross-reference labels within a BC file (cited in test vectors, preconditions, and invariants within the same BC). Global uniqueness would require coordinating EC sequences across 22+ independent BC files without providing additional semantic value — per-BC scoping is the correct granularity for behavioral edge cases.
+
+**Enforcement:** When authoring or modifying a BC, EC-NNN is allocated within that BC's own sequence. Cross-BC EC references use the fully-qualified form `BC-S.SS.NNN EC-NNN` (e.g., `BC-2.01.007 EC-002`) to unambiguously scope the reference. This form is already in use in BC-2.01.003 Related BCs and BC-2.01.007 Related BCs.
+
+### Test Name Convention (F-R109-21)
+
+BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_...`, `test_BC_DAEMON_003_...`) for test continuity across the BC renumbering event (BC-INDEX §Renumbering Map). These names are **immutable** — renaming them to the new BC-S.SS.NNN form would break test history in CI, coverage reports, and log analysis.
+
+**Rationale:** Test names are stable identifiers in CI systems. The cost of renaming (CI history breakage, grep script updates, log grep pattern updates) exceeds the benefit (alignment to new BC IDs). The BC H1 heading and Traceability table `Test Name` row document the mapping: old test name → canonical BC ID.
+
+**Enforcement:** New BCs authored after the renumbering event (v1.1+) SHOULD use the new-form prefix `test_BC_2_SS_NNN_...` for new test functions. Existing tests with legacy-form names are NOT renamed.
+
+---
+
+## §Trace v1.7
+
+**F-R109 Round 8B — 22-BC pin sweep + §Trace ascending reorder + conventions codified** (2026-05-17T04:45:00Z):
+
+BC version bumps in this dispatch:
+
+SS-01 (SS-daemon-lifecycle.md v1.0.30 → v1.0.32):
+- BC-2.01.001: v1.0.3 → v1.0.4 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.002: v1.0.4 → v1.0.5 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.003: v1.0.3 → v1.0.4 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.004: v1.0.2 → v1.0.3 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.005: v1.0.3 → v1.0.4 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.006: v1.0.3 → v1.0.4 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.007: v1.0.3 → v1.0.4 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.008: v1.0.5 → v1.0.6 (F-R109-4 pin + F-R109-14 §Trace ascending)
+- BC-2.01.009: v1.0.5 → v1.0.6 (F-R109-4 pin + F-R109-14 §Trace ascending + F-R109-20 OAuth2 residual removed)
+- BC-2.01.010: v1.0.2 → v1.0.3 (F-R109-4 pin + F-R109-14 §Trace ascending)
+
+SS-02 (SS-core-types-and-abi.md v1.2.8 → v1.2.13, 4 versions stale):
+- BC-2.02.001: v1.0.1 → v1.0.2 (F-R109-4 pin)
+- BC-2.02.002: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.02.003: v1.0.1 → v1.0.2 (F-R109-4 pin)
+- BC-2.02.004: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.02.005: v1.0.1 → v1.0.2 (F-R109-4 pin)
+- BC-2.02.006: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.02.007: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.02.008: v1.0.2 → v1.0.3 (F-R109-4 pin)
+
+SS-03 (SS-engine-module.md v1.1.15 → v1.1.20, 4 versions stale):
+- BC-2.03.001: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.03.002: v1.0.2 → v1.0.3 (F-R109-4 pin)
+- BC-2.03.003: v1.0.1 → v1.0.2 (F-R109-4 pin)
+- BC-2.03.004: v1.0.2 → v1.0.3 (F-R109-4 pin)
+
+**F-R109-14 — §Trace ascending reorder:** All SS-01 BC §Trace blocks were descending (most recent first). Reordered to ascending (oldest first → newest appended). Content preserved verbatim; insertion order corrected. SS-02 and SS-03 BCs had only 1 §Trace block (no ordering issue).
+
+**F-R109-20 — BC-2.01.009 Architecture Anchors residual fabrication removed:** `(Phase 4 OAuth2 clarification)` parenthetical removed from Architecture Anchors line. F-R106-7 previously removed this from the Traceability table Forward Compat Contract row but missed this line. Consistent with `FC-06 (versioned auth token prefix)` canonical form.
+
+**F-R109-17 — EC namespace convention codified:** §Conventions section added to BC-INDEX. Per-BC EC scoping is canonical; EC-013 in two different BCs is not a collision. Cross-BC EC references use `BC-S.SS.NNN EC-NNN` fully-qualified form.
+
+**F-R109-21 — Test name convention codified:** §Conventions section documents that legacy-form test names (e.g., `test_BC_AUTH_002_...`) are immutable — renaming them is cost-exceeds-benefit. New BCs SHOULD use new-form prefix; existing BCs are not renamed.
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-17g META audit: `grep -r "SS-daemon-lifecycle.md v1\.0\.30\|SS-core-types-and-abi.md v1\.2\.8\|SS-engine-module.md v1\.1\.15" .factory/specs/behavioral-contracts/` → 0 matches. All 22 BCs updated to target version pins.
+SE-16d monotonicity PASS: 2026-05-17T04:45:00Z > prior 2026-05-18T01:15:00Z (v1.6).
