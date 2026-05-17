@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T20:00:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -146,7 +146,7 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 
 **Template compliance Dispatch 6 of 7-8** (2026-05-17T14:00:00Z):
 - Created as new artifact. Directory `.factory/specs/domain-spec/` populated.
-- 3 capabilities extracted from product-brief.md v1.4.23 + vision-synthesis v1.1.2.
+- 3 capabilities extracted from product-brief.md v1.4.25 + vision-synthesis v1.1.2.
 - Capability anchors grounded: CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture;
   CAP-002 from brief §Forward-compatibility contracts FC-01..FC-06; CAP-003 from
   brief §Phase 1 dual-engine + vision §Engine Module + §FactoryAdapter.
@@ -242,3 +242,22 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
   CAP-001-daemon-lifecycle.md. No index-level prose changes required beyond version bump.
 - L2-INDEX version bumped 1.0.5 → 1.0.6; timestamp advanced.
 - SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-17T19:00:00Z (v1.0.5).
+
+## §Trace v1.0.7
+
+**F-R107-12 BA closure — brief version cite refresh v1.4.23 → v1.4.25** (2026-05-17T23:00:00Z):
+- SE-17f before/after:
+  - BEFORE: `3 capabilities extracted from product-brief.md v1.4.23 + vision-synthesis v1.1.2.`
+  - AFTER:  `3 capabilities extracted from product-brief.md v1.4.25 + vision-synthesis v1.1.2.`
+- Rationale: PO Round 5C commit 56c11fe bumped product-brief.md v1.4.23 → v1.4.25. The
+  §Trace v1.0 prose in L2-INDEX retained the stale v1.4.23 cite. F-R107-12 (LOW) flagged
+  this discrepancy. This edit refreshes the cite to match the current brief version.
+- SE-17c-d body-scope grep: searched L2-INDEX.md for all occurrences of `v1.4.` —
+  only one match existed (line 149, now corrected). No other stale brief version cites
+  in this file.
+- CAP file scope check: CAP-002-forward-compat-wire-formats.md contains `v1.4.7` as a
+  historical anchor cite (pointing to an earlier brief revision where FC-01..FC-06 were
+  first introduced). That cite is in a CAP file, not L2-INDEX, and is outside BA L2-INDEX
+  scope for this round. No CAP files touched.
+- L2-INDEX version bumped 1.0.6 → 1.0.7; timestamp advanced.
+- SE-16d monotonicity PASS: 2026-05-17T23:00:00Z > prior 2026-05-17T20:00:00Z (v1.0.6).
