@@ -3,15 +3,13 @@ document_type: architecture-section
 level: L3
 section: "permissions-phase1"
 subsystem: cross-cutting
-version: "1.5"
+version: "1.5.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T11:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md]
+input-hash: "1c7dfbd"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

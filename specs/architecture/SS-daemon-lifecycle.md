@@ -3,17 +3,13 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.26"
+version: "1.0.27"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T11:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/verification-properties.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
+input-hash: "325a9cd"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

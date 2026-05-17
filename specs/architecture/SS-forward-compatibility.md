@@ -4,23 +4,13 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.14"
+version: "1.2.15"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T11:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-conventions-anti-patterns.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0003-license-selection.md
-  - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
+input-hash: "2842d94"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

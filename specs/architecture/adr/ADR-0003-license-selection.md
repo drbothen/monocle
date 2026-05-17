@@ -8,14 +8,12 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.1"
+version: "1.0.2"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T21:45:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [SS-deps-pin-manifest.md, product-brief.md]
+input-hash: "4348a8b"
 traces_to: "adversary F-NEW-08 (IMPORTANT); human Q-license (MIT/Apache-2.0 dual); devops-engineer companion: cargo-deny CI gate"
 project: monocle
 ---

@@ -1,15 +1,13 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-17T11:00:00Z
+timestamp: 2026-05-17T16:30:00Z
 phase: pre-phase-1-architecture
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/prd.md
-input-hash: "[live-state]"
+inputs: [product-brief.md, prd.md]
+input-hash: "ee1f76a"
 traces_to: prd.md
 deployment_topology: single-service
 project: monocle
@@ -23,15 +21,15 @@ project: monocle
 
 ## Document Map
 
-| Section | File | Primary Consumer | Purpose |
-|---------|------|-----------------|---------|
-| Daemon Lifecycle | SS-daemon-lifecycle.md | orchestrator, implementer, test-writer | HTTP server, hooks, auth, locking, ring buffer, crash recovery |
-| Core Types and ABI | SS-core-types-and-abi.md | implementer, formal-verifier | Forward-compatible wire formats, factory abstractions, protocol versioning |
-| Engine Module | SS-engine-module.md | implementer, formal-verifier | EngineModule trait, ClaudeCodeModule adapter, harness abstraction |
-| Dependency Manifest | SS-deps-pin-manifest.md | implementer, devops-engineer | Version pins, MSRV policy, workspace dependency graph |
-| Conventions & Anti-Patterns | SS-conventions-anti-patterns.md | implementer, code-reviewer | Code conventions, forbidden patterns, clippy + semgrep enforcement |
-| Forward Compatibility | SS-forward-compatibility.md | architect, implementer | FC contracts P2-1..P3-N |
-| Phase 1 Permissions | SS-permissions-phase1.md | implementer, test-writer | Phase 1 permission enum |
+| Section | File | Tokens | Primary Consumer | Purpose |
+|---------|------|--------|-----------------|---------|
+| Daemon Lifecycle | SS-daemon-lifecycle.md | ~23,730 | orchestrator, implementer, test-writer | HTTP server, hooks, auth, locking, ring buffer, crash recovery |
+| Core Types and ABI | SS-core-types-and-abi.md | ~10,072 | implementer, formal-verifier | Forward-compatible wire formats, factory abstractions, protocol versioning |
+| Engine Module | SS-engine-module.md | ~15,013 | implementer, formal-verifier | EngineModule trait, ClaudeCodeModule adapter, harness abstraction |
+| Dependency Manifest | SS-deps-pin-manifest.md | ~9,976 | implementer, devops-engineer | Version pins, MSRV policy, workspace dependency graph |
+| Conventions & Anti-Patterns | SS-conventions-anti-patterns.md | ~25,794 | implementer, code-reviewer | Code conventions, forbidden patterns, clippy + semgrep enforcement |
+| Forward Compatibility | SS-forward-compatibility.md | ~7,871 | architect, implementer | FC contracts P2-1..P3-N |
+| Phase 1 Permissions | SS-permissions-phase1.md | ~2,661 | implementer, test-writer | Phase 1 permission enum |
 
 ## Cross-References
 
@@ -95,7 +93,19 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
 for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
 
-## §Trace v1.0
+## §Trace v1.0.1
+
+**Audit R2 residual fix RES-04 + RES-01 fix-pass** (2026-05-17T16:30:00Z):
+- RES-04: Added `Tokens` column to Document Map per architecture-index-template.md.
+  Token counts computed as word_count × 1.3 (approximate), using `wc -w` per section file.
+  All seven section files enumerated with `~N` token estimates.
+- RES-01: Normalized `inputs:` field in ARCH-INDEX.md from absolute paths to relative
+  paths (inline array format) resolvable by compute-input-hash. input-hash updated to
+  `561ef4d` (reflecting [product-brief.md, prd.md] content at fix-pass time). Path
+  normalization also applied to 18 other [live-state] placeholder files in the same pass.
+- version: 1.0 → 1.0.1; timestamp: 2026-05-17T11:00:00Z → 2026-05-17T16:30:00Z.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T16:30:00Z >= chain high-water 2026-05-17T16:00:00Z.
+- Audit references: `.factory/plans/template-compliance-audit-r2.md` RES-01, RES-04.
 
 **Template compliance Dispatch 1 of 6+** (2026-05-17T11:00:00Z):
 - Created as new artifact; no prior version.

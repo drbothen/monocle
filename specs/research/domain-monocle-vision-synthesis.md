@@ -1,24 +1,13 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "1.1.2"
+version: "1.1.3"
 status: approved
 producer: orchestrator
 phase: pre-phase-0-vision
-timestamp: 2026-05-12T23:30:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/zellij/zellij-pass-8-final-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/lazygit/lazygit-pass-8-final-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
-  - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, product-brief.md, architecture/SS-deps-pin-manifest.md, planning/oq-research.md]
+input-hash: "e41e8ac"
 traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; SS-deps-pin-manifest.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
 project: monocle
 approved_by: human

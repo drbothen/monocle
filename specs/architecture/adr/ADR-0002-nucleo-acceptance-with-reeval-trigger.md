@@ -8,15 +8,12 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0"
+version: "1.0.2"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-12T00:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
-  - /Users/jmagady/Dev/monocle/.factory/tech-debt-register.md
-  - /Users/jmagady/Dev/monocle/.factory/plans/production-grade-reaudit.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [SS-deps-pin-manifest.md, tech-debt-register.md, plans/production-grade-reaudit.md]
+input-hash: "62c26ba"
 traces_to: "TD-001 retirement; adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 5; canonical principle CLAUDE.md commit 3366d58 §Rule 3"
 project: monocle
 ---

@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-17T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "[live-state]"
+input-hash: "17f342c"
 traces_to: prd.md
 ---
 

@@ -3,15 +3,13 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.29"
+version: "1.29.2"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T11:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
+input-hash: "1089ddb"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

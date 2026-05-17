@@ -8,15 +8,12 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.3"
+version: "1.0.4"
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T14:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [SS-core-types-and-abi.md, SS-permissions-phase1.md, product-brief.md]
+input-hash: "7e8af52"
 traces_to: "F-FC-C001 adversary finding; F-FC-I004 adversary finding; BC-TYPES-001 exemption mechanism; SS-permissions-phase1.md §Decision; brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract)"
 project: monocle
 ---

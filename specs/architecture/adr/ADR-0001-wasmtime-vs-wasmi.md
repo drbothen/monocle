@@ -7,14 +7,12 @@ subsystems_affected: []
 supersedes: null
 superseded_by: null
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
-timestamp: 2026-05-14T14:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md]
+input-hash: "3b3a569"
 traces_to: "factory-artifacts ee09833 (brief v1.1); consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---

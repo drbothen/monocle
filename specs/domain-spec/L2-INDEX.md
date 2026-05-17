@@ -1,15 +1,15 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T14:00:00Z
+timestamp: 2026-05-17T16:30:00Z
 phase: 1a
 inputs:
   - product-brief.md
   - research/domain-monocle-vision-synthesis.md
-input-hash: "[live-state]"
+input-hash: "494c12d"
 traces_to: product-brief.md
 sections:
   - CAP-001-daemon-lifecycle.md

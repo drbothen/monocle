@@ -4,21 +4,13 @@ level: L3
 section: "core-types-and-abi"
 slug: "types-and-abi"
 subsystem: SS-02
-version: "1.2.9"
+version: "1.2.10"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T11:00:00Z
-inputs:
-  - /Users/jmagady/Dev/monocle/.factory/specs/product-brief.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-forward-compatibility.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-daemon-lifecycle.md
-  - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-permissions-phase1.md
-  - /Users/jmagady/Dev/monocle/.factory/planning/oq-research.md
-  - /Users/jmagady/Dev/monocle/.factory/semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
-input-hash: "[live-state]"
+timestamp: 2026-05-17T16:30:00Z
+inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-forward-compatibility.md, SS-deps-pin-manifest.md, SS-daemon-lifecycle.md, SS-permissions-phase1.md, planning/oq-research.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
+input-hash: "bcf9f27"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
