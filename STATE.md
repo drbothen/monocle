@@ -359,7 +359,7 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | Domain spec / Vision | `.factory/specs/research/domain-monocle-vision-synthesis.md` v1.1.2 | EXISTS |
 | L2 domain spec | `.factory/specs/domain-spec/L2-INDEX.md` + 3 CAP shards (CAP-001/002/003) | NEW (D-122 / D6 commit 2a852d1) |
 | Product brief | `.factory/specs/product-brief.md` v1.4.23 | EXISTS |
-| PRD (index) | `.factory/specs/prd.md` v1.26.7 (517c7ee; SS pins refreshed Round 8B) | UPDATED (Round 8B) |
+| PRD (index) | `.factory/specs/prd.md` v1.26.9 (c0c6b99 Round 10A) | UPDATED (Round 10A) |
 | PRD supplements | `interface-definitions.md` v1.5 (c307f2a unchanged); `nfr-catalog.md` v1.7 (c0c6b99 Round 10A); `error-taxonomy.md` v1.5 (c0c6b99 Round 10A); `test-vectors.md` v1.3 (c307f2a unchanged) | UPDATED (Round 10A) |
 | BC files (22) | 22 BC files SS pin refreshed (3334fb6 Round 9B); BC-INDEX v1.9 (c0c6b99 Round 10A) | UPDATED (Round 10A) |
 | BC-INDEX | `.factory/specs/behavioral-contracts/BC-INDEX.md` v1.9 (c0c6b99) | UPDATED (Round 10A) |
@@ -664,7 +664,7 @@ O-R105-1 + O-R105-2: HELD — 1st occurrences.
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps (unchanged). **manifest v1.1.17 (CURRENT)**. **PRD v1.26.7 (517c7ee; CURRENT)**. **arch SS-* at Round 8 versions (CURRENT)**. **VP files all at Round 9 versions (bae21b1; CURRENT)**. **36 codified disciplines** (SE-19 NFR-VP phantom-anchor audit (35th) + SE-20 timestamp monotonicity hook (36th) codified this burst D-134). **NOTE:** Current spec package is post-D-134 R110 Round 9 closure. R111 + cons R50 IN FLIGHT.
+28 pinned production deps (unchanged). **manifest v1.1.17 (CURRENT)**. **PRD v1.26.9 (c0c6b99; CURRENT)**. **arch SS-* at Round 8 versions (CURRENT)**. **VP files all at Round 10 versions (1593633; CURRENT)**. **36 codified disciplines** (SE-19 NFR-VP phantom-anchor audit (35th) + SE-20 timestamp monotonicity hook (36th) codified D-134). **NOTE:** Current spec package is post-D-135 R111 Round 10 closure. R112 + cons R51 IN FLIGHT.
 
 ## Historical Content
 
