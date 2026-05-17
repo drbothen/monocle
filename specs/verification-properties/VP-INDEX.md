@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T22:50:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "b09f325"
@@ -138,8 +138,8 @@ mapping for traceability into pre-Dispatch-5a artifacts.
   `git show 842402c:.factory/specs/verification-properties.md` and
   earlier commits. VP-INDEX.md is now the canonical entry point for
   Phase 1 verification properties.
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.4 (commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
-- PRD: `.factory/specs/prd.md` v1.26.4 (Dispatch 4 commit 1030c65; refreshed to v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.5 (commit pending — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
+- PRD: `.factory/specs/prd.md` v1.26.5 (Dispatch 4 commit 1030c65; refreshed to v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch — commit pending; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Architecture index: `architecture/ARCH-INDEX.md`.
 - Template: `templates/L4-verification-property-template.md`.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
@@ -322,3 +322,59 @@ UTC ISO-8601 `Z` form: `2026-05-17T22:50:00Z` >= chain high-water `2026-05-17T22
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical coherence fix executed in-scope rather than deferred or rationalized as "MVP-acceptable stale cite." Rule 4: BC-INDEX `commit pending` placeholder discovered while in-scope was fixed in-scope rather than surfaced as a follow-up advisory. Rule 5: cheapest path (edit only the PRD line) was rejected in favor of correct path (also resolve the BC-INDEX placeholder discovered in the same hunk). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2, v1.3, v1.4 chain continuity preserved verbatim.
+
+---
+
+## §Trace v1.5 — F-R107-4 HIGH + GAP-R46-1 HIGH + F-R107-8 (part 2): VP-INDEX §References Cascade for R107 Round 6C FV Sweep
+
+**Bump:** v1.4 → v1.5.
+**Predecessor pin:** v1.4 (commit 01af634 — pre-R107 fix burst: PRD pin v1.26.3 → v1.26.4 + BC-INDEX commit-pending → bb088a2).
+**Scope of v1.5 (NORMATIVE — mechanical §References citation refresh for R107 Round 6C parallel-dispatch coordination; NO per-VP-row content change; NO Renumbering Appendix cascade):**
+
+### Change 1 — §References PRD Citation Refresh v1.26.4 → v1.26.5 (NORMATIVE)
+
+- **SE-17f §References PRD line:**
+  - Before: `PRD: \`.factory/specs/prd.md\` v1.26.4 (Dispatch 4 commit 1030c65; refreshed to v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).`
+  - After: `PRD: \`.factory/specs/prd.md\` v1.26.5 (Dispatch 4 commit 1030c65; refreshed to v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch — commit pending; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).`
+- **Rationale:** PO 6B (parallel R107 Round 6 dispatch) bumps PRD v1.26.4 → v1.26.5. VP-INDEX §References cascade-tail refreshed to target v1.26.5 in the same dispatch as the 22-VP per-file sweep, preserving the stale-citation-zero invariant. Cite history chain preserved (supersession of v1.26.4 + v1.26.3) per append-only §References audit-trail convention.
+
+### Change 2 — §References BC-INDEX Citation Refresh v1.4 → v1.5 (NORMATIVE)
+
+- **SE-17f §References BC-INDEX line:**
+  - Before: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.4 (commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).`
+  - After: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.5 (commit pending — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).`
+- **Rationale:** PO 6A (parallel R107 Round 6 dispatch) bumps BC-INDEX v1.4 → v1.5. VP-INDEX §References cascade-tail refreshed to target v1.5 in the same dispatch, preserving the stale-citation-zero invariant. Cite history chain preserved (supersession of v1.4 + v1.2 + v1.1) per append-only §References audit-trail convention.
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -n "prd.md\` v1.26.[0-4]" VP-INDEX.md` outside §Trace blocks → 0 matches (the only remaining v1.26.4 / v1.26.3 cites are inside §Trace v1.2 / v1.3 / v1.4 / v1.5 blocks as preserved historical evidence + before-evidence in v1.5).
+- Post-edit `grep -n "prd.md\` v1.26.5" VP-INDEX.md` outside §Trace blocks → 1 match (§References PRD line).
+- Post-edit `grep -nE "BC-INDEX\.md\` v1\.[1-4]" VP-INDEX.md` outside §Trace blocks → 0 matches.
+- Post-edit `grep -n "BC-INDEX.md\` v1.5" VP-INDEX.md` outside §Trace blocks → 1 match (§References BC index line).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content:** UNCHANGED — no source-BC, proof-method, file-path, or VP-ID cell modified.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.5 (commit pending — PO 6B R107 Round 6B PRD + supplements dispatch; supersedes v1.26.4 commit 01af634).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.5 (commit pending — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2).
+- **R107 closure chain:** F-R107-4 HIGH (VP-009 ADR-0005 pin refresh — handled in VP-009 v1.0.5 in this dispatch); GAP-R46-1 HIGH (22-VP PRD cite refresh sweep — handled across all 22 VPs in this dispatch); F-R107-8 part 2 (22-VP active BC-INDEX cite addition — handled across all 22 VPs in this dispatch); VP-INDEX cascade tail co-located here.
+- **Concurrent dispatches (R107 Round 6):**
+  - PO 6A: BC + BC-INDEX scope (BC-INDEX v1.4 → v1.5) — separate scope.
+  - PO 6B: PRD + supplements (PRD v1.26.4 → v1.26.5) — separate scope.
+  - FV 6C: this dispatch (VP-009 ADR-0005 pin refresh + 22-VP PRD cite refresh + 22-VP BC-INDEX active cite addition + VP-INDEX cascade — THIS file).
+  - Architect 6D: SS-forward-compatibility scope — separate scope.
+  - BA 6E: L2-INDEX scope — separate scope.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T23:00:00Z` >= chain high-water `2026-05-17T22:50:00Z` (v1.4 §Trace timestamp + frontmatter timestamp). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD cite refresh `v1.26.4` → `v1.26.5` (with supersession chain); §References BC-INDEX cite refresh `v1.4` → `v1.5` (with supersession chain); frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Rule 1: mechanical citation refresh executed in-scope rather than deferred or rationalized as "MVP-acceptable stale cite." Rule 5: cheapest path (separate VP-INDEX-only commit later) was rejected in favor of correct path (co-locate VP-INDEX cascade with the 22-VP per-file sweep in a single coordinated R107 Round 6C FV dispatch). PRD v1.26.5 and BC-INDEX v1.5 cites are post-PO-6B and post-PO-6A targets (commit pending — will resolve to concrete SHAs during final state-manager pass after parallel dispatches converge). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 chain continuity preserved verbatim.

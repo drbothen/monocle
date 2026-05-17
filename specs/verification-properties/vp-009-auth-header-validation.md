@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.4"
+version: "1.0.5"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T22:30:00Z
+timestamp: 2026-05-17T23:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "038dbc3"
@@ -86,7 +86,7 @@ alias).
 
 - **BC (primary):** BC-2.01.009 v1.0.3 — Auth Header Validation (Missing
   and Invalid Token); dual-accept semantics per ADR-0005.
-- **ADR (primary):** ADR-0005 v1.0.1 — Auth Header Dual-Accept — Canonical
+- **ADR (primary):** ADR-0005 v1.0.2 — Auth Header Dual-Accept — Canonical
   `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization`
   Compatibility Alias.
 - **Postcondition/Invariant:** two-variant `AuthError` enum; exact body
@@ -428,10 +428,11 @@ fn verify_bc_2_01_009() {
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.3 (commit pending — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
-- ADR: `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.1 (commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).
+- ADR: `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal; supersedes v1.0.1 commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.5 (commit pending — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.30 §Start
   Sequence (commit pending — architect 5E F-FC-I005 removal + dual-accept consolidation).
-- PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.01.009 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
+- PRD: `.factory/specs/prd.md` v1.26.5 §BC-2.01.009 (Dispatch 4 commit 1030c65; refreshed to v1.26.5 in F-R107-3 / GAP-R46-1 closure, parallel PO 6B dispatch — commit pending; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-002 (`/status` auth probes); VP-004 (`/shutdown` auth
   probe); VP-008 (token wire format + `constant_time_eq`).
@@ -657,7 +658,7 @@ Per CLAUDE.md Production-Grade Default Rule 1+5: the gap is fixed in-scope of R1
 ### Authoritative cross-references
 
 - **BC:** `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.3 (commit e7950f0 ADR-0005 dual-accept propagation + commit pending F-R106-7 fabricated-FC-ID removal).
-- **ADR:** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.1 (commit e142efb).
+- **ADR:** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization; supersedes v1.0.1 commit e142efb).
 - **Architecture:** `architecture/SS-daemon-lifecycle.md` v1.0.30 (commit pending — architect 5E dispatch).
 - **R106 closure chain:** F-R106-1 CRITICAL + GAP-R45-1 HIGH (VP-009 dual-accept coverage); F-R106-10 HIGH (pin refresh sweep — this VP is one of 10 pin-citing files); F-R106-9 HIGH (VP-INDEX SS-01 pin refresh — cascade in this dispatch); F-R106-18 LOW (VP-INDEX SS-02/SS-03 pin additions — cascade); GAP-R45-4 LOW (VP-INDEX §References BC-INDEX cite refresh — cascade).
 - **Concurrent dispatches (R106 Round 5):**
@@ -679,3 +680,79 @@ UTC ISO-8601 `Z` form: `2026-05-17T22:30:00Z` >= chain high-water `2026-05-17T22
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Production-grade expansion executed in-scope of FV 5D rather than deferred. Each new probe (9.8-9.12, 9.13a/b/c) carries explicit header construction, expected status, expected body, and WARN-log presence/absence. Each new counter-example (CE-6 through CE-12) documents the specific implementation defect it catches with explicit BC invariant references (INV-5 canonical-priority, INV-6 WARN-log, INV-7 constant-time symmetry). No tech-debt entries created. Cross-dispatch coordination with architect 5E (SS-daemon-lifecycle v1.0.30 target) and PO 5A (BC-2.01.009 v1.0.3 target) handled via explicit "commit pending" annotations in §References — these will resolve to concrete SHAs during final state-manager pass after all parallel dispatches converge.
+
+---
+
+## §Trace v1.0.5 — F-R107-4 HIGH + GAP-R46-1 HIGH + F-R107-8 (part 2): VP §References PRD Cite Refresh v1.26.3 → v1.26.5 + Active BC-INDEX Cite Addition v1.5 + ADR-0005 Pin Refresh v1.0.1 → v1.0.2
+
+**Bump:** v1.0.4 → v1.0.5.
+**Predecessor pin:** v1.0.4 (commit 7b8d6e8 — F-R106 Round 5D FV — VP-009 ADR-0005 dual-accept expansion + 10-VP SS-daemon-lifecycle pin sweep + VP-INDEX 4-fix cascade).
+**Scope of v1.0.5 (NORMATIVE — mechanical §References citation refresh + active BC-INDEX cite addition + VP-009-only ADR-0005 pin refresh (3 cites); NO content cascade):**
+
+### Change set 1 — §References PRD Citation Refresh `v1.26.3` → `v1.26.5` (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** §References cited `prd.md v1.26.3 §BC-2.01.009 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).` (pre-edit grep).
+  - **After:** §References cites `prd.md v1.26.5 §BC-2.01.009 (Dispatch 4 commit 1030c65; refreshed to v1.26.5 in F-R107-3 / GAP-R46-1 closure, parallel PO 6B dispatch — commit pending; supersedes v1.26.4 commit 01af634 pre-R107 fix burst + v1.26.3 commit b2b378b F-R105-12 closure).` (post-edit grep).
+- **SE-17c-d body-scope grep (active §References scope):** post-edit `grep -nE "prd\.md.* v1\.26\.[0-4]" vp-009-auth-header-validation.md` outside §Trace history blocks → 0 matches; `grep -n "prd.md\` v1.26.5" vp-009-auth-header-validation.md` outside §Trace history blocks → 1 match (§References PRD line).
+- **Historical PRD citations in §Trace history blocks:** UNCHANGED per SE-17g audit-trail-preservation discipline (predecessor citations document state-at-the-time of each historical bump and must not be refreshed; refreshing them would erase audit trail).
+
+### Change set 2 — §References Active BC-INDEX Cite Addition v1.5 (NORMATIVE)
+
+- **Rationale for active-cite ADDITION (not §Trace history rewrite):** F-R107-8 part 2 identifies stale BC-INDEX v1.2 cites in 22 VPs' `BC §References scope` evidence text inside §Trace v1.0.3 (F-R105-13 history blocks). Per SE-17g audit-trail-preservation discipline, §Trace history blocks are append-only — they document state at the time of the bump and are immutable. The production-grade closure is to ADD an active §References BC-INDEX cite at the current v1.5 target, which makes the v1.5 cite live-authoritative and demotes the v1.2 mention in §Trace v1.0.3 to historical snapshot evidence (its correct semantic). Before this dispatch, no VP had an active BC-INDEX §References cite — the only BC-INDEX version mentions were in §Trace history. Adding the active cite closes F-R107-8 part 2 durably without violating SE-17g.
+- **SE-17f before/after evidence:**
+  - **Before:** active §References had no `BC index:` line (only `Source contract:` cited the sharded BC path without referencing BC-INDEX version). Pre-edit grep `grep -nE "BC-INDEX" vp-009-auth-header-validation.md` outside §Trace blocks → 0 matches.
+  - **After:** active §References gained `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.5 (commit pending — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).` Post-edit grep `grep -nE "BC-INDEX\.md.* v1\.5" vp-009-auth-header-validation.md` outside §Trace blocks → 1 match (§References BC index line).
+- **No BC-path or BC-version changes required:** §Source contract entry already cites canonical sharded `behavioral-contracts/ss-01/BC-2.01.009.md` (per BC-INDEX.md v1.5 confirmation). No BC-path edits in this dispatch.
+
+### Change set 3 — VP-009-only: ADR-0005 Pin Refresh `v1.0.1` → `v1.0.2` (NORMATIVE)
+
+- **SE-17f before/after evidence (3 cites):**
+  - **Cite 1 (§Source Contract line ~89):**
+    - **Before:** `- **ADR (primary):** ADR-0005 v1.0.1 — Auth Header Dual-Accept — Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias.`
+    - **After:** `- **ADR (primary):** ADR-0005 v1.0.2 — Auth Header Dual-Accept — Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias.`
+  - **Cite 2 (active §References line ~431):**
+    - **Before:** `ADR: \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\` v1.0.1 (commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).`
+    - **After:** `ADR: \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal; supersedes v1.0.1 commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).`
+  - **Cite 3 (§Trace v1.0.4 Authoritative cross-references line ~660):**
+    - **Before:** `**ADR:** \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\` v1.0.1 (commit e142efb).`
+    - **After:** `**ADR:** \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization; supersedes v1.0.1 commit e142efb).`
+- **SE-17c-d body-scope grep:** post-edit `grep -nE "ADR-0005 v1\.0\.1|ADR-0005-.*\.md\` v1\.0\.1" vp-009-auth-header-validation.md` → 0 matches; `grep -nE "ADR-0005 v1\.0\.2|ADR-0005-.*\.md\` v1\.0\.2" vp-009-auth-header-validation.md` → 3 matches (§Source Contract + active §References + §Trace v1.0.4 cross-references).
+- **§Trace v1.0.4 cross-references treatment (deviation note):** Cite 3 (line ~660) is INSIDE §Trace v1.0.4 (F-R106 Round 5D expansion). Per F-R107-4 task directive ("3 occurrences ... refresh to v1.0.2"), this cite IS refreshed in-place — a documented one-off exception to SE-17g audit-trail preservation, scoped to VP-009 only, justified by the user's explicit per-cite enumeration in the F-R107-4 finding text. SE-17g audit-trail discipline otherwise remains in force for the §Trace history blocks of the 22-VP PRD/BC-INDEX sweep (those are NOT in-place edited; they are superseded by new active cites or a new §Trace entry).
+
+### Rationale
+
+R107 Round 6C (FV scope) closes three findings in coordinated parallel dispatch:
+
+- **F-R107-4 HIGH (VP-009-specific):** VP-009 cited ADR-0005 v1.0.1 in 3 locations (§Source Contract line 89; active §References line 431; §Trace v1.0.4 Authoritative cross-references line 660). Current ADR-0005 is at v1.0.2 (frontmatter `version: "1.0.2"` confirmed at audit time; commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal). All 3 cites refreshed to v1.0.2 in this dispatch.
+- **GAP-R46-1 HIGH (all-22-VPs):** VP-INDEX was pre-fixed in commit 01af634 (PRD pin v1.26.3 → v1.26.4 pre-R107 fix burst) but the 22 individual VP files' active §References still cited the stale v1.26.3. PO 6B is bumping PRD v1.26.4 → v1.26.5 in parallel; this FV dispatch refreshes all 22 VPs' active §References to the post-PO-6B v1.26.5 target.
+- **F-R107-8 part 2 (all-22-VPs):** 22 VPs had stale BC-INDEX v1.2 mentions inside §Trace v1.0.3 history blocks. Per SE-17g audit-trail-preservation, those §Trace mentions are historical snapshots and must not be edited. The durable closure is to ADD active §References BC-INDEX cites at the current v1.5 target (post-PO-6A), making v1.5 the live-authoritative cite and demoting the v1.2 mentions in §Trace v1.0.3 to historical snapshot evidence (their correct SE-17g semantic). PO 6A is bumping BC-INDEX v1.4 → v1.5 in parallel; this FV dispatch targets the post-PO-6A v1.5 version.
+
+Per CLAUDE.md Production-Grade Default Rule 1+5: mechanical citation refresh + durable cite addition executed in-scope of R107 Round 6C rather than deferred. No tech-debt entries created. Historical §Trace block citations preserved unchanged per SE-17g.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.5 (commit pending — PO 6B R107 Round 6B PRD + supplements dispatch; supersedes v1.26.4 commit 01af634 pre-R107 fix burst).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.5 (commit pending — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization).
+- **ADR-0005:** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal; supersedes v1.0.1 commit e142efb — heading-hierarchy normalization).
+- **R107 closure chain:** F-R107-4 HIGH (VP-009 ADR-0005 pin refresh — VP-009-only); GAP-R46-1 HIGH (22-VP PRD cite refresh sweep); F-R107-8 part 2 (22-VP active BC-INDEX cite addition).
+- **Concurrent dispatches (R107 Round 6):**
+  - PO 6A: BC + BC-INDEX scope (BC-INDEX v1.4 → v1.5) — separate scope.
+  - PO 6B: PRD + supplements (PRD v1.26.4 → v1.26.5) — separate scope.
+  - FV 6C: this dispatch (VP-009 ADR-0005 pin refresh + 22-VP PRD cite refresh + 22-VP BC-INDEX active cite addition + VP-INDEX cascade).
+  - Architect 6D: SS-forward-compatibility scope — separate scope.
+  - BA 6E: L2-INDEX scope — separate scope.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T23:00:00Z` >= chain high-water `2026-05-17T22:50:00Z` (VP-INDEX v1.4 timestamp; pre-R107 fix burst commit 01af634). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD citation `v1.26.3` → `v1.26.5`; §References BC index cite ADDITION at v1.5; ADR-0005 pin refresh `v1.0.1` → `v1.0.2` (3 cites: §Source Contract, active §References, §Trace v1.0.4 cross-references); frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Mechanical citation refresh + durable cite-addition executed in-scope rather than deferred. PRD v1.26.5 cite is the post-PO-6B target (commit pending — will resolve to concrete SHA during final state-manager pass after parallel dispatches converge). BC-INDEX v1.5 cite is the post-PO-6A target (commit pending — same resolution). No tech-debt entries created. §Trace history blocks preserved unchanged per SE-17g — historical predecessor citations are not stale; refreshing them would erase audit trail.
+
