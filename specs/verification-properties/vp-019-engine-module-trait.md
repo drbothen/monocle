@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.2"
+version: "1.0.3"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T20:30:00Z
+timestamp: 2026-05-17T21:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3547eed"
@@ -59,8 +59,10 @@ removal_reason: null
   EngineMetadataError>` returns (no silent `Option<...>` fallback), and
   `last_event_micros: Option<i64>` field type. Open-trait rationale
   cross-referenced from VP-014's `FactoryAdapter` parallel trait per
-  monolithic line 3192 (open-trait rationale referenced by VP-FACTORY-001
-  and VP-ENGINE-001).
+  monolithic line 3192 (open-trait rationale referenced by VP-014
+  (renumbered from VP-FACTORY-001 per VP-INDEX.md §Renumbering Appendix)
+  and VP-019 (renumbered from VP-ENGINE-001 per VP-INDEX.md §Renumbering
+  Appendix)).
 - **Traces to (historical):** BC-ENGINE-001 (SS-engine-module.md
   §Behavioral Contracts; PRD v1.25 §BC-ENGINE-001 Verification subsection).
 
@@ -320,3 +322,62 @@ Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail).
+
+---
+
+## §Trace v1.0.3 — F-R105 Round 4: VP-019 Monolithic-Predecessor Sister-VP Reconciliation (Source Contract Body)
+
+**Bump:** v1.0.2 → v1.0.3.
+**Predecessor pin:** v1.0.2 (commit 932f4e0 — F-R105-13 LOW §References PRD citation refresh; T-128k Round 3 FV dispatch).
+**Scope of v1.0.3 (NORMATIVE — Source Contract body sister-VP reference reconciliation; NO content cascade; NO BC-path changes; NO §References changes — §References §Predecessor entry preserves the pure historical predecessor citation `monolithic VP-ENGINE-001 at .factory/specs/verification-properties.md v1.35 (commit 842402c — pre-Dispatch-5a state)` unchanged per body-prose historical-citation preservation discipline established in v1.0.2):**
+
+### Change set 1 — Source Contract Sister-VP Reference Reconciliation (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** Source Contract §Postcondition/Invariant cited `(open-trait rationale referenced by VP-FACTORY-001 and VP-ENGINE-001).` (pre-edit grep).
+  - **After:** Source Contract §Postcondition/Invariant cites `(open-trait rationale referenced by VP-014 (renumbered from VP-FACTORY-001 per VP-INDEX.md §Renumbering Appendix) and VP-019 (renumbered from VP-ENGINE-001 per VP-INDEX.md §Renumbering Appendix)).` (post-edit grep).
+- **SE-17c-d body-scope grep:** post-edit `grep -n "VP-FACTORY-001\|VP-ENGINE-001" vp-019-engine-module-trait.md` returns 4 matches — all in renumbering-parenthetical context or pure historical predecessor citation context (line 36 template-compliance Dispatch 5b note; lines 62-63 new renumbering parenthetical; line 209 §References pure historical predecessor pin to commit 842402c). Zero bare/stale references remain.
+- **"Monolithic line 3192" historical-context prose:** PRESERVED — the phrase `per monolithic line 3192` (referencing the pre-Dispatch-5a `verification-properties.md` monolith line number) is unchanged. The fix updates only the sister-VP IDs from the pre-renumbering values to the canonical post-Dispatch-5b values with the renumbering parenthetical.
+- **§References §Predecessor entry scope:** UNCHANGED — line 207 `Predecessor: monolithic VP-ENGINE-001 at .factory/specs/verification-properties.md v1.35 (commit 842402c — pre-Dispatch-5a state)` is a pure historical predecessor citation pinned to a commit-SHA-stamped pre-renumbering artifact. Per the body-prose historical-citation preservation discipline established in v1.0.2 (`historical predecessor citations are not stale; refreshing them would erase audit trail`), this citation is out of scope for the sister-VP renumbering sweep.
+
+### Rationale
+
+T-128k Round 3 FV dispatch (commit 932f4e0) surfaced that VP-019 Source Contract §Postcondition/Invariant body retained pre-renumbering sister-VP IDs (`VP-FACTORY-001`, `VP-ENGINE-001`) in the "monolithic line 3192" historical-context cite. Per CLAUDE.md Production-Grade Default Rule 4 (AI-built defects are AI's responsibility to fix), the decision was FIX. This Round-4 dispatch executes the reconciliation following the same renumbering-parenthetical pattern applied in:
+- F-R105-11 closure VP-007 line 87 (sister-VP `VP-TYPES-001 → VP-013`, commit 927fcce); and
+- F-R105-11 follow-up VP-005 line 106 (sister-VP `VP-ENGINE-002-ERR → VP-021`, commit 932f4e0).
+
+The renumbering parenthetical preserves both the canonical post-Dispatch-5b ID (for forward traceability into the active VP namespace) and the pre-renumbering origin (for backward traceability into pre-Dispatch-5b artifacts), matching the sweep-wide F-R105 stale-citation-zero invariant.
+
+### Authoritative cross-references
+
+- **VP-INDEX:** `verification-properties/VP-INDEX.md` v1.2 (commit 932f4e0 — F-R105-13 §References PRD citation refresh; §Renumbering Appendix unchanged per append-only ID protection — confirms `VP-FACTORY-001 → VP-014` and `VP-ENGINE-001 → VP-019` mappings).
+- **Sister-VP fix pattern precedents:**
+  - VP-007 v1.0.1 §Trace (commit 927fcce — F-R105-11 sister-VP `VP-TYPES-001 → VP-013` reconciliation).
+  - VP-005 v1.0.3 §Trace (commit 932f4e0 — F-R105-11 follow-up sister-VP `VP-ENGINE-002-ERR → VP-021` reconciliation).
+- **R105 closure chain:** Round 4 — single-file VP-019 sister-VP Source Contract body residual fix.
+- **Concurrent dispatches (T-128p Round 4):**
+  - PO: BC-2.01.009 + brief — separate scope.
+  - BA: CAP-001 — separate scope.
+  - FV: this §Trace (VP-019 sister-VP Source Contract body residual).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T21:00:00Z` >= chain high-water `2026-05-17T20:30:00Z` (this VP's prior v1.0.2 §Trace and VP-INDEX v1.2 frontmatter and sister-VP T-128k Round 3 timestamps on VP-005 v1.0.3 and VP-007 v1.0.2). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: Source Contract §Postcondition/Invariant sister-VP reference reconciliation `VP-FACTORY-001` → `VP-014 (renumbered from VP-FACTORY-001 per VP-INDEX.md §Renumbering Appendix)` and `VP-ENGINE-001` → `VP-019 (renumbered from VP-ENGINE-001 per VP-INDEX.md §Renumbering Appendix)`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context; "monolithic line 3192" historical-context prose preservation note.
+
+### SE-17g META audit (NORMATIVE)
+
+Post-edit re-grep `grep -n "VP-FACTORY-001\|VP-ENGINE-001" vp-019-engine-module-trait.md` returns 4 matches, all in legitimate renumbering-parenthetical or pure historical predecessor citation context:
+- Line 36: `Renumbered from VP-ENGINE-001 (PG-5 historical) per template-compliance Dispatch 5b.` (file-level renumbering header, pre-existing).
+- Lines 62-63: NEW renumbering-parenthetical citations per this v1.0.3 change set.
+- Line 209: `Predecessor: monolithic VP-ENGINE-001 at .factory/specs/verification-properties.md v1.35 (commit 842402c — pre-Dispatch-5a state)` (pure historical predecessor citation, preserved unchanged per v1.0.2 body-prose historical-citation discipline).
+
+Zero bare/stale sister-VP references remain. F-R105 Round 4 closure verified.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Sister-VP reconciliation executed in-scope of T-128p Round 4 single-file FV dispatch rather than deferred to a separate cycle. The defect was AI-surfaced (T-128k FV report, commit 932f4e0) and AI-fixed (this Round-4 dispatch) per Rule 4. The renumbering-parenthetical pattern (not bare ID swap, not deletion-then-rewrite) preserves both forward and backward traceability per Rule 1 (production-grade default — no shortcut that erases audit trail). No tech-debt entries created.
