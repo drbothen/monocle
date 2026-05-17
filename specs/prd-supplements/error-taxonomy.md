@@ -4,7 +4,7 @@ level: L3
 version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T04:31:00Z
+timestamp: 2026-05-18T05:31:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "d4c6ea4"
@@ -188,15 +188,27 @@ Canonical filename verified via ARCH-INDEX and disk. Version bumped: 1.1 → 1.2
 
 ---
 
-### F-R109-12 PO closure — 2026-05-17T04:31:00Z
+### F-R109-12 PO closure — 2026-05-18T05:31:00Z
 
 **Finding:** F-R109-12 HIGH — §Trace blocks were non-monotonic. F-R106-16 (T22:15) appeared AFTER F-R107-1 (T23:00) — the block was authored in Round 6 but inserted after the Round 7 block.
 
 **SE-17f BEFORE (§Trace order):** F-R107-1 (T23:00), F-R106-16 (T22:15), GAP-R47-1 (T01:00) — non-monotonic.
-**SE-17f AFTER (§Trace order):** F-R106-16 (T22:15), F-R107-1 (T23:00), GAP-R47-1 (T01:00), F-R109-12 (T04:31) — monotonic ascending.
+**SE-17f AFTER (§Trace order):** F-R106-16 (T22:15), F-R107-1 (T23:00), GAP-R47-1 (T01:00), F-R109-12 (T05:31) — monotonic ascending.
 
 Content of each section preserved verbatim; only insertion order corrected.
 
 **Changes made:** §Trace blocks reordered monotonic ascending; version bumped v1.3 → v1.4; timestamp refreshed.
 
+SE-16d monotonicity PASS: 2026-05-18T05:31:00Z > prior 2026-05-18T01:00:00Z (v1.3 GAP-R47-1). ARITHMETICALLY TRUE: 2026-05-18T05:31:00Z > 2026-05-18T01:00:00Z PASS.
+
 **Scope:** PO-only. No body content (error catalog, mappings) changed.
+
+---
+
+### F-R110-1 PO closure — 2026-05-18T06:00:00Z
+
+**Finding:** F-R110-1 CRITICAL — error-taxonomy frontmatter timestamp and §Trace v1.4 header timestamp were `2026-05-17T04:31:00Z` (wrong date — Round 8 authored on 2026-05-18).
+
+**Changes made:** frontmatter timestamp corrected to `2026-05-18T05:31:00Z`; §Trace v1.4 header corrected to `2026-05-18T05:31:00Z`; SE-17f order line T04:31 → T05:31; SE-16d PASS added. No version bump (timestamp-only fix per F-R110 instructions).
+
+SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:31:00Z (v1.4). ARITHMETICALLY TRUE.

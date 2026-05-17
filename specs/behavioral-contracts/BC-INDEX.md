@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T04:45:00Z
+timestamp: 2026-05-18T05:45:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -243,6 +243,16 @@ Edge case IDs (EC-NNN) are scoped **per-BC**. EC-013 in BC-2.01.009 and EC-013 i
 
 **Enforcement:** When authoring or modifying a BC, EC-NNN is allocated within that BC's own sequence. Cross-BC EC references use the fully-qualified form `BC-S.SS.NNN EC-NNN` (e.g., `BC-2.01.007 EC-002`) to unambiguously scope the reference. This form is already in use in BC-2.01.003 Related BCs and BC-2.01.007 Related BCs.
 
+### Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16)
+
+Any parenthetical appended to a BC-INDEX title (e.g., `"(Fail-Closed for Writes)"`) MUST NOT contradict the anchor target's H1 title. If the H1 title changes, the parenthetical must be updated in the same commit. If a parenthetical adds policy-relevant context, that context must be moved INTO the BC H1 heading (per bc_h1_is_title_source_of_truth), not left as index-only context.
+
+**Enforcement:** The adversary is instructed to flag any parenthetical in the BC-INDEX title column that either (a) contradicts the referenced BC H1 title or (b) adds context that is absent from the H1. Such findings are MEDIUM severity.
+
+**Cross-reference:** Also documented in `architecture/SS-conventions-anti-patterns.md §BC-INDEX Conventions` (added F-R110-18).
+
+---
+
 ### Test Name Convention (F-R109-21)
 
 BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_...`, `test_BC_DAEMON_003_...`) for test continuity across the BC renumbering event (BC-INDEX §Renumbering Map). These names are **immutable** — renaming them to the new BC-S.SS.NNN form would break test history in CI, coverage reports, and log analysis.
@@ -255,7 +265,7 @@ BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_
 
 ## §Trace v1.7
 
-**F-R109 Round 8B — 22-BC pin sweep + §Trace ascending reorder + conventions codified** (2026-05-17T04:45:00Z):
+**F-R109 Round 8B — 22-BC pin sweep + §Trace ascending reorder + conventions codified** (2026-05-18T05:45:00Z):
 
 BC version bumps in this dispatch:
 
@@ -271,7 +281,7 @@ SS-01 (SS-daemon-lifecycle.md v1.0.30 → v1.0.32):
 - BC-2.01.009: v1.0.5 → v1.0.6 (F-R109-4 pin + F-R109-14 §Trace ascending + F-R109-20 OAuth2 residual removed)
 - BC-2.01.010: v1.0.2 → v1.0.3 (F-R109-4 pin + F-R109-14 §Trace ascending)
 
-SS-02 (SS-core-types-and-abi.md v1.2.8 → v1.2.13, 4 versions stale):
+SS-02 (SS-core-types-and-abi.md v1.2.8 → v1.2.13; BCs were stale by 4 patches cumulative from earlier rounds; this dispatch refreshed to latest):
 - BC-2.02.001: v1.0.1 → v1.0.2 (F-R109-4 pin)
 - BC-2.02.002: v1.0.2 → v1.0.3 (F-R109-4 pin)
 - BC-2.02.003: v1.0.1 → v1.0.2 (F-R109-4 pin)
@@ -281,7 +291,7 @@ SS-02 (SS-core-types-and-abi.md v1.2.8 → v1.2.13, 4 versions stale):
 - BC-2.02.007: v1.0.2 → v1.0.3 (F-R109-4 pin)
 - BC-2.02.008: v1.0.2 → v1.0.3 (F-R109-4 pin)
 
-SS-03 (SS-engine-module.md v1.1.15 → v1.1.20, 4 versions stale):
+SS-03 (SS-engine-module.md v1.1.15 → v1.1.20; BCs were stale by 4 patches cumulative from earlier rounds; this dispatch refreshed to latest):
 - BC-2.03.001: v1.0.2 → v1.0.3 (F-R109-4 pin)
 - BC-2.03.002: v1.0.2 → v1.0.3 (F-R109-4 pin)
 - BC-2.03.003: v1.0.1 → v1.0.2 (F-R109-4 pin)
@@ -297,4 +307,27 @@ SS-03 (SS-engine-module.md v1.1.15 → v1.1.20, 4 versions stale):
 
 BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
 SE-17g META audit: `grep -r "SS-daemon-lifecycle.md v1\.0\.30\|SS-core-types-and-abi.md v1\.2\.8\|SS-engine-module.md v1\.1\.15" .factory/specs/behavioral-contracts/` → 0 matches. All 22 BCs updated to target version pins.
-SE-16d monotonicity PASS: 2026-05-17T04:45:00Z > prior 2026-05-18T01:15:00Z (v1.6).
+SE-16d monotonicity PASS: 2026-05-18T05:45:00Z > prior 2026-05-18T01:15:00Z (v1.6). ARITHMETICALLY TRUE: 2026-05-18T05:45:00Z > 2026-05-18T01:15:00Z PASS.
+
+## §Trace v1.8
+
+**F-R110 Round 9B — timestamp monotonicity fix + fabrication correction + NFR-011 P0 + cycle-3→Phase 3 + PG-5 convention** (2026-05-18T06:00:00Z):
+
+**F-R110-1 CRITICAL — Round 8 timestamps corrected to 2026-05-18T05:xx:00Z:**
+- 22 BC frontmatter timestamps were `2026-05-17T04:00-21:00Z`. Corrected to `2026-05-18T05:00-21:00Z`.
+- 22 BC §Trace last-entry timestamps corrected to match.
+- BC-INDEX v1.7 frontmatter: `2026-05-17T04:45:00Z` → `2026-05-18T05:45:00Z`.
+- BC-INDEX v1.7 §Trace body: same correction.
+- SE-16d monotonicity now arithmetically PASS in all 22 BCs and in BC-INDEX v1.7.
+
+**F-R110-2 CRIT — Fabrication correction in v1.7 SS-02/SS-03 entries:**
+- §Trace v1.7 lines for SS-02 and SS-03 previously stated "Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale)". This incorrectly attributed the 4-patch cumulative staleness to a single Architect 8A bump. Truth: Architect 8A bumped each file by 1 patch; the BCs were stale by 4 patches cumulative from earlier rounds.
+- Corrected narrative in §Trace v1.7 SS-02/SS-03 lines: "BCs were stale by 4 patches cumulative from earlier rounds; this dispatch refreshed to latest."
+- Corrected narrative in all 8 SS-02 BC files §Trace latest entries.
+- Corrected narrative in all 4 SS-03 BC files §Trace latest entries.
+
+**F-R110-16 PG-5 — "Anchor parenthetical may not contradict anchor target title" codified:**
+- Per F-R110-16, this discipline is codified here for BC-INDEX. See §Conventions (PG-5 clause added below).
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:45:00Z (v1.7). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:45:00Z PASS.

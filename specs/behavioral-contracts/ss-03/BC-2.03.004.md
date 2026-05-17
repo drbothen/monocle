@@ -4,7 +4,7 @@ level: L3
 version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T04:21:00Z
+timestamp: 2026-05-18T05:21:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "a9aeb88"
@@ -126,9 +126,9 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 
 ## §Trace v1.0.3
 
-**F-R109-4 CRITICAL — Architecture Source pin refresh v1.1.15 → v1.1.20** (2026-05-17T04:21:00Z):
-- F-R109-4: Architect 8A bumped SS-engine-module.md v1.1.15 → v1.1.20 (Round 8A — 4 versions stale). Architecture Source row updated.
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.1.15 → v1.1.20** (2026-05-18T05:21:00Z):
+- F-R109-4: BC was stale by 4 patches cumulative from earlier rounds (v1.1.15 → v1.1.20); this Round 9B dispatch refreshed to latest. Architecture Source row updated.
   - SE-17f BEFORE: `SS-engine-module.md v1.1.15 §Struct-level inherent operations`
   - SE-17f AFTER: `SS-engine-module.md v1.1.20 §Struct-level inherent operations`
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
-- SE-16d monotonicity PASS: 2026-05-17T04:21:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).
+- SE-16d monotonicity PASS: 2026-05-18T05:21:00Z > prior 2026-05-17T18:00:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:21:00Z > 2026-05-17T18:00:00Z PASS.

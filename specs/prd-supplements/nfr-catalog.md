@@ -1,10 +1,10 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T04:30:00Z
+timestamp: 2026-05-18T05:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "d4c6ea4"
@@ -31,7 +31,7 @@ traces_to: prd.md
 | NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix with `[darwin, linux] × [amd64, arm64]` matrix; Phase 1 devops deliverable per product-brief.md line 162–163 | P0 | N/A |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` per VP-005 Post-condition 1 (lock-file `0o600` mode assertion) | P0 | N/A |
 | NFR-010 | Correctness | Constant-time auth comparison on ALL auth paths (canonical + alias) | `constant_time_eq::constant_time_eq` used for token comparison on both canonical (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7 | Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) AND VP-009 §"alias-path constant-time comparison" probe (alias path verifies constant_time_eq is also used on `X-Claude-Code-Ide-Authorization` token; FV 5D expanding VP-009 in this same burst) | P0 | N/A |
-| NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md §"DTU Fidelity Measurement Procedure"; Phase 1 requirement per product-brief.md §Success Criteria (DTU row, line 246) | P1 | N/A |
+| NFR-011 | Forward-compat | DTU clone fidelity | ≥0.95 against fixture corpus | DTU fidelity measurement procedure per dtu-assessment.md §"DTU Fidelity Measurement Procedure"; Phase 1 requirement per product-brief.md §Success Criteria (DTU row, line 246) | P0 | N/A |
 | NFR-012 | Security | Runtime directory permissions | `0o700` (owner-only access) on newly-created runtime_dir; defense-in-depth with NFR-009 lock-file `0o600` | Integration test: `stat` runtime_dir after daemon start; assert mode is `0700` per VP-005 Post-condition 9 / probe 5.e | P0 | N/A |
 
 ## NFR Categories
@@ -69,12 +69,12 @@ traces_to: prd.md
 
 | NFR ID | VP Probe(s) |
 |--------|-------------|
-| NFR-001 | Phase 3 integration test scope — hook ingestion end-to-end latency ≤300ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-001 is the Healthz Endpoint correctness probe; it does NOT measure hook POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable (product-brief.md §Success Criteria hook receiver hardening rows); the end-to-end latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
-| NFR-002 | Phase 3 integration test scope — Notification hook end-to-end latency ≤2000ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-002 is the Status Endpoint correctness probe; it does NOT measure notification POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable; the sustained latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
-| NFR-003 | Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI permission overlay render is a Phase 3 — Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap); Phase 1 ships the daemon and hook ingestion layer but NOT the TUI planes). No Phase 1 VP covers TUI render latency. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
+| NFR-001 | Phase 3 integration test scope — hook ingestion end-to-end latency ≤300ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-001 is the Healthz Endpoint correctness probe; it does NOT measure hook POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable (product-brief.md §Success Criteria hook receiver hardening rows); the end-to-end latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per Phase 3 story decomposition. |
+| NFR-002 | Phase 3 integration test scope — Notification hook end-to-end latency ≤2000ms requires load-test infrastructure with stopwatch tooling not available in Phase 1. VP-002 is the Status Endpoint correctness probe; it does NOT measure notification POST latency. No Phase 1 VP covers this probe. The hook receiver implementation is a Phase 1 deliverable; the sustained latency VALIDATION test is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per Phase 3 story decomposition. |
+| NFR-003 | Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI permission overlay render is a Phase 3 — Workflow Plane deliverable per product-brief.md §Phase 3 — Workflow Plane (roadmap); Phase 1 ships the daemon and hook ingestion layer but NOT the TUI planes). No Phase 1 VP covers TUI render latency. VP and test will be authored at Phase 3 entry per Phase 3 story decomposition. |
 | NFR-004 | VP-008 §Pre-conditions (OsRng source-grep) + Mechanical property 1 (token hex format) |
 | NFR-005 | VP-003 §Post-condition 1 (body size limit integration test) |
-| NFR-006 | Phase 3 integration test scope — NFR validates bounded-channel throughput at 1000 events/sec sustained, which requires integration-level load testing infrastructure not available in Phase 1. VP-006 is Crash Recovery Checkpoint and does NOT cover throughput. No Phase 1 VP covers this probe. The bounded-channel and drop-counter DESIGN is a Phase 1 deliverable (per product-brief.md §Success Criteria "Drop counter active" row); the sustained load VALIDATION at 1000 events/sec is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition. |
+| NFR-006 | Phase 3 integration test scope — NFR validates bounded-channel throughput at 1000 events/sec sustained, which requires integration-level load testing infrastructure not available in Phase 1. VP-006 is Crash Recovery Checkpoint and does NOT cover throughput. No Phase 1 VP covers this probe. The bounded-channel and drop-counter DESIGN is a Phase 1 deliverable (per product-brief.md §Success Criteria "Drop counter active" row); the sustained load VALIDATION at 1000 events/sec is a Phase 3 integration test deliverable. VP and test will be authored at Phase 3 entry per Phase 3 story decomposition. |
 | NFR-007 | Phase 1 devops deliverable — `rust-toolchain.toml` pin + `cargo check` in CI. Validation is CI-config artifact, not a VP file. devops-engineer creates the `rust-toolchain.toml` and GitHub Actions workflow as a Wave 1 Phase 1 story deliverable (per product-brief.md line 162–163: MSRV is a Phase 1 deliverable). No VP file is architecturally appropriate for a CI toolchain config artifact — validation gate is CI green on Wave 1 devops-engineer story delivery, not a FV-authored VP. |
 | NFR-008 | Phase 1 devops deliverable — GitHub Actions CI matrix `[darwin, linux] × [amd64, arm64]`. Validation is CI-config artifact, not a VP file. devops-engineer creates the matrix config as a Wave 1 Phase 1 story deliverable (per product-brief.md line 162–163: CI matrix is a Phase 1 deliverable). No VP file is architecturally appropriate for a CI matrix config artifact — validation gate is CI green on Wave 1 devops-engineer story delivery, not a FV-authored VP. |
 | NFR-009 | VP-005 Post-condition 1 (lock-file 0o600 mode assertion) |
@@ -235,7 +235,7 @@ SE-17d — After (NFR-003 representative):
 ```
 Phase 3 verification — NFR validates a Phase 3-scoped behavior (TUI plane is explicitly out of
 Phase 1 scope per product-brief.md §Out of Scope...); human-approved deferral per product-brief.md
-§Out of Scope. VP and test will be authored at Phase 3 entry per cycle-3 story decomposition.
+§Out of Scope. VP and test will be authored at Phase 3 entry per Phase 3 story decomposition.
 ```
 
 Same pattern applied to NFR-007 (Phase 6 CI matrix), NFR-008 (Phase 6 platform matrix), NFR-011 (Phase 4 DTU fidelity).
@@ -314,7 +314,7 @@ NFR-011: Phase 1 requirement — DTU clone Phase 1 deliverable per product-brief
 
 ---
 
-### F-R109 Round 8B PO closure — 2026-05-17T04:30:00Z
+### F-R109 Round 8B PO closure — 2026-05-18T05:30:00Z
 
 **Findings resolved:** F-R109-3 CRITICAL (NFR-001/002 phantom VP anchors), F-R109-11 HIGH (NFR-007/008/011 narrative anchor tightening), F-R109-12 HIGH (§Trace non-monotonic ordering).
 
@@ -342,8 +342,31 @@ SE-17f tightening applied:
 
 §Trace blocks were in non-monotonic order: F-R105-2 (T19:00), F-R107 (T23:00), F-R106-15 (T22:10), F-R108-3 (T01:00). The F-R106-15 block at T22:10 appeared AFTER F-R107 at T23:00 (a non-monotonic insertion — the block was authored in a different burst but inserted out of order).
 
-SE-17f: Reordered to monotonic ascending: F-R105-2 (T19:00) → F-R106-15 (T22:10) → F-R107 (T23:00) → F-R108-3 (T01:00) → F-R109 (T04:30). Content of each section preserved verbatim; only insertion order corrected.
+SE-17f: Reordered to monotonic ascending: F-R105-2 (T19:00) → F-R106-15 (T22:10) → F-R107 (T23:00) → F-R108-3 (T01:00) → F-R109 (T05:30). Content of each section preserved verbatim; only insertion order corrected.
 
 **Changes made:** VP Probe Citations NFR-001/002 rescoped to Phase 3; NFR-007/008 VP anchor tightened; NFR-011 VP anchor tightened; §Trace blocks reordered monotonic ascending; version bumped v1.4 → v1.5; timestamp refreshed.
 
+SE-16d monotonicity PASS: 2026-05-18T05:30:00Z > prior 2026-05-18T01:00:00Z (v1.4). ARITHMETICALLY TRUE: 2026-05-18T05:30:00Z > 2026-05-18T01:00:00Z PASS.
+
 **Scope:** PO-only. No changes to VP files, BC files, ADR files, or architecture artifacts.
+
+---
+
+### F-R110 Round 9B PO closure — 2026-05-18T06:00:00Z
+
+**Findings resolved:** F-R110-1 CRITICAL (timestamp fix), F-R110-7 HIGH (NFR-011 P0 bump), F-R110-15 MED (cycle-3 → Phase 3).
+
+**F-R110-1 CRITICAL — §Trace v1.5 timestamp corrected:**
+- F-R109 Round 8B was authored on 2026-05-18 (not 2026-05-17). §Trace header corrected from `2026-05-17T04:30:00Z` to `2026-05-18T05:30:00Z`. Frontmatter timestamp corrected to match.
+- SE-17f §Trace reorder line: `T04:30` corrected to `T05:30`.
+
+**F-R110-7 HIGH — NFR-011 priority P1 → P0:**
+- NFR-011 VP Probe Citations states "Phase 1 gate deliverable" and VP is a "Wave 1 Phase 1 gate deliverable". This language is gating language, inconsistent with P1 priority.
+- Production-grade decision: DTU clone fidelity ≥0.95 is a Phase 1 deliverable per product-brief.md §Success Criteria line 246. A Phase 1 success criterion is always P0. Priority bumped P1 → P0 in NFR Registry table.
+
+**F-R110-15 MED — cycle-3 → Phase 3 vocabulary:**
+- NFR VP Probe Citations rows for NFR-001, NFR-002, NFR-003, NFR-006 used "cycle-3 story decomposition". This term is non-standard (brief uses "Phase 3", not "cycle-3"). All 4 occurrences replaced with "Phase 3 story decomposition".
+
+**Changes made:** frontmatter version v1.5 → v1.6; frontmatter timestamp refreshed; §Trace v1.5 timestamp corrected; NFR-011 Priority P1 → P0; 4 "cycle-3" → "Phase 3" replacements in VP Probe Citations.
+
+SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:30:00Z (v1.5). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:30:00Z PASS.

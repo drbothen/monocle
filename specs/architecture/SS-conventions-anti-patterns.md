@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.29.2"
+version: "1.29.3"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-18T06:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "364d3eb"
 traces_to: architecture/ARCH-INDEX.md
@@ -1438,6 +1438,32 @@ and D-042 canonical scope: not `.factory/specs/architecture/` only).
 - PG-5: Cross-artifact version citations must be current-pointer, historical-anchor, or version-free.
 - F-R60-corpus-sweep: Count-drift and sibling-propagation fix bursts require exhaustive corpus grep + per-class classification before closure. Complements PG-5's sweep-evidence checklist.
 
+## §BC-INDEX Conventions
+
+> F-R110-18 (Round 9B): Cross-listing from `behavioral-contracts/BC-INDEX.md §Conventions`. These conventions apply globally to all BC authoring. Canonical source: BC-INDEX.md §Conventions; this section is a cross-reference for architects and implementers.
+
+### EC Namespace Convention (F-R109-17)
+
+Edge case IDs (EC-NNN) are scoped **per-BC**. EC-013 in BC-2.01.009 and EC-013 in BC-2.02.001 are distinct and NOT in conflict — per-BC scoping is intentional and sound. No global EC namespace exists or is required.
+
+**Rationale:** EC IDs serve as local cross-reference labels within a BC file (cited in test vectors, preconditions, and invariants within the same BC). Global uniqueness would require coordinating EC sequences across 22+ independent BC files without providing additional semantic value — per-BC scoping is the correct granularity for behavioral edge cases.
+
+**Enforcement:** When authoring or modifying a BC, EC-NNN is allocated within that BC's own sequence. Cross-BC EC references use the fully-qualified form `BC-S.SS.NNN EC-NNN` (e.g., `BC-2.01.007 EC-002`) to unambiguously scope the reference.
+
+### Test Name Convention (F-R109-21)
+
+BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_...`, `test_BC_DAEMON_003_...`) for test continuity across the BC renumbering event (BC-INDEX §Renumbering Map). These names are **immutable** — renaming them to the new BC-S.SS.NNN form would break test history in CI, coverage reports, and log analysis.
+
+**Rationale:** Test names are stable identifiers in CI systems. The cost of renaming (CI history breakage, grep script updates, log grep pattern updates) exceeds the benefit (alignment to new BC IDs).
+
+**Enforcement:** New BCs authored after the renumbering event (BC-INDEX v1.1+) SHOULD use the new-form prefix `test_BC_2_SS_NNN_...` for new test functions. Existing tests with legacy-form names are NOT renamed.
+
+### Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16)
+
+Any parenthetical appended to a BC-INDEX title MUST NOT contradict the anchor target's H1 title. If a parenthetical adds policy-relevant context, that context must be moved INTO the BC H1 heading (per `bc_h1_is_title_source_of_truth` policy), not left as index-only context.
+
+**Enforcement:** The adversary treats a parenthetical that contradicts or diverges from the BC H1 as a MEDIUM-severity finding.
+
 ## §Trace
 
 v1.28 changes (round-60.1 F-R60-1 + F-R60-corpus-sweep META rule codified):
@@ -2309,3 +2335,8 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §9 (SS-conventions).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.29.3** (2026-05-18T06:00:00Z) — F-R110-18 BC-INDEX conventions cross-listing:
+- F-R110-18 LOW RESOLVED: BC-INDEX §Conventions defines EC namespace, test name, and anchor parenthetical conventions that are relevant to all BC authoring. These conventions were not cross-listed in SS-conventions-anti-patterns (the canonical conventions doc). Added §BC-INDEX Conventions section with EC Namespace Convention (F-R109-17), Test Name Convention (F-R109-21), and Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16) as cross-references to the BC-INDEX §Conventions canonical source.
+- NORMATIVE: version bump 1.29.2 → 1.29.3 records addition of §BC-INDEX Conventions section; no existing content changed.
+- SE-16d PASS: 2026-05-18T06:00:00Z > prior version timestamp (v1.29.2). ARITHMETICALLY TRUE.

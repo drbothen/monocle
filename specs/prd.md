@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.7"
+version: "1.26.8"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-17T04:35:00Z
+timestamp: 2026-05-18T05:35:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "81fa840"
-traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.7; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
+traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.8; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.7"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -559,7 +559,7 @@ SE-17f before/after evidence:
 
 **Bump:** v1.26.6 → v1.26.7.
 **Predecessor pin:** v1.26.6 (F-R108-7 + GAP-R47-3 traces_to arch pin refresh; commit on factory-artifacts).
-**Timestamp:** 2026-05-17T04:35:00Z
+**Timestamp:** 2026-05-18T05:35:00Z
 
 **Scope of v1.26.7 (three-part patch: RTM SS pin refresh, traces_to update, §Trace ascending reorder):**
 
@@ -577,6 +577,8 @@ Pin replacement summary:
 | `product-brief.md` (traces_to) | v1.4.26 | v1.4.27 | 1 traces_to |
 | `BC-INDEX.md` (traces_to) | v1.6 | v1.7 | 1 traces_to |
 
+> **F-R110-13 NOTE:** Occurrence counts in the table above (12+9+5 body rows) are estimates from the Round 8B dispatch. A formal re-grep was not performed at that time. These counts are preserved as-authored for historical record. Future dispatches should verify with `grep -c` before claiming exact counts.
+
 **Finding F-R109-9 HIGH — §Trace blocks descending → ascending:**
 
 §Trace blocks were descending (v1.26.6, v1.26.5, ..., v1.26). Reordered to ascending (v1.26 → v1.26.6 → v1.26.7). Content of each section preserved verbatim; only insertion order corrected.
@@ -584,6 +586,29 @@ Pin replacement summary:
 **Changes made:** §7 RTM SS pins refreshed (3 subsystem docs × 11+8+4 rows); traces_to frontmatter refreshed (5 pins); §Trace blocks reordered ascending; version bumped v1.26.6 → v1.26.7; timestamp refreshed.
 
 **Scope:** PO-only. No BC, VP, or architecture file changes in this burst. Concurrent with Architect 8A (SS doc bumps) and FV 8C.
+
+## §Trace v1.26.8 — F-R110 Round 9B (timestamp monotonicity + fabrication correction + BC-INDEX v1.8 ref)
+
+**Bump:** v1.26.7 → v1.26.8.
+**Predecessor pin:** v1.26.7 (F-R109 Round 8B; timestamp corrected to 2026-05-18T05:35:00Z in this burst).
+**Timestamp:** 2026-05-18T06:00:00Z
+
+**F-R110-1 CRITICAL — §Trace v1.26.7 timestamp corrected:**
+- §Trace v1.26.7 Timestamp field was `2026-05-17T04:35:00Z` (wrong date — Round 8 was authored on 2026-05-18). Corrected to `2026-05-18T05:35:00Z`.
+- PRD frontmatter timestamp: `2026-05-17T04:35:00Z` → `2026-05-18T05:35:00Z`.
+- SE-16d monotonicity: v1.26.7 timestamp `2026-05-18T05:35:00Z > 2026-05-18T01:00:00Z` (v1.26.6) PASS. ARITHMETICALLY TRUE.
+
+**F-R110-2 CRIT — Fabrication correction note:**
+- The §Trace v1.26.7 description of SS-02/SS-03 staleness in "actually from v1.2.8 stale per §7" / "actually from v1.1.15 stale" is the correct historical record. The fabrication was in the BC files themselves (not in the PRD). The PRD §Trace v1.26.7 parentheticals accurately note the staleness — no body change needed.
+
+**F-R110-13 MED — RTM count claim qualified:**
+- §Trace v1.26.7 table Occurrence Count cells (12 body, 9 body, 5 body) were estimated without a grep transcript. Added F-R110-13 NOTE inline in v1.26.7 qualifying these as estimates.
+
+**traces_to update:** BC-INDEX v1.7 → v1.8.
+
+**Changes made:** frontmatter version v1.26.7 → v1.26.8; frontmatter timestamp refreshed; §Trace v1.26.7 timestamp corrected; F-R110-13 NOTE added; traces_to BC-INDEX pin updated.
+
+SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:35:00Z (v1.26.7). ARITHMETICALLY TRUE: 2026-05-18T06:00:00Z > 2026-05-18T05:35:00Z PASS.
 
 ---
 

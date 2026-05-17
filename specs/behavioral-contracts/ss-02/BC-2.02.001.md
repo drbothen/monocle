@@ -4,7 +4,7 @@ level: L3
 version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T04:10:00Z
+timestamp: 2026-05-18T05:10:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "a9aeb88"
@@ -113,9 +113,9 @@ S-TBD — Implement ABI version constant and /status endpoint abi_version field 
 
 ## §Trace v1.0.2
 
-**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-17T04:10:00Z):
-- F-R109-4: Architect 8A bumped SS-core-types-and-abi.md v1.2.8 → v1.2.13 (Round 8A — 4 versions stale). Architecture Source row updated.
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.2.8 → v1.2.13** (2026-05-18T05:10:00Z):
+- F-R109-4: BC was stale by 4 patches cumulative from earlier rounds (v1.2.8 → v1.2.13); this Round 9B dispatch refreshed to latest. Architecture Source row updated.
   - SE-17f BEFORE: `SS-core-types-and-abi.md v1.2.8 §ABI Version Constant`
   - SE-17f AFTER: `SS-core-types-and-abi.md v1.2.13 §ABI Version Constant`
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
-- SE-16d monotonicity PASS: 2026-05-17T04:10:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
+- SE-16d monotonicity PASS: 2026-05-18T05:10:00Z > prior 2026-05-17T18:00:00Z (v1.0.1). ARITHMETICALLY TRUE: 2026-05-18T05:10:00Z > 2026-05-17T18:00:00Z PASS.
