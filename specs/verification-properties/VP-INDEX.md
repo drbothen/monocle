@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T20:30:00Z
+timestamp: 2026-05-17T22:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "b09f325"
@@ -29,7 +29,7 @@ traces_to: prd.md
 ## SS-01: Daemon Lifecycle VPs (10)
 
 > Source-contract subsystem: BC-2.01.* (see `behavioral-contracts/BC-INDEX.md` §SS-01)
-> Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.25
+> Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.30
 > Capability: CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -50,7 +50,7 @@ traces_to: prd.md
 ## SS-02: Core Types and ABI VPs (8)
 
 > Source-contract subsystem: BC-2.02.* (see `behavioral-contracts/BC-INDEX.md` §SS-02)
-> Architecture source: `architecture/SS-core-types-and-abi.md`
+> Architecture source: `architecture/SS-core-types-and-abi.md` v1.2.11
 > Capability: CAP-002 ("Forward-compatible ABI; wire format stability; factory-state abstraction")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -69,7 +69,7 @@ traces_to: prd.md
 ## SS-03: Engine Module VPs (4)
 
 > Source-contract subsystem: BC-2.03.* (see `behavioral-contracts/BC-INDEX.md` §SS-03)
-> Architecture source: `architecture/SS-engine-module.md`
+> Architecture source: `architecture/SS-engine-module.md` v1.1.18
 > Capability: CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
@@ -138,7 +138,7 @@ mapping for traceability into pre-Dispatch-5a artifacts.
   `git show 842402c:.factory/specs/verification-properties.md` and
   earlier commits. VP-INDEX.md is now the canonical entry point for
   Phase 1 verification properties.
-- BC index: `behavioral-contracts/BC-INDEX.md` v1.2 (commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
+- BC index: `behavioral-contracts/BC-INDEX.md` v1.4 (commit pending — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
 - PRD: `.factory/specs/prd.md` v1.26.3 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Architecture index: `architecture/ARCH-INDEX.md`.
 - Template: `templates/L4-verification-property-template.md`.
@@ -192,3 +192,80 @@ UTC ISO-8601 `Z` form: `2026-05-17T20:30:00Z` >= chain high-water `2026-05-17T19
 
 Cascade-tail of the 22-VP sweep co-located in this dispatch rather than deferred to a separate VP-INDEX-only commit. No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection.
 
+
+---
+
+## §Trace v1.3 — F-R106-9 HIGH + F-R106-18 LOW + GAP-R45-4 LOW: VP-INDEX 4-Fix Cascade (Pin Refresh + Pin Additions + BC-INDEX Citation Refresh)
+
+**Bump:** v1.2 → v1.3.
+**Predecessor pin:** v1.2 (commit 932f4e0 — F-R105-13 §References BC-INDEX + PRD citation refresh).
+**Scope of v1.3 (NORMATIVE — 4 coupled cascade fixes triggered by R106 Round-4 evidence + R45 Phase-1 consistency audit):**
+
+### Change 1 — F-R106-9 HIGH: SS-01 architecture-source pin refresh v1.0.25 → v1.0.30 (NORMATIVE)
+
+- **SE-17f §SS-01 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-daemon-lifecycle.md\` v1.0.25`
+  - After: `Architecture source: \`architecture/SS-daemon-lifecycle.md\` v1.0.30`
+- **Rationale:** Architect 5E is bumping SS-daemon-lifecycle v1.0.29 → v1.0.30 in parallel (R106 Round 5) for F-FC-I005 fabricated-FC-ID removal and dual-accept consolidation. VP-INDEX SS-01 carries the canonical architecture-source pin and must be refreshed to match the parallel 10-VP per-file pin sweep.
+
+### Change 2 — F-R106-18 LOW: SS-02 architecture-source pin addition (NEW; NORMATIVE)
+
+- **SE-17f §SS-02 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-core-types-and-abi.md\`` (no version pin)
+  - After: `Architecture source: \`architecture/SS-core-types-and-abi.md\` v1.2.11`
+- **Rationale:** F-R106-18 LOW evidence flagged that VP-INDEX SS-02 header carried no architecture-source pin while SS-01 did. Adds the canonical pin matching the current `architecture/SS-core-types-and-abi.md` frontmatter version (verified via `grep ^version:` 2026-05-17T22:30:00Z = v1.2.11). Pin format follows the SS-01 precedent exactly.
+
+### Change 3 — F-R106-18 LOW: SS-03 architecture-source pin addition (NEW; NORMATIVE)
+
+- **SE-17f §SS-03 architecture-source line:**
+  - Before: `Architecture source: \`architecture/SS-engine-module.md\`` (no version pin)
+  - After: `Architecture source: \`architecture/SS-engine-module.md\` v1.1.18`
+- **Rationale:** Same as Change 2 applied to SS-03. Current `architecture/SS-engine-module.md` frontmatter (verified via `grep ^version:` 2026-05-17T22:30:00Z = v1.1.18). Pin format follows the SS-01 precedent exactly.
+
+### Change 4 — GAP-R45-4 LOW: §References BC-INDEX citation refresh v1.2 → v1.4 (NORMATIVE)
+
+- **SE-17f §References BC index line:**
+  - Before: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.2 (commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).`
+  - After: `BC index: \`behavioral-contracts/BC-INDEX.md\` v1.4 (commit pending — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).`
+- **Rationale:** PO 5A (parallel R106 Round 5 dispatch) bumped BC-INDEX v1.3 → v1.4 in commit pending. Verified at audit time: current `behavioral-contracts/BC-INDEX.md` frontmatter = v1.4 (`grep ^version:` 2026-05-17T22:30:00Z). The §References cascade-tail is co-located in this dispatch rather than deferred to a separate VP-INDEX-only commit (per Production-Grade Rule 1+5).
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -n "v1\.0\.25" VP-INDEX.md` outside §Trace blocks → 0 matches.
+- Post-edit `grep -n "v1\.0\.30" VP-INDEX.md` outside §Trace blocks → 1 match (§SS-01 architecture-source line).
+- Post-edit `grep -n "v1\.2\.11" VP-INDEX.md` outside §Trace blocks → 1 match (§SS-02 architecture-source line).
+- Post-edit `grep -n "v1\.1\.18" VP-INDEX.md` outside §Trace blocks → 1 match (§SS-03 architecture-source line).
+- Post-edit `grep -n "BC-INDEX.md\` v1\.2" VP-INDEX.md` outside §Trace blocks → 0 matches.
+- Post-edit `grep -n "BC-INDEX.md\` v1\.4" VP-INDEX.md` outside §Trace blocks → 1 match (§References BC index line).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+
+### Authoritative cross-references
+
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.30 (commit pending — architect 5E dispatch).
+- **Architecture (SS-02):** `architecture/SS-core-types-and-abi.md` v1.2.11.
+- **Architecture (SS-03):** `architecture/SS-engine-module.md` v1.1.18.
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.4 (commit pending — PO 5A R106 Round 5).
+- **R106 closure chain:** F-R106-9 HIGH (SS-01 pin refresh) + F-R106-18 LOW (SS-02/SS-03 pin additions) + GAP-R45-4 LOW (BC-INDEX cite refresh) — all four cascade fixes consolidated in this single v1.3 bump.
+- **Concurrent dispatches (R106 Round 5):**
+  - PO 5A: BC + BC-INDEX dual-accept finalization (BC-INDEX v1.3 → v1.4) — observed COMPLETE at audit time.
+  - PO 5B: PRD + supplements — separate scope.
+  - PO 5C: product-brief — separate scope.
+  - FV 5D: this dispatch (VP-009 v1.0.4 expansion + 10-VP pin sweep v1.0.4 + this VP-INDEX v1.3 cascade).
+  - Architect 5E: ADR-0005 path normalization + SS-daemon-lifecycle v1.0.29 → v1.0.30 — separate scope (commit pending).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T22:30:00Z` >= chain high-water `2026-05-17T22:10:00Z` (BC-2.01.009 v1.0.3 frontmatter timestamp; cross-dispatch BC reference). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §SS-01 architecture-source pin refresh `v1.0.25` → `v1.0.30`; §SS-02 new architecture-source pin `v1.2.11`; §SS-03 new architecture-source pin `v1.1.18`; §References BC-INDEX cite refresh `v1.2` → `v1.4`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; concurrent dispatch context.
+
+### SE-17g META audit (NORMATIVE)
+
+Sweep-wide post-edit re-grep across all 22 VP files for body-scope (excluding §Trace blocks): `grep -E "SS-daemon-lifecycle.md v1\.0\.25" .factory/specs/verification-properties/vp-*.md` body scope → 0 matches; `grep -E "arch v1\.0\.25" .factory/specs/verification-properties/vp-*.md` body scope → 0 matches. F-R106-10 + F-R106-9 closure verified. SS-daemon-lifecycle pin-citation stale-zero invariant restored across all VP body content.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Cascade-tail of the 4-fix VP-INDEX update co-located in this dispatch rather than deferred to separate per-fix commits. The 3 mechanical pin additions/refreshes (Changes 1-3) and the 1 mechanical citation refresh (Change 4) share the same audit-trail and re-grep evidence — bundling them into v1.3 preserves the §Trace chain continuity. No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection.

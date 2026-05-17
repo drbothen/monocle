@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.3"
+version: "1.0.4"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T20:30:00Z
+timestamp: 2026-05-17T22:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "7c094e3"
@@ -30,36 +30,79 @@ removed: null
 removal_reason: null
 ---
 
-# VP-009: Auth Header Validation — Two-Body Taxonomy (`missing_auth_token` vs `invalid_auth_token`)
+# VP-009: Auth Header Validation — Two-Body Taxonomy + ADR-0005 Dual-Accept (Canonical `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization` Compatibility Alias)
 
 > **One-per-file:** Each verification property lives in its own file.
 > Renumbered from VP-AUTH-002 (PG-5 historical) per template-compliance Dispatch 5a.
 
 ## Property Statement
 
+The auth middleware enforces a two-body error taxonomy across two header
+acceptance paths per ADR-0005 dual-accept:
+
+1. **Canonical path** (monocle-aware tools): `X-Monocle-Authorization` with
+   value beginning `monocle-v1:<64-hex>`. Prefix stripped, constant-time
+   compared against stored secret. Successful match → request proceeds; any
+   value-present failure (bad prefix, bad format, empty suffix, wrong
+   secret) → HTTP 401 `{"error":"invalid_auth_token"}`. The canonical path
+   emits NO log on use (success or failure) beyond standard request logging.
+2. **Compatibility alias path** (real Claude Code hook scripts): when
+   `X-Monocle-Authorization` is absent AND `X-Claude-Code-Ide-Authorization`
+   is present, the middleware first emits the WARN-level deprecation log
+   `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility
+   alias); monocle-aware harness should use X-Monocle-Authorization`,
+   then validates the value as a raw 64-hex token (NO `monocle-v1:` prefix
+   — Claude Code sends the lock file `authToken` field verbatim). The
+   value is constant-time compared against the stored secret. Successful
+   match → request proceeds (with WARN already logged); failure → HTTP 401
+   `{"error":"invalid_auth_token"}` (with WARN already logged).
+3. **Canonical priority — both headers present:** If both
+   `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` are
+   present, `X-Monocle-Authorization` is validated and
+   `X-Claude-Code-Ide-Authorization` is ignored. **No WARN log is emitted**
+   in this case (the alias was never consulted). This is the canonical-wins
+   immutability invariant per BC-2.01.009 INV-5.
+4. **Missing — both headers absent:** When neither
+   `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` is
+   present, the middleware returns HTTP 401
+   `{"error":"missing_auth_token"}`. A request carrying only
+   `Authorization: Bearer <anything>` (or any other unrecognized header) is
+   treated as the both-absent case.
+
 The auth middleware's `AuthError` enum has exactly TWO variants: `Missing`
-(absent `X-Monocle-Authorization` header → HTTP 401 +
-`{"error":"missing_auth_token"}`) and `Invalid` (any value-present failure
-including wrong prefix, malformed format, length mismatch, or wrong secret
-→ HTTP 401 + `{"error":"invalid_auth_token"}`). The retired v1.0 body
-`{"error":"invalid_auth_token_format"}` (per architect commit 2db408f
-disposition (c)) MUST NOT appear in any Phase 1 daemon response. `Authorization:
-Bearer <anything>` without `X-Monocle-Authorization` is treated as absent
-header. All value-present failure modes return the same body intentionally,
-preventing a timing- or body-oracle.
+(both recognized headers absent → `missing_auth_token`) and `Invalid`
+(any value-present failure on either path → `invalid_auth_token`). The
+retired v1.0 body `{"error":"invalid_auth_token_format"}` (per architect
+commit 2db408f disposition (c)) MUST NOT appear in any Phase 1 daemon
+response. All value-present failure modes — on either header path — return
+the same body intentionally, preventing a timing- or body-oracle from
+which an attacker could distinguish header-name correctness, prefix
+correctness, format correctness, or secret correctness. Constant-time
+comparison is used on both paths identically; the only difference is the
+input transformation (prefix-strip on canonical; no transformation on
+alias).
 
 ## Source Contract
 
-- **BC (primary):** BC-2.01.009 — Auth Header Validation (Missing and
-  Invalid Token).
+- **BC (primary):** BC-2.01.009 v1.0.3 — Auth Header Validation (Missing
+  and Invalid Token); dual-accept semantics per ADR-0005.
+- **ADR (primary):** ADR-0005 v1.0.1 — Auth Header Dual-Accept — Canonical
+  `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization`
+  Compatibility Alias.
 - **Postcondition/Invariant:** two-variant `AuthError` enum; exact body
-  taxonomy per probe; uniform application across all 3 authenticated
-  route classes (`/hooks/*`, `/status`, `/shutdown`); Bearer-fallback
-  rejection; retired-body absence.
+  taxonomy per probe; canonical-priority immutability (canonical wins when
+  both present; alias ignored; no WARN log emitted); WARN-log emission
+  exactly-once-per-alias-path-attempt (regardless of success/failure);
+  constant-time symmetry across canonical and alias paths; uniform
+  application across all 3 authenticated route classes (`/hooks/*`,
+  `/status`, `/shutdown`); Bearer-fallback (or any unrecognized header)
+  rejection as missing; retired-body absence.
 - **Traces to (historical):** BC-AUTH-002 (PRD v1.25 §BC-AUTH-002;
-  SS-daemon-lifecycle.md v1.0.25 §Start Sequence; architect adjudication
+  SS-daemon-lifecycle.md v1.0.30 §Start Sequence; architect adjudication
   commit 2db408f — disposition (c) collapsed error taxonomy; F-R62-4
-  back-propagation closure landed in arch v1.0.9 commit 8bf3759).
+  back-propagation closure landed in arch v1.0.9 commit 8bf3759; ADR-0005
+  T-128m R3 dual-accept decision adopted in arch v1.0.29; F-FC-I005
+  fabricated-ID removal in arch v1.0.30 architect 5E dispatch).
 
 ## Proof Method
 
@@ -84,8 +127,10 @@ and the absence of the retired body.
 ## Pre-conditions
 
 - Daemon is running with a valid `monocle-v1:` secret in the lock file.
+  The lock file `authToken` field stores the raw 64-char hex secret (no
+  prefix), per ADR-0005 §Lock File Interplay.
 - Authenticated test client has access to the secret for the positive
-  control (probe 7).
+  controls (canonical probe 9.7 and alias probe 9.12).
 - The auth middleware's `AuthError` enum is defined as exactly:
   ```rust
   pub enum AuthError {
@@ -94,6 +139,20 @@ and the absence of the retired body.
   }
   ```
   No third variant exists.
+- **WARN-log capture infrastructure:** The integration harness uses a
+  `tracing_test::traced_test` (or equivalent `tracing-subscriber` test
+  layer) to capture emitted log lines. Per BC-2.01.009 INV-6, the canonical
+  WARN message is the literal string
+  `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility
+  alias); monocle-aware harness should use X-Monocle-Authorization`. The
+  harness asserts both the presence of this WARN line on alias-path probes
+  AND its absence on canonical-path probes (probes 9.1–9.7 + probe 9.11).
+- **Constant-time comparison primitive:** Both paths invoke
+  `subtle::ConstantTimeEq::ct_eq` (or `constant_time_eq` crate) on
+  64-byte-sized hex-decoded buffers. The integration test does not directly
+  measure constant-time behavior (that requires a side-channel oracle); it
+  asserts the symmetric API path — both canonical and alias call the same
+  comparison primitive on the same-shaped byte buffer.
 
 ## Post-conditions
 
@@ -102,38 +161,176 @@ Each row is a deterministic single-body assertion.
 
 ## Counter-examples
 
+### Canonical-path counter-examples
+
 1. Auth middleware accepts `Authorization: Bearer` as a fallback path —
-   probe 5 would return 200; the integration test must assert 401 +
-   `missing_auth_token`.
+   probe 9.5 would return 200; the integration test must assert 401 +
+   `missing_auth_token` (Bearer header is not a recognized auth header).
 2. Auth middleware uses `presented.contains("monocle-v1:")` instead of
    `strip_prefix("monocle-v1:")` — probe `X-Monocle-Authorization:
    junk-monocle-v1:abc` would be accepted; the integration test asserts
    strict `strip_prefix` behavior (returns 401 + `invalid_auth_token`
    for any value not starting with the literal prefix).
 3. Auth middleware returns the retired `invalid_auth_token_format` body
-   for probe 2/3/4 — fails the exact-body assertion (the retired taxonomy
-   is forbidden post-2db408f).
-4. Auth middleware returns `invalid_auth_token` for probe 1 (absent header
-   treated as invalid) — fails the missing-vs-invalid distinction; the
-   structural precondition (header absence) must produce the
-   diagnostic-friendly `missing_auth_token` body.
-5. Auth middleware returns `missing_auth_token` for probe 6
-   (correct-format wrong-secret) — fails the value-present unification;
-   secret mismatch must produce `invalid_auth_token`, not
+   for probe 9.2/9.3/9.4 — fails the exact-body assertion (the retired
+   taxonomy is forbidden post-2db408f).
+4. Auth middleware returns `invalid_auth_token` for probe 9.1 (both headers
+   absent treated as invalid) — fails the missing-vs-invalid distinction;
+   the structural precondition (both recognized headers absent) must
+   produce the diagnostic-friendly `missing_auth_token` body.
+5. Auth middleware returns `missing_auth_token` for probe 9.6
+   (correct-format wrong-secret on canonical) — fails the value-present
+   unification; secret mismatch must produce `invalid_auth_token`, not
    `missing_auth_token` (an attacker probing the secret space must not
    learn that their format was correct).
 
+### Alias-path counter-examples (ADR-0005)
+
+6. **Missing WARN log on alias-path success.** Auth middleware accepts a
+   valid `X-Claude-Code-Ide-Authorization` token (probe 9.12) but does NOT
+   emit the WARN deprecation log. The integration test asserts the literal
+   WARN line is captured by the `tracing_test` layer. Without the WARN log,
+   alias usage is invisible in production logs, defeating BC-2.01.009 INV-6
+   and the ADR-0005 deprecation-visibility goal.
+7. **Missing WARN log on alias-path failure.** Auth middleware rejects an
+   invalid `X-Claude-Code-Ide-Authorization` token (probe 9.10) and returns
+   401, but does NOT emit the WARN log. INV-6 requires WARN emission on
+   every alias-path attempt regardless of validation outcome — failure
+   logs are equally important for production observability of misconfigured
+   harness clients.
+8. **Alias path applies `monocle-v1:` prefix-strip incorrectly.** Auth
+   middleware mistakenly tries to `strip_prefix("monocle-v1:")` on the
+   alias header value (which carries a raw 64-hex token with no prefix per
+   ADR-0005). Probe 9.12 would fail (prefix strip returns `None` on
+   prefix-less input). The integration test asserts the alias path
+   validates the RAW value as-is against the stored secret without prefix
+   manipulation.
+9. **Alias path entered when canonical fails.** Auth middleware checks
+   canonical first, finds an invalid `X-Monocle-Authorization` value
+   (probe 9.2/9.3/9.4/9.6), then "falls through" to consult
+   `X-Claude-Code-Ide-Authorization`. This violates BC-2.01.009 INV-5
+   canonical-priority immutability: the alias path is entered ONLY when
+   `X-Monocle-Authorization` is absent (not when it's present-but-invalid).
+   Probe 9.11 (canonical invalid + alias valid) must return 401, NOT
+   silently re-validate via the alias path.
+10. **Canonical priority broken — both-headers WARN.** Auth middleware
+    emits the WARN deprecation log on probe 9.7-with-alias-also-present
+    (probe 9.11b: both headers present, canonical valid, alias valid). The
+    test asserts NO WARN log fires in the both-present case (the alias was
+    never consulted, per ADR-0005 §Decision Priority 2 entry guard).
+11. **Constant-time symmetry break.** Auth middleware uses
+    `subtle::ct_eq` on the canonical path but `==` (variable-time string
+    comparison) on the alias path. The integration test's
+    source-grep (or `cargo expand` AST audit) asserts both paths call the
+    same constant-time primitive on byte-buffer inputs. A symmetric-API
+    audit catches the asymmetry without requiring a side-channel oracle.
+12. **WARN log fires on canonical use.** Auth middleware emits the WARN
+    deprecation log on a canonical-only request (probes 9.1–9.7). The
+    integration test asserts the WARN line is absent from captured logs
+    on canonical-only probes. A spurious WARN on canonical use would
+    create false-positive deprecation-alert noise in production and
+    undermine the alias-deprecation-visibility signal.
+
 ## Probe Matrix
 
-| Probe | Header | Expected status | Expected body |
-|-------|--------|-----------------|---------------|
-| 9.1 | (no `X-Monocle-Authorization` header) | 401 | `{"error":"missing_auth_token"}` |
-| 9.2 | `X-Monocle-Authorization: deadbeef...64chars` (bare token, no prefix) | 401 | `{"error":"invalid_auth_token"}` |
-| 9.3 | `X-Monocle-Authorization: monocle-v2:deadbeef...64chars` (wrong version prefix) | 401 | `{"error":"invalid_auth_token"}` |
-| 9.4 | `X-Monocle-Authorization: monocle-v1:` (prefix only, no hex suffix) | 401 | `{"error":"invalid_auth_token"}` |
-| 9.5 | `Authorization: Bearer fake-token` with no `X-Monocle-Authorization` (wrong header name) | 401 | `{"error":"missing_auth_token"}` |
-| 9.6 | `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` (correct format, wrong secret) | 401 | `{"error":"invalid_auth_token"}` |
-| 9.7 | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` (positive control) | 200 | (route's normal body) |
+The probe matrix is partitioned into three categories: (A) canonical-only
+path (probes 9.1–9.7); (B) alias-only path (probes 9.8–9.12); (C)
+both-headers-present canonical-priority (probes 9.13a–9.13b). Each row
+asserts (status code, body, WARN-log presence/absence).
+
+### Category A — Canonical path (`X-Monocle-Authorization`)
+
+| Probe | Header(s) | Expected status | Expected body | WARN log |
+|-------|-----------|-----------------|---------------|----------|
+| 9.1 | (no `X-Monocle-Authorization`; no `X-Claude-Code-Ide-Authorization`) | 401 | `{"error":"missing_auth_token"}` | absent |
+| 9.2 | `X-Monocle-Authorization: deadbeef...64chars` (bare token, no prefix) | 401 | `{"error":"invalid_auth_token"}` | absent |
+| 9.3 | `X-Monocle-Authorization: monocle-v2:deadbeef...64chars` (wrong version prefix) | 401 | `{"error":"invalid_auth_token"}` | absent |
+| 9.4 | `X-Monocle-Authorization: monocle-v1:` (prefix only, no hex suffix) | 401 | `{"error":"invalid_auth_token"}` | absent |
+| 9.5 | `Authorization: Bearer fake-token` (Bearer header only; neither recognized header present) | 401 | `{"error":"missing_auth_token"}` | absent |
+| 9.6 | `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` (correct format, wrong secret) | 401 | `{"error":"invalid_auth_token"}` | absent |
+| 9.7 | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` (canonical positive control) | 200 | (route's normal body) | absent |
+
+### Category B — Alias path (`X-Claude-Code-Ide-Authorization`)
+
+> Each Category-B probe requires `X-Monocle-Authorization` ABSENT to enter
+> the alias code path per ADR-0005 §Decision Priority 2 entry guard.
+
+| Probe | Header(s) | Expected status | Expected body | WARN log |
+|-------|-----------|-----------------|---------------|----------|
+| 9.8 | `X-Claude-Code-Ide-Authorization: deadbeef...32chars` (wrong length, not 64 hex) | 401 | `{"error":"invalid_auth_token"}` | present (exactly once) |
+| 9.9 | `X-Claude-Code-Ide-Authorization: monocle-v1:<correct-64-hex>` (incorrectly prefixed alias — Claude Code never sends a prefix; this probe asserts the alias path does NOT accept prefixed values) | 401 | `{"error":"invalid_auth_token"}` | present (exactly once) |
+| 9.10 | `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (correct 64-hex format, wrong secret) | 401 | `{"error":"invalid_auth_token"}` | present (exactly once) |
+| 9.11 | `X-Claude-Code-Ide-Authorization:` (empty value, EC-012 of BC-2.01.009) | 401 | `{"error":"invalid_auth_token"}` | present (exactly once) |
+| 9.12 | `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (alias positive control) | 200 | (route's normal body) | present (exactly once) |
+
+### Category C — Both headers present (canonical priority per ADR-0005)
+
+| Probe | Header(s) | Expected status | Expected body | WARN log |
+|-------|-----------|-----------------|---------------|----------|
+| 9.13a | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` + `X-Claude-Code-Ide-Authorization: <wrong-64-hex>` (canonical valid, alias invalid) | 200 | (route's normal body) | absent (alias never consulted) |
+| 9.13b | `X-Monocle-Authorization: monocle-v1:<correct-64-hex>` + `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (both valid) | 200 | (route's normal body) | absent (alias never consulted) |
+| 9.13c | `X-Monocle-Authorization: monocle-v1:<wrong-64-hex>` + `X-Claude-Code-Ide-Authorization: <correct-64-hex>` (canonical invalid, alias valid) | 401 | `{"error":"invalid_auth_token"}` | absent (canonical-priority immutability — alias NOT consulted on canonical failure; BC-2.01.009 INV-5) |
+
+**Total probes:** 15 (7 canonical + 5 alias + 3 both-present). Each row is
+a deterministic three-cell assertion (status, body, WARN-log
+presence/absence). The integration harness arranges fresh daemon state,
+performs the HTTP request, captures the response status code, captures the
+response body (exact byte comparison against the expected JSON literal),
+and queries the `tracing_test` log layer for the canonical WARN line.
+
+**Cross-property reciprocations (SE-15d / Extension 16 backfill sweep):**
+
+- **Cross-property with VP-002 §Mechanical property item 4 +
+  §Post-condition 2** (auth-header rejection on `/status`): VP-002
+  asserts `/status` without an auth header returns HTTP 401 +
+  `missing_auth_token` and with a malformed header returns HTTP 401 +
+  `invalid_auth_token`; this VP asserts the same two-body taxonomy
+  applies uniformly across all 3 authenticated route classes
+  (`/hooks/*`, `/status`, `/shutdown`) — both for the canonical path
+  AND the ADR-0005 compatibility-alias path.
+- **Cross-property with VP-004 §Post-condition 7** (`/shutdown`
+  authentication): VP-004 asserts `POST /shutdown` without an
+  auth header returns HTTP 401 + `missing_auth_token`; this VP asserts
+  the same body-taxonomy applies (probe 9.1 of the matrix above with the
+  `/shutdown` route as the target). The alias-path probes (9.8–9.12)
+  should also be exercised against `/shutdown` to confirm uniform
+  dual-accept across all authenticated route classes.
+
+**Fuzz harness (updated for ADR-0005 dual-accept):** the
+`fuzz_auth_token_validation` target shared with VP-008 is updated to
+exercise BOTH header paths. The fuzzer constructs three input dimensions:
+
+1. **Canonical header bytes:** arbitrary byte sequence as the
+   `X-Monocle-Authorization` value (including the absent case via
+   `Option<Vec<u8>>`).
+2. **Alias header bytes:** arbitrary byte sequence as the
+   `X-Claude-Code-Ide-Authorization` value (including the absent case via
+   `Option<Vec<u8>>`).
+3. **Both-absent toggle:** explicitly enumerates the (None, None) case at
+   non-trivial frequency (the fuzzer's input distribution otherwise rarely
+   produces simultaneous Nones).
+
+For every input triple the fuzzer asserts:
+
+- No panic.
+- If both headers absent: response body is exactly
+  `{"error":"missing_auth_token"}`; no WARN log emitted.
+- If `X-Monocle-Authorization` present (regardless of alias): response is
+  either 200 (matched secret with `monocle-v1:` prefix) OR 401 +
+  `{"error":"invalid_auth_token"}` (any other case). NO WARN log emitted —
+  alias is never consulted when canonical is present.
+- If `X-Monocle-Authorization` absent AND
+  `X-Claude-Code-Ide-Authorization` present: WARN log emitted (exactly
+  once); response is either 200 (matched raw 64-hex secret) OR 401 +
+  `{"error":"invalid_auth_token"}` (any other case).
+- Response body is NEVER `{"error":"invalid_auth_token_format"}` (the
+  retired body — fuzz harness asserts this byte sequence never appears in
+  any response).
+- The fuzzer should never produce an input that returns 200 except for
+  (a) the exact expected secret with the `monocle-v1:` prefix on
+  `X-Monocle-Authorization`, or (b) the exact expected secret as raw
+  64-hex on `X-Claude-Code-Ide-Authorization` when
+  `X-Monocle-Authorization` is absent.
 
 **Cross-property reciprocations (SE-15d / Extension 16 backfill sweep):**
 
@@ -149,22 +346,6 @@ Each row is a deterministic single-body assertion.
   auth header returns HTTP 401 + `missing_auth_token`; this VP asserts
   the same body-taxonomy applies (probe 9.1 of the matrix above with the
   `/shutdown` route as the target).
-
-**Fuzz harness:** the `fuzz_auth_token_validation` target shared with
-VP-008 is updated to assert the post-2db408f two-body taxonomy. The
-fuzzer constructs arbitrary byte sequences as the `X-Monocle-Authorization`
-value (including the absent-header case via `Option<Vec<u8>>`) and asserts:
-
-- No panic.
-- If header is absent: response body is exactly
-  `{"error":"missing_auth_token"}`.
-- If header is present but token validation fails for any reason: response
-  body is exactly `{"error":"invalid_auth_token"}`.
-- Response body is NEVER `{"error":"invalid_auth_token_format"}` (the
-  retired body — fuzz harness asserts this body string never appears in
-  any response).
-- The fuzzer should never produce an input that returns 200 except for
-  the exact expected secret with the `monocle-v1:` prefix.
 
 ## Harness Location
 
@@ -242,13 +423,14 @@ fn verify_bc_2_01_009() {
 
 ## References
 
-- Current as of `2026-05-17T13:00:00Z` (Dispatch 5a).
+- Current as of `2026-05-17T22:30:00Z` (R106 Round 5D — F-R106-1 + F-R106-10 closure).
 - Predecessor: monolithic VP-AUTH-002 at
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
-- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md`.
-- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.25 §Start
-  Sequence (commit 18fe265).
+- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.3 (commit pending — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
+- ADR: `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.1 (commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).
+- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.30 §Start
+  Sequence (commit pending — architect 5E F-FC-I005 removal + dual-accept consolidation).
 - PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.01.009 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-002 (`/status` auth probes); VP-004 (`/shutdown` auth
@@ -395,3 +577,105 @@ Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail).
+
+---
+
+## §Trace v1.0.4 — F-R106-1 CRITICAL + GAP-R45-1 HIGH + F-R106-10 HIGH: ADR-0005 Dual-Accept Expansion + SS-daemon-lifecycle Pin Refresh
+
+**Bump:** v1.0.3 → v1.0.4.
+**Predecessor pin:** v1.0.3 (commit 932f4e0 — T-128k FV F-R105-13 LOW 22-VP §References PRD citation refresh).
+**Scope of v1.0.4 (NORMATIVE — three coupled normative changes addressing R106 Round-4 + R45 consistency gaps):**
+
+### Change 1 — F-R106-1 CRITICAL + GAP-R45-1 HIGH: ADR-0005 dual-accept coverage expansion (NORMATIVE)
+
+VP-009 v1.0.3 covered only the canonical `X-Monocle-Authorization` header path. BC-2.01.009 v1.0.2 (PO commit e7950f0, F-R105 R4 closure) introduced ADR-0005 dual-accept semantics — adding the `X-Claude-Code-Ide-Authorization` compatibility alias path with WARN deprecation logging and canonical-priority immutability. BC-2.01.009 §Verification Properties table (lines 92-96, post-PO-bump) cites 5 NEW probe entries against VP-009 that v1.0.3 did not satisfy:
+
+1. All canonical-path failure modes (6 vectors) return the correct HTTP status and body.
+2. All alias-path failure modes return HTTP 401 `{"error":"invalid_auth_token"}` with WARN log emitted.
+3. Alias-path success returns HTTP 200 with WARN log emitted.
+4. No third error body exists in Phase 1 auth middleware responses.
+5. Canonical priority: when both headers present, `X-Monocle-Authorization` wins; no WARN log emitted.
+
+The v1.0.4 expansion satisfies all 5 BC-2.01.009-side property entries by:
+
+- **§Property Statement:** Extended from single-paragraph canonical-only description to four numbered subsections (canonical path; alias path; canonical-priority both-present; missing both-absent) explicitly enumerating the ADR-0005 dual-accept semantics, the WARN-log emission contract per BC-2.01.009 INV-6, the canonical-priority immutability per INV-5, and the constant-time symmetry contract per INV-7.
+- **§Source Contract:** Added explicit ADR-0005 v1.0.1 citation as ADR (primary). BC version updated to v1.0.3 (post-F-R106-7 closure). Postcondition/Invariant enumeration expanded to cover dual-accept-specific invariants (canonical-priority immutability; WARN-log exactly-once-per-alias-attempt; constant-time symmetry; uniform application across 3 authenticated route classes).
+- **§Pre-conditions:** Added WARN-log capture infrastructure (`tracing_test::traced_test`) specification with literal canonical WARN message string. Added constant-time comparison primitive specification (symmetric API path assertion via `subtle::ct_eq` or `constant_time_eq`).
+- **§Counter-examples:** Expanded from 5 to 12 counter-examples, partitioned into canonical-path (CE-1 through CE-5, all retained verbatim with probe-ID updates for the renumbered matrix) and alias-path (CE-6 through CE-12, all NEW — covering missing-WARN-on-alias-success, missing-WARN-on-alias-failure, incorrect-prefix-strip-on-alias, alias-fall-through-on-canonical-failure, both-headers-WARN-violation, constant-time-symmetry-break, and spurious-WARN-on-canonical-use).
+- **§Probe Matrix:** Expanded from 7 probes (single category) to 15 probes (3 categories: A canonical-only 9.1-9.7 = 7 probes; B alias-only 9.8-9.12 = 5 probes; C both-headers-present 9.13a/9.13b/9.13c = 3 probes). Each row gains a fourth assertion column (WARN log presence/absence) per BC-2.01.009 INV-6.
+- **§Probe Matrix Fuzz harness subsection:** Expanded fuzzer construction from single-dimension (canonical header bytes) to three-dimension input space (canonical bytes + alias bytes + both-absent toggle). Invariants assert no-panic, canonical-priority preservation under fuzzed inputs, WARN-log emission contract under fuzzed alias inputs, retired-body absence, and the only-200-on-exact-secret invariant for both paths.
+
+**SE-17f BEFORE/AFTER evidence for §Probe Matrix:**
+
+- BEFORE: 7 probes (9.1-9.7); 3-column table (Probe | Header | Expected status | Expected body); no WARN-log assertion column; single-category structure.
+- AFTER: 15 probes (9.1-9.7 + 9.8-9.12 + 9.13a/b/c); 4-column table including WARN log column; 3-category structure (A canonical / B alias / C both-headers).
+
+**SE-17f BEFORE/AFTER evidence for §Counter-examples:**
+
+- BEFORE: 5 flat-numbered counter-examples covering canonical-path mutations only.
+- AFTER: 12 partitioned counter-examples — 5 canonical-path (CE-1 through CE-5, content preserved from v1.0.3 with probe-ID updates) + 7 alias-path (CE-6 through CE-12, all NEW).
+
+### Change 2 — F-R106-10 HIGH: SS-daemon-lifecycle pin refresh v1.0.25 → v1.0.30 (NORMATIVE)
+
+- **SE-17f §Source Contract `Traces to (historical)` line:**
+  - Before: `SS-daemon-lifecycle.md v1.0.25 §Start Sequence; architect adjudication ...`
+  - After: `SS-daemon-lifecycle.md v1.0.30 §Start Sequence; architect adjudication ... ADR-0005 T-128m R3 dual-accept decision adopted in arch v1.0.29; F-FC-I005 fabricated-ID removal in arch v1.0.30 architect 5E dispatch`
+- **SE-17f §References Architecture line:**
+  - Before: `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.25 §Start Sequence (commit 18fe265).`
+  - After: `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.30 §Start Sequence (commit pending — architect 5E F-FC-I005 removal + dual-accept consolidation).`
+- **Cross-dispatch coordination:** Architect 5E is bumping SS-daemon-lifecycle v1.0.29 → v1.0.30 in parallel (this round). The FV pin refresh anticipates the v1.0.30 target per the explicit task-spec coordination directive.
+
+### Change 3 — ADR-0005 added to §References (NORMATIVE)
+
+- **SE-17f §References — new line inserted between Source contract and Architecture:**
+  - `ADR: \`architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md\` v1.0.1 (commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).`
+
+### Change 4 — Title updated to reflect ADR-0005 scope (NORMATIVE)
+
+- **SE-17f H1 title:**
+  - Before: `# VP-009: Auth Header Validation — Two-Body Taxonomy (\`missing_auth_token\` vs \`invalid_auth_token\`)`
+  - After: `# VP-009: Auth Header Validation — Two-Body Taxonomy + ADR-0005 Dual-Accept (Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias)`
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- `grep -nE "v1\.0\.25" vp-009-auth-header-validation.md` post-edit → 0 matches outside §Trace history blocks (the only remaining `v1.0.25` cites are in earlier §Trace entries as preserved historical predecessor evidence per SE-17g).
+- `grep -nE "X-Claude-Code-Ide-Authorization" vp-009-auth-header-validation.md` post-edit → >20 matches across Property Statement (4), Source Contract (3), Pre-conditions (3), Counter-examples (9), Probe Matrix (12), References (1) — confirming dual-accept coverage saturated across all VP body sections.
+- `grep -nE "WARN" vp-009-auth-header-validation.md` post-edit → 14 matches confirming WARN-log assertion semantics threaded across Property Statement, Pre-conditions, Counter-examples (CE-6, CE-7, CE-10, CE-12), and Probe Matrix WARN column.
+- `grep -nE "ADR-0005" vp-009-auth-header-validation.md` post-edit → 9 matches confirming ADR-0005 traceability across Source Contract, Property Statement, Counter-examples, Probe Matrix, and References.
+
+### Probe count audit (NORMATIVE)
+
+- Before (v1.0.3): 7 probes (9.1-9.7).
+- After (v1.0.4): 15 probes (9.1-9.7 canonical; 9.8-9.12 alias; 9.13a/b/c both-headers). Exceeds the ≥12 task-spec target.
+
+### Rationale
+
+R106 Round-4 evidence shows VP-009 v1.0.3 is the highest-severity CRITICAL gap in the consistency audit: the Property Statement, Probe Matrix, Counter-examples, and Fuzz harness all reflect the pre-ADR-0005 single-header world, despite BC-2.01.009 v1.0.2 (commit e7950f0) having propagated the dual-accept semantics into the §Verification Properties table. The BC-side property entries point to VP-009, but VP-009 carries none of the alias-path probes, WARN-log assertions, or canonical-priority probes that BC-2.01.009 now requires. Without the v1.0.4 expansion, no integration test or fuzz harness in Phase 3 would exercise the alias path, leaving the production-critical ADR-0005 dual-accept logic untested — a Phase-1 spec-side gap that would directly break Phase-3 TDD red-gate setup for the alias path.
+
+Per CLAUDE.md Production-Grade Default Rule 1+5: the gap is fixed in-scope of R106 Round 5D rather than deferred. The expansion is production-grade — each probe carries arrange/act/assert prose, each counter-example documents the failure mode it catches, and the fuzz harness specifies a three-dimensional input space matching the dual-accept code surface.
+
+### Authoritative cross-references
+
+- **BC:** `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.3 (commit e7950f0 ADR-0005 dual-accept propagation + commit pending F-R106-7 fabricated-FC-ID removal).
+- **ADR:** `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.1 (commit e142efb).
+- **Architecture:** `architecture/SS-daemon-lifecycle.md` v1.0.30 (commit pending — architect 5E dispatch).
+- **R106 closure chain:** F-R106-1 CRITICAL + GAP-R45-1 HIGH (VP-009 dual-accept coverage); F-R106-10 HIGH (pin refresh sweep — this VP is one of 10 pin-citing files); F-R106-9 HIGH (VP-INDEX SS-01 pin refresh — cascade in this dispatch); F-R106-18 LOW (VP-INDEX SS-02/SS-03 pin additions — cascade); GAP-R45-4 LOW (VP-INDEX §References BC-INDEX cite refresh — cascade).
+- **Concurrent dispatches (R106 Round 5):**
+  - PO 5A: BC + BC-INDEX dual-accept finalization — separate scope.
+  - PO 5B: PRD + supplements — separate scope.
+  - PO 5C: product-brief — separate scope.
+  - FV 5D: this dispatch (VP-009 expansion + 10-VP pin sweep + VP-INDEX cascade).
+  - Architect 5E: ADR-0005 path normalization + SS-daemon-lifecycle v1.0.29 → v1.0.30 — separate scope.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T22:30:00Z` >= chain high-water `2026-05-17T22:10:00Z` (BC-2.01.009 v1.0.3 frontmatter timestamp; FV §Trace strictly greater per SE-16d). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: H1 title extension; §Property Statement expansion (single-paragraph → four-numbered-subsection); §Source Contract ADR-0005 + BC version + Traces-to expansion; §Pre-conditions WARN-log + constant-time additions; §Counter-examples expansion 5→12; §Probe Matrix expansion 7→15 + WARN-log column + 3-category partition; §Fuzz harness three-dimensional input space; §References ADR-0005 addition + SS-daemon-lifecycle pin refresh v1.0.25 → v1.0.30 + BC version refresh; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context; probe count audit.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Production-grade expansion executed in-scope of FV 5D rather than deferred. Each new probe (9.8-9.12, 9.13a/b/c) carries explicit header construction, expected status, expected body, and WARN-log presence/absence. Each new counter-example (CE-6 through CE-12) documents the specific implementation defect it catches with explicit BC invariant references (INV-5 canonical-priority, INV-6 WARN-log, INV-7 constant-time symmetry). No tech-debt entries created. Cross-dispatch coordination with architect 5E (SS-daemon-lifecycle v1.0.30 target) and PO 5A (BC-2.01.009 v1.0.3 target) handled via explicit "commit pending" annotations in §References — these will resolve to concrete SHAs during final state-manager pass after all parallel dispatches converge.

@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.3"
+version: "1.0.4"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-17T20:30:00Z
+timestamp: 2026-05-17T22:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "7c094e3"
@@ -228,8 +228,8 @@ fn verify_bc_2_01_008() {
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-01/BC-2.01.008.md`.
-- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.25 §Start
-  Sequence (commit 18fe265).
+- Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.30 §Start
+  Sequence (commit pending — architect 5E F-FC-I005 removal + dual-accept consolidation).
 - PRD: `.factory/specs/prd.md` v1.26.3 §BC-2.01.008 (Dispatch 4 commit 1030c65; refreshed to v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17.
 - Cross-property: VP-005 §Post-condition 9 (runtime-dir `0o700`
@@ -376,3 +376,52 @@ Sweep-wide post-edit re-grep across all 22 VP files: `grep -rE "prd\.md v1\.(26[
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Mechanical citation refresh executed in-scope rather than deferred. PRD v1.26.3 cite is valid as of PO commit b2b378b. No tech-debt entries created. Body-prose historical PRD v1.25 citations preserved unchanged per Production-Grade discipline (historical predecessor citations are not stale; refreshing them would erase audit trail).
+
+---
+
+## §Trace v1.0.4 — F-R106-10 HIGH: SS-daemon-lifecycle Pin Refresh v1.0.25 → v1.0.30
+
+**Bump:** v1.0.3 → v1.0.4.
+**Predecessor pin:** v1.0.3 (commit 932f4e0 — T-128k FV F-R105-13 LOW 22-VP §References PRD citation refresh).
+**Scope of v1.0.4 (NORMATIVE — mechanical pin refresh; NO content cascade; NO BC-path changes):**
+
+### Change set (NORMATIVE)
+
+- **SE-17f §Source Contract `Traces to (historical)` line:** `SS-daemon-lifecycle.md v1.0.25 ...` → `SS-daemon-lifecycle.md v1.0.30 ...` (per-VP section name preserved verbatim).
+- **SE-17f §References Architecture line:** `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.25 ... (commit 18fe265).` → `Architecture: \`architecture/SS-daemon-lifecycle.md\` v1.0.30 ... (commit pending — architect 5E F-FC-I005 removal + dual-accept consolidation).`
+- **SE-17f inline `arch v1.0.NN` body-prose cites (where present in this VP):** refreshed to `arch v1.0.30`.
+
+### SE-17c-d body-scope grep
+
+- Post-edit `grep -nE "SS-daemon-lifecycle.md v1\.0\.25" <this-vp>` → 0 matches outside §Trace history blocks (the only remaining `v1.0.25` cites are in earlier §Trace SE-17f BEFORE evidence as preserved historical predecessor evidence per SE-17g audit-trail discipline).
+- Post-edit `grep -nE "v1\.0\.30" <this-vp>` → 2+ matches (§Source Contract Traces-to + §References Architecture, plus any inline `arch v1.0.30` cites in body prose).
+
+### Rationale
+
+Architect 5E is bumping SS-daemon-lifecycle v1.0.29 → v1.0.30 in parallel (R106 Round 5) for F-R106 F-FC-I005 fabricated-FC-ID removal and dual-accept consolidation. The architectural delta is **STRUCTURAL** (FC-ID removal — the architecture sections referenced by this VP are unchanged content). Therefore the only required downstream action across pin-citing VP files is the pin-citation refresh; no substantive change to the VP property statement, proof method, mechanism, pre-conditions, post-conditions, counter-examples, probe matrix, or harness location.
+
+The pin refresh is bundled with the broader R106 Round 5D FV dispatch (10 pin-citing VPs + VP-009 ADR-0005 dual-accept expansion + VP-INDEX 4-fix cascade). Cross-dispatch coordination with architect 5E handled via explicit "commit pending" annotation in §References — this will resolve to a concrete SHA during final state-manager pass after all parallel dispatches converge.
+
+### Authoritative cross-references
+
+- **Architecture:** `architecture/SS-daemon-lifecycle.md` v1.0.30 (commit pending — architect 5E dispatch).
+- **R106 closure chain:** F-R106-10 HIGH — 10-VP SS-daemon-lifecycle pin refresh sweep (this VP is one of 10 pin-citing files).
+- **Concurrent dispatches (R106 Round 5):**
+  - PO 5A: BC + BC-INDEX dual-accept finalization — separate scope.
+  - PO 5B: PRD + supplements — separate scope.
+  - PO 5C: product-brief — separate scope.
+  - FV 5D: this dispatch (VP-009 expansion + 10-VP pin sweep + VP-INDEX cascade).
+  - Architect 5E: ADR-0005 path normalization + SS-daemon-lifecycle v1.0.29 → v1.0.30 — separate scope.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-17T22:30:00Z` >= chain high-water `2026-05-17T22:10:00Z` (BC-2.01.009 v1.0.3 frontmatter timestamp; cross-dispatch BC reference). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: pin refresh `v1.0.25` → `v1.0.30`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection; concurrent dispatch context.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+5
+
+Mechanical pin refresh executed in-scope rather than deferred. Architect 5E's structural-only delta (FC-ID removal) authorized this mechanical citation refresh without requiring per-VP content review. No tech-debt entries created. Historical v1.0.25 cite preserved in §References "supersedes" annotation per audit-trail discipline.
