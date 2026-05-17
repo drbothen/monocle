@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.30"
+version: "1.0.31"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -2368,7 +2368,9 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
 
 **§Trace v1.0.28** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
 - NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
-  per BC-INDEX.md v1.1 Renumbering Map. Finding: F-R105-8 MED.
+  per BC-INDEX.md v1.1 §Renumbering Map (canonical at T-128h dispatch time
+  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure).
+  Finding: F-R105-8 MED.
 - SE-17c BEFORE: 95 lines / 102 occurrences with stale BC IDs (all old-form DAEMON/AUTH/RING/LOCK/ABI/ENGINE prefixes).
 - Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
   BC-2.01.001 [old: DAEMON-001]: 4 occurrences
@@ -2434,3 +2436,12 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
   AFTER: 0 lines match `F-FC-I005` in SS-daemon-lifecycle.md. SE-17g META AUDIT PASS.
 - SE-17d AFTER CONFIRMATION: zero `F-FC-I005` occurrences remain in this document.
 - SE-16d PASS: 2026-05-17T22:00:00Z > chain high-water 2026-05-17T19:00:00Z (monotonic).
+
+**§Trace v1.0.31** (2026-05-17T23:00:00Z) — F-R107-8 historical-pin clarification (Round 6D):
+- INFORMATIONAL: §Trace v1.0.28 BC-INDEX cite `v1.1 Renumbering Map` expanded to explicit
+  historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h dispatch time
+  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure)`.
+  Purpose: prevent future fresh-context audits from re-flagging the historical pin as stale;
+  the cite records what was canonical at the time of the T-128h canonicalization sweep,
+  not a live version claim. Finding: F-R107-8 architect part.
+- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).

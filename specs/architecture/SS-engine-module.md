@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.18"
+version: "1.1.19"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -1568,7 +1568,9 @@ Cross-references:
 
 **§Trace v1.1.18** (2026-05-17T17:00:00Z) — F-R105-8 BC ID canonicalization (T-128h):
 - NORMATIVE: All stale pre-renumbering BC IDs replaced with canonical BC-2.SS.NNN forms
-  per BC-INDEX.md v1.1 Renumbering Map. Finding: F-R105-8 MED.
+  per BC-INDEX.md v1.1 §Renumbering Map (canonical at T-128h dispatch time
+  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure).
+  Finding: F-R105-8 MED.
 - SE-17c BEFORE: 31 lines / 33 occurrences with stale BC IDs (all old-form ENGINE/RING/TYPES prefixes).
 - Replacements by canonical new ID (old-form identity in BC-INDEX §Renumbering Map):
   BC-2.01.007 [old: RING-001]: 2 occurrences (cross-ref to SS-01)
@@ -1582,3 +1584,12 @@ Cross-references:
   §Phase 1 Implementation BC-2.03.002, BC-2.03.003 §Behavioral Contracts, BC-2.03.004 inherent methods.
 - SE-16d PASS: 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
 - No retired BCs discovered. All 31 stale-ID lines resolved to active BCs in BC-INDEX v1.1.
+
+**§Trace v1.1.19** (2026-05-17T23:00:00Z) — F-R107-8 historical-pin clarification (Round 6D):
+- INFORMATIONAL: §Trace v1.1.18 BC-INDEX cite `v1.1 Renumbering Map` expanded to explicit
+  historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h dispatch time
+  2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2 closure)`.
+  Purpose: prevent future fresh-context audits from re-flagging the historical pin as stale;
+  the cite records what was canonical at the time of the T-128h canonicalization sweep,
+  not a live version claim. Finding: F-R107-8 architect part.
+- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).

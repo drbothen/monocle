@@ -4,7 +4,7 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.15"
+version: "1.2.16"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -185,12 +185,12 @@ items resolved pre-Phase-1 per human authorization (commit in same burst as v1.1
 
 | ID | Finding | Severity | Phase 1 Spec Change | Owner | Disposition |
 |----|---------|----------|---------------------|-------|-------------|
-| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-RING-001: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.7 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
-| FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | BC-TYPES-001: `#[non_exhaustive]` default for all pub enums; exemption policy documented; specified in SS-core-types-and-abi.md §Enum Extensibility | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | BC-ABI-001 + BC-ABI-002: constant declared in `monocle-core::abi`; exposed via `/status`; specified in SS-core-types-and-abi.md §ABI Version Constant | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-FACTORY-001 + BC-FACTORY-002: trait defined in `monocle-core::factory`; full open-trait signature (no sealed bound; see §Item P3-1 Sealed trait analysis above), self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | BC-PROTO-001 + BC-PROTO-002: full HookEnvelope proto schema with field-number reservation convention; specified in SS-core-types-and-abi.md §Prost Wire Schemas | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
-| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-AUTH-001 + BC-AUTH-002: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.7 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
+| FC-01 | Add `format_version: u32 = 1` field to every JSONL ring event record | IMPORTANT | BC-2.01.007: JSONL event record schema includes `format_version: 1` as first key; specified in SS-daemon-lifecycle.md v1.0.7 §Drain | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
+| FC-02 | Apply `#[non_exhaustive]` to `HookType` / `HookEvent` enum in `monocle-core` | IMPORTANT | BC-2.02.003: `#[non_exhaustive]` default for all pub enums; exemption policy documented; specified in SS-core-types-and-abi.md §Enum Extensibility | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-03 | Declare `pub const MONOCLE_ABI_VERSION: u32 = 1;` in `monocle-core` | IMPORTANT | BC-2.02.001 + BC-2.02.002: constant declared in `monocle-core::abi`; exposed via `/status`; specified in SS-core-types-and-abi.md §ABI Version Constant | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-04 | `VsddFactoryAdapter` MUST implement `FactoryAdapter` trait from Phase 1 | CRITICAL | BC-2.02.004 + BC-2.02.005: trait defined in `monocle-core::factory`; full open-trait signature (no sealed bound; see §Item P3-1 Sealed trait analysis above), self-referential test specified in SS-core-types-and-abi.md §FactoryAdapter Trait | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-05 | Define `.proto` message types for all 5 hook event types in `monocle-proto` with `schema_version` field | IMPORTANT | BC-2.02.006 + BC-2.02.007 + BC-2.02.008: full HookEnvelope proto schema with field-number reservation convention; BC-2.02.006 = wire field number contract (old BC-PROTO-001a), BC-2.02.007 = Rust struct schema_version field (old BC-PROTO-001b), BC-2.02.008 = Phase 4 validation requirement (old BC-PROTO-002); specified in SS-core-types-and-abi.md §Prost Wire Schemas | architect | RESOLVED PRE-PHASE-1 — locked in SS-core-types-and-abi.md per human authorization |
+| FC-06 | Version the local auth token: `monocle-v1:<64-char-hex>` format | IMPORTANT | BC-2.01.008 + BC-2.01.009: token format, constant-time comparison, 401 rejection rule; specified in SS-daemon-lifecycle.md v1.0.7 §Start Sequence | architect | RESOLVED PRE-PHASE-1 — locked in SS-daemon-lifecycle.md v1.0.6 per human authorization |
 
 No findings require REWORK-level severity. All 6 findings are resolved with
 complete, production-grade spec text — not deferred, not advisory, not TODO.
@@ -216,39 +216,76 @@ finding. It is resolved with a complete, open-trait specification (Round 15:
 sealing removed entirely per human Q-15-1 honoring vision authority; trait now open
 for plugin SDK consumption) including the full trait signature, the
 `VsddFactoryAdapter` implementation skeleton, the Phase 3 extension path, and two
-behavioral contracts (BC-FACTORY-001 + BC-FACTORY-002).
+behavioral contracts (BC-2.02.004 + BC-2.02.005).
 
 The product-owner (`/vsdd-factory:create-prd`) MUST load this document as an input.
 The following 16 pre-staged BC IDs are RESERVED — the PRD must use these exact IDs
 when formalizing the contracts with postconditions and verification harness stubs:
 
-| BC ID | Source Artifact |
-|-------|----------------|
-| BC-RING-001 | SS-daemon-lifecycle.md |
-| BC-ABI-001 | SS-core-types-and-abi.md |
-| BC-ABI-002 | SS-core-types-and-abi.md |
-| BC-TYPES-001 | SS-core-types-and-abi.md |
-| BC-FACTORY-001 | SS-core-types-and-abi.md |
-| BC-FACTORY-002 | SS-core-types-and-abi.md |
-| BC-PROTO-001a | SS-core-types-and-abi.md |
-| BC-PROTO-001b | SS-core-types-and-abi.md |
-| BC-PROTO-002 | SS-core-types-and-abi.md |
-| BC-AUTH-001 | SS-daemon-lifecycle.md |
-| BC-AUTH-002 | SS-daemon-lifecycle.md |
-| BC-LOCK-001 | SS-daemon-lifecycle.md |
-| BC-ENGINE-001 | SS-engine-module.md |
-| BC-ENGINE-002 | SS-engine-module.md |
-| BC-ENGINE-002-ERR | SS-engine-module.md |
-| BC-ENGINE-003 | SS-engine-module.md |
+| BC ID (canonical) | Old-Form ID (retired; BC-INDEX §Renumbering Map) | Source Artifact |
+|-------------------|--------------------------------------------------|----------------|
+| BC-2.01.007 | BC-RING-001 | SS-daemon-lifecycle.md |
+| BC-2.02.001 | BC-ABI-001 | SS-core-types-and-abi.md |
+| BC-2.02.002 | BC-ABI-002 | SS-core-types-and-abi.md |
+| BC-2.02.003 | BC-TYPES-001 | SS-core-types-and-abi.md |
+| BC-2.02.004 | BC-FACTORY-001 | SS-core-types-and-abi.md |
+| BC-2.02.005 | BC-FACTORY-002 | SS-core-types-and-abi.md |
+| BC-2.02.006 | BC-PROTO-001a | SS-core-types-and-abi.md |
+| BC-2.02.007 | BC-PROTO-001b | SS-core-types-and-abi.md |
+| BC-2.02.008 | BC-PROTO-002 | SS-core-types-and-abi.md |
+| BC-2.01.008 | BC-AUTH-001 | SS-daemon-lifecycle.md |
+| BC-2.01.009 | BC-AUTH-002 | SS-daemon-lifecycle.md |
+| BC-2.01.010 | BC-LOCK-001 | SS-daemon-lifecycle.md |
+| BC-2.03.001 | BC-ENGINE-001 | SS-engine-module.md |
+| BC-2.03.002 | BC-ENGINE-002 | SS-engine-module.md |
+| BC-2.03.003 | BC-ENGINE-002-ERR | SS-engine-module.md |
+| BC-2.03.004 | BC-ENGINE-003 | SS-engine-module.md |
 
-Notes: BC-PROTO-001 was split into BC-PROTO-001a (wire field number) and BC-PROTO-001b
-(Rust struct surface) per F-FC-O004. BC-LOCK-001 added per F-FC-O001 (lock-file
-`contract_version` field). BC-ENGINE-001/002/003 added per round-14 fix burst
-(SS-engine-module.md v1.1; N5 BC count propagation). BC-ENGINE-002-ERR added in
-SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
-(round-23 micro-fix burst).
+Notes: BC-PROTO-001 was split into BC-PROTO-001a (wire field number, now BC-2.02.006)
+and BC-PROTO-001b (Rust struct surface, now BC-2.02.007) per F-FC-O004.
+BC-LOCK-001 (now BC-2.01.010) added per F-FC-O001 (lock-file `contract_version` field).
+BC-ENGINE-001/002/003 (now BC-2.03.001/002/004) added per round-14 fix burst
+(SS-engine-module.md v1.1; N5 BC count propagation). BC-ENGINE-002-ERR (now BC-2.03.003)
+added in SS-engine-module.md v1.1.4 (commit 563b573); pre-staging table updated in v1.1.5
+(round-23 micro-fix burst). All old-form IDs retired per BC-INDEX.md v1.1 §Renumbering
+Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical BC-INDEX
+is v1.4 per F-R107-2 closure).
 
 ## §Trace
+
+**§Trace v1.2.16** (2026-05-17T23:00:00Z) — F-R107-5 BC ID canonicalization (Round 6D):
+- NORMATIVE: All stale pre-renumbering BC IDs in FC table + BC-mapping table replaced with
+  canonical BC-2.SS.NNN forms per BC-INDEX.md v1.4 §Renumbering Map. Finding: F-R107-5 HIGH.
+- SE-17f BEFORE (FC table, lines 188-193): FC-01 cited `BC-RING-001`, FC-02 cited
+  `BC-TYPES-001`, FC-03 cited `BC-ABI-001 + BC-ABI-002`, FC-04 cited
+  `BC-FACTORY-001 + BC-FACTORY-002`, FC-05 cited `BC-PROTO-001 + BC-PROTO-002`,
+  FC-06 cited `BC-AUTH-001 + BC-AUTH-002`.
+- SE-17f BEFORE (FC-04 body prose ~line 219): `BC-FACTORY-001 + BC-FACTORY-002`.
+- SE-17f BEFORE (BC-mapping table ~lines 225-242): all 16 rows used old-form IDs;
+  table had no "Old-Form ID" column; the Notes paragraph lacked old→new cross-references.
+- SE-17c REPLACEMENTS by canonical new ID:
+  BC-2.01.007 [old: BC-RING-001]: 1 FC table cell (FC-01)
+  BC-2.02.003 [old: BC-TYPES-001]: 1 FC table cell (FC-02)
+  BC-2.02.001 + BC-2.02.002 [old: BC-ABI-001 + BC-ABI-002]: 1 FC table cell (FC-03)
+  BC-2.02.004 + BC-2.02.005 [old: BC-FACTORY-001 + BC-FACTORY-002]: 1 FC table cell (FC-04) + 1 body prose site
+  BC-2.02.006 + BC-2.02.007 + BC-2.02.008 [old: BC-PROTO-001 + BC-PROTO-002]: 1 FC table cell (FC-05);
+    note BC-PROTO-001 was split into BC-2.02.006 (wire field, old BC-PROTO-001a) +
+    BC-2.02.007 (Rust struct, old BC-PROTO-001b); BC-PROTO-002 → BC-2.02.008
+  BC-2.01.008 + BC-2.01.009 [old: BC-AUTH-001 + BC-AUTH-002]: 1 FC table cell (FC-06)
+  BC-mapping table: all 16 rows canonicalized; "Old-Form ID (retired)" column added;
+    Notes paragraph updated with old→new cross-references.
+- SE-17d AFTER: BC-mapping table BC-2.01.007..BC-2.03.004 (all 16 rows); FC table
+  BC-2.01.007, BC-2.02.001-008, BC-2.01.008-009; body prose BC-2.02.004 + BC-2.02.005.
+- SE-17g META AUDIT: zero normative stale BC IDs remain in SS-forward-compatibility.md.
+  Remaining old-form pattern appearances are INFORMATIONAL only:
+  (a) line 53: `BC-RING-NNN` is a placeholder template in pre-formalization analysis
+      prose (NNN = not a specific ID; historical analysis proposing the BC before naming);
+  (b) FC-05 cell: `old BC-PROTO-001a/b/002` explicitly labeled as old-form context;
+  (c) BC-mapping table "Old-Form ID (retired)" column: historical record by design.
+  SE-17g PASS: 0 normative stale IDs.
+- SE-17f PASS: sampled mapping verified — FC-01 → BC-2.01.007, FC-03 → BC-2.02.001+002,
+  FC-04 → BC-2.02.004+005, FC-05 → BC-2.02.006+007+008, FC-06 → BC-2.01.008+009.
+- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).
 
 v1.2.13 changes (round-60.1 F-R60-1 sibling-propagation fix):
 

@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-17T19:00:00Z
@@ -97,6 +97,26 @@ ADR-0005 resolves the auth header interop gap between monocle's canonical header
 Claude Code's hardcoded `X-Claude-Code-Ide-Authorization` (BC-HOOK-016); dual-accept at the
 router-level auth middleware.
 
+## §Trace v1.0.6
+
+**F-R107 Round 6D — BC ID canonicalization + historical-pin clarification** (2026-05-17T23:00:00Z):
+- NORMATIVE (F-R107-5 HIGH): SS-forward-compatibility.md v1.2.15 → v1.2.16. All stale
+  pre-renumbering BC IDs in FC table (lines 188-193) and BC-mapping table (lines 225-242)
+  canonicalized to BC-2.SS.NNN forms per BC-INDEX.md v1.4 §Renumbering Map. FC-04 body prose
+  updated. BC-mapping table restructured: "Old-Form ID (retired)" column added; all 16 rows
+  carry canonical new IDs as primary. Notes paragraph updated with old→new cross-references.
+  SE-17g META AUDIT: zero normative stale BC IDs remain in SS-forward-compatibility.md.
+- INFORMATIONAL (F-R107-8 architect part): §Trace v1.0.3 BC-INDEX cite `v1.1 §Renumbering Map`
+  expanded to explicit historical-pin form: `v1.1 §Renumbering Map (canonical at T-128h
+  dispatch time 2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4 per F-R107-2
+  closure)`. Purpose: prevent future fresh-context audits from re-flagging the historical pin.
+- INFORMATIONAL (F-R107-8 architect part): Same historical-pin expansion applied to
+  SS-engine-module.md §Trace v1.1.18, SS-daemon-lifecycle.md §Trace v1.0.28,
+  SS-core-types-and-abi.md §Trace v1.2.11 — the 3 SS docs swept at T-128h.
+  SS version bumps: SS-engine-module 1.1.18 → 1.1.19; SS-daemon-lifecycle 1.0.30 → 1.0.31;
+  SS-core-types-and-abi 1.2.11 → 1.2.12.
+- SE-16d PASS: 2026-05-17T23:00:00Z > chain high-water 2026-05-17T22:00:00Z (monotonic).
+
 ## §Trace v1.0.5
 
 **F-R106 Round 5E — ADR-0005 path fix + SS-daemon-lifecycle F-FC-I005 removal** (2026-05-17T22:00:00Z):
@@ -139,7 +159,9 @@ router-level auth middleware.
 
 **T-128h BC ID canonicalization — F-R105-8 closure** (2026-05-17T17:00:00Z):
 - NORMATIVE: All stale pre-renumbering BC IDs propagated to canonical BC-2.SS.NNN forms
-  across 3 SS architecture documents per BC-INDEX.md v1.1 §Renumbering Map.
+  across 3 SS architecture documents per BC-INDEX.md v1.1 §Renumbering Map (canonical
+  at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical BC-INDEX is v1.4
+  per F-R107-2 closure).
   Scope: SS-daemon-lifecycle.md, SS-engine-module.md, SS-core-types-and-abi.md.
 - SE-17g META AUDIT — final re-grep confirms zero stale IDs remaining across all 3 docs
   (grep pattern: old-form DAEMON/AUTH/RING/LOCK/ABI/TYPES/FACTORY/PROTO/ENGINE prefixes):
