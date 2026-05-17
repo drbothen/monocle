@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:30:00Z
+timestamp: 2026-05-18T01:05:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "754af00"
@@ -111,16 +111,26 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 
 - `verification-properties/vp-008-auth-token-wire-format.md` — VP-008 auth token wire format integration tests
 
+## §Trace v1.0.5
+
+**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:05:00Z):
+- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
+- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
+- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
+- SE-16d monotonicity PASS: 2026-05-18T01:05:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
+
 ## §Trace v1.0.4
 
-**F-R107-2 CRITICAL + F-R107-9 MEDIUM** (2026-05-17T23:30:00Z):
+**F-R107-2 CRITICAL + F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion** (2026-05-17T23:30:00Z):
+*(NOTE: v1.0.4 originally cited "F-R107-9" for the ADR version pin. That was a misattribution — see §Trace v1.0.5 for correction. F-R107-9 in the R107 report describes ADR-0002 inputs path; the ADR-0005 pin addition is F-R107-2 closure part. Finding-ID corrected in v1.0.5; v1.0.4 content preserved verbatim below.)*
 
 **F-R107-2 — Architecture Source pin refresh v1.0.25 → v1.0.30:**
 - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
 - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
 - Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure.
 
-**F-R107-9 — ADR-0005 version pin added:**
+**F-R107-2 closure part (BC ADR pin add) — ADR-0005 version pin added:**
 - Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
 - SE-17f: Added `v1.0.2` version pin to ADR-0005 citation. ADR-0005 current version is v1.0.2 (per architect 5E commit confirming v1.0.2 as final accepted state for Phase 1).
 - Rationale: Architecture Source version pins are required for all referenced architecture documents to enable drift detection at adversarial review time. A bare ADR-0005 citation without a version pin is unresolvable if the ADR is amended in a future cycle.

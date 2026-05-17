@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:30:00Z
+timestamp: 2026-05-18T01:15:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -165,26 +165,6 @@ traces_to: prd.md
 - BC-INDEX status unchanged: active. No BC removals or retirements in this burst.
 - SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-17T18:00:00Z (v1.2).
 
-## §Trace v1.5
-
-**F-R107 Round 6A — 10-BC pin sweep (CRITICAL F-R107-2) + ADR pins (F-R107-9) + EC-013 (F-R107-10) + INV-3 dual-accept (GAP-R46-5)** (2026-05-17T23:30:00Z):
-
-BC version bumps in this dispatch:
-- BC-2.01.001: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.002: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.003: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.004: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; GAP-R46-5: INV-3 updated to dual-accept per ADR-0005 — `/shutdown` requires either canonical or alias header, not X-Monocle-Authorization only)
-- BC-2.01.005: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.006: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.007: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-- BC-2.01.008: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; F-R107-9: ADR-0005 citation updated to ADR-0005 v1.0.2)
-- BC-2.01.009: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.29 → v1.0.30; F-R107-9: ADR-0005 citation updated to ADR-0005 v1.0.2; F-R107-10: EC-013 added — Bearer header dual-absence case)
-- BC-2.01.010: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
-
-BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
-SE-17g META audit post-sweep: `grep -r "SS-daemon-lifecycle.md v1\.0\.25\|SS-daemon-lifecycle.md v1\.0\.29" .factory/specs/behavioral-contracts/ss-01/` → 0 matches. All 10 ss-01 BCs now pin v1.0.30.
-SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T23:00:00Z (v1.4).
-
 ## §Trace v1.4
 
 **F-R106 Round 5A — BC scope fixes: CRITICAL PC-4 contradiction + fabrication removal + stale-ID sweep + §Trace reorder** (2026-05-17T23:00:00Z):
@@ -203,3 +183,50 @@ BC-INDEX structural fix:
 BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
 SE-17g META audit: re-grep for stale old-form BC ID parentheticals in ss-01/ body prose — see post-fix verification below.
 SE-16d monotonicity PASS: 2026-05-17T23:00:00Z > prior 2026-05-17T20:00:00Z (v1.3).
+
+## §Trace v1.5
+
+**F-R107 Round 6A — 10-BC pin sweep (CRITICAL F-R107-2) + ADR pins (F-R107-2 closure part) + EC-013 (F-R107-10) + INV-3 dual-accept (GAP-R46-5)** (2026-05-17T23:30:00Z):
+
+BC version bumps in this dispatch:
+- BC-2.01.001: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.002: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.003: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.004: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; GAP-R46-5: INV-3 updated to dual-accept per ADR-0005 — `/shutdown` requires either canonical or alias header, not X-Monocle-Authorization only)
+- BC-2.01.005: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.006: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.007: v1.0.2 → v1.0.3 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+- BC-2.01.008: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.25 → v1.0.30; F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion: ADR-0005 citation updated to ADR-0005 v1.0.2)
+- BC-2.01.009: v1.0.3 → v1.0.4 (F-R107-2: Architecture Source v1.0.29 → v1.0.30; F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion: ADR-0005 citation updated to ADR-0005 v1.0.2; F-R107-10: EC-013 added — Bearer header dual-absence case)
+- BC-2.01.010: v1.0.1 → v1.0.2 (F-R107-2: Architecture Source SS-daemon-lifecycle.md v1.0.25 → v1.0.30)
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-17g META audit post-sweep: `grep -r "SS-daemon-lifecycle.md v1\.0\.25\|SS-daemon-lifecycle.md v1\.0\.29" .factory/specs/behavioral-contracts/ss-01/` → 0 matches. All 10 ss-01 BCs now pin v1.0.30.
+SE-16d monotonicity PASS: 2026-05-17T23:30:00Z > prior 2026-05-17T23:00:00Z (v1.4).
+
+## §Trace v1.6
+
+**F-R108 Round 7A — §Trace ordering fix (F-R108-4) + finding-ID audit corrections (F-R108-12, F-R108-16) + BC-2.01.002 dual-accept alignment (F-R108-17)** (2026-05-18T01:15:00Z):
+
+**F-R108-4 CRITICAL — §Trace ordering fixed (v1.5 was inserted BEFORE v1.4 — non-monotonic):**
+- §Trace v1.5 (Round 6A) was authored before v1.4's reorder fix and was inserted at the wrong position, making the sequence v1.1 → v1.2 → v1.3 → v1.5 → v1.4 (non-monotonic).
+- SE-17f BEFORE: §Trace order was v1.1, v1.2, v1.3, v1.5, v1.4.
+- SE-17f AFTER: §Trace order is v1.1, v1.2, v1.3, v1.4, v1.5, v1.6 (ascending monotonic).
+- Content of each §Trace section preserved verbatim; only insertion order corrected.
+
+**F-R108-12 HIGH — Finding-ID audit correction in v1.5 dispatch entry for BC-2.01.008 and BC-2.01.009:**
+- v1.5 dispatch entry (and the corresponding BC files' §Trace v1.0.4) cited "F-R107-9" for the ADR-0005 version pin addition. F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (routed to Architect 7C for Round 7). The ADR-0005 version pin addition is correctly attributed to **F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion**.
+- v1.5 dispatch entry corrected: "F-R107-9" references replaced with "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion" in the BC-2.01.008 and BC-2.01.009 rows above.
+- Individual BC files corrected in their §Trace v1.0.5 entries (BC-2.01.008 v1.0.5 and BC-2.01.009 v1.0.5).
+
+**F-R108-16 MEDIUM — F-R107-10 RESCOPED note:**
+- F-R107-10 in the R107 adversarial report was described as an error-taxonomy finding (EC-NNN vs E-AUTH-NNN namespace confusion). Round 6A closure was to add EC-013 to BC-2.01.009, which is a legitimate scope correction. However, the audit-trail description conflates the EC- and E-AUTH- namespaces.
+- RESCOPED: F-R107-10 RESCOPED FROM error-taxonomy E-AUTH addition TO BC-2.01.009 EC-013 addition; original R107 description conflated EC- and E-AUTH- namespaces. The correct closure action was adding EC-013 (Bearer dual-absence edge case) to BC-2.01.009; no E-AUTH-NNN entry was needed. This rescope note is recorded here for adversarial audit-trail integrity; no further normative content changes are required.
+
+**F-R108-17 MEDIUM — BC-2.01.002 dual-accept alignment:**
+- BC-2.01.002 Description, Precondition 2, and canonical test vector all implied single-header `X-Monocle-Authorization` only.
+- BC-2.01.002 v1.0.3 → v1.0.4: Description and Precondition 2 updated to dual-accept (ADR-0005 v1.0.2); test vector happy-path split into two rows (canonical + alias). See BC-2.01.002 §Trace v1.0.4 for full before/after.
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs across all modified files.
+SE-16d monotonicity PASS: 2026-05-18T01:15:00Z > prior 2026-05-17T23:30:00Z (v1.5).

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:30:00Z
+timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "754af00"
@@ -31,13 +31,16 @@ removal_reason: null
 The monocle daemon exposes a `GET /status` endpoint that returns comprehensive daemon
 observability data including PID, uptime, ABI version, ring buffer fill levels, channel
 saturation, and per-hook-type last-event timestamps. The endpoint is on the authenticated
-router and requires a valid `X-Monocle-Authorization: monocle-v1:<token>` header. It
-continues serving during graceful shutdown drain to allow drain monitoring.
+router and requires a valid auth header per the dual-accept protocol (ADR-0005 v1.0.2):
+either `X-Monocle-Authorization: monocle-v1:<token>` (canonical) or
+`X-Claude-Code-Ide-Authorization: <64-hex>` (compatibility alias); full validation
+semantics are defined in BC-2.01.009. The endpoint continues serving during graceful
+shutdown drain to allow drain monitoring.
 
 ## Preconditions
 
 1. The monocle daemon is running.
-2. A `GET /status` request arrives with a valid `X-Monocle-Authorization: monocle-v1:<token>` header.
+2. A `GET /status` request arrives with a valid auth header per dual-accept protocol (ADR-0005 v1.0.2): either `X-Monocle-Authorization: monocle-v1:<token>` (canonical) or `X-Claude-Code-Ide-Authorization: <64-hex>` (compatibility alias). Full dual-accept validation semantics are defined in BC-2.01.009.
 
 ## Postconditions
 
@@ -73,7 +76,8 @@ continues serving during graceful shutdown drain to allow drain monitoring.
 
 | Input | Expected Output | Category |
 |-------|----------------|----------|
-| `GET /status` with valid `X-Monocle-Authorization` header | HTTP 200; body contains all 10 fields; `abi_version == 1` | happy-path |
+| `GET /status` with valid `X-Monocle-Authorization: monocle-v1:<token>` (canonical) | HTTP 200; body contains all 10 fields; `abi_version == 1` | happy-path |
+| `GET /status` with valid `X-Claude-Code-Ide-Authorization: <64-hex>` (alias); no canonical header | HTTP 200; body contains all 10 fields; `abi_version == 1`; WARN deprecation log emitted | happy-path (alias) |
 | `GET /status` (no auth header) | HTTP 401 `{"error":"missing_auth_token"}` | error |
 | `GET /status` with invalid token | HTTP 401 `{"error":"invalid_auth_token"}` | error |
 
@@ -116,6 +120,19 @@ S-TBD — Implement daemon /status endpoint with full observability fields (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-002-status-endpoint.md` — VP-002 status endpoint integration tests
+
+## §Trace v1.0.4
+
+**F-R108-17 MEDIUM — Dual-accept alignment: Description, Precondition 2, test vector** (2026-05-18T01:00:00Z):
+- F-R108-17: BC-2.01.002 Description (line 34), Precondition 2 (line 40), and canonical test vector all implied single-header `X-Monocle-Authorization` only. This contradicts ADR-0005 v1.0.2 dual-accept protocol (both `X-Monocle-Authorization` canonical and `X-Claude-Code-Ide-Authorization` alias are valid) which is correctly specified in BC-2.01.009 INV-3 and BC-2.01.004 INV-3.
+- **SE-17f Description BEFORE:** `...requires a valid X-Monocle-Authorization: monocle-v1:<token> header.`
+- **SE-17f Description AFTER:** `...requires a valid auth header per the dual-accept protocol (ADR-0005 v1.0.2): either X-Monocle-Authorization: monocle-v1:<token> (canonical) or X-Claude-Code-Ide-Authorization: <64-hex> (compatibility alias); full validation semantics are defined in BC-2.01.009.`
+- **SE-17f Precondition 2 BEFORE:** `A GET /status request arrives with a valid X-Monocle-Authorization: monocle-v1:<token> header.`
+- **SE-17f Precondition 2 AFTER:** `A GET /status request arrives with a valid auth header per dual-accept protocol (ADR-0005 v1.0.2): either X-Monocle-Authorization: monocle-v1:<token> (canonical) or X-Claude-Code-Ide-Authorization: <64-hex> (compatibility alias). Full dual-accept validation semantics are defined in BC-2.01.009.`
+- **SE-17f test vector BEFORE (happy-path row):** `GET /status with valid X-Monocle-Authorization header`
+- **SE-17f test vector AFTER:** split into two rows — canonical happy-path and alias happy-path (alias emits WARN deprecation log per BC-2.01.009 PC-3/INV-6).
+- SE-17c-d body-scope grep: Description, Precondition 2, and test vector table are the only normative changes in this version. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. Postconditions 1-3 and Invariants 1-3 are unchanged — they correctly delegate auth-failure semantics to BC-2.01.009.
+- SE-16d monotonicity PASS: 2026-05-18T01:00:00Z > prior 2026-05-17T23:30:00Z (v1.0.3).
 
 ## §Trace v1.0.3
 

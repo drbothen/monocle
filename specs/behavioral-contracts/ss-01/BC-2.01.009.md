@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T23:30:00Z
+timestamp: 2026-05-18T01:10:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "754af00"
@@ -131,19 +131,29 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
 
+## §Trace v1.0.5
+
+**F-R108-12 HIGH — Audit-trail correction: §Trace v1.0.4 finding-ID F-R107-9 was misattributed** (2026-05-18T01:10:00Z):
+- F-R108-12: The §Trace v1.0.4 entry below (preserved verbatim for historical record) cited "F-R107-9 — ADR-0005 version pin added." F-R107-9 in the R107 adversarial report describes the still-broken ADR-0002 inputs path (a defect routed to Architect 7C for Round 7). It does NOT describe the ADR version pin addition.
+- The ADR-0005 v1.0.2 version pin added to the Architecture Source row in v1.0.4 is correctly classified as a partial closure of **F-R107-2** (cascade incomplete — Round 5D BC sweep missed the ADR version pin). This is "F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion."
+- The §Trace v1.0.4 narrative is corrected here in v1.0.5. The v1.0.4 content is preserved unchanged for audit history.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. No normative content changes in this version — audit-trail correction only.
+- SE-16d monotonicity PASS: 2026-05-18T01:10:00Z > prior 2026-05-17T23:30:00Z (v1.0.4).
+
 ## §Trace v1.0.4
 
-**F-R107-2 CRITICAL + F-R107-9 MEDIUM + F-R107-10 MEDIUM** (2026-05-17T23:30:00Z):
+**F-R107-2 CRITICAL + F-R107-2 closure part (BC ADR pin add) per Round 6A scope expansion + F-R107-10 MEDIUM** (2026-05-17T23:30:00Z):
+*(NOTE: v1.0.4 originally cited "F-R107-9" for the ADR version pin. That was a misattribution — see §Trace v1.0.5 for correction. F-R107-9 in the R107 report describes ADR-0002 inputs path; the ADR-0005 pin addition is F-R107-2 closure part. Finding-ID corrected in v1.0.5; v1.0.4 content preserved verbatim below.)*
 
 **F-R107-2 — Architecture Source pin refresh v1.0.29 → v1.0.30:**
 - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision)`
 - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.30 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
 - Canonical SS-daemon-lifecycle version per architect 5E commit 03a4c57 post-R106 closure. (Note: this BC was at v1.0.29, not v1.0.25 — it had been previously refreshed in the T-128n Round 4 update. Refreshed to v1.0.30 per SE-17g sweep requirement.)
 
-**F-R107-9 — ADR-0005 version pin added:**
+**F-R107-2 closure part (BC ADR pin add) — ADR-0005 version pin added:**
 - Architecture Source row previously cited `ADR-0005 (dual-accept auth header decision)` without an explicit version pin.
 - SE-17f: Added `v1.0.2` version pin to ADR-0005 citation.
-- Rationale: See BC-2.01.008 §Trace v1.0.4 F-R107-9 rationale (identical requirement applies here).
+- Rationale: See BC-2.01.008 §Trace v1.0.4 (identical requirement applies here; both BCs had the same bare-ADR citation gap).
 
 **F-R107-10 — EC-013 Bearer-fallback edge case added:**
 - VP-009 probe 9.5 and test-vectors row 5 both reference `Authorization: Bearer <token>` (wrong header name, neither canonical nor alias recognized). No EC covered this in the BC prior to this version — EC-007 through EC-012 existed.
