@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
 input-hash: "ee1f76a"
@@ -93,7 +93,15 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
 for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
 
-## §Trace v1.0.1
+## §Trace v1.0.2
+
+**T-128e audit-trail reconciliation** (2026-05-17T17:00:00Z):
+- NORMATIVE: §Trace v1.0.1 body corrected: hash citation `561ef4d` → `ee1f76a` to match
+  frontmatter `input-hash: ee1f76a` (commit `0af206a`). No frontmatter change — frontmatter
+  was always correct; only the §Trace narrative diverged.
+- INFORMATIONAL: Version bump 1.0.1 → 1.0.2 records audit-trail correction; no content changes.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T17:00:00Z >= chain high-water 2026-05-17T16:30:00Z.
+- Audit reference: `.factory/plans/adversary-cycle-001/R105-findings.md` F-R105-5 (HIGH).
 
 **Audit R2 residual fix RES-04 + RES-01 fix-pass** (2026-05-17T16:30:00Z):
 - RES-04: Added `Tokens` column to Document Map per architecture-index-template.md.
@@ -101,11 +109,20 @@ for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
   All seven section files enumerated with `~N` token estimates.
 - RES-01: Normalized `inputs:` field in ARCH-INDEX.md from absolute paths to relative
   paths (inline array format) resolvable by compute-input-hash. input-hash updated to
-  `561ef4d` (reflecting [product-brief.md, prd.md] content at fix-pass time). Path
+  `ee1f76a` (reflecting [product-brief.md, prd.md] content at fix-pass time). Path
   normalization also applied to 18 other [live-state] placeholder files in the same pass.
 - version: 1.0 → 1.0.1; timestamp: 2026-05-17T11:00:00Z → 2026-05-17T16:30:00Z.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T16:30:00Z >= chain high-water 2026-05-17T16:00:00Z.
 - Audit references: `.factory/plans/template-compliance-audit-r2.md` RES-01, RES-04.
+- **T-128e reconciliation** (2026-05-17T17:00:00Z): §Trace originally cited `561ef4d`; corrected
+  to `ee1f76a` to match frontmatter line 10 (actual value written by commit `0af206a`). Root
+  cause: §Trace narrative was authored with an intermediate hash computed before the final
+  compute-input-hash write; frontmatter received the definitive `ee1f76a` in the same commit.
+  SE-17c body-scope grep evidence: `grep "561ef4d\|ee1f76a"` in §Trace body (lines ≥ 96)
+  returned 1 match (`561ef4d`) prior to this correction — confirming the divergence between
+  audit trail and artifact state (defect F-R105-5). Frontmatter `input-hash: ee1f76a` is
+  authoritative; §Trace narrative now aligned. No frontmatter change required.
+  Audit reference: `.factory/plans/adversary-cycle-001/R105-findings.md` F-R105-5 (HIGH).
 
 **Template compliance Dispatch 1 of 6+** (2026-05-17T11:00:00Z):
 - Created as new artifact; no prior version.

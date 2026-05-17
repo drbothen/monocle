@@ -7,7 +7,7 @@ version: "1.1.17"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
 input-hash: "4ca4e67"
 traces_to: architecture/ARCH-INDEX.md
@@ -748,3 +748,27 @@ v1.1.6 changes (round-22 fix F-R22-3):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §8 (SS-deps-pin-manifest).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.1.17** (2026-05-17T17:00:00Z) — RES-01 input-hash normalization (T-128d closure):
+- NORMATIVE: `inputs:` field normalized from absolute-path multi-line list to relative inline
+  array format resolvable by compute-input-hash:
+  `[research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]`.
+  Root cause: absolute paths with multi-line YAML list format caused awk sub() tool to fire
+  exit on modified `$0` before reading subsequent inputs, leaving input-hash stale.
+- NORMATIVE: `input-hash` materialized from `[live-state]` placeholder to `4ca4e67`
+  (reflecting content of [research/domain-monocle-vision-synthesis.md, product-brief.md,
+  planning/oq-research.md] at fix-pass time 2026-05-17T16:30:00Z).
+- NORMATIVE: `timestamp` bumped to 2026-05-17T16:30:00Z (>= chain high-water
+  2026-05-17T11:00:00Z; SE-16d PASS).
+- INFORMATIONAL: Version bump 1.1.16 → 1.1.17 records frontmatter normalization only;
+  no body content changes.
+- SE-17c body-scope grep evidence: `grep "1\.1\.17"` in §Trace body (lines ≥ 260) returned
+  0 matches prior to this entry — confirming the version bump was unaccompanied by any
+  §Trace documentation (defect confirmed as F-R105-4).
+- SE-17d non-production grep: search `^## §Trace` boundary confirmed at line 260;
+  only §Trace narrative prose affected.
+- Audit reference: `.factory/plans/adversary-cycle-001/R105-findings.md` F-R105-4 (HIGH).
+  Commit `0af206a` (RES-01 pass) bumped version + frontmatter without §Trace entry;
+  this entry retroactively documents that commit's changes per production-grade fix T-128d.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T17:00:00Z >= chain high-water
+  2026-05-17T16:30:00Z.
