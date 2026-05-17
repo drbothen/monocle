@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T22:40:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -93,7 +93,7 @@ error body. This bounds worst-case daemon memory exposure per connection to
 ## Related BCs (Recommended)
 
 - [BC-2.01.001] — composes with: `/healthz` is NOT subject to this limit (unauthenticated router has no body-limit layer)
-- [BC-2.01.007] — related to: ring buffer records can approach 256 KiB in size (per BC-RING-001 EC-002); this limit bounds the ingestion path
+- [BC-2.01.007] — related to: ring buffer records can approach 256 KiB in size (per BC-2.01.007 EC-002); this limit bounds the ingestion path
 
 ## Architecture Anchors (Recommended)
 
@@ -106,6 +106,17 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-003-body-size-limit.md` — VP-003 body size limit integration tests
+
+## §Trace v1.0.2
+
+**F-R106-12 MED — Stale BC-RING-001 EC-002 parenthetical in Related BCs** (2026-05-17T22:40:00Z):
+- F-R106-12: Related BCs section contained `(per BC-RING-001 EC-002)`. The prior §Trace v1.0.1 classified this as "an EC reference label, not a stale BC cross-reference" and marked it NO-OP. However, adversary R106 flagged it as a stale old-form BC ID parenthetical at MEDIUM severity. Production-grade resolution: canonicalize to `BC-2.01.007 EC-002` since `BC-RING-001` is the old ID for `BC-2.01.007` per BC-INDEX §Renumbering Map.
+- **SE-17f Related BCs before/after:**
+  - Before: `[BC-2.01.007] — related to: ring buffer records can approach 256 KiB in size (per BC-RING-001 EC-002); this limit bounds the ingestion path`
+  - After: `[BC-2.01.007] — related to: ring buffer records can approach 256 KiB in size (per BC-2.01.007 EC-002); this limit bounds the ingestion path`
+  - Rationale: EC-002 is defined within BC-2.01.007 (the renumbered BC-RING-001); the old-form ID BC-RING-001 is renumbering noise in body prose; canonical form `BC-2.01.007 EC-002` is self-documenting and consistent with BC-INDEX. Note: the prior §Trace v1.0.1 observation that "the EC ID EC-002 is defined within BC-2.01.007" confirmed the EC is valid — only the BC prefix needed canonicalization.
+- SE-17c-d body-scope grep: `BC-RING-001 EC-002` in Related BCs was the only stale old-form reference in non-historical body prose. §Trace v1.0.1 historical text retains the prior reasoning inline (audit trail). 0 stale VP IDs. 0 other stale BC IDs.
+- SE-16d monotonicity PASS: 2026-05-17T22:40:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

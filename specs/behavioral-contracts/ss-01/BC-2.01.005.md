@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T22:20:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -67,7 +67,7 @@ directory is created with mode `0o700` (owner-only) for defense-in-depth.
 1. Only one monocle daemon instance runs per runtime directory. The pid-liveness check (step 1) enforces this.
 2. `tempfile::persist` guarantees atomicity — no partial lock file is observable by concurrent readers.
 3. Lock file mode `0o600` prevents other OS users from reading the auth token.
-4. The asymmetry with BC-ENGINE-002-ERR (`HomeUnresolvable` fail-fast) is intentional: `BaseDirs::new() == None` signals a genuine system-configuration failure (no home directory at all); `ProjectDirs::runtime_dir() == None` on macOS is expected platform behavior, warranting a documented fallback rather than fail-fast.
+4. The asymmetry with BC-2.03.003 (HomeUnresolvable; renumbered from BC-ENGINE-002-ERR per BC-INDEX §Renumbering Map) is intentional: `BaseDirs::new() == None` signals a genuine system-configuration failure (no home directory at all); `ProjectDirs::runtime_dir() == None` on macOS is expected platform behavior, warranting a documented fallback rather than fail-fast.
 
 ## Edge Cases
 
@@ -136,6 +136,17 @@ S-TBD — Implement daemon lock file lifecycle with platform-aware runtime direc
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-005-lock-file-lifecycle.md` — VP-005 lock file lifecycle integration tests
+
+## §Trace v1.0.2
+
+**F-R106-11 MED — Stale BC-ENGINE-002-ERR in Invariant 4** (2026-05-17T22:20:00Z):
+- F-R106-11: Invariant 4 referenced `BC-ENGINE-002-ERR` (old-form ID) without a canonical ID mapping. This is a stale cross-reference — BC-ENGINE-002-ERR was renumbered to BC-2.03.003 per BC-INDEX §Renumbering Map.
+- **SE-17f Invariant 4 before/after:**
+  - Before: `The asymmetry with BC-ENGINE-002-ERR (HomeUnresolvable fail-fast) is intentional: ...`
+  - After: `The asymmetry with BC-2.03.003 (HomeUnresolvable; renumbered from BC-ENGINE-002-ERR per BC-INDEX §Renumbering Map) is intentional: ...`
+  - Rationale: canonical BC ID is used; old form preserved in parenthetical with renumbering citation per append-only ID protection (BC-INDEX §Renumbering Map row `BC-ENGINE-002-ERR → BC-2.03.003`).
+- SE-17c-d body-scope grep: Invariant 4 was the only stale old-form BC ID in non-historical body prose. 0 stale VP IDs. 0 other stale BC IDs.
+- SE-16d monotonicity PASS: 2026-05-17T22:20:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

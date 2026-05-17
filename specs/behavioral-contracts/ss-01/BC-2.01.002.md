@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T22:30:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -52,7 +52,7 @@ continues serving during graceful shutdown drain to allow drain monitoring.
    - `channel_saturation_pct`: float 0.0–100.0 representing bounded channel fill percentage
    - `last_hook_ts`: JSON object with per-hook-type ISO 8601 timestamps or `null` for hook types that have not fired since daemon start
    - `tui_attached`: boolean — `true` if a TUI client is currently connected via UDS
-2. If the auth token is invalid: HTTP 401 per BC-2.01.009 (BC-AUTH-002).
+2. If the auth token is invalid: HTTP 401 per BC-2.01.009.
 3. `/status` continues to serve during graceful shutdown drain (read-only; useful for drain monitoring).
 
 ## Invariants
@@ -116,6 +116,17 @@ S-TBD — Implement daemon /status endpoint with full observability fields (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-002-status-endpoint.md` — VP-002 status endpoint integration tests
+
+## §Trace v1.0.2
+
+**F-R106-12 MED — Stale (BC-AUTH-002) parenthetical removal in Postcondition 2** (2026-05-17T22:30:00Z):
+- F-R106-12: Postcondition 2 contained `BC-2.01.009 (BC-AUTH-002)`. The `(BC-AUTH-002)` parenthetical is redundant renumbering noise — BC-INDEX §Renumbering Map preserves the old-ID→new-ID mapping; inline parentheticals in body prose are not needed and accumulate as noise in future adversarial sweeps.
+- **SE-17f Postcondition 2 before/after:**
+  - Before: `If the auth token is invalid: HTTP 401 per BC-2.01.009 (BC-AUTH-002).`
+  - After: `If the auth token is invalid: HTTP 401 per BC-2.01.009.`
+  - Rationale: canonical form `BC-2.01.009` is sufficient; old ID is preserved only in the Old ID (historical) row of the referenced BC file and in BC-INDEX §Renumbering Map, not in cross-reference prose.
+- SE-17c-d body-scope grep: `(BC-AUTH-002)` in Postcondition 2 was the only stale old-form parenthetical in non-historical body prose. Historical row `BC-DAEMON-002` in Traceability remains (correct; that is BC-2.01.002's own old ID). 0 stale VP IDs. 0 other stale BC IDs.
+- SE-16d monotonicity PASS: 2026-05-17T22:30:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

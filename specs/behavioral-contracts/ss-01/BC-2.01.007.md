@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T22:50:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -96,7 +96,7 @@ the format version before deserializing remaining fields.
 
 ## Related BCs (Recommended)
 
-- [BC-2.01.003] — related to: ring buffer records can approach 256 KiB (BC-RING-001 EC-002); BC-2.01.003 governs the ingestion-path body limit
+- [BC-2.01.003] — related to: ring buffer records can approach 256 KiB (BC-2.01.007 EC-002); BC-2.01.003 governs the ingestion-path body limit
 - [BC-2.01.004] — composes with: ring buffer flush occurs during graceful shutdown drain (BC-2.01.004 Postcondition 6)
 - [BC-2.01.010] — related to: lock file `contract_version` first-key convention parallels `format_version` first-key convention in the ring
 
@@ -112,6 +112,17 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
+
+## §Trace v1.0.2
+
+**F-R106-12 MED — Stale BC-RING-001 EC-002 self-reference in Related BCs** (2026-05-17T22:50:00Z):
+- F-R106-12: Related BCs section contained `(BC-RING-001 EC-002)` as a self-referencing parenthetical. BC-RING-001 is this file's own old ID (per BC-INDEX §Renumbering Map and this file's Traceability "Old ID (historical): BC-RING-001" row). Using the old form in active body prose constitutes a stale ID reference even for self-referential EC citations.
+- **SE-17f Related BCs before/after:**
+  - Before: `[BC-2.01.003] — related to: ring buffer records can approach 256 KiB (BC-RING-001 EC-002); BC-2.01.003 governs the ingestion-path body limit`
+  - After: `[BC-2.01.003] — related to: ring buffer records can approach 256 KiB (BC-2.01.007 EC-002); BC-2.01.003 governs the ingestion-path body limit`
+  - Rationale: EC-002 is defined in this file (BC-2.01.007); canonical self-reference is `BC-2.01.007 EC-002`. Applied consistently with the parallel fix in BC-2.01.003.
+- SE-17c-d body-scope grep: `BC-RING-001 EC-002` in Related BCs was the only stale old-form reference in non-historical body prose. `BC-RING-001` in the Old ID (historical) Traceability row is preserved (correct; that is historical identity). 0 stale VP IDs. 0 other stale BC IDs.
+- SE-16d monotonicity PASS: 2026-05-17T22:50:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
 
 ## §Trace v1.0.1
 

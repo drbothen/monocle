@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T20:00:00Z
+timestamp: 2026-05-17T22:10:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -104,7 +104,7 @@ any Phase 1 response.
 | L2 Domain Invariants | DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC is the primary enforcer of DI-005: all value-present failures including wrong prefix, bad format, and secret mismatch return HTTP 401; the two-body taxonomy ensures the monocle-v1: prefix requirement is enforced without leaking structural information to attackers) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
 | Architecture Source | SS-daemon-lifecycle.md v1.0.29 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision) |
-| Forward Compat Contract | FC-06 (F-FC-I005 Phase 4 OAuth2 clarification) |
+| Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Architect Adjudication | commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired |
 | Test File | `monocle-runtime/tests/auth_header_rejection.rs` |
@@ -129,6 +129,18 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
+
+## §Trace v1.0.3
+
+**F-R106-7 HIGH — Fabricated F-FC-I005 parenthetical removal** (2026-05-17T22:10:00Z):
+- F-R106-7: Forward Compat Contract row contained `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`. The ID `F-FC-I005` does not exist in `SS-forward-compatibility.md`; the FC convention is `FC-NN` (two-digit numeric), not `F-FC-INNN`. The parenthetical is a fabricated identifier with no referent.
+- **SE-17f Forward Compat Contract row before/after:**
+  - Before: `FC-06 (F-FC-I005 Phase 4 OAuth2 clarification)`
+  - After: `FC-06 (versioned auth token prefix)`
+  - Rationale: `FC-06 (versioned auth token prefix)` is the canonical form used in BC-2.01.008 Traceability table and the BC-INDEX §SS-01 FC reference. The parenthetical was removed and replaced with the correct FC-06 description.
+- Note: Architect 5E is performing the mirror removal in SS-daemon-lifecycle.md in the same round (pre-adjudicated to REMOVE).
+- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. Forward Compat Contract row is the sole normative change in this version.
+- SE-16d monotonicity PASS: 2026-05-17T22:10:00Z > prior 2026-05-17T20:00:00Z (v1.0.2).
 
 ## §Trace v1.0.2
 

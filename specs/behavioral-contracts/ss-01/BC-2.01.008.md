@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-17T18:00:00Z
+timestamp: 2026-05-17T22:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "2184d8f"
@@ -45,7 +45,7 @@ timing oracle attacks.
 1. The lock file `authToken` field contains exactly a 64-character lowercase hexadecimal string (32 bytes from `rand::rngs::OsRng`, hex-encoded). No prefix, no suffix. Regex: `/^[0-9a-f]{64}$/`.
 2. The wire format for the auth token presented to the daemon (in the `X-Monocle-Authorization` header) is `monocle-v1:<64-char-hex>` — the literal prefix `monocle-v1:` followed by the lock file's 64-char hex value. Total wire length: 74 characters.
 3. The daemon's auth middleware uses `constant_time_eq::constant_time_eq` to compare the hex part (after prefix strip) with the stored secret. The comparison is constant-time to prevent timing oracle attacks.
-4. Tokens accepted by Phase 1 daemon's `/status`, `/hooks/*`, and `/shutdown` routes use ONLY `X-Monocle-Authorization: monocle-v1:<64-hex>`. No other header format is a valid auth mechanism on Phase 1 endpoints.
+4. Tokens accepted by Phase 1 daemon's `/status`, `/hooks/*`, and `/shutdown` routes use the canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` header (preferred, for monocle-aware tools) OR the `X-Claude-Code-Ide-Authorization: <64-hex>` compatibility alias (for real Claude Code, which sends the raw lock file `authToken` field with no prefix) per ADR-0005 dual-accept protocol. The canonical header takes priority; when both are present, `X-Monocle-Authorization` is validated and the alias is ignored. The alias path emits a WARN-level deprecation log on every use. No other header format is a valid auth mechanism on Phase 1 endpoints.
 
 ## Invariants
 
@@ -84,7 +84,7 @@ timing oracle attacks.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth token wire format that secures authenticated access to the hook ingestion daemon's endpoints |
 | L2 Domain Invariants | DI-003 (the auth token must be written to the lock file after the port is bound — never before — Postcondition 1 states the lock file authToken is written as part of the start sequence after the listener is bound, per BC-2.01.005 Postcondition 3 which this BC specifies the content for); DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC defines the wire format monocle-v1:<64-hex> that is the canonical prefix, which DI-005 requires to be enforced on all auth checks) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.25 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Test File | `monocle-runtime/tests/auth_token_lifecycle.rs` |
@@ -110,6 +110,17 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-008-auth-token-wire-format.md` — VP-008 auth token wire format integration tests
+
+## §Trace v1.0.3
+
+**F-R106-2 CRITICAL — PC-4 ADR-0005 alignment** (2026-05-17T22:00:00Z):
+- F-R106-2: Postcondition 4 contradicted ADR-0005 by specifying `X-Monocle-Authorization` as the ONLY valid auth mechanism, which directly conflicts with the dual-accept protocol ADR-0005 mandates for real Claude Code interoperability.
+- **SE-17f PC-4 before/after:**
+  - Before: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use ONLY X-Monocle-Authorization: monocle-v1:<64-hex>. No other header format is a valid auth mechanism on Phase 1 endpoints.`
+  - After: `Tokens accepted by Phase 1 daemon's /status, /hooks/*, and /shutdown routes use the canonical X-Monocle-Authorization: monocle-v1:<64-hex> header (preferred, for monocle-aware tools) OR the X-Claude-Code-Ide-Authorization: <64-hex> compatibility alias (for real Claude Code, which sends the raw lock file authToken field with no prefix) per ADR-0005 dual-accept protocol. The canonical header takes priority; when both are present, X-Monocle-Authorization is validated and the alias is ignored. The alias path emits a WARN-level deprecation log on every use. No other header format is a valid auth mechanism on Phase 1 endpoints.`
+- **Architecture Source** row updated: added `ADR-0005 (dual-accept auth header decision)` alongside SS-daemon-lifecycle.md citation.
+- SE-17c-d body-scope grep: 0 additional stale BC IDs. 0 stale VP IDs. PC-4 update is the sole normative change in this version.
+- SE-16d monotonicity PASS: 2026-05-17T22:00:00Z > prior 2026-05-17T18:00:00Z (v1.0.2).
 
 ## §Trace v1.0.2
 
