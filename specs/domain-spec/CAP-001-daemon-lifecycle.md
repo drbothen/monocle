@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T14:00:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -73,15 +73,20 @@ Phase 1 supports exactly 5 hook types (JC-2 resolution, EX-2 resolution). The
 
 The persisted form of a HookEvent as written to the async JSONL ring. Every record
 carries a format version discriminant as its first key so Phase 2+ readers can
-detect format evolution.
+detect format evolution. Hook-type-specific context is carried in two structured
+optional fields (`tool_name`, `tool_input`) rather than an opaque payload blob;
+these fields are absent (not explicit-null) for hook types that carry no tool
+context (e.g., SessionStart, UserPromptSubmit, Stop).
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| format_version | u32, first key | Always 1 in Phase 1. Enables forward evolution. |
-| hook_type | string | Serialized HookType |
-| session_id | string | From HookEvent |
-| received_at_micros | i64 | Microseconds since epoch |
-| payload_json | string | Full hook payload as JSON |
+| format_version | u32 | Always 1 in Phase 1. First field in declaration order; serializes first (FC-01). |
+| session_id | String | Stable harness subprocess identifier. From HookEvent. |
+| timestamp_micros | i64 | Microseconds since epoch at time of daemon receipt. |
+| pid | u32 | Daemon process ID at time of record emission. |
+| hook_type | String | Serialized HookType (one of the 5 Phase 1 hook types). |
+| tool_name | Option&lt;String&gt; | Tool name for hook types that carry tool context (e.g., PreToolUse); absent otherwise. |
+| tool_input | Option&lt;serde_json::Value&gt; | Structured tool arguments; absent for hook types with no tool context. |
 
 ### DaemonLockFile
 
@@ -204,3 +209,44 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
 | BC-2.01.008 | Auth Token Wire Format (FC-06) | AuthToken format in DaemonLockFile |
 | BC-2.01.009 | Auth Header Validation | DI-005 (see CAP-002) applied at ingestion |
 | BC-2.01.010 | Lock File Contract Version Field | DaemonLockFile.contract_version |
+
+## §Trace v1.1
+
+**F-R105-1 BA closure** (2026-05-17T17:00:00Z):
+
+- Finding: F-R105-1 CRITICAL — HookEventRecord schema divergence between CAP-001 (5-field,
+  opaque `payload_json`) and BC-2.01.007 canonical 7-field schema.
+- SE-17f before/after evidence:
+
+  BEFORE (v1.0, lines ~79-84):
+  ```
+  | format_version | u32, first key | Always 1 in Phase 1. Enables forward evolution. |
+  | hook_type      | string         | Serialized HookType                              |
+  | session_id     | string         | From HookEvent                                   |
+  | received_at_micros | i64        | Microseconds since epoch                         |
+  | payload_json   | string         | Full hook payload as JSON                        |
+  ```
+
+  AFTER (v1.1, lines ~79-87):
+  ```
+  | format_version   | u32                       | Always 1 in Phase 1. First field; serializes first (FC-01). |
+  | session_id       | String                    | Stable harness subprocess identifier. From HookEvent.       |
+  | timestamp_micros | i64                       | Microseconds since epoch at time of daemon receipt.         |
+  | pid              | u32                       | Daemon process ID at time of record emission.               |
+  | hook_type        | String                    | Serialized HookType (one of the 5 Phase 1 hook types).     |
+  | tool_name        | Option<String>            | Tool name for hook types that carry tool context; absent otherwise. |
+  | tool_input       | Option<serde_json::Value> | Structured tool arguments; absent for hook types with no tool context. |
+  ```
+
+- Changes applied:
+  1. Field count: 5 → 7 (added `pid: u32`; split `payload_json` into `tool_name` + `tool_input`).
+  2. Field renamed: `received_at_micros` → `timestamp_micros` (BC-2.01.007 canonical spelling).
+  3. Field order corrected to declaration order per BC-2.01.007 Postcondition 4.
+  4. `hook_type` moved from position 2 → position 5 (BC-2.01.007 canonical order).
+  5. Surrounding prose updated: replaced "opaque payload blob" with structured optional fields description.
+  6. `Option<String>` and `Option<serde_json::Value>` semantics documented (absent vs explicit null).
+
+- SE-16d monotonicity PASS: 2026-05-17T17:00:00Z > prior v1.0 creation 2026-05-17T14:00:00Z.
+- Scope: BA-only. interface-definitions.md and BC-2.01.007.md not touched.
+- CAP-002 and CAP-003: no HookEventRecord table found — see report for details.
+- L2-INDEX.md version: bumped from 1.0.2 → 1.0.3 (§Trace entry added, entity registry unchanged).

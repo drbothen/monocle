@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-17T16:30:00Z
+timestamp: 2026-05-17T17:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -158,3 +158,15 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
   2026-05-17T13:30:00Z (Dispatch 5b VP-INDEX).
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md §MISS-05`.
 - Next: Dispatch 7 (Architect runs compute-input-hash across all artifacts).
+
+## §Trace v1.0.3
+
+**F-R105-1 BA closure — HookEventRecord schema alignment** (2026-05-17T17:00:00Z):
+- CAP-001-daemon-lifecycle.md bumped v1.0 → v1.1.
+- HookEventRecord entity table corrected from 5-field opaque-blob schema to
+  7-field canonical schema per BC-2.01.007 Postcondition 4 (verbatim field order:
+  format_version, session_id, timestamp_micros, pid, hook_type, tool_name, tool_input).
+- Surrounding prose updated to describe structured optional tool_name/tool_input fields.
+- L2-INDEX version bumped 1.0.2 → 1.0.3; timestamp advanced.
+- CAP-002 and CAP-003: no HookEventRecord schema table present — no changes required.
+- SE-16d monotonicity PASS: 2026-05-17T17:00:00Z > prior 2026-05-17T16:30:00Z (v1.0.2).
