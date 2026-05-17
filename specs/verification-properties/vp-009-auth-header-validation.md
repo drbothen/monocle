@@ -7,7 +7,7 @@ producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-18T01:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "348306e"
+input-hash: "3b314f4"
 traces_to: prd.md
 source_bc: BC-2.01.009
 module: monocle-runtime
@@ -430,7 +430,7 @@ fn verify_bc_2_01_009() {
 - Predecessor: monolithic VP-AUTH-002 at
   `.factory/specs/verification-properties.md` v1.35 (commit 842402c —
   pre-Dispatch-5a state; to be retired in Dispatch 5b).
-- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.3 (commit pending — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
+- Source contract: `behavioral-contracts/ss-01/BC-2.01.009.md` v1.0.5 (commit pending — PO 7A R108 Round 7A finding-ID correction; supersedes v1.0.4 commit d92e4a7 R6A F-R107-9 ADR-0005 v1.0.2 pin addition + F-R107-10 EC-013 Bearer-fallback addition; supersedes v1.0.3 commit d92e4a7 intermediate — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).
 - ADR: `architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` v1.0.2 (commit 03a4c57 — F-R106-14 ADR-0005 inputs path normalization + F-R106-7 F-FC-I005 fabrication removal; supersedes v1.0.1 commit e142efb — heading-hierarchy normalization; T-128m architectural decision dual-accept option (a)).
 - BC index: `behavioral-contracts/BC-INDEX.md` v1.6 (commit pending — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
 - Architecture: `architecture/SS-daemon-lifecycle.md` v1.0.31 §Start
