@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.29.3"
+version: "1.29.4"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T06:00:00Z
+timestamp: 2026-05-18T11:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "41a982b"
 traces_to: architecture/ARCH-INDEX.md
@@ -841,8 +841,8 @@ matrix." (Ambiguous anchor; does not distinguish gene-source vs monocle-canonica
 validation pattern.)
 
 **Correct form:** "field X is present in all 5 monocle-canonical hook body schemas per
-dtu-assessment.md v1.7 §monocle-canonical column, verified against SS-core-types-and-abi.md
-v1.2.8 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
+dtu-assessment.md v1.7.5 §monocle-canonical column, verified against SS-core-types-and-abi.md
+v1.2.13 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
 
 **D-042 integration:** The D-042 workflow (primary and secondary grep patterns, documented in
 SS-forward-compatibility.md §Trace §D-042 WORKFLOW RULE corrected) covers version-citation
@@ -949,6 +949,28 @@ grep -rn "session_id.*all.*hook\|all.*hook.*session_id\|present in all 5\|in all
 
 Run this grep in addition to the D-042 version-citation greps before any version bump of
 `dtu-assessment.md` or `SS-core-types-and-abi.md`.
+
+**PG-D042-BACK-CASCADE (codified v1.29.4, round-114 F-R114-1 root-cause closure):**
+D-042 cascade has historically been applied in the forward direction only: when file X is bumped,
+scan for citations to X in sibling files and refresh them. The back-cascade direction — when file X
+is bumped, also check whether X itself cites OTHER files whose versions have since advanced — was
+not codified, producing citation-staleness within the file that receives the cascade, not just in the
+files that source it. F-R114-1 found that SS-forward-compatibility.md carried stale citations to
+`dtu-assessment.md v1.7` and `SS-core-types-and-abi.md v1.2.8` even after those files had
+advanced to v1.7.5 and v1.2.13 respectively.
+
+**Explicit back-cascade obligation:** When bumping file X (the cascade recipient), ALSO run:
+
+```
+grep -rn 'X\.md v' .factory/specs/ | grep -v '§Trace'
+```
+
+where `X` is each document cited inside the file being updated. Classify every hit as
+historical-pinpoint (immutable) or current-pointer (must update). Complete all current-pointer
+refreshes in the same dispatch before committing.
+
+**Mnemonic:** D-042 is bidirectional — forward (who cites X?) AND backward (what does X cite?).
+Both directions run in every cascade sweep.
 
 ## Phantom-ID Convention
 
@@ -2335,6 +2357,21 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §9 (SS-conventions).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.29.4** (2026-05-18T11:00:00Z) — F-R114-1 + F-R114-2 D-042 back-cascade codification and example-pin refresh:
+- NORMATIVE (F-R114-2 LOW): §Schema-Fact Citation Convention example pins refreshed:
+  `dtu-assessment.md v1.7` → `v1.7.5`; `SS-core-types-and-abi.md v1.2.8` → `v1.2.13` in
+  the **Correct form** example. Historical §Trace references to these versions are immutable
+  pinpoints and are preserved unchanged.
+- NORMATIVE (F-R114-1 MED — D-042 back-cascade obligation): Added `PG-D042-BACK-CASCADE`
+  sub-rule to §D-042 CANONICAL SCOPE block. The rule codifies that D-042 sweeps are
+  bidirectional: forward (who cites X after X is bumped?) AND backward (what does X cite,
+  and are those citations stale?). Root cause: SS-forward-compatibility.md carried stale
+  `dtu-assessment.md v1.7` and `SS-core-types-and-abi.md v1.2.8` citations even after those
+  files advanced to v1.7.5 and v1.2.13.
+- SE-17c BEFORE: `dtu-assessment.md v1.7` (1 site), `SS-core-types-and-abi.md v1.2.8` (1 site).
+- SE-17c AFTER: `dtu-assessment.md v1.7.5` (1 site), `SS-core-types-and-abi.md v1.2.13` (1 site).
+- SE-16d PASS: 2026-05-18T11:00:00Z > chain high-water 2026-05-18T06:00:00Z (monotonic).
 
 **§Trace v1.29.3** (2026-05-18T06:00:00Z) — F-R110-18 BC-INDEX conventions cross-listing:
 - F-R110-18 LOW RESOLVED: BC-INDEX §Conventions defines EC namespace, test name, and anchor parenthetical conventions that are relevant to all BC authoring. These conventions were not cross-listed in SS-conventions-anti-patterns (the canonical conventions doc). Added §BC-INDEX Conventions section with EC Namespace Convention (F-R109-17), Test Name Convention (F-R109-21), and Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16) as cross-references to the BC-INDEX §Conventions canonical source.

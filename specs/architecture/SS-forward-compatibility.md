@@ -4,11 +4,11 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.17"
+version: "1.2.18"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-18T11:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
 input-hash: "446f2fb"
 traces_to: architecture/ARCH-INDEX.md
@@ -42,9 +42,9 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan Rationale (scan-ti
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.7 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.8 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.7.5 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.13 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.7 §monocle-canonical column)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.7.5 §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -60,7 +60,7 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.7 §monocle-canonical column).
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.7.5 §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -252,6 +252,22 @@ Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical a
 over time per F-R107-8 historical-pin discipline).
 
 ## §Trace
+
+**§Trace v1.2.18** (2026-05-18T11:00:00Z) — F-R114-1 D-042 back-cascade: citation refresh (active sites only):
+- NORMATIVE (F-R114-1 MED): Three active current-pointer citations refreshed to canonical versions:
+  (1) §P2-1 session_id bullet: `dtu-assessment.md v1.7` → `v1.7.5`; `SS-core-types-and-abi.md v1.2.8` → `v1.2.13`.
+  (2) §P2-1 pid bullet: `dtu-assessment.md v1.7` → `v1.7.5`.
+  (3) §P2-2 verdict: `dtu-assessment.md v1.7` → `v1.7.5`.
+  Historical §Trace pinpoints (rounds 52–60) that cite earlier dtu-assessment and SS-core-types-and-abi
+  versions are immutable audit records — preserved unchanged per PG-D042-WITHIN-FILE historical-pinpoint
+  carve-out.
+- D-042 BACK-CASCADE OBLIGATION TRIGGER: this bump was itself triggered by a back-cascade from
+  dtu-assessment.md v1.7 → v1.7.5 and SS-core-types-and-abi.md v1.2.8 → v1.2.13. The explicit
+  back-cascade obligation is now codified in SS-conventions-anti-patterns.md §D-042 CANONICAL SCOPE
+  (v1.29.4) to prevent future recurrence.
+- SE-17c BEFORE: `dtu-assessment.md v1.7` (3 sites), `SS-core-types-and-abi.md v1.2.8` (1 site).
+- SE-17c AFTER: `dtu-assessment.md v1.7.5` (3 sites), `SS-core-types-and-abi.md v1.2.13` (1 site).
+- SE-16d PASS: 2026-05-18T11:00:00Z > chain high-water 2026-05-18T05:30:00Z (monotonic).
 
 **§Trace v1.2.17** (2026-05-18T01:00:00Z) — F-R108-1 + F-R108-9 frontmatter + historical-pin correction (Round 7C):
 - NORMATIVE (F-R108-1 CRITICAL): §BC-mapping notes (pre-§Trace body) "current canonical BC-INDEX is v1.4
