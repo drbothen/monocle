@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.6"
+version: "1.0.7"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T01:00:00Z
+timestamp: 2026-05-18T01:35:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "3b314f4"
@@ -819,3 +819,41 @@ UTC ISO-8601 `Z` form: `2026-05-18T01:00:00Z` >= chain high-water `2026-05-17T23
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical citation refresh + pin sweep executed in-scope rather than deferred. Rule 4: 3 coupled cascade fixes consolidated into single v1.0.6 bump rather than fragmented. Rule 5: cheapest path (defer pin refresh as "stale by 1 minor version, acceptable") rejected in favor of correct path (refresh all active cites to current canonical versions). PRD v1.26.6 and BC-INDEX v1.6 cites are post-PO-7A and post-PO-7B targets (commit pending — will resolve to concrete SHAs during R108 Round 7E SM pass after parallel dispatches converge). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace v1.0.4 / v1.0.5 blocks preserved per SE-17g audit-trail discipline — historical state-at-time-of-bump snapshots are immutable; refreshing them would erase audit trail.
+
+---
+
+## §Trace v1.0.7 — F-R108 Round 7D FV META audit follow-up: active §Source contract pin refresh v1.0.3 → v1.0.5
+
+**Bump:** v1.0.6 → v1.0.7.
+**Predecessor pin:** v1.0.6 (commit 2095388 — F-R108 Round 7D FV main commit).
+**Scope of v1.0.7 (NORMATIVE — META audit discovered stale cite; in-scope fix):**
+
+### Change 1 — Active §Source contract pin refresh v1.0.3 → v1.0.5 (NORMATIVE)
+
+- **SE-17f before/after evidence:**
+  - **Before:** `- Source contract: \`behavioral-contracts/ss-01/BC-2.01.009.md\` v1.0.3 (commit pending — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).`
+  - **After:** `- Source contract: \`behavioral-contracts/ss-01/BC-2.01.009.md\` v1.0.5 (commit pending — PO 7A R108 Round 7A finding-ID correction; supersedes v1.0.4 commit d92e4a7 R6A F-R107-9 ADR-0005 v1.0.2 pin addition + F-R107-10 EC-013 Bearer-fallback addition; supersedes v1.0.3 commit d92e4a7 intermediate — F-R106-7 fabricated-FC-ID removal + ADR-0005 dual-accept propagation).`
+- **Rationale:** While running post-commit META audit on commit 2095388, discovered that the active §References Source-contract line still cited stale BC v1.0.3 even though §Source Contract section was correctly refreshed to v1.0.5 (per F-R108-11 main directive). The discrepancy was a sweep-miss in the F-R108-6 mass replacement (which targeted only BC-INDEX, PRD, and Architecture lines — not the Source-contract line which has a distinct structure).
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -nE "BC-2\.01\.009\.md.* v1\.0\.3" vp-009-auth-header-validation.md` body scope → 0 matches.
+- Post-edit `grep -nE "BC-2\.01\.009\.md.* v1\.0\.5" vp-009-auth-header-validation.md` body scope → 1 match (active §References Source-contract line).
+
+### Authoritative cross-references
+
+- **BC-2.01.009:** v1.0.5 (commit pending — PO 7A R108 Round 7A finding-ID correction).
+- **R108 closure:** Follow-up to F-R108-11 HIGH closure that was already addressed in §Source Contract but missed at the active §References Source-contract line.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T01:35:00Z` >= chain high-water `2026-05-18T01:30:00Z` (VP-INDEX v1.6 timestamp). SE-16d PASS.
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: active §Source contract pin refresh `v1.0.3` → `v1.0.5`; frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsection; cross-reference subsection.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4
+
+Rule 1+4: META audit discovered defect in prior FV output (same-dispatch sweep miss) fixed in-scope rather than surfaced as advisory or deferred. No tech-debt entries created.
