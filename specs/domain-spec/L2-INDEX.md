@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.8"
+version: "1.0.9"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-18T16:30:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -41,8 +41,8 @@ keybinding dispatch — without requiring the developer to leave their editor.
 | Section | File | Tokens | Primary Consumer | Purpose |
 |---------|------|--------|-----------------|---------|
 | Daemon Lifecycle | CAP-001-daemon-lifecycle.md | ~900 | product-owner, architect, story-writer | CAP-001: hook ingestion, JSONL ring, lock file, crash recovery, graceful shutdown |
-| Forward-Compat Wire Formats | CAP-002-forward-compat-wire-formats.md | ~900 | architect, product-owner | CAP-002: FC-01..FC-06 schemas, ABI versioning, protobuf field numbering |
-| Multi-Harness Adapter | CAP-003-multi-harness-adapter.md | ~900 | architect, story-writer | CAP-003: EngineModule trait, ClaudeCodeModule, FactoryAdapter trait |
+| Forward-Compatible Wire Formats | CAP-002-forward-compat-wire-formats.md | ~900 | architect, product-owner | CAP-002: FC-01..FC-06 schemas, ABI versioning, protobuf field numbering |
+| Multi-Harness Adapter Surface | CAP-003-multi-harness-adapter.md | ~900 | architect, story-writer | CAP-003: EngineModule trait, ClaudeCodeModule, FactoryAdapter trait |
 
 ## Cross-References
 
@@ -146,7 +146,7 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 
 **Template compliance Dispatch 6 of 7-8** (2026-05-17T14:00:00Z):
 - Created as new artifact. Directory `.factory/specs/domain-spec/` populated.
-- 3 capabilities extracted from product-brief.md v1.4.27 + vision-synthesis v1.1.2.
+- 3 capabilities extracted from product-brief.md v1.4.28 + vision-synthesis v1.1.2.
 - Capability anchors grounded: CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture;
   CAP-002 from brief §Forward-compatibility contracts FC-01..FC-06; CAP-003 from
   brief §Phase 1 dual-engine + vision §Engine Module + §FactoryAdapter.
@@ -277,3 +277,39 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 - CAP-001 scope: see F-R110-5 closure in CAP-001-daemon-lifecycle.md §Trace v1.4.
 - L2-INDEX version bumped 1.0.7 → 1.0.8; timestamp advanced.
 - SE-16d monotonicity PASS: 2026-05-18T05:00:00Z > prior 2026-05-17T23:00:00Z (v1.0.7).
+
+## §Trace v1.0.9
+
+**R16D F-R117-4 + GAP-R56-002 BA closure — Document Map naming alignment + brief pin v1.4.27 → v1.4.28** (2026-05-18T16:30:00Z):
+
+**Classification (SE-17g):** NORMATIVE — both fixes correct active current-state pointers.
+
+**F-R117-4 closure (LOW) — Document Map labels aligned to canonical capability H1s:**
+- SE-17a BEFORE/AFTER evidence (literal grep):
+  - BEFORE line 44: `| Forward-Compat Wire Formats | CAP-002-forward-compat-wire-formats.md |`
+  - AFTER  line 44: `| Forward-Compatible Wire Formats | CAP-002-forward-compat-wire-formats.md |`
+  - BEFORE line 45: `| Multi-Harness Adapter | CAP-003-multi-harness-adapter.md |`
+  - AFTER  line 45: `| Multi-Harness Adapter Surface | CAP-003-multi-harness-adapter.md |`
+- Rationale: Document Map section labels drifted from canonical CAP-002 H1 (`Forward-Compatible Wire Formats`) and CAP-003 H1 (`Multi-Harness Adapter Surface`). Capabilities Registry (lines 62-63) used the canonical names throughout; only Document Map was inconsistent. Fixed Document Map to match capability section H1s exactly.
+- CAP-001 Document Map label `Daemon Lifecycle` verified against Capabilities Registry entry `Daemon Lifecycle` — match confirmed, no change required.
+- SE-17e sibling-propagation: CAP-002-forward-compat-wire-formats.md and CAP-003-multi-harness-adapter.md H1s are authoritative; only L2-INDEX Document Map was in scope for this fix. No CAP files modified.
+
+**GAP-R56-002 closure (HIGH) — brief pin back-cascade v1.4.27 → v1.4.28:**
+- SE-17a BEFORE/AFTER evidence (literal grep, §Trace v1.0 line 149):
+  - BEFORE: `3 capabilities extracted from product-brief.md v1.4.27 + vision-synthesis v1.1.2.`
+  - AFTER:  `3 capabilities extracted from product-brief.md v1.4.28 + vision-synthesis v1.1.2.`
+- Rationale: R15B commit 08d1ef4 bumped product-brief.md v1.4.27 → v1.4.28. §Trace v1.0 is
+  an active current-pointer (treated consistently with F-R107-12, F-R110-4 prior patterns in
+  §Trace v1.0.7 and v1.0.8). Historical §Trace entries (v1.0.7, v1.0.8) citing v1.4.25 and
+  v1.4.27 in their before/after slots are preserved as historical records — not updated.
+- SE-17c-d body-scope grep: searched L2-INDEX.md for all `v1.4.` occurrences — one active
+  pointer at §Trace v1.0 (now corrected to v1.4.28); all other occurrences are in historical
+  §Trace before/after slots (preserved). No additional stale cites found.
+
+**Additional sweep (Production-Grade Rule 4):**
+- Swept all three Document Map labels vs Capabilities Registry names: CAP-001 match confirmed (no fix), CAP-002 fixed, CAP-003 fixed.
+- Swept entire file for stale brief version pins beyond v1.4.27: none found outside historical §Trace slots.
+- No additional drift detected.
+
+- L2-INDEX version bumped 1.0.8 → 1.0.9; timestamp advanced to assigned SE-18 slot 2026-05-18T16:30:00Z.
+- SE-16d monotonicity PASS: 2026-05-18T16:30:00Z > prior 2026-05-18T05:00:00Z (v1.0.8).
