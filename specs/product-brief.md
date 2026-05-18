@@ -1,11 +1,11 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.29"
+version: "1.4.30"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-18T18:30:00Z
+timestamp: 2026-05-19T00:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, planning/oq-research.md]
 input-hash: "b2dc7d6"
 traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
@@ -82,6 +82,7 @@ them — across multiple harnesses and federated across hosts."
 | 1.4.27 | 2026-05-18T05:40:00Z | product-owner (F-R109-6 §Success Criteria Forward-compatibility row stale pins — Architect 8A bump back-cascade) | **F-R109-6 HIGH**: SS-core-types-and-abi.md v1.2.12 → v1.2.13, SS-daemon-lifecycle.md v1.0.31 → v1.0.32, SS-engine-module.md v1.1.19 → v1.1.20, BC-INDEX v1.6 → v1.7 (Architect 8A + PO 8B). D-042 sweep CLEAN. See §Trace v1.4.27. |
 | 1.4.28 | 2026-05-18T13:30:00Z | product-owner (R15B F-R116-2 BC-INDEX pin back-cascade v1.7 → v1.9) | **F-R116-2 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 10A; Rounds 9B + 10A did not back-cascade to brief line 248. Updated `BC-INDEX v1.7` → `BC-INDEX v1.9`. D-042 sweep CLEAN. See §Trace v1.4.28. |
 | 1.4.29 | 2026-05-18T18:30:00Z | product-owner (R17B F-R118-4 / GAP-R57-007 BC-INDEX pin back-cascade v1.9 → v1.10; SE-22 sweep) | **F-R118-4 / GAP-R57-007 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 16C (commit 9a02f5a bumped BC-INDEX v1.9 → v1.10; brief not back-cascaded). Updated `BC-INDEX v1.9` → `BC-INDEX v1.10`. SE-22 full sweep result: all other NORMATIVE pins CURRENT; L2-INDEX, ARCH-INDEX, VP-INDEX, PRD version not cited in brief body — CLEAN. See §Trace v1.4.29. |
+| 1.4.30 | 2026-05-19T00:30:00Z | product-owner (R19B GAP-R59-003 BC-INDEX pin back-cascade v1.10 → v1.11; SE-22 v2 second application) | **GAP-R59-003 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 18B (commit 442f5ac bumped BC-INDEX v1.10 → v1.11; brief not back-cascaded by R18B/R18C/R18D/R18E/R19A). Updated `BC-INDEX v1.10` → `BC-INDEX v1.11` at line 251. SE-22 v1 in-artifact sweep result: all other NORMATIVE pins CURRENT — CLEAN. SE-22 v2 consumer-ledger: PRD `traces_to:` (v1.4.29, set R19A), L2-INDEX §Trace line 149 (v1.4.29, set R18C), CAP-001 §Trace v1.5 (v1.4.29, set R17E), CLAUDE.md main-branch (v1.4.29) — all will require follow-up dispatch by orchestrator. See §Trace v1.4.30. |
 
 ## Who Is It For?
 
@@ -248,7 +249,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-2.01.003 "Body Size Limit (256 KiB, HTTP 413)" (per BC-INDEX §SS-01, renumbered from BC-DAEMON-003). |
 | DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | DTU clone fidelity verified per NFR-011 (≥0.95 against Claude Code real hooks fixture corpus, per nfr-catalog.md). |
-| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.13, `SS-daemon-lifecycle.md` v1.0.32, and `SS-engine-module.md` v1.1.20. |
+| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.11): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.13, `SS-daemon-lifecycle.md` v1.0.32, and `SS-engine-module.md` v1.1.20. |
 
 ## Phase 2 Exit Criteria
 
@@ -616,3 +617,72 @@ SE-22 mandates sweep of all stale pins to: BC-INDEX v1.10, L2-INDEX v1.0.9, ARCH
 **Bonus catches from SE-22 sweep:** None. The brief does not cite PRD, VP-INDEX, ARCH-INDEX, or L2-INDEX in any body location (consistent with prior sweeps v1.4.26–v1.4.28 all returning CLEAN on these patterns).
 
 SE-16d monotonicity PASS: 2026-05-18T18:30:00Z > prior 2026-05-18T13:30:00Z (v1.4.28). ARITHMETICALLY TRUE: 18:30 > 13:30 PASS. Also satisfies strict-greater vs PRD v1.26.11 timestamp at 18:00: 18:30 > 18:00 PASS (SE-16d).
+
+---
+
+## §Trace v1.4.30
+
+**GAP-R59-003 closure — R19B burst** (2026-05-19T00:30:00Z):
+
+**GAP-R59-003 HIGH — §Success Criteria Forward-compatibility row BC-INDEX pin back-cascade (cons R59 ledger).**
+
+BC-INDEX was bumped from v1.10 to v1.11 in Round 18B (commit 442f5ac). That round did not back-cascade the pin to `product-brief.md`. Subsequent bursts R18C, R18D, R18E, and R19A also did not back-cascade — the gap accumulated across the SE-22 v2 consumer-ledger until cons R59 surfaced it. This is the fifth recurrence of the brief BC-INDEX pin back-cascade pattern (prior fixes: v1.4.26 v1.6, v1.4.27 v1.7, v1.4.28 v1.9, v1.4.29 v1.10).
+
+**SE-17a literal grep evidence (scoped-awk per D-116):**
+
+```
+grep -n "BC-INDEX v1\.10" .factory/specs/product-brief.md
+```
+
+Result: line 251 — `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10):` — confirmed NORMATIVE (§Success Criteria body, active pointer, not revision-history pinpoint).
+
+**SE-17g classification:** NORMATIVE — §Success Criteria Forward-compatibility contracts row Target cell, line 251 (post-R19B renumbering; line 250 in v1.4.29 before v1.4.30 revision-history row added at line 85).
+
+**SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell:**
+
+**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10):`
+**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.11):`
+
+BC count (22) verified unchanged: BC-INDEX v1.11 frontmatter `version: "1.11"` confirmed. No BCs were added or retired between v1.10 and v1.11 per BC-INDEX §Trace v1.11 (R18B bookkeeping-only bump for SM-applied Canonical SS table edit).
+
+**SE-22 v1 in-artifact full sweep (R19B):**
+
+SE-22 mandates sweep of all stale pins to: BC-INDEX v1.11, L2-INDEX v1.0.10, ARCH-INDEX v1.0.10, PRD v1.26.13, VP-INDEX v1.14 (current at R19B dispatch). Full sweep result:
+
+| Pattern | grep hits | NORMATIVE hits | INFORMATIONAL hits | Stale NORMATIVE? |
+|---------|-----------|----------------|-------------------|-----------------|
+| `BC-INDEX v` | Line 251 (v1.10→v1.11 fixed), plus revision-history rows (v1.3, v1.6, v1.7, v1.9, v1.10 in §Trace) | 1 (line 251) | multiple revision-history pinpoints | YES — fixed in this burst |
+| `L2-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
+| `ARCH-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
+| `PRD v` / `prd\.md v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
+| `VP-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
+| `SS-daemon-lifecycle\.md v[0-9]` | Lines 173-174 (v1.0.7), line 251 (v1.0.32) | 1 (line 251, v1.0.32 CURRENT) | 2 (lines 173-174, historical pinpoints, classified leave-alone per all prior sweeps) | NO |
+| `SS-core-types-and-abi\.md v[0-9]` | Line 251 (v1.2.13) | 1 (CURRENT) | 0 | NO |
+| `SS-engine-module\.md v[0-9]` | Line 251 (v1.1.20) | 1 (CURRENT) | 0 | NO |
+| `SS-conventions-anti-patterns v` | Revision-history rows only | 0 | multiple | CLEAN |
+
+**NORMATIVE pins confirmed current post-fix:**
+- `BC-INDEX v1.11` at line 251: CURRENT (just fixed).
+- `SS-daemon-lifecycle.md v1.0.32` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
+- `SS-core-types-and-abi.md v1.2.13` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
+- `SS-engine-module.md v1.1.20` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
+
+**INFORMATIONAL pinpoints classified leave-alone:**
+- `SS-daemon-lifecycle.md v1.0.7` at lines 173-174: intentional historical inline pins for the JSONL ring format versioning and versioned auth token sub-bullets, citing the spec version when those sub-bullets were authored (R53). Classified leave-alone per sweep protocol established in all §Trace entries from v1.4.25 onward.
+
+**Bonus catches from SE-22 v1 sweep:** None. The brief does not cite PRD, VP-INDEX, ARCH-INDEX, or L2-INDEX in any body location (consistent with prior sweeps v1.4.26–v1.4.29 all returning CLEAN on these patterns).
+
+**SE-22 v2 second application — producer consumer-ledger declaration (brief v1.4.30):**
+
+Known consumers of `product-brief.md` version pin who cited v1.4.29 and will require follow-up dispatch by orchestrator:
+
+| Consumer | File | Current pin | Drift status after this bump |
+|---------|------|-------------|------------------------------|
+| PRD `traces_to:` frontmatter | `.factory/specs/prd.md` | v1.4.29 (set R19A, ce1e0ca) | STALE — needs v1.4.30 |
+| L2-INDEX §Trace line 149 | `.factory/specs/domain-spec/L2-INDEX.md` | v1.4.29 (set R18C, bedcf30) | STALE — needs v1.4.30 |
+| CAP-001 §Trace v1.5 | `.factory/specs/domain-spec/capabilities.md` CAP-001 entry | v1.4.29 (set R17E) | STALE — needs v1.4.30 |
+| CLAUDE.md brief version ref | `/Users/jmagady/Dev/monocle/CLAUDE.md` (main branch) | v1.4.29 (§Current Pipeline State line 22 + §Architectural Authority item 6 line 47) | STALE — patched in this R19B burst (Part 2) |
+
+Routing: PRD, L2-INDEX, CAP-001 follow-up dispatches owned by orchestrator per SE-22 v2 consumer-ledger policy. CLAUDE.md patched in Part 2 of this burst.
+
+SE-16d monotonicity PASS: 2026-05-19T00:30:00Z > prior 2026-05-18T18:30:00Z (v1.4.29). ARITHMETICALLY TRUE: 2026-05-19 > 2026-05-18 PASS.
