@@ -8,7 +8,7 @@ phase: pre-phase-1-brief
 timestamp: 2026-05-12T11:00:00Z
 inputs:
   - specs/product-brief.md
-input-hash: "24ea722"
+input-hash: "55f92f9"
 traces_to: "factory-artifacts ee09833 (brief v1.1)"
 project: monocle
 verdict: NEEDS_WORK

@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.74"
+version: "5.75"
 status: active
 producer: state-manager
-timestamp: 2026-05-18T13:00:00Z
+timestamp: 2026-05-18T14:30:00Z
 phase: phase-1-spec-crystallization
-current_step: "T-127[8x']-R116-FAIL-AWAITING-OPTION-A-NEXT-SESSION-ROUND-15"
+current_step: "T-127[8x']-R15-CLOSED-AWAITING-R117-CONS-R56-DISPATCH"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 36 META defense disciplines (SE-19 + SE-20 codified this burst). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch.**"
-awaiting: "DURABLE RESUME CHECKPOINT FOR CONTEXT CLEAR (2026-05-18T13:00:00Z). User pre-approved Option A continuation. R116 FAIL recorded (2 HIGH + 1 MED + 1 proc-gap). Counter 0/3. Round 15 plan: (a) PO+FV F-R116-1 sibling sweep — 14 VP H1↔INDEX title drift fix (refresh INDEX rows to match H1s); (b) PO F-R116-2 brief line 248 BC-INDEX v1.7→v1.9 + CLAUDE.md brief update; (c) SM F-R116-3 SE-16d wording adjudication; (d) After Round 15 closure → dispatch R117 + cons R56. Counter 0/3. Convergence asymptotic at single-digit finding counts."
-next_session_resume_protocol: "READ STATE.md COMPLETELY → read CLAUDE.md → verify git log → read R116 report at .factory/plans/adversary-pass-r116-phase1.md → dispatch Round 15 per pre-approved Option A plan. See §READ THIS FIRST for full instructions."
+traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 36 META defense disciplines (SE-19 + SE-20 codified this burst). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch. **ROUND 15 F-R116 CLOSURE CHAIN COMPLETE (2026-05-18):** All 4 R116 findings closed across 3 bursts: R15A (92b7aed) VP-INDEX v1.11→v1.12 + 14-row H1 sibling sweep (F-R116-1 HIGH); R15B (08d1ef4 factory + a5e6398 main) brief v1.4.27→v1.4.28 + CLAUDE.md v1.4.26→v1.4.28 two-line fix + revision-history row repair (F-R116-2 HIGH); R15C (1d75edf) VP-005 §Trace SE-16d wording > → ≥ + v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 candidate HELD per D-114 (1st occurrence). SE-17e sibling sweep of VP-005 fix: 21 other VPs CLEAN (defect unique to VP-005). Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117). R15D (this burst): STATE v5.75 + compute-input-hash UPDATED=72. **Pipeline ready for R117 + cons R56 parallel dispatch.**"
+awaiting: "Round 15 F-R116 closure chain COMPLETE. All 4 R116 findings closed (F-R116-1 HIGH VP-INDEX sibling sweep at 92b7aed; F-R116-2 HIGH brief line 248 at 08d1ef4 + CLAUDE.md at a5e6398; F-R116-3 MED VP-005 §Trace wording at 1d75edf). O-R116-1 SE-22 candidate HELD per D-114. Counter remains 0/3. Pipeline ready for R117 + cons R56 dispatch."
+next_session_resume_protocol: "READ STATE.md COMPLETELY → read CLAUDE.md → verify git log → dispatch R117 + cons R56 in parallel against post-R15 canonical artifact set. See §Session Resume Checkpoint for full instructions."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -25,9 +25,9 @@ current_cycle: cycle-001
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
 Cycle: cycle-001 (ACTIVE — Phase 1 Spec Crystallization)
 Phase: phase-1-spec-crystallization
-Step: T-127[8x']-R116-FAIL-AWAITING-OPTION-A-NEXT-SESSION-ROUND-15
-Counter: 0/3 (R116 FAIL; D-137)
-Timestamp: 2026-05-18T13:00:00Z
+Step: T-127[8x']-R15-CLOSED-AWAITING-R117-CONS-R56-DISPATCH
+Counter: 0/3 (R116 FAIL chain CLOSED; advance requires R117 CLEAN)
+Timestamp: 2026-05-18T14:30:00Z
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -35,28 +35,22 @@ Timestamp: 2026-05-18T13:00:00Z
 ## READ THIS FIRST (fresh-context session)
 
 ---
-**DURABLE RESUME PROTOCOL FOR CONTEXT CLEAR (2026-05-18T13:00:00Z)**
+**DURABLE RESUME PROTOCOL — R15 CLOSED (2026-05-18T14:30:00Z)**
 
-Context was cleared mid-session by user request. This STATE.md v5.74 is your only prior context.
+Round 15 F-R116 closure chain is COMPLETE. STATE.md v5.75 is current.
 
 IMMEDIATE NEXT ACTIONS:
 1. Read this STATE.md COMPLETELY first.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` (canonical principle + agent routing).
 3. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Read R116 report: `/Users/jmagady/Dev/monocle/.factory/plans/adversary-pass-r116-phase1.md`
-5. Read R55 report: `/Users/jmagady/Dev/monocle/.factory/plans/consistency-r55-phase1.md` (already CLEAN — no action needed; 3 untracked consistency reports committed in this burst)
-6. Dispatch Round 15 per user's pre-approved Option A:
-   - R15A (PO+FV): F-R116-1 sibling-sweep — refresh 14 VP-INDEX rows to match H1s verbatim; VP-INDEX v1.11 → v1.12
-   - R15B (PO): F-R116-2 brief line 248 BC-INDEX v1.7 → v1.9 + brief v1.4.27 → v1.4.28 + CLAUDE.md main branch update
-   - R15C (SM): F-R116-3 SE-16d wording adjudication (option a: VP-005 §Trace ≥ vs > fix; patch-bump VP-005 v1.0.11 → v1.0.12)
-7. After Round 15 complete (R15D SM closure + STATE v5.75): dispatch R117 + cons R56
-8. If R117 CLEAN → counter advances 0/3 → 1/3
+4. Dispatch R117 + cons R56 in parallel against post-R15 canonical artifact set (§Session Resume Checkpoint lists full artifact versions entering Round 16).
+5. If R117 CLEAN → counter advances 0/3 → 1/3.
 
-Key pins going into Round 15: PRD v1.26.9, BC-INDEX v1.9, VP-INDEX v1.11, VP-005 v1.0.11, ARCH-INDEX v1.0.9, SS-forward-compatibility v1.2.19, brief v1.4.27, SS-daemon-lifecycle v1.0.32, SS-engine-module v1.1.20, SS-core-types-and-abi v1.2.13, L2-INDEX v1.0.8, CAP-001 v1.4, dtu-assessment v1.7.5, ADR-0002 v1.0.4, ADR-0005 v1.0.2, manifest v1.1.17. SS-conventions-anti-patterns v1.29.4. 36 codified disciplines in force.
+Key pins entering Round 16 (post-R15): PRD v1.26.9, BC-INDEX v1.9, VP-INDEX v1.12, VP-005 v1.0.12, ARCH-INDEX v1.0.9, SS-forward-compatibility v1.2.19, brief v1.4.28, SS-daemon-lifecycle v1.0.32, SS-engine-module v1.1.20, SS-core-types-and-abi v1.2.13, L2-INDEX v1.0.8, CAP-001 v1.4, dtu-assessment v1.7.5, ADR-0002 v1.0.4, ADR-0005 v1.0.2, manifest v1.1.17. SS-conventions-anti-patterns v1.29.4. 36 codified disciplines in force.
 
 ---
 
-Context was cleared. This file is your only prior context. Do:
+Round 15 F-R116 closure chain COMPLETE. This file is your resume context.
 
 1. Read this file completely before doing anything.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing companion principle bind every action.
@@ -148,6 +142,14 @@ Context was cleared. This file is your only prior context. Do:
 79. **Rounds 12-14 summary (2026-05-18):** Round 12 (FV+architect): closed cons R52 informational GAPs (VP-018 title; dtu-assessment SS pin; PRD nav shorthand). Cons R53 + R54 both CLEAN. R114 CLEAN (0 findings — counter would advance to 2/3 if R115 also CLEAN). R115 returned 1 HIGH finding (F-R115-1: VP-005 H1 mode-coverage alignment + SS-daemon-lifecycle SS-forward-compat back-cascade miss). Round 14 (34ee6ee): fixed F-R115-1 — SS-daemon-lifecycle v1.0.31→v1.0.32 back-cascade to SS-forward-compatibility v1.2.18→v1.2.19; VP-005 H1 alignment. ARCH-INDEX v1.0.8→v1.0.9; dtu-assessment v1.7.4→v1.7.5; ADR-0002 v1.0.3→v1.0.4. Counter RESET to 0/3.
 
 80. **D-137 R116 FAIL + durable checkpoint (2026-05-18T13:00:00Z):** Cons R55 CLEAN (3 consistency reports committed this burst). R116 adversary returned FAIL with 4 items: F-R116-1 HIGH (14 VP H1↔INDEX title drifts — sibling sweep not applied post-R115 VP-005 fix); F-R116-2 HIGH (brief line 248 BC-INDEX v1.7 stale vs canonical v1.9 — back-cascade missed in Rounds 9B+10A); F-R116-3 MED (VP-005 §Trace SE-16d ≥ vs > wording ambiguity in same-round same-timestamp context); O-R116-1 proc-gap (SE-22 sibling-sweep codification candidate; HELD per D-114 1st occurrence). Counter holds 0/3. User pre-approved Option A continuation. **Context cleared mid-session; STATE v5.74 is the DURABLE RESUME CHECKPOINT.** R116 report at `.factory/plans/adversary-pass-r116-phase1.md`. D-137 records full session summary. Next session: dispatch Round 15 per Option A plan above.
+
+81. **Burst R15A (2026-05-18T13:30:00Z): VP-INDEX v1.11 → v1.12 — F-R116-1 HIGH sibling sweep CLOSED.** Commit 92b7aed (factory-artifacts). 14 VP-INDEX title rows aligned to H1 verbatim (all 14 listed drifts + VP-005 additional drift caught = 15 rows swept total). Scoped-awk discipline applied throughout. SE-17e sibling sweep of VP-005 patch: checked all 21 other VP files for same ≥ vs > wording defect — all 21 CLEAN (defect was unique to VP-005 §Trace). VP-INDEX v1.12 also reflects VP-005 version update to v1.0.12.
+
+82. **Burst R15B (2026-05-18T13:30:00Z): brief v1.4.27 → v1.4.28 + CLAUDE.md main fix — F-R116-2 HIGH CLOSED.** Commits 08d1ef4 (factory-artifacts) + a5e6398 (main). brief line 248: BC-INDEX v1.7 → v1.9 (back-cascade from Rounds 9B+10A missed). CLAUDE.md item 6 (§Architectural Authority): stale at v1.4.26 → corrected to v1.4.28 (was two versions behind; in-scope fix per Production-Grade Default Rule 4). brief revision-history row for v1.4.27 was missing — repair added in-scope.
+
+83. **Burst R15C (2026-05-18T13:30:00Z): VP-005 v1.0.11 → v1.0.12 — F-R116-3 MED CLOSED.** Commit 1d75edf (factory-artifacts). VP-005 §Trace line 915: SE-16d operator > → ≥ (option a adjudication — within same-burst same-timestamp, ≥ is correct per SE-16d policy allowing ≥ for simultaneous bursts). Patch bump only; zero other content change.
+
+84. **Burst R15D (2026-05-18T14:30:00Z): STATE v5.75 closure — Round 15 chain COMPLETE.** This commit (factory-artifacts). SE-16d cross-chain monotonicity matrix for R15 chain: STATE v5.74 `13:00:00Z` → VP-005 v1.0.12 `13:30:00Z` = brief v1.4.28 `13:30:00Z` (within same burst, ≥ compliant) → VP-INDEX v1.12 `14:00:00Z` → STATE v5.75 `14:30:00Z`. All UTC ISO-8601 Z form. VP-005 and brief share `13:30:00Z` — COMPLIANT per SE-16d ≥ operator and same-burst semantics (SE-17g: within R15B+R15C "same burst" period; per-burst monotonicity satisfied). SE-16d PASS. compute-input-hash --update: TOTAL=205 MATCH=2 STALE=72 UPDATED=72 — all R15 artifact hash cascades resolved. O-R116-1 SE-22 sibling-sweep codification candidate: HELD per D-114 (1st explicit occurrence). Counter remains 0/3. D-138 records closure. **Pipeline ready for R117 + cons R56 parallel dispatch.**
 
 77. **D-135 F-R111 Round 10 FULL CLOSURE COMPLETE (2026-05-18):** R111 adversary (D-047 strict pass 1 attempt 7) returned FAIL with 6 findings — LOWEST count in restructured-artifact cycle (trajectory: R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6). Cons R50 returned GAPS (2 findings). All 8 R111+R50 findings closed in 2 commits. Round 10A (PO c0c6b99): BC-INDEX v1.9 + PRD v1.26.9 + error-taxonomy v1.5 + nfr-catalog v1.7. Round 10B (FV 1593633): VP-INDEX v1.9 + 22 VPs source-contract pin symmetry. Round 10C (SM this commit): STATE v5.72. **Convergence signal STRONG: 6 findings at R111 vs 30 at R110 is 80% decay.** Counter held 0/3 (7 consecutive rounds). SE-16d PASS: Round 10 commits < STATE v5.72 2026-05-18T08:00:00Z. R112 + cons R51 dispatched (T-127''''''' re-audit cycle; D-047 strict pass 1 attempt 8).
 
@@ -339,11 +341,11 @@ Context was cleared. This file is your only prior context. Do:
 | T-127''''''''-A | SM R113 CLEAN milestone burst: persist R113 report + STATE v5.73 + D-136 milestone recording + compute-input-hash --update | **COMPLETE** (this commit) | state-manager |
 | T-127''''''''-B | R114 + cons R53 (D-047 strict pass 1 attempt 12 — counter 1/3) | **COMPLETE** — R114 CLEAN; R115 CLEAN; R116 FAIL; R55 CLEAN; see History entries 79-80 | adversary + consistency-validator |
 | T-127[8x']-R116 | R116 adversary FAIL recorded: 2 HIGH + 1 MED + 1 proc-gap; counter holds 0/3 | **COMPLETE** — report at .factory/plans/adversary-pass-r116-phase1.md | state-manager |
-| T-127[8x']-A | F-R116 R15A: PO+FV sibling sweep — 14 VP-INDEX row title refresh (H1↔INDEX drift); VP-INDEX v1.11 → v1.12 | **PENDING** | PO + FV |
-| T-127[8x']-B | F-R116 R15B: PO brief line 248 BC-INDEX v1.7 → v1.9 + brief v1.4.27 → v1.4.28 + CLAUDE.md main update | **PENDING** | PO |
-| T-127[8x']-C | F-R116 R15C: SM SE-16d wording adjudication (VP-005 §Trace ≥ vs > fix; patch-bump v1.0.11 → v1.0.12) | **PENDING** | SM |
-| T-127[8x']-D | R15D: SM closure + compute-input-hash + STATE v5.75 | **BLOCKED on R15A/B/C** | SM |
-| T-127[8x']-E | Adversary R117 + cons R56 (D-047 strict pass attempt — counter 0/3) | **BLOCKED on R15D** | adversary + consistency-validator |
+| T-127[8x']-A | F-R116 R15A: PO+FV sibling sweep — 14 VP-INDEX row title refresh (H1↔INDEX drift); VP-INDEX v1.11 → v1.12 | **COMPLETE** (92b7aed) | PO + FV |
+| T-127[8x']-B | F-R116 R15B: PO brief line 248 BC-INDEX v1.7 → v1.9 + brief v1.4.27 → v1.4.28 + CLAUDE.md main update | **COMPLETE** (08d1ef4 factory + a5e6398 main) | PO |
+| T-127[8x']-C | F-R116 R15C: SM SE-16d wording adjudication (VP-005 §Trace ≥ vs > fix; patch-bump v1.0.11 → v1.0.12) | **COMPLETE** (1d75edf) | SM |
+| T-127[8x']-D | R15D: SM closure + compute-input-hash + STATE v5.75 | **COMPLETE** (this commit; UPDATED=72) | SM |
+| T-127[8x']-E | Adversary R117 + cons R56 (D-047 strict pass attempt — counter 0/3) | **READY — dispatch now** | adversary + consistency-validator |
 | T-127[8x']-F | If R117 CLEAN: counter 0/3 → 1/3; dispatch R118 + R57 | **CONDITIONAL on R117** | orchestrator |
 | T-128ac | F-R108 Round 7A (PO): BC scope — BC-2.01.002 v1.0.4, BC-2.01.008 v1.0.5, BC-2.01.009 v1.0.5, BC-INDEX v1.6. Closed F-R108-4 + F-R108-17 + F-R108-12 + F-R108-16 | **COMPLETE** (22579ac) | product-owner |
 | T-128ad | F-R108 Round 7B (PO): Supplements + PRD + brief — PRD v1.26.6, interface-definitions v1.5, nfr-catalog v1.4, test-vectors v1.3, error-taxonomy v1.3, brief v1.4.26 + CLAUDE.md brief ref. NFR-007/008/011 RESCOPED to Phase 1 per brief Success Criteria. Closed F-R108-2 + F-R108-3 + F-R108-7 + F-R108-8 + F-R108-14 + GAP-R47-1 PO + GAP-R47-3 | **COMPLETE** (c307f2a factory-artifacts; de6e6dd main) | product-owner |
@@ -364,7 +366,7 @@ Context was cleared. This file is your only prior context. Do:
 | 0.99a-j: Rounds 1-19 convergence | DONE | 2026-05-13 | see cycles/cycle-001/burst-log.md |
 | 0.99k-m: Rounds 20-26 (R20-R61) | DONE | 2026-05-14 | see cycles/cycle-001/burst-log.md |
 | Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054**. 26 adv rounds. 18+ defense layers. 22 BCs; 0 content defects. 4-entry frozen META catalog. |
-| 1: Spec Crystallization | **R116 FAIL — Counter 0/3 (reset from 1/3 milestone at R113). Trajectory R105→14 R106→25 R107→18 R108→22 R109→29 R110→30 R111→6 R112→4 R113→0 (CLEAN) →R114→0 (CLEAN) →R115→1 →R116→4 (FAIL). R116: 2 HIGH + 1 MED + 1 proc-gap. Round 15 pending (Option A pre-approved). Full trajectory: 14→25→18→27→29→18→6→4→0→0→1→4.** | — | PRD v1.0+VP v1.0 → R62 FAIL(10f) → ... → R82 CLEAN (1/3) + cons R21/R22 CLEAN → R83 FINDINGS(1H+1L+1obs; RESET 0/3)+F-R83(PRD v1.13+arch v1.0.17+VP v1.17; D-072; Extension 14) → R84 FINDINGS(4 HIGH/CRIT+3 MED/LOW; D-073; Extension 15 + SE-15a/b/c/d; counter stays 0/3) → F-R84 serial fix-burst COMPLETE (D-074; PRD v1.14 4997354 + VP v1.18 6915b5d; Extension 15 serial protocol) → R85 FINDINGS (1 CRIT+3 HIGH; D-075; Extension 16; counter stays 0/3) → F-R85 serial fix-burst COMPLETE (D-076; PRD v1.15 80bfe86 + VP v1.19 022ce3c; Extensions 15+16 protocol) → R86 FINDINGS (1 CRIT+1 HIGH+1 MED+2 LOW obs; D-077; SE-16a+SE-16b; counter stays 0/3) + cons R25 CLEAN → F-R86 serial fix-burst COMPLETE (D-078; PRD v1.16 cd6541f + VP v1.20 f94c499; Extensions 15+16+SE-16a/b; 7224e58 SM) → R87 FINDINGS (1 HIGH+1 MED+2 LOW; D-079; SE-16c; counter stays 0/3; META-4) → F-R87 FV-only fix-burst COMPLETE (D-080; SM 3ee43da + VP v1.21 6ecb79a; SE-16c first application PROVEN 39-row canonical-grep audit; counter remains 0/3) → R88 FINDINGS (1 HIGH+4 MED+3 LOW; D-081; CONTENT-CENTRIC LENS; 5 substantive content defects; counter stays 0/3) + cons R27 CLEAN (9a44d1d) → F-R88 serial fix-burst COMPLETE (D-082; arch v1.0.18 61a0064 + PRD v1.17 27e663c + VP v1.22 e4c1a1e; Extensions 15+16; CONTENT defects closed; counter remains 0/3) → R89 FINDINGS (D-083; 1 HIGH+3 MED+1 LOW+2 LOW; cons R28 NOT CLEAN GAP-R28-001 MED; counter stays 0/3; Extension 17+SE-17a/b codified; 25 disciplines) → F-R89 serial fix-burst COMPLETE (D-084; arch v1.0.19 8a68cc9 + VP v1.23 aef2f0c; Extensions 15+16+17; Extension 17 first application PROVEN) → R90 FINDINGS (D-085; 1 CRITICAL+2 HIGH+2 MED+3 LOW; C-R90-1 CRITICAL orchestrator routing error PO PRD-pin step skipped; 5th SERIAL Extension 15 META recurrence; counter RESETS 0/3; SE-15e codified; 26 disciplines) → F-R90 serial fix-burst COMPLETE (D-086; SM v5.31 c9d77a9 + PO PRD v1.18 3a18306 + FV VP v1.24 63b75f9; SE-15e first application PROVEN; GAP-R29-001 CLAUDE.md fixed) → R91-R104 multi-chain convergence (37 strict-policy adversary attempts; see burst-log.md) → **R102 CLEAN + cons R41 CLEAN; counter 0/3 → 1/3 (D-117)** → **R103 CLEAN + cons R42 CLEAN; counter 1/3 → 2/3 (D-119)** → **R104 CLEAN + cons R43 CLEAN; counter 2/3 → 3/3 = D-047 STRICT CONVERGENCE (D-120)**. **D-047 STRICT CONVERGENCE AT D-120 IS RETIRED** (audited monolithic structure now superseded by D-122 restructure). → **Template-compliance remediation chain COMPLETE (D-122; 7 dispatches): PRD v1.26 (1030c65) + 22 sharded BC files + 22 sharded VP files + L2 domain spec + 4 prd-supplements + ARCH/BC/VP/L2 INDEX files; VP monolith retired**. **D-123 lesson:** Phase 1d adversarial gate MUST include `validate-template-compliance` as prerequisite. **Pipeline awaits re-validation + new adversarial cycle against restructured artifacts (counter resets to 0/3); human Phase 1 approval gate blocked on new convergence.** → **Audit R2 residual fix chain COMPLETE (D-124; 3 parallel dispatches): RES-01..RES-05 all closed; SE-16d cross-dispatch chain monotonic 16:30→17:00→17:30→18:00**. D-125: production-grade pursuit uncovered upstream tool bug (compute-input-hash awk multi-line list). **Pipeline awaits T-126b RE-AUDIT R3 + T-127 NEW ADVERSARIAL CYCLE.** → **🎯 AUDIT R3 CLEAN MILESTONE (D-126)** — first audit round with zero residuals; all 5 R2 residuals (RES-01..RES-05) CLOSED; cross-artifact ID consistency PASS. **Per D-123 methodological lesson, validate-template-compliance gate now operational for the first time.** Pipeline transitions to T-127 new adversary R105 + cons R44 (D-047 strict pass 1 attempt 1 against restructured artifacts; counter 0/3). → **R105 + cons R44 FAIL (D-127; 14+5 findings against restructured artifacts; counter holds 0/3; CRITICAL HookEventRecord 3-way schema divergence blocks Phase 3 TDD; meta-observation O-R105-1 surfaces missing post-template-compliance sibling-propagation gate)**. **User selected Option A (full closure)** for new session post context-clear. Closure chain pre-planned T-128a..T-128k. → **D-128 Option A FULL CLOSURE COMPLETE (2026-05-17)** — 14 R105 + 5 R44 all closed; ADR-0005 cascade + HookEventRecord + BC IDs + VP coverage. → **D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17)** — 20 R106 + 5 R45 = 25 findings closed in 6 commits; supplements refreshed; brief orphan-promises resolved. → **F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17)** — 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7, bd14774, 98396fe, fcf2b2d, SM 6F). ADR-0005 v1.0.2 pin sweep; SS-forward-compatibility 17 BC IDs canonicalized; EC-013 registered in error-taxonomy; interface-definitions `received_at` field added; supplements at v1.2-v1.4; VP-009 v1.0.5; 22-VP §References PRD cite swept; 22-BC Traceability arch pins swept; L2-INDEX v1.0.7. Counter 0/3; divergence pattern observed (R105→14f, R106→25f, R107→18f). O-R107-1 + O-R107-2 + SE-18 now at 2nd occurrence. Historical trace pin policy documented at `.factory/plans/disciplines/historical-trace-pin-policy.md`. SE-16d PASS (18:11–18:18Z < 22:30Z < 23:30Z). |
+| 1: Spec Crystallization | **Round 15 COMPLETE — R116 FAIL chain CLOSED. Counter 0/3 (advance requires R117 CLEAN). Trajectory R105→14 R106→25 R107→18 R108→22 R109→29 R110→30 R111→6 R112→4 R113→0 (CLEAN 1/3) →R114→0 →R115→1 →R116→4 (FAIL, closed R15A/B/C/D). Finding-count chain: 14→25→18→22→29→30→6→4→0→0→1→4, R15→all-4-closed (2026-05-18). R117 + cons R56 dispatch READY.** | — | PRD v1.0+VP v1.0 → R62 FAIL(10f) → ... → R82 CLEAN (1/3) + cons R21/R22 CLEAN → R83 FINDINGS(1H+1L+1obs; RESET 0/3)+F-R83(PRD v1.13+arch v1.0.17+VP v1.17; D-072; Extension 14) → R84 FINDINGS(4 HIGH/CRIT+3 MED/LOW; D-073; Extension 15 + SE-15a/b/c/d; counter stays 0/3) → F-R84 serial fix-burst COMPLETE (D-074; PRD v1.14 4997354 + VP v1.18 6915b5d; Extension 15 serial protocol) → R85 FINDINGS (1 CRIT+3 HIGH; D-075; Extension 16; counter stays 0/3) → F-R85 serial fix-burst COMPLETE (D-076; PRD v1.15 80bfe86 + VP v1.19 022ce3c; Extensions 15+16 protocol) → R86 FINDINGS (1 CRIT+1 HIGH+1 MED+2 LOW obs; D-077; SE-16a+SE-16b; counter stays 0/3) + cons R25 CLEAN → F-R86 serial fix-burst COMPLETE (D-078; PRD v1.16 cd6541f + VP v1.20 f94c499; Extensions 15+16+SE-16a/b; 7224e58 SM) → R87 FINDINGS (1 HIGH+1 MED+2 LOW; D-079; SE-16c; counter stays 0/3; META-4) → F-R87 FV-only fix-burst COMPLETE (D-080; SM 3ee43da + VP v1.21 6ecb79a; SE-16c first application PROVEN 39-row canonical-grep audit; counter remains 0/3) → R88 FINDINGS (1 HIGH+4 MED+3 LOW; D-081; CONTENT-CENTRIC LENS; 5 substantive content defects; counter stays 0/3) + cons R27 CLEAN (9a44d1d) → F-R88 serial fix-burst COMPLETE (D-082; arch v1.0.18 61a0064 + PRD v1.17 27e663c + VP v1.22 e4c1a1e; Extensions 15+16; CONTENT defects closed; counter remains 0/3) → R89 FINDINGS (D-083; 1 HIGH+3 MED+1 LOW+2 LOW; cons R28 NOT CLEAN GAP-R28-001 MED; counter stays 0/3; Extension 17+SE-17a/b codified; 25 disciplines) → F-R89 serial fix-burst COMPLETE (D-084; arch v1.0.19 8a68cc9 + VP v1.23 aef2f0c; Extensions 15+16+17; Extension 17 first application PROVEN) → R90 FINDINGS (D-085; 1 CRITICAL+2 HIGH+2 MED+3 LOW; C-R90-1 CRITICAL orchestrator routing error PO PRD-pin step skipped; 5th SERIAL Extension 15 META recurrence; counter RESETS 0/3; SE-15e codified; 26 disciplines) → F-R90 serial fix-burst COMPLETE (D-086; SM v5.31 c9d77a9 + PO PRD v1.18 3a18306 + FV VP v1.24 63b75f9; SE-15e first application PROVEN; GAP-R29-001 CLAUDE.md fixed) → R91-R104 multi-chain convergence (37 strict-policy adversary attempts; see burst-log.md) → **R102 CLEAN + cons R41 CLEAN; counter 0/3 → 1/3 (D-117)** → **R103 CLEAN + cons R42 CLEAN; counter 1/3 → 2/3 (D-119)** → **R104 CLEAN + cons R43 CLEAN; counter 2/3 → 3/3 = D-047 STRICT CONVERGENCE (D-120)**. **D-047 STRICT CONVERGENCE AT D-120 IS RETIRED** (audited monolithic structure now superseded by D-122 restructure). → **Template-compliance remediation chain COMPLETE (D-122; 7 dispatches): PRD v1.26 (1030c65) + 22 sharded BC files + 22 sharded VP files + L2 domain spec + 4 prd-supplements + ARCH/BC/VP/L2 INDEX files; VP monolith retired**. **D-123 lesson:** Phase 1d adversarial gate MUST include `validate-template-compliance` as prerequisite. **Pipeline awaits re-validation + new adversarial cycle against restructured artifacts (counter resets to 0/3); human Phase 1 approval gate blocked on new convergence.** → **Audit R2 residual fix chain COMPLETE (D-124; 3 parallel dispatches): RES-01..RES-05 all closed; SE-16d cross-dispatch chain monotonic 16:30→17:00→17:30→18:00**. D-125: production-grade pursuit uncovered upstream tool bug (compute-input-hash awk multi-line list). **Pipeline awaits T-126b RE-AUDIT R3 + T-127 NEW ADVERSARIAL CYCLE.** → **🎯 AUDIT R3 CLEAN MILESTONE (D-126)** — first audit round with zero residuals; all 5 R2 residuals (RES-01..RES-05) CLOSED; cross-artifact ID consistency PASS. **Per D-123 methodological lesson, validate-template-compliance gate now operational for the first time.** Pipeline transitions to T-127 new adversary R105 + cons R44 (D-047 strict pass 1 attempt 1 against restructured artifacts; counter 0/3). → **R105 + cons R44 FAIL (D-127; 14+5 findings against restructured artifacts; counter holds 0/3; CRITICAL HookEventRecord 3-way schema divergence blocks Phase 3 TDD; meta-observation O-R105-1 surfaces missing post-template-compliance sibling-propagation gate)**. **User selected Option A (full closure)** for new session post context-clear. Closure chain pre-planned T-128a..T-128k. → **D-128 Option A FULL CLOSURE COMPLETE (2026-05-17)** — 14 R105 + 5 R44 all closed; ADR-0005 cascade + HookEventRecord + BC IDs + VP coverage. → **D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17)** — 20 R106 + 5 R45 = 25 findings closed in 6 commits; supplements refreshed; brief orphan-promises resolved. → **F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17)** — 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7, bd14774, 98396fe, fcf2b2d, SM 6F). ADR-0005 v1.0.2 pin sweep; SS-forward-compatibility 17 BC IDs canonicalized; EC-013 registered in error-taxonomy; interface-definitions `received_at` field added; supplements at v1.2-v1.4; VP-009 v1.0.5; 22-VP §References PRD cite swept; 22-BC Traceability arch pins swept; L2-INDEX v1.0.7. Counter 0/3; divergence pattern observed (R105→14f, R106→25f, R107→18f). O-R107-1 + O-R107-2 + SE-18 now at 2nd occurrence. Historical trace pin policy documented at `.factory/plans/disciplines/historical-trace-pin-policy.md`. SE-16d PASS (18:11–18:18Z < 22:30Z < 23:30Z). |
 | 2-7 | not-started | — | |
 
 ## Pre-Phase-1 Final Gate — PASS (2026-05-14 per D-054)
@@ -404,13 +406,13 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | BC files (22) | 22 BC files SS pin refreshed (3334fb6 Round 9B); BC-INDEX v1.9 (c0c6b99 Round 10A) | UPDATED (Round 10A) |
 | BC-INDEX | `.factory/specs/behavioral-contracts/BC-INDEX.md` v1.9 (c0c6b99) | UPDATED (Round 10A) |
 | VP files (22) | 22 VP files source-contract pin symmetry (1593633 Round 10B); VP-INDEX v1.9 (1593633 Round 10B) | UPDATED (Round 10B) |
-| VP-INDEX | `.factory/specs/verification-properties/VP-INDEX.md` v1.11 (Round 12 onward) — **F-R116-1 target: v1.12** | UPDATED (Round 12); **F-R116-1 pending** |
+| VP-INDEX | `.factory/specs/verification-properties/VP-INDEX.md` v1.12 (92b7aed Round 15A) | UPDATED (Round 15A) |
 | Architecture SS-* | SS-daemon-lifecycle v1.0.32 (9db4df8 confirmed Round 8A); SS-engine-module v1.1.20 (9db4df8 confirmed); SS-core-types-and-abi v1.2.13 (9db4df8 confirmed); SS-forward-compatibility v1.2.17 (9db4df8 confirmed); SS-deps-pin-manifest v1.1.17 (unchanged) | UPDATED (Round 7C confirmed Round 8A) |
 | ARCH-INDEX | `.factory/specs/architecture/ARCH-INDEX.md` v1.0.8 (6e72995) | UPDATED (Round 8A) |
 | DTU assessment | `.factory/specs/dtu-assessment.md` v1.7.4 (9db4df8 unchanged) | EXISTS |
 | ADRs | ADR-0001..0003 unchanged; ADR-0002 v1.0.3 (9db4df8); ADR-0005 v1.0.2 (03a4c57 unchanged) | EXISTS |
 | L2-INDEX + CAPs | L2-INDEX v1.0.7 (fcf2b2d; unchanged); CAP-001 v1.3 (b9e83bd unchanged); CAP-002/003 unchanged | EXISTS |
-| product-brief | `.factory/specs/product-brief.md` v1.4.27 (517c7ee factory-artifacts; db5483c main) — **F-R116-2 target: v1.4.28** | UPDATED (Round 8B); **F-R116-2 pending** |
+| product-brief | `.factory/specs/product-brief.md` v1.4.28 (08d1ef4 factory-artifacts; a5e6398 main) | UPDATED (Round 15B) |
 | CI/CD setup | `.github/workflows/` | MISSING — devops-engineer scope at Phase 3 |
 | Phase 1d adversarial spec review | **RETIRED CONVERGENCE D-120 (monolithic structure superseded by D-122 restructure); new cycle required against restructured artifacts** → Audit R2 residual fix chain COMPLETE (D-124; RES-01..RES-05 closed) + D-125 tool-bug discovery → **Audit R3 CLEAN (D-126; zero residuals; first CLEAN structural audit)** → **R105 + cons R44 FAIL (D-127; 14+5 findings; counter holds 0/3; CRITICAL F-R105-1 HookEventRecord 3-way schema divergence)** → AWAITING **OPTION A FULL CLOSURE CHAIN** (T-128a..T-128k; 11 specialist dispatches) **post context-clear in new session**. | RESET to 0/3 |
 | Human Phase 1 gate approval | BLOCKED on new convergence (T-127' → T-129) | AWAITING NEW CONVERGENCE |
@@ -535,6 +537,7 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 
 | D-136 | **R113 CLEAN MILESTONE — counter advances 0/3 → 1/3 (2026-05-18).** R113 adversary (D-047 strict pass 1 attempt 11) CLEAN: 0 findings of any severity. Cons R52 PASS: 3 non-blocking informational GAPs (VP-018 title; dtu-assessment SS pin; PRD nav shorthand — all informational only). 9-round FAIL streak broken (R105-R112). Trajectory: R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0. **First CLEAN adversary pass since restructure cycle began.** Cascade-tail discipline stable post-Round 11 fix burst (c865167). 36 codified disciplines held. Scoped-awk innovation (D-116) confirmed sound. SE-16d PASS (STATE v5.73 10:00Z > STATE v5.72 08:00Z). 2 more CLEAN passes (R114, R115) needed for D-047 strict convergence. | 2026-05-18 | state-manager (milestone recording) |
 | D-137 | **R116 FAIL + R55 CLEAN + Option A pre-approved for next session (2026-05-18T13:00:00Z).** Rounds 12-14 CLEAN (R114→0, R115→1 finding F-R115-1 HIGH VP-005 H1 alignment); Round 14 closed F-R115-1 via 34ee6ee. R55 consistency CLEAN (already persisted at .factory/plans/consistency-r55-phase1.md). R116 adversary FAIL: 2 HIGH (F-R116-1 VP-INDEX 14-sibling H1 drift; F-R116-2 brief line 248 BC-INDEX v1.7→v1.9 stale) + 1 MED (F-R116-3 VP-005 §Trace SE-16d ≥ vs > wording) + 1 proc-gap obs (O-R116-1 SE-22 sibling-sweep candidate; HELD per D-114 1st occurrence). Counter holds 0/3. User pre-approved Option A continuation for next session. Durable checkpoint STATE v5.74 records full resume context. | 2026-05-18 | state-manager (durable checkpoint) |
+| D-138 | **Round 15 F-R116 closure chain COMPLETE (2026-05-18T14:30:00Z).** All 4 R116 findings closed across 3 specialist bursts + this SM closure burst. R15A (92b7aed): VP-INDEX v1.11→v1.12, 14 H1-drift rows aligned verbatim (F-R116-1 HIGH). SE-17e sibling sweep on VP-005 fix covered 21 other VPs — all CLEAN (defect unique to VP-005). R15B (08d1ef4 factory + a5e6398 main): brief v1.4.27→v1.4.28 + brief line 248 BC-INDEX v1.7→v1.9 (F-R116-2 HIGH) + CLAUDE.md item-6 brief ref v1.4.26→v1.4.28 (in-scope drift fix; was two versions behind) + brief v1.4.27 revision-history row repaired. R15C (1d75edf): VP-005 §Trace line 915 > → ≥ per SE-16d policy + patch-bump v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 sibling-sweep codification candidate: HELD per D-114 (1st explicit occurrence). SE-16d R15 chain monotonicity matrix: STATE v5.74 `13:00:00Z` → VP-005 v1.0.12 `13:30:00Z` = brief v1.4.28 `13:30:00Z` (same burst; ≥ compliant) → VP-INDEX v1.12 `14:00:00Z` → STATE v5.75 `14:30:00Z`. All UTC ISO-8601 Z form. SE-16d PASS. compute-input-hash: TOTAL=205 MATCH=2 STALE=72 UPDATED=72 NOINPUT=131. Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117 + cons R56). Pipeline ready for parallel dispatch. | 2026-05-18 | state-manager (Round 15 closure) |
 
 | D-135 | **F-R111 Round 10 FULL CLOSURE COMPLETE (2026-05-18).** R111 adversary (D-047 strict pass 1 attempt 7) FAIL: 6 findings — LOWEST count in restructured-artifact cycle (R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6; 80% decay from R110). Cons R50 GAPS: 2 findings. All 8 closed in 2 commits. Round 10A (PO c0c6b99): BC-INDEX v1.8→v1.9 + PRD v1.26.8→v1.26.9 + error-taxonomy v1.4→v1.5 + nfr-catalog v1.5→v1.7. Round 10B (FV 1593633): VP-INDEX v1.8→v1.9 + 22 VPs source-contract pin symmetry. Round 10C (SM this commit): STATE v5.71→v5.72. SE-16d PASS: Round 10 commits < STATE v5.72 2026-05-18T08:00:00Z. Counter held 0/3 (7th consecutive round). Convergence signal STRONG. R112 + cons R51 dispatched. | 2026-05-18 | state-manager (Round 10 closure) |
 
@@ -550,32 +553,26 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | O-R105-2 | SE-17f extend to all §Trace bumps codification candidate | LOW process-gap | DEFERRED per D-114 | SM | T-128m — await T-127' outcome |
 | OBS-R41-1 | `reqwest 0.13` no consumer edge | LOW informational | DEFERRED to Phase 1 arch | architect | (Phase 1 arch creation) |
 
-## Session Resume Checkpoint — DURABLE (v5.74)
+## Session Resume Checkpoint — DURABLE (v5.75)
 
-### State as of v5.74 — CONTEXT CLEAR CHECKPOINT (2026-05-18T13:00:00Z)
+### State as of v5.75 — R15 COMPLETE (2026-05-18T14:30:00Z)
 
 **Working directory:** `/Users/jmagady/Dev/monocle`
 **Branches:** `factory-artifacts` (specs + STATE + plans + all artifacts); `main` (CLAUDE.md only)
-**Last factory-artifacts commit:** 34ee6ee `fix(arch): F-R115-1 SS-daemon-lifecycle back-cascade miss + VP-005 H1 mode-coverage alignment`
-**Counter state:** 0/3 (R116 FAIL resets/holds from 1/3 milestone at D-136)
-**Trajectory (restructured cycle):** R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0 (CLEAN 1/3), R114→0 (CLEAN 2/3 in-progress), R115→1 (F-R115-1, fixed 34ee6ee), R116→4 (FAIL)
-**User direction:** Option A continuation (pre-approved for next session)
+**Last factory-artifacts commit:** This burst — STATE v5.75 closure commit (single-commit burst per TD-VSDD-053)
+**Counter state:** 0/3 (R116 FAIL chain CLOSED; advance requires R117 CLEAN)
+**Trajectory (restructured cycle):** R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0 (CLEAN 1/3), R114→0, R115→1 (F-R115-1, fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15 chain)
+**Round 15 result:** COMPLETE — all 4 R116 findings closed (R15A 92b7aed + R15B 08d1ef4/a5e6398 + R15C 1d75edf + R15D this commit)
 
-### Immediate next action (NEXT SESSION — Option A)
+### Immediate next action (Round 16)
 
 1. Read this STATE.md completely first.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing bind every action.
 3. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Read R116 report: `/Users/jmagady/Dev/monocle/.factory/plans/adversary-pass-r116-phase1.md`
-5. Cons R55 (`.factory/plans/consistency-r55-phase1.md`) is already CLEAN — no action needed.
-6. Dispatch Round 15:
-   - **R15A (PO+FV):** F-R116-1 sibling-sweep — 14 VP H1↔INDEX title drifts. Refresh VP-INDEX v1.11 rows to match H1s verbatim. VP-INDEX v1.11 → v1.12.
-   - **R15B (PO):** F-R116-2 brief line 248: `BC-INDEX v1.7` → `BC-INDEX v1.9`. Brief v1.4.27 → v1.4.28. Update CLAUDE.md on main branch (§Architectural Authority brief version ref).
-   - **R15C (SM):** F-R116-3 SE-16d wording adjudication — VP-005 §Trace line 915 ≥ vs > fix (option a). Patch-bump VP-005 v1.0.11 → v1.0.12. No other content change.
-7. **R15D (SM):** STATE v5.75 + compute-input-hash --update + commit to factory-artifacts.
-8. Dispatch R117 + cons R56. If R117 CLEAN: counter 0/3 → 1/3 (milestone again).
+4. Dispatch R117 + cons R56 in parallel against post-R15 canonical artifact set below.
+5. If R117 CLEAN: counter 0/3 → 1/3 (milestone again; R118+R57 then needed for 2/3 → 3/3).
 
-### Canonical artifact versions entering Round 15
+### Canonical artifact versions entering Round 16 (post-R15)
 
 | Artifact | Version | Notes |
 |----------|---------|-------|
@@ -586,8 +583,8 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | `test-vectors.md` | v1.3 | c307f2a; unchanged |
 | `BC-INDEX.md` | v1.9 | c0c6b99; unchanged |
 | BC files (22) | v1.0.x | SS pins refreshed Round 9B (3334fb6); unchanged |
-| `VP-INDEX.md` | v1.11 | 1593633; **F-R116-1 target → v1.12** |
-| VP files (22) | v1.0.x | source-contract pins Round 10B (1593633); VP-005 v1.0.11 **F-R116-3 target → v1.0.12** |
+| `VP-INDEX.md` | v1.12 | 92b7aed Round 15A |
+| VP files (22) | v1.0.x | source-contract pins Round 10B (1593633); VP-005 v1.0.12 (1d75edf Round 15C) |
 | `SS-daemon-lifecycle.md` | v1.0.32 | 34ee6ee Round 14 (SS-fwd-compat back-cascade) |
 | `SS-forward-compatibility.md` | v1.2.19 | 34ee6ee Round 14 |
 | `SS-engine-module.md` | v1.1.20 | 9db4df8 Round 7C; unchanged |
@@ -600,25 +597,27 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | `ADR-0005.md` | v1.0.2 | 03a4c57; unchanged |
 | `L2-INDEX.md` | v1.0.8 | Round 12 (approx); unchanged |
 | `CAP-001.md` | v1.4 | unchanged |
-| `product-brief.md` | v1.4.27 | **F-R116-2 target → v1.4.28** |
+| `product-brief.md` | v1.4.28 | 08d1ef4 Round 15B |
+| `STATE.md` | v5.75 | this burst |
+| `CLAUDE.md` (main) | brief ref v1.4.28 | a5e6398 Round 15B |
 
 ### Discipline count and key disciplines
 
 **36 codified disciplines in force** (SE-18 34th; SE-19 35th; SE-20 36th). No new codifications in Rounds 12-16.
 
-Key disciplines relevant to Round 15:
+Key disciplines relevant to Round 16:
 - **SE-18** (commit-burst hygiene + cross-dispatch version-bump coordination)
-- **SE-16d** (cross-artifact chain-time monotonicity — VP-005 ≥ vs > is F-R116-3 subject)
+- **SE-16d** (cross-artifact chain-time monotonicity — R15 chain PASS verified)
 - **SE-19** (NFR-VP Phantom-Anchor Audit)
 - **SE-20** (Timestamp Monotonicity Hook)
-- **O-R116-1** (SE-22 candidate: same-class sibling sweep on finding closure — HELD per D-114, 1st occurrence)
+- **O-R116-1** (SE-22 candidate: same-class sibling sweep on finding closure — HELD per D-114, 1st occurrence; 0/3 for codification)
 
-### Counter and convergence context
+### Counter and convergence context (entering Round 16)
 
 - **D-047 strict:** 0 findings of any severity for 3 consecutive adversary+consistency passes
-- **Current counter:** 0/3 (R116 FAIL holds)
-- **Convergence trajectory:** After R102/R103/R104 achieved 3/3 in monolithic structure (retired), restructured cycle started at 0/3 with R105. 9 consecutive FAIL (R105-R112). R113 CLEAN → 1/3 milestone. R114 CLEAN → would be 2/3. R115 had 1 finding (fixed 34ee6ee). R116 → 4 findings (FAIL). Round 15 must close all 4 items then R117 must be CLEAN to restore 1/3 counter.
-- **Asymptotic signal:** Trajectory converging — 30 → 6 → 4 → 0 → 0 → 1 → 4. The 4 at R116 is all same-class (sibling sweep + back-cascade miss + SE-16d wording). High likelihood R117 is CLEAN after Round 15 if mechanically swept.
+- **Current counter:** 0/3 (R116 FAIL chain CLOSED; R117 CLEAN needed to restore 1/3)
+- **Convergence trajectory:** After R102/R103/R104 achieved 3/3 in monolithic structure (retired), restructured cycle started at 0/3 with R105. 9 consecutive FAIL (R105-R112). R113 CLEAN → 1/3 milestone. R114 CLEAN → 2/3 in-progress. R115 had 1 finding (fixed 34ee6ee). R116 → 4 findings (FAIL, all 4 closed R15). R117 → TBD.
+- **Asymptotic signal:** Trajectory converging — 30 → 6 → 4 → 0 → 0 → 1 → 4, R15→all-4-closed. High likelihood R117 is CLEAN given mechanical sweep completeness of R15.
 
 ### R-pass reports in .factory/plans/
 
@@ -629,9 +628,10 @@ All R-pass reports persisted. Key recent files:
 - `consistency-r54-phase1.md` — committed in this burst (was untracked)
 - `consistency-r55-phase1.md` — CLEAN; committed in this burst (was untracked)
 
-### Key artifact versions as of v5.73 (CANONICAL — end of Round 11/R113)
+### Key artifact versions as of v5.75 (CANONICAL — end of Round 15/R15D)
 - PRD: `prd.md` v1.26.9 (c0c6b99 Round 10A — unchanged post-R113)
 - interface-definitions.md v1.5 (c307f2a unchanged); nfr-catalog.md v1.7 (c0c6b99 unchanged); error-taxonomy.md v1.5 (c0c6b99 unchanged); test-vectors.md v1.3 (c307f2a unchanged)
+- `product-brief.md` v1.4.28 (08d1ef4 Round 15B); `VP-INDEX.md` v1.12 (92b7aed Round 15A); VP-005 v1.0.12 (1d75edf Round 15C); `CLAUDE.md` brief ref v1.4.28 (a5e6398 Round 15B)
 - BC files (22): BC-INDEX v1.9 (c0c6b99 — unchanged post-R113)
 - VP files (22): VP-INDEX v1.9 (1593633 — unchanged post-R113)
 - arch: SS-daemon-lifecycle v1.0.32; SS-engine-module v1.1.20; SS-core-types-and-abi v1.2.13; SS-forward-compatibility v1.2.17; SS-deps-pin-manifest v1.1.17
