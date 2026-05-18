@@ -7,7 +7,7 @@ producer: product-owner
 phase: pre-phase-1-brief
 timestamp: 2026-05-18T18:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, planning/oq-research.md]
-input-hash: "70af501"
+input-hash: "08105ae"
 traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
 project: monocle
 supplements:

@@ -276,7 +276,7 @@ When a BC Traceability `Architecture Source` cell references **multiple** archit
 | SS-engine-module.md | v1.1.20 |
 | SS-core-types-and-abi.md | v1.2.13 |
 | SS-deps-pin-manifest.md | v1.1.17 |
-| SS-conventions-anti-patterns.md | v1.29.4 |
+| SS-conventions-anti-patterns.md | v1.29.5 |
 
 **Single-reference cells** (one SS doc) have no symmetry requirement — a single-reference cell is trivially symmetric. Pin-symmetry only activates for two-or-more references.
 

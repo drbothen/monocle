@@ -9,7 +9,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T17:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
-input-hash: "c714a5b"
+input-hash: "6939846"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
