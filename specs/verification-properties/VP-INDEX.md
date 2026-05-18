@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.11"
+version: "1.12"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T10:00:00Z
+timestamp: 2026-05-18T14:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "02147fc"
@@ -34,15 +34,15 @@ traces_to: prd.md
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
 |-------|-------|-----------|--------------|------|---------------|
-| VP-001 | Healthz Endpoint — Unauthenticated Liveness 200/503 | BC-2.01.001 | manual+proptest | vp-001-healthz-endpoint.md | VP-DAEMON-001 |
-| VP-002 | Status Endpoint — Authenticated 10-Field JSON | BC-2.01.002 | manual+proptest | vp-002-status-endpoint.md | VP-DAEMON-002 |
-| VP-003 | Body Size Limit — 256 KiB; HTTP 413 | BC-2.01.003 | manual+fuzz | vp-003-body-size-limit.md | VP-DAEMON-003 |
-| VP-004 | Graceful Shutdown — 10-Second Drain + 5-Code Exit | BC-2.01.004 | manual | vp-004-graceful-shutdown.md | VP-DAEMON-004 |
-| VP-005 | Lock File Lifecycle — Atomic Create, Pid Gate, Mode 0o600/0o700 | BC-2.01.005 | manual+mutation | vp-005-lock-file-lifecycle.md | VP-DAEMON-005 |
+| VP-001 | Healthz Endpoint — Unauthenticated Liveness 200/503 with Uptime + Version | BC-2.01.001 | manual+proptest | vp-001-healthz-endpoint.md | VP-DAEMON-001 |
+| VP-002 | Status Endpoint — Authenticated Daemon-State JSON with 10 Required Fields | BC-2.01.002 | manual+proptest | vp-002-status-endpoint.md | VP-DAEMON-002 |
+| VP-003 | Body Size Limit — 256 KiB; HTTP 413 on Excess | BC-2.01.003 | manual+fuzz | vp-003-body-size-limit.md | VP-DAEMON-003 |
+| VP-004 | Graceful Shutdown — 10-Second Drain + 5-Code POSIX Exit Taxonomy | BC-2.01.004 | manual | vp-004-graceful-shutdown.md | VP-DAEMON-004 |
+| VP-005 | Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution | BC-2.01.005 | manual+mutation | vp-005-lock-file-lifecycle.md | VP-DAEMON-005 |
 | VP-006 | Crash Recovery Checkpoint — JSON Write, Offer, Cleanup | BC-2.01.006 | manual+mutation | vp-006-crash-recovery-checkpoint.md | VP-DAEMON-006 |
-| VP-007 | JSONL Ring Format-Version First Key | BC-2.01.007 | manual+mutation | vp-007-ring-format-version.md | VP-RING-001 |
-| VP-008 | Auth Token Wire Format + Constant-Time Comparison | BC-2.01.008 | manual+fuzz | vp-008-auth-token-wire-format.md | VP-AUTH-001 |
-| VP-009 | Auth Header Two-Body Taxonomy | BC-2.01.009 | manual+fuzz | vp-009-auth-header-validation.md | VP-AUTH-002 |
+| VP-007 | JSONL Ring Record — Format-Version First Key (FC-01) | BC-2.01.007 | manual+mutation | vp-007-ring-format-version.md | VP-RING-001 |
+| VP-008 | Auth Token — Wire Format + Constant-Time Comparison (FC-06) | BC-2.01.008 | manual+fuzz | vp-008-auth-token-wire-format.md | VP-AUTH-001 |
+| VP-009 | Auth Header Validation — Two-Body Taxonomy + ADR-0005 Dual-Accept (Canonical `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization` Compatibility Alias) | BC-2.01.009 | manual+fuzz | vp-009-auth-header-validation.md | VP-AUTH-002 |
 | VP-010 | Lock File `contract_version: 1` First Key | BC-2.01.010 | manual+mutation | vp-010-lock-file-contract-version.md | VP-LOCK-001 |
 
 ---
@@ -56,12 +56,12 @@ traces_to: prd.md
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
 |-------|-------|-----------|--------------|------|---------------|
 | VP-011 | ABI Version in `/status` Endpoint | BC-2.02.001 | integration-test | vp-011-abi-version-status-endpoint.md | VP-ABI-001 |
-| VP-012 | `MONOCLE_ABI_VERSION` Pub Const Equals `1` | BC-2.02.002 | compile-time-check | vp-012-abi-version-crate-root.md | VP-ABI-002 |
+| VP-012 | `monocle_core::MONOCLE_ABI_VERSION` Pub Const Equals `1` | BC-2.02.002 | compile-time-check | vp-012-abi-version-crate-root.md | VP-ABI-002 |
 | VP-013 | Non-Exhaustive Enum Policy (Modulo ADR-0004 Exemptions) | BC-2.02.003 | ast-audit+mutation-test | vp-013-non-exhaustive-enum-policy.md | VP-TYPES-001 |
 | VP-014 | `FactoryAdapter` Trait Signature Stable | BC-2.02.004 | ast-audit | vp-014-factory-adapter-trait.md | VP-FACTORY-001 |
-| VP-015 | `VsddFactoryAdapter::new` + Self-Reference Detection | BC-2.02.005 | integration-test+fuzz | vp-015-vsdd-factory-adapter.md | VP-FACTORY-002 |
-| VP-016 | Proto Field Number 1 = `schema_version` in `HookEnvelope` | BC-2.02.006 | integration-test | vp-016-hook-envelope-proto-field-numbers.md | VP-PROTO-001a |
-| VP-017 | Rust `HookEnvelope` Struct `pub schema_version: u32 = 1` | BC-2.02.007 | integration-test | vp-017-hook-envelope-schema-version-field.md | VP-PROTO-001b |
+| VP-015 | `VsddFactoryAdapter::new` + Self-Referential Detection; `None` for Absent Optionals | BC-2.02.005 | integration-test+fuzz | vp-015-vsdd-factory-adapter.md | VP-FACTORY-002 |
+| VP-016 | Proto Field Number 1 in `HookEnvelope` is `schema_version` | BC-2.02.006 | integration-test | vp-016-hook-envelope-proto-field-numbers.md | VP-PROTO-001a |
+| VP-017 | Rust `HookEnvelope` Struct Exposes `pub schema_version: u32` with Value `1` | BC-2.02.007 | integration-test | vp-017-hook-envelope-schema-version-field.md | VP-PROTO-001b |
 | VP-018 | `schema_version` Forward-Compat Contract (Phase 1 Structural Recap; Phase 4 Runtime Dispatch) | BC-2.02.008 | integration-test+fuzz | vp-018-phase4-schema-version-validation.md | VP-PROTO-002 |
 
 ---
@@ -74,9 +74,9 @@ traces_to: prd.md
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |
 |-------|-------|-----------|--------------|------|---------------|
-| VP-019 | `EngineModule` Trait Signature Stable; `last_event_micros: Option<i64>` | BC-2.03.001 | ast-audit | vp-019-engine-module-trait.md | VP-ENGINE-001 |
-| VP-020 | `ClaudeCodeModule::detect` Strict Basename Match | BC-2.03.002 | integration-test | vp-020-claude-code-module-impl.md | VP-ENGINE-002 |
-| VP-021 | `metadata`/`enrich` Return `HomeUnresolvable` (All Four Home-Env Vars Unset) | BC-2.03.003 | integration-test | vp-021-home-unresolvable-error.md | VP-ENGINE-002-ERR |
+| VP-019 | `EngineModule` Trait Signature Stable; `last_event_micros: Option<i64>`; No Silent Fallback | BC-2.03.001 | ast-audit | vp-019-engine-module-trait.md | VP-ENGINE-001 |
+| VP-020 | `ClaudeCodeModule::detect` Strict Basename Match; Cmdline Ignored | BC-2.03.002 | integration-test | vp-020-claude-code-module-impl.md | VP-ENGINE-002 |
+| VP-021 | `metadata`/`enrich` Return `HomeUnresolvable` with All Four Home-Env Vars Unset | BC-2.03.003 | integration-test | vp-021-home-unresolvable-error.md | VP-ENGINE-002-ERR |
 | VP-022 | `hook_paths()` Returns Exactly 5 Entries — One per `HookType` Variant | BC-2.03.004 | integration-test | vp-022-claude-code-module-inherent-methods.md | VP-ENGINE-003 |
 
 ---
@@ -177,7 +177,7 @@ mapping for traceability into pre-Dispatch-5a artifacts.
 
 ## References
 
-- Current as of `2026-05-18T09:00:00Z` (R112 Round 11 — F-R112-1/2/3/4 cascade-tail closure).
+- Current as of `2026-05-18T14:00:00Z` (R15A Round 15 — F-R116-1 HIGH sibling sweep closure: 15 VP-INDEX row titles synced to canonical VP H1s).
 - Source monolith (retired): `.factory/specs/verification-properties.md`
   v1.35 was the predecessor (commit 842402c). The monolith was deleted
   from the working tree in Dispatch 5b; per PG-5 historical preservation
@@ -870,3 +870,192 @@ UTC ISO-8601 `Z` form: `2026-05-18T10:00:00Z` >= chain high-water `2026-05-18T09
 ### Per CLAUDE.md Production-Grade Default Rule 1+5
 
 Rule 1: mechanical row-title sync to canonical H1 executed in-scope of R52 Round rather than deferred. Rule 5: cheapest path (defer title-cell drift to next round as "cosmetic divergence") rejected in favor of correct path (close in-scope per established Title-to-H1 sync discipline; CLEAN trajectory maintenance). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 chain continuity preserved verbatim per SE-17g audit-trail discipline.
+
+
+---
+
+## §Trace v1.12 — F-R116-1 HIGH: 15 VP-INDEX Row Titles Synced to Canonical VP H1s (R15A R116 Round 15 Sibling Sweep Closure)
+
+**Bump:** v1.11 → v1.12.
+**Predecessor pin:** v1.11 (commit pending in current burst chain — R52 Round GAP-R52-001 MED VP-018 row title sync to canonical H1).
+**Scope of v1.12 (NORMATIVE — F-R116-1 HIGH sibling sweep; 15-row title cell sync to canonical H1; SAME-CLASS sweep precedent established by v1.11 single-row VP-018 sync; per CLAUDE.md Production-Grade Rule 1+4 expanded scope across all 15 drifted rows in single bump):**
+
+### Background — Same-Class Sibling Sweep Obligation (O-R116-1 / SE-22 candidate)
+
+R115 (commit 34ee6ee) expanded VP-005 H1 to add `Mode 0o600/0o700` mode-coverage detail. The corresponding VP-INDEX SS-01 table row title cell was not refreshed to match the post-R115 H1. R116 adversary pass surfaced this as F-R116-1 HIGH and identified that the divergence pattern affected NOT JUST VP-005 — but 14 additional VPs (VP-001, VP-002, VP-003, VP-004, VP-007, VP-008, VP-009, VP-012, VP-015, VP-016, VP-017, VP-019, VP-020, VP-021) carried the SAME CLASS of H1-vs-INDEX-row title drift that had accumulated across multiple rounds of VP-body refinement without parallel INDEX-row cell refresh.
+
+R15A executes the sweep per CLAUDE.md Production-Grade Rule 1+4: 15 row title cells (14 listed + VP-005 cross-dispatch surfaced as additional drift during the sweep, since R15C bumped VP-005 v1.0.11 → v1.0.12 in scope of this same round and the VP-005 INDEX row carried the same class of drift as the 14 listed) synced to canonical H1s verbatim in a single v1.12 bump.
+
+### Change 1 — F-R116-1 HIGH: SS-01 §Daemon Lifecycle VPs Table Row Title Sync to Canonical H1 (NORMATIVE; 9 rows touched)
+
+- **SS-01 §Daemon Lifecycle VPs table, per-row Title cell SE-17f BEFORE / AFTER evidence:**
+  - **VP-001 row:**
+    - Before: `Healthz Endpoint — Unauthenticated Liveness 200/503`
+    - After: `Healthz Endpoint — Unauthenticated Liveness 200/503 with Uptime + Version`
+    - H1 source: `vp-001-healthz-endpoint.md` line 33: `# VP-001: Healthz Endpoint — Unauthenticated Liveness 200/503 with Uptime + Version`
+  - **VP-002 row:**
+    - Before: `Status Endpoint — Authenticated 10-Field JSON`
+    - After: `Status Endpoint — Authenticated Daemon-State JSON with 10 Required Fields`
+    - H1 source: `vp-002-status-endpoint.md` line 33: `# VP-002: Status Endpoint — Authenticated Daemon-State JSON with 10 Required Fields`
+  - **VP-003 row:**
+    - Before: `Body Size Limit — 256 KiB; HTTP 413`
+    - After: `Body Size Limit — 256 KiB; HTTP 413 on Excess`
+    - H1 source: `vp-003-body-size-limit.md` line 33: `# VP-003: Body Size Limit — 256 KiB; HTTP 413 on Excess`
+  - **VP-004 row:**
+    - Before: `Graceful Shutdown — 10-Second Drain + 5-Code Exit`
+    - After: `Graceful Shutdown — 10-Second Drain + 5-Code POSIX Exit Taxonomy`
+    - H1 source: `vp-004-graceful-shutdown.md` line 33: `# VP-004: Graceful Shutdown — 10-Second Drain + 5-Code POSIX Exit Taxonomy`
+  - **VP-005 row (cross-dispatch additional drift surfaced during R15A sweep; co-located with R15C v1.0.12 patch bump per SE-18 cross-dispatch coordination):**
+    - Before: `Lock File Lifecycle — Atomic Create, Pid Gate, Mode 0o600/0o700`
+    - After: `Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution`
+    - H1 source: `vp-005-lock-file-lifecycle.md` line 33: `# VP-005: Lock File Lifecycle — Atomic Create, Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution` (post-R115 commit 34ee6ee mode-coverage expansion; VP file at v1.0.12 commit 1d75edf R15C).
+  - **VP-007 row:**
+    - Before: `JSONL Ring Format-Version First Key`
+    - After: `JSONL Ring Record — Format-Version First Key (FC-01)`
+    - H1 source: `vp-007-ring-format-version.md` line 33: `# VP-007: JSONL Ring Record — Format-Version First Key (FC-01)`
+  - **VP-008 row:**
+    - Before: `Auth Token Wire Format + Constant-Time Comparison`
+    - After: `Auth Token — Wire Format + Constant-Time Comparison (FC-06)`
+    - H1 source: `vp-008-auth-token-wire-format.md` line 33: `# VP-008: Auth Token — Wire Format + Constant-Time Comparison (FC-06)`
+  - **VP-009 row (MOST SEVERE drift per R116 evidence — INDEX row omitted ADR-0005 dual-accept material entirely):**
+    - Before: `Auth Header Two-Body Taxonomy`
+    - After: `Auth Header Validation — Two-Body Taxonomy + ADR-0005 Dual-Accept (Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias)`
+    - H1 source: `vp-009-auth-header-validation.md` line 33: `# VP-009: Auth Header Validation — Two-Body Taxonomy + ADR-0005 Dual-Accept (Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias)`
+  - **VP-006 row:** UNCHANGED (H1 verbatim matches INDEX row).
+  - **VP-010 row:** UNCHANGED (H1 verbatim matches INDEX row).
+
+### Change 2 — F-R116-1 HIGH: SS-02 §Core Types and ABI VPs Table Row Title Sync to Canonical H1 (NORMATIVE; 4 rows touched)
+
+- **SS-02 §Core Types and ABI VPs table, per-row Title cell SE-17f BEFORE / AFTER evidence:**
+  - **VP-012 row:**
+    - Before: `\`MONOCLE_ABI_VERSION\` Pub Const Equals \`1\``
+    - After: `\`monocle_core::MONOCLE_ABI_VERSION\` Pub Const Equals \`1\``
+    - H1 source: `vp-012-abi-version-crate-root.md` line 33: `# VP-012: \`monocle_core::MONOCLE_ABI_VERSION\` Pub Const Equals \`1\``
+  - **VP-015 row:**
+    - Before: `\`VsddFactoryAdapter::new\` + Self-Reference Detection`
+    - After: `\`VsddFactoryAdapter::new\` + Self-Referential Detection; \`None\` for Absent Optionals`
+    - H1 source: `vp-015-vsdd-factory-adapter.md` line 33: `# VP-015: \`VsddFactoryAdapter::new\` + Self-Referential Detection; \`None\` for Absent Optionals`
+  - **VP-016 row:**
+    - Before: `Proto Field Number 1 = \`schema_version\` in \`HookEnvelope\``
+    - After: `Proto Field Number 1 in \`HookEnvelope\` is \`schema_version\``
+    - H1 source: `vp-016-hook-envelope-proto-field-numbers.md` line 33: `# VP-016: Proto Field Number 1 in \`HookEnvelope\` is \`schema_version\``
+  - **VP-017 row:**
+    - Before: `Rust \`HookEnvelope\` Struct \`pub schema_version: u32 = 1\``
+    - After: `Rust \`HookEnvelope\` Struct Exposes \`pub schema_version: u32\` with Value \`1\``
+    - H1 source: `vp-017-hook-envelope-schema-version-field.md` line 33: `# VP-017: Rust \`HookEnvelope\` Struct Exposes \`pub schema_version: u32\` with Value \`1\``
+  - **VP-011, VP-013, VP-014, VP-018 rows:** UNCHANGED (H1 verbatim matches INDEX row; VP-018 already synced in v1.11).
+
+### Change 3 — F-R116-1 HIGH: SS-03 §Engine Module VPs Table Row Title Sync to Canonical H1 (NORMATIVE; 3 rows touched)
+
+- **SS-03 §Engine Module VPs table, per-row Title cell SE-17f BEFORE / AFTER evidence:**
+  - **VP-019 row:**
+    - Before: `\`EngineModule\` Trait Signature Stable; \`last_event_micros: Option<i64>\``
+    - After: `\`EngineModule\` Trait Signature Stable; \`last_event_micros: Option<i64>\`; No Silent Fallback`
+    - H1 source: `vp-019-engine-module-trait.md` line 33: `# VP-019: \`EngineModule\` Trait Signature Stable; \`last_event_micros: Option<i64>\`; No Silent Fallback`
+  - **VP-020 row:**
+    - Before: `\`ClaudeCodeModule::detect\` Strict Basename Match`
+    - After: `\`ClaudeCodeModule::detect\` Strict Basename Match; Cmdline Ignored`
+    - H1 source: `vp-020-claude-code-module-impl.md` line 33: `# VP-020: \`ClaudeCodeModule::detect\` Strict Basename Match; Cmdline Ignored`
+  - **VP-021 row:**
+    - Before: `\`metadata\`/\`enrich\` Return \`HomeUnresolvable\` (All Four Home-Env Vars Unset)`
+    - After: `\`metadata\`/\`enrich\` Return \`HomeUnresolvable\` with All Four Home-Env Vars Unset`
+    - H1 source: `vp-021-home-unresolvable-error.md` line 33: `# VP-021: \`metadata\`/\`enrich\` Return \`HomeUnresolvable\` with All Four Home-Env Vars Unset`
+  - **VP-022 row:** UNCHANGED (H1 verbatim matches INDEX row).
+
+### Change 4 — §References Current-as-of Refresh (NORMATIVE)
+
+- **Before:** `Current as of \`2026-05-18T09:00:00Z\` (R112 Round 11 — F-R112-1/2/3/4 cascade-tail closure).`
+- **After:** `Current as of \`2026-05-18T14:00:00Z\` (R15A Round 15 — F-R116-1 HIGH sibling sweep closure: 15 VP-INDEX row titles synced to canonical VP H1s).`
+
+### SE-17a/c/f literal-grep evidence — H1 extraction (NORMATIVE)
+
+Pre-edit literal `grep -nE "^# Verification Property:" .factory/specs/verification-properties/vp-*.md` returned 0 matches (H1 format in all 22 VP files is `# VP-NNN: <subtitle>` not `# Verification Property: <subtitle>`; the R116 adversary report describes H1 form approximately, not verbatim — this §Trace uses the actual on-disk H1 form as the NORMATIVE truth per SE-17g audit-trail discipline).
+
+Pre-edit literal `grep -nE "^# VP-" .factory/specs/verification-properties/vp-*.md` returned 22 matches (one per VP file, all at line 33), confirming canonical H1 form. All 22 H1s extracted verbatim per file-by-file `grep -nE "^# VP-"` and reproduced above as canonical sources for the 15 row sync edits.
+
+### SE-17c-d body-scope grep — post-edit verification (NORMATIVE)
+
+- Post-edit `grep -nE "Healthz Endpoint — Unauthenticated Liveness 200/503 with Uptime \+ Version" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-001 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Status Endpoint — Authenticated Daemon-State JSON with 10 Required Fields" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-002 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Body Size Limit — 256 KiB; HTTP 413 on Excess" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-003 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "5-Code POSIX Exit Taxonomy" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-004 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Pid-Liveness Gate, Mode 0o600/0o700, Cleanup, 4-Path Resolution" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-005 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "JSONL Ring Record — Format-Version First Key \(FC-01\)" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-007 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Auth Token — Wire Format \+ Constant-Time Comparison \(FC-06\)" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-008 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Auth Header Validation — Two-Body Taxonomy \+ ADR-0005 Dual-Accept" VP-INDEX.md` body scope → 2 matches (SS-01 table VP-009 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "monocle_core::MONOCLE_ABI_VERSION" VP-INDEX.md` body scope → 2 matches (SS-02 table VP-012 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Self-Referential Detection; \`None\` for Absent Optionals" VP-INDEX.md` body scope → 2 matches (SS-02 table VP-015 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Proto Field Number 1 in \`HookEnvelope\` is \`schema_version\`" VP-INDEX.md` body scope → 2 matches (SS-02 table VP-016 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Exposes \`pub schema_version: u32\` with Value \`1\`" VP-INDEX.md` body scope → 2 matches (SS-02 table VP-017 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "No Silent Fallback" VP-INDEX.md` body scope → 2 matches (SS-03 table VP-019 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "Strict Basename Match; Cmdline Ignored" VP-INDEX.md` body scope → 2 matches (SS-03 table VP-020 row + this §Trace AFTER evidence).
+- Post-edit `grep -nE "HomeUnresolvable\` with All Four Home-Env Vars Unset" VP-INDEX.md` body scope → 2 matches (SS-03 table VP-021 row + this §Trace AFTER evidence).
+- **§References Current-as-of post-edit grep:** `grep -nE "Current as of \`2026-05-18T14:00:00Z\`" VP-INDEX.md` → 1 match (§References line).
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content (Source BC, Proof Method, File, Old ID columns):** UNCHANGED — only Title column cells for the 15 drifted rows modified.
+- **§Conventions section:** UNCHANGED — pin-symmetry / SE-17g audit-trail conventions remain canonical.
+- **SS-NN architecture-source pin headers:** UNCHANGED — SS-01 v1.0.32 + SS-02 v1.2.13 + SS-03 v1.1.20 remain canonical per R110 Round 9 / R111 Round 10 prior establishment.
+
+### SE-17e sibling-propagation note (this closure IS the sibling sweep)
+
+R116 finding F-R116-1 surfaced the SE-22 candidate observation O-R116-1 — that when a finding of class X is fixed in artifact Y (R115 fixed VP-005 H1 in vp-005-lock-file-lifecycle.md), the agent MUST sweep sibling artifacts in the same layer (the 22 VP files + VP-INDEX) for class X drift before declaring the round closed. The R115 fix did NOT sweep INDEX-row-cells for parallel drift across all 22 VP files. R15A closes the sibling sweep obligation by executing the 15-row title cell refresh in a single bump per CLAUDE.md Production-Grade Rule 1+4.
+
+Cross-dispatch coordination with R15C (SE-18): VP-005 v1.0.12 was bumped in R15C commit 1d75edf for SE-16d wording fix (> → ≥). The VP-005 INDEX row title cell drift was surfaced AS PART of the R15A SE-22 sibling sweep (not listed in the original 14 per R116 task), and is co-located in this v1.12 bump because (a) the drift is structurally identical to the 14 listed siblings, and (b) bundling it with the sweep preserves the §Trace chain continuity per CLAUDE.md Production-Grade Rule 4 (consolidated coupled fixes, not fragmented). VP-005 INDEX row now reflects the post-R115 mode-coverage H1 form.
+
+### Authoritative cross-references
+
+- **VP-005 canonical H1 source:** `vp-005-lock-file-lifecycle.md` v1.0.12 commit 1d75edf (R15C R116 Round 15C SE-16d wording fix + patch bump).
+- **Brief cross-dispatch coordination:** `product-brief.md` v1.4.28 commit 08d1ef4 (R15B R116 Round 15B F-R116-2 BC-INDEX v1.7 → v1.9 back-cascade).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.9 (commit c0c6b99 — PO 10A R111 Round 10A; unchanged this round).
+- **PRD:** `.factory/specs/prd.md` v1.26.9 (commit c0c6b99 — PO 10A R111 Round 10A; unchanged this round).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (commit 6e72995 — Architect 8A R109 Round 8A; unchanged this round).
+- **Architecture (SS-02):** `architecture/SS-core-types-and-abi.md` v1.2.13 (commit 6e72995; unchanged this round).
+- **Architecture (SS-03):** `architecture/SS-engine-module.md` v1.1.20 (commit 6e72995; unchanged this round).
+- **R116 closure chain (R15 burst chain):** R15B (F-R116-2 HIGH — brief BC-INDEX v1.7 → v1.9, commit 08d1ef4) + R15C (F-R116-3 MED — VP-005 SE-16d wording > → ≥ + patch bump v1.0.11 → v1.0.12, commit 1d75edf) + R15A (F-R116-1 HIGH — VP-INDEX 15-row title sibling sweep, THIS commit).
+- **Concurrent dispatches (R15A Round 15):** FV-only fix burst per orchestrator dispatch (sibling sweep scope; no VP body edits per task scope constraint).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T14:00:00Z` >= chain high-water `2026-05-18T13:30:00Z` (R15C VP-005 v1.0.12 frontmatter timestamp + R15B brief v1.4.28 frontmatter timestamp; both at 13:30:00Z per R15B/R15C cross-dispatch coordination). SE-16d PASS (strict-greater satisfied; +30 minutes over prior dispatches in same round).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: 15 SS-NN table row Title cell sync to canonical H1 (9 SS-01 + 4 SS-02 + 3 SS-03 minus the 1 SS-02 already synced in v1.11 = 15 total this round); §References Current-as-of refresh; frontmatter `version` v1.11 → v1.12 / `timestamp` 2026-05-18T10:00:00Z → 2026-05-18T14:00:00Z updates.
+- INFORMATIONAL: rationale subsections; background subsection; cross-reference subsection; SE-17e sibling-propagation note; SE-22 candidate context (O-R116-1 observation).
+- **SE-17g audit-trail preservation:** All prior §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 / v1.11 BEFORE evidence preserved verbatim per §Conventions (established R110 Round 9C, F-R110-10 MED). SE-17g META audit: prior `Auth Header Two-Body Taxonomy` text remains inside this §Trace v1.12 SS-01 VP-009 row SE-17f BEFORE evidence block (intentional preservation, NOT residual stale active citation).
+- **D-116 scoped-awk convention:** SE-17c-d body-scope greps above filtered via the §Trace-aware boundary discipline established R110 Round 9C — match counts equal to "2" indicate the canonical AFTER citation in the active SS-NN table row PLUS the §Trace v1.12 AFTER evidence block in this preservation chain. No stale BEFORE-form citations remain in active body content.
+
+### VP file frontmatter version pin sweep — INDEX-vs-VP-file freshness check (NORMATIVE)
+
+Cross-validation that VP-INDEX active references reflect current per-VP frontmatter `version:` pins for all 22 VPs (sweep-wide audit not previously routinely executed; included in this dispatch per Production-Grade Rule 1+4 to surface any additional drift beyond the 15 row title sync):
+
+| VP file | Frontmatter `version:` (audit time) | INDEX cite (if any) | Status |
+|---------|-------------------------------------|---------------------|--------|
+| vp-001 | 1.0.10 | (no per-VP version cite in INDEX body — only title row) | OK |
+| vp-002 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-003 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-004 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-005 | 1.0.12 (post-R15C 1d75edf) | (no per-VP version cite in INDEX body) | OK — INDEX row title now reflects canonical H1 |
+| vp-006 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-007 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-008 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-009 | 1.0.11 | (no per-VP version cite in INDEX body) | OK |
+| vp-010 | 1.0.10 | (no per-VP version cite in INDEX body) | OK |
+| vp-011 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-012 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-013 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+| vp-014 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-015 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+| vp-016 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+| vp-017 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-018 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+| vp-019 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-020 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+| vp-021 | 1.0.9 | (no per-VP version cite in INDEX body) | OK |
+| vp-022 | 1.0.8 | (no per-VP version cite in INDEX body) | OK |
+
+**Sweep result:** VP-INDEX does not carry per-VP frontmatter version pins in body cites (the canonical per-VP version tracking lives in the VP files' own frontmatter and §Trace chains, plus the §References citations of related artifacts like BC-INDEX / PRD / SS-NN architecture sources). All 22 VP files verified at audit time; no additional version-pin drift surfaced. The "VP-005 pin refresh to v1.0.12" requested in the R15A task instructions is reflected via the SS-01 VP-005 row title sync (which captures the post-R115 mode-coverage H1 expansion that was the underlying cause for the v1.0.12 patch bump chain).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical 15-row title-cell sync to canonical H1 executed in-scope of R15A R116 Round 15 rather than deferred. Rule 4: 15 coupled sibling sweep fixes (one per drifted VP row) consolidated into single v1.12 bump rather than fragmented across 15 separate dispatches; VP-005 additional-drift (not in original R116 14-list) surfaced and swept in same bump per same Rule 4. Rule 5: cheapest path (defer 14 sibling drifts as "out of original R115 scope") rejected in favor of correct path (close SE-22 sibling sweep in-scope per O-R116-1 process-gap observation; this closure IS the sibling sweep that R115 missed). No tech-debt entries created. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 / v1.11 chain continuity preserved verbatim per SE-17g audit-trail discipline.
