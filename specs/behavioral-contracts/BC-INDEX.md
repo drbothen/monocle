@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.10"
+version: "1.11"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T16:00:00Z
+timestamp: 2026-05-18T22:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -383,3 +383,43 @@ BC version bumps in this dispatch:
 BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
 SE-17g META audit: `grep -n "Architecture Source" .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md` → line 89, cell confirmed: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`. 0 remaining pin-symmetry violations across all 22 BCs.
 SE-16d monotonicity PASS: 2026-05-18T16:00:00Z > prior 2026-05-18T07:00:00Z (v1.9). ARITHMETICALLY TRUE: 2026-05-18T16:00:00Z > 2026-05-18T07:00:00Z PASS.
+
+## §Trace v1.11
+
+**F-R119-2 closure — retrospective §Trace for R17F SM-applied Canonical SS version table edit** (2026-05-18T22:00:00Z):
+
+**Background:** R17F state-manager (commit 7681632, 2026-05-18T20:30:00Z) modified BC-INDEX line 279 — the Canonical SS version table row for `SS-conventions-anti-patterns.md` — from v1.29.4 to v1.29.5 as a "defensive sweep" (R17D introduced v1.29.5 at 19:30Z via commit b7ce1ac). The content edit was correct, but SM does not have authority to author §Trace blocks or bump BC-INDEX versions per the Correct Agent Routing principle — now codified as SE-23 in R18-pre (commit 70b7552, D-146). R119 adversary correctly flagged this as F-R119-2 HIGH: BC-INDEX body content reflected ≥19:30Z state but frontmatter showed v1.10 at 16:00:00Z, breaking SE-16d audit-trail monotonicity. The Canonical SS version table is the source-of-truth that `SS-conventions-anti-patterns.md §Architecture Source Pin-Symmetry Convention` (R17D commit b7ce1ac) cross-references back to this BC-INDEX section.
+
+**Resolution:** This §Trace v1.11 retrospectively documents the SM-applied edit in BC-INDEX's own §Trace timeline, restoring SE-16d monotonicity.
+
+| Edit | Source | Canonical version | Applied by | When | Documented now |
+|------|--------|-------------------|------------|------|----------------|
+| Canonical SS version table row, SS-conventions-anti-patterns.md v1.29.4 → v1.29.5 | R17D (commit b7ce1ac) | v1.29.5 | R17F SM | 2026-05-18T20:30:00Z | §Trace v1.11 |
+
+**Content integrity:** Pin value verified canonical at audit time. No content changes in this burst beyond bookkeeping (frontmatter version/timestamp + this §Trace).
+
+**SE-22 in-artifact sweep (BC-INDEX scope):**
+
+| Pin target | grep pattern | Lines found | Classification | Status |
+|-----------|-------------|-------------|----------------|--------|
+| SS-daemon-lifecycle.md | `v1\.` | Line 274 (table), lines 192-201 (§Trace history), line 204, 293, 371, 384 | Historical §Trace only — canonical table = v1.0.32 | NORMATIVE: v1.0.32 PASS |
+| SS-forward-compatibility.md | `v1\.` | Line 275 (table) | Canonical table | NORMATIVE: v1.2.19 PASS |
+| SS-engine-module.md | `v1\.` | Line 276 (table), line 315 (§Trace history) | Historical §Trace only — canonical table = v1.1.20 | NORMATIVE: v1.1.20 PASS |
+| SS-core-types-and-abi.md | `v1\.` | Line 277 (table), lines 305, 345, 371, 381, 384 (§Trace history) | Historical §Trace only — canonical table = v1.2.13 | NORMATIVE: v1.2.13 PASS |
+| SS-deps-pin-manifest.md | `v1\.` | Line 278 (table) | Canonical table | NORMATIVE: v1.1.17 PASS |
+| SS-conventions-anti-patterns.md | `v1\.` | Line 279 (table) | Canonical table — R17F SM edit target | NORMATIVE: v1.29.5 PASS |
+| prd.md | `v1\.` | 0 matches | No version pin present in BC-INDEX body | N/A — INFORMATIONAL context only |
+| product-brief.md | `v1\.` | 0 matches | No version pin present in BC-INDEX body | N/A — INFORMATIONAL context only |
+| L2-INDEX | `v1\.` | 0 matches | No version pin present in BC-INDEX body | N/A — INFORMATIONAL context only |
+| ARCH-INDEX | `v1\.` | 0 matches | No version pin present in BC-INDEX body | N/A — INFORMATIONAL context only |
+
+Zero NORMATIVE stale pins found. Canonical SS version table values all match post-R17D/R17F canonical state. No content changes required beyond frontmatter bookkeeping.
+
+**SE-16d monotonicity:** BC-INDEX v1.11 timestamp `2026-05-18T22:00:00Z` > R18A PRD v1.26.12 `21:30:00Z` > STATE v5.79 `21:15:00Z` > STATE v5.78 `20:30:00Z`. PASS strict-greater.
+
+**SE-23 first-application context:** SE-23 was codified in R18-pre (commit 70b7552) because R17F SM scope violation broke SE-16d audit-trail integrity. R18A closed the PRD half (prd.md §Trace v1.26.12 retrospective); R18B closes the BC-INDEX half (this §Trace v1.11).
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-18T22:00:00Z > prior 2026-05-18T16:00:00Z (v1.10). ARITHMETICALLY TRUE: 2026-05-18T22:00:00Z > 2026-05-18T16:00:00Z PASS.
+
+**Reference:** R119 report at `.factory/plans/adversary-pass-r119-phase1.md` (commit 70b7552).
