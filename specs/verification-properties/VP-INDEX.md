@@ -1,10 +1,10 @@
 ---
 document_type: verification-property-index
 level: L4
-version: "1.14"
+version: "1.15"
 status: active
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T23:30:00Z
+timestamp: 2026-05-19T02:00:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "02147fc"
@@ -177,7 +177,7 @@ mapping for traceability into pre-Dispatch-5a artifacts.
 
 ## References
 
-- Current as of `2026-05-18T23:30:00Z` (R18E Round 18E — SM-surfaced VP-INDEX BC-INDEX cite staleness closure: VP-INDEX + 22 VP §References cascade-tail refresh to BC-INDEX v1.11 + PRD v1.26.12; SE-22 v2 consumer-ledger 2nd explicit occurrence (HELD per D-114); SE-23 first-cycle proof — SM surfaced per SE-23 surface protocol → orchestrator routed → FV (correct specialist) closed).
+- Current as of `2026-05-19T02:00:00Z` (R19F Round 19F — FV final cascade-tail closure of R19 chain consumer-ledger fan-out: VP-INDEX + 22 VP §References cascade-tail refresh to PRD v1.26.14 (two-step supersession v1.26.12 → v1.26.13 [R19A] → v1.26.14 [R19E], skipping the v1.26.13 intermediate at the consumer-edge per R19E surface); SE-22 v2 consumer-ledger 5th application (R19A → R19B → R19D → R19E → R19F — pattern stabilizing toward D-114 codification threshold of 3+ explicit occurrences, now exceeded with 5 applications); SE-17f recursive revalidation; SE-16d monotonicity; supersedes R18E Round 18E PRD v1.26.12 + BC-INDEX v1.11 cascade closure).
 - Source monolith (retired): `.factory/specs/verification-properties.md`
   v1.35 was the predecessor (commit 842402c). The monolith was deleted
   from the working tree in Dispatch 5b; per PG-5 historical preservation
@@ -186,7 +186,7 @@ mapping for traceability into pre-Dispatch-5a artifacts.
   earlier commits. VP-INDEX.md is now the canonical entry point for
   Phase 1 verification properties.
 - BC index: `behavioral-contracts/BC-INDEX.md` v1.11 (R18B commit 442f5ac — F-R119-2 closure: BC-INDEX §Trace v1.11 retrospective for R17F SM-applied Canonical SS table edit + v1.10 → v1.11 bookkeeping; supersedes v1.10 R16 R117 Round 16 PO dispatch — BC scope refresh; supersedes v1.9 commit c0c6b99 — PO 10A R111 Round 10A timestamp pathology fix + L2-INDEX v1.0.8 pin refresh; supersedes v1.8 commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.7 commit 517c7ee — F-R109 Round 8B PO sweep; supersedes v1.6 commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A BC scope dispatch; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure; supersedes v1.1 Dispatch 3 commit f259ade).
-- PRD: `.factory/specs/prd.md` v1.26.12 (Dispatch 4 commit 1030c65; refreshed to v1.26.12 in R18A R18A PO dispatch commit 92c55d2 — F-R119-1 closure retrospective for R17F SM-applied traces_to edits; supersedes v1.26.11 in R17A Round 17A PO dispatch commit d22645e; supersedes v1.26.10 in R16 Round 16 PO dispatch; supersedes v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
+- PRD: `.factory/specs/prd.md` v1.26.14 (Dispatch 4 commit 1030c65; refreshed to v1.26.14 in R19E R19E PO dispatch commit 31f984a — traces_to brief v1.4.30 + L2-INDEX v1.0.11 (R19B + R19D consumer-ledger closure; comprehensive supersession of v1.26.13 intermediate); supersedes v1.26.13 in R19A R19A PO dispatch commit ce1e0ca — F-R120-1/2/3 compound closure: traces_to BC-INDEX v1.11 + L2-INDEX v1.0.10 + VP-INDEX v1.14 + 2 SS pins + 5 pinned ADRs (SE-22 v2 first application); supersedes v1.26.12 in R18A R18A PO dispatch commit 92c55d2 — F-R119-1 closure retrospective for R17F SM-applied traces_to edits; supersedes v1.26.11 in R17A Round 17A PO dispatch commit d22645e; supersedes v1.26.10 in R16 Round 16 PO dispatch; supersedes v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).
 - Architecture index: `architecture/ARCH-INDEX.md`.
 - Template: `templates/L4-verification-property-template.md`.
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md`.
@@ -1248,3 +1248,97 @@ Per D-114 + D-116 recursive revalidation discipline: after applying all edits in
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical cascade-tail citation refresh executed in-scope of R18E Round 18E rather than deferred. Rule 4: 4 coupled cascade fixes (VP-INDEX BC cite + VP-INDEX PRD cite + 22-VP BC cite + 22-VP PRD cite) consolidated into single v1.14 bump rather than fragmented across 4 separate dispatches; VP-INDEX + 22-VP edits co-located in single combined commit per Production-Grade Default. Rule 5: cheapest path (defer cascade-tail to R120 adversary discovery as cascade-tail finding) rejected in favor of correct path (close cleanup in-scope per SE-23 surface-and-route protocol BEFORE adversary dispatch to give R120 + cons R59 a real shot at CLEAN counter advance). No tech-debt entries created. SE-22 v2 consumer-ledger 2nd explicit occurrence held per D-114 (codification awaiting 3rd occurrence). §Trace v1.2 through v1.13 chain continuity preserved verbatim per SE-17g audit-trail discipline.
+
+---
+
+## §Trace v1.15 — R19F Round 19F FV Final Cascade-Tail Closure: VP-INDEX + 22-VP §References PRD Refresh v1.26.12 → v1.26.14 (R19A + R19E Consumer-Ledger Fan-Out; SE-22 v2 Fifth Application; Two-Step Supersession)
+
+**Bump:** v1.14 → v1.15.
+**Predecessor pin:** v1.14 (commit b22312c — R18E Round 18E FV cleanup: VP-INDEX + 22 VP §References cascade-tail refresh to BC-INDEX v1.11 + PRD v1.26.12; SE-22 v2 consumer-ledger 2nd explicit occurrence).
+**Scope of v1.15 (NORMATIVE — R19F Round 19F FV final cascade-tail closure of the R19 chain consumer-ledger fan-out):**
+
+**R19 chain context:**
+- R19-pre: SE-22 v2 codified as 39th discipline (commit 646c949; D-149 closure; promoted from HELD-after-2-occurrences to ACTIVE-after-pattern-stabilization).
+- R19A: PRD v1.26.12 → v1.26.13 (commit ce1e0ca — F-R120-1/2/3 compound closure: PRD traces_to BC-INDEX v1.11 + L2-INDEX v1.0.10 + VP-INDEX v1.14 + 2 SS pins + 5 pinned ADRs; SE-22 v2 first application).
+- R19B: brief v1.4.29 → v1.4.30 (commit 6c863a9 — GAP-R59-003 closure: brief line 251 BC-INDEX v1.10 → v1.11 back-cascade; SE-22 v2 application).
+- R19D: L2-INDEX v1.0.10 → v1.0.11 + CAP-001 v1.5 → v1.6 (commit 6b85e06 — combined BA brief consumer-ledger closure: L2-INDEX line 149 + CAP-001 §Trace v1.6 brief v1.4.30 fan-out).
+- R19E: PRD v1.26.13 → v1.26.14 (commit 31f984a — comprehensive PRD refresh: traces_to brief v1.4.30 + L2-INDEX v1.0.11; supersedes v1.26.13 intermediate).
+- R19F (THIS burst): VP-INDEX + 22 VP §References PRD refresh v1.26.12 → v1.26.14 (SKIPS v1.26.13 intermediate at consumer-edge per R19E surface; two-step supersession documented).
+
+**Two-step supersession (NORMATIVE):**
+
+The PRD pin at the VP consumer edge advances v1.26.12 → v1.26.14 in a single edit. The R19A v1.26.13 intermediate is NOT separately cited in the canonical AFTER form (consumer-edge collapse per R19E producer surface) but IS preserved in the supersession chain: `v1.26.14 (... supersedes v1.26.13 in R19A ... supersedes v1.26.12 in R18A ...)`. This is the production-grade pattern for consumer-edge supersession when the producer rapidly bumped twice within the same chain — collapse the intermediate at the active-cite line, preserve it in the supersession chain. Symmetric pattern to R110 Round 9B/9C two-version forward jump v1.26.6 → v1.26.8 (skipping v1.26.7 intermediate).
+
+### Change 1 — Consumer-Ledger Fan-Out (R19A + R19E Cascade Closure) HIGH: VP-INDEX §References PRD Active Cite Refresh v1.26.12 → v1.26.14 (NORMATIVE)
+
+- **SE-17f §References PRD line:**
+  - Before: `PRD: \`.factory/specs/prd.md\` v1.26.12 (Dispatch 4 commit 1030c65; refreshed to v1.26.12 in R18A R18A PO dispatch commit 92c55d2 — F-R119-1 closure retrospective for R17F SM-applied traces_to edits; supersedes v1.26.11 in R17A Round 17A PO dispatch commit d22645e; supersedes v1.26.10 in R16 Round 16 PO dispatch; supersedes v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).`
+  - After: `PRD: \`.factory/specs/prd.md\` v1.26.14 (Dispatch 4 commit 1030c65; refreshed to v1.26.14 in R19E R19E PO dispatch commit 31f984a — traces_to brief v1.4.30 + L2-INDEX v1.0.11 (R19B + R19D consumer-ledger closure; comprehensive supersession of v1.26.13 intermediate); supersedes v1.26.13 in R19A R19A PO dispatch commit ce1e0ca — F-R120-1/2/3 compound closure: traces_to BC-INDEX v1.11 + L2-INDEX v1.0.10 + VP-INDEX v1.14 + 2 SS pins + 5 pinned ADRs (SE-22 v2 first application); supersedes v1.26.12 in R18A R18A PO dispatch commit 92c55d2 — F-R119-1 closure retrospective for R17F SM-applied traces_to edits; supersedes v1.26.11 in R17A Round 17A PO dispatch commit d22645e; supersedes v1.26.10 in R16 Round 16 PO dispatch; supersedes v1.26.9 in R111 Round 10A PO dispatch commit c0c6b99; supersedes v1.26.8 in R110 Round 9B PO dispatch commit 3334fb6; supersedes v1.26.7 in F-R109 Round 8B PO sweep commit 517c7ee; supersedes v1.26.6 in R108 Round 7B PO dispatch commit c307f2a; supersedes v1.26.5 in F-R107-3 / GAP-R46-1 closure, PO 6B R107 Round 6B dispatch commit d92e4a7; supersedes v1.26.4 in F-R106-4 closure, PO 5B commit df5605a — PRD §7 mass pin refresh; supersedes v1.26.3 in F-R105-12 closure, parallel PO commit b2b378b).`
+- **Rationale:** R19A bumped PRD v1.26.12 → v1.26.13 (commit ce1e0ca; SE-22 v2 first application with explicit consumer enumeration in dispatch instructions). R19E bumped PRD v1.26.13 → v1.26.14 (commit 31f984a; comprehensive supersession to capture R19B brief + R19D L2-INDEX/CAP-001 fan-out). Both bumps enumerated the VP-INDEX + 22 VP files as consumers per SE-22 v2 dispatch discipline; this R19F burst executes the planned cascade-tail closure. Cite history chain preserved (full supersession back to v1.26.3) per append-only §References audit-trail convention.
+
+### Change 2 — Consumer-Ledger Fan-Out Cascade Cross-Reference: 22-VP §References PRD Active Cite Refresh v1.26.12 → v1.26.14 (NORMATIVE; per-VP-file edits are the actual fix)
+
+- **Cross-VP scope:** all 22 VPs (vp-001..vp-022) have their active §References `PRD:` lines refreshed from v1.26.12 (R18A commit 92c55d2) → v1.26.14 (R19E commit 31f984a) for sweep-wide cascade-tail symmetry. The v1.26.13 R19A intermediate is collapsed at the active-cite consumer edge per the two-step-supersession pattern documented above; preserved in supersession chain.
+- **Per-VP-table:** No per-VP-row content change in this §Trace; cite refreshes are in each VP's §References section (per-VP-file edits with per-VP §Trace patch-bump entry; vp-005 → v1.0.15, vp-009 → v1.0.14, others advance their respective patch counters by +1 from the v1.0.12-cohort established R18E).
+- **BC-INDEX cite at all 22 VP files:** UNCHANGED at v1.11 (R18B commit 442f5ac) — no BC-INDEX bump since R18B; no cascade needed for BC pin.
+
+### SE-17c-d body-scope grep (NORMATIVE)
+
+- Post-edit `grep -nE "prd\.md\` v1\.26\.14" VP-INDEX.md` body scope → 1 match (active §References PRD line).
+- Post-edit `grep -nE "prd\.md\` v1\.26\.12" VP-INDEX.md` body scope (excluding §Trace SE-17f BEFORE evidence) → 0 matches (only remaining `v1.26.12` cites are inside §Trace blocks v1.14 / v1.15 per SE-17g audit-trail preservation; the v1.26.13 intermediate appears only in the v1.15 supersession-chain narrative and is not a residual active stale cite).
+- Post-edit `grep -nE "prd\.md\` v1\.26\.13" VP-INDEX.md` body scope (excluding §Trace) → 0 matches (R19A intermediate collapsed at active-cite consumer edge; v1.15 §Trace SE-22 v2 application discussion contains the only narrative reference, not an active cite).
+- Post-edit `grep -nE "BC-INDEX\.md\` v1\.11" VP-INDEX.md` body scope → 1 match (active §References BC index line; unchanged from R18E).
+- Post-edit `grep -nE "Current as of \`2026-05-19T02:00:00Z\`" VP-INDEX.md` → 1 match (§References Current-as-of line).
+- Post-edit sweep `grep -rEc "prd\.md\` v1\.26\.14" .factory/specs/verification-properties/vp-*.md` → 22 matches expected (one per VP active §References line); see per-VP §Trace entries for per-file verification.
+- **Renumbering Appendix:** UNCHANGED — all 22 historical→current ID mappings preserved verbatim per append-only ID protection.
+- **Per-VP-row content (table cells):** UNCHANGED — no source-BC, proof-method, file-path, VP-ID, or Title cell modified.
+- **§Conventions section:** UNCHANGED — pin-symmetry / SE-17g audit-trail conventions remain canonical.
+- **SS-NN architecture-source pin headers:** UNCHANGED — SS-01 v1.0.32 + SS-02 v1.2.13 + SS-03 v1.1.20 remain canonical.
+
+### SE-22 v2 fifth application (NORMATIVE OBSERVATION)
+
+**SE-22 v2 (Consumer-Ledger Extension) — codified R19-pre commit 646c949 as 39th discipline (D-149 closure):** producer agents MUST enumerate downstream consumers in their dispatch instructions, so cascade-tail bursts are pre-scheduled (not surfaced after-the-fact via SM during STATE closure).
+
+**SE-22 v2 application ledger (this burst is application #5):**
+1. **Application #1 (R19A):** PRD v1.26.12 → v1.26.13 dispatch enumerated BC-INDEX/L2-INDEX/VP-INDEX/SS/ADR consumers; commit ce1e0ca.
+2. **Application #2 (R19B):** brief v1.4.29 → v1.4.30 dispatch enumerated BC-INDEX/L2-INDEX/CAP-001/PRD consumers; commit 6c863a9.
+3. **Application #3 (R19D):** L2-INDEX v1.0.10 → v1.0.11 + CAP-001 v1.5 → v1.6 combined BA dispatch enumerated PRD consumer; commit 6b85e06.
+4. **Application #4 (R19E):** PRD v1.26.13 → v1.26.14 dispatch enumerated VP-INDEX + 22 VP consumers; commit 31f984a.
+5. **Application #5 (R19F THIS burst):** VP-INDEX + 22 VP §References PRD refresh closes the R19E consumer-ledger fan-out per SE-22 v2 dispatch discipline.
+
+**Pattern stabilization:** SE-22 v2 has now seen 5 explicit applications in one chain (R19A through R19F), well exceeding the D-114 codification threshold of 3+ explicit occurrences that held the v1 codification pending. The discipline is now self-evidently working as designed: producers enumerate consumers, consumers close cascade-tails in-scope of producer dispatches, no SM after-the-fact surfacing required.
+
+### Authoritative cross-references
+
+- **PRD:** `.factory/specs/prd.md` v1.26.14 (R19E commit 31f984a — comprehensive PRD refresh: traces_to brief v1.4.30 + L2-INDEX v1.0.11; supersedes v1.26.13 R19A commit ce1e0ca — F-R120-1/2/3 compound closure; supersedes v1.26.12 R18A commit 92c55d2).
+- **BC-INDEX:** `behavioral-contracts/BC-INDEX.md` v1.11 (R18B commit 442f5ac — unchanged this round; no BC-INDEX bump since R18B).
+- **L2-INDEX:** `domain-spec/L2-INDEX.md` v1.0.11 (R19D commit 6b85e06 — brief v1.4.30 back-cascade; not in scope this burst).
+- **brief:** `.factory/specs/product-brief.md` v1.4.30 (R19B commit 6c863a9 — GAP-R59-003 closure; not in scope this burst).
+- **CAP-001:** `.factory/specs/domain-spec/CAP-001-daemon-ingestion.md` v1.6 (R19D commit 6b85e06 — brief v1.4.30 fan-out; not in scope this burst).
+- **Architecture (SS-01):** `architecture/SS-daemon-lifecycle.md` v1.0.32 (unchanged this round).
+- **Architecture (SS-02):** `architecture/SS-core-types-and-abi.md` v1.2.13 (unchanged this round).
+- **Architecture (SS-03):** `architecture/SS-engine-module.md` v1.1.20 (unchanged this round).
+- **R19 chain (this burst is R19F):** R19-pre SE-22 v2 codify (646c949) → R19A PRD v1.26.13 (ce1e0ca) → R19B brief v1.4.30 (6c863a9) → R19D L2-INDEX v1.0.11 + CAP-001 v1.6 (6b85e06) → R19E PRD v1.26.14 (31f984a) → R19F VP-INDEX + 22 VP §References cascade (THIS burst) → adversary R60 dispatch (next phase).
+- **Concurrent dispatches (R19F Round 19F):** FV-only fix burst per orchestrator dispatch (SE-18: this is the only agent dispatched; no parallel-burst race).
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-19T02:00:00Z` > chain high-water `2026-05-19T01:30:00Z` (R19E PRD v1.26.14 timestamp; cross-burst chain). SE-16d PASS (strict-greater satisfied; +30 minutes over R19E chain high-water).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §References PRD cite refresh `v1.26.12 (R18A commit 92c55d2)` → `v1.26.14 (R19E commit 31f984a)` with full supersession chain (collapsing v1.26.13 R19A intermediate at active-cite consumer edge per two-step-supersession pattern); §References Current-as-of refresh `R18E Round 18E → R19F Round 19F`; frontmatter `version` v1.14 → v1.15 / `timestamp` 2026-05-18T23:30:00Z → 2026-05-19T02:00:00Z updates.
+- INFORMATIONAL: rationale subsections; cross-reference subsection; SE-22 v2 fifth-application context; two-step-supersession pattern documentation.
+- **SE-17g audit-trail preservation:** All prior §Trace v1.2 / v1.3 / v1.4 / v1.5 / v1.6 / v1.7 / v1.8 / v1.9 / v1.10 / v1.11 / v1.12 / v1.13 / v1.14 BEFORE evidence preserved verbatim per §Conventions (established R110 Round 9C, F-R110-10 MED). SE-17g META audit: prior `v1.26.12 (R18A commit 92c55d2)` text remains inside this §Trace v1.15 SE-17f BEFORE evidence block (intentional preservation, NOT residual stale active citation).
+- **D-116 scoped-awk convention:** SE-17c-d body-scope greps above filtered via the §Trace-aware boundary discipline established R110 Round 9C — match counts equal to "1" or "0" indicate the canonical AFTER citation in the active body line is the sole normative cite; prior cite forms remain confined to §Trace audit-trail blocks per preservation policy.
+
+### SE-17f recursive self-revalidation post-edit (NORMATIVE)
+
+Per D-114 + D-116 recursive revalidation discipline: after applying all edits in this burst, FV re-greps the VP-INDEX active body (excluding §Trace audit-trail) for stale cite remnants. Expected result: zero remaining `v1.26.12` or `v1.26.13` cites outside §Trace BEFORE-evidence blocks. Post-edit recursive grep:
+- `grep -nE "prd\.md\` v1\.26\.12" VP-INDEX.md` outside §Trace → 0 matches (canonical AFTER is `v1.26.14`).
+- `grep -nE "prd\.md\` v1\.26\.13" VP-INDEX.md` outside §Trace → 0 matches (R19A intermediate collapsed at consumer edge; supersession-chain narrative reference is INFORMATIONAL).
+- See `### SE-17c-d body-scope grep` block above for full post-edit verification.
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: mechanical cascade-tail citation refresh executed in-scope of R19F Round 19F rather than deferred. Rule 4: 2 coupled cascade fixes (VP-INDEX PRD cite + 22-VP PRD cite) consolidated into single v1.15 bump rather than fragmented across 2 separate dispatches; VP-INDEX + 22-VP edits co-located in single combined commit per Production-Grade Default. Rule 5: cheapest path (defer cascade-tail to adversary R60 discovery as cascade-tail finding) rejected in favor of correct path (close cleanup in-scope per SE-22 v2 dispatch discipline BEFORE adversary R60 dispatch to give the next adversary pass a CLEAN counter advance). No tech-debt entries created. SE-22 v2 5th application demonstrates pattern stabilization beyond D-114 codification threshold. Renumbering Appendix preserved unchanged per append-only ID protection. §Trace v1.2 through v1.14 chain continuity preserved verbatim per SE-17g audit-trail discipline. Two-step supersession (v1.26.12 → v1.26.13 → v1.26.14) documented at consumer edge per established two-version forward jump pattern (symmetric to R110 v1.26.6 → v1.26.8 skipping v1.26.7).
