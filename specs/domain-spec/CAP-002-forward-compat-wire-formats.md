@@ -11,7 +11,7 @@ phase: 1a
 inputs:
   - product-brief.md
   - research/domain-monocle-vision-synthesis.md
-input-hash: "55f92f9"
+input-hash: "a6216e9"
 traces_to: L2-INDEX.md
 subsystem: SS-02
 bcs:

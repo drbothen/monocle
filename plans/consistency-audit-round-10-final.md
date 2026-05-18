@@ -17,7 +17,7 @@ inputs:
   - .factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md
   - .factory/specs/architecture/adr/ADR-0003-license-selection.md
   - .factory/specs/dtu-assessment.md
-input-hash: "69d4e3a"
+input-hash: "55f92f9"
 traces_to: consistency-audit-round-8-convergence.md
 ---
 

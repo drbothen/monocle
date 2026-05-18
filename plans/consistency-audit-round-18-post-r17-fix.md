@@ -11,7 +11,7 @@ inputs:
   - specs/architecture/SS-core-types-and-abi.md
   - specs/architecture/SS-forward-compatibility.md
   - STATE.md
-input-hash: "4bc35b4"
+input-hash: "43a9e77"
 traces_to: "round-17 fix burst commits 314f002 + 4ca28fd + 6af919d + 48852c8"
 project: monocle
 ---
