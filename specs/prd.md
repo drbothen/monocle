@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.13"
+version: "1.26.14"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-19T00:00:00Z
+timestamp: 2026-05-19T01:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "642c117"
-traces_to: "product-brief.md v1.4.29; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.10; verification-properties/VP-INDEX.md v1.14"
+traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.14"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -1022,6 +1022,107 @@ SE-22 v2 is codified as a process stopgap: the producer manually declares known 
 | `SS-conventions-anti-patterns.md` | v1.29.5 | v1.29.5 | NORMATIVE | verified current |
 
 **Changes made:** frontmatter `version` v1.26.12 → v1.26.13; `timestamp` refreshed 2026-05-18T21:30:00Z → 2026-05-19T00:00:00Z; `traces_to:` — BC-INDEX pin v1.10 → v1.11; L2-INDEX pin v1.0.9 → v1.0.10; VP-INDEX pin added v1.14; SS-permissions-phase1.md pin added v1.5.2; SS-forward-compatibility.md pin added v1.2.19; ADR-0001–ADR-0004 pins added; ADR-0005 unpinned → pinned v1.0.2; §Trace v1.26.13 added.
+
+---
+
+## §Trace v1.26.14 — R19E (2026-05-19T01:30:00Z)
+
+**Burst:** R19E. **Producer:** vsdd-factory:product-owner. **Closes:** R19B + R19D consumer-ledger surfaces (combined in one PRD bump per instructions).
+
+### Consumer-Ledger Surfaces Closed
+
+**R19B surface (brief v1.4.29 → v1.4.30):**
+R19B (commit 6c863a9) bumped `product-brief.md` from v1.4.29 to v1.4.30. PRD `traces_to:` pin was STALE at v1.4.29. This bump closes that surface.
+
+**R19D surface (L2-INDEX v1.0.10 → v1.0.11):**
+R19D (commit 6b85e06) bumped `domain-spec/L2-INDEX.md` from v1.0.10 to v1.0.11 and `CAP-001.md` from v1.5 to v1.6. PRD `traces_to:` pin was STALE at v1.0.10. This bump closes that surface. CAP-001.md is not pinned directly in PRD `traces_to:` (PRD pins the L2-INDEX, not individual CAP files) — no action required for CAP-001.
+
+---
+
+### SE-22 v1 In-Artifact Sweep Evidence (SE-17a literal grep; D-116 scoped-awk)
+
+**Sweep commands:**
+
+```
+grep -n "product-brief.md v" .factory/specs/prd.md
+grep -n "L2-INDEX.md v" .factory/specs/prd.md
+grep -n "CAP-001" .factory/specs/prd.md
+```
+
+**Results classification:**
+
+| Line | Content | Classification | Action |
+|------|---------|----------------|--------|
+| 11 | `product-brief.md v1.4.29` in `traces_to:` | NORMATIVE live pin | Updated v1.4.29 → v1.4.30 |
+| 11 | `domain-spec/L2-INDEX.md v1.0.10` in `traces_to:` | NORMATIVE live pin | Updated v1.0.10 → v1.0.11 |
+| 515–518 | `product-brief.md v1.4.23/v1.4.25` §Trace historical before/after | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 541 | `product-brief.md v1.4.25 → v1.4.26` §Trace historical | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 644–657 | `product-brief.md v1.4.27/v1.4.28` §Trace historical before/after | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 703–704 | `product-brief.md v1.4.28` sweep evidence (§Trace) | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 832–833 | `product-brief.md v1.4.29` sweep evidence (§Trace) | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 849 | `product-brief.md v1.4.29` §Trace pin-sweep table | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 1016 | `product-brief.md v1.4.29 → v1.4.29` §Trace v1.26.13 pin-sweep | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 550 | `domain-spec/L2-INDEX.md v1.0.7` §Trace historical | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 625 | `L2-INDEX.md v1.0.7 → v1.0.8` §Trace historical | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 696–751 | `L2-INDEX.md v1.0.8/v1.0.9` §Trace historical before/after | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 824–852 | `L2-INDEX.md v1.0.9/v1.0.10` §Trace sweep evidence | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 898 | `L2-INDEX.md v1.0.10` §Trace v1.26.13 before-evidence | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 85 | `CAP-001` §2.1 heading (structural) | STRUCTURAL section heading | No version pin — no action |
+| 878 | `CAP-001` §Trace historical monotonicity evidence | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+| 966 | `CAP-001.md` §Trace v1.26.13 dispatch note | INFORMATIONAL §Trace evidence | Preserved verbatim per SE-17g |
+
+**SE-17g classification:** All non-frontmatter occurrences of stale version strings are in INFORMATIONAL §Trace historical blocks and are preserved verbatim. No NORMATIVE body-prose stale pins found.
+
+**Post-edit verification:** `grep -nE "product-brief.md v1\.4\.(2[0-9])" .factory/specs/prd.md` confirms all v1.4.2x strings are in §Trace BEFORE-evidence slots. `grep -nE "L2-INDEX.md v1\.0\.(7|8|9|10)[^0-9]" .factory/specs/prd.md` confirms all stale L2-INDEX pins outside frontmatter are INFORMATIONAL.
+
+---
+
+### SE-22 v2 FOURTH APPLICATION — Consumer-Ledger Declaration
+
+**PRD v1.26.14 producer: vsdd-factory:product-owner**
+
+**Known consumers of PRD version pin (who cite `prd.md vN.NN.NN` in their artifacts):**
+
+| Consumer artifact | Last known PRD pin | Status after R19E |
+|-------------------|-------------------|-------------------|
+| `verification-properties/VP-INDEX.md` §References | v1.26.12 (R18E) | STALE → needs v1.26.14 |
+| 22 VP files under `behavioral-contracts/ss-NN/` §References | v1.26.12 (R18E sweep) | STALE → needs v1.26.14 |
+| `domain-spec/L2-INDEX.md` §Trace | no active PRD pin | CLEAN — no action |
+| `behavioral-contracts/BC-INDEX.md` | no PRD pin verified | CLEAN — no action |
+| `prd-supplements/interface-definitions.md` | no `traces_to:` field | CLEAN — no action |
+| `prd-supplements/error-taxonomy.md` | no `traces_to:` field | CLEAN — no action |
+| `prd-supplements/nfr-catalog.md` | no `traces_to:` field | CLEAN — no action |
+| `prd-supplements/test-vectors.md` | no `traces_to:` field | CLEAN — no action |
+
+**Surfaces to orchestrator (SE-22 v2 tripartite responsibility — downstream dispatch required):**
+
+**VP-INDEX + 22 VPs §References PRD pin:** last set to v1.26.12 (R18E). R19A bumped PRD to v1.26.13 and declared this surface in R19A §Trace (targeting R19D or R19F). This R19E bump to v1.26.14 means the pending cascade now targets v1.26.14 (not v1.26.13 — skip the intermediate version, go directly to v1.26.14). Dispatch: `vsdd-factory:formal-verifier` (FV owns VP files). Burst: R19F.
+
+**SE-22 v2 producer declaration complete.** R19E does NOT sweep VP files or BC files — consumer dispatch is the orchestrator's responsibility per SE-22 v2 tripartite protocol.
+
+---
+
+### SE-17e Sibling-Propagation
+
+No new convention extensions in this burst. The `inputs:` ↔ `traces_to:` symmetry convention remains as established in v1.26.13 §Trace. This bump closes two consumer-ledger surfaces from sibling spec bumps (R19B brief, R19D L2-INDEX) per the same convention.
+
+---
+
+### SE-16d Monotonicity Declaration
+
+PRD v1.26.14 timestamp `2026-05-19T01:30:00Z` > PRD v1.26.13 timestamp `2026-05-19T00:00:00Z` > R19B brief v1.4.30 commit 6c863a9 > R19D L2-INDEX v1.0.11 commit 6b85e06 > R19A PRD v1.26.13 commit ce1e0ca. ARITHMETICALLY TRUE: 2026-05-19T01:30:00Z > 2026-05-19T00:00:00Z. SE-16d PASS strict-greater.
+
+---
+
+**Pin sweep table (R19E complete):**
+
+| Pin | Before | After | Classification | Finding closed |
+|-----|--------|-------|----------------|----------------|
+| `product-brief.md` | v1.4.29 | v1.4.30 | NORMATIVE | R19B consumer-ledger surface |
+| `domain-spec/L2-INDEX.md` | v1.0.10 | v1.0.11 | NORMATIVE | R19D consumer-ledger surface |
+| all other `traces_to:` pins | unchanged | unchanged | NORMATIVE | verified current — no change |
+
+**Changes made:** frontmatter `version` v1.26.13 → v1.26.14; `timestamp` refreshed 2026-05-19T00:00:00Z → 2026-05-19T01:30:00Z; `traces_to:` — `product-brief.md` v1.4.29 → v1.4.30; `domain-spec/L2-INDEX.md` v1.0.10 → v1.0.11; §Trace v1.26.14 added.
 
 ---
 
