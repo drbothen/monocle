@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.14"
+version: "1.26.15"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-19T01:30:00Z
+timestamp: 2026-05-19T03:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "537e431"
-traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.14"
+traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -1123,6 +1123,42 @@ PRD v1.26.14 timestamp `2026-05-19T01:30:00Z` > PRD v1.26.13 timestamp `2026-05-
 | all other `traces_to:` pins | unchanged | unchanged | NORMATIVE | verified current — no change |
 
 **Changes made:** frontmatter `version` v1.26.13 → v1.26.14; `timestamp` refreshed 2026-05-19T00:00:00Z → 2026-05-19T01:30:00Z; `traces_to:` — `product-brief.md` v1.4.29 → v1.4.30; `domain-spec/L2-INDEX.md` v1.0.10 → v1.0.11; §Trace v1.26.14 added.
+
+---
+
+### §Trace v1.26.15 — R20A (2026-05-19T03:00:00Z)
+
+**Finding closed:** F-R121-1 (HIGH) / GAP-R60-001 (MAJOR) — reverse-cascade staleness: `traces_to:` VP-INDEX pin was v1.14 (stale); canonical is v1.15 since R19F commit d88c0b5.
+
+**Root cause:** R19E (commit 31f984a) authored PRD v1.26.14 at timestamp `2026-05-19T01:30:00Z`. At that moment VP-INDEX was at v1.14 — the pin was correct. R19F (commit d88c0b5) subsequently bumped VP-INDEX to v1.15 as the cascade-tail of the verification-properties refresh. PRD v1.26.14's forward pin TO VP-INDEX was not updated in that R19F burst because VP-INDEX is a downstream consumer of the PRD — not the other way. This is the reverse-cascade gap class: downstream consumer bumps its own version, but the upstream producer's forward reference to it becomes stale.
+
+**SE-17a literal grep evidence (scoped per D-116):**
+
+```
+grep -n "VP-INDEX.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "verification-properties/VP-INDEX.md v1.14" — STALE → TARGET v1.15
+  L898 (§Trace historical before-evidence) — INFORMATIONAL, preserved verbatim per SE-17g
+  L1099 (§Trace v1.26.14 consumer-ledger surface declaration) — INFORMATIONAL, preserved verbatim per SE-17g
+```
+
+Classification: L11 is the sole NORMATIVE live pin. Updated v1.14 → v1.15. All other occurrences are INFORMATIONAL §Trace historical evidence; preserved verbatim per SE-17g.
+
+**SE-22 v3 candidate status:** HELD per D-114 (1st named occurrence), D-153. Bidirectional consumer-ledger with fixed-point iteration not yet codified. Long-term solution: spec-kit-mcp upstream proposal §1.3 (INV-005 transitive closure with fixed-point iteration) directly addresses this class. Until codified, reverse-cascade gaps remain detectable only via adversarial review.
+
+**SE-16d monotonicity declaration:** PRD v1.26.15 timestamp `2026-05-19T03:00:00Z` > PRD v1.26.14 timestamp `2026-05-19T01:30:00Z`. ARITHMETICALLY TRUE. SE-16d PASS strict-greater.
+
+**SE-22 v2 producer declaration — downstream cascade surfaces:**
+
+This v1.26.15 bump creates a new consumer-ledger surface: VP-INDEX §References and each of the 22 individual VP files reference `PRD v1.26.14`. After this bump those pins will be stale at v1.26.14. Dispatch target: `vsdd-factory:formal-verifier` (FV owns VP files). Burst: R20B (new pre-SM burst). R20C = SM closure. This is explicitly NOT fixed in this burst per routing principle (PO scope = PRD only; VP cascade = FV scope).
+
+**Pin sweep table (R20A complete):**
+
+| Pin | Before | After | Classification | Finding closed |
+|-----|--------|-------|----------------|----------------|
+| `verification-properties/VP-INDEX.md` | v1.14 | v1.15 | NORMATIVE | F-R121-1 / GAP-R60-001 |
+| all other `traces_to:` pins | unchanged | unchanged | NORMATIVE | verified current — no change |
+
+**Changes made:** frontmatter `version` v1.26.14 → v1.26.15; `timestamp` refreshed `2026-05-19T01:30:00Z` → `2026-05-19T03:00:00Z`; `traces_to:` — `verification-properties/VP-INDEX.md` v1.14 → v1.15; §Trace v1.26.15 added.
 
 ---
 
