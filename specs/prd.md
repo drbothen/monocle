@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.12"
+version: "1.26.13"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T21:30:00Z
+timestamp: 2026-05-19T00:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "642c117"
-traces_to: "product-brief.md v1.4.29; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.10; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.9"
+traces_to: "product-brief.md v1.4.29; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.10; verification-properties/VP-INDEX.md v1.14"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -878,6 +878,150 @@ timestamp: 2026-05-18T21:30:00Z
 **SE-16d monotonicity PASS:** PRD v1.26.12 timestamp `2026-05-18T21:30:00Z` > STATE v5.79 `21:15:00Z` > R17F STATE v5.78 `20:30:00Z` > R17E CAP-001 v1.5 `20:00:00Z` > PRD v1.26.11 `18:00:00Z`. ARITHMETICALLY TRUE: 2026-05-18T21:30:00Z > 2026-05-18T21:15:00Z > 2026-05-18T20:30:00Z > 2026-05-18T20:00:00Z > 2026-05-18T18:00:00Z PASS strict-greater.
 
 **Reference:** R119 report at `.factory/plans/adversary-pass-r119-phase1.md` (commit 70b7552).
+
+---
+
+## §Trace v1.26.13 — R19A F-R120-1/2/3 compound closure — traces_to BC-INDEX v1.11 + L2-INDEX v1.0.10 + VP-INDEX v1.14 + 2 SS pins + 5 pinned ADRs (SE-22 v2 FIRST APPLICATION) (2026-05-19T00:00:00Z)
+
+**Predecessor pin:** v1.26.12 (R18A F-R119-1 retrospective trace + R18E cascade-tail refresh; commit 92c55d2).
+
+**Scope of v1.26.13 (three-class compound fix: index-pin refresh, SS-file pin-completeness, ADR pin-completeness + symmetry):**
+
+### F-R120-1 HIGH — BC-INDEX v1.10 → v1.11 + L2-INDEX v1.0.9 → v1.0.10 pin refresh (consumer-ledger gap; SE-22 v2 occurrence #3 that triggered codification)
+
+- BC-INDEX was bumped to v1.11 in R18B (commit 442f5ac). PRD `traces_to:` was not updated at that time — consumer-ledger gap per SE-22 class.
+- L2-INDEX was bumped to v1.0.10 in R18C (commit bedcf30). Same consumer-ledger gap.
+- VP-INDEX (also a traces_to entry) was bumped to v1.14 in R18E. Also stale in PRD at v1.26.12 — added to this compound refresh as cascade-tail.
+
+**Before:** `behavioral-contracts/BC-INDEX.md v1.10; domain-spec/L2-INDEX.md v1.0.9` (no VP-INDEX pin present)
+
+**After:** `behavioral-contracts/BC-INDEX.md v1.11; domain-spec/L2-INDEX.md v1.0.10; verification-properties/VP-INDEX.md v1.14`
+
+### F-R120-2 MED — SS-permissions-phase1.md + SS-forward-compatibility.md missing from traces_to (pin-completeness asymmetry)
+
+Both files appear in `inputs:` (lines 9) but were absent from `traces_to:`. The `inputs:` ↔ `traces_to:` symmetry convention requires all versioned inputs to appear in `traces_to:` with pinned versions. These are non-trivial architecture sections that shape BC postconditions directly.
+
+- `architecture/SS-permissions-phase1.md` canonical version: v1.5.2 (confirmed from frontmatter `2026-05-17T16:30:00Z`).
+- `architecture/SS-forward-compatibility.md` canonical version: v1.2.19 (confirmed from frontmatter).
+
+**Before:** neither pin present in `traces_to:`
+
+**After:** `architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19` added.
+
+### F-R120-3 MED — ADR asymmetry: only ADR-0005 cited (unpinned), ADR-0001 through ADR-0004 absent; all 5 must be pinned
+
+All 5 ADRs appear in `inputs:`. `traces_to:` had only `ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` with no version pin. ADR-0001 through ADR-0004 were entirely absent. Full pin-completeness requires all 5 at canonical versions.
+
+| ADR | Canonical version | Source confirmation |
+|-----|------------------|---------------------|
+| ADR-0001-wasmtime-vs-wasmi.md | v1.0.3 | frontmatter `version: "1.0.3"` |
+| ADR-0002-nucleo-acceptance-with-reeval-trigger.md | v1.0.4 | frontmatter `version: "1.0.4"` |
+| ADR-0003-license-selection.md | v1.0.2 | frontmatter `version: "1.0.2"` |
+| ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md | v1.0.4 | frontmatter `version: "1.0.4"` |
+| ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md | v1.0.2 | frontmatter `version: "1.0.2"` |
+
+**Before:** `ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` (unpinned, ADR-0001–0004 absent)
+
+**After:** all 5 ADRs listed with pinned versions using full relative path form.
+
+---
+
+### SE-22 v1 In-Artifact Sweep Evidence (SE-17a literal grep; D-116 scoped-awk)
+
+**Sweep command:** `grep -nE "(BC-INDEX|L2-INDEX|ARCH-INDEX|VP-INDEX|product-brief|SS-permissions-phase1|SS-forward-compatibility|ADR-000[1-5])" .factory/specs/prd.md`
+
+**NORMATIVE occurrences (require pin-completeness):**
+- L11 `traces_to:` field — PRD frontmatter. Authoritative pin location. Updated in this burst.
+- L9 `inputs:` field — lists filenames without versions (intentional — inputs uses unversioned filenames; versions pinned in `traces_to:`). No action required.
+
+**INFORMATIONAL occurrences (SE-17g — preserve verbatim):**
+- L83 body prose: `behavioral-contracts/BC-INDEX.md` (unversioned location reference). PRESERVED.
+- L87 body prose: `architecture/ARCH-INDEX.md` (architecture-source annotation). PRESERVED.
+- §7 RTM table: ADR-0005 appears in Traceability column — INFORMATIONAL cross-reference, no version pin required there.
+- §Trace historical blocks (v1.26–v1.26.12): all prior before/after evidence. PRESERVED verbatim per SE-17g.
+
+**Post-edit verification:** `grep -nE "BC-INDEX.md v1\.(9|10)[^0-9]|L2-INDEX.md v1\.0\.(7|8|9)[^0-9]" .factory/specs/prd.md` → confirms no stale pins remain outside §Trace BEFORE-evidence blocks.
+
+---
+
+### SE-22 v2 FIRST APPLICATION — Consumer-Ledger Declaration
+
+SE-22 v2 (codified R19-pre, 2026-05-18T23:45:00Z) extends SE-22 v1 with **producer responsibility**: when a spec artifact is bumped, its producer must enumerate KNOWN CONSUMERS and surface any stale-pin drift findings to the orchestrator for downstream dispatch.
+
+**PRD v1.26.13 producer: vsdd-factory:product-owner**
+
+**Known consumers of PRD version pin (who cite `prd.md vN.NN.NN` in their artifacts):**
+
+| Consumer artifact | Last known PRD pin | Status after R19A |
+|-------------------|-------------------|-------------------|
+| `verification-properties/VP-INDEX.md` §References | v1.26.12 (R18E) | STALE → needs v1.26.13 |
+| 22 VP files `behavioral-contracts/ss-NN/BC-*.md` §References | v1.26.12 (R18E sweep) | STALE → needs v1.26.13 |
+| `specs/product-brief.md` (body §Phase 1 Scope pin, if present) | verify in R19B | R19B scope |
+| `domain-spec/L2-INDEX.md` §Trace | no active PRD pin (L342 confirms "No pin present") | CLEAN — no action |
+| `behavioral-contracts/BC-INDEX.md` | no PRD pin verified | CLEAN — no action |
+| `prd-supplements/interface-definitions.md` | no `traces_to:` field found in sweep | CLEAN — no action |
+| `prd-supplements/error-taxonomy.md` | no `traces_to:` field found in sweep | CLEAN — no action |
+| `prd-supplements/nfr-catalog.md` | no `traces_to:` field found in sweep | CLEAN — no action |
+| `prd-supplements/test-vectors.md` | no `traces_to:` field found in sweep | CLEAN — no action |
+| `domain-spec/capabilities/CAP-001.md` | verify | downstream dispatch if stale |
+
+**Surfaces to orchestrator (SE-22 v2 tripartite responsibility — downstream dispatch required):**
+
+1. **VP-INDEX + 22 VP §References** — cite PRD v1.26.12; after R19A they cite a stale version. Dispatch: `vsdd-factory:formal-verifier` (FV owns VP files). Scope: VP-INDEX §References `PRD:` line + all 22 VP §References `PRD:` lines → v1.26.12 → v1.26.13. This is the same class as R18E Change 3+4 (SM-surfaced, FV-fixed). Estimated burst: R19D or combined with R19C STATE.
+2. **CAP-001** — verify whether it cites PRD version. If stale, dispatch: `vsdd-factory:business-analyst`. R19B scope overlap — BA verifies in R19B.
+
+**SE-22 v2 producer declaration complete.** R19A does NOT sweep VP files or BC files — consumer dispatch is the orchestrator's responsibility per SE-22 v2 tripartite protocol.
+
+---
+
+### SE-17e Sibling-Propagation
+
+This fix extends the pin-completeness convention established by:
+- F-R110-8 (VP pin-symmetry): VP files must pin all their input sources.
+- F-R117-3 (BC pin-symmetry): BC files must pin their input sources.
+
+**Extension (PRD frontmatter level):** PRD `inputs:` ↔ `traces_to:` symmetry is now formally established: every entry in `inputs:` must have a corresponding pinned version in `traces_to:`. The SS-permissions-phase1 and SS-forward-compatibility omissions (F-R120-2) and the ADR-0001–0004 omissions (F-R120-3) are the first instances of this convention being enforced at PRD scope.
+
+**Scope note:** the `inputs:` field uses unversioned filenames by convention (filenames only, no versions). The `traces_to:` field is the sole authoritative version-pin location. The asymmetry class (file in `inputs:` but not `traces_to:`) is now a MEDIUM-severity finding under SE-22 v2.
+
+---
+
+### SE-16d Monotonicity Declaration
+
+PRD v1.26.13 timestamp `2026-05-19T00:00:00Z` > STATE v5.81 at `2026-05-18T23:45:00Z` (R19-pre SE-22 v2 codification commit 646c949) > PRD v1.26.12 timestamp `2026-05-18T21:30:00Z`. ARITHMETICALLY TRUE: 2026-05-19T00:00:00Z > 2026-05-18T23:45:00Z > 2026-05-18T21:30:00Z. SE-16d PASS strict-greater.
+
+---
+
+### Long-Term Context Note
+
+SE-22 v2 is codified as a process stopgap: the producer manually declares known consumers and surfaces drift findings to the orchestrator for dispatch. The upstream vsdd-factory `spec-kit-mcp` proposal (referenced in R19-pre STATE v5.81 entry) would supersede this via structural enforcement — the spec-kit would maintain a consumer registry and automatically flag stale pins on bump. Until that upstream feature lands, SE-22 v2 is the canonical protocol for producer responsibility.
+
+---
+
+**Pin sweep table (R19A complete):**
+
+| Pin | Before | After | Classification | Finding closed |
+|-----|--------|-------|----------------|----------------|
+| `BC-INDEX.md` | v1.10 | v1.11 | NORMATIVE | F-R120-1 |
+| `L2-INDEX.md` | v1.0.9 | v1.0.10 | NORMATIVE | F-R120-1 |
+| `VP-INDEX.md` | (absent) | v1.14 | NORMATIVE | F-R120-1 cascade-tail |
+| `SS-permissions-phase1.md` | (absent) | v1.5.2 | NORMATIVE | F-R120-2 |
+| `SS-forward-compatibility.md` | (absent) | v1.2.19 | NORMATIVE | F-R120-2 |
+| `ADR-0001-wasmtime-vs-wasmi.md` | (absent) | v1.0.3 | NORMATIVE | F-R120-3 |
+| `ADR-0002-nucleo-acceptance-with-reeval-trigger.md` | (absent) | v1.0.4 | NORMATIVE | F-R120-3 |
+| `ADR-0003-license-selection.md` | (absent) | v1.0.2 | NORMATIVE | F-R120-3 |
+| `ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md` | (absent) | v1.0.4 | NORMATIVE | F-R120-3 |
+| `ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md` | present (unpinned) | v1.0.2 | NORMATIVE | F-R120-3 |
+| `ARCH-INDEX.md` | v1.0.10 | v1.0.10 | NORMATIVE | verified current |
+| `product-brief.md` | v1.4.29 | v1.4.29 | NORMATIVE | verified current (R19B may bump brief) |
+| `vision-synthesis` | v1.1.2 | v1.1.2 | NORMATIVE | verified current |
+| `SS-daemon-lifecycle.md` | v1.0.32 | v1.0.32 | NORMATIVE | verified current |
+| `SS-core-types-and-abi.md` | v1.2.13 | v1.2.13 | NORMATIVE | verified current |
+| `SS-engine-module.md` | v1.1.20 | v1.1.20 | NORMATIVE | verified current |
+| `SS-deps-pin-manifest.md` | v1.1.17 | v1.1.17 | NORMATIVE | verified current |
+| `SS-conventions-anti-patterns.md` | v1.29.5 | v1.29.5 | NORMATIVE | verified current |
+
+**Changes made:** frontmatter `version` v1.26.12 → v1.26.13; `timestamp` refreshed 2026-05-18T21:30:00Z → 2026-05-19T00:00:00Z; `traces_to:` — BC-INDEX pin v1.10 → v1.11; L2-INDEX pin v1.0.9 → v1.0.10; VP-INDEX pin added v1.14; SS-permissions-phase1.md pin added v1.5.2; SS-forward-compatibility.md pin added v1.2.19; ADR-0001–ADR-0004 pins added; ADR-0005 unpinned → pinned v1.0.2; §Trace v1.26.13 added.
 
 ---
 
