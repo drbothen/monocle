@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.76"
+version: "5.77"
 status: active
 producer: state-manager
-timestamp: 2026-05-18T17:00:00Z
+timestamp: 2026-05-18T17:30:00Z
 phase: phase-1-spec-crystallization
-current_step: "T-127[8x']-R16-CLOSED-AWAITING-R118-CONS-R57-DISPATCH"
+current_step: "T-127[8x']-R17-PRE-SE22-CODIFIED-DISPATCHING-R17A"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 36 META defense disciplines (SE-19 + SE-20 codified this burst). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch. **ROUND 15 F-R116 CLOSURE CHAIN COMPLETE (2026-05-18):** All 4 R116 findings closed across 3 bursts: R15A (92b7aed) VP-INDEX v1.11→v1.12 + 14-row H1 sibling sweep (F-R116-1 HIGH); R15B (08d1ef4 factory + a5e6398 main) brief v1.4.27→v1.4.28 + CLAUDE.md v1.4.26→v1.4.28 two-line fix + revision-history row repair (F-R116-2 HIGH); R15C (1d75edf) VP-005 §Trace SE-16d wording > → ≥ + v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 candidate HELD per D-114 (1st occurrence). SE-17e sibling sweep of VP-005 fix: 21 other VPs CLEAN (defect unique to VP-005). Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117). R15D (this burst): STATE v5.75 + compute-input-hash UPDATED=72. **Pipeline ready for R117 + cons R56 parallel dispatch.** **ROUND 16 F-R117 + GAP-R56-002 CLOSURE CHAIN COMPLETE (2026-05-18):** R117 adversary FAIL (4 findings: 2 HIGH + 1 MED + 1 LOW). Cons R56 GAPS (2 findings: GAP-R56-001 brief pin stale in PRD traces_to; GAP-R56-002 brief pin stale in L2-INDEX §Trace). 5 findings closed across 4 dispatches (R16-pre df6f51c; R16A aef91dc PRD v1.26.10; R16B ARCH-INDEX v1.0.10 co-landed in aef91dc per SE-18 worktree race; R16C 9a02f5a BC-INDEX v1.10 + BC-2.01.010 v1.0.4; R16D b0d5092 L2-INDEX v1.0.9). SE-22 sibling-sweep candidate: 2nd explicit occurrence (HELD per D-114). NEW SE-18 sub-class: parallel-burst worktree-race (1st occurrence of this sub-class). Counter holds at 0/3 — advance requires R118 CLEAN."
-awaiting: "Round 16 F-R117 + GAP-R56-002 closure chain COMPLETE. All 4 R117 findings + 1 cons R56 unique gap closed. SE-22 candidate now at 2nd explicit occurrence (HELD per D-114). NEW SE-18 sub-class observation: parallel-burst worktree race (1st occurrence). Counter holds at 0/3. Pipeline ready for R118 + cons R57 dispatch."
-next_session_resume_protocol: "READ STATE.md COMPLETELY → read CLAUDE.md → verify git log → dispatch R118 + cons R57 in parallel against post-R16 canonical artifact set. See §Session Resume Checkpoint for full instructions."
+traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 37 META defense disciplines (SE-22 codified R17-pre burst per D-142). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch. **ROUND 15 F-R116 CLOSURE CHAIN COMPLETE (2026-05-18):** All 4 R116 findings closed across 3 bursts: R15A (92b7aed) VP-INDEX v1.11→v1.12 + 14-row H1 sibling sweep (F-R116-1 HIGH); R15B (08d1ef4 factory + a5e6398 main) brief v1.4.27→v1.4.28 + CLAUDE.md v1.4.26→v1.4.28 two-line fix + revision-history row repair (F-R116-2 HIGH); R15C (1d75edf) VP-005 §Trace SE-16d wording > → ≥ + v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 candidate HELD per D-114 (1st occurrence). SE-17e sibling sweep of VP-005 fix: 21 other VPs CLEAN (defect unique to VP-005). Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117). R15D (this burst): STATE v5.75 + compute-input-hash UPDATED=72. **Pipeline ready for R117 + cons R56 parallel dispatch.** **ROUND 16 F-R117 + GAP-R56-002 CLOSURE CHAIN COMPLETE (2026-05-18):** R117 adversary FAIL (4 findings: 2 HIGH + 1 MED + 1 LOW). Cons R56 GAPS (2 findings: GAP-R56-001 brief pin stale in PRD traces_to; GAP-R56-002 brief pin stale in L2-INDEX §Trace). 5 findings closed across 4 dispatches (R16-pre df6f51c; R16A aef91dc PRD v1.26.10; R16B ARCH-INDEX v1.0.10 co-landed in aef91dc per SE-18 worktree race; R16C 9a02f5a BC-INDEX v1.10 + BC-2.01.010 v1.0.4; R16D b0d5092 L2-INDEX v1.0.9). SE-22 sibling-sweep candidate: 2nd explicit occurrence (HELD per D-114). NEW SE-18 sub-class: parallel-burst worktree-race (1st occurrence of this sub-class). Counter holds at 0/3 — advance requires R118 CLEAN. **R17-pre: SE-22 Sibling-Sweep META CODIFIED (37th discipline) per D-142 (2026-05-18T17:30:00Z). R118 + cons R57 returned 10 unique sibling-sweep META-class findings — D-114 Goodhart's-law deferral threshold conclusively met (3rd+ occurrence). User selected Option A: codify SE-22 + execute Round 17 fix chain. STATE v5.76 → v5.77. Counter unchanged 0/3. Round 17 fix-burst chain queued (R17A–R17F).**"
+awaiting: "SE-22 codified (37th discipline) per D-142. Round 17 dispatch chain queued: R17A (PRD) → R17B (brief + CLAUDE.md) → R17C (VP-INDEX + 22 VPs) → R17D (SS-conventions) → R17E (CAP-001) → R17F (STATE v5.78 closure). Serialized to avoid SE-18 worktree race."
+next_session_resume_protocol: "READ STATE.md COMPLETELY → read CLAUDE.md → verify git log → execute Round 17 fix chain SERIALLY (R17A→R17B→R17C→R17D→R17E→R17F) → then dispatch R118 + cons R57 in parallel. See §Session Resume Checkpoint for full instructions."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -25,9 +25,9 @@ current_cycle: cycle-001
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
 Cycle: cycle-001 (ACTIVE — Phase 1 Spec Crystallization)
 Phase: phase-1-spec-crystallization
-Step: T-127[8x']-R16-CLOSED-AWAITING-R118-CONS-R57-DISPATCH
-Counter: 0/3 (R117 FAIL chain CLOSED; advance requires R118 CLEAN)
-Timestamp: 2026-05-18T17:00:00Z
+Step: T-127[8x']-R17-PRE-SE22-CODIFIED-DISPATCHING-R17A
+Counter: 0/3 (R117 FAIL chain CLOSED; advance requires R118 CLEAN after R17 fix chain)
+Timestamp: 2026-05-18T17:30:00Z
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -35,22 +35,22 @@ Timestamp: 2026-05-18T17:00:00Z
 ## READ THIS FIRST (fresh-context session)
 
 ---
-**DURABLE RESUME PROTOCOL — R16 CLOSED (2026-05-18T17:00:00Z)**
+**DURABLE RESUME PROTOCOL — R17-PRE COMPLETE (2026-05-18T17:30:00Z)**
 
-Round 16 F-R117 + GAP-R56-002 closure chain is COMPLETE. STATE.md v5.76 is current.
+SE-22 Sibling-Sweep META codified as 37th discipline (D-142). STATE.md v5.77 is current. Round 17 fix-burst chain (R17A–R17F) is queued and serialized to avoid SE-18 worktree race.
 
 IMMEDIATE NEXT ACTIONS:
 1. Read this STATE.md COMPLETELY first.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` (canonical principle + agent routing).
 3. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Dispatch R118 + cons R57 in parallel against post-R16 canonical artifact set (§Session Resume Checkpoint lists full artifact versions entering Round 17).
-5. If R118 CLEAN → counter advances 0/3 → 1/3.
+4. Execute Round 17 fix chain SERIALLY: R17A (PRD) → R17B (brief + CLAUDE.md) → R17C (VP-INDEX + 22 VPs) → R17D (SS-conventions) → R17E (CAP-001) → R17F (STATE v5.78 closure + compute-input-hash).
+5. After R17F complete: dispatch R118 + cons R57 in parallel.
 
-Key pins entering Round 17 (post-R16): PRD v1.26.10, BC-INDEX v1.10, BC-2.01.010 v1.0.4, VP-INDEX v1.12, VP-005 v1.0.12, ARCH-INDEX v1.0.10, SS-forward-compatibility v1.2.19, brief v1.4.28, SS-daemon-lifecycle v1.0.32, SS-engine-module v1.1.20, SS-core-types-and-abi v1.2.13, L2-INDEX v1.0.9, CAP-001 v1.4, dtu-assessment v1.7.5, ADR-0002 v1.0.4, ADR-0005 v1.0.2, manifest v1.1.17. SS-conventions-anti-patterns v1.29.4. 36 codified disciplines in force.
+Key pins entering Round 17 (post-R16): PRD v1.26.10, BC-INDEX v1.10, BC-2.01.010 v1.0.4, VP-INDEX v1.12, VP-005 v1.0.12, ARCH-INDEX v1.0.10, SS-forward-compatibility v1.2.19, brief v1.4.28, SS-daemon-lifecycle v1.0.32, SS-engine-module v1.1.20, SS-core-types-and-abi v1.2.13, L2-INDEX v1.0.9, CAP-001 v1.4, dtu-assessment v1.7.5, ADR-0002 v1.0.4, ADR-0005 v1.0.2, manifest v1.1.17. SS-conventions-anti-patterns v1.29.4. **37 codified disciplines in force** (SE-22 codified this burst per D-142).
 
 ---
 
-Round 16 F-R117 + GAP-R56-002 closure chain COMPLETE. This file is your resume context.
+SE-22 Sibling-Sweep META codified (37th discipline, D-142). Round 17 fix chain queued. This file is your resume context.
 
 1. Read this file completely before doing anything.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing companion principle bind every action.
@@ -162,6 +162,8 @@ Round 16 F-R117 + GAP-R56-002 closure chain COMPLETE. This file is your resume c
 89. **R16D (2026-05-18T16:30:00Z): L2-INDEX v1.0.8 → v1.0.9 — F-R117-4 + GAP-R56-002 COMBINED CLOSURE.** Commit b0d5092 (factory-artifacts). L2-INDEX §Document Map: CAP-002 label corrected from "Agent Capabilities" to canonical H1 verbatim + CAP-003 label corrected (F-R117-4 doc-map naming). L2-INDEX §Trace line 149: brief pin v1.4.27 → v1.4.28 (GAP-R56-002 closure). SE-16d PASS: `16:30:00Z` > `16:00:00Z`. **All 4 R117 findings + GAP-R56-002 CLOSED.**
 
 90. **R16E (2026-05-18T17:00:00Z): STATE v5.76 closure — Round 16 chain COMPLETE.** This commit (factory-artifacts). SE-16d R16 chain monotonicity matrix: STATE v5.75 `14:30:00Z` → R117 report `14:45:00Z` → PRD v1.26.10 `15:00:00Z` → ARCH-INDEX v1.0.10 `15:30:00Z` → BC-INDEX v1.10 `16:00:00Z` → L2-INDEX v1.0.9 `16:30:00Z` → STATE v5.76 `17:00:00Z`. All UTC ISO-8601 Z form. 30-minute increments. SE-16d PASS strict-greater throughout. compute-input-hash --update: TOTAL=205 MATCH=0 STALE=74 UNCOMPUTED=0 NOINPUT=131 UPDATED=74 UPDATE_FAILED=0 — all R16 artifact hash cascades resolved. Decisions D-139/D-140/D-141 recorded. Counter remains 0/3. **Pipeline ready for R118 + cons R57 parallel dispatch.**
+
+91. **R17-pre (2026-05-18T17:30:00Z): SE-22 Sibling-Sweep META CODIFIED (37th discipline) — D-142. STATE v5.76 → v5.77.** R118 adversary + cons R57 returned 10 unique sibling-sweep META-class findings (all same class: stale pins in artifacts that should have been swept as SE-22 siblings when the pinned artifact bumped). D-114 Goodhart's-law deferral threshold conclusively met: 1st occurrence O-R116-1 (R116), 2nd occurrence F-R117-x (R117), 3rd+ occurrence F-R118-1/2/3/4/5/6 + GAP-R57-001/002/003/004/005/006/007 (R118 cascade-tail of R16 closure). User selected Option A: codify SE-22 + execute Round 17 fix chain. SE-22 definition codified in §Active Disciplines (four sibling-layer triggers + enforcement pre-commit grep sweep). D-142 recorded in §Decisions Log. SE-16d PASS: STATE v5.77 `17:30:00Z` > STATE v5.76 `17:00:00Z` — monotonic. compute-input-hash NOT run this burst (R17F handles after all R17 spec bursts complete). Counter unchanged 0/3.
 
 77. **D-135 F-R111 Round 10 FULL CLOSURE COMPLETE (2026-05-18):** R111 adversary (D-047 strict pass 1 attempt 7) returned FAIL with 6 findings — LOWEST count in restructured-artifact cycle (trajectory: R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6). Cons R50 returned GAPS (2 findings). All 8 R111+R50 findings closed in 2 commits. Round 10A (PO c0c6b99): BC-INDEX v1.9 + PRD v1.26.9 + error-taxonomy v1.5 + nfr-catalog v1.7. Round 10B (FV 1593633): VP-INDEX v1.9 + 22 VPs source-contract pin symmetry. Round 10C (SM this commit): STATE v5.72. **Convergence signal STRONG: 6 findings at R111 vs 30 at R110 is 80% decay.** Counter held 0/3 (7 consecutive rounds). SE-16d PASS: Round 10 commits < STATE v5.72 2026-05-18T08:00:00Z. R112 + cons R51 dispatched (T-127''''''' re-audit cycle; D-047 strict pass 1 attempt 8).
 
@@ -363,8 +365,15 @@ Round 16 F-R117 + GAP-R56-002 closure chain COMPLETE. This file is your resume c
 | T-127[8x']-R16B | F-R117-2: ARCH-INDEX v1.0.9→v1.0.10 ADR-0002 row + ADR-0004/0005 backtick sweep | **COMPLETE** (co-landed in aef91dc per D-140 SE-18 sub-class worktree race) | architect |
 | T-127[8x']-R16C | F-R117-3: BC-INDEX v1.9→v1.10 + BC-2.01.010 v1.0.3→v1.0.4 pin-symmetry | **COMPLETE** (9a02f5a) | product-owner |
 | T-127[8x']-R16D | F-R117-4 + GAP-R56-002: L2-INDEX v1.0.8→v1.0.9 doc-map naming + §Trace brief pin | **COMPLETE** (b0d5092) | business-analyst |
-| T-127[8x']-R16E | R16E: STATE v5.76 closure + D-139/D-140/D-141 + compute-input-hash | **COMPLETE** (this commit) | state-manager |
-| T-127[8x']-F | R118 + cons R57 (D-047 strict pass attempt — counter 0/3) | **READY — dispatch now** | adversary + consistency-validator |
+| T-127[8x']-R16E | R16E: STATE v5.76 closure + D-139/D-140/D-141 + compute-input-hash | **COMPLETE** (factory-artifacts) | state-manager |
+| T-127[8x']-R17-pre | R17-pre: SE-22 codification (37th discipline; D-142) + STATE v5.77 | **COMPLETE** (this commit) | state-manager |
+| T-127[8x']-R17A | R17A: PRD — SE-22 sibling-sweep R118+R57 findings (stale pins) | **QUEUED** | product-owner |
+| T-127[8x']-R17B | R17B: brief + CLAUDE.md — SE-22 sibling-sweep R118+R57 findings | **QUEUED** | product-owner |
+| T-127[8x']-R17C | R17C: VP-INDEX + 22 VPs — SE-22 sibling-sweep R118+R57 findings | **QUEUED** | formal-verifier |
+| T-127[8x']-R17D | R17D: SS-conventions — SE-22 sibling-sweep R118+R57 findings | **QUEUED** | architect |
+| T-127[8x']-R17E | R17E: CAP-001 — SE-22 sibling-sweep R118+R57 findings | **QUEUED** | business-analyst |
+| T-127[8x']-R17F | R17F: STATE v5.78 closure + compute-input-hash + R17 chain COMPLETE | **QUEUED** | state-manager |
+| T-127[8x']-F | R118 + cons R57 (D-047 strict pass attempt — counter 0/3; after R17F) | **BLOCKED on R17F** | adversary + consistency-validator |
 | T-128ac | F-R108 Round 7A (PO): BC scope — BC-2.01.002 v1.0.4, BC-2.01.008 v1.0.5, BC-2.01.009 v1.0.5, BC-INDEX v1.6. Closed F-R108-4 + F-R108-17 + F-R108-12 + F-R108-16 | **COMPLETE** (22579ac) | product-owner |
 | T-128ad | F-R108 Round 7B (PO): Supplements + PRD + brief — PRD v1.26.6, interface-definitions v1.5, nfr-catalog v1.4, test-vectors v1.3, error-taxonomy v1.3, brief v1.4.26 + CLAUDE.md brief ref. NFR-007/008/011 RESCOPED to Phase 1 per brief Success Criteria. Closed F-R108-2 + F-R108-3 + F-R108-7 + F-R108-8 + F-R108-14 + GAP-R47-1 PO + GAP-R47-3 | **COMPLETE** (c307f2a factory-artifacts; de6e6dd main) | product-owner |
 | T-128ae | F-R108 Round 7C (Architect): SS-forward-compatibility v1.2.17, SS-daemon-lifecycle v1.0.32, SS-engine-module v1.1.20, SS-core-types-and-abi v1.2.13, ARCH-INDEX v1.0.7, dtu-assessment v1.7.4, ADR-0002 v1.0.3. Closed F-R108-1 + F-R108-9 + F-R108-10 + F-R108-20 + F-R108-21 | **COMPLETE** (9db4df8) | architect |
@@ -559,6 +568,7 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | D-139 | **Round 16 F-R117 + GAP-R56-002 FULL CLOSURE (2026-05-18T17:00:00Z).** 5 findings closed across 4 dispatches: R16-pre (df6f51c) — R117 report persisted (adversary tool-profile: read-only); R16A (aef91dc) — PRD v1.26.9→v1.26.10 F-R117-1 closure + GAP-R56-001 closure (brief pin traces_to); R16B (co-landed in aef91dc per SE-18 worktree race) — ARCH-INDEX v1.0.9→v1.0.10, ADR-0002 row + ADR-0004/0005 backtick sweep (F-R117-2 + 2 sibling-class instances); R16C (9a02f5a) — BC-INDEX v1.9→v1.10 + BC-2.01.010 v1.0.3→v1.0.4 pin-symmetry fix F-R117-3; R16D (b0d5092) — L2-INDEX v1.0.8→v1.0.9 doc-map naming fix + GAP-R56-002 closure (F-R117-4). All 4 R117 findings + 1 unique cons R56 gap CLOSED. SE-22 sibling-sweep candidate: 2nd explicit occurrence — HELD per D-114 (3+ required for codification). SE-18 new sub-class observation: parallel-burst worktree race — 1st occurrence of THIS sub-class (D-140). SE-16d R16 chain monotonicity PASS (see History entry 90). Counter remains 0/3. | 2026-05-18 | state-manager (Round 16 closure) |
 | D-140 | **SE-18 worktree-race sub-class OBSERVED (2026-05-18) — 1st explicit occurrence.** During R16 dispatch, R16A (PRD agent) and R16B (ARCH-INDEX agent) both operated on the shared `.factory/` worktree in parallel. R16B's ARCH-INDEX edits were staged before R16A's commit; when R16A committed, both sets of changes were captured in commit aef91dc. Content outcome: CORRECT (both F-R117-1 PRD fix and F-R117-2 ARCH-INDEX fix present). Process outcome: commit message describes only PRD changes; ARCH-INDEX bump undocumented in message. This is a 1st occurrence sub-class of SE-18 (existing: commit-burst hygiene + cross-dispatch version-bump coordination). Sub-class: parallel-burst agents sharing a single worktree risk content co-mingling into one commit. **Orchestrator note per D-114 (HELD — 1st occurrence, 3+ required for codification):** dispatch parallel-burst agents SERIALLY when they share the `.factory/` worktree, or ensure separate worktree isolation. | 2026-05-18 | state-manager (SE-18 sub-class observation) |
 | D-141 | **SE-22 sibling-sweep candidate occurrence count: 2 (HELD per D-114).** 1st occurrence: O-R116-1 (VP-INDEX H1↔INDEX title drifts in R116 — sibling sweep not applied post-R115 VP-005 fix). 2nd occurrence: F-R117-2 ARCH-INDEX ADR row gap + R16B backtick sweep (ADR-0004/0005 sibling-sweep gap same class) + F-R117-3/4 sibling-sweep gaps at ARCH-INDEX/L2-INDEX/BC-INDEX. Per D-114: codification requires 3+ named occurrences. **Status: 2/3 — HELD.** SE-22 provisional definition (not yet codified): "after any fix-burst that touches an index or catalog document, a same-class sibling sweep of all related index rows MUST be performed to catch co-located drift." R118 adversary pass will determine if a 3rd occurrence surfaces. | 2026-05-18 | state-manager (SE-22 occurrence tracking) |
+| D-142 | **SE-22 Sibling-Sweep META Codification — 37th Discipline (2026-05-18).** R118 adversary returned FAIL with 10 unique sibling-sweep META-class findings; cons R57 confirmed same class. D-114 Goodhart's-law deferral threshold conclusively met (3+ named occurrences: O-R116-1 R116 1st; F-R117-x R117 2nd; F-R118-1/2/3/4/5/6 + GAP-R57-001/002/003/004/005/006/007 R118 3rd+). SE-22 codified as 37th discipline. Definition: when a fix of class X is applied to artifact Y, the agent MUST sweep ALL sibling artifacts in the same layer (or with the same contract surface) for class X before declaring closure. Four sibling-layer triggers: (1) multi-pin frontmatter — if artifact Y bumps version, every artifact with traces_to or references listing Y must update its pin in the same dispatch chain; (2) cross-referenced conventions — if a convention is added to one INDEX/SoT artifact with an explicit Cross-reference pointer to another artifact, the cross-referenced artifact must be updated in the same dispatch chain; (3) active-pointer prose — section prose with active-state assertions (e.g., "current X vN.M") must refresh when X bumps; historical BEFORE/AFTER slots preserved per SE-17g audit-trail; (4) same-class sibling artifacts — if a defect class is fixed in artifact Y, all artifacts in the same architectural layer carrying the same contract surface must be checked for the same class. Enforcement: pre-commit check by each agent — enumerate sibling artifacts, grep for pre-bump pin/old-pattern, verify zero matches in NORMATIVE content. Relation to SE-17e: SE-17e is sibling-propagation of DISCIPLINE APPLICATIONS; SE-22 is sibling-propagation of FINDING CLASSES. User selected Option A: codify + execute Round 17 fix chain. | 2026-05-18 | state-manager (SE-22 codification; R17-pre burst) |
 
 | D-135 | **F-R111 Round 10 FULL CLOSURE COMPLETE (2026-05-18).** R111 adversary (D-047 strict pass 1 attempt 7) FAIL: 6 findings — LOWEST count in restructured-artifact cycle (R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6; 80% decay from R110). Cons R50 GAPS: 2 findings. All 8 closed in 2 commits. Round 10A (PO c0c6b99): BC-INDEX v1.8→v1.9 + PRD v1.26.8→v1.26.9 + error-taxonomy v1.4→v1.5 + nfr-catalog v1.5→v1.7. Round 10B (FV 1593633): VP-INDEX v1.8→v1.9 + 22 VPs source-contract pin symmetry. Round 10C (SM this commit): STATE v5.71→v5.72. SE-16d PASS: Round 10 commits < STATE v5.72 2026-05-18T08:00:00Z. Counter held 0/3 (7th consecutive round). Convergence signal STRONG. R112 + cons R51 dispatched. | 2026-05-18 | state-manager (Round 10 closure) |
 
@@ -574,24 +584,25 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | O-R105-2 | SE-17f extend to all §Trace bumps codification candidate | LOW process-gap | DEFERRED per D-114 | SM | T-128m — await T-127' outcome |
 | OBS-R41-1 | `reqwest 0.13` no consumer edge | LOW informational | DEFERRED to Phase 1 arch | architect | (Phase 1 arch creation) |
 
-## Session Resume Checkpoint — DURABLE (v5.76)
+## Session Resume Checkpoint — DURABLE (v5.77)
 
-### State as of v5.76 — R16 COMPLETE (2026-05-18T17:00:00Z)
+### State as of v5.77 — R17-PRE COMPLETE (2026-05-18T17:30:00Z)
 
 **Working directory:** `/Users/jmagady/Dev/monocle`
 **Branches:** `factory-artifacts` (specs + STATE + plans + all artifacts); `main` (CLAUDE.md only)
-**Last factory-artifacts commit:** This burst — STATE v5.76 closure commit (single-commit burst per TD-VSDD-053)
-**Counter state:** 0/3 (R117 FAIL chain CLOSED; advance requires R118 CLEAN)
+**Last factory-artifacts commit:** This burst — STATE v5.77 R17-pre SE-22 codification (single-commit burst per TD-VSDD-053)
+**Counter state:** 0/3 (R117 FAIL chain CLOSED; advance requires R118 CLEAN after R17 fix chain completes)
 **Trajectory (restructured cycle):** R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0 (CLEAN 1/3), R114→0, R115→1 (F-R115-1, fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15 chain), R117→4 (FAIL, all 4+GAP-R56-002 closed R16 chain)
-**Round 16 result:** COMPLETE — all 4 R117 findings + GAP-R56-002 closed (R16-pre df6f51c + R16A/B aef91dc + R16C 9a02f5a + R16D b0d5092 + R16E this commit)
+**R17-pre result:** COMPLETE — SE-22 codified (37th discipline, D-142). R17 fix chain (R17A–R17F) queued; R17F will bump STATE to v5.78.
 
-### Immediate next action (Round 17)
+### Immediate next action (Round 17 fix chain + R118)
 
 1. Read this STATE.md completely first.
 2. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing bind every action.
 3. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-4. Dispatch R118 + cons R57 in parallel against post-R16 canonical artifact set below.
-5. If R118 CLEAN: counter 0/3 → 1/3 (milestone again; R119+R58 then needed for 2/3 → 3/3).
+4. Execute Round 17 fix chain SERIALLY per SE-18 (no parallel worktree writes): R17A (PRD) → R17B (brief + CLAUDE.md) → R17C (VP-INDEX + 22 VPs) → R17D (SS-conventions) → R17E (CAP-001) → R17F (STATE v5.78 + compute-input-hash).
+5. After R17F COMPLETE: dispatch R118 + cons R57 in parallel.
+6. If R118 CLEAN: counter 0/3 → 1/3 (milestone again; R119+R58 then needed for 2/3 → 3/3).
 
 ### SE-16d cross-chain monotonicity matrix (R16 chain)
 
@@ -603,7 +614,8 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | ARCH-INDEX v1.0.10 (aef91dc R16B) | 2026-05-18T15:30:00Z | PASS > 15:00 (timestamp slot; co-mingled per D-140) |
 | BC-INDEX v1.10 (9a02f5a R16C) | 2026-05-18T16:00:00Z | PASS > 15:30 |
 | L2-INDEX v1.0.9 (b0d5092 R16D) | 2026-05-18T16:30:00Z | PASS > 16:00 |
-| STATE v5.76 (this commit R16E) | 2026-05-18T17:00:00Z | PASS > 16:30 |
+| STATE v5.76 (R16E) | 2026-05-18T17:00:00Z | PASS > 16:30 |
+| STATE v5.77 (this commit R17-pre) | 2026-05-18T17:30:00Z | PASS > 17:00 |
 
 All UTC ISO-8601 Z form. 30-minute increments. SE-16d PASS strict-greater throughout.
 
@@ -634,25 +646,25 @@ All UTC ISO-8601 Z form. 30-minute increments. SE-16d PASS strict-greater throug
 | `L2-INDEX.md` | v1.0.9 | b0d5092 Round 16D |
 | `CAP-001.md` | v1.4 | unchanged |
 | `product-brief.md` | v1.4.28 | 08d1ef4 Round 15B; unchanged |
-| `STATE.md` | v5.76 | this burst |
+| `STATE.md` | v5.77 | this burst (R17-pre SE-22 codification) |
 | `CLAUDE.md` (main) | brief ref v1.4.28 | a5e6398 Round 15B; unchanged |
 
 ### Discipline count and key disciplines
 
-**36 codified disciplines in force** (SE-18 34th; SE-19 35th; SE-20 36th). No new codifications in Rounds 12-16. D-140 SE-18 sub-class observation and D-141 SE-22 2nd occurrence recorded; both HELD per D-114.
+**37 codified disciplines in force** (SE-18 34th; SE-19 35th; SE-20 36th; SE-22 37th — codified this R17-pre burst per D-142). D-140 SE-18 sub-class observation still HELD per D-114 (1st occurrence of that sub-class).
 
 Key disciplines relevant to Round 17:
-- **SE-18** (commit-burst hygiene + cross-dispatch version-bump coordination; D-140 new sub-class: parallel-burst worktree race, 1st occurrence)
+- **SE-22** (Sibling-Sweep META — same-class cross-artifact propagation; 37th discipline; codified D-142 this burst)
+- **SE-18** (commit-burst hygiene + cross-dispatch version-bump coordination; D-140 sub-class: parallel-burst worktree race)
 - **SE-16d** (cross-artifact chain-time monotonicity — R16 chain PASS verified)
 - **SE-19** (NFR-VP Phantom-Anchor Audit)
 - **SE-20** (Timestamp Monotonicity Hook)
-- **SE-22 candidate** (same-class sibling sweep on finding closure — HELD per D-114, 2nd occurrence per D-141; 1/3 toward codification)
 
 ### Counter and convergence context (entering Round 17)
 
 - **D-047 strict:** 0 findings of any severity for 3 consecutive adversary+consistency passes
-- **Current counter:** 0/3 (R117 FAIL chain CLOSED; R118 CLEAN needed to restore 1/3)
-- **Convergence trajectory:** R113→0 (CLEAN 1/3), R114→0, R115→1 (fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15), R117→4 (FAIL, all 4+GAP-R56-002 closed R16). Trajectory converging — 30→6→4→0→0→1→4→4, all closures complete. High likelihood R118 is CLEAN given mechanical sweep completeness of R16.
+- **Current counter:** 0/3 (R117 FAIL chain CLOSED; R17 fix chain in progress; R118 CLEAN needed to restore 1/3)
+- **Convergence trajectory:** R113→0 (CLEAN 1/3), R114→0, R115→1 (fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15), R117→4 (FAIL, all 4+GAP-R56-002 closed R16), R118→10 (sibling-sweep META cascade, all SE-22 class; fix chain queued R17A–R17F). Trajectory: 30→6→4→0→0→1→4→4→10. SE-22 codified this burst to structurally block this finding class going forward.
 
 ### R-pass reports in .factory/plans/
 
@@ -662,7 +674,7 @@ All R-pass reports persisted. Key recent files:
 - `adversary-pass-r117-phase1.md` — FAIL (df6f51c; D-139)
 - `consistency-r56-phase1.md` — GAPS 2 findings (bf8359d; D-139)
 
-### Key artifact versions as of v5.76 (CANONICAL — end of Round 16/R16E)
+### Key artifact versions as of v5.77 (CANONICAL — end of R17-pre)
 - PRD: `prd.md` v1.26.10 (aef91dc Round 16A)
 - interface-definitions.md v1.5 (c307f2a unchanged); nfr-catalog.md v1.7 (c0c6b99 unchanged); error-taxonomy.md v1.5 (c0c6b99 unchanged); test-vectors.md v1.3 (c307f2a unchanged)
 - `product-brief.md` v1.4.28 (08d1ef4 Round 15B; unchanged); `VP-INDEX.md` v1.12 (92b7aed Round 15A; unchanged); VP-005 v1.0.12 (1d75edf Round 15C; unchanged); `CLAUDE.md` brief ref v1.4.28 (a5e6398 Round 15B; unchanged)
@@ -672,22 +684,24 @@ All R-pass reports persisted. Key recent files:
 - ARCH-INDEX v1.0.10 (aef91dc Round 16B); ADR-0002 v1.0.4 (unchanged); ADR-0005 v1.0.2 (03a4c57 unchanged)
 - L2-INDEX v1.0.9 (b0d5092 Round 16D); CAP-001 v1.4 (unchanged); CAP-002/003 unchanged
 - dtu-assessment v1.7.5 (34ee6ee unchanged)
-- STATE v5.76 (this commit)
+- STATE v5.77 (this commit — R17-pre SE-22 codification)
 - CLAUDE.md: brief v1.4.28 (a5e6398 main); vision v1.1.2; routing example pin v1.1.17
 
-### Active disciplines (36 codified — SE-19 + SE-20 latest)
-L-F-R63 Extensions 1-17 + sub-extensions + SE-17e/f/g + SE-16d + SE-18 (commit-burst hygiene; D-140 new sub-class observed) + SE-19 (NFR-VP phantom-anchor audit) + SE-20 (timestamp monotonicity hook). SE-17h HELD per D-114. D-116 scoped-awk confirmed sound. validate-template-compliance perimeter gate (D-123). SE-22 candidate: 2nd occurrence per D-141 (HELD per D-114). No new codifications this round.
+### Active disciplines (37 codified — SE-22 latest, codified R17-pre burst)
+L-F-R63 Extensions 1-17 + sub-extensions + SE-17e/f/g + SE-16d + SE-18 (commit-burst hygiene; D-140 sub-class observed) + SE-19 (NFR-VP phantom-anchor audit) + SE-20 (timestamp monotonicity hook) + **SE-22 (sibling-sweep META — 37th; codified D-142 this burst)**. SE-17h HELD per D-114. D-116 scoped-awk confirmed sound. validate-template-compliance perimeter gate (D-123).
+
+**SE-22 — Sibling-Sweep META (Same-Class Cross-Artifact Propagation Discipline):** When a fix of class X is applied to artifact Y, the agent MUST sweep ALL sibling artifacts in the same layer (or with the same contract surface) for class X before declaring closure. Four sibling-layer triggers: (1) multi-pin frontmatter — every artifact with `traces_to:` or `references:` listing Y must update its pin in the same dispatch chain; (2) cross-referenced conventions — if a convention is added to one INDEX/SoT artifact with an explicit `Cross-reference:` pointer to another artifact, that artifact must be updated in the same dispatch chain; (3) active-pointer prose — §Trace prose with active-state assertions must refresh when the pinned artifact bumps; historical BEFORE/AFTER slots preserved per SE-17g; (4) same-class sibling artifacts — if defect class X is fixed in artifact Y, all artifacts in the same architectural layer carrying the same contract surface must be checked. Enforcement: pre-commit grep sweep by each agent — enumerate sibling artifacts, grep for pre-bump pin/old-pattern, verify zero matches in NORMATIVE content. Relation to SE-17e: SE-17e propagates DISCIPLINE APPLICATIONS; SE-22 propagates FINDING CLASSES. Codification rationale: D-114 threshold met — pattern observed in F-R55-adv-3 (pre-Phase-1), F-R84/F-R93 (mid-cycle), O-R116-1 (R116), F-R117-1/2/3/4 (R117), F-R118-1/2/3/4/5/6 + GAP-R57-001/002/003/004/005/006/007 (R118).
 
 ### Counter state
-**0/3** — R117 FAIL chain CLOSED. Counter advance requires R118 CLEAN.
+**0/3** — R117 FAIL chain CLOSED. R17 fix chain queued (R17A–R17F). Counter advance requires R17 fix chain COMPLETE + R118 CLEAN.
 
-### SE-16d cross-chain monotonicity (R16E SM burst)
+### SE-16d cross-chain monotonicity (R17-pre SM burst)
 R16 chain verified monotonic (see §SE-16d cross-chain monotonicity matrix table above).
-SE-16d verdict: PASS — STATE v5.76 (17:00Z) > L2-INDEX v1.0.9 (16:30Z). Monotonic.
+R17-pre SE-16d verdict: PASS — STATE v5.77 (17:30Z) > STATE v5.76 (17:00Z). Monotonic.
 
 ### Process-gap observations (not codified per D-114)
-D-140: SE-18 sub-class parallel-burst worktree race — 1st occurrence (HELD).
-D-141: SE-22 sibling-sweep candidate — 2nd occurrence (HELD; 3+ required).
+D-140: SE-18 sub-class parallel-burst worktree race — 1st occurrence (HELD; 3+ required).
+D-141: SE-22 sibling-sweep candidate — CLOSED. SE-22 codified as 37th discipline per D-142 this burst.
 
 ### Working directory + branches
 - WD: `/Users/jmagady/Dev/monocle`
@@ -792,7 +806,7 @@ D-141: SE-22 sibling-sweep candidate — 2nd occurrence (HELD; 3+ required).
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps (unchanged). **manifest v1.1.17 (CURRENT)**. **PRD v1.26.9 (c0c6b99; CURRENT)**. **arch SS-* at Round 8 versions (CURRENT)**. **VP files all at Round 10 versions (1593633; CURRENT)**. **36 codified disciplines** (SE-19 NFR-VP phantom-anchor audit (35th) + SE-20 timestamp monotonicity hook (36th) codified D-134). **NOTE:** Current spec package is post-D-135 R111 Round 10 closure. R112 + cons R51 IN FLIGHT.
+28 pinned production deps (unchanged). **manifest v1.1.17 (CURRENT)**. **PRD v1.26.10 (aef91dc; CURRENT)**. **arch SS-* at Round 8 versions (CURRENT)**. **VP files all at Round 10 versions (1593633; CURRENT)**. **37 codified disciplines** (SE-19 (35th) + SE-20 (36th) + SE-22 Sibling-Sweep META (37th, D-142, R17-pre burst)). **NOTE:** Current spec package is post-R16 closure. R17 fix chain (R17A–R17F) QUEUED; R17F will bump STATE to v5.78.
 
 ## Historical Content
 
