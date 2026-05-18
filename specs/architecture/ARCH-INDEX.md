@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.9"
+version: "1.0.10"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-18T05:30:00Z
+timestamp: 2026-05-18T15:30:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
@@ -85,10 +85,10 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 | ADR ID | Title | Status | File |
 |--------|-------|--------|------|
 | ADR-0001 | wasmtime vs wasmi for WASM Plugin Runtime | accepted | adr/ADR-0001-wasmtime-vs-wasmi.md |
-| ADR-0002 | Accept nucleo 0.5 Dormancy Risk with Explicit Re-eval Trigger | accepted | adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md |
+| ADR-0002 | Accept nucleo 0.5 Dormancy Risk for Phase 1 with Explicit Re-eval Trigger | accepted | adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md |
 | ADR-0003 | MIT OR Apache-2.0 Dual-License Selection | accepted | adr/ADR-0003-license-selection.md |
-| ADR-0004 | Exhaustive Enums — Phase1Permission and ClaudeCodeTool | accepted | adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md |
-| ADR-0005 | Auth Header Dual-Accept — Canonical X-Monocle-Authorization with X-Claude-Code-Ide-Authorization Compatibility Alias | accepted | adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md |
+| ADR-0004 | Exhaustive Enums — `Phase1Permission` and `ClaudeCodeTool` | accepted | adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md |
+| ADR-0005 | Auth Header Dual-Accept — Canonical `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization` Compatibility Alias | accepted | adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md |
 
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
@@ -313,3 +313,61 @@ router-level auth middleware.
   Frontmatter `input-hash` updated from "ee1f76a" to "da60462".
 - ARCH-INDEX version: "1.0.8" → "1.0.9" (cascade from F-R110-1 normative timestamp correction).
 - SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).
+
+## §Trace v1.0.10
+
+**R16B F-R117-2 ADR-0002 + full ADR Registry H1 sibling sweep** (2026-05-18T15:30:00Z):
+- NORMATIVE (F-R117-2 HIGH — ADR-0002 row "for Phase 1" qualifier restoration):
+  ADR-0002 INDEX row title corrected from `Accept nucleo 0.5 Dormancy Risk with Explicit Re-eval Trigger`
+  to `Accept nucleo 0.5 Dormancy Risk for Phase 1 with Explicit Re-eval Trigger`.
+  BEFORE: `Accept nucleo 0.5 Dormancy Risk with Explicit Re-eval Trigger`
+  AFTER:  `Accept nucleo 0.5 Dormancy Risk for Phase 1 with Explicit Re-eval Trigger`
+  Source authority: ADR-0002 H1 (line 21): `# ADR-0002: Accept nucleo 0.5 Dormancy Risk for Phase 1 with Explicit Re-eval Trigger`.
+  "for Phase 1" is normatively load-bearing — it scopes the acceptance decision to Phase 1 only,
+  which drives the re-eval trigger semantics described in the ADR Registry Note below the table.
+  Defect class: H1↔INDEX-row title drift (same class as F-R116-1 closed for VP-INDEX).
+- NORMATIVE (sibling-sweep ADR-0004 backtick restoration):
+  ADR-0004 INDEX row title corrected from `Exhaustive Enums — Phase1Permission and ClaudeCodeTool`
+  to `Exhaustive Enums — \`Phase1Permission\` and \`ClaudeCodeTool\``.
+  BEFORE: `Exhaustive Enums — Phase1Permission and ClaudeCodeTool`
+  AFTER:  `Exhaustive Enums — \`Phase1Permission\` and \`ClaudeCodeTool\``
+  Source authority: ADR-0004 H1 (line 21): `# ADR-0004: Exhaustive Enums — \`Phase1Permission\` and \`ClaudeCodeTool\``.
+  Backtick code spans in markdown table cells are valid syntax and must be preserved verbatim.
+- NORMATIVE (sibling-sweep ADR-0005 backtick restoration):
+  ADR-0005 INDEX row title corrected from
+  `Auth Header Dual-Accept — Canonical X-Monocle-Authorization with X-Claude-Code-Ide-Authorization Compatibility Alias`
+  to
+  `Auth Header Dual-Accept — Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias`.
+  BEFORE: `Auth Header Dual-Accept — Canonical X-Monocle-Authorization with X-Claude-Code-Ide-Authorization Compatibility Alias`
+  AFTER:  `Auth Header Dual-Accept — Canonical \`X-Monocle-Authorization\` with \`X-Claude-Code-Ide-Authorization\` Compatibility Alias`
+  Source authority: ADR-0005 H1 (line 21): full verbatim with backtick code spans around both header names.
+- INFORMATIONAL (sibling-sweep — rows confirmed MATCH, no fix required):
+  ADR-0001: INDEX title `wasmtime vs wasmi for WASM Plugin Runtime` matches ADR-0001 H1 title portion. PASS.
+  ADR-0003: INDEX title `MIT OR Apache-2.0 Dual-License Selection` matches ADR-0003 H1 title portion. PASS.
+  Document Map "Section" column: assessed as navigation labels (deliberate short forms), not verbatim H1 matches.
+  The "Architecture: " prefix is consistently omitted across all seven Document Map rows by established ARCH-INDEX convention;
+  no §Trace entry has previously flagged this as drift. Convention confirmed valid; no fixes required.
+  Subsystem Registry rows: Names (SS-01 Daemon Lifecycle, SS-02 Core Types and ABI, SS-03 Engine Module) are
+  defined in the Subsystem Registry itself as the source of truth — they are NOT H1 copies from SS-*.md files.
+  Confirmed correct per ARCH-INDEX.md §"Naming rules" (stable, title-case, human-readable). PASS.
+- SE-17a LITERAL-GREP EVIDENCE (F-R117-2):
+  `grep -nE "^# " .factory/specs/architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md`
+  → `21:# ADR-0002: Accept nucleo 0.5 Dormancy Risk for Phase 1 with Explicit Re-eval Trigger`
+  Confirms "for Phase 1" present in H1; absent from prior INDEX row — defect confirmed, now closed.
+- SE-17c BEFORE/AFTER (F-R117-2): captured inline in NORMATIVE bullets above.
+- SE-17f SCOPED VERIFICATION (sibling sweep): all 5 ADR H1s extracted via `grep -nE "^# "` per ADR file;
+  all 7 SS-*.md H1s extracted via single grep invocation. Five ADR INDEX rows cross-checked.
+  Three drifted rows found; three fixed. Two matched; confirmed PASS with no change.
+- SE-17g NORMATIVE vs INFORMATIONAL:
+  NORMATIVE: ADR-0002 "for Phase 1" restoration (F-R117-2 HIGH); ADR-0004 backtick restoration (sibling);
+  ADR-0005 backtick restoration (sibling). All three alter INDEX row content.
+  INFORMATIONAL: ADR-0001, ADR-0003 match confirmations; Document Map Section label convention assessment;
+  Subsystem Registry name source-of-truth confirmation. No file content changed.
+- SE-17e SIBLING-PROPAGATION: F-R116-1 established H1↔INDEX-row verbatim-match discipline for VP-INDEX;
+  SE-17e directs this discipline to propagate to all INDEX files. This burst (R16B) applies the discipline
+  to ARCH-INDEX ADR Registry as the first sibling application. Occurrence count per SE-22:
+  this is occurrence #2 of the H1↔INDEX-row drift pattern (F-R116-1 in VP-INDEX = #1; F-R117-2
+  in ARCH-INDEX ADR Registry = #2). D-114 observation status maintained; SE-22 3+ threshold not yet
+  reached. Pattern: agents authoring INDEX rows strip qualifiers ("for Phase 1") and code spans
+  (backticks) when transcribing H1 titles — likely caused by informal paraphrasing during index creation.
+- SE-16d PASS: 2026-05-18T15:30:00Z > chain high-water 2026-05-18T05:30:00Z (monotonic).

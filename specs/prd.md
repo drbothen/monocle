@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.9"
+version: "1.26.10"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T07:00:00Z
+timestamp: 2026-05-18T15:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "82b479a"
-traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.9; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.8"
+traces_to: "product-brief.md v1.4.28; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.9; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.8"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -628,6 +628,47 @@ SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:35:00Z (v1.
 **Changes made:** frontmatter version v1.26.8 → v1.26.9; frontmatter timestamp refreshed; traces_to L2-INDEX and BC-INDEX pins updated.
 
 SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.26.8). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.
+
+---
+
+## §Trace v1.26.10
+
+**R16A — F-R117-1 / GAP-R56-001 brief pin back-cascade (v1.4.27 → v1.4.28)** (2026-05-18T15:00:00Z):
+
+**Bump:** v1.26.9 → v1.26.10.
+**Predecessor pin:** v1.26.9 (F-R111 Round 10 timestamp pathology fix; timestamp `2026-05-18T07:00:00Z`).
+**Timestamp:** 2026-05-18T15:00:00Z
+
+**F-R117-1 HIGH / GAP-R56-001 HIGH — brief pin back-cascade:**
+
+The PRD `traces_to:` frontmatter cited `product-brief.md v1.4.27`. The canonical brief is `v1.4.28` (bumped in post-R15B commit 08d1ef4 earlier on 2026-05-18). This defect class is a back-cascade gap on a sibling spec bump — the same class as F-R116-2 (closed in prior round). This is the 2nd SE-22-class occurrence (1st was O-R116-1 per SE-17e sibling-propagation note).
+
+**SE-17a GREP BEFORE (scoped to PRD `traces_to:` field, D-116 normative substring):**
+
+```
+awk 'NR==11' .factory/specs/prd.md
+traces_to: "product-brief.md v1.4.27; vision-synthesis v1.1.2; ..."
+```
+
+**SE-17c GREP AFTER (post-edit state):**
+
+```
+awk 'NR==11' .factory/specs/prd.md
+traces_to: "product-brief.md v1.4.28; vision-synthesis v1.1.2; ..."
+```
+
+**SE-17f SCOPE SWEEP — all `v1.4.27` occurrences in PRD:**
+
+| Location | Line | Classification | Action |
+|----------|------|---------------|--------|
+| `traces_to:` frontmatter | 11 | NORMATIVE live pin | Updated v1.4.27 → v1.4.28 |
+| §Trace v1.26.7 BEFORE/AFTER table | 577 | HISTORICAL record (prior round's change) | Preserved verbatim — correct content |
+
+**SE-17g citation classification:** 1 normative live pin updated; 1 historical trace table preserved. No body prose references to `v1.4.27` outside historical §Trace blocks.
+
+**Changes made:** frontmatter `traces_to:` brief pin v1.4.27 → v1.4.28; version bumped v1.26.9 → v1.26.10; timestamp refreshed.
+
+SE-16d monotonicity PASS: 2026-05-18T15:00:00Z > prior 2026-05-18T07:00:00Z (v1.26.9). ARITHMETICALLY TRUE: 2026-05-18T15:00:00Z > 2026-05-18T07:00:00Z PASS.
 
 ---
 
