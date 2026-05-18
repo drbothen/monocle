@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.11"
+version: "1.26.12"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T18:00:00Z
+timestamp: 2026-05-18T21:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "7d46759"
 traces_to: "product-brief.md v1.4.29; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.10; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.9"
@@ -790,6 +790,94 @@ L2 domain spec complete at v1.0.9; full CAP-NNN back-cascade to RTM rows is a Ph
 **Changes made:** frontmatter `traces_to:` BC-INDEX v1.9 → v1.10; L2-INDEX v1.0.8 → v1.0.9; ARCH-INDEX added v1.0.10; §7 RTM blockquote annotation updated; version bumped v1.26.10 → v1.26.11; timestamp refreshed.
 
 SE-16d monotonicity PASS: 2026-05-18T18:00:00Z > prior 2026-05-18T15:00:00Z (v1.26.10). ARITHMETICALLY TRUE: 2026-05-18T18:00:00Z > 2026-05-18T15:00:00Z PASS.
+
+---
+
+## §Trace v1.26.12
+
+**R18A — F-R119-1 closure — retrospective §Trace for R17F SM-applied `traces_to` edits (bookkeeping; content unchanged)** (2026-05-18T21:30:00Z):
+
+**Bump:** v1.26.11 → v1.26.12.
+**Predecessor pin:** v1.26.11 (R17A F-R118-1/F-R118-2/GAP-R57-008 — BC-INDEX v1.10 + L2-INDEX v1.0.9 + ARCH-INDEX v1.0.10 pin; timestamp `2026-05-18T18:00:00Z`).
+**Timestamp:** 2026-05-18T21:30:00Z
+
+**Background — R17F SM scope violation:**
+
+R17F state-manager (commit 7681632, 2026-05-18T20:30:00Z) modified the PRD `traces_to:` field as a "defensive sweep" — adding `SS-conventions-anti-patterns.md v1.29.5` (R17D introduced v1.29.5 at 19:30Z) and updating `product-brief.md` pin from v1.4.28 to v1.4.29 (R17B bumped brief at 18:30Z). The content edits were correct but SM does not have authority to author §Trace blocks or bump artifact versions per the Correct Agent Routing principle (CLAUDE.md) — now codified as SE-23 in R18-pre (commit 70b7552, D-146). R119 adversary correctly flagged this as F-R119-1 HIGH: PRD body content reflected ≥19:30Z state while frontmatter showed v1.26.11 at 18:00:00Z, breaking SE-16d audit-trail monotonicity.
+
+**Resolution:** This §Trace v1.26.12 retrospectively documents the SM-applied edits in the PRD's §Trace timeline, restoring SE-16d monotonicity:
+
+| Edit | Source | Canonical version | Applied by | When | Documented now |
+|------|--------|-------------------|-----------|------|----------------|
+| `traces_to:` brief pin v1.4.28 → v1.4.29 | R17B (commit b934e57) | v1.4.29 | R17F SM | 2026-05-18T20:30:00Z | §Trace v1.26.12 |
+| `traces_to:` SS-conventions-anti-patterns.md pin add v1.29.5 | R17D (commit b7ce1ac) | v1.29.5 | R17F SM | 2026-05-18T20:30:00Z | §Trace v1.26.12 |
+
+**Content integrity:** Both pin values verified canonical at audit time. No NORMATIVE content changed in this burst — bookkeeping only.
+
+**SE-22 in-artifact sweep (PRD scope, R18A):**
+
+```
+grep -n "BC-INDEX.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "behavioral-contracts/BC-INDEX.md v1.10" — canonical → NO ACTION
+  L515/516/518/538/539/626/691/707/718/732/737/762/767 (§Trace historical INFORMATIONAL) → PRESERVE per SE-17g
+
+grep -n "L2-INDEX.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "domain-spec/L2-INDEX.md v1.0.9" — canonical → NO ACTION
+  L550/625/696/710/719/746/751 (§Trace historical INFORMATIONAL) → PRESERVE per SE-17g
+
+grep -n "ARCH-INDEX.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "architecture/ARCH-INDEX.md v1.0.10" — canonical → NO ACTION
+  L767 (§Trace historical INFORMATIONAL) → PRESERVE per SE-17g
+
+grep -n "product-brief.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "product-brief.md v1.4.29" — canonical (R17F applied) → NO ACTION
+  L515/516/518/541/644/650/657/703/704 (§Trace historical INFORMATIONAL) → PRESERVE per SE-17g
+
+grep -n "VP-INDEX" .factory/specs/prd.md
+  L395 (body prose INFORMATIONAL): "VP-INDEX v1.1" in §Trace v1.26.3 historical block → PRESERVE per SE-17g
+  No NORMATIVE VP-INDEX pin site in traces_to: — VP-INDEX not listed in traces_to field → NO ACTION
+
+grep -n "SS-conventions-anti-patterns.md v1\." .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "SS-conventions-anti-patterns.md v1.29.5" — canonical (R17F applied) → NO ACTION
+  (No §Trace historical occurrences of versioned SS-conventions pin prior to this burst)
+```
+
+**SE-17g NORMATIVE vs INFORMATIONAL classification:**
+
+| Line | Citation | Classification | Action |
+|------|----------|---------------|--------|
+| 11 | `product-brief.md v1.4.29` in `traces_to:` | NORMATIVE live pin | Verified canonical — no change |
+| 11 | `SS-conventions-anti-patterns.md v1.29.5` in `traces_to:` | NORMATIVE live pin | Verified canonical — no change |
+| 11 | `behavioral-contracts/BC-INDEX.md v1.10` in `traces_to:` | NORMATIVE live pin | Verified canonical — no change |
+| 11 | `domain-spec/L2-INDEX.md v1.0.9` in `traces_to:` | NORMATIVE live pin | Verified canonical — no change |
+| 11 | `architecture/ARCH-INDEX.md v1.0.10` in `traces_to:` | NORMATIVE live pin | Verified canonical — no change |
+| All §Trace blocks | All versioned pins in historical §Trace records | INFORMATIONAL | Preserved verbatim per SE-17g |
+
+**SE-22 zero-residual confirmation:** All NORMATIVE pin sites at L11 are canonical. No stale NORMATIVE pins found. Zero-residual PASS.
+
+**SE-17a BEFORE (awk L4+L8 literals — frontmatter version and timestamp):**
+```
+version: "1.26.11"
+timestamp: 2026-05-18T18:00:00Z
+```
+
+**SE-17c AFTER (post-edit state):**
+```
+version: "1.26.12"
+timestamp: 2026-05-18T21:30:00Z
+```
+
+**SE-17f recursive self-revalidation:** This §Trace v1.26.12 block itself contains no version pins that require updating. It references canonical versions confirmed by sweep at time of authoring. All §Trace historical blocks (v1.26–v1.26.11) are INFORMATIONAL and preserved verbatim.
+
+**SE-17e sibling-propagation note:** SE-22 sweep scoped to PRD body only per R18A scope constraint (bookkeeping burst). BC-INDEX is addressed in R18B; L2-INDEX in R18C. No stale NORMATIVE pins found in PRD body — zero cross-artifact back-cascade obligations generated by this burst.
+
+**SE-23 first-application context:** SE-23 ("SM defensive-sweep prohibition") was codified in R18-pre (commit 70b7552, D-146) because the R17F SM scope violation broke SE-16d audit-trail monotonicity. This burst (R18A) is the F-R119-1 closure for the PRD half of the violation. SE-23 ensures SM will not touch PRD version/timestamp/§Trace in future bursts; any future drift is surfaced to PO via orchestrator.
+
+**Changes made:** frontmatter version bumped v1.26.11 → v1.26.12; timestamp refreshed 2026-05-18T18:00:00Z → 2026-05-18T21:30:00Z; §Trace v1.26.12 retrospective block added. No NORMATIVE content changed.
+
+**SE-16d monotonicity PASS:** PRD v1.26.12 timestamp `2026-05-18T21:30:00Z` > STATE v5.79 `21:15:00Z` > R17F STATE v5.78 `20:30:00Z` > R17E CAP-001 v1.5 `20:00:00Z` > PRD v1.26.11 `18:00:00Z`. ARITHMETICALLY TRUE: 2026-05-18T21:30:00Z > 2026-05-18T21:15:00Z > 2026-05-18T20:30:00Z > 2026-05-18T20:00:00Z > 2026-05-18T18:00:00Z PASS strict-greater.
+
+**Reference:** R119 report at `.factory/plans/adversary-pass-r119-phase1.md` (commit 70b7552).
 
 ---
 
