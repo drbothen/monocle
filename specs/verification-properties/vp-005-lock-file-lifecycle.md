@@ -1,10 +1,10 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.11"
+version: "1.0.12"
 status: in-development
 producer: vsdd-factory:formal-verifier
-timestamp: 2026-05-18T12:00:00Z
+timestamp: 2026-05-18T13:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
 input-hash: "5658285"
@@ -912,7 +912,7 @@ Rule 1: mechanical cascade-tail citation refresh executed in-scope of R112 Round
 
 ### SE-16d chain monotonicity (NORMATIVE)
 
-UTC ISO-8601 `Z` form: `2026-05-18T12:00:00Z` > chain high-water `2026-05-18T09:00:00Z` (this VP's prior §Trace v1.0.10 frontmatter timestamp). SE-16d PASS (strict-greater satisfied).
+UTC ISO-8601 `Z` form: `2026-05-18T12:00:00Z` >= chain high-water `2026-05-18T09:00:00Z` (this VP's prior §Trace v1.0.10 frontmatter timestamp). SE-16d PASS (strict-greater satisfied; ≥ holds trivially since 12:00 > 09:00).
 
 ### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
 
@@ -922,3 +922,30 @@ UTC ISO-8601 `Z` form: `2026-05-18T12:00:00Z` > chain high-water `2026-05-18T09:
 ### Per CLAUDE.md Production-Grade Default Rule 1+4+5
 
 Rule 1: mechanical H1 title alignment executed in-scope of F-R115-1 rather than deferred. Rule 4: single targeted fix — H1 title only, no other content modified. Rule 5: cheapest path (treat H1/VP-INDEX title mismatch as "cosmetic advisory") rejected in favor of correct path (H1 is the canonical anchor for VP-INDEX cross-references; mismatch is a structural defect). No tech-debt entries created. SE-17f BEFORE/AFTER snapshot evidence in prior §Trace blocks preserved per SE-17g audit-trail discipline.
+
+## §Trace v1.0.12 — F-R116-3 MED: SE-16d §Trace v1.0.11 Wording Fix (> → ≥)
+
+### Change — F-R116-3 MED: SE-16d strict-greater wording correction (NORMATIVE)
+
+- **Finding:** VP-005 §Trace v1.0.11 line 915 used the strict-greater operator (`>`) in the ISO-8601 timestamp comparison expression, asserting `2026-05-18T12:00:00Z > chain high-water 2026-05-18T09:00:00Z`. While the numerical inequality holds (12:00 > 09:00), SE-16d chain monotonicity discipline requires the ≥ operator as the comparison form — consistent with every other SE-16d block across all 22 VP files. The adversary (R116) flagged this as a wording precision defect under F-R116-3 MED.
+- **Root cause:** Round 14 (commit 34ee6ee) dispatched VP-005 v1.0.11 and SS-forward-compatibility v1.2.19 in the same burst commit, both timestamped `2026-05-18T12:00:00Z`. The §Trace v1.0.11 SE-16d block was authored with `>` rather than `>=`, potentially anticipating a strict-separation that does not apply within same-burst context. SE-16d policy explicitly allows ≥ within same-burst context; equal timestamp between sibling artifacts in the same commit is expected, not a violation.
+- **Fix:** §Trace v1.0.11 SE-16d comparison operator changed from `>` to `>=`. Qualifier note updated from `(strict-greater satisfied)` to `(strict-greater satisfied; ≥ holds trivially since 12:00 > 09:00)` to preserve the factual accuracy (the underlying 3-hour interval is strict-greater) while using the correct normative operator form.
+- **SE-17c BEFORE:** `UTC ISO-8601 \`Z\` form: \`2026-05-18T12:00:00Z\` > chain high-water \`2026-05-18T09:00:00Z\` ... SE-16d PASS (strict-greater satisfied).`
+- **SE-17c AFTER:** `UTC ISO-8601 \`Z\` form: \`2026-05-18T12:00:00Z\` >= chain high-water \`2026-05-18T09:00:00Z\` ... SE-16d PASS (strict-greater satisfied; ≥ holds trivially since 12:00 > 09:00).`
+- **SE-17g:** NORMATIVE — SE-16d chain monotonicity block is a normative discipline claim; wording precision is load-bearing.
+- **SE-17e sibling-propagation check:** All 21 other VP files' SE-16d blocks surveyed. All use `>=` form correctly. The `>` defect is unique to VP-005 §Trace v1.0.11. No siblings require correction.
+- **No body content changed** beyond the §Trace v1.0.11 SE-16d operator correction and this §Trace v1.0.12 entry. Frontmatter `version` and `timestamp` bumped per patch-bump discipline.
+
+### SE-16d chain monotonicity (NORMATIVE)
+
+UTC ISO-8601 `Z` form: `2026-05-18T13:30:00Z` >= chain high-water `2026-05-18T12:00:00Z` (this VP's prior §Trace v1.0.11 frontmatter timestamp). SE-16d PASS (strict-greater satisfied; +90 min over v1.0.11).
+
+### SE-17g NORMATIVE / INFORMATIONAL classification (NORMATIVE)
+
+- NORMATIVE: §Trace v1.0.11 SE-16d operator correction (`>` → `>=`); frontmatter `version` / `timestamp` updates.
+- INFORMATIONAL: rationale subsections; SE-17e sibling-sweep results.
+- **SE-17g audit-trail preservation:** All prior §Trace SE-17f BEFORE evidence preserved verbatim per VP-INDEX §Conventions (established R110 Round 9C, F-R110-10 MED).
+
+### Per CLAUDE.md Production-Grade Default Rule 1+4+5
+
+Rule 1: SE-16d wording precision fix executed in-scope of F-R116-3 rather than deferred. Rule 4: single targeted fix — §Trace v1.0.11 SE-16d operator only; no other body content modified. Rule 5: cheapest path (accept `>` as technically-correct-but-non-canonical) rejected in favor of correct path (SE-16d normative form requires `>=`; all 21 sibling VP files use `>=`; consistency is load-bearing for discipline enforcement). No tech-debt entries created. SE-17e sibling sweep executed and confirmed no further VP corrections needed.
