@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.10"
+version: "1.26.11"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-18T15:00:00Z
+timestamp: 2026-05-18T18:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "16ba1e9"
-traces_to: "product-brief.md v1.4.28; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.9; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.8"
+traces_to: "product-brief.md v1.4.28; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.10; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.9"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -254,7 +254,7 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 
 ## 7. Requirements Traceability Matrix
 
-> Project-specific extensions: `Source (L2 CAP)` contains brief section citations (monocle L2 domain spec is pending BA Dispatch 6; brief sections serve as interim L2 traceability). `Module(s)` contains architecture subsystem file references. `Test File` is an additional column beyond the template minimum, providing direct test location traceability. See §Trace v1.26.1.
+> Project-specific extensions: `Source (L2 CAP)` contains brief section citations used as interim L2 traceability anchors (L2 domain spec complete at v1.0.9; full CAP-NNN back-cascade to RTM rows is a Phase 1b task per story decomposition). `Module(s)` contains architecture subsystem file references. `Test File` is an additional column beyond the template minimum, providing direct test location traceability. See §Trace v1.26.1.
 
 | BC ID | Source (L2 CAP) | Module(s) | Priority | Test File | Test Type |
 |-------|----------------|-----------|----------|-----------|-----------|
@@ -669,6 +669,127 @@ traces_to: "product-brief.md v1.4.28; vision-synthesis v1.1.2; ..."
 **Changes made:** frontmatter `traces_to:` brief pin v1.4.27 → v1.4.28; version bumped v1.26.9 → v1.26.10; timestamp refreshed.
 
 SE-16d monotonicity PASS: 2026-05-18T15:00:00Z > prior 2026-05-18T07:00:00Z (v1.26.9). ARITHMETICALLY TRUE: 2026-05-18T15:00:00Z > 2026-05-18T07:00:00Z PASS.
+
+---
+
+## §Trace v1.26.11
+
+**R17A — F-R118-1 / GAP-R57-001 + F-R118-2 / GAP-R57-002 + GAP-R57-008 — traces_to BC-INDEX v1.10 + L2-INDEX v1.0.9 + ARCH-INDEX v1.0.10 pin + RTM annotation update (SE-22 first formal application)** (2026-05-18T18:00:00Z):
+
+**Bump:** v1.26.10 → v1.26.11.
+**Predecessor pin:** v1.26.10 (R16A F-R117-1 / GAP-R56-001 brief pin back-cascade; timestamp `2026-05-18T15:00:00Z`).
+**Timestamp:** 2026-05-18T18:00:00Z
+
+**SE-22 First Formal Application — Full-body pin sweep before editing.**
+
+SE-22 ("sibling-spec multi-pin normative sweep") requires grepping the entire PRD body for all stale pins to artifacts bumped in sibling dispatches before any edit is applied. This is the first cycle where SE-22 is executed as a named codified discipline (codified at commit 8ab97d8, R17-pre state v5.77).
+
+**SE-22 Sweep Transcript — all pin sites inventoried:**
+
+```
+grep -n "BC-INDEX.md" .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "behavioral-contracts/BC-INDEX.md v1.9" → TARGET v1.10
+  L83 (body prose INFORMATIONAL): "behavioral-contracts/BC-INDEX.md" (unversioned reference to index location) → NO ACTION
+  L300/515/516/518/538/539/578/626 (§Trace historical INFORMATIONAL) → PRESERVE
+
+grep -n "L2-INDEX.md" .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "domain-spec/L2-INDEX.md v1.0.8" → TARGET v1.0.9
+  L543/549/550/625 (§Trace historical INFORMATIONAL) → PRESERVE
+
+grep -n "ARCH-INDEX.md" .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "architecture/ARCH-INDEX.md" (no version pin) → ADD v1.0.10
+  L78 (body prose INFORMATIONAL): "architecture/ARCH-INDEX.md" (unversioned reference to index location) → NO ACTION
+
+grep -n "product-brief.md v1.4" .factory/specs/prd.md
+  L11 (traces_to NORMATIVE): "product-brief.md v1.4.28" — CURRENT (R16A set this) → NO ACTION
+  L515/516/518/541/644/650/657 (§Trace historical INFORMATIONAL) → PRESERVE
+
+grep -n "BC-INDEX.md v1.9" (stale check)
+  L11: CONFIRMED STALE → updated
+
+grep -n "L2-INDEX.md v1.0.8" (stale check)
+  L11: CONFIRMED STALE → updated
+```
+
+**SE-17g NORMATIVE vs INFORMATIONAL classification:**
+
+| Line | Citation | Classification | Action |
+|------|----------|---------------|--------|
+| 11 | `behavioral-contracts/BC-INDEX.md v1.9` in `traces_to:` | NORMATIVE live pin | Updated v1.9 → v1.10 |
+| 11 | `domain-spec/L2-INDEX.md v1.0.8` in `traces_to:` | NORMATIVE live pin | Updated v1.0.8 → v1.0.9 |
+| 11 | `architecture/ARCH-INDEX.md` (no version) in `traces_to:` | NORMATIVE live pin (missing pin) | Added v1.0.10 |
+| 83 | `behavioral-contracts/BC-INDEX.md` (unversioned, navigation reference) | INFORMATIONAL | Preserved |
+| 78 | `architecture/ARCH-INDEX.md` (unversioned, navigation reference) | INFORMATIONAL | Preserved |
+| 257 | `monocle L2 domain spec is pending BA Dispatch 6` (RTM blockquote) | NORMATIVE annotation | Updated — stale text removed, replaced with current state |
+| 337 | `pending BA Dispatch 6 domain spec` (§Trace v1.26.1 historical block) | INFORMATIONAL §Trace record | Preserved per SE-17g |
+| 543–550 | GAP-R47-3 before/after record (§Trace v1.26.6) | INFORMATIONAL §Trace record | Preserved per SE-17g |
+| 625–626 | L2-INDEX v1.0.7→v1.0.8 update record (§Trace v1.26.9) | INFORMATIONAL §Trace record | Preserved per SE-17g |
+
+**F-R118-1 / GAP-R57-001 HIGH — BC-INDEX pin:**
+
+**SE-17a BEFORE (awk L11 literal):**
+```
+traces_to: "...behavioral-contracts/BC-INDEX.md v1.9;..."
+```
+
+**SE-17c AFTER (post-edit literal):**
+```
+traces_to: "...behavioral-contracts/BC-INDEX.md v1.10;..."
+```
+
+Canonical version confirmed: `grep "^version:" .factory/specs/behavioral-contracts/BC-INDEX.md` → `version: "1.10"` (post-R16C commit 9a02f5a).
+
+**F-R118-2 / GAP-R57-002 HIGH — L2-INDEX pin:**
+
+**SE-17a BEFORE (awk L11 literal):**
+```
+traces_to: "...domain-spec/L2-INDEX.md v1.0.8"
+```
+
+**SE-17c AFTER (post-edit literal):**
+```
+traces_to: "...domain-spec/L2-INDEX.md v1.0.9"
+```
+
+Canonical version confirmed: `grep "^version:" .factory/specs/domain-spec/L2-INDEX.md` → `version: "1.0.9"` (post-R16D commit b0d5092).
+
+**SE-22 additional finding — ARCH-INDEX missing version pin in traces_to:**
+
+`traces_to:` contained `architecture/ARCH-INDEX.md` with no version pin. Canonical version: `grep "^version:" .factory/specs/architecture/ARCH-INDEX.md` → `version: "1.0.10"`. Pin added to close the gap proactively (SE-22 sweep obligation; treating as NORMATIVE missing-pin under production-grade default).
+
+**SE-17a BEFORE:**
+```
+traces_to: "...architecture/ARCH-INDEX.md; behavioral-contracts/BC-INDEX.md v1.9;..."
+```
+
+**SE-17c AFTER:**
+```
+traces_to: "...architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.10;..."
+```
+
+**GAP-R57-008 LOW — §7 RTM blockquote stale annotation:**
+
+The §7 RTM blockquote contained `monocle L2 domain spec is pending BA Dispatch 6; brief sections serve as interim L2 traceability`. BA Dispatch 6 completed at commit fcf2b2d producing L2-INDEX v1.0.7 (now v1.0.9). The annotation was stale in two ways: (1) "pending" was no longer accurate, (2) L2 spec is now complete. RTM rows still use brief section citations as interim traceability anchors — this is correct and intentional (full CAP-NNN back-cascade is a Phase 1b story decomposition task). Updated annotation clarifies current state without requiring RTM row changes.
+
+**SE-17a BEFORE (blockquote at L257):**
+```
+monocle L2 domain spec is pending BA Dispatch 6; brief sections serve as interim L2 traceability
+```
+
+**SE-17c AFTER:**
+```
+L2 domain spec complete at v1.0.9; full CAP-NNN back-cascade to RTM rows is a Phase 1b task per story decomposition
+```
+
+**SE-17c-d L-number revalidation:** Edits were at L11 (traces_to) and L257 (blockquote). Both verified by grep before and after. Line numbers are stable — no insertions/deletions above L257 in the body prior to §Trace additions.
+
+**SE-17f recursive self-revalidation:** This §Trace v1.26.11 block itself contains no version pins that require updating. It references canonical versions confirmed by grep at time of authoring. The §Trace historical blocks (v1.26–v1.26.10) are INFORMATIONAL and preserved verbatim.
+
+**SE-17e sibling-propagation note:** SE-22 first formal application. Three NORMATIVE pin sites found: BC-INDEX (targeted by F-R118-1), L2-INDEX (targeted by F-R118-2), ARCH-INDEX (SE-22 bonus catch — was missing version pin entirely). PRD supplements (interface-definitions, nfr-catalog, error-taxonomy, test-vectors) are out of R17A scope; any stale pins there are surfaced to orchestrator for R17B-E dispatch.
+
+**Changes made:** frontmatter `traces_to:` BC-INDEX v1.9 → v1.10; L2-INDEX v1.0.8 → v1.0.9; ARCH-INDEX added v1.0.10; §7 RTM blockquote annotation updated; version bumped v1.26.10 → v1.26.11; timestamp refreshed.
+
+SE-16d monotonicity PASS: 2026-05-18T18:00:00Z > prior 2026-05-18T15:00:00Z (v1.26.10). ARITHMETICALLY TRUE: 2026-05-18T18:00:00Z > 2026-05-18T15:00:00Z PASS.
 
 ---
 
