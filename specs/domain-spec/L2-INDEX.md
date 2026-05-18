@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.10"
+version: "1.0.11"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-18T22:30:00Z
+timestamp: 2026-05-19T01:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -146,7 +146,7 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 
 **Template compliance Dispatch 6 of 7-8** (2026-05-17T14:00:00Z):
 - Created as new artifact. Directory `.factory/specs/domain-spec/` populated.
-- 3 capabilities extracted from product-brief.md v1.4.29 + vision-synthesis v1.1.2.
+- 3 capabilities extracted from product-brief.md v1.4.30 + vision-synthesis v1.1.2.
 - Capability anchors grounded: CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture;
   CAP-002 from brief §Forward-compatibility contracts FC-01..FC-06; CAP-003 from
   brief §Phase 1 dual-engine + vision §Engine Module + §FactoryAdapter.
@@ -352,3 +352,49 @@ Zero-residual confirmation: no additional NORMATIVE stale pins remain in L2-INDE
 **SE-16d monotonicity PASS:** L2-INDEX v1.0.10 timestamp `2026-05-18T22:30:00Z` > R18B BC-INDEX v1.11 `2026-05-18T22:00:00Z` > R18A PRD v1.26.12 `2026-05-18T21:30:00Z`. Strict-greater at each step: PASS.
 
 **Reference:** R119 adversary report at `.factory/plans/adversary-pass-r119-phase1.md`.
+
+## §Trace v1.0.11
+
+**R19D combined BA burst — brief pin back-cascade v1.4.29 → v1.4.30 per §Trace v1.0.7/v1.0.8/v1.0.9/v1.0.10 precedent** (2026-05-19T01:00:00Z):
+
+**Classification (SE-17g):** NORMATIVE — §Trace v1.0 line 149 is an active current-pointer to the brief version from which capabilities were extracted.
+
+**Background:** R19B (commit 6c863a9, 2026-05-19T00:00:00Z) bumped product-brief.md v1.4.29 → v1.4.30. Per the established §Trace v1.0.7 (F-R107-12), §Trace v1.0.8 (F-R110-4), §Trace v1.0.9 (GAP-R56-002), and §Trace v1.0.10 (F-R119-3) precedent, §Trace v1.0 line 149 is a NORMATIVE active-current pointer requiring refresh on every brief bump. SE-22 v2 consumer-ledger declaration in R19B identified L2-INDEX line 149 as a known stale consumer; this burst closes that finding.
+
+**Resolution:**
+
+| Edit | Stale value | Canonical value | Source commit | Applied by | When |
+|------|------------|-----------------|---------------|-----------|------|
+| §Trace v1.0 line 149 brief pin | v1.4.29 | v1.4.30 | R19B (6c863a9) | R19D BA (this burst) | 2026-05-19T01:00:00Z |
+
+**SE-17a BEFORE/AFTER evidence (literal grep, §Trace v1.0 line 149):**
+- BEFORE: `3 capabilities extracted from product-brief.md v1.4.29 + vision-synthesis v1.1.2.`
+- AFTER:  `3 capabilities extracted from product-brief.md v1.4.30 + vision-synthesis v1.1.2.`
+
+**SE-22 v1 in-artifact sweep (L2-INDEX scope, SE-17g classification):**
+
+| Pattern | Matches | Lines | Classification | Action |
+|---------|---------|-------|----------------|--------|
+| `product-brief.md v1.` | 6 | 149, 250, 251, 269, 270, 301(partial) + historical slots | Line 149: NORMATIVE active pointer (corrected). All others: INFORMATIONAL historical §Trace before/after slots (preserved) | Fixed line 149 |
+| `brief v1.` | historical slots only | §Trace v1.0.7–v1.0.10 before/after slots | INFORMATIONAL — all in historical §Trace prose | No action |
+| `BC-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `prd.md v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `VP-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `ARCH-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `CAP-001 v1.` | 0 (registry table has no version column) | — | No pin present in L2-INDEX | No action |
+
+Zero-residual confirmation: no additional NORMATIVE stale pins remain in L2-INDEX.
+
+**Combined burst context:** CAP-001-daemon-lifecycle.md bumped v1.5 → v1.6 in this same commit (§Trace v1.6: brief v1.4.29 → v1.4.30 active pointer, SE-17g historical preservation of §Trace v1.5 intact). Both files staged together per topological-order serialization (combined burst closes both R19B consumer-ledger items in one atomic commit).
+
+**SE-22 v2 consumer-ledger declaration (L2-INDEX v1.0.11 known downstream consumers):**
+
+| Consumer artifact | Pin type | Current pin | Status after this burst |
+|-------------------|----------|-------------|------------------------|
+| `prd.md` `traces_to:` field | NORMATIVE | L2-INDEX v1.0.10 (R19A set) | STALE — needs v1.0.11; route to R19E PO PRD burst |
+| `BC-INDEX.md` | No direct pin (L2-INDEX not in traces_to) | — | No action |
+| `VP-INDEX.md` | No direct pin | — | No action |
+
+**SE-16d monotonicity PASS:** L2-INDEX v1.0.11 timestamp `2026-05-19T01:00:00Z` > R18C v1.0.10 `2026-05-18T22:30:00Z`. Strict-greater: PASS.
+
+**Reference:** R19D combined BA burst. CAP-001 §Trace v1.6 in same commit.

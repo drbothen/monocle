@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-18T20:00:00Z
+timestamp: 2026-05-19T01:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -429,3 +429,45 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
 - CAP-001 version: 1.4 → 1.5.
 - L2-INDEX.md: no version cascade required (active registry tables do not pin CAP-001 version;
   R17E is scoped to CAP-001 only).
+
+## §Trace v1.6
+
+**R19D combined BA burst — active brief pointer refresh v1.4.29 → v1.4.30** (2026-05-19T01:00:00Z):
+
+**SE-17g historical preservation note:** §Trace v1.5 (authored R17E commit 2e15e88) is preserved verbatim as the historical record of the v1.4.27 → v1.4.29 supersession it documented. §Trace v1.5 is now INFORMATIONAL — it reflects what was true at 2026-05-18T20:00:00Z. This §Trace v1.6 entry supersedes §Trace v1.5's active pointer.
+
+**Background:** R19B (commit 6c863a9, 2026-05-19T00:00:00Z) bumped product-brief.md v1.4.29 → v1.4.30. SE-22 v2 consumer-ledger declaration in R19B identified CAP-001 §Trace active pointer as a known stale consumer. Per R17E SE-17g precedent (v1.5 preserved historical; v1.6 adds new current pointer), this §Trace v1.6 advances the active pointer without modifying §Trace v1.5 content.
+
+**SE-22 v1 in-artifact sweep (CAP-001 scope, SE-17g classification):**
+
+| Pattern | Matches | Lines | Classification | Action |
+|---------|---------|-------|----------------|--------|
+| `product-brief.md v1.` | 1 | §Trace v1.4 line (v1.4.27 historical pointer) | INFORMATIONAL — historical §Trace record preserved per SE-17g | No action |
+| `brief v1.4.27` | 3 | §Trace v1.4 heading/body | INFORMATIONAL — historical §Trace before-state records (v1.5 documented supersession) | No action |
+| `brief v1.4.29` / `product-brief.md v1.4.29` | 3 | §Trace v1.5 body | INFORMATIONAL — historical §Trace (v1.5 is now historical; this §Trace v1.6 is the new active pointer) | No action |
+| `BC-INDEX v1.` | 0 | — | No pin present in CAP-001 | No action |
+| `prd.md v1.` | 0 | — | No pin present in CAP-001 | No action |
+| `L2-INDEX v1.` | 0 | — | No pin present in CAP-001 body | No action |
+| `VP-INDEX v1.` | 0 | — | No pin present in CAP-001 | No action |
+| `ARCH-INDEX v1.` | 0 | — | No pin present in CAP-001 | No action |
+
+Zero-residual confirmation: no NORMATIVE stale pins remain in CAP-001. Active brief pointer is now v1.4.30 (this §Trace v1.6 entry).
+
+**Active brief pointer declaration:** CAP-001 capabilities are grounded in current product-brief.md v1.4.30. All cited section anchors (§Phase 1 Scope → In Scope → Phase 1 — Runtime Core, §Success Criteria, §Phase 1 Constraints SOQ-2, §Out of Scope) verified stable through the v1.4.29 → v1.4.30 patch-level bump; substantive Phase 1 scope structure unchanged.
+
+**Combined burst context:** L2-INDEX.md bumped v1.0.10 → v1.0.11 in this same commit (§Trace v1.0.11: brief v1.4.29 → v1.4.30 active pointer). Both files staged together per topological-order serialization.
+
+**SE-22 v2 consumer-ledger declaration (CAP-001 v1.6 known downstream consumers):**
+
+| Consumer artifact | Pin type | Current pin | Status after this burst |
+|-------------------|----------|-------------|------------------------|
+| L2-INDEX.md Capabilities Registry table | No version column (confirmed §Trace v1.0.6) | — | No stale pin; no action |
+| `prd.md` (does it pin CAP-001 version?) | No direct CAP-001 version pin per R19A audit | — | No action |
+| `BC-INDEX.md` §SS-01 | References "BC-2.01.001..BC-2.01.010" scope only; no CAP-001 version pin | — | No action |
+
+No downstream consumers of CAP-001 version carry stale pins after this burst.
+
+**SE-16d monotonicity PASS:** CAP-001 v1.6 timestamp `2026-05-19T01:00:00Z` > R17E v1.5 `2026-05-18T20:00:00Z`. Strict-greater: PASS.
+
+- CAP-001 version: 1.5 → 1.6.
+- L2-INDEX.md: no version cascade from CAP-001 version bump (registry table carries no CAP-001 version column per §Trace v1.0.6); L2-INDEX bumped independently in this same burst to v1.0.11.
