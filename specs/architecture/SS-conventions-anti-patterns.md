@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.29.4"
+version: "1.29.5"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T11:00:00Z
+timestamp: 2026-05-18T19:30:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "23b61a9"
 traces_to: architecture/ARCH-INDEX.md
@@ -1486,6 +1486,29 @@ Any parenthetical appended to a BC-INDEX title MUST NOT contradict the anchor ta
 
 **Enforcement:** The adversary treats a parenthetical that contradicts or diverges from the BC H1 as a MEDIUM-severity finding.
 
+---
+
+### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)
+
+When a BC Traceability `Architecture Source` cell or a VP Traceability `Architecture Source` cell references **multiple** architecture documents (semicolon-separated), ALL referenced documents MUST carry explicit version pins in the form `SS-name.md vN.M.P` or `ADR-NNNN vN.M.P`. A cell where some references are pinned and others are unpinned is a **pin-symmetry violation** — MED severity per F-R110-8 (originally codified for VP Architecture Source cells; extended to BC Architecture Source cells via SE-17e sibling-propagation in R16C; now codified here in SS-conventions-anti-patterns per F-R118-5 architect dispatch obligation).
+
+**Single-reference cells** (one SS doc) have no symmetry requirement — a single-reference cell is trivially symmetric. Pin-symmetry only activates for two-or-more references.
+
+**Canonical SS version table** (authoritative per R17D; update when architect bumps any SS document):
+
+| SS Document | Canonical Version |
+|-------------|-------------------|
+| SS-daemon-lifecycle.md | v1.0.32 |
+| SS-forward-compatibility.md | v1.2.19 |
+| SS-engine-module.md | v1.1.20 |
+| SS-core-types-and-abi.md | v1.2.13 |
+| SS-deps-pin-manifest.md | v1.1.17 |
+| SS-conventions-anti-patterns.md | v1.29.5 |
+
+**Enforcement:** The adversary is instructed to flag any BC or VP Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. A pre-commit grep for `SS-[a-z-]+\.md(?!\s+v\d)` patterns within Architecture Source cell contexts provides automated detection.
+
+**Cross-reference:** Originating authoritative copy in `behavioral-contracts/BC-INDEX.md §Conventions` (BC-INDEX v1.10+). This subsection is the architecture-side restatement for developers authoring BCs, VPs, and architecture citations. Originating finding: F-R117-3 (R117 adversary pass, R16C BC-INDEX dispatch closure). META-discipline parent: SE-17e (sibling-propagation); SE-22 (sibling-sweep META, fourth cycle).
+
 ## §Trace
 
 v1.28 changes (round-60.1 F-R60-1 + F-R60-corpus-sweep META rule codified):
@@ -2357,6 +2380,22 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §9 (SS-conventions).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.29.5** (2026-05-18T19:30:00Z) — R17D F-R118-5 closure: Architecture Source Pin-Symmetry Convention added to §BC-INDEX Conventions:
+- NORMATIVE (F-R118-5 HIGH): Added `### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)` subsection to §BC-INDEX Conventions section. BC-INDEX v1.10 (commit 9a02f5a, R16C) codified this convention in BC-INDEX §Conventions with parenthetical "(add at next architect dispatch)". This is that dispatch.
+- NORMATIVE: Canonical SS version table updated — `SS-conventions-anti-patterns.md` self-pin advanced to v1.29.5 (reflects this burst's version bump).
+- NORMATIVE: version bump 1.29.4 → 1.29.5 records addition of Pin-Symmetry subsection.
+- SE-22 cycle-4 sweep (NORMATIVE vs INFORMATIONAL):
+  - `BC-INDEX v1.1+` at line 1481 (pre-edit numbering): INFORMATIONAL — version-free floor marker for historical renumbering event boundary; not a normative pin requiring update.
+  - No stale NORMATIVE pins to BC-INDEX, PRD, product-brief, L2-INDEX, ARCH-INDEX, or VP-INDEX found in the body of this file. 0 stale NORMATIVE pins caught beyond F-R118-5.
+- SE-17a literal evidence: `grep -n "Pin-Symmetry\|pin-symmetry" .factory/specs/architecture/SS-conventions-anti-patterns.md` → new subsection at line 1490 (post-edit; per scoped-awk D-116 protocol).
+- SE-17c BEFORE: 3 subsections in §BC-INDEX Conventions (EC Namespace, Test Name, Anchor Parenthetical).
+- SE-17c AFTER: 4 subsections in §BC-INDEX Conventions (EC Namespace, Test Name, Anchor Parenthetical, Architecture Source Pin-Symmetry).
+- SE-17d L-number revalidation: subsection heading verified present post-edit; §Trace appended at descending timestamp order (v1.29.5 inserted above v1.29.4, preserving descending sort in §Trace).
+- SE-17f recursive self-revalidation: canonical SS version table in the new subsection lists `SS-conventions-anti-patterns.md v1.29.5` — matches this burst's version bump. Self-consistent.
+- SE-17g NORMATIVE vs INFORMATIONAL: all changes above classified NORMATIVE. The BC-INDEX v1.1+ floor reference is INFORMATIONAL (unchanged).
+- SE-16d PASS: 2026-05-18T19:30:00Z > chain high-water 2026-05-18T11:00:00Z (VP-INDEX v1.13 at 19:00:00Z; this burst at 19:30:00Z > 19:00:00Z — monotonic).
+- Source of truth: BC-INDEX v1.10 §Conventions "Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)".
 
 **§Trace v1.29.4** (2026-05-18T11:00:00Z) — F-R114-1 + F-R114-2 D-042 back-cascade codification and example-pin refresh:
 - NORMATIVE (F-R114-2 LOW): §Schema-Fact Citation Convention example pins refreshed:
