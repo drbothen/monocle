@@ -3,10 +3,10 @@ document_type: domain-spec-section
 level: L2
 section: "CAP-001 Daemon Lifecycle"
 capability: CAP-001
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-18T20:00:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -350,12 +350,82 @@ All 10 BCs in SS-01 operationalize CAP-001. See `behavioral-contracts/BC-INDEX.m
   §Phase 1 Constraints SOQ-2, §Out of Scope), not by version number. All anchors verified against
   current product-brief.md v1.4.27 — all cited section headings present and substance unchanged.
   No stale content to refresh.
-- Anchor justification re-verification (per current v1.4.27):
+- Anchor justification re-verification (per v1.4.27; pointer subsequently refreshed to v1.4.29 in §Trace v1.5):
   - CAP-001 §Anchor justification: "§Phase 1 Scope names monocle daemon start/stop, lock-file
     lifecycle, five hook ingestion endpoints, hook tmpfile, event ribbon ring storage, and graceful
-    shutdown" — confirmed present in brief v1.4.27 §Scope → In Scope → Phase 1 — Runtime Core.
+    shutdown" — confirmed present in brief v1.4.27 §Scope → In Scope → Phase 1 — Runtime Core
+    (section structure unchanged through v1.4.29; anchor stable).
   - Vision §Process Topology reference: unchanged in vision-synthesis v1.1.2.
 - No body content changed. §Trace entry added to close F-R110-5 per round 9D dispatch.
 - SE-16d monotonicity PASS: 2026-05-18T05:00:00Z > prior v1.3 2026-05-17T20:00:00Z.
 - CAP-001 version: 1.3 → 1.4.
 - L2-INDEX.md version: cascaded to 1.0.7 → 1.0.8 (F-R110-4 brief cite fix).
+
+## §Trace v1.5
+
+**F-R118-6 BA closure — active brief pointer refresh v1.4.27 → v1.4.29** (2026-05-18T20:00:00Z):
+
+- Finding: F-R118-6 MED — §Trace v1.4 active-state prose (lines 346, 351, 356 pre-edit) cited
+  "current brief v1.4.27" / "current product-brief.md v1.4.27" / "confirmed present in brief
+  v1.4.27 §Scope". Canonical brief is now v1.4.29 (post-R17B commit b934e57). Two-step
+  supersession: R15B advanced v1.4.27 → v1.4.28; R17B advanced v1.4.28 → v1.4.29.
+- Precedent: L2-INDEX R16D GAP-R56-002 closure — same pattern of active current-pointer prose
+  refresh in §Trace; historical BEFORE/AFTER slots preserved per SE-17g INFORMATIONAL classification.
+- SE-22 sweep (cycle 5, CAP-files layer) — scoped grep results:
+
+  ```
+  grep -n "product-brief.md.* v1\." CAP-001-daemon-lifecycle.md
+  346: current product-brief.md v1.4.27  [NORMATIVE — refreshed]
+
+  grep -n "brief v1\." CAP-001-daemon-lifecycle.md
+  346: brief v1.4.27  [NORMATIVE — heading]
+  351: product-brief.md v1.4.27  [NORMATIVE — body]
+  356: brief v1.4.27 §Scope  [NORMATIVE — anchor verify]
+
+  grep -n "BC-INDEX.* v1\." CAP-001-daemon-lifecycle.md → no matches
+  grep -n "prd.md.* v1\." CAP-001-daemon-lifecycle.md → no matches
+  grep -n "L2-INDEX.* v1\." CAP-001-daemon-lifecycle.md → no matches
+  grep -n "VP-INDEX.* v1\." CAP-001-daemon-lifecycle.md → no matches
+  grep -n "ARCH-INDEX.* v1\." CAP-001-daemon-lifecycle.md → no matches
+  ```
+
+- SE-17g NORMATIVE vs INFORMATIONAL classification:
+  - NORMATIVE (active-state assertions, refreshed): §Trace v1.4 heading "current brief v1.4.27",
+    §Trace v1.4 body "current product-brief.md v1.4.27", §Trace v1.4 body "confirmed present in
+    brief v1.4.27 §Scope".
+  - INFORMATIONAL (historical §Trace BEFORE/AFTER slots, revision tables, supersession chains):
+    none present in CAP-001 at this version; the §Trace v1.4 entries are preserved as-is
+    (they are themselves historical after this edit) per SE-17g.
+- SE-17a literal grep evidence (scoped per D-116):
+  - BEFORE (3 normative occurrences of `v1.4.27`): lines 346, 351, 356 as listed above.
+  - AFTER (0 normative occurrences of `v1.4.27`): post-edit grep returns zero matches in
+    active-state prose; §Trace v1.4 body retains v1.4.27 as historical record (INFORMATIONAL).
+- SE-17c-d L-number revalidation: §Trace v1.4 heading is the only site with "current brief"
+  framing; no other lines in CAP-001 carry active-state brief version assertions. Post-edit
+  search confirms zero remaining stale NORMATIVE pins.
+- Brief anchor stability check: `product-brief.md` confirmed at v1.4.29 (frontmatter verified).
+  Section "Phase 1 — Runtime Core" present at line 109; "In Scope" heading stable. R17B was a
+  patch-level bump; §Phase 1 Scope anchor structure unchanged from v1.4.27 through v1.4.29.
+- SE-17f recursive self-revalidation: §Trace v1.5 itself contains no version pins requiring
+  future refresh (supersession chain documented; pointer now v1.4.29).
+- L2-INDEX step 6 check: `grep -n "CAP-001.*v1\.4" L2-INDEX.md` — four historical bump entries
+  found (INFORMATIONAL per SE-17g); no active-state CAP-001 version pin in L2-INDEX registry
+  tables. No back-cascade obligation. Surfacing per R17E instructions: L2-INDEX is OUT OF SCOPE
+  for this burst; no changes made.
+- Sibling check (step 7): CAP-002-forward-compat-wire-formats.md and CAP-003-multi-harness-adapter.md
+  both return zero matches for "brief v1." and "product-brief.md v1." grep patterns. No stale
+  brief pins in siblings. No orchestrator escalation required for siblings.
+- Changes applied:
+  1. Frontmatter `version: "1.4"` → `version: "1.5"`.
+  2. Frontmatter `timestamp: 2026-05-18T05:00:00Z` → `2026-05-18T20:00:00Z`.
+  3. §Trace v1.4 heading: annotation "(pointer subsequently refreshed to v1.4.29 in §Trace v1.5)"
+     added to preserve historical record while clarifying supersession.
+  4. §Trace v1.4 anchor re-verification line: appended "(section structure unchanged through
+     v1.4.29; anchor stable)" to document the bridge.
+  No body content (capability statement, domain entities, processes, invariants, BC cross-references)
+  changed.
+- SE-16d monotonicity PASS: 2026-05-18T20:00:00Z > prior v1.4 2026-05-18T05:00:00Z
+  > SS-conventions v1.29.5 at 2026-05-18T19:30:00Z.
+- CAP-001 version: 1.4 → 1.5.
+- L2-INDEX.md: no version cascade required (active registry tables do not pin CAP-001 version;
+  R17E is scoped to CAP-001 only).
