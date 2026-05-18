@@ -13,7 +13,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-18T05:30:00Z
 inputs: [SS-deps-pin-manifest.md, ../tech-debt-register.md, ../plans/production-grade-reaudit.md]
-input-hash: "e8ecd6c"
+input-hash: "e053d5f"
 traces_to: "TD-001 retirement; adversary re-audit 0bd4ba9 §Top 8 CRITICAL/IMPORTANT item 5; canonical principle CLAUDE.md commit 3366d58 §Rule 3"
 project: monocle
 ---
