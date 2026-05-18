@@ -1,10 +1,10 @@
 ---
 document_type: domain-spec-index
 level: L2
-version: "1.0.9"
+version: "1.0.10"
 status: active
 producer: vsdd-factory:business-analyst
-timestamp: 2026-05-18T16:30:00Z
+timestamp: 2026-05-18T22:30:00Z
 phase: 1a
 inputs:
   - product-brief.md
@@ -146,7 +146,7 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 
 **Template compliance Dispatch 6 of 7-8** (2026-05-17T14:00:00Z):
 - Created as new artifact. Directory `.factory/specs/domain-spec/` populated.
-- 3 capabilities extracted from product-brief.md v1.4.28 + vision-synthesis v1.1.2.
+- 3 capabilities extracted from product-brief.md v1.4.29 + vision-synthesis v1.1.2.
 - Capability anchors grounded: CAP-001 from brief §Scope / In Scope / Phase 1 — Runtime Core + vision §JC-1 hook capture;
   CAP-002 from brief §Forward-compatibility contracts FC-01..FC-06; CAP-003 from
   brief §Phase 1 dual-engine + vision §Engine Module + §FactoryAdapter.
@@ -313,3 +313,42 @@ BCs are operationalizations of the 3 capabilities in this L2 spec.
 
 - L2-INDEX version bumped 1.0.8 → 1.0.9; timestamp advanced to assigned SE-18 slot 2026-05-18T16:30:00Z.
 - SE-16d monotonicity PASS: 2026-05-18T16:30:00Z > prior 2026-05-18T05:00:00Z (v1.0.8).
+
+## §Trace v1.0.10
+
+**F-R119-3 closure — brief pin back-cascade v1.4.28 → v1.4.29 per §Trace v1.0.7/v1.0.8/v1.0.9 precedent** (2026-05-18T22:30:00Z):
+
+**Classification (SE-17g):** NORMATIVE — §Trace v1.0 line 149 is an active current-pointer to the brief version from which capabilities were extracted.
+
+**Background:** R17B (commit b934e57, 2026-05-18T18:30:00Z) bumped product-brief.md v1.4.28 → v1.4.29. Per the established §Trace v1.0.7 (F-R107-12), §Trace v1.0.8 (F-R110-4), and §Trace v1.0.9 (GAP-R56-002) precedent, §Trace v1.0 line 149 is a NORMATIVE active-current pointer requiring refresh on every brief bump. R17B's SE-22 sweep operated in-artifact only (per SE-22 v1 codification) and did not enumerate L2-INDEX as a known brief-pin consumer — the SE-22 v1 first-cycle partial-effectiveness gap (structural per O-R119-3).
+
+**Resolution:**
+
+| Edit | Stale value | Canonical value | Source commit | Applied by | When |
+|------|------------|-----------------|---------------|-----------|------|
+| §Trace v1.0 line 149 brief pin | v1.4.28 | v1.4.29 | R17B (b934e57) | R18C BA (this burst) | 2026-05-18T22:30:00Z |
+
+**SE-17a BEFORE/AFTER evidence (literal grep, §Trace v1.0 line 149):**
+- BEFORE: `3 capabilities extracted from product-brief.md v1.4.28 + vision-synthesis v1.1.2.`
+- AFTER:  `3 capabilities extracted from product-brief.md v1.4.29 + vision-synthesis v1.1.2.`
+
+**SE-22 in-artifact sweep (L2-INDEX scope, SE-17g classification):**
+
+| Pattern | Matches | Lines | Classification | Action |
+|---------|---------|-------|----------------|--------|
+| `product-brief.md v1.` | 5 | 149, 250, 251, 269, 270 | Line 149: NORMATIVE active pointer (corrected). Lines 250/251/269/270: INFORMATIONAL historical §Trace before/after slots (preserved) | Fixed line 149 |
+| `brief v1.` | 5 | 271, 301 (partial) + historical slots | INFORMATIONAL — all in §Trace historical before/after prose | No action |
+| `BC-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `prd.md v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `VP-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `ARCH-INDEX v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `SS-conventions-anti-patterns v1.` | 0 | — | No pin present in L2-INDEX | No action |
+| `CAP-001 v1.` | 0 (registry table has no version column per §Trace v1.0.6) | — | No pin present in L2-INDEX | No action |
+
+Zero-residual confirmation: no additional NORMATIVE stale pins remain in L2-INDEX.
+
+**SE-22 v2 codification candidate (O-R119-3, HELD per D-114):** When artifact X bumps version, SE-22 should enumerate sibling artifacts holding NORMATIVE pins to X (consumer ledger). For brief bumps, known NORMATIVE consumers include: PRD `traces_to`, VP-INDEX §References, all VP files §References, CAP-001 §Trace active prose, L2-INDEX §Trace v1.0 line 149. R17B applied SE-22 v1 in-artifact only; this structural gap is codified as O-R119-3 pending human approval per D-114.
+
+**SE-16d monotonicity PASS:** L2-INDEX v1.0.10 timestamp `2026-05-18T22:30:00Z` > R18B BC-INDEX v1.11 `2026-05-18T22:00:00Z` > R18A PRD v1.26.12 `2026-05-18T21:30:00Z`. Strict-greater at each step: PASS.
+
+**Reference:** R119 adversary report at `.factory/plans/adversary-pass-r119-phase1.md`.
