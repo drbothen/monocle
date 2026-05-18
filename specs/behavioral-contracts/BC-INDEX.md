@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.9"
+version: "1.10"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T07:00:00Z
+timestamp: 2026-05-18T16:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -263,6 +263,27 @@ BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_
 
 ---
 
+### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)
+
+When a BC Traceability `Architecture Source` cell references **multiple** architecture documents (semicolon-separated), ALL referenced documents MUST carry explicit version pins in the form `SS-name.md vN.M.P` or `ADR-NNNN vN.M.P`. A cell where some references are pinned and others are unpinned is a **pin-symmetry violation** — MED severity per F-R110-8 (originally codified for VP Architecture Source cells; extended to BC Architecture Source cells via SE-17e sibling-propagation in R16C).
+
+**Canonical SS version table** (authoritative per R16C; update when architect bumps):
+
+| SS Document | Canonical Version |
+|-------------|-------------------|
+| SS-daemon-lifecycle.md | v1.0.32 |
+| SS-forward-compatibility.md | v1.2.19 |
+| SS-engine-module.md | v1.1.20 |
+| SS-core-types-and-abi.md | v1.2.13 |
+| SS-deps-pin-manifest.md | v1.1.17 |
+| SS-conventions-anti-patterns.md | v1.29.4 |
+
+**Single-reference cells** (one SS doc) have no symmetry requirement — a single-reference cell is trivially symmetric. Pin-symmetry only activates for two-or-more references.
+
+**Enforcement:** The adversary is instructed to flag any BC Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. This convention is also propagated to `architecture/SS-conventions-anti-patterns.md §BC-INDEX Conventions` (add at next architect dispatch).
+
+---
+
 ## §Trace v1.7
 
 **F-R109 Round 8B — 22-BC pin sweep + §Trace ascending reorder + conventions codified** (2026-05-18T05:45:00Z):
@@ -341,3 +362,24 @@ SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:45:00Z (v1.
 - **BC-INDEX titles unchanged:** all 22 BC H1 headings are stable. No BC retirements or removals.
 
 SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.8). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.
+
+## §Trace v1.10
+
+**R16C F-R117-3 MED — BC-2.01.010 Architecture Source pin-symmetry fix + pin-symmetry convention codified (SE-17e)** (2026-05-18T16:00:00Z):
+
+**F-R117-3 MED — BC-2.01.010 Architecture Source pin-symmetry fixed:**
+- BC-2.01.010 Architecture Source cell: `SS-core-types-and-abi.md §Phase 1 PRD BC Pre-Staging` was unpinned while the sibling `SS-daemon-lifecycle.md` reference was pinned at v1.0.32. Pin-symmetry violation per F-R110-8 discipline (extended to BCs via SE-17e).
+- Fix applied in BC-2.01.010 v1.0.3 → v1.0.4: added `v1.2.13` to SS-core-types-and-abi.md citation.
+- **Only BC-2.01.010 was defective.** Sweep results: 21 other BCs clean — 19 BCs have single-reference Architecture Source cells (no symmetry requirement); BC-2.01.008 and BC-2.01.009 have two-reference cells (SS-daemon-lifecycle.md + ADR-0005) with both pinned (PASS).
+
+**SE-17e sibling-propagation — pin-symmetry convention codified in §Conventions:**
+- F-R110-8 pin-symmetry discipline (originally for VP Architecture Source cells) extended to BC Architecture Source cells.
+- §Conventions section updated with "Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)" including canonical SS version table.
+- Future BCs with multi-reference Architecture Source cells must pin all references.
+
+BC version bumps in this dispatch:
+- BC-2.01.010: v1.0.3 → v1.0.4 (F-R117-3: SS-core-types-and-abi.md pin added v1.2.13)
+
+BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements or removals.
+SE-17g META audit: `grep -n "Architecture Source" .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md` → line 89, cell confirmed: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`. 0 remaining pin-symmetry violations across all 22 BCs.
+SE-16d monotonicity PASS: 2026-05-18T16:00:00Z > prior 2026-05-18T07:00:00Z (v1.9). ARITHMETICALLY TRUE: 2026-05-18T16:00:00Z > 2026-05-18T07:00:00Z PASS.
