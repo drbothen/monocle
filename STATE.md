@@ -2,63 +2,72 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.86"
+version: "5.87"
 status: active
 producer: state-manager
-timestamp: 2026-05-19T05:00:00Z
-phase: phase-1-GATE-PASS-WITH-RESIDUAL
-current_step: "T-128-CONTEXT-CLEAR-DURABILITY-CHECKPOINT-PHASE-2-PRE-APPROVED-AWAITING-NEXT-SESSION"
+timestamp: 2026-05-19T18:00:00Z
+phase: phase-2-GATE-PASS-WITH-RESIDUAL
+current_step: "D-157-PHASE-2-GATE-PASS-WITH-RESIDUAL-DECLARED-D-158-PHASE-3-PENDING-HUMAN-GATE"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 37 META defense disciplines (SE-22 codified R17-pre burst per D-142). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch. **ROUND 15 F-R116 CLOSURE CHAIN COMPLETE (2026-05-18):** All 4 R116 findings closed across 3 bursts: R15A (92b7aed) VP-INDEX v1.11→v1.12 + 14-row H1 sibling sweep (F-R116-1 HIGH); R15B (08d1ef4 factory + a5e6398 main) brief v1.4.27→v1.4.28 + CLAUDE.md v1.4.26→v1.4.28 two-line fix + revision-history row repair (F-R116-2 HIGH); R15C (1d75edf) VP-005 §Trace SE-16d wording > → ≥ + v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 candidate HELD per D-114 (1st occurrence). SE-17e sibling sweep of VP-005 fix: 21 other VPs CLEAN (defect unique to VP-005). Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117). R15D (this burst): STATE v5.75 + compute-input-hash UPDATED=72. **Pipeline ready for R117 + cons R56 parallel dispatch.** **ROUND 16 F-R117 + GAP-R56-002 CLOSURE CHAIN COMPLETE (2026-05-18):** R117 adversary FAIL (4 findings: 2 HIGH + 1 MED + 1 LOW). Cons R56 GAPS (2 findings: GAP-R56-001 brief pin stale in PRD traces_to; GAP-R56-002 brief pin stale in L2-INDEX §Trace). 5 findings closed across 4 dispatches (R16-pre df6f51c; R16A aef91dc PRD v1.26.10; R16B ARCH-INDEX v1.0.10 co-landed in aef91dc per SE-18 worktree race; R16C 9a02f5a BC-INDEX v1.10 + BC-2.01.010 v1.0.4; R16D b0d5092 L2-INDEX v1.0.9). SE-22 sibling-sweep candidate: 2nd explicit occurrence (HELD per D-114). NEW SE-18 sub-class: parallel-burst worktree-race (1st occurrence of this sub-class). Counter holds at 0/3 — advance requires R118 CLEAN. **R17-pre: SE-22 Sibling-Sweep META CODIFIED (37th discipline) per D-142 (2026-05-18T17:30:00Z). R118 + cons R57 returned 10 unique sibling-sweep META-class findings — D-114 Goodhart's-law deferral threshold conclusively met (3rd+ occurrence). User selected Option A: codify SE-22 + execute Round 17 fix chain. STATE v5.76 → v5.77. Counter unchanged 0/3. Round 17 fix-burst chain queued (R17A–R17F).** **ROUND 17 F-R118 + cons R57 CLOSURE CHAIN COMPLETE (2026-05-18T20:30:00Z): All 10 unique findings closed across 5 serialized fix bursts. R17A (d22645e) PRD v1.26.10→v1.26.11 — 3 targeted sites + SE-22 bonus ARCH-INDEX missing pin catch. R17B (b934e57 factory; 1e75fe5 main) brief v1.4.28→v1.4.29 + CLAUDE.md brief refs v1.4.29. R17C (8fbb61f) VP-INDEX v1.12→v1.13 + 22 VP §References cascade (46 active cite refreshes; SE-22 cycle 3 LARGEST burst; SE-17f recursive revalidation PASS; stale-zero invariant HOLDS). R17D (b7ce1ac) SS-conventions-anti-patterns v1.29.4→v1.29.5 — Pin-Symmetry subsection added lines 1491-1511; architect extended scope to cover both BC + VP Architecture Source cells (production-grade improvement). R17E (2e15e88) CAP-001 v1.4→v1.5 — §Trace v1.5 added with current brief pointer v1.4.29; SE-17g audit-trail discipline: historical §Trace v1.4 preserved verbatim with annotation marker. R17F (this commit) STATE v5.78 closure. SE-22 first-cycle PROVEN effective across 5 sequential bursts. Serialized dispatch avoided SE-18 worktree race. D-143 + D-144 + D-145 decisions recorded. Counter unchanged 0/3. compute-input-hash: TOTAL=205 MATCH=0 STALE=74 UPDATED=74 UPDATE_FAILED=0. **R18-pre: SE-23 SM Defensive-Sweep Prohibition codified (38th discipline) per D-146 + R119 adversary report persisted to .factory/plans/adversary-pass-r119-phase1.md. STATE v5.78 → v5.79. Counter unchanged 0/3. Round 18 fix-burst chain queued (R18A PRD v1.26.12 → R18B BC-INDEX v1.11 → R18C L2-INDEX v1.0.10 → R18D STATE v5.80 closure). ROUND 18 F-R119 CLOSURE CHAIN COMPLETE (2026-05-18T23:00:00Z): All 3 R119 findings closed across 3 serialized fix bursts + R18-pre codification + R18D STATE closure. R18A (92c55d2) PRD v1.26.11→v1.26.12 — §Trace v1.26.12 retrospective for R17F SM-applied traces_to edits (F-R119-1 HIGH). R18B (442f5ac) BC-INDEX v1.10→v1.11 — §Trace v1.11 retrospective for R17F SM-applied Canonical SS table edit (F-R119-2 HIGH). R18C (bedcf30) L2-INDEX v1.0.9→v1.0.10 — §Trace line 149 brief pin v1.4.28→v1.4.29 back-cascade (F-R119-3 MED). SE-23 first-application cycle PROVEN in R18D (SM touched ONLY STATE.md; zero spec artifact modifications). D-147 + D-148 decisions recorded. Counter unchanged 0/3 (closure doesn't advance; R120 + cons R59 dispatch pending). **R18E (2026-05-18T23:30:00Z, b22312c): SM-surfaced VP-INDEX drift routed to FV — VP-INDEX v1.13→v1.14 + 22 VP §References cascade (BC-INDEX v1.11 + PRD v1.26.12 pins; SE-22 v2 occurrence #2). SE-23 first-cycle PROVEN: SM surfaced, FV fixed; SM did not touch any spec artifact. R19-pre (2026-05-18T23:45:00Z): SE-22 v2 Sibling-Sweep Consumer-Ledger Extension codified as 39th discipline per D-149 (D-114 threshold met: 3 explicit occurrences). R120 report persisted (.factory/plans/adversary-pass-r120-phase1.md). Cons R59 GAPS: 3 findings (2 duplicates of R120; 1 new GAP-R59-003 brief BC-INDEX pin stale). STATE v5.80 catch-up recorded (F-R120-4 LOW addressed in this burst). User direction: continue convergence at least 2 more rounds. Long-term solution context: vsdd-factory spec-kit-mcp proposal (draft 2026-05-17) identified as structural fix; SE-22 v2 is bridge until rc.19+ ships.**"
-awaiting: "**DURABLE CONTEXT-CLEAR CHECKPOINT (2026-05-19T05:00:00Z).** User has explicitly pre-approved Phase 2 execution per D-156 (no human gate needed at Phase 1 → Phase 2 transition). Next session resume sequence: (1) devops-engineer factory-worktree-health (BLOCKING); (2) read this STATE.md COMPLETELY; (3) read CLAUDE.md (records Phase 1 PASS + 39 disciplines); (4) read tech-debt-register.md TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE; (5) IMMEDIATELY dispatch `vsdd-factory:story-writer` with `/vsdd-factory:phase-2-story-decomposition` skill against canonical post-R20 artifact set. CRITICAL OBLIGATION: Phase 2 story-writer MUST create S-PHASE-3-PREP-spec-kit-mcp-integration story per TD-VSDD attachment."
+awaiting: "**PHASE 2 GATE PASS WITH RESIDUAL — D-157 declared 2026-05-19T18:00:00Z.** 12 adversary rounds completed. 96% finding reduction (26→1). 6 LOW residual findings (same asymptotic propagation-discipline defect class as Phase 1 TD-VSDD residual). TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added to tech-debt-register.md. D-158: Phase 3 PENDING HUMAN GATE (no pre-approval like D-156 — human must explicitly authorize Phase 2→3 transition given residual). Next session: (1) devops-engineer factory-worktree-health (BLOCKING); (2) read STATE.md COMPLETELY; (3) read CLAUDE.md; (4) read tech-debt-register.md BOTH Phase 1 AND Phase 2 residual entries; (5) AWAIT human explicit Phase 3 approval; (6) upon approval dispatch `/vsdd-factory:phase-3-tdd-implementation` starting Wave 0 (S-PHASE-3-PREP + S-DTU-001), then Wave 1 (S-001), then Wave 2 (9 stories), then Wave 3 (5 stories)."
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE (zero context):
+  COLD-START RESUME GUIDE (zero context) — STATE v5.87 PHASE 2 GATE PASS:
 
   1. Run factory-worktree-health check via devops-engineer (BLOCKING — do NOT skip).
   2. Verify branch state from /Users/jmagady/Dev/monocle:
      - `git log --oneline -3 main` → c093265 should be at or near HEAD (Phase 1 PASS recorded)
-     - `git -C .factory log --oneline -3` → should include cae20fc + a1950d7 + ee84e0c
+     - `git -C .factory log --oneline -3` → should include STATE v5.87 commit at HEAD
   3. Read this STATE.md COMPLETELY (you are reading it now).
-  4. Read CLAUDE.md §Current Pipeline State — confirms Phase 1 PASS + 39 disciplines.
-  5. Read tech-debt-register.md TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE — the documented residual.
-  6. Phase 2 is APPROVED per D-156 (recorded in this commit). NO human gate needed.
-  7. IMMEDIATELY dispatch the Phase 2 story decomposition:
-     Agent(subagent_type='vsdd-factory:story-writer', prompt='cd /Users/jmagady/Dev/monocle && execute /vsdd-factory:phase-2-story-decomposition skill. Phase 1 GATE PASSED 2026-05-19 per D-155/D-156. Decompose PRD v1.26.15 §Epics into epics + per-story specs + dependency graph + wave schedule + holdout scenarios. CRITICAL OBLIGATION: Create story S-PHASE-3-PREP-spec-kit-mcp-integration per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE attachment (tech-debt-register.md). Reference canonical artifacts at versions per STATE.md §Canonical artifact versions table.')
-  8. After Phase 2 story-writer completes, dispatch adversarial review of stories (/vsdd-factory:adversarial-review against story corpus) and consistency validation.
-  9. Phase 2 success criteria: epic structure validated; per-story specs implementable; dependency graph acyclic; wave schedule respects dependencies; S-PHASE-3-PREP story created and attached.
+  4. Read CLAUDE.md §Current Pipeline State.
+  5. Read tech-debt-register.md — BOTH entries:
+     - TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE (Phase 1 residual)
+     - TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT (Phase 2 residual, added this commit)
+  6. Phase 2 is GATE PASS WITH RESIDUAL per D-157 (2026-05-19).
+  7. Phase 3 requires EXPLICIT HUMAN APPROVAL (D-158 is PENDING — no pre-approval exists).
+     - Do NOT dispatch Phase 3 without human "go" signal.
+     - Surface to human: "Phase 2 GATE PASS WITH DOCUMENTED RESIDUAL per D-157. 6 LOW propagation-discipline findings remain (same defect class as Phase 1 residual). Ready for Phase 3 upon your approval."
+  8. Upon human approval of Phase 3: dispatch `/vsdd-factory:phase-3-tdd-implementation` in wave order:
+     - Wave 0 first: S-PHASE-3-PREP (spec-kit-mcp integration story) + S-DTU-001 (Claude Code hook clone)
+     - Wave 1 next: S-001 (Cargo workspace + CI setup)
+     - Wave 2 (9 stories): S-002 through S-010 per wave-schedule.md
+     - Wave 3 (5 stories): S-011 through S-015 per wave-schedule.md
 
-  CANONICAL VERSIONS ENTERING PHASE 2:
+  CANONICAL ARTIFACT VERSIONS ENTERING PHASE 3 (when approved):
   - product-brief.md v1.4.30
   - prd.md v1.26.15
-  - BC-INDEX v1.11; 22 BCs sharded
-  - VP-INDEX v1.16; 22 VPs (v1.0.12..v1.0.16)
-  - L2-INDEX v1.0.11
-  - CAP-001 v1.6, CAP-002, CAP-003
-  - ARCH-INDEX v1.0.10
-  - SS-daemon-lifecycle v1.0.32; SS-forward-compatibility v1.2.19; SS-engine-module v1.1.20; SS-core-types-and-abi v1.2.13; SS-deps-pin-manifest v1.1.17; SS-conventions-anti-patterns v1.29.5; SS-permissions-phase1 v1.5.2
-  - ADRs: 0001 v1.0.3; 0002 v1.0.4; 0003 v1.0.2; 0004 v1.0.4; 0005 v1.0.2
-  - dtu-assessment v1.7.5
-  - vision-synthesis v1.1.2
-  - 4 supplements: interface-definitions v1.5; nfr-catalog v1.7; error-taxonomy v1.5; test-vectors v1.3
-  - STATE.md v5.86 (this commit)
-  - CLAUDE.md main: c093265
+  - BC-INDEX v1.13; 22 BCs sharded (SS-01 v1.0.4-v1.0.7, SS-02 v1.0.2-v1.0.3, SS-03 v1.0.3-v1.0.5)
+  - VP-INDEX v1.16; 22 VPs
+  - L2-INDEX v1.0.11; ARCH-INDEX v1.0.11
+  - STORY-INDEX v1.7; dependency-graph v1.8; wave-schedule v1.4; holdout-scenarios v1.3; sprint-state v1.3
+  - 17 stories (S-001..S-015 + S-DTU-001 + S-PHASE-3-PREP); 86 total points; 4 waves
+  - SS-daemon-lifecycle v1.0.33; SS-engine-module v1.1.20; SS-core-types-and-abi v1.2.13
+  - SS-deps-pin-manifest v1.1.17; SS-conventions-anti-patterns v1.29.5; SS-permissions-phase1 v1.5.2
+  - SS-forward-compatibility v1.2.19; ADRs 0001-0005
+  - DTU assessment v1.7.5
+  - 4 supplements: interface-definitions v1.5, nfr-catalog v1.7, error-taxonomy v1.5, test-vectors v1.3
+  - STATE.md v5.87 (this commit)
+  - CLAUDE.md main: c093265 (update pending — orchestrator follow-up)
 
-  RESIDUAL CATALOG (TD-VSDD entry):
-  - PRD ↔ VP-INDEX bidirectional pin oscillation (1 finding/round asymptotic)
-  - D-047 strict exemption scoped to this class only
-  - Resolution dep: spec-kit-mcp upstream rc.19+
-  - Phase-3 mechanical sweep attached
-  - Story to create in Phase 2: S-PHASE-3-PREP-spec-kit-mcp-integration
+  PHASE 2 RESIDUAL CATALOG (TD-VSDD-PHASE-2 entry):
+  - F-PHASE2-R12-01 (LOW): STORY-INDEX BC Coverage Table AC-range drift in 9/22 rows
+  - GAP-PHASE2-R12-1 (LOW): 17 stories missing `level: L4` frontmatter
+  - GAP-PHASE2-R12-2 (LOW): holdout-scenarios.md Wave 3 HS-W3-006 non-monotonic ordering
+  - GAP-PHASE2-R12-3 (LOW): BC-2.01.004 no holdout scenario; S-005 absent from Wave Coverage Summary
+  - GAP-PHASE2-R12-4 (LOW): BC-2.02.006/007/008 no holdout scenario; S-013 absent from Wave Coverage Summary
+  - GAP-PHASE2-R12-5 (LOW): S-014 Token Budget table omits BC-2.02.003.md entry
+  All 6 deferred to S-PHASE-3-PREP story scope (spec-kit-mcp schema enforcement upstream).
 
-  39 ACTIVE DISCIPLINES (most recent 3):
-  - SE-22 v2 (39th, D-149): Consumer-Ledger Extension
-  - SE-23 (38th, D-146): SM Defensive-Sweep Prohibition
-  - SE-22 (37th, D-142): Sibling-Sweep META
-  [+ 36 prior disciplines — see §Active Disciplines]
+  39 ACTIVE DISCIPLINES + 3 SE CANDIDATES:
+  - SE-22 v2 (39th, D-149); SE-23 (38th, D-146); SE-22 (37th, D-142) [+ 36 prior]
+  - SE-24 CANDIDATE: §Trace ascending-monotonic enforcement hook
+  - SE-25 CANDIDATE: bidirectional DAG symmetry sibling-sweep
+  - SE-26 CANDIDATE: STORY-INDEX BC Coverage Table AC-range column sibling-sweep
+  [All 3 candidates are prose-discipline placeholders pending spec-kit-mcp schema enforcement upstream]
 
-  RESUME EXIT CONDITION: Phase 2 story-writer dispatched and producing artifacts.
+  RESUME EXIT CONDITION: Human Phase 3 approval received → Phase 3 TDD dispatch.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -68,11 +77,11 @@ current_cycle: cycle-001
 
 <!--
 DURABILITY-CHECKPOINT: fresh-context-resume-ready
-Cycle: cycle-001 (ACTIVE — Phase 1 GATE PASS WITH RESIDUAL → Phase 2 Entry PRE-APPROVED)
-Phase: phase-1-GATE-PASS-WITH-RESIDUAL
-Step: T-128-CONTEXT-CLEAR-DURABILITY-CHECKPOINT-PHASE-2-PRE-APPROVED-AWAITING-NEXT-SESSION
-Counter: N/A (Phase 1 GATE PASS declared per D-155; D-047 strict exemption for reverse-cascade class only; Phase 2 pre-approved per D-156)
-Timestamp: 2026-05-19T05:00:00Z
+Cycle: cycle-001 (ACTIVE — Phase 2 GATE PASS WITH RESIDUAL → Phase 3 PENDING HUMAN GATE)
+Phase: phase-2-GATE-PASS-WITH-RESIDUAL
+Step: D-157-PHASE-2-GATE-PASS-WITH-RESIDUAL-DECLARED-D-158-PHASE-3-PENDING-HUMAN-GATE
+Counter: N/A (Phase 2 GATE PASS declared per D-157; D-047 strict exemption for propagation-discipline class only; Phase 3 requires human approval per D-158)
+Timestamp: 2026-05-19T18:00:00Z
 -->
 
 # Pipeline State: Monocle — ZERO-CONTEXT RESUME GUIDE
@@ -80,22 +89,22 @@ Timestamp: 2026-05-19T05:00:00Z
 ## READ THIS FIRST (fresh-context session)
 
 ---
-**DURABLE CONTEXT-CLEAR CHECKPOINT (2026-05-19T05:00:00Z) — STATE v5.86 — D-156 PHASE 2 PRE-APPROVED**
+**DURABILITY CHECKPOINT (2026-05-19T18:00:00Z) — STATE v5.87 — PHASE 2 GATE PASS WITH RESIDUAL**
 
-**PHASE 1 GATE PASS WITH RESIDUAL per D-155 (2026-05-19T04:30:00Z).** R121=1, R122=1 — asymptote-at-1 empirically validated. User strategic decision: accept asymptote + Phase 1 gate pass (TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE documented residual). D-047 strict exemption SCOPED to reverse-cascade class only. All 39 disciplines NORMATIVE. Substantive content (22 BCs, NFRs, ECs, ADRs) CLEAN.
+**PHASE 2 GATE PASS WITH RESIDUAL per D-157 (2026-05-19T18:00:00Z).** 12 adversary rounds. Trajectory: 26→17→13→6→9→7→7→3→2→3→1→1. 96% reduction. 17 stories; 86 points; 4 waves. 22/22 BCs covered; 22/22 VPs covered. DAG acyclic; bidirectional DAG-edge symmetry verified. 6 LOW residual findings — same defect class as Phase 1 TD-VSDD residual (consumer-summary drift / §Trace sibling-sweep / version-pin cascade). TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added to tech-debt-register.md. SE-24/25/26 candidates noted.
 
-**D-156: Phase 2 EXPLICITLY PRE-APPROVED by user (2026-05-19T05:00:00Z direction).** NO human gate needed at Phase 1 to Phase 2 transition. Next session dispatches Phase 2 immediately.
+**D-158: Phase 3 PENDING HUMAN GATE.** No pre-approval. Human must explicitly authorize Phase 2→3 transition.
 
 COLD-START RESUME SEQUENCE (zero context):
 1. Run factory-worktree-health via devops-engineer (BLOCKING).
-2. Verify: `git log --oneline -3 main` (c093265 near HEAD) + `git -C .factory log --oneline -3` (cae20fc + a1950d7 + ee84e0c).
+2. Verify: `git -C .factory log --oneline -3` → STATE v5.87 commit at HEAD.
 3. Read this STATE.md COMPLETELY.
 4. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` §Current Pipeline State.
-5. Read tech-debt-register.md entry TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE.
-6. IMMEDIATELY dispatch Phase 2 (D-156 pre-approved): Agent(subagent_type='vsdd-factory:story-writer', prompt='cd /Users/jmagady/Dev/monocle && execute /vsdd-factory:phase-2-story-decomposition skill. Phase 1 GATE PASSED 2026-05-19 per D-155/D-156. Decompose PRD v1.26.15 into epics + per-story specs + dependency graph + wave schedule + holdout scenarios. CRITICAL OBLIGATION: Create story S-PHASE-3-PREP-spec-kit-mcp-integration per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE attachment.').
-7. After story-writer completes: dispatch adversarial review of stories + consistency validation.
+5. Read tech-debt-register.md — BOTH Phase 1 AND Phase 2 residual entries.
+6. SURFACE to human: "Phase 2 GATE PASS WITH DOCUMENTED RESIDUAL per D-157. 6 LOW propagation-discipline findings remain. Ready for Phase 3 upon your approval."
+7. Upon human approval: dispatch `/vsdd-factory:phase-3-tdd-implementation` Wave 0 first (S-PHASE-3-PREP + S-DTU-001), Wave 1 (S-001), Wave 2 (9 stories), Wave 3 (5 stories).
 
-Key pins entering Phase 2: PRD v1.26.15 (68863bd), BC-INDEX v1.11 (442f5ac), VP-INDEX v1.16 (0ae5be5), L2-INDEX v1.0.11 (6b85e06), CAP-001 v1.6 (6b85e06), brief v1.4.30 (6c863a9 factory / a0a3bee main). **39 codified disciplines in force.** See frontmatter `next_session_resume_protocol` for full canonical versions + guide.
+Key canonical versions entering Phase 3 (when approved): PRD v1.26.15, BC-INDEX v1.13, VP-INDEX v1.16, STORY-INDEX v1.7, dep-graph v1.8, wave-schedule v1.4, ARCH-INDEX v1.0.11. **39 codified disciplines + 3 SE candidates (SE-24/25/26).** See frontmatter `next_session_resume_protocol` for full canonical versions + guide.
 
 ---
 
@@ -245,6 +254,8 @@ Round 17 F-R118 + cons R57 closure chain COMPLETE (STATE v5.78). This file is yo
 108. **PHASE 1 GATE PASS — D-155 recorded (2026-05-19T04:30:00Z): STATE v5.85.** R122 adversary returned FAIL with 1 HIGH finding (F-R122-1: same reverse-cascade class as F-R121-1; PRD `traces_to:` VP-INDEX v1.15, canonical v1.16). Cons R61 GAPS (GAP-R61-001: dupe of F-R122-1). R121=1, R122=1: asymptote-at-1 confirmed at n=2. Spec-kit-mcp §1.3 prediction empirically validated. User strategic decision: accept asymptote + Phase 1 gate PASS with documented residual. TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE added to tech-debt-register.md (1st active entry; existing Resolution History preserved). D-047 strict exemption scoped to reverse-cascade class only; all 39 disciplines remain NORMATIVE for Phase 2+. Phase 1 spec set: CONVERGED-WITH-DOCUMENTED-RESIDUAL per D-155. Pipeline advances to Phase 2 Story Decomposition. R122 report persisted at `.factory/plans/adversary-pass-r122-phase1.md`. SE-23 sixth consecutive application: SM touched ONLY STATE.md + tech-debt-register.md + new plan file; zero spec artifact modifications. compute-input-hash --update run post-edit.
 
 109. **CLAUDE.md Phase 1 PASS reflected on main (2026-05-19T04:30:00Z): commit c093265.** Orchestrator updated CLAUDE.md §Current Pipeline State to reflect Phase 1 GATE PASS per D-155. Main branch updated. SE-23 honored (SM did not touch CLAUDE.md; orchestrator committed directly to main).
+
+112. **PHASE 2 GATE PASS WITH RESIDUAL — D-157 + D-158 + TD-VSDD-PHASE-2 recorded (2026-05-19T18:00:00Z): STATE v5.87 (this commit).** Phase 2 story decomposition CONVERGED-WITH-DOCUMENTED-RESIDUAL per D-157 (Orchestrator Decision 12). 12 adversary rounds (r01..r12); trajectory 26→17→13→6→9→7→7→3→2→3→1→1 (96% reduction). Substantive content converged since r05: 22/22 BCs covered, 22/22 VPs covered, 15/15 error codes, 12/12 P0 NFRs, DAG acyclic, bidirectional DAG-edge symmetry verified (21 forward + 20 reverse). 6 LOW residual findings (propagation-discipline class — same as Phase 1 TD-VSDD asymptote). TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added to tech-debt-register.md (S-PHASE-3-PREP Phase 2 scope extension added). D-158: Phase 3 PENDING HUMAN GATE (no pre-approval). SE-24/SE-25/SE-26 noted as prose-discipline candidates. SE-23 eighth consecutive application: SM touched ONLY STATE.md + tech-debt-register.md; zero spec artifact or story modifications. Phase 2 commits landed: 7cd6afa, 0765d2e, be3703f, 37c234e, cf7a50e, 2d43127, 67ada53, 289661c, d7c860a, 996ff95, 81b09be, 7e1512f, 210307c, 34492ca, faea54b, 344c244. CLAUDE.md update pending on main (orchestrator follow-up).
 
 110. **Bookkeeping: input-hash refresh post-Phase 1 GATE PASS (2026-05-19T04:45:00Z): commit cae20fc.** SM committed input-hash refresh on factory-artifacts. SE-23 input-hash meta-tracking exception applied (hash refresh on STATE.md itself authorized per SE-23 exception clause). compute-input-hash clean after residual hash refresh.
 
@@ -483,7 +494,7 @@ Round 17 F-R118 + cons R57 closure chain COMPLETE (STATE v5.78). This file is yo
 | 0.99k-m: Rounds 20-26 (R20-R61) | DONE | 2026-05-14 | see cycles/cycle-001/burst-log.md |
 | Pre-Phase-1 Final Gate | **DONE** | 2026-05-14 | **GATE PASS per D-054**. 26 adv rounds. 18+ defense layers. 22 BCs; 0 content defects. 4-entry frozen META catalog. |
 | 1: Spec Crystallization | **GATE PASS WITH RESIDUAL — D-155 (2026-05-19T04:30:00Z).** R121=1 (reverse-cascade, closed R20 chain), R122=1 (same class — asymptote-at-1 confirmed n=2). User strategic decision: accept asymptote + Phase 1 gate pass (TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE documented residual). D-047 strict exemption scoped to reverse-cascade class only. Substantive content CLEAN (22 BCs, NFRs, ECs, ADRs). Forward consumer-ledger cascades CLOSED via SE-22 v2. 39 disciplines NORMATIVE. Trajectory (restructured cycle): R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0 (CLEAN 1/3), R114→0, R115→1, R116→4, R117→4, R118→10, R119→3, R120→4, R121→1, R122→1. CONVERGED-WITH-DOCUMENTED-RESIDUAL per D-155. Phase 2 entry-ready. | 2026-05-19 | | — | PRD v1.0+VP v1.0 → R62 FAIL(10f) → ... → R82 CLEAN (1/3) + cons R21/R22 CLEAN → R83 FINDINGS(1H+1L+1obs; RESET 0/3)+F-R83(PRD v1.13+arch v1.0.17+VP v1.17; D-072; Extension 14) → R84 FINDINGS(4 HIGH/CRIT+3 MED/LOW; D-073; Extension 15 + SE-15a/b/c/d; counter stays 0/3) → F-R84 serial fix-burst COMPLETE (D-074; PRD v1.14 4997354 + VP v1.18 6915b5d; Extension 15 serial protocol) → R85 FINDINGS (1 CRIT+3 HIGH; D-075; Extension 16; counter stays 0/3) → F-R85 serial fix-burst COMPLETE (D-076; PRD v1.15 80bfe86 + VP v1.19 022ce3c; Extensions 15+16 protocol) → R86 FINDINGS (1 CRIT+1 HIGH+1 MED+2 LOW obs; D-077; SE-16a+SE-16b; counter stays 0/3) + cons R25 CLEAN → F-R86 serial fix-burst COMPLETE (D-078; PRD v1.16 cd6541f + VP v1.20 f94c499; Extensions 15+16+SE-16a/b; 7224e58 SM) → R87 FINDINGS (1 HIGH+1 MED+2 LOW; D-079; SE-16c; counter stays 0/3; META-4) → F-R87 FV-only fix-burst COMPLETE (D-080; SM 3ee43da + VP v1.21 6ecb79a; SE-16c first application PROVEN 39-row canonical-grep audit; counter remains 0/3) → R88 FINDINGS (1 HIGH+4 MED+3 LOW; D-081; CONTENT-CENTRIC LENS; 5 substantive content defects; counter stays 0/3) + cons R27 CLEAN (9a44d1d) → F-R88 serial fix-burst COMPLETE (D-082; arch v1.0.18 61a0064 + PRD v1.17 27e663c + VP v1.22 e4c1a1e; Extensions 15+16; CONTENT defects closed; counter remains 0/3) → R89 FINDINGS (D-083; 1 HIGH+3 MED+1 LOW+2 LOW; cons R28 NOT CLEAN GAP-R28-001 MED; counter stays 0/3; Extension 17+SE-17a/b codified; 25 disciplines) → F-R89 serial fix-burst COMPLETE (D-084; arch v1.0.19 8a68cc9 + VP v1.23 aef2f0c; Extensions 15+16+17; Extension 17 first application PROVEN) → R90 FINDINGS (D-085; 1 CRITICAL+2 HIGH+2 MED+3 LOW; C-R90-1 CRITICAL orchestrator routing error PO PRD-pin step skipped; 5th SERIAL Extension 15 META recurrence; counter RESETS 0/3; SE-15e codified; 26 disciplines) → F-R90 serial fix-burst COMPLETE (D-086; SM v5.31 c9d77a9 + PO PRD v1.18 3a18306 + FV VP v1.24 63b75f9; SE-15e first application PROVEN; GAP-R29-001 CLAUDE.md fixed) → R91-R104 multi-chain convergence (37 strict-policy adversary attempts; see burst-log.md) → **R102 CLEAN + cons R41 CLEAN; counter 0/3 → 1/3 (D-117)** → **R103 CLEAN + cons R42 CLEAN; counter 1/3 → 2/3 (D-119)** → **R104 CLEAN + cons R43 CLEAN; counter 2/3 → 3/3 = D-047 STRICT CONVERGENCE (D-120)**. **D-047 STRICT CONVERGENCE AT D-120 IS RETIRED** (audited monolithic structure now superseded by D-122 restructure). → **Template-compliance remediation chain COMPLETE (D-122; 7 dispatches): PRD v1.26 (1030c65) + 22 sharded BC files + 22 sharded VP files + L2 domain spec + 4 prd-supplements + ARCH/BC/VP/L2 INDEX files; VP monolith retired**. **D-123 lesson:** Phase 1d adversarial gate MUST include `validate-template-compliance` as prerequisite. **Pipeline awaits re-validation + new adversarial cycle against restructured artifacts (counter resets to 0/3); human Phase 1 approval gate blocked on new convergence.** → **Audit R2 residual fix chain COMPLETE (D-124; 3 parallel dispatches): RES-01..RES-05 all closed; SE-16d cross-dispatch chain monotonic 16:30→17:00→17:30→18:00**. D-125: production-grade pursuit uncovered upstream tool bug (compute-input-hash awk multi-line list). **Pipeline awaits T-126b RE-AUDIT R3 + T-127 NEW ADVERSARIAL CYCLE.** → **🎯 AUDIT R3 CLEAN MILESTONE (D-126)** — first audit round with zero residuals; all 5 R2 residuals (RES-01..RES-05) CLOSED; cross-artifact ID consistency PASS. **Per D-123 methodological lesson, validate-template-compliance gate now operational for the first time.** Pipeline transitions to T-127 new adversary R105 + cons R44 (D-047 strict pass 1 attempt 1 against restructured artifacts; counter 0/3). → **R105 + cons R44 FAIL (D-127; 14+5 findings against restructured artifacts; counter holds 0/3; CRITICAL HookEventRecord 3-way schema divergence blocks Phase 3 TDD; meta-observation O-R105-1 surfaces missing post-template-compliance sibling-propagation gate)**. **User selected Option A (full closure)** for new session post context-clear. Closure chain pre-planned T-128a..T-128k. → **D-128 Option A FULL CLOSURE COMPLETE (2026-05-17)** — 14 R105 + 5 R44 all closed; ADR-0005 cascade + HookEventRecord + BC IDs + VP coverage. → **D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17)** — 20 R106 + 5 R45 = 25 findings closed in 6 commits; supplements refreshed; brief orphan-promises resolved. → **F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17)** — 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7, bd14774, 98396fe, fcf2b2d, SM 6F). ADR-0005 v1.0.2 pin sweep; SS-forward-compatibility 17 BC IDs canonicalized; EC-013 registered in error-taxonomy; interface-definitions `received_at` field added; supplements at v1.2-v1.4; VP-009 v1.0.5; 22-VP §References PRD cite swept; 22-BC Traceability arch pins swept; L2-INDEX v1.0.7. Counter 0/3; divergence pattern observed (R105→14f, R106→25f, R107→18f). O-R107-1 + O-R107-2 + SE-18 now at 2nd occurrence. Historical trace pin policy documented at `.factory/plans/disciplines/historical-trace-pin-policy.md`. SE-16d PASS (18:11–18:18Z < 22:30Z < 23:30Z). |
-| 2: Story Decomposition | **READY** — Phase 1 Gate Pass per D-155 unlocks entry. Dispatch vsdd-factory:story-writer. | — | Create story S-PHASE-3-PREP-spec-kit-mcp-integration per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE |
+| 2: Story Decomposition | **GATE PASS WITH RESIDUAL — D-157 (2026-05-19T18:00:00Z).** 12 adversary rounds. Trajectory: 26→17→13→6→9→7→7→3→2→3→1→1 (96% reduction). Substantive content converged since r05. 6 LOW residual findings (propagation-discipline class — same as Phase 1 TD-VSDD). 17 stories; 86 points; 4 waves; 22/22 BCs + 22/22 VPs covered; DAG acyclic; bidirectional symmetry verified. TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added. S-PHASE-3-PREP story created. CONVERGED-WITH-DOCUMENTED-RESIDUAL per D-157. Phase 3 PENDING HUMAN GATE per D-158. | 2026-05-19 | Latest commit: `344c244` (r11 cleanup). BC-INDEX v1.13; STORY-INDEX v1.7; dep-graph v1.8; wave-schedule v1.4; 17 story files; SE-24/SE-25/SE-26 candidates noted. |
 | 3-7 | not-started | — | |
 
 ## Pre-Phase-1 Final Gate — PASS (2026-05-14 per D-054)
@@ -669,6 +680,8 @@ The permanent META residual catalog (4 entries) is FROZEN per D-054. These items
 | D-151 | **SE-22 v2 application observations — Round 19 empirical validation (2026-05-19T02:30:00Z; R19G).** When producer enumerates consumers explicitly in dispatch instructions (known-consumer-ledger), the SM-surface-route pattern becomes unnecessary for those consumers: the route is already built in. SE-22 v2 tripartite model worked as designed across 5 R19 applications without a single SM routing violation or consumer miss. Key empirical finding: the v2 discipline's producer-enumeration approach handles both "same-chain" consumers (R19A PRD → R19B brief → R19D L2-INDEX + CAP-001 → R19E PRD → R19F VP cascade) and cross-chain consumers (R19B brief fan-out to R19D L2-INDEX active-cite, R19D → R19E PRD fan-out) via explicit ledger — no reactive recovery loop required. Goodhart's law caveat: R19 is a single 5-burst proof; 3+ independent cycles needed for structural validation. Adversary R121 will stress-test for any missed consumers in the R19 chain. | 2026-05-19 | state-manager (R19G; empirical validation of SE-22 v2 first-cycle) |
 | D-152 | **R121 outcome — 1 HIGH; trajectory confirms asymptotic narrowing; SE-22 v2 EFFECTIVE for forward cascades (2026-05-19T02:50:00Z; R20-pre).** R121 adversary returned FAIL with 1 HIGH finding (F-R121-1: PRD v1.26.14 `traces_to:` VP-INDEX pin stale — cites v1.14; canonical v1.15 since R19F). Cons R60 returned GAPS (1 MAJOR dupe of F-R121-1; no novel consistency findings). Trajectory R115→1, R116→4, R117→4, R118→10, R119→3, R120→4, R121→1 — clear asymptotic narrowing confirmed post-SE-22 v2 codification. SE-22 v2 effectiveness audit: 5 explicit forward-cascade applications in R19 chain, all closed without residual; the single R121 finding is REVERSE-cascade (consumer bump → producer's pin to that consumer goes stale), which is outside SE-22 v2's forward-only scope. SM pre-surface per SE-23 protocol was accurate: adversary confirmed the pre-surfaced candidate as the sole HIGH finding. R20A fix is a single-line mechanical edit; R122 has high probability of CLEAN. | 2026-05-19 | state-manager (R20-pre burst; R121 outcome recording) |
 | D-153 | **SE-22 v3 candidate (bidirectional cascade-ledger) HELD per D-114 — 1st occurrence (2026-05-19T02:50:00Z; R20-pre).** R121 adversary identified a REVERSE-cascade class: when a downstream consumer (VP-INDEX) is bumped as a cascade-tail of a producer-chain, the original producer (PRD) that previously pinned the consumer's OLD version becomes stale with respect to the NEW version. SE-22 v2 codified the FORWARD direction (producer bumps → all consumers must refresh). The REVERSE direction (consumer bumps as cascade-tail → all producers that pin that consumer must refresh) is a symmetrical gap. SE-22 v3 (bidirectional cascade-ledger) would codify this by: when any artifact bumps as a cascade-tail, the dispatcher must enumerate all upstream PRODUCERS that carry a `traces_to:` or §References pin to that artifact. D-114 deferral threshold: 1st occurrence of REVERSE-cascade class. Not codified yet. Re-evaluate at 3rd named occurrence (per D-114 Goodhart's-law precedent). The R20A single-line fix (PRD traces_to VP-INDEX v1.14→v1.15) closes this specific instance mechanically; SE-22 v2 dispatch instructions for R20A must include this reverse-cascade site explicitly. | 2026-05-19 | state-manager (R20-pre burst; D-114 1st-occurrence HELD) |
+| D-158 | **PHASE 3 PENDING HUMAN GATE — no pre-approval (2026-05-19T18:00:00Z; STATE v5.87).** Unlike D-156 (Phase 2 pre-approved), Phase 2→3 transition requires explicit human gate authorization given: (1) Phase 2 has documented residual (6 LOW findings in TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT); (2) Phase 3 is TDD implementation — substantially higher stakes than story decomposition. Next session MUST surface Phase 2 gate result to human and await explicit "go" before dispatching `/vsdd-factory:phase-3-tdd-implementation`. Phase 3 dispatch sequence upon approval: Wave 0 (S-PHASE-3-PREP + S-DTU-001) → Wave 1 (S-001) → Wave 2 (9 stories: S-002..S-010) → Wave 3 (5 stories: S-011..S-015). | 2026-05-19 | orchestrator (Phase 2 gate declaration; D-158 status: PENDING HUMAN) |
+| D-157 | **PHASE 2 GATE PASS WITH DOCUMENTED RESIDUAL — Orchestrator Decision 12 (2026-05-19T18:00:00Z; STATE v5.87).** 12 adversary rounds completed (r01..r12). Trajectory: 26→17→13→6→9→7→7→3→2→3→1→1 (96% finding reduction). Counter NEVER advanced past 0/3 under strict D-047. Phase 1 D-155 precedent applied: asymptotic propagation-discipline class accepted as residual per TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT. D-047 strict exemption scoped to: consumer-summary AC-range drift / §Trace sibling-sweep completeness / consumer-ledger version-pin cascade. All behavioral content PASS: 22/22 BCs covered, 22/22 VPs covered, 15/15 error codes covered, 12/12 P0 NFRs, DAG acyclicity verified, bidirectional DAG-edge symmetry verified (21 forward + 20 reverse edges all symmetric). 6 LOW residual findings: F-PHASE2-R12-01 (adversary) + GAP-PHASE2-R12-1..5 (consistency) — all same defect class family. TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added. SE-24/SE-25/SE-26 noted as prose-discipline candidates pending spec-kit-mcp schema enforcement upstream. Phase 2 story corpus CONVERGED-WITH-DOCUMENTED-RESIDUAL. | 2026-05-19 | orchestrator (Orchestrator Decision 12; human authorization per D-155 precedent model) |
 | D-156 | **PHASE 2 PRE-APPROVAL — user explicit direction (2026-05-19T05:00:00Z; STATE v5.86).** User direction: "we need to clear context before continuing, so make sure we make the state fully durable and we keep our tasks. when we start the new session, phase 2 is approved to execute." Phase 2 Story Decomposition execution explicitly pre-approved. NO human gate at Phase 1 to Phase 2 transition. Next session resume sequence specified in `next_session_resume_protocol` frontmatter field. Story-writer MUST create S-PHASE-3-PREP-spec-kit-mcp-integration story per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE attachment in tech-debt-register.md. Canonical artifact versions for Phase 2 entry: PRD v1.26.15, BC-INDEX v1.11, VP-INDEX v1.16, L2-INDEX v1.0.11, CAP-001 v1.6, brief v1.4.30, all SS docs at Round 8 confirmed versions, all ADRs at current versions. | 2026-05-19 | human (Josh Magady) |
 | D-155 | **PHASE 1 GATE PASS WITH RESIDUAL — user strategic decision recorded (2026-05-19T04:30:00Z; STATE v5.85).** R121=1, R122=1, same reverse-cascade class (PRD `traces_to:` VP-INDEX pin stale after VP-INDEX bumps as cascade-tail). Asymptote-at-1 empirically validated at n=2. spec-kit-mcp §1.3 prediction confirmed: prose rules cannot fully converge on bidirectional cascade coherence. User strategic decision: accept asymptote + Phase 1 gate PASS with documented residual (TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE in tech-debt-register.md). Scope of D-047 strict exemption: reverse-cascade class ONLY (PRD ↔ VP-INDEX direction only); all other Phase 1 disciplines remain NORMATIVE; Phase 2 + Phase 3 + beyond run under standard D-047 strict. Phase 1 spec set declared CONVERGED-WITH-DOCUMENTED-RESIDUAL. Pipeline advances to Phase 2 Story Decomposition. | 2026-05-19 | human (Josh Magady) |
 | D-154 | **Round 20 R121 closure COMPLETE — 3-burst chain; SE-22 v2 6th application; SE-23 5th consecutive; MILESTONE TEST queued (2026-05-19T04:00:00Z; R20C).** F-R121-1 HIGH (PRD traces_to VP-INDEX stale v1.14→v1.15 reverse-cascade) closed across 3 bursts: R20-pre (116363a) — R121 FAIL 1 HIGH persisted, STATE v5.83, R20 dispatched; R20A (68863bd) — PRD v1.26.14→v1.26.15 single-line reverse-cascade fix (SE-22 v2 6th+ application; SE-23 constraint respected by PO); R20B (0ae5be5) — VP-INDEX v1.15→v1.16 + 22 VPs PRD pin cascade v1.26.14→v1.26.15 (SE-22 v2 consumer-ledger; SE-17f recursive PASS; 23-file commit). R20C (this commit) — STATE v5.84 closure. SE-23 5th consecutive application PROVEN (SM touched ONLY STATE.md; zero spec artifact modifications). SE-16d R20 chain 4-row PASS: STATE v5.83 `02:50:00Z` → PRD v1.26.15 `03:00:00Z` → VP-INDEX v1.16 + 22 VPs `03:30:00Z` → STATE v5.84 `04:00:00Z`. All strict-greater UTC ISO-8601 Z form. Trajectory observation: R121→1 → R20 closure → R122 (MILESTONE TEST). vsdd-factory spec-kit-mcp upstream proposal §1.3 prediction (prose rules cannot converge) being empirically tested; SE-22 v2 is bridge discipline. Counter holds 0/3. Next: R122 + cons R61 — MILESTONE TEST (both CLEAN → 0/3 → 1/3). | 2026-05-19 | state-manager (R20C closure; Round 20 chain bookkeeping) |
@@ -688,27 +701,28 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | O-R105-2 | SE-17f extend to all §Trace bumps codification candidate | LOW process-gap | DEFERRED per D-114 | SM | T-128m — await T-127' outcome |
 | OBS-R41-1 | `reqwest 0.13` no consumer edge | LOW informational | DEFERRED to Phase 1 arch | architect | (Phase 1 arch creation) |
 
-## Session Resume Checkpoint — DURABLE (v5.86)
+## Session Resume Checkpoint — DURABLE (v5.87)
 
-### State as of v5.86 — DURABLE CONTEXT-CLEAR CHECKPOINT (2026-05-19T05:00:00Z)
+### State as of v5.87 — PHASE 2 GATE PASS WITH RESIDUAL (2026-05-19T18:00:00Z)
 
 **Working directory:** `/Users/jmagady/Dev/monocle`
 **Branches:** `factory-artifacts` (specs + STATE + plans + all artifacts); `main` (CLAUDE.md only)
-**Last factory-artifacts commit:** This burst — STATE v5.86 DURABLE CONTEXT-CLEAR CHECKPOINT + D-156 Phase 2 pre-approval (SE-23 7th consecutive; single-commit burst per TD-VSDD-053)
-**Last main commit:** c093265 (CLAUDE.md Phase 1 PASS reflected — §Current Pipeline State updated)
-**Counter state:** N/A — Phase 1 GATE PASS per D-155; D-047 strict exemption for reverse-cascade class only; Phase 2 pre-approved per D-156
-**Trajectory (restructured cycle):** R105→14, R106→25, R107→18, R108→22, R109→29, R110→30, R111→6, R112→4, R113→0 (CLEAN 1/3), R114→0, R115→1 (fixed), R116→4 (FAIL, closed R15), R117→4 (FAIL, closed R16), R118→10 (FAIL, closed R17), R119→3 (FAIL, closed R18; SE-23 38th codified), R120→4 (FAIL, closed R19; SE-22 v2 first-cycle proven), R121→1 (FAIL, closed R20; SE-22 v3 HELD), **R122→1 (FAIL — asymptote-at-1 confirmed; GATE PASS declared D-155)**
-**Phase 1 Gate result:** PASS-WITH-RESIDUAL per D-155. 39 disciplines NORMATIVE. Substantive content (22 BCs/NFRs/ECs/ADRs) CLEAN. TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE registered.
-**Phase 2 status:** PRE-APPROVED per D-156 (user explicit 2026-05-19T05:00:00Z). NO human gate needed.
+**Last factory-artifacts commit:** This burst — STATE v5.87 Phase 2 GATE PASS WITH RESIDUAL + D-157/D-158 + TD-VSDD-PHASE-2 entry (SE-23 constraint respected; single-commit burst per TD-VSDD-053)
+**Last main commit:** c093265 (CLAUDE.md update pending — orchestrator follow-up on main branch)
+**Counter state:** N/A — Phase 2 GATE PASS declared per D-157; D-047 strict exemption for propagation-discipline class only; Phase 3 PENDING HUMAN GATE per D-158
+**Phase 2 trajectory:** r01→26, r02→17, r03→13, r04→6, r05→9, r06→7, r07→7, r08→3, r09→2, r10→3, r11→1, r12→1 (96% reduction; CONVERGED-WITH-DOCUMENTED-RESIDUAL)
+**Phase 2 Gate result:** PASS-WITH-RESIDUAL per D-157. Substantive content (BCs/VPs/ACs/DAG) CLEAN since r05. 6 LOW residual findings (propagation-discipline class). TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT registered. S-PHASE-3-PREP story created.
+**Phase 3 status:** PENDING HUMAN GATE per D-158. No pre-approval. Await human "go."
 
 ### Immediate next action
 
 1. Run factory-worktree-health via devops-engineer (BLOCKING).
 2. Read this STATE.md completely.
 3. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing bind every action.
-4. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
-5. IMMEDIATELY dispatch Phase 2 Story Decomposition (vsdd-factory:story-writer; D-156 pre-approved; no human gate).
-6. Phase 2 story decomposition MUST create story S-PHASE-3-PREP-spec-kit-mcp-integration per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE future attachment.
+4. Read tech-debt-register.md — BOTH Phase 1 AND Phase 2 residual entries.
+5. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
+6. SURFACE Phase 2 gate result to human and AWAIT explicit Phase 3 authorization (D-158 PENDING).
+7. Upon human approval: dispatch `/vsdd-factory:phase-3-tdd-implementation` Wave 0 first (S-PHASE-3-PREP + S-DTU-001).
 
 ### SE-16d cross-chain monotonicity matrix (R20 chain — 4-row)
 
@@ -748,8 +762,11 @@ All UTC ISO-8601 Z form. 30-minute increments. SE-16d PASS strict-greater throug
 | `L2-INDEX.md` | v1.0.11 | 6b85e06 R19D (brief pin v1.4.29→v1.4.30 back-cascade) |
 | `CAP-001.md` | v1.6 | 6b85e06 R19D (§Trace v1.6 + brief pointer v1.4.30; SE-17g: historical §Trace v1.5 preserved) |
 | `product-brief.md` | v1.4.30 | 6c863a9 R19B (line 251 BC-INDEX v1.10→v1.11 back-cascade) |
-| `STATE.md` | v5.86 | this burst (DURABLE CONTEXT-CLEAR CHECKPOINT; D-156 Phase 2 pre-approved; SE-23 7th application) |
-| `CLAUDE.md` (main) | brief ref v1.4.30 | c093265 Phase 1 PASS reflected |
+| `STATE.md` | v5.87 | this burst (Phase 2 GATE PASS WITH RESIDUAL; D-157/D-158; TD-VSDD-PHASE-2 entry; SE-23 honored) |
+| `CLAUDE.md` (main) | brief ref v1.4.30 | c093265 Phase 1 PASS reflected (Phase 2 PASS update pending — orchestrator follow-up) |
+| `STORY-INDEX.md` | v1.7 | Phase 2 story corpus (17 stories; 22/22 BC coverage; dep-graph v1.8; wave-schedule v1.4) |
+| `BC-INDEX.md` | v1.13 | Phase 2 final (22 BCs; all arch-source pointers updated; SS-daemon-lifecycle v1.0.33) |
+| `ARCH-INDEX.md` | v1.0.11 | Phase 2 residual (SS-daemon-lifecycle v1.0.33 bump from Phase 2 r03) |
 
 ### Discipline count and key disciplines
 
@@ -1001,21 +1018,25 @@ D-149: SE-22 v2 codified (39th; R19-pre; D-114 threshold 3+ occurrences MET). Lo
 
 **Skip conditions:** None. Phase 2 must be executed per D-156. NO human gate at entry.
 
-## Task Mirror (as of v5.86) — DURABLE
+## Task Mirror (as of v5.87) — DURABLE
 
 These tasks track active work that must persist across context-clear:
 
 | # | Status | Subject |
 |---|--------|---------|
-| 51 | completed | DURABLE CHECKPOINT: STATE v5.86 (this commit) |
-| 52 | pending | PUSH both branches to origin (factory-artifacts + main) |
-| 53 | pending | [NEXT SESSION] Dispatch Phase 2 story decomposition (vsdd-factory:story-writer; D-156 pre-approved) |
-| 54 | pending | [NEXT SESSION] Create S-PHASE-3-PREP-spec-kit-mcp-integration story per TD-VSDD attachment |
-| 55 | pending | [NEXT SESSION] Phase 2 adversarial review of story corpus |
-| 56 | pending | [NEXT SESSION] Phase 2 consistency validation |
-| 57 | pending | [NEXT SESSION] Phase 2 gate — human approval (after adversarial + consistency PASS) |
+| 51 | completed | DURABLE CHECKPOINT: STATE v5.86 + Phase 2 pre-approval D-156 |
+| 52 | completed | Phase 2 story decomposition (17 stories; 86 points; 4 waves; all BCs/VPs covered) |
+| 53 | completed | Create S-PHASE-3-PREP-spec-kit-mcp-integration story per TD-VSDD attachment |
+| 54 | completed | Phase 2 adversarial review (12 rounds; r01..r12; trajectory 26→1) |
+| 55 | completed | Phase 2 consistency validation (parallel with adversarial rounds) |
+| 56 | completed | Phase 2 gate D-157 — GATE PASS WITH RESIDUAL declared; TD-VSDD-PHASE-2 registered |
+| 57 | completed | STATE v5.87 + tech-debt-register.md TD-VSDD-PHASE-2 entry (this commit) |
+| 58 | pending | PUSH factory-artifacts branch to origin (this STATE v5.87 commit) |
+| 59 | pending | [NEXT SESSION] Surface Phase 2 gate result to human; await Phase 3 approval (D-158 PENDING) |
+| 60 | pending | [NEXT SESSION] Upon human approval: dispatch `/vsdd-factory:phase-3-tdd-implementation` Wave 0 (S-PHASE-3-PREP + S-DTU-001) |
+| 61 | pending | [NEXT SESSION] Update CLAUDE.md on main to reflect Phase 2 GATE PASS (orchestrator — separate commit) |
 
-Phase 1 closure tasks (50 completed Tasks #1-#50 — see session log archive in cycles/cycle-001/burst-log.md for details). Net session accomplishment: 100+ findings closed, 39 disciplines codified, Phase 1 GATE PASS with documented residual.
+Phase 1 closure tasks (50 completed Tasks #1-#50) + Phase 2 closure tasks (57 completed, 4 pending — see above). Net Phase 2 accomplishment: 17 stories created, 12 adversary rounds, 96% finding reduction, GATE PASS WITH DOCUMENTED RESIDUAL.
 
 ## Key Tech Stack
 
