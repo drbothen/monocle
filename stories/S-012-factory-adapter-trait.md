@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-012
 epic_id: EPIC-02
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -18,6 +18,19 @@ subsystems: [SS-02]
 behavioral_contracts: [BC-2.02.004, BC-2.02.005]
 verification_properties: [VP-014, VP-015]
 estimated_days: 3
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.004.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.005.md, version: "1.0.2"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-014-factory-adapter-trait.md, version: "1.0.13"}
+  - {path: .factory/specs/verification-properties/vp-015-vsdd-factory-adapter.md, version: "1.0.12"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.02.004 (FactoryAdapter Trait Definition), BC-2.02.005 (VsddFactoryAdapter Implementation); verifies VP-014, VP-015; covers EC-018, EC-019, EC-020; addresses E-FACT-001, E-FACT-002."
 ---
 
 # S-012: FactoryAdapter Trait + VsddFactoryAdapter Implementation (FC-04)
@@ -45,10 +58,22 @@ ONLY. AST audit via VP-014 verifies zero `Sealed` references in the trait defini
 `BlockingIssue`, `BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`,
 `FactorySubscribeError`, `StateChangeStream` type alias.
 
-### AC-004 (traces to BC-2.02.004 postcondition 4 — FactoryState field types)
-`FactoryState` uses `serde_yaml_ng::Value` for `custom_fields` (NOT `serde_json::Value`).
-`convergence` is `Option<ConvergenceMetrics>`. `cycle` is `Option<String>`.
-`None` means legitimate absence — NOT unknown. Consumers display `"—"` for `None`.
+### AC-004 (traces to BC-2.02.004 postcondition 4 — FactoryState canonical 7 fields; NO raw_frontmatter)
+`FactoryState` declares exactly these 7 fields as defined in SS-core-types-and-abi.md §FactoryState
+(lines 364–400):
+1. `phase: String` — pipeline phase identifier
+2. `status: String` — workflow status
+3. `awaiting: Option<String>` — what the orchestrator is waiting on (populated from `awaiting:` frontmatter key)
+4. `blocking_issues: Vec<BlockingIssue>` — structured blocking issues
+5. `convergence: Option<ConvergenceMetrics>` — convergence round count
+6. `cycle: Option<String>` — current cycle identifier
+7. `custom_fields: std::collections::HashMap<String, serde_yaml_ng::Value>` — forward-compatibility escape hatch
+
+`raw_frontmatter` is FORBIDDEN — it is not in the canonical 7-field list and violates
+SS-core-types-and-abi.md §FactoryState (it is also a BC INV-2 red-line).
+`custom_fields` uses `serde_yaml_ng::Value` (NOT `serde_json::Value`).
+`awaiting` is `Option<String>` — `None` means legitimate absence, NOT unknown.
+Consumers display `"—"` for `None` fields.
 
 ### AC-005 (traces to BC-2.02.005 postcondition 1 — VsddFactoryAdapter detect)
 `VsddFactoryAdapter::detect(workspace_root)` returns `Some(FactoryDetection { ... })` if
@@ -91,9 +116,12 @@ polling the returned stream returns `None` immediately (empty stream).
 
 - [ ] Create `monocle-core/src/factory.rs` with `FactoryAdapter` trait (7 methods exact)
 - [ ] Define `FactoryDetection` (3 fields: `display_name`, `state_file_path`, `framework_version`)
-- [ ] Define `FactoryState` (7 fields: `phase`, `cycle`, `status`, `blocking_issues`, `convergence`, `custom_fields`, `raw_frontmatter`)
-  - `custom_fields: serde_yaml_ng::Value` — NOT serde_json::Value
+- [ ] Define `FactoryState` with exactly 7 canonical fields per SS-core-types-and-abi.md §FactoryState:
+  `phase`, `status`, `awaiting`, `blocking_issues`, `convergence`, `cycle`, `custom_fields`
+  - `awaiting: Option<String>` — MANDATORY; populated from `awaiting:` frontmatter key
+  - `custom_fields: HashMap<String, serde_yaml_ng::Value>` — NOT serde_json::Value
   - `convergence: Option<ConvergenceMetrics>`; `cycle: Option<String>`
+  - `raw_frontmatter` MUST NOT be added — it is a red-line forbidden field per SS-core-types-and-abi.md
 - [ ] Define `FactoryReadError`, `FactorySubscribeError`, `StateChangeStream` type alias
 - [ ] Create `monocle-core/src/factory/vsdd.rs` with `VsddFactoryAdapter` implementation
   - `detect()`: check for `.factory/STATE.md` + frontmatter `document_type: pipeline-state`

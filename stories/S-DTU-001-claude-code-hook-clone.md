@@ -22,6 +22,13 @@ dtu_fidelity: L3
 dtu_service: claude-code-hook-protocol
 # BC status: pending PO authorship — DTU BCs are authored during Phase 3 TDD story delivery
 # (dtu-assessment.md §Clone Development Approach; behavioral contracts derived from BC-HOOK-001..BC-HOOK-041)
+inputs:
+  - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+input-hash: "[live-state]"
+traces_to: "Implements DTU clone for Claude Code hook protocol (dtu-assessment.md §Clone Development Approach); addresses NFR-011 (DTU fidelity ≥0.95)."
 ---
 
 # S-DTU-001: Claude Code Hook Protocol DTU Clone (L3 Behavioral)

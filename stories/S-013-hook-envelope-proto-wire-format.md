@@ -18,6 +18,22 @@ subsystems: [SS-02]
 behavioral_contracts: [BC-2.02.006, BC-2.02.007, BC-2.02.008]
 verification_properties: [VP-016, VP-017, VP-018]
 estimated_days: 2
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.006.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.007.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.008.md, version: "1.0.3"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-016-hook-envelope-proto-field-numbers.md, version: "1.0.12"}
+  - {path: .factory/specs/verification-properties/vp-017-hook-envelope-schema-version-field.md, version: "1.0.13"}
+  - {path: .factory/specs/verification-properties/vp-018-phase4-schema-version-validation.md, version: "1.0.12"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
+  - {path: .factory/specs/architecture/SS-forward-compatibility.md, version: "1.2.19"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.02.006 (HookEnvelope Proto Field Number), BC-2.02.007 (HookEnvelope Rust Struct schema_version), BC-2.02.008 (Phase 4 schema_version Validation); verifies VP-016, VP-017, VP-018; addresses E-PROTO-001."
 ---
 
 # S-013: HookEnvelope Proto Wire Format (FC-05)

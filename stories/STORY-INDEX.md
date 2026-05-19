@@ -1,21 +1,22 @@
 ---
 document_type: story-index
 level: L4
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
-  - specs/prd.md
-  - specs/behavioral-contracts/BC-INDEX.md
-  - specs/verification-properties/VP-INDEX.md
-  - specs/domain-spec/L2-INDEX.md
-  - specs/architecture/ARCH-INDEX.md
-  - specs/dtu-assessment.md
-  - tech-debt-register.md
-input-hash: "[pending-compute-input-hash]"
-traces_to: specs/prd.md
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: ".factory/specs/prd.md v1.26.15"
 ---
 
 # Story Index: monocle Phase 2
@@ -39,13 +40,13 @@ traces_to: specs/prd.md
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
-| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002..S-006, S-009..S-014 |
+| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | — |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | S-007 |
 | S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
-| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 2 | draft | S-008 |
+| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
 | S-010 | monocle-core Crate + ABI Version Constant | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-013, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
 | S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
@@ -55,7 +56,7 @@ traces_to: specs/prd.md
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | draft | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | draft | — |
 
-**Total stories:** 18 (16 product + 1 DTU + 1 prep)
+**Total stories:** 17 (15 product + 1 DTU + 1 prep)
 **Total points (product):** 80 (excl. DTU 3 pts and PREP 3 pts)
 **Total points (all):** 86
 
@@ -65,8 +66,8 @@ traces_to: specs/prd.md
 |------|---------|--------|-------------|
 | Wave 0 | S-PHASE-3-PREP | 3 | Pre-Phase-3 gate (blocked on spec-kit-mcp rc.19+) |
 | Wave 1 | S-DTU-001, S-001 | 8 | Foundation: DTU clone + workspace init |
-| Wave 2 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-011, S-013, S-014 | 49 | Core implementation (parallel-eligible within wave) |
-| Wave 3 | S-007, S-008, S-012, S-015 | 26 | Dependent completions |
+| Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Core implementation (parallel-eligible within wave) |
+| Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | Dependent completions (S-009 moved per Decision 1: S-008→S-009 dependency) |
 
 ## BC Coverage Table
 
@@ -78,11 +79,11 @@ traces_to: specs/prd.md
 | BC-2.01.004 | Graceful Shutdown | S-005 | AC-001..AC-006 | YES |
 | BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-011 | YES |
 | BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-006 | YES |
-| BC-2.01.007 | JSONL Ring Format Version | S-001 (workspace), S-008 (impl) | AC-001..AC-006 | YES |
+| BC-2.01.007 | JSONL Ring Format Version | S-008 | AC-001..AC-007 | YES |
 | BC-2.01.008 | Auth Token Wire Format | S-009 | AC-001..AC-003 | YES |
 | BC-2.01.009 | Auth Header Validation | S-009 | AC-004..AC-010 | YES |
 | BC-2.01.010 | Lock File Contract Version Field | S-006 | AC-010..AC-011 | YES |
-| BC-2.02.001 | ABI Version in /status | S-010, S-003 | AC-003, AC-005 | YES |
+| BC-2.02.001 | ABI Version in /status | S-010, S-003 | S-010: AC-003, AC-005; S-003: AC-007b | YES |
 | BC-2.02.002 | ABI Version Constant at Crate Root | S-010 | AC-001..AC-005 | YES |
 | BC-2.02.003 | Non-Exhaustive Enum Policy | S-011 | AC-001..AC-004 | YES |
 | BC-2.02.004 | FactoryAdapter Trait Definition | S-012 | AC-001..AC-004 | YES |
@@ -108,6 +109,7 @@ traces_to: specs/prd.md
 | VP-005 | Lock File Lifecycle — Atomic Create + Modes | S-006 | S-006 |
 | VP-006 | Crash Recovery Checkpoint | S-007 | S-007 |
 | VP-007 | JSONL Ring Record — format_version First Key | S-008 | S-008 |
+
 | VP-008 | Auth Token — Wire Format + Constant-Time | S-009 | S-009 |
 | VP-009 | Auth Header Validation — Dual-Accept | S-009 | S-009 |
 | VP-010 | Lock File contract_version: 1 First Key | S-006 | S-006 |
@@ -186,7 +188,7 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 ## §Trace v1.0
 
 **Phase 2 story decomposition initial burst** (2026-05-19T04:30:00Z):
-- 18 stories created: 16 product stories + 1 DTU (S-DTU-001) + 1 prep (S-PHASE-3-PREP)
+- 17 stories created: 15 product stories + 1 DTU (S-DTU-001) + 1 prep (S-PHASE-3-PREP)
 - 22/22 BCs covered (100%)
 - 22/22 VPs covered (100%)
 - 15/15 error codes covered (100%)
@@ -194,3 +196,13 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - 4-wave schedule (Wave 0 = Phase 3 prep gate, Wave 1 = foundation, Wave 2 = parallel impl, Wave 3 = dependents)
 - S-PHASE-3-PREP created per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE §Future Attachment obligation
 - Dependency graph is acyclic (validated via topological sort; see dependency-graph.md)
+
+**Phase 2 r01 remediation burst** (2026-05-19):
+- F-PHASE2-R01-01..26 and GAP-PHASE2-R01-01..11 addressed
+- S-009 moved from Wave 2 to Wave 3 (Decision 1: S-008→S-009 dependency added)
+- S-001 BC-2.01.007/VP-007 mis-anchors removed; BC-2.01.007 sole implementer is S-008
+- S-003 behavioral_contracts updated: [BC-2.01.002, BC-2.02.001] (GAP-5 resolved)
+- S-006 blocks: [S-007, S-008] (S-009 removed — S-009 now depends on S-008 not S-006 directly)
+- S-005 blocks: [] (S-007 removed — S-007 depends on S-006 not S-005)
+- Wave 2 points: 41 (was 49); Wave 3 points: 34 (was 26)
+- All 17 stories retrofitted with inputs:/input-hash:/traces_to: per SE-22 v2

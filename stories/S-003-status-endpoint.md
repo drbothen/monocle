@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-003
 epic_id: EPIC-01
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -15,9 +15,23 @@ depends_on: [S-001, S-002]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
-behavioral_contracts: [BC-2.01.002]
+behavioral_contracts: [BC-2.01.002, BC-2.02.001]
 verification_properties: [VP-002, VP-011]
 estimated_days: 2
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.002.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.001.md, version: "1.0.2"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-002-status-endpoint.md, version: "1.0.14"}
+  - {path: .factory/specs/verification-properties/vp-011-abi-version-status-endpoint.md, version: "1.0.13"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.01.002 (Status Endpoint), BC-2.02.001 (ABI Version in /status); verifies VP-002, VP-011; addresses NFR-010 (constant-time comparison on /status auth path)."
 ---
 
 # S-003: Status Endpoint (Authenticated Daemon State)
@@ -59,6 +73,13 @@ The `hook_endpoints` field is an array of exactly 5 paths:
 `last_hook_ts` values use ISO 8601 UTC with mandatory millisecond precision
 (`YYYY-MM-DDTHH:MM:SS.sssZ`). A hook type that has not fired since daemon start has
 `null` (not the string `"null"` and not `0`).
+
+### AC-007b (traces to BC-2.02.001 postcondition 1 — abi_version in /status matches compile-time const)
+The `abi_version` field in the `/status` JSON response is populated from
+`monocle_core::MONOCLE_ABI_VERSION` at compile time (BC-2.02.001 PC-1). The value is
+`1` for all Phase 1 daemons. VP-011 verifies this: a compiled test binary reads
+`MONOCLE_ABI_VERSION` and the live `/status` response; both values must be identical.
+S-010 provides the const; S-003 exposes it in the response — joint coverage.
 
 ## Token Budget Estimate
 

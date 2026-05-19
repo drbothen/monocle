@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-008
 epic_id: EPIC-01
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,12 +12,24 @@ wave: 3
 tdd_mode: strict
 priority: P0
 depends_on: [S-006]
-blocks: []
+blocks: [S-009]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.007]
 verification_properties: [VP-007]
 estimated_days: 2
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.007.md, version: "1.0.4"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-007-ring-format-version.md, version: "1.0.14"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.01.007 (JSONL Ring Format Version FC-01); verifies VP-007; covers EC-001, EC-002, EC-003; addresses DI-001, DI-004."
 ---
 
 # S-008: JSONL Ring Format Version (FC-01)
@@ -34,10 +46,21 @@ detect format evolution and skip or upgrade records without parsing the full rec
 Every `HookEventRecord` written to the JSONL ring has `format_version: 1` as its first
 JSON key. The key order is enforced in serialization — not relying on HashMap ordering.
 
-### AC-002 (traces to BC-2.01.007 postcondition 2 — 7-field canonical schema)
-Each record contains exactly these 7 fields in order:
-`format_version, session_id, timestamp_micros, pid, hook_type, tool_name, tool_input`.
-`tool_name` and `tool_input` are `null` for hook types that do not carry tool context.
+### AC-002 (traces to BC-2.01.007 postcondition 4 + EC-001 — field omission for absent tool context; NOT null)
+`HookEventRecord` fields `tool_name: Option<String>` and `tool_input: Option<serde_json::Value>` carry
+`#[serde(skip_serializing_if = "Option::is_none")]`. For hook types with no tool context
+(`SessionStart`, `UserPromptSubmit`, `Stop`): serialized record OMITS `tool_name` and `tool_input`
+fields entirely — NOT emitting `null` values (BC-2.01.007 EC-001 verbatim: "Phase 1 emitters MUST
+emit absence (no explicit null)"). Phase 2 readers MUST tolerate both absence-of-field and
+explicit-null-field semantically. VP-007 verifies that `HookEventRecord::new(session_id, t, pid,
+"SessionStart".into(), None, None)` serializes without `tool_name` or `tool_input` keys.
+
+### AC-002b (traces to BC-2.01.007 postcondition 4 — 7-field canonical declaration order)
+`HookEventRecord` struct declares fields in this exact order:
+`format_version: u32`, `session_id: String`, `timestamp_micros: i64`, `pid: u32`,
+`hook_type: String`, `tool_name: Option<String>`, `tool_input: Option<serde_json::Value>`
+(BC-2.01.007 PC-4). This declaration order ensures `format_version` serializes first via
+`serde_json`'s struct-field-order preservation (BC-2.01.007 invariant 1).
 
 ### AC-003 (traces to BC-2.01.007 postcondition 3 — ring is hybrid RAM + async flush)
 The ring buffer maintains records in RAM up to the configured capacity limit. Async flush
@@ -53,10 +76,17 @@ If the async flush to disk fails (e.g., disk full), the daemon logs
 `WARN: ring buffer flush failed: <io-error>` (E-RING-001) but continues accepting hook
 events into the RAM ring. No hook acknowledgement is withheld due to flush failure.
 
-### AC-006 (traces to BC-2.01.007 invariant 1 — ring rotation policy)
-The JSONL ring file is rotated when it exceeds the configured size limit (default 50 MB).
-Old records beyond the limit are discarded (newest-wins rotation). No ring file exceeds
-2× the size limit at any point.
+### AC-006 (traces to BC-2.01.007 postcondition 5 — #[non_exhaustive] + pub fn new() constructor)
+`HookEventRecord` carries `#[non_exhaustive]` attribute AND provides a public constructor:
+`pub fn new(session_id: String, timestamp_micros: i64, pid: u32, hook_type: String, tool_name: Option<String>, tool_input: Option<serde_json::Value>) -> Self`
+(BC-2.01.007 PC-5 verbatim). External callers MUST construct `HookEventRecord` via `new()` —
+struct literal construction outside `monocle-runtime::ring` is forbidden by `#[non_exhaustive]`
+(Rust E0639). The `format_version` field is set to `RING_FORMAT_VERSION` inside the constructor.
+
+### AC-007 (traces to BC-2.01.007 invariant 1 — ring rotation policy)
+The JSONL ring file is rotated when it exceeds the configured size limit (default 50 MB per OQ-06,
+max 100 MB × 5 files). Old records beyond the limit are discarded (newest-wins rotation). No ring
+file exceeds 2× the size limit at any point.
 
 ## Token Budget Estimate
 
@@ -73,9 +103,13 @@ Old records beyond the limit are discarded (newest-wins rotation). No ring file 
 ## Tasks
 
 - [ ] Define `HookEventRecord` struct in `monocle-runtime/src/ring.rs` with `serde::Serialize`
-  - Fields in order: `format_version: u32`, `session_id: String`, `timestamp_micros: i64`,
+  - Apply `#[non_exhaustive]` to `HookEventRecord` (BC-2.01.007 PC-5)
+  - Fields in declaration order: `format_version: u32`, `session_id: String`, `timestamp_micros: i64`,
     `pid: u32`, `hook_type: String`, `tool_name: Option<String>`, `tool_input: Option<serde_json::Value>`
-  - Use `indexmap::IndexMap` or manual struct ordering to guarantee `format_version` is first
+  - `tool_name` and `tool_input` fields: add `#[serde(skip_serializing_if = "Option::is_none")]` (EC-001)
+  - Implement `pub fn new(session_id, timestamp_micros, pid, hook_type, tool_name, tool_input) -> Self`
+    that sets `format_version: RING_FORMAT_VERSION` internally (BC-2.01.007 PC-5)
+  - Struct field ordering (not HashMap) guarantees `format_version` first via serde_json (invariant 1)
 - [ ] Implement `RingBuffer` struct in `monocle-runtime/src/ring.rs`
   - RAM buffer: `VecDeque<HookEventRecord>` with capacity limit
   - Async flush task via `tokio::spawn` background task
@@ -83,12 +117,14 @@ Old records beyond the limit are discarded (newest-wins rotation). No ring file 
 - [ ] Hook handlers write to ring BEFORE returning HTTP 200 (DI-001)
 - [ ] Rotation policy: when `monocle-ring.jsonl` > 50 MB, rotate (rename to `.jsonl.bak`, start fresh)
 - [ ] E-RING-001 error handling: log WARN on flush failure, continue accepting events
-- [ ] Integration tests `monocle-runtime/tests/jsonl_ring.rs`:
-  - Record written → `format_version` is first key in JSON output
-  - All 7 fields present; `tool_name`/`tool_input` null for non-tool events
-  - DI-001: hook POST response returns AFTER ring write
-  - Flush failure → WARN log + ring continues accepting events
-  - Rotation at 50 MB threshold
+- [ ] Integration tests `monocle-runtime/tests/jsonl_ring.rs` (test name: `test_BC_RING_001_format_version_first_key`):
+  - Record written → `format_version` is first key in JSON output (VP-007)
+  - `SessionStart` record → `tool_name` and `tool_input` fields ABSENT (not null) in JSON output (EC-001)
+  - `PreToolUse` record → both `tool_name` and `tool_input` present (non-None path)
+  - DI-001: hook POST response returns AFTER ring write (AC-004)
+  - Flush failure → WARN log E-RING-001 + ring continues accepting events (AC-005)
+  - Rotation at 50 MB threshold (AC-007)
+  - `HookEventRecord::new()` is the only legal construction path (AC-006; #[non_exhaustive] enforces at compile time)
 
 ## Previous Story Intelligence
 

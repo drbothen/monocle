@@ -1,12 +1,20 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
-traces_to: STORY-INDEX.md
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Dependency graph for STORY-INDEX.md; cross-validates all dependency edges, topological sort, BC/VP/NFR traceability matrices, and edge case coverage."
 ---
 
 # Dependency Graph: monocle Phase 2 Stories
@@ -27,7 +35,6 @@ Wave 2 (depends on Wave 1; parallel within wave):
   S-004           (depends on: S-001)
   S-005           (depends on: S-001, S-002)
   S-006           (depends on: S-001)
-  S-009           (depends on: S-001, S-004, S-006)
   S-010           (depends on: S-001)
   S-011           (depends on: S-010)
   S-013           (depends on: S-010)
@@ -36,6 +43,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
 Wave 3 (depends on Wave 2; parallel within wave):
   S-007           (depends on: S-006)
   S-008           (depends on: S-006)
+  S-009           (depends on: S-001, S-004, S-006, S-008)  [Decision 1: S-008→S-009 edge added]
   S-012           (depends on: S-010, S-011)
   S-015           (depends on: S-014)
 ```
@@ -54,7 +62,7 @@ Wave 3 (depends on Wave 2; parallel within wave):
 | S-006 | S-001 | Requires workspace crates (tempfile, directories, nix) from S-001 |
 | S-007 | S-006 | Requires runtime_dir resolution and tempfile::persist pattern from S-006 |
 | S-008 | S-006 | Requires runtime_dir and HookEventRecord struct; ring flush depends on runtime_dir |
-| S-009 | S-001, S-004, S-006 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001) |
+| S-009 | S-001, S-004, S-006, S-008 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001), and RingBuffer from S-008 (Decision 1: hook handlers call RingBuffer::push()) |
 | S-010 | S-001 | Requires monocle-core crate stub from S-001; independent of S-002..S-009 |
 | S-011 | S-010 | Requires monocle-core type declarations from S-010 |
 | S-012 | S-010, S-011 | Requires monocle-core types (S-010) and #[non_exhaustive] policy (S-011) |
@@ -76,29 +84,33 @@ Round 1 — remove degree-0, reduce dependents:
 
 Round 2 — process S-002, S-004, S-006, S-010:
   Newly degree-0 after S-002 removed: {S-003, S-005}
-  Newly degree-0 after S-006 removed: (S-007, S-008, S-009 still have S-004 dep for S-009)
+  Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-008 dep; not yet degree-0)
   Newly degree-0 after S-010 removed: {S-011, S-013, S-014}
 
-Round 3 — process S-003, S-004, S-005, S-011, S-013, S-014:
-  Newly degree-0: {S-007, S-008, S-009, S-012, S-015}
+Round 3 — process S-003, S-005, S-007, S-008, S-011, S-013, S-014:
+  Newly degree-0 after S-008 removed: {S-009}
+  Newly degree-0 after S-011 removed: {S-012}
+  Newly degree-0 after S-014 removed: {S-015}
 
-Round 4 — process S-007, S-008, S-009, S-012, S-015:
+Round 4 — process S-009, S-012, S-015:
   All remaining nodes processed; empty queue.
 
-Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
+Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 ```
 
 **Cycle check result: ACYCLIC. Topological sort successful.**
+**Story count: 17 (15 product + 1 DTU + 1 prep). Note: S-PHASE-3-PREP processed as degree-0 in Round 0 (no edges).**
 
 ## Blocks Edges (Story → Blocks)
 
 | Story | Blocks | Justification |
 |-------|--------|---------------|
 | S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
-| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 | Workspace required for all implementation stories |
+| S-001 | S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014 | Workspace required for all implementation stories (S-009 removed from blocks — S-009 now in Wave 3, downstream of S-008) |
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
-| S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests |
-| S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007), ring (S-008), auth token (S-009) |
+| S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
+| S-006 | S-007, S-008 | Lock file pattern needed before crash recovery (S-007) and ring (S-008); S-009 moved to Wave 3 (Decision 1) |
+| S-008 | S-009 | RingBuffer must be available before S-009 hook handlers call RingBuffer::push() (Decision 1: S-008→S-009) |
 | S-010 | S-011, S-012, S-013, S-014 | monocle-core types needed for all SS-02/SS-03 stories |
 | S-011 | S-012 | Non-exhaustive enum attributes needed before FactoryAdapter types |
 | S-014 | S-015 | EngineModule trait needed before ClaudeCodeModule impl |
@@ -113,7 +125,7 @@ Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.004 | S-005 | YES |
 | BC-2.01.005 | S-006 | YES |
 | BC-2.01.006 | S-007 | YES |
-| BC-2.01.007 | S-001, S-008 | YES (S-001 declares crate; S-008 implements ring) |
+| BC-2.01.007 | S-008 | YES (S-008 is sole implementer; S-001 mis-anchor corrected per F-PHASE2-R01-11) |
 | BC-2.01.008 | S-009 | YES |
 | BC-2.01.009 | S-009 | YES |
 | BC-2.01.010 | S-006 | YES |
@@ -217,12 +229,17 @@ Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.006 | 2 | postcondition | AC-002 | S-007 |
 | BC-2.01.006 | 3 | postcondition | AC-003 | S-007 |
 | BC-2.01.006 | 4 | postcondition | AC-004 | S-007 |
-| BC-2.01.006 | 1 | invariant | AC-005 | S-007 |
-| BC-2.01.006 | 2 | invariant | AC-006 | S-007 |
+| BC-2.01.006 | 5 | postcondition | AC-005 | S-007 |
+| BC-2.01.006 | 6 | postcondition | AC-006 | S-007 |
+| BC-2.01.006 | 7 | postcondition | AC-007 | S-007 |
+| BC-2.01.006 | 1 | invariant (schema) | AC-008 | S-007 |
+| BC-2.01.006 | 2 | invariant (drain order) | AC-009 | S-007 |
+| BC-2.01.006 | 3 | invariant (60s from start) | AC-003 | S-007 |
 | BC-2.01.007 | 1 | postcondition | AC-001 | S-008 |
-| BC-2.01.007 | 2 | postcondition | AC-002 | S-008 |
+| BC-2.01.007 | 2 | postcondition | AC-003 | S-008 |
 | BC-2.01.007 | 3 | postcondition | AC-003 | S-008 |
-| BC-2.01.007 | 4 | postcondition | AC-004 | S-008 |
+| BC-2.01.007 | 4 | postcondition | AC-002b | S-008 |
+| BC-2.01.007 | 5 | postcondition (#[non_exhaustive] + new()) | AC-006 | S-008 |
 | BC-2.01.007 | 1 | invariant (DI-001) | AC-004 | S-008 |
 | BC-2.01.008 | 1 | postcondition | AC-001 | S-009 |
 | BC-2.01.008 | 2 | postcondition | AC-002 | S-009 |
@@ -234,6 +251,12 @@ Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.009 | 4 | postcondition | AC-007 | S-009 |
 | BC-2.01.009 | 7 | invariant | AC-008 | S-009 |
 | BC-2.01.010 | 1 | postcondition | AC-010 | S-006 |
+| BC-2.01.010 | 2 | postcondition | AC-010 | S-006 |
+| BC-2.01.010 | 3 | postcondition | AC-010 | S-006 |
+| BC-2.01.010 | 4 | postcondition | AC-010 | S-006 |
+| BC-2.01.010 | EC-010 | edge case | AC-010 | S-006 |
+| BC-2.01.010 | EC-011 | edge case | AC-012 | S-006 |
+| BC-2.01.010 | EC-012 | edge case | AC-013 | S-006 |
 | BC-2.02.001 | 1 | postcondition | AC-003, AC-005 | S-010, S-003 |
 | BC-2.02.002 | 1 | postcondition | AC-001, AC-002 | S-010 |
 | BC-2.02.002 | 2 | postcondition | AC-003 | S-010 |
@@ -285,14 +308,28 @@ Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.005 | EC-058 | MONOCLE_RUNTIME_DIR override | S-006 | AC-007 |
 | BC-2.01.005 | EC-059 | Full-fail RuntimeDirUnresolvable | S-006 | AC-009 |
 | BC-2.01.005 | EC-060 | Empty MONOCLE_RUNTIME_DIR | S-006 | AC-007 (non-empty check) |
+| BC-2.01.006 | EC-054 | Recovery file malformed JSON | S-007 | AC-010 |
+| BC-2.01.006 | EC-055 | Multiple crash cycles — single file overwrite | S-007 | AC-008 (one file per runtime dir; invariant 1) |
+| BC-2.01.006 | EC-056 | TUI attaches at exactly 60-second boundary | S-007 | AC-005, AC-007 (60s window measured from start) |
+| BC-2.01.007 | EC-001 | Tool-less hook types omit tool_name/tool_input (no null) | S-008 | AC-002 |
+| BC-2.01.007 | EC-002 | Large tool_input up to 256 KiB | S-008 | AC-002b (7-field schema handles large values) |
 | BC-2.01.007 | EC-003 | Ring flush failure | S-008 | AC-005 |
 | BC-2.01.009 | EC-013 | Both headers absent → 401 | S-009 | AC-009 |
 | BC-2.02.004 | EC-018 | dyn FactoryAdapter + detect where Self: Sized | S-012 | AC-001 |
 | BC-2.02.004 | EC-019 | custom_fields YAML flow-style | S-012 | AC-004 |
 | BC-2.02.004 | EC-020 | Phase 3 WASM adapter | S-012 | AC-002 (no Sealed) |
-| BC-2.03.001 | EC-029 | metadata() with $HOME unset | S-015 | AC-004 |
-| BC-2.03.001 | EC-030 | detect() with exe_path = None | S-015 | AC-003 |
-| BC-2.03.001 | EC-031 | on_hook() with unknown HookEvent | S-015 | AC-009 |
+| BC-2.01.010 | EC-010 | Stale lock with future contract_version | S-006 | AC-010 |
+| BC-2.01.010 | EC-011 | contract_version as string not integer | S-006 | AC-012 |
+| BC-2.01.010 | EC-012 | contract_version key missing entirely | S-006 | AC-013 |
+| BC-2.03.001 | EC-029 | metadata() with $HOME unset | S-015 | AC-005 |
+| BC-2.03.001 | EC-030 | detect() with exe_path = None | S-015 | AC-002 |
+| BC-2.03.001 | EC-031 | on_hook() with unknown HookEvent | S-015 | AC-010 |
+| BC-2.03.002 | EC-032 | cmdline "claude" but exe_path is claude-squad | S-015 | AC-002 |
+| BC-2.03.002 | EC-033 | exe_path /usr/local/bin/claude (no extension) | S-015 | AC-001 |
+| BC-2.03.002 | EC-034 | exe_path /usr/local/bin/claude.js (Node.js wrapper) | S-015 | AC-001 |
+| BC-2.03.002 | EC-035 | exe_path /usr/local/bin/claude-squad | S-015 | AC-001 |
+| BC-2.03.004 | EC-038 | spawn() called in Phase 1 → todo!() | S-015 | AC-008 |
+| BC-2.03.004 | EC-039 | preflight() called in Phase 1 → todo!() | S-015 | AC-009 |
 | error-taxonomy | E-AUTH-001 | missing_auth_token | S-009 | AC-004 |
 | error-taxonomy | E-AUTH-002 | invalid_auth_token | S-009 | AC-005, AC-006 |
 | error-taxonomy | E-AUTH-003 | alias path WARN | S-009 | AC-005 |

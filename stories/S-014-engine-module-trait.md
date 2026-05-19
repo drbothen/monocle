@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-014
 epic_id: EPIC-03
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -18,6 +18,19 @@ subsystems: [SS-03]
 behavioral_contracts: [BC-2.03.001]
 verification_properties: [VP-019]
 estimated_days: 2
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.003.md, version: "1.0.2"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-019-engine-module-trait.md, version: "1.0.13"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-engine-module.md, version: "1.1.20"}
+  - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.03.001 (EngineModule Trait Definition); verifies VP-019; covers EC-029, EC-030, EC-031; addresses DI-006."
 ---
 
 # S-014: EngineModule Trait Definition
@@ -46,6 +59,16 @@ only. AST audit via VP-019 verifies.
 ### AC-003 (traces to BC-2.03.001 postcondition 3 — supporting types co-located)
 `monocle-core::engine` declares: `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`,
 `SessionStatus`, `HookResponse`, `HookDecision`, `DeferUntil`, `EngineMetadataError`.
+`HookEvent` is defined in `monocle-core/src/hook_events.rs` (BC-2.03.001 invariant 2;
+SS-core-types-and-abi.md §Non-Exhaustive Inner Structs) — NOT re-declared in engine.rs.
+
+### AC-003b (traces to BC-2.03.001 postcondition 3 + BC-2.02.003 invariant — HookEvent #[non_exhaustive] + variants)
+`HookEvent` enum in `monocle-core/src/hook_events.rs` carries `#[non_exhaustive]` attribute
+(BC-2.02.003; BC-2.03.001 invariant 2). The Phase 1 canonical variants are:
+`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Notification`, `Stop`
+(matching the 5 hook endpoints; `PostToolUse` is omitted per JC-2 parity).
+Wildcard match arm (`_ => HookResponse::new(HookDecision::Allow)`) is required in all
+`HookEvent` match sites (BC-2.03.001 EC-031; fail-open for future Phase 4 variants).
 
 ### AC-004 (traces to BC-2.03.001 postcondition 4 — last_event_micros is Option<i64>)
 `EnrichedSession::last_event_micros` is `Option<i64>`. `None` means no hook events
@@ -82,15 +105,30 @@ explains why: native `async fn` in traits does not provide ergonomic dyn-compati
   - 5 methods with exact signatures from postcondition 1
   - Supertrait: `Send + Sync + 'static`
   - Rustdoc explaining async_trait requirement
-- [ ] Define supporting types in `monocle-core/src/engine.rs`:
-  - `EngineMetadata` (fields: `id`, `display_name`, `config_paths: Vec<PathBuf>`, `hook_schema_version: u32`)
-  - `ProcessSnapshot` (fields: `pid: u32`, `exe_path: Option<PathBuf>`, `cmdline: Option<String>`)
-  - `EnrichedSession` (fields: `engine_id: String`, `session_id: String`, `last_event_micros: Option<i64>`, ...)
+- [ ] Define supporting types in `monocle-core/src/engine.rs` (verbatim from SS-engine-module.md §Supporting Types):
+  - `EngineMetadata` (canonical 4 fields from SS-engine-module.md lines 138–149):
+    `display_name: &'static str`, `icon: char`, `config_paths: Vec<PathBuf>`, `hook_schema_version: u32`
+    (NO `id` field — `id` is a separate trait method `fn id(&self) -> &'static str` at SS-engine-module.md line 95)
+    Carries `#[non_exhaustive]`. Provides `pub fn new(display_name, icon, config_paths, hook_schema_version) -> Self`.
+  - `ProcessSnapshot` (7 fields from SS-engine-module.md lines 195–224):
+    `pid: u32`, `ppid: Option<u32>`, `exe_path: Option<PathBuf>`, `cmdline: Vec<String>`,
+    `working_dir: Option<PathBuf>`, `env: HashMap<String, String>`, `start_time_secs: i64`
+    Carries `#[non_exhaustive]`. Provides `new()` and `with_full_context()` constructors.
+  - `EnrichedSession` (6 fields from SS-engine-module.md lines 301–330):
+    `session_id: String`, `harness_type: String`, `transcript_path: Option<PathBuf>`,
+    `config_path: Option<PathBuf>`, `status: SessionStatus`, `last_event_micros: Option<i64>`
+    (NO `engine_id` field — use `harness_type` per SS-engine-module.md)
+    Carries `#[non_exhaustive]`.
   - `SessionStatus` (enum, `#[non_exhaustive]`: `Running`, `Idle`, `Exited`)
   - `HookResponse` (fields: `decision: HookDecision`, `deferred_until: Option<DeferUntil>`)
+    Provides `pub fn new(decision: HookDecision) -> Self` constructor.
   - `HookDecision` (enum, `#[non_exhaustive]`: `Allow`, `Block`, `Defer`)
   - `DeferUntil` (enum, `#[non_exhaustive]`: `UserApproval`, `Timeout(Duration)`)
-  - `EngineMetadataError` (enum: `HomeUnresolvable`)
+  - `EngineMetadataError` (enum, `#[non_exhaustive]`: `HomeUnresolvable`)
+- [ ] Create `monocle-core/src/hook_events.rs` with `HookEvent` enum:
+  - `#[non_exhaustive]` on `HookEvent`
+  - Phase 1 variants: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Notification`, `Stop`
+  - `PostToolUse` is NOT included (JC-2 parity per BC-2.03.004 invariant 1)
 - [ ] Create `monocle-core/tests/engine_module_surface.rs` (VP-019 AST audit):
   - syn 2 parse `engine.rs`: assert 5 methods, no `Sealed`, correct return-type token streams
 - [ ] Add `async-trait = "0.1"` to `monocle-core/Cargo.toml`

@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-006
 epic_id: EPIC-01
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,12 +12,25 @@ wave: 2
 tdd_mode: strict
 priority: P0
 depends_on: [S-001]
-blocks: [S-007, S-008, S-009]
+blocks: [S-007, S-008]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.005, BC-2.01.010]
 verification_properties: [VP-005, VP-010]
 estimated_days: 3
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.005.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md, version: "1.0.4"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-005-lock-file-lifecycle.md, version: "1.0.16"}
+  - {path: .factory/specs/verification-properties/vp-010-lock-file-contract-version.md, version: "1.0.14"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.01.005 (Lock File Atomic Lifecycle), BC-2.01.010 (Lock File Contract Version Field); verifies VP-005, VP-010; covers EC-010, EC-011, EC-012, EC-051, EC-052, EC-053, EC-057, EC-058, EC-059, EC-060; addresses NFR-009, NFR-012, E-LOCK-001, E-LOCK-002, E-LOCK-003, E-DAEMON-004."
 ---
 
 # S-006: Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)
@@ -80,6 +93,27 @@ removes the stale file.
 If `contract_version` key is missing from an existing lock file, the daemon treats
 the lock file as stale, logs E-LOCK-002 (stale removal), and restarts.
 
+### AC-012 (traces to BC-2.01.010 edge case EC-011 — contract_version as string instead of integer)
+If `contract_version` key is present but its value is a string (e.g., `"1"` instead of `1`),
+the Phase 1 reader must handle gracefully: coerce to integer if parseable OR log E-LOCK-002 and
+skip the lock file. No crash, no panic (BC-2.01.010 EC-011).
+
+### AC-013 (traces to BC-2.01.010 edge case EC-012 — contract_version key missing entirely)
+If `contract_version` key is missing from the lock file entirely (pre-Phase-1 format), same
+treatment as EC-010: log `WARN: lock file contract_version missing; skipping` and proceed as
+if no lock file exists (BC-2.01.010 EC-012).
+
+### AC-014 (Decision 2 + traces to BC-2.01.008 postcondition 1 — real cryptographic auth token generation in S-006)
+The lock file `authToken` field is populated with a REAL cryptographically random token at
+lock file creation time (BC-2.01.008 PC-1). Implementation:
+- `monocle-auth::generate_session_token() -> String` generates 32 cryptographically random bytes
+  using `rand::rngs::OsRng` (rand `=0.8.6` EXACT pin per SS-deps-pin-manifest.md), hex-encoded
+  as a 64-character lowercase hex string matching regex `/^[0-9a-f]{64}$/`.
+- `DaemonLock::acquire()` calls `monocle-auth::generate_session_token()` and stores the result
+  in the `authToken` field BEFORE calling `tempfile::persist`.
+- No placeholder value is ever written to the lock file.
+- S-009 reads the 64-hex token from the lock file; no placeholder retrofit is needed.
+
 ## Token Budget Estimate
 
 | Component | Tokens |
@@ -101,7 +135,11 @@ the lock file as stale, logs E-LOCK-002 (stale removal), and restarts.
 - [ ] Implement `DaemonLock::acquire()`: read existing lock → pid-liveness check → clean stale → write new
 - [ ] Use `tempfile::NamedTempFile` + `persist()` for atomic lock file write
 - [ ] Use `serde_json::to_string()` with a serialization that preserves field order (use `indexmap` or manually ordered struct with `#[serde(rename_all = "camelCase")]`)
-- [ ] Lock file `authToken` field: raw 64-hex string (no prefix) — generated in S-009
+- [ ] Implement `monocle-auth::generate_session_token() -> String` in new `monocle-auth` crate:
+  - 32 random bytes from `rand::rngs::OsRng` (EXACT pin `=0.8.6` per SS-deps-pin-manifest.md)
+  - Hex-encoded to 64-character lowercase hex string (BC-2.01.008 PC-1; regex `/^[0-9a-f]{64}$/`)
+  - Token stored in `Arc<String>` for sharing between lock file writer and auth middleware
+- [ ] Lock file `authToken` field: populated by calling `monocle-auth::generate_session_token()` at `DaemonLock::acquire()` time — no placeholder value ever written
 - [ ] Create `monocle-runtime/src/lock.rs` cleanup: `DaemonLock::release()` removes lock + sock
 - [ ] Runtime directory creation with `0o700` mode using `DirBuilderExt`
 - [ ] Integration tests `monocle-runtime/tests/lock_file_lifecycle.rs`:
@@ -118,9 +156,10 @@ the lock file as stale, logs E-LOCK-002 (stale removal), and restarts.
 ## Previous Story Intelligence
 
 S-001 (Wave 1): Workspace initialized. `directories 6` and `tempfile 3` pinned in workspace.
-`nix 0.30` pinned. `temp-env 0.3` pinned as dev-dependency.
-The lock file `authToken` field is filled with a placeholder `"<TBD>"` value until S-009
-delivers auth token generation. Tests use a synthetic token.
+`nix 0.30` pinned. `temp-env 0.3` pinned as dev-dependency. `monocle-auth` crate declared as
+workspace member. `rand 0.9` (or the EXACT-pin version from SS-deps-pin-manifest.md) pinned
+for `OsRng` use in `monocle-auth::generate_session_token()`.
+Auth token is generated and written in this story — NO placeholder value is used.
 
 ## Architecture Compliance Rules
 

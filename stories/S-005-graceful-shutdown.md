@@ -12,12 +12,23 @@ wave: 2
 tdd_mode: strict
 priority: P0
 depends_on: [S-001, S-002]
-blocks: [S-007]
+blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.004]
 verification_properties: [VP-004]
 estimated_days: 2
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.004.md, version: "1.0.3"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/vp-004-graceful-shutdown.md, version: "1.0.14"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+input-hash: "[live-state]"
+traces_to: "Implements BC-2.01.004 (Graceful Shutdown); verifies VP-004; addresses E-DAEMON-002."
 ---
 
 # S-005: Graceful Shutdown (10-Second Drain)

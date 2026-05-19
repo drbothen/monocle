@@ -1,14 +1,24 @@
 ---
 document_type: sprint-state
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
-phase: 3
+phase: 2
+target_implementation_phase: 3
 traces_to: STORY-INDEX.md
-# Initialized for Phase 3 TDD implementation dispatch.
-# All stories start as not_started. State transitions:
-# not_started → in_progress → review → done | blocked
+# This sprint-state was produced by Phase 2 (story decomposition).
+# phase: 2 = the ownership phase (story-writer's deliverable).
+# target_implementation_phase: 3 = the phase during which these stories will be implemented (TDD).
+# All stories start as not_started for Phase 3 TDD dispatch.
+# State transitions: not_started → in_progress → review → done | blocked
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+input-hash: "[live-state]"
+traces_to_full: ".factory/stories/STORY-INDEX.md v1.1"
 ---
 
 stories:
@@ -112,14 +122,14 @@ stories:
   - id: S-009
     title: "Auth Token Wire Format + Header Validation (FC-06, ADR-0005)"
     epic: EPIC-01
-    wave: 2
+    wave: 3
     points: 8
     status: not_started
     assigned_to: null
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 2. Depends on S-001, S-004, S-006. Covers BC-2.01.008 + BC-2.01.009."
+    notes: "Wave 3 (Decision 1: moved from Wave 2; depends on S-008 for RingBuffer). Depends on S-001, S-004, S-006, S-008. Covers BC-2.01.008 + BC-2.01.009."
 
   - id: S-010
     title: "monocle-core Crate Foundation + ABI Version Constant (FC-03)"
@@ -218,15 +228,15 @@ stories:
     notes: "Wave 3. Depends on S-014. Covers BC-2.03.002 + BC-2.03.003 + BC-2.03.004."
 
 summary:
-  total_stories: 18
-  not_started: 17
+  total_stories: 17
+  not_started: 16
   in_progress: 0
   review: 0
   done: 0
   blocked: 1
   total_points: 86
   points_complete: 0
-  wave_1_points: 8
-  wave_2_points: 49
-  wave_3_points: 26
   wave_0_points: 3
+  wave_1_points: 8
+  wave_2_points: 41
+  wave_3_points: 34

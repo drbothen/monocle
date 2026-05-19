@@ -1,13 +1,21 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.0"
+version: "1.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 visibility: holdout-evaluator-only
-traces_to: STORY-INDEX.md
+inputs:
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+  - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
+input-hash: "[live-state]"
+traces_to: ".factory/stories/STORY-INDEX.md v1.1"
 ---
 
 # Holdout Scenarios: monocle Phase 2
@@ -89,29 +97,42 @@ match arm. All existing match-arms that cover `HookType` should NOT require upda
 **Expected:** Compilation succeeds. `#[non_exhaustive]` enforcement via wildcard arm.
 **NOT in any story AC:** Story ACs test the attribute is present; this tests downstream compile behavior.
 
-### HS-W2-005: EngineModule detect() Rejects Basename Substring Match
+### HS-W2-005: EngineModule detect() Rejects Basename Substring Match but Accepts claude.js
 
 **Wave:** 2
-**Source BC:** BC-2.03.002
-**Scenario:** Evaluator creates a `ProcessSnapshot` with `exe_path = PathBuf::from("/usr/local/bin/claude-code-runner")`.
-Calls `ClaudeCodeModule::detect(&proc)`. Must return `false`.
-Then creates one with `exe_path = PathBuf::from("/path/to/claude")`. Must return `true`.
-**Expected:** "claude-code-runner" → false; "claude" → true (basename exact match only).
-**NOT in any story AC:** ACs test "claude-squad" and "claudio" but not "claude-code-runner" specifically.
+**Source BC:** BC-2.03.002 (PC-4, EC-034, EC-035)
+**Scenario:** Evaluator runs three detect() calls in sequence:
+1. `ProcessSnapshot { exe_path: Some("/usr/local/bin/claude.js") }` → `detect()` must return `true`
+   (the Node.js wrapper is an explicitly allowed name; BC-2.03.002 PC-4 + EC-034)
+2. `ProcessSnapshot { exe_path: Some("/usr/local/bin/claude-code-runner") }` → `detect()` must return `false`
+   (prefix substring; NOT in the two-element allowed set)
+3. `ProcessSnapshot { exe_path: Some("/usr/local/bin/claude-js") }` → `detect()` must return `false`
+   (close variant; NOT `"claude.js"` exactly — hyphen vs dot)
+**Expected:** claude.js → true; claude-code-runner → false; claude-js → false.
+**NOT in any story AC:** Story AC-001 covers the two allowed names; this holdout tests the "almost-claude.js" boundary case (hyphen vs dot) that would expose non-exact matching logic.
 
 ---
 
 ## Wave 3 Holdout Scenarios
 
-### HS-W3-001: Crash Recovery Checkpoint Survives Daemon Restart
+### HS-W3-001: Crash Recovery Checkpoint Survives Daemon Restart (Correct Schema + Filename)
 
 **Wave:** 3
-**Source BC:** BC-2.01.006
-**Scenario:** Evaluator triggers an abnormal exit (exit code 2 — drain timeout). Verifies
-`monocle-crash.json` exists in `<runtime_dir>`. Starts daemon again. Verifies INFO log
-containing "crash checkpoint found". Verifies `monocle-crash.json` is removed after logging.
-**Expected:** Checkpoint created on abnormal exit; logged and removed on next start.
-**NOT in any story AC:** ACs test write and detect separately; this tests the full lifecycle across two daemon instances.
+**Source BC:** BC-2.01.006 (PC-1, PC-2, PC-5, INV-1, INV-2)
+**Scenario:** Evaluator triggers a non-clean daemon exit via SIGTERM during active session
+(shutdown_reason = "signal"). Verifies `monocle.recovery.json` (NOT `monocle-crash.json`)
+exists in `<runtime_dir>` with this exact 4-field schema per BC-2.01.006 invariant 1:
+```json
+{"pid":<N>,"shutdown_reason":"signal","last_app_mode":"Running","shutdown_utc":"<ISO-ms>"}
+```
+Validates: `pid` ≥ 1; `shutdown_reason` is exactly `"signal"` (closed enum); `shutdown_utc`
+matches regex `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$` (mandatory millisecond precision).
+Starts daemon again. Verifies log contains exactly:
+`WARN: recovery checkpoint found; prior daemon exited without clean shutdown`
+Verifies `monocle.recovery.json` is REMOVED after the daemon processes the recovery state
+(TUI attaches and responds Y, OR 60-second timeout elapses).
+**Expected:** `monocle.recovery.json` created (not `monocle-crash.json`); 4-field schema exact; WARN log verbatim; file deleted post-resolution.
+**NOT in any story AC:** ACs test write and detect separately; this tests the full lifecycle across two daemon instances AND validates the correct filename and schema are used.
 
 ### HS-W3-002: JSONL Ring format_version Survives Rotation
 

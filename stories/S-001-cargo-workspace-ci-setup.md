@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-001
 epic_id: EPIC-01
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,16 +12,27 @@ wave: 1
 tdd_mode: facade
 priority: P0
 depends_on: []
-blocks: [S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014]
+blocks: [S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014]
 target_module: monocle-runtime
 subsystems: [SS-01]
-behavioral_contracts: [BC-2.01.007]
-verification_properties: [VP-007]
+behavioral_contracts: []
+verification_properties: []
 estimated_days: 2
-# BC status: pending PO authorship for NFR-007, NFR-008 BCs (no BC-S.SS.NNN exists for CI setup)
-# Note: NFR-007 and NFR-008 are CI/devops deliverables validated by CI green, not VP files.
-# This story references BC-2.01.007 because JSONL ring struct is declared in monocle-runtime and
-# workspace compilation is a prerequisite. NFR-007/008 are validated as devops gate, not VP probe.
+# BC status: no BC-S.SS.NNN covers CI/devops workspace setup. NFR-007 and NFR-008 are CI
+# gate deliverables validated by green CI builds, not VP probes. BC-2.01.007 (JSONL ring) is
+# implemented exclusively by S-008; this story only establishes the workspace that S-008 compiles in.
+# S-009 removed from blocks: per Decision 1+2 restructure (S-008→S-009 dependency added;
+# S-009 moved to Wave 3; S-001 blocks are only stories that directly depend on workspace init).
+inputs:
+  - {path: .factory/specs/prd.md, version: "1.26.15"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
+  - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+  - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
+input-hash: "[live-state]"
+traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.1.17 EXACT-pin policy."
 ---
 
 # S-001: Cargo Workspace Init + CI/DevOps Setup
@@ -35,9 +46,10 @@ deliver in a reproducible environment.
 
 ## Acceptance Criteria
 
-### AC-001 (traces to BC-2.01.007 invariant 1 — JSONL ring struct in monocle-runtime requires workspace to compile)
+### AC-001 (NFR-007 + NFR-008 validation gate — workspace compiles on all matrix targets)
 `cargo build --workspace` succeeds from the project root on both macOS (darwin/arm64) and
 Linux (linux/amd64 and linux/arm64) without errors or warnings under `cargo clippy --workspace -- -D warnings`.
+This establishes the workspace that all subsequent stories (S-002 through S-015) compile within.
 
 ### AC-002 (NFR-007 validation gate — devops CI artifact, not VP)
 `rust-toolchain.toml` at the workspace root pins `channel = "1.86"`. `cargo check`
@@ -52,10 +64,11 @@ and all matrix jobs are green on first push.
 `Cargo.toml` workspace `rust-version = "1.86"` field is set. CI fails if
 `rust-toolchain.toml` is absent or if toolchain pin does not match "1.86".
 
-### AC-005 (traces to BC-2.01.007 postcondition 1 — monocle-runtime crate exists as workspace member)
+### AC-005 (workspace structure invariant — correct Phase 1 crate member list)
 The workspace declares these crates as members: `monocle-core`, `monocle-runtime`,
-`monocle-proto`. These are the Phase 1 crates. `monocle-tui` is NOT declared as a
-Phase 1 workspace member per product-brief.md Phase 1 scope.
+`monocle-proto`, `monocle-auth`. These are the Phase 1 crates. `monocle-auth` is required
+because S-006 calls `monocle-auth::generate_session_token()` (Decision 2). `monocle-tui`
+is NOT declared as a Phase 1 workspace member per product-brief.md Phase 1 scope.
 
 ### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.1.17)
 `Cargo.toml` workspace `[dependencies]` table pins the following crates at exact versions
@@ -70,19 +83,20 @@ All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md §Phase 1 Pi
 
 | Component | Tokens |
 |-----------|--------|
-| This story spec | ~800 |
+| This story spec | ~900 |
 | SS-deps-pin-manifest.md v1.1.17 (full) | ~9,976 |
 | SS-daemon-lifecycle.md v1.0.32 (workspace scope section) | ~2,000 |
-| BC-2.01.007.md | ~600 |
+| SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 |
 | Cargo.toml template + toolchain files | ~500 |
 | Test scaffolding | ~300 |
-| **Total estimate** | **~14,176** |
+| **Total estimate** | **~14,676** |
 
 Well within 20% of 200k context window. No split required.
 
 ## Tasks
 
-- [ ] Create `Cargo.toml` workspace manifest with member crates `monocle-core`, `monocle-runtime`, `monocle-proto`
+- [ ] Create `Cargo.toml` workspace manifest with member crates `monocle-core`, `monocle-runtime`, `monocle-proto`, `monocle-auth`
+  (monocle-auth added per Decision 2: S-006 calls `monocle-auth::generate_session_token()`)
 - [ ] Set `rust-version = "1.86"` in workspace `Cargo.toml`
 - [ ] Create `rust-toolchain.toml` with `channel = "1.86"`
 - [ ] Pin all 9 EXACT-pin security-sensitive crates in workspace `[dependencies]`
