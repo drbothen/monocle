@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-009
 epic_id: EPIC-01
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,9 +19,9 @@ behavioral_contracts: [BC-2.01.008, BC-2.01.009]
 verification_properties: [VP-008, VP-009]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.009.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.009.md, version: "1.0.7"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-008-auth-token-wire-format.md, version: "1.0.14"}
   - {path: .factory/specs/verification-properties/vp-009-auth-header-validation.md, version: "1.0.15"}
@@ -66,13 +66,13 @@ The daemon's auth middleware strips the `monocle-v1:` prefix before constant-tim
 When both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` are absent,
 the authenticated endpoints return HTTP 401 with body `{"error":"missing_auth_token"}`.
 
-### AC-005 (traces to BC-2.01.009 postcondition 2 — alias path auth + WARN)
+### AC-005 (traces to BC-2.01.009 postcondition 3 — alias path auth + WARN)
 When `X-Claude-Code-Ide-Authorization: <raw-64-hex>` is present (and canonical is absent):
 - The raw-hex token is compared constant-time against the stored lock-file token
 - If match: HTTP 200 (or appropriate hook response); WARN log E-AUTH-003 emitted
 - If mismatch: HTTP 401 `{"error":"invalid_auth_token"}`
 
-### AC-006 (traces to BC-2.01.009 postcondition 3 — canonical path auth)
+### AC-006 (traces to BC-2.01.009 postcondition 2 — canonical path auth)
 When `X-Monocle-Authorization: monocle-v1:<64-hex>` is present:
 - Prefix `monocle-v1:` is stripped; remaining 64-hex compared constant-time against lock-file token
 - If match: HTTP 200 (or appropriate hook response); no WARN log

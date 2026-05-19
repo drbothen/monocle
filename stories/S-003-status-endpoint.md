@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-003
 epic_id: EPIC-01
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,8 +19,8 @@ behavioral_contracts: [BC-2.01.002, BC-2.02.001]
 verification_properties: [VP-002, VP-011]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.002.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.002.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.001.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-002-status-endpoint.md, version: "1.0.14"}
@@ -50,11 +50,11 @@ accurate session, ring-buffer, and ABI information.
 (array of 5 paths), `ring_buffer_fill_pct` (float 0.0–100.0), `channel_saturation_pct`
 (float 0.0–100.0), `last_hook_ts` (object with 5 nullable timestamp fields), `tui_attached` (bool).
 
-### AC-002 (traces to BC-2.01.009 postcondition 2 — alias path auth + WARN log)
+### AC-002 (traces to BC-2.01.009 postcondition 3 — alias path auth + WARN log)
 `GET /status` with `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias path, no canonical header present)
 returns HTTP 200 with the same body as canonical auth. A WARN log
 `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias)...` is emitted.
-(BC-2.01.009 PC-2 governs alias-path behavior; BC-2.01.002 Precondition 2 delegates auth semantics to BC-2.01.009.)
+(BC-2.01.009 PC-3 governs alias-path behavior; BC-2.01.002 Precondition 2 delegates auth semantics to BC-2.01.009.)
 
 ### AC-003 (traces to BC-2.01.009 postcondition 1 — missing auth → 401 E-AUTH-001)
 `GET /status` with no auth header (neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present)

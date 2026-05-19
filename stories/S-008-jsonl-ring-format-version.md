@@ -19,8 +19,8 @@ behavioral_contracts: [BC-2.01.007]
 verification_properties: [VP-007]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.007.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.007.md, version: "1.0.6"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-007-ring-format-version.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -89,14 +89,14 @@ robustness concern, not the flush-failure writer concern. Re-anchored from EC-00
 struct literal construction outside `monocle-runtime::ring` is forbidden by `#[non_exhaustive]`
 (Rust E0639). The `format_version` field is set to `RING_FORMAT_VERSION` inside the constructor.
 
-### AC-007 (traces to SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy + BC-2.01.007 v1.0.5 edge case EC-002 — ring rotation policy)
+### AC-007 (traces to SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy + BC-2.01.007 v1.0.6 edge case EC-002 — ring rotation policy)
 The JSONL ring file is rotated when it exceeds the configured size limit. Parameters per
 SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy (canonical source of truth):
 default rotation threshold is 50 MB per active file (soft trigger, checked on each flush batch);
 absolute per-file cap is 100 MB (hard upper bound, rotation mandatory); retention is 5 rotated
 files; total disk ceiling is 500 MB rotated + up to 100 MB active = 600 MB worst-case;
 newest-wins rotation (oldest deleted first). No ring file exceeds 100 MB at any point.
-EC-002 (very large tool_input up to 256 KiB, per BC-2.01.007 v1.0.5 EC-002 re-anchored to
+EC-002 (very large tool_input up to 256 KiB, per BC-2.01.007 v1.0.6 EC-002 re-anchored to
 this rotation policy section) requires the rotation logic to handle lines approaching 256 KiB
 without truncation. (BC-2.01.007 INV-1 governs `serde_json` struct-field-order preservation —
 it is NOT the ring rotation clause. The canonical rotation policy lives in

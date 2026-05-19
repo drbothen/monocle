@@ -8,14 +8,14 @@ timestamp: 2026-05-19T04:30:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v1.2"
+traces_to: ".factory/stories/STORY-INDEX.md v1.4"
 ---
 
 # Holdout Scenarios: monocle Phase 2

@@ -19,8 +19,8 @@ behavioral_contracts: [BC-2.02.003, BC-2.03.001]
 verification_properties: [VP-019]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.003.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-019-engine-module-trait.md, version: "1.0.13"}

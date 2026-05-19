@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-015
 epic_id: EPIC-03
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,11 +19,11 @@ behavioral_contracts: [BC-2.03.001, BC-2.03.002, BC-2.03.003, BC-2.03.004]
 verification_properties: [VP-020, VP-021, VP-022]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.002.md, version: "1.0.3"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.003.md, version: "1.0.2"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.004.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.002.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.003.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.004.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-020-claude-code-module-impl.md, version: "1.0.12"}
   - {path: .factory/specs/verification-properties/vp-021-home-unresolvable-error.md, version: "1.0.13"}
@@ -118,7 +118,7 @@ fail-open per EC-031; BC-2.03.001 EC-031).
 
 Note: BC-2.03.001 invariant 2 covers the `HookEvent` type location in `hook_events.rs`
 (a separate concern). DI-006 enforcement for detect() I/O-free is specifically postcondition 6
-(added in BC-2.03.001 v1.0.4), which is the authoritative clause per BC-2.03.001 §Traceability
+(added in BC-2.03.001 v1.0.5), which is the authoritative clause per BC-2.03.001 §Traceability
 DI-006 mapping.
 
 ## Token Budget Estimate
@@ -196,7 +196,6 @@ From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: Claude
 | Crate | Version | Usage |
 |-------|---------|-------|
 | directories | 6 | `BaseDirs::new()` for home directory resolution |
-| which | (add) | `which::which("claude")` for preflight |
 | async-trait | 0.1 | `#[async_trait]` on EngineModule impl |
 | temp-env | 0.3 | Test: unset home env vars (dev-dependency) |
 | tracing | 0.1 | E-ENG-001 log on HomeUnresolvable |
@@ -211,4 +210,6 @@ Files to create:
 
 Files to modify:
 - `monocle-runtime/src/lib.rs` — engine module is now `pub mod engine` (sub-module)
-- `monocle-runtime/Cargo.toml` — add `which = "^4"` (or latest stable); confirm `temp-env` dev-dependency present
+- `monocle-runtime/Cargo.toml` — confirm `temp-env` dev-dependency present
+
+> **Implementation Note — `which` crate (Phase 3 scope):** `preflight()` is `todo!()` in Phase 1 per EC-039 (BC-2.03.004 PC-3). The `which::which()` crate for $PATH lookup of `claude`/`claude.js` binaries is NOT a Phase 1 dependency. When the Phase 3 preflight story is created, the architect MUST add `which` (or a functionally equivalent crate) to `SS-deps-pin-manifest.md` with an explicit version pin before dispatch. Do not add `which` to `monocle-runtime/Cargo.toml` in Phase 1.

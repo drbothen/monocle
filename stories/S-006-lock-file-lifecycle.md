@@ -19,10 +19,10 @@ behavioral_contracts: [BC-2.01.005, BC-2.01.008, BC-2.01.010]
 verification_properties: [VP-005, VP-010]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.005.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.005.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md, version: "1.0.5"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-005-lock-file-lifecycle.md, version: "1.0.16"}
   - {path: .factory/specs/verification-properties/vp-010-lock-file-contract-version.md, version: "1.0.14"}

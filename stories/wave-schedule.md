@@ -7,7 +7,7 @@ producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
@@ -175,3 +175,9 @@ Before dispatching Phase 3 (TDD Implementation):
 
 **Phase 2 r02 remediation** (2026-05-19):
 - GAP-PHASE2-R02-2: Wave 3 parallelism paragraph corrected from "all 4 stories" to "all 5 stories"; S-008→S-009 within-wave dependency noted
+
+## §Trace v1.2
+
+**Phase 2 r06 remediation** (2026-05-19):
+- F-PHASE2-R06-03 (MEDIUM): BC-INDEX version pin bumped v1.12→v1.13 per SE-22 v2 forward consumer-ledger sweep (15 BCs bumped by PO commit d7c860a).
+- F-PHASE2-R06-04 (MEDIUM): §Trace v1.2 entry added; discipline: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.

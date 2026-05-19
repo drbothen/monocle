@@ -1,13 +1,13 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
@@ -255,8 +255,8 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.008 | 3 | invariant (OsRng mandatory, not thread_rng) | AC-001 | S-009 |
 | BC-2.01.002 | 1 sub-bullet «hook_endpoints» | postcondition (5-endpoint list, S-009 registers them) | AC-010b | S-009 |
 | BC-2.01.009 | 1 | postcondition (both headers absent → 401 missing_auth_token) | AC-004 | S-009 |
-| BC-2.01.009 | 2 | postcondition (alias path value-present failure → 401 invalid_auth_token + WARN) | AC-005 | S-009 |
-| BC-2.01.009 | 3 | postcondition (canonical path value-present failure → 401 invalid_auth_token) | AC-006 | S-009 |
+| BC-2.01.009 | 2 | postcondition (canonical path value-present failure → 401 invalid_auth_token) | AC-006 | S-009 |
+| BC-2.01.009 | 3 | postcondition (alias path value-present failure → 401 invalid_auth_token + WARN) | AC-005 | S-009 |
 | BC-2.01.009 | 4 | postcondition (both present → canonical wins; alias ignored; no WARN) | AC-007 | S-009 |
 | BC-2.01.009 | 1 | invariant (two-body taxonomy is complete; no third body; invalid_auth_token_format retired) | AC-004 (missing body only) + AC-006 (invalid body only) together prove only 2 bodies exist | S-009 |
 | BC-2.01.009 | 2 | invariant (value-present failures on both paths return same body intentionally — no format/path distinction in response) | AC-005 (alias fail → invalid_auth_token), AC-006 (canonical fail → invalid_auth_token) | S-009 |
@@ -272,7 +272,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.010 | EC-010 | edge case | AC-010 | S-006 |
 | BC-2.01.010 | EC-011 | edge case | AC-012 | S-006 |
 | BC-2.01.010 | EC-012 | edge case | AC-013 | S-006 |
-| BC-2.02.001 | 1 | postcondition (abi_version field in /status) | AC-003, AC-005 | S-010, S-003 |
+| BC-2.02.001 | 1 | postcondition (abi_version field in /status) | S-010 AC-003 + S-010 AC-005 + S-003 AC-005 | S-010, S-003 |
 | BC-2.02.001 | 2 | postcondition (equals monocle_core::MONOCLE_ABI_VERSION) | AC-005 (re-anchored from INV-1 per F-PHASE2-R03-09) | S-010 |
 | BC-2.02.001 | 3 | postcondition (full /status response shape — cross-covered by BC-2.01.002 PC-1) | AC-001 | S-003 |
 | BC-2.02.001 | 1 | invariant (compile-time constant; cross-covered by S-010 AC-004 compile-time assert) | AC-004 | S-010 |
@@ -404,6 +404,19 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - GAP-P2-005 added: BC-2.01.004 PC-6 (--persistent-events ring flush) deferred to Phase 3 CLI surface (justified)
 - Gap Register counts updated: L1 gaps now 1 (GAP-P2-005 justified), L2 gaps 0, L3 gaps 4
 
+## §Trace v1.2
+
+**Phase 2 r03 remediation** (2026-05-19):
+- F-PHASE2-R03-01 CRITICAL: BC-2.01.002 fabricated PC-4..PC-7 rows removed. Only 3 PCs exist. Re-anchored: PC-1 sub-bullets for abi_version/hook_endpoints/last_hook_ts; auth failures → BC-2.01.009 PC-1/PC-3; PC-3 (/status during drain) → AC-008 new.
+- F-PHASE2-R03-04: BC-2.01.007 EC-003 (truncated mid-line) correctly attributed to reader robustness. Flush failure → BC-2.01.004 EC-049 (writer concern). AC-007 rotation anchor: SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy + BC-2.01.007 v1.0.5 EC-002 (F-PHASE2-R05-05 updated from PRD OQ-06).
+- F-PHASE2-R03-05: BC-2.02.005 INV-2 (display_name "VSDD Factory") → S-012 AC-010 new.
+- F-PHASE2-R03-06: BC-2.02.003 PC-4 row added (9 canonical enums including DenyReason, AllowPattern, DenyPattern) → S-011 AC-001b.
+- F-PHASE2-R03-07: BC-2.01.008 PC-4 → AC-010a (dual-accept on hook endpoints). BC-2.01.002 PC-1 sub-bullet hook_endpoints → AC-010b (5 endpoints registered). S-009.
+- F-PHASE2-R03-09: BC-2.02.001 PC-2 row added (equals compiled value); AC-005 re-anchored from INV-1 → PC-1 + PC-2.
+- F-PHASE2-R03-12: BC-2.02.005 PC-4 row re-anchored to AC-005 + AC-008 (parse_frontmatter guards + error handling).
+- F-PHASE2-R03-13: BC-2.02.005 INV-3 row updated to cite AC-007, AC-009 (both ACs cover subscribe() Phase 1 stub).
+- BC-2.01.004 PC-4 → AC-008 (was stale AC-004 from old S-003 numbering).
+
 ## §Trace v1.3
 
 **Phase 2 r04 remediation** (2026-05-19):
@@ -450,15 +463,18 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - BC-2.02.006..BC-2.02.008: rows already correct; no changes
 - BC-2.03.001..BC-2.03.004: rows already correct; no changes
 
-## §Trace v1.2
+## §Trace v1.4
 
-**Phase 2 r03 remediation** (2026-05-19):
-- F-PHASE2-R03-01 CRITICAL: BC-2.01.002 fabricated PC-4..PC-7 rows removed. Only 3 PCs exist. Re-anchored: PC-1 sub-bullets for abi_version/hook_endpoints/last_hook_ts; auth failures → BC-2.01.009 PC-1/PC-3; PC-3 (/status during drain) → AC-008 new.
-- F-PHASE2-R03-04: BC-2.01.007 EC-003 (truncated mid-line) correctly attributed to reader robustness. Flush failure → BC-2.01.004 EC-049 (writer concern). AC-007 rotation anchor: SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy + BC-2.01.007 v1.0.5 EC-002 (F-PHASE2-R05-05 updated from PRD OQ-06).
-- F-PHASE2-R03-05: BC-2.02.005 INV-2 (display_name "VSDD Factory") → S-012 AC-010 new.
-- F-PHASE2-R03-06: BC-2.02.003 PC-4 row added (9 canonical enums including DenyReason, AllowPattern, DenyPattern) → S-011 AC-001b.
-- F-PHASE2-R03-07: BC-2.01.008 PC-4 → AC-010a (dual-accept on hook endpoints). BC-2.01.002 PC-1 sub-bullet hook_endpoints → AC-010b (5 endpoints registered). S-009.
-- F-PHASE2-R03-09: BC-2.02.001 PC-2 row added (equals compiled value); AC-005 re-anchored from INV-1 → PC-1 + PC-2.
-- F-PHASE2-R03-12: BC-2.02.005 PC-4 row re-anchored to AC-005 + AC-008 (parse_frontmatter guards + error handling).
-- F-PHASE2-R03-13: BC-2.02.005 INV-3 row updated to cite AC-007, AC-009 (both ACs cover subscribe() Phase 1 stub).
-- BC-2.01.004 PC-4 → AC-008 (was stale AC-004 from old S-003 numbering).
+**Phase 2 r05 remediation** (2026-05-19):
+- F-PHASE2-R05-01 (CRITICAL): BC-2.01.009 PC-2/PC-3 alias/canonical swap in S-009 AC-004 trace header fixed (canonical=PC-2; alias=PC-3).
+- F-PHASE2-R05-02 (HIGH): BC-2.01.002 PC-3 row coverage extended — S-003 AC-008 added (status serves during drain; BC-2.01.004 PC-4 cross-cites BC-2.01.002 PC-3).
+- SE-22 v2 BC version cascade applied to all story corpus files (r05 scope).
+
+## §Trace v1.5
+
+**Phase 2 r06 remediation** (2026-05-19):
+- F-PHASE2-R06-01 (CRITICAL): BC-2.01.009 PC-2/PC-3 remaining alias/canonical mirror swap fixed in S-009 AC-005/AC-006 trace headers and S-003 AC-002 trace header. BC-2.01.009 clause 2 (canonical) row corrected to AC-006; clause 3 (alias) row corrected to AC-005 — swap from previous (erroneous) assignment. INV-4 parenthetical verified correct (both AC-005 alias + AC-006 canonical are Invalid variant paths).
+- F-PHASE2-R06-02 (HIGH): BC-2.02.001 PC-1 row disambiguation — per-story AC attribution clarified: S-010 AC-003 + S-010 AC-005 + S-003 AC-005.
+- F-PHASE2-R06-04 (MEDIUM): §Trace reordered ascending (v1.2 was after v1.3 — ordering defect corrected); v1.4 and v1.5 entries added for r05 and r06 remediations.
+- SE-22 v2 BC version cascade applied to all corpus files (15 BCs × 19 consumers): BC-INDEX v1.12→v1.13; BC-2.01.001 v1.0.4→v1.0.5; BC-2.01.002 v1.0.5→v1.0.6; BC-2.01.003 v1.0.4→v1.0.5; BC-2.01.004 v1.0.3→v1.0.4; BC-2.01.005 v1.0.4→v1.0.5; BC-2.01.006 v1.0.4→v1.0.5; BC-2.01.007 v1.0.5→v1.0.6; BC-2.01.008 v1.0.6→v1.0.7; BC-2.01.009 v1.0.6→v1.0.7; BC-2.01.010 v1.0.4→v1.0.5; BC-2.03.001 v1.0.4→v1.0.5; BC-2.03.002 v1.0.3→v1.0.4; BC-2.03.003 v1.0.2→v1.0.3; BC-2.03.004 v1.0.3→v1.0.4. SS-02 BCs unchanged.
+- Discipline codified: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.

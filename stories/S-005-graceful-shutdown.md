@@ -19,8 +19,8 @@ behavioral_contracts: [BC-2.01.004]
 verification_properties: [VP-004]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.004.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.004.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-004-graceful-shutdown.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}

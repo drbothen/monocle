@@ -19,7 +19,7 @@ behavioral_contracts: [BC-2.02.006, BC-2.02.007, BC-2.02.008]
 verification_properties: [VP-016, VP-017, VP-018]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.006.md, version: "1.0.3"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.007.md, version: "1.0.3"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.008.md, version: "1.0.3"}

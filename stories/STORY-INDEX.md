@@ -1,14 +1,14 @@
 ---
 document_type: story-index
 level: L4
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
@@ -83,7 +83,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.01.008 | Auth Token Wire Format | S-006, S-009 | S-006: AC-014 (token generation); S-009: AC-001..AC-003 | YES |
 | BC-2.01.009 | Auth Header Validation | S-009 | AC-004..AC-010 | YES |
 | BC-2.01.010 | Lock File Contract Version Field | S-006 | AC-010..AC-011 | YES |
-| BC-2.02.001 | ABI Version in /status | S-010, S-003 | S-010: AC-003, AC-005; S-003: AC-007b | YES |
+| BC-2.02.001 | ABI Version in /status | S-010, S-003 | S-010: AC-003, AC-005; S-003: AC-005 | YES |
 | BC-2.02.002 | ABI Version Constant at Crate Root | S-010 | AC-001..AC-005 | YES |
 | BC-2.02.003 | Non-Exhaustive Enum Policy | S-011, S-014 | S-011: AC-001..AC-004; S-014: AC-003b (HookEvent #[non_exhaustive]) | YES |
 | BC-2.02.004 | FactoryAdapter Trait Definition | S-012 | AC-001..AC-004 | YES |
@@ -207,6 +207,13 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - Wave 2 points: 41 (was 49); Wave 3 points: 34 (was 26)
 - All 17 stories retrofitted with inputs:/input-hash:/traces_to: per SE-22 v2
 
+## §Trace v1.1
+
+**Phase 2 r01 remediation burst** (2026-05-19):
+- See narrative in §Trace v1.0 above (inline in the initial burst trace).
+
+## §Trace v1.2
+
 **Phase 2 r02 remediation burst** (2026-05-19):
 - F-PHASE2-R02-01 (CRITICAL): S-005 AC-004 exit codes rewritten to BC-2.01.004 PC-8 canonical 5-code taxonomy; fabricated codes 3/4 removed; AC-005 rewritten for INV-1 hard timeout; AC-006 renamed for INV-3 dual-accept
 - F-PHASE2-R02-02 (CRITICAL): EPIC-01 stories table — S-005 Depends-On corrected to S-001,S-002; S-009 Wave corrected to Wave 3 with full depends-on list
@@ -227,3 +234,22 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - F-PHASE2-R02-09 (MEDIUM): sprint-state.yaml S-015 notes updated to include BC-2.03.001
 - BC-2.03.001 BC Coverage Table updated: now S-014, S-015 (S-015 AC-010 covers PC-5 DI-006)
 - Version-bump rule applied: stories with AC/depends_on/blocks/behavioral_contracts changes → minor bump (+0.1)
+
+## §Trace v1.3
+
+**Phase 2 r03/r04/r05 remediation bursts** (2026-05-19):
+- F-PHASE2-R03-01 (CRITICAL): BC-2.01.002 BC Coverage Table corrected — BC-2.01.002 AC range updated to AC-001..AC-008 (AC-008 /status during drain added); S-009 BC-2.01.009 range confirmed AC-004..AC-010b.
+- F-PHASE2-R04: BC Coverage Table S-009 and S-003 row updates consistent with dep-graph r04 anchor corrections.
+- F-PHASE2-R05: AC-007b orphan introduced via r05 burst (BC-2.02.001 row S-003: AC-007b) — see v1.4 for resolution.
+- BC-2.03.001 BC Coverage Table confirmed: S-014 AC-001..AC-007; S-015 AC-010 (PC-6 DI-006).
+- Version-bump rule applied consistently.
+
+## §Trace v1.4
+
+**Phase 2 r06 remediation burst** (2026-05-19):
+- F-PHASE2-R06-01 (CRITICAL): BC-2.01.009 PC-2/PC-3 alias/canonical mirror swap fixed — S-009 AC-005 trace header corrected to PC-3 (alias); AC-006 trace header corrected to PC-2 (canonical); S-003 AC-002 trace header corrected to PC-3 (alias).
+- F-PHASE2-R06-02 (HIGH): BC-2.02.001 BC Coverage Table row corrected — S-003: AC-007b (orphan) → S-003: AC-005 (matches body consolidation note; AC-005 subsumes AC-007b intent per S-003 body line 90-93).
+- F-PHASE2-R06-03 (MEDIUM): STORY-INDEX version bumped v1.3→v1.4; sprint-state.yaml and holdout-scenarios.md traces_to_full/traces_to updated to v1.4.
+- F-PHASE2-R06-04 (MEDIUM): §Trace audit-trail completed — v1.1/v1.2/v1.3/v1.4 entries added for monotonically-ascending version coverage.
+- SE-22 v2 cascade: BC-INDEX v1.12→v1.13 propagated to all 19 corpus consumers. BC-2.01.001..010 and BC-2.03.001..004 version pins propagated to all story frontmatter inputs entries.
+- Discipline codified: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.
