@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T16:00:00Z
+timestamp: 2026-05-19T12:09:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -86,7 +86,7 @@ and skip the file gracefully (no crash).
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the lock file forward-compatibility contract that enables future daemon versions and tooling to safely interoperate with the hook ingestion subsystem |
 | L2 Domain Invariants | DI-002 (the lock file must contain a valid port and auth token before any hook endpoint accepts connections — this BC defines the JSON schema of that lock file, including the contract_version first-key convention that allows readers to validate the format before consuming port and authToken); DI-004 (all public wire types must carry a version discriminant as their first field — contract_version as the first key in the lock file JSON directly implements DI-004 for the lock file wire format, paralleling the format_version convention in BC-2.01.007) |
 | Architecture Module | monocle-runtime (daemon binary, lock file) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging |
 | Test File | `monocle-runtime/tests/lock_file_contract.rs` |
 | Test Name | `test_BC_LOCK_001_contract_version_first_key` |
 | Stories | S-TBD (filled by story-writer) |
@@ -110,6 +110,16 @@ S-TBD — Implement lock file JSON schema with contract_version first-key (fille
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-010-lock-file-contract-version.md` — VP-010 lock file contract version integration tests
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:09:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:09:00Z > prior 2026-05-18T16:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.1
 

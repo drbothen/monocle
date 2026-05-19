@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:02:00Z
+timestamp: 2026-05-19T12:02:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -83,7 +83,7 @@ error body. This bounds worst-case daemon memory exposure per connection to
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the memory-protection contract for hook event ingestion, bounding daemon memory exposure during hook processing |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — the 256 KiB body size limit protects the ring write path from runaway memory pressure that would cause ring write failures or OOM before the ack is issued); DI-002 (applies to authenticated hook endpoints — the body limit is enforced on the authenticated router, which is the router governed by the DI-002 lock-file auth contract) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Body Size Limit |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Body Size Limit |
 | Brief Section | §Success Criteria (hook receiver body size limit row — target `{"error":"payload_too_large","limit_bytes":262144}`) |
 | Test File | `monocle-runtime/tests/body_size_limit.rs` |
 | Test Name | `test_BC_DAEMON_003_body_size_limit_413_on_excess` |
@@ -106,6 +106,16 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-003-body-size-limit.md` — VP-003 body size limit integration tests
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:02:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Body Size Limit`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Body Size Limit`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:02:00Z > prior 2026-05-18T05:02:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.2
 

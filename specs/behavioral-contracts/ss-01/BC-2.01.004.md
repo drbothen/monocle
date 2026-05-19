@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:03:00Z
+timestamp: 2026-05-19T12:03:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -99,7 +99,7 @@ admin forced-stop (2), and startup failure (1) per POSIX 128+N conventions.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the graceful shutdown protocol which is core daemon lifecycle management for the hook ingestion subsystem |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — the 10-second drain window ensures in-flight hook POSTs complete their ring writes before the daemon acknowledges shutdown; Postcondition 6 explicitly flushes the ring buffer during drain before exit) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — graceful shutdown protocol on SIGTERM/SIGINT) |
 | Test File | `monocle-runtime/tests/graceful_shutdown.rs`; `monocle-runtime/tests/daemon_lifecycle.rs` |
 | Test Name | `test_BC_DAEMON_004_graceful_shutdown_503_on_new_requests`; `test_BC_DAEMON_004_exit_codes_posix_distinct` |
@@ -125,6 +125,16 @@ S-TBD — Implement graceful shutdown drain with POSIX exit codes (filled by sto
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-004-graceful-shutdown.md` — VP-004 shutdown drain integration tests
+
+## §Trace v1.0.4
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:03:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:03:00Z > prior 2026-05-18T05:03:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.1
 

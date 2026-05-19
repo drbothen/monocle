@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:05:00Z
+timestamp: 2026-05-19T12:05:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -100,7 +100,7 @@ timestamps to enable reliable automated parsing.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs crash recovery state continuity which is part of daemon lifecycle management for the hook ingestion subsystem |
 | L2 Domain Invariants | DI-002 (the lock file must be present before hook endpoints accept connections — this BC governs the recovery path when the lock file is absent or stale: the new daemon creates a fresh lock file before accepting any connections; the recovery file does not substitute for the lock file) |
 | Architecture Module | monocle-runtime (daemon binary) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Crash Recovery |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Crash Recovery |
 | Test File | `monocle-runtime/tests/crash_recovery.rs` |
 | Test Name | `test_BC_DAEMON_006_crash_recovery_checkpoint_offer_and_cleanup` |
 | Stories | S-TBD (filled by story-writer) |
@@ -123,6 +123,16 @@ S-TBD — Implement crash recovery checkpoint offer/cleanup protocol (filled by 
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-006-crash-recovery-checkpoint.md` — VP-006 crash recovery checkpoint integration tests
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:05:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Crash Recovery`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Crash Recovery`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:05:00Z > prior 2026-05-18T05:05:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.2
 

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-19T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -81,7 +81,7 @@ crash recovery does not block liveness checks.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the liveness probe that is a prerequisite for hook ingestion and daemon lifecycle management |
 | L2 Domain Invariants | DI-002 (lock file must be present before hook endpoints accept connections — healthz is on the unauthenticated router explicitly to remain reachable even when the lock file and auth token are being rotated, making it the observable complement of the DI-002 lock-file lifecycle) |
 | Architecture Module | monocle-runtime (daemon binary, HTTP server) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Health and Status Endpoints §GET /healthz |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Health and Status Endpoints §GET /healthz |
 | Brief Section | §Scope (hook receiver hardening sub-bullet — `/healthz` liveness endpoint) |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-DAEMON-001 |
@@ -102,6 +102,16 @@ S-TBD — Implement daemon HTTP server with healthz endpoint (filled by story-wr
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-001-healthz-endpoint.md` — VP-001 healthz endpoint integration test
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:00:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Health and Status Endpoints §GET /healthz`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Health and Status Endpoints §GET /healthz`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:00:00Z > prior 2026-05-18T05:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.2
 

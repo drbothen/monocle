@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:20:00Z
+timestamp: 2026-05-19T12:12:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -82,7 +82,7 @@ harnesses).
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the no-silent-fallback error behavior of the ClaudeCodeModule adapter component of CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — metadata() and enrich() are non-detect methods, but DI-006's no-I/O and no-state-mutation constraints on the EngineModule interface require that error paths also be stateless: HomeUnresolvable fails fast without side effects, no retry state, no mutable shared variables); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — HomeUnresolvable prevents incorrect path substitution that could cause metadata() or enrich() to write to an unintended location; by failing fast with a diagnostic, no file write is attempted with a potentially wrong path) |
-| Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
+| Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.20 §Behavioral Contracts BC-ENGINE-002-ERR |
 | CLAUDE.md SOUL | SOUL #4 (no silent fallback for unresolvable platform home directory) |
 | Dev Dependency | `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime` `[dev-dependencies]` |
@@ -116,6 +116,16 @@ S-TBD — Implement HomeUnresolvable error path with temp-env test isolation (fi
   - DI-006 mapping: metadata() and enrich() fail-fast error returns are themselves stateless — no retry state, no mutable side effects. The Err(HomeUnresolvable) return is a pure computation on the absence of env vars. DI-007 mapping: the fail-fast prevents a potential write to a wrong path — no file write ever occurs on this error path, directly upholding DI-007.
 - F-R105-9 (SE-17c-d body-scope grep): Architecture Source row references `§Behavioral Contracts BC-ENGINE-002-ERR` — this is a section heading reference within SS-engine-module.md, not a stale BC cross-reference. 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T12:00:00Z (v1.0).
+
+## §Trace v1.0.3
+
+**GAP-PHASE2-R06-3 closure — Architecture Module pin updated per ARCH-INDEX v1.0.11 cascade (trait/impl split clarification)** (2026-05-19T12:12:00Z):
+- GAP-PHASE2-R06-3: ARCH-INDEX v1.0.10 → v1.0.11 corrected SS-03 split (EngineModule trait in monocle-core, ClaudeCodeModule implementation in monocle-runtime). BC Architecture Module cell still read pre-correction text `monocle-core (EngineModule trait, ClaudeCodeModule adapter)`.
+  - SE-17f BEFORE: `monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03`
+  - SE-17f AFTER: `monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:12:00Z > prior 2026-05-18T05:20:00Z (v1.0.2). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.2
 

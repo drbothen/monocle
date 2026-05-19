@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:07:00Z
+timestamp: 2026-05-19T12:07:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -84,7 +84,7 @@ timing oracle attacks.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth token wire format that secures authenticated access to the hook ingestion daemon's endpoints |
 | L2 Domain Invariants | DI-003 (the auth token must be written to the lock file after the port is bound — never before — Postcondition 1 states the lock file authToken is written as part of the start sequence after the listener is bound, per BC-2.01.005 Postcondition 3 which this BC specifies the content for); DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC defines the wire format monocle-v1:<64-hex> that is the canonical prefix, which DI-005 requires to be enforced on all auth checks) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Test File | `monocle-runtime/tests/auth_token_lifecycle.rs` |
@@ -110,6 +110,16 @@ S-TBD — Implement auth token generation and lock file writing with OsRng (fill
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-008-auth-token-wire-format.md` — VP-008 auth token wire format integration tests
+
+## §Trace v1.0.7
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:07:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:07:00Z > prior 2026-05-18T05:07:00Z (v1.0.6). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.2
 

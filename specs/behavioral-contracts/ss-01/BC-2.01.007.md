@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-19T10:00:00Z
+timestamp: 2026-05-19T12:06:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -86,7 +86,7 @@ the format version before deserializing remaining fields.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the JSONL ring format versioning for hook event records, which is the persistence layer of hook ingestion |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before any acknowledgement is returned — this BC defines the JSONL ring write format and enforces that every serialized HookEventRecord is committed to the ring on each hook POST, which is the write operation that DI-001 requires complete before ack); DI-004 (all public wire types must carry a version discriminant as their first field — format_version as the first key in every JSONL record directly implements DI-004 for the ring wire format, enabling Phase 2 readers to detect format evolution without parsing the full record) |
 | Architecture Module | monocle-runtime (ring buffer) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Drain |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Drain |
 | Forward Compat Contract | FC-01 (JSONL ring format versioning) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — JSONL ring format versioning) |
 | Test File | `monocle-runtime/tests/jsonl_ring.rs` |
@@ -112,6 +112,16 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
+
+## §Trace v1.0.6
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:06:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Drain`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Drain`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:06:00Z > prior 2026-05-19T10:00:00Z (v1.0.5). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.5
 

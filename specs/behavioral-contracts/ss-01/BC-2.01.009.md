@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:08:00Z
+timestamp: 2026-05-19T12:08:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -104,7 +104,7 @@ any Phase 1 response.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per ARCH-INDEX §Capability traceability — this BC governs the auth header validation logic protecting all authenticated hook ingestion daemon endpoints |
 | L2 Domain Invariants | DI-005 (a monocle daemon must not accept an auth token that does not begin with the canonical prefix for its version — this BC is the primary enforcer of DI-005: all value-present failures including wrong prefix, bad format, and secret mismatch return HTTP 401; the two-body taxonomy ensures the monocle-v1: prefix requirement is enforced without leaking structural information to attackers) |
 | Architecture Module | monocle-runtime (daemon binary, auth) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
+| Architecture Source | SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision) |
 | Forward Compat Contract | FC-06 (versioned auth token prefix) |
 | Brief Section | §Scope (forward-compatibility contracts sub-bullet — versioned auth token prefix) |
 | Architect Adjudication | commit 2db408f — disposition (c) mixed approach; `invalid_auth_token_format` retired |
@@ -130,6 +130,16 @@ S-TBD — Implement auth middleware with two-body error taxonomy (filled by stor
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-009-auth-header-validation.md` — VP-009 auth header validation integration tests
+
+## §Trace v1.0.7
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:08:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; ADR-0005 v1.0.2 (dual-accept auth header decision)`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:08:00Z > prior 2026-05-18T05:08:00Z (v1.0.6). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.0.1
 

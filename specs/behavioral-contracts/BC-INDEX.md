@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.12"
+version: "1.13"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-19T00:00:00Z
+timestamp: 2026-05-19T12:14:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -271,7 +271,7 @@ When a BC Traceability `Architecture Source` cell references **multiple** archit
 
 | SS Document | Canonical Version |
 |-------------|-------------------|
-| SS-daemon-lifecycle.md | v1.0.32 |
+| SS-daemon-lifecycle.md | v1.0.33 |
 | SS-forward-compatibility.md | v1.2.19 |
 | SS-engine-module.md | v1.1.20 |
 | SS-core-types-and-abi.md | v1.2.13 |
@@ -435,3 +435,40 @@ SE-16d monotonicity PASS: 2026-05-18T22:00:00Z > prior 2026-05-18T16:00:00Z (v1.
 BC-INDEX titles unchanged: BC-2.03.001 H1 "EngineModule Trait Definition" is stable. All 22 BC H1 headings unchanged.
 SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs.
 SE-16d monotonicity PASS: 2026-05-19T00:00:00Z > prior 2026-05-18T22:00:00Z (v1.11). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.13
+
+**GAP-PHASE2-R06-1 + GAP-PHASE2-R06-2 + GAP-PHASE2-R06-3 + F-PHASE2-R06-07 closure — BC ledger Architecture Source/Module pointer cascade (architect commit `2d43127`)** (2026-05-19T12:14:00Z):
+
+**GAP-PHASE2-R06-2 — Canonical SS version table: SS-daemon-lifecycle.md v1.0.32 → v1.0.33:**
+- Architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added) and ARCH-INDEX v1.0.10 → v1.0.11 (SS-03 trait/impl split clarification). Neither cascade propagated to the BC ledger.
+  - SE-17f BEFORE: `| SS-daemon-lifecycle.md | v1.0.32 |`
+  - SE-17f AFTER: `| SS-daemon-lifecycle.md | v1.0.33 |`
+- All other Canonical SS version table rows verified current: SS-forward-compatibility.md v1.2.19 PASS; SS-engine-module.md v1.1.20 PASS; SS-core-types-and-abi.md v1.2.13 PASS; SS-deps-pin-manifest.md v1.1.17 PASS; SS-conventions-anti-patterns.md v1.29.5 PASS.
+
+**BC version bumps in this dispatch:**
+
+SS-01 (SS-daemon-lifecycle.md v1.0.32 → v1.0.33 — GAP-PHASE2-R06-1 + F-PHASE2-R06-07 closure):
+- BC-2.01.001: v1.0.4 → v1.0.5
+- BC-2.01.002: v1.0.5 → v1.0.6
+- BC-2.01.003: v1.0.4 → v1.0.5
+- BC-2.01.004: v1.0.3 → v1.0.4
+- BC-2.01.005: v1.0.4 → v1.0.5
+- BC-2.01.006: v1.0.4 → v1.0.5
+- BC-2.01.007: v1.0.5 → v1.0.6
+- BC-2.01.008: v1.0.6 → v1.0.7
+- BC-2.01.009: v1.0.6 → v1.0.7
+- BC-2.01.010: v1.0.4 → v1.0.5
+
+SS-03 (Architecture Module cell trait/impl split — GAP-PHASE2-R06-3 closure):
+- BC-2.03.001: v1.0.4 → v1.0.5
+- BC-2.03.002: v1.0.3 → v1.0.4
+- BC-2.03.003: v1.0.2 → v1.0.3
+- BC-2.03.004: v1.0.3 → v1.0.4
+
+**Pointer-only sweep.** No behavioral content changes (no new PCs/INVs/ECs). No story files touched. No STATE.md touched. No architect-domain files touched.
+
+SE-17g META audit: `grep -r "SS-daemon-lifecycle.md v1\.0\.32" .factory/specs/behavioral-contracts/` in Architecture Source cells → 0 normative matches (all 10 SS-01 BCs updated). `grep -r "ClaudeCodeModule adapter" .factory/specs/behavioral-contracts/ss-03/` → 0 normative matches (all 4 SS-03 BCs updated).
+
+BC-INDEX titles unchanged: all 22 BC H1 headings stable. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-19T12:14:00Z > prior 2026-05-19T00:00:00Z (v1.12). ARITHMETICALLY TRUE: PASS.
