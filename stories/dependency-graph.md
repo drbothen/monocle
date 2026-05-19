@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -206,16 +206,16 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.003 | 2 | postcondition | AC-002 | S-004 |
 | BC-2.01.003 | 3 | postcondition | AC-003 | S-004 |
 | BC-2.01.003 | 1 | invariant | AC-004 | S-004 |
-| BC-2.01.004 | 1 | postcondition | AC-001 | S-005 |
-| BC-2.01.004 | 2 | postcondition | AC-002 | S-005 |
-| BC-2.01.004 | 3 | postcondition | AC-003 | S-005 |
+| BC-2.01.004 | 1 | postcondition (AppMode → ShuttingDown on any shutdown trigger) | AC-001 (SIGTERM trigger), AC-002 (POST /shutdown trigger; both transition AppMode per PC-1) | S-005 |
+| BC-2.01.004 | 2 | postcondition (new hook POSTs → HTTP 503 Retry-After:10 + daemon_shutting_down body) | AC-003 | S-005 |
+| BC-2.01.004 | 3 | postcondition (/healthz returns HTTP 503 during drain — cross-covered via BC-2.01.001 PC-2 delegation) | AC-002 (S-002 /healthz 503 on ShuttingDown; BC-2.01.004 PC-3 cross-covered by BC-2.01.001 PC-2 which S-002 AC-002 implements) | S-002 |
 | BC-2.01.004 | 4 | postcondition | AC-008 (S-003 /status serves during drain per BC-2.01.002 PC-3) | S-003 |
 | BC-2.01.004 | 5 | postcondition | AC-001 (10s drain wait enforced in AC-001 sequence) | S-005 |
 | BC-2.01.004 | 6 | postcondition | -- | GAP-P2-005 (ring flush on --persistent-events; Phase 3 flag not in Phase 1 scope) |
 | BC-2.01.004 | 7 | postcondition | AC-005 (drain completes → lock+sock removed per lifecycle) | S-005 |
 | BC-2.01.004 | 8 | postcondition | AC-004 (POSIX exit code taxonomy) | S-005 |
 | BC-2.01.004 | 1 | invariant | AC-005 (hard timeout invariant) | S-005 |
-| BC-2.01.004 | 3 | invariant | AC-006 (dual-accept /shutdown auth) | S-005 |
+| BC-2.01.004 | 3 | invariant (POST /shutdown dual-accept auth — both headers accepted per ADR-0005) | AC-006 (401 on missing/invalid auth) + AC-002 (HTTP 200 on valid dual-accept auth = the success path that INV-3 gates) | S-005 |
 | BC-2.01.005 | 1 | postcondition | AC-003 (live PID conflict → exit 1) | S-006 |
 | BC-2.01.005 | 2 | postcondition | AC-004 (stale PID → cleanup) | S-006 |
 | BC-2.01.005 | 3 | postcondition | AC-001 (atomic write via tempfile::persist, mode 0o600) | S-006 |
@@ -243,9 +243,9 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.006 | 3 | invariant (60s from start) | AC-003 | S-007 |
 | BC-2.01.007 | 1 | postcondition (format_version first key) | AC-001 | S-008 |
 | BC-2.01.007 | 2 | postcondition (value always 1 in Phase 1) | AC-001 | S-008 |
-| BC-2.01.007 | 3 | postcondition (RING_FORMAT_VERSION const) | AC-006 (HookEventRecord::new sets const) | S-008 |
-| BC-2.01.007 | 4 | postcondition (field declaration order) | AC-002b | S-008 |
-| BC-2.01.007 | 5 | postcondition (#[non_exhaustive] + new()) | AC-006 | S-008 |
+| BC-2.01.007 | 3 | postcondition (RING_FORMAT_VERSION const is single source of truth; all call sites pass const not literal) | AC-003 (const usage in HookEventRecord::new; hybrid ring architecture references RING_FORMAT_VERSION per BC-2.01.007 PC-2+PC-3) | S-008 |
+| BC-2.01.007 | 4 | postcondition (field declaration order — 7 fields in canonical order) | AC-002b | S-008 |
+| BC-2.01.007 | 5 | postcondition (#[non_exhaustive] + pub fn new() constructor; format_version set to RING_FORMAT_VERSION inside constructor) | AC-006 | S-008 |
 | BC-2.01.007 | 1 | invariant (serde_json struct-field order) | AC-001, AC-002b | S-008 |
 | BC-2.01.004 | EC-049 | edge case (ring flush failure during drain) | AC-005 | S-008 |
 | BC-2.01.008 | 1 | postcondition (OsRng 64-char hex token in lock file) | AC-001 | S-009 |
@@ -254,11 +254,17 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.008 | 4 | postcondition (dual-accept on hook endpoints) | AC-010a | S-009 |
 | BC-2.01.008 | 3 | invariant (OsRng mandatory, not thread_rng) | AC-008 (constant_time_eq on both paths = AC-001 OsRng) | S-009 |
 | BC-2.01.002 | 1 sub-bullet «hook_endpoints» | postcondition (5-endpoint list, S-009 registers them) | AC-010b | S-009 |
-| BC-2.01.009 | 1 | postcondition | AC-004 | S-009 |
-| BC-2.01.009 | 2 | postcondition | AC-005 | S-009 |
-| BC-2.01.009 | 3 | postcondition | AC-006 | S-009 |
-| BC-2.01.009 | 4 | postcondition | AC-007 | S-009 |
-| BC-2.01.009 | 7 | invariant | AC-008 | S-009 |
+| BC-2.01.009 | 1 | postcondition (both headers absent → 401 missing_auth_token) | AC-004 | S-009 |
+| BC-2.01.009 | 2 | postcondition (alias path value-present failure → 401 invalid_auth_token + WARN) | AC-005 | S-009 |
+| BC-2.01.009 | 3 | postcondition (canonical path value-present failure → 401 invalid_auth_token) | AC-006 | S-009 |
+| BC-2.01.009 | 4 | postcondition (both present → canonical wins; alias ignored; no WARN) | AC-007 | S-009 |
+| BC-2.01.009 | 1 | invariant (two-body taxonomy is complete; no third body; invalid_auth_token_format retired) | AC-004 (missing body only) + AC-006 (invalid body only) together prove only 2 bodies exist | S-009 |
+| BC-2.01.009 | 2 | invariant (value-present failures on both paths return same body intentionally — no format/path distinction in response) | AC-005 (alias fail → invalid_auth_token), AC-006 (canonical fail → invalid_auth_token) | S-009 |
+| BC-2.01.009 | 3 | invariant (missing = client-config error, not auth attempt; actionable for debugging) | AC-004 (missing → E-AUTH-001 developer-friendly diagnostic) | S-009 |
+| BC-2.01.009 | 4 | invariant (AuthError::Missing for dual-absence; AuthError::Invalid for all value-present failures on either path) | AC-004 (Missing variant) + AC-005 + AC-006 (Invalid variant on alias and canonical paths) | S-009 |
+| BC-2.01.009 | 5 | invariant (canonical priority immutable: X-Monocle-Authorization always takes precedence when both present) | AC-007 (both-present → canonical wins) | S-009 |
+| BC-2.01.009 | 6 | invariant (WARN deprecation log emitted once per alias-path authentication attempt regardless of outcome) | AC-005 (alias path: WARN on match and mismatch both) | S-009 |
+| BC-2.01.009 | 7 | invariant (constant-time comparison on BOTH canonical and alias paths) | AC-008 | S-009 |
 | BC-2.01.010 | 1 | postcondition | AC-010 | S-006 |
 | BC-2.01.010 | 2 | postcondition | AC-010 | S-006 |
 | BC-2.01.010 | 3 | postcondition | AC-010 | S-006 |
@@ -284,11 +290,13 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.02.004 | 2 | postcondition | AC-002 | S-012 |
 | BC-2.02.004 | 3 | postcondition | AC-003 | S-012 |
 | BC-2.02.004 | 4 | postcondition | AC-004 | S-012 |
-| BC-2.02.005 | 1 | postcondition (VsddFactoryAdapter::new constructor + detect) | AC-005 | S-012 |
-| BC-2.02.005 | 2 | postcondition (self-referential detection against monocle repo) | AC-006 | S-012 |
-| BC-2.02.005 | 2 | invariant (display_name returns "VSDD Factory") | AC-010 | S-012 |
-| BC-2.02.005 | 3 | invariant (subscribe() returns empty stream; Phase 1 stub) | AC-007, AC-009 | S-012 |
-| BC-2.02.005 | 4 | postcondition (parse_frontmatter_field guards + error handling) | AC-005, AC-008 | S-012 |
+| BC-2.02.005 | 1 | postcondition (VsddFactoryAdapter::new(workspace_root) → Self; derives state_file; no validation at construction) | AC-011 | S-012 |
+| BC-2.02.005 | 2 | postcondition (self-referential detection against monocle repo — detect() finds .factory/STATE.md with document_type: pipeline-state) | AC-006 | S-012 |
+| BC-2.02.005 | 1 | invariant (detection criterion: document_type: pipeline-state in YAML frontmatter; no other field required) | AC-005 (detect() returns Some only on criterion match) | S-012 |
+| BC-2.02.005 | 2 | invariant (display_name() returns "VSDD Factory" — exact string) | AC-010 | S-012 |
+| BC-2.02.005 | 3 | invariant (subscribe() returns Ok(Box::pin(futures::stream::empty())) in Phase 1) | AC-007, AC-009 | S-012 |
+| BC-2.02.005 | 3 | postcondition (absent optional fields → None; never "unknown" placeholder; absent current_cycle: → cycle: None; absent §Session Resume Checkpoint → convergence: None) | AC-012 | S-012 |
+| BC-2.02.005 | 4 | postcondition (parse_frontmatter_field 4 guards: skip continuation, empty→None EC-061, flow-list→None EC-023, block-scalar→None; quoted scalars unquoted EC-022) | AC-013 | S-012 |
 | BC-2.02.006 | 1 | postcondition | AC-001, AC-006 | S-013 |
 | BC-2.02.007 | 1 | postcondition | AC-002 | S-013 |
 | BC-2.02.007 | 2 | postcondition | AC-003 | S-013 |
@@ -395,6 +403,52 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - F-PHASE2-R02-07: BC Clause Coverage Matrix swept — BC-2.01.004 PC-4→PC-8 corrected (exit code taxonomy mislabeled); BC-2.01.004 added PC-4/PC-5/PC-7 clause rows; BC-2.01.005 postcondition rows reordered to monotonically ascending clause numbers; BC-2.02.005 postcondition 3→invariant 3; BC-2.03.001 INV-2(DI-006)→PC-5(DI-006) (correct locus per §Traceability DI-006 mapping)
 - GAP-P2-005 added: BC-2.01.004 PC-6 (--persistent-events ring flush) deferred to Phase 3 CLI surface (justified)
 - Gap Register counts updated: L1 gaps now 1 (GAP-P2-005 justified), L2 gaps 0, L3 gaps 4
+
+## §Trace v1.3
+
+**Phase 2 r04 remediation** (2026-05-19):
+
+**F-PHASE2-R04-01 (CRITICAL) + F-PHASE2-R04-02 (HIGH) — BC-2.01.004 PC-1/PC-2/PC-3 anchor correction:**
+- PC-1 row: added AC-002 (POST /shutdown also transitions AppMode per PC-1; AC-001 = SIGTERM trigger; both are PC-1 clauses)
+- PC-2 row: corrected to AC-003 (hook 503 + Retry-After:10 = PC-2 verbatim). Was AC-002 (wrong — S-005 AC-002 now describes POST /shutdown HTTP 200 triggering PC-1, not hook 503).
+- PC-3 row: corrected to S-002 AC-002 via BC-2.01.001 PC-2 delegation. Was AC-003 (wrong — S-005 AC-003 now correctly covers PC-2 hook 503). PC-3 is /healthz 503 during drain — cross-covered by BC-2.01.001 PC-2 which S-002 AC-002 implements. No duplicate AC added to S-005 per finding instruction.
+- INV-3 row: added AC-002 as success-path citation alongside AC-006 (AC-002 = HTTP 200 on valid dual-accept auth; AC-006 = 401 on missing/invalid auth; both together fully cover INV-3 dual-accept requirement).
+
+**GAP-PHASE2-R04-1 (LOW) — BC-2.01.007 PC-3 clause anchor corrected:**
+- PC-3 row: corrected to AC-003 (hybrid ring architecture description references RING_FORMAT_VERSION const per PC-3). Was AC-006 (wrong — AC-006 is anchored to PC-5 #[non_exhaustive]+new() in S-008). PC-5 row retains AC-006 (correct). Duplicate phantom PC-3/AC-006 double-mapping eliminated.
+
+**GAP-PHASE2-R04-2 (LOW) — BC-2.01.009 INV-1..INV-6 rows added:**
+- INV-1 (two-body taxonomy complete): AC-004 + AC-006
+- INV-2 (same body for all value-present failures): AC-005 + AC-006
+- INV-3 (missing = developer-actionable error): AC-004
+- INV-4 (AuthError enum internal variants): AC-004 + AC-005 + AC-006
+- INV-5 (canonical priority immutable): AC-007
+- INV-6 (WARN log per alias attempt): AC-005
+- INV-7 (constant-time on both paths): AC-008 (pre-existing)
+
+**F-PHASE2-R04-03 (HIGH) + F-PHASE2-R04-04 (HIGH) + F-PHASE2-R04-05 (MEDIUM) — BC-2.02.005 PC-1/PC-3/PC-4 rows corrected:**
+- PC-1 row: corrected to AC-011 (new() constructor with workspace_root derivation). Was AC-005 (wrong — AC-005 covers detect(), which is PC-2 per BC body). INV-1 row added for detect() criterion using AC-005.
+- PC-3 row: added with AC-012 (new AC for absent-optional → None contract).
+- PC-4 row: corrected to AC-013 (new AC for 4 parser guards). Was AC-005 + AC-008 (wrong per BC body; AC-005 = detect(); AC-008 = error handling, which is PC-4 error path but not the guards themselves).
+
+**Full sibling sweep confirmation (all 22 BCs re-derived from BC bodies):**
+- BC-2.01.001: PC-1..PC-4, INV-1..INV-2 — rows already correct; no changes
+- BC-2.01.002: PC-1 sub-bullets, PC-2, PC-3 — rows already correct per r03 (F-PHASE2-R03-01 closure)
+- BC-2.01.003: PC-1..PC-4, INV-1..INV-3 — rows already correct; no changes
+- BC-2.01.004: corrected above (PC-1/PC-2/PC-3/INV-3)
+- BC-2.01.005: PC-1..PC-8, INV-1..INV-3, PRE-2a..PRE-2d — rows already correct; no changes
+- BC-2.01.006: PC-1..PC-7, INV-1..INV-3 — rows already correct; no changes
+- BC-2.01.007: PC-1..PC-5, INV-1 corrected (PC-3 → AC-003); no other changes
+- BC-2.01.008: PC-1..PC-4, INV-3 — rows already correct; no changes
+- BC-2.01.009: PC-1..PC-4, INV-1..INV-7 added (6 new INV rows + 1 pre-existing)
+- BC-2.01.010: PC-1..PC-4, EC-010..EC-012 — rows already correct; no changes
+- BC-2.02.001: PC-1..PC-3, INV-1 — rows already correct; no changes
+- BC-2.02.002: PC-1..PC-3, INV-1 — rows already correct; no changes
+- BC-2.02.003: PC-1..PC-4, INV-1..INV-2 — rows already correct; no changes
+- BC-2.02.004: PC-1..PC-4 — rows already correct; no changes
+- BC-2.02.005: corrected above (PC-1/PC-3/PC-4; INV-1 added; INV-2/INV-3 retained)
+- BC-2.02.006..BC-2.02.008: rows already correct; no changes
+- BC-2.03.001..BC-2.03.004: rows already correct; no changes
 
 ## §Trace v1.2
 

@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-012
 epic_id: EPIC-02
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -108,18 +108,69 @@ used in TUI display and in the self-referential detection test vector (BC-2.02.0
 verbatim: `display_name() returns "VSDD Factory"`). Unit test asserts:
 `assert_eq!(adapter.display_name(), "VSDD Factory");`
 
+### AC-011 (traces to BC-2.02.005 postcondition 1 — VsddFactoryAdapter::new() public constructor)
+`VsddFactoryAdapter::new(workspace_root: PathBuf) -> Self` is a public constructor. It derives
+`state_file = workspace_root.join(".factory").join("STATE.md")` and performs NO validation at
+construction time — validation is deferred to `detect()` and `read_state()`.
+(BC-2.02.005 PC-1 verbatim: "No validation is performed at construction time.")
+Cite: SS-core-types-and-abi.md line 590 (`pub fn new(workspace_root: PathBuf) -> Self`).
+
+Unit test vectors:
+- Construct with absolute path `/tmp/my-project` → `state_file = /tmp/my-project/.factory/STATE.md`
+  (no error; no filesystem access at construction time)
+- Construct with relative path `some/path` → `state_file = some/path/.factory/STATE.md`
+  (no error; no filesystem access at construction time)
+- Construct with empty `PathBuf::new()` → `state_file = .factory/STATE.md`
+  (no error; empty path treated as current directory join)
+- All three constructions succeed without `Result<>` — constructor is infallible; `detect()`
+  is where the path is validated against the filesystem
+
+### AC-012 (traces to BC-2.02.005 postcondition 3 — absent optional fields → None, NOT "unknown")
+`VsddFactoryAdapter::read_state()` returns `cycle: None` when `current_cycle:` is absent from
+STATE.md YAML frontmatter; `convergence: None` when the §Session Resume Checkpoint section is
+absent. Consumers MUST NOT receive the string `"unknown"` as a placeholder for absent optional
+fields (BC-2.02.005 PC-3 verbatim).
+
+Test vectors:
+- STATE.md YAML frontmatter without `current_cycle:` key → `Some(FactoryState { cycle: None, ... })`
+- STATE.md YAML frontmatter with `current_cycle: cycle-001` → `Some(FactoryState { cycle: Some("cycle-001".into()), ... })`
+- STATE.md without §Session Resume Checkpoint section → `Some(FactoryState { convergence: None, ... })`
+- Negative: `cycle: Some("unknown".into())` MUST NOT occur — `parse_frontmatter_field` returns
+  `None` for absent keys; `"unknown"` is never injected as a default by the adapter
+
+### AC-013 (traces to BC-2.02.005 postcondition 4 — parse_frontmatter_field guards)
+`parse_frontmatter_field` and `parse_frontmatter_extra_fields` apply these four guards in order:
+1. Skip continuation lines (lines beginning with whitespace) — multi-line YAML values are not parsed
+2. Return `None` for empty values (key present but value empty string) — EC-061
+3. Return `None` for flow-style list values beginning with `[` — EC-023
+4. Return `None` for block scalar markers beginning with `|` or `>`
+
+Additionally: YAML quoted scalars are unquoted — surrounding single and double quotes are stripped
+from values before returning `Some(value)` — EC-022.
+
+Unit test vectors for each guard:
+- `current_cycle:   cycle-001` (with leading-space continuation value) → guard 1: continuation
+  line skipped; `cycle: None` (BC-2.02.005 PC-4 guard 1)
+- `current_cycle: ` (empty value, trailing space) → guard 2: `None` (EC-061)
+- `current_cycle: ""` (empty quoted value) → guard 2 after unquoting: `None` (EC-061)
+- `blocking_issues: []` → guard 3: `None` (EC-023; `blocking_issues` populated by Phase 3 body parsing)
+- `some_field: |` (block scalar marker) → guard 4: `None`
+- `some_field: > folded` (folded block scalar) → guard 4: `None`
+- `awaiting: "round 18 validation chain"` → unquoted to `Some("round 18 validation chain")` (EC-022)
+- `awaiting: 'single-quoted'` → unquoted to `Some("single-quoted")` (EC-022 covers single quotes too)
+
 ## Token Budget Estimate
 
 | Component | Tokens |
 |-----------|--------|
-| This story spec | ~1,000 |
+| This story spec | ~1,400 |
 | BC-2.02.004.md | ~700 |
-| BC-2.02.005.md | ~700 |
+| BC-2.02.005.md (PC-1, PC-3, PC-4 — 3 new ACs) | ~700 |
 | VP-014 + VP-015 files | ~1,000 |
 | SS-core-types-and-abi.md (FactoryAdapter section, ~100 lines) | ~1,500 |
 | serde_yaml_ng + futures crate patterns | ~400 |
-| Test files | ~900 |
-| **Total estimate** | **~6,200** |
+| Test files | ~1,200 |
+| **Total estimate** | **~6,900** |
 
 ## Tasks
 

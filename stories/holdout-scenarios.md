@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: ops
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -66,20 +66,6 @@ Then sends GET /status with the OLD token. Must return 401.
 **Expected:** /healthz always returns 200; /status with stale token returns 401.
 **NOT in any story AC:** Tests the interplay of lock file rotation + healthz unauthenticated + auth staleness.
 
-### HS-W3-006: Concurrent Body Limit + Auth Failure
-
-**Wave:** 3
-**Source BC:** BC-2.01.003, BC-2.01.009
-**Scenario:** Evaluator sends a POST to `/hooks/pre-tool-use` with:
-- Body size = 262,145 bytes (exceeds 256 KiB)
-- Auth header = missing
-**Expected:** HTTP 413 (body limit checked BEFORE auth token extraction).
-NOT HTTP 401 (auth failure takes lower precedence than body limit middleware).
-**NOT in any story AC:** Story ACs test body limit and auth separately; this tests their ordering.
-**Wave rationale:** Moved from Wave 2 to Wave 3 per F-PHASE2-R03-10. BC-2.01.009 is
-implemented by S-009 (Wave 3); this scenario requires both S-004 (body limit, Wave 2) AND
-S-009 (auth middleware, Wave 3) to be complete. Cannot be evaluated until Wave 3.
-
 ### HS-W2-003: /status Response ABI Version Matches Compile-Time Const
 
 **Wave:** 2
@@ -117,6 +103,20 @@ match arm. All existing match-arms that cover `HookType` should NOT require upda
 ---
 
 ## Wave 3 Holdout Scenarios
+
+### HS-W3-006: Concurrent Body Limit + Auth Failure
+
+**Wave:** 3
+**Source BC:** BC-2.01.003, BC-2.01.009
+**Scenario:** Evaluator sends a POST to `/hooks/pre-tool-use` with:
+- Body size = 262,145 bytes (exceeds 256 KiB)
+- Auth header = missing
+**Expected:** HTTP 413 (body limit checked BEFORE auth token extraction).
+NOT HTTP 401 (auth failure takes lower precedence than body limit middleware).
+**NOT in any story AC:** Story ACs test body limit and auth separately; this tests their ordering.
+**Wave rationale:** BC-2.01.009 is implemented by S-009 (Wave 3); this scenario requires both
+S-004 (body limit, Wave 2) AND S-009 (auth middleware, Wave 3) to be complete. Cannot be
+evaluated until Wave 3.
 
 ### HS-W3-001: Crash Recovery Checkpoint Survives Daemon Restart (Correct Schema + Filename)
 
@@ -184,8 +184,8 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 |------|------------------|----------------|
 | Wave 1 | HS-W1-001, HS-W1-002 | S-DTU-001, S-001 |
 | Wave 2 | HS-W2-001, HS-W2-003, HS-W2-004, HS-W2-005 | S-002, S-003, S-004, S-006, S-010, S-011, S-014 |
-| Wave 3 | HS-W3-001..HS-W3-005, HS-W3-006 | S-007, S-008, S-009, S-012, S-015 |
+| Wave 3 | HS-W3-001, HS-W3-002, HS-W3-003, HS-W3-004, HS-W3-005, HS-W3-006 | S-007, S-008, S-009, S-012, S-015 |
 
 **Total holdout scenarios: 12**
 **Coverage: ≥1 scenario per wave (required); ≥1 scenario per BC grouping (enforced above)**
-**Note (F-PHASE2-R03-10):** HS-W2-002 renamed to HS-W3-006 and moved to Wave 3. S-009 (BC-2.01.009) is Wave 3; the Concurrent Body Limit + Auth Failure scenario cannot be evaluated without S-009's auth middleware being complete.
+**Note (F-PHASE2-R03-10, F-PHASE2-R04-06):** HS-W3-006 (originally HS-W2-002) is a Wave 3 scenario. S-009 (BC-2.01.009) is Wave 3; the Concurrent Body Limit + Auth Failure scenario cannot be evaluated without S-009's auth middleware being complete. Corrected to Wave 3 H2 section per F-PHASE2-R04-06.

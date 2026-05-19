@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-005
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -49,11 +49,16 @@ When the daemon receives `SIGTERM`, it:
 3. Drains in-flight requests for up to 10 seconds
 4. Exits with code 0 if drain completes within 10 seconds
 
-### AC-002 (traces to BC-2.01.004 postcondition 2 — POST /shutdown endpoint)
-`POST /shutdown` with a valid auth header returns HTTP 200 and initiates the same
-graceful shutdown sequence as SIGTERM. Response body: `{"status":"shutting_down"}`.
+### AC-002 (traces to BC-2.01.004 postcondition 1 + invariant 3 — POST /shutdown AppMode transition + dual-accept auth)
+`POST /shutdown` with a valid auth header (canonical `X-Monocle-Authorization: monocle-v1:<64-hex>`
+OR alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>` per ADR-0005 dual-accept protocol)
+returns HTTP 200 with body `{"status":"shutting_down"}` and immediately transitions AppMode to
+`ShuttingDown` — the same state transition as a SIGTERM signal per BC-2.01.004 PC-1.
+INV-3: unauthenticated `POST /shutdown` (neither header present) returns HTTP 401
+`{"error":"missing_auth_token"}`; value-present auth failures return HTTP 401
+`{"error":"invalid_auth_token"}` per BC-2.01.009 PC-1/PC-2/PC-3.
 
-### AC-003 (traces to BC-2.01.004 postcondition 3 — hook 503 during shutdown)
+### AC-003 (traces to BC-2.01.004 postcondition 2 — hook 503 during shutdown)
 Hook POST requests arriving after `ShuttingDown` is set return HTTP 503 with body
 `{"error":"daemon_shutting_down"}` and header `Retry-After: 10`.
 
