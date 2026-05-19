@@ -20,7 +20,10 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- Phase: `pre-phase-1-final-gate-post-fix-burst` (round-4 consistency audit complete; adversary fresh pass pending).
+- **Phase: `phase-1-GATE-PASS-WITH-RESIDUAL`** — declared 2026-05-19 per D-155. Phase 1 spec set CONVERGED-WITH-DOCUMENTED-RESIDUAL after R88-R122 adversarial trajectory (~35 rounds; ~24+ findings closed this session R15-R20). Substantive content (22 BCs, NFRs, ECs, ADRs, manifest) PASS. Forward consumer-ledger cascades CLOSED via SE-22 v2. Residual catalog: see `.factory/tech-debt-register.md` TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE (PRD ↔ VP-INDEX bidirectional pin oscillation; D-047 strict exemption scoped to this class only; resolution pending vsdd-factory spec-kit-mcp upstream rc.19+).
+- Canonical artifact versions: PRD `v1.26.15` (R20A); VP-INDEX `v1.16` (R20B); BC-INDEX `v1.11`; L2-INDEX `v1.0.11`; CAP-001 `v1.6`; ARCH-INDEX `v1.0.10`; SS-conventions `v1.29.5`.
+- 39 codified disciplines in force (SE-22 sibling-sweep added R17-pre/D-142; SE-23 SM defensive-sweep prohibition added R18-pre/D-146; SE-22 v2 consumer-ledger codified R19-pre as 39th/D-149).
+- Next: Phase 2 story decomposition (dispatch `vsdd-factory:story-writer`).
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
