@@ -25,10 +25,10 @@ estimated_days: 2
 # S-009 moved to Wave 3; S-001 blocks are only stories that directly depend on workspace init).
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
@@ -93,7 +93,7 @@ test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md §Phase 1 Pin Ma
 |-----------|--------|
 | This story spec | ~900 |
 | SS-deps-pin-manifest.md v1.1.17 (full) | ~9,976 |
-| SS-daemon-lifecycle.md v1.0.32 (workspace scope section) | ~2,000 |
+| SS-daemon-lifecycle.md v1.0.33 (workspace scope section) | ~2,000 |
 | SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 |
 | Cargo.toml template + toolchain files | ~500 |
 | Test scaffolding | ~300 |

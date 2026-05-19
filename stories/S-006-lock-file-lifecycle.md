@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-006
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -15,22 +15,23 @@ depends_on: [S-001]
 blocks: [S-007, S-008]
 target_module: monocle-runtime
 subsystems: [SS-01]
-behavioral_contracts: [BC-2.01.005, BC-2.01.010]
+behavioral_contracts: [BC-2.01.005, BC-2.01.008, BC-2.01.010]
 verification_properties: [VP-005, VP-010]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.005.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-005-lock-file-lifecycle.md, version: "1.0.16"}
   - {path: .factory/specs/verification-properties/vp-010-lock-file-contract-version.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
-traces_to: "Implements BC-2.01.005 (Lock File Atomic Lifecycle), BC-2.01.010 (Lock File Contract Version Field); verifies VP-005, VP-010; covers EC-010, EC-011, EC-012, EC-051, EC-052, EC-053, EC-057, EC-058, EC-059, EC-060; addresses NFR-009, NFR-012, E-LOCK-001, E-LOCK-002, E-LOCK-003, E-DAEMON-004."
+traces_to: "Implements BC-2.01.005 (Lock File Atomic Lifecycle), BC-2.01.008 (Auth Token Generation — PC-1 cryptographic token written at lock file creation), BC-2.01.010 (Lock File Contract Version Field); verifies VP-005, VP-010; covers EC-010, EC-011, EC-012, EC-051, EC-052, EC-053, EC-057, EC-058, EC-059, EC-060; addresses NFR-009, NFR-012, E-LOCK-001, E-LOCK-002, E-LOCK-003, E-DAEMON-004."
 ---
 
 # S-006: Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)
@@ -170,7 +171,7 @@ Auth token is generated and written in this story — NO placeholder value is us
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Start Sequence and §Hard Shutdown:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Start Sequence and §Hard Shutdown:
 - `tempfile::persist` is MANDATORY for atomic write — `std::fs::write` is FORBIDDEN
 - `DirBuilder::new().mode(0o700)` is MANDATORY — `std::fs::create_dir_all` is FORBIDDEN (umask issue)
 - `nix::sys::signal::kill(Pid::from_raw(pid), None)` for pid-liveness — NOT `libc::kill` directly

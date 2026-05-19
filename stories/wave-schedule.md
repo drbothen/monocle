@@ -7,10 +7,10 @@ producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
 input-hash: "[live-state]"
 traces_to: "dependency-graph.md; implements wave execution schedule derived from topological sort"

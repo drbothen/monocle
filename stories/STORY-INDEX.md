@@ -1,17 +1,17 @@
 ---
 document_type: story-index
 level: L4
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
@@ -80,18 +80,18 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-011 | YES |
 | BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-006 | YES |
 | BC-2.01.007 | JSONL Ring Format Version | S-008 | AC-001..AC-007 | YES |
-| BC-2.01.008 | Auth Token Wire Format | S-009 | AC-001..AC-003 | YES |
+| BC-2.01.008 | Auth Token Wire Format | S-006, S-009 | S-006: AC-014 (token generation); S-009: AC-001..AC-003 | YES |
 | BC-2.01.009 | Auth Header Validation | S-009 | AC-004..AC-010 | YES |
 | BC-2.01.010 | Lock File Contract Version Field | S-006 | AC-010..AC-011 | YES |
 | BC-2.02.001 | ABI Version in /status | S-010, S-003 | S-010: AC-003, AC-005; S-003: AC-007b | YES |
 | BC-2.02.002 | ABI Version Constant at Crate Root | S-010 | AC-001..AC-005 | YES |
-| BC-2.02.003 | Non-Exhaustive Enum Policy | S-011 | AC-001..AC-004 | YES |
+| BC-2.02.003 | Non-Exhaustive Enum Policy | S-011, S-014 | S-011: AC-001..AC-004; S-014: AC-003b (HookEvent #[non_exhaustive]) | YES |
 | BC-2.02.004 | FactoryAdapter Trait Definition | S-012 | AC-001..AC-004 | YES |
-| BC-2.02.005 | VsddFactoryAdapter Implementation | S-012 | AC-005..AC-009 | YES |
+| BC-2.02.005 | VsddFactoryAdapter Implementation | S-012 | AC-005..AC-013 | YES |
 | BC-2.02.006 | HookEnvelope Proto Field Number | S-013 | AC-001, AC-006 | YES |
 | BC-2.02.007 | HookEnvelope Rust Struct schema_version | S-013 | AC-002..AC-003 | YES |
 | BC-2.02.008 | Phase 4 schema_version Validation | S-013 | AC-004..AC-005 | YES |
-| BC-2.03.001 | EngineModule Trait Definition | S-014, S-015 | S-014: AC-001..AC-007; S-015: AC-010 (PC-5 DI-006) | YES |
+| BC-2.03.001 | EngineModule Trait Definition | S-014, S-015 | S-014: AC-001..AC-007; S-015: AC-010 (PC-6 DI-006) | YES |
 | BC-2.03.002 | ClaudeCodeModule (Strict-Basename Detect) | S-015 | AC-001..AC-003, AC-009 | YES |
 | BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-004..AC-005 | YES |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-006..AC-008 | YES |

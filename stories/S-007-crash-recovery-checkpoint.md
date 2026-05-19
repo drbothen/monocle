@@ -19,13 +19,13 @@ behavioral_contracts: [BC-2.01.006]
 verification_properties: [VP-006]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.006.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-006-crash-recovery-checkpoint.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.01.006 (Crash Recovery Checkpoint); verifies VP-006; covers EC-054, EC-055, EC-056."
@@ -102,7 +102,7 @@ is shown to the TUI.
 | This story spec | ~1,200 |
 | BC-2.01.006.md (1.0.4) | ~700 |
 | VP-006 file (1.0.14) | ~500 |
-| SS-daemon-lifecycle.md v1.0.32 (crash recovery + drain sections) | ~1,500 |
+| SS-daemon-lifecycle.md v1.0.33 (crash recovery + drain sections) | ~1,500 |
 | S-006 lock.rs interface reference | ~300 |
 | Test file (crash_recovery.rs) | ~900 |
 | **Total estimate** | **~5,100** |
@@ -153,7 +153,7 @@ for the `recovery_available` message dispatch.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Crash Recovery and §Drain:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Crash Recovery and §Drain:
 - Recovery checkpoint file: `<runtime_dir>/monocle.recovery.json` (NOT `monocle-crash.json`)
 - Written DURING drain sequence step 5, BEFORE lock file removal — NOT on panic hook
 - SIGKILL leaves no recovery file — no mitigation required; this is explicitly acceptable

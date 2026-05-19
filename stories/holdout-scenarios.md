@@ -8,10 +8,10 @@ timestamp: 2026-05-19T04:30:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
@@ -160,7 +160,7 @@ Then modifies STATE.md frontmatter to use `document_type: something-else` and ru
 ### HS-W3-004: HomeUnresolvable Does Not Leak Partial Engine State
 
 **Wave:** 3
-**Source BC:** BC-2.03.003, BC-2.03.001 postcondition 5
+**Source BC:** BC-2.03.003, BC-2.03.001 postcondition 6
 **Scenario:** Evaluator unsets all 4 home-env vars. Calls `ClaudeCodeModule::metadata()`.
 Verifies: (1) returns `Err(HomeUnresolvable)`; (2) no partial `EngineMetadata` struct is
 returned or logged (no half-initialized state); (3) E-ENG-001 log message exactly matches spec.

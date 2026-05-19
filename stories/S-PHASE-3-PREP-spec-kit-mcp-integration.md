@@ -25,8 +25,8 @@ external_dependency: vsdd-factory-spec-kit-mcp-rc19plus
 # Source: tech-debt-register.md TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE §Future Attachment.
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
 input-hash: "[live-state]"
 traces_to: "Pre-Phase-3 prep: spec-kit-mcp rc.19+ mechanical sweep. Anchored to TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE §Future Attachment."

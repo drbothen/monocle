@@ -25,7 +25,7 @@ dtu_service: claude-code-hook-protocol
 inputs:
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
 input-hash: "[live-state]"
 traces_to: "Implements DTU clone for Claude Code hook protocol (dtu-assessment.md §Clone Development Approach); addresses NFR-011 (DTU fidelity ≥0.95)."

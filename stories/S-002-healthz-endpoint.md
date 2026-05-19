@@ -19,13 +19,13 @@ behavioral_contracts: [BC-2.01.001]
 verification_properties: [VP-001]
 estimated_days: 1
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.001.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-001-healthz-endpoint.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.01.001 (Healthz Endpoint); verifies VP-001; covers EC-040, EC-041; addresses E-DAEMON-003."
@@ -105,7 +105,7 @@ Do NOT use `DefaultBodyLimit::max()` on the unauthenticated router.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Health and Status Endpoints:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Health and Status Endpoints:
 - `/healthz` is registered on the UNAUTHENTICATED router
 - `DefaultBodyLimit` is applied to the authenticated router ONLY
 - `AppMode` enum drives the 200/503 split — use `Arc<RwLock<AppMode>>`

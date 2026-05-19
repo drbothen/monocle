@@ -19,13 +19,13 @@ behavioral_contracts: [BC-2.01.003]
 verification_properties: [VP-003]
 estimated_days: 1
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.003.md, version: "1.0.4"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-003-body-size-limit.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
 input-hash: "[live-state]"
@@ -93,7 +93,7 @@ for testing purposes even before S-009 delivers the full hook handlers.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Body Size Limit:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Body Size Limit:
 - `DefaultBodyLimit::max(262_144)` applied to authenticated router ONLY
 - `DefaultBodyLimit` is NOT applied to the unauthenticated router
 

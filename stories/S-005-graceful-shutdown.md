@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-005
 epic_id: EPIC-01
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,13 +19,13 @@ behavioral_contracts: [BC-2.01.004]
 verification_properties: [VP-004]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.004.md, version: "1.0.3"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-004-graceful-shutdown.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.01.004 (Graceful Shutdown); verifies VP-004; addresses E-DAEMON-002."
@@ -86,9 +86,7 @@ Cite: BC-2.01.004 PC-8; BC-2.01.004 INV-4; SS-daemon-lifecycle.md line 795 + lin
 The 10-second drain window is a HARD timeout per BC-2.01.004 INV-1. If the drain has not
 completed within 10 seconds, the daemon forces immediate shutdown regardless of remaining
 in-flight requests. A second SIGTERM during drain also triggers immediate hard shutdown
-without waiting for in-flight requests to complete. The panic hook logs structured panic
-info to stderr and then propagates Rust's default panic exit behavior — no custom exit
-code is assigned.
+without waiting for in-flight requests to complete.
 
 ### AC-006 (traces to BC-2.01.004 invariant 3 — dual-accept auth on /shutdown)
 The shutdown endpoint requires authentication (canonical OR alias per ADR-0005) and
@@ -126,6 +124,13 @@ Auth middleware validates both headers per ADR-0005 v1.0.2 dual-accept protocol.
   - Hook POST during shutdown → 503 + Retry-After: 10
   - POST /shutdown no auth → 401
 
+## Implementation Notes
+
+Panic-hook structured logging to stderr is implementation-recommended for diagnostic
+visibility but is NOT a behavioral acceptance criterion in this story. No BC clause
+mandates panic-hook installation; daemon process death from panic propagates Rust's
+default panic exit behavior without setting a custom exit code.
+
 ## Previous Story Intelligence
 
 S-002 (Wave 2): `AppMode` enum and `Arc<RwLock<AppMode>>` established in `state.rs`.
@@ -134,7 +139,7 @@ Reuse the auth middleware from S-003 for `POST /shutdown` — no new auth code n
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Graceful Shutdown and §Hard Shutdown:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Graceful Shutdown and §Hard Shutdown:
 - 10-second drain timeout is hard-coded (not configurable in Phase 1)
 - `AppMode::ShuttingDown` gates the 503 response on hook handlers
 - Drain timeout (10s per INV-1) triggers force-shutdown via in-process abort; drain-timeout-forced-shutdown exits 0 (SIGTERM originator, graceful attempt completed within deadline). Exit code 130 = second SIGINT during drain; exit code 143 = second SIGTERM during drain; exit code 2 = second authenticated `POST /shutdown` during drain (admin forced-stop, NOT drain timeout). BC-2.01.004 PC-8 + INV-1 + INV-4.

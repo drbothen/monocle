@@ -19,12 +19,12 @@ behavioral_contracts: [BC-2.02.003]
 verification_properties: [VP-013]
 estimated_days: 1
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.003.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-013-non-exhaustive-enum-policy.md, version: "1.0.12"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
   - {path: .factory/specs/architecture/SS-permissions-phase1.md, version: "1.5.2"}

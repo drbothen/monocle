@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-008
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,13 +19,13 @@ behavioral_contracts: [BC-2.01.007]
 verification_properties: [VP-007]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
-  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.007.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.007.md, version: "1.0.5"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-007-ring-format-version.md, version: "1.0.14"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
@@ -62,7 +62,7 @@ explicit-null-field semantically. VP-007 verifies that `HookEventRecord::new(ses
 (BC-2.01.007 PC-4). This declaration order ensures `format_version` serializes first via
 `serde_json`'s struct-field-order preservation (BC-2.01.007 invariant 1).
 
-### AC-003 (traces to SS-daemon-lifecycle.md v1.0.32 §JSONL Ring Buffer — ring is hybrid RAM + async flush; BC-2.01.007 postcondition 2 + postcondition 3 for RING_FORMAT_VERSION const usage)
+### AC-003 (traces to SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer — ring is hybrid RAM + async flush; BC-2.01.007 postcondition 2 + postcondition 3 for RING_FORMAT_VERSION const usage)
 The ring buffer maintains records in RAM up to the configured capacity limit. Async flush
 to `<runtime_dir>/monocle-ring.jsonl` is triggered when the RAM buffer reaches 80%
 capacity or on a 5-second timer (whichever comes first). The hybrid-RAM-async-flush
@@ -89,14 +89,18 @@ robustness concern, not the flush-failure writer concern. Re-anchored from EC-00
 struct literal construction outside `monocle-runtime::ring` is forbidden by `#[non_exhaustive]`
 (Rust E0639). The `format_version` field is set to `RING_FORMAT_VERSION` inside the constructor.
 
-### AC-007 (traces to PRD v1.26.15 §OQ-06 + BC-2.01.007 edge case EC-002 — ring rotation policy)
-The JSONL ring file is rotated when it exceeds the configured size limit (default 50 MB per
-PRD OQ-06, max 100 MB × 5 files). Old records beyond the limit are discarded (newest-wins
-rotation). No ring file exceeds 2× the size limit at any point. EC-002 (very large tool_input
-up to 256 KiB) requires the rotation logic to handle lines approaching 256 KiB without
-truncation. (BC-2.01.007 INV-1 governs `serde_json` struct-field-order preservation — it is
-NOT the ring rotation clause. The rotation policy is specified in PRD OQ-06; no dedicated
-BC clause exists. Re-anchored from BC-2.01.007 INV-1 → PRD OQ-06 + BC-2.01.007 EC-002.)
+### AC-007 (traces to SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy + BC-2.01.007 v1.0.5 edge case EC-002 — ring rotation policy)
+The JSONL ring file is rotated when it exceeds the configured size limit. Parameters per
+SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy (canonical source of truth):
+default rotation threshold is 50 MB per active file (soft trigger, checked on each flush batch);
+absolute per-file cap is 100 MB (hard upper bound, rotation mandatory); retention is 5 rotated
+files; total disk ceiling is 500 MB rotated + up to 100 MB active = 600 MB worst-case;
+newest-wins rotation (oldest deleted first). No ring file exceeds 100 MB at any point.
+EC-002 (very large tool_input up to 256 KiB, per BC-2.01.007 v1.0.5 EC-002 re-anchored to
+this rotation policy section) requires the rotation logic to handle lines approaching 256 KiB
+without truncation. (BC-2.01.007 INV-1 governs `serde_json` struct-field-order preservation —
+it is NOT the ring rotation clause. The canonical rotation policy lives in
+SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer Rotation Policy, not in PRD §OQ-06.)
 
 ## Token Budget Estimate
 
@@ -148,7 +152,7 @@ green before S-009 can be dispatched.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §JSONL Ring Buffer:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §JSONL Ring Buffer:
 - `format_version` MUST be first key — use ordered struct, not HashMap
 - Async flush — NEVER synchronous disk write on hook response path
 - Tee invariant (DI-001): ring write before HTTP 200

@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-014
 epic_id: EPIC-03
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -15,17 +15,17 @@ depends_on: [S-010]
 blocks: [S-015]
 target_module: monocle-core
 subsystems: [SS-03]
-behavioral_contracts: [BC-2.03.001]
+behavioral_contracts: [BC-2.02.003, BC-2.03.001]
 verification_properties: [VP-019]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.003.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-019-engine-module-trait.md, version: "1.0.13"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-engine-module.md, version: "1.1.20"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}

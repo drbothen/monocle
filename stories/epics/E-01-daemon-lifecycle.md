@@ -45,5 +45,5 @@ subsystem and makes the daemon capable of receiving hook events from Claude Code
 ## Architecture Scope
 
 - Implementing module: `monocle-runtime` (daemon binary, HTTP server, ring buffer, lock file, auth)
-- Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.32
+- Architecture source: `architecture/SS-daemon-lifecycle.md` v1.0.33
 - Architecture dependency: `architecture/SS-core-types-and-abi.md` v1.2.13 (HookEnvelope types)

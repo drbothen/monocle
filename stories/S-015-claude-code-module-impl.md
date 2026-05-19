@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-015
 epic_id: EPIC-03
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -13,14 +13,14 @@ tdd_mode: strict
 priority: P0
 depends_on: [S-014]
 blocks: []
-target_module: monocle-core
+target_module: monocle-runtime
 subsystems: [SS-03]
 behavioral_contracts: [BC-2.03.001, BC-2.03.002, BC-2.03.003, BC-2.03.004]
 verification_properties: [VP-020, VP-021, VP-022]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.002.md, version: "1.0.3"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.003.md, version: "1.0.2"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.004.md, version: "1.0.3"}
@@ -29,12 +29,12 @@ inputs:
   - {path: .factory/specs/verification-properties/vp-021-home-unresolvable-error.md, version: "1.0.13"}
   - {path: .factory/specs/verification-properties/vp-022-claude-code-module-inherent-methods.md, version: "1.0.12"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-engine-module.md, version: "1.1.20"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
-traces_to: "Implements BC-2.03.001 (EngineModule trait — DI-006 postcondition 5), BC-2.03.002 (ClaudeCodeModule strict-basename detect), BC-2.03.003 (HomeUnresolvable error contract), BC-2.03.004 (ClaudeCodeModule inherent methods); verifies VP-020, VP-021, VP-022; covers EC-029, EC-030, EC-031, EC-032, EC-033, EC-034, EC-035, EC-038, EC-039; addresses NFR per SS-engine-module.md."
+traces_to: "Implements BC-2.03.001 (EngineModule trait — DI-006 postcondition 6), BC-2.03.002 (ClaudeCodeModule strict-basename detect), BC-2.03.003 (HomeUnresolvable error contract), BC-2.03.004 (ClaudeCodeModule inherent methods); verifies VP-020, VP-021, VP-022; covers EC-029, EC-030, EC-031, EC-032, EC-033, EC-034, EC-035, EC-038, EC-039; addresses NFR per SS-engine-module.md."
 ---
 
 # S-015: ClaudeCodeModule Implementation
@@ -108,23 +108,25 @@ async method. Phase 1 implementation is `todo!()` — the signature is binding
 (BC-2.03.004 PC-3; EC-039: `preflight()` called in Phase 1 returns `todo!()` panic;
 Phase 1 story replaces the stub with `which claude` + `claude --version` checks in Phase 3).
 
-### AC-010 (traces to BC-2.03.001 postcondition 5 + EC-031 — detect() is I/O-free; on_hook() fail-open)
-`ClaudeCodeModule::detect()` performs no I/O (no file reads, no process list queries,
-no network calls) — DI-006 enforcement (BC-2.03.001 postcondition 5: "metadata() and
-enrich() MUST NOT substitute a default path ... detect() has no I/O and no shared state
-mutation"). `on_hook()` returns `HookResponse::new(HookDecision::Allow)` for unrecognized
-`HookEvent` variants (wildcard arm; fail-open per EC-031; BC-2.03.001 EC-031).
+### AC-010 (traces to BC-2.03.001 postcondition 6 + EC-031 — detect() is I/O-free; on_hook() fail-open)
+`ClaudeCodeModule::detect()` performs no I/O — DI-006 enforcement. BC-2.03.001 postcondition 6
+(verbatim): "`detect()` MUST NOT perform any I/O, environment lookups, file reads, or shared
+state mutation. `detect()` is a pure function of its arguments. It MUST be safe to call from
+any thread, repeatedly, without side effects." `on_hook()` returns
+`HookResponse::new(HookDecision::Allow)` for unrecognized `HookEvent` variants (wildcard arm;
+fail-open per EC-031; BC-2.03.001 EC-031).
 
 Note: BC-2.03.001 invariant 2 covers the `HookEvent` type location in `hook_events.rs`
-(a separate concern). DI-006 enforcement for detect() I/O-free is specifically
-postcondition 5, which is the authoritative clause per BC-2.03.001 §Traceability DI-006 mapping.
+(a separate concern). DI-006 enforcement for detect() I/O-free is specifically postcondition 6
+(added in BC-2.03.001 v1.0.4), which is the authoritative clause per BC-2.03.001 §Traceability
+DI-006 mapping.
 
 ## Token Budget Estimate
 
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,400 |
-| BC-2.03.001.md (1.0.3) | ~700 |
+| BC-2.03.001.md (1.0.4) | ~700 |
 | BC-2.03.002.md (1.0.3) | ~700 |
 | BC-2.03.003.md (1.0.2) | ~600 |
 | BC-2.03.004.md (1.0.3) | ~700 |
@@ -138,7 +140,7 @@ Well within 20% of 200k context window. No split required.
 
 ## Tasks
 
-- [ ] Create `monocle-core/src/engine/claude.rs` with `ClaudeCodeModule` struct
+- [ ] Create `monocle-runtime/src/engine/claude_code.rs` with `ClaudeCodeModule` struct
   - `pub struct ClaudeCodeModule { hook_base_url: String }` (construction infallible per AC-003)
   - `pub fn new(hook_base_url: String) -> Self`
 - [ ] Implement `EngineModule` for `ClaudeCodeModule` with `#[async_trait]`
@@ -151,14 +153,14 @@ Well within 20% of 200k context window. No split required.
   - `hook_paths() -> HashMap<HookType, String>` — 5 entries per AC-007 (NOT `Vec<PathBuf>`)
   - `spawn(args: SpawnArgs) -> Result<SessionHandle, SpawnError>` — `todo!()` stub per AC-008
   - `preflight() -> Result<EngineVersion, PreflightError>` — `todo!()` stub per AC-009
-- [ ] Integration tests `monocle-core/tests/engine_module_claude.rs` (VP-020):
+- [ ] Integration tests `monocle-runtime/tests/engine_module_claude.rs` (VP-020):
   - `detect()` true for `exe_path = /usr/local/bin/claude` (basename = "claude") [EC-033]
   - `detect()` true for `exe_path = /usr/local/bin/claude.js` (Node.js wrapper) [EC-034]
   - `detect()` false for `exe_path = /usr/local/bin/claude-squad` [EC-035]
   - `detect()` false for `exe_path = /usr/local/bin/claudio`
   - `detect()` false for `exe_path = None, cmdline: ["claude"]` [EC-032]
   - `detect()` false for `exe_path = /usr/local/bin/Claude` (case-sensitive)
-- [ ] Integration tests `monocle-core/tests/engine_module_home_unresolvable.rs` (VP-021):
+- [ ] Integration tests `monocle-runtime/tests/engine_module_home_unresolvable.rs` (VP-021):
   - Use `temp-env 0.3` `async_with_vars` to unset HOME, USERPROFILE, HOMEPATH, XDG_HOME
   - Call `metadata()` → `Err(HomeUnresolvable)`
   - Call `enrich(proc)` → `Err(HomeUnresolvable)`
@@ -180,7 +182,7 @@ From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: Claude
 - `hook_paths()` returns `HashMap<HookType, String>` (NOT `Vec<PathBuf>`) per SS-engine-module.md §Struct-level inherent operations
 - `spawn(args: SpawnArgs) -> Result<SessionHandle, SpawnError>` — binding signature; Phase 1 body is `todo!()`
 - `preflight() -> Result<EngineVersion, PreflightError>` — binding signature; Phase 1 body is `todo!()`
-- `detect()` is I/O-free — DI-006 (BC-2.03.001 postcondition 5)
+- `detect()` is I/O-free — DI-006 (BC-2.03.001 postcondition 6)
 - `HomeUnresolvable` fail-fast — no default path substitution (BC-2.03.001 PC-5; BC-2.03.003 PC-1)
 - `on_hook()` wildcard arm for unknown HookEvent variants → fail-open: `HookResponse::new(HookDecision::Allow)` (BC-2.03.001 EC-031)
 
@@ -202,12 +204,11 @@ From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: Claude
 ## File Structure Requirements
 
 Files to create:
-- `monocle-core/src/engine/claude.rs` — `ClaudeCodeModule` implementation
-- `monocle-core/src/engine/mod.rs` — module declaration + re-exports
-- `monocle-core/tests/engine_module_claude.rs` — detect() integration tests
-- `monocle-core/tests/engine_module_home_unresolvable.rs` — VP-021 tests
+- `monocle-runtime/src/engine/claude_code.rs` — `ClaudeCodeModule` implementation
+- `monocle-runtime/src/engine/mod.rs` — module declaration + re-exports
+- `monocle-runtime/tests/engine_module_claude.rs` — detect() integration tests
+- `monocle-runtime/tests/engine_module_home_unresolvable.rs` — VP-021 tests
 
 Files to modify:
-- `monocle-core/src/lib.rs` — engine module is now `pub mod engine` (sub-module)
-- `monocle-core/Cargo.toml` — add `which = "^4"` (or latest stable)
-- `monocle-runtime/Cargo.toml` — confirm `temp-env` dev-dependency present
+- `monocle-runtime/src/lib.rs` — engine module is now `pub mod engine` (sub-module)
+- `monocle-runtime/Cargo.toml` — add `which = "^4"` (or latest stable); confirm `temp-env` dev-dependency present

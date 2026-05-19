@@ -19,14 +19,14 @@ behavioral_contracts: [BC-2.02.001, BC-2.02.002]
 verification_properties: [VP-011, VP-012]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.001.md, version: "1.0.2"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.002.md, version: "1.0.3"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-011-abi-version-status-endpoint.md, version: "1.0.13"}
   - {path: .factory/specs/verification-properties/vp-012-abi-version-crate-root.md, version: "1.0.13"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/architecture/SS-forward-compatibility.md, version: "1.2.19"}
 input-hash: "[live-state]"

@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-003
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,15 +19,15 @@ behavioral_contracts: [BC-2.01.002, BC-2.02.001]
 verification_properties: [VP-002, VP-011]
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.002.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.001.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-002-status-endpoint.md, version: "1.0.14"}
   - {path: .factory/specs/verification-properties/vp-011-abi-version-status-endpoint.md, version: "1.0.13"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
@@ -61,10 +61,10 @@ returns HTTP 200 with the same body as canonical auth. A WARN log
 returns HTTP 401 with body `{"error":"missing_auth_token"}` (E-AUTH-001).
 (BC-2.01.009 PC-1 is the canonical auth-failure locus; BC-2.01.002 PC-2 delegates to BC-2.01.009.)
 
-### AC-004 (traces to BC-2.01.009 postcondition 3 — invalid token → 401 E-AUTH-002)
+### AC-004 (traces to BC-2.01.009 postcondition 2 — invalid token → 401 E-AUTH-002)
 `GET /status` with an invalid auth token (format correct but token value wrong)
 returns HTTP 401 with body `{"error":"invalid_auth_token"}` (E-AUTH-002).
-(BC-2.01.009 PC-3 governs canonical-path wrong-value behavior.)
+(BC-2.01.009 PC-2 governs canonical-path wrong-value behavior; PC-3 covers alias-path value-present failure (distinct concern).)
 
 ### AC-005 (traces to BC-2.02.001 postcondition 1 — ABI version field; BC-2.01.002 postcondition 1 sub-bullet «abi_version»)
 The `abi_version` field in the `/status` response equals `monocle_core::MONOCLE_ABI_VERSION`
@@ -130,7 +130,7 @@ Build auth middleware as a tower `Layer` or axum `middleware::from_fn`.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Status Endpoint:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Status Endpoint:
 - `last_hook_ts` uses `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` — mandatory millisecond precision
 - `abi_version` reads from `monocle_core::MONOCLE_ABI_VERSION` (const import)
 - Auth middleware applies `DefaultBodyLimit::max(262144)` to the authenticated router only

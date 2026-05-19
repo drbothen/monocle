@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-009
 epic_id: EPIC-01
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -19,15 +19,15 @@ behavioral_contracts: [BC-2.01.008, BC-2.01.009]
 verification_properties: [VP-008, VP-009]
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.11"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.12"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.009.md, version: "1.0.6"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-008-auth-token-wire-format.md, version: "1.0.14"}
   - {path: .factory/specs/verification-properties/vp-009-auth-header-validation.md, version: "1.0.15"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
-  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.32"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
@@ -157,11 +157,11 @@ S-008 (Wave 3): `RingBuffer` is available. Hook handlers (AC-010) write to `Ring
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Auth Middleware and §Auth Token:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Auth Middleware and §Auth Token:
 - `OsRng` is MANDATORY — `thread_rng` is FORBIDDEN (NFR-004)
 - `constant_time_eq` is MANDATORY on BOTH canonical and alias comparison paths (NFR-010)
 - WARN log is emitted on EVERY alias-path request regardless of auth outcome (INV-6)
-- Canonical wins when both headers present (INV-8)
+- Canonical wins when both headers present (INV-5)
 
 From `architecture/ADR-0005` v1.0.2:
 - Dual-accept at the router-level auth middleware
