@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: ops
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v1.7"
+traces_to: ".factory/stories/STORY-INDEX.md v1.8"
 ---
 
 # Holdout Scenarios: monocle Phase 2
@@ -100,23 +100,54 @@ match arm. All existing match-arms that cover `HookType` should NOT require upda
 **Expected:** claude.js → true; claude-code-runner → false; claude-js → false.
 **NOT in any story AC:** Story AC-001 covers the two allowed names; this holdout tests the "almost-claude.js" boundary case (hyphen vs dot) that would expose non-exact matching logic.
 
+### HS-W2-006: Graceful Shutdown Drain Race — Concurrent POST /shutdown During /healthz Drain Transition
+
+**Wave:** 2
+**Source BC:** BC-2.01.004 (PC-1, PC-2, PC-5, INV-1, INV-3, EC-050)
+**Scenario:** Evaluator starts daemon. Sends SIGTERM to begin drain. Immediately (within 50ms)
+concurrently sends a valid authenticated `POST /shutdown` while the daemon is still in the
+`AppMode::ShuttingDown` transition (the first signal has been received but in-flight requests
+have not yet completed). Also concurrently sends a `GET /healthz`.
+Three assertions must hold simultaneously:
+1. The concurrent `POST /shutdown` receives HTTP 200 (second shutdown acknowledged) and triggers
+   immediate hard close with exit code `2` (admin forced-stop; BC-2.01.004 EC-050).
+2. The `GET /healthz` returns HTTP 503 with body `{"status":"shutting_down"}` (PC-3), NOT a
+   connection refused or HTTP 200.
+3. Exit code written to the OS is `2`, not `0` (BC-2.01.004 PC-8 and EC-050: second authenticated
+   `/shutdown` during active drain = admin forced-stop = exit 2, not graceful exit 0).
+**Expected:** POST /shutdown → HTTP 200 + exit 2; GET /healthz → HTTP 503; exit code 2.
+**NOT in any story AC:** Story ACs test shutdown trigger and exit codes independently. This holdout
+tests the race between concurrent second `/shutdown` and active drain — the evaluator cannot trick
+the implementation by simply calling /shutdown once and checking exit 0 (the happy path).
+**Holdout discipline:** Scenario cannot be satisfied by reading S-005 ACs. The AC describes SIGTERM
+trigger (AC-001), POST /shutdown trigger (AC-002), and exit code taxonomy (AC-004) independently.
+The race condition, the HTTP 200 acknowledgement of the second /shutdown during active drain, and
+the simultaneous /healthz assertion are all derived from BC-2.01.004 EC-050 + INV-1 + INV-3 + PC-8.
+
+### HS-W2-007: HookEnvelope Proto Wire Forward-Compatibility — Unknown Phase 4 Field Numbers Survive Round-Trip
+
+**Wave:** 2
+**Source BC:** BC-2.02.006 (PC-4, PC-5, EC-024), BC-2.02.007 (PC-1, PC-2), BC-2.02.008 (PC-1, INV-1, EC-027, EC-028)
+**Scenario:** Part A (wire forward-compatibility per BC-2.02.006 EC-024 + BC-2.02.008 INV-1):
+Evaluator constructs a raw protobuf binary that is a valid `HookEnvelope` with `schema_version: 1`
+PLUS an additional unknown field at field number 100 (a Phase 4 addition in the reserved 100–999
+range, per BC-2.02.006 PC-4/PC-5). Decodes this binary using the Phase 1 prost-generated
+`HookEnvelope` struct. Asserts:
+- `envelope.schema_version == 1` (known field survived)
+- No panic or decode error (proto3 forward compat; BC-2.02.008 INV-1)
+- Unknown field 100 is silently preserved (not returned, not rejected)
+Part B (zero schema_version rejection contract per BC-2.02.008 EC-027):
+Evaluator constructs `HookEnvelope { schema_version: 0, .. }`. A Phase 1 gate test
+verifies that the schema_version field IS accessible as `u32` and equals 0 — the
+Phase 1 codebase stores it without active checking (checking is Phase 4's responsibility
+per BC-2.02.008 PC-1). The holdout verifies that the code does NOT panic on value 0
+and does NOT attempt to decode a schema that does not exist yet.
+**Expected:** Part A — `schema_version: 1` intact; unknown field 100 causes no error; proto3 forward compat passes. Part B — `schema_version: 0` message decoded without panic; field accessible as typed u32.
+**NOT in any story AC:** S-013 ACs test that schema_version is at field number 1 (AC-001, AC-006), the Rust struct field exists (AC-002, AC-003), and Phase 4 validation contract is stated (AC-004, AC-005). None of the ACs construct a binary with an unknown Phase 4 field number and verify round-trip survival — that is the forward-compat property that BC-2.02.006 EC-024 and BC-2.02.008 INV-1 guarantee.
+
 ---
 
 ## Wave 3 Holdout Scenarios
-
-### HS-W3-006: Concurrent Body Limit + Auth Failure
-
-**Wave:** 3
-**Source BC:** BC-2.01.003, BC-2.01.009
-**Scenario:** Evaluator sends a POST to `/hooks/pre-tool-use` with:
-- Body size = 262,145 bytes (exceeds 256 KiB)
-- Auth header = missing
-**Expected:** HTTP 413 (body limit checked BEFORE auth token extraction).
-NOT HTTP 401 (auth failure takes lower precedence than body limit middleware).
-**NOT in any story AC:** Story ACs test body limit and auth separately; this tests their ordering.
-**Wave rationale:** BC-2.01.009 is implemented by S-009 (Wave 3); this scenario requires both
-S-004 (body limit, Wave 2) AND S-009 (auth middleware, Wave 3) to be complete. Cannot be
-evaluated until Wave 3.
 
 ### HS-W3-001: Crash Recovery Checkpoint Survives Daemon Restart (Correct Schema + Filename)
 
@@ -176,6 +207,20 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 **Expected:** `Ok(empty_stream)`; first poll returns `None` (ready); no file watcher instantiated.
 **NOT in any story AC:** ACs test that subscribe() returns Ok; this tests that the stream is actually empty and non-blocking.
 
+### HS-W3-006: Concurrent Body Limit + Auth Failure
+
+**Wave:** 3
+**Source BC:** BC-2.01.003, BC-2.01.009
+**Scenario:** Evaluator sends a POST to `/hooks/pre-tool-use` with:
+- Body size = 262,145 bytes (exceeds 256 KiB)
+- Auth header = missing
+**Expected:** HTTP 413 (body limit checked BEFORE auth token extraction).
+NOT HTTP 401 (auth failure takes lower precedence than body limit middleware).
+**NOT in any story AC:** Story ACs test body limit and auth separately; this tests their ordering.
+**Wave rationale:** BC-2.01.009 is implemented by S-009 (Wave 3); this scenario requires both
+S-004 (body limit, Wave 2) AND S-009 (auth middleware, Wave 3) to be complete. Cannot be
+evaluated until Wave 3.
+
 ---
 
 ## Wave Coverage Summary
@@ -183,12 +228,13 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 | Wave | Holdout Scenarios | Stories Covered |
 |------|------------------|----------------|
 | Wave 1 | HS-W1-001, HS-W1-002 | S-DTU-001, S-001 |
-| Wave 2 | HS-W2-001, HS-W2-003, HS-W2-004, HS-W2-005 | S-002, S-003, S-004, S-006, S-010, S-011, S-014 |
+| Wave 2 | HS-W2-001, HS-W2-003, HS-W2-004, HS-W2-005, HS-W2-006, HS-W2-007 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 |
 | Wave 3 | HS-W3-001, HS-W3-002, HS-W3-003, HS-W3-004, HS-W3-005, HS-W3-006 | S-007, S-008, S-009, S-012, S-015 |
 
-**Total holdout scenarios: 12**
+**Total holdout scenarios: 14**
 **Coverage: ≥1 scenario per wave (required); ≥1 scenario per BC grouping (enforced above)**
 **Note (F-PHASE2-R03-10, F-PHASE2-R04-06):** HS-W3-006 (originally HS-W2-002) is a Wave 3 scenario. S-009 (BC-2.01.009) is Wave 3; the Concurrent Body Limit + Auth Failure scenario cannot be evaluated without S-009's auth middleware being complete. Corrected to Wave 3 H2 section per F-PHASE2-R04-06.
+**Note (GAP-PHASE2-R12-3/R12-4):** HS-W2-006 added for BC-2.01.004 (Graceful Shutdown) coverage; HS-W2-007 added for BC-2.02.006/007/008 (HookEnvelope) coverage. Both Wave 2 scenarios derive from BC body semantics not mechanically repeated in story ACs.
 
 ---
 
@@ -213,3 +259,12 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 **Phase 2 r10 closure** (2026-05-19):
 - F-PHASE2-R10-02 (MEDIUM) / GAP-PHASE2-R10-3: STORY-INDEX pin updated v1.5 → v1.7 per SE-22 v2 consumer-ledger sweep (STORY-INDEX bumped v1.5→v1.6 in r09 burst; then v1.6→v1.7 in this r10 burst for Decision 11 S-001.blocks correction). holdout-scenarios.md carries forward to current STORY-INDEX version as required by SE-22 v2 forward consumer-ledger discipline.
 - Frontmatter bumped to v1.3.
+
+## §Trace v1.4
+
+**Phase 2 r12 fix-all burst: GAP-PHASE2-R12-2/R12-3/R12-4 closed** (2026-05-19):
+- GAP-PHASE2-R12-2 (LOW): Wave 3 section reordered monotonically — HS-W3-006 (Concurrent Body Limit + Auth Failure) was out-of-order (appeared first in Wave 3 section, preceding HS-W3-001..005). Corrected to HS-W3-001, HS-W3-002, HS-W3-003, HS-W3-004, HS-W3-005, HS-W3-006.
+- GAP-PHASE2-R12-3 (LOW): HS-W2-006 added for BC-2.01.004 (Graceful Shutdown). Scenario exercises concurrent POST /shutdown during active /healthz drain transition — the race between a second authenticated /shutdown and the active drain window (EC-050 + INV-1 + INV-3 + PC-8). Cannot be satisfied by reading S-005 ACs individually; derived from BC-2.01.004 body directly.
+- GAP-PHASE2-R12-4 (LOW): HS-W2-007 added for BC-2.02.006/BC-2.02.007/BC-2.02.008 (HookEnvelope). Scenario exercises proto wire forward-compatibility: Part A — unknown Phase 4 field numbers survive round-trip decode; Part B — schema_version: 0 message decoded without panic. Derived from BC-2.02.006 EC-024 + BC-2.02.008 INV-1/EC-027; not mechanically stated in S-013 ACs.
+- Wave Coverage Summary updated: Wave 2 now covers HS-W2-001, HS-W2-003, HS-W2-004, HS-W2-005, HS-W2-006, HS-W2-007; S-005 and S-013 added to Wave 2 covered stories. Total holdout scenarios: 12 → 14.
+- SE-22 v2 cascade: traces_to updated from v1.7 → v1.8 (STORY-INDEX bumped v1.7→v1.8 in this r12 burst). Frontmatter bumped to v1.4.

@@ -1,5 +1,6 @@
 ---
 document_type: story
+level: L4
 story_id: S-DTU-001
 epic_id: EPIC-DTU
 version: "1.0"

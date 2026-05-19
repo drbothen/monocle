@@ -1,8 +1,9 @@
 ---
 document_type: story
+level: L4
 story_id: S-014
 epic_id: EPIC-03
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -91,12 +92,13 @@ explains why: native `async fn` in traits does not provide ergonomic dyn-compati
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~800 |
-| BC-2.03.001.md | ~700 |
+| BC-2.03.001.md v1.0.5 | ~700 |
+| BC-2.02.003.md v1.0.2 | ~350 |
 | VP-019 file | ~500 |
 | SS-engine-module.md (trait section, ~80 lines) | ~1,200 |
 | async-trait crate documentation | ~300 |
 | Test file | ~600 |
-| **Total estimate** | **~4,100** |
+| **Total estimate** | **~4,450** |
 
 ## Tasks
 

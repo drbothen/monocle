@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -506,3 +506,11 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - Comprehensive bidirectional sweep (BOTH directions, all 17 stories): Direction 1 (A.depends_on → X.blocks): 21 edges checked, 0 asymmetries. Direction 2 (A.blocks → Y.depends_on): 20 edges checked, 2 asymmetries (S-001→S-013 and S-001→S-014, the exact Decision 11 targets). No new FDRs.
 - SE-25 v2 codification recommendation: bidirectional sweep must be performed in BOTH directions (depends_on→blocks AND blocks→depends_on) at every story-writer commit.
 - dep-graph version bumped v1.7→v1.8. STORY-INDEX v1.6→v1.7 (sibling bump per SE-22 v2).
+
+## §Trace v1.9
+
+**Phase 2 r12 fix-all burst — sibling-sweep receipt** (2026-05-19):
+- SE-22 v2 forward consumer-ledger entry: STORY-INDEX bumped v1.7→v1.8 (F-PHASE2-R12-01 + GAP-PHASE2-R12-1 closures). dep-graph is a peer artifact to STORY-INDEX; no version pin update required (dep-graph does not carry a traces_to STORY-INDEX version pin — its traces_to is a description, not a version reference).
+- No BC Clause Coverage Matrix or Edge Case Coverage Matrix changes required from r12 burst (those matrices are unchanged; only the STORY-INDEX AC-range summary column was corrected).
+- GAP-PHASE2-R12-3/R12-4: new holdout scenarios HS-W2-006 and HS-W2-007 derived from BC-2.01.004 and BC-2.02.006/007/008 respectively. These BCs and their clauses are already fully covered in the BC Clause Coverage Matrix (all clauses have covering ACs). The holdout scenarios are derived from BC body edge cases not mechanically stated in story ACs — no dep-graph matrix updates required.
+- dep-graph version bumped v1.8→v1.9 to record this sibling-sweep receipt entry.

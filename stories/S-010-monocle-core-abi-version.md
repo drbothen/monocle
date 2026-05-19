@@ -1,5 +1,6 @@
 ---
 document_type: story
+level: L4
 story_id: S-010
 epic_id: EPIC-02
 version: "1.1"

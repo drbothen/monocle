@@ -1,5 +1,6 @@
 ---
 document_type: story
+level: L4
 story_id: S-PHASE-3-PREP
 epic_id: EPIC-PREP
 version: "1.0"

@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -74,17 +74,17 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC ID | Title | Covering Story | AC | Full Coverage? |
 |-------|-------|---------------|----|----------------|
 | BC-2.01.001 | Healthz Endpoint | S-002 | AC-001..AC-006 | YES |
-| BC-2.01.002 | Status Endpoint | S-003 | AC-001..AC-007 | YES |
+| BC-2.01.002 | Status Endpoint | S-003 | AC-001, AC-005, AC-006, AC-007, AC-008 | YES |
 | BC-2.01.003 | Body Size Limit | S-004 | AC-001..AC-005 | YES |
 | BC-2.01.004 | Graceful Shutdown | S-005 | AC-001..AC-006 | YES |
-| BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-011 | YES |
-| BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-006 | YES |
+| BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-009 | YES |
+| BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-010 | YES |
 | BC-2.01.007 | JSONL Ring Format Version | S-008 | AC-001..AC-007 | YES |
 | BC-2.01.008 | Auth Token Wire Format | S-006, S-009 | S-006: AC-014 (token generation); S-009: AC-001..AC-003 | YES |
-| BC-2.01.009 | Auth Header Validation | S-009 | AC-004..AC-010 | YES |
-| BC-2.01.010 | Lock File Contract Version Field | S-006 | AC-010..AC-011 | YES |
+| BC-2.01.009 | Auth Header Validation | S-009 | AC-004..AC-009 | YES |
+| BC-2.01.010 | Lock File Contract Version Field | S-006 | AC-010..AC-013 | YES |
 | BC-2.02.001 | ABI Version in /status | S-010, S-003 | S-010: AC-003, AC-005; S-003: AC-005 | YES |
-| BC-2.02.002 | ABI Version Constant at Crate Root | S-010 | AC-001..AC-005 | YES |
+| BC-2.02.002 | ABI Version Constant at Crate Root | S-010 | AC-001, AC-002, AC-004 | YES |
 | BC-2.02.003 | Non-Exhaustive Enum Policy | S-011, S-014 | S-011: AC-001..AC-004; S-014: AC-003b (HookEvent #[non_exhaustive]) | YES |
 | BC-2.02.004 | FactoryAdapter Trait Definition | S-012 | AC-001..AC-004 | YES |
 | BC-2.02.005 | VsddFactoryAdapter Implementation | S-012 | AC-005..AC-013 | YES |
@@ -92,9 +92,9 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.02.007 | HookEnvelope Rust Struct schema_version | S-013 | AC-002..AC-003 | YES |
 | BC-2.02.008 | Phase 4 schema_version Validation | S-013 | AC-004..AC-005 | YES |
 | BC-2.03.001 | EngineModule Trait Definition | S-014, S-015 | S-014: AC-001..AC-007; S-015: AC-010 (PC-6 DI-006) | YES |
-| BC-2.03.002 | ClaudeCodeModule (Strict-Basename Detect) | S-015 | AC-001..AC-003, AC-009 | YES |
-| BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-004..AC-005 | YES |
-| BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-006..AC-008 | YES |
+| BC-2.03.002 | ClaudeCodeModule (Strict-Basename Detect) | S-015 | AC-001..AC-004 | YES |
+| BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-005, AC-006 | YES |
+| BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-007, AC-008, AC-009 | YES |
 
 **BC Coverage: 22/22 (100%)**
 
@@ -277,3 +277,19 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 
 **Phase 2 r10 burst: Decision 11 applied** (2026-05-19):
 - S-013, S-014 removed from S-001.blocks per consistency-validator Option A (matches S-011/S-012 corpus precedent of transitive-via-S-010). STORY-INDEX bumped 1.6→1.7 to reflect S-001 Blocks column update. F-PHASE2-R10-01 / GAP-PHASE2-R10-2 closure. Sibling-sweep: dep-graph §Trace v1.8 + holdout-scenarios §Trace v1.3 carry corresponding entries (this §Trace v1.7 closes the STORY-INDEX leg of the sibling-sweep).
+
+## §Trace v1.8
+
+**Phase 2 r12 fix-all burst: F-PHASE2-R12-01 + GAP-PHASE2-R12-1 closed** (2026-05-19):
+- F-PHASE2-R12-01 (LOW): BC Coverage Table corrected for 9 drifted AC-range rows. Corrected by re-deriving from dep-graph BC Clause Coverage Matrix and actual story AC headers:
+  - BC-2.01.002 (S-003): `AC-001..AC-007` → `AC-001, AC-005, AC-006, AC-007, AC-008` (PC-1 sub-bullets + PC-3; AC-003/AC-004 trace to BC-2.01.009)
+  - BC-2.01.005 (S-006): `AC-001..AC-011` → `AC-001..AC-009` (AC-010..AC-013 anchor BC-2.01.010; AC-014 anchors BC-2.01.008)
+  - BC-2.01.006 (S-007): `AC-001..AC-006` → `AC-001..AC-010` (S-007 has 10 ACs; AC-007..AC-010 cover postcondition 7 + invariants)
+  - BC-2.01.009 (S-009): `AC-004..AC-010` → `AC-004..AC-009` (AC-010a anchors BC-2.01.008 PC-4; AC-010b anchors BC-2.01.002 PC-1 sub-bullet)
+  - BC-2.01.010 (S-006): `AC-010..AC-011` → `AC-010..AC-013` (EC-010/EC-011/EC-012 covered by AC-010/AC-012/AC-013)
+  - BC-2.02.002 (S-010): `AC-001..AC-005` → `AC-001, AC-002, AC-004` (AC-003 and AC-005 trace to BC-2.02.001)
+  - BC-2.03.002 (S-015): `AC-001..AC-003, AC-009` → `AC-001..AC-004` (AC-004 = id() "claude-code" = BC-2.03.002 PC-3; AC-009 = BC-2.03.004 PC-3 preflight)
+  - BC-2.03.003 (S-015): `AC-004..AC-005` → `AC-005, AC-006` (AC-004 = BC-2.03.002 PC-3; AC-005 = BC-2.03.003 PC-1; AC-006 = BC-2.03.003 PC-2)
+  - BC-2.03.004 (S-015): `AC-006..AC-008` → `AC-007, AC-008, AC-009` (AC-006 = BC-2.03.003 PC-2; AC-007..AC-009 = BC-2.03.004 PC-1..PC-3)
+- GAP-PHASE2-R12-1 (LOW): `level: L4` frontmatter field added to all 17 story files (S-001 through S-015, S-DTU-001, S-PHASE-3-PREP). Inserted after `document_type: story` line per STORY-INDEX/dep-graph/wave-schedule pattern.
+- SE-22 v2 cascade: STORY-INDEX v1.7→v1.8; holdout-scenarios.md and sprint-state.yaml must update their traces_to_full/traces_to pins.
