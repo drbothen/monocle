@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-18T05:18:00Z
@@ -52,6 +52,7 @@ dyn-compatibility on MSRV 1.86 stable Rust. `metadata()` and `enrich()` must fai
 3. Supporting types are co-located in `monocle-core::engine`: `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`, `SessionStatus`, `HookResponse`, `HookDecision`, `DeferUntil`, `EngineMetadataError`.
 4. `EnrichedSession::last_event_micros` is `Option<i64>`. `None` means no hook events received yet. `Some(t)` means microseconds since Unix epoch of most recent hook event. Consumers MUST NOT treat `0i64` as a sentinel — `0` is the Unix epoch (1970-01-01), not a valid last-event timestamp.
 5. `metadata()` and `enrich()` MUST NOT substitute a default path when the platform home directory is unresolvable. They MUST return `Err(EngineMetadataError::HomeUnresolvable)`. Daemon initialization MUST fail fast with a diagnostic.
+6. `detect()` MUST NOT perform any I/O, environment lookups, file reads, or shared state mutation. `detect()` is a pure function of its arguments. It MUST be safe to call from any thread, repeatedly, without side effects.
 
 ## Invariants
 
@@ -87,7 +88,7 @@ dyn-compatibility on MSRV 1.86 stable Rust. `metadata()` and `enrich()` must fai
 |-------|-------|
 | L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the EngineModule trait, which is the explicit engine abstraction over AI coding harnesses named in CAP-003 |
-| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — this BC defines the EngineModule trait, including Postcondition 5 which mandates that detect() has no I/O and no shared state mutation; the trait contract itself is the DI-006 specification that all implementations must satisfy) |
+| L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — Postcondition 6 mandates that detect() has no I/O and no shared state mutation; EngineModule implementations must follow this constraint to ensure DI-006) |
 | Architecture Module | monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module.md v1.1.20 §EngineModule Trait Signature |
 | Vision | §EngineModule |
@@ -131,3 +132,15 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
   - SE-17f AFTER: `SS-engine-module.md v1.1.20 §EngineModule Trait Signature`
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:18:00Z > prior 2026-05-17T18:00:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:18:00Z > 2026-05-17T18:00:00Z PASS.
+
+## §Trace v1.0.4
+
+**F-PHASE2-R05-06 — Internal-consistency fix: PC-6 detect() purity postcondition added** (2026-05-19T00:00:00Z):
+- Root cause: Traceability §L2 Domain Invariants DI-006 mapping cell cited "Postcondition 5 which mandates that detect() has no I/O and no shared state mutation" but PC-5 body describes only `metadata()` and `enrich()` HomeUnresolvable semantics. The phrase "detect() has no I/O and no shared state mutation" did not exist as a behavioral postcondition — it appeared only as interpretive prose in the Traceability cell. Story-writer S-015 AC-010 correctly identified the property but had to fabricate a quotation because no canonical PC existed.
+- Fix: Added PC-6 explicitly codifying the detect() purity contract as a behavioral postcondition.
+  - PC-6 text (verbatim): `detect()` MUST NOT perform any I/O, environment lookups, file reads, or shared state mutation. `detect()` is a pure function of its arguments. It MUST be safe to call from any thread, repeatedly, without side effects.
+- Fix: Updated Traceability §L2 Domain Invariants DI-006 mapping cell to anchor to PC-6.
+  - BEFORE: "...Postcondition 5 which mandates that detect() has no I/O and no shared state mutation..."
+  - AFTER: "...Postcondition 6 mandates that detect() has no I/O and no shared state mutation..."
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-19T00:00:00Z > prior 2026-05-18T05:18:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.

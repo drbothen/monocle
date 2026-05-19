@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.11"
+version: "1.12"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T22:00:00Z
+timestamp: 2026-05-19T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -423,3 +423,15 @@ BC-INDEX titles unchanged: all 22 BC H1 headings are stable. No BC retirements o
 SE-16d monotonicity PASS: 2026-05-18T22:00:00Z > prior 2026-05-18T16:00:00Z (v1.10). ARITHMETICALLY TRUE: 2026-05-18T22:00:00Z > 2026-05-18T16:00:00Z PASS.
 
 **Reference:** R119 report at `.factory/plans/adversary-pass-r119-phase1.md` (commit 70b7552).
+
+## §Trace v1.12
+
+**F-PHASE2-R05-06 — BC-2.03.001 internal-consistency fix: PC-6 added (detect() purity postcondition)** (2026-05-19T00:00:00Z):
+
+- BC-2.03.001 v1.0.3 → v1.0.4: PC-6 added codifying detect() purity contract; DI-006 mapping cell updated from "Postcondition 5" to "Postcondition 6" anchor.
+- Root cause: Traceability §L2 Domain Invariants DI-006 claimed PC-5 covered "detect() has no I/O and no shared state mutation", but PC-5 body only covers `metadata()`/`enrich()` HomeUnresolvable semantics. Phase 2 adversary r05 found the inconsistency via S-015 AC-010 fabricated quotation.
+- No other BC files modified. No BC retirements or removals.
+
+BC-INDEX titles unchanged: BC-2.03.001 H1 "EngineModule Trait Definition" is stable. All 22 BC H1 headings unchanged.
+SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs.
+SE-16d monotonicity PASS: 2026-05-19T00:00:00Z > prior 2026-05-18T22:00:00Z (v1.11). ARITHMETICALLY TRUE: PASS.
