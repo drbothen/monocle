@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -182,3 +182,9 @@ Before dispatching Phase 3 (TDD Implementation):
 **Phase 2 r06 remediation** (2026-05-19):
 - F-PHASE2-R06-03 (MEDIUM): BC-INDEX version pin bumped v1.12→v1.13 per SE-22 v2 forward consumer-ledger sweep (15 BCs bumped by PO commit d7c860a).
 - F-PHASE2-R06-04 (MEDIUM): §Trace v1.2 entry added; discipline: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.
+
+## §Trace v1.3
+
+**Phase 2 r07 remediation** (2026-05-19):
+- F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): `inputs:` entry added for `error-taxonomy.md v1.5` to sibling-mirror the STORY-INDEX and dependency-graph inputs block; wave gate criteria reference E-AUTH-001/002/003 error codes which are defined in error-taxonomy.md.
+- F-PHASE2-R07-07 (LOW): Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states "4 parallel + S-009 serial after S-008 (Decision 1)" in both the Wave Overview table and the Wave 3 body paragraph. Previous prose implied all 5 stories were fully parallel, contradicting Decision 1 (S-008→S-009 RingBuffer dependency added in r02).

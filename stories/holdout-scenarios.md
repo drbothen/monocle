@@ -189,3 +189,21 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 **Total holdout scenarios: 12**
 **Coverage: ≥1 scenario per wave (required); ≥1 scenario per BC grouping (enforced above)**
 **Note (F-PHASE2-R03-10, F-PHASE2-R04-06):** HS-W3-006 (originally HS-W2-002) is a Wave 3 scenario. S-009 (BC-2.01.009) is Wave 3; the Concurrent Body Limit + Auth Failure scenario cannot be evaluated without S-009's auth middleware being complete. Corrected to Wave 3 H2 section per F-PHASE2-R04-06.
+
+---
+
+## §Trace v1.0
+
+**Phase 2 story decomposition initial burst** (2026-05-19T04:30:00Z):
+- Initial holdout scenario decomposition: 12 scenarios across 3 waves. Scenarios derived from BCs but not duplicating any story AC (Phase 4 information asymmetry preserved). Wave coverage summary table produced.
+
+## §Trace v1.1
+
+**Phase 2 r02 remediation** (2026-05-19):
+- GAP-PHASE2-R02-4 (LOW): frontmatter `level: ops` and `version: "1.1"` added (initial v1.0 lacked these fields per §Trace coherence audit).
+
+## §Trace v1.2
+
+**Phase 2 r06 cascade** (2026-05-19):
+- `traces_to:` updated from `.factory/stories/STORY-INDEX.md v1.4` → `v1.5` per SE-22 v2 forward consumer-ledger sweep (STORY-INDEX bumped v1.4→v1.5 in r07; holdout-scenarios.md traces_to pinned to STORY-INDEX). Frontmatter bumped to v1.2.
+- Retrospective §Trace v1.0/v1.1/v1.2 entries added per F-PHASE2-R08-03 closure (initial sibling-sweep gap: zero §Trace entries for 2 declared versions).

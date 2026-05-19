@@ -470,7 +470,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - F-PHASE2-R05-02 (HIGH): BC-2.01.002 PC-3 row coverage extended — S-003 AC-008 added (status serves during drain; BC-2.01.004 PC-4 cross-cites BC-2.01.002 PC-3).
 - SE-22 v2 BC version cascade applied to all story corpus files (r05 scope).
 
-## §Trace v1.5
+## §Trace v1.6
 
 **Phase 2 r06 remediation** (2026-05-19):
 - F-PHASE2-R06-01 (CRITICAL): BC-2.01.009 PC-2/PC-3 remaining alias/canonical mirror swap fixed in S-009 AC-005/AC-006 trace headers and S-003 AC-002 trace header. BC-2.01.009 clause 2 (canonical) row corrected to AC-006; clause 3 (alias) row corrected to AC-005 — swap from previous (erroneous) assignment. INV-4 parenthetical verified correct (both AC-005 alias + AC-006 canonical are Invalid variant paths).
@@ -478,3 +478,4 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - F-PHASE2-R06-04 (MEDIUM): §Trace reordered ascending (v1.2 was after v1.3 — ordering defect corrected); v1.4 and v1.5 entries added for r05 and r06 remediations.
 - SE-22 v2 BC version cascade applied to all corpus files (15 BCs × 19 consumers): BC-INDEX v1.12→v1.13; BC-2.01.001 v1.0.4→v1.0.5; BC-2.01.002 v1.0.5→v1.0.6; BC-2.01.003 v1.0.4→v1.0.5; BC-2.01.004 v1.0.3→v1.0.4; BC-2.01.005 v1.0.4→v1.0.5; BC-2.01.006 v1.0.4→v1.0.5; BC-2.01.007 v1.0.5→v1.0.6; BC-2.01.008 v1.0.6→v1.0.7; BC-2.01.009 v1.0.6→v1.0.7; BC-2.01.010 v1.0.4→v1.0.5; BC-2.03.001 v1.0.4→v1.0.5; BC-2.03.002 v1.0.3→v1.0.4; BC-2.03.003 v1.0.2→v1.0.3; BC-2.03.004 v1.0.3→v1.0.4. SS-02 BCs unchanged.
 - Discipline codified: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.
+- Note (F-PHASE2-R08-02 retroactive label fix): this block was labeled §Trace v1.5 at time of authoring but frontmatter was already bumped to v1.6 in the same r06 burst — one-increment misalignment corrected to §Trace v1.6 per F-PHASE2-R08-02 closure.
