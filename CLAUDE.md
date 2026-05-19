@@ -20,10 +20,11 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-1-GATE-PASS-WITH-RESIDUAL`** — declared 2026-05-19 per D-155. Phase 1 spec set CONVERGED-WITH-DOCUMENTED-RESIDUAL after R88-R122 adversarial trajectory (~35 rounds; ~24+ findings closed this session R15-R20). Substantive content (22 BCs, NFRs, ECs, ADRs, manifest) PASS. Forward consumer-ledger cascades CLOSED via SE-22 v2. Residual catalog: see `.factory/tech-debt-register.md` TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE (PRD ↔ VP-INDEX bidirectional pin oscillation; D-047 strict exemption scoped to this class only; resolution pending vsdd-factory spec-kit-mcp upstream rc.19+).
-- Canonical artifact versions: PRD `v1.26.15` (R20A); VP-INDEX `v1.16` (R20B); BC-INDEX `v1.11`; L2-INDEX `v1.0.11`; CAP-001 `v1.6`; ARCH-INDEX `v1.0.10`; SS-conventions `v1.29.5`.
-- 39 codified disciplines in force (SE-22 sibling-sweep added R17-pre/D-142; SE-23 SM defensive-sweep prohibition added R18-pre/D-146; SE-22 v2 consumer-ledger codified R19-pre as 39th/D-149).
-- Next: Phase 2 story decomposition (dispatch `vsdd-factory:story-writer`).
+- **Phase: `phase-2-GATE-PASS-WITH-RESIDUAL`** — declared 2026-05-19 per D-159. Phase 2 story decomposition CONVERGED-WITH-DOCUMENTED-RESIDUAL after 13 adversarial rounds (r01..r13). Trajectory: 26→17→13→6→9→7→7→3→2→3→1→1→1 (96% finding reduction). User-directed "fix everything" burst at r12 closed 6 residual findings cleanly in commit `abe958e`. Fresh-context r13 surfaced 2 new findings of same class (F-PHASE2-R13-01, GAP-PHASE2-R13-1) — empirically confirming the asymptote requires structural fix (spec-kit-mcp rc.19+). Substantive content: 17 stories across 4 waves (86 points); 22/22 BCs covered, 22/22 VPs covered, 15/15 errors covered, 12/12 P0 NFRs (4 Phase-3-deferred per nfr-catalog); 14 holdout scenarios; DAG acyclicity and bidirectional symmetry verified.
+- Canonical artifact versions (post-Phase-2): product-brief `v1.4.30`; PRD `v1.26.15`; BC-INDEX `v1.13` (22 BCs sharded: SS-01 v1.0.4–v1.0.7, SS-02 v1.0.2–v1.0.3, SS-03 v1.0.3–v1.0.5); VP-INDEX `v1.16`; L2-INDEX `v1.0.11`; ARCH-INDEX `v1.0.11`; SS-daemon-lifecycle `v1.0.33`; SS-engine-module `v1.1.20`; SS-deps-pin-manifest `v1.1.17`; SS-conventions-anti-patterns `v1.29.5`; SS-permissions-phase1 `v1.5.2`; SS-forward-compatibility `v1.2.19`; SS-core-types-and-abi `v1.2.13`; STORY-INDEX `v1.8`; dep-graph `v1.9`; wave-schedule `v1.4`; holdout-scenarios `v1.4`; sprint-state `v1.4`; ADRs 0001–0005 per ARCH-INDEX; DTU assessment `v1.7.5`; supplements: interface-definitions `v1.5`, nfr-catalog `v1.7`, error-taxonomy `v1.5`, test-vectors `v1.3`.
+- 39 codified disciplines in force (SE-22 sibling-sweep D-142; SE-23 SM defensive-sweep prohibition D-146; SE-22 v2 consumer-ledger D-149). 3 SE candidates HELD pending spec-kit-mcp rc.19+: SE-24 (trace monotonic-ascending), SE-25 (bidirectional DAG symmetry), SE-26 (STORY-INDEX BC Coverage Table AC-range sibling-sweep).
+- Residual catalog: see `.factory/tech-debt-register.md` TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT — 8-row catalog (6 CLOSED via abe958e; 2 ACTIVE: F-R13-01, GAP-R13-1). Same upstream dependency as Phase 1 residual (spec-kit-mcp rc.19+ via S-PHASE-3-PREP).
+- Next: Phase 3 TDD implementation. Dispatch via `/vsdd-factory:phase-3-tdd-implementation` against 17-story corpus starting Wave 0 (S-PHASE-3-PREP + S-DTU-001).
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
@@ -149,10 +150,9 @@ Phase sequence:
 - Phase -1: Reference Ingest (DONE) — 8 repos, 8 final-synthesis files in `.factory/semport/`
 - Phase 0.5–0.8: Brief authoring (DONE) — v1.0 → v1.3
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
-- **Pre-Phase-1 final gate (CURRENT)** — awaiting human approval to enter Phase 1
-- Phase 1: Spec Crystallization — domain spec → PRD → architecture → adversarial review → human approval
-- Phase 2: Story Decomposition
-- Phase 3: TDD Implementation
+- Phase 1: Spec Crystallization (DONE — GATE-PASS-WITH-RESIDUAL D-155) — 22 BCs, NFRs, ADRs, architecture, manifest
+- Phase 2: Story Decomposition (DONE — GATE-PASS-WITH-RESIDUAL D-159) — 17 stories, 4 waves, 86 points, 14 holdout scenarios
+- **Phase 3: TDD Implementation (CURRENT)** — dispatch `/vsdd-factory:phase-3-tdd-implementation`, Wave 0 first
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
