@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -40,19 +40,19 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
-| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014 |
+| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | — |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
-| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008 |
+| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
 | S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
 | S-010 | monocle-core Crate + ABI Version Constant | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-013, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
 | S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
 | S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | draft | S-015 |
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | draft | — |
-| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | draft | — |
+| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | draft | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | draft | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | draft | — |
 
@@ -260,3 +260,15 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): wave-schedule.md inputs: entry added for error-taxonomy.md v1.5 to sibling-mirror STORY-INDEX/dep-graph; wave gate criteria reference E-AUTH-001/002/003 error codes.
 - F-PHASE2-R07-07 (LOW): wave-schedule.md Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states 4 fully parallel + S-009 serially after S-008 per Decision 1.
 - STORY-INDEX version bumped v1.4→v1.5.
+
+## §Trace v1.6
+
+**Phase 2 r09 remediation burst** (2026-05-19):
+- F-PHASE2-R09-01 (HIGH): Bidirectional DAG-edge asymmetry corrected per Orchestrator Decision 10:
+  - S-001 Blocks column: S-009 added (S-009 directly consumes S-001's workspace + axum router foundation).
+  - S-006 Blocks column: S-009 added (S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation).
+  - S-008 Blocks column: S-009 corrected from "—" to "S-009" (F-PHASE2-R09-02).
+- F-PHASE2-R09-02 (MEDIUM): S-008 Blocks column corrected "—" → "S-009" per S-008.frontmatter blocks:[S-009] and Decision 1 (S-008→S-009 RingBuffer edge).
+- Bidirectional sweep result: no additional asymmetries found beyond the 3 declared (full sweep of all 17 stories).
+- SE-25 codification candidate: "Every depends_on entry must have a matching blocks entry on the depended-on story; sibling-sweep mandatory at every story-writer commit."
+- STORY-INDEX version bumped v1.5→v1.6.

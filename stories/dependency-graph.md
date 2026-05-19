@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -43,7 +43,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
 Wave 3 (depends on Wave 2; parallel within wave):
   S-007           (depends on: S-006)
   S-008           (depends on: S-006)
-  S-009           (depends on: S-001, S-004, S-006, S-008)  [Decision 1: S-008→S-009 edge added]
+  S-009           (depends on: S-001, S-004, S-006, S-008, S-DTU-001)  [Decision 1: S-008→S-009 edge added; Decision 10: S-DTU-001→S-009 symmetric edge added]
   S-012           (depends on: S-010, S-011)
   S-015           (depends on: S-014)
 ```
@@ -62,7 +62,7 @@ Wave 3 (depends on Wave 2; parallel within wave):
 | S-006 | S-001 | Requires workspace crates (tempfile, directories, nix) from S-001 |
 | S-007 | S-006 | Requires runtime_dir resolution and tempfile::persist pattern from S-006 |
 | S-008 | S-006 | Requires runtime_dir and HookEventRecord struct; ring flush depends on runtime_dir |
-| S-009 | S-001, S-004, S-006, S-008 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001), and RingBuffer from S-008 (Decision 1: hook handlers call RingBuffer::push()) |
+| S-009 | S-001, S-004, S-006, S-008, S-DTU-001 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001), RingBuffer from S-008 (Decision 1: hook handlers call RingBuffer::push()), and DTU hook protocol clone (S-DTU-001: needed for S-009 integration tests on the alias auth path per Decision 10) |
 | S-010 | S-001 | Requires monocle-core crate stub from S-001; independent of S-002..S-009 |
 | S-011 | S-010 | Requires monocle-core type declarations from S-010 |
 | S-012 | S-010, S-011 | Requires monocle-core types (S-010) and #[non_exhaustive] policy (S-011) |
@@ -84,7 +84,7 @@ Round 1 — remove degree-0, reduce dependents:
 
 Round 2 — process S-002, S-004, S-006, S-010:
   Newly degree-0 after S-002 removed: {S-003, S-005}
-  Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-008 dep; not yet degree-0)
+  Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-008 dep; not yet degree-0; S-009's S-DTU-001 dep was resolved when S-DTU-001 processed in Round 1)
   Newly degree-0 after S-010 removed: {S-011, S-013, S-014}
 
 Round 3 — process S-003, S-005, S-007, S-008, S-011, S-013, S-014:
@@ -106,10 +106,10 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | Story | Blocks | Justification |
 |-------|--------|---------------|
 | S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
-| S-001 | S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014 | Workspace required for all implementation stories (S-009 removed from blocks — S-009 now in Wave 3, downstream of S-008) |
+| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation; the r01 partial-fix that removed S-009 was incomplete. |
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
 | S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
-| S-006 | S-007, S-008 | Lock file pattern needed before crash recovery (S-007) and ring (S-008); S-009 moved to Wave 3 (Decision 1) |
+| S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. |
 | S-008 | S-009 | RingBuffer must be available before S-009 hook handlers call RingBuffer::push() (Decision 1: S-008→S-009) |
 | S-010 | S-011, S-012, S-013, S-014 | monocle-core types needed for all SS-02/SS-03 stories |
 | S-011 | S-012 | Non-exhaustive enum attributes needed before FactoryAdapter types |
@@ -475,7 +475,19 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 **Phase 2 r06 remediation** (2026-05-19):
 - F-PHASE2-R06-01 (CRITICAL): BC-2.01.009 PC-2/PC-3 remaining alias/canonical mirror swap fixed in S-009 AC-005/AC-006 trace headers and S-003 AC-002 trace header. BC-2.01.009 clause 2 (canonical) row corrected to AC-006; clause 3 (alias) row corrected to AC-005 — swap from previous (erroneous) assignment. INV-4 parenthetical verified correct (both AC-005 alias + AC-006 canonical are Invalid variant paths).
 - F-PHASE2-R06-02 (HIGH): BC-2.02.001 PC-1 row disambiguation — per-story AC attribution clarified: S-010 AC-003 + S-010 AC-005 + S-003 AC-005.
-- F-PHASE2-R06-04 (MEDIUM): §Trace reordered ascending (v1.2 was after v1.3 — ordering defect corrected); v1.4 and v1.5 entries added for r05 and r06 remediations.
+- F-PHASE2-R06-04 (MEDIUM): §Trace reordered ascending (v1.2 was after v1.3 — ordering defect corrected); §Trace v1.4 entry added for r05 remediation (dep-graph frontmatter was bumped directly to v1.6 in the r06 burst with no intervening v1.5 — this §Trace v1.6 block is the authoritative r06 record).
 - SE-22 v2 BC version cascade applied to all corpus files (15 BCs × 19 consumers): BC-INDEX v1.12→v1.13; BC-2.01.001 v1.0.4→v1.0.5; BC-2.01.002 v1.0.5→v1.0.6; BC-2.01.003 v1.0.4→v1.0.5; BC-2.01.004 v1.0.3→v1.0.4; BC-2.01.005 v1.0.4→v1.0.5; BC-2.01.006 v1.0.4→v1.0.5; BC-2.01.007 v1.0.5→v1.0.6; BC-2.01.008 v1.0.6→v1.0.7; BC-2.01.009 v1.0.6→v1.0.7; BC-2.01.010 v1.0.4→v1.0.5; BC-2.03.001 v1.0.4→v1.0.5; BC-2.03.002 v1.0.3→v1.0.4; BC-2.03.003 v1.0.2→v1.0.3; BC-2.03.004 v1.0.3→v1.0.4. SS-02 BCs unchanged.
 - Discipline codified: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.
 - Note (F-PHASE2-R08-02 retroactive label fix): this block was labeled §Trace v1.5 at time of authoring but frontmatter was already bumped to v1.6 in the same r06 burst — one-increment misalignment corrected to §Trace v1.6 per F-PHASE2-R08-02 closure.
+
+## §Trace v1.7
+
+**Phase 2 r09 remediation burst** (2026-05-19):
+- F-PHASE2-R09-01 (HIGH): Bidirectional DAG-edge asymmetry corrected per Orchestrator Decision 10:
+  - Topological Order: S-009 depends-on updated to include S-DTU-001.
+  - Dependency Edges table: S-009 row updated to add S-DTU-001 with justification (DTU clone needed for S-009 alias-auth integration tests).
+  - Blocks Edges table: S-001 updated to add S-009 (S-009 consumes S-001 workspace + axum router); S-006 updated to add S-009 (S-006 produces auth token read by S-009). S-DTU-001 → S-009 was already correct.
+  - Bidirectional sweep: full sweep of all 17 stories confirmed no additional asymmetries beyond the 3 declared (S-001/S-006/S-DTU-001 ↔ S-009).
+- GAP-PHASE2-R09-1 (LOW): §Trace v1.6 body corrected — "v1.4 and v1.5 entries added" reference removed (dep-graph frontmatter was bumped directly 1.4→1.6 in the r06 burst; no §Trace v1.5 label ever existed). Option B applied per finding.
+- SE-25 codification candidate: "Every depends_on entry must have a matching blocks entry on the depended-on story; sibling-sweep mandatory at every story-writer commit."
+- dep-graph version bumped v1.6→v1.7.

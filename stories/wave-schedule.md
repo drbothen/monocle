@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -128,7 +128,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 |-------|-------|--------|-----------|--------|
 | S-007 | Crash Recovery Checkpoint | 5 | S-006 (Wave 2) | draft |
 | S-008 | JSONL Ring Format Version | 5 | S-006 (Wave 2) | draft |
-| S-009 | Auth Token Wire Format + Header Validation | 8 | S-001, S-004, S-006, S-008 (Decision 1) | draft |
+| S-009 | Auth Token Wire Format + Header Validation | 8 | S-001, S-004, S-006, S-008, S-DTU-001 (Decision 1 + Decision 10) | draft |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | 8 | S-010, S-011 (Wave 2) | draft |
 | S-015 | ClaudeCodeModule Implementation | 8 | S-014 (Wave 2) | draft |
 
@@ -188,3 +188,9 @@ Before dispatching Phase 3 (TDD Implementation):
 **Phase 2 r07 remediation** (2026-05-19):
 - F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): `inputs:` entry added for `error-taxonomy.md v1.5` to sibling-mirror the STORY-INDEX and dependency-graph inputs block; wave gate criteria reference E-AUTH-001/002/003 error codes which are defined in error-taxonomy.md.
 - F-PHASE2-R07-07 (LOW): Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states "4 parallel + S-009 serial after S-008 (Decision 1)" in both the Wave Overview table and the Wave 3 body paragraph. Previous prose implied all 5 stories were fully parallel, contradicting Decision 1 (S-008→S-009 RingBuffer dependency added in r02).
+
+## §Trace v1.4
+
+**Phase 2 r09 remediation burst** (2026-05-19):
+- F-PHASE2-R09-01 (HIGH): Wave 3 table S-009 Depends-On column updated to include S-DTU-001 (Decision 10: symmetric bidirectional edge required; S-DTU-001 blocks S-009 per S-DTU-001 frontmatter; S-009 now lists S-DTU-001 in depends_on).
+- wave-schedule version bumped v1.3→v1.4.

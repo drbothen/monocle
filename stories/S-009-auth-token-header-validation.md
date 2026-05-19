@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-009
 epic_id: EPIC-01
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -11,7 +11,7 @@ points: 8
 wave: 3
 tdd_mode: strict
 priority: P0
-depends_on: [S-001, S-004, S-006, S-008]
+depends_on: [S-001, S-004, S-006, S-008, S-DTU-001]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
@@ -148,6 +148,10 @@ this AC verifies the router registration matches that list.)
 
 ## Previous Story Intelligence
 
+S-DTU-001 (Wave 1): Claude Code hook protocol DTU clone built and running. Provides the hook
+protocol fixture corpus that S-009 integration tests exercise against the alias auth path
+(`X-Claude-Code-Ide-Authorization`). S-009 depends on S-DTU-001 for integration test coverage
+of the dual-accept protocol (Decision 10 + SE-25: bidirectional DAG edge required).
 S-004 (Wave 2): `DefaultBodyLimit::max(262_144)` applied to authenticated router.
 S-006 (Wave 2): Lock file writer complete; `monocle_runtime::auth::generate_session_token()`
 already called at `DaemonLock::acquire()` time (Orchestrator Decision 3: function lives in

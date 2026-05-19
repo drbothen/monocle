@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-001
 epic_id: EPIC-01
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,7 +12,7 @@ wave: 1
 tdd_mode: facade
 priority: P0
 depends_on: []
-blocks: [S-002, S-003, S-004, S-005, S-006, S-010, S-013, S-014]
+blocks: [S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: []
@@ -21,8 +21,10 @@ estimated_days: 2
 # BC status: no BC-S.SS.NNN covers CI/devops workspace setup. NFR-007 and NFR-008 are CI
 # gate deliverables validated by green CI builds, not VP probes. BC-2.01.007 (JSONL ring) is
 # implemented exclusively by S-008; this story only establishes the workspace that S-008 compiles in.
-# S-009 removed from blocks: per Decision 1+2 restructure (S-008→S-009 dependency added;
-# S-009 moved to Wave 3; S-001 blocks are only stories that directly depend on workspace init).
+# S-009 included in blocks (Decision 10): S-009 directly consumes S-001's workspace + axum router
+# foundation. The r01 partial-fix that removed S-009 from S-001 blocks was incomplete — the
+# depends_on/blocks sibling propagation was skipped. Per SE-25 bidirectional DAG symmetry
+# requirement: every depends_on entry must have a matching blocks entry on the depended-on story.
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
