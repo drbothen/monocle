@@ -12,7 +12,7 @@ producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md]
-input-hash: "19ca05c"
+input-hash: "6c55009"
 traces_to: "factory-artifacts ee09833 (brief v1.1); consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---
