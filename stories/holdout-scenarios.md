@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v1.4"
+traces_to: ".factory/stories/STORY-INDEX.md v1.5"
 ---
 
 # Holdout Scenarios: monocle Phase 2

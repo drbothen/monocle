@@ -100,7 +100,7 @@ is shown to the TUI.
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,200 |
-| BC-2.01.006.md (1.0.4) | ~700 |
+| BC-2.01.006.md (1.0.5) | ~700 |
 | VP-006 file (1.0.14) | ~500 |
 | SS-daemon-lifecycle.md v1.0.33 (crash recovery + drain sections) | ~1,500 |
 | S-006 lock.rs interface reference | ~300 |

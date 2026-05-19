@@ -118,7 +118,7 @@ fail-open per EC-031; BC-2.03.001 EC-031).
 
 Note: BC-2.03.001 invariant 2 covers the `HookEvent` type location in `hook_events.rs`
 (a separate concern). DI-006 enforcement for detect() I/O-free is specifically postcondition 6
-(added in BC-2.03.001 v1.0.5), which is the authoritative clause per BC-2.03.001 §Traceability
+(added in BC-2.03.001 v1.0.4), which is the authoritative clause per BC-2.03.001 §Traceability
 DI-006 mapping.
 
 ## Token Budget Estimate
@@ -126,10 +126,10 @@ DI-006 mapping.
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,400 |
-| BC-2.03.001.md (1.0.4) | ~700 |
-| BC-2.03.002.md (1.0.3) | ~700 |
-| BC-2.03.003.md (1.0.2) | ~600 |
-| BC-2.03.004.md (1.0.3) | ~700 |
+| BC-2.03.001.md (1.0.5) | ~700 |
+| BC-2.03.002.md (1.0.4) | ~700 |
+| BC-2.03.003.md (1.0.3) | ~600 |
+| BC-2.03.004.md (1.0.4) | ~700 |
 | VP-020 + VP-021 + VP-022 files | ~1,200 |
 | SS-engine-module.md v1.1.20 (ClaudeCodeModule + supporting types sections) | ~2,000 |
 | temp-env test isolation | ~300 |

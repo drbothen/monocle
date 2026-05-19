@@ -18,7 +18,7 @@ inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
 input-hash: "[live-state]"
-traces_to_full: ".factory/stories/STORY-INDEX.md v1.4"
+traces_to_full: ".factory/stories/STORY-INDEX.md v1.5"
 ---
 
 stories:

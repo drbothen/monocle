@@ -12,6 +12,7 @@ inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
 traces_to: "dependency-graph.md; implements wave execution schedule derived from topological sort"
 ---
@@ -25,7 +26,7 @@ traces_to: "dependency-graph.md; implements wave execution schedule derived from
 | Wave 0 | S-PHASE-3-PREP | 3 | Sequential (external dep) | spec-kit-mcp rc.19+ available + human approval; does NOT block Waves 1–3 |
 | Wave 1 | S-DTU-001, S-001 | 8 | Full parallel | Wave 1 gate: both S-DTU-001 and S-001 green; CI matrix passing |
 | Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Partial parallel (internal order below) | Wave 2 gate: all 9 stories delivered and CI green |
-| Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | Full parallel (all 5 parallel) | Wave 3 gate: all 5 stories delivered; 22/22 BCs green |
+| Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | 4 parallel + S-009 serial after S-008 (Decision 1) | Wave 3 gate: all 5 stories delivered; 22/22 BCs green |
 
 **Total implementation waves: 3 (+ Wave 0 pre-Phase-3)**
 **Phase 3 dispatch gate: Wave 3 complete + Wave 0 complete (S-PHASE-3-PREP)**
@@ -121,7 +122,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 ## Wave 3: Dependent Completions
 
 **Timing:** After Wave 2 gate passes.
-**Parallelism:** All 5 stories are listed (S-009 may start only after S-008 completes within the wave due to Decision 1 S-008→S-009 dependency; S-007, S-012, and S-015 are fully independent and can run concurrently with each other and with S-008).
+**Parallelism:** 4 stories parallel (S-007, S-008, S-012, S-015 are fully independent and can run concurrently). S-009 runs serially after S-008 completes within Wave 3 per Decision 1 (S-008 → S-009 RingBuffer dependency).
 
 | Story | Title | Points | Depends On | Status |
 |-------|-------|--------|-----------|--------|

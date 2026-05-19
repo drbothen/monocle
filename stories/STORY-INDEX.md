@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -197,6 +197,8 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - S-PHASE-3-PREP created per TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE §Future Attachment obligation
 - Dependency graph is acyclic (validated via topological sort; see dependency-graph.md)
 
+## §Trace v1.1
+
 **Phase 2 r01 remediation burst** (2026-05-19):
 - F-PHASE2-R01-01..26 and GAP-PHASE2-R01-01..11 addressed
 - S-009 moved from Wave 2 to Wave 3 (Decision 1: S-008→S-009 dependency added)
@@ -206,11 +208,6 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - S-005 blocks: [] (S-007 removed — S-007 depends on S-006 not S-005)
 - Wave 2 points: 41 (was 49); Wave 3 points: 34 (was 26)
 - All 17 stories retrofitted with inputs:/input-hash:/traces_to: per SE-22 v2
-
-## §Trace v1.1
-
-**Phase 2 r01 remediation burst** (2026-05-19):
-- See narrative in §Trace v1.0 above (inline in the initial burst trace).
 
 ## §Trace v1.2
 
@@ -253,3 +250,13 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - F-PHASE2-R06-04 (MEDIUM): §Trace audit-trail completed — v1.1/v1.2/v1.3/v1.4 entries added for monotonically-ascending version coverage.
 - SE-22 v2 cascade: BC-INDEX v1.12→v1.13 propagated to all 19 corpus consumers. BC-2.01.001..010 and BC-2.03.001..004 version pins propagated to all story frontmatter inputs entries.
 - Discipline codified: story-corpus artifacts MUST have §Trace entries in monotonically-ascending version order for every declared version.
+
+## §Trace v1.5
+
+**Phase 2 r07 remediation burst** (2026-05-19):
+- F-PHASE2-R07-02 + GAP-R07-1 (MED): Token Budget table BC version cells updated — S-007 BC-2.01.006.md 1.0.4→1.0.5; S-015 BC-2.03.001.md 1.0.4→1.0.5, BC-2.03.002.md 1.0.3→1.0.4, BC-2.03.003.md 1.0.2→1.0.3, BC-2.03.004.md 1.0.3→1.0.4. Sibling sweep: only S-007 and S-015 had stale body-prose BC version cells; all other 15 stories confirmed clean.
+- F-PHASE2-R07-03 (MED): S-015 line 121 prose version corrected — "added in BC-2.03.001 v1.0.5" → "v1.0.4" (PC-6 was authored in v1.0.4; v1.0.5 was pointer-only SE-22 cascade).
+- F-PHASE2-R07-04 (MED): §Trace v1.0/v1.1 restructured — r01 remediation prose (F-PHASE2-R01-01..26, wave/dependency/SE-22 v2 changes) moved from §Trace v1.0 body into §Trace v1.1 body where it belongs; v1.1 pointer-stub eliminated.
+- F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): wave-schedule.md inputs: entry added for error-taxonomy.md v1.5 to sibling-mirror STORY-INDEX/dep-graph; wave gate criteria reference E-AUTH-001/002/003 error codes.
+- F-PHASE2-R07-07 (LOW): wave-schedule.md Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states 4 fully parallel + S-009 serially after S-008 per Decision 1.
+- STORY-INDEX version bumped v1.4→v1.5.
