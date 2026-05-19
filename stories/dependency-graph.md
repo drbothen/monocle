@@ -1,10 +1,10 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-19T04:30:00Z
+timestamp: 2026-05-19T12:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
@@ -106,7 +106,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | Story | Blocks | Justification |
 |-------|--------|---------------|
 | S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
-| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation; the r01 partial-fix that removed S-009 was incomplete. |
+| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation; the r01 partial-fix that removed S-009 was incomplete. S-013/S-014 removed (Decision 11): both depend on S-010 directly, not S-001; transitive chain S-001→S-010→{S-013,S-014} preserves topological order. |
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
 | S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
 | S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. |
@@ -470,6 +470,11 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - F-PHASE2-R05-02 (HIGH): BC-2.01.002 PC-3 row coverage extended — S-003 AC-008 added (status serves during drain; BC-2.01.004 PC-4 cross-cites BC-2.01.002 PC-3).
 - SE-22 v2 BC version cascade applied to all story corpus files (r05 scope).
 
+## §Trace v1.5
+
+**Administrative pre-cascade increment** (2026-05-19):
+- Administrative pre-cascade increment; no content delta from v1.4 (the substantive r06 burst content was committed under §Trace v1.6 per F-PHASE2-R08-02 retroactive label fix). This bridge entry inserted per GAP-PHASE2-R10-1 (LOW) to restore monotonically-ascending §Trace chain: v1.4 → v1.5 → v1.6.
+
 ## §Trace v1.6
 
 **Phase 2 r06 remediation** (2026-05-19):
@@ -491,3 +496,13 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - GAP-PHASE2-R09-1 (LOW): §Trace v1.6 body corrected — "v1.4 and v1.5 entries added" reference removed (dep-graph frontmatter was bumped directly 1.4→1.6 in the r06 burst; no §Trace v1.5 label ever existed). Option B applied per finding.
 - SE-25 codification candidate: "Every depends_on entry must have a matching blocks entry on the depended-on story; sibling-sweep mandatory at every story-writer commit."
 - dep-graph version bumped v1.6→v1.7.
+
+## §Trace v1.8
+
+**Phase 2 r10 remediation burst** (2026-05-19):
+- F-PHASE2-R10-01 (HIGH) + GAP-PHASE2-R10-2 (HIGH) — Decision 11: S-013 and S-014 removed from S-001.blocks. Bidirectional check confirmed: S-013.depends_on=[S-010] (no S-001); S-014.depends_on=[S-010] (no S-001). Spurious direct edges replaced by transitive chain S-001→S-010→{S-013,S-014}. Consistent with S-011/S-012 precedent (identical pattern; correctly absent from S-001.blocks since r01).
+- Blocks Edges table S-001 row updated: S-013/S-014 removed from Blocks column and justification annotation updated with Decision 11 rationale.
+- GAP-PHASE2-R10-1 (LOW): §Trace v1.5 bridge entry inserted between v1.4 and v1.6 to restore monotonically-ascending chain. Administrative no-content-delta entry as specified.
+- Comprehensive bidirectional sweep (BOTH directions, all 17 stories): Direction 1 (A.depends_on → X.blocks): 21 edges checked, 0 asymmetries. Direction 2 (A.blocks → Y.depends_on): 20 edges checked, 2 asymmetries (S-001→S-013 and S-001→S-014, the exact Decision 11 targets). No new FDRs.
+- SE-25 v2 codification recommendation: bidirectional sweep must be performed in BOTH directions (depends_on→blocks AND blocks→depends_on) at every story-writer commit.
+- dep-graph version bumped v1.7→v1.8. STORY-INDEX v1.6→v1.7 (sibling bump per SE-22 v2).

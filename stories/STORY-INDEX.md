@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-19T04:30:00Z
+timestamp: 2026-05-19T12:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -40,7 +40,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
-| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 |
+| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | — |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |

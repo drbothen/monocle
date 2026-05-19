@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-001
 epic_id: EPIC-01
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,7 +12,7 @@ wave: 1
 tdd_mode: facade
 priority: P0
 depends_on: []
-blocks: [S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014]
+blocks: [S-002, S-003, S-004, S-005, S-006, S-009, S-010]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: []
@@ -25,6 +25,10 @@ estimated_days: 2
 # foundation. The r01 partial-fix that removed S-009 from S-001 blocks was incomplete — the
 # depends_on/blocks sibling propagation was skipped. Per SE-25 bidirectional DAG symmetry
 # requirement: every depends_on entry must have a matching blocks entry on the depended-on story.
+# S-013 and S-014 REMOVED from blocks (Decision 11 / F-PHASE2-R10-01): both stories depend on
+# S-010 (not S-001 directly). Bidirectional check: S-013.depends_on=[S-010]; S-014.depends_on=[S-010].
+# Transitive chain S-001 → S-010 → {S-013, S-014} preserves topological ordering without
+# spurious direct edges. S-011/S-012 are identical pattern — absent from S-001.blocks by precedent.
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}

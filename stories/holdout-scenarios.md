@@ -1,10 +1,10 @@
 ---
 document_type: plan-doc
 level: ops
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-19T04:30:00Z
+timestamp: 2026-05-19T12:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v1.5"
+traces_to: ".factory/stories/STORY-INDEX.md v1.7"
 ---
 
 # Holdout Scenarios: monocle Phase 2
@@ -207,3 +207,9 @@ with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT blo
 **Phase 2 r06 cascade** (2026-05-19):
 - `traces_to:` updated from `.factory/stories/STORY-INDEX.md v1.4` → `v1.5` per SE-22 v2 forward consumer-ledger sweep (STORY-INDEX bumped v1.4→v1.5 in r07; holdout-scenarios.md traces_to pinned to STORY-INDEX). Frontmatter bumped to v1.2.
 - Retrospective §Trace v1.0/v1.1/v1.2 entries added per F-PHASE2-R08-03 closure (initial sibling-sweep gap: zero §Trace entries for 2 declared versions).
+
+## §Trace v1.3
+
+**Phase 2 r10 closure** (2026-05-19):
+- F-PHASE2-R10-02 (MEDIUM) / GAP-PHASE2-R10-3: STORY-INDEX pin updated v1.5 → v1.7 per SE-22 v2 consumer-ledger sweep (STORY-INDEX bumped v1.5→v1.6 in r09 burst; then v1.6→v1.7 in this r10 burst for Decision 11 S-001.blocks correction). holdout-scenarios.md carries forward to current STORY-INDEX version as required by SE-22 v2 forward consumer-ledger discipline.
+- Frontmatter bumped to v1.3.
