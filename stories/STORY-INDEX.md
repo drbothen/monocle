@@ -272,3 +272,8 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - Bidirectional sweep result: no additional asymmetries found beyond the 3 declared (full sweep of all 17 stories).
 - SE-25 codification candidate: "Every depends_on entry must have a matching blocks entry on the depended-on story; sibling-sweep mandatory at every story-writer commit."
 - STORY-INDEX version bumped v1.5→v1.6.
+
+## §Trace v1.7
+
+**Phase 2 r10 burst: Decision 11 applied** (2026-05-19):
+- S-013, S-014 removed from S-001.blocks per consistency-validator Option A (matches S-011/S-012 corpus precedent of transitive-via-S-010). STORY-INDEX bumped 1.6→1.7 to reflect S-001 Blocks column update. F-PHASE2-R10-01 / GAP-PHASE2-R10-2 closure. Sibling-sweep: dep-graph §Trace v1.8 + holdout-scenarios §Trace v1.3 carry corresponding entries (this §Trace v1.7 closes the STORY-INDEX leg of the sibling-sweep).
