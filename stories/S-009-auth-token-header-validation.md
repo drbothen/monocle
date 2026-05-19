@@ -1,0 +1,166 @@
+---
+document_type: story
+story_id: S-009
+epic_id: EPIC-01
+version: "1.0"
+status: draft
+producer: vsdd-factory:story-writer
+timestamp: 2026-05-19T04:00:00Z
+phase: 2
+points: 8
+wave: 2
+tdd_mode: strict
+priority: P0
+depends_on: [S-001, S-004, S-006]
+blocks: [S-008]
+target_module: monocle-runtime
+subsystems: [SS-01]
+behavioral_contracts: [BC-2.01.008, BC-2.01.009]
+verification_properties: [VP-008, VP-009]
+dtu_dependencies: [S-DTU-001]
+estimated_days: 3
+---
+
+# S-009: Auth Token Wire Format + Header Validation (FC-06, ADR-0005)
+
+## Narrative
+
+As a harness hook script or monocle-aware tool, I want auth header validation to accept
+both the canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` header and the
+Claude Code compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>`, so
+that real Claude Code hook scripts work without modification while monocle-aware tools
+use the versioned canonical form.
+
+## Acceptance Criteria
+
+### AC-001 (traces to BC-2.01.008 postcondition 1 — auth token generation)
+The daemon generates a 32-byte random auth token using `rand::rngs::OsRng` (NOT `thread_rng`).
+The token is encoded as 64 lowercase hexadecimal characters. NFR-004 validation.
+
+### AC-002 (traces to BC-2.01.008 postcondition 2 — lock file authToken field)
+The lock file `authToken` field stores the raw 64-hex token (no prefix). Claude Code hook
+scripts read this value verbatim and send it in `X-Claude-Code-Ide-Authorization`.
+
+### AC-003 (traces to BC-2.01.008 postcondition 3 — canonical header format)
+The canonical `X-Monocle-Authorization` header value format is `monocle-v1:<64-hex>`.
+The daemon's auth middleware strips the `monocle-v1:` prefix before constant-time comparison.
+
+### AC-004 (traces to BC-2.01.009 postcondition 1 — missing auth → 401 E-AUTH-001)
+When both `X-Monocle-Authorization` AND `X-Claude-Code-Ide-Authorization` are absent,
+the authenticated endpoints return HTTP 401 with body `{"error":"missing_auth_token"}`.
+
+### AC-005 (traces to BC-2.01.009 postcondition 2 — alias path auth + WARN)
+When `X-Claude-Code-Ide-Authorization: <raw-64-hex>` is present (and canonical is absent):
+- The raw-hex token is compared constant-time against the stored lock-file token
+- If match: HTTP 200 (or appropriate hook response); WARN log E-AUTH-003 emitted
+- If mismatch: HTTP 401 `{"error":"invalid_auth_token"}`
+
+### AC-006 (traces to BC-2.01.009 postcondition 3 — canonical path auth)
+When `X-Monocle-Authorization: monocle-v1:<64-hex>` is present:
+- Prefix `monocle-v1:` is stripped; remaining 64-hex compared constant-time against lock-file token
+- If match: HTTP 200 (or appropriate hook response); no WARN log
+- If mismatch or wrong format: HTTP 401 `{"error":"invalid_auth_token"}`
+
+### AC-007 (traces to BC-2.01.009 postcondition 4 — canonical wins when both present)
+When BOTH headers are present, `X-Monocle-Authorization` takes priority. The alias
+value is ignored. No WARN log is emitted (canonical path wins; no deprecation signal needed).
+
+### AC-008 (traces to BC-2.01.009 invariant 7 — constant-time comparison on ALL paths)
+`constant_time_eq::constant_time_eq(a, b)` is used for token comparison on BOTH the
+canonical path and the alias path. The string `==` operator is NEVER used on secret
+token bytes. Source-grep verified by VP-008/VP-009.
+
+### AC-009 (traces to BC-2.01.009 edge case EC-013 — both headers absent → 401)
+When the request carries neither `X-Monocle-Authorization` nor
+`X-Claude-Code-Ide-Authorization`, the response is HTTP 401 `{"error":"missing_auth_token"}`.
+
+### AC-010 (traces to BC-2.01.008 postcondition 4 — five hook endpoints registered)
+The daemon registers all 5 hook POST endpoints on the authenticated router:
+`/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`,
+`/hooks/prompt-submit`. Each handler accepts the hook POST body, writes to the ring
+buffer, and returns HTTP 200 with body `{"status":"ok"}`.
+
+## Token Budget Estimate
+
+| Component | Tokens |
+|-----------|--------|
+| This story spec | ~1,100 |
+| BC-2.01.008.md | ~700 |
+| BC-2.01.009.md | ~900 |
+| VP-008 + VP-009 files | ~1,000 |
+| SS-daemon-lifecycle.md (auth section + dual-accept) | ~3,000 |
+| ADR-0005 (auth header dual-accept) | ~1,500 |
+| Test file | ~1,000 |
+| **Total estimate** | **~9,200** |
+
+## Tasks
+
+- [ ] Implement `generate_auth_token()` in `monocle-runtime/src/auth.rs` using `rand::rngs::OsRng`
+  - Generates 32 bytes → hex-encode to 64-char lowercase string
+  - Token stored in `Arc<String>` (shared between auth middleware and lock file writer)
+- [ ] Implement auth middleware `validate_auth_header()`:
+  - Check `X-Monocle-Authorization` first (canonical): strip `monocle-v1:` prefix; constant_time_eq
+  - If absent, check `X-Claude-Code-Ide-Authorization` (alias): constant_time_eq on raw hex; emit WARN
+  - If both absent: return 401 E-AUTH-001
+  - If present but wrong format/value: return 401 E-AUTH-002
+- [ ] Wire middleware to authenticated router (all 5 hook endpoints + /status + /shutdown)
+- [ ] Implement stub hook handlers for all 5 endpoints:
+  - Parse JSON body via `serde_json`
+  - Write `HookEventRecord` to `RingBuffer` (from S-008)
+  - Return HTTP 200 `{"status":"ok"}`
+- [ ] Update lock file writer (S-006) to include generated `authToken`
+- [ ] Integration tests `monocle-runtime/tests/auth_header_validation.rs`:
+  - Canonical auth → 200 + no WARN log
+  - Alias auth → 200 + WARN log
+  - Both headers → canonical wins, no WARN
+  - Missing both → 401 E-AUTH-001
+  - Wrong token (canonical) → 401 E-AUTH-002
+  - Wrong token (alias) → 401 E-AUTH-002 + WARN
+  - VP-008 source-grep: no `==` on secret bytes in auth.rs
+  - VP-009 source-grep: `constant_time_eq` present on alias path
+
+## Previous Story Intelligence
+
+S-004 (Wave 2): `DefaultBodyLimit::max(262_144)` applied to authenticated router.
+S-006 (Wave 2): Lock file writer exists; `authToken` field currently placeholder.
+This story updates `DaemonLock::acquire()` to call `generate_auth_token()` and include
+the result in the lock file before `tempfile::persist`.
+
+## Architecture Compliance Rules
+
+From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Auth Middleware and §Auth Token:
+- `OsRng` is MANDATORY — `thread_rng` is FORBIDDEN (NFR-004)
+- `constant_time_eq` is MANDATORY on BOTH canonical and alias comparison paths (NFR-010)
+- WARN log is emitted on EVERY alias-path request regardless of auth outcome (INV-6)
+- Canonical wins when both headers present (INV-8)
+
+From `architecture/ADR-0005` v1.0.2:
+- Dual-accept at the router-level auth middleware
+- Canonical: `X-Monocle-Authorization: monocle-v1:<64-hex>`
+- Alias: `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (no prefix)
+
+**Forbidden Dependencies:**
+- `std::cmp::PartialEq::eq` or `==` on token byte/string values is FORBIDDEN
+- `rand::thread_rng()` is FORBIDDEN for token generation (use OsRng)
+
+## Library & Framework Requirements
+
+| Crate | Version | Usage |
+|-------|---------|-------|
+| rand | =0.8.6 | `rand::rngs::OsRng` token generation |
+| constant_time_eq | 0.3 | Token comparison on canonical + alias paths |
+| axum | =0.8.9 | Middleware, TypedHeader extraction |
+| serde_json | =1.0.149 | Hook POST body deserialization |
+| tracing | 0.1 | WARN on alias path (E-AUTH-003) |
+
+## File Structure Requirements
+
+Files to create/modify:
+- `monocle-runtime/src/auth.rs` — `generate_auth_token()`, `validate_auth_header()`, middleware
+- `monocle-runtime/src/handlers/hooks.rs` — 5 hook endpoint handlers (create)
+- `monocle-runtime/tests/auth_header_rejection.rs` — auth integration tests (create)
+
+Files to modify:
+- `monocle-runtime/src/lock.rs` — include `authToken` from `generate_auth_token()`
+- `monocle-runtime/src/router.rs` — add auth middleware + 5 hook routes
+- `monocle-runtime/src/handlers/mod.rs` — add `pub mod hooks;`

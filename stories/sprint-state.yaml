@@ -1,0 +1,232 @@
+---
+document_type: sprint-state
+version: "1.0"
+status: active
+producer: vsdd-factory:story-writer
+timestamp: 2026-05-19T04:30:00Z
+phase: 3
+traces_to: STORY-INDEX.md
+# Initialized for Phase 3 TDD implementation dispatch.
+# All stories start as not_started. State transitions:
+# not_started → in_progress → review → done | blocked
+---
+
+stories:
+  - id: S-PHASE-3-PREP
+    title: "spec-kit-mcp Integration — Phase 3 Pre-Implementation Mechanical Sweep"
+    epic: EPIC-PREP
+    wave: 0
+    points: 3
+    status: blocked
+    blocked_by: vsdd-factory-spec-kit-mcp-rc19plus
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 0: blocked until vsdd-factory upstream spec-kit-mcp rc.19+ ships. Does not block Waves 1-3."
+
+  - id: S-DTU-001
+    title: "Claude Code Hook Protocol DTU Clone (L3 Behavioral)"
+    epic: EPIC-DTU
+    wave: 1
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 1 priority. No product story deps. Facade TDD mode."
+
+  - id: S-001
+    title: "Cargo Workspace Init + CI/DevOps Setup"
+    epic: EPIC-01
+    wave: 1
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 1 foundation. Facade TDD mode. Blocks all other product stories."
+
+  - id: S-002
+    title: "Healthz Endpoint (Unauthenticated Liveness Probe)"
+    epic: EPIC-01
+    wave: 2
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001."
+
+  - id: S-003
+    title: "Status Endpoint (Authenticated Daemon State)"
+    epic: EPIC-01
+    wave: 2
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001, S-002."
+
+  - id: S-004
+    title: "Body Size Limit (256 KiB, HTTP 413)"
+    epic: EPIC-01
+    wave: 2
+    points: 2
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001."
+
+  - id: S-005
+    title: "Graceful Shutdown (10-Second Drain)"
+    epic: EPIC-01
+    wave: 2
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001, S-002."
+
+  - id: S-006
+    title: "Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)"
+    epic: EPIC-01
+    wave: 2
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001. Covers BC-2.01.005 + BC-2.01.010."
+
+  - id: S-009
+    title: "Auth Token Wire Format + Header Validation (FC-06, ADR-0005)"
+    epic: EPIC-01
+    wave: 2
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001, S-004, S-006. Covers BC-2.01.008 + BC-2.01.009."
+
+  - id: S-010
+    title: "monocle-core Crate Foundation + ABI Version Constant (FC-03)"
+    epic: EPIC-02
+    wave: 2
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-001. Covers BC-2.02.001 + BC-2.02.002."
+
+  - id: S-011
+    title: "Non-Exhaustive Enum Policy (FC-02)"
+    epic: EPIC-02
+    wave: 2
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-010."
+
+  - id: S-013
+    title: "HookEnvelope Proto Wire Format (FC-05)"
+    epic: EPIC-02
+    wave: 2
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-010. Covers BC-2.02.006 + BC-2.02.007 + BC-2.02.008."
+
+  - id: S-014
+    title: "EngineModule Trait Definition"
+    epic: EPIC-03
+    wave: 2
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 2. Depends on S-010."
+
+  - id: S-007
+    title: "Crash Recovery Checkpoint"
+    epic: EPIC-01
+    wave: 3
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 3. Depends on S-006."
+
+  - id: S-008
+    title: "JSONL Ring Format Version (FC-01)"
+    epic: EPIC-01
+    wave: 3
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 3. Depends on S-006."
+
+  - id: S-012
+    title: "FactoryAdapter Trait + VsddFactoryAdapter Implementation (FC-04)"
+    epic: EPIC-02
+    wave: 3
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 3. Depends on S-010, S-011. Covers BC-2.02.004 + BC-2.02.005."
+
+  - id: S-015
+    title: "ClaudeCodeModule Implementation"
+    epic: EPIC-03
+    wave: 3
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 3. Depends on S-014. Covers BC-2.03.002 + BC-2.03.003 + BC-2.03.004."
+
+summary:
+  total_stories: 18
+  not_started: 17
+  in_progress: 0
+  review: 0
+  done: 0
+  blocked: 1
+  total_points: 86
+  points_complete: 0
+  wave_1_points: 8
+  wave_2_points: 49
+  wave_3_points: 26
+  wave_0_points: 3

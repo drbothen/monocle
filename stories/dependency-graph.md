@@ -1,0 +1,323 @@
+---
+document_type: plan-doc
+level: L4
+version: "1.0"
+status: active
+producer: vsdd-factory:story-writer
+timestamp: 2026-05-19T04:30:00Z
+phase: 2
+traces_to: STORY-INDEX.md
+---
+
+# Dependency Graph: monocle Phase 2 Stories
+
+## Topological Order (Wave-Sorted)
+
+```
+Wave 0 (Pre-Phase-3 gate; not blocking Phase 2):
+  S-PHASE-3-PREP  (external dep: spec-kit-mcp rc.19+)
+
+Wave 1 (no product deps — parallel start):
+  S-DTU-001       (DTU clone; no product story deps)
+  S-001           (workspace init; no story deps)
+
+Wave 2 (depends on Wave 1; parallel within wave):
+  S-002           (depends on: S-001)
+  S-003           (depends on: S-001, S-002)
+  S-004           (depends on: S-001)
+  S-005           (depends on: S-001, S-002)
+  S-006           (depends on: S-001)
+  S-009           (depends on: S-001, S-004, S-006)
+  S-010           (depends on: S-001)
+  S-011           (depends on: S-010)
+  S-013           (depends on: S-010)
+  S-014           (depends on: S-010)
+
+Wave 3 (depends on Wave 2; parallel within wave):
+  S-007           (depends on: S-006)
+  S-008           (depends on: S-006)
+  S-012           (depends on: S-010, S-011)
+  S-015           (depends on: S-014)
+```
+
+## Dependency Edges (Story → Depends On)
+
+| Story | Depends On | Justification |
+|-------|-----------|---------------|
+| S-PHASE-3-PREP | vsdd-factory rc.19+ (external) | External library dependency; no product story deps |
+| S-DTU-001 | — | DTU stories have NO product story dependencies per DTU wave-scheduling rule |
+| S-001 | — | Foundation story; no predecessors |
+| S-002 | S-001 | Requires workspace + axum router stub from S-001 |
+| S-003 | S-001, S-002 | Requires authenticated router (depends on unauthenticated router from S-002) |
+| S-004 | S-001 | Requires axum router from S-001; independent of S-002/S-003 |
+| S-005 | S-001, S-002 | Requires AppMode enum from S-002 (ShuttingDown state) |
+| S-006 | S-001 | Requires workspace crates (tempfile, directories, nix) from S-001 |
+| S-007 | S-006 | Requires runtime_dir resolution and tempfile::persist pattern from S-006 |
+| S-008 | S-006 | Requires runtime_dir and HookEventRecord struct; ring flush depends on runtime_dir |
+| S-009 | S-001, S-004, S-006 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001) |
+| S-010 | S-001 | Requires monocle-core crate stub from S-001; independent of S-002..S-009 |
+| S-011 | S-010 | Requires monocle-core type declarations from S-010 |
+| S-012 | S-010, S-011 | Requires monocle-core types (S-010) and #[non_exhaustive] policy (S-011) |
+| S-013 | S-010 | Requires monocle-proto crate stub; monocle-core for HookEnvelope cross-reference |
+| S-014 | S-010 | Requires monocle-core types (HookEvent, HookResponse defined in S-010 engine module) |
+| S-015 | S-014 | Requires EngineModule trait and supporting types from S-014 |
+
+## Acyclicity Verification
+
+Topological sort using Kahn's algorithm:
+
+```
+Degree-0 nodes (no deps): {S-PHASE-3-PREP, S-DTU-001, S-001}
+
+Round 1 — remove degree-0, reduce dependents:
+  Process: S-DTU-001, S-001
+  Newly degree-0: {S-002, S-004, S-005*, S-006, S-010}
+  (*S-005 depends on S-001+S-002; S-002 not yet removed; not degree-0 yet)
+
+Round 2 — process S-002, S-004, S-006, S-010:
+  Newly degree-0 after S-002 removed: {S-003, S-005}
+  Newly degree-0 after S-006 removed: (S-007, S-008, S-009 still have S-004 dep for S-009)
+  Newly degree-0 after S-010 removed: {S-011, S-013, S-014}
+
+Round 3 — process S-003, S-004, S-005, S-011, S-013, S-014:
+  Newly degree-0: {S-007, S-008, S-009, S-012, S-015}
+
+Round 4 — process S-007, S-008, S-009, S-012, S-015:
+  All remaining nodes processed; empty queue.
+
+Total processed: 18 nodes. No cycle detected. DAG is acyclic. PASS.
+```
+
+**Cycle check result: ACYCLIC. Topological sort successful.**
+
+## Blocks Edges (Story → Blocks)
+
+| Story | Blocks | Justification |
+|-------|--------|---------------|
+| S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
+| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-014 | Workspace required for all implementation stories |
+| S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
+| S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests |
+| S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007), ring (S-008), auth token (S-009) |
+| S-010 | S-011, S-012, S-013, S-014 | monocle-core types needed for all SS-02/SS-03 stories |
+| S-011 | S-012 | Non-exhaustive enum attributes needed before FactoryAdapter types |
+| S-014 | S-015 | EngineModule trait needed before ClaudeCodeModule impl |
+
+## BC to Stories Matrix
+
+| BC ID | Stories | Full Coverage? |
+|-------|---------|---------------|
+| BC-2.01.001 | S-002 | YES |
+| BC-2.01.002 | S-003 | YES |
+| BC-2.01.003 | S-004 | YES |
+| BC-2.01.004 | S-005 | YES |
+| BC-2.01.005 | S-006 | YES |
+| BC-2.01.006 | S-007 | YES |
+| BC-2.01.007 | S-001, S-008 | YES (S-001 declares crate; S-008 implements ring) |
+| BC-2.01.008 | S-009 | YES |
+| BC-2.01.009 | S-009 | YES |
+| BC-2.01.010 | S-006 | YES |
+| BC-2.02.001 | S-003, S-010 | YES (S-010 declares const; S-003 exposes in /status) |
+| BC-2.02.002 | S-010 | YES |
+| BC-2.02.003 | S-011 | YES |
+| BC-2.02.004 | S-012 | YES |
+| BC-2.02.005 | S-012 | YES |
+| BC-2.02.006 | S-013 | YES |
+| BC-2.02.007 | S-013 | YES |
+| BC-2.02.008 | S-013 | YES |
+| BC-2.03.001 | S-014 | YES |
+| BC-2.03.002 | S-015 | YES |
+| BC-2.03.003 | S-015 | YES |
+| BC-2.03.004 | S-015 | YES |
+
+## VP to Stories Matrix
+
+| VP ID | Stories Exercising It | BC Source |
+|-------|----------------------|-----------|
+| VP-001 | S-002 | BC-2.01.001 |
+| VP-002 | S-003 | BC-2.01.002 |
+| VP-003 | S-004 | BC-2.01.003 |
+| VP-004 | S-005 | BC-2.01.004 |
+| VP-005 | S-006 | BC-2.01.005 |
+| VP-006 | S-007 | BC-2.01.006 |
+| VP-007 | S-008 | BC-2.01.007 |
+| VP-008 | S-009 | BC-2.01.008 |
+| VP-009 | S-009 | BC-2.01.009 |
+| VP-010 | S-006 | BC-2.01.010 |
+| VP-011 | S-003, S-010 | BC-2.02.001 |
+| VP-012 | S-010 | BC-2.02.002 |
+| VP-013 | S-011 | BC-2.02.003 |
+| VP-014 | S-012 | BC-2.02.004 |
+| VP-015 | S-012 | BC-2.02.005 |
+| VP-016 | S-013 | BC-2.02.006 |
+| VP-017 | S-013 | BC-2.02.007 |
+| VP-018 | S-013 | BC-2.02.008 |
+| VP-019 | S-014 | BC-2.03.001 |
+| VP-020 | S-015 | BC-2.03.002 |
+| VP-021 | S-015 | BC-2.03.003 |
+| VP-022 | S-015 | BC-2.03.004 |
+
+## NFR to Stories Matrix
+
+| NFR ID | Priority | Stories Implementing It | Validation Method |
+|--------|----------|------------------------|-------------------|
+| NFR-001 | P0 | Phase 3 TBD | Phase 3 load-test integration test |
+| NFR-002 | P0 | Phase 3 TBD | Phase 3 load-test integration test |
+| NFR-003 | P0 | Phase 3 TBD (TUI) | Phase 3 TUI integration test |
+| NFR-004 | P0 | S-009 | VP-008 OsRng source-grep (AC-001) |
+| NFR-005 | P0 | S-004 | VP-003 AC-001 integration test |
+| NFR-006 | P0 | Phase 3 TBD | Phase 3 load-test integration test |
+| NFR-007 | P0 | S-001 | CI gate: rust-toolchain.toml (AC-002, AC-004) |
+| NFR-008 | P0 | S-001 | CI gate: matrix config (AC-003) |
+| NFR-009 | P0 | S-006 | VP-005 Post-condition 1 (AC-001) |
+| NFR-010 | P0 | S-009, S-003 | VP-008/VP-009 constant_time_eq source-grep |
+| NFR-011 | P0 | S-DTU-001 | DTU fidelity ≥0.95 fixture corpus (AC-004) |
+| NFR-012 | P0 | S-006 | VP-005 Post-condition 9 (AC-006) |
+
+## BC Clause Coverage Matrix
+
+| BC-S.SS.NNN | Clause | Type | Covering AC | Story |
+|-------------|--------|------|-------------|-------|
+| BC-2.01.001 | 1 | postcondition | AC-001 | S-002 |
+| BC-2.01.001 | 2 | postcondition | AC-002 | S-002 |
+| BC-2.01.001 | 3 | postcondition | AC-003 | S-002 |
+| BC-2.01.001 | 4 | postcondition | AC-004 | S-002 |
+| BC-2.01.001 | 1 | invariant | AC-005 | S-002 |
+| BC-2.01.001 | 2 | invariant | AC-005 | S-002 |
+| BC-2.01.002 | 1 | postcondition | AC-001 | S-003 |
+| BC-2.01.002 | 2 | postcondition | AC-002 | S-003 |
+| BC-2.01.002 | 3 | postcondition | AC-003 | S-003 |
+| BC-2.01.002 | 4 | postcondition | AC-004 | S-003 |
+| BC-2.01.002 | 5 | postcondition | AC-005 | S-003 |
+| BC-2.01.002 | 6 | postcondition | AC-006 | S-003 |
+| BC-2.01.002 | 7 | postcondition | AC-007 | S-003 |
+| BC-2.01.003 | 1 | postcondition | AC-001 | S-004 |
+| BC-2.01.003 | 2 | postcondition | AC-002 | S-004 |
+| BC-2.01.003 | 3 | postcondition | AC-003 | S-004 |
+| BC-2.01.003 | 1 | invariant | AC-004 | S-004 |
+| BC-2.01.004 | 1 | postcondition | AC-001 | S-005 |
+| BC-2.01.004 | 2 | postcondition | AC-002 | S-005 |
+| BC-2.01.004 | 3 | postcondition | AC-003 | S-005 |
+| BC-2.01.004 | 4 | postcondition | AC-004 | S-005 |
+| BC-2.01.004 | 1 | invariant | AC-005 | S-005 |
+| BC-2.01.004 | 3 | invariant | AC-006 | S-005 |
+| BC-2.01.005 | 1 | postcondition (start) | AC-003 | S-006 |
+| BC-2.01.005 | 2 | postcondition (start) | AC-004 | S-006 |
+| BC-2.01.005 | 3 | postcondition (start) | AC-001 | S-006 |
+| BC-2.01.005 | 4 | postcondition (start) | AC-002 | S-006 |
+| BC-2.01.005 | 5 | postcondition (start) | AC-009 | S-006 |
+| BC-2.01.005 | 6 | postcondition (shutdown) | AC-005 | S-006 |
+| BC-2.01.005 | 7 | postcondition (shutdown) | AC-005 | S-006 |
+| BC-2.01.005 | 8 | postcondition (runtime dir) | AC-006 | S-006 |
+| BC-2.01.005 | 1 | invariant | AC-003 | S-006 |
+| BC-2.01.005 | 2 | invariant | AC-001 | S-006 |
+| BC-2.01.005 | 3 | invariant | AC-001 | S-006 |
+| BC-2.01.005 | 2a-d | precondition | AC-007..AC-009 | S-006 |
+| BC-2.01.006 | 1 | postcondition | AC-001 | S-007 |
+| BC-2.01.006 | 2 | postcondition | AC-002 | S-007 |
+| BC-2.01.006 | 3 | postcondition | AC-003 | S-007 |
+| BC-2.01.006 | 4 | postcondition | AC-004 | S-007 |
+| BC-2.01.006 | 1 | invariant | AC-005 | S-007 |
+| BC-2.01.006 | 2 | invariant | AC-006 | S-007 |
+| BC-2.01.007 | 1 | postcondition | AC-001 | S-008 |
+| BC-2.01.007 | 2 | postcondition | AC-002 | S-008 |
+| BC-2.01.007 | 3 | postcondition | AC-003 | S-008 |
+| BC-2.01.007 | 4 | postcondition | AC-004 | S-008 |
+| BC-2.01.007 | 1 | invariant (DI-001) | AC-004 | S-008 |
+| BC-2.01.008 | 1 | postcondition | AC-001 | S-009 |
+| BC-2.01.008 | 2 | postcondition | AC-002 | S-009 |
+| BC-2.01.008 | 3 | postcondition | AC-003 | S-009 |
+| BC-2.01.008 | 4 | postcondition | AC-010 | S-009 |
+| BC-2.01.009 | 1 | postcondition | AC-004 | S-009 |
+| BC-2.01.009 | 2 | postcondition | AC-005 | S-009 |
+| BC-2.01.009 | 3 | postcondition | AC-006 | S-009 |
+| BC-2.01.009 | 4 | postcondition | AC-007 | S-009 |
+| BC-2.01.009 | 7 | invariant | AC-008 | S-009 |
+| BC-2.01.010 | 1 | postcondition | AC-010 | S-006 |
+| BC-2.02.001 | 1 | postcondition | AC-003, AC-005 | S-010, S-003 |
+| BC-2.02.002 | 1 | postcondition | AC-001, AC-002 | S-010 |
+| BC-2.02.002 | 2 | postcondition | AC-003 | S-010 |
+| BC-2.02.002 | 3 | postcondition | AC-004 | S-010 |
+| BC-2.02.003 | 1 | postcondition | AC-001 | S-011 |
+| BC-2.02.003 | 2 | postcondition | AC-002 | S-011 |
+| BC-2.02.003 | 3 | postcondition | AC-003 | S-011 |
+| BC-2.02.004 | 1 | postcondition | AC-001 | S-012 |
+| BC-2.02.004 | 2 | postcondition | AC-002 | S-012 |
+| BC-2.02.004 | 3 | postcondition | AC-003 | S-012 |
+| BC-2.02.004 | 4 | postcondition | AC-004 | S-012 |
+| BC-2.02.005 | 1 | postcondition | AC-005 | S-012 |
+| BC-2.02.005 | 2 | postcondition | AC-006 | S-012 |
+| BC-2.02.005 | 3 | postcondition | AC-007 | S-012 |
+| BC-2.02.005 | 4 | postcondition | AC-008 | S-012 |
+| BC-2.02.006 | 1 | postcondition | AC-001, AC-006 | S-013 |
+| BC-2.02.007 | 1 | postcondition | AC-002 | S-013 |
+| BC-2.02.007 | 2 | postcondition | AC-003 | S-013 |
+| BC-2.02.008 | 1 | postcondition | AC-004 | S-013 |
+| BC-2.02.008 | 2 | postcondition | AC-005 | S-013 |
+| BC-2.03.001 | 1 | postcondition | AC-001 | S-014 |
+| BC-2.03.001 | 2 | postcondition | AC-002 | S-014 |
+| BC-2.03.001 | 3 | postcondition | AC-003 | S-014 |
+| BC-2.03.001 | 4 | postcondition | AC-004 | S-014 |
+| BC-2.03.001 | 5 | postcondition | AC-005 | S-014 |
+| BC-2.03.001 | 1 | invariant | AC-006 | S-014 |
+| BC-2.03.001 | 3 | invariant | AC-007 | S-014 |
+| BC-2.03.002 | 1 | postcondition | AC-001 | S-015 |
+| BC-2.03.002 | 2 | postcondition | AC-002 | S-015 |
+| BC-2.03.002 | 3 | postcondition | AC-003 | S-015 |
+| BC-2.03.003 | 1 | postcondition | AC-004 | S-015 |
+| BC-2.03.003 | 2 | postcondition | AC-005 | S-015 |
+| BC-2.03.004 | 1 | postcondition | AC-006 | S-015 |
+| BC-2.03.004 | 2 | postcondition | AC-007 | S-015 |
+| BC-2.03.004 | 3 | postcondition | AC-008 | S-015 |
+| BC-2.03.001 | 2 | invariant (DI-006) | AC-009 | S-015 |
+
+## Edge Case Coverage Matrix
+
+| Source | EC/Error ID | Description | Story | AC/EC Reference |
+|--------|-------------|-------------|-------|----------------|
+| BC-2.01.001 | EC-040 | TUI hung-daemon detection | S-002 | AC-006 |
+| BC-2.01.001 | EC-041 | TUI dead-pid stale lock | S-002 | AC-006 |
+| BC-2.01.003 | EC-002 | Body limit on authenticated endpoints only | S-004 | AC-005 |
+| BC-2.01.005 | EC-051 | Lock file write fails | S-006 | Addressed in Tasks (tempfile guarantees) |
+| BC-2.01.005 | EC-052 | Runtime dir absent | S-006 | AC-006 |
+| BC-2.01.005 | EC-053 | TOCTOU race on lock file | S-006 | AC-001 (tempfile atomic) |
+| BC-2.01.005 | EC-057 | macOS platform fallback | S-006 | AC-008 |
+| BC-2.01.005 | EC-058 | MONOCLE_RUNTIME_DIR override | S-006 | AC-007 |
+| BC-2.01.005 | EC-059 | Full-fail RuntimeDirUnresolvable | S-006 | AC-009 |
+| BC-2.01.005 | EC-060 | Empty MONOCLE_RUNTIME_DIR | S-006 | AC-007 (non-empty check) |
+| BC-2.01.007 | EC-003 | Ring flush failure | S-008 | AC-005 |
+| BC-2.01.009 | EC-013 | Both headers absent → 401 | S-009 | AC-009 |
+| BC-2.02.004 | EC-018 | dyn FactoryAdapter + detect where Self: Sized | S-012 | AC-001 |
+| BC-2.02.004 | EC-019 | custom_fields YAML flow-style | S-012 | AC-004 |
+| BC-2.02.004 | EC-020 | Phase 3 WASM adapter | S-012 | AC-002 (no Sealed) |
+| BC-2.03.001 | EC-029 | metadata() with $HOME unset | S-015 | AC-004 |
+| BC-2.03.001 | EC-030 | detect() with exe_path = None | S-015 | AC-003 |
+| BC-2.03.001 | EC-031 | on_hook() with unknown HookEvent | S-015 | AC-009 |
+| error-taxonomy | E-AUTH-001 | missing_auth_token | S-009 | AC-004 |
+| error-taxonomy | E-AUTH-002 | invalid_auth_token | S-009 | AC-005, AC-006 |
+| error-taxonomy | E-AUTH-003 | alias path WARN | S-009 | AC-005 |
+| error-taxonomy | E-DAEMON-001 | payload_too_large | S-004 | AC-001 |
+| error-taxonomy | E-DAEMON-002 | daemon_shutting_down 503 | S-005 | AC-003 |
+| error-taxonomy | E-DAEMON-003 | healthz 503 during shutdown | S-002 | AC-002 |
+| error-taxonomy | E-DAEMON-004 | RuntimeDirUnresolvable exit 1 | S-006 | AC-009 |
+| error-taxonomy | E-LOCK-001 | daemon already running | S-006 | AC-003 |
+| error-taxonomy | E-LOCK-002 | stale lock removed | S-006 | AC-004 |
+| error-taxonomy | E-LOCK-003 | unknown contract_version | S-006 | AC-010 |
+| error-taxonomy | E-ENG-001 | HomeUnresolvable | S-015 | AC-005 |
+| error-taxonomy | E-FACT-001 | STATE.md not found | S-012 | AC-008 |
+| error-taxonomy | E-FACT-002 | STATE.md malformed | S-012 | AC-008 |
+| error-taxonomy | E-RING-001 | ring flush failed | S-008 | AC-005 |
+| error-taxonomy | E-PROTO-001 | unknown schema_version | S-013 | AC-004 |
+
+## Gap Register
+
+| Gap ID | Level | Source | Clause/Item | Justification | Resolution Target |
+|--------|-------|--------|-------------|---------------|-------------------|
+| GAP-P2-001 | L3 | NFR-001 | latency ≤300ms for hook endpoints | Requires Phase 3 load-test infrastructure not available in Phase 1 per nfr-catalog.md §VP Probe Citations; hook receiver DESIGN is Phase 1, VALIDATION is Phase 3 | Phase 3 story decomposition |
+| GAP-P2-002 | L3 | NFR-002 | latency ≤2000ms for Notification | Same as GAP-P2-001; Notification path hook receiver DESIGN is Phase 1, sustained VALIDATION is Phase 3 | Phase 3 story decomposition |
+| GAP-P2-003 | L3 | NFR-003 | TUI overlay render ≤100ms | TUI permission overlay is Phase 3 deliverable; not Phase 1 scope per product-brief.md phase table | Phase 3 story decomposition |
+| GAP-P2-004 | L3 | NFR-006 | 1000 events/sec throughput | Bounded-channel DESIGN is Phase 1 (S-008); sustained load VALIDATION at 1000 events/sec requires Phase 3 load-test infra | Phase 3 story decomposition |
+
+**L1 gaps (BC clause coverage): 0**
+**L2 gaps (edge case coverage): 0**
+**L3 gaps (NFR, justified): 4 (all have non-empty justification, all authorized by nfr-catalog.md)**
