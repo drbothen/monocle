@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-001
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -82,6 +82,10 @@ as required by the Patch-Pinning Policy:
 - `serde_json = "=1.0.149"` (EXACT)
 - `rand = "=0.8.6"` (EXACT)
 All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md §Phase 1 Pin Manifest.
+`temp-env = { version = "^0.3", features = ["async_closure"] }` MUST be declared in
+`monocle-runtime/Cargo.toml` `[dev-dependencies]` (NOT workspace dependencies; it is a
+test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md §Phase 1 Pin Manifest
+(temp-env entry: "caret pin (`^0.3`); feature `async_closure` required for `async_with_vars` API").
 
 ## Token Budget Estimate
 
@@ -153,6 +157,7 @@ From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
 | constant_time_eq | 0.3 | caret | `constant_time_eq = "0.3"` |
 | futures | 0.3 | caret | `futures = "0.3"` |
 | async-trait | 0.1 | caret | `async-trait = "0.1"` |
+| temp-env (dev only) | 0.3 | caret | `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime/Cargo.toml` `[dev-dependencies]` |
 
 ## File Structure Requirements
 

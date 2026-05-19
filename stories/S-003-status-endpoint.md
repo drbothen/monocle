@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-003
 epic_id: EPIC-01
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -50,36 +50,47 @@ accurate session, ring-buffer, and ABI information.
 (array of 5 paths), `ring_buffer_fill_pct` (float 0.0–100.0), `channel_saturation_pct`
 (float 0.0–100.0), `last_hook_ts` (object with 5 nullable timestamp fields), `tui_attached` (bool).
 
-### AC-002 (traces to BC-2.01.002 postcondition 2 — dual-accept auth per ADR-0005)
-`GET /status` with `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias path) returns
-HTTP 200 with the same body as canonical auth. A WARN log `WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias)...` is emitted.
+### AC-002 (traces to BC-2.01.009 postcondition 2 — alias path auth + WARN log)
+`GET /status` with `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias path, no canonical header present)
+returns HTTP 200 with the same body as canonical auth. A WARN log
+`WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias)...` is emitted.
+(BC-2.01.009 PC-2 governs alias-path behavior; BC-2.01.002 Precondition 2 delegates auth semantics to BC-2.01.009.)
 
-### AC-003 (traces to BC-2.01.002 postcondition 3)
-`GET /status` with no auth header returns HTTP 401 with body `{"error":"missing_auth_token"}`.
+### AC-003 (traces to BC-2.01.009 postcondition 1 — missing auth → 401 E-AUTH-001)
+`GET /status` with no auth header (neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present)
+returns HTTP 401 with body `{"error":"missing_auth_token"}` (E-AUTH-001).
+(BC-2.01.009 PC-1 is the canonical auth-failure locus; BC-2.01.002 PC-2 delegates to BC-2.01.009.)
 
-### AC-004 (traces to BC-2.01.002 postcondition 4)
-`GET /status` with an invalid auth token returns HTTP 401 with body `{"error":"invalid_auth_token"}`.
+### AC-004 (traces to BC-2.01.009 postcondition 3 — invalid token → 401 E-AUTH-002)
+`GET /status` with an invalid auth token (format correct but token value wrong)
+returns HTTP 401 with body `{"error":"invalid_auth_token"}` (E-AUTH-002).
+(BC-2.01.009 PC-3 governs canonical-path wrong-value behavior.)
 
-### AC-005 (traces to BC-2.01.002 postcondition 5 — ABI version field)
+### AC-005 (traces to BC-2.02.001 postcondition 1 — ABI version field; BC-2.01.002 postcondition 1 sub-bullet «abi_version»)
 The `abi_version` field in the `/status` response equals `monocle_core::MONOCLE_ABI_VERSION`
 (value `1`) as compiled into the binary. Integration test asserts `jq .abi_version == 1`.
-(Covers VP-011.)
+(Covers VP-011. BC-2.02.001 PC-1 is the authoritative ABI-version-in-/status clause; BC-2.01.002 PC-1 sub-bullet `abi_version` enumerates it as one of the required 10 fields.)
 
-### AC-006 (traces to BC-2.01.002 postcondition 6 — hook_endpoints array)
+### AC-006 (traces to BC-2.01.002 postcondition 1 sub-bullet «hook_endpoints»)
 The `hook_endpoints` field is an array of exactly 5 paths:
 `["/hooks/pre-tool-use", "/hooks/notification", "/hooks/stop", "/hooks/session-start", "/hooks/prompt-submit"]`.
+(BC-2.01.002 PC-1 sub-bullet `hook_endpoints` is the canonical source; cross-cite BC-2.01.008 PC-4 which mandates these 5 endpoints on the authenticated router.)
 
-### AC-007 (traces to BC-2.01.002 postcondition 7 — last_hook_ts format)
+### AC-007 (traces to BC-2.01.002 postcondition 1 sub-bullet «last_hook_ts»)
 `last_hook_ts` values use ISO 8601 UTC with mandatory millisecond precision
 (`YYYY-MM-DDTHH:MM:SS.sssZ`). A hook type that has not fired since daemon start has
-`null` (not the string `"null"` and not `0`).
+`null` (not the string `"null"` and not `0`). (BC-2.01.002 PC-1 sub-bullet `last_hook_ts`
++ EC-044 define the null-or-ISO-ms contract.)
 
-### AC-007b (traces to BC-2.02.001 postcondition 1 — abi_version in /status matches compile-time const)
-The `abi_version` field in the `/status` JSON response is populated from
-`monocle_core::MONOCLE_ABI_VERSION` at compile time (BC-2.02.001 PC-1). The value is
-`1` for all Phase 1 daemons. VP-011 verifies this: a compiled test binary reads
-`MONOCLE_ABI_VERSION` and the live `/status` response; both values must be identical.
-S-010 provides the const; S-003 exposes it in the response — joint coverage.
+### AC-008 (traces to BC-2.01.002 postcondition 3 — /status serves during drain)
+`/status` continues to serve HTTP 200 responses during the graceful shutdown drain window
+(AppMode = ShuttingDown). It does NOT return 503 during drain. (BC-2.01.004 PC-4 cross-cites
+BC-2.01.002 PC-3 as the source; read-only endpoint is exempt from the drain-503 rule.)
+
+Note: AC-005 subsumes the AC-007b intent. BC-2.02.001 PC-1 + PC-2 are the canonical
+source for ABI-version-in-/status. AC-005 above covers both the field presence (BC-2.02.001 PC-1)
+and the compile-time equality requirement (BC-2.02.001 PC-2). S-010 provides the const;
+S-003 exposes it in the response — joint coverage. VP-011 verifies the equality invariant.
 
 ## Token Budget Estimate
 

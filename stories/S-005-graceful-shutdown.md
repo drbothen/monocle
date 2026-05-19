@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-005
 epic_id: EPIC-01
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -132,7 +132,7 @@ Reuse the auth middleware from S-003 for `POST /shutdown` — no new auth code n
 From `architecture/SS-daemon-lifecycle.md` v1.0.32 §Graceful Shutdown and §Hard Shutdown:
 - 10-second drain timeout is hard-coded (not configurable in Phase 1)
 - `AppMode::ShuttingDown` gates the 503 response on hook handlers
-- Exit code 2 = drain timeout; tokio `axum::serve` timeout enforced via `tokio::time::timeout`
+- Drain timeout (10s per INV-1) triggers force-shutdown via in-process abort; drain-timeout-forced-shutdown exits 0 (SIGTERM originator, graceful attempt completed within deadline). Exit code 130 = second SIGINT during drain; exit code 143 = second SIGTERM during drain; exit code 2 = second authenticated `POST /shutdown` during drain (admin forced-stop, NOT drain timeout). BC-2.01.004 PC-8 + INV-1 + INV-4.
 
 From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
 - Use `nix 0.30` for signal handling: `nix::sys::signal::kill` for pid-liveness; tokio signal API for SIGTERM/SIGINT

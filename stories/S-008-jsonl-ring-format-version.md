@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-008
 epic_id: EPIC-01
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -62,19 +62,25 @@ explicit-null-field semantically. VP-007 verifies that `HookEventRecord::new(ses
 (BC-2.01.007 PC-4). This declaration order ensures `format_version` serializes first via
 `serde_json`'s struct-field-order preservation (BC-2.01.007 invariant 1).
 
-### AC-003 (traces to BC-2.01.007 postcondition 3 — ring is hybrid RAM + async flush)
+### AC-003 (traces to SS-daemon-lifecycle.md v1.0.32 §JSONL Ring Buffer — ring is hybrid RAM + async flush; BC-2.01.007 postcondition 2 + postcondition 3 for RING_FORMAT_VERSION const usage)
 The ring buffer maintains records in RAM up to the configured capacity limit. Async flush
 to `<runtime_dir>/monocle-ring.jsonl` is triggered when the RAM buffer reaches 80%
-capacity or on a 5-second timer (whichever comes first).
+capacity or on a 5-second timer (whichever comes first). The hybrid-RAM-async-flush
+architecture is specified in SS-daemon-lifecycle.md §JSONL Ring Buffer (not in BC-2.01.007
+which only governs format_version placement and RING_FORMAT_VERSION const; no BC clause
+covers the hybrid-ring capacity threshold — this is an architectural constraint).
 
 ### AC-004 (traces to BC-2.01.007 postcondition 4 — tee invariant DI-001)
 Every hook event received by the daemon is written to the JSONL ring BEFORE any
 acknowledgement (HTTP 200 response) is returned to the harness. DI-001 enforcement.
 
-### AC-005 (traces to BC-2.01.007 edge case EC-003 — flush failure is degraded, not broken)
+### AC-005 (traces to BC-2.01.004 edge case EC-049 — flush failure is degraded, not broken)
 If the async flush to disk fails (e.g., disk full), the daemon logs
 `WARN: ring buffer flush failed: <io-error>` (E-RING-001) but continues accepting hook
 events into the RAM ring. No hook acknowledgement is withheld due to flush failure.
+(BC-2.01.004 EC-049 "Ring buffer flush fails during drain" is the canonical EC locus.
+BC-2.01.007 EC-003 is "ring buffer file truncated mid-line (crash)" — a reader-side
+robustness concern, not the flush-failure writer concern. Re-anchored from EC-003 → EC-049.)
 
 ### AC-006 (traces to BC-2.01.007 postcondition 5 — #[non_exhaustive] + pub fn new() constructor)
 `HookEventRecord` carries `#[non_exhaustive]` attribute AND provides a public constructor:
@@ -83,10 +89,14 @@ events into the RAM ring. No hook acknowledgement is withheld due to flush failu
 struct literal construction outside `monocle-runtime::ring` is forbidden by `#[non_exhaustive]`
 (Rust E0639). The `format_version` field is set to `RING_FORMAT_VERSION` inside the constructor.
 
-### AC-007 (traces to BC-2.01.007 invariant 1 — ring rotation policy)
-The JSONL ring file is rotated when it exceeds the configured size limit (default 50 MB per OQ-06,
-max 100 MB × 5 files). Old records beyond the limit are discarded (newest-wins rotation). No ring
-file exceeds 2× the size limit at any point.
+### AC-007 (traces to PRD v1.26.15 §OQ-06 + BC-2.01.007 edge case EC-002 — ring rotation policy)
+The JSONL ring file is rotated when it exceeds the configured size limit (default 50 MB per
+PRD OQ-06, max 100 MB × 5 files). Old records beyond the limit are discarded (newest-wins
+rotation). No ring file exceeds 2× the size limit at any point. EC-002 (very large tool_input
+up to 256 KiB) requires the rotation logic to handle lines approaching 256 KiB without
+truncation. (BC-2.01.007 INV-1 governs `serde_json` struct-field-order preservation — it is
+NOT the ring rotation clause. The rotation policy is specified in PRD OQ-06; no dedicated
+BC clause exists. Re-anchored from BC-2.01.007 INV-1 → PRD OQ-06 + BC-2.01.007 EC-002.)
 
 ## Token Budget Estimate
 

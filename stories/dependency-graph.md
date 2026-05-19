@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.2"
+version: "1.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -196,13 +196,12 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.001 | 4 | postcondition | AC-004 | S-002 |
 | BC-2.01.001 | 1 | invariant | AC-005 | S-002 |
 | BC-2.01.001 | 2 | invariant | AC-005 | S-002 |
-| BC-2.01.002 | 1 | postcondition | AC-001 | S-003 |
-| BC-2.01.002 | 2 | postcondition | AC-002 | S-003 |
-| BC-2.01.002 | 3 | postcondition | AC-003 | S-003 |
-| BC-2.01.002 | 4 | postcondition | AC-004 | S-003 |
-| BC-2.01.002 | 5 | postcondition | AC-005 | S-003 |
-| BC-2.01.002 | 6 | postcondition | AC-006 | S-003 |
-| BC-2.01.002 | 7 | postcondition | AC-007 | S-003 |
+| BC-2.01.002 | 1 | postcondition (all 10 fields) | AC-001 | S-003 |
+| BC-2.01.002 | 1 sub-bullet «abi_version» | postcondition | AC-005 (cross-cite BC-2.02.001 PC-1) | S-003 |
+| BC-2.01.002 | 1 sub-bullet «hook_endpoints» | postcondition | AC-006 (cross-cite BC-2.01.008 PC-4) | S-003 |
+| BC-2.01.002 | 1 sub-bullet «last_hook_ts» | postcondition | AC-007 | S-003 |
+| BC-2.01.002 | 2 | postcondition (invalid auth → BC-2.01.009) | AC-003, AC-004 (traced to BC-2.01.009 PC-1, PC-3) | S-003 |
+| BC-2.01.002 | 3 | postcondition (/status during drain) | AC-008 | S-003 |
 | BC-2.01.003 | 1 | postcondition | AC-001 | S-004 |
 | BC-2.01.003 | 2 | postcondition | AC-002 | S-004 |
 | BC-2.01.003 | 3 | postcondition | AC-003 | S-004 |
@@ -210,7 +209,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.004 | 1 | postcondition | AC-001 | S-005 |
 | BC-2.01.004 | 2 | postcondition | AC-002 | S-005 |
 | BC-2.01.004 | 3 | postcondition | AC-003 | S-005 |
-| BC-2.01.004 | 4 | postcondition | AC-004 (S-003 /status serves during drain) | S-003 |
+| BC-2.01.004 | 4 | postcondition | AC-008 (S-003 /status serves during drain per BC-2.01.002 PC-3) | S-003 |
 | BC-2.01.004 | 5 | postcondition | AC-001 (10s drain wait enforced in AC-001 sequence) | S-005 |
 | BC-2.01.004 | 6 | postcondition | -- | GAP-P2-005 (ring flush on --persistent-events; Phase 3 flag not in Phase 1 scope) |
 | BC-2.01.004 | 7 | postcondition | AC-005 (drain completes → lock+sock removed per lifecycle) | S-005 |
@@ -242,16 +241,19 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.006 | 1 | invariant (schema) | AC-008 | S-007 |
 | BC-2.01.006 | 2 | invariant (drain order) | AC-009 | S-007 |
 | BC-2.01.006 | 3 | invariant (60s from start) | AC-003 | S-007 |
-| BC-2.01.007 | 1 | postcondition | AC-001 | S-008 |
-| BC-2.01.007 | 2 | postcondition | AC-003 | S-008 |
-| BC-2.01.007 | 3 | postcondition | AC-003 | S-008 |
-| BC-2.01.007 | 4 | postcondition | AC-002b | S-008 |
+| BC-2.01.007 | 1 | postcondition (format_version first key) | AC-001 | S-008 |
+| BC-2.01.007 | 2 | postcondition (value always 1 in Phase 1) | AC-001 | S-008 |
+| BC-2.01.007 | 3 | postcondition (RING_FORMAT_VERSION const) | AC-006 (HookEventRecord::new sets const) | S-008 |
+| BC-2.01.007 | 4 | postcondition (field declaration order) | AC-002b | S-008 |
 | BC-2.01.007 | 5 | postcondition (#[non_exhaustive] + new()) | AC-006 | S-008 |
-| BC-2.01.007 | 1 | invariant (DI-001) | AC-004 | S-008 |
-| BC-2.01.008 | 1 | postcondition | AC-001 | S-009 |
-| BC-2.01.008 | 2 | postcondition | AC-002 | S-009 |
-| BC-2.01.008 | 3 | postcondition | AC-003 | S-009 |
-| BC-2.01.008 | 4 | postcondition | AC-010 | S-009 |
+| BC-2.01.007 | 1 | invariant (serde_json struct-field order) | AC-001, AC-002b | S-008 |
+| BC-2.01.004 | EC-049 | edge case (ring flush failure during drain) | AC-005 | S-008 |
+| BC-2.01.008 | 1 | postcondition (OsRng 64-char hex token in lock file) | AC-001 | S-009 |
+| BC-2.01.008 | 2 | postcondition (lock file authToken raw hex, no prefix) | AC-002 | S-009 |
+| BC-2.01.008 | 3 | postcondition (canonical header format monocle-v1:<hex>) | AC-003 | S-009 |
+| BC-2.01.008 | 4 | postcondition (dual-accept on hook endpoints) | AC-010a | S-009 |
+| BC-2.01.008 | 3 | invariant (OsRng mandatory, not thread_rng) | AC-008 (constant_time_eq on both paths = AC-001 OsRng) | S-009 |
+| BC-2.01.002 | 1 sub-bullet «hook_endpoints» | postcondition (5-endpoint list, S-009 registers them) | AC-010b | S-009 |
 | BC-2.01.009 | 1 | postcondition | AC-004 | S-009 |
 | BC-2.01.009 | 2 | postcondition | AC-005 | S-009 |
 | BC-2.01.009 | 3 | postcondition | AC-006 | S-009 |
@@ -264,21 +266,29 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.010 | EC-010 | edge case | AC-010 | S-006 |
 | BC-2.01.010 | EC-011 | edge case | AC-012 | S-006 |
 | BC-2.01.010 | EC-012 | edge case | AC-013 | S-006 |
-| BC-2.02.001 | 1 | postcondition | AC-003, AC-005 | S-010, S-003 |
-| BC-2.02.002 | 1 | postcondition | AC-001, AC-002 | S-010 |
-| BC-2.02.002 | 2 | postcondition | AC-003 | S-010 |
-| BC-2.02.002 | 3 | postcondition | AC-004 | S-010 |
-| BC-2.02.003 | 1 | postcondition | AC-001 | S-011 |
-| BC-2.02.003 | 2 | postcondition | AC-002 | S-011 |
-| BC-2.02.003 | 3 | postcondition | AC-003 | S-011 |
+| BC-2.02.001 | 1 | postcondition (abi_version field in /status) | AC-003, AC-005 | S-010, S-003 |
+| BC-2.02.001 | 2 | postcondition (equals monocle_core::MONOCLE_ABI_VERSION) | AC-005 (re-anchored from INV-1 per F-PHASE2-R03-09) | S-010 |
+| BC-2.02.001 | 3 | postcondition (full /status response shape — cross-covered by BC-2.01.002 PC-1) | AC-001 | S-003 |
+| BC-2.02.001 | 1 | invariant (compile-time constant; cross-covered by S-010 AC-004 compile-time assert) | AC-004 | S-010 |
+| BC-2.02.002 | 1 | postcondition (MONOCLE_ABI_VERSION at crate root) | AC-001, AC-002 | S-010 |
+| BC-2.02.002 | 2 | postcondition (re-export in lib.rs) | AC-002 | S-010 |
+| BC-2.02.002 | 3 | postcondition (compile-time stability test) | AC-004 | S-010 |
+| BC-2.02.002 | 1 | invariant (compile-time constant; cross-covered by AC-004) | AC-004 | S-010 |
+| BC-2.02.003 | 1 | postcondition (#[non_exhaustive] on all public enums) | AC-001 | S-011 |
+| BC-2.02.003 | 2 | postcondition (ADR-0004 exemptions are exhaustive) | AC-002 | S-011 |
+| BC-2.02.003 | 3 | postcondition (AST audit via VP-013) | AC-003 | S-011 |
+| BC-2.02.003 | 4 | postcondition (canonical minimum 9 enums including DenyReason, AllowPattern, DenyPattern) | AC-001, AC-001b | S-011 |
+| BC-2.02.003 | 1 | invariant (syn 2 AST parse mechanism; not clippy) | AC-003 | S-011 |
+| BC-2.02.003 | 2 | invariant (adding variant to #[non_exhaustive] is not breaking) | AC-004 (wildcard arm compiler enforcement) | S-011 |
 | BC-2.02.004 | 1 | postcondition | AC-001 | S-012 |
 | BC-2.02.004 | 2 | postcondition | AC-002 | S-012 |
 | BC-2.02.004 | 3 | postcondition | AC-003 | S-012 |
 | BC-2.02.004 | 4 | postcondition | AC-004 | S-012 |
-| BC-2.02.005 | 1 | postcondition | AC-005 | S-012 |
-| BC-2.02.005 | 2 | postcondition | AC-006 | S-012 |
-| BC-2.02.005 | 3 | invariant | AC-007 | S-012 |
-| BC-2.02.005 | 4 | postcondition | AC-008 | S-012 |
+| BC-2.02.005 | 1 | postcondition (VsddFactoryAdapter::new constructor + detect) | AC-005 | S-012 |
+| BC-2.02.005 | 2 | postcondition (self-referential detection against monocle repo) | AC-006 | S-012 |
+| BC-2.02.005 | 2 | invariant (display_name returns "VSDD Factory") | AC-010 | S-012 |
+| BC-2.02.005 | 3 | invariant (subscribe() returns empty stream; Phase 1 stub) | AC-007, AC-009 | S-012 |
+| BC-2.02.005 | 4 | postcondition (parse_frontmatter_field guards + error handling) | AC-005, AC-008 | S-012 |
 | BC-2.02.006 | 1 | postcondition | AC-001, AC-006 | S-013 |
 | BC-2.02.007 | 1 | postcondition | AC-002 | S-013 |
 | BC-2.02.007 | 2 | postcondition | AC-003 | S-013 |
@@ -289,16 +299,21 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.03.001 | 3 | postcondition | AC-003 | S-014 |
 | BC-2.03.001 | 4 | postcondition | AC-004 | S-014 |
 | BC-2.03.001 | 5 | postcondition | AC-005 | S-014 |
-| BC-2.03.001 | 1 | invariant | AC-006 | S-014 |
-| BC-2.03.001 | 3 | invariant | AC-007 | S-014 |
-| BC-2.03.002 | 1 | postcondition | AC-001 | S-015 |
-| BC-2.03.002 | 2 | postcondition | AC-002 | S-015 |
-| BC-2.03.002 | 3 | postcondition | AC-003 | S-015 |
-| BC-2.03.003 | 1 | postcondition | AC-004 | S-015 |
-| BC-2.03.003 | 2 | postcondition | AC-005 | S-015 |
-| BC-2.03.004 | 1 | postcondition | AC-006 | S-015 |
-| BC-2.03.004 | 2 | postcondition | AC-007 | S-015 |
-| BC-2.03.004 | 3 | postcondition | AC-008 | S-015 |
+| BC-2.03.001 | 1 | invariant (OPEN trait) | AC-006 | S-014 |
+| BC-2.03.001 | 2 | invariant (HookEvent defined in hook_events.rs) | AC-003b | S-014 |
+| BC-2.03.001 | 3 | invariant (async_trait macro required) | AC-007 | S-014 |
+| BC-2.03.002 | 1 | postcondition (ClaudeCodeModule implements EngineModule) | AC-001 | S-015 |
+| BC-2.03.002 | 2 | postcondition (infallible constructor) | AC-003 | S-015 |
+| BC-2.03.002 | 3 | postcondition (id() returns "claude-code") | AC-004 | S-015 |
+| BC-2.03.002 | 4 | postcondition (detect() strict basename: "claude" or "claude.js") | AC-001 | S-015 |
+| BC-2.03.002 | 5 | postcondition (detect() returns false when exe_path is None) | AC-002 | S-015 |
+| BC-2.03.002 | 1 | invariant (strict-basename prevents false positives) | AC-001, AC-002 | S-015 |
+| BC-2.03.002 | 2 | invariant (cmdline not used as primary detection signal) | AC-002 | S-015 |
+| BC-2.03.003 | 1 | postcondition (HomeUnresolvable on metadata/enrich) | AC-005 | S-015 |
+| BC-2.03.003 | 2 | postcondition (E-ENG-001 log on HomeUnresolvable) | AC-006 | S-015 |
+| BC-2.03.004 | 1 | postcondition (hook_paths() returns HashMap 5 entries) | AC-007 | S-015 |
+| BC-2.03.004 | 2 | postcondition (spawn() is todo!() stub) | AC-008 | S-015 |
+| BC-2.03.004 | 3 | postcondition (preflight() is todo!() stub) | AC-009 | S-015 |
 | BC-2.03.001 | 5 | postcondition (DI-006 detect I/O-free) | AC-010 | S-015 |
 
 ## Edge Case Coverage Matrix
@@ -320,7 +335,8 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.006 | EC-056 | TUI attaches at exactly 60-second boundary | S-007 | AC-005, AC-007 (60s window measured from start) |
 | BC-2.01.007 | EC-001 | Tool-less hook types omit tool_name/tool_input (no null) | S-008 | AC-002 |
 | BC-2.01.007 | EC-002 | Large tool_input up to 256 KiB | S-008 | AC-002b (7-field schema handles large values) |
-| BC-2.01.007 | EC-003 | Ring flush failure | S-008 | AC-005 |
+| BC-2.01.007 | EC-003 | Ring buffer file truncated mid-line (crash) — Phase 2 reader robustness | S-008 | AC-002b (7-field schema, JSONL reader skips incomplete lines) |
+| BC-2.01.004 | EC-049 | Ring buffer flush fails during drain | S-008 | AC-005 (re-anchored from BC-2.01.007 EC-003; EC-049 is flush-failure writer concern) |
 | BC-2.01.009 | EC-013 | Both headers absent → 401 | S-009 | AC-009 |
 | BC-2.02.004 | EC-018 | dyn FactoryAdapter + detect where Self: Sized | S-012 | AC-001 |
 | BC-2.02.004 | EC-019 | custom_fields YAML flow-style | S-012 | AC-004 |
@@ -379,3 +395,16 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - F-PHASE2-R02-07: BC Clause Coverage Matrix swept — BC-2.01.004 PC-4→PC-8 corrected (exit code taxonomy mislabeled); BC-2.01.004 added PC-4/PC-5/PC-7 clause rows; BC-2.01.005 postcondition rows reordered to monotonically ascending clause numbers; BC-2.02.005 postcondition 3→invariant 3; BC-2.03.001 INV-2(DI-006)→PC-5(DI-006) (correct locus per §Traceability DI-006 mapping)
 - GAP-P2-005 added: BC-2.01.004 PC-6 (--persistent-events ring flush) deferred to Phase 3 CLI surface (justified)
 - Gap Register counts updated: L1 gaps now 1 (GAP-P2-005 justified), L2 gaps 0, L3 gaps 4
+
+## §Trace v1.2
+
+**Phase 2 r03 remediation** (2026-05-19):
+- F-PHASE2-R03-01 CRITICAL: BC-2.01.002 fabricated PC-4..PC-7 rows removed. Only 3 PCs exist. Re-anchored: PC-1 sub-bullets for abi_version/hook_endpoints/last_hook_ts; auth failures → BC-2.01.009 PC-1/PC-3; PC-3 (/status during drain) → AC-008 new.
+- F-PHASE2-R03-04: BC-2.01.007 EC-003 (truncated mid-line) correctly attributed to reader robustness. Flush failure → BC-2.01.004 EC-049 (writer concern). AC-007 rotation anchor: PRD OQ-06 + BC-2.01.007 EC-002.
+- F-PHASE2-R03-05: BC-2.02.005 INV-2 (display_name "VSDD Factory") → S-012 AC-010 new.
+- F-PHASE2-R03-06: BC-2.02.003 PC-4 row added (9 canonical enums including DenyReason, AllowPattern, DenyPattern) → S-011 AC-001b.
+- F-PHASE2-R03-07: BC-2.01.008 PC-4 → AC-010a (dual-accept on hook endpoints). BC-2.01.002 PC-1 sub-bullet hook_endpoints → AC-010b (5 endpoints registered). S-009.
+- F-PHASE2-R03-09: BC-2.02.001 PC-2 row added (equals compiled value); AC-005 re-anchored from INV-1 → PC-1 + PC-2.
+- F-PHASE2-R03-12: BC-2.02.005 PC-4 row re-anchored to AC-005 + AC-008 (parse_frontmatter guards + error handling).
+- F-PHASE2-R03-13: BC-2.02.005 INV-3 row updated to cite AC-007, AC-009 (both ACs cover subscribe() Phase 1 stub).
+- BC-2.01.004 PC-4 → AC-008 (was stale AC-004 from old S-003 numbering).

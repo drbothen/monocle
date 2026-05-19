@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-009
 epic_id: EPIC-01
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -91,11 +91,19 @@ token bytes. Source-grep verified by VP-008/VP-009.
 When the request carries neither `X-Monocle-Authorization` nor
 `X-Claude-Code-Ide-Authorization`, the response is HTTP 401 `{"error":"missing_auth_token"}`.
 
-### AC-010 (traces to BC-2.01.008 postcondition 4 — five hook endpoints registered)
+### AC-010a (traces to BC-2.01.008 postcondition 4 — dual-accept auth applies to hook endpoints)
+All 5 hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`,
+`/hooks/session-start`, `/hooks/prompt-submit`) accept both canonical `X-Monocle-Authorization`
+and alias `X-Claude-Code-Ide-Authorization` per ADR-0005 dual-accept protocol (BC-2.01.008 PC-4).
+Unauthenticated hook POST returns HTTP 401 E-AUTH-001. Invalid-token POST returns HTTP 401 E-AUTH-002.
+
+### AC-010b (traces to BC-2.01.002 postcondition 1 sub-bullet «hook_endpoints» — five endpoints registered)
 The daemon registers all 5 hook POST endpoints on the authenticated router:
 `/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`,
 `/hooks/prompt-submit`. Each handler accepts the hook POST body, writes to the ring
 buffer, and returns HTTP 200 with body `{"status":"ok"}`.
+(BC-2.01.002 PC-1 sub-bullet `hook_endpoints` enumerates the canonical 5-path list;
+this AC verifies the router registration matches that list.)
 
 ## Token Budget Estimate
 

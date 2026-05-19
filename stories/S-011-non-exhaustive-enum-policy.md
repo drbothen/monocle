@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-011
 epic_id: EPIC-02
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -27,6 +27,7 @@ inputs:
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.10"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
+  - {path: .factory/specs/architecture/SS-permissions-phase1.md, version: "1.5.2"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.02.003 (Non-Exhaustive Enum Policy FC-02); verifies VP-013; establishes #[non_exhaustive] discipline for all public enums."
 ---
@@ -42,10 +43,23 @@ compiled downstream crates.
 
 ## Acceptance Criteria
 
-### AC-001 (traces to BC-2.02.003 postcondition 1 — non_exhaustive on public enums)
+### AC-001 (traces to BC-2.02.003 postcondition 1 + postcondition 4 — non_exhaustive on all 9 canonical public enums)
 All `pub enum` types in `monocle-core` that are not explicitly exempt per ADR-0004
-carry the `#[non_exhaustive]` attribute. This includes `HookType`, `HookDecision`,
-`DeferUntil`, `BlockingSeverity`, `SessionStatus`.
+carry the `#[non_exhaustive]` attribute. This includes the full canonical minimum-9 list
+from BC-2.02.003 PC-4: `HookType`, `HookEvent`, `HookDecision`, `DeferUntil`,
+`BlockingSeverity`, `SessionStatus` — PLUS the three permissions enums declared in
+`SS-permissions-phase1.md` lines 162–203:
+- `DenyReason` (in `monocle-core/src/permissions.rs`)
+- `AllowPattern` (in `monocle-core/src/permissions.rs`)
+- `DenyPattern` (in `monocle-core/src/permissions.rs`)
+All 9 enums carry `#[non_exhaustive]`; the `syn 2` AST audit in VP-013 verifies all.
+
+### AC-001b (traces to BC-2.02.003 postcondition 4 — permissions enums declared in monocle-core)
+`monocle-core/src/permissions.rs` declares `DenyReason`, `AllowPattern`, and `DenyPattern`
+with `#[non_exhaustive]` attributes per SS-permissions-phase1.md §Permission Types lines 162–203.
+These enums implement the permissions type surface without duplication of the Phase 1
+permission decision model. The module is re-exported from `monocle-core/src/lib.rs` as
+`pub mod permissions;`.
 
 ### AC-002 (traces to BC-2.02.003 postcondition 2 — ADR-0004 exemptions are exhaustive)
 `Phase1Permission` and `ClaudeCodeTool` are `pub enum` without `#[non_exhaustive]`
@@ -67,17 +81,20 @@ from external crates). Compiler error at build time if wildcard is missing.
 
 | Component | Tokens |
 |-----------|--------|
-| This story spec | ~600 |
+| This story spec | ~800 |
 | BC-2.02.003.md | ~500 |
 | VP-013 file | ~400 |
 | ADR-0004 (exhaustive enums exemption) | ~700 |
+| SS-permissions-phase1.md (lines 156-212, permissions enums) | ~600 |
 | syn 2 AST audit pattern | ~400 |
-| Test file | ~500 |
-| **Total estimate** | **~3,100** |
+| Test file | ~600 |
+| **Total estimate** | **~4,000** |
 
 ## Tasks
 
-- [ ] Add `#[non_exhaustive]` to: `HookType`, `HookDecision`, `DeferUntil`, `BlockingSeverity`, `SessionStatus`
+- [ ] Add `#[non_exhaustive]` to: `HookType`, `HookEvent`, `HookDecision`, `DeferUntil`, `BlockingSeverity`, `SessionStatus`
+- [ ] Create `monocle-core/src/permissions.rs` declaring `DenyReason`, `AllowPattern`, `DenyPattern` with `#[non_exhaustive]` attribute (SS-permissions-phase1.md lines 162–203; BC-2.02.003 PC-4)
+- [ ] Add `pub mod permissions;` to `monocle-core/src/lib.rs`
 - [ ] Confirm `Phase1Permission` and `ClaudeCodeTool` have NO `#[non_exhaustive]` (ADR-0004)
 - [ ] Create `monocle-core/tests/non_exhaustive_policy.rs` with syn 2 AST audit:
   - Parse all `.rs` files in `monocle-core/src/`
@@ -111,10 +128,12 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Non-Exhaustive Enum Polic
 ## File Structure Requirements
 
 Files to create:
-- `monocle-core/tests/non_exhaustive_policy.rs` — syn 2 AST audit
+- `monocle-core/src/permissions.rs` — `DenyReason`, `AllowPattern`, `DenyPattern` enums (all `#[non_exhaustive]`)
+- `monocle-core/tests/non_exhaustive_policy.rs` — syn 2 AST audit covering all 9 canonical enums
 
 Files to modify:
-- `monocle-core/src/engine.rs` — add `#[non_exhaustive]` to `HookType`, `HookDecision`, `DeferUntil`
+- `monocle-core/src/engine.rs` — add `#[non_exhaustive]` to `HookType`, `HookEvent`, `HookDecision`, `DeferUntil`
 - `monocle-core/src/factory.rs` — add `#[non_exhaustive]` to `BlockingSeverity`
 - `monocle-core/src/types.rs` — add `#[non_exhaustive]` to `SessionStatus`
+- `monocle-core/src/lib.rs` — add `pub mod permissions;`
 - `monocle-core/Cargo.toml` — add `syn = { version = "2", features = ["full"] }` and `quote = "1"` to `[dev-dependencies]`

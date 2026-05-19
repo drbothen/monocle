@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-015
 epic_id: EPIC-03
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -34,7 +34,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
-traces_to: "Implements BC-2.03.001 (EngineModule trait — DI-006 invariant 2), BC-2.03.002 (ClaudeCodeModule strict-basename detect), BC-2.03.003 (HomeUnresolvable error contract), BC-2.03.004 (ClaudeCodeModule inherent methods); verifies VP-020, VP-021, VP-022; covers EC-029, EC-030, EC-031, EC-032, EC-033, EC-034, EC-035, EC-038, EC-039; addresses NFR per SS-engine-module.md."
+traces_to: "Implements BC-2.03.001 (EngineModule trait — DI-006 postcondition 5), BC-2.03.002 (ClaudeCodeModule strict-basename detect), BC-2.03.003 (HomeUnresolvable error contract), BC-2.03.004 (ClaudeCodeModule inherent methods); verifies VP-020, VP-021, VP-022; covers EC-029, EC-030, EC-031, EC-032, EC-033, EC-034, EC-035, EC-038, EC-039; addresses NFR per SS-engine-module.md."
 ---
 
 # S-015: ClaudeCodeModule Implementation
@@ -180,7 +180,7 @@ From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: Claude
 - `hook_paths()` returns `HashMap<HookType, String>` (NOT `Vec<PathBuf>`) per SS-engine-module.md §Struct-level inherent operations
 - `spawn(args: SpawnArgs) -> Result<SessionHandle, SpawnError>` — binding signature; Phase 1 body is `todo!()`
 - `preflight() -> Result<EngineVersion, PreflightError>` — binding signature; Phase 1 body is `todo!()`
-- `detect()` is I/O-free — DI-006 (BC-2.03.001 invariant 2)
+- `detect()` is I/O-free — DI-006 (BC-2.03.001 postcondition 5)
 - `HomeUnresolvable` fail-fast — no default path substitution (BC-2.03.001 PC-5; BC-2.03.003 PC-1)
 - `on_hook()` wildcard arm for unknown HookEvent variants → fail-open: `HookResponse::new(HookDecision::Allow)` (BC-2.03.001 EC-031)
 

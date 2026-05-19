@@ -95,7 +95,7 @@ Well within 20% context budget. No split required.
   - Test: ShuttingDown state → 503 + shutting_down body
   - Test: request with no auth header → 200 (not 401)
   - Test: no body limit applied (send 1MB body → 200 not 413)
-- [ ] Verify VP-001 probe: integration assertion on `GET /status | jq .status == "alive"`
+- [ ] Verify VP-001 probe: integration assertion on `GET /healthz | jq .status == "alive"`
 
 ## Previous Story Intelligence
 

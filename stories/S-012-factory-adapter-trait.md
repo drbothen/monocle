@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-012
 epic_id: EPIC-02
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -102,6 +102,12 @@ Integration test verifies that `subscribe()` returns `Ok(Box::pin(empty()))` and
 polling the returned stream returns `None` immediately (empty stream).
 (BC-2.02.005 invariant 3 is the canonical locus for the Phase 1 subscribe() stub constraint.)
 
+### AC-010 (traces to BC-2.02.005 invariant 2 — display_name() returns "VSDD Factory")
+`VsddFactoryAdapter::display_name()` returns the exact string `"VSDD Factory"` — the string
+used in TUI display and in the self-referential detection test vector (BC-2.02.005 invariant 2
+verbatim: `display_name() returns "VSDD Factory"`). Unit test asserts:
+`assert_eq!(adapter.display_name(), "VSDD Factory");`
+
 ## Token Budget Estimate
 
 | Component | Tokens |
@@ -132,10 +138,12 @@ polling the returned stream returns `None` immediately (empty stream).
   - `subscribe()`: return `Ok(Box::pin(futures::stream::empty()))`
 - [ ] Create `monocle-core/tests/factory_adapter_surface.rs` (VP-014 AST audit):
   - syn 2 parse `factory.rs`: assert exactly 7 methods, no `Sealed`, `Send + Sync + 'static`
+- [ ] Implement `VsddFactoryAdapter::display_name()` returning the exact string literal `"VSDD Factory"` (BC-2.02.005 INV-2)
 - [ ] Create `monocle-core/tests/factory_self_referential.rs` (VP-015 integration):
   - `VsddFactoryAdapter::detect(monocle_repo_root)` → Some
   - `read_state()` → `Ok(FactoryState)` on real `.factory/STATE.md`
   - `subscribe()` → stream is empty
+  - `display_name()` → `"VSDD Factory"` (exact string, AC-010)
 
 ## Previous Story Intelligence
 

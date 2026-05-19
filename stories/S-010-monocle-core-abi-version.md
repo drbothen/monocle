@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-010
 epic_id: EPIC-02
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -64,7 +64,7 @@ Integration test: `GET /status | jq .abi_version == 1`.
 via `const` assertion. This test fails at compile time if the constant changes without
 updating the assertion.
 
-### AC-005 (traces to BC-2.02.001 invariant 1 — const value is 1 in Phase 1)
+### AC-005 (traces to BC-2.02.001 postcondition 1 + postcondition 2 — const value is 1 in Phase 1; equals compiled value)
 `MONOCLE_ABI_VERSION` equals `1` in Phase 1. Any change to this value requires an ADR
 (is a breaking change per SS-core-types-and-abi.md §ABI Version Constant).
 
