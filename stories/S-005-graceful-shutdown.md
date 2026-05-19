@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-005
 epic_id: EPIC-01
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -57,21 +57,39 @@ graceful shutdown sequence as SIGTERM. Response body: `{"status":"shutting_down"
 Hook POST requests arriving after `ShuttingDown` is set return HTTP 503 with body
 `{"error":"daemon_shutting_down"}` and header `Retry-After: 10`.
 
-### AC-004 (traces to BC-2.01.004 postcondition 4 — 5-code POSIX exit taxonomy)
-The daemon exits with the following exit codes:
-- 0 — clean shutdown (drain completed within 10 seconds)
-- 1 — startup failure (lock file conflict, runtime dir unresolvable)
-- 2 — drain timeout (10 seconds elapsed; forced exit)
-- 3 — unexpected panic (tokio panic hook captures and logs before exit)
-- 4 — SIGKILL received (uncatchable; OS reports non-zero but daemon cannot control)
+### AC-004 (traces to BC-2.01.004 postcondition 8 — 5-code POSIX exit taxonomy)
+The daemon exits with exactly these exit codes, matching BC-2.01.004 PC-8 verbatim
+(POSIX 128+N convention for signal-induced exits):
+- `0` — graceful drain succeeded; all in-flight requests completed within the 10-second window; ring buffer flushed if applicable.
+- `130` — hard-killed by SIGINT (signal 2) during drain — POSIX convention 128+2. Typical cause: user pressed Ctrl-C a second time while draining.
+- `143` — hard-killed by SIGTERM (signal 15) during drain — POSIX convention 128+15. Typical cause: systemd/k8s sent a second SIGTERM after the graceful-shutdown window.
+- `2` — hard-killed by a second authenticated `POST /shutdown` during drain (admin forced-stop). Monocle-specific programmatic code; chosen outside the POSIX 128+N space (which starts at 129) and distinct from startup-failure exit 1.
+- `1` — daemon failed to start (startup failure — e.g., `DaemonStartError::RuntimeDirUnresolvable`, port bind failure, existing live lock file).
 
-### AC-005 (traces to BC-2.01.004 invariant 1 — dual-accept auth on /shutdown)
-`POST /shutdown` with `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias) also
-initiates shutdown. Auth middleware validates both headers per ADR-0005.
+Exit code `3` (panic) and exit code `4` (SIGKILL) are NOT in the taxonomy. SIGKILL is
+uncatchable — the OS reports a non-zero exit status but the daemon cannot set the exit
+code on SIGKILL termination. Panics propagate via Rust's default panic hook and produce
+an uncontrolled non-zero exit; see AC-005 for the panic logging invariant.
 
-### AC-006 (traces to BC-2.01.004 invariant 3 — dual-accept auth header)
+External monitoring systems (systemd `Restart=on-failure`, k8s `terminationGracePeriodSeconds`,
+CI status parsers) MUST use exit code `143` (not `130`) to detect SIGTERM hard-kill during
+drain — INV-4 per BC-2.01.004. Exit 130 encodes SIGINT (Ctrl-C second press), not SIGTERM.
+
+Cite: BC-2.01.004 PC-8; BC-2.01.004 INV-4; SS-daemon-lifecycle.md line 795 + lines 2117-2132.
+
+### AC-005 (traces to BC-2.01.004 invariant 1 — hard-timeout drain budget exhaustion)
+The 10-second drain window is a HARD timeout per BC-2.01.004 INV-1. If the drain has not
+completed within 10 seconds, the daemon forces immediate shutdown regardless of remaining
+in-flight requests. A second SIGTERM during drain also triggers immediate hard shutdown
+without waiting for in-flight requests to complete. The panic hook logs structured panic
+info to stderr and then propagates Rust's default panic exit behavior — no custom exit
+code is assigned.
+
+### AC-006 (traces to BC-2.01.004 invariant 3 — dual-accept auth on /shutdown)
 The shutdown endpoint requires authentication (canonical OR alias per ADR-0005) and
-returns 401 if auth is missing or invalid.
+returns 401 if auth is missing or invalid. `POST /shutdown` with
+`X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias) also initiates shutdown.
+Auth middleware validates both headers per ADR-0005 v1.0.2 dual-accept protocol.
 
 ## Token Budget Estimate
 
@@ -94,8 +112,8 @@ returns 401 if auth is missing or invalid.
 - [ ] Implement 10-second drain with `axum::serve(...).with_graceful_shutdown(signal)`
 - [ ] Set AppMode to `ShuttingDown` on signal/shutdown endpoint trigger
 - [ ] Hook handlers return 503 + Retry-After: 10 when AppMode is ShuttingDown
-- [ ] Define exit codes 0–3 in `monocle-runtime/src/lifecycle.rs`
-- [ ] Install tokio panic hook that logs before exit 3
+- [ ] Define exit codes 0, 1, 2, 130, 143 in `monocle-runtime/src/lifecycle.rs` (BC-2.01.004 PC-8)
+- [ ] Install tokio panic hook that logs structured panic info to stderr; propagates default Rust panic exit behavior (no custom exit code)
 - [ ] Integration tests `monocle-runtime/tests/graceful_shutdown.rs`:
   - SIGTERM → drain → exit 0
   - POST /shutdown canonical auth → 200 + shutdown initiated

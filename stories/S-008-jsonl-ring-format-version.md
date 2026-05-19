@@ -130,8 +130,11 @@ file exceeds 2× the size limit at any point.
 
 S-006 (Wave 2): `runtime_dir` resolution established. `<runtime_dir>` path available.
 The JSONL ring file lives at `<runtime_dir>/monocle-ring.jsonl` — same runtime dir pattern.
-S-009 (Wave 2) will add hook handlers that call into `RingBuffer::push()` — this story
-stubs those hooks or provides the ring API that S-009 will call into.
+S-009 (Wave 3) CONSUMES `RingBuffer::push()` from this story (Decision 1: S-008 → S-009 edge).
+S-008 is the PRODUCER of the RingBuffer push API; S-009 wires hook handlers to call into it.
+S-008 MUST deliver the full `RingBuffer` API surface that S-009 depends on — no stubbing of
+the push() method. This story is a hard blocker for S-009; the Wave 3 gate requires S-008
+green before S-009 can be dispatched.
 
 ## Architecture Compliance Rules
 

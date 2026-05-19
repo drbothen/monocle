@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-001
 epic_id: EPIC-01
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -64,11 +64,15 @@ and all matrix jobs are green on first push.
 `Cargo.toml` workspace `rust-version = "1.86"` field is set. CI fails if
 `rust-toolchain.toml` is absent or if toolchain pin does not match "1.86".
 
-### AC-005 (workspace structure invariant — correct Phase 1 crate member list)
-The workspace declares these crates as members: `monocle-core`, `monocle-runtime`,
-`monocle-proto`, `monocle-auth`. These are the Phase 1 crates. `monocle-auth` is required
-because S-006 calls `monocle-auth::generate_session_token()` (Decision 2). `monocle-tui`
-is NOT declared as a Phase 1 workspace member per product-brief.md Phase 1 scope.
+### AC-005 (workspace structure invariant — correct Phase 1 crate member list; Orchestrator Decision 3)
+The workspace declares exactly these 3 crates as Phase 1 members: `monocle-core`,
+`monocle-runtime`, `monocle-proto`. `monocle-auth` is NOT a separate workspace crate —
+`generate_session_token() -> String` lives in `monocle-runtime::auth` module (new module
+inside `monocle-runtime`, not a new crate). This decision was made because `monocle-auth`
+appears in NO architectural source-of-truth; SS-deps-pin-manifest.md already declares
+`runtime --> rand` as the canonical `OsRng` consumer edge; no new crate is justified for a
+one-function helper. `monocle-tui` is NOT declared as a Phase 1 workspace member per
+product-brief.md Phase 1 scope.
 
 ### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.1.17)
 `Cargo.toml` workspace `[dependencies]` table pins the following crates at exact versions
@@ -95,8 +99,8 @@ Well within 20% of 200k context window. No split required.
 
 ## Tasks
 
-- [ ] Create `Cargo.toml` workspace manifest with member crates `monocle-core`, `monocle-runtime`, `monocle-proto`, `monocle-auth`
-  (monocle-auth added per Decision 2: S-006 calls `monocle-auth::generate_session_token()`)
+- [ ] Create `Cargo.toml` workspace manifest with member crates `monocle-core`, `monocle-runtime`, `monocle-proto`
+  (monocle-auth is NOT a separate crate; Decision 3: `generate_session_token()` lives in `monocle-runtime::auth` module)
 - [ ] Set `rust-version = "1.86"` in workspace `Cargo.toml`
 - [ ] Create `rust-toolchain.toml` with `channel = "1.86"`
 - [ ] Pin all 9 EXACT-pin security-sensitive crates in workspace `[dependencies]`
@@ -128,6 +132,7 @@ From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
 - `monocle-core` MUST NOT depend on `monocle-runtime` (would create a cycle)
 - `monocle-runtime` MUST NOT depend on `monocle-tui` (not a Phase 1 crate)
 - No crate may depend on `rmcp` in Phase 1 workspace
+- `monocle-auth` MUST NOT appear as a workspace member or crate dependency (Decision 3; function is `monocle_runtime::auth::generate_session_token()` inside `monocle-runtime`)
 
 ## Library & Framework Requirements
 

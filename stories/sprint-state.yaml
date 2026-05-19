@@ -225,7 +225,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 3. Depends on S-014. Covers BC-2.03.002 + BC-2.03.003 + BC-2.03.004."
+    notes: "Wave 3. Depends on S-014. Covers BC-2.03.001 + BC-2.03.002 + BC-2.03.003 + BC-2.03.004."
 
 summary:
   total_stories: 17

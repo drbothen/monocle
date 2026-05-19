@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -44,8 +44,8 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | — |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
-| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | S-007 |
-| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
+| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
+| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008 |
 | S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
 | S-010 | monocle-core Crate + ABI Version Constant | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-013, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
@@ -91,7 +91,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.02.006 | HookEnvelope Proto Field Number | S-013 | AC-001, AC-006 | YES |
 | BC-2.02.007 | HookEnvelope Rust Struct schema_version | S-013 | AC-002..AC-003 | YES |
 | BC-2.02.008 | Phase 4 schema_version Validation | S-013 | AC-004..AC-005 | YES |
-| BC-2.03.001 | EngineModule Trait Definition | S-014 | AC-001..AC-007 | YES |
+| BC-2.03.001 | EngineModule Trait Definition | S-014, S-015 | S-014: AC-001..AC-007; S-015: AC-010 (PC-5 DI-006) | YES |
 | BC-2.03.002 | ClaudeCodeModule (Strict-Basename Detect) | S-015 | AC-001..AC-003, AC-009 | YES |
 | BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-004..AC-005 | YES |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-006..AC-008 | YES |
@@ -206,3 +206,24 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - S-005 blocks: [] (S-007 removed — S-007 depends on S-006 not S-005)
 - Wave 2 points: 41 (was 49); Wave 3 points: 34 (was 26)
 - All 17 stories retrofitted with inputs:/input-hash:/traces_to: per SE-22 v2
+
+**Phase 2 r02 remediation burst** (2026-05-19):
+- F-PHASE2-R02-01 (CRITICAL): S-005 AC-004 exit codes rewritten to BC-2.01.004 PC-8 canonical 5-code taxonomy; fabricated codes 3/4 removed; AC-005 rewritten for INV-1 hard timeout; AC-006 renamed for INV-3 dual-accept
+- F-PHASE2-R02-02 (CRITICAL): EPIC-01 stories table — S-005 Depends-On corrected to S-001,S-002; S-009 Wave corrected to Wave 3 with full depends-on list
+- F-PHASE2-R02-03 (HIGH): S-008 Previous Story Intelligence corrected — S-008 is PRODUCER of RingBuffer API; S-009 is consumer; no stubbing allowed
+- F-PHASE2-R02-04 (HIGH): S-015 AC-010 reanchored BC-2.03.001 invariant 2 → postcondition 5 (DI-006 enforce); dep-graph matrix row updated accordingly
+- F-PHASE2-R02-05 (HIGH): S-012 AC-007 + AC-009 reanchored postcondition 3 → invariant 3; dep-graph row corrected; holdout HS-W3-005 corrected
+- F-PHASE2-R02-06 (HIGH): S-005 AC-005 rewritten for INV-1 hard timeout (production-grade: preserve breadth not delete)
+- F-PHASE2-R02-07 (HIGH): dep-graph BC Clause Coverage Matrix swept — BC-2.01.004 PC-4→PC-8 corrected; BC-2.01.005 postcondition rows reordered monotonically; BC-2.02.005 postcondition 3→invariant 3; BC-2.03.001 INV-2(DI-006)→PC-5(DI-006); GAP-P2-005 added for BC-2.01.004 PC-6 (--persistent-events Phase 3 scope)
+- F-PHASE2-R02-08 (HIGH): S-006 Previous Story Intelligence rand version pin corrected — =0.8.6 EXACT; rand 0.9 REJECTED with rationale
+- F-PHASE2-R02-11+17 (MEDIUM, Orchestrator Decision 3): monocle-auth crate dropped; generate_session_token() moved to monocle-runtime::auth; swept across S-001, S-006, S-009; S-001 workspace member list corrected to 3 crates; S-001 forbidden dependencies updated
+- F-PHASE2-R02-12 (MEDIUM): S-015 File Structure test path monocle-runtime/tests/ → monocle-core/tests/
+- F-PHASE2-R02-13 (MEDIUM): S-009 dtu_dependencies non-canonical field removed
+- F-PHASE2-R02-15 (LOW): S-015 body BC table removed (standardize: no-body-table across corpus)
+- GAP-PHASE2-R02-1 (HIGH): STORY-INDEX Blocks column — S-005 S-007→"—"; S-006 S-009 removed; sweep verified other entries consistent
+- GAP-PHASE2-R02-2 (MEDIUM): wave-schedule.md Wave 3 paragraph updated "all 4" → "all 5" + S-008→S-009 within-wave dep note
+- GAP-PHASE2-R02-3 (MEDIUM): S-009 File Structure generate_auth_token() → generate_session_token() clarification; conflation removed
+- GAP-PHASE2-R02-4 (LOW): holdout-scenarios.md frontmatter level: ops + version: "1.1" added
+- F-PHASE2-R02-09 (MEDIUM): sprint-state.yaml S-015 notes updated to include BC-2.03.001
+- BC-2.03.001 BC Coverage Table updated: now S-014, S-015 (S-015 AC-010 covers PC-5 DI-006)
+- Version-bump rule applied: stories with AC/depends_on/blocks/behavioral_contracts changes → minor bump (+0.1)

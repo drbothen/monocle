@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-006
 epic_id: EPIC-01
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -103,14 +103,17 @@ If `contract_version` key is missing from the lock file entirely (pre-Phase-1 fo
 treatment as EC-010: log `WARN: lock file contract_version missing; skipping` and proceed as
 if no lock file exists (BC-2.01.010 EC-012).
 
-### AC-014 (Decision 2 + traces to BC-2.01.008 postcondition 1 — real cryptographic auth token generation in S-006)
+### AC-014 (Orchestrator Decision 3 + traces to BC-2.01.008 postcondition 1 — real cryptographic auth token generation in S-006)
 The lock file `authToken` field is populated with a REAL cryptographically random token at
 lock file creation time (BC-2.01.008 PC-1). Implementation:
-- `monocle-auth::generate_session_token() -> String` generates 32 cryptographically random bytes
-  using `rand::rngs::OsRng` (rand `=0.8.6` EXACT pin per SS-deps-pin-manifest.md), hex-encoded
-  as a 64-character lowercase hex string matching regex `/^[0-9a-f]{64}$/`.
-- `DaemonLock::acquire()` calls `monocle-auth::generate_session_token()` and stores the result
-  in the `authToken` field BEFORE calling `tempfile::persist`.
+- `monocle_runtime::auth::generate_session_token() -> String` generates 32 cryptographically
+  random bytes using `rand::rngs::OsRng` (rand `=0.8.6` EXACT pin per SS-deps-pin-manifest.md),
+  hex-encoded as a 64-character lowercase hex string matching regex `/^[0-9a-f]{64}$/`.
+  This function lives in `monocle-runtime/src/auth.rs` — NOT in a separate `monocle-auth` crate
+  (Orchestrator Decision 3: no new crate justified for a one-function helper; pin manifest
+  already declares `runtime --> rand` as the canonical OsRng consumer edge).
+- `DaemonLock::acquire()` calls `monocle_runtime::auth::generate_session_token()` and stores
+  the result in the `authToken` field BEFORE calling `tempfile::persist`.
 - No placeholder value is ever written to the lock file.
 - S-009 reads the 64-hex token from the lock file; no placeholder retrofit is needed.
 
@@ -135,11 +138,12 @@ lock file creation time (BC-2.01.008 PC-1). Implementation:
 - [ ] Implement `DaemonLock::acquire()`: read existing lock → pid-liveness check → clean stale → write new
 - [ ] Use `tempfile::NamedTempFile` + `persist()` for atomic lock file write
 - [ ] Use `serde_json::to_string()` with a serialization that preserves field order (use `indexmap` or manually ordered struct with `#[serde(rename_all = "camelCase")]`)
-- [ ] Implement `monocle-auth::generate_session_token() -> String` in new `monocle-auth` crate:
+- [ ] Implement `monocle_runtime::auth::generate_session_token() -> String` in `monocle-runtime/src/auth.rs`:
   - 32 random bytes from `rand::rngs::OsRng` (EXACT pin `=0.8.6` per SS-deps-pin-manifest.md)
   - Hex-encoded to 64-character lowercase hex string (BC-2.01.008 PC-1; regex `/^[0-9a-f]{64}$/`)
   - Token stored in `Arc<String>` for sharing between lock file writer and auth middleware
-- [ ] Lock file `authToken` field: populated by calling `monocle-auth::generate_session_token()` at `DaemonLock::acquire()` time — no placeholder value ever written
+  - NOTE: function lives in `monocle-runtime/src/auth.rs`, NOT in a separate `monocle-auth` crate (Orchestrator Decision 3)
+- [ ] Lock file `authToken` field: populated by calling `monocle_runtime::auth::generate_session_token()` at `DaemonLock::acquire()` time — no placeholder value ever written
 - [ ] Create `monocle-runtime/src/lock.rs` cleanup: `DaemonLock::release()` removes lock + sock
 - [ ] Runtime directory creation with `0o700` mode using `DirBuilderExt`
 - [ ] Integration tests `monocle-runtime/tests/lock_file_lifecycle.rs`:
@@ -156,9 +160,12 @@ lock file creation time (BC-2.01.008 PC-1). Implementation:
 ## Previous Story Intelligence
 
 S-001 (Wave 1): Workspace initialized. `directories 6` and `tempfile 3` pinned in workspace.
-`nix 0.30` pinned. `temp-env 0.3` pinned as dev-dependency. `monocle-auth` crate declared as
-workspace member. `rand 0.9` (or the EXACT-pin version from SS-deps-pin-manifest.md) pinned
-for `OsRng` use in `monocle-auth::generate_session_token()`.
+`nix 0.30` pinned. `temp-env 0.3` pinned as dev-dependency.
+`rand = "=0.8.6"` (EXACT pin per SS-deps-pin-manifest.md v1.1.17, §rand row line 43) is the
+canonical version for `OsRng`. `monocle-auth` is NOT a workspace crate (Orchestrator Decision 3);
+`generate_session_token()` is implemented in `monocle-runtime/src/auth.rs` (new module). `rand 0.9` is explicitly REJECTED by the pin
+manifest: `OsRng` moved to a feature flag in 0.9, which is an ergonomic regression that
+SS-deps-pin-manifest.md resolves by pegging to 0.8.6.
 Auth token is generated and written in this story — NO placeholder value is used.
 
 ## Architecture Compliance Rules

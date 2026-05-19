@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-015
 epic_id: EPIC-03
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -46,15 +46,6 @@ basename detection (rejecting claude-squad, claudio, and other look-alike proces
 `HomeUnresolvable` on missing home directory, and exactly 5 hook paths matching the hook
 endpoint matrix, so that only genuine Claude Code processes are registered and session
 management is accurate.
-
-## Behavioral Contracts
-
-| BC | Title | Version |
-|----|-------|---------|
-| BC-2.03.001 | EngineModule Trait Definition | 1.0.3 |
-| BC-2.03.002 | ClaudeCodeModule (Strict-Basename Detect) | 1.0.3 |
-| BC-2.03.003 | HomeUnresolvable Error Contract | 1.0.2 |
-| BC-2.03.004 | ClaudeCodeModule Inherent Methods | 1.0.3 |
 
 ## Acceptance Criteria
 
@@ -117,11 +108,16 @@ async method. Phase 1 implementation is `todo!()` — the signature is binding
 (BC-2.03.004 PC-3; EC-039: `preflight()` called in Phase 1 returns `todo!()` panic;
 Phase 1 story replaces the stub with `which claude` + `claude --version` checks in Phase 3).
 
-### AC-010 (traces to BC-2.03.001 invariant 2 + EC-031 — detect() is I/O-free; on_hook() fail-open)
+### AC-010 (traces to BC-2.03.001 postcondition 5 + EC-031 — detect() is I/O-free; on_hook() fail-open)
 `ClaudeCodeModule::detect()` performs no I/O (no file reads, no process list queries,
-no network calls) — DI-006 enforcement (BC-2.03.001 invariant 2). `on_hook()` returns
-`HookResponse::new(HookDecision::Allow)` for unrecognized `HookEvent` variants (wildcard
-arm; fail-open per EC-031; BC-2.03.001 EC-031).
+no network calls) — DI-006 enforcement (BC-2.03.001 postcondition 5: "metadata() and
+enrich() MUST NOT substitute a default path ... detect() has no I/O and no shared state
+mutation"). `on_hook()` returns `HookResponse::new(HookDecision::Allow)` for unrecognized
+`HookEvent` variants (wildcard arm; fail-open per EC-031; BC-2.03.001 EC-031).
+
+Note: BC-2.03.001 invariant 2 covers the `HookEvent` type location in `hook_events.rs`
+(a separate concern). DI-006 enforcement for detect() I/O-free is specifically
+postcondition 5, which is the authoritative clause per BC-2.03.001 §Traceability DI-006 mapping.
 
 ## Token Budget Estimate
 
@@ -208,8 +204,8 @@ From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: Claude
 Files to create:
 - `monocle-core/src/engine/claude.rs` — `ClaudeCodeModule` implementation
 - `monocle-core/src/engine/mod.rs` — module declaration + re-exports
-- `monocle-runtime/tests/engine_module_claude.rs` — detect() integration tests
-- `monocle-runtime/tests/engine_module_home_unresolvable.rs` — VP-021 tests
+- `monocle-core/tests/engine_module_claude.rs` — detect() integration tests
+- `monocle-core/tests/engine_module_home_unresolvable.rs` — VP-021 tests
 
 Files to modify:
 - `monocle-core/src/lib.rs` — engine module is now `pub mod engine` (sub-module)

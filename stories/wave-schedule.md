@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -121,7 +121,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 ## Wave 3: Dependent Completions
 
 **Timing:** After Wave 2 gate passes.
-**Parallelism:** Full parallel (all 4 stories are independent of each other).
+**Parallelism:** All 5 stories are listed (S-009 may start only after S-008 completes within the wave due to Decision 1 S-008→S-009 dependency; S-007, S-012, and S-015 are fully independent and can run concurrently with each other and with S-008).
 
 | Story | Title | Points | Depends On | Status |
 |-------|-------|--------|-----------|--------|
@@ -170,3 +170,8 @@ Before dispatching Phase 3 (TDD Implementation):
 - DTU story correctly placed in Wave 1 (no product deps; product stories depend on it)
 - S-PHASE-3-PREP correctly placed in Wave 0 (pre-Phase-3, not blocking Phase 2)
 - Topological sort verified in dependency-graph.md (ACYCLIC PASS)
+
+## §Trace v1.1
+
+**Phase 2 r02 remediation** (2026-05-19):
+- GAP-PHASE2-R02-2: Wave 3 parallelism paragraph corrected from "all 4 stories" to "all 5 stories"; S-008→S-009 within-wave dependency noted

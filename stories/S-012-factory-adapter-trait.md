@@ -2,7 +2,7 @@
 document_type: story
 story_id: S-012
 epic_id: EPIC-02
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -85,9 +85,11 @@ When the monocle binary is run in a VSDD factory project (e.g., the monocle repo
 `VsddFactoryAdapter::detect(monocle_repo_root)` returns `Some(...)`. Integration test
 verifies detection on the monocle project's own `.factory/STATE.md`.
 
-### AC-007 (traces to BC-2.02.005 postcondition 3 — subscribe() Phase 1 stub)
+### AC-007 (traces to BC-2.02.005 invariant 3 — subscribe() Phase 1 stub)
 `VsddFactoryAdapter::subscribe()` returns `Ok(Box::pin(futures::stream::empty()))`.
 No file watcher is instantiated in Phase 1.
+(BC-2.02.005 invariant 3 is the canonical locus: "subscribe() returns
+Ok(Box::pin(futures::stream::empty())) in Phase 1".)
 
 ### AC-008 (traces to BC-2.02.005 postcondition 4 — error handling)
 `VsddFactoryAdapter::read_state()` returns:
@@ -95,9 +97,10 @@ No file watcher is instantiated in Phase 1.
 - `Err(FactoryReadError::ParseError)` if STATE.md cannot be parsed → logs E-FACT-002
 - `Ok(FactoryState)` on success
 
-### AC-009 (traces to BC-2.02.004 invariant 3 — subscribe() Phase 1 invariant)
+### AC-009 (traces to BC-2.02.005 invariant 3 — subscribe() Phase 1 invariant; test verification)
 Integration test verifies that `subscribe()` returns `Ok(Box::pin(empty()))` and that
 polling the returned stream returns `None` immediately (empty stream).
+(BC-2.02.005 invariant 3 is the canonical locus for the Phase 1 subscribe() stub constraint.)
 
 ## Token Budget Estimate
 

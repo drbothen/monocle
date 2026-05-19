@@ -1,6 +1,6 @@
 ---
 document_type: plan-doc
-level: L4
+level: ops
 version: "1.1"
 status: active
 producer: vsdd-factory:story-writer
@@ -167,7 +167,7 @@ returned or logged (no half-initialized state); (3) E-ENG-001 log message exactl
 ### HS-W3-005: FactoryAdapter subscribe() Stream is Empty in Phase 1
 
 **Wave:** 3
-**Source BC:** BC-2.02.004 invariant 3; BC-2.02.005 postcondition 3
+**Source BC:** BC-2.02.005 invariant 3 (canonical locus: "subscribe() returns Ok(Box::pin(futures::stream::empty())) in Phase 1")
 **Scenario:** Evaluator calls `VsddFactoryAdapter::subscribe()`. Polls the returned stream
 with a 100ms timeout. Stream must yield `None` immediately (empty). Must NOT block for 100ms.
 **Expected:** `Ok(empty_stream)`; first poll returns `None` (ready); no file watcher instantiated.

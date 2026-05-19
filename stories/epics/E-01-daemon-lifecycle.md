@@ -36,11 +36,11 @@ subsystem and makes the daemon capable of receiving hook events from Claude Code
 | S-002 | Healthz Endpoint | 3 | Wave 2 | S-001 |
 | S-003 | Status Endpoint | 5 | Wave 2 | S-001, S-002 |
 | S-004 | Body Size Limit | 2 | Wave 2 | S-001 |
-| S-005 | Graceful Shutdown (10-Second Drain) | 5 | Wave 2 | S-001 |
+| S-005 | Graceful Shutdown (10-Second Drain) | 5 | Wave 2 | S-001, S-002 |
 | S-006 | Lock File Atomic Lifecycle | 8 | Wave 2 | S-001 |
 | S-007 | Crash Recovery Checkpoint | 5 | Wave 3 | S-006 |
 | S-008 | JSONL Ring Format Version | 5 | Wave 3 | S-006 |
-| S-009 | Auth Token Wire Format + Header Validation | 8 | Wave 2 | S-001, S-006 |
+| S-009 | Auth Token Wire Format + Header Validation | 8 | Wave 3 | S-001, S-004, S-006, S-008 |
 
 ## Architecture Scope
 

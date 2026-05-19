@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.1"
+version: "1.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -210,21 +210,28 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.01.004 | 1 | postcondition | AC-001 | S-005 |
 | BC-2.01.004 | 2 | postcondition | AC-002 | S-005 |
 | BC-2.01.004 | 3 | postcondition | AC-003 | S-005 |
-| BC-2.01.004 | 4 | postcondition | AC-004 | S-005 |
-| BC-2.01.004 | 1 | invariant | AC-005 | S-005 |
-| BC-2.01.004 | 3 | invariant | AC-006 | S-005 |
-| BC-2.01.005 | 1 | postcondition (start) | AC-003 | S-006 |
-| BC-2.01.005 | 2 | postcondition (start) | AC-004 | S-006 |
-| BC-2.01.005 | 3 | postcondition (start) | AC-001 | S-006 |
-| BC-2.01.005 | 4 | postcondition (start) | AC-002 | S-006 |
-| BC-2.01.005 | 5 | postcondition (start) | AC-009 | S-006 |
-| BC-2.01.005 | 6 | postcondition (shutdown) | AC-005 | S-006 |
-| BC-2.01.005 | 7 | postcondition (shutdown) | AC-005 | S-006 |
-| BC-2.01.005 | 8 | postcondition (runtime dir) | AC-006 | S-006 |
-| BC-2.01.005 | 1 | invariant | AC-003 | S-006 |
-| BC-2.01.005 | 2 | invariant | AC-001 | S-006 |
-| BC-2.01.005 | 3 | invariant | AC-001 | S-006 |
-| BC-2.01.005 | 2a-d | precondition | AC-007..AC-009 | S-006 |
+| BC-2.01.004 | 4 | postcondition | AC-004 (S-003 /status serves during drain) | S-003 |
+| BC-2.01.004 | 5 | postcondition | AC-001 (10s drain wait enforced in AC-001 sequence) | S-005 |
+| BC-2.01.004 | 6 | postcondition | -- | GAP-P2-005 (ring flush on --persistent-events; Phase 3 flag not in Phase 1 scope) |
+| BC-2.01.004 | 7 | postcondition | AC-005 (drain completes → lock+sock removed per lifecycle) | S-005 |
+| BC-2.01.004 | 8 | postcondition | AC-004 (POSIX exit code taxonomy) | S-005 |
+| BC-2.01.004 | 1 | invariant | AC-005 (hard timeout invariant) | S-005 |
+| BC-2.01.004 | 3 | invariant | AC-006 (dual-accept /shutdown auth) | S-005 |
+| BC-2.01.005 | 1 | postcondition | AC-003 (live PID conflict → exit 1) | S-006 |
+| BC-2.01.005 | 2 | postcondition | AC-004 (stale PID → cleanup) | S-006 |
+| BC-2.01.005 | 3 | postcondition | AC-001 (atomic write via tempfile::persist, mode 0o600) | S-006 |
+| BC-2.01.005 | 4 | postcondition | AC-002 (contract_version first key in JSON) | S-006 |
+| BC-2.01.005 | 5 | postcondition | AC-009 (RuntimeDirUnresolvable → exit 1) | S-006 |
+| BC-2.01.005 | 6 | postcondition | AC-005 (lock + sock removed on shutdown) | S-006 |
+| BC-2.01.005 | 7 | postcondition | AC-005 (sock removed on shutdown) | S-006 |
+| BC-2.01.005 | 8 | postcondition | AC-006 (runtime dir 0o700) | S-006 |
+| BC-2.01.005 | 1 | invariant | AC-003 (tempfile::persist atomic write invariant) | S-006 |
+| BC-2.01.005 | 2 | invariant | AC-001 (0o600 mode enforced) | S-006 |
+| BC-2.01.005 | 3 | invariant | AC-001 (no partial observable state) | S-006 |
+| BC-2.01.005 | 2a | precondition | AC-007 (MONOCLE_RUNTIME_DIR override) | S-006 |
+| BC-2.01.005 | 2b | precondition | AC-008 (macOS platform fallback via data_local_dir) | S-006 |
+| BC-2.01.005 | 2c | precondition | AC-008 (Linux runtime_dir from ProjectDirs) | S-006 |
+| BC-2.01.005 | 2d | precondition | AC-009 (RuntimeDirUnresolvable fallback exhausted) | S-006 |
 | BC-2.01.006 | 1 | postcondition | AC-001 | S-007 |
 | BC-2.01.006 | 2 | postcondition | AC-002 | S-007 |
 | BC-2.01.006 | 3 | postcondition | AC-003 | S-007 |
@@ -270,7 +277,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.02.004 | 4 | postcondition | AC-004 | S-012 |
 | BC-2.02.005 | 1 | postcondition | AC-005 | S-012 |
 | BC-2.02.005 | 2 | postcondition | AC-006 | S-012 |
-| BC-2.02.005 | 3 | postcondition | AC-007 | S-012 |
+| BC-2.02.005 | 3 | invariant | AC-007 | S-012 |
 | BC-2.02.005 | 4 | postcondition | AC-008 | S-012 |
 | BC-2.02.006 | 1 | postcondition | AC-001, AC-006 | S-013 |
 | BC-2.02.007 | 1 | postcondition | AC-002 | S-013 |
@@ -292,7 +299,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | BC-2.03.004 | 1 | postcondition | AC-006 | S-015 |
 | BC-2.03.004 | 2 | postcondition | AC-007 | S-015 |
 | BC-2.03.004 | 3 | postcondition | AC-008 | S-015 |
-| BC-2.03.001 | 2 | invariant (DI-006) | AC-009 | S-015 |
+| BC-2.03.001 | 5 | postcondition (DI-006 detect I/O-free) | AC-010 | S-015 |
 
 ## Edge Case Coverage Matrix
 
@@ -354,7 +361,21 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | GAP-P2-002 | L3 | NFR-002 | latency ≤2000ms for Notification | Same as GAP-P2-001; Notification path hook receiver DESIGN is Phase 1, sustained VALIDATION is Phase 3 | Phase 3 story decomposition |
 | GAP-P2-003 | L3 | NFR-003 | TUI overlay render ≤100ms | TUI permission overlay is Phase 3 deliverable; not Phase 1 scope per product-brief.md phase table | Phase 3 story decomposition |
 | GAP-P2-004 | L3 | NFR-006 | 1000 events/sec throughput | Bounded-channel DESIGN is Phase 1 (S-008); sustained load VALIDATION at 1000 events/sec requires Phase 3 load-test infra | Phase 3 story decomposition |
+| GAP-P2-005 | L1 | BC-2.01.004 postcondition 6 | `--persistent-events` flag ring flush during drain; Phase 1 does not expose the `--persistent-events` CLI flag (S-008 ring exists but is always-on; the conditional flush-on-flag behavior is a Phase 3 CLI surface per product-brief.md phase table) | Phase 3 story decomposition |
 
-**L1 gaps (BC clause coverage): 0**
+**L1 gaps (BC clause coverage): 1 (GAP-P2-005; justified by Phase 3 CLI scope)**
 **L2 gaps (edge case coverage): 0**
 **L3 gaps (NFR, justified): 4 (all have non-empty justification, all authorized by nfr-catalog.md)**
+
+## §Trace v1.0
+
+**Phase 2 story decomposition initial burst** (2026-05-19T04:30:00Z):
+- Dependency graph, topological sort, BC/VP/NFR traceability matrices, edge case coverage matrix, gap register produced.
+
+## §Trace v1.1
+
+**Phase 2 r02 remediation** (2026-05-19):
+- F-PHASE2-R02-05: BC-2.02.005 postcondition 3 → invariant 3 (S-012 subscribe() canonical locus; line 273)
+- F-PHASE2-R02-07: BC Clause Coverage Matrix swept — BC-2.01.004 PC-4→PC-8 corrected (exit code taxonomy mislabeled); BC-2.01.004 added PC-4/PC-5/PC-7 clause rows; BC-2.01.005 postcondition rows reordered to monotonically ascending clause numbers; BC-2.02.005 postcondition 3→invariant 3; BC-2.03.001 INV-2(DI-006)→PC-5(DI-006) (correct locus per §Traceability DI-006 mapping)
+- GAP-P2-005 added: BC-2.01.004 PC-6 (--persistent-events ring flush) deferred to Phase 3 CLI surface (justified)
+- Gap Register counts updated: L1 gaps now 1 (GAP-P2-005 justified), L2 gaps 0, L3 gaps 4
