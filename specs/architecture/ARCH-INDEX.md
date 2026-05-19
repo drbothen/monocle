@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.10"
+version: "1.0.11"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-18T15:30:00Z
+timestamp: 2026-05-19T10:00:00Z
 phase: pre-phase-1-architecture
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
@@ -51,7 +51,7 @@ project: monocle
 |-------|------|-----------------|---------------------|-----------------|
 | SS-01 | Daemon Lifecycle | SS-daemon-lifecycle.md | monocle-runtime (daemon binary, HTTP server, ring buffer, lock file, auth) | Phase 1 |
 | SS-02 | Core Types and ABI | SS-core-types-and-abi.md | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) | Phase 1 |
-| SS-03 | Engine Module | SS-engine-module.md | monocle-core (EngineModule trait, ClaudeCodeModule adapter) | Phase 1 |
+| SS-03 | Engine Module | SS-engine-module.md | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) | Phase 1 |
 
 **ID format:** `SS-NN` (two-digit sequential, append-only).
 
@@ -371,3 +371,31 @@ router-level auth middleware.
   reached. Pattern: agents authoring INDEX rows strip qualifiers ("for Phase 1") and code spans
   (backticks) when transcribing H1 titles — likely caused by informal paraphrasing during index creation.
 - SE-16d PASS: 2026-05-18T15:30:00Z > chain high-water 2026-05-18T05:30:00Z (monotonic).
+
+## §Trace v1.0.11
+
+**F-PHASE2-R05-04 — SS-03 Subsystem Registry trait-vs-impl split clarification** (2026-05-19T10:00:00Z):
+- NORMATIVE (F-PHASE2-R05-04 HIGH — SS-03 Implementing Modules column corrected):
+  Subsystem Registry SS-03 row "Implementing Modules" column updated to reflect the
+  trait-vs-implementation split that governs `EngineModule` / `ClaudeCodeModule` placement.
+  - SE-17c BEFORE: `monocle-core (EngineModule trait, ClaudeCodeModule adapter)`
+  - SE-17c AFTER: `monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — \`monocle-runtime/src/engine/claude_code.rs\`)`
+  - Source authority: `SS-engine-module.md` line 546 (`monocle-runtime/src/engine/claude_code.rs`)
+    and `BC-2.03.002.md` PRE-2 (`monocle-runtime::engine::claude_code`). Both already correctly
+    place `ClaudeCodeModule` in `monocle-runtime`. The ARCH-INDEX SS-03 row was incomplete:
+    it described the trait location correctly (`monocle-core`) but conflated it with
+    `ClaudeCodeModule adapter` — implying the impl also lives in monocle-core. It does not.
+    Standard layering: traits in core (pure, no side effects), implementations in runtime
+    (spawns processes, reads env vars, interacts with filesystem). This entry corrects the
+    Subsystem Registry to capture both halves of the split.
+  - Sibling-sweep (SS-01, SS-02): Both rows examined for trait-vs-impl conflation.
+    SS-01: `monocle-runtime (daemon binary, HTTP server, ring buffer, lock file, auth)` —
+    SS-01 has no trait/impl split; all items listed are runtime implementations. PASS.
+    SS-02: `monocle-core (FactoryAdapter trait, wire format types, protocol versioning)` —
+    `FactoryAdapter` trait and its types are pure-core, no runtime impl in a different crate.
+    This is structurally correct for SS-02; no split ambiguity. PASS.
+    No sibling fixes required.
+- INFORMATIONAL: Phase 2 adversary r05 finding F-PHASE2-R05-04 is the trigger for this
+  correction. This does not affect SS-engine-module.md (already correct at v1.1.20) or
+  BC-2.03.002 (already correct). BC-2.03.001 is untouched (PO domain, concurrent work).
+- SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-18T15:30:00Z (monotonic).

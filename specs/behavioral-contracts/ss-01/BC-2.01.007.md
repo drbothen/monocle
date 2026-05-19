@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T05:06:00Z
+timestamp: 2026-05-19T10:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "76564f0"
@@ -60,7 +60,7 @@ the format version before deserializing remaining fields.
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-001 | Hook types with no tool context (`SessionStart`, `UserPromptSubmit`, `Stop`) — `tool_name` and `tool_input` are `None` | Serialized record omits these two fields entirely via `#[serde(skip_serializing_if = "Option::is_none")]`; `format_version` is always present; Phase 2 readers MUST tolerate both absence-of-field and explicit-null-field semantically; Phase 1 emitters MUST emit absence (no explicit null) |
-| EC-002 | Very large `tool_input` values (up to 256 KiB per BC-2.01.003) | JSONL line may approach 256 KiB in length; ring buffer rotation (100 MB × 5 files per OQ-06) must handle lines of this length without truncation |
+| EC-002 | Very large `tool_input` values (up to 256 KiB per BC-2.01.003) | JSONL line may approach 256 KiB in length; ring buffer rotation (50 MB rotation threshold, 100 MB × 5 cap per SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy) must handle lines of this length without truncation |
 | EC-003 | Ring buffer file truncated mid-line (e.g., crash during write) | Phase 2 ring readers MUST handle incomplete trailing lines by ignoring them (standard JSONL reader robustness requirement); the `format_version` first-key contract applies only to complete lines |
 
 ## Canonical Test Vectors
@@ -112,6 +112,21 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 ## VP Anchors (Recommended)
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
+
+## §Trace v1.0.5
+
+**F-PHASE2-R05-05 — EC-002 rotation anchor re-pointed to canonical spec section** (2026-05-19T10:00:00Z):
+- NORMATIVE (F-PHASE2-R05-05): EC-002 parenthetical updated.
+  - SE-17c BEFORE: `ring buffer rotation (100 MB × 5 files per OQ-06)`
+  - SE-17c AFTER: `ring buffer rotation (50 MB rotation threshold, 100 MB × 5 cap per SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy)`
+  - Rationale: `PRD §OQ-06` does not exist as a PRD section anchor; OQ-NNN IDs are planning
+    open-question IDs from `oq-research.md`, not PRD section references. The canonical rotation
+    policy is now defined in `SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy`
+    (added in v1.0.33 of that document). The BC's behavioral semantics are unchanged — EC-002
+    describes what the rotation policy must tolerate (256 KiB lines); the specific policy
+    parameters are an architecture concern, not a BC invariant. The parenthetical reference
+    is updated to point to the canonical architecture spec. No behavioral change.
+- SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-17T22:50:00Z (monotonic).
 
 ## §Trace v1.0.2
 

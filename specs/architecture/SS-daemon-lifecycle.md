@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "daemon-lifecycle"
 subsystem: SS-01
-version: "1.0.32"
+version: "1.0.33"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-19T10:00:00Z
 inputs: [product-brief.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md, prd.md, verification-properties/VP-INDEX.md]
 input-hash: "23d79bd"
 traces_to: architecture/ARCH-INDEX.md
@@ -671,6 +671,53 @@ On receiving any shutdown signal:
    integration test in `monocle-runtime/tests/jsonl_ring.rs` constructs a
    `HookEventRecord` via `HookEventRecord::new(...)` and asserts the resulting
    JSON string begins with `{"format_version":1,`.
+
+   **JSONL Ring Buffer Rotation Policy** (canonical source of truth; traced from
+   `oq-research.md §OQ-06` recommendation, brief §Storage `100MB × 5 rotation`,
+   and NFR-006 throughput ceiling):
+
+   The rotation policy governs disk usage for the JSONL event log when
+   `--persistent-events` is set. It bounds total on-disk footprint to a
+   predictable maximum regardless of event volume.
+
+   | Parameter | Value | Rationale |
+   |-----------|-------|-----------|
+   | Default rotation threshold | 50 MB per active file | Soft trigger: checked on each flush batch; provides early rotation before the absolute cap is reached |
+   | Absolute per-file cap | 100 MB | Hard upper bound; rotation is mandatory when the active file reaches this size regardless of configuration |
+   | Maximum retained rotated files | 5 | `events.jsonl.1` through `events.jsonl.5` (plus the active `events.jsonl`) |
+   | Total disk usage ceiling | 500 MB (5 × 100 MB) | Active file excluded from this ceiling; absolute worst-case is 500 MB rotated + up to 100 MB active = 600 MB |
+   | Rotation algorithm | Atomic rename | Active file renamed to `events.jsonl.N` (incrementing N, wrapping); new active file created fresh; both operations via `std::fs::rename` (kernel atomic on POSIX) |
+   | Compress on rotate | No | Raw JSONL retained for Phase 2 replay without decompression overhead; disk tradeoff accepted per brief scope |
+   | File naming convention | `monocle-events.jsonl` (active), `monocle-events.jsonl.1` through `monocle-events.jsonl.5` (rotated, newest=1) | Newest rotated file is always `.1`; numbers shift up on each rotation (`.1` → `.2`, etc.) |
+   | Cleanup policy | Oldest-first deletion | When 5 rotated files already exist and a new rotation is triggered, `monocle-events.jsonl.5` is deleted before the rename cascade; no rotated file is ever silently overwritten |
+   | Mode on new active file | `0o600` | Owner-read/write only; same mode as lock file; set via `File::create` + `set_permissions` before first write |
+   | Flush that triggers rotation check | Post-batch flush completion | After each successful `tempfile::persist` flush, check `active_file.metadata()?.len()` against the 50 MB threshold; trigger rotation synchronously within the flush task before returning |
+   | EC-002 compatibility | Lines up to 256 KiB are never truncated | Rotation check is size-based on the whole file, not line-count-based; a single 256 KiB line is written atomically and counted toward the threshold after the write succeeds |
+
+   **Rotation sequence (atomic, within flush task):**
+
+   1. Check `monocle-events.jsonl` size via `metadata().len()`.
+   2. If size < 50 MB: no rotation; return.
+   3. If size >= 50 MB (or 100 MB hard cap): proceed with rotation cascade.
+   4. Delete `monocle-events.jsonl.5` if it exists.
+   5. Rename `monocle-events.jsonl.4` → `monocle-events.jsonl.5` (if exists).
+   6. Rename `monocle-events.jsonl.3` → `monocle-events.jsonl.4` (if exists).
+   7. Rename `monocle-events.jsonl.2` → `monocle-events.jsonl.3` (if exists).
+   8. Rename `monocle-events.jsonl.1` → `monocle-events.jsonl.2` (if exists).
+   9. Rename `monocle-events.jsonl` → `monocle-events.jsonl.1`.
+   10. Create new `monocle-events.jsonl` with mode `0o600`; continue writes.
+
+   If any rename fails (e.g., out of disk space), log `WARN E-RING-002` and
+   continue writing to the existing active file without rotation. The ring
+   continues accepting events; data is not lost. The active file may transiently
+   exceed the 100 MB hard cap under this error condition; the next flush cycle
+   re-attempts rotation.
+
+   **Trace anchors:** `oq-research.md §OQ-06` (architectural decision source);
+   `product-brief.md §Storage` ("100MB × 5 rotation"); NFR-006 (throughput — 1000
+   events/sec ceiling, from which 100 MB per segment is derived as adequate for
+   ~48-minute sessions at max rate). Added by F-PHASE2-R05-05 (v1.0.33).
+
 5. Persist last-known AppMode to crash-recovery checkpoint:
    `<runtime_dir>/monocle.recovery.json`:
    ```json
@@ -2487,3 +2534,33 @@ v1.0.5 changes (round-29 fix F-R28-4 MEDIUM):
   The SE-16d PASS claim "2026-05-17T04:30:00Z satisfies chain monotonicity" was arithmetically
   false. All five affected files corrected in this burst (parallel Round 9A).
 - SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).
+
+**§Trace v1.0.33** (2026-05-19T10:00:00Z) — F-PHASE2-R05-05: JSONL Ring Buffer Rotation Policy added (Phase 2 adversary r05):
+- NORMATIVE (F-PHASE2-R05-05 HIGH): Added "JSONL Ring Buffer Rotation Policy" subsection to
+  §Drain step 4 in §Daemon Lifecycle Protocol. This section is the canonical source of truth
+  for the ring buffer rotation parameters (50 MB default threshold, 100 MB absolute per-file
+  cap, 5-file retention, oldest-first deletion, atomic-rename rotation algorithm, no-compress
+  policy, `0o600` file mode, `monocle-events.jsonl.1` through `.5` naming convention).
+  Motivation: Phase 2 story S-008 AC-007 cited `PRD v1.26.15 §OQ-06` as the ring rotation
+  policy source. `grep -n "OQ.?06\|50 MB\|rotat" .factory/specs/prd.md` returns no matches —
+  `PRD §OQ-06` does not exist as a PRD section. The planning-origin research for this decision
+  lives in `oq-research.md §OQ-06` (a planning artifact, not a normative spec). The
+  architectural rotation policy belongs in this document (SS-daemon-lifecycle.md) as the
+  §Daemon Lifecycle Protocol governing spec. This entry establishes it here.
+- NORMATIVE (F-PHASE2-R05-05 / BC-2.01.007 EC-002): EC-002 parenthetical updated in
+  BC-2.01.007.md from `(100 MB × 5 files per OQ-06)` to
+  `(50 MB rotation threshold, 100 MB × 5 cap per SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy)`.
+  This re-anchors the BC edge-case citation to the canonical spec section created here;
+  no change to the BC's behavioral semantics.
+- INFORMATIONAL: The planning document `oq-research.md §OQ-06` recommended "100MB × 5 rotation"
+  as the per-segment size; the product brief §Storage says "100MB × 5 rotation (OQ-06)". This
+  architecture section adopts 50 MB as the default rotation trigger (soft threshold for early
+  rotation before the hard 100 MB cap) with 100 MB as the absolute per-file ceiling. The
+  brief's "100MB × 5" refers to the maximum retained size, not the trigger threshold. No
+  contradiction — these are complementary parameters of the same policy.
+- INFORMATIONAL: `PRD §OQ-06` does not exist and was never a PRD section. OQ-NNN IDs are
+  open-question research IDs from `oq-research.md`, not PRD section anchors. Surfaced to
+  orchestrator: the S-008 AC-007 citation of "PRD v1.26.15 §OQ-06" is a fabricated anchor
+  that must be re-pointed to `SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy`
+  in the story file. Story-writer domain; architect surfaces finding only.
+- SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-18T05:30:00Z (monotonic).
