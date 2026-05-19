@@ -133,16 +133,6 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:18:00Z > prior 2026-05-17T18:00:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:18:00Z > 2026-05-17T18:00:00Z PASS.
 
-## §Trace v1.0.5
-
-**GAP-PHASE2-R06-3 closure — Architecture Module pin updated per ARCH-INDEX v1.0.11 cascade (trait/impl split clarification)** (2026-05-19T12:10:00Z):
-- GAP-PHASE2-R06-3: ARCH-INDEX v1.0.10 → v1.0.11 corrected SS-03 split (EngineModule trait in monocle-core, ClaudeCodeModule implementation in monocle-runtime). BC Architecture Module cell still read pre-correction text `monocle-core (EngineModule trait, ClaudeCodeModule adapter)`.
-  - SE-17f BEFORE: `monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03`
-  - SE-17f AFTER: `monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:10:00Z > prior 2026-05-19T00:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
-
 ## §Trace v1.0.4
 
 **F-PHASE2-R05-06 — Internal-consistency fix: PC-6 detect() purity postcondition added** (2026-05-19T00:00:00Z):
@@ -154,3 +144,13 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
   - AFTER: "...Postcondition 6 mandates that detect() has no I/O and no shared state mutation..."
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-19T00:00:00Z > prior 2026-05-18T05:18:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-3 closure — Architecture Module pin updated per ARCH-INDEX v1.0.11 cascade (trait/impl split clarification)** (2026-05-19T12:10:00Z):
+- GAP-PHASE2-R06-3: ARCH-INDEX v1.0.10 → v1.0.11 corrected SS-03 split (EngineModule trait in monocle-core, ClaudeCodeModule implementation in monocle-runtime). BC Architecture Module cell still read pre-correction text `monocle-core (EngineModule trait, ClaudeCodeModule adapter)`.
+  - SE-17f BEFORE: `monocle-core (EngineModule trait, ClaudeCodeModule adapter) per ARCH-INDEX Subsystem Registry SS-03`
+  - SE-17f AFTER: `monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:10:00Z > prior 2026-05-19T00:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.

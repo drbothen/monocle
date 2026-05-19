@@ -113,30 +113,15 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 
 - `verification-properties/vp-007-ring-format-version.md` — VP-007 JSONL ring format version integration tests
 
-## §Trace v1.0.6
+## §Trace v1.0.1
 
-**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:06:00Z):
-- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Drain`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Drain`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:06:00Z > prior 2026-05-19T10:00:00Z (v1.0.5). ARITHMETICALLY TRUE: PASS.
-
-## §Trace v1.0.5
-
-**F-PHASE2-R05-05 — EC-002 rotation anchor re-pointed to canonical spec section** (2026-05-19T10:00:00Z):
-- NORMATIVE (F-PHASE2-R05-05): EC-002 parenthetical updated.
-  - SE-17c BEFORE: `ring buffer rotation (100 MB × 5 files per OQ-06)`
-  - SE-17c AFTER: `ring buffer rotation (50 MB rotation threshold, 100 MB × 5 cap per SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy)`
-  - Rationale: `PRD §OQ-06` does not exist as a PRD section anchor; OQ-NNN IDs are planning
-    open-question IDs from `oq-research.md`, not PRD section references. The canonical rotation
-    policy is now defined in `SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy`
-    (added in v1.0.33 of that document). The BC's behavioral semantics are unchanged — EC-002
-    describes what the rotation policy must tolerate (256 KiB lines); the specific policy
-    parameters are an architecture concern, not a BC invariant. The parenthetical reference
-    is updated to point to the canonical architecture spec. No behavioral change.
-- SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-17T22:50:00Z (monotonic).
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-001 ... ; DI-004 ...`
+  - DI-001 mapping: This BC governs the ring write itself — every HookEventRecord serialized to JSONL constitutes the ring write that DI-001 requires to complete before ack. DI-004 mapping: format_version as first key is the exact implementation of DI-004's "version discriminant as first field" requirement for the ring wire type.
+- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
 
 ## §Trace v1.0.2
 
@@ -148,16 +133,6 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
   - Rationale: EC-002 is defined in this file (BC-2.01.007); canonical self-reference is `BC-2.01.007 EC-002`. Applied consistently with the parallel fix in BC-2.01.003.
 - SE-17c-d body-scope grep: `BC-RING-001 EC-002` in Related BCs was the only stale old-form reference in non-historical body prose. `BC-RING-001` in the Old ID (historical) Traceability row is preserved (correct; that is historical identity). 0 stale VP IDs. 0 other stale BC IDs.
 - SE-16d monotonicity PASS: 2026-05-17T22:50:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
-
-## §Trace v1.0.1
-
-**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
-- F-R105-3: L2 Domain Invariants cell updated.
-  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
-  - After: `DI-001 ... ; DI-004 ...`
-  - DI-001 mapping: This BC governs the ring write itself — every HookEventRecord serialized to JSONL constitutes the ring write that DI-001 requires to complete before ack. DI-004 mapping: format_version as first key is the exact implementation of DI-004's "version discriminant as first field" requirement for the ring wire type.
-- F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
-- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
 
 ## §Trace v1.0.3
 
@@ -178,3 +153,28 @@ S-TBD — Implement HookEventRecord with format_version first-key guarantee (fil
 - F-R109-14: §Trace blocks were descending (v1.0.3, v1.0.2, v1.0.1). Reordered to ascending (v1.0.1 → v1.0.3 → v1.0.4). Content of each section preserved verbatim; only insertion order corrected.
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:06:00Z > prior 2026-05-17T23:30:00Z (v1.0.3). ARITHMETICALLY TRUE: 2026-05-18T05:06:00Z > 2026-05-17T23:30:00Z PASS.
+
+## §Trace v1.0.5
+
+**F-PHASE2-R05-05 — EC-002 rotation anchor re-pointed to canonical spec section** (2026-05-19T10:00:00Z):
+- NORMATIVE (F-PHASE2-R05-05): EC-002 parenthetical updated.
+  - SE-17c BEFORE: `ring buffer rotation (100 MB × 5 files per OQ-06)`
+  - SE-17c AFTER: `ring buffer rotation (50 MB rotation threshold, 100 MB × 5 cap per SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy)`
+  - Rationale: `PRD §OQ-06` does not exist as a PRD section anchor; OQ-NNN IDs are planning
+    open-question IDs from `oq-research.md`, not PRD section references. The canonical rotation
+    policy is now defined in `SS-daemon-lifecycle.md §JSONL Ring Buffer Rotation Policy`
+    (added in v1.0.33 of that document). The BC's behavioral semantics are unchanged — EC-002
+    describes what the rotation policy must tolerate (256 KiB lines); the specific policy
+    parameters are an architecture concern, not a BC invariant. The parenthetical reference
+    is updated to point to the canonical architecture spec. No behavioral change.
+- SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-17T22:50:00Z (monotonic).
+
+## §Trace v1.0.6
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:06:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Drain`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Drain`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:06:00Z > prior 2026-05-19T10:00:00Z (v1.0.5). ARITHMETICALLY TRUE: PASS.

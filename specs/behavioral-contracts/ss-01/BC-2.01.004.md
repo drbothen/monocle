@@ -126,16 +126,6 @@ S-TBD — Implement graceful shutdown drain with POSIX exit codes (filled by sto
 
 - `verification-properties/vp-004-graceful-shutdown.md` — VP-004 shutdown drain integration tests
 
-## §Trace v1.0.4
-
-**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:03:00Z):
-- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:03:00Z > prior 2026-05-18T05:03:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
-
 ## §Trace v1.0.1
 
 **F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
@@ -172,3 +162,13 @@ S-TBD — Implement graceful shutdown drain with POSIX exit codes (filled by sto
 - F-R109-14: §Trace blocks were descending (v1.0.2, v1.0.1). Reordered to ascending (v1.0.1, v1.0.2, v1.0.3). Content of each section preserved verbatim; only insertion order corrected.
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:03:00Z > prior 2026-05-17T23:30:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:03:00Z > 2026-05-17T23:30:00Z PASS.
+
+## §Trace v1.0.4
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:03:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Shutdown Signal Handling and §Drain`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:03:00Z > prior 2026-05-18T05:03:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.

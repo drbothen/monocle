@@ -111,16 +111,6 @@ S-TBD — Implement lock file JSON schema with contract_version first-key (fille
 
 - `verification-properties/vp-010-lock-file-contract-version.md` — VP-010 lock file contract version integration tests
 
-## §Trace v1.0.5
-
-**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:09:00Z):
-- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:09:00Z > prior 2026-05-18T16:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
-
 ## §Trace v1.0.1
 
 **F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
@@ -161,3 +151,13 @@ S-TBD — Implement lock file JSON schema with contract_version first-key (fille
 - SE-17e sibling-propagation note: F-R110-8 pin-symmetry discipline was originally codified for VP Architecture Source cells. R16C extends this discipline to BC Architecture Source cells (sibling-propagation per SE-17e). All 22 BCs swept; only this BC carried a multi-SS-reference cell with asymmetric pinning.
 - SE-17a literal evidence (scoped-awk per D-116): `grep -n "Architecture Source" .factory/specs/behavioral-contracts/ss-01/BC-2.01.010.md` → line 89, cell confirmed corrected. 21 remaining BCs: all single-SS-reference cells (no pin-symmetry risk) or all-pinned multi-reference cells (BC-2.01.008, BC-2.01.009 — SS + ADR both pinned, PASS).
 - SE-16d monotonicity PASS: 2026-05-18T16:00:00Z > prior 2026-05-18T05:09:00Z (v1.0.3). ARITHMETICALLY TRUE: 2026-05-18T16:00:00Z > 2026-05-18T05:09:00Z PASS.
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:09:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Start Sequence; SS-core-types-and-abi.md v1.2.13 §Phase 1 PRD BC Pre-Staging`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:09:00Z > prior 2026-05-18T16:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.

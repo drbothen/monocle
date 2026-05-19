@@ -107,15 +107,15 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
 
 - `verification-properties/vp-003-body-size-limit.md` — VP-003 body size limit integration tests
 
-## §Trace v1.0.5
+## §Trace v1.0.1
 
-**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:02:00Z):
-- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Body Size Limit`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Body Size Limit`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:02:00Z > prior 2026-05-18T05:02:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
+**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
+- F-R105-3: L2 Domain Invariants cell updated.
+  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
+  - After: `DI-001 ... ; DI-002 ...`
+  - DI-001 mapping: The 256 KiB limit guards the ring write path — without it, oversized payloads could exhaust memory during the ring write that must complete before the ack. DI-002 mapping: The limit is applied to the authenticated router, which is the same router governed by the lock-file auth contract.
+- F-R105-9 (SE-17c-d body-scope grep): Related BCs references `[BC-2.01.007]` and `[BC-2.01.001]` — canonical form. Inline prose references `BC-RING-001 EC-002` in a descriptive context — this is an EC reference label, not a stale BC cross-reference (the EC ID EC-002 is defined within BC-2.01.007). 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
+- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
 
 ## §Trace v1.0.2
 
@@ -127,16 +127,6 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
   - Rationale: EC-002 is defined within BC-2.01.007 (the renumbered BC-RING-001); the old-form ID BC-RING-001 is renumbering noise in body prose; canonical form `BC-2.01.007 EC-002` is self-documenting and consistent with BC-INDEX. Note: the prior §Trace v1.0.1 observation that "the EC ID EC-002 is defined within BC-2.01.007" confirmed the EC is valid — only the BC prefix needed canonicalization.
 - SE-17c-d body-scope grep: `BC-RING-001 EC-002` in Related BCs was the only stale old-form reference in non-historical body prose. §Trace v1.0.1 historical text retains the prior reasoning inline (audit trail). 0 stale VP IDs. 0 other stale BC IDs.
 - SE-16d monotonicity PASS: 2026-05-17T22:40:00Z > prior 2026-05-17T18:00:00Z (v1.0.1).
-
-## §Trace v1.0.1
-
-**F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
-- F-R105-3: L2 Domain Invariants cell updated.
-  - Before: `N/A — no domain-spec/invariants.md exists; CAP-001 per ARCH-INDEX is authoritative source`
-  - After: `DI-001 ... ; DI-002 ...`
-  - DI-001 mapping: The 256 KiB limit guards the ring write path — without it, oversized payloads could exhaust memory during the ring write that must complete before the ack. DI-002 mapping: The limit is applied to the authenticated router, which is the same router governed by the lock-file auth contract.
-- F-R105-9 (SE-17c-d body-scope grep): Related BCs references `[BC-2.01.007]` and `[BC-2.01.001]` — canonical form. Inline prose references `BC-RING-001 EC-002` in a descriptive context — this is an EC reference label, not a stale BC cross-reference (the EC ID EC-002 is defined within BC-2.01.007). 0 stale BC IDs in non-historical body prose. 0 stale VP IDs in body prose. F-R105-9 NO-OP for this file.
-- SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T11:30:00Z (v1.0).
 
 ## §Trace v1.0.3
 
@@ -157,3 +147,13 @@ S-TBD — Implement authenticated router with DefaultBodyLimit layer (filled by 
 - F-R109-14: §Trace blocks were descending (v1.0.3, v1.0.2, v1.0.1). Reordered to ascending (v1.0.1 → v1.0.3 → v1.0.4). Content of each section preserved verbatim; only insertion order corrected.
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:02:00Z > prior 2026-05-17T23:30:00Z (v1.0.3). ARITHMETICALLY TRUE: 2026-05-18T05:02:00Z > 2026-05-17T23:30:00Z PASS.
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:02:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Body Size Limit`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Body Size Limit`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:02:00Z > prior 2026-05-18T05:02:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.

@@ -124,6 +124,15 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 - F-R105-9 (SE-17c-d body-scope grep): 0 stale BC IDs in non-historical body prose. 0 stale VP IDs. F-R105-9 NO-OP for this file.
 - SE-16d monotonicity PASS: 2026-05-17T18:00:00Z > prior 2026-05-17T17:00:00Z (v1.0.1).
 
+## §Trace v1.0.3
+
+**F-R109-4 CRITICAL — Architecture Source pin refresh v1.1.15 → v1.1.20** (2026-05-18T05:21:00Z):
+- F-R109-4: BC was stale by 4 patches cumulative from earlier rounds (v1.1.15 → v1.1.20); this Round 9B dispatch refreshed to latest. Architecture Source row updated.
+  - SE-17f BEFORE: `SS-engine-module.md v1.1.15 §Struct-level inherent operations`
+  - SE-17f AFTER: `SS-engine-module.md v1.1.20 §Struct-level inherent operations`
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-18T05:21:00Z > prior 2026-05-17T18:00:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:21:00Z > 2026-05-17T18:00:00Z PASS.
+
 ## §Trace v1.0.4
 
 **GAP-PHASE2-R06-3 closure — Architecture Module pin updated per ARCH-INDEX v1.0.11 cascade (trait/impl split clarification)** (2026-05-19T12:13:00Z):
@@ -133,12 +142,3 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 - Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
 - SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
 - SE-16d monotonicity PASS: 2026-05-19T12:13:00Z > prior 2026-05-18T05:21:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
-
-## §Trace v1.0.3
-
-**F-R109-4 CRITICAL — Architecture Source pin refresh v1.1.15 → v1.1.20** (2026-05-18T05:21:00Z):
-- F-R109-4: BC was stale by 4 patches cumulative from earlier rounds (v1.1.15 → v1.1.20); this Round 9B dispatch refreshed to latest. Architecture Source row updated.
-  - SE-17f BEFORE: `SS-engine-module.md v1.1.15 §Struct-level inherent operations`
-  - SE-17f AFTER: `SS-engine-module.md v1.1.20 §Struct-level inherent operations`
-- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
-- SE-16d monotonicity PASS: 2026-05-18T05:21:00Z > prior 2026-05-17T18:00:00Z (v1.0.2). ARITHMETICALLY TRUE: 2026-05-18T05:21:00Z > 2026-05-17T18:00:00Z PASS.

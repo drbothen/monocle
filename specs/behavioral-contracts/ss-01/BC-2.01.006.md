@@ -124,16 +124,6 @@ S-TBD — Implement crash recovery checkpoint offer/cleanup protocol (filled by 
 
 - `verification-properties/vp-006-crash-recovery-checkpoint.md` — VP-006 crash recovery checkpoint integration tests
 
-## §Trace v1.0.5
-
-**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:05:00Z):
-- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
-  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Crash Recovery`
-  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Crash Recovery`
-- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
-- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
-- SE-16d monotonicity PASS: 2026-05-19T12:05:00Z > prior 2026-05-18T05:05:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
-
 ## §Trace v1.0.2
 
 **F-R105-3 + F-R105-9 + OBS-R44-1 closure** (2026-05-17T18:00:00Z):
@@ -165,3 +155,13 @@ S-TBD — Implement crash recovery checkpoint offer/cleanup protocol (filled by 
 - F-R109-14: §Trace blocks were descending (v1.0.3, v1.0.2). Reordered to ascending (v1.0.2, v1.0.3, v1.0.4). Content of each section preserved verbatim; only insertion order corrected.
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-18T05:05:00Z > prior 2026-05-17T23:30:00Z (v1.0.3). ARITHMETICALLY TRUE: 2026-05-18T05:05:00Z > 2026-05-17T23:30:00Z PASS.
+
+## §Trace v1.0.5
+
+**GAP-PHASE2-R06-1 closure — Architecture Source pin SS-daemon-lifecycle v1.0.32 → v1.0.33** (2026-05-19T12:05:00Z):
+- GAP-PHASE2-R06-1: architect commit `2d43127` bumped SS-daemon-lifecycle.md v1.0.32 → v1.0.33 (Ring Buffer Rotation Policy added). BC ledger Architecture Source cell was not cascaded in that commit.
+  - SE-17f BEFORE: `SS-daemon-lifecycle.md v1.0.32 §Daemon Lifecycle Protocol §Crash Recovery`
+  - SE-17f AFTER: `SS-daemon-lifecycle.md v1.0.33 §Daemon Lifecycle Protocol §Crash Recovery`
+- Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
+- SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
+- SE-16d monotonicity PASS: 2026-05-19T12:05:00Z > prior 2026-05-18T05:05:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
