@@ -88,11 +88,13 @@ jobs:
         with:
           shared-key: ${{ matrix.target }}
 
-      - name: cargo build --workspace --target ${{ matrix.target }}
-        run: cargo build --workspace --target ${{ matrix.target }}
+      # --locked rejects an out-of-date Cargo.lock. A drifted lockfile is a
+      # security smell -- it can silently re-resolve to an unaudited version.
+      - name: cargo build --workspace --locked --target ${{ matrix.target }}
+        run: cargo build --workspace --locked --target ${{ matrix.target }}
 
-      - name: cargo test --workspace --target ${{ matrix.target }}
-        run: cargo test --workspace --target ${{ matrix.target }}
+      - name: cargo test --workspace --locked --target ${{ matrix.target }}
+        run: cargo test --workspace --locked --target ${{ matrix.target }}
 
   # cargo-audit gate: runs on every PR for fast feedback. The scheduled deep-scan
   # lives in audit.yml (weekly cron).
