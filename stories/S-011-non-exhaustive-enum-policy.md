@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-011
 epic_id: EPIC-02
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -29,6 +29,8 @@ inputs:
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
   - {path: .factory/specs/architecture/SS-permissions-phase1.md, version: "1.5.2"}
+  - {path: .factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, version: "1.0.4"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.18"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.02.003 (Non-Exhaustive Enum Policy FC-02); verifies VP-013; establishes #[non_exhaustive] discipline for all public enums."
 ---
@@ -41,6 +43,9 @@ As a downstream consumer of `monocle-core` types, I want all public enums (excep
 `Phase1Permission` and `ClaudeCodeTool` which are exhaustive per ADR-0004) to carry
 `#[non_exhaustive]`, so that monocle can add variants in future phases without breaking
 compiled downstream crates.
+
+Note: Three permissions enums (`DenyReason`, `AllowPattern`, `DenyPattern`) are first-declared
+in S-011, not S-010. S-010 only declares `Phase1Permission` and `ClaudeCodeTool`.
 
 ## Acceptance Criteria
 
@@ -68,7 +73,7 @@ per ADR-0004. Downstream code that matches on these enums gets compile-time exha
 checking (the intended behavior — Phase 1 sets are fixed).
 
 ### AC-003 (traces to BC-2.02.003 postcondition 3 — AST audit via VP-013)
-`monocle-core/tests/non_exhaustive_policy.rs` uses a `syn 2` AST audit to enumerate all
+`monocle-core/tests/enum_audit.rs` uses a `syn 2` AST audit to enumerate all
 `pub enum` declarations in `monocle-core/src/` and assert that each is either:
 (a) marked `#[non_exhaustive]`, or (b) in the ADR-0004 exemption list
 (`Phase1Permission`, `ClaudeCodeTool`).
@@ -77,6 +82,16 @@ checking (the intended behavior — Phase 1 sets are fixed).
 Integration test verifies that match expressions on `HookType` in `monocle-runtime`
 have a wildcard `_` arm (required by Rust compiler for `#[non_exhaustive]` enums
 from external crates). Compiler error at build time if wildcard is missing.
+Contingency: if `monocle-runtime` contains zero match sites on `monocle-core` non-exhaustive enums
+at S-011 dispatch, AC-004 is satisfied vacuously; if matches exist, all MUST have wildcard arms.
+
+### AC-005 (traces to BC-2.02.003 postcondition 3 — EXEMPT list length and contents)
+The ADR-0004 exemption list (`EXEMPT: [Phase1Permission, ClaudeCodeTool]`) declared in
+`monocle-core/tests/enum_audit.rs` has exactly 2 entries, matching the documented count in
+ADR-0004. If the constant has != 2 entries, the audit test MUST fail with a message indicating
+the EXEMPT list length has changed from the ADR-0004-documented count. This prevents silent
+expansion of the exemption list without a corresponding ADR update.
+(Per VP-013 Test Vector 13.d: "EXEMPT list expanded silently → consistency check fails".)
 
 ## Token Budget Estimate
 
@@ -97,11 +112,15 @@ from external crates). Compiler error at build time if wildcard is missing.
 - [ ] Create `monocle-core/src/permissions.rs` declaring `DenyReason`, `AllowPattern`, `DenyPattern` with `#[non_exhaustive]` attribute (SS-permissions-phase1.md lines 162–203; BC-2.02.003 PC-4)
 - [ ] Add `pub mod permissions;` to `monocle-core/src/lib.rs`
 - [ ] Confirm `Phase1Permission` and `ClaudeCodeTool` have NO `#[non_exhaustive]` (ADR-0004)
-- [ ] Create `monocle-core/tests/non_exhaustive_policy.rs` with syn 2 AST audit:
+- [ ] Create `monocle-core/tests/enum_audit.rs` with syn 2 AST audit:
   - Parse all `.rs` files in `monocle-core/src/`
   - For each `pub enum`: assert `#[non_exhaustive]` present OR name in exemption list
 - [ ] Verify that match expressions in `monocle-runtime` on `HookType` have wildcard arm
   - Compiler enforces this; test is the build itself
+- [ ] Create `monocle-core/tests/fixtures/missing_non_exhaustive.rs` with `#![cfg(test)]` ignore
+  guard — a synthetic source file containing a `pub enum` without `#[non_exhaustive]` that the
+  AST audit test parses to exercise the failure path (VP-013 Test Vector 13.b: "enum missing
+  #[non_exhaustive] → audit fails"). This fixture is parsed directly by the test, not compiled.
 
 ## Previous Story Intelligence
 
@@ -116,6 +135,14 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Non-Exhaustive Enum Polic
 - ADR-0004 exemptions: `Phase1Permission`, `ClaudeCodeTool`
 - All match arms on non_exhaustive external enums must have `_` wildcard (compiler enforced)
 
+**Semgrep co-enforcement:** `SS-conventions-anti-patterns.md §Semgrep Rules` defines a semgrep rule
+that co-enforces the `#[allow(non_exhaustive_omitted_patterns)]` ban (per VP-013 lines 101-102).
+No new semgrep rule is required for this story — the existing rule covers the ban.
+
+**Forbidden Mechanisms:** `SS-core-types-and-abi.md v1.2.13 §Forbidden Mechanisms` (lines 289-299)
+denies `#[allow(non_exhaustive_omitted_patterns)]`. Implementer MUST NOT add this attribute to silence
+any compiler lint — doing so bypasses the exhaustiveness guarantee that `#[non_exhaustive]` provides.
+
 **Forbidden Dependencies:**
 - `#[non_exhaustive]` MUST NOT be applied to `Phase1Permission` or `ClaudeCodeTool`
 
@@ -123,18 +150,38 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Non-Exhaustive Enum Polic
 
 | Crate | Version | Usage (test only) |
 |-------|---------|-------|
-| syn | 2 | AST audit in test (dev-dependency) |
+| syn | 2.0 (caret) | AST audit in test (dev-dependency); per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest |
 | quote | 1 | Token stream in AST audit (dev-dependency) |
 
 ## File Structure Requirements
 
 Files to create:
 - `monocle-core/src/permissions.rs` — `DenyReason`, `AllowPattern`, `DenyPattern` enums (all `#[non_exhaustive]`)
-- `monocle-core/tests/non_exhaustive_policy.rs` — syn 2 AST audit covering all 9 canonical enums
+- `monocle-core/tests/enum_audit.rs` — syn 2 AST audit covering all 9 canonical enums
+  (canonical name per BC-2.02.003 Invariant 1 line 51 and VP-013 §References — was non_exhaustive_policy.rs; F-C-01 fix)
+- `monocle-core/tests/fixtures/missing_non_exhaustive.rs` — synthetic failure fixture with `#![cfg(test)]`
+  ignore guard; parsed by enum_audit.rs to exercise VP-013 test vector 13.b failure path
 
 Files to modify:
-- `monocle-core/src/engine.rs` — add `#[non_exhaustive]` to `HookType`, `HookEvent`, `HookDecision`, `DeferUntil`
+- `monocle-core/src/engine.rs` — add `#[non_exhaustive]` to `HookType`, `HookEvent`, `HookDecision`
+  (NOTE: `DeferUntil` removed from engine module surface per S-014 F-D-03; do NOT add to engine.rs)
 - `monocle-core/src/factory.rs` — add `#[non_exhaustive]` to `BlockingSeverity`
 - `monocle-core/src/types.rs` — add `#[non_exhaustive]` to `SessionStatus`
 - `monocle-core/src/lib.rs` — add `pub mod permissions;`
-- `monocle-core/Cargo.toml` — add `syn = { version = "2", features = ["full"] }` and `quote = "1"` to `[dev-dependencies]`
+- `monocle-core/Cargo.toml` — add `syn = { version = "2.0", features = ["full"] }` and `quote = "1"` to `[dev-dependencies]`
+
+## §Trace
+
+**v1.2 — Phase 3.B Batch 3: arch-touching story remediation** (2026-05-20):
+- F-C-01 (HIGH): test file renamed `non_exhaustive_policy.rs` → `enum_audit.rs` throughout (BC-2.02.003
+  Invariant 1 line 51 and VP-013 §References both specify `enum_audit.rs`).
+- F-B-01 (MEDIUM): ADR-0004 v1.0.4 added to frontmatter inputs.
+- F-A-01 (MEDIUM): SS-deps-pin-manifest v1.1.18 added to frontmatter inputs; syn version updated to
+  "2.0 (caret)" with SS-deps-pin-manifest cite in Library table.
+- F-A-02 (LOW): semgrep co-enforcement note added to Architecture Compliance Rules.
+- F-B-02 (LOW): SS-core-types-and-abi §Forbidden Mechanisms note added (deny #[allow(non_exhaustive_omitted_patterns)]).
+- F-C-02 (MEDIUM): AC-005 added — EXEMPT list length == 2 consistency check per VP-013 Test Vector 13.d.
+- F-D-03 (LOW): synthetic-failure fixture file added to Tasks and File Structure.
+- F-C-03 (LOW): AC-004 contingency clause added (vacuous satisfaction if monocle-runtime has no match sites).
+- F-E-02 (LOW): Narrative note added — three permissions enums first-declared in S-011, not S-010.
+- DeferUntil note added to File Structure: do NOT add #[non_exhaustive] to DeferUntil in engine.rs (ghost type dropped in S-014 F-D-03).

@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "2.1"
+version: "2.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -37,7 +37,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
   S-006           (depends on: S-001)
   S-010           (depends on: S-001, S-003)
   S-011           (depends on: S-010)
-  S-013           (depends on: S-010)
+  S-013           (depends on: S-001)  [Batch 3: downgraded from S-010; monocle-proto only inherits crate stub from S-001; no monocle-core symbols consumed]
   S-014           (depends on: S-010)
 
 Wave 3 (depends on Wave 2; parallel within wave):
@@ -66,7 +66,7 @@ Wave 3 (depends on Wave 2; parallel within wave):
 | S-010 | S-001, S-003 | Requires monocle-core crate stub from S-001; S-003 creates status.rs handler which S-010 modifies to import monocle_core::MONOCLE_ABI_VERSION (Phase 3.B co-dependency; S-010 cannot modify status.rs until S-003 has created it) |
 | S-011 | S-010 | Requires monocle-core type declarations from S-010 |
 | S-012 | S-010, S-011 | Requires monocle-core types (S-010) and #[non_exhaustive] policy (S-011) |
-| S-013 | S-010 | Requires monocle-proto crate stub; monocle-core for HookEnvelope cross-reference |
+| S-013 | S-001 | Requires monocle-proto crate stub from S-001 (workspace init); monocle-proto does NOT consume monocle-core symbols; prost-build codegen uses only the .proto schema and prost-build, not monocle-core types (Batch 3: F-E-01 downgrade) |
 | S-014 | S-010 | Requires monocle-core types (HookEvent, HookResponse defined in S-010 engine module) |
 | S-015 | S-014 | Requires EngineModule trait and supporting types from S-014 |
 
@@ -79,14 +79,17 @@ Degree-0 nodes (no deps): {S-PHASE-3-PREP, S-DTU-001, S-001}
 
 Round 1 — remove degree-0, reduce dependents:
   Process: S-DTU-001, S-001
-  Newly degree-0: {S-002, S-005*, S-006}
+  Newly degree-0: {S-002, S-005*, S-006, S-013}
   (*S-005 depends on S-001+S-002+S-003; S-002/S-003 not yet removed; not degree-0 yet)
   Note: S-004 depends on S-001+S-003; S-003 not yet removed; not degree-0.
   Note: S-010 depends on S-001+S-003; S-003 not yet removed; not degree-0.
+  [Batch 3: S-013 newly degree-0 after Round 1 — depends only on S-001 per F-E-01 downgrade]
 
-Round 2 — process S-002, S-006:
+Round 2 — process S-002, S-006, S-013:
+  [Batch 3: S-013 added to Round 2 — now depends only on S-001 (resolved Round 1); downgraded from S-010]
   Newly degree-0 after S-002 removed: {S-003} (S-003 depends on S-001+S-002; both resolved)
   Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-003/S-008 deps; not yet degree-0)
+  S-013 processed; blocks: [] — no new degree-0 nodes from S-013 removal.
 
 Round 3 — process S-003, S-007, S-008:
   Newly degree-0 after S-003 removed: {S-004, S-005, S-010}
@@ -96,9 +99,9 @@ Round 3 — process S-003, S-007, S-008:
   Newly degree-0 after S-008 removed: {S-009} (S-009 had S-003 dep resolved in Round 3 + S-008 now)
 
 Round 4 — process S-004, S-005, S-009, S-010:
-  Newly degree-0 after S-010 removed: {S-011, S-013, S-014}
+  Newly degree-0 after S-010 removed: {S-011, S-014}  [S-013 already processed in Round 2]
 
-Round 5 — process S-011, S-013, S-014:
+Round 5 — process S-011, S-014:
   Newly degree-0 after S-011 removed: {S-012}
   Newly degree-0 after S-014 removed: {S-015}
 
@@ -116,13 +119,13 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | Story | Blocks | Justification |
 |-------|--------|---------------|
 | S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
-| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation; the r01 partial-fix that removed S-009 was incomplete. S-013/S-014 removed (Decision 11): both depend on S-010 directly, not S-001; transitive chain S-001→S-010→{S-013,S-014} preserves topological order. |
+| S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation. S-013 added (Batch 3 F-E-01): monocle-proto only inherits crate stub from S-001; no monocle-core symbols consumed; direct dep corrected from S-010 to S-001. S-014 remains via S-010 (Decision 11 preserved: S-014 imports monocle-core types from S-010). |
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
 | S-003 | S-004, S-005, S-009, S-010 | auth.rs (canonical X-Monocle-Authorization middleware) created by S-003; S-005 requires it for authenticated /shutdown endpoint; S-009 requires it to EXTEND with alias-path branch + 5 hook-route handlers (Phase 3.A auth-ownership decision); S-004 requires S-003's authenticated router in server.rs to apply DefaultBodyLimit layer (Phase 3.B); S-010 requires S-003's status.rs handler to inject monocle_core::MONOCLE_ABI_VERSION (Phase 3.B) |
 | S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
 | S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. |
 | S-008 | S-009 | RingBuffer must be available before S-009 hook handlers call RingBuffer::push() (Decision 1: S-008→S-009) |
-| S-010 | S-011, S-012, S-013, S-014 | monocle-core types needed for all SS-02/SS-03 stories |
+| S-010 | S-011, S-012, S-014 | monocle-core types needed for SS-02/SS-03 stories. S-013 removed (Batch 3 F-E-01): monocle-proto does not consume monocle-core symbols; S-013 now depends directly on S-001. |
 | S-011 | S-012 | Non-exhaustive enum attributes needed before FactoryAdapter types |
 | S-014 | S-015 | EngineModule trait needed before ClaudeCodeModule impl |
 
@@ -540,6 +543,20 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - Edge Case Coverage Matrix: BC-2.01.003 EC-002 → EC-045 (correct edge-case ID for BC-2.01.003;
   EC-002 belongs to BC-2.01.007 ring buffer). AC-006 added as co-covering AC.
 - dep-graph version bumped v2.0 → v2.1.
+
+## §Trace v2.2
+
+**Phase 3.B Batch 3: arch-touching story remediation — dep-graph cascade** (2026-05-20):
+- S-013 depends_on downgraded `[S-010]` → `[S-001]` (F-E-01): monocle-proto does not consume
+  monocle-core symbols; only inherits crate stub from S-001.
+- Depends-On table: S-013 row updated from S-010 to S-001 with justification.
+- Blocks Edges: S-010 Blocks column: S-013 removed. S-001 Blocks column: S-013 added.
+- Topological sort: S-013 moved from Round 4 (after S-010) to Round 2 (after S-001). Round 1
+  newly degree-0 set updated to include S-013. Round 2 now processes S-002, S-006, S-013.
+  Round 4 `Newly degree-0 after S-010 removed` updated: `{S-011, S-014}` (was `{S-011, S-013, S-014}`).
+  DAG remains acyclic. Total 17 nodes processed. PASS.
+- dep-graph version bumped v2.1→v2.2.
+- SE-22 v2 consumer-ledger: STORY-INDEX v2.0→v2.1 (sibling).
 
 ## §Trace v2.0
 
