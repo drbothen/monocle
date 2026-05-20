@@ -1,0 +1,35 @@
+name: Weekly Security Audit
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC.
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  audit:
+    name: cargo audit (scheduled)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.86
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Update advisory database + run cargo audit
+        # --deny warnings escalates every advisory (including unmaintained, yanked,
+        # informational) to a CI failure. Per SS-deps-pin-manifest v1.1.18
+        # §Security Advisory Response Policy: a new advisory blocks merge until
+        # either the version is patched or a documented risk-acceptance is filed
+        # under .factory/specs/risk-acceptance/.
+        run: cargo audit --deny warnings

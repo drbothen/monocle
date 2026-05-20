@@ -6,6 +6,12 @@
 //!
 //! They run against the workspace root (resolved via `CARGO_MANIFEST_DIR`).
 
+// Test-only file: `expect`/`unwrap` are idiomatic in tests where a failure is
+// itself the test failure. The production-code lint level (warn in workspace
+// Cargo.toml) is intentionally upgraded to `-D warnings` in CI -- this allow
+// applies only to the test code below.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -46,8 +52,8 @@ fn read_workspace_cargo_toml() -> String {
 fn ac_002_rust_toolchain_file_exists_and_pins_msrv() {
     let root = workspace_root();
     let path = root.join("rust-toolchain.toml");
-    let contents = fs::read_to_string(&path)
-        .expect("rust-toolchain.toml must exist at workspace root");
+    let contents =
+        fs::read_to_string(&path).expect("rust-toolchain.toml must exist at workspace root");
     assert!(
         contents.contains("channel = \"1.86\""),
         "rust-toolchain.toml must pin channel = \"1.86\"; got:\n{}",
@@ -80,8 +86,7 @@ fn ac_002_rust_toolchain_file_exists_and_pins_msrv() {
 fn ac_003_ci_yml_exists_and_uses_explicit_include_matrix() {
     let root = workspace_root();
     let path = root.join(".github").join("workflows").join("ci.yml");
-    let contents = fs::read_to_string(&path)
-        .expect(".github/workflows/ci.yml must exist");
+    let contents = fs::read_to_string(&path).expect(".github/workflows/ci.yml must exist");
 
     assert!(
         contents.contains("include:"),
@@ -245,8 +250,7 @@ fn ac_006_workspace_uses_workspace_dependencies_pattern() {
 fn ac_007_audit_yml_exists_with_weekly_cron() {
     let root = workspace_root();
     let path = root.join(".github").join("workflows").join("audit.yml");
-    let contents = fs::read_to_string(&path)
-        .expect(".github/workflows/audit.yml must exist");
+    let contents = fs::read_to_string(&path).expect(".github/workflows/audit.yml must exist");
 
     assert!(
         contents.contains("cron: '0 0 * * 0'") || contents.contains("cron: \"0 0 * * 0\""),
