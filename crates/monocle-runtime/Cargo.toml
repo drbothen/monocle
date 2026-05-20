@@ -1,0 +1,38 @@
+[package]
+name = "monocle-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Runtime daemon for monocle: hook ingestion, session lifecycle, auth, ring buffer."
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "monocle-runtime"
+path = "src/main.rs"
+
+[dependencies]
+monocle-core = { path = "../monocle-core" }
+monocle-proto = { path = "../monocle-proto" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+rand = { workspace = true }
+constant_time_eq = { workspace = true }
+tempfile = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+directories = { workspace = true }
+nix = { workspace = true }
+axum = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+temp-env = { workspace = true }
+syn = { workspace = true }

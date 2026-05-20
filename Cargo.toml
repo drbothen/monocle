@@ -1,0 +1,77 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/monocle-core",
+    "crates/monocle-runtime",
+    "crates/monocle-proto",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.86"
+license = "Apache-2.0"
+repository = "https://github.com/drbothen/monocle"
+authors = ["monocle contributors"]
+
+# Workspace-level dependency declarations per Cargo 2021+ pattern.
+# Member crates inherit via `{ workspace = true }`.
+# Pin policy source of truth: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.18
+[workspace.dependencies]
+# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.1.18 §Patch-Pinning Policy) ---
+tokio = { version = "=1.52.0", features = ["full"] }
+axum = "=0.8.9"
+serde_json = "=1.0.149"
+rand = "=0.8.6"
+prost = "=0.14.1"
+reqwest = "=0.13.0"
+wasmtime = "=44.0.1"
+russh = "=0.60.2"
+# rmcp omitted from Phase 1 workspace per OQ-09 resolution (Phase 4 scope)
+
+# --- Caret-pinned direct workspace deps ---
+bytes = "1.10" # Direct pin overrides prost-transitive RUSTSEC-2026-0007
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+thiserror = "2"
+anyhow = "1"
+tempfile = "3"
+directories = "6"
+chrono = "0.4"
+nix = "0.30"
+constant_time_eq = "0.3"
+futures = "0.3"
+async-trait = "0.1"
+clap = "4.6"
+interprocess = "2.4"
+semver = "1"
+notify = "8"
+serde_yaml_ng = "0.10"
+
+# --- Build dependencies ---
+prost-build = "=0.14.1"
+
+# --- Dev dependencies (workspace-declared for inheritance into member [dev-dependencies]) ---
+temp-env = { version = "0.3", features = ["async_closure"] }
+syn = { version = "2", features = ["full"] }
+
+[workspace.lints.clippy]
+# Lint level: deny disallowed methods (the actual method list lives in clippy.toml
+# at the workspace root because Cargo.toml lint config does not accept the
+# table-array form for disallowed_methods).
+disallowed_methods = "deny"
+# Additional defensive lint levels; these are widely useful and not noisy.
+unwrap_used = "warn"
+expect_used = "warn"
+todo = "warn"
+dbg_macro = "deny"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.dev]
+opt-level = 0
+debug = true
