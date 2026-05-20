@@ -11,7 +11,7 @@ gaps_by_severity:
   high: 2
   medium: 6
   low: 3
-input-hash: "[live-state]"
+input-hash: "256a9b0"
 inputs:
   - stories/STORY-INDEX.md
   - stories/dependency-graph.md
