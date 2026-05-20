@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -18,7 +18,7 @@ inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
 input-hash: "[live-state]"
-traces_to_full: ".factory/stories/STORY-INDEX.md v1.8"
+traces_to_full: ".factory/stories/STORY-INDEX.md v1.9"
 ---
 
 stories:
@@ -105,7 +105,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 2. Depends on S-001, S-002."
+    notes: "Wave 2. Depends on S-001, S-002, S-003 (Phase 3.A: S-003 added for auth middleware reuse on /shutdown)."
 
   - id: S-006
     title: "Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)"
@@ -129,7 +129,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 3 (Decision 1: moved from Wave 2; depends on S-008 for RingBuffer). Depends on S-001, S-004, S-006, S-008, S-DTU-001 (Decision 10: DTU clone needed for alias-auth integration tests). Covers BC-2.01.008 + BC-2.01.009."
+    notes: "Wave 3 (Decision 1: moved from Wave 2; depends on S-008 for RingBuffer). Depends on S-001, S-003, S-004, S-006, S-008, S-DTU-001 (Decision 10: DTU clone needed for alias-auth integration tests; Phase 3.A: S-003 added — S-009 EXTENDS auth.rs created by S-003). Covers BC-2.01.008 + BC-2.01.009."
 
   - id: S-010
     title: "monocle-core Crate Foundation + ABI Version Constant (FC-03)"

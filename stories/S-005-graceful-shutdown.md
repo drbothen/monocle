@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-005
 epic_id: EPIC-01
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,7 +12,7 @@ points: 5
 wave: 2
 tdd_mode: strict
 priority: P0
-depends_on: [S-001, S-002]
+depends_on: [S-001, S-002, S-003]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
@@ -27,6 +27,7 @@ inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
+  - {path: .factory/specs/architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md, version: "1.0.2"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
 input-hash: "[live-state]"
 traces_to: "Implements BC-2.01.004 (Graceful Shutdown); verifies VP-004; addresses E-DAEMON-002."
@@ -81,7 +82,7 @@ External monitoring systems (systemd `Restart=on-failure`, k8s `terminationGrace
 CI status parsers) MUST use exit code `143` (not `130`) to detect SIGTERM hard-kill during
 drain — INV-4 per BC-2.01.004. Exit 130 encodes SIGINT (Ctrl-C second press), not SIGTERM.
 
-Cite: BC-2.01.004 PC-8; BC-2.01.004 INV-4; SS-daemon-lifecycle.md line 795 + lines 2117-2132.
+Cite: BC-2.01.004 PC-8; BC-2.01.004 INV-4; SS-daemon-lifecycle.md §Hard Shutdown (step 6 + Exit codes list) and §BC-2.01.004 verification block.
 
 ### AC-005 (traces to BC-2.01.004 invariant 1 — hard-timeout drain budget exhaustion)
 The 10-second drain window is a HARD timeout per BC-2.01.004 INV-1. If the drain has not
@@ -135,12 +136,15 @@ default panic exit behavior without setting a custom exit code.
 ## Previous Story Intelligence
 
 S-002 (Wave 2): `AppMode` enum and `Arc<RwLock<AppMode>>` established in `state.rs`.
-S-003 (Wave 2): Authenticated router with auth middleware established.
-Reuse the auth middleware from S-003 for `POST /shutdown` — no new auth code needed.
+S-003 (Wave 2): Authenticated router + auth middleware established for `/status`.
+`monocle-runtime/src/auth.rs` is created by S-003 with the canonical `X-Monocle-Authorization`
+validation path (ADR-0005). S-005 reuses the auth middleware layer for the authenticated
+`POST /shutdown` endpoint — no new auth code needed. The `/shutdown` endpoint requires canonical
+OR alias auth per ADR-0005 dual-accept protocol (BC-2.01.004 INV-3).
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Graceful Shutdown and §Hard Shutdown:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Graceful Shutdown, §Drain (10-Second Timeout), and §Hard Shutdown:
 - 10-second drain timeout is hard-coded (not configurable in Phase 1)
 - `AppMode::ShuttingDown` gates the 503 response on hook handlers
 - Drain timeout (10s per INV-1) triggers force-shutdown via in-process abort; drain-timeout-forced-shutdown exits 0 (SIGTERM originator, graceful attempt completed within deadline). Exit code 130 = second SIGINT during drain; exit code 143 = second SIGTERM during drain; exit code 2 = second authenticated `POST /shutdown` during drain (admin forced-stop, NOT drain timeout). BC-2.01.004 PC-8 + INV-1 + INV-4.
@@ -172,3 +176,15 @@ Files to modify:
 - `monocle-runtime/src/handlers/mod.rs` — add `pub mod shutdown;`
 - `monocle-runtime/src/router.rs` — add `POST /shutdown` route
 - `monocle-runtime/src/state.rs` — `AppMode::ShuttingDown` variant gates 503
+
+## §Trace v1.5
+
+**Phase 3.A auth-ownership decision** (2026-05-20):
+- S-005 F-E-01 (MED) closed: S-003 missing from `depends_on` corrected.
+- depends_on: [S-001, S-002] → [S-001, S-002, S-003].
+- inputs: added ADR-0005 v1.0.2.
+- AC-004 cite: line-number citation replaced with section-name citation per dispatch spec.
+- §Architecture Compliance Rules: section heading updated to include §Drain (10-Second Timeout).
+- §Previous Story Intelligence: S-003 dependency context added — auth middleware in auth.rs
+  created by S-003; S-005 reuses it for the authenticated /shutdown endpoint.
+- version bumped 1.4 → 1.5.

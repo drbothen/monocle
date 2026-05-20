@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.9"
+version: "2.0"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -33,7 +33,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
   S-002           (depends on: S-001)
   S-003           (depends on: S-001, S-002)
   S-004           (depends on: S-001)
-  S-005           (depends on: S-001, S-002)
+  S-005           (depends on: S-001, S-002, S-003)
   S-006           (depends on: S-001)
   S-010           (depends on: S-001)
   S-011           (depends on: S-010)
@@ -43,7 +43,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
 Wave 3 (depends on Wave 2; parallel within wave):
   S-007           (depends on: S-006)
   S-008           (depends on: S-006)
-  S-009           (depends on: S-001, S-004, S-006, S-008, S-DTU-001)  [Decision 1: S-008→S-009 edge added; Decision 10: S-DTU-001→S-009 symmetric edge added]
+  S-009           (depends on: S-001, S-003, S-004, S-006, S-008, S-DTU-001)  [Decision 1: S-008→S-009 edge added; Decision 10: S-DTU-001→S-009 symmetric edge added; Phase 3.A: S-003→S-009 auth-ownership edge added]
   S-012           (depends on: S-010, S-011)
   S-015           (depends on: S-014)
 ```
@@ -58,11 +58,11 @@ Wave 3 (depends on Wave 2; parallel within wave):
 | S-002 | S-001 | Requires workspace + axum router stub from S-001 |
 | S-003 | S-001, S-002 | Requires authenticated router (depends on unauthenticated router from S-002) |
 | S-004 | S-001 | Requires axum router from S-001; independent of S-002/S-003 |
-| S-005 | S-001, S-002 | Requires AppMode enum from S-002 (ShuttingDown state) |
+| S-005 | S-001, S-002, S-003 | Requires AppMode enum from S-002 (ShuttingDown state); requires auth middleware from S-003 for authenticated /shutdown endpoint (canonical X-Monocle-Authorization path per ADR-0005) |
 | S-006 | S-001 | Requires workspace crates (tempfile, directories, nix) from S-001 |
 | S-007 | S-006 | Requires runtime_dir resolution and tempfile::persist pattern from S-006 |
 | S-008 | S-006 | Requires runtime_dir and HookEventRecord struct; ring flush depends on runtime_dir |
-| S-009 | S-001, S-004, S-006, S-008, S-DTU-001 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001), RingBuffer from S-008 (Decision 1: hook handlers call RingBuffer::push()), and DTU hook protocol clone (S-DTU-001: needed for S-009 integration tests on the alias auth path per Decision 10) |
+| S-009 | S-001, S-003, S-004, S-006, S-008, S-DTU-001 | Requires DefaultBodyLimit (S-004), lock file auth token (S-006), axum router (S-001), RingBuffer from S-008 (Decision 1: hook handlers call RingBuffer::push()), DTU hook protocol clone (S-DTU-001: needed for S-009 integration tests on the alias auth path per Decision 10), and auth middleware in monocle-runtime/src/auth.rs created by S-003 (Phase 3.A: S-009 EXTENDS S-003's canonical auth middleware with alias-path branch + 5 hook-route handlers) |
 | S-010 | S-001 | Requires monocle-core crate stub from S-001; independent of S-002..S-009 |
 | S-011 | S-010 | Requires monocle-core type declarations from S-010 |
 | S-012 | S-010, S-011 | Requires monocle-core types (S-010) and #[non_exhaustive] policy (S-011) |
@@ -83,16 +83,17 @@ Round 1 — remove degree-0, reduce dependents:
   (*S-005 depends on S-001+S-002; S-002 not yet removed; not degree-0 yet)
 
 Round 2 — process S-002, S-004, S-006, S-010:
-  Newly degree-0 after S-002 removed: {S-003, S-005}
-  Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-008 dep; not yet degree-0; S-009's S-DTU-001 dep was resolved when S-DTU-001 processed in Round 1)
+  Newly degree-0 after S-002 removed: {S-003} (S-005 depends on S-001+S-002+S-003; S-003 not yet removed; not degree-0 yet)
+  Newly degree-0 after S-006 removed: {S-007, S-008} (S-009 still has S-003/S-008 deps; not yet degree-0; S-009's S-DTU-001 dep was resolved when S-DTU-001 processed in Round 1)
   Newly degree-0 after S-010 removed: {S-011, S-013, S-014}
 
-Round 3 — process S-003, S-005, S-007, S-008, S-011, S-013, S-014:
-  Newly degree-0 after S-008 removed: {S-009}
+Round 3 — process S-003, S-007, S-008, S-011, S-013, S-014:
+  Newly degree-0 after S-003 removed: {S-005} (S-005 now has all deps resolved: S-001 Round 1, S-002 Round 2, S-003 Round 3)
+  Newly degree-0 after S-008 removed: {S-009} (S-009 also had S-003 dep, now resolved in Round 3)
   Newly degree-0 after S-011 removed: {S-012}
   Newly degree-0 after S-014 removed: {S-015}
 
-Round 4 — process S-009, S-012, S-015:
+Round 4 — process S-005, S-009, S-012, S-015:
   All remaining nodes processed; empty queue.
 
 Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
@@ -108,6 +109,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | S-DTU-001 | S-009 | DTU clone needed before S-009 integration tests that exercise alias auth path |
 | S-001 | S-002, S-003, S-004, S-005, S-006, S-009, S-010 | Workspace required for all implementation stories. S-009 included (Decision 10): S-009 directly consumes S-001's workspace + axum router foundation; the r01 partial-fix that removed S-009 was incomplete. S-013/S-014 removed (Decision 11): both depend on S-010 directly, not S-001; transitive chain S-001→S-010→{S-013,S-014} preserves topological order. |
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
+| S-003 | S-005, S-009 | auth.rs (canonical X-Monocle-Authorization middleware) created by S-003; S-005 requires it for authenticated /shutdown endpoint; S-009 requires it to EXTEND with alias-path branch + 5 hook-route handlers (Phase 3.A auth-ownership decision) |
 | S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
 | S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. |
 | S-008 | S-009 | RingBuffer must be available before S-009 hook handlers call RingBuffer::push() (Decision 1: S-008→S-009) |
@@ -514,3 +516,18 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - No BC Clause Coverage Matrix or Edge Case Coverage Matrix changes required from r12 burst (those matrices are unchanged; only the STORY-INDEX AC-range summary column was corrected).
 - GAP-PHASE2-R12-3/R12-4: new holdout scenarios HS-W2-006 and HS-W2-007 derived from BC-2.01.004 and BC-2.02.006/007/008 respectively. These BCs and their clauses are already fully covered in the BC Clause Coverage Matrix (all clauses have covering ACs). The holdout scenarios are derived from BC body edge cases not mechanically stated in story ACs — no dep-graph matrix updates required.
 - dep-graph version bumped v1.8→v1.9 to record this sibling-sweep receipt entry.
+
+## §Trace v2.0
+
+**Phase 3.A auth-ownership decision — cascade propagation** (2026-05-20):
+- S-003 F-E-03 (LOW-MED), S-005 F-E-01 (MED), S-009 F-E-01 (HIGH) closed.
+- Topological Order: S-005 updated to `depends on: S-001, S-002, S-003`. S-009 updated to
+  `depends on: S-001, S-003, S-004, S-006, S-008, S-DTU-001`.
+- Acyclicity re-verified: S-005 and S-009 are Wave 2 and Wave 3 respectively; S-003 is Wave 2.
+  The S-003→S-005 and S-003→S-009 edges are INTRA-wave (S-003 is an early Wave-2 story with
+  no new cross-wave implications). DAG remains acyclic. Topological sort updated to reflect
+  S-005's new 3-dep constraint (degree-0 only after S-003 removed in Round 3). PASS.
+- Dependency Edges table: S-005 row updated (add S-003 + justification). S-009 row updated
+  (add S-003 + justification).
+- Blocks Edges table: S-003 row added (blocks S-005, S-009 with justification).
+- dep-graph version bumped v1.9→v2.0.

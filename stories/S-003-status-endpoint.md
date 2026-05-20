@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-003
 epic_id: EPIC-01
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -13,7 +13,7 @@ wave: 2
 tdd_mode: strict
 priority: P0
 depends_on: [S-001, S-002]
-blocks: []
+blocks: [S-005, S-009]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.002, BC-2.02.001]
@@ -23,6 +23,9 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
   - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.002.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.001.md, version: "1.0.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.008.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-01/BC-2.01.009.md, version: "1.0.7"}
+  - {path: .factory/specs/architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-002-status-endpoint.md, version: "1.0.14"}
   - {path: .factory/specs/verification-properties/vp-011-abi-version-status-endpoint.md, version: "1.0.13"}
@@ -124,9 +127,17 @@ S-003 exposes it in the response — joint coverage. VP-011 verifies the equalit
 
 ## Previous Story Intelligence
 
-S-002 (Wave 2): Unauthenticated router established with `GET /healthz`.
+S-002 (Wave 2): Unauthenticated router established with `GET /healthz`. The monocle-runtime
+workspace crate, `monocle-runtime/src/lib.rs` stub, clippy/audit/CI baseline, and MSRV 1.86
+are all inherited from S-001 (Wave 1) via S-002.
 This story adds the authenticated router with auth middleware.
 The auth middleware is shared with hook endpoints (S-009 will depend on it).
+
+**S-003 OWNS the creation of `monocle-runtime/src/auth.rs`** per the canonical
+`X-Monocle-Authorization` validation path (ADR-0005). S-009 EXTENDS this file in Wave 3
+with the dual-accept alias-path branch (`X-Claude-Code-Ide-Authorization`) and the 5
+hook-route handlers.
+
 Build auth middleware as a tower `Layer` or axum `middleware::from_fn`.
 
 ## Architecture Compliance Rules
@@ -165,3 +176,15 @@ Files to modify:
 - `monocle-runtime/src/handlers/mod.rs` — add `pub mod status;`
 - `monocle-runtime/src/router.rs` — add authenticated router with auth middleware + body limit
 - `monocle-runtime/src/lib.rs` — add `pub mod auth;`
+
+## §Trace v1.5
+
+**Phase 3.A auth-ownership decision** (2026-05-20):
+- S-003 F-E-03 (LOW-MED) closed: auth.rs ownership collision resolved.
+- S-003 OWNS creation of `monocle-runtime/src/auth.rs` per canonical `X-Monocle-Authorization`
+  validation path (ADR-0005). S-009 EXTENDS this file in Wave 3 with alias-path branch + 5
+  hook-route handlers.
+- inputs: added BC-2.01.008.md v1.0.7, BC-2.01.009.md v1.0.7, ADR-0005 v1.0.2.
+- §Previous Story Intelligence expanded: S-001 monocle-runtime crate + lib.rs stub + CI/MSRV
+  baseline inheritance explicitly noted.
+- version bumped 1.4 → 1.5.

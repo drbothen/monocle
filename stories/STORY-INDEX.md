@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -42,7 +42,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
 | S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
-| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | — |
+| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-005, S-009 |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
 | S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
@@ -293,3 +293,15 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   - BC-2.03.004 (S-015): `AC-006..AC-008` → `AC-007, AC-008, AC-009` (AC-006 = BC-2.03.003 PC-2; AC-007..AC-009 = BC-2.03.004 PC-1..PC-3)
 - GAP-PHASE2-R12-1 (LOW): `level: L4` frontmatter field added to all 17 story files (S-001 through S-015, S-DTU-001, S-PHASE-3-PREP). Inserted after `document_type: story` line per STORY-INDEX/dep-graph/wave-schedule pattern.
 - SE-22 v2 cascade: STORY-INDEX v1.7→v1.8; holdout-scenarios.md and sprint-state.yaml must update their traces_to_full/traces_to pins.
+
+## §Trace v1.9
+
+**Phase 3.A auth-ownership decision — cascade propagation** (2026-05-20):
+- S-003 F-E-03 (LOW-MED), S-005 F-E-01 (MED), S-009 F-E-01 (HIGH) closed.
+- Story Registry: S-003 Blocks column updated "—" → "S-005, S-009" (bidirectional symmetry with
+  S-005.depends_on and S-009.depends_on now including S-003).
+- BC Coverage Table: no changes (no BC reassignments).
+- No wave reassignments: S-003/S-005 both Wave 2; S-009 Wave 3. The new S-003→S-005 edge is
+  an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
+- SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
+- STORY-INDEX version bumped v1.8→v1.9.

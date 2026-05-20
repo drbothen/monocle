@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-009
 epic_id: EPIC-01
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,7 +12,7 @@ points: 8
 wave: 3
 tdd_mode: strict
 priority: P0
-depends_on: [S-001, S-004, S-006, S-008, S-DTU-001]
+depends_on: [S-001, S-003, S-004, S-006, S-008, S-DTU-001]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
@@ -30,6 +30,7 @@ inputs:
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
+  - {path: .factory/specs/architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md, version: "1.0.2"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
@@ -126,10 +127,15 @@ this AC verifies the router registration matches that list.)
   - `monocle_runtime::auth::generate_session_token()` is S-006's deliverable; S-009 is the consumer
   - NOTE: `generate_session_token()` is already defined in `monocle-runtime/src/auth.rs` by S-006;
     S-009 extends the same module with `validate_auth_header()` and the auth middleware
-- [ ] Implement auth middleware `validate_auth_header()`:
-  - Check `X-Monocle-Authorization` first (canonical): strip `monocle-v1:` prefix; constant_time_eq
-  - If absent, check `X-Claude-Code-Ide-Authorization` (alias): constant_time_eq on raw hex; emit WARN
-  - If both absent: return 401 E-AUTH-001
+- [ ] EXTEND the auth middleware created by S-003 (`monocle-runtime/src/auth.rs`) with:
+  (a) the dual-accept alias-path branch (`X-Claude-Code-Ide-Authorization` per ADR-0005 v1.0.2),
+      with WARN-level deprecation log per BC-2.01.009 INV-6 (`constant_time_eq` on raw hex);
+  (b) the 5 hook-route handlers (PreToolUse, Notification, Stop, SessionStart, UserPromptSubmit)
+      wired into the authenticated router.
+  Auth middleware flow (extending S-003 canonical path):
+  - S-003 already handles `X-Monocle-Authorization` (canonical): strip `monocle-v1:` prefix; constant_time_eq
+  - S-009 adds: if canonical absent, check `X-Claude-Code-Ide-Authorization` (alias): constant_time_eq on raw hex; emit WARN per INV-6
+  - If both absent: return 401 E-AUTH-001 (already handled by S-003; S-009 confirms alias absence)
   - If present but wrong format/value: return 401 E-AUTH-002
 - [ ] Wire middleware to authenticated router (all 5 hook endpoints + /status + /shutdown)
 - [ ] Implement stub hook handlers for all 5 endpoints:
@@ -153,6 +159,10 @@ S-DTU-001 (Wave 1): Claude Code hook protocol DTU clone built and running. Provi
 protocol fixture corpus that S-009 integration tests exercise against the alias auth path
 (`X-Claude-Code-Ide-Authorization`). S-009 depends on S-DTU-001 for integration test coverage
 of the dual-accept protocol (Decision 10 + SE-25: bidirectional DAG edge required).
+S-003 (Wave 2): Authenticated router + canonical auth middleware established.
+`monocle-runtime/src/auth.rs` is created by S-003 with the canonical `X-Monocle-Authorization`
+validation path. S-009 reuses the auth middleware layer and EXTENDS it with the dual-accept
+alias-path branch (`X-Claude-Code-Ide-Authorization`) + 5 hook routes per ADR-0005.
 S-004 (Wave 2): `DefaultBodyLimit::max(262_144)` applied to authenticated router.
 S-006 (Wave 2): Lock file writer complete; `monocle_runtime::auth::generate_session_token()`
 already called at `DaemonLock::acquire()` time (Orchestrator Decision 3: function lives in
@@ -189,15 +199,30 @@ From `architecture/ADR-0005` v1.0.2:
 
 ## File Structure Requirements
 
-Files to create/modify:
-- `monocle-runtime/src/auth.rs` — `validate_auth_header()`, auth middleware
-  (NOTE: `generate_session_token()` is defined here by S-006; S-009 extends this module.
-  Do NOT add a `generate_auth_token()` function — the canonical name is `generate_session_token()`
-  per BC-2.01.008 PC-1 semantics. Callsite: `monocle_runtime::auth::generate_session_token()`.)
+Files to modify (existing, created by earlier waves):
+- `monocle-runtime/src/auth.rs` — **modify** (created by S-003 in Wave 2; S-009 extends with
+  alias-path branch (`X-Claude-Code-Ide-Authorization`) + 5 hook-route handlers per ADR-0005).
+  `generate_session_token()` is already defined here by S-006. Do NOT add a `generate_auth_token()`
+  function — the canonical name is `generate_session_token()` per BC-2.01.008 PC-1 semantics.
+  Callsite: `monocle_runtime::auth::generate_session_token()`.
+- `monocle-runtime/src/router.rs` — add auth middleware + 5 hook routes (S-009 extends S-003 router)
+- `monocle-runtime/src/lock.rs` — reads `authToken` from lock file; populated by `generate_session_token()` in S-006
+- `monocle-runtime/src/handlers/mod.rs` — add `pub mod hooks;`
+
+Files to create:
 - `monocle-runtime/src/handlers/hooks.rs` — 5 hook endpoint handlers (create)
 - `monocle-runtime/tests/auth_header_rejection.rs` — auth integration tests (create)
 
-Files to modify:
-- `monocle-runtime/src/lock.rs` — reads `authToken` from lock file; populated by `generate_session_token()` in S-006
-- `monocle-runtime/src/router.rs` — add auth middleware + 5 hook routes
-- `monocle-runtime/src/handlers/mod.rs` — add `pub mod hooks;`
+## §Trace v1.7
+
+**Phase 3.A auth-ownership decision** (2026-05-20):
+- S-009 F-E-01 (HIGH) closed: auth-middleware ownership inversion resolved.
+- depends_on: [S-001, S-004, S-006, S-008, S-DTU-001] → [S-001, S-003, S-004, S-006, S-008, S-DTU-001].
+- inputs: added ADR-0005 v1.0.2.
+- Tasks: "Implement auth middleware" → "EXTEND the auth middleware created by S-003" with
+  (a) alias-path branch + WARN per BC-2.01.009 INV-6; (b) 5 hook-route handlers.
+- File Structure: auth.rs changed from "create/modify" to "modify (created by S-003 in Wave 2;
+  S-009 extends with alias-path branch + 5 hook handlers)". Old redundant Files to modify block
+  removed.
+- §Previous Story Intelligence: S-003 paragraph added — auth.rs created by S-003; S-009 extends.
+- version bumped 1.6 → 1.7.
