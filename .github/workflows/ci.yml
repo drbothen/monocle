@@ -5,11 +5,17 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch: # allow manual re-runs (e.g., after a transient infra failure)
 
 # Cancel in-progress runs on new pushes to the same ref (saves minutes on rapid pushes).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# Minimum permissions principle: each workflow declares the least scope it needs.
+# This block sets the default for every job; individual jobs may narrow further.
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,7 +24,7 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  # Fast pre-flight gate: lint-toolchain + fmt before spinning the full matrix.
+  # Fast pre-flight gate: lint-toolchain + fmt + clippy before spinning the full matrix.
   preflight:
     name: Preflight (toolchain + fmt + lint)
     runs-on: ubuntu-24.04
@@ -36,9 +42,8 @@ jobs:
       - name: Install Rust toolchain (rust-toolchain.toml drives version)
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.86
+          toolchain: "1.86"
           components: clippy, rustfmt
-          targets: x86_64-unknown-linux-gnu
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -48,7 +53,7 @@ jobs:
       - name: cargo fmt --all --check
         run: cargo fmt --all --check
 
-      - name: cargo clippy --workspace -- -D warnings
+      - name: cargo clippy --workspace --all-targets -- -D warnings
         run: cargo clippy --workspace --all-targets -- -D warnings
 
   # Per-platform build + test matrix. Explicit `include:` -- NOT a Cartesian product
@@ -74,7 +79,7 @@ jobs:
       - name: Install Rust toolchain (${{ matrix.target }})
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.86
+          toolchain: "1.86"
           components: clippy, rustfmt
           targets: ${{ matrix.target }}
 
@@ -102,15 +107,23 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.86
+          toolchain: "1.86"
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: audit
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
+      # Prefer pre-built cargo-audit binary over source compile -- shaves ~90s per run.
+      # Falls through to source install if no binary release matches the runner.
+      - name: Install cargo-audit (prebuilt)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
 
       - name: Run cargo audit
+        # --deny warnings escalates every advisory (including unmaintained, yanked,
+        # informational) to a CI failure. New advisories block merge until either
+        # the version is patched OR a documented risk-acceptance is filed under
+        # .factory/specs/risk-acceptance/.
         run: cargo audit --deny warnings

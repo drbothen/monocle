@@ -4,7 +4,11 @@ on:
   schedule:
     # Runs every Sunday at 00:00 UTC.
     - cron: '0 0 * * 0'
-  workflow_dispatch:
+  workflow_dispatch: # allow manual re-runs
+
+# Minimum permissions principle.
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,8 +25,13 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.86
+          toolchain: "1.86"
 
+      # Source-install retained for the weekly deep scan -- the `--locked` flag is
+      # what SS-deps-pin-manifest §Re-audit Cadence demands (deterministic install
+      # via the committed Cargo.lock of cargo-audit upstream). Prebuilt binaries
+      # via taiki-e/install-action live on the PR-time gate where speed matters;
+      # the weekly cron prioritizes reproducibility.
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
 
