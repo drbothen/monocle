@@ -1,0 +1,57 @@
+# Dependabot configuration for the monocle workspace.
+#
+# Policy source: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.18
+#                §Security Advisory Response Policy.
+#
+# Behavior:
+# - Patch bumps on caret-pinned library deps: opened weekly. CI runs full
+#   matrix + `cargo audit --deny warnings`. On green: auto-merge is permitted
+#   (must be explicitly enabled by repo admin via branch protection).
+# - EXACT-pinned crates (the 9 security-sensitive crates: tokio, axum,
+#   serde_json, rand, prost, reqwest, wasmtime, russh, rmcp): Dependabot will
+#   NOT propose updates because the manifest specifies an exact version.
+#   Manual review with security-reviewer agent dispatch is required for any
+#   bump (per Patch-Pinning Policy).
+# - Any minor/major bump anywhere: opened by Dependabot but requires
+#   architect + security-reviewer approval (auto-merge BLOCKED).
+
+version: 2
+updates:
+  # Cargo dependencies (workspace + member crates).
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps"
+      include: scope
+    # Group minor and patch bumps for low-risk caret-pinned deps into a single
+    # PR; majors and security advisories get their own PR for explicit review.
+    groups:
+      caret-pinned-libs:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions workflow updates.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: scope
