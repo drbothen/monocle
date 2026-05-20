@@ -1,13 +1,13 @@
 ---
 document_type: prd-supplement-error-taxonomy
 level: L3
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T07:00:00Z
+timestamp: 2026-05-20T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "3740a1a"
+input-hash: "2f2ff44"
 traces_to: prd.md
 ---
 
@@ -73,7 +73,7 @@ Error codes follow the convention `E-<SUBSYSTEM>-<NNN>` where subsystem abbrevia
 | E-LOCK-001 | `monocle-runtime/src/lock.rs` (live pid check → exit 1) | `monocle-runtime/tests/lock_file_lifecycle.rs` |
 | E-LOCK-002 | `monocle-runtime/src/lock.rs` (stale lock cleanup WARN) | `monocle-runtime/tests/lock_file_lifecycle.rs` |
 | E-LOCK-003 | `monocle-runtime/src/lock.rs` (unknown contract_version WARN) | `monocle-runtime/tests/lock_file_contract.rs` |
-| E-ENG-001 | `monocle-runtime/src/engine/claude.rs` (`BaseDirs::new()` None arm) | `monocle-runtime/tests/engine_module_home_unresolvable.rs` |
+| E-ENG-001 | `monocle-runtime/src/engine/claude_code.rs` (`BaseDirs::new()` None arm) | `monocle-runtime/tests/engine_module_home_unresolvable.rs` |
 | E-FACT-001 | `monocle-core/src/factory.rs` (STATE.md not found) | `monocle-core/tests/factory_self_referential.rs` |
 | E-FACT-002 | `monocle-core/src/factory.rs` (STATE.md parse error) | `monocle-core/tests/factory_self_referential.rs` |
 | E-RING-001 | `monocle-runtime/src/ring.rs` (flush failure WARN) | `monocle-runtime/tests/jsonl_ring.rs` |
@@ -222,3 +222,14 @@ SE-16d monotonicity PASS: 2026-05-18T06:00:00Z > prior 2026-05-18T05:31:00Z (v1.
 **Changes made:** frontmatter version v1.4 → v1.5; frontmatter timestamp refreshed. No error catalog content changed.
 
 SE-16d monotonicity PASS: 2026-05-18T07:00:00Z > prior 2026-05-18T06:00:00Z (v1.4 F-R110-1 closure). ARITHMETICALLY TRUE: 2026-05-18T07:00:00Z > 2026-05-18T06:00:00Z PASS.
+
+---
+
+### §Trace v1.6
+
+**F-PHASE-3-B-error-taxonomy-claude-path-fix** (2026-05-20T00:00:00Z):
+- NORMATIVE (LOW): Legacy path `monocle-runtime/src/engine/claude.rs` corrected to `monocle-runtime/src/engine/claude_code.rs` per ARCH-INDEX v1.0.11 §Subsystem Registry SS-03 trait-vs-impl split (F-PHASE2-R05-04 in ARCH-INDEX §Trace v1.0.11).
+- Surfaced by S-015 spec-reviewer F-D-03 (post-Phase-2 story-uncertainty-review cycle-001).
+- SE-22 sibling sweep: one occurrence found and corrected (Error-to-Module Mapping row E-ENG-001); no other occurrences of the legacy `claude.rs` path present.
+- SE-16d PASS: monotonic timestamp per chain high-water. 2026-05-20T00:00:00Z > prior 2026-05-18T07:00:00Z (v1.5 F-R111). ARITHMETICALLY TRUE.
+- Refs: drbothen/vsdd-factory#150
