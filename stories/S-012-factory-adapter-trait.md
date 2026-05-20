@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-012
 epic_id: EPIC-02
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -55,9 +55,10 @@ and WASM plugin adapters can implement the trait in Phase 3 without breaking cha
 ONLY. AST audit via VP-014 verifies zero `Sealed` references in the trait definition.
 
 ### AC-003 (traces to BC-2.02.004 postcondition 3 — supporting types co-located)
-`monocle-core::factory` module declares: `FactoryDetection` (3 fields), `FactoryState` (7 fields),
-`BlockingIssue`, `BlockingSeverity`, `ConvergenceMetrics`, `FactoryReadError`,
-`FactorySubscribeError`, `StateChangeStream` type alias.
+`monocle-core::factory` module declares: `FactoryDetection` (3 fields: `display_name: String`,
+`workspace_root: PathBuf`, `state_file: PathBuf` per SS-core-types-and-abi.md lines 337-344),
+`FactoryState` (7 fields), `BlockingIssue`, `BlockingSeverity`, `ConvergenceMetrics`,
+`FactoryReadError`, `FactorySubscribeError`, `StateChangeStream` type alias.
 
 ### AC-004 (traces to BC-2.02.004 postcondition 4 — FactoryState canonical 7 fields; NO raw_frontmatter)
 `FactoryState` declares exactly these 7 fields as defined in SS-core-types-and-abi.md §FactoryState
@@ -80,6 +81,15 @@ Consumers display `"—"` for `None` fields.
 `VsddFactoryAdapter::detect(workspace_root)` returns `Some(FactoryDetection { ... })` if
 and only if `workspace_root/.factory/STATE.md` exists and its first YAML frontmatter line
 contains `document_type: pipeline-state`. Returns `None` otherwise.
+
+**EC-021 negative test vector (BC-2.02.005 INV-1 + EC-021):** STATE.md that contains
+`document_type: pipeline-state` ONLY in the document body (NOT in the `---`-delimited YAML
+frontmatter block) MUST return `None` from `detect()`. Detection requires the key to appear
+in the frontmatter. A file where the frontmatter is absent or does not contain this key
+but the body text does is NOT a valid VSDD factory workspace. The reference implementation at
+SS-core-types-and-abi.md line 602 uses `content.contains("document_type: pipeline-state")`
+which matches body text — this is a known divergence; this story's implementation MUST use
+frontmatter-only detection (not body search) per BC-2.02.005 INV-1.
 
 ### AC-006 (traces to BC-2.02.005 postcondition 2 — self-referential detection)
 When the monocle binary is run in a VSDD factory project (e.g., the monocle repo itself),
@@ -176,7 +186,8 @@ Unit test vectors for each guard:
 ## Tasks
 
 - [ ] Create `monocle-core/src/factory.rs` with `FactoryAdapter` trait (7 methods exact)
-- [ ] Define `FactoryDetection` (3 fields: `display_name`, `state_file_path`, `framework_version`)
+- [ ] Define `FactoryDetection` (3 fields: `display_name: String`, `workspace_root: PathBuf`, `state_file: PathBuf`)
+  per SS-core-types-and-abi.md lines 337-344 — NOT `state_file_path` or `framework_version` (TDD red-gate-blocker if wrong)
 - [ ] Define `FactoryState` with exactly 7 canonical fields per SS-core-types-and-abi.md §FactoryState:
   `phase`, `status`, `awaiting`, `blocking_issues`, `convergence`, `cycle`, `custom_fields`
   - `awaiting: Option<String>` — MANDATORY; populated from `awaiting:` frontmatter key
@@ -190,12 +201,16 @@ Unit test vectors for each guard:
   - `subscribe()`: return `Ok(Box::pin(futures::stream::empty()))`
 - [ ] Create `monocle-core/tests/factory_adapter_surface.rs` (VP-014 AST audit):
   - syn 2 parse `factory.rs`: assert exactly 7 methods, no `Sealed`, `Send + Sync + 'static`
+  - File MUST contain: `#[test] fn test_BC_FACTORY_001_trait_defined_open_no_sealed_bound() { ... }`
+    (BC-2.02.004 line 98 canonical test-function name — verbatim, no variation)
 - [ ] Implement `VsddFactoryAdapter::display_name()` returning the exact string literal `"VSDD Factory"` (BC-2.02.005 INV-2)
 - [ ] Create `monocle-core/tests/factory_self_referential.rs` (VP-015 integration):
   - `VsddFactoryAdapter::detect(monocle_repo_root)` → Some
   - `read_state()` → `Ok(FactoryState)` on real `.factory/STATE.md`
   - `subscribe()` → stream is empty
   - `display_name()` → `"VSDD Factory"` (exact string, AC-010)
+  - File MUST contain: `#[test] fn test_BC_FACTORY_002_vsdd_adapter_self_referential_detection() { ... }`
+    (BC-2.02.005 line 93 canonical test-function name — verbatim, no variation)
 
 ## Previous Story Intelligence
 
@@ -237,3 +252,30 @@ Files to create:
 Files to modify:
 - `monocle-core/src/lib.rs` — add `pub mod factory;`
 - `monocle-core/Cargo.toml` — add `serde_yaml_ng = "0.10"`, `futures = "0.3"`
+
+## Out of Scope — Consumer Contract
+
+This story delivers the `FactoryAdapter` trait and `VsddFactoryAdapter` implementation.
+The following downstream consumption details are documented here for implementer awareness
+but are OUT OF SCOPE for this story:
+
+- **BC-2.02.004 PC-4 + BC-2.02.005 PC-3**: `"—"` display semantics for `None` optional fields
+  (`awaiting: None`, `cycle: None`, `convergence: None`) — these display constants live in the
+  TUI layer, not in `monocle-core::factory`. The adapter returns typed `None`; the TUI converts
+  to `"—"` for display.
+- **BC-2.01.002 (`/status` endpoint)**: The `/status` HTTP endpoint is the downstream consumer
+  of `VsddFactoryAdapter::read_state()` results. The endpoint calls `read_state()` and maps
+  `FactoryState` fields to the JSON response body. Wiring the adapter into `/status` is
+  covered by S-003, not this story.
+- **`"pending"` display value**: BC-2.02.005 PC-3 also specifies `"pending"` for the
+  `awaiting` field when populated — this is a TUI/status display concern, not an adapter concern.
+
+## §Trace v1.5
+
+**Phase 3.B Batch 4 spec-reviewer remediation** (2026-05-20):
+- F-D-01 (IMPORTANT) closed: FactoryDetection field names corrected in Tasks and AC-003 — `state_file_path`/`framework_version` → canonical `workspace_root: PathBuf`/`state_file: PathBuf` per SS-core-types-and-abi.md lines 337-344.
+- F-D-03 (IMPORTANT) closed: Test function name pins added to Tasks — `test_BC_FACTORY_001_trait_defined_open_no_sealed_bound` (BC-2.02.004 line 98) and `test_BC_FACTORY_002_vsdd_adapter_self_referential_detection` (BC-2.02.005 line 93), verbatim.
+- F-C-02 (IMPORTANT) closed: EC-021 frontmatter-vs-body negative test vector added to AC-005 — body-only `document_type: pipeline-state` → `detect()` returns `None`; note on SS-core-types-and-abi.md L602 divergence documented.
+- F-E-03 (RECOMMENDED) closed: Out-of-Scope Consumer Contract section added — BC-2.02.004 PC-4 + BC-2.02.005 PC-3 `"—"`/`"pending"` display semantics; BC-2.01.002 (`/status` endpoint) named as downstream consumer.
+- F-D-04 (OPTIONAL) deferred: Fixture convention for AC-013 guard vectors (8 fixture files) — not in formal findings scope; may be added by test-writer per convention.
+- version bumped 1.4 → 1.5.

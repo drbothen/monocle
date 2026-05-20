@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-006
 epic_id: EPIC-01
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -50,10 +50,26 @@ On a clean start (no lock file exists), the daemon writes the lock file atomical
 `tempfile::persist`. The lock file is created at `<runtime_dir>/monocle.lock` with mode
 `0o600` (owner-read-write only). No partial lock file is observable during creation.
 
+Atomicity oracle: Verified by asserting `tempfile::NamedTempFile::persist()` is the only
+write call on the lock file's path (grep-based source assertion + cargo-mutants surface in
+VP-005 row 75).
+
 ### AC-002 (traces to BC-2.01.005 postcondition 4 — JSON field order)
 The lock file JSON content has `contract_version` as the FIRST key (value `1`), followed
 by `pid`, `port`, `authToken`, `startTimeUtc`, `app`, `version`. Key order is enforced
 by using an ordered serialization approach (not HashMap serialization).
+
+**Lock File JSON Schema:**
+
+| Field            | Rust Type                | JSON Type | Validation                                               |
+|------------------|--------------------------|-----------|----------------------------------------------------------|
+| contract_version | u32                      | integer   | == 1                                                     |
+| pid              | i32 (nix::unistd::Pid)   | integer   | > 0                                                      |
+| port             | u16                      | integer   | 1024-65535                                               |
+| authToken        | String                   | string    | matches `/^[0-9a-f]{64}$/`                               |
+| startTimeUtc     | String                   | string    | chrono ISO-8601 ms-precision (`%Y-%m-%dT%H:%M:%S%.3fZ`)  |
+| app              | &'static str             | string    | literal `"monocle"`                                      |
+| version          | String                   | string    | `env!("CARGO_PKG_VERSION")`                              |
 
 ### AC-003 (traces to BC-2.01.005 postcondition 1 — live pid conflict → exit 1)
 If a lock file exists at startup with a live PID (`nix::sys::signal::kill(Pid::from_raw(pid), None)` returns Ok),
@@ -62,6 +78,9 @@ the daemon logs `ERROR: daemon already running at pid=<N>; exiting` and exits 1 
 ### AC-004 (traces to BC-2.01.005 postcondition 2 — stale lock cleanup)
 If a lock file exists with a dead PID, the daemon logs `WARN: stale lock file removed`
 (E-LOCK-002) and proceeds with normal startup.
+
+Stale-pid probe: `kill(Pid::from_raw(pid), None)` returns `Err` with
+`nix::errno::Errno::ESRCH` — this is the canonical condition for "process does not exist."
 
 ### AC-005 (traces to BC-2.01.005 postconditions 6–7 — cleanup on shutdown)
 On successful graceful shutdown, `<runtime_dir>/monocle.lock` is removed. Also,
@@ -149,7 +168,9 @@ lock file creation time (BC-2.01.008 PC-1). Implementation:
 - [ ] Create `monocle-runtime/src/lock.rs` cleanup: `DaemonLock::release()` removes lock + sock
 - [ ] Runtime directory creation with `0o700` mode using `DirBuilderExt`
 - [ ] Integration tests `monocle-runtime/tests/lock_file_lifecycle.rs`:
-  - Clean start → lock file created mode 0600, contract_version first key
+  - Clean start → lock file created mode 0600, contract_version first key.
+    Assert via `metadata.permissions().mode() & 0o777 == 0o600` (NOT `metadata.mode() == 0o600`
+    which includes file-type bits)
   - Runtime dir created mode 0700 when absent
   - Live pid conflict → exit 1 + error log
   - Dead pid (stale) → WARN log + restart
@@ -172,7 +193,7 @@ Auth token is generated and written in this story — NO placeholder value is us
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Start Sequence and §Hard Shutdown:
+From `architecture/SS-daemon-lifecycle.md` v1.0.33 §Start Sequence (JSON template lines 491-512) and §Hard Shutdown:
 - `tempfile::persist` is MANDATORY for atomic write — `std::fs::write` is FORBIDDEN
 - `DirBuilder::new().mode(0o700)` is MANDATORY — `std::fs::create_dir_all` is FORBIDDEN (umask issue)
 - `nix::sys::signal::kill(Pid::from_raw(pid), None)` for pid-liveness — NOT `libc::kill` directly
@@ -197,7 +218,7 @@ From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
 | serde_json | =1.0.149 | Lock file JSON serialization |
 | tracing | 0.1 | INFO/WARN/ERROR log entries |
 | chrono | 0.4 | `startTimeUtc` ISO 8601 field |
-| temp-env | 0.3 | Test: `MONOCLE_RUNTIME_DIR` env isolation |
+| temp-env | 0.3 (features=["async_closure"]) | Test: `MONOCLE_RUNTIME_DIR` env isolation |
 
 ## File Structure Requirements
 
@@ -209,3 +230,31 @@ Files to create:
 Files to modify:
 - `monocle-runtime/src/lifecycle.rs` — `resolve_runtime_dir()`, `DaemonStartError`
 - `monocle-runtime/src/lib.rs` — add `pub mod lock;`
+
+## Downstream Consumer Contract
+
+Public API surface produced by this story for consumption by downstream stories:
+
+```
+DaemonLock::acquire() -> Result<DaemonLock, DaemonStartError>
+DaemonLock::release(self)
+monocle_runtime::auth::generate_session_token() -> String
+```
+
+Note: S-005 graceful-shutdown invokes `DaemonLock::release()` from within `lifecycle::exit_with()`.
+S-005 depends_on [S-001, S-002, S-003] — not S-006 directly — but the lock-release handoff is
+documented here from the S-006 producer side per the bidirectional dep symmetry candidate
+SE-25 (spec-kit-mcp rc.19+ pending). The auth token generated by `generate_session_token()`
+is consumed by S-009 (auth header validation) which reads the 64-hex token from the lock file.
+
+## §Trace v1.5
+
+**Phase 3.B Batch 4 spec-reviewer remediation** (2026-05-20):
+- F-E-02 (MED) closed: Downstream Consumer Contract section added (DaemonLock::acquire/release, generate_session_token; S-005 lock-release handoff documented from producer side).
+- F-D-01 (MED) closed: Lock File JSON Schema table added near AC-002 (7 fields with Rust types, JSON types, validation constraints).
+- F-C-01 (MED) closed: AC-001 atomicity oracle added (tempfile::NamedTempFile::persist grep-assertion + VP-005 row 75).
+- F-C-02 (LOW) closed: AC-004 Errno::ESRCH explicit probe added.
+- F-A-01 (LOW) closed: temp-env library row updated with features=["async_closure"].
+- F-B-01 (LOW) closed: §Architecture Compliance Rules §Start Sequence citation appended with JSON template line range (lines 491-512).
+- F-D-02 (LOW) closed: Integration test mode assertion idiom corrected to `metadata.permissions().mode() & 0o777 == 0o600`.
+- version bumped 1.4 → 1.5.
