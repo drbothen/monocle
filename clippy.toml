@@ -1,0 +1,12 @@
+# Clippy configuration for the monocle workspace.
+# Source: .factory/specs/architecture/SS-conventions-anti-patterns.md v1.29.5
+#         §Clippy disallowed_methods Configuration.
+#
+# Cargo.toml [workspace.lints.clippy] sets the lint LEVEL (deny). This file
+# defines WHICH methods trigger that lint.
+
+disallowed-methods = [
+    { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded mpsc::channel(N) with surfaced drop counter per anti-patterns table" },
+    { path = "std::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
+    { path = "tokio::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
+]
