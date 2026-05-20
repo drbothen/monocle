@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-003
 epic_id: EPIC-01
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -13,7 +13,7 @@ wave: 2
 tdd_mode: strict
 priority: P0
 depends_on: [S-001, S-002]
-blocks: [S-005, S-009]
+blocks: [S-004, S-005, S-009, S-010]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.002, BC-2.02.001]
@@ -188,3 +188,12 @@ Files to modify:
 - §Previous Story Intelligence expanded: S-001 monocle-runtime crate + lib.rs stub + CI/MSRV
   baseline inheritance explicitly noted.
 - version bumped 1.4 → 1.5.
+
+## §Trace v1.6
+
+**Phase 3.B Batch 2 — blocks cascade** (2026-05-20):
+- S-004 added to blocks (S-004 now depends_on S-003 per auth-ownership decision: S-003 owns
+  authenticated router construction in server.rs; S-004 applies DefaultBodyLimit layer to it).
+- S-010 added to blocks (S-010 now depends_on S-003 per co-dependency: S-010 imports
+  monocle_core::MONOCLE_ABI_VERSION into status.rs created by S-003).
+- version bumped 1.5 → 1.6.

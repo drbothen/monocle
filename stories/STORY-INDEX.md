@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "1.9"
+version: "2.0"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -42,12 +42,12 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
 | S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
-| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-005, S-009 |
+| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-004, S-005, S-009, S-010 |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
 | S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
 | S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
-| S-010 | monocle-core Crate + ABI Version Constant | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-013, S-014 |
+| S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-013, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
 | S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
 | S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | draft | S-015 |
@@ -75,7 +75,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 |-------|-------|---------------|----|----------------|
 | BC-2.01.001 | Healthz Endpoint | S-002 | AC-001..AC-006 | YES |
 | BC-2.01.002 | Status Endpoint | S-003 | AC-001, AC-005, AC-006, AC-007, AC-008 | YES |
-| BC-2.01.003 | Body Size Limit | S-004 | AC-001..AC-005 | YES |
+| BC-2.01.003 | Body Size Limit | S-004 | AC-001..AC-006 | YES |
 | BC-2.01.004 | Graceful Shutdown | S-005 | AC-001..AC-006 | YES |
 | BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-009 | YES |
 | BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-010 | YES |
@@ -293,6 +293,17 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   - BC-2.03.004 (S-015): `AC-006..AC-008` → `AC-007, AC-008, AC-009` (AC-006 = BC-2.03.003 PC-2; AC-007..AC-009 = BC-2.03.004 PC-1..PC-3)
 - GAP-PHASE2-R12-1 (LOW): `level: L4` frontmatter field added to all 17 story files (S-001 through S-015, S-DTU-001, S-PHASE-3-PREP). Inserted after `document_type: story` line per STORY-INDEX/dep-graph/wave-schedule pattern.
 - SE-22 v2 cascade: STORY-INDEX v1.7→v1.8; holdout-scenarios.md and sprint-state.yaml must update their traces_to_full/traces_to pins.
+
+## §Trace v2.0
+
+**Phase 3.B Batch 2 — Wave 2 small story cascade** (2026-05-20):
+- S-003 Blocks column updated: [S-005, S-009] → [S-004, S-005, S-009, S-010] (bidirectional
+  symmetry with S-004.depends_on and S-010.depends_on now including S-003).
+- S-010 title updated: "monocle-core Crate + ABI Version Constant" →
+  "Populate monocle-core ABI Version Constant (FC-03)" (S-001 creates the crate skeleton;
+  S-010 only populates abi.rs per F-D-01).
+- SE-22 v2 consumer-ledger: dep-graph v2.0→v2.1 (sibling).
+- STORY-INDEX version bumped v1.9→v2.0.
 
 ## §Trace v1.9
 
