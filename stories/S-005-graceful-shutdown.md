@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-005
 epic_id: EPIC-01
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -12,7 +12,7 @@ points: 5
 wave: 2
 tdd_mode: strict
 priority: P0
-depends_on: [S-001, S-002, S-003]
+depends_on: [S-001, S-002, S-003, S-006]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-01]
@@ -50,6 +50,9 @@ When the daemon receives `SIGTERM`, it:
 2. Stops accepting new connections
 3. Drains in-flight requests for up to 10 seconds
 4. Exits with code 0 if drain completes within 10 seconds
+
+Verified per VP-004 PC-5: `elapsed < 11 seconds AND exit_code == 0` (deterministic single-code
+assertion; harness probe 4.e: in-flight 5-second sleep + clean drain).
 
 ### AC-002 (traces to BC-2.01.004 postcondition 1 + invariant 3 — POST /shutdown AppMode transition + dual-accept auth)
 `POST /shutdown` with a valid auth header (canonical `X-Monocle-Authorization: monocle-v1:<64-hex>`
@@ -90,11 +93,22 @@ completed within 10 seconds, the daemon forces immediate shutdown regardless of 
 in-flight requests. A second SIGTERM during drain also triggers immediate hard shutdown
 without waiting for in-flight requests to complete.
 
+Verified per VP-004 PC-6: forced exit on 10-second timeout; assert ring-buffer-flush log
+line present in test output (over-budget scenario: in-flight 15-second sleep, no second
+signal → drain timeout fires → `elapsed < 11 seconds` asserted).
+
 ### AC-006 (traces to BC-2.01.004 invariant 3 — dual-accept auth on /shutdown)
 The shutdown endpoint requires authentication (canonical OR alias per ADR-0005) and
 returns 401 if auth is missing or invalid. `POST /shutdown` with
 `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias) also initiates shutdown.
 Auth middleware validates both headers per ADR-0005 v1.0.2 dual-accept protocol.
+
+### AC-007 (traces to BC-2.01.004 postcondition 7 — lock file release on clean shutdown)
+On clean shutdown completion, `lifecycle::exit_with(DaemonExit::Graceful)` invokes
+`lock_file::release()` from S-006 (`monocle-runtime/src/lock.rs`) BEFORE
+`std::process::exit(0)`. Verified via integration test asserting lock file is absent
+on the filesystem after graceful shutdown completes (BC-2.01.004 PC-7 + BC-2.01.005 PC-6
+lock+sock removal invariant).
 
 ## Token Budget Estimate
 
@@ -117,7 +131,10 @@ Auth middleware validates both headers per ADR-0005 v1.0.2 dual-accept protocol.
 - [ ] Implement 10-second drain with `axum::serve(...).with_graceful_shutdown(signal)`
 - [ ] Set AppMode to `ShuttingDown` on signal/shutdown endpoint trigger
 - [ ] Hook handlers return 503 + Retry-After: 10 when AppMode is ShuttingDown
-- [ ] Define exit codes 0, 1, 2, 130, 143 in `monocle-runtime/src/lifecycle.rs` (BC-2.01.004 PC-8)
+- [ ] Define `DaemonExit` enum with `to_exit_code(&self) -> i32` returning 0/1/2/130/143 per
+  POSIX convention in `monocle-runtime/src/lifecycle.rs` (BC-2.01.004 PC-8); `lifecycle::exit_with(reason: DaemonExit) -> !`
+  is the SOLE call-site for `std::process::exit` per SS-conventions-anti-patterns v1.29.5
+  ('No `std::process::exit()` in handler code')
 - [ ] Install tokio panic hook that logs structured panic info to stderr; propagates default Rust panic exit behavior (no custom exit code)
 - [ ] Integration tests `monocle-runtime/tests/graceful_shutdown.rs`:
   - SIGTERM → drain → exit 0
@@ -141,6 +158,10 @@ S-003 (Wave 2): Authenticated router + auth middleware established for `/status`
 validation path (ADR-0005). S-005 reuses the auth middleware layer for the authenticated
 `POST /shutdown` endpoint — no new auth code needed. The `/shutdown` endpoint requires canonical
 OR alias auth per ADR-0005 dual-accept protocol (BC-2.01.004 INV-3).
+S-006 (Wave 2): `DaemonLock` lifecycle established; S-005 invokes `DaemonLock::release()` from
+`lifecycle::exit_with()` immediately before process termination per BC-2.01.004 PC-7
+(lock+sock removed on clean shutdown). S-005 depends on S-006 for the `lock_file::release()`
+call in the graceful-shutdown code path.
 
 ## Architecture Compliance Rules
 
@@ -176,6 +197,21 @@ Files to modify:
 - `monocle-runtime/src/handlers/mod.rs` — add `pub mod shutdown;`
 - `monocle-runtime/src/router.rs` — add `POST /shutdown` route
 - `monocle-runtime/src/state.rs` — `AppMode::ShuttingDown` variant gates 503
+
+## §Trace v1.6
+
+**Phase 3.B Batch 6 — residual NON-AUTH findings** (2026-05-20):
+- F-E-02 (MED): S-006 added to `depends_on` ([S-001, S-002, S-003] → [S-001, S-002, S-003,
+  S-006]). S-006 establishes `DaemonLock`; S-005 invokes `DaemonLock::release()` from
+  `lifecycle::exit_with()` before process termination per BC-2.01.004 PC-7.
+- AC-007 added: `lifecycle::exit_with(DaemonExit::Graceful)` invokes `lock_file::release()`
+  from S-006 BEFORE `std::process::exit(0)`.
+- §Previous Story Intelligence: S-006 paragraph added.
+- F-C-01 + F-C-02 (LOW): VP-004 PC-5/PC-6 oracle assertions inlined in AC-001 and AC-005.
+- F-D-02 (LOW): `DaemonExit` enum spec refined — `to_exit_code() -> i32`, sole call-site rule,
+  SS-conventions-anti-patterns v1.29.5 citation.
+- Cascade: dep-graph + STORY-INDEX updated (S-005 depends_on adds S-006).
+- version bumped 1.5 → 1.6.
 
 ## §Trace v1.5
 

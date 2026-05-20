@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "2.2"
+version: "2.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -33,7 +33,7 @@ Wave 2 (depends on Wave 1; parallel within wave):
   S-002           (depends on: S-001)
   S-003           (depends on: S-001, S-002)
   S-004           (depends on: S-001, S-003)
-  S-005           (depends on: S-001, S-002, S-003)
+  S-005           (depends on: S-001, S-002, S-003, S-006)
   S-006           (depends on: S-001)
   S-010           (depends on: S-001, S-003)
   S-011           (depends on: S-010)
@@ -58,7 +58,7 @@ Wave 3 (depends on Wave 2; parallel within wave):
 | S-002 | S-001 | Requires workspace + axum router stub from S-001 |
 | S-003 | S-001, S-002 | Requires authenticated router (depends on unauthenticated router from S-002) |
 | S-004 | S-001, S-003 | Requires axum router from S-001; S-003 owns authenticated router construction in server.rs; S-004 applies DefaultBodyLimit::max(256 * 1024) layer to S-003's authenticated router (Phase 3.B auth-ownership propagation) |
-| S-005 | S-001, S-002, S-003 | Requires AppMode enum from S-002 (ShuttingDown state); requires auth middleware from S-003 for authenticated /shutdown endpoint (canonical X-Monocle-Authorization path per ADR-0005) |
+| S-005 | S-001, S-002, S-003, S-006 | Requires AppMode enum from S-002 (ShuttingDown state); requires auth middleware from S-003 for authenticated /shutdown endpoint (canonical X-Monocle-Authorization path per ADR-0005); requires DaemonLock from S-006 — lifecycle::exit_with() invokes lock_file::release() from monocle-runtime/src/lock.rs before process termination per BC-2.01.004 PC-7 (Phase 3.B Batch 6 F-E-02) |
 | S-006 | S-001 | Requires workspace crates (tempfile, directories, nix) from S-001 |
 | S-007 | S-006 | Requires runtime_dir resolution and tempfile::persist pattern from S-006 |
 | S-008 | S-006 | Requires runtime_dir and HookEventRecord struct; ring flush depends on runtime_dir |
@@ -94,7 +94,7 @@ Round 2 — process S-002, S-006, S-013:
 Round 3 — process S-003, S-007, S-008:
   Newly degree-0 after S-003 removed: {S-004, S-005, S-010}
     (S-004 now has S-001 Round 1 + S-003 Round 3 resolved)
-    (S-005 now has S-001 Round 1 + S-002 Round 2 + S-003 Round 3 resolved)
+    (S-005 now has S-001 Round 1 + S-002 Round 2 + S-003 Round 3 + S-006 Round 2 resolved)
     (S-010 now has S-001 Round 1 + S-003 Round 3 resolved)
   Newly degree-0 after S-008 removed: {S-009} (S-009 had S-003 dep resolved in Round 3 + S-008 now)
 
@@ -123,7 +123,7 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 | S-002 | S-003, S-005 | Unauthenticated router needed before authenticated router (S-003) and AppMode (S-005) |
 | S-003 | S-004, S-005, S-009, S-010 | auth.rs (canonical X-Monocle-Authorization middleware) created by S-003; S-005 requires it for authenticated /shutdown endpoint; S-009 requires it to EXTEND with alias-path branch + 5 hook-route handlers (Phase 3.A auth-ownership decision); S-004 requires S-003's authenticated router in server.rs to apply DefaultBodyLimit layer (Phase 3.B); S-010 requires S-003's status.rs handler to inject monocle_core::MONOCLE_ABI_VERSION (Phase 3.B) |
 | S-004 | S-009 | DefaultBodyLimit layer needed before hook endpoint tests (S-009 now Wave 3 but still depends on S-004) |
-| S-006 | S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. |
+| S-006 | S-005, S-007, S-008, S-009 | Lock file pattern needed before crash recovery (S-007) and ring (S-008). S-009 included (Decision 10): S-006 produces the cryptographic auth token written to the lock file; S-009 reads it from the lock file for header validation. S-005 added (Phase 3.B Batch 6 F-E-02): S-005 lifecycle::exit_with() calls DaemonLock::release() from S-006 before process termination per BC-2.01.004 PC-7. |
 | S-008 | S-009 | RingBuffer must be available before S-009 hook handlers call RingBuffer::push() (Decision 1: S-008→S-009) |
 | S-010 | S-011, S-012, S-014 | monocle-core types needed for SS-02/SS-03 stories. S-013 removed (Batch 3 F-E-01): monocle-proto does not consume monocle-core symbols; S-013 now depends directly on S-001. |
 | S-011 | S-012 | Non-exhaustive enum attributes needed before FactoryAdapter types |
@@ -543,6 +543,22 @@ Total processed: 17 nodes. No cycle detected. DAG is acyclic. PASS.
 - Edge Case Coverage Matrix: BC-2.01.003 EC-002 → EC-045 (correct edge-case ID for BC-2.01.003;
   EC-002 belongs to BC-2.01.007 ring buffer). AC-006 added as co-covering AC.
 - dep-graph version bumped v2.0 → v2.1.
+
+## §Trace v2.3
+
+**Phase 3.B Batch 6 — S-005 depends_on S-006 cascade** (2026-05-20):
+- F-E-02 (MED from S-005 side): S-006 added to S-005.depends_on ([S-001, S-002, S-003] →
+  [S-001, S-002, S-003, S-006]). Justification: S-005 lifecycle::exit_with() calls
+  DaemonLock::release() from monocle-runtime/src/lock.rs (S-006 deliverable) before process
+  termination per BC-2.01.004 PC-7.
+- Topological Order: S-005 note updated — S-006 (Round 2) resolves before S-003 (Round 3);
+  S-005 is still degree-0 after Round 3 (all 4 deps resolved). Wave 2 assignment unchanged.
+  DAG remains acyclic — S-005 does NOT block S-006; no cycle introduced. PASS.
+- Dependency Edges table: S-005 row updated.
+- Blocks Edges table: S-006 row updated — S-005 added to Blocks column.
+- Bidirectional symmetry verified: S-005.depends_on S-006 ↔ S-006.blocks S-005 — SYMMETRIC.
+- SE-22 v2 consumer-ledger: STORY-INDEX v2.1→v2.2 (sibling).
+- dep-graph version bumped v2.2→v2.3.
 
 ## §Trace v2.2
 

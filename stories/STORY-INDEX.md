@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.1"
+version: "2.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -45,7 +45,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-004, S-005, S-009, S-010 |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
-| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-007, S-008, S-009 |
+| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-005, S-007, S-008, S-009 |
 | S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
 | S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
@@ -293,6 +293,18 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   - BC-2.03.004 (S-015): `AC-006..AC-008` → `AC-007, AC-008, AC-009` (AC-006 = BC-2.03.003 PC-2; AC-007..AC-009 = BC-2.03.004 PC-1..PC-3)
 - GAP-PHASE2-R12-1 (LOW): `level: L4` frontmatter field added to all 17 story files (S-001 through S-015, S-DTU-001, S-PHASE-3-PREP). Inserted after `document_type: story` line per STORY-INDEX/dep-graph/wave-schedule pattern.
 - SE-22 v2 cascade: STORY-INDEX v1.7→v1.8; holdout-scenarios.md and sprint-state.yaml must update their traces_to_full/traces_to pins.
+
+## §Trace v2.2
+
+**Phase 3.B Batch 6 — S-005 depends_on S-006 cascade** (2026-05-20):
+- S-006 Blocks column updated: [S-007, S-008, S-009] → [S-005, S-007, S-008, S-009].
+  Justification: S-005 lifecycle::exit_with() calls DaemonLock::release() from S-006
+  before process termination per BC-2.01.004 PC-7 (F-E-02).
+- No wave reassignment: S-005 remains Wave 2 (S-006 is also Wave 2; S-006 depends only on
+  S-001 which is Wave 1; both are valid Wave 2 stories with no cross-wave inversion).
+- No BC/VP/NFR coverage changes from this cascade.
+- SE-22 v2 consumer-ledger: dep-graph v2.2→v2.3 (sibling).
+- STORY-INDEX version bumped v2.1→v2.2.
 
 ## §Trace v2.1
 

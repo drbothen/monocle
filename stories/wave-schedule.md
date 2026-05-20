@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -83,7 +83,8 @@ Stories that can start immediately at Wave 2 start (depend only on S-001):
 
 Stories that depend on Wave 2 predecessors (start when predecessor is green):
 - S-003 (Status — depends on S-001, S-002; starts after S-002)
-- S-005 (Graceful Shutdown — depends on S-001, S-002; starts after S-002)
+- S-005 (Graceful Shutdown — depends on S-001, S-002, S-003, S-006; starts after S-003 and S-006;
+  critical-path bottleneck is S-003; S-006 depends only on S-001 so completes before S-005 can start)
 - S-011 (Non-Exhaustive Enum — depends on S-010; starts after S-010)
 - S-013 (HookEnvelope Proto — depends on S-010; starts after S-010)
 - S-014 (EngineModule Trait — depends on S-010; starts after S-010)
@@ -97,7 +98,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 | S-006 | Lock File Atomic Lifecycle | 8 | Wave 1 ✓ | draft |
 | S-010 | monocle-core Crate + ABI Version | 5 | Wave 1 ✓ | draft |
 | S-003 | Status Endpoint | 5 | S-002 ✓ | draft |
-| S-005 | Graceful Shutdown | 5 | S-002 ✓ | draft |
+| S-005 | Graceful Shutdown | 5 | S-003, S-006 ✓ | draft |
 | S-011 | Non-Exhaustive Enum Policy | 3 | S-010 ✓ | draft |
 | S-013 | HookEnvelope Proto Wire Format | 5 | S-010 ✓ | draft |
 | S-014 | EngineModule Trait Definition | 5 | S-010 ✓ | draft |
@@ -188,6 +189,16 @@ Before dispatching Phase 3 (TDD Implementation):
 **Phase 2 r07 remediation** (2026-05-19):
 - F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): `inputs:` entry added for `error-taxonomy.md v1.5` to sibling-mirror the STORY-INDEX and dependency-graph inputs block; wave gate criteria reference E-AUTH-001/002/003 error codes which are defined in error-taxonomy.md.
 - F-PHASE2-R07-07 (LOW): Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states "4 parallel + S-009 serial after S-008 (Decision 1)" in both the Wave Overview table and the Wave 3 body paragraph. Previous prose implied all 5 stories were fully parallel, contradicting Decision 1 (S-008→S-009 RingBuffer dependency added in r02).
+
+## §Trace v1.5
+
+**Phase 3.B Batch 6 — S-005 depends_on S-006 cascade** (2026-05-20):
+- S-005 Wave 2 Internal Ordering entry updated: "depends on S-001, S-002" → "depends on
+  S-001, S-002, S-003, S-006; starts after S-003 and S-006". Critical-path analysis notes
+  S-006 (Wave-1-only dep) completes before S-003 (Wave-2 dep on S-002), so S-003 remains
+  the bottleneck — no wave reassignment required.
+- Wave 2 table S-005 "Starts After" column updated: S-002 → S-003, S-006.
+- wave-schedule version bumped v1.4→v1.5.
 
 ## §Trace v1.4
 

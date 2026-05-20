@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-009
 epic_id: EPIC-01
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -71,7 +71,10 @@ the authenticated endpoints return HTTP 401 with body `{"error":"missing_auth_to
 ### AC-005 (traces to BC-2.01.009 postcondition 3 — alias path auth + WARN)
 When `X-Claude-Code-Ide-Authorization: <raw-64-hex>` is present (and canonical is absent):
 - The raw-hex token is compared constant-time against the stored lock-file token
-- If match: HTTP 200 (or appropriate hook response); WARN log E-AUTH-003 emitted
+- If match: HTTP 200 for `/status`; for hook endpoints `{"status":"ok"}` per AC-010b body;
+  WARN log E-AUTH-003 emitted on EVERY alias request regardless of outcome (BC-2.01.009
+  INV-6; S-009 §Architecture Compliance Rules "WARN log emitted on EVERY alias-path request
+  regardless of auth outcome")
 - If mismatch: HTTP 401 `{"error":"invalid_auth_token"}`
 
 ### AC-006 (traces to BC-2.01.009 postcondition 2 — canonical path auth)
@@ -83,6 +86,9 @@ When `X-Monocle-Authorization: monocle-v1:<64-hex>` is present:
 ### AC-007 (traces to BC-2.01.009 postcondition 4 — canonical wins when both present)
 When BOTH headers are present, `X-Monocle-Authorization` takes priority. The alias
 value is ignored. No WARN log is emitted (canonical path wins; no deprecation signal needed).
+See BC-2.01.009 §Canonical Test Vectors row `X-Claude-Code-Ide-Authorization: <correct-64-hex>`
+(alias path, correct secret, no canonical header) + canonical-present scenario (EC-011: both
+present → canonical wins, no WARN).
 
 ### AC-008 (traces to BC-2.01.009 invariant 7 — constant-time comparison on ALL paths)
 `constant_time_eq::constant_time_eq(a, b)` is used for token comparison on BOTH the
@@ -127,6 +133,11 @@ this AC verifies the router registration matches that list.)
   - `monocle_runtime::auth::generate_session_token()` is S-006's deliverable; S-009 is the consumer
   - NOTE: `generate_session_token()` is already defined in `monocle-runtime/src/auth.rs` by S-006;
     S-009 extends the same module with `validate_auth_header()` and the auth middleware
+- [ ] Before `constant_time_eq`, validate the suffix matches `^[0-9a-f]{64}$` (canonical path:
+  64 chars after prefix strip; alias path: full 64 chars). Length-mismatched inputs MAY skip
+  regex and short-circuit to 401, BUT the `constant_time_eq` comparison MUST still run against
+  a fixed-length sentinel to avoid an early-return timing oracle. This codifies BC-2.01.008
+  INV-7 (timing-oracle defense; see also BC-2.01.009 INV-7).
 - [ ] EXTEND the auth middleware created by S-003 (`monocle-runtime/src/auth.rs`) with:
   (a) the dual-accept alias-path branch (`X-Claude-Code-Ide-Authorization` per ADR-0005 v1.0.2),
       with WARN-level deprecation log per BC-2.01.009 INV-6 (`constant_time_eq` on raw hex);
@@ -212,6 +223,20 @@ Files to modify (existing, created by earlier waves):
 Files to create:
 - `monocle-runtime/src/handlers/hooks.rs` — 5 hook endpoint handlers (create)
 - `monocle-runtime/tests/auth_header_rejection.rs` — auth integration tests (create)
+
+## §Trace v1.8
+
+**Phase 3.B Batch 6 — residual NON-AUTH findings** (2026-05-20):
+- F-C-01 (SUGGESTION→tighten): AC-005 success-path oracle tightened — "HTTP 200 (or appropriate
+  hook response)" non-deterministic parenthetical replaced with "HTTP 200 for `/status`; for
+  hook endpoints `{\"status\":\"ok\"}` per AC-010b body; WARN log E-AUTH-003 emitted on EVERY
+  alias request regardless of outcome (BC-2.01.009 INV-6)".
+- F-D-01 (SUGGESTION→required): Length validation + fixed-length-sentinel constant_time_eq task
+  added — `^[0-9a-f]{64}$` validation before comparison; sentinel required even on length
+  mismatch to prevent timing oracle (BC-2.01.008 INV-7 / BC-2.01.009 INV-7).
+- F-C-02 (LOW): AC-007 explicit test-vector reference added — BC-2.01.009 §Canonical Test
+  Vectors rows (alias-path correct secret + EC-011 canonical-present).
+- version bumped 1.7 → 1.8.
 
 ## §Trace v1.7
 

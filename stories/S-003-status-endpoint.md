@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-003
 epic_id: EPIC-01
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -57,7 +57,8 @@ accurate session, ring-buffer, and ABI information.
 ### AC-002 (traces to BC-2.01.009 postcondition 3 — alias path auth + WARN log)
 `GET /status` with `X-Claude-Code-Ide-Authorization: <raw-64-hex>` (alias path, no canonical header present)
 returns HTTP 200 with the same body as canonical auth. A WARN log
-`WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias)...` is emitted.
+`WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization`
+is emitted (BC-2.01.009 INV-6 line 61 — exact canonical string, no ellipsis).
 (BC-2.01.009 PC-3 governs alias-path behavior; BC-2.01.002 Precondition 2 delegates auth semantics to BC-2.01.009.)
 
 ### AC-003 (traces to BC-2.01.009 postcondition 1 — missing auth → 401 E-AUTH-001)
@@ -90,6 +91,8 @@ The `hook_endpoints` field is an array of exactly 5 paths:
 `/status` continues to serve HTTP 200 responses during the graceful shutdown drain window
 (AppMode = ShuttingDown). It does NOT return 503 during drain. (BC-2.01.004 PC-4 cross-cites
 BC-2.01.002 PC-3 as the source; read-only endpoint is exempt from the drain-503 rule.)
+Test fixture note: drain harness imported from S-005 graceful-shutdown integration test
+scaffolding (`monocle-runtime/tests/graceful_shutdown.rs`).
 
 Note: AC-005 subsumes the AC-007b intent. BC-2.02.001 PC-1 + PC-2 are the canonical
 source for ABI-version-in-/status. AC-005 above covers both the field presence (BC-2.02.001 PC-1)
@@ -113,17 +116,39 @@ S-003 exposes it in the response — joint coverage. VP-011 verifies the equalit
 
 - [ ] Create `monocle-runtime/src/handlers/status.rs` with `get_status` axum handler
 - [ ] Define `StatusResponse` struct with all 10 fields, derive `serde::Serialize`
+  (field types per VP-002 probe matrix — reference citation; full type table below):
+
+  | Field | Rust Type | Notes |
+  |-------|-----------|-------|
+  | `pid` | `u32` | daemon process PID |
+  | `uptime_sec` | `u64` | seconds since daemon start |
+  | `version` | `String` | semver string |
+  | `abi_version` | `u32` | equals `monocle_core::MONOCLE_ABI_VERSION` |
+  | `lock_file` | `String` | absolute path |
+  | `hook_endpoints` | `Vec<String>` | exactly 5 canonical paths |
+  | `ring_buffer_fill_pct` | `f64` | 0.0–100.0 |
+  | `channel_saturation_pct` | `f64` | 0.0–100.0 |
+  | `last_hook_ts` | `LastHookTs` (struct) | 5 nullable timestamp fields |
+  | `tui_attached` | `bool` | TUI attachment state |
 - [ ] `last_hook_ts` fields: use `Option<String>` serialized as ISO 8601 UTC via `chrono`
 - [ ] Route `GET /status` on the AUTHENTICATED router (behind auth middleware)
+- [ ] Add `const _: () = assert!(monocle_core::MONOCLE_ABI_VERSION == 1);` in
+  `monocle-runtime/src/main.rs` (or library root) — compile-time ABI drift guard per
+  VP-011 §Mechanism + VP-002 §Proof Method (const_assert compile-time guard)
 - [ ] Auth middleware reads token from canonical `X-Monocle-Authorization` header first,
   then falls back to `X-Claude-Code-Ide-Authorization` alias (ADR-0005); emits WARN on alias path
-- [ ] Add integration tests `monocle-runtime/tests/status_endpoint.rs`:
+- [ ] Add integration tests `monocle-runtime/tests/status_endpoint_auth.rs` (BC-2.01.002
+  authentication path verification per VP-002 §Mechanism):
   - Valid canonical auth → 200 + all 10 fields present
   - Valid alias auth → 200 + WARN log emitted
   - No auth header → 401 `{"error":"missing_auth_token"}`
   - Wrong token → 401 `{"error":"invalid_auth_token"}`
-  - `abi_version` field == 1 (VP-011 probe)
   - `hook_endpoints` array == exactly 5 paths in spec order
+- [ ] Add integration tests `monocle-runtime/tests/status_abi_version.rs` (BC-ABI ABI-version
+  verification per VP-011 §Harness Location):
+  - `abi_version` field == 1 (VP-011 probe 11.a)
+  - Drift guard: compile-time `const _: () = assert!(monocle_core::MONOCLE_ABI_VERSION == 1);`
+    (VP-011 PC-3; cross-property VP-012)
 
 ## Previous Story Intelligence
 
@@ -170,11 +195,12 @@ From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
 Files to create:
 - `monocle-runtime/src/handlers/status.rs` — `get_status` handler, `StatusResponse` struct
 - `monocle-runtime/src/auth.rs` — auth middleware (tower Layer), token validation logic
-- `monocle-runtime/tests/status_endpoint.rs` — integration tests
+- `monocle-runtime/tests/status_endpoint_auth.rs` — auth path integration tests (VP-002)
+- `monocle-runtime/tests/status_abi_version.rs` — ABI version integration tests (VP-011)
 
 Files to modify:
 - `monocle-runtime/src/handlers/mod.rs` — add `pub mod status;`
-- `monocle-runtime/src/router.rs` — add authenticated router with auth middleware + body limit
+- `monocle-runtime/src/server.rs` — add authenticated router with auth middleware + body limit
 - `monocle-runtime/src/lib.rs` — add `pub mod auth;`
 
 ## §Trace v1.5
@@ -188,6 +214,22 @@ Files to modify:
 - §Previous Story Intelligence expanded: S-001 monocle-runtime crate + lib.rs stub + CI/MSRV
   baseline inheritance explicitly noted.
 - version bumped 1.4 → 1.5.
+
+## §Trace v1.7
+
+**Phase 3.B Batch 6 — residual NON-AUTH findings** (2026-05-20):
+- F-D-03 (MED): Test file split — `status_endpoint.rs` → `status_endpoint_auth.rs` (VP-002
+  canonical) + `status_abi_version.rs` (VP-011 canonical). Tasks + File Structure updated.
+- F-D-05 (LOW-MED): Compile-time const assert task added — `const _: () =
+  assert!(monocle_core::MONOCLE_ABI_VERSION == 1);` in `monocle-runtime/src/main.rs`.
+- F-C-02 (LOW): AC-002 WARN string canonicalized — ellipsis replaced with full INV-6 string
+  from BC-2.01.009.
+- F-C-04 (SUGGESTION): AC-008 drain harness cross-link added — drain fixture from S-005.
+- F-D-04 (SUGGESTION): StatusResponse field-type table added inline in Tasks.
+- Pre-existing vestige: `router.rs` → `server.rs` in File Structure Requirements
+  (Batch 2 naming decision follow-up; no §Previous Story Intelligence or §Architecture
+  Compliance Rules prose contained this vestige — only File Structure had the stale name).
+- version bumped 1.6 → 1.7.
 
 ## §Trace v1.6
 
