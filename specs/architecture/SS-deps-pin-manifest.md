@@ -3,13 +3,13 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.1.17"
+version: "1.1.18"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-17T17:00:00Z
+timestamp: 2026-05-20T00:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
-input-hash: "4f2dec6"
+input-hash: "aed76ac"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -72,6 +72,7 @@ These crates do NOT appear in the production binary.
 | Crate | Version | Role | Cargo.toml Note |
 |-------|---------|------|-----------------|
 | temp-env | 0.3 | Environment variable manipulation in integration tests with RAII cleanup — sync (`with_vars`) and async (`async_with_vars`) variants | caret pin (`^0.3`); feature `async_closure` required for `async_with_vars` API; `[dev-dependencies]` only; declare as `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime/Cargo.toml`; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); bumped from `^0.2` in round-24 (F-R24-adv-1): `^0.2` exposed only synchronous `with_vars`; the async `enrich()` half of BC-ENGINE-002-ERR requires `async_with_vars` which is gated on the `async_closure` feature introduced in 0.3.0; latest 0.3.x is 0.3.6 (2023-09-24, not yanked, verified against crates.io API 2026-05-13) |
+| syn | 2.0 | AST audit tests for `#[non_exhaustive]` enum policy (S-011), FactoryAdapter trait surface (S-012), EngineModule trait surface (S-014) — production code does NOT depend on syn | caret pin (`^2.0`); `[dev-dependencies]` only; declare as `syn = { version = "2", features = ["full"] }` in the crates that declare AST audit tests (monocle-core, monocle-runtime); Phase 3.A architect dispatch — F-A-01 closure |
 
 ## Phase 2/3/4 Additions
 
@@ -772,3 +773,22 @@ v1.1.6 changes (round-22 fix F-R22-3):
   this entry retroactively documents that commit's changes per production-grade fix T-128d.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T17:00:00Z >= chain high-water
   2026-05-17T16:30:00Z.
+
+**§Trace v1.1.18** (2026-05-20T00:00:00Z) — Phase 3.A architect dispatch: syn 2 dev-dep pin addition (F-A-01 closure):
+- NORMATIVE: `syn 2.0` added to Dev Dependencies table as a caret-pinned dev-dependency.
+  Root cause: story-uncertainty-review cycle-001 Stage 1 identified that three Phase 3 stories
+  (S-011, S-012, S-014) require `syn 2` for AST audit tests verifying `#[non_exhaustive]`
+  attribute placement and trait method surface signatures. The manifest had no `syn` entry;
+  without it, Cargo.toml would declare `syn` ad-hoc per crate, violating the canonical
+  pin discipline (production-grade default per CLAUDE.md §Conventions).
+- NORMATIVE: `syn 2.0` classified as dev-dependency only. Production code does NOT depend
+  on `syn`. AST inspection occurs entirely within test code that verifies policy compliance
+  at build time. Caret pin (`^2.0`) is correct: dev-dependencies follow standard caret
+  convention per §Patch-Pinning Policy; `syn` is not on an untrusted-input deserialization
+  path and has no security-protocol boundary role.
+- INFORMATIONAL: Version bump 1.1.17 → 1.1.18 records dev-dep table addition.
+  Dev-dep count: 1 → 2. Production crate count: 32 (unchanged).
+- Refs: S-011 (non-exhaustive enum policy / VP-019), S-012 (FactoryAdapter trait / VP-014),
+  S-014 (EngineModule trait); story-uncertainty-review cycle-001 F-A-01.
+- SE-16b monotonicity check PASS: v1.1.17 → v1.1.18 is a monotonic increment.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-20T00:00:00Z >= chain high-water 2026-05-17T17:00:00Z. PASS.
