@@ -1,0 +1,21 @@
+====================================================================
+AC-004 DEMO: rust-version pinned in Cargo.toml + lint-toolchain step
+Captured: 2026-05-20T23:41:54Z
+====================================================================
+
+--- Cargo.toml [workspace.package].rust-version ---
+rust-version = "1.86"
+
+--- ci.yml lint-toolchain step (full body) ---
+      - name: Lint toolchain pin (AC-004)
+        # Asserts rust-toolchain.toml exists at workspace root AND pins channel "1.86".
+        run: |
+          set -euo pipefail
+          test -f rust-toolchain.toml
+          grep -Eq '^channel = "1\.86"$' rust-toolchain.toml
+
+      - name: Install Rust toolchain (rust-toolchain.toml drives version)
+
+--- Local mirror of the CI assertion ---
+PASS: rust-toolchain.toml exists
+PASS: channel = "1.86" pinned

@@ -1,0 +1,7 @@
+====================================================================
+AC-001 DEMO: cargo build --workspace (success on macOS arm64 host)
+Captured: 2026-05-20T23:41:34Z
+Host: Darwin 25.3.0 arm64
+Toolchain: rustc 1.86.0 (05f9846f8 2025-03-31)
+====================================================================
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.24s

@@ -1,0 +1,64 @@
+====================================================================
+AC-007 DEMO: audit.yml weekly cron + cargo audit --deny warnings
+Captured: 2026-05-20T23:42:17Z
+====================================================================
+
+--- audit.yml full contents ---
+name: Weekly Security Audit
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC.
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # allow manual re-runs
+
+# Minimum permissions principle.
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  audit:
+    name: cargo audit (scheduled)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.86"
+
+      # Source-install retained for the weekly deep scan -- the `--locked` flag is
+      # what SS-deps-pin-manifest §Re-audit Cadence demands (deterministic install
+      # via the committed Cargo.lock of cargo-audit upstream). Prebuilt binaries
+      # via taiki-e/install-action live on the PR-time gate where speed matters;
+      # the weekly cron prioritizes reproducibility.
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Update advisory database + run cargo audit
+        # --deny warnings escalates every advisory (including unmaintained, yanked,
+        # informational) to a CI failure. Per SS-deps-pin-manifest v1.1.18
+        # §Security Advisory Response Policy: a new advisory blocks merge until
+        # either the version is patched or a documented risk-acceptance is filed
+        # under .factory/specs/risk-acceptance/.
+        run: cargo audit --deny warnings
+
+--- Required-string assertions ---
+PASS: audit.yml exists
+PASS: weekly cron 0 0 * * 0
+PASS: --deny warnings
+PASS: install cargo-audit --locked
+
+--- Local run mirroring the CI step ---
+    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
+      Loaded 1096 security advisories (from /Users/jmagady/.cargo/advisory-db)
+    Updating crates.io index
+    Scanning Cargo.lock for vulnerabilities (154 crate dependencies)
+
+EXIT: 0

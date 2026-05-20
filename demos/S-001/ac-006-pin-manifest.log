@@ -1,0 +1,59 @@
+====================================================================
+AC-006 DEMO: workspace.dependencies declares 9 EXACT pins + bytes 1.10
+Captured: 2026-05-20T23:42:11Z
+====================================================================
+
+--- [workspace.dependencies] block ---
+[workspace.dependencies]
+# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.1.18 §Patch-Pinning Policy) ---
+tokio = { version = "=1.52.0", features = ["full"] }
+axum = "=0.8.9"
+serde_json = "=1.0.149"
+rand = "=0.8.6"
+prost = "=0.14.1"
+reqwest = "=0.13.0"
+wasmtime = "=44.0.1"
+russh = "=0.60.2"
+# rmcp omitted from Phase 1 workspace per OQ-09 resolution (Phase 4 scope)
+
+# --- Caret-pinned direct workspace deps ---
+bytes = "1.10" # Direct pin overrides prost-transitive RUSTSEC-2026-0007
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+thiserror = "2"
+anyhow = "1"
+tempfile = "3"
+directories = "6"
+chrono = "0.4"
+nix = "0.30"
+constant_time_eq = "0.3"
+futures = "0.3"
+async-trait = "0.1"
+clap = "4.6"
+interprocess = "2.4"
+semver = "1"
+notify = "8"
+serde_yaml_ng = "0.10"
+
+# --- Build dependencies ---
+prost-build = "=0.14.1"
+
+# --- Dev dependencies (workspace-declared for inheritance into member [dev-dependencies]) ---
+temp-env = { version = "0.3", features = ["async_closure"] }
+syn = { version = "2", features = ["full"] }
+
+[workspace.lints.clippy]
+
+--- Cargo.lock resolved versions (security-sensitive crates) ---
+  tokio = 1.52.0
+  axum = 0.8.9
+  serde_json = 1.0.149
+  rand = 0.8.6
+  prost = 0.14.1
+  bytes = 1.11.1
+
+  (reqwest/wasmtime/russh workspace-declared but NOT activated by any
+   member crate in Phase 1; will appear in lockfile when activated)
+
+--- rmcp omission check (must NOT appear) ---
+PASS: rmcp NOT in Phase 1 workspace (OQ-09)

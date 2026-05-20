@@ -1,0 +1,27 @@
+====================================================================
+AC-003 DEMO: .github/workflows/ci.yml -- explicit include: matrix
+Captured: 2026-05-20T23:41:49Z
+====================================================================
+
+--- ci.yml structural extract (matrix block) ---
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target: aarch64-apple-darwin
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    steps:
+
+--- Assertion: file exists and contains include: ---
+PASS: file exists
+PASS: include: block present
+PASS: references macos-14
+PASS: references ubuntu-24.04
+PASS: references ubuntu-24.04-arm
+PASS: references aarch64-apple-darwin
+PASS: references x86_64-unknown-linux-gnu
+PASS: references aarch64-unknown-linux-gnu

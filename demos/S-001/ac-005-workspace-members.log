@@ -1,0 +1,34 @@
+====================================================================
+AC-005 DEMO: workspace declares exactly 3 Phase 1 crates
+Captured: 2026-05-20T23:42:00Z
+====================================================================
+
+--- cargo metadata --no-deps (filter to workspace_members) ---
+monocle-core
+monocle-proto
+monocle-runtime
+
+--- Cargo.toml [workspace].members list ---
+[workspace]
+resolver = "2"
+members = [
+    "crates/monocle-core",
+    "crates/monocle-runtime",
+    "crates/monocle-proto",
+]
+
+[workspace.package]
+
+--- Forbidden member assertions ---
+PASS: monocle-auth NOT declared (Decision 3)
+PASS: monocle-tui NOT a Phase 1 member
+
+--- Directory tree ---
+crates
+crates/monocle-core
+crates/monocle-core/src
+crates/monocle-proto
+crates/monocle-proto/src
+crates/monocle-runtime
+crates/monocle-runtime/src
+crates/monocle-runtime/tests

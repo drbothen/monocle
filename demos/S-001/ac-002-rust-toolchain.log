@@ -1,0 +1,16 @@
+====================================================================
+AC-002 DEMO: rust-toolchain.toml pins MSRV 1.86 with components
+Captured: 2026-05-20T23:41:44Z
+====================================================================
+
+--- rust-toolchain.toml contents ---
+[toolchain]
+channel = "1.86"
+components = ["clippy", "rustfmt"]
+profile = "minimal"
+
+--- grep assertion (mirror of CI lint-toolchain step) ---
+PASS: channel is pinned to 1.86
+
+--- rustup show (resolves the channel) ---
+1.86-aarch64-apple-darwin (overridden by '/Users/jmagady/Dev/monocle/.worktrees/S-001/rust-toolchain.toml')
