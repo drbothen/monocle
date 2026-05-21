@@ -1,0 +1,126 @@
+rules:
+  - id: monocle-no-shell-injection
+    pattern-either:
+      - pattern: Command::new("sh")
+      - pattern: Command::new("bash")
+    message: "Shell injection vector. Use Command::new(binary).args([...]) arg-array form. See conventions.md anti-patterns."
+    severity: ERROR
+    languages: [rust]
+  - id: monocle-no-naked-fs-write
+    pattern-either:
+      - pattern: std::fs::write(...)
+      - pattern: tokio::fs::write(...)
+    message: "Naked file write leaves corruption window on crash. Use tempfile::persist. See conventions.md anti-patterns."
+    severity: ERROR
+    languages: [rust]
+  - id: monocle-no-unbounded-channel
+    pattern: tokio::sync::mpsc::unbounded_channel(...)
+    message: "Unbounded channel masks backpressure. Use bounded mpsc::channel(N) with drop counter. See conventions.md anti-patterns."
+    severity: ERROR
+    languages: [rust]
+  - id: monocle-no-raw-env-mutation-in-tests
+    # Covers fully-qualified, module-relative, and use-alias import forms.
+    # Rationale for pattern-either expansion (F-R26-adv-2):
+    #   - `std::env::set_var(...)` matches only the fully-qualified path.
+    #   - `use std::env; env::set_var(...)` is a common Rust idiom that writes
+    #     `env::set_var(...)` — NOT matched by the fully-qualified pattern alone.
+    #   - Bare-import form (`use std::env::set_var; set_var(...)`) is NOT covered
+    #     because semgrep cannot disambiguate `set_var(...)` from a user-defined
+    #     function of the same name without full type information. The bare-import
+    #     form is documented as discouraged in §Test Conventions prose but is not
+    #     enforced by semgrep (noise risk outweighs coverage). Developers using
+    #     the bare-import form should use `#[allow]` sparingly only for legitimate
+    #     use of a user-defined function named `set_var` or `remove_var`.
+    pattern-either:
+      - pattern: std::env::set_var($X, $Y)
+      - pattern: std::env::remove_var($X)
+      - pattern: env::set_var($X, $Y)
+      - pattern: env::remove_var($X)
+    paths:
+      include:
+        - "**/tests/**/*.rs"
+        - "**/*_test.rs"
+        - "**/*tests*.rs"
+    message: "Raw env mutation in tests is unsafe in multi-threaded Rust harnesses (Rust 1.86+
+      marks set_var/remove_var unsafe). Use temp_env::with_vars (sync) or
+      temp_env::async_with_vars (async) from temp-env ^0.3. See SS-conventions-anti-patterns.md
+      §Test Conventions."
+    severity: ERROR
+    languages: [rust]
+  - id: monocle-non-exhaustive-struct-audit-completeness
+    # Matches any #[non_exhaustive] attribute applied to a pub struct definition.
+    # This rule does NOT assert correctness by itself — it is used as the SOURCE
+    # for CI audit-completeness checking (see note below).
+    #
+    # CI script contract (devops-engineer Phase 1 deliverable):
+    #   1. Run semgrep with --json to get the list of matched struct names.
+    #   2. Parse SS-engine-module.md §Cross-Crate Constructor Audit Table between
+    #      the <!-- BEGIN: Cross-Crate Constructor Audit Table --> and
+    #      <!-- END: Cross-Crate Constructor Audit Table --> HTML delimiters.
+    #   3. Extract struct names from the first column of every data row in the table.
+    #   4. For each struct name in the semgrep output, verify it appears in the table.
+    #   5. Fail CI if any struct is missing from the table; emit:
+    #      "Audit table gap: `<StructName>` carries #[non_exhaustive] but is absent
+    #      from the Cross-Crate Constructor Audit Table in SS-engine-module.md.
+    #      Update the table and add a constructor if any cross-crate construction
+    #      site exists or is anticipated."
+    #
+    # Semgrep itself does NOT fail the CI step — it only produces the match list.
+    # The Python script (not semgrep) fails the step on a gap. This two-step design
+    # means the semgrep fixture-corpus assertion (Step 1 in §CI assertions) remains
+    # a pure "does this rule match the fixture?" check, separate from the table-gap logic.
+    #
+    # Scope: only monocle crate source directories. Spec files (.factory/specs/) are
+    # excluded — they contain #[non_exhaustive] in code blocks that are prose, not
+    # compiled Rust. The path include list is kept narrowly scoped to avoid false
+    # matches on fixture files or generated code.
+    pattern-either:
+      - pattern: |
+          #[non_exhaustive]
+          pub struct $NAME { ... }
+      - pattern: |
+          #[non_exhaustive]
+          #[$ATTR(...)]
+          pub struct $NAME { ... }
+    # pattern-either rationale (F-R32-2 / F-R34-2): semgrep's behavior for Rust attribute clusters is not
+    # externally documented as strict-or-liberal with respect to intermediate attributes. The first
+    # arm matches the minimal shape (no intervening attributes); the second arm matches the
+    # production-code shape (#[derive(...)] interposed between #[non_exhaustive] and pub struct).
+    # Both arms are required to guarantee the rule fires on actual monocle production structs.
+    # F-R34-2: `#[$ATTR(...)]` is the standard semgrep metavariable form for "any attribute with a
+    # parenthesized argument list." `$ATTR` matches any identifier (e.g., `derive`, `serde`, `repr`);
+    # `(...)` matches any argument list including multi-arg derives like `#[derive(Debug, Clone)]`
+    # and key-value attributes like `#[serde(rename_all = "snake_case")]`. This arm
+    # covers the production-code shape where exactly one parenthesized intermediate attribute
+    # (`#[derive(...)]`, `#[serde(...)]`, etc.) is interposed between `#[non_exhaustive]` and
+    # `pub struct`. If a production struct acquires a bare intermediate attribute (no parentheses),
+    # a third `pattern-either` arm must be added — the fixture corpus dual-shape requirement will catch
+    # this gap as a CI failure when the expected match count (2) is not reached.
+    paths:
+      include:
+        # All 11 named workspace crates (source: SS-deps-pin-manifest.md §Phase 1 vs Pinned-But-Unused Crates + workspace graph)
+        - "monocle-core/src/**/*.rs"
+        - "monocle-runtime/src/**/*.rs"
+        - "monocle-tui/src/**/*.rs"
+        - "monocle-proto/src/**/*.rs"
+        - "monocle-ipc/src/**/*.rs"
+        - "monocle-config/src/**/*.rs"
+        - "monocle-plugin-sdk/src/**/*.rs"
+        - "monocle-workflow/src/**/*.rs"
+        - "monocle-static/src/**/*.rs"
+        - "monocle-fuzz/src/**/*.rs"
+        - "monocle-test-harness/src/**/*.rs"
+        # Binary crate (monocle — not a monocle-* crate; sits in monocle/ subdirectory per workspace layout)
+        - "monocle/src/**/*.rs"
+        # Fixture corpus (F-R44-adv-1): semgrep-fixtures/ MUST be included so Step 1 (fixture
+        # corpus scan) can target this rule against its fixture file. Without this entry, Step 1
+        # runs semgrep against semgrep-fixtures/ but the rule's paths.include rejects all fixture
+        # files — producing 0 findings vs expected 2 and causing CI to fail on every run from day 1.
+        # The fixture file contains AuditFixtureMinimal and AuditFixtureDerived structs which are
+        # NOT production structs; their names are excluded from Step 2 and Step 3 by name-based
+        # filtering (see Step 2 special case and Step 3 description below).
+        - "semgrep-fixtures/**/*.rs"
+        # Spec files (.factory/) are excluded because they never match the above source globs.
+    message: "Found #[non_exhaustive] pub struct `$NAME`. Verify it appears in the Cross-Crate Constructor Audit Table in SS-engine-module.md §Cross-Crate Constructor Audit. CI script will fail if absent."
+    severity: WARNING
+    languages: [rust]
