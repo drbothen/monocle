@@ -36,9 +36,12 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 # anyhow: binary error propagation per CLAUDE.md conventions.
 anyhow = { workspace = true }
+# tempfile: atomic writes via tempfile::persist for hooks-settings.json per BC-HOOK-039.
+# Also used in dev-dependencies for TempDir in integration tests.
+tempfile = { workspace = true }
 
 [dev-dependencies]
-# tempfile: TempDir for lock file fixtures in integration tests.
+# tempfile: TempDir for lock file fixtures in integration tests (already in [dependencies]).
 tempfile = { workspace = true }
 # tokio: async test runtime (#[tokio::test]).
 tokio = { workspace = true }

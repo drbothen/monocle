@@ -1,8 +1,4 @@
 //! Monocle-canonical payload structs for all 5 hook endpoint POST bodies.
-// Stub module: `FixtureScore::compute` body is `todo!()` per TDD Red Gate.
-// The `todo` lint is suppressed at file scope; this allow is intentional and
-// will be removed when the scoring function is implemented.
-#![allow(clippy::todo)]
 //!
 //! Field definitions sourced from SS-core-types-and-abi.md v1.2.13
 //! §Non-Exhaustive Inner Structs. The gene-source fields (from BC-HOOK-007)
@@ -144,13 +140,106 @@ impl FixtureScore {
     /// - Extra unknown fields: ignored (not penalized)
     /// - Type mismatch on a present field: 0 for that field
     ///
+    /// Score = matched_fields / total_expected_fields.
+    /// A field is "expected" if it is present in `fixture_json`.
+    /// A field "matches" if it is present in `clone_json` AND has the same JSON type AND
+    /// the same value (for scalar types) or structurally equivalent value (for objects/arrays).
+    ///
     /// BC-HOOK-007 (scoring), AC-004 (fidelity threshold)
     pub fn compute(
-        _fixture_path: String,
-        _fixture_json: &serde_json::Value,
-        _clone_json: &serde_json::Value,
+        fixture_path: String,
+        fixture_json: &serde_json::Value,
+        clone_json: &serde_json::Value,
     ) -> Self {
-        todo!("S-DTU-001 implementation pending; BC-HOOK-007 fidelity scoring function")
+        // We iterate over the keys in the fixture (expected fields).
+        // Extra keys in clone_json are NOT penalized.
+        let fixture_obj = match fixture_json.as_object() {
+            Some(m) => m,
+            None => {
+                // Non-object fixture: 1.0 iff clone is also identical.
+                let score = if fixture_json == clone_json { 1.0 } else { 0.0 };
+                return Self {
+                    fixture_path,
+                    score,
+                    mismatched_fields: if score < 1.0 {
+                        vec!["<root>".to_string()]
+                    } else {
+                        vec![]
+                    },
+                };
+            }
+        };
+
+        if fixture_obj.is_empty() {
+            // Edge case: empty fixture object → score 1.0 (nothing to match).
+            return Self {
+                fixture_path,
+                score: 1.0,
+                mismatched_fields: vec![],
+            };
+        }
+
+        let mut total = 0usize;
+        let mut matched = 0usize;
+        let mut mismatched_fields = Vec::new();
+
+        for (key, expected_val) in fixture_obj {
+            total += 1;
+            let actual_val = clone_json.get(key);
+            match actual_val {
+                None => {
+                    // Field missing in clone — 0 score for this field.
+                    mismatched_fields.push(key.clone());
+                }
+                Some(actual) => {
+                    // Present — check type and value.
+                    if json_values_match(expected_val, actual) {
+                        matched += 1;
+                    } else {
+                        mismatched_fields.push(key.clone());
+                    }
+                }
+            }
+        }
+
+        let score = matched as f64 / total as f64;
+        Self {
+            fixture_path,
+            score,
+            mismatched_fields,
+        }
+    }
+}
+
+/// Compare two JSON values for structural equivalence.
+///
+/// Per dtu-assessment.md §Scoring Function:
+/// - Same JSON type AND same value → match.
+/// - Type mismatch → no match.
+/// - Object: all fixture keys must be present and match in clone (recursive).
+/// - Array: same length and element-wise match.
+/// - Scalars (string, number, bool, null): exact equality.
+fn json_values_match(expected: &serde_json::Value, actual: &serde_json::Value) -> bool {
+    use serde_json::Value;
+    match (expected, actual) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(a), Value::Bool(b)) => a == b,
+        (Value::String(a), Value::String(b)) => a == b,
+        (Value::Number(a), Value::Number(b)) => {
+            // Compare numbers by their f64 representation to handle int/float equivalence.
+            a.as_f64() == b.as_f64()
+        }
+        (Value::Array(a), Value::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| json_values_match(x, y))
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            // For nested objects: all keys in `a` must be present and match in `b`.
+            // Extra keys in `b` are ignored (not penalized per scoring spec).
+            a.iter()
+                .all(|(k, v)| b.get(k).is_some_and(|w| json_values_match(v, w)))
+        }
+        // Type mismatch → no match.
+        _ => false,
     }
 }
 

@@ -1,8 +1,4 @@
 //! Route definitions for the 5 DTU clone hook endpoints.
-// Stub module: `build_router` body is `todo!()` per TDD Red Gate.
-// The `todo` lint is suppressed at file scope; this allow is intentional and
-// will be removed when the router is wired in the TDD implementation step.
-#![allow(clippy::todo)]
 //!
 //! Wires the axum router to the 5 handler functions in `handlers.rs`.
 //! The path strings match monocle's canonical endpoint paths per
@@ -15,9 +11,9 @@
 //! - dtu-assessment.md v1.7.5 §Endpoint matrix column "Path"
 //! - BC-HOOK-007 (endpoint schema)
 
-use axum::Router;
+use axum::{routing::post, Router};
 
-use crate::dtu::server::CloneState;
+use crate::dtu::{handlers, server::CloneState};
 
 /// Build the axum router with all 5 hook endpoints.
 ///
@@ -29,8 +25,14 @@ use crate::dtu::server::CloneState;
 /// - `POST /hooks/prompt-submit`  — BC-HOOK-007 (UserPromptSubmit schema)
 ///
 /// AC-001, BC-HOOK-007
-pub fn build_router(_state: CloneState) -> Router {
-    todo!("S-DTU-001 implementation pending; AC-001, BC-HOOK-007")
+pub fn build_router(state: CloneState) -> Router {
+    Router::new()
+        .route(paths::PRE_TOOL_USE, post(handlers::handle_pre_tool_use))
+        .route(paths::NOTIFICATION, post(handlers::handle_notification))
+        .route(paths::STOP, post(handlers::handle_stop))
+        .route(paths::SESSION_START, post(handlers::handle_session_start))
+        .route(paths::PROMPT_SUBMIT, post(handlers::handle_prompt_submit))
+        .with_state(state)
 }
 
 /// The 5 canonical hook POST paths as string constants.
