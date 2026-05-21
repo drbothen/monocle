@@ -475,15 +475,16 @@ fn test_BC_HOOK_013_invalid_port_in_lock_file_returns_error() {
 #[test]
 fn test_BC_HOOK_005_hook_target_loopback_dynamic_port() {
     use monocle_test_harness::dtu::lock_reader::{derive_endpoint_base, LockFileInfo};
-    unsafe {
-        std::env::remove_var("MONOCLE_HOOK_ENDPOINT_BASE");
-    }
     let info = LockFileInfo {
         port: 8080,
         auth_token: common::VALID_AUTH_TOKEN.to_string(),
         pid: std::process::id(),
     };
-    let base = derive_endpoint_base(&info);
+    // Ensure MONOCLE_HOOK_ENDPOINT_BASE is absent so derive_endpoint_base falls back to
+    // the hardcoded 127.0.0.1 loopback. temp_env::with_var_unset provides safe env isolation
+    // with no unsafe block and no cross-test pollution (SS-conventions-anti-patterns §Test Conventions).
+    let base =
+        temp_env::with_var_unset("MONOCLE_HOOK_ENDPOINT_BASE", || derive_endpoint_base(&info));
     assert!(
         base.starts_with("http://127.0.0.1:"),
         "endpoint base must target 127.0.0.1, got: {base}"
