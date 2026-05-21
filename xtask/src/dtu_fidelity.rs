@@ -515,8 +515,12 @@ pub async fn run(args: DtuFidelityArgs) -> Result<()> {
                 r.mismatched_fields.join(", ")
             };
             let marker = if r.score >= args.threshold { " " } else { "!" };
-            writeln!(out, "{marker}{:<59} {:>8.4}  {}", r.fixture, r.score, mismatch)
-                .context("write fixture row")?;
+            writeln!(
+                out,
+                "{marker}{:<59} {:>8.4}  {}",
+                r.fixture, r.score, mismatch
+            )
+            .context("write fixture row")?;
         }
         writeln!(out, "{}", "-".repeat(90)).context("write separator")?;
         writeln!(
