@@ -1,0 +1,9 @@
+# .semgrepignore — semgrep scan exclusion overrides for monocle.
+#
+# Semgrep 1.x applies built-in default ignore patterns that include "tests/" directories.
+# This causes semgrep to skip semgrep-fixtures/tests/ during fixture corpus scans (CI Step 1),
+# which would produce count mismatches (0 instead of expected 4 for monocle-no-raw-env-mutation-in-tests)
+# and fail the fixture assertion gate.
+#
+# The negation pattern below overrides the default "skip tests/" behavior for semgrep-fixtures/:
+!/semgrep-fixtures/

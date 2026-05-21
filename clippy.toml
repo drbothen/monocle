@@ -1,5 +1,5 @@
 # Clippy configuration for the monocle workspace.
-# Source: .factory/specs/architecture/SS-conventions-anti-patterns.md v1.29.5
+# Source: .factory/specs/architecture/SS-conventions-anti-patterns.md v1.30.2
 #         §Clippy disallowed_methods Configuration.
 #
 # Cargo.toml [workspace.lints.clippy] sets the lint LEVEL (deny). This file
@@ -9,4 +9,6 @@ disallowed-methods = [
     { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded mpsc::channel(N) with surfaced drop counter per anti-patterns table" },
     { path = "std::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
     { path = "tokio::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
+    { path = "std::println", reason = "use tracing::info!() with structured fields; println! forbidden in production code per SS-conventions-anti-patterns.md §Convention Checklist" },
+    { path = "std::eprintln", reason = "use tracing::error!() or tracing::warn!() with structured fields; eprintln! forbidden in production code per SS-conventions-anti-patterns.md §Convention Checklist" },
 ]

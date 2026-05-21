@@ -16,9 +16,9 @@ authors = ["monocle contributors"]
 
 # Workspace-level dependency declarations per Cargo 2021+ pattern.
 # Member crates inherit via `{ workspace = true }`.
-# Pin policy source of truth: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.18
+# Pin policy source of truth: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.19
 [workspace.dependencies]
-# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.1.18 §Patch-Pinning Policy) ---
+# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.1.19 §Patch-Pinning Policy) ---
 tokio = { version = "=1.52.0", features = ["full"] }
 axum = "=0.8.9"
 serde_json = "=1.0.149"
@@ -30,7 +30,7 @@ russh = "=0.60.2"
 # rmcp omitted from Phase 1 workspace per OQ-09 resolution (Phase 4 scope)
 
 # --- Caret-pinned direct workspace deps ---
-bytes = "1.10" # Direct pin overrides prost-transitive RUSTSEC-2026-0007
+bytes = "1.11" # Direct pin overrides prost-transitive RUSTSEC-2026-0007; floor = 1.11 per SS-deps-pin-manifest v1.1.19 Option B (fix-from = 1.11.1)
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
 thiserror = "2"
@@ -52,7 +52,11 @@ serde_yaml_ng = "0.10"
 prost-build = "=0.14.1"
 
 # --- Dev dependencies (workspace-declared for inheritance into member [dev-dependencies]) ---
-temp-env = { version = "0.3", features = ["async_closure"] }
+# NOTE: temp-env is intentionally NOT declared here. Story AC-006 requires it in
+# monocle-runtime/Cargo.toml [dev-dependencies] only; it is a test-only crate for that
+# crate alone. Workspace-level declaration would make it available to all member crates,
+# violating the least-privilege principle for dev dependencies.
+# See SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
 syn = { version = "2", features = ["full"] }
 
 [workspace.lints.clippy]
