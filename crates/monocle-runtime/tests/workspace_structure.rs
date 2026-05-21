@@ -184,7 +184,7 @@ fn ac_005_workspace_does_not_declare_monocle_auth_or_tui() {
 
 // ---------------------------------------------------------------------------
 // AC-006: workspace [workspace.dependencies] declares the 9 EXACT-pinned
-// security-sensitive crates plus the direct bytes 1.10 pin.
+// security-sensitive crates plus the direct bytes 1.11 pin.
 // ---------------------------------------------------------------------------
 
 #[test]
