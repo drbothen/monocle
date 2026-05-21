@@ -42,7 +42,7 @@ jobs:
 
       - name: Update advisory database + run cargo audit
         # --deny warnings escalates every advisory (including unmaintained, yanked,
-        # informational) to a CI failure. Per SS-deps-pin-manifest v1.1.18
+        # informational) to a CI failure. Per SS-deps-pin-manifest v1.1.19
         # §Security Advisory Response Policy: a new advisory blocks merge until
         # either the version is patched or a documented risk-acceptance is filed
         # under .factory/specs/risk-acceptance/.

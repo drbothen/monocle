@@ -56,7 +56,7 @@ prost-build = "=0.14.1"
 # monocle-runtime/Cargo.toml [dev-dependencies] only; it is a test-only crate for that
 # crate alone. Workspace-level declaration would make it available to all member crates,
 # violating the least-privilege principle for dev dependencies.
-# See SS-deps-pin-manifest.md v1.1.18 §Dev Dependencies.
+# See SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
 syn = { version = "2", features = ["full"] }
 
 [workspace.lints.clippy]

@@ -1,4 +1,4 @@
-# Policy source of truth: SS-deps-pin-manifest.md v1.1.19 + SS-conventions-anti-patterns.md v1.30.0
+# Policy source of truth: SS-deps-pin-manifest.md v1.1.19 + SS-conventions-anti-patterns.md v1.30.1
 [graph]
 # Phase 1 targets — adjust at workspace init during /vsdd-factory:create-architecture
 # when platform targets are pinned (e.g. ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin"])

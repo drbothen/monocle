@@ -1,6 +1,6 @@
 # Dependabot configuration for the monocle workspace.
 #
-# Policy source: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.18
+# Policy source: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.19
 #                §Security Advisory Response Policy.
 #
 # Behavior:
@@ -12,7 +12,7 @@
 #   propose PRs for `=x.y.z` pins despite the exact version specifier. The
 #   `ignore:` block below suppresses these PRs so that security-reviewer agent
 #   dispatch is the ONLY path to upgrading EXACT-pinned crates (per
-#   SS-deps-pin-manifest v1.1.18 §Patch-Pinning Policy). Manual security-reviewer
+#   SS-deps-pin-manifest v1.1.19 §Patch-Pinning Policy). Manual security-reviewer
 #   review is required for any bump to the 9 EXACT-pinned crates.
 # - Any minor/major bump anywhere: opened by Dependabot but requires
 #   architect + security-reviewer approval (auto-merge BLOCKED).
@@ -45,7 +45,7 @@ updates:
     # Dependabot does open PRs for `=x.y.z` pins (contrary to common assumption).
     # These crates require security-reviewer agent dispatch before any version bump;
     # Dependabot automation must not bypass that review gate.
-    # Source: SS-deps-pin-manifest.md v1.1.18 §Patch-Pinning Policy.
+    # Source: SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy.
     ignore:
       - dependency-name: "tokio"
         update-types:

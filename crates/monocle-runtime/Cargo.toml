@@ -36,6 +36,6 @@ async-trait = { workspace = true }
 [dev-dependencies]
 # temp-env: test-only; declared inline (NOT workspace = true) per story AC-006.
 # Required for BC-ENGINE-002-ERR test isolation using async_with_vars.
-# SS-deps-pin-manifest.md v1.1.18 §Dev Dependencies.
+# SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
 temp-env = { version = "0.3", features = ["async_closure"] }
 syn = { workspace = true }
