@@ -7,9 +7,13 @@ removed, or modified), this file MUST be updated in the **same PR**. The table i
 source of truth; this file is a CI-accessible copy that avoids the `.factory/` worktree
 not being materialized by `actions/checkout` on develop/PR refs.
 
-**Drift detection:** A future CI step can diff the canonical delimited block from
-`SS-engine-module.md` (on the `factory-artifacts` branch) against this file to catch
-out-of-sync copies. For now, PR authors are responsible for keeping them aligned.
+**Drift detection:** CI job `audit-table-drift` validates this file against the canonical
+block in `SS-engine-module.md` (on the `factory-artifacts` branch) on every PR. Manual
+sync is NO LONGER the last line of defence — the CI job fails the build if the delimited
+section drifts. To regenerate: run `scripts/extract_audit_table.py --source
+.factory/specs/architecture/SS-engine-module.md --output /tmp/audit-table-new.md`, then
+replace the delimited block in this file (from `<!-- BEGIN ... -->` through `<!-- END ... -->`)
+and commit in the same PR as the SS-engine-module.md change.
 
 **Delimiter note:** `check_audit_table.py` scans for the exact HTML comment delimiters
 below. Do not alter them.

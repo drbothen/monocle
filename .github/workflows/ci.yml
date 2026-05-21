@@ -157,11 +157,82 @@ jobs:
             --spec-file scripts/audit-table.md \
             --rule-id monocle-non-exhaustive-struct-audit-completeness
 
+  # Audit-table vendor drift check.
+  # Checks out the factory-artifacts branch at a known path, extracts the canonical
+  # Cross-Crate Constructor Audit Table block from SS-engine-module.md using
+  # scripts/extract_audit_table.py, then diffs the extracted block against the vendored
+  # scripts/audit-table.md delimited section.
+  #
+  # RATIONALE: scripts/audit-table.md was vendored because .factory/ is a git worktree on
+  # factory-artifacts and is NOT materialized by actions/checkout on develop/PR refs. The
+  # drift check closes the loop: PR authors are no longer the last line of defence against
+  # stale vendored copies.
+  #
+  # continue-on-error: false — the delimiters exist in both files (verified locally). Any
+  # diff failure means the vendored copy has silently diverged and MUST be corrected before
+  # merge. If factory-artifacts is unreachable (rare network failure), the job will fail with
+  # a clear Git error rather than silently passing.
+  audit-table-drift:
+    name: Audit-table vendor drift check
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (PR ref)
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Checkout factory-artifacts spec
+        # Checks out factory-artifacts into .factory-spec/ so SS-engine-module.md is reachable.
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: factory-artifacts
+          path: .factory-spec
+
+      - name: Extract canonical audit-table block from SS-engine-module.md
+        run: |
+          set -euo pipefail
+          python3 scripts/extract_audit_table.py \
+            --source .factory-spec/specs/architecture/SS-engine-module.md \
+            --output /tmp/audit-table-canonical.md
+
+      - name: Extract vendored audit-table block from scripts/audit-table.md
+        # Extract only the delimited section from the vendored file so the diff compares
+        # the same region (the header lines in scripts/audit-table.md are intentionally
+        # absent from the canonical extraction).
+        run: |
+          set -euo pipefail
+          python3 scripts/extract_audit_table.py \
+            --source scripts/audit-table.md \
+            --output /tmp/audit-table-vendored.md
+
+      - name: Diff vendored vs canonical
+        run: |
+          set -euo pipefail
+          if ! diff -u /tmp/audit-table-canonical.md /tmp/audit-table-vendored.md \
+               > /tmp/audit-drift.diff; then
+            echo "::error file=scripts/audit-table.md::audit-table.md has drifted from canonical \
+          SS-engine-module.md §Cross-Crate Constructor Audit Table"
+            echo ""
+            echo "Diff (canonical vs vendored):"
+            cat /tmp/audit-drift.diff
+            echo ""
+            echo "Fix: regenerate scripts/audit-table.md by running:"
+            echo "  python3 scripts/extract_audit_table.py \\"
+            echo "    --source .factory/specs/architecture/SS-engine-module.md \\"
+            echo "    --output /tmp/audit-table-new.md"
+            echo "Then copy the extracted block (replacing lines from <!-- BEGIN ... --> through"
+            echo "<!-- END ... --> in scripts/audit-table.md) and commit in the same PR."
+            exit 1
+          fi
+          echo "::notice::audit-table.md matches canonical SS-engine-module.md §Cross-Crate Constructor Audit Table"
+
   # Per-platform build + test matrix. Explicit `include:` -- NOT a Cartesian product
   # (matches story AC-003 exactly).
   build-and-test:
     name: Build + Test (${{ matrix.runner }} / ${{ matrix.target }})
-    needs: semgrep
+    needs: [semgrep, audit-table-drift]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
