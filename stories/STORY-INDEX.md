@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.4"
+version: "2.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -39,7 +39,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | Story ID | Title | Epic | Points | Wave | Status | Blocks |
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
-| S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | ready | S-009 |
+| S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | done | S-009 |
 | S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | done | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-004, S-005, S-009, S-010 |
@@ -369,3 +369,11 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v2.5
+
+**F-WAVE1-003: S-DTU-001 status flipped ready→done** (2026-05-21):
+- S-DTU-001 Story Registry row: `ready` → `done`. PR #3 (S-DTU-001) merged at cfeb1346 on develop.
+- sprint-state.yaml was correctly updated in commit 69930c3; STORY-INDEX was missed (sibling-sweep gap surfaced by wave-1 wave-gate adversary review).
+- SE-22 v2 sibling-sweep: no other artifacts carry a stale `ready` reference for S-DTU-001 (sprint-state.yaml already correct; S-DTU-001 story file status field is `done`; dep-graph and wave-schedule have no status fields; holdout-scenarios and BC-INDEX carry no story status fields).
+- STORY-INDEX version bumped v2.4→v2.5. Closes F-WAVE1-003.
