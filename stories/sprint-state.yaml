@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.6"
+version: "1.7"
 status: active
-producer: vsdd-factory:product-owner
-timestamp: 2026-05-20T21:00:00Z
+producer: vsdd-factory:state-manager
+timestamp: 2026-05-21T02:30:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -40,12 +40,12 @@ stories:
     epic: EPIC-DTU
     wave: 1
     points: 3
-    status: ready
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 1 priority. No product story deps. Facade TDD mode. BC-HOOK-001..041 authored by PO 2026-05-20; status flipped to ready."
+    completed_at: "2026-05-21"
+    pr_url: "https://github.com/jmagady/monocle/pull/3"
+    notes: "Wave 1 complete. PR #3 merged at develop @ cfeb1346. 41 BC-HOOK-001..041 contracts implemented. 3 fresh-context review rounds; 17+ findings closed."
 
   - id: S-001
     title: "Cargo Workspace Init + CI/DevOps Setup"
@@ -232,15 +232,16 @@ summary:
   not_started: 14
   in_progress: 0
   review: 0
-  done: 1
-  ready: 1
+  done: 2
+  ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 5
+  points_complete: 8
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.6 updates (2026-05-20T21:00:00Z):
-  # - S-001 flipped not_started → done (PR #2 merged; Wave 1 complete for S-001)
-  # - S-DTU-001 flipped not_started → ready (BC-HOOK-001..041 authored by PO)
+  # v1.7 updates (2026-05-21T02:30:00Z):
+  # - S-DTU-001 flipped ready → done (PR #3 merged cfeb1346; 41 BC-HOOK contracts shipped)
+  # - done: 1 → 2; ready: 1 → 0; points_complete: 5 → 8
+  # - Wave 1 COMPLETE: S-001 (5 pts) + S-DTU-001 (3 pts) = 8 pts shipped
