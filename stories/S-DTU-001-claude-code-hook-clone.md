@@ -3,8 +3,8 @@ document_type: story
 level: L4
 story_id: S-DTU-001
 epic_id: EPIC-DTU
-version: "1.2"
-status: ready
+version: "1.3"
+status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T21:00:00Z
 phase: 2
@@ -217,6 +217,8 @@ Files NOT to create (explicitly out of scope):
 - `dtu-clones/claude-code-hooks-v1/docker-compose.yml` — Phase 4 distribution packaging only
 
 ## §Trace
+
+**v1.3** (2026-05-21) — Status flipped ready→done. PR #3 merged at cfeb1346 on develop. Closes F-WAVE1-003 residual sibling-sweep gap (sprint-state and STORY-INDEX were flipped in 69930c3 + 06c94fb but story-file frontmatter was missed).
 
 **v1.2** (2026-05-20T21:00:00Z) — Phase 3 TDD PO dispatch: BC-HOOK-001..041 authored; status draft → ready.
 - All 41 behavioral contracts in `behavioral_contracts:` array now have corresponding BC files at
