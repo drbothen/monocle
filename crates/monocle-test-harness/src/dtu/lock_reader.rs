@@ -220,6 +220,31 @@ fn is_pid_alive(pid: u32) -> bool {
     }
 }
 
+/// Resolve the runtime directory for lock file discovery.
+///
+/// Priority order per BC-HOOK-014 §Invariant 3 + §EC-003:
+/// 1. `MONOCLE_RUNTIME_DIR` env var if set and non-empty
+/// 2. Platform default: `~/.monocle/`
+///
+/// BC-HOOK-014 (runtime dir discovery), AC-006 (env var override)
+pub fn resolve_runtime_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("MONOCLE_RUNTIME_DIR") {
+        if !dir.is_empty() {
+            tracing::debug!(
+                monocle_runtime_dir = %dir,
+                "MONOCLE_RUNTIME_DIR override in effect"
+            );
+            return PathBuf::from(dir);
+        }
+    }
+    // Platform default: $HOME/.monocle/
+    // On Unix: home via HOME env; on Windows: USERPROFILE or HOMEDRIVE+HOMEPATH.
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join(".monocle")
+}
+
 /// Derive the base URL for hook POSTs from a lock file info.
 ///
 /// Default: `http://127.0.0.1:<port>` per dtu-assessment.md §Environment Variable Overrides.

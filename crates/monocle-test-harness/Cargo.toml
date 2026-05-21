@@ -32,6 +32,9 @@ serde_json = { workspace = true }
 reqwest = { workspace = true }
 # tracing: structured logging — no println! per clippy.toml disallowed_methods.
 tracing = { workspace = true }
+# tracing-subscriber: Fmt subscriber for the dtu_server binary entry point.
+# Not workspace-declared: this binary-level dep is monocle-test-harness only.
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # thiserror: library error types per CLAUDE.md conventions.
 thiserror = { workspace = true }
 # anyhow: binary error propagation per CLAUDE.md conventions.
