@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "2.3"
+version: "2.4"
 status: active
-producer: vsdd-factory:story-writer
-timestamp: 2026-05-19T12:00:00Z
+producer: vsdd-factory:product-owner
+timestamp: 2026-05-20T21:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -39,8 +39,8 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | Story ID | Title | Epic | Points | Wave | Status | Blocks |
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
-| S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | draft | S-009 |
-| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | draft | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 |
+| S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | ready | S-009 |
+| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | done | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 |
 | S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
 | S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-004, S-005, S-009, S-010 |
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
@@ -96,7 +96,16 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-005, AC-006 | YES |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-007, AC-008, AC-009 | YES |
 
-**BC Coverage: 22/22 (100%)**
+| BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
+| BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | S-DTU-001 | AC-001 | YES |
+| BC-HOOK-003 | Notification Hook Filters on notification_type === 'permission_prompt' | S-DTU-001 | AC-001, AC-003 | YES |
+| BC-HOOK-004 | Hook HTTP Requests Are Fire-and-Forget (Response Ignored) | S-DTU-001 | AC-001 | YES |
+| BC-HOOK-005 | Hook HTTP Request Target is 127.0.0.1 with Port from Lock File | S-DTU-001 | AC-001, AC-002, AC-003, AC-006 | YES |
+| BC-HOOK-006 | PreToolUse Always Echoes Stdin to Stdout | S-DTU-001 | AC-001, AC-003 | YES |
+| BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
+| BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
+
+**BC Coverage: 22/22 product BCs (100%); 41/41 DTU gene-source BCs (100%)**
 
 ## VP Coverage Table
 
@@ -260,6 +269,18 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
 - F-PHASE2-R07-05 / Orchestrator Decision 9 (LOW): wave-schedule.md inputs: entry added for error-taxonomy.md v1.5 to sibling-mirror STORY-INDEX/dep-graph; wave gate criteria reference E-AUTH-001/002/003 error codes.
 - F-PHASE2-R07-07 (LOW): wave-schedule.md Wave 3 parallelism prose rewritten — "All 5 stories" ambiguity resolved; now correctly states 4 fully parallel + S-009 serially after S-008 per Decision 1.
 - STORY-INDEX version bumped v1.4→v1.5.
+
+## §Trace v2.4 (STORY-INDEX version)
+
+**Phase 3 TDD — BC-HOOK-001..041 authored; S-001 done; S-DTU-001 ready** (2026-05-20T21:00:00Z):
+
+- PO authored 41 behavioral contracts (BC-HOOK-001..BC-HOOK-041) in `.factory/specs/behavioral-contracts/ss-dtu/`.
+- S-DTU-001 status updated: `draft` → `ready` (BC authorship prerequisite cleared).
+- S-001 status updated: `draft` → `done` (PR #2 merged at develop @ 184f7d4).
+- Story Registry table: S-DTU-001 `draft` → `ready`; S-001 `draft` → `done`.
+- BC Coverage Table: 41 new BC-HOOK rows added (consolidating BC-HOOK-008..BC-HOOK-041 into a single range row for brevity); total coverage note updated.
+- STORY-INDEX version bumped: 2.3 → 2.4.
+- SE-16d monotonicity PASS: 2026-05-20T21:00:00Z > prior 2026-05-19T12:00:00Z (v2.3). ARITHMETICALLY TRUE: PASS.
 
 ## §Trace v1.6
 

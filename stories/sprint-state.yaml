@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.5"
+version: "1.6"
 status: active
-producer: vsdd-factory:story-writer
-timestamp: 2026-05-19T04:30:00Z
+producer: vsdd-factory:product-owner
+timestamp: 2026-05-20T21:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -40,24 +40,24 @@ stories:
     epic: EPIC-DTU
     wave: 1
     points: 3
-    status: not_started
+    status: ready
     assigned_to: null
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 1 priority. No product story deps. Facade TDD mode."
+    notes: "Wave 1 priority. No product story deps. Facade TDD mode. BC-HOOK-001..041 authored by PO 2026-05-20; status flipped to ready."
 
   - id: S-001
     title: "Cargo Workspace Init + CI/DevOps Setup"
     epic: EPIC-01
     wave: 1
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 1 foundation. Facade TDD mode. Blocks all other product stories."
+    completed_at: "2026-05-20"
+    pr_url: "https://github.com/jmagady/monocle/pull/2"
+    notes: "Wave 1 foundation. PR #2 merged at develop @ 184f7d4."
 
   - id: S-002
     title: "Healthz Endpoint (Unauthenticated Liveness Probe)"
@@ -229,14 +229,18 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 16
+  not_started: 14
   in_progress: 0
   review: 0
-  done: 0
+  done: 1
+  ready: 1
   blocked: 1
   total_points: 86
-  points_complete: 0
+  points_complete: 5
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
+  # v1.6 updates (2026-05-20T21:00:00Z):
+  # - S-001 flipped not_started → done (PR #2 merged; Wave 1 complete for S-001)
+  # - S-DTU-001 flipped not_started → ready (BC-HOOK-001..041 authored by PO)

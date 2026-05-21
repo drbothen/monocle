@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.13"
+version: "1.14"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-19T12:14:00Z
+timestamp: 2026-05-20T21:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -77,6 +77,64 @@ traces_to: prd.md
 
 ---
 
+---
+
+## SS-DTU: Claude Code Hook Protocol (DTU Gene-Source Contracts)
+
+> Gene source: `any-context-lazyclaude/internal/core/config/hooks.go` (hooks-r1/r2 ingest rounds)
+> Architecture source: `specs/dtu-assessment.md` v1.7.5 §Clone Development Approach
+> Subsystem: SS-01 (DTU contracts describe protocol ingested by SS-01 daemon endpoints)
+> Capability: CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management")
+> Note: These are gene-transfusion behavioral contracts (origin: gene-transfusion) that define
+> the Claude Code hook injection protocol. They govern the behavior of the DTU clone
+> (S-DTU-001) and the daemon's expected wire contract for hook events.
+
+| BC ID | Title | Priority | Status | File |
+|-------|-------|----------|--------|------|
+| BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | P0 | active | ss-dtu/BC-HOOK-001.md |
+| BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | P0 | active | ss-dtu/BC-HOOK-002.md |
+| BC-HOOK-003 | Notification Hook Filters on notification_type === 'permission_prompt' | P0 | active | ss-dtu/BC-HOOK-003.md |
+| BC-HOOK-004 | Hook HTTP Requests Are Fire-and-Forget (Response Ignored) | P0 | active | ss-dtu/BC-HOOK-004.md |
+| BC-HOOK-005 | Hook HTTP Request Target is 127.0.0.1 with Port from Lock File | P0 | active | ss-dtu/BC-HOOK-005.md |
+| BC-HOOK-006 | PreToolUse Always Echoes Stdin to Stdout | P0 | active | ss-dtu/BC-HOOK-006.md |
+| BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | P0 | active | ss-dtu/BC-HOOK-007.md |
+| BC-HOOK-008 | Hooks-Settings.json Encoding: SetEscapeHTML(false) and 2-Space Indent | P1 | active | ss-dtu/BC-HOOK-008.md |
+| BC-HOOK-009 | Hooks-Settings.json Written at runtimeDir/hooks-settings.json with Mode 0o600 | P0 | active | ss-dtu/BC-HOOK-009.md |
+| BC-HOOK-010 | Hooks-Settings.json Is Per-runtimeDir, Not Per-Session | P1 | active | ss-dtu/BC-HOOK-010.md |
+| BC-HOOK-011 | Hooks-Settings.json Is Never Cleaned Up by WriteHooksSettingsFile | P2 | active | ss-dtu/BC-HOOK-011.md |
+| BC-HOOK-012 | Hook Configuration Is Identical Across All Session Types (PM, Worker, Plain) | P1 | active | ss-dtu/BC-HOOK-012.md |
+| BC-HOOK-013 | Hook URL Host Is 127.0.0.1; Port Resolved at Each Invocation via Lock-File Scan | P0 | active | ss-dtu/BC-HOOK-013.md |
+| BC-HOOK-014 | Lock File Path Is Hardcoded to MONOCLE_RUNTIME_DIR (Not Env-Var Overridable in JS) | P1 | active | ss-dtu/BC-HOOK-014.md |
+| BC-HOOK-015 | Auth Token Resolved at Each Invocation from Lock File authToken Field | P0 | active | ss-dtu/BC-HOOK-015.md |
+| BC-HOOK-016 | Auth Header Name Is X-Claude-Code-Ide-Authorization (Hardcoded in Hook Source) | P0 | active | ss-dtu/BC-HOOK-016.md |
+| BC-HOOK-017 | PID Liveness Check Uses process.kill(pid, 0) (POSIX-Only) | P1 | active | ss-dtu/BC-HOOK-017.md |
+| BC-HOOK-018 | Per-Hook Fallback Semantics Matrix When No Alive Server Found | P0 | active | ss-dtu/BC-HOOK-018.md |
+| BC-HOOK-019 | Gene-Source Endpoint Matrix (PreToolUse and Notification Share /notify via type Field) | P1 | active | ss-dtu/BC-HOOK-019.md |
+| BC-HOOK-020 | Notification Client-Side Filter notification_type === 'permission_prompt' (Deep-Ingest Confirmation) | P0 | active | ss-dtu/BC-HOOK-020.md |
+| BC-HOOK-021 | All HTTP Requests Are Fire-and-Forget (Deep-Ingest Confirmation) | P0 | active | ss-dtu/BC-HOOK-021.md |
+| BC-HOOK-022 | Notification Timeout Is 2000ms; Other Four Hooks Are 300ms | P0 | active | ss-dtu/BC-HOOK-022.md |
+| BC-HOOK-023 | Content-Type and Content-Length Headers Are Always Set Explicitly | P0 | active | ss-dtu/BC-HOOK-023.md |
+| BC-HOOK-024 | Monocle Improvement — Lock File App Filter Added to Hook JS | P0 | active | ss-dtu/BC-HOOK-024.md |
+| BC-HOOK-025 | After Daemon Restart, First Hook Invocation Re-Discovers New Port; Events During Restart Window Are Dropped | P0 | active | ss-dtu/BC-HOOK-025.md |
+| BC-HOOK-026 | No Producer-Side State — Hook Discovery Is Stateless Per Invocation | P0 | active | ss-dtu/BC-HOOK-026.md |
+| BC-HOOK-027 | Monocle Never Writes ~/.monocle/settings.json — Hook Injection Is Via --settings Flag | P0 | active | ss-dtu/BC-HOOK-027.md |
+| BC-HOOK-028 | No Env-Var Alternative for Hook Injection — Only --settings Flag | P1 | active | ss-dtu/BC-HOOK-028.md |
+| BC-HOOK-029 | Hook Process Reads Only os.homedir() from Environment — Env-Independent for All Other Vars | P1 | active | ss-dtu/BC-HOOK-029.md |
+| BC-HOOK-030 | MONOCLE_SESSION_ID Env Var Is Set on Claude Code Subprocess but NOT Read by Hook JS | P2 | active | ss-dtu/BC-HOOK-030.md |
+| BC-HOOK-031 | Hooks-Settings.json Is Unversioned — No Schema Version Field | P2 | active | ss-dtu/BC-HOOK-031.md |
+| BC-HOOK-032 | Malformed Stdin JSON Does NOT Prevent Stdin Echo for PreToolUse (Doubly Fail-Open) | P0 | active | ss-dtu/BC-HOOK-032.md |
+| BC-HOOK-033 | Malformed Stdin JSON Silently Drops Hook for Non-PreToolUse Hooks | P0 | active | ss-dtu/BC-HOOK-033.md |
+| BC-HOOK-034 | parseInt Filename Parsing Handles Non-Numeric Lock Files via NaN Comparison | P1 | active | ss-dtu/BC-HOOK-034.md |
+| BC-HOOK-035 | Lock File Read Errors and JSON Parse Errors Are Silently Skipped | P1 | active | ss-dtu/BC-HOOK-035.md |
+| BC-HOOK-036 | Buffer.byteLength(body) Returns UTF-8 Byte Length, Not Character Count | P1 | active | ss-dtu/BC-HOOK-036.md |
+| BC-HOOK-037 | req.write(body) Followed by req.end() Sends Body and Closes Write-Side Immediately | P1 | active | ss-dtu/BC-HOOK-037.md |
+| BC-HOOK-038 | Two-Server-Same-Port Race Is Structurally Impossible (Lock-After-Bind Ordering) | P2 | active | ss-dtu/BC-HOOK-038.md |
+| BC-HOOK-039 | WriteHooksSettingsFile Is Not Atomic; Torn Read Theoretically Possible | P1 | active | ss-dtu/BC-HOOK-039.md |
+| BC-HOOK-040 | Go Map Iteration Randomness Causes Byte Non-Determinism; Rust Struct Serialization Is Stable | P1 | active | ss-dtu/BC-HOOK-040.md |
+| BC-HOOK-041 | Monocle Test Must Assert Canonical Filename hooks-settings.json | P1 | active | ss-dtu/BC-HOOK-041.md |
+
+---
+
 ## Summary
 
 | Subsystem | Total BCs | Active | Pending |
@@ -84,7 +142,8 @@ traces_to: prd.md
 | SS-01 Daemon Lifecycle | 10 | 10 | 0 |
 | SS-02 Core Types and ABI | 8 | 8 | 0 |
 | SS-03 Engine Module | 4 | 4 | 0 |
-| **Total** | **22** | **22** | **0** |
+| SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
+| **Total** | **63** | **63** | **0** |
 
 ---
 
@@ -472,3 +531,21 @@ SE-17g META audit: `grep -r "SS-daemon-lifecycle.md v1\.0\.32" .factory/specs/be
 
 BC-INDEX titles unchanged: all 22 BC H1 headings stable. No BC retirements or removals.
 SE-16d monotonicity PASS: 2026-05-19T12:14:00Z > prior 2026-05-19T00:00:00Z (v1.12). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.14
+
+**Phase 3 TDD — BC-HOOK-001..041 DTU gene-source behavioral contracts authored** (2026-05-20T21:00:00Z):
+
+- SS-DTU section added: 41 new behavioral contracts (BC-HOOK-001..BC-HOOK-041).
+- Gene source: `any-context-lazyclaude/internal/core/config/hooks.go` via hooks-r1 + hooks-r2 deep ingest rounds.
+- BC count: 22 → 63 (41 new BCs).
+- Summary table updated: SS-DTU row added; Total row updated 22 → 63.
+- Subsystem: these BCs use `subsystem: SS-01` in their frontmatter (DTU contracts describe protocol ingested by SS-01 daemon endpoints). Directory: `ss-dtu/`.
+- File directory created: `.factory/specs/behavioral-contracts/ss-dtu/` (41 BC files).
+- Capability: all 41 BCs trace to CAP-001 per capabilities.md §CAP-001.
+- Origin: gene-transfusion (derived from any-context-lazyclaude gene source with monocle improvements in BC-HOOK-014, BC-HOOK-024, BC-HOOK-039, BC-HOOK-040).
+- Produced for: S-DTU-001 DTU clone prerequisite gate (status: draft → ready).
+- Downstream: S-DTU-001 frontmatter `behavioral_contracts` array unchanged (already correct BC-HOOK-001..BC-HOOK-041 range); status flipped to `ready`; sprint-state S-001 flipped `done`; sprint-state S-DTU-001 flipped `ready`.
+- BC-INDEX titles: all 41 H1 titles are authoritative per bc_h1_is_title_source_of_truth policy.
+- Stories affected by BC changes: S-DTU-001. Story-writer must propagate under bc_array_changes_propagate_to_body_and_acs policy (BC coverage table in STORY-INDEX updated in this burst).
+- SE-16d monotonicity PASS: 2026-05-20T21:00:00Z > prior 2026-05-19T12:14:00Z (v1.13). ARITHMETICALLY TRUE: PASS.

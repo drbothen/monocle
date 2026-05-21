@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-DTU-001
 epic_id: EPIC-DTU
-version: "1.1"
-status: draft
+version: "1.2"
+status: ready
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-20T00:00:00Z
+timestamp: 2026-05-20T21:00:00Z
 phase: 2
 points: 3
 wave: 1
@@ -217,6 +217,13 @@ Files NOT to create (explicitly out of scope):
 - `dtu-clones/claude-code-hooks-v1/docker-compose.yml` — Phase 4 distribution packaging only
 
 ## §Trace
+
+**v1.2** (2026-05-20T21:00:00Z) — Phase 3 TDD PO dispatch: BC-HOOK-001..041 authored; status draft → ready.
+- All 41 behavioral contracts in `behavioral_contracts:` array now have corresponding BC files at
+  `.factory/specs/behavioral-contracts/ss-dtu/BC-HOOK-001.md` through `BC-HOOK-041.md`.
+- Gene source: `any-context-lazyclaude/internal/core/config/hooks.go` hooks-r1/r2 ingest rounds.
+- Status flipped: `draft` → `ready`. Prerequisite gate cleared: deliver-story workflow may proceed.
+- SE-16d monotonicity PASS: 2026-05-20T21:00:00Z > prior v1.1 2026-05-20T00:00:00Z.
 
 **v1.1** (2026-05-20) — Phase 3.B Batch 1 spec-reviewer remediation (F-A-01..F-E-02 findings from cycle-001 Stage-1 review). Refs: drbothen/vsdd-factory#150.
 - F-C-02 + F-D-01 CLOSED: AC-005 and File Structure rewritten to canonical Rust binary form per dtu-assessment.md §Packaging Decision (lines 320-343). Dockerfile + docker-compose.yml removed from Phase 1 deliverables. `cargo build --bin dtu-claude-code-hooks-v1` AC added. Docker explicitly marked Phase 4.
