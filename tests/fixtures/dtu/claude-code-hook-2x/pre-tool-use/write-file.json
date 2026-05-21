@@ -1,0 +1,9 @@
+{
+  "session_id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+  "pid": 12348,
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/Users/user/project/src/lib.rs",
+    "content": "pub fn hello() -> &'static str { \"world\" }\n"
+  }
+}

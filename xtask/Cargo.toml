@@ -1,0 +1,44 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Cargo xtask runner for monocle: executes project-level dev tasks (e.g. dtu-fidelity oracle)."
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[dependencies]
+# clap: CLI arg parsing for subcommand dispatch.
+# Caret-pinned (already declared in workspace.dependencies).
+clap = { workspace = true, features = ["derive"] }
+# anyhow: binary error propagation per CLAUDE.md conventions.
+anyhow = { workspace = true }
+# tracing: structured logging — no println! per clippy.toml disallowed_methods.
+tracing = { workspace = true }
+# tracing-subscriber: initialise the tracing subscriber in the xtask binary.
+# Not a workspace dep (xtask-only). Caret pin is safe for a dev-runner crate.
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# serde + serde_json: fixture JSON loading, per-fixture score output, and FixtureResult derive.
+serde = { workspace = true }
+serde_json = { workspace = true }
+# monocle-test-harness: library access to build_router, FixtureScore, and mock helpers.
+# Calling the library directly (rather than spawning the binary) is the canonical
+# approach per S-DTU-001 task spec (library calls preferred; avoids todo!() binary).
+monocle-test-harness = { path = "../crates/monocle-test-harness" }
+# tokio: async runtime needed to drive build_router + mock daemon helpers.
+# EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy.
+tokio = { workspace = true }
+# axum + http-body-util + tower: required to drive in-process oneshot requests.
+axum = { workspace = true }
+http-body-util = { workspace = true }
+tower = { workspace = true }
+# reqwest: constructing CloneState (already workspace dep).
+reqwest = { workspace = true }

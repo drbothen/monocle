@@ -1,0 +1,10 @@
+{
+  "session_id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+  "pid": 12350,
+  "notification_type": "permission_prompt",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "rm -rf /tmp/test-dir"
+  },
+  "message": "Claude wants to run a bash command: rm -rf /tmp/test-dir"
+}

@@ -1,0 +1,8 @@
+{
+  "session_id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+  "pid": 12353,
+  "notification_type": "assistant_message",
+  "tool_name": "",
+  "tool_input": {},
+  "message": "I have completed the task. The file has been updated successfully."
+}

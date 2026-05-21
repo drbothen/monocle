@@ -1,0 +1,62 @@
+[package]
+name = "monocle-test-harness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "DTU clone test harness for monocle: synthesizes Claude Code hook POSTs for integration and holdout testing."
+
+[lints]
+workspace = true
+
+# DTU clone binary — compiles to dtu-claude-code-hooks-v1 per S-DTU-001 AC-005
+# and dtu-assessment.md §Packaging Decision (lines 320-343).
+[[bin]]
+name = "dtu-claude-code-hooks-v1"
+path = "src/bin/dtu_server.rs"
+
+[dependencies]
+# axum: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# HTTP server for the 5 DTU clone hook endpoints.
+axum = { workspace = true }
+# tokio: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# Async runtime for the axum server.
+tokio = { workspace = true }
+# serde + serde_json: monocle-canonical payload structs and JSON deserialization.
+serde = { workspace = true }
+serde_json = { workspace = true }
+# reqwest: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# HTTP client used to POST fixtures to daemon during fidelity tests.
+reqwest = { workspace = true }
+# tracing: structured logging — no println! per clippy.toml disallowed_methods.
+tracing = { workspace = true }
+# tracing-subscriber: Fmt subscriber for the dtu_server binary entry point.
+# Not workspace-declared: this binary-level dep is monocle-test-harness only.
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# thiserror: library error types per CLAUDE.md conventions.
+thiserror = { workspace = true }
+# anyhow: binary error propagation per CLAUDE.md conventions.
+anyhow = { workspace = true }
+# tempfile: atomic writes via tempfile::persist for hooks-settings.json per BC-HOOK-039.
+# Also used in dev-dependencies for TempDir in integration tests.
+tempfile = { workspace = true }
+# nix: safe signal(0) for PID liveness check per BC-HOOK-017 (MED-1 fix: replaces
+# Command::new("kill") shell-out with nix::sys::signal::kill).
+# signal feature required for kill(); process feature required for Pid::from_raw().
+nix = { workspace = true, features = ["signal", "process"] }
+
+[dev-dependencies]
+# tempfile: TempDir for lock file fixtures in integration tests (already in [dependencies]).
+tempfile = { workspace = true }
+# tokio: async test runtime (#[tokio::test]).
+tokio = { workspace = true }
+# tower + http-body-util: axum::serve test helpers for endpoint integration tests.
+# We use axum's built-in test utilities via tower::ServiceExt.
+tower = { workspace = true }
+http-body-util = { workspace = true }
+# temp_env: safe env var isolation in tests (replaces unsafe std::env::set_var).
+# NOT in workspace.dependencies: per SS-deps-pin-manifest.md §Dev Dependencies, this is
+# monocle-test-harness-only (CR-003 least-privilege principle).
+temp-env = "0.3"
