@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-013
 epic_id: EPIC-02
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -180,7 +180,7 @@ fails if the proto is regenerated with `schema_version` at any field number othe
   - Include the prost-build generated module: `pub mod monocle { pub mod v1 { include!(concat!(env!("OUT_DIR"), "/monocle.v1.rs")); } }`
   - Add rustdoc comment on `HookEnvelope` re-export documenting Phase 4 dispatch contract (E-PROTO-001)
     and FC-05 immutability invariant (`schema_version: u32 = 1` is immutable across Phase 1 minor versions)
-  - NOTE: Workspace must already declare `bytes = "1.10"` (caret) per S-001 to neutralize RUSTSEC-2026-0007
+  - NOTE: Workspace must already declare `bytes = "1.11"` (caret) per S-001 to neutralize RUSTSEC-2026-0007
     in prost transitive resolution (F-A-02)
 
 - [ ] Create `monocle-proto/tests/wire_field_order.rs` (VP-016 / BC-2.02.006 verification; F-D-05 fix):
@@ -195,7 +195,7 @@ fails if the proto is regenerated with `schema_version` at any field number othe
 ## Previous Story Intelligence
 
 S-001 (Wave 1): `monocle-proto` crate stub created as part of workspace init. `prost 0.14` is pinned
-in workspace (EXACT pin). `bytes 1.10` (caret) declared in workspace per S-001 to neutralize
+in workspace (EXACT pin). `bytes 1.11` (caret) declared in workspace per S-001 to neutralize
 RUSTSEC-2026-0007 in prost's transitive dependency resolution. `monocle-proto` does NOT consume any
 `monocle-core` symbols — it only depends on `prost` and `prost-build`. Dependency is therefore
 `depends_on: [S-001]` not `[S-010]` (F-E-01 fix: S-010 creates monocle-core; monocle-proto
@@ -243,7 +243,7 @@ The proto crate compiles into the binary as a type library only; Phase 4 activat
 |-------|---------|-------|
 | prost | 0.14 (EXACT) | `[dependencies]`; generates prost Message derive; no Phase 1 runtime wire usage |
 | prost-build | =0.14.1 | `[build-dependencies]`; codegen in `build.rs`; aligns with prost 0.14 minor |
-| bytes | 1.10 (caret) | `[dependencies]`; neutralizes RUSTSEC-2026-0007 in prost transitive resolution; declared by S-001 |
+| bytes | 1.11 (caret) | `[dependencies]`; neutralizes RUSTSEC-2026-0007 in prost transitive resolution; declared by S-001 |
 
 ## File Structure Requirements
 
@@ -258,9 +258,11 @@ Files to create:
 
 Files to modify:
 - `monocle-proto/Cargo.toml` — add `prost = "=0.14.x"` to `[dependencies]`; add `prost-build = "=0.14.1"`
-  to `[build-dependencies]`; add `bytes = "1.10"` to `[dependencies]` if not already declared from workspace
+  to `[build-dependencies]`; add `bytes = "1.11"` to `[dependencies]` if not already declared from workspace
 
 ## §Trace
+
+**v1.2** (2026-05-20) — Sibling-sweep update for SS-deps-pin-manifest v1.1.19 Option B (bytes pin "1.10" → "1.11" per RUSTSEC-2026-0007 fix-from = 1.11.1; production-grade default). 4 body sites updated: Tasks NOTE, Previous Story Intelligence, Library & Framework Requirements table, Files to modify.
 
 **v1.1 — Phase 3.B Batch 3: arch-touching story remediation** (2026-05-20):
 - F-E-01: `depends_on` downgraded `[S-010]` → `[S-001]` — `monocle-proto` only inherits crate stub from

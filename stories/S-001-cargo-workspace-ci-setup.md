@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-001
 epic_id: EPIC-01
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T00:00:00Z
@@ -33,13 +33,13 @@ estimated_days: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.18"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.19"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.1.18 EXACT-pin policy."
+traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.1.19 EXACT-pin policy."
 ---
 
 # S-001: Cargo Workspace Init + CI/DevOps Setup
@@ -103,7 +103,7 @@ appears in NO architectural source-of-truth; SS-deps-pin-manifest.md already dec
 one-function helper. `monocle-tui` is NOT declared as a Phase 1 workspace member per
 product-brief.md Phase 1 scope.
 
-### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.1.18)
+### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.1.19)
 `Cargo.toml` workspace `[workspace.dependencies]` table uses the Cargo 2021+ recommended
 pattern: workspace-level declarations, member crates inherit via `{ workspace = true }`.
 The following EXACT-pinned security-sensitive crates (per Patch-Pinning Policy, 9 crates)
@@ -112,18 +112,18 @@ are declared in workspace `[workspace.dependencies]`:
 - `axum = "=0.8.9"` (EXACT)
 - `serde_json = "=1.0.149"` (EXACT)
 - `rand = "=0.8.6"` (EXACT)
-- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md v1.1.18 L33-74)
-- `bytes = "1.10"` (caret; direct workspace pin overrides prost-transitive; closes RUSTSEC-2026-0007 per SS-deps-pin-manifest.md §RUSTSEC Audit Context)
+- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md v1.1.19 L33-74)
+- `bytes = "1.11"` (caret; direct workspace pin overrides prost-transitive; closes RUSTSEC-2026-0007 per SS-deps-pin-manifest.md §RUSTSEC Audit Context)
 - `wasmtime = "=44.0.1"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 3 plugin SDK boundary)
 - `russh = "=0.60.2"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 4 federation boundary)
 - `reqwest = "=0.13.0"` (EXACT; workspace-declared; crate usage activated when needed by S-009 and other stories)
 
 NOTE: `rmcp` is OMITTED from Phase 1 workspace entirely per OQ-09 (Phase 4 only).
 
-All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md v1.1.18 L33-74 (Phase 1 Pin Manifest table).
+All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md v1.1.19 L33-74 (Phase 1 Pin Manifest table).
 `temp-env = { version = "^0.3", features = ["async_closure"] }` MUST be declared in
 `monocle-runtime/Cargo.toml` `[dev-dependencies]` (NOT workspace dependencies; it is a
-test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.1.18 L33-74.
+test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.1.19 L33-74.
 
 ### AC-007 (cargo audit CI gate)
 `.github/workflows/audit.yml` exists with `cron: '0 0 * * 0'` (weekly) running
@@ -135,7 +135,7 @@ test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.1.18 L33-74.
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,100 |
-| SS-deps-pin-manifest.md v1.1.18 (full) | ~9,976 |
+| SS-deps-pin-manifest.md v1.1.19 (full) | ~9,976 |
 | SS-daemon-lifecycle.md v1.0.33 (workspace scope section) | ~2,000 |
 | SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 |
 | Cargo.toml template + toolchain files | ~500 |
@@ -158,11 +158,11 @@ Well within 20% of 200k context window. No split required.
   profile = "minimal"
   ```
 - [ ] Declare all 9 EXACT-pin security-sensitive crates in workspace `[workspace.dependencies]`
-  per SS-deps-pin-manifest.md v1.1.18 L33-74 (Phase 1 Pin Manifest table)
+  per SS-deps-pin-manifest.md v1.1.19 L33-74 (Phase 1 Pin Manifest table)
 - [ ] Declare `wasmtime = "=44.0.1"` and `russh = "=0.60.2"` in workspace `[workspace.dependencies]`
   but do NOT add them to any Phase 1 member crate's `[dependencies]`; they are workspace-declared
   for Phase 3 (wasmtime plugin SDK) and Phase 4 (russh federation) availability
-- [ ] Declare `bytes = "1.10"` directly in workspace `[workspace.dependencies]` to close
+- [ ] Declare `bytes = "1.11"` directly in workspace `[workspace.dependencies]` to close
   RUSTSEC-2026-0007 (overrides prost-transitive resolution per SS-deps-pin-manifest.md §RUSTSEC Audit Context)
 - [ ] Add `prost-build = "=0.14.1"` as `[build-dependencies]` in `monocle-proto/Cargo.toml`
 - [ ] Create `.github/workflows/ci.yml` with explicit `include:` matrix (not Cartesian product):
@@ -187,14 +187,14 @@ N/A — first story in monocle Phase 2. No predecessor stories in this epic.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-deps-pin-manifest.md` v1.1.18 L33-74 (Phase 1 Pin Manifest table):
+From `architecture/SS-deps-pin-manifest.md` v1.1.19 L33-74 (Phase 1 Pin Manifest table):
 - EXACT pin for 9 security-sensitive crates: `tokio`, `axum`, `serde_json`, `rand`, `prost`, `russh`, `rmcp`, `reqwest`, `wasmtime`
 - All EXACT pins must use full SemVer triplet form (`=x.y.z`, not `=x.y`)
 - Caret pin for all other Phase 1 crates
 - MSRV: Rust 1.86 (ratatui 0.30 floor)
 - `wasmtime 44` and `russh 0.60.2` declared in workspace `[workspace.dependencies]` but NOT activated in Phase 1 member crates
 - `rmcp 1.6` OMITTED from Phase 1 workspace entirely (Phase 4 scope)
-- `bytes = "1.10"` must be direct workspace dep to override prost-transitive RUSTSEC-2026-0007
+- `bytes = "1.11"` must be direct workspace dep to override prost-transitive RUSTSEC-2026-0007
 - Use `[workspace.dependencies]` pattern; member crates use `{ workspace = true }`
 
 From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
@@ -222,7 +222,7 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Module Layout:
 | reqwest | 0.13.0 | EXACT | `reqwest = "=0.13.0"` |
 | wasmtime | 44.0.1 | EXACT | `wasmtime = "=44.0.1"` (workspace-declared; NOT activated in Phase 1 member crates) |
 | russh | 0.60.2 | EXACT | `russh = "=0.60.2"` (workspace-declared; NOT activated in Phase 1 member crates) |
-| bytes | 1.10 | caret | `bytes = "1.10"` (direct workspace pin; overrides prost-transitive; closes RUSTSEC-2026-0007) |
+| bytes | 1.11 | caret | `bytes = "1.11"` (direct workspace pin; overrides prost-transitive; closes RUSTSEC-2026-0007) |
 | serde | 1 | caret | `serde = { version = "1", features = ["derive"] }` |
 | tracing | 0.1 | caret | `tracing = "0.1"` |
 | thiserror | 2 | caret | `thiserror = "2"` |
@@ -259,6 +259,8 @@ Files to create:
 - `/monocle-proto/build.rs` — no-op stub: `fn main() {}`
 
 ## §Trace
+
+**v1.7** (2026-05-20) — Sibling-sweep update for SS-deps-pin-manifest v1.1.19 Option B (bytes pin "1.10" → "1.11" per RUSTSEC-2026-0007 fix-from = 1.11.1; production-grade default). 4 body sites updated: AC-006 bullet, Tasks declare step, Architecture Compliance Rules, Library & Framework Requirements table. inputs.SS-deps-pin-manifest bumped v1.1.18 → v1.1.19; traces_to manifest version updated to v1.1.19.
 
 **v1.6** (2026-05-20) — Phase 3.B Batch 1 spec-reviewer remediation (F-A-01..F-D-06 findings from cycle-001 Stage-1 review). Refs: drbothen/vsdd-factory#150.
 - F-A-01 CLOSED: tokio pin updated to canonical full SemVer triplet `=1.52.0` in AC-006 and Library table.
