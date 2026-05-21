@@ -143,7 +143,8 @@ jobs:
           semgrep --config .semgrep.yml --json \
             --include="crates/**/*.rs" \
             --include="semgrep-fixtures/**/*.rs" \
-            crates/ semgrep-fixtures/ > "$SEMGREP_JSON_FILE" 2>&1
+            crates/ semgrep-fixtures/ \
+            > "$SEMGREP_JSON_FILE"
           [ -s "$SEMGREP_JSON_FILE" ] || { echo "::error::Semgrep produced empty output"; exit 1; }
           python3 scripts/check_audit_table.py \
             --semgrep-json "$SEMGREP_JSON_FILE" \
