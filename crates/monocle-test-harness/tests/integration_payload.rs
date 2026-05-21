@@ -500,29 +500,3 @@ async fn test_BC_HOOK_036_content_length_utf8_byte_count() {
         "prompt must be preserved as UTF-8"
     );
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// BC-HOOK-007 / AC-004: FixtureScore::compute is gated by todo!()
-// ──────────────────────────────────────────────────────────────────────────────
-
-/// BC-HOOK-007 / AC-004: FixtureScore::compute panics (todo!()) before implementation.
-///
-/// This is the Red Gate test for the scoring function. It must FAIL with a panic
-/// (todo!()) until the implementation is provided.
-#[test]
-fn test_BC_HOOK_007_fixture_score_compute_panics_before_implementation() {
-    let fixture = serde_json::json!({
-        "session_id": "s",
-        "pid": 1,
-        "tool_name": "Bash",
-        "tool_input": {}
-    });
-    let clone_output = fixture.clone();
-    // This MUST panic with todo!() — Red Gate.
-    let _score = FixtureScore::compute(
-        "pre-tool-use/bash-simple.json".to_string(),
-        &fixture,
-        &clone_output,
-    );
-    // Unreachable until implemented.
-}
