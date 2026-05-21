@@ -14,7 +14,13 @@ rules:
     severity: ERROR
     languages: [rust]
   - id: monocle-no-unbounded-channel
-    pattern: tokio::sync::mpsc::unbounded_channel(...)
+    pattern-either:
+      - pattern: tokio::sync::mpsc::unbounded_channel(...)
+      # Turbofish form: unbounded_channel::<T>() — semgrep's Rust parser does not match
+      # type arguments with the `(...)` ellipsis. `$T` is the semgrep metavariable form
+      # for a single type argument; it also matches tuple types like (Tx, Rx) so covers
+      # all realistic turbofish spellings. Validated locally with semgrep 1.156.0.
+      - pattern: tokio::sync::mpsc::unbounded_channel::<$T>(...)
     message: "Unbounded channel masks backpressure. Use bounded mpsc::channel(N) with drop counter. See conventions.md anti-patterns."
     severity: ERROR
     languages: [rust]

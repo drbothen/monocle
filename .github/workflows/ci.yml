@@ -88,7 +88,7 @@ jobs:
         # Expected counts per SS-conventions §Semgrep Coverage Hardening fixture table:
         #   monocle-no-shell-injection              → 2
         #   monocle-no-naked-fs-write               → 2
-        #   monocle-no-unbounded-channel            → 1
+        #   monocle-no-unbounded-channel            → 2  (basic + turbofish arms)
         #   monocle-no-raw-env-mutation-in-tests    → 4
         #   monocle-non-exhaustive-struct-audit-completeness → 2
         # If Step 1 fails, Steps 2 and 3 are skipped to avoid misleading results.
@@ -117,7 +117,7 @@ jobs:
 
           check_count "monocle-no-shell-injection"                         2  "semgrep-fixtures/shell_injection.rs"
           check_count "monocle-no-naked-fs-write"                          2  "semgrep-fixtures/naked_fs_write.rs"
-          check_count "monocle-no-unbounded-channel"                       1  "semgrep-fixtures/unbounded_channel.rs"
+          check_count "monocle-no-unbounded-channel"                       2  "semgrep-fixtures/unbounded_channel.rs"
           check_count "monocle-no-raw-env-mutation-in-tests"               4  "semgrep-fixtures/tests/raw_env_mutation.rs"
           check_count "monocle-non-exhaustive-struct-audit-completeness"   2  "semgrep-fixtures/non_exhaustive_struct.rs"
 
