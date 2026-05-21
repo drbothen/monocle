@@ -215,8 +215,7 @@ jobs:
         uses: EmbarkStudios/cargo-deny-action@6c8f9facfa5047ec02d8485b6bf52b587b7777d1
         with:
           log-level: warn
-          command: check
-          arguments: licenses bans advisories sources
+          command: check all
 
   # cargo-audit gate: runs on every PR for fast feedback. The scheduled deep-scan
   # lives in audit.yml (weekly cron).
