@@ -24,7 +24,7 @@ inputs:
   - .factory/planning/oq-research.md
   - .factory/planning/market-intelligence.md
   - .factory/specs/research/brief-validation.md
-input-hash: "aac9bc9"
+input-hash: "96d03aa"
 traces_to: .factory/plans/consistency-audit-round-14-post-fc-fix.md
 project: monocle
 ---

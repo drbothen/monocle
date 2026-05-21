@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:05:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "f354d83"
+input-hash: "830a3b4"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-01

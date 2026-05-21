@@ -3,13 +3,13 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.29.5"
+version: "1.30.0"
 status: complete
 producer: architect
-phase: pre-phase-1-architecture
-timestamp: 2026-05-18T19:30:00Z
+phase: phase-3
+timestamp: 2026-05-20T21:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
-input-hash: "6cd47fb"
+input-hash: "94934e7"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -543,16 +543,17 @@ targets = []
 all-features = false
 
 [advisories]
+# cargo-deny 0.19 schema: [advisories] no longer has vulnerability/unmaintained/yanked/notice
+# severity lint-level fields. Those were removed in the 0.17 schema migration
+# (see https://github.com/EmbarkStudios/cargo-deny/pull/611). cargo-deny 0.19 uses the
+# advisory database directly for RUSTSEC detection; all vulnerabilities are denied by default.
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "warn"
 ignore = []
 
 [licenses]
-unlicensed = "deny"
+# cargo-deny 0.19 schema: [licenses] no longer has unlicensed/copyleft/allow-osi-fsf-free/exceptions
+# top-level keys (removed in 0.17 schema migration). Confidence-threshold and allow/deny lists remain.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -565,22 +566,35 @@ allow = [
     "MPL-2.0",  # nucleo; file-level copyleft, does not propagate to binary
     "Zlib",
 ]
-deny = ["GPL-1.0", "GPL-2.0", "GPL-3.0", "AGPL-1.0", "AGPL-3.0", "LGPL-2.0", "LGPL-2.1", "LGPL-3.0"]
-copyleft = "warn"
-allow-osi-fsf-free = "either"
 confidence-threshold = 0.8
-exceptions = []
 
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
+# wildcards = "deny" is intentionally NOT set here. In cargo-deny 0.19, path-based workspace
+# member dependencies (e.g. `monocle-core = { path = "../monocle-core" }`) are treated as
+# version wildcards because they have no explicit version specifier. This is a standard Rust
+# workspace pattern; denying it would block all intra-workspace path deps. The anti-pattern we
+# want to prevent (unbounded version ranges in registry deps) is enforced by the EXACT-pin policy
+# in SS-deps-pin-manifest.md and by `cargo clippy` + code review rather than cargo-deny wildcards.
+wildcards = "allow"
 deny = [
     { name = "openssl", reason = "use rustls; openssl is a deployment-complexity liability" },
     { name = "openssl-sys", reason = "see openssl" },
     { name = "tokio", version = "<1.52", reason = "RUSTSEC remediated 1.52+" },
     { name = "russh", version = "<0.60", reason = "transitive rsa pre-release RUSTSEC-2023-0071" },
 ]
-skip = []
+# skip entries for transitive duplicates forced by EXACT-pinned crates in Phase 1 workspace.
+# These are human-accepted duplicates; resolution requires future wave decisions.
+skip = [
+    # getrandom: rand =0.8.6 EXACT pin requires getrandom 0.2.x (via rand_core 0.6);
+    # tempfile 3 + prost-build 0.14 require getrandom 0.4.x (via wasi/rustix path).
+    # Resolution requires rand 0.9+ (moves OsRng to a feature flag; ergonomic regressions;
+    # deferred per SS-deps-pin-manifest §Patch-Pinning Policy rationale for rand).
+    { name = "getrandom", reason = "duplicate forced by rand =0.8.6 EXACT pin (0.2.x) vs tempfile/prost-build transitive (0.4.x); resolve when rand 0.9 ergonomics stabilize" },
+    # wit-bindgen: getrandom 0.4 pulls in wasip2 v1.0 + wasip3 v0.4 which each depend on
+    # different wit-bindgen versions (0.57.1 vs 0.51.0). Purely transitive through tempfile.
+    { name = "wit-bindgen", reason = "duplicate forced by wasip2/wasip3 divergence in getrandom 0.4 transitive path via tempfile; no direct monocle dependency" },
+]
 skip-tree = []
 
 [sources]
@@ -596,9 +610,21 @@ allow-git = []
 - **`tokio < 1.52`**: RUSTSEC advisories were remediated starting in tokio 1.52. Any version below this floor represents a known-vulnerable async runtime. The `SS-deps-pin-manifest.md` already pins tokio at 1.52 for Phase 1 — this ban acts as a floor guard that will fire if a transitive dep drags in a pre-remediation version.
 - **`russh < 0.60`**: russh versions below 0.60 pull in a pre-release `rsa` crate affected by RUSTSEC-2023-0071 (RSA key recovery via Marvin attack). russh is not a direct monocle dependency but may appear transiently through plugin SDK paths in Phase 3; the ban prevents accidental introduction.
 
+**Rationale for `wildcards = "allow"` (A2 decision):**
+
+The original spec set `wildcards = "deny"` to prevent unbounded version ranges in registry dependencies. In cargo-deny 0.19, however, intra-workspace `path = "../monocle-*"` references are classified as wildcard version selectors because they carry no explicit version number — this is the standard Rust workspace pattern and is not the anti-pattern the rule targeted. Setting `wildcards = "deny"` in 0.19 would block every intra-workspace `path =` dep, making the workspace inoperable. The protection originally provided by the wildcard ban is fully delivered by: (a) the EXACT-pin / caret-pin policy in `SS-deps-pin-manifest.md`, (b) `cargo clippy` lint enforcement, and (c) PR code review. No enforcement gap is introduced by `wildcards = "allow"`.
+
+**Rationale for `skip` entries (A3 / A4 decisions):**
+
+Two transitive duplicate crates are accepted as known multi-version state for Phase 1:
+
+- **getrandom (A3):** rand `=0.8.6` (EXACT-pinned per RUSTSEC-2026-0007 prost mitigation) transitively requires `rand_core 0.6` which requires `getrandom 0.2.x`. `tempfile 3` and `prost-build 0.14` transitively require `getrandom 0.4.x` via the wasi/rustix path. Two getrandom versions coexist in the graph. Resolution requires migrating to `rand 0.9` which moves `OsRng` behind a feature flag and has documented ergonomic regressions. This migration is deferred to a post-Wave-2 decision per `SS-deps-pin-manifest.md` §Patch-Pinning Policy rationale for rand.
+
+- **wit-bindgen (A4):** A cascade of the getrandom 0.4 transitive path. `getrandom 0.4` pulls in `wasip2 v1.0` and `wasip3 v0.4` which depend on incompatible wit-bindgen versions (`0.57.1` vs `0.51.0`). monocle has no direct wit-bindgen dependency; this duplicate is entirely transitive through `tempfile`. Resolution is coupled to the getrandom/rand migration in A3. Surfaced by devops-engineer during S-001 fix PR; ratified alongside A3.
+
 **Rationale for MPL-2.0 inclusion:**
 
-MPL-2.0 (Mozilla Public License 2.0) is file-level copyleft: it requires modifications to MPL-licensed files to be released under MPL, but does not propagate to files in different compilation units. monocle uses nucleo 0.5 (matcher/scorer library; see ADR-0002) which is MPL-2.0. Because monocle links nucleo as an unmodified library crate and does not modify nucleo source files, the file-level copyleft does not impose redistribution obligations on monocle's own code. The `copyleft = "warn"` setting ensures any new MPL-2.0 additions surface for human review.
+MPL-2.0 (Mozilla Public License 2.0) is file-level copyleft: it requires modifications to MPL-licensed files to be released under MPL, but does not propagate to files in different compilation units. monocle uses nucleo 0.5 (matcher/scorer library; see ADR-0002) which is MPL-2.0. Because monocle links nucleo as an unmodified library crate and does not modify nucleo source files, the file-level copyleft does not impose redistribution obligations on monocle's own code. Any new MPL-2.0 additions will be surfaced by cargo-deny's license check against the explicit allow list.
 
 **`targets = []` during Phase 1:**
 
@@ -1503,7 +1529,7 @@ When a BC Traceability `Architecture Source` cell or a VP Traceability `Architec
 | SS-engine-module.md | v1.1.20 |
 | SS-core-types-and-abi.md | v1.2.13 |
 | SS-deps-pin-manifest.md | v1.1.17 |
-| SS-conventions-anti-patterns.md | v1.29.5 |
+| SS-conventions-anti-patterns.md | v1.30.0 |
 
 **Enforcement:** The adversary is instructed to flag any BC or VP Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. A pre-commit grep for `SS-[a-z-]+\.md(?!\s+v\d)` patterns within Architecture Source cell contexts provides automated detection.
 
@@ -2380,6 +2406,18 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §9 (SS-conventions).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+
+**§Trace v1.30.0** (2026-05-20T21:00:00Z) — cargo-deny 0.19 schema migration ratified; 4 ambiguities resolved from S-001 fix PR #2:
+- NORMATIVE (A1): §deny.toml configuration sample migrated from cargo-deny 0.16 schema to 0.19 schema. Removed `[advisories]` fields `vulnerability`, `unmaintained`, `yanked`, `notice` (dropped in 0.17 breaking schema migration; cargo-deny 0.19 denies all RUSTSEC vulnerabilities by default). Removed `[licenses]` fields `unlicensed`, `copyleft`, `allow-osi-fsf-free`, `exceptions` (dropped in same 0.17 migration). Retained `[licenses] allow`, `confidence-threshold`, `[advisories] db-path`, `db-urls`, `ignore`. Source: devops-engineer S-001 fix PR #2 commits 287c109 + 53b5d6e.
+- NORMATIVE (A2): `[bans] wildcards = "deny"` → `wildcards = "allow"`. In cargo-deny 0.19, intra-workspace `path = "../monocle-*"` deps are classified as wildcard version selectors; `wildcards = "deny"` would block all intra-workspace path deps. The original anti-pattern protection (unbounded registry version ranges) is fully enforced by `SS-deps-pin-manifest.md` EXACT-pin/caret-pin policy + clippy + code review. No enforcement gap. Rationale added inline to deny.toml sample.
+- NORMATIVE (A3): `[bans] skip` entry added for `getrandom`. `rand =0.8.6` EXACT pin (closed RUSTSEC-2026-0007) forces `getrandom 0.2.x`; `tempfile 3` + `prost-build 0.14` require `getrandom 0.4.x`. Known forced duplicate; resolution requires `rand 0.9` migration (deferred to post-Wave-2 per `SS-deps-pin-manifest.md` rationale).
+- NORMATIVE (A4, 4th ambiguity not originally surfaced): `[bans] skip` entry added for `wit-bindgen`. Cascade of getrandom 0.4 transitive path: `wasip2 v1.0` + `wasip3 v0.4` require incompatible wit-bindgen versions (0.57.1 vs 0.51.0). No direct monocle dependency; purely transitive through tempfile. Resolution coupled to A3 (rand 0.9 migration). Devops correctly included this skip in PR #2; ratified in scope.
+- NORMATIVE: `[licenses]` rationale paragraph updated to remove reference to removed `copyleft = "warn"` field (no longer in 0.19 schema; text now refers to explicit allow-list enforcement instead).
+- NORMATIVE: Canonical SS version table (§Architecture Source Pin-Symmetry Convention) must advance `SS-conventions-anti-patterns.md` self-pin from v1.29.5 → v1.30.0 (SE-17f recursive self-revalidation obligation).
+- NORMATIVE: `phase` frontmatter updated from `pre-phase-1-architecture` → `phase-3` (document modified during Phase 3; phase field tracks modification phase, not original authoring phase).
+- SE-22 v2 sibling-sweep: Consumers of §deny.toml content: S-001 (references §CI Wiring step list — unchanged; step 5 command string unchanged); nfr-catalog.md (no deny.toml content reference); PRD §CI (references step list — unchanged); ARCH-INDEX §Cross-Cutting (version pin only). Zero cascade write-backs required. Canonical SS version table in §Architecture Source Pin-Symmetry Convention requires self-pin update (see NORMATIVE above).
+- SE-16d PASS: 2026-05-20T21:00:00Z > chain high-water 2026-05-18T19:30:00Z (v1.29.5). ARITHMETICALLY TRUE.
+- Source commits: PR #2 commits 287c109 (cargo-deny 0.19 schema) + 53b5d6e (bytes pin cascade update) on branch `s-001-workspace-ci`.
 
 **§Trace v1.29.5** (2026-05-18T19:30:00Z) — R17D F-R118-5 closure: Architecture Source Pin-Symmetry Convention added to §BC-INDEX Conventions:
 - NORMATIVE (F-R118-5 HIGH): Added `### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)` subsection to §BC-INDEX Conventions section. BC-INDEX v1.10 (commit 9a02f5a, R16C) codified this convention in BC-INDEX §Conventions with parenthetical "(add at next architect dispatch)". This is that dispatch.
