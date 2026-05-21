@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.30.0"
+version: "1.30.1"
 status: complete
 producer: architect
 phase: phase-3
@@ -635,12 +635,12 @@ The empty targets list instructs cargo-deny to analyze the dependency graph with
 Use the `EmbarkStudios/cargo-deny-action` composite action, pinned to SHA. Place this step between `cargo test` and `cargo audit` in the CI workflow:
 
 ```yaml
-- name: cargo-deny
-  uses: EmbarkStudios/cargo-deny-action@v2
+- name: cargo deny check
+  uses: EmbarkStudios/cargo-deny-action@<SHA>
   with:
     log-level: warn
-    command: check
-    arguments: --all-features --workspace licenses bans advisories sources
+    command: check all
+    arguments: --workspace --all-features
 ```
 
 Note: pin the `uses:` line to a full commit SHA when creating the workflow file (per the project's action-pinning requirement). The `@v2` reference above is illustrative; the devops-engineer must resolve the SHA at workflow creation time using `gh api repos/EmbarkStudios/cargo-deny-action/git/refs/tags/v2`.
@@ -2418,6 +2418,13 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - SE-22 v2 sibling-sweep: Consumers of §deny.toml content: S-001 (references §CI Wiring step list — unchanged; step 5 command string unchanged); nfr-catalog.md (no deny.toml content reference); PRD §CI (references step list — unchanged); ARCH-INDEX §Cross-Cutting (version pin only). Zero cascade write-backs required. Canonical SS version table in §Architecture Source Pin-Symmetry Convention requires self-pin update (see NORMATIVE above).
 - SE-16d PASS: 2026-05-20T21:00:00Z > chain high-water 2026-05-18T19:30:00Z (v1.29.5). ARITHMETICALLY TRUE.
 - Source commits: PR #2 commits 287c109 (cargo-deny 0.19 schema) + 53b5d6e (bytes pin cascade update) on branch `s-001-workspace-ci`.
+
+**§Trace v1.30.1** (2026-05-20T22:00:00Z) — §deny.toml GitHub Actions YAML example corrected; no semantic content change:
+- NORMATIVE: §GitHub Actions wiring YAML example corrected. Original v1.30.0 form (`command: check` + `arguments: --all-features --workspace licenses bans advisories sources`) was malformed: `--all-features` and `--workspace` are cargo-deny global CLI flags (pre-command), while `licenses bans advisories sources` are positional args to the `check` subcommand (post-command). The `arguments:` input to `cargo-deny-action` is inserted PRE-command per `action.yml` SHA `6c8f9facfa5047ec02d8485b6bf52b587b7777d1`; mixing pre-command flags and post-command positional args in the same slot causes cargo-deny to parse `licenses` as the subcommand name — error: "unrecognized subcommand 'licenses'". Corrected form: `command: check all` (runs all 4 categories: advisories, bans, licenses, sources) + `arguments: --workspace --all-features` (scans all workspace members + feature-gated transitive deps). Final invocation: `cargo-deny --log-level warn --manifest-path ./Cargo.toml --workspace --all-features check all`. Source: PR #2 Round-1 adversary report (`.factory/plans/adversary-pass-PR2-pre-merge.md` MED-1).
+- NORMATIVE: `name:` field corrected from `cargo-deny` → `cargo deny check` to match the corrected action form for clarity.
+- SE-22 v2 sibling-sweep: scanned PRD, ARCH-INDEX, L2-INDEX, BC-INDEX, VP-INDEX, all 17 story files for `--all-features --workspace licenses` or `command: check` + `arguments:.*licenses`. ZERO citations of the malformed YAML form found outside this file. Cascade write-backs: NONE required.
+- SE-16d PASS: 2026-05-20T22:00:00Z > chain high-water 2026-05-20T21:00:00Z (v1.30.0). ARITHMETICALLY TRUE.
+- Source: adversary finding MED-1 from `.factory/plans/adversary-pass-PR2-pre-merge.md`.
 
 **§Trace v1.29.5** (2026-05-18T19:30:00Z) — R17D F-R118-5 closure: Architecture Source Pin-Symmetry Convention added to §BC-INDEX Conventions:
 - NORMATIVE (F-R118-5 HIGH): Added `### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)` subsection to §BC-INDEX Conventions section. BC-INDEX v1.10 (commit 9a02f5a, R16C) codified this convention in BC-INDEX §Conventions with parenthetical "(add at next architect dispatch)". This is that dispatch.
