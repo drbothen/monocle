@@ -13,39 +13,34 @@ use axum::{body::Bytes, extract::State, http::StatusCode, response::IntoResponse
 
 use crate::dtu::{
     endpoints::{paths, AUTH_HEADER_ALIAS},
-    payload::{
-        NotificationPayload, PreToolUsePayload, SessionStartPayload, StopPayload,
-        UserPromptSubmitPayload,
-    },
+    payload::NotificationPayload,
     server::CloneState,
 };
 
-/// Serialize a value to JSON bytes without HTML escaping.
-///
-/// BC-HOOK-008: no HTML escaping of >, <, & characters.
-/// serde_json's default serializer HTML-escapes; we use a raw formatter.
-fn to_json_bytes_no_escape<T: serde::Serialize>(value: &T) -> Vec<u8> {
-    let mut buf = Vec::new();
-    let mut ser = serde_json::Serializer::new(&mut buf);
-    serde::Serialize::serialize(value, &mut ser).unwrap_or_default();
-    buf
-}
-
 /// Fire-and-forget POST to the daemon with auth header per BC-HOOK-004 / BC-HOOK-016.
 ///
-/// Errors are silently absorbed — BC-HOOK-001 fail-open semantics.
+/// Passes raw body bytes to preserve all fields including unknown future extensions.
+/// BC-HOOK-001 fail-open semantics: errors are silently absorbed.
+/// BC-HOOK-016: auth header sent verbatim from lock file.
 fn spawn_daemon_post(state: &CloneState, path: &'static str, body_bytes: Vec<u8>) {
     let url = format!("{}{}", state.endpoint_base, path);
     let client = state.client.clone();
     let token = state.daemon.auth_token.clone();
     tokio::spawn(async move {
-        let _ = client
+        let result = client
             .post(&url)
             .header(AUTH_HEADER_ALIAS, token)
             .header("content-type", "application/json")
             .body(body_bytes)
             .send()
             .await;
+        if let Err(e) = result {
+            tracing::warn!(
+                error = ?e,
+                path = path,
+                "daemon POST failed (fail-open per BC-HOOK-001)"
+            );
+        }
     });
 }
 
@@ -53,8 +48,10 @@ fn spawn_daemon_post(state: &CloneState, path: &'static str, body_bytes: Vec<u8>
 ///
 /// BC-HOOK-006: Unconditional stdin echo — returns 200 with the original payload as JSON body.
 /// BC-HOOK-032: Must return 200 even for malformed JSON (doubly fail-open).
-///   axum's Json extractor rejects malformed JSON; we use raw Bytes extraction
-///   and try to deserialize, falling back to echoing raw bytes on parse failure.
+///   axum's Json extractor rejects malformed JSON; we use raw Bytes extraction.
+///
+/// Extra-field pass-through (CRIT-4): raw bytes are forwarded to daemon WITHOUT
+/// re-serialization through a typed struct. This preserves unknown future fields.
 ///
 /// BC-HOOK-001 (fail-open), BC-HOOK-006 (echo), BC-HOOK-007 (schema),
 /// BC-HOOK-016 (auth header), BC-HOOK-032 (malformed JSON → still 200),
@@ -63,32 +60,17 @@ pub async fn handle_pre_tool_use(
     State(state): State<CloneState>,
     body: Bytes,
 ) -> impl IntoResponse {
-    // BC-HOOK-032: Try to parse as PreToolUsePayload; on failure, echo raw bytes with 200.
-    match serde_json::from_slice::<PreToolUsePayload>(&body) {
-        Ok(payload) => {
-            // Fire-and-forget POST to daemon per BC-HOOK-004.
-            let echo_bytes = to_json_bytes_no_escape(&payload);
-            spawn_daemon_post(&state, paths::PRE_TOOL_USE, echo_bytes.clone());
-            // BC-HOOK-006: echo original payload back as response.
-            (
-                StatusCode::OK,
-                [("content-type", "application/json")],
-                echo_bytes,
-            )
-                .into_response()
-        }
-        Err(_) => {
-            // BC-HOOK-032: malformed JSON → echo raw stdin bytes with 200.
-            // Fire-and-forget with raw bytes (daemon may reject, but we fail-open).
-            spawn_daemon_post(&state, paths::PRE_TOOL_USE, body.to_vec());
-            (
-                StatusCode::OK,
-                [("content-type", "application/json")],
-                body.to_vec(),
-            )
-                .into_response()
-        }
-    }
+    // Forward raw bytes to daemon — no re-serialization (preserves extra fields).
+    // BC-HOOK-032: even if parse fails we still forward raw bytes.
+    spawn_daemon_post(&state, paths::PRE_TOOL_USE, body.to_vec());
+
+    // BC-HOOK-006: echo the original raw payload back as response.
+    (
+        StatusCode::OK,
+        [("content-type", "application/json")],
+        body.to_vec(),
+    )
+        .into_response()
 }
 
 /// Handler for `POST /hooks/notification`.
@@ -98,6 +80,9 @@ pub async fn handle_pre_tool_use(
 /// fail-open per BC-HOOK-003).
 /// BC-HOOK-033: Non-PreToolUse hooks silently drop malformed JSON (return 200).
 ///
+/// Extra-field pass-through (CRIT-4): raw bytes are forwarded to daemon when
+/// the filter passes — only `notification_type` is inspected for routing decisions.
+///
 /// BC-HOOK-003 (fail-closed non-PreToolUse), BC-HOOK-007 (schema),
 /// BC-HOOK-016 (auth header), BC-HOOK-033 (malformed → 200 silent drop),
 /// BC-HOOK-034 (filter), AC-001, AC-002, AC-003
@@ -106,9 +91,15 @@ pub async fn handle_notification(
     body: Bytes,
 ) -> impl IntoResponse {
     // BC-HOOK-033: silently drop malformed JSON — return 200 without forwarding.
+    // We only need notification_type for the filter (BC-HOOK-034).
     let payload: NotificationPayload = match serde_json::from_slice(&body) {
         Ok(p) => p,
-        Err(_) => {
+        Err(e) => {
+            tracing::warn!(
+                error = ?e,
+                endpoint = "notification",
+                "malformed JSON — silently dropping per BC-HOOK-033"
+            );
             return (
                 StatusCode::OK,
                 [("content-type", "application/json")],
@@ -120,22 +111,29 @@ pub async fn handle_notification(
 
     // BC-HOOK-034: case-sensitive filter — only "permission_prompt" is forwarded.
     if payload.notification_type == "permission_prompt" {
-        let forward_bytes = to_json_bytes_no_escape(&payload);
-        spawn_daemon_post(&state, paths::NOTIFICATION, forward_bytes.clone());
+        tracing::debug!(
+            notification_type = %payload.notification_type,
+            "forwarding notification to daemon (BC-HOOK-034 filter pass)"
+        );
+        // Forward raw bytes to daemon — preserves all fields including extras.
+        spawn_daemon_post(&state, paths::NOTIFICATION, body.to_vec());
         return (
             StatusCode::OK,
             [("content-type", "application/json")],
-            forward_bytes,
+            body.to_vec(),
         )
             .into_response();
     }
 
     // Non-permission_prompt: silently drop, return 200 with payload echo.
-    let echo_bytes = to_json_bytes_no_escape(&payload);
+    tracing::debug!(
+        notification_type = %payload.notification_type,
+        "dropping notification (not permission_prompt per BC-HOOK-034)"
+    );
     (
         StatusCode::OK,
         [("content-type", "application/json")],
-        echo_bytes,
+        body.to_vec(),
     )
         .into_response()
 }
@@ -144,26 +142,32 @@ pub async fn handle_notification(
 ///
 /// BC-HOOK-033: malformed JSON → silent drop → 200.
 ///
+/// Extra-field pass-through (CRIT-4): raw bytes are forwarded to daemon
+/// without re-serialization through a typed struct.
+///
 /// BC-HOOK-007 (schema), BC-HOOK-016 (auth header), BC-HOOK-033,
 /// AC-001, AC-002, AC-003
 pub async fn handle_stop(State(state): State<CloneState>, body: Bytes) -> impl IntoResponse {
-    let payload: StopPayload = match serde_json::from_slice(&body) {
-        Ok(p) => p,
-        Err(_) => {
-            return (
-                StatusCode::OK,
-                [("content-type", "application/json")],
-                body.to_vec(),
-            )
-                .into_response();
-        }
-    };
-    let forward_bytes = to_json_bytes_no_escape(&payload);
-    spawn_daemon_post(&state, paths::STOP, forward_bytes.clone());
+    // BC-HOOK-033: validate JSON is parseable (silently drop malformed).
+    // We do a type-check parse but forward the original raw bytes.
+    if serde_json::from_slice::<serde_json::Value>(&body).is_err() {
+        tracing::warn!(
+            endpoint = "stop",
+            "malformed JSON — silently dropping per BC-HOOK-033"
+        );
+        return (
+            StatusCode::OK,
+            [("content-type", "application/json")],
+            body.to_vec(),
+        )
+            .into_response();
+    }
+    // Forward raw bytes — preserves all fields.
+    spawn_daemon_post(&state, paths::STOP, body.to_vec());
     (
         StatusCode::OK,
         [("content-type", "application/json")],
-        forward_bytes,
+        body.to_vec(),
     )
         .into_response()
 }
@@ -172,27 +176,32 @@ pub async fn handle_stop(State(state): State<CloneState>, body: Bytes) -> impl I
 ///
 /// BC-HOOK-007 (schema), BC-HOOK-016 (auth header), BC-HOOK-033,
 /// AC-001, AC-002, AC-003
+///
+/// Extra-field pass-through (CRIT-4): raw bytes are forwarded to daemon
+/// without re-serialization through a typed struct.
 pub async fn handle_session_start(
     State(state): State<CloneState>,
     body: Bytes,
 ) -> impl IntoResponse {
-    let payload: SessionStartPayload = match serde_json::from_slice(&body) {
-        Ok(p) => p,
-        Err(_) => {
-            return (
-                StatusCode::OK,
-                [("content-type", "application/json")],
-                body.to_vec(),
-            )
-                .into_response();
-        }
-    };
-    let forward_bytes = to_json_bytes_no_escape(&payload);
-    spawn_daemon_post(&state, paths::SESSION_START, forward_bytes.clone());
+    // BC-HOOK-033: validate JSON is parseable (silently drop malformed).
+    if serde_json::from_slice::<serde_json::Value>(&body).is_err() {
+        tracing::warn!(
+            endpoint = "session-start",
+            "malformed JSON — silently dropping per BC-HOOK-033"
+        );
+        return (
+            StatusCode::OK,
+            [("content-type", "application/json")],
+            body.to_vec(),
+        )
+            .into_response();
+    }
+    // Forward raw bytes — preserves all fields including future extensions.
+    spawn_daemon_post(&state, paths::SESSION_START, body.to_vec());
     (
         StatusCode::OK,
         [("content-type", "application/json")],
-        forward_bytes,
+        body.to_vec(),
     )
         .into_response()
 }
@@ -201,27 +210,32 @@ pub async fn handle_session_start(
 ///
 /// BC-HOOK-007 (schema), BC-HOOK-016 (auth header), BC-HOOK-033,
 /// AC-001, AC-002, AC-003
+///
+/// Extra-field pass-through (CRIT-4): raw bytes are forwarded to daemon
+/// without re-serialization through a typed struct.
 pub async fn handle_prompt_submit(
     State(state): State<CloneState>,
     body: Bytes,
 ) -> impl IntoResponse {
-    let payload: UserPromptSubmitPayload = match serde_json::from_slice(&body) {
-        Ok(p) => p,
-        Err(_) => {
-            return (
-                StatusCode::OK,
-                [("content-type", "application/json")],
-                body.to_vec(),
-            )
-                .into_response();
-        }
-    };
-    let forward_bytes = to_json_bytes_no_escape(&payload);
-    spawn_daemon_post(&state, paths::PROMPT_SUBMIT, forward_bytes.clone());
+    // BC-HOOK-033: validate JSON is parseable (silently drop malformed).
+    if serde_json::from_slice::<serde_json::Value>(&body).is_err() {
+        tracing::warn!(
+            endpoint = "prompt-submit",
+            "malformed JSON — silently dropping per BC-HOOK-033"
+        );
+        return (
+            StatusCode::OK,
+            [("content-type", "application/json")],
+            body.to_vec(),
+        )
+            .into_response();
+    }
+    // Forward raw bytes — preserves all fields including future extensions.
+    spawn_daemon_post(&state, paths::PROMPT_SUBMIT, body.to_vec());
     (
         StatusCode::OK,
         [("content-type", "application/json")],
-        forward_bytes,
+        body.to_vec(),
     )
         .into_response()
 }
