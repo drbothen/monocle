@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.2"
+version: "2.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -293,6 +293,15 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   - BC-2.03.004 (S-015): `AC-006..AC-008` → `AC-007, AC-008, AC-009` (AC-006 = BC-2.03.003 PC-2; AC-007..AC-009 = BC-2.03.004 PC-1..PC-3)
 - GAP-PHASE2-R12-1 (LOW): `level: L4` frontmatter field added to all 17 story files (S-001 through S-015, S-DTU-001, S-PHASE-3-PREP). Inserted after `document_type: story` line per STORY-INDEX/dep-graph/wave-schedule pattern.
 - SE-22 v2 cascade: STORY-INDEX v1.7→v1.8; holdout-scenarios.md and sprint-state.yaml must update their traces_to_full/traces_to pins.
+
+## §Trace v2.3
+
+**F-PR2-R3-HIGH-1: S-001 v1.7 → v1.8 — main.rs no-op stub form** (2026-05-20):
+- S-001 story spec updated: `println!("monocle-runtime stub")` removed per SS-conventions-anti-patterns.md
+  v1.30.2 §Convention Checklist L503 ban. Canonical no-op stub form with `#![forbid(unsafe_code)]`
+  and `#![deny(missing_docs)]` crate lints adopted. Source: PR #2 commit b7ed1e2 + adversary pass R3 HIGH-1.
+- No story Registry table changes (no status/points/wave/blocks changes from this fix).
+- STORY-INDEX version bumped v2.2 → v2.3.
 
 ## §Trace v2.2
 

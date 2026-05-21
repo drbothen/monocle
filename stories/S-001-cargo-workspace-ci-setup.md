@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-001
 epic_id: EPIC-01
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T00:00:00Z
@@ -34,7 +34,7 @@ inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.19"}
-  - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.29.5"}
+  - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.30.2"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
@@ -177,7 +177,20 @@ Well within 20% of 200k context window. No split required.
     (Phase 1 modules per SS-core-types-and-abi.md v1.2.13 §Module Layout)
   - monocle-runtime: empty lib root
   - monocle-proto: empty lib root
-- [ ] Create `monocle-runtime/src/main.rs` stub: `fn main() { println!("monocle-runtime stub"); }` (replaced by S-002+)
+- [ ] Create `monocle-runtime/src/main.rs` no-op stub (replaced by S-002+):
+  ```rust
+  //! monocle-runtime binary entry. Stub from S-001; daemon wired in S-002.
+  #![forbid(unsafe_code)]
+  #![deny(missing_docs)]
+  fn main() {
+      // Intentional no-op stub. S-002 will wire the daemon entry point.
+  }
+  ```
+  Note: `println!("monocle-runtime stub")` is forbidden per SS-conventions-anti-patterns.md
+  v1.30.2 §Convention Checklist L503 ban on println! in production code paths (enforced by
+  clippy.toml disallowed_methods extension). The stub is a no-op until S-002 wires daemon entry.
+  `#![forbid(unsafe_code)]` and `#![deny(missing_docs)]` crate-level lints are included per
+  SS-conventions production-grade default for all binary crates.
 - [ ] Create `monocle-proto/build.rs` stub: `fn main() {}` (no-op; no `.proto` files in Phase 1 per S-013 which produces them)
 - [ ] Run `cargo build --workspace` locally and confirm zero errors
 
@@ -197,7 +210,7 @@ From `architecture/SS-deps-pin-manifest.md` v1.1.19 L33-74 (Phase 1 Pin Manifest
 - `bytes = "1.11"` must be direct workspace dep to override prost-transitive RUSTSEC-2026-0007
 - Use `[workspace.dependencies]` pattern; member crates use `{ workspace = true }`
 
-From `architecture/SS-conventions-anti-patterns.md` v1.29.5:
+From `architecture/SS-conventions-anti-patterns.md` v1.30.2:
 - `cargo clippy --workspace -- -D warnings` is the enforcement gate
 - `cargo fmt --all` required; CI fails on format divergence
 
@@ -252,13 +265,26 @@ Files to create:
 - `/monocle-core/Cargo.toml` — crate manifest (workspace = true pattern)
 - `/monocle-core/src/lib.rs` — stub: `pub mod engine; pub mod factory; pub mod abi;`
 - `/monocle-runtime/Cargo.toml` — crate manifest (workspace = true pattern)
-- `/monocle-runtime/src/main.rs` — stub: `fn main() { println!("monocle-runtime stub"); }`
+- `/monocle-runtime/src/main.rs` — no-op stub:
+  ```rust
+  //! monocle-runtime binary entry. Stub from S-001; daemon wired in S-002.
+  #![forbid(unsafe_code)]
+  #![deny(missing_docs)]
+  fn main() {
+      // Intentional no-op stub. S-002 will wire the daemon entry point.
+  }
+  ```
+  Note: original v1.7 spec mandated `println!("monocle-runtime stub");` — removed per
+  SS-conventions v1.30.2 ban on println! in production code paths. The stub is a no-op
+  until S-002 wires daemon entry.
 - `/monocle-runtime/src/lib.rs` — stub lib root
 - `/monocle-proto/Cargo.toml` — crate manifest with `prost-build = "=0.14.1"` in `[build-dependencies]`
 - `/monocle-proto/src/lib.rs` — stub
 - `/monocle-proto/build.rs` — no-op stub: `fn main() {}`
 
 ## §Trace
+
+**v1.8** (2026-05-20) — main.rs body spec updated to no-op stub form. Removed `println!("monocle-runtime stub")` per SS-conventions-anti-patterns.md v1.30.2 §Convention Checklist L503 ban (now enforced by clippy.toml disallowed_methods extension). Added `#![forbid(unsafe_code)]` + `#![deny(missing_docs)]` crate lints per HIGH-2 sibling-sweep gap. inputs.SS-conventions-anti-patterns bumped v1.29.5 → v1.30.2. Source: PR #2 commit b7ed1e2 + .factory/plans/adversary-pass-PR2-round-3.md HIGH-1.
 
 **v1.7** (2026-05-20) — Sibling-sweep update for SS-deps-pin-manifest v1.1.19 Option B (bytes pin "1.10" → "1.11" per RUSTSEC-2026-0007 fix-from = 1.11.1; production-grade default). 4 body sites updated: AC-006 bullet, Tasks declare step, Architecture Compliance Rules, Library & Framework Requirements table. inputs.SS-deps-pin-manifest bumped v1.1.18 → v1.1.19; traces_to manifest version updated to v1.1.19.
 
