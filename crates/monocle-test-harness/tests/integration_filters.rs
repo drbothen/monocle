@@ -218,11 +218,19 @@ fn test_BC_HOOK_034_nan_port_lock_file_skip_numeric_wins() {
         "authToken": common::VALID_AUTH_TOKEN,
         "app": "monocle"
     });
-    std::fs::write(
-        &app_lock_path,
-        serde_json::to_string(&app_content).expect("json"),
-    )
-    .expect("write");
+    {
+        use std::io::Write as _;
+        let mut tmp =
+            tempfile::NamedTempFile::new_in(dir.path()).expect("NamedTempFile for app.lock");
+        tmp.write_all(
+            serde_json::to_string(&app_content)
+                .expect("json")
+                .as_bytes(),
+        )
+        .expect("write app lock to tempfile");
+        tmp.persist(&app_lock_path)
+            .expect("persist app.lock atomically");
+    }
 
     // The numeric lock at 7860 should be readable correctly.
     let monocle_path = dir.path().join("7860.lock");

@@ -23,11 +23,21 @@ pub const VALID_AUTH_TOKEN: &str =
 
 /// Write a monocle lock file to `dir/<port>.lock` with the given JSON content.
 /// Returns the path to the written file.
+///
+/// Uses `tempfile::persist` for atomic write per SS-conventions-anti-patterns.md
+/// (`std::fs::write` is disallowed; use `tempfile::persist` instead).
 pub fn write_lock_file(dir: &Path, port: u16, content: &Value) -> PathBuf {
-    let path = dir.join(format!("{port}.lock"));
-    let json = serde_json::to_string_pretty(content).expect("serialize lock JSON");
-    std::fs::write(&path, json).expect("write lock file");
-    path
+    use std::io::Write as _;
+    let target_path = dir.join(format!("{port}.lock"));
+    let json = serde_json::to_string_pretty(content)
+        .unwrap_or_else(|e| panic!("serialize lock JSON: {e}"));
+    let mut tmp = tempfile::NamedTempFile::new_in(dir)
+        .unwrap_or_else(|e| panic!("NamedTempFile in lock dir: {e}"));
+    tmp.write_all(json.as_bytes())
+        .unwrap_or_else(|e| panic!("write lock JSON to tempfile: {e}"));
+    tmp.persist(&target_path)
+        .unwrap_or_else(|e| panic!("persist lock file atomically: {e}"));
+    target_path
 }
 
 /// Build a canonical monocle lock file JSON object.
@@ -212,5 +222,100 @@ pub fn make_test_clone_state() -> monocle_test_harness::dtu::server::CloneState 
             pid: std::process::id(),
         },
         endpoint_base: "http://127.0.0.1:19999".to_string(),
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Mock daemon helpers for fidelity testing
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Result from starting a mock daemon.
+///
+/// The mock daemon captures the first POST body it receives and sends it back
+/// via the channel. Drop `MockDaemon` to shut down the server.
+pub struct MockDaemon {
+    /// Port the mock daemon is listening on.
+    pub port: u16,
+    /// Receives the raw body bytes of the first POST the daemon captures.
+    /// If the clone drops the request (e.g. filter), `None` is received after timeout.
+    pub receiver: tokio::sync::mpsc::Receiver<Vec<u8>>,
+    /// Shutdown signal — send anything to stop the server.
+    pub shutdown_tx: tokio::sync::oneshot::Sender<()>,
+}
+
+/// Start a mock daemon that captures a single POST body per call.
+///
+/// The mock daemon starts an axum HTTP server on 127.0.0.1:0 (random port).
+/// Every POST body it receives is forwarded through the returned channel.
+/// This allows fidelity tests to intercept what the clone actually sends to the daemon.
+///
+/// AC-004, BC-HOOK-007: used by integration_fidelity.rs tests to verify that
+/// the clone forwards the correct payload structure.
+pub async fn start_mock_daemon() -> MockDaemon {
+    use axum::{body::Body, http::Request};
+    use tokio::net::TcpListener;
+
+    // Bind on port 0 → OS assigns a random free port.
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .unwrap_or_else(|e| panic!("bind mock daemon: {e}"));
+    let port = listener
+        .local_addr()
+        .unwrap_or_else(|e| panic!("local addr: {e}"))
+        .port();
+
+    // Channel to deliver captured request bodies to the test.
+    // We use capacity 25 so all 25 fixtures can be processed by the aggregate test.
+    let (body_tx, body_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(25);
+    // Shutdown channel.
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+    // Build a tiny axum router that captures all POST bodies.
+    let router = {
+        let tx = body_tx.clone();
+        axum::Router::new().fallback(axum::routing::any(move |req: Request<Body>| {
+            let tx = tx.clone();
+            async move {
+                let body_bytes = axum::body::to_bytes(req.into_body(), usize::MAX)
+                    .await
+                    .unwrap_or_default();
+                // Send captured body; ignore send error (receiver may be gone).
+                let _ = tx.try_send(body_bytes.to_vec());
+                axum::http::StatusCode::OK
+            }
+        }))
+    };
+
+    tokio::spawn(async move {
+        axum::serve(listener, router)
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.await;
+            })
+            .await
+            .unwrap_or(());
+    });
+
+    MockDaemon {
+        port,
+        receiver: body_rx,
+        shutdown_tx,
+    }
+}
+
+/// Build a `CloneState` pointing to a running mock daemon.
+///
+/// Used by fidelity tests to intercept what the clone actually forwards.
+pub fn make_clone_state_for_mock(
+    daemon_port: u16,
+) -> monocle_test_harness::dtu::server::CloneState {
+    use monocle_test_harness::dtu::{lock_reader::LockFileInfo, server::CloneState};
+    CloneState {
+        client: reqwest::Client::new(),
+        daemon: LockFileInfo {
+            port: daemon_port,
+            auth_token: VALID_AUTH_TOKEN.to_string(),
+            pid: std::process::id(),
+        },
+        endpoint_base: format!("http://127.0.0.1:{daemon_port}"),
     }
 }

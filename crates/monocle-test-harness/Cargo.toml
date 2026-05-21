@@ -49,3 +49,7 @@ tokio = { workspace = true }
 # We use axum's built-in test utilities via tower::ServiceExt.
 tower = { workspace = true }
 http-body-util = { workspace = true }
+# temp_env: safe env var isolation in tests (replaces unsafe std::env::set_var).
+# NOT in workspace.dependencies: per SS-deps-pin-manifest.md §Dev Dependencies, this is
+# monocle-test-harness-only (CR-003 least-privilege principle).
+temp-env = "0.3"
