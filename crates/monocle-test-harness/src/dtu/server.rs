@@ -48,3 +48,14 @@ pub struct CloneState {
 pub async fn start_server(_addr: SocketAddr, _state: CloneState) -> Result<()> {
     todo!("S-DTU-001 implementation pending; AC-005, AC-006")
 }
+
+/// Write the hooks-settings.json file atomically to `runtime_dir` using `tempfile::persist`.
+///
+/// Returns the path to the written file.
+///
+/// BC-HOOK-009 (path + mode), BC-HOOK-010 (single file per runtimeDir),
+/// BC-HOOK-011 (no cleanup), BC-HOOK-039 (atomic write), BC-HOOK-040 (struct not HashMap),
+/// BC-HOOK-041 (filename assertion)
+pub fn write_hooks_settings_file(_runtime_dir: &std::path::Path) -> Result<std::path::PathBuf> {
+    todo!("S-DTU-001 implementation pending; BC-HOOK-009, BC-HOOK-039, BC-HOOK-040, BC-HOOK-041")
+}

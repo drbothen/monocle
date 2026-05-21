@@ -38,4 +38,11 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 [dev-dependencies]
-# No additional dev deps required in stubs; tests use standard library + workspace test infra.
+# tempfile: TempDir for lock file fixtures in integration tests.
+tempfile = { workspace = true }
+# tokio: async test runtime (#[tokio::test]).
+tokio = { workspace = true }
+# tower + http-body-util: axum::serve test helpers for endpoint integration tests.
+# We use axum's built-in test utilities via tower::ServiceExt.
+tower = { workspace = true }
+http-body-util = { workspace = true }
