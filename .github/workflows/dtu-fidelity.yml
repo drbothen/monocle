@@ -1,0 +1,67 @@
+name: DTU Fidelity
+
+on:
+  pull_request:
+    paths:
+      - "crates/monocle-ipc/**"
+      - "crates/monocle-runtime/**"
+      - "crates/monocle-test-harness/**"
+      - "xtask/**"
+      - "tests/fixtures/dtu/**"
+      - "scripts/audit-table.md"
+      - ".github/workflows/dtu-fidelity.yml"
+  schedule:
+    # Runs every Sunday at 00:00 UTC.
+    - cron: "0 0 * * 0"
+  workflow_dispatch: # allow manual re-runs
+
+# Minimum permissions principle.
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Disable incremental compilation in CI — faster cold cache, smaller artifact size.
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  dtu-fidelity:
+    name: DTU fidelity oracle (cargo xtask dtu-fidelity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install Rust toolchain
+        # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        # Swatinem/rust-cache@v2 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        with:
+          shared-key: dtu-fidelity
+
+      - name: Run dtu-fidelity oracle
+        # Exits 0 iff mean fidelity score ≥ 0.95 across the 25-fixture corpus.
+        # Exits 1 if any fixture drops below threshold or the filter invariant
+        # (BC-HOOK-034) is violated.
+        run: |
+          set -euo pipefail
+          cargo run --locked -p xtask -- dtu-fidelity --json | tee dtu-fidelity-scores.json
+
+      - name: Upload per-fixture scores
+        # Preserve scores as a CI artifact for post-merge analysis.
+        # Uploads even when the previous step fails (always: true) so regression
+        # detail is available when the gate is red.
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dtu-fidelity-scores
+          path: dtu-fidelity-scores.json
+          retention-days: 30
