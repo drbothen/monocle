@@ -215,8 +215,8 @@ fn ac_006_workspace_declares_exact_pinned_security_crates() {
 fn ac_006_workspace_declares_bytes_direct_pin() {
     let ws = read_workspace_cargo_toml();
     assert!(
-        ws.contains("bytes = \"1.10\""),
-        "workspace [workspace.dependencies] must declare `bytes = \"1.10\"` to close RUSTSEC-2026-0007; got:\n{}",
+        ws.contains("bytes = \"1.11\""),
+        "workspace [workspace.dependencies] must declare `bytes = \"1.11\"` to close RUSTSEC-2026-0007 (fix-from = 1.11.1 per SS-deps-pin-manifest v1.1.19 Option B); got:\n{}",
         ws
     );
 }
