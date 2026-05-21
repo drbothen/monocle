@@ -168,51 +168,68 @@ pub fn read_lock_file(lock_path: &std::path::Path) -> Result<LockFileInfo, LockR
     })
 }
 
-/// Check whether a PID is currently alive via a safe proc-filesystem or platform check.
+/// Check whether a PID is currently alive via signal(0) or platform equivalent.
 ///
 /// BC-HOOK-017: PID liveness check must not produce false negatives.
 /// Returns `true` if the process exists, `false` if it is definitely dead.
+///
+/// MED-1: Uses `nix::sys::signal::kill(pid, None)` instead of
+/// `Command::new("kill")` shell-out. The nix crate is a direct Rust binding
+/// to the kill(2) syscall — no subprocess spawned, no shell injection surface,
+/// and no false negatives on EPERM (process exists but we lack permission).
 fn is_pid_alive(pid: u32) -> bool {
     // u32::MAX cannot be a valid PID on any real OS; always dead.
     if pid == u32::MAX {
         return false;
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(unix)]
     {
-        // On Linux, /proc/<pid>/status exists iff the process is alive.
-        // This is a read-only proc-filesystem probe — safe, no signal needed.
-        std::path::Path::new(&format!("/proc/{pid}")).exists()
-    }
+        use nix::sys::signal::{kill, Signal};
+        use nix::unistd::Pid;
 
-    #[cfg(target_os = "macos")]
-    {
-        // On macOS, use `proc_pidpath` via sysctl-based /proc equivalent.
-        // The portable safe alternative: attempt to open /proc/<pid>/status
-        // (not available on macOS), so instead spawn `kill -0 <pid>` via Command.
-        // BC-HOOK-017 mandates liveness check; Command::new is safe (no unsafe block).
-        let output = std::process::Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .output();
-        match output {
-            Ok(o) => {
-                o.status.success() || {
-                    // Exit code 1 with "Operation not permitted" means process exists
-                    // but we lack permission — still alive (EPERM case).
-                    let stderr = String::from_utf8_lossy(&o.stderr);
-                    stderr.contains("Operation not permitted")
-                }
-            }
+        // kill(pid, 0) is the POSIX standard "signal 0" probe:
+        //   Ok(())  → process exists (may be zombie, which is still "alive" for our purposes)
+        //   Err(ESRCH) → no such process → dead → return false
+        //   Err(EPERM) → process exists but we lack permission to signal it → alive
+        //   Other errors → conservatively treat as alive (BC-HOOK-001 fail-open)
+        //
+        // Safety: nix::sys::signal::kill does not send a real signal when Signal is None.
+        // Pid::from_raw accepts i32; u32 PIDs > i32::MAX are invalid on all real platforms.
+        let nix_pid = match i32::try_from(pid) {
+            Ok(p) => Pid::from_raw(p),
             Err(_) => {
-                // Could not run kill — conservatively treat as alive.
+                // PID > i32::MAX: impossible on real systems, treat as dead.
+                return false;
+            }
+        };
+        match kill(nix_pid, None::<Signal>) {
+            Ok(()) => true,
+            Err(nix::errno::Errno::ESRCH) => {
+                // ESRCH = "no such process" → definitely dead.
+                tracing::debug!(pid = pid, "PID liveness check: ESRCH (process not found)");
+                false
+            }
+            Err(nix::errno::Errno::EPERM) => {
+                // EPERM = "operation not permitted" → process exists but we lack permission.
+                // BC-HOOK-017 "no false negatives" — return true.
+                tracing::debug!(
+                    pid = pid,
+                    "PID liveness check: EPERM (process exists, no permission)"
+                );
+                true
+            }
+            Err(e) => {
+                // Unexpected error — conservatively treat as alive per BC-HOOK-001 fail-open.
+                tracing::warn!(pid = pid, error = ?e, "PID liveness check: unexpected error, treating as alive");
                 true
             }
         }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(not(unix))]
     {
-        // On other platforms (Windows, FreeBSD, etc.) we cannot cheaply check liveness
+        // On non-Unix platforms (Windows, etc.) we cannot cheaply check liveness
         // without unsafe. Conservatively treat as alive to avoid false stale-lock
         // rejections. BC-HOOK-001 (fail-open) takes precedence over stale-lock detection.
         let _ = pid;

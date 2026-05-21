@@ -42,6 +42,10 @@ anyhow = { workspace = true }
 # tempfile: atomic writes via tempfile::persist for hooks-settings.json per BC-HOOK-039.
 # Also used in dev-dependencies for TempDir in integration tests.
 tempfile = { workspace = true }
+# nix: safe signal(0) for PID liveness check per BC-HOOK-017 (MED-1 fix: replaces
+# Command::new("kill") shell-out with nix::sys::signal::kill).
+# signal feature required for kill(); process feature required for Pid::from_raw().
+nix = { workspace = true, features = ["signal", "process"] }
 
 [dev-dependencies]
 # tempfile: TempDir for lock file fixtures in integration tests (already in [dependencies]).
