@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.1.18"
+version: "1.1.19"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -38,7 +38,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | prost | 0.14 | Protobuf serialization for cross-host wire format | EXACT pin (see Patch-Pinning Policy); Phase 1: zero runtime cost — `monocle-proto` declares `prost` but no Phase 1 wire path uses protobuf encoding; Phase 4: deserializes untrusted federation wire-format on cross-host events; pinned now to lock the audit baseline before Phase 4 activation — version stability is more valuable than patch flexibility for a future untrusted-input deserializer; see RUSTSEC note on transitive `bytes` advisory |
 | serde_json | 1.0.149 | JSON deserialization for hook POST bodies at the network boundary | EXACT pin (see Patch-Pinning Policy — Phase 1 untrusted-input deserializer); pin as `=1.0.149` in Cargo.toml; every patch bump requires security-reviewer agent dispatch because changes to JSON parser internals can affect timing-attack resistance, error-message disclosure, and resource-exhaustion behavior; verified 2026-05-12 against crates.io (max_stable_version) |
 | serde_yaml_ng | 0.10 | YAML config parsing | caret pin; NOT `serde_yaml 0.8` (unmaintained, alias-bomb CVE); NOT `serde_yml` (archived per RUSTSEC-2025-0068) |
-| bytes | 1.10 | Byte buffer utility | caret pin; direct workspace pin to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see RUSTSEC Audit Context); verified 2026-05-12 against crates.io: `bytes = "1.10"` is the patched line resolving RUSTSEC-2026-0007; `cargo tree -d bytes` from a prost 0.14 context confirms only the 1.10.x line is pulled when `bytes` is directly specified in workspace `[dependencies]`; without direct pin, prost 0.14 transitively requests `bytes = "^1.0"` which can resolve to older 1.x lines carrying the advisory |
+| bytes | 1.11 | Byte buffer utility | caret pin; direct workspace pin to avoid prost 0.14 transitive RUSTSEC-2026-0007 (see RUSTSEC Audit Context); advisory fix-from is `1.11.1` exactly (OSV range: `introduced: 1.2.1`, `fixed: 1.11.1`); pin floor `"1.11"` encodes the advisory baseline directly — `^1.11` resolves to `>=1.11.0, <2.0`, which is unambiguously above the vulnerable window; re-verified 2026-05-20 against advisory DB + Cargo.lock (locked at 1.11.1 CLEAN) — see `.factory/plans/research-RUSTSEC-2026-0007-bytes-1.11.1.md`; without direct pin, prost 0.14 transitively requests `bytes = "^1.0"` which can resolve to older 1.x lines carrying the advisory |
 | wasmtime | 44 | WASM runtime for Phase 3 plugin SDK | EXACT pin (see Patch-Pinning Policy); NOT wasmi — see ADR-0001; Phase 3 MSRV implication: Rust 1.92 |
 | rand | 0.8.6 | Cryptographically random auth token generation (`OsRng`) | EXACT pin (see Patch-Pinning Policy — security-sensitive: auth token generation); pin as `=0.8.6` in Cargo.toml; `rand 0.8.x` pinned over `0.9.x` because `rand 0.9` moved `OsRng` to a `getrandom` feature flag and introduced ergonomic regressions; `OsRng` is used directly in `monocle-daemon` start sequence to generate the 32-byte hex auth token (see SS-daemon-lifecycle §Start Sequence step 3); verified 2026-05-12 against crates.io |
 | nucleo | 0.5 | Fuzzy matcher for session/filter panels | caret pin; upstream dormant since 2024-04-02; decision accepted via ADR-0002 with explicit re-eval trigger; TD-001 retired |
@@ -230,9 +230,14 @@ respect when finalizing Cargo.toml:
 - `russh` 0.45..0.59 transitively pulls `rsa = "0.10.0-rc.12"` which is affected by
   RUSTSEC-2023-0071 (timing-attack on RSA private-key operations). Pin to
   `russh = "0.60"` (0.60.2 latest) which moved off the affected rsa pre-release.
-- `prost` 0.14 has a transitive `bytes` advisory RUSTSEC-2026-0007 affecting older
-  `bytes` versions. Pin `bytes = "1.10"` directly in workspace dependencies to force
-  the patched version (verified 2026-05-12 — see bytes row in Phase 1 Pin Manifest).
+- `prost` 0.14 has a transitive `bytes` advisory RUSTSEC-2026-0007 affecting
+  `bytes` versions `1.2.1 <= v < 1.11.1`. Advisory fix-from: `1.11.1` exactly.
+  Pin `bytes = "1.11"` directly in workspace dependencies; caret `^1.11` resolves
+  to `>=1.11.0, <2.0` which is unambiguously above the vulnerable window.
+  Re-verified 2026-05-20 against advisory DB + Cargo.lock (locked 1.11.1 CLEAN);
+  see `.factory/plans/research-RUSTSEC-2026-0007-bytes-1.11.1.md` for full
+  evidence (Option B chosen per Production-Grade Default: declared floor must match
+  advisory fix-from to be auditable at face value — see bytes row in Phase 1 Pin Manifest).
 - `tokio` 1.x has multiple historical advisories on older minors (RUSTSEC-2025-0023,
   RUSTSEC-2023-0005, RUSTSEC-2023-0001, RUSTSEC-2021-0124, RUSTSEC-2021-0072). Pin to
   current 1.52 line to ensure all are remediated.
@@ -792,3 +797,18 @@ v1.1.6 changes (round-22 fix F-R22-3):
   S-014 (EngineModule trait); story-uncertainty-review cycle-001 F-A-01.
 - SE-16b monotonicity check PASS: v1.1.17 → v1.1.18 is a monotonic increment.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-20T00:00:00Z >= chain high-water 2026-05-17T17:00:00Z. PASS.
+
+**§Trace v1.1.19** (2026-05-20T21:30:00Z) — F-004 RUSTSEC-2026-0007 re-verification: bytes pin `"1.10"` → `"1.11"` (Option B, Production-Grade Default):
+- NORMATIVE: `bytes` pin updated from `"1.10"` (caret `^1.10`) to `"1.11"` (caret `^1.11`) in Phase 1 Pin Manifest table and §RUSTSEC Audit Context narrative.
+  Root cause: adversary F-004 (adversary-pass-S-001-post-merge.md @ factory-artifacts 359546e) identified that the original pin narrative claimed `"bytes = "1.10"` is the patched line resolving RUSTSEC-2026-0007" — technically inaccurate because the advisory fix-from is `1.11.1` exactly (OSV range `introduced: 1.2.1`, `fixed: 1.11.1`); the 1.10.x line is itself inside the vulnerable window; caret resolution silently escaped upward to 1.11.1 in Cargo.lock, but the declared floor in the manifest did not match the advisory baseline.
+- NORMATIVE: Decision: Option B per Production-Grade Default (CLAUDE.md §Six Rules Rule 1). A declared floor below the advisory fix-from requires auditors to reason about caret semantics to confirm safety. A declared floor at or above the fix-from (`"1.11"` → `^1.11` = `>=1.11.0`) is auditable at face value. Production-grade correctness requires the manifest to be authoritative without secondary reasoning steps.
+- NORMATIVE: Advisory evidence per research-agent verification 2026-05-20T21:00:00Z:
+  advisory RUSTSEC-2026-0007 (CVE-2026-25541, GHSA-434x-w66g-qw3r); affected `1.2.1 <= v < 1.11.1`; fix-from `1.11.1`; Cargo.lock resolved to `1.11.1` (checksum `1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33`). Full evidence: `.factory/plans/research-RUSTSEC-2026-0007-bytes-1.11.1.md`.
+- NORMATIVE: §RUSTSEC Audit Context bullet for `prost`/`bytes` rewritten: old text cited `"1.10"` as "the patched line"; new text cites `"1.11"` with OSV range, fix-from version, and re-verification timestamp.
+- NORMATIVE: `timestamp` bumped to 2026-05-20T21:30:00Z (>= chain high-water 2026-05-20T00:00:00Z; SE-16d PASS).
+- INFORMATIONAL: Production crate count unchanged (32). Dev-dep count unchanged (2). No new crates added; only floor version of existing `bytes` entry updated.
+- INFORMATIONAL: Cargo.toml bytes pin needs updating from `"1.10"` to `"1.11"` in `[workspace.dependencies]`. This is a code change owned by the in-flight devops-engineer S-001 fix burst (parallel worktree). Coordination note surfaced per task constraints (devops-engineer must pick this up in the S-001 fix PR).
+- SE-22 v2 sibling-sweep performed: S-001, S-013 both cite `bytes = "1.10"` verbatim in story body and table. Per routing table and SE-22 v2 discipline, story body changes are story-writer domain; sibling-sweep §Trace update is deferred to story-writer dispatch. Stories are INFORMATIONAL consumers only (task constraints prohibit story body modification). Deferred coordination noted here per SE-22 v2 consumer-ledger.
+- Refs: adversary F-004 (factory-artifacts 359546e); research note `.factory/plans/research-RUSTSEC-2026-0007-bytes-1.11.1.md`; Production-Grade Default principle (CLAUDE.md); SE-22 v2 consumer-ledger.
+- SE-16b monotonicity check PASS: v1.1.18 → v1.1.19 is a monotonic increment.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-20T21:30:00Z >= chain high-water 2026-05-20T00:00:00Z. PASS.
