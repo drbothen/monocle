@@ -94,7 +94,7 @@ jobs:
         # If Step 1 fails, Steps 2 and 3 are skipped to avoid misleading results.
         run: |
           set -euo pipefail
-          SEMGREP_JSON=$(semgrep --config .semgrep.yml --json semgrep-fixtures/ 2>/dev/null)
+          SEMGREP_JSON=$(semgrep --config .semgrep.yml --json semgrep-fixtures/)
 
           check_count() {
             local rule_id="$1"
@@ -135,7 +135,13 @@ jobs:
 
       - name: Step 3 — Audit-table gap check
         # Runs the Python audit script to verify every #[non_exhaustive] pub struct in
-        # production code appears in SS-engine-module.md §Cross-Crate Constructor Audit Table.
+        # production code appears in the vendored scripts/audit-table.md (synced from
+        # SS-engine-module.md §Cross-Crate Constructor Audit Table).
+        # VENDORING RATIONALE: .factory/ is a git worktree on the factory-artifacts orphan branch;
+        # actions/checkout on develop/PR refs does NOT materialize it. Vendoring avoids a dual-
+        # checkout workaround and makes audit-table changes explicit at PR review time.
+        # SYNC POLICY: whenever SS-engine-module.md audit-table section changes, scripts/audit-table.md
+        # MUST be updated in the same PR. See scripts/audit-table.md header for details.
         run: |
           set -euo pipefail
           SEMGREP_JSON_FILE=$(mktemp /tmp/semgrep-audit-XXXXXXXX.json)
@@ -148,7 +154,7 @@ jobs:
           [ -s "$SEMGREP_JSON_FILE" ] || { echo "::error::Semgrep produced empty output"; exit 1; }
           python3 scripts/check_audit_table.py \
             --semgrep-json "$SEMGREP_JSON_FILE" \
-            --spec-file .factory/specs/architecture/SS-engine-module.md \
+            --spec-file scripts/audit-table.md \
             --rule-id monocle-non-exhaustive-struct-audit-completeness
 
   # Per-platform build + test matrix. Explicit `include:` -- NOT a Cartesian product
