@@ -328,9 +328,14 @@ async fn drive_and_capture(endpoint_path: &'static str, fixture: &Value) -> Opti
 
     // ── Build CloneState pointing at the mock daemon ───────────────────────────
     // Auth token is a placeholder; the mock daemon accepts all requests.
+    // 5-second timeout aligns with BC-HOOK-022 hook timeout budget.
     let auth_token = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap_or_else(|e| panic!("failed to build reqwest client: {e}"));
     let state = CloneState {
-        client: reqwest::Client::new(),
+        client,
         daemon: LockFileInfo {
             port,
             auth_token: auth_token.to_string(),

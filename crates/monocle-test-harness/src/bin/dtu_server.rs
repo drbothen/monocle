@@ -15,6 +15,7 @@
 #![forbid(unsafe_code)]
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use anyhow::{Context as _, Result};
 
@@ -133,8 +134,13 @@ async fn main() -> Result<()> {
     tracing::info!(endpoint_base = %endpoint_base, "daemon endpoint base resolved");
 
     // ── 7. Build CloneState and start server ───────────────────────────────────
+    // 5-second timeout aligns with BC-HOOK-022 hook timeout budget.
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .context("failed to build reqwest client")?;
     let state = monocle_test_harness::dtu::server::CloneState {
-        client: reqwest::Client::new(),
+        client,
         daemon: lock_info,
         endpoint_base,
     };
