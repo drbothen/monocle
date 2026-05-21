@@ -148,10 +148,32 @@ async fn main() -> Result<()> {
     // Derive listen address: 127.0.0.1, port from MONOCLE_DTU_LISTEN_PORT env var
     // with fallback to DTU_DEFAULT_PORT (7860). Allows CI and tests to run multiple
     // DTU instances without port conflicts. AC-006 extensibility.
-    let port = std::env::var("MONOCLE_DTU_LISTEN_PORT")
-        .ok()
-        .and_then(|s| s.parse::<u16>().ok())
-        .unwrap_or(monocle_test_harness::dtu::server::DTU_DEFAULT_PORT);
+    //
+    // Env var semantics (production-grade; R3 MED adversary finding):
+    //   Unset         → fallback to DTU_DEFAULT_PORT (OK)
+    //   Set-and-empty → fallback to DTU_DEFAULT_PORT (tolerated; treated as unset)
+    //   Set-and-garbage ("abc", "99999", "0") → bail! with actionable message
+    //   Set-and-valid u16 in 1..=65535 → use that port
+    let port = match std::env::var("MONOCLE_DTU_LISTEN_PORT") {
+        Ok(s) if s.is_empty() => monocle_test_harness::dtu::server::DTU_DEFAULT_PORT,
+        Ok(s) => {
+            let parsed: u16 = s.parse::<u16>().with_context(|| {
+                format!(
+                    "MONOCLE_DTU_LISTEN_PORT={:?} is not a valid u16 port (expected 1-65535)",
+                    s
+                )
+            })?;
+            if parsed == 0 {
+                anyhow::bail!(
+                    "MONOCLE_DTU_LISTEN_PORT=0 is not a valid listen port (port 0 requests an \
+                     OS-assigned ephemeral port, which is not supported for the DTU server; \
+                     use a fixed port in 1-65535)"
+                );
+            }
+            parsed
+        }
+        Err(_) => monocle_test_harness::dtu::server::DTU_DEFAULT_PORT,
+    };
     let listen_addr: SocketAddr = SocketAddr::from(([127, 0, 0, 1], port));
 
     tracing::info!(addr = %listen_addr, "starting DTU clone server");
