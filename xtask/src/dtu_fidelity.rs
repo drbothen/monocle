@@ -2,8 +2,7 @@
 //!
 //! Runs the DTU fidelity oracle against the 25-fixture corpus at
 //! `tests/fixtures/dtu/claude-code-hook-2x/`. Drives the monocle-test-harness
-//! DTU clone library in-process (no real binary dependency) to avoid the
-//! `todo!()` in the unimplemented `dtu-claude-code-hooks-v1` binary.
+//! DTU clone library in-process via the test-harness library API.
 //!
 //! Exit codes:
 //!   0 — mean fidelity score ≥ 0.95 across all 25 fixtures

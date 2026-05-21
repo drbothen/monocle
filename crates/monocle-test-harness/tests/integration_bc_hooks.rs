@@ -53,7 +53,6 @@ use monocle_test_harness::dtu::{
 ///
 /// test_BC_HOOK_004_hook_requests_fire_and_forget
 /// The clone sends the POST and returns without waiting for a response.
-/// (Red Gate: todo!() fires before any network activity.)
 #[tokio::test]
 #[allow(clippy::expect_used)]
 async fn test_BC_HOOK_004_hook_requests_fire_and_forget() {
@@ -65,7 +64,7 @@ async fn test_BC_HOOK_004_hook_requests_fire_and_forget() {
         "tool_name": "Bash",
         "tool_input": {}
     });
-    // Handler should not block or wait for daemon reply — panics at todo!() (Red Gate).
+    // Handler sends to daemon and returns without blocking on reply (BC-HOOK-004 / BC-HOOK-021).
     let _status = common::post_json(router, paths::PRE_TOOL_USE, &body).await;
 }
 
@@ -76,8 +75,7 @@ async fn test_BC_HOOK_004_hook_requests_fire_and_forget() {
 /// BC-HOOK-006: PreToolUse handler returns 200 with the original payload unchanged.
 ///
 /// test_BC_HOOK_006_pretooluse_unconditional_stdin_echo
-/// The handler must echo the payload back in the response body.
-/// (Red Gate: todo!() fires before echo logic.)
+/// The handler echoes the payload back in the response body (unconditional stdin echo).
 #[tokio::test]
 #[allow(clippy::expect_used)]
 async fn test_BC_HOOK_006_pretooluse_unconditional_stdin_echo() {
@@ -102,8 +100,7 @@ async fn test_BC_HOOK_006_pretooluse_unconditional_stdin_echo() {
         ))
         .expect("build req");
     let response = router.oneshot(req).await.expect("oneshot");
-    // After implementation: response body == original payload.
-    // Red Gate: this panics at todo!() before the body check.
+    // Response body must equal the original payload (BC-HOOK-006).
     let status = response.status();
     assert_eq!(
         status,
@@ -312,7 +309,7 @@ async fn test_BC_HOOK_018_per_hook_fallback_semantics_matrix_pretooluse_fail_ope
         "tool_name": "Bash",
         "tool_input": {}
     });
-    // Red Gate: panics at todo!() — after implementation returns 200.
+    // Fail-open: PreToolUse returns 200 even when daemon is unreachable (BC-HOOK-018).
     let _status = common::post_json(router, paths::PRE_TOOL_USE, &body).await;
 }
 
@@ -330,7 +327,7 @@ async fn test_BC_HOOK_018_per_hook_fallback_semantics_matrix_notification_fail_c
         "tool_input": {},
         "message": "Allow Bash?"
     });
-    // Red Gate: panics at todo!() — after implementation returns 200 (fire-and-forget).
+    // Fail-closed: Notification returns 200 (fire-and-forget; no daemon required) (BC-HOOK-018).
     let _status = common::post_json(router, paths::NOTIFICATION, &body).await;
 }
 
@@ -552,9 +549,8 @@ async fn test_BC_HOOK_032_pretooluse_echo_on_malformed_json() {
         .body(Body::from(malformed.as_slice()))
         .expect("build req");
     let response = router.oneshot(req).await.expect("oneshot");
-    // Implementation must echo stdin even on malformed JSON (BC-HOOK-032).
-    // axum returns 422 for malformed JSON; but the PreToolUse handler with raw body
-    // extraction must return 200. Red Gate: panics at todo!() or 422 from axum.
+    // PreToolUse handler uses raw body extraction and echoes stdin even on malformed JSON (BC-HOOK-032).
+    // axum returns 422 for typed-extract of malformed JSON; raw-body handler must return 200.
     let status = response.status();
     assert_eq!(
         status,

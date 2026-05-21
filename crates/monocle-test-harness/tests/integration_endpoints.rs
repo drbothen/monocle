@@ -39,9 +39,8 @@ async fn test_BC_HOOK_007_endpoint_pre_tool_use_accepts_post() {
         "tool_name": "Bash",
         "tool_input": {"command": "ls"}
     });
-    // Expect panic from todo!() in the handler stub — that IS the Red Gate.
+    // Route must be registered; handler processes the request (BC-HOOK-007 AC-001).
     let status = common::post_json(router, paths::PRE_TOOL_USE, &body).await;
-    // This line is unreachable until implemented; test fails if it returns without panic.
     assert_ne!(status, StatusCode::NOT_FOUND, "route must exist");
 }
 

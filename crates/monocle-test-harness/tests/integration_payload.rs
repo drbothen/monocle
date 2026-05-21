@@ -27,10 +27,7 @@ mod common;
 
 use axum::http::StatusCode;
 use http_body_util::BodyExt;
-use monocle_test_harness::dtu::{
-    endpoints::{build_router, paths},
-    payload::FixtureScore,
-};
+use monocle_test_harness::dtu::endpoints::{build_router, paths};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // AC-003 / BC-HOOK-007: PreToolUse endpoint produces canonical payload fields
@@ -39,7 +36,6 @@ use monocle_test_harness::dtu::{
 /// AC-003: The PreToolUse handler produces a payload containing the 4 monocle-canonical fields.
 ///
 /// This test posts to the handler and verifies the response/echo includes all 4 required fields.
-/// Red Gate: todo!() in handle_pre_tool_use fires before any field is produced.
 ///
 /// test_BC_HOOK_007_pretooluse_handler_produces_canonical_fields
 #[tokio::test]
@@ -62,10 +58,9 @@ async fn test_BC_HOOK_007_pretooluse_handler_produces_canonical_fields() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() in handle_pre_tool_use (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
-    // After implementation: echoed body must contain all 4 canonical fields.
+    // Echoed body must contain all 4 canonical fields (BC-HOOK-007 AC-003).
     let body_bytes = response
         .into_body()
         .collect()
@@ -113,7 +108,6 @@ async fn test_BC_HOOK_007_pretooluse_handler_preserves_field_values() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -133,8 +127,6 @@ async fn test_BC_HOOK_007_pretooluse_handler_preserves_field_values() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// AC-003: The Notification handler for permission_prompt includes all 6 canonical fields.
-///
-/// Red Gate: todo!() in handle_notification fires before the forwarded request is constructed.
 ///
 /// test_BC_HOOK_007_notification_handler_produces_canonical_fields
 #[tokio::test]
@@ -159,10 +151,9 @@ async fn test_BC_HOOK_007_notification_handler_produces_canonical_fields() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() in handle_notification (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
-    // After implementation: verify forwarded payload contains all 6 fields.
+    // Forwarded payload must contain all 6 canonical fields (BC-HOOK-007 AC-003).
     let body_bytes = response
         .into_body()
         .collect()
@@ -207,7 +198,6 @@ async fn test_BC_HOOK_007_stop_handler_produces_canonical_fields() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() in handle_stop (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -252,7 +242,6 @@ async fn test_BC_HOOK_007_stop_handler_accepts_all_stop_reasons() {
             .header("content-type", "application/json")
             .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
             .expect("build req");
-        // Panics at todo!() (Red Gate).
         let response = router.oneshot(req).await.expect("oneshot");
         assert_eq!(
             response.status(),
@@ -285,7 +274,6 @@ async fn test_BC_HOOK_007_session_start_handler_produces_canonical_fields() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() in handle_session_start (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -326,7 +314,6 @@ async fn test_BC_HOOK_007_prompt_submit_handler_produces_canonical_fields() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() in handle_prompt_submit (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -370,7 +357,6 @@ async fn test_BC_HOOK_040_struct_based_stable_serialization() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() (Red Gate).
     let r1 = router1.oneshot(req1).await.expect("oneshot 1");
 
     let state2 = common::make_test_clone_state();
@@ -430,7 +416,6 @@ async fn test_BC_HOOK_008_no_html_escape_in_handler_payload() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -482,7 +467,6 @@ async fn test_BC_HOOK_036_content_length_utf8_byte_count() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&input).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
     assert_eq!(response.status(), StatusCode::OK);
     let body_bytes = response
@@ -491,38 +475,11 @@ async fn test_BC_HOOK_036_content_length_utf8_byte_count() {
         .await
         .expect("collect")
         .to_bytes();
-    // After implementation: the Content-Length sent to daemon must match byte length.
-    // We verify the body is valid UTF-8 with the expected content.
+    // Content-Length must match UTF-8 byte length (BC-HOOK-036).
     let body_str = std::str::from_utf8(&body_bytes).expect("body must be valid UTF-8");
     let parsed: serde_json::Value = serde_json::from_str(body_str).expect("parse body");
     assert_eq!(
         parsed["prompt"], multibyte_prompt,
         "prompt must be preserved as UTF-8"
     );
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// BC-HOOK-007 / AC-004: FixtureScore::compute is gated by todo!()
-// ──────────────────────────────────────────────────────────────────────────────
-
-/// BC-HOOK-007 / AC-004: FixtureScore::compute panics (todo!()) before implementation.
-///
-/// This is the Red Gate test for the scoring function. It must FAIL with a panic
-/// (todo!()) until the implementation is provided.
-#[test]
-fn test_BC_HOOK_007_fixture_score_compute_panics_before_implementation() {
-    let fixture = serde_json::json!({
-        "session_id": "s",
-        "pid": 1,
-        "tool_name": "Bash",
-        "tool_input": {}
-    });
-    let clone_output = fixture.clone();
-    // This MUST panic with todo!() — Red Gate.
-    let _score = FixtureScore::compute(
-        "pre-tool-use/bash-simple.json".to_string(),
-        &fixture,
-        &clone_output,
-    );
-    // Unreachable until implemented.
 }
