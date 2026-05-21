@@ -212,10 +212,16 @@ jobs:
 
       - name: cargo deny check
         # EmbarkStudios/cargo-deny-action@v2 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        # arguments: is pre-command per action.yml input ordering — produces:
+        #   cargo-deny --log-level warn --manifest-path ./Cargo.toml --workspace --all-features check all
+        # --workspace + --all-features required so feature-gated transitive deps (tokio<1.52,
+        # russh<0.60, openssl) are included in ban evaluation. Without them, bans miss deps
+        # that are only reachable under non-default features.
         uses: EmbarkStudios/cargo-deny-action@6c8f9facfa5047ec02d8485b6bf52b587b7777d1
         with:
           log-level: warn
           command: check all
+          arguments: --workspace --all-features
 
   # cargo-audit gate: runs on every PR for fast feedback. The scheduled deep-scan
   # lives in audit.yml (weekly cron).
