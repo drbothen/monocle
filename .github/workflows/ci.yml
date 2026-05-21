@@ -216,7 +216,7 @@ jobs:
         with:
           log-level: warn
           command: check
-          arguments: --all-features --workspace licenses bans advisories sources
+          arguments: licenses bans advisories sources
 
   # cargo-audit gate: runs on every PR for fast feedback. The scheduled deep-scan
   # lives in audit.yml (weekly cron).
