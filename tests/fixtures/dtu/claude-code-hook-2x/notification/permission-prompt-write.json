@@ -1,0 +1,11 @@
+{
+  "session_id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+  "pid": 12351,
+  "notification_type": "permission_prompt",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/etc/hosts",
+    "content": "127.0.0.1 localhost\n"
+  },
+  "message": "Claude wants to write to /etc/hosts"
+}

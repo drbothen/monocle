@@ -1,0 +1,41 @@
+[package]
+name = "monocle-test-harness"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "DTU clone test harness for monocle: synthesizes Claude Code hook POSTs for integration and holdout testing."
+
+[lints]
+workspace = true
+
+# DTU clone binary — compiles to dtu-claude-code-hooks-v1 per S-DTU-001 AC-005
+# and dtu-assessment.md §Packaging Decision (lines 320-343).
+[[bin]]
+name = "dtu-claude-code-hooks-v1"
+path = "src/bin/dtu_server.rs"
+
+[dependencies]
+# axum: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# HTTP server for the 5 DTU clone hook endpoints.
+axum = { workspace = true }
+# tokio: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# Async runtime for the axum server.
+tokio = { workspace = true }
+# serde + serde_json: monocle-canonical payload structs and JSON deserialization.
+serde = { workspace = true }
+serde_json = { workspace = true }
+# reqwest: EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy
+# HTTP client used to POST fixtures to daemon during fidelity tests.
+reqwest = { workspace = true }
+# tracing: structured logging — no println! per clippy.toml disallowed_methods.
+tracing = { workspace = true }
+# thiserror: library error types per CLAUDE.md conventions.
+thiserror = { workspace = true }
+# anyhow: binary error propagation per CLAUDE.md conventions.
+anyhow = { workspace = true }
+
+[dev-dependencies]
+# No additional dev deps required in stubs; tests use standard library + workspace test infra.

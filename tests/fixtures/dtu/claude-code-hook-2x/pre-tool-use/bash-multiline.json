@@ -1,0 +1,8 @@
+{
+  "session_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "pid": 12346,
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "for f in *.rs; do\n  echo \"$f\"\n  cat \"$f\"\ndone"
+  }
+}

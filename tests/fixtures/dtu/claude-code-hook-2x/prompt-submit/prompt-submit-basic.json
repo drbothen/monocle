@@ -1,0 +1,5 @@
+{
+  "session_id": "a9b0c1d2-e3f4-5678-abcd-789012345678",
+  "pid": 12365,
+  "prompt": "Please refactor the main function to use async/await"
+}

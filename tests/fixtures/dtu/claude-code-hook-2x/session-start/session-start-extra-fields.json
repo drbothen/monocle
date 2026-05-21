@@ -1,0 +1,8 @@
+{
+  "session_id": "e7f8a9b0-c1d2-3456-efab-567890123456",
+  "pid": 12363,
+  "cwd": "/Users/user/project",
+  "transcript_path": "/Users/user/.claude/projects/project/transcript.json",
+  "extra_future_field": "should_be_passed_through",
+  "another_future_field": 42
+}

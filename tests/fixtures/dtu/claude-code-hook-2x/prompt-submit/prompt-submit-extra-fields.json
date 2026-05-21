@@ -1,0 +1,6 @@
+{
+  "session_id": "b0c1d2e3-f4a5-6789-bcde-890123456789",
+  "pid": 12368,
+  "prompt": "Please add unit tests for the auth module",
+  "extra_future_field": "should_be_passed_through"
+}

@@ -4,6 +4,7 @@ members = [
     "crates/monocle-core",
     "crates/monocle-runtime",
     "crates/monocle-proto",
+    "crates/monocle-test-harness",
 ]
 
 [workspace.package]

@@ -1,0 +1,11 @@
+{
+  "session_id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+  "pid": 12352,
+  "notification_type": "permission_prompt",
+  "tool_name": "WebFetch",
+  "tool_input": {
+    "url": "https://api.example.com/data",
+    "method": "GET"
+  },
+  "message": "Claude wants to fetch https://api.example.com/data"
+}
