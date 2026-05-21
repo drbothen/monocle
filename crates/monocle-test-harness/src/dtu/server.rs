@@ -148,6 +148,10 @@ const DTU_DEFAULT_PORT: u16 = 7860;
 /// Uses the `req.write(body) + req.end()` pattern per BC-HOOK-037, matching
 /// the gene-source hook.js pattern (any-context-lazyclaude).
 ///
+/// HIGH-2 / BC-HOOK-014 §PC-1: The hook command reads `MONOCLE_DTU_PORT` env var
+/// with fallback to `DTU_DEFAULT_PORT`. This allows tests and CI to override the
+/// DTU server port without rebuilding hooks-settings.json.
+///
 /// BC-HOOK-023: Content-Type and Content-Length headers always set.
 /// BC-HOOK-022: Notification timeout = 2000ms; other hooks = 300ms.
 /// BC-HOOK-037: req.write(body) + req.end() pattern.
@@ -155,9 +159,12 @@ fn hook_node_command(path: &str, timeout_ms: u32) -> String {
     // Node.js inline hook script per gene-source pattern.
     // Uses http.request with explicit Content-Type + Content-Length headers.
     // BC-HOOK-008: no HTML escaping — the => in arrow functions must appear literally.
+    // BC-HOOK-014 §PC-1: port read from process.env.MONOCLE_DTU_PORT with fallback
+    // to the default port. This matches the gene-source pattern of reading env vars
+    // at hook invocation time (not hardcoding the port at hooks-settings.json generation).
     format!(
-        r#"node -e "const b=require('fs').readFileSync('/dev/stdin');const h=require('http');const opts={{hostname:'127.0.0.1',port:{port},path:'{path}',method:'POST',timeout:{timeout},headers:{{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)}}}};const req=h.request(opts,()=>{{}});req.write(b);req.end()""#,
-        port = DTU_DEFAULT_PORT,
+        r#"node -e "const b=require('fs').readFileSync('/dev/stdin');const h=require('http');const port=parseInt(process.env.MONOCLE_DTU_PORT||'{default_port}',10);const opts={{hostname:'127.0.0.1',port:port,path:'{path}',method:'POST',timeout:{timeout},headers:{{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)}}}};const req=h.request(opts,()=>{{}});req.write(b);req.end()""#,
+        default_port = DTU_DEFAULT_PORT,
         path = path,
         timeout = timeout_ms,
     )
@@ -221,17 +228,24 @@ pub fn write_hooks_settings_file(runtime_dir: &std::path::Path) -> Result<std::p
 
     // BC-HOOK-039: atomic write via tempfile::persist — no torn reads possible.
     // Create a NamedTempFile in the same directory to ensure same-filesystem move.
-    let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
-    use std::io::Write;
-    tmp.write_all(&json_bytes)?;
-
-    // BC-HOOK-009: file mode must be 0o600 (owner read/write only).
+    //
+    // HIGH-4 / NFR-009: Set permissions at temp file creation time (not after write)
+    // to eliminate the race window where the file exists with default permissions.
+    // tempfile::Builder::new().permissions() sets mode at open(2) call on Unix.
     #[cfg(unix)]
-    {
+    let tmp = {
         use std::os::unix::fs::PermissionsExt;
         let permissions = std::fs::Permissions::from_mode(0o600);
-        tmp.as_file().set_permissions(permissions)?;
-    }
+        tempfile::Builder::new()
+            .permissions(permissions)
+            .tempfile_in(runtime_dir)?
+    };
+    #[cfg(not(unix))]
+    let tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
+
+    let mut tmp = tmp;
+    use std::io::Write;
+    tmp.write_all(&json_bytes)?;
 
     // BC-HOOK-041: filename must end in hooks-settings.json.
     let target_path = runtime_dir.join("hooks-settings.json");
