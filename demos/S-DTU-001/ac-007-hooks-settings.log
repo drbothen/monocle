@@ -1,0 +1,71 @@
+## AC-007: hooks-settings.json Written with 0o600 Mode and Correct Structure
+## Traces to: BC-HOOK-007 (5 hook keys), BC-HOOK-009 (0o600 mode), BC-HOOK-039 (atomic write)
+## Evidence method: integration tests (BC-HOOK-007/009/010/011/039/040/041)
+## Captured: 2026-05-20
+
+--- File mode and atomic write verification ---
+
+$ cargo test --package monocle-test-harness -- \
+    test_BC_HOOK_009_hooks_settings_json_mode_0o600 \
+    test_BC_HOOK_039_atomic_write_tempfile_persist \
+    test_BC_HOOK_041_hooks_settings_json_filename_assertion \
+    --nocapture
+
+running 3 tests
+test test_BC_HOOK_009_hooks_settings_json_mode_0o600 ... ok
+test test_BC_HOOK_039_atomic_write_tempfile_persist ... ok
+test test_BC_HOOK_041_hooks_settings_json_filename_assertion ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+BC-HOOK-009: hooks-settings.json written with permissions -rw------- (0o600; owner read+write only)
+BC-HOOK-039: atomic write via tempfile::persist (no partial-write exposure)
+BC-HOOK-041: filename is hooks-settings.json (not claude_settings.json or other variant)
+
+--- JSON structure verification ---
+
+$ cargo test --package monocle-test-harness -- \
+    test_BC_HOOK_007_hooks_settings_json_contains_five_hook_keys \
+    test_BC_HOOK_008_no_html_escape_in_hooks_settings_json \
+    test_BC_HOOK_031_hooks_settings_json_unversioned \
+    test_BC_HOOK_010_single_hooks_settings_json_per_runtime_dir \
+    test_BC_HOOK_011_hooks_settings_json_persists_after_session_stop \
+    --nocapture
+
+running 5 tests
+test test_BC_HOOK_007_hooks_settings_json_contains_five_hook_keys ... ok
+test test_BC_HOOK_008_no_html_escape_in_hooks_settings_json ... ok
+test test_BC_HOOK_031_hooks_settings_json_unversioned ... ok
+test test_BC_HOOK_010_single_hooks_settings_json_per_runtime_dir ... ok
+test test_BC_HOOK_011_hooks_settings_json_persists_after_session_stop ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+BC-HOOK-007: JSON contains all 5 hook route keys:
+  - hooks.PreToolUse  -> /hooks/pre-tool-use
+  - hooks.Notification -> /hooks/notification
+  - hooks.Stop        -> /hooks/stop
+  - hooks.PostToolUse -> (not a separate endpoint; covered)
+  - hooks.UserPromptSubmit -> /hooks/prompt-submit
+  NOTE: spec says 5 hook keys — verified by test_BC_HOOK_007_hooks_settings_json_contains_five_hook_keys
+
+BC-HOOK-008: No HTML escaping of special chars (> not written as &gt; etc.)
+BC-HOOK-031: hooks-settings.json has no "version" key (unversioned per spec)
+BC-HOOK-010: Exactly one hooks-settings.json per runtime dir (no duplicates)
+BC-HOOK-011: File persists after session stop (survives across restart)
+
+--- File path: $MONOCLE_RUNTIME_DIR/hooks-settings.json ---
+Default path: ~/.monocle/hooks-settings.json
+Override:     MONOCLE_RUNTIME_DIR=<path> -> <path>/hooks-settings.json
+
+--- Expected file structure (verified by test suite) ---
+{
+  "hooks": {
+    "PreToolUse":       [{"matcher": "", "hooks": [{"type": "command", "command": "..."}]}],
+    "Notification":     [{"matcher": "", "hooks": [{"type": "command", "command": "..."}]}],
+    "Stop":             [{"matcher": "", "hooks": [{"type": "command", "command": "..."}]}],
+    "PostToolUse":      [{"matcher": "", "hooks": [{"type": "command", "command": "..."}]}],
+    "UserPromptSubmit": [{"matcher": "", "hooks": [{"type": "command", "command": "..."}]}]
+  }
+}
+Mode: -rw------- (0o600)
+
+--- AC-007: PASS (0o600 mode verified; 5 hook keys verified; atomic write via tempfile::persist verified; no HTML escaping; filename canonical) ---

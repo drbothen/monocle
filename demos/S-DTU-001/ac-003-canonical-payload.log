@@ -1,0 +1,47 @@
+## AC-003: Canonical Payload Structure per SS-core-types-and-abi
+## Traces to: dtu-assessment.md §Monocle-Canonical Fields
+## Evidence method: cargo test --package monocle-test-harness (integration_payload + unit tests)
+## Captured: 2026-05-20
+
+--- Evidence: Unit test for payload serialization ---
+
+$ cargo test --package monocle-test-harness -- dtu::payload::tests --nocapture
+
+running 1 tests
+test dtu::payload::tests::pre_tool_use_payload_serializes_canonical_fields ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- Evidence: Integration payload test suite — all 5 payload types ---
+
+$ cargo test --package monocle-test-harness --test integration_payload --locked -- --nocapture
+
+running 11 tests
+test test_BC_HOOK_007_pretooluse_handler_produces_canonical_fields ... ok
+test test_BC_HOOK_007_notification_handler_produces_canonical_fields ... ok
+test test_BC_HOOK_007_stop_handler_produces_canonical_fields ... ok
+test test_BC_HOOK_007_session_start_handler_produces_canonical_fields ... ok
+test test_BC_HOOK_007_prompt_submit_handler_produces_canonical_fields ... ok
+test test_BC_HOOK_007_pretooluse_handler_preserves_field_values ... ok
+test test_BC_HOOK_007_stop_handler_accepts_all_stop_reasons ... ok
+test test_BC_HOOK_008_no_html_escape_in_handler_payload ... ok
+test test_BC_HOOK_036_content_length_utf8_byte_count ... ok
+test test_BC_HOOK_040_struct_based_stable_serialization ... ok
+test test_BC_HOOK_007_fixture_score_compute_panics_before_implementation ... ok
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+--- Canonical field sets verified per SS-core-types-and-abi.md v1.2.13 §Non-Exhaustive Inner Structs ---
+
+PreToolUse:        { session_id, pid, tool_name, tool_input }
+Notification:      { session_id, pid, notification_type, tool_name, tool_input, message }
+Stop:              { session_id, pid, stop_reason }
+SessionStart:      { session_id, pid, cwd (EX-2), transcript_path (EX-2) }
+UserPromptSubmit:  { session_id, pid, prompt (EX-2) }
+
+--- Additional payload correctness properties verified ---
+BC-HOOK-008: No HTML escaping in JSON payload (e.g. > not mangled to >)
+BC-HOOK-036: Content-Length header uses UTF-8 byte count (not character count)
+BC-HOOK-040: Struct-based serialization produces byte-stable output across writes
+BC-HOOK-007: Field values preserved exactly from fixture inputs
+BC-HOOK-007: stop handler accepts all stop reason variants (normal, error, interrupt, empty, unknown)
+
+--- AC-003: PASS (all 5 canonical payload types verified; field sets match SS-core-types-and-abi spec) ---

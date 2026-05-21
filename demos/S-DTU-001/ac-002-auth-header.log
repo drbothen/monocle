@@ -1,0 +1,53 @@
+## AC-002: Auth Header X-Claude-Code-Ide-Authorization
+## Traces to: dtu-assessment.md §Auth Header — alias path replication (BC-HOOK-016)
+## Evidence method: cargo test --package monocle-test-harness (integration_auth test suite)
+## Captured: 2026-05-20
+
+--- Evidence: Unit tests for lock_reader auth token extraction and alias header behavior ---
+
+$ cargo test --package monocle-test-harness -- --nocapture 2>&1 | grep -E "BC_HOOK_015|BC_HOOK_016"
+
+test test_BC_HOOK_015_auth_token_from_lock_file_per_invocation ... ok
+test test_BC_HOOK_015_pid_extracted_from_lock_file ... ok
+test test_BC_HOOK_015_port_extracted_from_lock_file ... ok
+test test_BC_HOOK_016_auth_header_x_claude_code_ide_authorization ... ok
+test test_BC_HOOK_016_alias_header_is_not_canonical_monocle_header ... ok
+
+--- Evidence: Integration auth test suite ---
+
+$ cargo test --package monocle-test-harness --test integration_auth --locked -- --nocapture
+
+running 18 tests
+test test_BC_HOOK_005_hook_target_loopback_dynamic_port ... ok
+test test_BC_HOOK_005_endpoint_base_env_var_overrides_port ... ok
+test test_BC_HOOK_005_endpoint_base_falls_back_to_lock_port_when_env_absent ... ok
+test test_BC_HOOK_013_missing_lock_file_returns_no_alive_lock ... ok
+test test_BC_HOOK_014_runtime_dir_falls_back_to_default_when_env_absent ... ok
+test test_BC_HOOK_013_contract_version_mismatch_returns_error ... ok
+test test_BC_HOOK_024_lock_absent_app_field_passes_filter ... ok
+test test_BC_HOOK_013_invalid_port_in_lock_file_returns_error ... ok
+test test_BC_HOOK_035_malformed_json_lock_file_returns_parse_error ... ok
+test test_BC_HOOK_013_stale_pid_returns_stale_lock ... ok
+test test_BC_HOOK_024_lock_app_filter_monocle_only_rejects_vscode_lock ... ok
+test test_BC_HOOK_015_port_extracted_from_lock_file ... ok
+test test_BC_HOOK_015_pid_extracted_from_lock_file ... ok
+test test_BC_HOOK_015_auth_token_from_lock_file_per_invocation ... ok
+test test_BC_HOOK_035_empty_lock_file_returns_parse_error ... ok
+test test_BC_HOOK_014_lock_path_monocle_runtime_dir_env_var ... ok
+test test_BC_HOOK_016_alias_header_is_not_canonical_monocle_header ... ok
+test test_BC_HOOK_016_auth_header_x_claude_code_ide_authorization ... ok
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+--- Key assertions verified by test suite ---
+BC-HOOK-015: authToken field read from lock file JSON per SS-daemon-lifecycle §Start Sequence
+BC-HOOK-016: header name is X-Claude-Code-Ide-Authorization (alias path, not X-Monocle-Authorization)
+BC-HOOK-016: alias_header_is_not_canonical_monocle_header — alias path explicitly exercised
+BC-HOOK-013: missing lock file returns LockReadError::NoAliveLock (error path verified)
+BC-HOOK-013: contract_version mismatch returns error (version guard verified)
+BC-HOOK-013: stale PID (process not alive) returns StaleLock error
+BC-HOOK-035: empty lock file returns parse error
+BC-HOOK-035: malformed JSON lock file returns parse error
+BC-HOOK-024: vscode lock file rejected by app field filter (only monocle locks accepted)
+BC-HOOK-024: lock absent app field passes filter
+
+--- AC-002: PASS (alias header X-Claude-Code-Ide-Authorization confirmed; lock-file token read verified; error paths verified) ---

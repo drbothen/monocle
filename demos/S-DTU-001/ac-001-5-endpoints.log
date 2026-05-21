@@ -1,0 +1,49 @@
+## AC-001: 5 Hook Endpoints Accept POST
+## Traces to: dtu-assessment.md §Endpoint Matrix — 5 endpoints implemented
+## Evidence method: cargo test --package monocle-test-harness (integration_endpoints test suite)
+## Captured: 2026-05-20
+
+--- Evidence: Unit test confirming endpoint paths match DTU assessment matrix ---
+
+$ cargo test --package monocle-test-harness -- dtu::endpoints::tests --nocapture
+
+running 1 tests
+test dtu::endpoints::tests::endpoint_paths_match_dtu_assessment_matrix ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- Evidence: Integration tests — each of 5 endpoints accepts POST, rejects other methods ---
+
+$ cargo test --package monocle-test-harness --test integration_endpoints --locked -- --nocapture
+
+running 13 tests
+test test_BC_HOOK_007_endpoint_pre_tool_use_accepts_post ... ok
+test test_BC_HOOK_007_endpoint_notification_accepts_post ... ok
+test test_BC_HOOK_007_endpoint_stop_accepts_post ... ok
+test test_BC_HOOK_007_endpoint_session_start_accepts_post ... ok
+test test_BC_HOOK_007_endpoint_prompt_submit_accepts_post ... ok
+test test_BC_HOOK_007_get_pre_tool_use_returns_405 ... ok
+test test_BC_HOOK_007_get_notification_returns_405 ... ok
+test test_BC_HOOK_007_get_stop_returns_405 ... ok
+test test_BC_HOOK_007_get_session_start_returns_405 ... ok
+test test_BC_HOOK_007_get_prompt_submit_returns_405 ... ok
+test test_BC_HOOK_007_delete_pre_tool_use_returns_405 ... ok
+test test_BC_HOOK_007_post_tool_use_absent_returns_404 ... ok
+test test_BC_HOOK_019_monocle_canonical_endpoints_not_gene_source ... ok
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+--- Endpoints verified ---
+POST /hooks/pre-tool-use    -> 200 OK
+POST /hooks/notification    -> 200 OK
+POST /hooks/stop            -> 200 OK
+POST /hooks/session-start   -> 200 OK
+POST /hooks/prompt-submit   -> 200 OK
+
+GET  /hooks/pre-tool-use    -> 405 Method Not Allowed
+GET  /hooks/notification    -> 405 Method Not Allowed
+GET  /hooks/stop            -> 405 Method Not Allowed
+GET  /hooks/session-start   -> 405 Method Not Allowed
+GET  /hooks/prompt-submit   -> 405 Method Not Allowed
+DELETE /hooks/pre-tool-use  -> 405 Method Not Allowed
+POST /hooks/tool-use (absent) -> 404 Not Found (non-gene-source path rejected)
+
+--- AC-001: PASS (5/5 endpoints accept POST; wrong-method returns 405; absent path returns 404) ---

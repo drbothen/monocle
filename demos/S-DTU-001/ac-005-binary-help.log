@@ -1,0 +1,60 @@
+## AC-005: Rust Binary Form — cargo build succeeds; --help and --version work
+## Traces to: dtu-assessment.md §Packaging Decision lines 320-343
+## Evidence method: live binary execution
+## Captured: 2026-05-20
+
+--- Build verification ---
+
+$ cargo build --bin dtu-claude-code-hooks-v1
+   Compiling monocle-test-harness v0.1.0 (.../crates/monocle-test-harness)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.52s
+
+Built artifact: target/debug/dtu-claude-code-hooks-v1
+Source layout:  crates/monocle-test-harness/src/dtu/
+Binary target:  crates/monocle-test-harness/src/bin/dtu_server.rs
+
+--- --help output (exit 0) ---
+
+$ ./target/debug/dtu-claude-code-hooks-v1 --help
+
+dtu-claude-code-hooks-v1 — monocle DTU clone for Claude Code hook protocol
+
+USAGE:
+  dtu-claude-code-hooks-v1 [OPTIONS]
+
+OPTIONS:
+  --help, -h      Print this help message and exit
+  --version, -V   Print version and exit
+
+ENVIRONMENT:
+  MONOCLE_NO_AUTOSTART=1      Exit 0 immediately without connecting to daemon
+  MONOCLE_RUNTIME_DIR=<path>  Override default runtime dir (~/.monocle/)
+  MONOCLE_HOOK_ENDPOINT_BASE=<url>  Override daemon endpoint base URL
+  RUST_LOG=<filter>           Tracing log filter (default: info)
+
+Exit code: 0
+
+--- --version output (exit 0) ---
+
+$ ./target/debug/dtu-claude-code-hooks-v1 --version
+
+dtu-claude-code-hooks-v1 0.1.0
+
+Exit code: 0
+
+--- Integration test evidence (BC-HOOK-001) ---
+
+$ cargo test --package monocle-test-harness --test integration_bc_hooks -- test_BC_HOOK_001 --nocapture
+
+running 3 tests
+test test_BC_HOOK_001_binary_compiles_via_cargo_build ... ok
+test test_BC_HOOK_001_binary_entrypoint_no_panic_on_help ... ok
+test test_BC_HOOK_001_binary_monocle_no_autostart_exits_cleanly ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+--- Platform matrix ---
+macOS (darwin 25.3.0):  cargo build --bin dtu-claude-code-hooks-v1 -> Finished (verified above)
+Linux:                  CI matrix validates via .github/workflows/dtu-fidelity.yml (ubuntu-latest runner)
+Docker packaging:       Phase 4 only — NOT a Phase 1 deliverable (per AC-005)
+
+--- AC-005: PASS (binary builds; --help exits 0 with correct usage; --version exits 0 with version string; BC-HOOK-001 tests pass) ---

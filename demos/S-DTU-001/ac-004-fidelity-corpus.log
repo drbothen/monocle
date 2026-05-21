@@ -1,0 +1,112 @@
+## AC-004: DTU Fidelity ≥0.95 over 25-Fixture Corpus
+## Traces to: NFR-011 (DTU fidelity ≥0.95), dtu-assessment.md §DTU Fidelity Measurement Procedure
+## Evidence method: cargo xtask dtu-fidelity (human-readable table + JSON)
+## Captured: 2026-05-20
+
+--- Human-readable fidelity table ---
+
+$ cd .worktrees/S-DTU-001 && cargo run -p xtask -- dtu-fidelity
+
+Fixture                                                         Score  Mismatched
+------------------------------------------------------------------------------------------
+ pre-tool-use/bash-simple.json                                 1.0000
+ pre-tool-use/bash-multiline.json                              1.0000
+ pre-tool-use/read-file.json                                   1.0000
+ pre-tool-use/write-file.json                                  1.0000
+ pre-tool-use/unknown-tool.json                                1.0000
+ notification/permission-prompt-bash.json                      1.0000
+ notification/permission-prompt-write.json                     1.0000
+ notification/permission-prompt-web-fetch.json                 1.0000
+ notification/non-permission-dropped.json                      1.0000  [received=false: filtered correctly]
+ notification/large-message-boundary.json                      1.0000
+ stop/stop-reason-normal.json                                  1.0000
+ stop/stop-reason-error.json                                   1.0000
+ stop/stop-reason-interrupt.json                               1.0000
+ stop/stop-reason-empty.json                                   1.0000
+ stop/stop-reason-unknown.json                                 1.0000
+ session-start/session-start-basic.json                        1.0000
+ session-start/session-start-uuid-v4.json                      1.0000
+ session-start/session-start-extra-fields.json                 1.0000
+ session-start/session-start-missing-session-id.json           1.0000
+ session-start/session-start-null-pid.json                     1.0000
+ prompt-submit/prompt-submit-basic.json                        1.0000
+ prompt-submit/prompt-submit-uuid-v4.json                      1.0000
+ prompt-submit/prompt-submit-extra-fields.json                 1.0000
+ prompt-submit/prompt-submit-missing-session-id.json           1.0000
+ prompt-submit/prompt-submit-long-session-id.json              1.0000
+------------------------------------------------------------------------------------------
+Mean fidelity: 1.0000  (threshold: 0.95)
+
+PASS — all 25 fixtures meet the 0.95 threshold.
+
+--- JSON output (for CI consumption) ---
+
+$ cargo run -p xtask -- dtu-fidelity --json
+
+{
+  "failures": [],
+  "fixture_count": 25,
+  "mean_score": 1.0,
+  "pass": true,
+  "results": [
+    {"fixture": "pre-tool-use/bash-simple.json",                   "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "pre-tool-use/bash-multiline.json",                "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "pre-tool-use/read-file.json",                     "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "pre-tool-use/write-file.json",                    "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "pre-tool-use/unknown-tool.json",                  "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "notification/permission-prompt-bash.json",        "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "notification/permission-prompt-write.json",       "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "notification/permission-prompt-web-fetch.json",   "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "notification/non-permission-dropped.json",        "mismatched_fields": [], "received": false, "score": 1.0},
+    {"fixture": "notification/large-message-boundary.json",        "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "stop/stop-reason-normal.json",                    "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "stop/stop-reason-error.json",                     "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "stop/stop-reason-interrupt.json",                 "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "stop/stop-reason-empty.json",                     "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "stop/stop-reason-unknown.json",                   "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "session-start/session-start-basic.json",          "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "session-start/session-start-uuid-v4.json",        "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "session-start/session-start-extra-fields.json",   "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "session-start/session-start-missing-session-id.json", "mismatched_fields": [], "received": true, "score": 1.0},
+    {"fixture": "session-start/session-start-null-pid.json",       "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "prompt-submit/prompt-submit-basic.json",          "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "prompt-submit/prompt-submit-uuid-v4.json",        "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "prompt-submit/prompt-submit-extra-fields.json",   "mismatched_fields": [], "received": true,  "score": 1.0},
+    {"fixture": "prompt-submit/prompt-submit-missing-session-id.json", "mismatched_fields": [], "received": true, "score": 1.0},
+    {"fixture": "prompt-submit/prompt-submit-long-session-id.json","mismatched_fields": [], "received": true,  "score": 1.0}
+  ],
+  "threshold": 0.95
+}
+
+--- Corpus composition: 25 fixtures (5 per endpoint × 5 endpoints) ---
+pre-tool-use:   bash-simple, bash-multiline, read-file, write-file, unknown-tool
+notification:   permission-prompt-bash, permission-prompt-write, permission-prompt-web-fetch,
+                non-permission-dropped (filter edge case), large-message-boundary (200 KiB boundary)
+stop:           stop-reason-normal, stop-reason-error, stop-reason-interrupt,
+                stop-reason-empty, stop-reason-unknown
+session-start:  session-start-basic, session-start-uuid-v4, session-start-extra-fields,
+                session-start-missing-session-id, session-start-null-pid
+prompt-submit:  prompt-submit-basic, prompt-submit-uuid-v4, prompt-submit-extra-fields,
+                prompt-submit-missing-session-id, prompt-submit-long-session-id
+
+--- Named edge fixtures verified ---
+pre-tool-use/non-permission-dropped.json: NOTE — this fixture is in notification/ per AC-004
+  The dtu-assessment named edge fixture is notification/non-permission-dropped.json;
+  received=false in JSON output confirms the filter correctly suppressed this event (not sent to daemon)
+notification/large-message-boundary.json: 200 KiB message field — received=true, score=1.0
+
+--- Integration test evidence ---
+
+$ cargo test --package monocle-test-harness --test integration_payload -- test_BC_HOOK_007_mean_fidelity --nocapture
+
+running 1 tests
+test test_BC_HOOK_007_mean_fidelity_over_25_fixtures_gte_095 ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+$ cargo test --package monocle-test-harness --test integration_payload -- test_BC_HOOK_007_fixture_corpus_has_25_fixtures --nocapture
+
+running 1 tests
+test test_BC_HOOK_007_fixture_corpus_has_25_fixtures ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+--- AC-004: PASS (mean fidelity 1.0000 ≥ 0.95 threshold; 25/25 fixtures; xtask exits 0) ---

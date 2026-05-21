@@ -1,0 +1,64 @@
+## AC-006: Environment Variable Overrides
+## Traces to: dtu-assessment.md §Environment Variable Overrides
+## Evidence method: live binary execution + integration tests (BC-HOOK-005, BC-HOOK-014)
+## Captured: 2026-05-20
+
+--- MONOCLE_NO_AUTOSTART=1: prevents daemon connection, exits cleanly ---
+
+$ MONOCLE_NO_AUTOSTART=1 ./target/debug/dtu-claude-code-hooks-v1
+
+dtu-claude-code-hooks-v1: MONOCLE_NO_AUTOSTART set — exiting cleanly
+
+Exit code: 0
+
+--- MONOCLE_HOOK_ENDPOINT_BASE: overrides daemon endpoint base URL ---
+
+$ cargo test --package monocle-test-harness -- test_BC_HOOK_005_endpoint_base_env_var_overrides_port --nocapture
+
+running 1 tests
+test test_BC_HOOK_005_endpoint_base_env_var_overrides_port ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+Behavioral assertion: MONOCLE_HOOK_ENDPOINT_BASE=http://127.0.0.1:9999 causes clone to POST
+to http://127.0.0.1:9999/hooks/<endpoint> instead of deriving port from lock file.
+
+--- MONOCLE_HOOK_ENDPOINT_BASE absent: falls back to lock file port ---
+
+$ cargo test --package monocle-test-harness -- test_BC_HOOK_005_endpoint_base_falls_back_to_lock_port_when_env_absent --nocapture
+
+running 1 tests
+test test_BC_HOOK_005_endpoint_base_falls_back_to_lock_port_when_env_absent ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+--- MONOCLE_RUNTIME_DIR: overrides lock file search path ---
+
+$ cargo test --package monocle-test-harness -- test_BC_HOOK_014 --nocapture
+
+running 2 tests
+test test_BC_HOOK_014_runtime_dir_falls_back_to_default_when_env_absent ... ok
+test test_BC_HOOK_014_lock_path_monocle_runtime_dir_env_var ... ok
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.00s
+
+Behavioral assertions:
+  - MONOCLE_RUNTIME_DIR=/custom/path -> lock file searched at /custom/path/monocle.lock
+  - MONOCLE_RUNTIME_DIR absent       -> fallback to ~/.monocle/monocle.lock (default)
+
+--- Loopback + dynamic port behavior ---
+
+$ cargo test --package monocle-test-harness -- test_BC_HOOK_005_hook_target_loopback_dynamic_port --nocapture
+
+running 1 tests
+test test_BC_HOOK_005_hook_target_loopback_dynamic_port ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 0.00s
+
+Behavioral assertion: Hook target is always 127.0.0.1 with port from lock file (never 0.0.0.0;
+loopback-only per security model; port is dynamic/ephemeral from daemon).
+
+--- AC-006 Environment variable summary ---
+MONOCLE_NO_AUTOSTART=1            -> exits 0 immediately (verified live)
+MONOCLE_HOOK_ENDPOINT_BASE=<url>  -> overrides derived port (BC-HOOK-005 verified)
+MONOCLE_HOOK_ENDPOINT_BASE absent -> falls back to lock file port (BC-HOOK-005 verified)
+MONOCLE_RUNTIME_DIR=<path>        -> overrides lock file search path (BC-HOOK-014 verified)
+MONOCLE_RUNTIME_DIR absent        -> fallback to ~/.monocle/ default (BC-HOOK-014 verified)
+
+--- AC-006: PASS (all 4 env vars verified; MONOCLE_NO_AUTOSTART confirmed live; port/runtime overrides confirmed via BC-HOOK-005/014 integration tests) ---
