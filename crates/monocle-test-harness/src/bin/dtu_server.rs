@@ -145,9 +145,14 @@ async fn main() -> Result<()> {
         endpoint_base,
     };
 
-    // Derive listen address: 127.0.0.1 on DTU default port 7860.
-    // Future: accept MONOCLE_DTU_LISTEN_PORT env override (AC-006 extensibility).
-    let listen_addr: SocketAddr = "127.0.0.1:7860".parse().context("invalid listen address")?;
+    // Derive listen address: 127.0.0.1, port from MONOCLE_DTU_LISTEN_PORT env var
+    // with fallback to DTU_DEFAULT_PORT (7860). Allows CI and tests to run multiple
+    // DTU instances without port conflicts. AC-006 extensibility.
+    let port = std::env::var("MONOCLE_DTU_LISTEN_PORT")
+        .ok()
+        .and_then(|s| s.parse::<u16>().ok())
+        .unwrap_or(monocle_test_harness::dtu::server::DTU_DEFAULT_PORT);
+    let listen_addr: SocketAddr = SocketAddr::from(([127, 0, 0, 1], port));
 
     tracing::info!(addr = %listen_addr, "starting DTU clone server");
 

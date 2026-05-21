@@ -141,7 +141,9 @@ struct HookAction {
 /// Role-invariant per BC-HOOK-012: same port used for all sessions.
 /// The actual port is overridden at runtime by MONOCLE_HOOK_ENDPOINT_BASE
 /// per AC-006. For the hooks-settings.json template, we use the default.
-const DTU_DEFAULT_PORT: u16 = 7860;
+/// Exposed `pub` so the `dtu-claude-code-hooks-v1` binary can apply the
+/// MONOCLE_DTU_LISTEN_PORT env override without duplicating the value.
+pub const DTU_DEFAULT_PORT: u16 = 7860;
 
 /// Build the Node.js hook command for a given hook endpoint path.
 ///
