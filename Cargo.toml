@@ -52,7 +52,11 @@ serde_yaml_ng = "0.10"
 prost-build = "=0.14.1"
 
 # --- Dev dependencies (workspace-declared for inheritance into member [dev-dependencies]) ---
-temp-env = { version = "0.3", features = ["async_closure"] }
+# NOTE: temp-env is intentionally NOT declared here. Story AC-006 requires it in
+# monocle-runtime/Cargo.toml [dev-dependencies] only; it is a test-only crate for that
+# crate alone. Workspace-level declaration would make it available to all member crates,
+# violating the least-privilege principle for dev dependencies.
+# See SS-deps-pin-manifest.md v1.1.18 §Dev Dependencies.
 syn = { version = "2", features = ["full"] }
 
 [workspace.lints.clippy]
