@@ -15,6 +15,7 @@
 //! - BC-HOOK-007 (scoring function)
 //! - BC-HOOK-034 (notification filter — non-permission_prompt must NOT be forwarded)
 
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -477,8 +478,12 @@ pub async fn run(args: DtuFidelityArgs) -> Result<()> {
         0.0
     };
 
+    // User-facing CLI output — writeln! to stdout is intentional; not log noise.
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
     if args.json {
         // Emit structured JSON for CI artifact upload.
+        // User-facing CLI output; stdout is the correct sink (not tracing).
         let output = serde_json::json!({
             "fixture_count": count,
             "mean_score": mean,
@@ -487,14 +492,17 @@ pub async fn run(args: DtuFidelityArgs) -> Result<()> {
             "failures": failures,
             "results": results,
         });
-        println!(
+        writeln!(
+            out,
             "{}",
             serde_json::to_string_pretty(&output).context("serialize JSON output")?
-        );
+        )
+        .context("write JSON output")?;
     } else {
-        // Human-readable table.
-        println!("\n{:<60} {:>8}  Mismatched", "Fixture", "Score");
-        println!("{}", "-".repeat(90));
+        // Human-readable table — user-facing CLI output; stdout is the correct sink.
+        writeln!(out, "\n{:<60} {:>8}  Mismatched", "Fixture", "Score")
+            .context("write table header")?;
+        writeln!(out, "{}", "-".repeat(90)).context("write separator")?;
         for r in &results {
             let mismatch = if r.mismatched_fields.is_empty() {
                 String::new()
@@ -502,26 +510,33 @@ pub async fn run(args: DtuFidelityArgs) -> Result<()> {
                 r.mismatched_fields.join(", ")
             };
             let marker = if r.score >= args.threshold { " " } else { "!" };
-            println!("{marker}{:<59} {:>8.4}  {}", r.fixture, r.score, mismatch);
+            writeln!(out, "{marker}{:<59} {:>8.4}  {}", r.fixture, r.score, mismatch)
+                .context("write fixture row")?;
         }
-        println!("{}", "-".repeat(90));
-        println!(
+        writeln!(out, "{}", "-".repeat(90)).context("write separator")?;
+        writeln!(
+            out,
             "Mean fidelity: {mean:.4}  (threshold: {:.2})",
             args.threshold
-        );
+        )
+        .context("write mean fidelity")?;
 
         if failures.is_empty() {
-            println!(
+            writeln!(
+                out,
                 "\nPASS — all {count} fixtures meet the {:.2} threshold.",
                 args.threshold
-            );
+            )
+            .context("write PASS line")?;
         } else {
-            println!(
+            writeln!(
+                out,
                 "\nFAIL — {}/{count} fixtures below threshold:",
                 failures.len()
-            );
+            )
+            .context("write FAIL line")?;
             for f in &failures {
-                println!("  - {f}");
+                writeln!(out, "  - {f}").context("write failure entry")?;
             }
         }
     }
