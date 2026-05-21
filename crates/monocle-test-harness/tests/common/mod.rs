@@ -6,7 +6,12 @@
 //! - Constructing axum test requests
 //!
 //! Source authority: S-DTU-001 v1.2, BC-HOOK-001..BC-HOOK-041
+// Test code: expect/unwrap idiomatic for failure-amplification on assertion failures.
+// These panics are desirable in tests — they halt the test with a clear message rather
+// than propagating through ? which is not available in non-Result test bodies.
 #![allow(dead_code)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 

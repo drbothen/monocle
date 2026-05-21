@@ -1,3 +1,10 @@
+// BC-HOOK-NNN naming preserves traceability to canonical BC IDs (.factory/specs/behavioral-contracts/ss-dtu/).
+// Clippy's non_snake_case lint is suppressed at module level rather than renaming to lower-case
+// identifiers that would lose that traceability signal.
+// Test code: expect/unwrap idiomatic for failure-amplification on assertion failures.
+#![allow(non_snake_case)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::unwrap_used)]
 //! Integration tests covering remaining BC-HOOK-001..BC-HOOK-041 behaviors.
 //!
 //! This file covers behaviors not exercised by the other integration test files:
