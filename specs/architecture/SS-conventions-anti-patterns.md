@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.30.1"
+version: "1.30.2"
 status: complete
 producer: architect
 phase: phase-3
-timestamp: 2026-05-20T21:00:00Z
+timestamp: 2026-05-20T23:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "94934e7"
 traces_to: architecture/ARCH-INDEX.md
@@ -59,6 +59,8 @@ disallowed_methods = [
   { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded mpsc::channel(N) with surfaced drop counter per anti-patterns table" },
   { path = "std::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
   { path = "tokio::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },
+  { path = "std::println", reason = "use tracing::info!() with structured fields; println! forbidden in production code per §Convention Checklist" },
+  { path = "std::eprintln", reason = "use tracing::error!() or tracing::warn!() with structured fields; eprintln! forbidden in production code per §Convention Checklist" },
 ]
 ```
 
@@ -1529,7 +1531,7 @@ When a BC Traceability `Architecture Source` cell or a VP Traceability `Architec
 | SS-engine-module.md | v1.1.20 |
 | SS-core-types-and-abi.md | v1.2.13 |
 | SS-deps-pin-manifest.md | v1.1.17 |
-| SS-conventions-anti-patterns.md | v1.30.0 |
+| SS-conventions-anti-patterns.md | v1.30.2 |
 
 **Enforcement:** The adversary is instructed to flag any BC or VP Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. A pre-commit grep for `SS-[a-z-]+\.md(?!\s+v\d)` patterns within Architecture Source cell contexts provides automated detection.
 
@@ -2425,6 +2427,13 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - SE-22 v2 sibling-sweep: scanned PRD, ARCH-INDEX, L2-INDEX, BC-INDEX, VP-INDEX, all 17 story files for `--all-features --workspace licenses` or `command: check` + `arguments:.*licenses`. ZERO citations of the malformed YAML form found outside this file. Cascade write-backs: NONE required.
 - SE-16d PASS: 2026-05-20T22:00:00Z > chain high-water 2026-05-20T21:00:00Z (v1.30.0). ARITHMETICALLY TRUE.
 - Source: adversary finding MED-1 from `.factory/plans/adversary-pass-PR2-pre-merge.md`.
+
+**§Trace v1.30.2** (2026-05-20T23:00:00Z) — §clippy.toml disallowed_methods extended with `std::println` + `std::eprintln`. Closes process-gap surfaced by adversary Round 2 on PR #2 (S-001 post-merge fix):
+- NORMATIVE (CR-009 process-gap): Added `{ path = "std::println", reason = "..." }` and `{ path = "std::eprintln", reason = "..." }` to the `disallowed_methods` list in the §Clippy `disallowed_methods` Configuration section. The §Convention Checklist banned `println!`/`eprintln!` in production code in prose, but the clippy.toml enforcement block omitted these entries — making the prose rule unenforced at CI. This converts the prose-only rule into a hard CI lint.
+- NORMATIVE: version bump 1.30.1 → 1.30.2 records disallowed_methods extension; no other content changed.
+- SE-22 v2 sibling-sweep: scanned PRD, ARCH-INDEX, VP-INDEX, BC-INDEX, all 17 story files, CLAUDE.md, and all spec files for `disallowed_methods`, `std::println`, `std::eprintln`, `clippy.toml` consumer references. S-001 contains two `println!` occurrences in stub scaffold code (intentional compile stubs — not production code enforcement targets); S-002 contains one prose prohibition already aligned to the new enforcement. CLAUDE.md contains one aligned prose prohibition. Zero cascade write-backs required.
+- SE-16d PASS: 2026-05-20T23:00:00Z > chain high-water 2026-05-20T22:00:00Z (v1.30.1). ARITHMETICALLY TRUE.
+- Source: adversary Round 2 finding CR-009 from `.factory/plans/adversary-pass-PR2-round-2.md`.
 
 **§Trace v1.29.5** (2026-05-18T19:30:00Z) — R17D F-R118-5 closure: Architecture Source Pin-Symmetry Convention added to §BC-INDEX Conventions:
 - NORMATIVE (F-R118-5 HIGH): Added `### Architecture Source Pin-Symmetry Convention (F-R117-3, SE-17e)` subsection to §BC-INDEX Conventions section. BC-INDEX v1.10 (commit 9a02f5a, R16C) codified this convention in BC-INDEX §Conventions with parenthetical "(add at next architect dispatch)". This is that dispatch.
