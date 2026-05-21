@@ -5,8 +5,6 @@
 //! - The binary does not panic on `--help` or equivalent invocation (main() implemented)
 //! - AC-005: binary artifact produced in target/
 //!
-//! Red Gate: `dtu_server.rs` main() contains `todo!()`, so any invocation will panic
-//! with a non-zero exit code. The test that runs the binary will FAIL until main() is implemented.
 //!
 //! Source authority:
 //! - S-DTU-001 AC-005 (`cargo build --bin dtu-claude-code-hooks-v1`)
@@ -67,11 +65,7 @@ fn test_BC_HOOK_001_binary_compiles_via_cargo_build() {
 
 /// AC-005 / AC-006: The `dtu-claude-code-hooks-v1` binary exits 0 on `--help`.
 ///
-/// Verifies that main() is implemented (not todo!()) and the binary accepts
-/// `--help` without panicking.
-///
-/// Red Gate: main() currently contains `todo!()` which causes a panic → non-zero exit.
-/// This test FAILS until main() is properly implemented.
+/// Verifies that main() is implemented and the binary accepts `--help` without panicking.
 ///
 /// test_BC_HOOK_001_binary_entrypoint_no_panic
 #[test]
@@ -111,7 +105,7 @@ fn test_BC_HOOK_001_binary_entrypoint_no_panic_on_help() {
 
     assert!(
         run_output.status.success(),
-        "dtu-claude-code-hooks-v1 --help must exit 0 (main() is todo!() — Red Gate); \
+        "dtu-claude-code-hooks-v1 --help must exit 0 (AC-005); \
          exit={}, stderr={}",
         run_output.status,
         String::from_utf8_lossy(&run_output.stderr)
@@ -122,8 +116,6 @@ fn test_BC_HOOK_001_binary_entrypoint_no_panic_on_help() {
 ///
 /// When MONOCLE_NO_AUTOSTART=1, the binary must exit cleanly (used in CI/test contexts
 /// where no daemon is available).
-///
-/// Red Gate: main() currently panics with todo!() regardless of env vars.
 #[test]
 fn test_BC_HOOK_001_binary_monocle_no_autostart_exits_cleanly() {
     let root = workspace_root();

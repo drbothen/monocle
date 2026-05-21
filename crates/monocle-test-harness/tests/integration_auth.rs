@@ -69,8 +69,8 @@ fn test_BC_HOOK_015_pid_extracted_from_lock_file() {
 
 /// BC-HOOK-016 / AC-002: hook POST to pre-tool-use carries X-Claude-Code-Ide-Authorization header.
 ///
-/// This test exercises the actual handler logic (which contains todo!()) to verify the
-/// header is sent. Fails at Red Gate because handle_pre_tool_use is todo!().
+/// Exercises handle_pre_tool_use to verify AUTH_HEADER_ALIAS is propagated into
+/// the outgoing request to the daemon (BC-HOOK-016 AC-002).
 ///
 /// test_BC_HOOK_016_auth_header_x_claude_code_ide_authorization
 #[tokio::test]
@@ -96,10 +96,8 @@ async fn test_BC_HOOK_016_auth_header_x_claude_code_ide_authorization() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&body).expect("serialize")))
         .expect("build req");
-    // Calling the handler — it panics at todo!() (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
-    // After implementation: verify auth header appears in the forwarded request.
-    // For now this assertion documents the expected behavior.
+    // Verify auth header appears in the forwarded request (BC-HOOK-016 AC-002).
     let status = response.status();
     assert_eq!(status, axum::http::StatusCode::OK);
     let body_bytes = response
@@ -144,9 +142,8 @@ async fn test_BC_HOOK_016_alias_header_is_not_canonical_monocle_header() {
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&body).expect("serialize")))
         .expect("build req");
-    // Panics at todo!() (Red Gate).
     let response = router.oneshot(req).await.expect("oneshot");
-    // After implementation: daemon receives X-Claude-Code-Ide-Authorization, NOT X-Monocle-Authorization.
+    // Daemon must receive X-Claude-Code-Ide-Authorization, NOT X-Monocle-Authorization (BC-HOOK-016).
     let status = response.status();
     assert_eq!(status, axum::http::StatusCode::OK);
 }
@@ -363,8 +360,7 @@ fn test_BC_HOOK_005_endpoint_base_falls_back_to_lock_port_when_env_absent() {
 /// The binary startup must: if MONOCLE_RUNTIME_DIR is set, look for `monocle.lock`
 /// in that directory instead of the default platform runtime dir.
 ///
-/// Red Gate: the binary main() contains todo!() and does not implement MONOCLE_RUNTIME_DIR
-/// path derivation. The test verifies the path derivation contract:
+/// The test verifies the path derivation contract:
 /// `resolve_runtime_dir_from_env` must return the MONOCLE_RUNTIME_DIR value when set.
 ///
 /// test_BC_HOOK_014_lock_path_monocle_runtime_dir_env_var

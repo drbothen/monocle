@@ -4,8 +4,6 @@
 //! - CRIT-2: `xtask` crate exists at `xtask/` and is a workspace member
 //! - CRIT-3: `.github/workflows/dtu-fidelity.yml` exists and has expected structure
 //!
-//! Red Gate: neither the xtask crate nor the workflow file exist yet (both are
-//! devops-engineer deliverables). These tests FAIL until those are created.
 //!
 //! Source authority:
 //! - S-DTU-001 AC-007 (`cargo xtask dtu-fidelity` oracle)
@@ -37,7 +35,6 @@ fn workspace_root() -> std::path::PathBuf {
 /// CRIT-2: `xtask/` directory exists at workspace root.
 ///
 /// The `cargo xtask dtu-fidelity` oracle requires an `xtask` crate.
-/// Red Gate: xtask crate has not yet been created (devops-engineer deliverable).
 ///
 /// test_workspace_xtask_crate_exists
 #[test]
@@ -84,8 +81,6 @@ fn test_workspace_xtask_is_workspace_member() {
 ///
 /// The xtask binary must accept a `dtu-fidelity` subcommand and exit 0
 /// when all fidelity tests pass (or exit non-zero on failure, but must not panic).
-///
-/// Red Gate: xtask crate does not exist yet — `cargo run -p xtask` fails.
 #[test]
 fn test_workspace_xtask_dtu_fidelity_subcommand_exists() {
     let root = workspace_root();
@@ -127,8 +122,6 @@ fn test_workspace_xtask_dtu_fidelity_subcommand_exists() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// CRIT-3: `.github/workflows/dtu-fidelity.yml` exists.
-///
-/// Red Gate: dtu-fidelity.yml has not been created yet (devops-engineer deliverable for S-001).
 ///
 /// test_workflow_dtu_fidelity_yml_exists
 #[test]

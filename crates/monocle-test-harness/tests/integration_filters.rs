@@ -42,8 +42,7 @@ async fn test_BC_HOOK_003_notification_filter_drops_assistant_message() {
     let fixture = common::load_fixture("notification", "non-permission-dropped");
     // notification_type is "assistant_message" — must be dropped by filter.
     assert_eq!(fixture["notification_type"], "assistant_message");
-    // Post it: the handler should filter and return without forwarding to daemon.
-    // Red Gate: handler panics with todo!() before the filter logic executes.
+    // Post it: the handler filters and returns without forwarding to daemon (BC-HOOK-003).
     let status = common::post_json(router, paths::NOTIFICATION, &fixture).await;
     // The filtered case returns 200 (fire-and-forget; dropped silently).
     assert_eq!(
@@ -111,9 +110,8 @@ async fn test_BC_HOOK_003_notification_filter_passes_permission_prompt() {
     // Load a permission_prompt fixture.
     let fixture = common::load_fixture("notification", "permission-prompt-bash");
     assert_eq!(fixture["notification_type"], "permission_prompt");
-    // This should attempt to forward to daemon and panic from todo!() in handler.
+    // permission_prompt is forwarded to daemon; handler returns the daemon's response.
     let status = common::post_json(router, paths::NOTIFICATION, &fixture).await;
-    // After implementation this returns 200; for Red Gate it panics.
     assert_ne!(
         status,
         StatusCode::NOT_FOUND,
@@ -254,7 +252,7 @@ fn test_BC_HOOK_034_nan_port_lock_file_skip_numeric_wins() {
 #[tokio::test]
 #[allow(clippy::expect_used)]
 async fn test_BC_HOOK_001_pretooluse_fail_open_no_server() {
-    // CloneState points to a non-listening port; handler should panic with todo!() (Red Gate).
+    // CloneState points to a non-listening port; handler attempts forward and returns fail-open.
     let state = common::make_test_clone_state();
     let router = build_router(state);
     let body = serde_json::json!({
@@ -263,7 +261,7 @@ async fn test_BC_HOOK_001_pretooluse_fail_open_no_server() {
         "tool_name": "Bash",
         "tool_input": {"command": "ls"}
     });
-    // Red Gate: this panics at todo!() in handle_pre_tool_use.
+    // Handler forwards to daemon; fail-open semantics return 200 even with no listener (BC-HOOK-001).
     let _status = common::post_json(router, paths::PRE_TOOL_USE, &body).await;
 }
 
@@ -279,6 +277,6 @@ async fn test_BC_HOOK_002_non_pretooluse_fail_closed_no_server() {
         "pid": 12345,
         "stop_reason": "end_turn"
     });
-    // Red Gate: panics at todo!() in handle_stop.
+    // Stop handler is fail-closed: returns 200 without forwarding (BC-HOOK-002).
     let _status = common::post_json(router, paths::STOP, &body).await;
 }

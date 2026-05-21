@@ -213,10 +213,10 @@ pub async fn put_json(router: Router, path: &str, body: &Value) -> StatusCode {
 }
 
 /// Build a `CloneState` using a fake daemon address (no real server needed for
-/// router-level tests — handlers will todo!() before any network call).
+/// router-level tests).
 ///
-/// The port is a non-listening loopback port; tests exercise the *routing*
-/// layer and expect todo!() panics from the handler stubs (Red Gate).
+/// The port is a non-listening loopback port (19999); tests exercise routing and
+/// handler behavior without a live daemon.
 pub fn make_test_clone_state() -> monocle_test_harness::dtu::server::CloneState {
     use monocle_test_harness::dtu::{lock_reader::LockFileInfo, server::CloneState};
     CloneState {
