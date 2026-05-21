@@ -3,7 +3,7 @@ name: DTU Fidelity
 on:
   pull_request:
     paths:
-      - "crates/monocle-ipc/**"
+      # Note: crates/monocle-ipc is reserved for Phase 1+; add "crates/monocle-ipc/**" here when it lands.
       - "crates/monocle-runtime/**"
       - "crates/monocle-test-harness/**"
       - "xtask/**"
