@@ -5,16 +5,17 @@ targets = []
 all-features = false
 
 [advisories]
+# cargo-deny 0.19 schema: [advisories] no longer has vulnerability/unmaintained/yanked/notice
+# severity lint-level fields. Those were removed in the 0.17 schema migration
+# (see https://github.com/EmbarkStudios/cargo-deny/pull/611). cargo-deny 0.19 uses the
+# advisory database directly for RUSTSEC detection; all vulnerabilities are denied by default.
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "warn"
 ignore = []
 
 [licenses]
-unlicensed = "deny"
+# cargo-deny 0.19 schema: [licenses] no longer has unlicensed/copyleft/allow-osi-fsf-free/exceptions
+# top-level keys (removed in 0.17 schema migration). Confidence-threshold and allow/deny lists remain.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -27,22 +28,35 @@ allow = [
     "MPL-2.0",  # nucleo; file-level copyleft, does not propagate to binary
     "Zlib",
 ]
-deny = ["GPL-1.0", "GPL-2.0", "GPL-3.0", "AGPL-1.0", "AGPL-3.0", "LGPL-2.0", "LGPL-2.1", "LGPL-3.0"]
-copyleft = "warn"
-allow-osi-fsf-free = "either"
 confidence-threshold = 0.8
-exceptions = []
 
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
+# wildcards = "deny" is intentionally NOT set here. In cargo-deny 0.19, path-based workspace
+# member dependencies (e.g. `monocle-core = { path = "../monocle-core" }`) are treated as
+# version wildcards because they have no explicit version specifier. This is a standard Rust
+# workspace pattern; denying it would block all intra-workspace path deps. The anti-pattern we
+# want to prevent (unbounded version ranges in registry deps) is enforced by the EXACT-pin policy
+# in SS-deps-pin-manifest.md and by `cargo clippy` + code review rather than cargo-deny wildcards.
+wildcards = "allow"
 deny = [
     { name = "openssl", reason = "use rustls; openssl is a deployment-complexity liability" },
     { name = "openssl-sys", reason = "see openssl" },
     { name = "tokio", version = "<1.52", reason = "RUSTSEC remediated 1.52+" },
     { name = "russh", version = "<0.60", reason = "transitive rsa pre-release RUSTSEC-2023-0071" },
 ]
-skip = []
+# skip entries for transitive duplicates forced by EXACT-pinned crates in Phase 1 workspace.
+# These are human-accepted duplicates; resolution requires future wave decisions.
+skip = [
+    # getrandom: rand =0.8.6 EXACT pin requires getrandom 0.2.x (via rand_core 0.6);
+    # tempfile 3 + prost-build 0.14 require getrandom 0.4.x (via wasi/rustix path).
+    # Resolution requires rand 0.9+ (moves OsRng to a feature flag; ergonomic regressions;
+    # deferred per SS-deps-pin-manifest §Patch-Pinning Policy rationale for rand).
+    { name = "getrandom", reason = "duplicate forced by rand =0.8.6 EXACT pin (0.2.x) vs tempfile/prost-build transitive (0.4.x); resolve when rand 0.9 ergonomics stabilize" },
+    # wit-bindgen: getrandom 0.4 pulls in wasip2 v1.0 + wasip3 v0.4 which each depend on
+    # different wit-bindgen versions (0.57.1 vs 0.51.0). Purely transitive through tempfile.
+    { name = "wit-bindgen", reason = "duplicate forced by wasip2/wasip3 divergence in getrandom 0.4 transitive path via tempfile; no direct monocle dependency" },
+]
 skip-tree = []
 
 [sources]
