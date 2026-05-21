@@ -43,8 +43,6 @@ mod common;
 use monocle_test_harness::dtu::{
     endpoints::{build_router, paths},
     lock_reader::read_lock_file,
-    payload::{NotificationPayload, PreToolUsePayload},
-    server::CloneState,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────

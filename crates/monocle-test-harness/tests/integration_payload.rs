@@ -29,10 +29,7 @@ use axum::http::StatusCode;
 use http_body_util::BodyExt;
 use monocle_test_harness::dtu::{
     endpoints::{build_router, paths},
-    payload::{
-        FixtureScore, NotificationPayload, PreToolUsePayload, SessionStartPayload, StopPayload,
-        UserPromptSubmitPayload,
-    },
+    payload::FixtureScore,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
