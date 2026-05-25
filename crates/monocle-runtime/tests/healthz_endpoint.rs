@@ -58,20 +58,14 @@ use tower::ServiceExt;
 
 /// Construct a `DaemonState` in `Running` mode with a fresh start time.
 fn make_running_state() -> Arc<DaemonState> {
-    Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::Running),
-        start_time: Instant::now(),
-        hook_receiver_status: None,
-    })
+    Arc::new(DaemonState::new())
 }
 
 /// Construct a `DaemonState` in `ShuttingDown` mode.
 fn make_shutting_down_state() -> Arc<DaemonState> {
-    Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::ShuttingDown),
-        start_time: Instant::now(),
-        hook_receiver_status: None,
-    })
+    let state = DaemonState::new();
+    *state.mode.write().unwrap() = AppMode::ShuttingDown;
+    Arc::new(state)
 }
 
 /// Issue a `GET /healthz` request through the unauthenticated router and return
@@ -342,11 +336,9 @@ async fn test_BC_2_01_001_hook_receiver_abnormal_exit_returns_503() {
         .expect("send error on watch channel");
 
     // DaemonState is in Running mode but the hook-receiver channel carries an error.
-    let state = Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::Running),
-        start_time: Instant::now(),
-        hook_receiver_status: Some(rx),
-    });
+    let mut inner = DaemonState::new();
+    inner.hook_receiver_status = Some(rx);
+    let state = Arc::new(inner);
 
     let (status, body) = get_healthz_json(state, &[]).await;
 
@@ -384,11 +376,9 @@ async fn test_BC_2_01_001_hook_receiver_healthy_returns_200() {
     let (_tx, rx) = tokio::sync::watch::channel(Ok::<(), String>(()));
 
     // DaemonState is in Running mode and the hook-receiver channel carries Ok.
-    let state = Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::Running),
-        start_time: Instant::now(),
-        hook_receiver_status: Some(rx),
-    });
+    let mut inner = DaemonState::new();
+    inner.hook_receiver_status = Some(rx);
+    let state = Arc::new(inner);
 
     let (status, body) = get_healthz_json(state, &[]).await;
 
@@ -444,11 +434,10 @@ async fn test_BC_2_01_001_shutting_down_with_failed_hook_receiver_returns_503() 
         .expect("send error on watch channel");
 
     // DaemonState is in ShuttingDown mode AND the hook-receiver channel carries an error.
-    let state = Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::ShuttingDown),
-        start_time: Instant::now(),
-        hook_receiver_status: Some(rx),
-    });
+    let mut inner = DaemonState::new();
+    *inner.mode.write().unwrap() = AppMode::ShuttingDown;
+    inner.hook_receiver_status = Some(rx);
+    let state = Arc::new(inner);
 
     let app = unauthenticated_router(state);
     let req = Request::builder()
@@ -824,14 +813,8 @@ fn test_BC_2_01_001_invariant_semver_regex_shape() {
 /// an equivalent poison-tolerant read to uphold this contract.
 #[tokio::test]
 async fn test_BC_2_01_001_poisoned_lock_returns_503() {
-    use std::time::Instant;
-
     // Build a DaemonState whose mode lock we will poison.
-    let state = Arc::new(DaemonState {
-        mode: std::sync::RwLock::new(AppMode::Running),
-        start_time: Instant::now(),
-        hook_receiver_status: None,
-    });
+    let state = Arc::new(DaemonState::new());
 
     // Poison the lock by spawning an OS thread that panics while holding the write guard.
     let state_clone = Arc::clone(&state);
