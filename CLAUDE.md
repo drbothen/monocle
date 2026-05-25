@@ -18,32 +18,34 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 ## Current Pipeline State
 
-Read `.factory/STATE.md` for live state. As of last commit on this branch:
-- Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-APPROVED-TO-EXECUTE`** — D-160 declared 2026-05-20T20:00:00Z. Story-uncertainty-review cycle-001 complete: 17 stories scanned by fresh-context spec-reviewer in 4 batches; 0 PASS / 8 PASS_WITH_OBSERVATIONS / 9 NEEDS_REVISION; 13 CRIT + ~30 HIGH + ~95 MED/LOW findings catalogued; ~135 findings closed across 12 commits on `factory-artifacts` (bc158ce REVERTED via 19aa5f1; productive chain 0210883 → 8ab665e → e485814 → e2fc2a3 → 6ac09b1 → 08e0347 → f23ce55 → 0c0d3d2 → 5f5f6a2 → 07daefb → 98bcf1d → D-160 finalization). Stage 4 verification spot-check (S-001, S-013, S-014) confirmed PASS or PASS_WITH_OBSERVATIONS — all CRIT defects closed; no regression. Capability proposed upstream as drbothen/vsdd-factory#150. User explicit Phase 3 approval received 2026-05-20.
-- Canonical artifact versions (post-uncertainty-review): SS-deps-pin-manifest `v1.1.18` (architect added syn 2.0 dev-dep in 8ab665e); error-taxonomy `v1.6` (PO claude.rs → claude_code.rs path fix in 5f5f6a2); 17 stories at post-fix versions: S-001 `v1.6`, S-002 `v1.1`, S-003 `v1.7`, S-004 `v1.1`, S-005 `v1.6`, S-006 `v1.5`, S-007 `v1.2`, S-008 `v1.4`, S-009 `v1.8`, S-010 `v1.2`, S-011 `v1.2`, S-012 `v1.5`, S-013 `v1.1`, S-014 `v1.4`, S-015 `v1.6`, S-DTU-001 `v1.1`, S-PHASE-3-PREP `v1.1`; dep-graph `v2.3`; STORY-INDEX `v2.2`; wave-schedule `v1.5`; sprint-state `v1.5`. Other canonical versions unchanged from D-159: PRD `v1.26.15`; BC-INDEX `v1.13`; VP-INDEX `v1.16`; ARCH-INDEX `v1.0.11`; L2-INDEX `v1.0.11`; SS-conventions-anti-patterns `v1.29.5`; SS-daemon-lifecycle `v1.0.33`; SS-engine-module `v1.1.20`; SS-core-types-and-abi `v1.2.13`; SS-forward-compatibility `v1.2.19`; SS-permissions-phase1 `v1.5.2`; ADRs 0001-0005 active; DTU assessment `v1.7.5`; nfr-catalog `v1.7`; interface-definitions `v1.5`; test-vectors `v1.3`; holdout-scenarios `v1.4`.
-- Notable Phase 3.A/B fix outcomes: (a) **S-003** OWNS `monocle-runtime/src/auth.rs` creation; **S-009** EXTENDS with dual-accept alias-path branch + 5 hook routes per ADR-0005; **S-005** depends_on adds S-003 + S-006 (auth + lock-release handoff); (b) **S-013** pivoted from hand-written struct to prost-build codegen path with canonical 4-field envelope (`schema_version=1`, `session_id=2`, `timestamp_micros=3`, `pid=4`) + `oneof event` carrying 5 inner messages (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`, `StopEvent`); (c) **S-014** SessionStatus corrected to canonical 5 variants (`Active, Idle, WaitingOnPermission, Stopping, Stopped`), HookResponse field set realigned to `decision/redirect_url/diagnostic` with `new`/`with_diagnostic`/`with_redirect` methods, ghost `DeferUntil` dropped; (d) **S-015** `XDG_HOME` → `HOMEDRIVE` corrected (`XDG_HOME` is not a real env var; would have silently uncovered `HomeUnresolvable` test on Windows); `detect()` pseudocode `?-on-bool` replaced with canonical `and_then/.map/.unwrap_or(false)` (won't compile otherwise); (e) **S-001** added `prost = "=0.14.1"` EXACT-pin + `bytes = "1.10"` direct workspace pin to close RUSTSEC-2026-0007 prost-transitive exposure; CI matrix rewritten with `include:` blocks pairing runners ↔ targets; (f) **S-008** fabricated "80%-capacity-OR-5-second-timer" flush trigger (not in any architecture document) DELETED; aligned to canonical post-batch `tempfile::persist` per SS-daemon-lifecycle L694; ring filename canonicalized `monocle-events.jsonl` (was `monocle-ring.jsonl`); rotation cascade `.1...5` (was `.bak`); (g) **S-DTU-001** Docker layout rejected (dtu-assessment §Packaging Decision mandates Rust binary); canonicalized to `crates/monocle-test-harness/src/dtu/`; `cargo xtask dtu-fidelity` oracle established; 25-fixture corpus minimum bound.
-- Outstanding non-blocking follow-ups (Task harness):
-  - **#28**: confirm `prost = "=0.14.1"` and `reqwest = "=0.13.0"` exact-patch digits against crates.io (architect; story-writer used placeholders in Batch 1 — Cargo will refresh on first build).
-  - **#34**: BC-2.03.001 v1.0.5 PC-3 still enumerates `DeferUntil` in supporting types list — Stage-4 verification of S-014 surfaced this; story v1.4 + SS-engine-module v1.1.20 win per authority hierarchy; PO mechanical fix to BC.
-  - **S-008 AC-005 flush-failure semantics** clarification under canonical post-batch model (PO; surfaced by Batch 4 story-writer).
-  - **S-008 tokio dep necessity** verification (test-writer during S-008 implementation).
-  - **dep-graph §Trace v2.1/v2.0 ordering** single-line reorder (cosmetic; surfaced by Batch 3 story-writer).
-  - **STATE.md compaction** — 1065+ lines vs <200 target; invoke `/vsdd-factory:compact-state` at next pipeline gate (deferred maintenance).
-- 39 codified disciplines in force (SE-22 sibling-sweep D-142; SE-23 SM defensive-sweep prohibition D-146; SE-22 v2 consumer-ledger D-149).
-- Residual catalog: `.factory/tech-debt-register.md` TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE + TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT both remain ACTIVE (deferred to spec-kit-mcp rc.19+).
-- **Next: Phase 3 TDD Implementation APPROVED TO EXECUTE.** Immediate dispatch: Wave 1 in parallel — `/vsdd-factory:deliver-story S-DTU-001` (3 pts; Claude Code Hook Protocol DTU clone) + `/vsdd-factory:deliver-story S-001` (5 pts; Cargo workspace + CI/DevOps setup; creates `Cargo.toml`, `crates/`, `.github/workflows/`). Both Wave 1; both verified clean (Stage 4 spot-check + Batch 1 fix application); zero inbound product-story deps. After Wave 1 PRs merge + wave-gate green: Wave 2 (9 stories). After Wave 2: Wave 3 (5 stories). S-PHASE-3-PREP remains BLOCKED on upstream `vsdd-factory:spec-kit-mcp` rc.19+; does NOT block Waves 1-3.
+Read `.factory/STATE.md` (v5.94) for live state. As of D-165 (2026-05-24):
+- **Phase: `phase-3-WAVE-2-APPROVED-TO-EXECUTE`** — D-165 user authorization 2026-05-24. Wave 1 FULLY CLOSED (D-164).
+- **Wave 1 SHIPPED** — 2 stories delivered via 4 PRs on `develop` @ `681c179`:
+  - PR #1 `a6f119c` — S-001 Cargo workspace + CI/DevOps setup
+  - PR #2 `184f7d4` — S-001 hardening (cargo-deny + semgrep + Dependabot ignore + action SHAs + audit-table drift detection + bytes pin tightening)
+  - PR #3 `cfeb1346` — S-DTU-001 Claude Code Hook Protocol DTU Clone (41 BC-HOOK contracts, xtask crate, dtu-fidelity workflow, 135 tests)
+  - PR #4 `681c179` — Wave-1 closeout (stale Red Gate comment sweep + false-green test delete + workflow path filter)
+- **Wave 2 NEXT** — 9 stories, 41 points: S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014. All `status: ready`. Partial-parallel within wave per wave-schedule.md.
+- Canonical artifact versions (post-Wave-1): SS-deps-pin-manifest `v1.1.19`; SS-conventions-anti-patterns `v1.30.2`; BC-INDEX `v1.14` (63 BCs: 22 product + 41 BC-HOOK); STORY-INDEX `v2.5`; sprint-state `v1.7`; S-001 `v1.8`; S-DTU-001 `v1.3`. Other versions unchanged: PRD `v1.26.15`; VP-INDEX `v1.16`; ARCH-INDEX `v1.0.11`; L2-INDEX `v1.0.11`; SS-daemon-lifecycle `v1.0.33`; SS-engine-module `v1.1.20`; SS-core-types-and-abi `v1.2.13`; SS-forward-compatibility `v1.2.19`; SS-permissions-phase1 `v1.5.2`; ADRs 0001-0005 active; DTU assessment `v1.7.5`.
+- **Workspace is LIVE** — 5 crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, xtask. 134 tests passing. 9 CI checks (preflight, semgrep, audit-table drift, 3 build/test matrices, cargo-deny, cargo-audit, dtu-fidelity oracle).
+- Outstanding non-blocking items (encoded in STATE.md durable_task_register): #28 reqwest pin architect adjudication (when S-009); #34 BC-2.03.001 DeferUntil; BC-HOOK-034 typo; VP-DTU-001 Phase 4 deferral; 3 Wave-1 MEDs deferred (cron collision, xtask deny targets, prost-build no-op).
+- SE-40 candidate (2nd occurrence; HELD per D-114 3+ threshold): orchestrator drives deliver-story from main session only.
+- S-PHASE-3-PREP remains BLOCKED on upstream `vsdd-factory:spec-kit-mcp` rc.19+; does NOT block Waves 1-3.
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
 
-The Rust workspace will be initialized during `/vsdd-factory:create-architecture`. Until then there is no `Cargo.toml` at the root. Once the workspace exists, the canonical commands are:
+The Rust workspace is LIVE (S-001 shipped). Canonical commands:
 
 - Build: `cargo build --workspace`
-- Test: `cargo test --workspace`
-- Lint: `cargo clippy --workspace -- -D warnings`
-- Security audit: `cargo audit` (must run in CI on every PR; weekly scheduled `cargo audit --json` against latest RUSTSEC DB)
+- Test: `cargo test --workspace --locked`
+- Lint: `cargo clippy --workspace --all-targets -- -D warnings` (NOTE: `--all-targets` is REQUIRED to catch test-code violations; `--workspace` alone skips test crates)
+- Security audit: `cargo audit --deny warnings` (runs in CI on every PR + weekly scheduled cron)
+- Supply-chain: `cargo deny --workspace --all-features check all` (licenses, bans, advisories, sources)
 - Format: `cargo fmt --all`
+- Semgrep: `semgrep --config .semgrep.yml --error crates/` (5 anti-pattern rules)
+- DTU fidelity: `cargo run -p xtask -- dtu-fidelity` (25-fixture corpus; exits 0 if mean >= 0.95)
+- Audit-table drift: `python3 scripts/check_audit_table.py --spec-file scripts/audit-table.md ...`
 
 MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor). Phase 3 = Rust 1.92 (wasmtime 44 requirement). Single-workspace MSRV strategy is canonical; see `.factory/specs/architecture/SS-deps-pin-manifest.md` §"MSRV Policy".
 
