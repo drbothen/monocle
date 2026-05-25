@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.1.19"
+version: "1.1.20"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -73,6 +73,7 @@ These crates do NOT appear in the production binary.
 |-------|---------|------|-----------------|
 | temp-env | 0.3 | Environment variable manipulation in integration tests with RAII cleanup — sync (`with_vars`) and async (`async_with_vars`) variants | caret pin (`^0.3`); feature `async_closure` required for `async_with_vars` API; `[dev-dependencies]` only; declare as `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime/Cargo.toml`; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); bumped from `^0.2` in round-24 (F-R24-adv-1): `^0.2` exposed only synchronous `with_vars`; the async `enrich()` half of BC-ENGINE-002-ERR requires `async_with_vars` which is gated on the `async_closure` feature introduced in 0.3.0; latest 0.3.x is 0.3.6 (2023-09-24, not yanked, verified against crates.io API 2026-05-13) |
 | syn | 2.0 | AST audit tests for `#[non_exhaustive]` enum policy (S-011), FactoryAdapter trait surface (S-012), EngineModule trait surface (S-014) — production code does NOT depend on syn | caret pin (`^2.0`); `[dev-dependencies]` only; declare as `syn = { version = "2", features = ["full"] }` in the crates that declare AST audit tests (monocle-core, monocle-runtime); Phase 3.A architect dispatch — F-A-01 closure |
+| regex-lite | 0.1 | Lightweight regex engine for semver-format assertions in healthz integration tests (S-002); validates `X.Y.Z` pattern in `/health` response body | caret pin (`^0.1`); `[dev-dependencies]` only; declare inline in `monocle-runtime/Cargo.toml` (not `workspace = true`); follows temp-env precedent for test-only deps not promoted to workspace level; production code does NOT depend on regex-lite |
 
 ## Phase 2/3/4 Additions
 
@@ -812,3 +813,27 @@ v1.1.6 changes (round-22 fix F-R22-3):
 - Refs: adversary F-004 (factory-artifacts 359546e); research note `.factory/plans/research-RUSTSEC-2026-0007-bytes-1.11.1.md`; Production-Grade Default principle (CLAUDE.md); SE-22 v2 consumer-ledger.
 - SE-16b monotonicity check PASS: v1.1.18 → v1.1.19 is a monotonic increment.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-20T21:30:00Z >= chain high-water 2026-05-20T00:00:00Z. PASS.
+
+**§Trace v1.1.20** (2026-05-25T00:00:00Z) — S-002 Wave 2: `regex-lite 0.1` dev-dependency registration:
+- NORMATIVE: `regex-lite 0.1` added to Dev Dependencies table as a caret-pinned dev-dependency.
+  Root cause: story S-002 (Healthz Endpoint) delivered via Wave 2 introduced `regex-lite = "0.1"`
+  as a `[dev-dependencies]` entry in `crates/monocle-runtime/Cargo.toml` for semver-format
+  assertions in healthz integration tests. The crate validates the `X.Y.Z` pattern in the
+  `/health` response body. The manifest had no `regex-lite` entry; without registration,
+  the canonical pin discipline (CLAUDE.md §Conventions) is violated — every dev-dep must
+  appear in this manifest regardless of whether it is declared inline vs workspace-level.
+- NORMATIVE: `regex-lite 0.1` classified as dev-dependency only. Production code (the
+  binary, runtime, or any non-test code path) does NOT depend on `regex-lite`. The regex
+  assertion is test-only; it validates the shape of the healthz response body string during
+  integration testing. Caret pin (`^0.1`) is correct: dev-dependencies follow standard
+  caret convention per §Patch-Pinning Policy; `regex-lite` is not on an untrusted-input
+  deserialization path and has no security-protocol boundary role.
+- NORMATIVE: Declared inline in `monocle-runtime/Cargo.toml` (not `workspace = true`),
+  following the temp-env precedent for test-only dependencies not promoted to workspace
+  level. `regex-lite` is consumed only by `monocle-runtime` test code; workspace-level
+  promotion is unwarranted for single-consumer dev-deps.
+- INFORMATIONAL: Version bump 1.1.19 → 1.1.20 records dev-dep table addition. Dev-dep
+  count: 2 → 3. Production crate count: 32 (unchanged).
+- Refs: S-002 (Healthz Endpoint, Wave 2); `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`.
+- SE-16b monotonicity check PASS: v1.1.19 → v1.1.20 is a monotonic increment.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-25T00:00:00Z >= chain high-water 2026-05-20T21:30:00Z. PASS.
