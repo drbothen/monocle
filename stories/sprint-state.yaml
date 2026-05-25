@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.9"
+version: "1.10"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-25T22:49:12Z
+timestamp: 2026-05-25T23:30:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -112,12 +112,12 @@ stories:
     epic: EPIC-01
     wave: 2
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001. Covers BC-2.01.005 + BC-2.01.010."
+    completed_at: "2026-05-25"
+    pr_url: "https://github.com/drbothen/monocle/pull/7"
+    notes: "Wave 2 Tier 1. PR #7 merged at develop @ a43f71a. 30 new tests (lock_file_lifecycle: 23, lock_file_contract: 7). BC-2.01.005 + BC-2.01.008 + BC-2.01.010 fully satisfied. 4 adversary passes (1 FAIL w/ CRIT fix → 3 PASS convergence). 9/9 CI checks pass."
 
   - id: S-009
     title: "Auth Token Wire Format + Header Validation (FC-06, ADR-0005)"
@@ -229,19 +229,19 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 12
+  not_started: 11
   in_progress: 0
   review: 0
-  done: 4
+  done: 5
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 16
+  points_complete: 24
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.9 updates (2026-05-25T22:49:12Z):
-  # - S-003 flipped not_started → done (PR #6 merged 534fc9b; 44 integration tests; BC-2.01.002 + BC-2.01.009 + BC-2.02.001 satisfied)
-  # - done: 3 → 4; not_started: 13 → 12; points_complete: 11 → 16
-  # - Wave 2 progress: 2/9 stories done (8/41 pts)
+  # v1.10 updates (2026-05-25T23:30:00Z):
+  # - S-006 flipped not_started → done (PR #7 merged a43f71a; 30 tests; BC-2.01.005 + BC-2.01.008 + BC-2.01.010 satisfied)
+  # - done: 4 → 5; not_started: 12 → 11; points_complete: 16 → 24
+  # - Wave 2 progress: 3/9 stories done (24/41 pts)
