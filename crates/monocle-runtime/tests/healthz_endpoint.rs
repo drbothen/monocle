@@ -850,7 +850,10 @@ async fn test_BC_2_01_001_poisoned_lock_returns_503() {
         .body(Body::empty())
         .expect("build GET /healthz");
 
-    let response = router.oneshot(req).await.expect("oneshot must not propagate panic");
+    let response = router
+        .oneshot(req)
+        .await
+        .expect("oneshot must not propagate panic");
     let status = response.status();
 
     let bytes = response
