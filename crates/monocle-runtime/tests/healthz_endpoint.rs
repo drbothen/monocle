@@ -58,6 +58,7 @@ fn make_running_state() -> Arc<DaemonState> {
     Arc::new(DaemonState {
         mode: std::sync::RwLock::new(AppMode::Running),
         start_time: Instant::now(),
+        hook_receiver_status: None,
     })
 }
 
@@ -66,6 +67,7 @@ fn make_shutting_down_state() -> Arc<DaemonState> {
     Arc::new(DaemonState {
         mode: std::sync::RwLock::new(AppMode::ShuttingDown),
         start_time: Instant::now(),
+        hook_receiver_status: None,
     })
 }
 
@@ -668,6 +670,7 @@ async fn test_BC_2_01_001_poisoned_lock_returns_503() {
     let state = Arc::new(DaemonState {
         mode: std::sync::RwLock::new(AppMode::Running),
         start_time: Instant::now(),
+        hook_receiver_status: None,
     });
 
     // Poison the lock by spawning an OS thread that panics while holding the write guard.

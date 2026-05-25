@@ -45,8 +45,21 @@ pub async fn get_healthz(State(state): State<Arc<DaemonState>>) -> Response {
         }
     };
 
+    // Check hook-receiver health (AC-002).
+    // None = no hook-receiver wired yet (S-002 state) = healthy.
+    // Some(rx) where rx.borrow().is_err() = supervisor detected abnormal exit = 503.
+    let hook_receiver_failed = state
+        .hook_receiver_status
+        .as_ref()
+        .map(|rx| rx.borrow().is_err())
+        .unwrap_or(false);
+
+    if hook_receiver_failed {
+        tracing::warn!("hook-receiver task exited abnormally; returning 503");
+    }
+
     match mode {
-        AppMode::Running => {
+        AppMode::Running if !hook_receiver_failed => {
             let uptime_sec: u64 = state.start_time.elapsed().as_secs();
             let version: &str = env!("CARGO_PKG_VERSION");
             (
@@ -59,7 +72,7 @@ pub async fn get_healthz(State(state): State<Arc<DaemonState>>) -> Response {
             )
                 .into_response()
         }
-        AppMode::ShuttingDown => (
+        _ => (
             StatusCode::SERVICE_UNAVAILABLE,
             Json(serde_json::json!({
                 "status": "shutting_down",

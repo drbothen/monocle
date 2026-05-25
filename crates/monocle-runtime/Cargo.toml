@@ -47,8 +47,6 @@ http-body-util = { workspace = true }
 # EXACT-pinned via workspace.dependencies per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy.
 # Features: json (response.json()) + default features (includes rustls/native-tls via default).
 reqwest = { workspace = true, features = ["json"] }
-# serde_json: JSON assertion helpers in test bodies (already in [dependencies]; explicit for clarity).
-serde_json = { workspace = true }
 # regex-lite: lightweight regex for semver-format assertions in test bodies.
 # Test-only; NOT in workspace.dependencies (least-privilege: this is the only consumer).
 # regex-lite is the stdlib-like minimal regex crate without Unicode tables.

@@ -9,6 +9,8 @@
 use std::sync::RwLock;
 use std::time::Instant;
 
+use tokio::sync::watch;
+
 /// Operating mode of the monocle daemon.
 ///
 /// Drives the 200/503 split in `GET /healthz` (BC-2.01.001 postcondition 1/2)
@@ -43,14 +45,28 @@ pub struct DaemonState {
     ///
     /// Used to compute `uptime_sec` in the `/healthz` and `/status` response bodies.
     pub start_time: Instant,
+
+    /// Hook-receiver supervisor watch channel (AC-002).
+    ///
+    /// `None` — no hook-receiver has been wired yet (normal in S-002; S-005 wires it).
+    ///   Treated as healthy.
+    /// `Some(rx)` where `rx.borrow().is_ok()` — hook-receiver is alive and healthy.
+    /// `Some(rx)` where `rx.borrow().is_err()` — hook-receiver task exited abnormally;
+    ///   supervisor set the channel to `Err` on termination detection via
+    ///   `JoinHandle::is_finished()`. The healthz handler returns HTTP 503 in this case.
+    pub hook_receiver_status: Option<watch::Receiver<Result<(), String>>>,
 }
 
 impl DaemonState {
     /// Creates a new `DaemonState` with `AppMode::Running` and the current time.
+    ///
+    /// `hook_receiver_status` is initialized to `None` — no hook-receiver is wired at
+    /// construction time. S-005 wires the channel once the hook-receiver task is spawned.
     pub fn new() -> Self {
         Self {
             mode: RwLock::new(AppMode::Running),
             start_time: Instant::now(),
+            hook_receiver_status: None,
         }
     }
 }
