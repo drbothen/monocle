@@ -29,6 +29,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::DaemonStartError;
 
+/// Internal result of inspecting an existing lock file.
+///
+/// Used by [`DaemonLock::check_existing_lock`] to communicate the disposition
+/// to [`DaemonLock::acquire`].
+enum ExistingLockStatus {
+    /// The lock file records a live process — acquisition must fail.
+    LiveConflict { pid: i32 },
+    /// The lock file is stale (dead pid, unknown format, unreadable) — remove and proceed.
+    Stale,
+}
+
 /// Canonical JSON content of the monocle daemon lock file.
 ///
 /// Field ordering in the serialized JSON is significant for human readability:
@@ -110,8 +121,233 @@ impl DaemonLock {
     ///
     /// - [`DaemonStartError::LockFileConflict`] — live process holds the lock.
     /// - [`DaemonStartError::LockFileWriteFailure`] — I/O error writing/persisting the lock.
-    pub fn acquire(_runtime_dir: &Path, _port: u16) -> Result<(Self, String), DaemonStartError> {
-        unimplemented!("S-006: DaemonLock::acquire — read existing lock, check PID liveness, remove stale, write atomic lock via tempfile::persist")
+    pub fn acquire(runtime_dir: &Path, port: u16) -> Result<(Self, String), DaemonStartError> {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+
+        let lock_path = runtime_dir.join("monocle.lock");
+        let sock_path = runtime_dir.join("monocle.sock");
+
+        // --- Step 1-4: Check for existing lock file and handle stale/live scenarios ---
+        if lock_path.exists() {
+            match Self::check_existing_lock(&lock_path) {
+                ExistingLockStatus::LiveConflict { pid } => {
+                    return Err(DaemonStartError::LockFileConflict { pid });
+                }
+                ExistingLockStatus::Stale => {
+                    // Dead pid or unrecognized format — remove stale lock and proceed.
+                    if let Err(e) = std::fs::remove_file(&lock_path) {
+                        tracing::warn!(
+                            path = %lock_path.display(),
+                            error = %e,
+                            "failed to remove stale lock file; proceeding anyway"
+                        );
+                    }
+                }
+            }
+        }
+
+        // --- Step 5: Generate fresh auth token ---
+        let auth_token = crate::auth::generate_session_token();
+
+        // --- Step 6: Build LockFileContent with all 7 fields ---
+        let now = chrono::Utc::now();
+        let start_time_utc = now.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+
+        // std::process::id() returns u32; on all supported POSIX platforms the
+        // kernel PID namespace fits within i32::MAX (Linux: 4_194_304; macOS: 99_999).
+        // If the conversion fails, we cannot write a valid lock file — treat as I/O error.
+        let pid_i32 = i32::try_from(std::process::id()).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "current process PID does not fit in i32 (unexpected on supported platforms)",
+            )
+        })?;
+
+        let content = LockFileContent {
+            contract_version: 1,
+            pid: pid_i32,
+            port,
+            auth_token: auth_token.clone(),
+            start_time_utc,
+            app: "monocle".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        };
+
+        // --- Steps 7-8: Serialize to JSON and persist atomically ---
+        let json_bytes = serde_json::to_string_pretty(&content).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("JSON serialize failed: {e}"),
+            )
+        })?;
+
+        let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
+        tmp.write_all(json_bytes.as_bytes())?;
+
+        // --- Step 9: Persist atomically (rename into place) ---
+        // tempfile::persist returns PersistError (not io::Error); extract the inner io::Error.
+        tmp.persist(&lock_path).map_err(|e| e.error)?;
+
+        // --- Step 10: Set file permissions to 0o600 ---
+        std::fs::set_permissions(&lock_path, std::fs::Permissions::from_mode(0o600))?;
+
+        tracing::info!(
+            path = %lock_path.display(),
+            port = port,
+            "daemon lock file acquired"
+        );
+
+        Ok((
+            Self {
+                path: lock_path,
+                sock_path,
+            },
+            auth_token,
+        ))
+    }
+
+    /// Internal helper: inspect an existing lock file and determine if it represents
+    /// a live pid conflict, or a stale (dead pid / unknown format) that should be removed.
+    fn check_existing_lock(lock_path: &Path) -> ExistingLockStatus {
+        // Read and parse the existing lock file.
+        let raw = match std::fs::read_to_string(lock_path) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    error = %e,
+                    "could not read existing lock file; treating as stale"
+                );
+                return ExistingLockStatus::Stale;
+            }
+        };
+
+        let json: serde_json::Value = match serde_json::from_str(&raw) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    error = %e,
+                    "existing lock file is not valid JSON; treating as stale"
+                );
+                return ExistingLockStatus::Stale;
+            }
+        };
+
+        // --- Validate contract_version ---
+        let cv = match json.get("contract_version") {
+            None => {
+                // Missing contract_version — pre-Phase-1 format, treat as stale (BC-2.01.010 EC-012).
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    "existing lock file missing contract_version key (pre-Phase-1 format); treating as stale (E-LOCK-002)"
+                );
+                return ExistingLockStatus::Stale;
+            }
+            Some(v) => v,
+        };
+
+        let version_int: u64 = if let Some(n) = cv.as_u64() {
+            // Canonical: integer contract_version.
+            n
+        } else if let Some(s) = cv.as_str() {
+            // BC-2.01.010 EC-011: string contract_version — attempt coercion.
+            match s.parse::<u64>() {
+                Ok(n) => {
+                    tracing::warn!(
+                        path = %lock_path.display(),
+                        version_str = s,
+                        "existing lock file has contract_version as string (coercion); \
+                        treating as version {n} (E-LOCK-002)"
+                    );
+                    n
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        path = %lock_path.display(),
+                        version_str = s,
+                        "existing lock file has non-numeric string contract_version; treating as stale (E-LOCK-002)"
+                    );
+                    return ExistingLockStatus::Stale;
+                }
+            }
+        } else {
+            // Other types (null, bool, array, object) — treat as stale.
+            tracing::warn!(
+                path = %lock_path.display(),
+                "existing lock file has contract_version with unsupported type; treating as stale (E-LOCK-002)"
+            );
+            return ExistingLockStatus::Stale;
+        };
+
+        // BC-2.01.010 PC-4 / EC-010: unknown (future) contract_version — treat as stale.
+        if version_int != 1 {
+            tracing::warn!(
+                path = %lock_path.display(),
+                contract_version = version_int,
+                "existing lock file has unrecognized contract_version; treating as stale (E-LOCK-002)"
+            );
+            return ExistingLockStatus::Stale;
+        }
+
+        // --- version == 1: check PID liveness ---
+        let pid = match json.get("pid").and_then(|v| v.as_i64()) {
+            Some(p) => p,
+            None => {
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    "existing lock file missing or invalid pid field; treating as stale"
+                );
+                return ExistingLockStatus::Stale;
+            }
+        };
+
+        let pid_i32 = match i32::try_from(pid) {
+            Ok(p) => p,
+            Err(_) => {
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    pid = pid,
+                    "existing lock file pid does not fit in i32; treating as stale"
+                );
+                return ExistingLockStatus::Stale;
+            }
+        };
+
+        // Send signal 0 to check if the process is alive (nix::sys::signal::kill).
+        let nix_pid = nix::unistd::Pid::from_raw(pid_i32);
+        match nix::sys::signal::kill(nix_pid, None) {
+            Ok(()) => {
+                // Process is alive — return conflict.
+                tracing::info!(
+                    path = %lock_path.display(),
+                    pid = pid_i32,
+                    "existing lock file has live PID; returning LockFileConflict (E-LOCK-001)"
+                );
+                ExistingLockStatus::LiveConflict { pid: pid_i32 }
+            }
+            Err(nix::errno::Errno::ESRCH) => {
+                // ESRCH: no such process — stale lock.
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    pid = pid_i32,
+                    "existing lock file has dead PID (ESRCH); removing stale lock (E-LOCK-004)"
+                );
+                ExistingLockStatus::Stale
+            }
+            Err(e) => {
+                // Other error (e.g., EPERM: process exists but we lack permission to signal it).
+                // Treat as live to be safe — we cannot verify staleness.
+                tracing::warn!(
+                    path = %lock_path.display(),
+                    pid = pid_i32,
+                    error = %e,
+                    "kill(pid, 0) returned unexpected error; treating as live conflict for safety"
+                );
+                ExistingLockStatus::LiveConflict { pid: pid_i32 }
+            }
+        }
     }
 
     /// Release the daemon lock by removing the lock file and socket file from disk.
@@ -125,6 +361,42 @@ impl DaemonLock {
     /// Returns `std::io::Error` if either file removal fails. Callers should log the
     /// error via `tracing::error!` and proceed with shutdown regardless.
     pub fn release(&self) -> std::io::Result<()> {
-        unimplemented!("S-006: DaemonLock::release — remove lock file and sock file")
+        // Remove lock file.
+        std::fs::remove_file(&self.path).map_err(|e| {
+            tracing::error!(
+                path = %self.path.display(),
+                error = %e,
+                "failed to remove lock file on release"
+            );
+            e
+        })?;
+
+        // Remove socket file. If it doesn't exist (e.g., daemon crashed before binding),
+        // treat NotFound as success to avoid masking the successful lock file removal.
+        match std::fs::remove_file(&self.sock_path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                tracing::debug!(
+                    path = %self.sock_path.display(),
+                    "sock file not found on release (not an error)"
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    path = %self.sock_path.display(),
+                    error = %e,
+                    "failed to remove sock file on release"
+                );
+                return Err(e);
+            }
+        }
+
+        tracing::info!(
+            lock_path = %self.path.display(),
+            sock_path = %self.sock_path.display(),
+            "daemon lock released"
+        );
+
+        Ok(())
     }
 }

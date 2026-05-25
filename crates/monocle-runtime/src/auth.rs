@@ -177,5 +177,12 @@ fn invalid_token_response() -> Response {
 /// Called by [`crate::lock::DaemonLock::acquire`] during daemon startup to generate the
 /// session auth token written into the lock file and loaded into [`crate::state::DaemonState`].
 pub fn generate_session_token() -> String {
-    unimplemented!("S-006: generate_session_token — 32 bytes from OsRng, hex-encoded to 64 chars")
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    bytes.iter().fold(String::with_capacity(64), |mut acc, b| {
+        use std::fmt::Write;
+        write!(acc, "{b:02x}").expect("fmt::Write on String is infallible");
+        acc
+    })
 }
