@@ -32,6 +32,7 @@ pub enum AppMode {
 /// Per SS-daemon-lifecycle.md v1.0.33 §Health and Status Endpoints:
 /// - `mode` drives the 200/503 split in `GET /healthz`.
 /// - `start_time` is read-only after construction; `Instant` is `Copy`.
+#[derive(Debug)]
 pub struct DaemonState {
     /// Current operating mode of the daemon.
     ///
@@ -43,3 +44,26 @@ pub struct DaemonState {
     /// Used to compute `uptime_sec` in the `/healthz` and `/status` response bodies.
     pub start_time: Instant,
 }
+
+impl DaemonState {
+    /// Creates a new `DaemonState` with `AppMode::Running` and the current time.
+    pub fn new() -> Self {
+        Self {
+            mode: RwLock::new(AppMode::Running),
+            start_time: Instant::now(),
+        }
+    }
+}
+
+impl Default for DaemonState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+const _: () = {
+    fn assert_send_sync<T: Send + Sync>() {}
+    fn _check() {
+        assert_send_sync::<DaemonState>();
+    }
+};

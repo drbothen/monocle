@@ -37,11 +37,13 @@ pub async fn get_healthz(State(state): State<Arc<DaemonState>>) -> Response {
     // A poisoned RwLock means a handler panicked while holding the write lock —
     // the daemon state is unrecoverable. Treat it as ShuttingDown to surface
     // the degraded condition to the TUI and monitoring infrastructure.
-    let mode = state
-        .mode
-        .read()
-        .map(|guard| guard.clone())
-        .unwrap_or(AppMode::ShuttingDown);
+    let mode = match state.mode.read() {
+        Ok(guard) => guard.clone(),
+        Err(_poisoned) => {
+            tracing::warn!("RwLock<AppMode> poisoned; degrading to ShuttingDown");
+            AppMode::ShuttingDown
+        }
+    };
 
     match mode {
         AppMode::Running => {
