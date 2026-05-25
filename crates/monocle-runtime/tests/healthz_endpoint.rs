@@ -18,17 +18,21 @@
 //! | AC-001 version | Postcondition 1 | 1.f (semver regex) | test_BC_2_01_001_version_matches_semver_regex |
 //! | AC-001 version cargo | Postcondition 1 | Post-condition 2 (equals CARGO_PKG_VERSION) | test_BC_2_01_001_version_equals_cargo_pkg_version |
 //! | AC-002 / Probe 1.d | Postcondition 2 | 1.d (ShuttingDown → 503) | test_BC_2_01_001_shutting_down_mode_returns_503 |
-//! | AC-002 body shape | Postcondition 2 | 1.d (2 keys exact) | test_BC_2_01_001_shutting_down_body_has_exactly_two_keys |
+//! | AC-002 body shape | Postcondition 2 | 1.d (1 key exact (BC literal authoritative over VP wording)) | test_BC_2_01_001_shutting_down_body_has_exactly_one_key |
 //! | AC-003 / Probe 1.a | Postcondition 3 | 1.a (no auth → 200 not 401) | test_BC_2_01_001_no_auth_header_returns_200_not_401 |
 //! | AC-003 / Probe 1.b | Postcondition 3 | 1.b (valid auth header → 200) | test_BC_2_01_001_valid_auth_header_is_ignored_returns_200 |
 //! | AC-003 / Probe 1.c | Postcondition 3 | 1.c (garbage auth header → 200) | test_BC_2_01_001_garbage_auth_header_is_ignored_returns_200 |
 //! | AC-004 | Postcondition 4 | 1.e (no DefaultBodyLimit on unauth router) | test_BC_2_01_001_large_body_returns_200_not_413 |
 //! | AC-005 / Probe 1.e | Invariant 2 | 1.e (source-grep: DefaultBodyLimit on auth only) | test_BC_2_01_001_invariant_default_body_limit_on_auth_router_only |
 //! | AC-006 | EC-040 (100ms timing) | N/A | test_BC_2_01_001_response_within_100ms |
+//! | Arch Rule: Forbidden Deps | Story §Architecture Compliance Rules "Forbidden Dependencies" (constant_time_eq auth-only) | N/A | test_BC_2_01_001_invariant_healthz_does_not_import_constant_time_eq |
+//! | Arch Rule: Forbidden Deps | Story §Architecture Compliance Rules "Forbidden Dependencies" (monocle-tui forbidden) | N/A | test_BC_2_01_001_invariant_healthz_does_not_import_monocle_tui |
+//! | VP-001 proptest auxiliary | VP-001 proptest auxiliary (semver regex) | N/A | test_BC_2_01_001_invariant_semver_regex_shape |
+//! | BC-2.01.001 defensive | BC-2.01.001 defensive handling (lock poisoning → graceful degradation to ShuttingDown) | N/A | test_BC_2_01_001_poisoned_lock_returns_503 |
 //!
 //! # Proptest (VP-001 auxiliary: semver-regex property across random tokens)
 //!
-//! The semver regex is verified via proptest in `test_BC_2_01_001_proptest_version_semver_regex`.
+//! The semver regex is verified via proptest in `test_BC_2_01_001_invariant_semver_regex_shape`.
 
 // Test files: expect/unwrap are idiomatic assertion amplification, not production code.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
@@ -641,4 +645,70 @@ fn test_BC_2_01_001_invariant_semver_regex_shape() {
             "Expected semver regex NOT to match invalid form {form:?}"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.01.001 defensive handling — RwLock poisoning → graceful degradation
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.001 defensive handling: when the `mode` RwLock is poisoned (write guard held
+/// by a panicking thread), the handler must NOT propagate the panic to the caller.
+/// Instead it must degrade gracefully to `{"status":"shutting_down"}` with HTTP 503,
+/// treating a poisoned lock as equivalent to `AppMode::ShuttingDown` (safe sentinel).
+///
+/// Poisoning technique: spawn a thread that acquires the write guard and then panics.
+/// After `join()`, the lock is poisoned. Any subsequent `read().unwrap()` will itself
+/// panic — the implementation must use `read().unwrap_or_else(|e| e.into_inner())` or
+/// an equivalent poison-tolerant read to uphold this contract.
+#[tokio::test]
+async fn test_BC_2_01_001_poisoned_lock_returns_503() {
+    use std::time::Instant;
+
+    // Build a DaemonState whose mode lock we will poison.
+    let state = Arc::new(DaemonState {
+        mode: std::sync::RwLock::new(AppMode::Running),
+        start_time: Instant::now(),
+    });
+
+    // Poison the lock by spawning an OS thread that panics while holding the write guard.
+    let state_clone = Arc::clone(&state);
+    let handle = std::thread::spawn(move || {
+        let _guard = state_clone.mode.write().unwrap();
+        panic!("deliberate lock poisoning for test_BC_2_01_001_poisoned_lock_returns_503");
+    });
+    // Wait for the thread to complete (and panic). The join error is expected.
+    let _ = handle.join();
+    // At this point, state.mode is poisoned. Any .unwrap() on read() would panic.
+
+    let router = unauthenticated_router(state);
+    let req = Request::builder()
+        .method("GET")
+        .uri("/healthz")
+        .body(Body::empty())
+        .expect("build GET /healthz");
+
+    let response = router.oneshot(req).await.expect("oneshot must not propagate panic");
+    let status = response.status();
+
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("collect body")
+        .to_bytes();
+    let body: serde_json::Value =
+        serde_json::from_slice(&bytes).expect("response must be valid JSON even on poisoned lock");
+
+    assert_eq!(
+        status,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "poisoned RwLock must degrade to HTTP 503 (ShuttingDown sentinel); got {status}. \
+        Body: {body}. Counter-example: propagating PoisonError as HTTP 500 violates graceful \
+        degradation contract of BC-2.01.001."
+    );
+    assert_eq!(
+        body.get("status").and_then(|v| v.as_str()),
+        Some("shutting_down"),
+        "poisoned lock body must contain {{\"status\":\"shutting_down\"}}; got: {body}"
+    );
 }
