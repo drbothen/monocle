@@ -43,10 +43,6 @@ syn = { workspace = true }
 # Established pattern in monocle-test-harness/tests/; workspace-declared per SS-deps-pin-manifest.
 tower = { workspace = true }
 http-body-util = { workspace = true }
-# reqwest: HTTP client for real-TCP integration tests (AC-006 100ms timing probe).
-# EXACT-pinned via workspace.dependencies per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy.
-# Features: json (response.json()) + default features (includes rustls/native-tls via default).
-reqwest = { workspace = true, features = ["json"] }
 # regex-lite: lightweight regex for semver-format assertions in test bodies.
 # Test-only; NOT in workspace.dependencies (least-privilege: this is the only consumer).
 # regex-lite is the stdlib-like minimal regex crate without Unicode tables.
