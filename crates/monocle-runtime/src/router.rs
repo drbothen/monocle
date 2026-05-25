@@ -9,8 +9,10 @@
 
 use std::sync::Arc;
 
+use axum::routing::get;
 use axum::Router;
 
+use crate::handlers::healthz::get_healthz;
 use crate::state::DaemonState;
 
 /// Construct the unauthenticated axum router.
@@ -21,6 +23,7 @@ use crate::state::DaemonState;
 /// No `DefaultBodyLimit` is applied (BC-2.01.001 postcondition 4).
 /// No auth middleware is applied (BC-2.01.001 postcondition 3, invariant 2).
 pub fn unauthenticated_router(state: Arc<DaemonState>) -> Router {
-    let _ = state;
-    unimplemented!("S-002: unauthenticated_router — Router::new().route(\"/healthz\", get(get_healthz)).with_state(state)")
+    Router::new()
+        .route("/healthz", get(get_healthz))
+        .with_state(state)
 }

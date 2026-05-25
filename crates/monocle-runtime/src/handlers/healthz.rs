@@ -20,8 +20,9 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::response::Response;
+use axum::Json;
 
-use crate::state::DaemonState;
+use crate::state::{AppMode, DaemonState};
 
 /// Unauthenticated liveness probe.
 ///
@@ -33,8 +34,35 @@ use crate::state::DaemonState;
 /// - No `X-Monocle-Authorization` header required or inspected.
 /// - No `DefaultBodyLimit` applied.
 pub async fn get_healthz(State(state): State<Arc<DaemonState>>) -> Response {
-    let _ = state;
-    // Stub: implementation reads AppMode, computes uptime_sec from start_time,
-    // serializes JSON body, and returns the correct HTTP status code.
-    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    // A poisoned RwLock means a handler panicked while holding the write lock —
+    // the daemon state is unrecoverable. Treat it as ShuttingDown to surface
+    // the degraded condition to the TUI and monitoring infrastructure.
+    let mode = state
+        .mode
+        .read()
+        .map(|guard| guard.clone())
+        .unwrap_or(AppMode::ShuttingDown);
+
+    match mode {
+        AppMode::Running => {
+            let uptime_sec: u64 = state.start_time.elapsed().as_secs();
+            let version: &str = env!("CARGO_PKG_VERSION");
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "status": "alive",
+                    "uptime_sec": uptime_sec,
+                    "version": version,
+                })),
+            )
+                .into_response()
+        }
+        AppMode::ShuttingDown => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "status": "shutting_down",
+            })),
+        )
+            .into_response(),
+    }
 }
