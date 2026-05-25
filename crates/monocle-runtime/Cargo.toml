@@ -39,3 +39,11 @@ async-trait = { workspace = true }
 # SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
 temp-env = { version = "0.3", features = ["async_closure"] }
 syn = { workspace = true }
+# tower + http-body-util: axum integration test helpers (ServiceExt::oneshot, BodyExt::collect).
+# Established pattern in monocle-test-harness/tests/; workspace-declared per SS-deps-pin-manifest.
+tower = { workspace = true }
+http-body-util = { workspace = true }
+# regex-lite: lightweight regex for semver-format assertions in test bodies.
+# Test-only; NOT in workspace.dependencies (least-privilege: this is the only consumer).
+# regex-lite is the stdlib-like minimal regex crate without Unicode tables.
+regex-lite = "0.1"
