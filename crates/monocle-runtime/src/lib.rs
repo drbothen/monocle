@@ -1,16 +1,24 @@
 //! monocle-runtime — Runtime daemon library.
 //!
 //! Stub created in S-001. Populated by S-002 (daemon lifecycle), S-003 (auth),
-//! S-004 (lock file), S-005 (hook ingestion), S-006 (status endpoint), S-008 (ring),
-//! S-009 (hook routes), S-015 (XDG path resolution).
+//! S-004 (lock file), S-005 (hook ingestion), S-006 (lock file atomic lifecycle),
+//! S-008 (ring), S-009 (hook routes), S-015 (XDG path resolution).
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
 /// Auth middleware implementing dual-accept header validation (ADR-0005, BC-2.01.009).
+/// Extended by S-006 to include [`auth::generate_session_token`].
 pub mod auth;
+/// Error types for daemon startup and lock-file lifecycle (S-006).
+pub mod errors;
 /// HTTP request handlers, organized by endpoint.
 pub mod handlers;
+/// Runtime directory resolution: [`lifecycle::resolve_runtime_dir`] and
+/// [`lifecycle::ensure_runtime_dir`] (S-006).
+pub mod lifecycle;
+/// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
+pub mod lock;
 /// Axum router construction — unauthenticated and authenticated router split.
 pub mod router;
 /// Full server construction: merges unauthenticated + authenticated routers.

@@ -157,3 +157,32 @@ fn invalid_token_response() -> Response {
     )
         .into_response()
 }
+
+/// Generate a cryptographically random session token (32 bytes → 64 hex chars).
+///
+/// Uses [`rand::rngs::OsRng`] as the entropy source, which delegates to the platform
+/// CSPRNG (`getrandom(2)` on Linux, `SecRandomCopyBytes` on macOS).
+///
+/// The `rand` crate is pinned to `=0.8.6` (EXACT) per SS-deps-pin-manifest.md §Pinning
+/// Policy. The `0.9` series introduced an ergonomic regression in `OsRng` usage
+/// (trait import requirements changed); the exact pin prevents accidental upgrade.
+///
+/// # Output format
+///
+/// Returns a lowercase 64-character hex string. No prefix. The caller (lock file writer)
+/// or auth middleware adds the `monocle-v1:` prefix at the wire layer.
+///
+/// # Usage
+///
+/// Called by [`crate::lock::DaemonLock::acquire`] during daemon startup to generate the
+/// session auth token written into the lock file and loaded into [`crate::state::DaemonState`].
+pub fn generate_session_token() -> String {
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    bytes.iter().fold(String::with_capacity(64), |mut acc, b| {
+        use std::fmt::Write;
+        write!(acc, "{b:02x}").expect("fmt::Write on String is infallible");
+        acc
+    })
+}
