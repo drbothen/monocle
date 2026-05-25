@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-21T02:30:00Z
+timestamp: 2026-05-25T21:34:48Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -64,12 +64,12 @@ stories:
     epic: EPIC-01
     wave: 2
     points: 3
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001."
+    completed_at: "2026-05-25"
+    pr_url: "https://github.com/drbothen/monocle/pull/5"
+    notes: "Wave 2 Tier 1. PR #5 merged at develop @ f69435e. 20 healthz tests. BC-2.01.001 fully satisfied. 5 adversary passes (3/3 convergence)."
 
   - id: S-003
     title: "Status Endpoint (Authenticated Daemon State)"
@@ -229,19 +229,19 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 14
+  not_started: 13
   in_progress: 0
   review: 0
-  done: 2
+  done: 3
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 8
+  points_complete: 11
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.7 updates (2026-05-21T02:30:00Z):
-  # - S-DTU-001 flipped ready → done (PR #3 merged cfeb1346; 41 BC-HOOK contracts shipped)
-  # - done: 1 → 2; ready: 1 → 0; points_complete: 5 → 8
-  # - Wave 1 COMPLETE: S-001 (5 pts) + S-DTU-001 (3 pts) = 8 pts shipped
+  # v1.8 updates (2026-05-25T21:34:48Z):
+  # - S-002 flipped not_started → done (PR #5 merged f69435e; 20 healthz tests; BC-2.01.001 satisfied)
+  # - done: 2 → 3; not_started: 14 → 13; points_complete: 8 → 11
+  # - Wave 2 progress: 1/9 stories done (3/41 pts)
