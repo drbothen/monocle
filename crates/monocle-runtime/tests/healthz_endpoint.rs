@@ -27,6 +27,7 @@
 //! | AC-006 | EC-040 (100ms timing) | N/A | test_BC_2_01_001_response_within_100ms |
 //! | AC-002 / Postcondition 2 | Postcondition 2 (hook-receiver abnormal exit → 503) | 1.d (hook-receiver Err path) | test_BC_2_01_001_hook_receiver_abnormal_exit_returns_503 |
 //! | AC-002 / Postcondition 1 | Postcondition 1 (hook-receiver healthy → 200) | 1.a (hook-receiver Ok path) | test_BC_2_01_001_hook_receiver_healthy_returns_200 |
+//! | AC-002 / Postcondition 2 | Postcondition 2 PC-2 compound (ShuttingDown AND hook-receiver Err → 503) | 1.d (compound ShuttingDown + hook-receiver failed) | test_BC_2_01_001_shutting_down_with_failed_hook_receiver_returns_503 |
 //! | Arch Rule: Forbidden Deps | Story §Architecture Compliance Rules "Forbidden Dependencies" (constant_time_eq auth-only) | N/A | test_BC_2_01_001_invariant_healthz_does_not_import_constant_time_eq |
 //! | Arch Rule: Forbidden Deps | Story §Architecture Compliance Rules "Forbidden Dependencies" (monocle-tui forbidden) | N/A | test_BC_2_01_001_invariant_healthz_does_not_import_monocle_tui |
 //! | VP-001 proptest auxiliary | VP-001 proptest auxiliary (semver regex) | N/A | test_BC_2_01_001_invariant_semver_regex_shape |
@@ -409,6 +410,83 @@ async fn test_BC_2_01_001_hook_receiver_healthy_returns_200() {
         3,
         "healthy response body must have 3 keys (status, uptime_sec, version); \
         got {} key(s): {:?}",
+        obj.len(),
+        obj.keys().collect::<Vec<_>>()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.01.001 Postcondition 2 PC-2 compound — ShuttingDown AND hook-receiver failed → 503
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.001 Postcondition 2 PC-2 compound (F-S002-ADV5-002): when BOTH `AppMode` is
+/// `ShuttingDown` AND `hook_receiver_status` carries `Err`, the handler must return HTTP 503
+/// with `{"status":"shutting_down"}`.
+///
+/// This is the 4th cell of the (AppMode × hook_receiver_status) 2×2 truth table:
+///
+/// | AppMode       | hook_receiver_status        | Expected |
+/// |---------------|-----------------------------|----------|
+/// | Running       | None / Some(Ok)             | 200      |
+/// | Running       | Some(Err)                   | 503      |
+/// | ShuttingDown  | None / Some(Ok)             | 503      |
+/// | ShuttingDown  | Some(Err)  ← THIS TEST      | 503      |
+///
+/// The compound path (ShuttingDown AND hook-receiver failed) must not regress to 200.
+/// Both guards independently produce 503; the compound case must behave identically.
+///
+/// Traces to BC-2.01.001 PC-2 (compound: ShuttingDown AND hook-receiver failed → 503).
+#[tokio::test]
+async fn test_BC_2_01_001_shutting_down_with_failed_hook_receiver_returns_503() {
+    // Create a watch channel and send an error to simulate hook-receiver abnormal exit.
+    let (tx, rx) = tokio::sync::watch::channel(Ok::<(), String>(()));
+    tx.send(Err("hook-receiver panicked".to_string()))
+        .expect("send error on watch channel");
+
+    // DaemonState is in ShuttingDown mode AND the hook-receiver channel carries an error.
+    let state = Arc::new(DaemonState {
+        mode: std::sync::RwLock::new(AppMode::ShuttingDown),
+        start_time: Instant::now(),
+        hook_receiver_status: Some(rx),
+    });
+
+    let app = unauthenticated_router(state);
+    let req = Request::builder()
+        .method("GET")
+        .uri("/healthz")
+        .body(Body::empty())
+        .expect("build GET /healthz");
+
+    let response = app.oneshot(req).await.expect("oneshot");
+    let status = response.status();
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("collect body")
+        .to_bytes();
+    let body: serde_json::Value =
+        serde_json::from_slice(&bytes).expect("response must be valid JSON");
+
+    assert_eq!(
+        status,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "ShuttingDown + hook-receiver failed must return HTTP 503; got {status}. \
+        Body: {body}. Counter-example: returning 200 in the compound case would violate \
+        BC-2.01.001 PC-2 on both guards simultaneously."
+    );
+    assert_eq!(
+        body.get("status").and_then(|v| v.as_str()),
+        Some("shutting_down"),
+        "compound ShuttingDown + hook-receiver-failed body must be \
+        {{\"status\":\"shutting_down\"}}; got: {body}"
+    );
+    let obj = body.as_object().expect("body must be a JSON object");
+    assert_eq!(
+        obj.len(),
+        1,
+        "compound ShuttingDown + hook-receiver-failed body must have exactly 1 key \
+        per BC-2.01.001 PC-2 body literal; got {} key(s): {:?}",
         obj.len(),
         obj.keys().collect::<Vec<_>>()
     );
