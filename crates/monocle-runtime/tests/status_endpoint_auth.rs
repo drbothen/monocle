@@ -47,7 +47,8 @@
 #![allow(non_snake_case)]
 
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -57,6 +58,7 @@ use monocle_runtime::state::{AppMode, DaemonState};
 use tower::ServiceExt;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
+use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, Subscriber};
 
 // ---------------------------------------------------------------------------
@@ -567,45 +569,79 @@ async fn test_BC_2_01_002_alias_auth_returns_200_and_emits_warn() {
 // AC-002 WARN content — BC-2.01.009 INV-6 — exact WARN message emitted on alias path
 // ---------------------------------------------------------------------------
 
-/// Minimal tracing subscriber that captures WARN-level event messages into a shared buffer.
+// Global WARN capture infrastructure for test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6.
+//
+// Root cause of the parallel-test problem:
+// tracing's callsite interest is cached globally in a per-callsite AtomicU8. The cache is
+// built from globally registered dispatchers only (thread-local dispatchers set by `with_default`
+// are not consulted). The macro short-circuits if the cached interest is Interest::never():
+//
+//   interest = __CALLSITE.interest();
+//   if !interest.is_never() { ... dispatch ... }
+//
+// In a parallel test harness: if any test triggers `tracing::warn!` in `auth.rs` BEFORE a
+// global dispatcher is registered, the callsite gets cached as Interest::never() (because
+// `rebuild_callsite_interest` finds no dispatchers and falls back to `never`). Once cached as
+// Never, even a thread-local subscriber installed by `with_default` will never receive the
+// event — the !interest.is_never() check fires first.
+//
+// Fix: global subscriber registered once at process start via `set_global_default`.
+// Calling `set_global_default` triggers `callsite::register_dispatch`, which calls
+// `rebuild_interest_cache()` on ALL existing callsites. After that, the auth.rs callsite
+// is rebuilt with Interest::sometimes() from our global subscriber.
+//
+// Capture is gated by CAPTURE_ENABLED (AtomicBool): false during all other tests (events
+// dropped in `enabled()`), true only during the INV-6 WARN capture test.
+
+/// Whether the global subscriber is currently capturing WARN events.
+static CAPTURE_ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// Buffer for captured WARN messages. Populated only when `CAPTURE_ENABLED` is true.
+static CAPTURE_BUFFER: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+/// Guards single initialization of the global subscriber.
+static GLOBAL_SUBSCRIBER_INIT: OnceLock<()> = OnceLock::new();
+
+/// Global tracing subscriber that captures WARN events when `CAPTURE_ENABLED` is true.
 ///
-/// Used exclusively by `test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6` to
-/// verify the exact WARN string required by BC-2.01.009 INV-6 / ADR-0005.
-///
-/// The subscriber is scoped per-test via `tracing::subscriber::set_default`, which installs a
-/// thread-local default and restores the prior subscriber when the returned `DefaultGuard` is
-/// dropped. This avoids any global state contamination between tests.
-struct WarnCapture {
-    messages: Arc<Mutex<Vec<String>>>,
-}
+/// Registered as the process-wide global default via `set_global_default` (once). Returns
+/// `Interest::sometimes()` for all callsites so that the callsite interest cache is never
+/// permanently set to `never`. After `set_global_default` is called, `rebuild_interest_cache()`
+/// is triggered automatically, updating all previously-cached callsite interests.
+struct GlobalWarnCapture;
 
 /// Field visitor that extracts the `message` field from a tracing event.
 ///
-/// Implements `tracing::field::Visit`. The `message` field is the primary string argument to
-/// `tracing::warn!("...")`. It arrives in `record_debug` because the tracing macro formats the
-/// argument via `format_args!`, which implements `Debug` by writing its display form.
+/// The `message` field is the primary string argument to `tracing::warn!("...")`. It arrives
+/// in `record_debug` because the tracing macro formats the argument via `format_args!`, which
+/// implements `Debug` by writing its content without surrounding quotes.
 struct MessageCapture {
-    /// Captured message string, populated by `record_debug` when `field.name() == "message"`.
+    /// Captured message string, set when `field.name() == "message"` is visited.
     message: Option<String>,
 }
 
 impl Visit for MessageCapture {
     fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
         if field.name() == "message" {
-            // format_args!("text") Debug-formats as "text" (no surrounding quotes).
+            // format_args!("text") Debug-formats as text (no surrounding quotes).
             self.message = Some(format!("{value:?}"));
         }
     }
 }
 
-impl Subscriber for WarnCapture {
+impl Subscriber for GlobalWarnCapture {
+    fn register_callsite(&self, _meta: &'static Metadata<'static>) -> Interest {
+        // Interest::sometimes() — never permanently cache a callsite as "never interested."
+        // This ensures that when `enabled()` returns true (capture active), events are
+        // dispatched to `event()`.
+        Interest::sometimes()
+    }
+
     fn enabled(&self, meta: &Metadata<'_>) -> bool {
-        // Only capture WARN and above; ignore DEBUG/TRACE/INFO to reduce noise.
-        meta.level() <= &Level::WARN
+        CAPTURE_ENABLED.load(Ordering::Relaxed) && meta.level() <= &Level::WARN
     }
 
     fn new_span(&self, _attrs: &Attributes<'_>) -> Id {
-        // Span IDs are not used by this capture subscriber; return a sentinel.
         Id::from_u64(1)
     }
 
@@ -614,21 +650,35 @@ impl Subscriber for WarnCapture {
     fn record_follows_from(&self, _span: &Id, _follows: &Id) {}
 
     fn event(&self, event: &Event<'_>) {
-        if event.metadata().level() <= &Level::WARN {
+        if CAPTURE_ENABLED.load(Ordering::Relaxed) && event.metadata().level() <= &Level::WARN {
             let mut visitor = MessageCapture { message: None };
             event.record(&mut visitor);
             if let Some(msg) = visitor.message {
-                self.messages
-                    .lock()
-                    .expect("WarnCapture mutex poisoned")
-                    .push(msg);
+                if let Some(buf) = CAPTURE_BUFFER.get() {
+                    buf.lock()
+                        .expect("CAPTURE_BUFFER mutex must not be poisoned")
+                        .push(msg);
+                }
             }
         }
     }
 
     fn enter(&self, _span: &Id) {}
-
     fn exit(&self, _span: &Id) {}
+}
+
+/// Install `GlobalWarnCapture` as the process-wide global subscriber once.
+///
+/// Uses `OnceLock` to guarantee single initialization. `set_global_default` internally calls
+/// `callsite::register_dispatch`, which triggers `rebuild_interest_cache()` for all existing
+/// callsites — making previously-cached `Interest::never()` callsites be re-evaluated with
+/// our subscriber's `Interest::sometimes()`.
+fn init_global_warn_capture() {
+    CAPTURE_BUFFER.get_or_init(|| Mutex::new(Vec::new()));
+    GLOBAL_SUBSCRIBER_INIT.get_or_init(|| {
+        tracing::subscriber::set_global_default(GlobalWarnCapture)
+            .expect("GlobalWarnCapture: set_global_default must succeed on first call");
+    });
 }
 
 /// BC-2.01.009 INV-6 / AC-002: The exact WARN message emitted on alias-path auth is normative.
@@ -641,12 +691,10 @@ impl Subscriber for WarnCapture {
 /// 2. At least one WARN event is captured during the request lifecycle.
 /// 3. One of the captured WARN messages contains the exact INV-6 string verbatim.
 ///
-/// Uses `tracing::subscriber::with_default` around a manually-built `current_thread` tokio
-/// runtime so the entire async execution is enclosed within a synchronous closure. This
-/// guarantees that the thread-local subscriber is active on the exact OS thread that drives
-/// the future — eliminating the race condition that arises when `set_default` is paired with
-/// `#[tokio::test]` in a parallel test harness (where the test harness may drive the future
-/// on a thread-pool thread that never had the thread-local subscriber installed).
+/// Uses a globally installed `GlobalWarnCapture` subscriber (registered once via `OnceLock`
+/// from `init_global_warn_capture()`) gated by `CAPTURE_ENABLED` (AtomicBool). This avoids
+/// the parallel-test callsite-caching race: see the module-level doc above for the full
+/// explanation.
 ///
 /// Counter-example guarded: an implementation that emits a paraphrased WARN (e.g., eliding
 /// "monocle-aware harness should use X-Monocle-Authorization") would fail the contains-check,
@@ -660,31 +708,40 @@ fn test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6() {
     const EXPECTED_WARN: &str = "WARN: hook auth via X-Claude-Code-Ide-Authorization \
         (compatibility alias); monocle-aware harness should use X-Monocle-Authorization";
 
-    let messages = Arc::new(Mutex::new(Vec::<String>::new()));
-    let subscriber = WarnCapture {
-        messages: Arc::clone(&messages),
-    };
+    // Ensure GlobalWarnCapture is registered as the global subscriber and CAPTURE_BUFFER
+    // is initialized. After this call, all callsite interests are rebuilt with
+    // Interest::sometimes() — including any previously-cached `never` callsites.
+    init_global_warn_capture();
 
-    // `with_default` installs the subscriber as the thread-local default for the duration of
-    // the closure and restores the prior subscriber when the closure returns. The manually-
-    // built `block_on` call drives the future entirely on the current OS thread — the same
-    // thread on which `with_default` installed the subscriber — so all tracing events emitted
-    // by the auth middleware are captured without thread-local race conditions.
-    let (status, body) = tracing::subscriber::with_default(subscriber, || {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("build current_thread runtime for WARN capture test")
-            .block_on(async {
-                let state = make_state_with_token();
-                // Alias path: raw 64-hex token, no monocle-v1: prefix — must trigger WARN.
-                get_status_json(
-                    state,
-                    &[("X-Claude-Code-Ide-Authorization", TEST_TOKEN_HEX)],
-                )
-                .await
-            })
-    });
+    // Clear any previously captured messages from prior runs in this process.
+    CAPTURE_BUFFER
+        .get()
+        .expect("CAPTURE_BUFFER initialized by init_global_warn_capture")
+        .lock()
+        .expect("CAPTURE_BUFFER must not be poisoned before test")
+        .clear();
+
+    // Enable event capture for this test only.
+    CAPTURE_ENABLED.store(true, Ordering::SeqCst);
+
+    // Drive the alias-path auth request on the current thread. Using new_current_thread()
+    // ensures all async work completes before block_on returns.
+    let (status, body) = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build current_thread runtime for WARN capture test")
+        .block_on(async {
+            let state = make_state_with_token();
+            // Alias path: raw 64-hex token, no monocle-v1: prefix — must trigger WARN.
+            get_status_json(
+                state,
+                &[("X-Claude-Code-Ide-Authorization", TEST_TOKEN_HEX)],
+            )
+            .await
+        });
+
+    // Disable capture before assertions to prevent late events from polluting the buffer.
+    CAPTURE_ENABLED.store(false, Ordering::SeqCst);
 
     assert_eq!(
         status,
@@ -693,7 +750,12 @@ fn test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6() {
         got {status}. Body: {body}."
     );
 
-    let captured = messages.lock().expect("WarnCapture mutex must not be poisoned");
+    let captured = CAPTURE_BUFFER
+        .get()
+        .expect("CAPTURE_BUFFER must be initialized")
+        .lock()
+        .expect("CAPTURE_BUFFER must not be poisoned after test");
+
     assert!(
         !captured.is_empty(),
         "At least one WARN event must be captured when the alias auth path is used \
@@ -1563,8 +1625,11 @@ async fn test_BC_2_01_009_empty_auth_token_rejects_all_requests() {
     // Sub-test 1: canonical header with empty suffix (monocle-v1: with no hex after colon).
     // Attack vector: strip_prefix("monocle-v1:") from "monocle-v1:" yields "" →
     // constant_time_eq("", "") == true without the is_empty guard.
-    let (status1, body1) =
-        get_status_json(Arc::clone(&state), &[("X-Monocle-Authorization", "monocle-v1:")]).await;
+    let (status1, body1) = get_status_json(
+        Arc::clone(&state),
+        &[("X-Monocle-Authorization", "monocle-v1:")],
+    )
+    .await;
     assert_eq!(
         status1,
         StatusCode::UNAUTHORIZED,
@@ -1582,8 +1647,11 @@ async fn test_BC_2_01_009_empty_auth_token_rejects_all_requests() {
     // Sub-test 2: alias header with empty value.
     // Attack vector: X-Claude-Code-Ide-Authorization: "" →
     // constant_time_eq("", "") == true without the is_empty guard.
-    let (status2, body2) =
-        get_status_json(Arc::clone(&state), &[("X-Claude-Code-Ide-Authorization", "")]).await;
+    let (status2, body2) = get_status_json(
+        Arc::clone(&state),
+        &[("X-Claude-Code-Ide-Authorization", "")],
+    )
+    .await;
     assert_eq!(
         status2,
         StatusCode::UNAUTHORIZED,

@@ -25,6 +25,7 @@
 //! | EC-043 | BC-2.01.002 EC-043 | Initial state: ring=0.0, channel=0.0 | test_BC_2_01_002_initial_state_ring_and_channel_are_zero |
 //! | EC-044 | BC-2.01.002 EC-044 | Unfired hook ts is null (not "null" string, not 0) | test_BC_2_01_002_ec_044_unfired_hook_ts_is_json_null_not_string |
 //! | VP-011 INV | BC-2.02.001 INV | abi_version == MONOCLE_ABI_VERSION const | test_BC_2_02_001_abi_version_matches_compile_time_const |
+//! | F-S003-ADV2-003 | BC-2.01.002 graceful degradation | Poisoned last_hook_ts lock → 200 + null fields | test_BC_2_01_002_poisoned_last_hook_ts_lock_returns_200_with_null_fields |
 
 // Test files: expect/unwrap are idiomatic assertion amplification, not production code.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
@@ -590,5 +591,107 @@ fn test_BC_2_02_001_status_handler_does_not_hardcode_abi_version_literal() {
         integer literal. Use `abi_version: monocle_core::MONOCLE_ABI_VERSION` to prevent \
         silent drift (BC-2.02.001 INV). Found suspicious lines: {:?}",
         hardcoded_hits
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S003-ADV2-003 — Poisoned last_hook_ts RwLock — graceful degradation
+// ---------------------------------------------------------------------------
+
+/// Graceful degradation: a poisoned `last_hook_ts` RwLock must NOT crash the daemon.
+///
+/// The `GET /status` handler calls `build_last_hook_ts` which holds a read guard on
+/// `DaemonState::last_hook_ts`. If another task panics while holding the write guard, the
+/// `RwLock` becomes poisoned. The handler must recover gracefully:
+/// 1. `GET /status` with valid canonical auth MUST return HTTP 200 (not panic, not 500).
+/// 2. All 5 `last_hook_ts` fields in the response body MUST be JSON `null` — the
+///    all-null fallback defined in `build_last_hook_ts` on `Err(_poisoned)`.
+///
+/// This test exercises the `Err(_poisoned)` branch of `build_last_hook_ts` by deliberately
+/// poisoning the lock via a thread that panics while holding the write guard, then verifying
+/// the subsequent `/status` request degrades gracefully.
+///
+/// Counter-example guarded: a naive `unwrap()` on the read lock would propagate the panic
+/// into the axum handler task, causing a 500 (or worse, a process abort). The handler must
+/// use `match state.last_hook_ts.read()` with an `Err` arm.
+///
+/// Traces to BC-2.01.002 PC-1 sub-bullet `last_hook_ts` (graceful degradation on lock poison),
+/// F-S003-ADV2-003.
+#[tokio::test]
+async fn test_BC_2_01_002_poisoned_last_hook_ts_lock_returns_200_with_null_fields() {
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN_HEX.to_string();
+    let state = Arc::new(state);
+
+    // Poison the last_hook_ts RwLock by spawning a thread that acquires the write guard
+    // and then panics. After the thread join, the lock is in poisoned state.
+    //
+    // This is a deliberate test-only pattern — panicking while holding a lock is safe to
+    // use in tests to exercise poison-recovery code paths (BC-2.01.002 graceful degradation).
+    let state_for_poison = Arc::clone(&state);
+    let poison_handle = std::thread::spawn(move || {
+        let _write_guard = state_for_poison
+            .last_hook_ts
+            .write()
+            .expect("should acquire write lock before panic");
+        panic!("deliberate poisoning: testing graceful degradation (F-S003-ADV2-003)");
+    });
+    // Join the thread — the join result is Err (because the thread panicked); we discard it.
+    // After join, state.last_hook_ts is guaranteed to be in poisoned state.
+    let _ = poison_handle.join();
+
+    // Verify the lock is actually poisoned before proceeding.
+    assert!(
+        state.last_hook_ts.read().is_err(),
+        "last_hook_ts RwLock must be poisoned after the deliberate panic (test pre-condition); \
+        if this assertion fails, the poisoning mechanism did not work as expected."
+    );
+
+    // Issue GET /status with valid canonical auth — must return 200, not panic or 500.
+    let (status, body) = get_status_body(state).await;
+
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "GET /status with a poisoned last_hook_ts RwLock must return HTTP 200 (graceful \
+        degradation, BC-2.01.002 PC-1 / F-S003-ADV2-003); got {status}. Body: {body}. \
+        Counter-example: an unwrap() on the read lock would panic → 500 (or process abort)."
+    );
+
+    // All 5 last_hook_ts fields must be JSON null (the all-null fallback).
+    let last_hook_ts = body
+        .get("last_hook_ts")
+        .and_then(|v| v.as_object())
+        .expect("last_hook_ts must be a JSON object even when the lock is poisoned");
+
+    let hook_fields = [
+        "pre_tool_use",
+        "notification",
+        "stop",
+        "session_start",
+        "prompt_submit",
+    ];
+
+    for field in hook_fields {
+        let value = last_hook_ts
+            .get(field)
+            .unwrap_or_else(|| panic!("last_hook_ts.{field} must be present"));
+        assert!(
+            value.is_null(),
+            "last_hook_ts.{field} must be JSON null when the RwLock is poisoned \
+            (build_last_hook_ts Err arm returns all-null fallback, BC-2.01.002 graceful \
+            degradation, F-S003-ADV2-003); got: {value:?}"
+        );
+    }
+
+    // The overall body shape must still be valid: 10 fields.
+    let obj = body.as_object().expect("body must be a JSON object");
+    assert_eq!(
+        obj.len(),
+        10,
+        "GET /status body must have EXACTLY 10 fields even when last_hook_ts is poisoned; \
+        got {} field(s): {:?}",
+        obj.len(),
+        obj.keys().collect::<Vec<_>>()
     );
 }
