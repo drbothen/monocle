@@ -24,8 +24,13 @@
 
 use std::sync::Arc;
 
-use axum::Router;
+use axum::extract::DefaultBodyLimit;
+use axum::routing::get;
+use axum::{middleware, Router};
 
+use crate::auth::auth_middleware;
+use crate::handlers::status::get_status;
+use crate::router::unauthenticated_router;
 use crate::state::DaemonState;
 
 /// Construct the full axum router for the monocle daemon.
@@ -40,13 +45,17 @@ use crate::state::DaemonState;
 /// - `GET /status` is behind the auth middleware (BC-2.01.009 dual-accept, ADR-0005).
 /// - `DefaultBodyLimit::max(262144)` applies to the authenticated router only
 ///   (BC-2.01.001 Invariant 2 / BC-2.01.002 §Architecture Compliance).
-pub fn build_server(_state: Arc<DaemonState>) -> Router {
-    unimplemented!(
-        "build_server: merge unauthenticated_router(state) with authenticated router. \
-        Authenticated router: Router::new().route(\"/status\", get(get_status)) \
-        .layer(axum::middleware::from_fn_with_state(state, auth_middleware)) \
-        .layer(DefaultBodyLimit::max(262144)) \
-        .with_state(state). \
-        Merge both into a single Router and return."
-    )
+pub fn build_server(state: Arc<DaemonState>) -> Router {
+    let unauth_routes = unauthenticated_router(Arc::clone(&state));
+
+    let auth_routes = Router::new()
+        .route("/status", get(get_status))
+        .layer(DefaultBodyLimit::max(262144))
+        .layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            auth_middleware,
+        ))
+        .with_state(Arc::clone(&state));
+
+    unauth_routes.merge(auth_routes)
 }

@@ -22,7 +22,9 @@
 use std::sync::Arc;
 
 use axum::extract::State;
-use axum::response::Response;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
 use serde::Serialize;
 
 use crate::state::DaemonState;
@@ -99,6 +101,35 @@ pub struct StatusResponse {
     pub tui_attached: bool,
 }
 
+/// Build the `LastHookTs` response struct from the shared `LastHookTimestamps` state.
+///
+/// Reads under a shared read lock and clones the `Option<String>` fields.
+/// On lock poisoning (a handler panicked while holding the write lock), returns
+/// an all-null `LastHookTs` and logs a warning — the daemon can still serve status.
+fn build_last_hook_ts(state: &DaemonState) -> LastHookTs {
+    match state.last_hook_ts.read() {
+        Ok(ts) => LastHookTs {
+            pre_tool_use: ts.pre_tool_use.clone(),
+            notification: ts.notification.clone(),
+            stop: ts.stop.clone(),
+            session_start: ts.session_start.clone(),
+            prompt_submit: ts.prompt_submit.clone(),
+        },
+        Err(_poisoned) => {
+            tracing::warn!(
+                "RwLock<LastHookTimestamps> poisoned; returning null timestamps in /status"
+            );
+            LastHookTs {
+                pre_tool_use: None,
+                notification: None,
+                stop: None,
+                session_start: None,
+                prompt_submit: None,
+            }
+        }
+    }
+}
+
 /// Authenticated daemon state snapshot handler for `GET /status`.
 ///
 /// Returns HTTP 200 with a [`StatusResponse`] JSON body when the auth middleware
@@ -109,15 +140,27 @@ pub struct StatusResponse {
 ///
 /// Serves during graceful shutdown drain window without returning 503 (AC-008,
 /// BC-2.01.002 PC-3): the read-only status handler is exempt from the drain-503 rule.
-pub async fn get_status(State(_state): State<Arc<DaemonState>>) -> Response {
-    unimplemented!(
-        "get_status: read daemon state fields, construct StatusResponse with all 10 fields. \
-        pid = std::process::id(), uptime_sec = state.start_time.elapsed().as_secs(), \
-        version = env!(CARGO_PKG_VERSION), abi_version = monocle_core::MONOCLE_ABI_VERSION, \
-        lock_file = state.lock_file_path.clone(), \
-        hook_endpoints = 5 canonical paths from BC-2.01.002 PC-1 + BC-2.01.008 PC-4, \
-        ring_buffer_fill_pct and channel_saturation_pct from ring/channel state (S-005/S-008), \
-        last_hook_ts from state.last_hook_ts RwLock read, \
-        tui_attached from state.tui_attached Relaxed load."
-    )
+pub async fn get_status(State(state): State<Arc<DaemonState>>) -> impl IntoResponse {
+    let last_hook_ts = build_last_hook_ts(&state);
+    let response = StatusResponse {
+        pid: std::process::id(),
+        uptime_sec: state.start_time.elapsed().as_secs(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        abi_version: monocle_core::MONOCLE_ABI_VERSION,
+        lock_file: state.lock_file_path.clone(),
+        hook_endpoints: vec![
+            "/hooks/pre-tool-use".to_string(),
+            "/hooks/notification".to_string(),
+            "/hooks/stop".to_string(),
+            "/hooks/session-start".to_string(),
+            "/hooks/prompt-submit".to_string(),
+        ],
+        ring_buffer_fill_pct: 0.0,
+        channel_saturation_pct: 0.0,
+        last_hook_ts,
+        tui_attached: state
+            .tui_attached
+            .load(std::sync::atomic::Ordering::Relaxed),
+    };
+    (StatusCode::OK, Json(response))
 }

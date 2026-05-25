@@ -30,8 +30,22 @@ use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use constant_time_eq::constant_time_eq;
 
 use crate::state::DaemonState;
+
+/// Header name for the canonical monocle auth token.
+///
+/// Format: `monocle-v1:<64-hex-chars>` (with prefix).
+const CANONICAL_HEADER: &str = "x-monocle-authorization";
+
+/// Header name for the Claude Code compatibility alias.
+///
+/// Format: raw `<64-hex-chars>` (no prefix).
+const ALIAS_HEADER: &str = "x-claude-code-ide-authorization";
+
+/// Expected prefix on the canonical header value.
+const CANONICAL_PREFIX: &str = "monocle-v1:";
 
 /// Axum middleware function for authenticating requests on the authenticated router.
 ///
@@ -48,16 +62,58 @@ use crate::state::DaemonState;
 /// All token comparisons use `constant_time_eq::constant_time_eq` (NFR-010).
 /// The `==` operator is NEVER used on token bytes.
 pub async fn auth_middleware(
-    axum::extract::State(_state): axum::extract::State<Arc<DaemonState>>,
-    _request: Request<Body>,
-    _next: Next,
+    axum::extract::State(state): axum::extract::State<Arc<DaemonState>>,
+    request: Request<Body>,
+    next: Next,
 ) -> Response {
-    unimplemented!(
-        "auth_middleware: dual-accept auth per ADR-0005 / BC-2.01.009. \
-        Read X-Monocle-Authorization (canonical) then X-Claude-Code-Ide-Authorization \
-        (alias, emit WARN). Constant-time compare with state.auth_token. \
-        Return 401 E-AUTH-001 (missing) or E-AUTH-002 (invalid) on failure."
-    )
+    let headers = request.headers();
+
+    // Priority 1: check canonical header `X-Monocle-Authorization`.
+    if let Some(canonical_value) = headers.get(CANONICAL_HEADER) {
+        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
+        let value_str = match canonical_value.to_str() {
+            Ok(s) => s,
+            Err(_) => return invalid_token_response(),
+        };
+
+        // Must start with "monocle-v1:" prefix.
+        let Some(hex_suffix) = value_str.strip_prefix(CANONICAL_PREFIX) else {
+            return invalid_token_response();
+        };
+
+        // Constant-time comparison of the hex suffix against the stored token.
+        // NFR-010: MUST use constant_time_eq, NEVER `==`.
+        if constant_time_eq(hex_suffix.as_bytes(), state.auth_token.as_bytes()) {
+            return next.run(request).await;
+        }
+        return invalid_token_response();
+    }
+
+    // Priority 2: check alias header `X-Claude-Code-Ide-Authorization`.
+    if let Some(alias_value) = headers.get(ALIAS_HEADER) {
+        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
+        let value_str = match alias_value.to_str() {
+            Ok(s) => s,
+            Err(_) => return invalid_token_response(),
+        };
+
+        // Emit the mandatory WARN per ADR-0005 INV-6 / AC-002.
+        // Exact string is normative — do not paraphrase.
+        tracing::warn!(
+            "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
+            monocle-aware harness should use X-Monocle-Authorization"
+        );
+
+        // Constant-time comparison of the raw hex value against the stored token.
+        // NFR-010: MUST use constant_time_eq, NEVER `==`.
+        if constant_time_eq(value_str.as_bytes(), state.auth_token.as_bytes()) {
+            return next.run(request).await;
+        }
+        return invalid_token_response();
+    }
+
+    // Neither header present — E-AUTH-001 (missing).
+    missing_token_response()
 }
 
 /// Build the HTTP 401 missing-token response (E-AUTH-001).
@@ -67,7 +123,6 @@ pub async fn auth_middleware(
 ///
 /// WIRING-EXEMPT: this is a single-statement JSON constructor delegated to axum's
 /// `IntoResponse` machinery. The body literal is mandated verbatim by BC-2.01.009 PC-1.
-#[allow(dead_code)]
 fn missing_token_response() -> Response {
     (
         StatusCode::UNAUTHORIZED,
@@ -83,7 +138,6 @@ fn missing_token_response() -> Response {
 ///
 /// WIRING-EXEMPT: this is a single-statement JSON constructor delegated to axum's
 /// `IntoResponse` machinery. The body literal is mandated verbatim by BC-2.01.009 PC-2.
-#[allow(dead_code)]
 fn invalid_token_response() -> Response {
     (
         StatusCode::UNAUTHORIZED,
