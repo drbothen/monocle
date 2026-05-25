@@ -66,6 +66,18 @@ pub async fn auth_middleware(
     request: Request<Body>,
     next: Next,
 ) -> Response {
+    // Guard: if auth_token has not been initialized (empty string), reject ALL requests.
+    // An empty token is the default-constructed state (DaemonState::new() before S-004 writes
+    // the generated secret). Allowing any request through against an empty token would permit
+    // the empty-credential bypass: constant_time_eq("", "") == true.
+    // This guard fires before any header extraction so neither path can be exploited.
+    // Tracing error is intentional — an uninitialized daemon serving authenticated routes
+    // indicates a startup sequencing defect worth surfacing in logs.
+    if state.auth_token.is_empty() {
+        tracing::error!("auth_token not initialized; rejecting all authenticated requests");
+        return invalid_token_response();
+    }
+
     let headers = request.headers();
 
     // Priority 1: check canonical header `X-Monocle-Authorization`.

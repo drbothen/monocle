@@ -93,7 +93,10 @@ pub struct DaemonState {
     ///
     /// Initialized to an empty string at construction; written exactly once during daemon
     /// startup by the token-generation path (S-004). An empty token means auth has not
-    /// been initialized — the middleware rejects all requests in this state.
+    /// been initialized — the auth middleware detects this via an `is_empty()` guard placed
+    /// before any header extraction and rejects ALL authenticated requests with HTTP 401
+    /// `{"error":"invalid_auth_token"}`. This prevents the empty-credential bypass where
+    /// `constant_time_eq("", "")` would return `true` against an unset token.
     pub auth_token: String,
 
     /// Absolute path to the daemon's lock file on disk.

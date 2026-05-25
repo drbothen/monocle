@@ -23,6 +23,7 @@
 //! | AC-001 tui_attached | BC-2.01.002 PC-1 tui_attached bool | 2.a tui_attached is bool | test_BC_2_01_002_tui_attached_is_bool_defaults_false |
 //! | AC-001 lock_file | BC-2.01.002 PC-1 lock_file string | 2.a lock_file is string | test_BC_2_01_002_lock_file_is_string |
 //! | AC-002 | BC-2.01.009 PC-3 + INV-6 | 2.b alias auth → 200 + WARN log | test_BC_2_01_002_alias_auth_returns_200_and_emits_warn |
+//! | AC-002 WARN content | BC-2.01.009 INV-6 exact string | 2.b alias auth WARN message exact content | test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6 |
 //! | AC-003 | BC-2.01.009 PC-1 | 2.c no auth → 401 E-AUTH-001 | test_BC_2_01_002_no_auth_returns_401_missing_token |
 //! | AC-004 | BC-2.01.009 PC-2 | 2.d wrong token → 401 E-AUTH-002 | test_BC_2_01_002_wrong_token_returns_401_invalid_token |
 //! | AC-006 | BC-2.01.002 PC-1 hook_endpoints | 2.e hook_endpoints array shape | test_BC_2_01_002_hook_endpoints_array_exactly_5_paths |
@@ -45,7 +46,8 @@
 // Non-snake-case test names encode BC IDs with dots-as-underscores per the naming convention.
 #![allow(non_snake_case)]
 
-use std::sync::Arc;
+use std::fmt;
+use std::sync::{Arc, Mutex};
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -53,6 +55,9 @@ use http_body_util::BodyExt;
 use monocle_runtime::server::build_server;
 use monocle_runtime::state::{AppMode, DaemonState};
 use tower::ServiceExt;
+use tracing::field::{Field, Visit};
+use tracing::span::{Attributes, Id, Record};
+use tracing::{Event, Level, Metadata, Subscriber};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -555,6 +560,154 @@ async fn test_BC_2_01_002_alias_auth_returns_200_and_emits_warn() {
         "alias-auth body must have EXACTLY 10 fields; got {} field(s): {:?}",
         obj.len(),
         obj.keys().collect::<Vec<_>>()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-002 WARN content — BC-2.01.009 INV-6 — exact WARN message emitted on alias path
+// ---------------------------------------------------------------------------
+
+/// Minimal tracing subscriber that captures WARN-level event messages into a shared buffer.
+///
+/// Used exclusively by `test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6` to
+/// verify the exact WARN string required by BC-2.01.009 INV-6 / ADR-0005.
+///
+/// The subscriber is scoped per-test via `tracing::subscriber::set_default`, which installs a
+/// thread-local default and restores the prior subscriber when the returned `DefaultGuard` is
+/// dropped. This avoids any global state contamination between tests.
+struct WarnCapture {
+    messages: Arc<Mutex<Vec<String>>>,
+}
+
+/// Field visitor that extracts the `message` field from a tracing event.
+///
+/// Implements `tracing::field::Visit`. The `message` field is the primary string argument to
+/// `tracing::warn!("...")`. It arrives in `record_debug` because the tracing macro formats the
+/// argument via `format_args!`, which implements `Debug` by writing its display form.
+struct MessageCapture {
+    /// Captured message string, populated by `record_debug` when `field.name() == "message"`.
+    message: Option<String>,
+}
+
+impl Visit for MessageCapture {
+    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
+        if field.name() == "message" {
+            // format_args!("text") Debug-formats as "text" (no surrounding quotes).
+            self.message = Some(format!("{value:?}"));
+        }
+    }
+}
+
+impl Subscriber for WarnCapture {
+    fn enabled(&self, meta: &Metadata<'_>) -> bool {
+        // Only capture WARN and above; ignore DEBUG/TRACE/INFO to reduce noise.
+        meta.level() <= &Level::WARN
+    }
+
+    fn new_span(&self, _attrs: &Attributes<'_>) -> Id {
+        // Span IDs are not used by this capture subscriber; return a sentinel.
+        Id::from_u64(1)
+    }
+
+    fn record(&self, _span: &Id, _values: &Record<'_>) {}
+
+    fn record_follows_from(&self, _span: &Id, _follows: &Id) {}
+
+    fn event(&self, event: &Event<'_>) {
+        if event.metadata().level() <= &Level::WARN {
+            let mut visitor = MessageCapture { message: None };
+            event.record(&mut visitor);
+            if let Some(msg) = visitor.message {
+                self.messages
+                    .lock()
+                    .expect("WarnCapture mutex poisoned")
+                    .push(msg);
+            }
+        }
+    }
+
+    fn enter(&self, _span: &Id) {}
+
+    fn exit(&self, _span: &Id) {}
+}
+
+/// BC-2.01.009 INV-6 / AC-002: The exact WARN message emitted on alias-path auth is normative.
+///
+/// INV-6 specifies the exact string:
+/// `"WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); monocle-aware harness should use X-Monocle-Authorization"`
+///
+/// This test captures tracing events during an alias-path authentication request and asserts:
+/// 1. HTTP 200 is returned (alias auth succeeds with correct token).
+/// 2. At least one WARN event is captured during the request lifecycle.
+/// 3. One of the captured WARN messages contains the exact INV-6 string verbatim.
+///
+/// Uses `tracing::subscriber::with_default` around a manually-built `current_thread` tokio
+/// runtime so the entire async execution is enclosed within a synchronous closure. This
+/// guarantees that the thread-local subscriber is active on the exact OS thread that drives
+/// the future — eliminating the race condition that arises when `set_default` is paired with
+/// `#[tokio::test]` in a parallel test harness (where the test harness may drive the future
+/// on a thread-pool thread that never had the thread-local subscriber installed).
+///
+/// Counter-example guarded: an implementation that emits a paraphrased WARN (e.g., eliding
+/// "monocle-aware harness should use X-Monocle-Authorization") would fail the contains-check,
+/// catching drift from the normative ADR-0005 string.
+///
+/// Traces to BC-2.01.009 INV-6, AC-002, ADR-0005.
+/// F-S003-ADV1-002.
+#[test]
+fn test_BC_2_01_002_alias_auth_warn_message_content_matches_inv6() {
+    // INV-6 normative WARN string — must match auth.rs verbatim. No paraphrase permitted.
+    const EXPECTED_WARN: &str = "WARN: hook auth via X-Claude-Code-Ide-Authorization \
+        (compatibility alias); monocle-aware harness should use X-Monocle-Authorization";
+
+    let messages = Arc::new(Mutex::new(Vec::<String>::new()));
+    let subscriber = WarnCapture {
+        messages: Arc::clone(&messages),
+    };
+
+    // `with_default` installs the subscriber as the thread-local default for the duration of
+    // the closure and restores the prior subscriber when the closure returns. The manually-
+    // built `block_on` call drives the future entirely on the current OS thread — the same
+    // thread on which `with_default` installed the subscriber — so all tracing events emitted
+    // by the auth middleware are captured without thread-local race conditions.
+    let (status, body) = tracing::subscriber::with_default(subscriber, || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("build current_thread runtime for WARN capture test")
+            .block_on(async {
+                let state = make_state_with_token();
+                // Alias path: raw 64-hex token, no monocle-v1: prefix — must trigger WARN.
+                get_status_json(
+                    state,
+                    &[("X-Claude-Code-Ide-Authorization", TEST_TOKEN_HEX)],
+                )
+                .await
+            })
+    });
+
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "GET /status with alias auth must return HTTP 200 (BC-2.01.009 PC-3); \
+        got {status}. Body: {body}."
+    );
+
+    let captured = messages.lock().expect("WarnCapture mutex must not be poisoned");
+    assert!(
+        !captured.is_empty(),
+        "At least one WARN event must be captured when the alias auth path is used \
+        (BC-2.01.009 INV-6); no WARN events were recorded. \
+        Counter-example: if the auth middleware omits the tracing::warn! call, \
+        captured will be empty."
+    );
+    let warn_present = captured.iter().any(|m| m.contains(EXPECTED_WARN));
+    assert!(
+        warn_present,
+        "One of the captured WARN messages must contain the exact INV-6 string verbatim. \
+        Expected to find: {EXPECTED_WARN:?}. \
+        Captured messages: {captured:?}. \
+        (BC-2.01.009 INV-6 / ADR-0005: the WARN string is normative — no paraphrase.)"
     );
 }
 
@@ -1374,5 +1527,94 @@ fn test_BC_2_01_002_invariant_auth_uses_constant_time_eq() {
         "src/auth.rs must use `constant_time_eq::constant_time_eq` for token comparison \
         in executable code (NFR-010 timing-attack resistance). No non-comment usage found. \
         Traces to S-003 §Architecture Compliance / BC-2.01.009 INV-7."
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S003-ADV2-001 — Empty auth_token rejects all requests (bypass prevention)
+// ---------------------------------------------------------------------------
+
+/// F-S003-ADV2-001 / BC-2.01.009 security invariant: When `DaemonState.auth_token` is the
+/// empty string (default state — S-004 has not yet written the generated secret), the auth
+/// middleware MUST reject ALL requests with HTTP 401 `{"error":"invalid_auth_token"}`.
+///
+/// Without this guard the empty-credential bypass is possible:
+///   - Canonical path: `X-Monocle-Authorization: monocle-v1:` → `strip_prefix` yields `""`
+///     → `constant_time_eq("".as_bytes(), "".as_bytes())` returns `true` → request admitted.
+///   - Alias path: `X-Claude-Code-Ide-Authorization: ` (empty) → same empty-equals-empty
+///     bypass → request admitted.
+///
+/// The fix is an `is_empty()` guard placed BEFORE any header extraction. This test exercises
+/// all three bypass vectors (canonical empty suffix, alias empty value, canonical prefix-only)
+/// against an uninitialized `DaemonState` (auth_token == "").
+///
+/// Counter-example guarded: any implementation that skips the `is_empty` guard and proceeds
+/// directly to `constant_time_eq` would admit the empty-credential request → HTTP 200 instead
+/// of HTTP 401, failing all three sub-assertions below.
+///
+/// Traces to BC-2.01.009 (security invariant — uninitialized token must not grant access),
+/// NFR-010 (timing-attack resistance does not help if token is empty), F-S003-ADV2-001.
+#[tokio::test]
+async fn test_BC_2_01_009_empty_auth_token_rejects_all_requests() {
+    // DaemonState::new() sets auth_token = String::new() (empty string).
+    // This is the pre-S-004-startup state: token has not been generated yet.
+    let state = Arc::new(DaemonState::new());
+
+    // Sub-test 1: canonical header with empty suffix (monocle-v1: with no hex after colon).
+    // Attack vector: strip_prefix("monocle-v1:") from "monocle-v1:" yields "" →
+    // constant_time_eq("", "") == true without the is_empty guard.
+    let (status1, body1) =
+        get_status_json(Arc::clone(&state), &[("X-Monocle-Authorization", "monocle-v1:")]).await;
+    assert_eq!(
+        status1,
+        StatusCode::UNAUTHORIZED,
+        "Sub-test 1 (canonical empty suffix against uninitialized token): must return HTTP 401; \
+        got {status1}. Body: {body1}. \
+        Without the is_empty guard, constant_time_eq(\"\", \"\") == true would admit this request."
+    );
+    assert_eq!(
+        body1.get("error").and_then(|v| v.as_str()),
+        Some("invalid_auth_token"),
+        "Sub-test 1: error body must be {{\"error\":\"invalid_auth_token\"}}; got: {body1}. \
+        (F-S003-ADV2-001: uninitialized token always returns E-AUTH-002, not E-AUTH-001)"
+    );
+
+    // Sub-test 2: alias header with empty value.
+    // Attack vector: X-Claude-Code-Ide-Authorization: "" →
+    // constant_time_eq("", "") == true without the is_empty guard.
+    let (status2, body2) =
+        get_status_json(Arc::clone(&state), &[("X-Claude-Code-Ide-Authorization", "")]).await;
+    assert_eq!(
+        status2,
+        StatusCode::UNAUTHORIZED,
+        "Sub-test 2 (alias empty value against uninitialized token): must return HTTP 401; \
+        got {status2}. Body: {body2}. \
+        Without the is_empty guard, constant_time_eq(\"\", \"\") == true would admit this request."
+    );
+    assert_eq!(
+        body2.get("error").and_then(|v| v.as_str()),
+        Some("invalid_auth_token"),
+        "Sub-test 2: error body must be {{\"error\":\"invalid_auth_token\"}}; got: {body2}. \
+        (F-S003-ADV2-001: alias path against uninitialized token must reject)"
+    );
+
+    // Sub-test 3: canonical header with only the prefix "monocle-v1:" — same as sub-test 1
+    // but expressed via the canonical-format attack. Redundant with sub-test 1 but kept for
+    // clarity of the two described attack vectors in F-S003-ADV2-001.
+    let (status3, body3) = get_status_json(
+        Arc::clone(&state),
+        &[("X-Monocle-Authorization", "monocle-v1:")],
+    )
+    .await;
+    assert_eq!(
+        status3,
+        StatusCode::UNAUTHORIZED,
+        "Sub-test 3 (canonical prefix-only against uninitialized token): must return HTTP 401; \
+        got {status3}. Body: {body3}. (F-S003-ADV2-001)"
+    );
+    assert_eq!(
+        body3.get("error").and_then(|v| v.as_str()),
+        Some("invalid_auth_token"),
+        "Sub-test 3: error body must be {{\"error\":\"invalid_auth_token\"}}; got: {body3}."
     );
 }
