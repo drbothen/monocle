@@ -27,6 +27,7 @@
 //! | test_BC_2_01_008_auth_token_matches_regex | AC-014 | BC-2.01.008 PC-1 | VP-005 |
 //! | test_BC_2_01_008_generate_session_token_format | AC-014 | BC-2.01.008 PC-1 | VP-005 |
 //! | test_BC_2_01_008_generate_session_token_is_random | AC-014 | BC-2.01.008 PC-1 | VP-005 |
+//! | test_BC_2_01_005_acquire_rejects_port_zero | — | F-S006-ADV1-004 | — |
 //!
 //! # Red Gate
 //!
@@ -1008,4 +1009,37 @@ fn test_BC_2_01_008_generate_session_token_is_random() {
         is returning a constant (BC-2.01.008 INV-3 / AC-014). \
         token_a: {token_a:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Port range validation (F-S006-ADV1-004)
+// ---------------------------------------------------------------------------
+
+/// acquire() must reject port 0 with LockFileWriteFailure(InvalidInput).
+///
+/// Ports 0–1023 are reserved/privileged. Accepting port 0 would produce a lock
+/// file with an unusable port value. The valid range is 1024–65535.
+///
+/// Traces to F-S006-ADV1-004 (adversary finding Pass 1).
+#[test]
+fn test_BC_2_01_005_acquire_rejects_port_zero() {
+    let tmp = make_temp_runtime_dir();
+    let runtime_dir = tmp.path();
+
+    let result = DaemonLock::acquire(runtime_dir, 0);
+
+    match result {
+        Err(DaemonStartError::LockFileWriteFailure(io_err)) => {
+            assert_eq!(
+                io_err.kind(),
+                std::io::ErrorKind::InvalidInput,
+                "port 0 rejection must use ErrorKind::InvalidInput; got: {:?}",
+                io_err.kind()
+            );
+        }
+        other => panic!(
+            "expected Err(LockFileWriteFailure(InvalidInput)) for port=0, got: {:?}",
+            other
+        ),
+    }
 }

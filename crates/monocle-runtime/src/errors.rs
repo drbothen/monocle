@@ -20,7 +20,9 @@ pub enum DaemonStartError {
     ///
     /// This can occur on platforms where `ProjectDirs::new(...)` returns `None`
     /// (e.g., when `$HOME` is unset on Unix) and `MONOCLE_RUNTIME_DIR` is also absent.
-    #[error("could not resolve runtime directory: neither MONOCLE_RUNTIME_DIR nor platform ProjectDirs returned a path")]
+    #[error(
+        "cannot resolve runtime directory; set MONOCLE_RUNTIME_DIR to specify an explicit path"
+    )]
     RuntimeDirUnresolvable,
 
     /// A live process already holds the lock file at the path.

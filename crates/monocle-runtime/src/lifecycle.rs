@@ -91,7 +91,10 @@ pub fn resolve_runtime_dir() -> Result<PathBuf, DaemonStartError> {
     if let Some(rd) = proj.runtime_dir() {
         Ok(rd.to_path_buf())
     } else {
-        tracing::info!("runtime_dir fallback to data_local_dir (platform: macos)");
+        tracing::info!(
+            platform = std::env::consts::OS,
+            "runtime_dir fallback to data_local_dir"
+        );
         Ok(proj.data_local_dir().to_path_buf())
     }
 }

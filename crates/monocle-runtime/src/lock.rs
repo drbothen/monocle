@@ -125,6 +125,13 @@ impl DaemonLock {
         use std::io::Write;
         use std::os::unix::fs::PermissionsExt;
 
+        if !(1024..=65535).contains(&port) {
+            return Err(DaemonStartError::LockFileWriteFailure(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("port {port} out of valid range 1024-65535"),
+            )));
+        }
+
         let lock_path = runtime_dir.join("monocle.lock");
         let sock_path = runtime_dir.join("monocle.sock");
 
@@ -136,12 +143,17 @@ impl DaemonLock {
                 }
                 ExistingLockStatus::Stale => {
                     // Dead pid or unrecognized format — remove stale lock and proceed.
-                    if let Err(e) = std::fs::remove_file(&lock_path) {
-                        tracing::warn!(
-                            path = %lock_path.display(),
-                            error = %e,
-                            "failed to remove stale lock file; proceeding anyway"
-                        );
+                    match std::fs::remove_file(&lock_path) {
+                        Ok(()) => {
+                            tracing::warn!("stale lock file removed (E-LOCK-002)");
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                path = %lock_path.display(),
+                                error = %e,
+                                "failed to remove stale lock file; proceeding anyway"
+                            );
+                        }
                     }
                 }
             }
@@ -286,7 +298,8 @@ impl DaemonLock {
             tracing::warn!(
                 path = %lock_path.display(),
                 contract_version = version_int,
-                "existing lock file has unrecognized contract_version; treating as stale (E-LOCK-002)"
+                "lock file contract_version {} not recognized; skipping (E-LOCK-003)",
+                version_int
             );
             return ExistingLockStatus::Stale;
         }
@@ -320,10 +333,9 @@ impl DaemonLock {
         match nix::sys::signal::kill(nix_pid, None) {
             Ok(()) => {
                 // Process is alive — return conflict.
-                tracing::info!(
-                    path = %lock_path.display(),
+                tracing::error!(
                     pid = pid_i32,
-                    "existing lock file has live PID; returning LockFileConflict (E-LOCK-001)"
+                    "daemon already running at pid={pid_i32}; exiting (E-LOCK-001)"
                 );
                 ExistingLockStatus::LiveConflict { pid: pid_i32 }
             }
@@ -332,7 +344,7 @@ impl DaemonLock {
                 tracing::warn!(
                     path = %lock_path.display(),
                     pid = pid_i32,
-                    "existing lock file has dead PID (ESRCH); removing stale lock (E-LOCK-004)"
+                    "existing lock file has dead PID (ESRCH); removing stale lock (E-LOCK-002)"
                 );
                 ExistingLockStatus::Stale
             }
@@ -360,7 +372,7 @@ impl DaemonLock {
     ///
     /// Returns `std::io::Error` if either file removal fails. Callers should log the
     /// error via `tracing::error!` and proceed with shutdown regardless.
-    pub fn release(&self) -> std::io::Result<()> {
+    pub fn release(self) -> std::io::Result<()> {
         // Remove lock file.
         std::fs::remove_file(&self.path).map_err(|e| {
             tracing::error!(
