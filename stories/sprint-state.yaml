@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-25T21:34:48Z
+timestamp: 2026-05-25T22:49:12Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -76,12 +76,12 @@ stories:
     epic: EPIC-01
     wave: 2
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001, S-002."
+    completed_at: "2026-05-25"
+    pr_url: "https://github.com/drbothen/monocle/pull/6"
+    notes: "Wave 2 Tier 1. PR #6 merged at develop @ 534fc9b. 44 integration tests (199 total). BC-2.01.002 + BC-2.01.009 + BC-2.02.001 fully satisfied. 5 adversary passes (1 FAIL w/ CRIT security fix → 3 PASS convergence). Security review: clean. Empty-token bypass (F-S003-ADV2-001) fixed."
 
   - id: S-004
     title: "Body Size Limit (256 KiB, HTTP 413)"
@@ -229,19 +229,19 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 13
+  not_started: 12
   in_progress: 0
   review: 0
-  done: 3
+  done: 4
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 11
+  points_complete: 16
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.8 updates (2026-05-25T21:34:48Z):
-  # - S-002 flipped not_started → done (PR #5 merged f69435e; 20 healthz tests; BC-2.01.001 satisfied)
-  # - done: 2 → 3; not_started: 14 → 13; points_complete: 8 → 11
-  # - Wave 2 progress: 1/9 stories done (3/41 pts)
+  # v1.9 updates (2026-05-25T22:49:12Z):
+  # - S-003 flipped not_started → done (PR #6 merged 534fc9b; 44 integration tests; BC-2.01.002 + BC-2.01.009 + BC-2.02.001 satisfied)
+  # - done: 3 → 4; not_started: 13 → 12; points_complete: 11 → 16
+  # - Wave 2 progress: 2/9 stories done (8/41 pts)
