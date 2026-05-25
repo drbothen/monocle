@@ -2,111 +2,88 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "5.93"
+version: "5.94"
 status: active
 producer: state-manager
-timestamp: 2026-05-21T05:30:00Z
-phase: phase-3-APPROVED-TO-EXECUTE
-current_step: "D-164-WAVE-1-FULLY-CLOSED-wave-gate-PASS_WITH_OBSERVATIONS-3-HIGHs-closed-3-MEDs-deferred-ready-for-Wave-2"
+timestamp: 2026-05-24T12:00:00Z
+phase: phase-3-WAVE-2-APPROVED-TO-EXECUTE
+current_step: "D-165-WAVE-2-APPROVED-TO-EXECUTE-user-authorization-2026-05-24"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "**PRE-PHASE-1 GATE PASS** declared 2026-05-14 per D-054. 33 adversary rounds + fix bursts in cycle-001. 22 BCs implementable; 37 META defense disciplines (SE-22 codified R17-pre burst per D-142). Permanent residual catalog: F-R55-adv-1, F-R55-adv-3, F-R61-adv-1, F-R61-2 (frozen). Phase 1+ reverts to D-047 strict 3-clean-pass. **F-R101 5-burst serial closure chain COMPLETE per D-115 (2026-05-17). D-047 STRICT CONVERGENCE ACHIEVED per D-120 (2026-05-17). Template-compliance remediation chain COMPLETE per D-122 (7 dispatches; 2026-05-17). D-047 convergence at D-120 RETIRED (audited monolithic structure now superseded). New adversarial cycle required against restructured artifacts. D-128 Option A FULL CLOSURE COMPLETE (2026-05-17): 14 R105 + 5 R44 + 3 ADR-0005-cascade follow-ups + 1 VP-019 production-grade-fix — all closed across 4 dispatch rounds (16 commits on factory-artifacts). D-129 Round 5 R106+R45 FULL CLOSURE COMPLETE (2026-05-17): 20 R106 + 5 R45 = 25 findings closed in 6 commits (bb088a2, df5605a, 56c11fe, fd790b8, 7b8d6e8, 03a4c57, SM 5F). ADR-0005 cascade completed; supplements refreshed; brief orphan-promises resolved. F-R107 Round 6 FULL CLOSURE COMPLETE (2026-05-17): 13 R107 + 5 R46 = 18 unique findings closed in 4+1 commits (d92e4a7 co-mingled PO 6A+6B, bd14774 FV 6C, 98396fe Arch 6D, fcf2b2d BA 6E, SM 6F). ADR-0005 pin sweep complete; SS-forward-compatibility BC IDs canonicalized (17 monolithic → BC-2.SS.NNN); supplements refreshed (interface-definitions v1.4 + nfr-catalog v1.3 + test-vectors v1.2 + error-taxonomy v1.2); EC-013 registered; L2-INDEX brief pin corrected. **D-130 R108 FAIL RECORDED (2026-05-18): adversary R108 returned FAIL with 22 findings (4 CRIT + 8 HIGH + 6 MED + 4 LOW + 3 process-gap obs) — INCREASED from R107's 13. Cons R47 returned GAPS (5 findings: 1 HIGH + 2 MED + 2 LOW). Counter HELD at 0/3. 4th consecutive FAIL. User authorized Option A continue. **D-131 R108 FULL CLOSURE COMPLETE (2026-05-18): all 22 R108 + 5 R47 findings closed in 4 commits (22579ac PO 7A, c307f2a+de6e6dd PO 7B, 9db4df8 Arch 7C, 2095388+2656ef2+6436da7 FV 7D) + this SM 7E burst. SE-18 CODIFIED (3rd occurrence; commit-burst hygiene; cross-dispatch version-bump coordination). KNOWN CARRYFORWARD for R109 was: Architect 7C bumped SS doc versions for content fixes (v1.0.31→v1.0.32, v1.2.11→v1.2.13, v1.1.18→v1.1.20, v1.2.16→v1.2.17, v1.0.6→v1.0.7 dtu-assessment); PO 7B + FV 7D cited pre-bump versions. Pin staleness across PRD traces_to + brief line 247 + 22 VPs + VP-INDEX SS pins + 10 BC arch-source rows. R109 surfaced as predicted. **D-132 R109 FAIL + 2ND ESCALATION (2026-05-18): R109 adversary returned FAIL with 21 substantive findings (4 CRIT + 8 HIGH + 6 MED + 3 LOW + 4 obs). Cons R48 returned FAIL with 8 GAPs (2 CRIT + 2 HIGH + 2 MED + 2 LOW). NEW META-class: phantom-version-bump fabrication — Architect 7C §Trace claims version bumps that may not match frontmatter. THREE-WAY disagreement across BCs / PRD-VP-brief / ARCH-INDEX. 5th consecutive FAIL. Trajectory DIVERGENT (R105→14, R106→25, R107→18, R108→22, R109→29). Orchestrator 2nd escalation. R109 report at .factory/plans/adversary-pass-r109-phase1.md. STATE v5.69 recorded. NO closure dispatch. **ROUND 15 F-R116 CLOSURE CHAIN COMPLETE (2026-05-18):** All 4 R116 findings closed across 3 bursts: R15A (92b7aed) VP-INDEX v1.11→v1.12 + 14-row H1 sibling sweep (F-R116-1 HIGH); R15B (08d1ef4 factory + a5e6398 main) brief v1.4.27→v1.4.28 + CLAUDE.md v1.4.26→v1.4.28 two-line fix + revision-history row repair (F-R116-2 HIGH); R15C (1d75edf) VP-005 §Trace SE-16d wording > → ≥ + v1.0.11→v1.0.12 (F-R116-3 MED). O-R116-1 SE-22 candidate HELD per D-114 (1st occurrence). SE-17e sibling sweep of VP-005 fix: 21 other VPs CLEAN (defect unique to VP-005). Counter remains 0/3 — counter advances only on subsequent adversary CLEAN pass (R117). R15D (this burst): STATE v5.75 + compute-input-hash UPDATED=72. **Pipeline ready for R117 + cons R56 parallel dispatch.** **ROUND 16 F-R117 + GAP-R56-002 CLOSURE CHAIN COMPLETE (2026-05-18):** R117 adversary FAIL (4 findings: 2 HIGH + 1 MED + 1 LOW). Cons R56 GAPS (2 findings: GAP-R56-001 brief pin stale in PRD traces_to; GAP-R56-002 brief pin stale in L2-INDEX §Trace). 5 findings closed across 4 dispatches (R16-pre df6f51c; R16A aef91dc PRD v1.26.10; R16B ARCH-INDEX v1.0.10 co-landed in aef91dc per SE-18 worktree race; R16C 9a02f5a BC-INDEX v1.10 + BC-2.01.010 v1.0.4; R16D b0d5092 L2-INDEX v1.0.9). SE-22 sibling-sweep candidate: 2nd explicit occurrence (HELD per D-114). NEW SE-18 sub-class: parallel-burst worktree-race (1st occurrence of this sub-class). Counter holds at 0/3 — advance requires R118 CLEAN. **R17-pre: SE-22 Sibling-Sweep META CODIFIED (37th discipline) per D-142 (2026-05-18T17:30:00Z). R118 + cons R57 returned 10 unique sibling-sweep META-class findings — D-114 Goodhart's-law deferral threshold conclusively met (3rd+ occurrence). User selected Option A: codify SE-22 + execute Round 17 fix chain. STATE v5.76 → v5.77. Counter unchanged 0/3. Round 17 fix-burst chain queued (R17A–R17F).** **ROUND 17 F-R118 + cons R57 CLOSURE CHAIN COMPLETE (2026-05-18T20:30:00Z): All 10 unique findings closed across 5 serialized fix bursts. R17A (d22645e) PRD v1.26.10→v1.26.11 — 3 targeted sites + SE-22 bonus ARCH-INDEX missing pin catch. R17B (b934e57 factory; 1e75fe5 main) brief v1.4.28→v1.4.29 + CLAUDE.md brief refs v1.4.29. R17C (8fbb61f) VP-INDEX v1.12→v1.13 + 22 VP §References cascade (46 active cite refreshes; SE-22 cycle 3 LARGEST burst; SE-17f recursive revalidation PASS; stale-zero invariant HOLDS). R17D (b7ce1ac) SS-conventions-anti-patterns v1.29.4→v1.29.5 — Pin-Symmetry subsection added lines 1491-1511; architect extended scope to cover both BC + VP Architecture Source cells (production-grade improvement). R17E (2e15e88) CAP-001 v1.4→v1.5 — §Trace v1.5 added with current brief pointer v1.4.29; SE-17g audit-trail discipline: historical §Trace v1.4 preserved verbatim with annotation marker. R17F (this commit) STATE v5.78 closure. SE-22 first-cycle PROVEN effective across 5 sequential bursts. Serialized dispatch avoided SE-18 worktree race. D-143 + D-144 + D-145 decisions recorded. Counter unchanged 0/3. compute-input-hash: TOTAL=205 MATCH=0 STALE=74 UPDATED=74 UPDATE_FAILED=0. **R18-pre: SE-23 SM Defensive-Sweep Prohibition codified (38th discipline) per D-146 + R119 adversary report persisted to .factory/plans/adversary-pass-r119-phase1.md. STATE v5.78 → v5.79. Counter unchanged 0/3. Round 18 fix-burst chain queued (R18A PRD v1.26.12 → R18B BC-INDEX v1.11 → R18C L2-INDEX v1.0.10 → R18D STATE v5.80 closure). ROUND 18 F-R119 CLOSURE CHAIN COMPLETE (2026-05-18T23:00:00Z): All 3 R119 findings closed across 3 serialized fix bursts + R18-pre codification + R18D STATE closure. R18A (92c55d2) PRD v1.26.11→v1.26.12 — §Trace v1.26.12 retrospective for R17F SM-applied traces_to edits (F-R119-1 HIGH). R18B (442f5ac) BC-INDEX v1.10→v1.11 — §Trace v1.11 retrospective for R17F SM-applied Canonical SS table edit (F-R119-2 HIGH). R18C (bedcf30) L2-INDEX v1.0.9→v1.0.10 — §Trace line 149 brief pin v1.4.28→v1.4.29 back-cascade (F-R119-3 MED). SE-23 first-application cycle PROVEN in R18D (SM touched ONLY STATE.md; zero spec artifact modifications). D-147 + D-148 decisions recorded. Counter unchanged 0/3 (closure doesn't advance; R120 + cons R59 dispatch pending). **R18E (2026-05-18T23:30:00Z, b22312c): SM-surfaced VP-INDEX drift routed to FV — VP-INDEX v1.13→v1.14 + 22 VP §References cascade (BC-INDEX v1.11 + PRD v1.26.12 pins; SE-22 v2 occurrence #2). SE-23 first-cycle PROVEN: SM surfaced, FV fixed; SM did not touch any spec artifact. R19-pre (2026-05-18T23:45:00Z): SE-22 v2 Sibling-Sweep Consumer-Ledger Extension codified as 39th discipline per D-149 (D-114 threshold met: 3 explicit occurrences). R120 report persisted (.factory/plans/adversary-pass-r120-phase1.md). Cons R59 GAPS: 3 findings (2 duplicates of R120; 1 new GAP-R59-003 brief BC-INDEX pin stale). STATE v5.80 catch-up recorded (F-R120-4 LOW addressed in this burst). User direction: continue convergence at least 2 more rounds. Long-term solution context: vsdd-factory spec-kit-mcp proposal (draft 2026-05-17) identified as structural fix; SE-22 v2 is bridge until rc.19+ ships.** **WAVE 1 PARTIAL (D-161; 2026-05-20): S-001 merged with IRON-LAW-violation discovered by fresh-context post-merge audit; S-001 v1.6 process-corrected via fix PR (4 findings: F-001 CRIT cargo-deny+deny.toml + F-002/F-003 HIGH dependabot+action-SHA); S-DTU-001 BC-HOOK prereq still pending PO authorship; capability-gap discovery codified as SE-40 candidate (IRON LAW pre-merge enforcement — sub-orchestrator must dispatch fresh-context reviews before merge). **D-163 WAVE 1 COMPLETE (2026-05-21T02:30:00Z): PR #3 (cfeb1346) S-DTU-001 merged on develop. Both Wave 1 stories DONE: S-001 (5 pts, PRs #1+#2) + S-DTU-001 (3 pts, PR #3). 41 BC-HOOK-001..041 contracts implemented. 6 adversarial reports. SE-40 2nd occurrence (HELD per D-114). Wave 2 next (9 stories, 41 pts). **D-164 WAVE 1 FULLY CLOSED (2026-05-21T05:30:00Z): Wave-gate adversary verdict PASS_WITH_OBSERVATIONS. PR #4 (681c179 closeout) merged on develop closing F-WAVE1-001 + F-WAVE1-002. F-WAVE1-003 closed via factory-artifacts story-writer cascade (06c94fb + c459b06). 3 MEDs (F-WAVE1-004/005/006) deferred to maintenance with documented trail. Test count: 134 passed. develop @ 681c179. Wave 2 dispatch ready: 9 stories, 41 pts.**"
-awaiting: "**D-164 WAVE 1 FULLY CLOSED (2026-05-21T05:30:00Z).** Wave-gate adversary verdict: PASS_WITH_OBSERVATIONS. All 4 Wave-1 PRs landed: PR #1 (a6f119c S-001 original) + PR #2 (184f7d4 S-001 hardening) + PR #3 (cfeb1346 S-DTU-001) + PR #4 (681c179 wave-gate closeout). 3 HIGHs closed: F-WAVE1-001 (false-green test delete + Red Gate comment sweep — PR #4) + F-WAVE1-002 (workflow path filter — PR #4) + F-WAVE1-003 (STORY-INDEX S-DTU-001 status flip — factory-artifacts cascade 06c94fb + c459b06). 3 MEDs deferred to maintenance with documented trail: F-WAVE1-004 (cron collision risk), F-WAVE1-005 (xtask not in deny targets), F-WAVE1-006 (prost-build no-op cost). Test count: 134 passed (was 135 — 1 false-green deleted in PR #4). Wave-gate adversary report at .factory/plans/wave-gate-wave-1-adversary.md. 3 process-discovery candidates surfaced this Wave: SE-40 (2nd occurrence; HELD per D-114), tautological-test risk pattern, single-giant-commit-hides-todo pattern. Wave 2 dispatch ready: 9 stories (S-002 S-003 S-004 S-005 S-006 S-010 S-011 S-013 S-014), 41 points."
+awaiting: "**D-165 WAVE 2 APPROVED-TO-EXECUTE — user authorization 2026-05-24.** Wave 1 FULLY CLOSED (D-164): 2 stories shipped (S-001 + S-DTU-001), 4 PRs merged (develop @ 681c179), wave-gate PASS_WITH_OBSERVATIONS, all HIGH findings closed in scope, 3 MEDs deferred to maintenance sweep. Wave 2 dispatch: 9 stories (S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014), 41 points, partial-parallel within wave per wave-schedule.md. Orchestrator drives each story from main session per SE-40 (2nd occurrence). No sub-orchestrator delegation for deliver-story. No additional human gate required."
+durable_task_register:
+  outstanding:
+    - id: "#28"
+      subject: "prost/reqwest exact-patch pin verification"
+      status: partial
+      detail: "prost = '=0.14.1' VERIFIED on crates.io + resolved in Cargo.lock. reqwest = '=0.13.0' exists but latest 0.13.x is 0.13.3 — reqwest not yet activated by any Phase 1 member. Architect adjudication needed when S-009 activates reqwest."
+      blocking: false
+    - id: "#34"
+      subject: "BC-2.03.001 PC-3 DeferUntil cleanup"
+      status: pending
+      detail: "BC-2.03.001 v1.0.5 PC-3 still enumerates DeferUntil in supporting types. Authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.20 (no DeferUntil). PO mechanical fix."
+      blocking: false
+    - id: "BC-HOOK-034-typo"
+      subject: "BC-HOOK-034 typo decorated_by -> deprecated_by"
+      status: pending
+      detail: "Cosmetic typo in BC-HOOK-034 frontmatter. Non-blocking. Maintenance sweep."
+      blocking: false
+    - id: "VP-DTU-001"
+      subject: "VP-DTU-001 to be created by architect in Phase 4"
+      status: deferred-phase-4
+      detail: "All 41 BC-HOOK files cite VP-DTU-001 as verification property. VP-DTU-001 is Phase 4 deferral marker; architect creates when holdout-evaluator scope is operational."
+      blocking: false
+    - id: "F-WAVE1-004"
+      subject: "Cron schedule collision audit.yml + dtu-fidelity.yml"
+      status: deferred-maintenance
+      detail: "Both 0 0 * * 0 UTC. Stagger to avoid cache thrash. Low impact."
+      blocking: false
+    - id: "F-WAVE1-005"
+      subject: "xtask not in cargo-deny [graph].targets"
+      status: deferred-maintenance
+      detail: "xtask is dev-tooling-only. Targets limit cargo-deny to 3 CI runner triples. Low likelihood Phase 1 risk. Document in deny.toml."
+      blocking: false
+    - id: "F-WAVE1-006"
+      subject: "monocle-proto prost-build no-op build cost"
+      status: deferred-S-013
+      detail: "build.rs no-op stub but prost-build compiles ~2-3s cold-cache per CI runner. Resolved when S-013 wires real .proto files."
+      blocking: false
+  se_candidates:
+    - id: SE-40
+      occurrences: 2
+      threshold: 3
+      description: "Orchestrator drives deliver-story from main session only; never delegates to sub-orchestrator that cannot spawn fresh-context specialists."
+      status: HELD per D-114
+  process_discoveries:
+    - "Tautological-test risk pattern: test-writer compared fixture.clone() to fixture (identity = false-green)"
+    - "Single-giant-commit-hides-todo: implementer R1 claimed completion but left todo!() in binary entrypoint"
+    - "Production-Grade Default Rule 1 'Future:' comment violations caught 3x"
+    - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
+    - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE (zero context) — D-164 WAVE 1 FULLY CLOSED / WAVE 2 DISPATCH NEXT:
+  COLD-START RESUME GUIDE (zero context) — D-165 WAVE 2 APPROVED:
 
-  1. Run factory-worktree-health check via devops-engineer (BLOCKING — do NOT skip).
-  2. Verify branch state from /Users/jmagady/Dev/monocle:
-     - `git log --oneline -3 develop` → HEAD should be 681c179 (PR #4 wave-gate closeout squash-merge).
-     - `git -C .factory log --oneline -1` → should be the D-164 STATE v5.93 commit (this burst).
-  3. Read this STATE.md COMPLETELY. Note: STATE.md exceeds the <200-line target — compaction is deferred maintenance; do NOT block Phase 3 on it.
-  4. Read CLAUDE.md §Current Pipeline State for canonical artifact versions.
-  5. Read .factory/tech-debt-register.md — BOTH Phase 1 and Phase 2 residual entries still ACTIVE.
-  6. Phase 3 APPROVED per D-160. WAVE 1 FULLY CLOSED per D-164 (wave-gate PASS_WITH_OBSERVATIONS).
-  7. Wave 1 final status:
-     - S-001: DONE. PRs #1 (a6f119c) + #2 (184f7d4). 2 LOW findings (F-008, F-009) deferred to maintenance.
-     - S-DTU-001: DONE. PR #3 (cfeb1346). 41 BC-HOOK contracts shipped.
-     - Wave-gate closeout: PR #4 (681c179). 3 HIGHs closed; 3 MEDs deferred to maintenance.
-     - Test count: 134 passed.
-  8. SE-40 candidate (2nd occurrence; HELD per D-114):
-     "Orchestrator drives deliver-story from main session only; never delegates per-story-delivery
-     to a sub-orchestrator that cannot spawn fresh-context specialists."
-     Codification requires 3+ explicit occurrences. Record each future occurrence.
-  9. Next actions in priority order:
-     a. Wave 2 dispatch — 9 stories, 41 points (S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014).
-        Use `/vsdd-factory:deliver-story <story-id>` for each story in parallel where deps allow.
-     b. After Wave 2: Wave 3 (5 stories: S-007, S-008, S-009, S-012, S-015; 34 points).
-  10. S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Waves 2-3.
-
-  REVIEW REPORTS (all in .factory/plans/):
-  - adversary-pass-S-001-post-merge.md — S-001 R1 FAIL (9 findings incl. F-001 CRIT)
-  - code-review-S-001-post-merge.md — S-001 FAIL (5 findings)
-  - pr-review-S-001-post-merge.md — S-001 APPROVE_WITH_OBSERVATIONS
-  - adversary-pass-S-001-fix-PR2-R2.md — S-001 R2 FAIL (1 CRIT + 2 HIGH + 4 MED)
-  - adversary-pass-S-001-fix-PR2-R3.md — S-001 R3 FAIL (1 HIGH: println! stub)
-  - adversary-pass-S-DTU-001-R1.md — S-DTU-001 R1 FAIL (tautological-test + single-giant-commit patterns)
-  - adversary-pass-S-DTU-001-R2.md — S-DTU-001 R2 FAIL (residual findings)
-  - adversary-pass-S-DTU-001-R3.md — S-DTU-001 R3 PASS_WITH_OBSERVATIONS
-
-  CANONICAL ARTIFACT VERSIONS ENTERING PHASE 3 IMPLEMENTATION:
-  - product-brief.md v1.4.30; prd.md v1.26.15; BC-INDEX v1.13; VP-INDEX v1.16; ARCH-INDEX v1.0.11; L2-INDEX v1.0.11
-  - SS-deps-pin-manifest v1.1.18 (architect bumped 8ab665e — added syn 2.0 dev-dep for AST audit tests)
-  - SS-conventions-anti-patterns v1.29.5; SS-daemon-lifecycle v1.0.33; SS-engine-module v1.1.20; SS-core-types-and-abi v1.2.13; SS-forward-compatibility v1.2.19; SS-permissions-phase1 v1.5.2
-  - ADRs 0001-0005 active
-  - error-taxonomy v1.6 (PO bumped 5f5f6a2 — claude.rs → claude_code.rs path correction); nfr-catalog v1.7; interface-definitions v1.5; test-vectors v1.3
-  - DTU assessment v1.7.5
-  - 17 stories at post-uncertainty-review versions:
-    - S-001 v1.6, S-002 v1.1, S-003 v1.7, S-004 v1.1, S-005 v1.6, S-006 v1.5, S-007 v1.2
-    - S-008 v1.4, S-009 v1.8, S-010 v1.2, S-011 v1.2, S-012 v1.5, S-013 v1.1
-    - S-014 v1.4, S-015 v1.6, S-DTU-001 v1.1, S-PHASE-3-PREP v1.1
-  - dep-graph v2.3; STORY-INDEX v2.2; wave-schedule v1.5; sprint-state v1.5; holdout-scenarios v1.4
-
-  PHASE 3 REMEDIATION COMMIT TRAIL (factory-artifacts, OLDEST to NEWEST):
-  - bc158ce: feat(plans) Stage-1 persistence — REVERTED (state-manager hallucinated)
-  - 19aa5f1: revert: Stage-1 reports in bc158ce — state-manager hallucination
-  - 0210883: chore(plans) — commit 12 untracked Phase-2 consistency-pass plan files
-  - 8ab665e: feat(arch) — SS-deps-pin-manifest v1.1.17 → v1.1.18 (added syn 2.0)
-  - e485814: fix(stories) — Phase 3.A auth-ownership decision propagation (S-003 owns auth.rs, S-009 extends, S-005 deps)
-  - e2fc2a3: fix(stories) — Phase 3.B Batch 1 (S-001, S-DTU-001, S-PHASE-3-PREP)
-  - 6ac09b1: fix(stories) — Phase 3.B Batch 2 (S-002, S-004, S-010)
-  - 08e0347: fix(stories) — Phase 3.B Batch 3 (S-014, S-011, S-013 — 6 CRIT closed)
-  - f23ce55: fix(stories) — Phase 3.B Batch 4 (S-006, S-008, S-012 — 2 CRIT closed)
-  - 0c0d3d2: fix(stories) — Phase 3.B Batch 5 (S-007, S-015 — 1 CRIT XDG_HOME closed)
-  - 5f5f6a2: fix(supplements) — error-taxonomy v1.5 → v1.6
-  - 07daefb: fix(stories) — Phase 3.B Batch 6 (S-003/S-005/S-009 residual)
-  - 98bcf1d: chore — 74-file input-hash cascade refresh
-  - [this commit]: factory(state) — D-160 Phase 3 APPROVED-TO-EXECUTE finalization
-
-  NOTABLE PRE-PHASE-3 DEFECTS CAUGHT BY STORY-UNCERTAINTY-REVIEW (ROI evidence):
-  - S-001: prost missing from EXACT-pin list; bytes 1.10 not declared = RUSTSEC-2026-0007 exposure (CLOSED)
-  - S-001: CI matrix cross-product (`macos × linux-gnu`) — would have produced nonsense runner/target combos (CLOSED)
-  - S-003/S-005/S-009: collided on monocle-runtime/src/auth.rs ownership (CLOSED via Phase 3.A)
-  - S-004: AC-005 inverted — claimed /status exempt from body limit when canonical spec said opposite (CLOSED)
-  - S-008: ring filename drift (monocle-ring.jsonl vs canonical monocle-events.jsonl); fabricated "80% capacity / 5-sec timer" flush trigger that does NOT exist in any spec (CLOSED)
-  - S-013: chose hand-written struct against architecture's prost-build mandate; .proto sketch had 3 fields, canonical has 5 event inner messages with envelope routing (CLOSED)
-  - S-014: SessionStatus had 3 variants vs canonical 5; HookResponse field set wrong; ghost DeferUntil type with no canonical home (CLOSED)
-  - S-015: XDG_HOME (not a real env var) instead of HOMEDRIVE — would have silently uncovered HomeUnresolvable test path on Windows runners (CLOSED); detect() pseudocode used `?` on bool — won't compile (CLOSED)
-  - S-DTU-001: AC mandated Docker but dtu-assessment §Packaging Decision explicitly rejects Docker for Phase 1 — mandates Rust binary at crates/monocle-test-harness/src/dtu/ (CLOSED)
-
-  Estimated Phase 3 time saved: 12-20 hours. Story-uncertainty-review cycle time: ~3-4 hours wall time.
-
-  UPSTREAM CONTRIBUTION:
-  - drbothen/vsdd-factory#150 filed 2026-05-20 — "Feature: Per-Story Uncertainty Removal + Self-Containment Review (Pre-Phase-3 Quality Gate)" — capability proposal with monocle calibration evidence.
-  - Issue includes: 5-dimension assessment framework (Tech Uncertainty / Context Gap / AC Executability / Implementation Detail / Cross-Story Dependency); 4-stage workflow (Scan → Research → Fix → Verify); 3-story calibration table demonstrating 3/3 hit rate on CRIT findings; acceptance criteria for upstream skill adoption.
-
-  OUTSTANDING NON-BLOCKING ITEMS (tracked in task harness; do NOT defer Phase 3 dispatch):
-  - Task #28: confirm prost/reqwest exact-patch digits against crates.io (architect; story-writer used =0.14.1 / =0.13.0 placeholders during Batch 1 — Cargo will refresh on first build anyway)
-  - Task #34: BC-2.03.001 v1.0.5 PC-3 still enumerates DeferUntil in supporting types — Stage-4 verification of S-014 flagged this; CLAUDE.md "later, more-specific wins" authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.20; PO mechanical fix needed for upstream BC alignment
-  - S-008 AC-005 flush-failure semantics under canonical post-batch tempfile::persist model (PO clarification; story-writer Batch 4 surfaced it)
-  - S-008 tokio dependency necessity verification (test-writer during S-008 implementation)
-  - dep-graph §Trace v2.1/v2.0 ordering (single-line reorder; cosmetic; surfaced by Batch 3)
-  - STATE.md compaction (1065+ lines vs <200 target; invoke /vsdd-factory:compact-state at next convenient pipeline gate; deferred maintenance)
-
-  TASK REGISTER:
-  - 34 tasks created during this session; 32 completed; 2 pending (#28, #34).
-  - Task harness is durable across sessions — the new orchestrator should call TaskList on startup to recover the register.
-  - DO NOT recreate or modify existing tasks on resume. Continue from #28/#34 only if the human explicitly directs.
+  1. Run factory-worktree-health check via devops-engineer (BLOCKING).
+  2. Verify branch state:
+     - `git log --oneline -1 develop` → 681c179 (Wave 1 closeout PR #4)
+     - `git -C .factory log --oneline -1` → this commit (D-165)
+  3. Read this STATE.md COMPLETELY.
+  4. Read CLAUDE.md §Current Pipeline State.
+  5. Phase 3 Wave 2 is APPROVED to execute per D-165 (user authorization 2026-05-24). NO ADDITIONAL HUMAN GATE REQUIRED.
+  6. Read wave-schedule.md and sprint-state.yaml for Wave 2 story list.
+  7. Outstanding durable_task_register items are NON-BLOCKING for Wave 2.
+  8. Immediate next action: Dispatch Phase 3 Wave 2 TDD implementation.
+     Stories (9 total, 41 points): S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014.
+     Partial-parallel within wave per wave-schedule.md (some have internal ordering).
+  9. CRITICAL ORCHESTRATION DISCIPLINE (SE-40, 2nd occurrence):
+     - Drive each story from MAIN SESSION via specialist Agent dispatches
+     - NEVER delegate deliver-story to a sub-orchestrator (Claude Code blocks sub-agent-of-sub-agent spawning)
+     - Per-story delivery steps: worktree → stubs → failing tests → TDD impl → adversary 3-round convergence → demos → push → pr-manager → merge → cleanup
+     - Use `cargo clippy --workspace --all-targets -- -D warnings` (NOT just --workspace) — catches test-code issues
+  10. After Wave 2 all 9 stories merged + wave-gate: Wave 3 (5 stories: S-007, S-008, S-009, S-012, S-015), 34 points.
+  11. S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Waves 1-3.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -1138,3 +1115,16 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 - NORMATIVE: STATE v5.92 → v5.93. SE-23 compliance confirmed: SM touched ONLY STATE.md; zero spec/story/sprint-state changes in this burst.
 - INFORMATIONAL: STATE.md compaction remains deferred (1130+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
 - SE-16d PASS: 2026-05-21T05:30:00Z > chain high-water (2026-05-21T02:30:00Z from D-163 entry).
+
+## §Trace v5.94 (D-165)
+
+**D-165 WAVE 2 APPROVED-TO-EXECUTE** (2026-05-24T12:00:00Z):
+- NORMATIVE: User authorization received 2026-05-24. Phase advances to `phase-3-WAVE-2-APPROVED-TO-EXECUTE`. No additional human gate required before Wave 2 dispatch.
+- NORMATIVE: Wave 1 FULLY CLOSED per D-164 (develop @ 681c179; 134 tests passing; 9 CI checks GREEN; wave-gate PASS_WITH_OBSERVATIONS). All 4 Wave-1 PRs merged.
+- NORMATIVE: Durable task register encoded in STATE.md frontmatter. 7 outstanding items (all non-blocking): #28 (prost/reqwest pin partial), #34 (BC DeferUntil cleanup), BC-HOOK-034-typo, VP-DTU-001 (deferred phase-4), F-WAVE1-004/005/006 (deferred maintenance).
+- NORMATIVE: SE-40 at 2nd occurrence (HELD per D-114). 5 process discoveries documented: tautological-test risk, single-giant-commit-hides-todo, Production-Grade Default Rule 1 Future-comment violations, sibling-sweep 3-place status tracking gaps, clippy --all-targets vs --workspace scope gap.
+- NORMATIVE: STATE v5.93 → v5.94. SE-23 compliance confirmed: SM touched ONLY STATE.md; zero spec/story/sprint-state changes in this burst.
+- NORMATIVE: Wave 2 dispatch: 9 stories (S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014), 41 points, partial-parallel within wave per wave-schedule.md.
+- INFORMATIONAL: This is the context-clear preparation burst. STATE.md is the primary cold-start artifact. durable_task_register replaces the prior prose outstanding-items list; new orchestrator reads it in-place.
+- INFORMATIONAL: STATE.md compaction remains deferred (1100+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
+- SE-16d PASS: 2026-05-24T12:00:00Z > chain high-water (2026-05-21T05:30:00Z from D-164 entry).
