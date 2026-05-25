@@ -6,3 +6,10 @@
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
+
+/// HTTP request handlers, organized by endpoint.
+pub mod handlers;
+/// Axum router construction — unauthenticated and authenticated router split.
+pub mod router;
+/// Daemon shared state types: [`state::AppMode`] and [`state::DaemonState`].
+pub mod state;
