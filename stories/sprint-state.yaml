@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.12"
+version: "1.13"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-26T00:00:00Z
+timestamp: 2026-05-26T12:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -100,12 +100,12 @@ stories:
     epic: EPIC-01
     wave: 2
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001, S-002, S-003 (Phase 3.A: S-003 added for auth middleware reuse on /shutdown)."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/13"
+    notes: "Wave 2. PR #13 merged at develop @ b235e3e. 27 integration tests (graceful_shutdown.rs). BC-2.01.004 fully satisfied at library level. 6 adversary rounds (R1 FAIL 3 HIGH fixed; R2 IMP-001 fixed signal AppMode; R3 2 HIGH fixed EC-050+doc; R4-R6 PASS 3/3 convergence). Deferred: 10s drain timeout + second-signal detection + signal-path lock release (requires main.rs wiring — tracked in durable_task_register S-005-main-wiring)."
 
   - id: S-006
     title: "Lock File Atomic Lifecycle (Create + Pid Check + Cleanup)"
@@ -148,36 +148,36 @@ stories:
     epic: EPIC-02
     wave: 2
     points: 3
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-010."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/11"
+    notes: "Wave 2. PR #11 merged at develop @ 1e789f0. 13 VP-013 syn2 AST audit tests (enum_audit.rs). BC-2.02.003 fully satisfied for all existing enums. 4 adversary rounds (R1 PASS_WITH_OBS inline module recursion + lint scope fixed; R2-R4 PASS 3/3 convergence). Deferred: HookArgs divergence from SS-permissions-phase1.md (architect); BC-2.02.003 PC-4 stale enum list (PO). Both tracked in durable_task_register."
 
   - id: S-013
     title: "HookEnvelope Proto Wire Format (FC-05)"
     epic: EPIC-02
     wave: 2
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-010. Covers BC-2.02.006 + BC-2.02.007 + BC-2.02.008."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/12"
+    notes: "Wave 2. PR #12 merged at develop @ 8653977. 19 tests across wire_field_order.rs + schema_version.rs (VP-016/017/018). BC-2.02.006 + BC-2.02.007 + BC-2.02.008 fully satisfied. Canonical 4-field envelope (schema_version=1, session_id=2, timestamp_micros=3, pid=4) + oneof event with 5 inner messages. 4 adversary rounds (R1 PASS_WITH_OBS oracle scope + VP-018 probe fixed; R2-R4 PASS 3/3 convergence). Deferred: prost-types not in SS-deps-pin-manifest (architect — tracked in durable_task_register S-013-ADV-prost-types-not-pinned)."
 
   - id: S-014
     title: "EngineModule Trait Definition"
     epic: EPIC-03
     wave: 2
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-010."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/10"
+    notes: "Wave 2. PR #10 merged at develop @ 40dab9c. 38 VP-019 AST audit tests (engine_module_surface.rs). BC-2.03.001 fully satisfied (all 5 postconditions + 3 invariants). 5 adversary rounds (R1 FAIL constructor signature + mock value fixed; R2 PASS_WITH_OBS 8 test coverage gaps fixed; R3-R5 PASS 3/3 convergence). Deferred: SS-engine-module.md HookDecision stale (architect); #34 BC-2.03.001 PC-3 DeferUntil (PO). Both tracked in durable_task_register."
 
   - id: S-007
     title: "Crash Recovery Checkpoint"
@@ -229,19 +229,22 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 9
+  not_started: 5
   in_progress: 0
   review: 0
-  done: 7
+  done: 11
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 31
+  points_complete: 49
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.12 updates (2026-05-26T00:00:00Z):
-  # - S-004 flipped not_started → done (PR #9 merged 78dcac1; BC-2.01.003 satisfied; 5 adversary passes 3/3 convergence)
-  # - done: 6 → 7; not_started: 10 → 9; points_complete: 29 → 31
-  # - Wave 2 progress: 5/9 stories done (31/41 pts)
+  # v1.13 updates (2026-05-26T12:00:00Z):
+  # - S-014 flipped not_started → done (PR #10 merged 40dab9c; BC-2.03.001 satisfied; 5 adversary rounds 3/3 convergence)
+  # - S-011 flipped not_started → done (PR #11 merged 1e789f0; BC-2.02.003 satisfied; 4 adversary rounds 3/3 convergence)
+  # - S-013 flipped not_started → done (PR #12 merged 8653977; BC-2.02.006+007+008 satisfied; 4 adversary rounds 3/3 convergence)
+  # - S-005 flipped not_started → done (PR #13 merged b235e3e; BC-2.01.004 satisfied; 6 adversary rounds 3/3 convergence)
+  # - done: 7 → 11; not_started: 9 → 5; points_complete: 31 → 49
+  # - WAVE 2 COMPLETE: 9/9 stories done (41/41 pts); total project: 11/17 stories, 49/86 pts
