@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.04"
+version: "6.05"
 status: active
 producer: state-manager
 timestamp: 2026-05-26T20:00:00Z
@@ -12,7 +12,7 @@ mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 3 Batch A: S-007 DONE, S-008 DONE (S-009 unblocked). S-012 + S-015 not started. 3 stories / 24 pts remaining."
+awaiting: "Wave 3: S-007 DONE, S-008 DONE, S-012 DONE. S-015 + S-009 remaining (16 pts)."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -91,11 +91,11 @@ next_session_resume_protocol: |
   COLD-START RESUME GUIDE — WAVE 3 IN PROGRESS:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → fe4db96 ([S-008]).
+  2. Verify: git log --oneline -1 develop → 599cd8c ([S-012]).
   3. Read STATE.md + CLAUDE.md.
-  4. Wave 3 progress: S-007 DONE (PR #14), S-008 DONE (PR #15). S-009 now UNBLOCKED.
-  5. Remaining: S-012 (8 pts, FactoryAdapter), S-015 (8 pts, ClaudeCodeModule), S-009 (8 pts, Auth Token — depends on S-008 ✓).
-  6. All 3 remaining stories can run in parallel (S-009 dependency on S-008 is now satisfied).
+  4. Wave 3 progress: S-007 DONE (PR #14), S-008 DONE (PR #15), S-012 DONE (PR #16).
+  5. Remaining: S-015 (8 pts, ClaudeCodeModule), S-009 (8 pts, Auth Token — depends on S-008 ✓).
+  6. Both remaining stories can run in parallel (S-009 dependency on S-008 is satisfied).
   7. Per-story delivery: worktree → stubs → tests → impl → adversary convergence → PR → merge → cleanup.
   8. After all 5 Wave 3 stories merged + wave-gate: Phase 3 COMPLETE.
 dtu_required: true
@@ -125,11 +125,11 @@ current_cycle: cycle-001
 |-------|--------|--------|-------|------|
 | S-007 Crash Recovery | 5 | done | A | none |
 | S-008 JSONL Ring Format | 5 | done | A | none |
-| S-012 FactoryAdapter Trait | 8 | not_started | A | none |
+| S-012 FactoryAdapter Trait | 8 | done | A | none |
 | S-015 ClaudeCodeModule | 8 | not_started | A | none |
 | S-009 Auth Token Wire Format | 8 | not_started | B | S-008 |
 
-develop @ fe4db96. 332+ tests. clippy clean. 13/17 stories done, 59/86 pts.
+develop @ 599cd8c. 332+ tests. clippy clean. 14/17 stories done, 67/86 pts.
 
 ## Blocking Issues
 
@@ -176,6 +176,10 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 ## §Trace v6.01 (D-166)
 
 **D-166 WAVE 2 GATE PASSED** (2026-05-26T18:00:00Z): Wave-gate PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed in e2898be: removed monocle-proto from monocle-runtime; removed futures+semver from monocle-core; added sock_file_path to DaemonState. develop @ e2898be. Phase → `phase-3-WAVE-2-GATE-PASSED`. Wave 3 ready: Batch A parallel (S-007/S-008/S-012/S-015); Batch B after S-008 (S-009). STATE v6.00 → v6.01. SE-23 PASS. S-PHASE-3-PREP BLOCKED on rc.19+ (does NOT block Wave 3).
+
+## §Trace v6.05 (S-012 delivery)
+
+**S-012 FACTORYADAPTER TRAIT + VSDD FACTORY ADAPTER DELIVERED** (2026-05-26): PR #16 merged at develop @ 599cd8c. BC-2.02.004 + BC-2.02.005 fully satisfied. 34 tests (12 AST audit + 22 integration). 4 adversary rounds (6→0→0→0, 3/3 convergence). sprint-state v1.15→v1.16: done 13→14, not_started 3→2, points_complete 59→67. STATE v6.04→v6.05. Wave 3 Batch A: 3/4 done; Wave 3 total: 3/5 done (18/34 pts). S-015 + S-009 remaining (16 pts).
 
 ## §Trace v6.04 (S-008 delivery)
 

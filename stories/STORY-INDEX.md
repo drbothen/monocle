@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.7"
+version: "2.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -53,7 +53,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | draft | S-015 |
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | done | — |
 | S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
-| S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | draft | — |
+| S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | draft | — |
 
 **Total stories:** 17 (15 product + 1 DTU + 1 prep)
@@ -369,6 +369,15 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v2.8
+
+**Wave 3 Batch A: S-012 flipped draft→done** (2026-05-26):
+- S-012 Story Registry row: `draft` → `done`. PR #16 merged at develop @ 599cd8c.
+- BC-2.02.004 + BC-2.02.005 fully satisfied. 34 tests (12 AST audit + 22 integration). 4 adversary rounds (6→0→0→0, 3/3 convergence).
+- No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.02.004+BC-2.02.005.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.15→v1.16 (done 13→14, not_started 3→2, points_complete 59→67); STATE.md v6.04→v6.05.
+- STORY-INDEX version bumped v2.7→v2.8.
 
 ## §Trace v2.7
 

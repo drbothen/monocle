@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.15"
+version: "1.16"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-05-26T12:00:00Z
@@ -208,12 +208,12 @@ stories:
     epic: EPIC-02
     wave: 3
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 3. Depends on S-010, S-011. Covers BC-2.02.004 + BC-2.02.005."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/16"
+    notes: "Wave 3 Batch A. PR #16 merged at develop @ 599cd8c. BC-2.02.004 + BC-2.02.005 fully satisfied. 34 tests (12 AST audit + 22 integration). 4 adversary rounds (6→0→0→0, 3/3 convergence)."
 
   - id: S-015
     title: "ClaudeCodeModule Implementation"
@@ -229,14 +229,14 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 3
+  not_started: 2
   in_progress: 0
   review: 0
-  done: 13
+  done: 14
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 59
+  points_complete: 67
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -256,3 +256,7 @@ summary:
   # - S-008 flipped not_started → done (PR #15 merged fe4db96; BC-2.01.007 satisfied; 5 adversary rounds convergence with spec-text residual)
   # - done: 12 → 13; not_started: 4 → 3; points_complete: 54 → 59
   # - Wave 3 Batch A: 2/4 done; Wave 3 total: 2/5 done (10/34 pts); S-009 now UNBLOCKED
+  # v1.16 updates (2026-05-26):
+  # - S-012 flipped not_started → done (PR #16 merged 599cd8c; BC-2.02.004+BC-2.02.005 satisfied; 4 adversary rounds 3/3 convergence)
+  # - done: 13 → 14; not_started: 3 → 2; points_complete: 59 → 67
+  # - Wave 3 Batch A: 3/4 done; Wave 3 total: 3/5 done (18/34 pts)
