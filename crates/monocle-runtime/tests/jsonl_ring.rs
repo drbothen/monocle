@@ -129,7 +129,9 @@ fn test_BC_RING_001_7_field_declaration_order() {
     let json_str = serde_json::to_string(&record).unwrap();
     let value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-    let obj = value.as_object().expect("record must serialize as a JSON object");
+    let obj = value
+        .as_object()
+        .expect("record must serialize as a JSON object");
 
     // All 7 canonical keys must be present.
     let required_keys = [
@@ -215,11 +217,11 @@ fn test_BC_RING_001_push_writes_jsonl_line() {
 
     let contents = std::fs::read_to_string(&path).expect("ring file must exist after push");
     // Must be non-empty and end with a newline (JSONL format).
-    assert!(!contents.is_empty(), "ring file must not be empty after push");
     assert!(
-        contents.ends_with('\n'),
-        "JSONL line must end with newline"
+        !contents.is_empty(),
+        "ring file must not be empty after push"
     );
+    assert!(contents.ends_with('\n'), "JSONL line must end with newline");
 
     // The written line must be valid JSON containing the record.
     let line = contents.trim_end_matches('\n');
@@ -277,7 +279,8 @@ fn test_BC_RING_001_rotation_at_threshold() {
     // Push twice to ensure rotation is triggered (first push fills the file,
     // second push should trigger rotation check).
     ring.push(&large_record).expect("first push");
-    ring.push(&large_record).expect("second push — should trigger rotation");
+    ring.push(&large_record)
+        .expect("second push — should trigger rotation");
 
     // After rotation, the .1 rotated file must exist.
     let rotated = dir.path().join("monocle-events.jsonl.1");
@@ -440,7 +443,10 @@ fn test_BC_RING_001_rotation_cascade_multiple() {
     // The oldest retained file (.1 or .3, depending on cascade direction) must
     // contain valid JSONL data.
     let contents = std::fs::read_to_string(&rotated_1).expect("rotated .1 must be readable");
-    let first_line = contents.lines().next().expect("rotated .1 must be non-empty");
+    let first_line = contents
+        .lines()
+        .next()
+        .expect("rotated .1 must be non-empty");
     let _parsed: serde_json::Value =
         serde_json::from_str(first_line).expect("rotated .1 must contain valid JSONL");
 }
