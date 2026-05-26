@@ -77,14 +77,6 @@ unwrap_used = "warn"
 expect_used = "warn"
 todo = "warn"
 dbg_macro = "deny"
-# These two lints fire in test-writer-generated test files (enum_audit.rs).
-# Test files are immutable per S-011 implementer rules, so the suppressions
-# live here. Both are style-only with no correctness impact:
-#   doc_overindented_list_items: 12-space continuation indent in module docs
-#   assertions_on_constants: intentional assert!(true) in a vacuous test whose
-#     value comes from the surrounding non-exhaustive match arms
-doc_overindented_list_items = "allow"
-assertions_on_constants = "allow"
 
 [profile.release]
 opt-level = 3

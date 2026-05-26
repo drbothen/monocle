@@ -30,6 +30,10 @@
 #![allow(clippy::panic)]
 // The `format!` calls in failure messages are intentional; no `to_string` alternative.
 #![allow(clippy::useless_format)]
+// 12-space continuation indent in module-level doc comment (VP-013 §Probe Matrix table).
+#![allow(clippy::doc_overindented_list_items)]
+// Intentional assert!(true) in vacuous AC-004 traceability sentinel test.
+#![allow(clippy::assertions_on_constants)]
 
 use std::fs;
 use std::path::PathBuf;
@@ -110,21 +114,42 @@ fn is_pub(vis: &Visibility) -> bool {
 /// Returns a list of `(enum_name)` strings for each violation.
 fn audit_file(ast: &File) -> Vec<String> {
     let mut violations = Vec::new();
-    for item in &ast.items {
-        if let Item::Enum(enum_item) = item {
-            if !is_pub(&enum_item.vis) {
-                // Non-public enums are not subject to the policy.
-                continue;
+    audit_items(&ast.items, &mut violations);
+    violations
+}
+
+/// Recursively audit a slice of `Item`s, descending into inline `mod` blocks.
+///
+/// Inline `mod foo { ... }` blocks (i.e., `Item::Mod` with `content.is_some()`)
+/// can contain `pub enum` declarations that are subject to BC-2.02.003. Without
+/// recursion the top-level walk would silently miss them.
+fn audit_items(items: &[Item], violations: &mut Vec<String>) {
+    for item in items {
+        match item {
+            Item::Enum(enum_item) => {
+                if !is_pub(&enum_item.vis) {
+                    // Non-public enums are not subject to the policy.
+                    continue;
+                }
+                let name = enum_item.ident.to_string();
+                let has_non_exhaustive = enum_item.attrs.iter().any(is_non_exhaustive);
+                let is_exempt = EXEMPT.contains(&name.as_str());
+                if !has_non_exhaustive && !is_exempt {
+                    violations.push(name);
+                }
             }
-            let name = enum_item.ident.to_string();
-            let has_non_exhaustive = enum_item.attrs.iter().any(is_non_exhaustive);
-            let is_exempt = EXEMPT.contains(&name.as_str());
-            if !has_non_exhaustive && !is_exempt {
-                violations.push(name);
+            Item::Mod(mod_item) => {
+                // Recurse into inline `mod` blocks that have content.
+                // File-level `mod foo;` declarations (without braces) have
+                // `content == None` and are handled by the file-system walk in
+                // `collect_rs_files`; they do not need recursion here.
+                if let Some((_, inner_items)) = &mod_item.content {
+                    audit_items(inner_items, violations);
+                }
             }
+            _ => {}
         }
     }
-    violations
 }
 
 // ---------------------------------------------------------------------------
