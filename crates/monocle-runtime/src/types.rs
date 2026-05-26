@@ -37,26 +37,62 @@ impl RecoveryCheckpoint {
             !self.last_app_mode.is_empty(),
             "last_app_mode must be non-empty"
         );
-        // VP-006 regex: YYYY-MM-DDTHH:MM:SS.sssZ (mandatory millisecond precision).
-        // Compiled once via OnceLock to avoid per-call allocation and to satisfy
-        // the clippy::expect_used lint (the pattern is a hardcoded constant; if it
-        // fails to compile the binary is fatally broken at startup, not at runtime).
-        static SHUTDOWN_UTC_RE: std::sync::OnceLock<regex_lite::Regex> =
-            std::sync::OnceLock::new();
-        let re = SHUTDOWN_UTC_RE.get_or_init(|| {
-            regex_lite::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
-                .unwrap_or_else(|e| {
-                    // This branch is unreachable in practice — the pattern is a compile-time
-                    // constant. Panic here is intentional: a broken regex means the binary
-                    // should not start, not silently accept invalid timestamps.
-                    panic!("shutdown_utc validation regex failed to compile: {e}")
-                })
-        });
+        // VP-006: `shutdown_utc` must match `YYYY-MM-DDTHH:MM:SS.sssZ` with mandatory
+        // millisecond precision (exactly 3 fractional digits). Validated via:
+        //   1. Structural length + positional checks using `std` only — no regex crate.
+        //      chrono's `%.3f` is permissive (accepts 0-N digits), so we enforce the
+        //      exact `.NNN` format structurally before parsing.
+        //   2. chrono parse to verify the date/time values are real (e.g., month 13 rejected).
+        //
+        // chrono is already a workspace production dependency; regex-lite is dev-only per
+        // SS-deps-pin-manifest.md v1.1.20 §Trace and must not be used in production code.
+        //
+        // Expected layout (24 chars): YYYY-MM-DDTHH:MM:SS.MMMZ
+        //   [0..4]  year digits
+        //   [4]     '-'
+        //   [5..7]  month digits
+        //   [7]     '-'
+        //   [8..10] day digits
+        //   [10]    'T'
+        //   [11..13] hour digits
+        //   [13]    ':'
+        //   [14..16] minute digits
+        //   [16]    ':'
+        //   [17..19] second digits
+        //   [19]    '.'
+        //   [20..23] millisecond digits (exactly 3)
+        //   [23]    'Z'
+        let s = &self.shutdown_utc;
+        let structurally_valid = s.len() == 24
+            && s.as_bytes().get(4) == Some(&b'-')
+            && s.as_bytes().get(7) == Some(&b'-')
+            && s.as_bytes().get(10) == Some(&b'T')
+            && s.as_bytes().get(13) == Some(&b':')
+            && s.as_bytes().get(16) == Some(&b':')
+            && s.as_bytes().get(19) == Some(&b'.')
+            && s.as_bytes().get(23) == Some(&b'Z')
+            && s[0..4].bytes().all(|b| b.is_ascii_digit())
+            && s[5..7].bytes().all(|b| b.is_ascii_digit())
+            && s[8..10].bytes().all(|b| b.is_ascii_digit())
+            && s[11..13].bytes().all(|b| b.is_ascii_digit())
+            && s[14..16].bytes().all(|b| b.is_ascii_digit())
+            && s[17..19].bytes().all(|b| b.is_ascii_digit())
+            && s[20..23].bytes().all(|b| b.is_ascii_digit());
         anyhow::ensure!(
-            re.is_match(&self.shutdown_utc),
-            "shutdown_utc must match ISO 8601 millisecond format YYYY-MM-DDTHH:MM:SS.sssZ, got '{}'",
-            self.shutdown_utc
+            structurally_valid,
+            "shutdown_utc '{}' must match ISO 8601 millisecond format YYYY-MM-DDTHH:MM:SS.sssZ \
+             (exactly 3 fractional digits, mandatory Z suffix)",
+            s
         );
+        // Parse with chrono to validate that the date/time values are real
+        // (e.g., month 13, hour 25, or minute 61 are rejected).
+        chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.3fZ").map_err(|e| {
+            anyhow::anyhow!(
+                "shutdown_utc '{}' contains an invalid date/time value: {}",
+                s,
+                e
+            )
+        })?;
         Ok(())
     }
 }
@@ -66,7 +102,14 @@ impl RecoveryCheckpoint {
 /// Three-state return from [`crate::lifecycle::read_recovery_checkpoint`] that allows
 /// callers to distinguish between a missing file (clean boot) and a malformed file
 /// (crash mid-write or corruption) — required by EC-054 for differentiated log messages.
+///
+/// # Non-exhaustive
+///
+/// `#[non_exhaustive]` follows SS-conventions-anti-patterns.md §"Non-Exhaustive Enum Policy"
+/// (S-011): a future additional state (e.g., `PermissionDenied` for an unreadable-but-existing
+/// file) is a non-breaking change for downstream crates that pattern-match on this type.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum CheckpointReadResult {
     /// File exists and contains a valid, field-validated checkpoint.
     Valid(RecoveryCheckpoint),
