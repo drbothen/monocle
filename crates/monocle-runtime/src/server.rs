@@ -52,7 +52,7 @@ use crate::handlers::hooks::{
 use crate::handlers::shutdown::post_shutdown;
 use crate::handlers::status::get_status;
 use crate::router::unauthenticated_router;
-use crate::state::DaemonState;
+use crate::state::{AppMode, DaemonState};
 
 /// Construct the full axum router for the monocle daemon.
 ///
@@ -136,11 +136,17 @@ pub async fn run_server(state: Arc<DaemonState>, listener: TcpListener) -> std::
     let mut shutdown_rx = state.shutdown_rx.clone();
     // Clone the sender so OS signals can also trigger the shutdown channel.
     let shutdown_tx = state.shutdown_tx.clone();
+    // Clone state into the closure so OS signal branches can set AppMode::ShuttingDown
+    // (BC-2.01.004 PC-1 requires AppMode transitions to ShuttingDown for ALL shutdown
+    // triggers, including SIGTERM and SIGINT — not only POST /shutdown).
+    let signal_state = Arc::clone(&state);
 
     let shutdown_signal = async move {
         // Wait for the first of: watch channel sends true, SIGTERM, or SIGINT.
         tokio::select! {
             // POST /shutdown (or another sender) signalled shutdown.
+            // The post_shutdown handler already sets AppMode::ShuttingDown before sending;
+            // no additional mode write needed here.
             result = shutdown_rx.changed() => {
                 if let Ok(()) = result {
                     // Value is now true (shutdown triggered by handler).
@@ -164,11 +170,19 @@ pub async fn run_server(state: Arc<DaemonState>, listener: TcpListener) -> std::
                 std::future::pending::<()>().await;
             } => {
                 tracing::info!("SIGTERM received — initiating graceful shutdown");
+                // BC-2.01.004 PC-1: AppMode transitions to ShuttingDown immediately for
+                // ALL shutdown triggers, including OS signals.
+                *signal_state.mode.write().unwrap_or_else(|e| e.into_inner()) =
+                    AppMode::ShuttingDown;
                 let _ = shutdown_tx.send(true);
             }
             // SIGINT (Ctrl-C / second Ctrl-C during drain).
             _ = tokio::signal::ctrl_c() => {
                 tracing::info!("SIGINT received — initiating graceful shutdown");
+                // BC-2.01.004 PC-1: AppMode transitions to ShuttingDown immediately for
+                // ALL shutdown triggers, including OS signals.
+                *signal_state.mode.write().unwrap_or_else(|e| e.into_inner()) =
+                    AppMode::ShuttingDown;
                 let _ = shutdown_tx.send(true);
             }
         }
