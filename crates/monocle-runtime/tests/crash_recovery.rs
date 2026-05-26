@@ -381,7 +381,10 @@ fn test_BC_2_01_006_overwrite_recovery_checkpoint() {
         shutdown_utc: "2026-05-26T10:00:00.000Z".to_string(),
     };
     write_recovery_checkpoint(&path, &first).expect("first write must succeed");
-    assert!(path.exists(), "checkpoint file must exist after first write");
+    assert!(
+        path.exists(),
+        "checkpoint file must exist after first write"
+    );
 
     // Second write — different pid and reason.
     let second = RecoveryCheckpoint {
@@ -400,7 +403,11 @@ fn test_BC_2_01_006_overwrite_recovery_checkpoint() {
             std::mem::discriminant(&other)
         ),
     };
-    assert_eq!(cp.pid, 200, "pid must reflect second write (got {})", cp.pid);
+    assert_eq!(
+        cp.pid, 200,
+        "pid must reflect second write (got {})",
+        cp.pid
+    );
     assert_eq!(
         cp.shutdown_reason,
         ShutdownReason::Signal,
@@ -411,11 +418,7 @@ fn test_BC_2_01_006_overwrite_recovery_checkpoint() {
     let count = fs::read_dir(dir.path())
         .expect("dir must be readable")
         .filter_map(|e| e.ok())
-        .filter(|e| {
-            e.file_name()
-                .to_string_lossy()
-                .starts_with("recovery")
-        })
+        .filter(|e| e.file_name().to_string_lossy().starts_with("recovery"))
         .count();
     assert_eq!(
         count, 1,
@@ -443,8 +446,8 @@ fn test_BC_2_01_006_chrono_generated_timestamp_matches_regex() {
         .to_string();
 
     // The generated timestamp must match the canonical millisecond-precision UTC pattern.
-    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
-        .expect("regex must compile");
+    let re =
+        Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$").expect("regex must compile");
     assert!(
         re.is_match(&ts),
         "chrono-generated timestamp '{}' must match YYYY-MM-DDTHH:MM:SS.sssZ",
@@ -458,9 +461,12 @@ fn test_BC_2_01_006_chrono_generated_timestamp_matches_regex() {
         last_app_mode: "Running".to_string(),
         shutdown_utc: ts.clone(),
     };
-    checkpoint
-        .validate()
-        .unwrap_or_else(|e| panic!("validate() must succeed for chrono-generated timestamp '{}': {}", ts, e));
+    checkpoint.validate().unwrap_or_else(|e| {
+        panic!(
+            "validate() must succeed for chrono-generated timestamp '{}': {}",
+            ts, e
+        )
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -526,8 +532,7 @@ fn test_BC_2_01_006_read_returns_malformed_for_invalid_fields() {
     let path = dir.path().join("recovery.json");
 
     // Structurally valid JSON with pid == 0, which violates INV-1.
-    let json =
-        r#"{"pid":0,"shutdown_reason":"graceful","last_app_mode":"Running","shutdown_utc":"2026-05-26T10:00:00.000Z"}"#;
+    let json = r#"{"pid":0,"shutdown_reason":"graceful","last_app_mode":"Running","shutdown_utc":"2026-05-26T10:00:00.000Z"}"#;
     fs::write(&path, json).expect("manual write");
 
     let result = read_recovery_checkpoint(&path);
