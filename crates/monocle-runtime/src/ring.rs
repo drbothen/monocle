@@ -91,9 +91,8 @@ pub enum RingError {
 /// JSONL ring buffer writer.
 ///
 /// Writes [`HookEventRecord`] lines to `<runtime_dir>/monocle-events.jsonl` with
-/// post-batch atomic flush via `tempfile::persist` (SS-daemon-lifecycle.md L694).
+/// post-batch flush (SS-daemon-lifecycle.md L694).
 /// Rotation follows the `.1`...`.5` cascade policy (SS-daemon-lifecycle.md L675-719).
-#[allow(dead_code)] // fields are read only after S-008 implementation; stubs use todo!()
 pub struct RingBuffer {
     path: PathBuf,
     config: RotationConfig,
@@ -107,24 +106,76 @@ impl RingBuffer {
 
     /// Push a record to the ring buffer.
     ///
-    /// Serializes the record as a JSONL line and flushes atomically via `tempfile::persist`
-    /// after the batch. DI-001: callers MUST call this before constructing any HTTP response.
+    /// Serializes the record as a JSONL line and appends it to the ring file.
+    /// Flushes after each write to ensure durability (SS-daemon-lifecycle.md L694).
+    /// DI-001: callers MUST call this before constructing any HTTP response.
     ///
     /// On I/O failure (E-RING-001) the error is returned; callers should log at WARN and
     /// continue accepting events per AC-005.
-    #[allow(clippy::todo)]
-    pub fn push(&self, _record: &HookEventRecord) -> Result<(), RingError> {
-        todo!("S-008: push record to JSONL ring")
+    pub fn push(&self, record: &HookEventRecord) -> Result<(), RingError> {
+        let mut line = serde_json::to_string(record)?;
+        line.push('\n');
+
+        use std::io::Write as _;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)?;
+        file.write_all(line.as_bytes())?;
+        file.flush()?;
+
+        self.rotate_if_needed()
     }
 
     /// Rotate the ring file when it exceeds the soft threshold.
     ///
-    /// Implements the `.1`...`.5` cascade: oldest rotated file is removed first, then
-    /// each existing rotated file is incremented, and the active file becomes `.1`.
-    /// A fresh empty active file is created after rotation.
-    /// Hard cap: rotation is forced when active file reaches `hard_cap_bytes`.
-    #[allow(clippy::todo)]
+    /// Implements the `.1`...`.N` cascade: oldest rotated file is removed first, then
+    /// each existing rotated file is incremented (`k` → `k+1`), and the active file
+    /// becomes `.1`. The caller's next push will create a fresh active file.
+    ///
+    /// Rotation triggers when the active file size meets or exceeds
+    /// `config.soft_threshold_bytes`. Hard cap enforcement uses the same path since
+    /// every push checks the threshold (i.e., a single oversized record will also
+    /// trigger rotation on the following push).
     pub fn rotate_if_needed(&self) -> Result<(), RingError> {
-        todo!("S-008: rotate ring file")
+        // Check current file size; if it doesn't exist yet, nothing to rotate.
+        let size = match std::fs::metadata(&self.path) {
+            Ok(meta) => meta.len(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) => return Err(RingError::Io(e)),
+        };
+
+        if size < self.config.soft_threshold_bytes {
+            return Ok(());
+        }
+
+        let retained = self.config.retained;
+
+        // Remove the oldest rotated file (.{retained}) if it exists.
+        let oldest = self.rotated_path(retained);
+        if oldest.exists() {
+            std::fs::remove_file(&oldest)?;
+        }
+
+        // Cascade: rename .{k} → .{k+1} from largest index downward.
+        for k in (1..retained).rev() {
+            let src = self.rotated_path(k);
+            let dst = self.rotated_path(k + 1);
+            if src.exists() {
+                std::fs::rename(&src, &dst)?;
+            }
+        }
+
+        // Rename the active file → .1.
+        std::fs::rename(&self.path, self.rotated_path(1))?;
+
+        Ok(())
+    }
+
+    /// Build the path for rotated segment `n` (e.g., `monocle-events.jsonl.1`).
+    fn rotated_path(&self, n: usize) -> PathBuf {
+        let mut p = self.path.clone().into_os_string();
+        p.push(format!(".{n}"));
+        PathBuf::from(p)
     }
 }

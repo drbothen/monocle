@@ -9,7 +9,8 @@
 
 // BC-based test names require uppercase segments (e.g., `test_BC_RING_001_xxx`).
 // Suppress the non_snake_case lint for this file — canonical project pattern per enum_audit.rs.
-#![allow(non_snake_case)]
+// Suppress unwrap/expect lints in tests — canonical project pattern (matches all other test files).
+#![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
 
 use monocle_runtime::ring::{
     HookEventRecord, RingBuffer, RingError, RotationConfig, RING_FORMAT_VERSION,
