@@ -93,6 +93,7 @@ pub enum RingError {
 /// Writes [`HookEventRecord`] lines to `<runtime_dir>/monocle-events.jsonl` with
 /// post-batch flush (SS-daemon-lifecycle.md L694).
 /// Rotation follows the `.1`...`.5` cascade policy (SS-daemon-lifecycle.md L675-719).
+#[derive(Debug)]
 pub struct RingBuffer {
     path: PathBuf,
     config: RotationConfig,

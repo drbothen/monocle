@@ -80,52 +80,36 @@ pub async fn auth_middleware(
 
     let headers = request.headers();
 
-    // Priority 1: check canonical header `X-Monocle-Authorization`.
-    if let Some(canonical_value) = headers.get(CANONICAL_HEADER) {
-        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
-        let value_str = match canonical_value.to_str() {
-            Ok(s) => s,
-            Err(_) => return invalid_token_response(),
-        };
+    // Extract both header values as &str (non-UTF-8 values are treated as absent — this is a
+    // conservative choice: a non-UTF-8 header is malformed and cannot carry a valid hex token).
+    let canonical = headers
+        .get(CANONICAL_HEADER)
+        .and_then(|v| v.to_str().ok());
+    let alias = headers
+        .get(ALIAS_HEADER)
+        .and_then(|v| v.to_str().ok());
 
-        // Must start with "monocle-v1:" prefix.
-        let Some(hex_suffix) = value_str.strip_prefix(CANONICAL_PREFIX) else {
-            return invalid_token_response();
-        };
-
-        // Constant-time comparison of the hex suffix against the stored token.
-        // NFR-010: MUST use constant_time_eq, NEVER `==`.
-        if constant_time_eq(hex_suffix.as_bytes(), state.auth_token.as_bytes()) {
-            return next.run(request).await;
+    // Delegate to `validate_auth_header` — the unit-tested pure function that implements
+    // the dual-accept protocol (ADR-0005, BC-2.01.009, INV-7 sentinel defence).
+    // The middleware's only added responsibility is the WARN log on Ok(AuthPath::Alias),
+    // which cannot be unit-tested in the pure function (no tracing subscriber required there).
+    match validate_auth_header(canonical, alias, &state.auth_token) {
+        Ok(AuthPath::Canonical) => {
+            // Canonical path — no WARN log required.
+            next.run(request).await
         }
-        return invalid_token_response();
-    }
-
-    // Priority 2: check alias header `X-Claude-Code-Ide-Authorization`.
-    if let Some(alias_value) = headers.get(ALIAS_HEADER) {
-        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
-        let value_str = match alias_value.to_str() {
-            Ok(s) => s,
-            Err(_) => return invalid_token_response(),
-        };
-
-        // Emit the mandatory WARN per ADR-0005 INV-6 / AC-002.
-        // Exact string is normative — do not paraphrase.
-        tracing::warn!(
-            "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
-            monocle-aware harness should use X-Monocle-Authorization"
-        );
-
-        // Constant-time comparison of the raw hex value against the stored token.
-        // NFR-010: MUST use constant_time_eq, NEVER `==`.
-        if constant_time_eq(value_str.as_bytes(), state.auth_token.as_bytes()) {
-            return next.run(request).await;
+        Ok(AuthPath::Alias) => {
+            // Compatibility alias path — emit the normative ADR-0005 WARN per INV-6 / AC-002.
+            // Exact string is normative — do not paraphrase.
+            tracing::warn!(
+                "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
+                monocle-aware harness should use X-Monocle-Authorization"
+            );
+            next.run(request).await
         }
-        return invalid_token_response();
+        Err(AuthError::MissingToken) => missing_token_response(),
+        Err(AuthError::InvalidToken) => invalid_token_response(),
     }
-
-    // Neither header present — E-AUTH-001 (missing).
-    missing_token_response()
 }
 
 /// Build the HTTP 401 missing-token response (E-AUTH-001).
