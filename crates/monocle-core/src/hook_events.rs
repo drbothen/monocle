@@ -18,6 +18,32 @@
 /// this because `HookEvent` carries `#[non_exhaustive]`.
 use serde_json::Value;
 
+/// Discriminant enum for the hook endpoint type, used as a key in
+/// `ClaudeCodeModule::hook_paths()`.
+///
+/// `#[non_exhaustive]` is required per SS-core-types-and-abi.md §`HookType`
+/// (FC-02 resolution): Phase 4 brief §Scope notes a `PostToolUse` revisit. Adding a
+/// variant here must not break external `match` sites. All external `match` blocks
+/// MUST include a wildcard arm.
+///
+/// `Hash + Eq` are required for use as `HashMap` keys in `hook_paths()`.
+/// `Copy` is derived because the type is 1-byte with no owned data.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum HookType {
+    /// Matches the `/hooks/session-start` endpoint.
+    SessionStart,
+    /// Matches the `/hooks/prompt-submit` endpoint.
+    UserPromptSubmit,
+    /// Matches the `/hooks/pre-tool-use` endpoint.
+    PreToolUse,
+    /// Matches the `/hooks/notification` endpoint.
+    Notification,
+    /// Matches the `/hooks/stop` endpoint.
+    Stop,
+    // NOTE: PostToolUse is intentionally absent — JC-2 / BC-2.03.004 invariant 1.
+}
+
 /// The unified hook event carrying the actual event payload.
 ///
 /// `#[non_exhaustive]` permits adding new variants (new hook types) without breaking

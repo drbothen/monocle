@@ -39,3 +39,6 @@ pub mod server;
 pub mod state;
 /// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
 pub mod types;
+/// Engine module implementations: [`engine::ClaudeCodeModule`] and supporting types
+/// (`SpawnArgs`, `SessionHandle`, `EngineVersion`, `SpawnError`, `PreflightError`) (S-015).
+pub mod engine;
