@@ -181,8 +181,7 @@ pub enum ClaudeCodeTool {
 /// match, glob path pattern). Consumers must handle unknown patterns gracefully.
 /// Per SS-permissions-phase1.md lines 160–171.
 ///
-/// STUB: `#[non_exhaustive]` intentionally absent — implementer adds it.
-/// See Red Gate discipline (BC-2.02.003 PC-1; AC-001b).
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AllowPattern {
     /// Allow any invocation of the tool, regardless of args.
@@ -205,8 +204,7 @@ pub enum AllowPattern {
 /// deny pattern matching a directory subtree). Consumers must handle unknown
 /// patterns gracefully. Per SS-permissions-phase1.md lines 177–184.
 ///
-/// STUB: `#[non_exhaustive]` intentionally absent — implementer adds it.
-/// See Red Gate discipline (BC-2.02.003 PC-1; AC-001b).
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DenyPattern {
     /// Deny any invocation of the tool, regardless of args.
@@ -225,8 +223,7 @@ pub enum DenyPattern {
 /// handle unknown reasons without panicking. Per SS-permissions-phase1.md
 /// lines 191–203.
 ///
-/// STUB: `#[non_exhaustive]` intentionally absent — implementer adds it.
-/// See Red Gate discipline (BC-2.02.003 PC-1; AC-001b).
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DenyReason {
     /// User explicitly chose to deny.
