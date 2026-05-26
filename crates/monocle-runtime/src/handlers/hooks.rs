@@ -1,16 +1,19 @@
 //! Hook endpoint handlers for the monocle daemon (`POST /hooks/*`).
 //!
 //! S-005 registers the 5 canonical hook routes with shutdown-aware stubs that gate on
-//! `AppMode::ShuttingDown`. Full hook ingestion logic (event persistence, ring buffer,
-//! session tracking) is implemented by S-009.
+//! `AppMode::ShuttingDown`. S-009 extends these handlers with full hook ingestion logic:
+//! JSON body acceptance, `HookEventRecord` construction, and `RingBuffer::push()` writes.
 //!
 //! # Behavioral contract
 //!
 //! BC-2.01.004 PC-2: While `AppMode::ShuttingDown`, all `POST /hooks/*` requests MUST
 //! return HTTP 503 with `{"error":"daemon_shutting_down"}` and `Retry-After: 10`.
 //!
-//! S-009 extends these stubs with full hook handling. When `AppMode::Running`, the stub
-//! returns HTTP 501 (not yet implemented); S-009 replaces that branch with real logic.
+//! BC-2.01.002 PC-1 / AC-010b: When `AppMode::Running`, each handler MUST:
+//! 1. Accept the JSON hook body from Claude Code (or monocle-aware tool).
+//! 2. Construct a `HookEventRecord` and call `RingBuffer::push()` (DI-001: write BEFORE
+//!    constructing the HTTP response).
+//! 3. Return HTTP 200 with body `{"status":"ok"}`.
 //!
 //! # Route ownership
 //!
@@ -71,73 +74,104 @@ where
     }
 }
 
-/// Stub handler for `POST /hooks/pre-tool-use`.
+/// Handler for `POST /hooks/pre-tool-use`.
 ///
 /// BC-2.01.004 PC-2: returns HTTP 503 during drain.
-/// S-009 replaces the non-drain branch with real pre-tool-use hook ingestion logic.
-pub async fn post_hook_pre_tool_use(State(state): State<Arc<DaemonState>>) -> Response {
+/// AC-010b: when Running, deserializes JSON body, writes `HookEventRecord` to ring buffer,
+/// returns HTTP 200 `{"status":"ok"}`.
+///
+/// The `hook_type` for this endpoint is `"PreToolUse"`. The `tool_name` and `tool_input`
+/// fields are populated from the request body when present.
+#[allow(clippy::todo)]
+pub async fn post_hook_pre_tool_use(
+    State(state): State<Arc<DaemonState>>,
+    Json(_body): Json<serde_json::Value>,
+) -> Response {
     with_shutdown_gate(&state, || {
-        // S-009 stub: not yet implemented outside of drain guard.
-        (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(serde_json::json!({"error": "not_implemented"})),
+        todo!(
+            "S-009: PreToolUse — construct HookEventRecord(hook_type=PreToolUse, \
+            tool_name from body, tool_input from body), call state.ring.push(), \
+            return 200 {{\"status\":\"ok\"}}"
         )
-            .into_response()
     })
 }
 
-/// Stub handler for `POST /hooks/notification`.
+/// Handler for `POST /hooks/notification`.
 ///
 /// BC-2.01.004 PC-2: returns HTTP 503 during drain.
-/// S-009 replaces the non-drain branch with real notification hook ingestion logic.
-pub async fn post_hook_notification(State(state): State<Arc<DaemonState>>) -> Response {
+/// AC-010b: when Running, deserializes JSON body, writes `HookEventRecord` to ring buffer,
+/// returns HTTP 200 `{"status":"ok"}`.
+///
+/// The `hook_type` for this endpoint is `"Notification"`.
+#[allow(clippy::todo)]
+pub async fn post_hook_notification(
+    State(state): State<Arc<DaemonState>>,
+    Json(_body): Json<serde_json::Value>,
+) -> Response {
     with_shutdown_gate(&state, || {
-        (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(serde_json::json!({"error": "not_implemented"})),
+        todo!(
+            "S-009: Notification — construct HookEventRecord(hook_type=Notification), \
+            call state.ring.push(), return 200 {{\"status\":\"ok\"}}"
         )
-            .into_response()
     })
 }
 
-/// Stub handler for `POST /hooks/stop`.
+/// Handler for `POST /hooks/stop`.
 ///
 /// BC-2.01.004 PC-2: returns HTTP 503 during drain.
-/// S-009 replaces the non-drain branch with real stop hook ingestion logic.
-pub async fn post_hook_stop(State(state): State<Arc<DaemonState>>) -> Response {
+/// AC-010b: when Running, deserializes JSON body, writes `HookEventRecord` to ring buffer,
+/// returns HTTP 200 `{"status":"ok"}`.
+///
+/// The `hook_type` for this endpoint is `"Stop"`.
+#[allow(clippy::todo)]
+pub async fn post_hook_stop(
+    State(state): State<Arc<DaemonState>>,
+    Json(_body): Json<serde_json::Value>,
+) -> Response {
     with_shutdown_gate(&state, || {
-        (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(serde_json::json!({"error": "not_implemented"})),
+        todo!(
+            "S-009: Stop — construct HookEventRecord(hook_type=Stop), \
+            call state.ring.push(), return 200 {{\"status\":\"ok\"}}"
         )
-            .into_response()
     })
 }
 
-/// Stub handler for `POST /hooks/session-start`.
+/// Handler for `POST /hooks/session-start`.
 ///
 /// BC-2.01.004 PC-2: returns HTTP 503 during drain.
-/// S-009 replaces the non-drain branch with real session-start hook ingestion logic.
-pub async fn post_hook_session_start(State(state): State<Arc<DaemonState>>) -> Response {
+/// AC-010b: when Running, deserializes JSON body, writes `HookEventRecord` to ring buffer,
+/// returns HTTP 200 `{"status":"ok"}`.
+///
+/// The `hook_type` for this endpoint is `"SessionStart"`.
+#[allow(clippy::todo)]
+pub async fn post_hook_session_start(
+    State(state): State<Arc<DaemonState>>,
+    Json(_body): Json<serde_json::Value>,
+) -> Response {
     with_shutdown_gate(&state, || {
-        (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(serde_json::json!({"error": "not_implemented"})),
+        todo!(
+            "S-009: SessionStart — construct HookEventRecord(hook_type=SessionStart), \
+            call state.ring.push(), return 200 {{\"status\":\"ok\"}}"
         )
-            .into_response()
     })
 }
 
-/// Stub handler for `POST /hooks/prompt-submit`.
+/// Handler for `POST /hooks/prompt-submit`.
 ///
 /// BC-2.01.004 PC-2: returns HTTP 503 during drain.
-/// S-009 replaces the non-drain branch with real prompt-submit hook ingestion logic.
-pub async fn post_hook_prompt_submit(State(state): State<Arc<DaemonState>>) -> Response {
+/// AC-010b: when Running, deserializes JSON body, writes `HookEventRecord` to ring buffer,
+/// returns HTTP 200 `{"status":"ok"}`.
+///
+/// The `hook_type` for this endpoint is `"UserPromptSubmit"`.
+#[allow(clippy::todo)]
+pub async fn post_hook_prompt_submit(
+    State(state): State<Arc<DaemonState>>,
+    Json(_body): Json<serde_json::Value>,
+) -> Response {
     with_shutdown_gate(&state, || {
-        (
-            StatusCode::NOT_IMPLEMENTED,
-            Json(serde_json::json!({"error": "not_implemented"})),
+        todo!(
+            "S-009: UserPromptSubmit — construct HookEventRecord(hook_type=UserPromptSubmit), \
+            call state.ring.push(), return 200 {{\"status\":\"ok\"}}"
         )
-            .into_response()
     })
 }

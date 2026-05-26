@@ -158,6 +158,80 @@ fn invalid_token_response() -> Response {
         .into_response()
 }
 
+/// Validate auth headers implementing the dual-accept protocol per ADR-0005.
+///
+/// Pure validation function extracted from `auth_middleware` for unit-testing the dual-accept
+/// logic independently of the axum request stack.
+///
+/// # Parameters
+///
+/// - `canonical`: value of `X-Monocle-Authorization` if present; `None` if absent.
+/// - `alias`: value of `X-Claude-Code-Ide-Authorization` if present; `None` if absent.
+/// - `expected_token`: the stored 64-hex session token (from lock file / `DaemonState::auth_token`).
+///
+/// # Decision matrix (mirrors `auth_middleware` priority order)
+///
+/// | canonical | alias | outcome |
+/// |-----------|-------|---------|
+/// | present, valid `monocle-v1:<64-hex>`, token matches | any | `Ok(AuthPath::Canonical)` |
+/// | present, any format/value failure | any | `Err(AuthError::InvalidToken)` |
+/// | absent | present, raw 64-hex token matches | `Ok(AuthPath::Alias)` — caller MUST emit WARN |
+/// | absent | present, any mismatch | `Err(AuthError::InvalidToken)` |
+/// | absent | absent | `Err(AuthError::MissingToken)` |
+///
+/// # Security invariants (NFR-010, BC-2.01.009 INV-7)
+///
+/// - ALL comparisons use `constant_time_eq::constant_time_eq`. The `==` operator is NEVER
+///   used on secret bytes.
+/// - Length-mismatched inputs still run `constant_time_eq` against a fixed-length sentinel
+///   (`[0u8; 64]`) to prevent a timing oracle on the mismatch branch (BC-2.01.008 INV-7).
+///
+/// # Warn log
+///
+/// This function does NOT emit the WARN log itself — it returns `Ok(AuthPath::Alias)` and
+/// the caller (`auth_middleware`) is responsible for emitting the ADR-0005 WARN per INV-6.
+/// This separation allows the pure function to be unit-tested without a tracing subscriber.
+#[allow(clippy::todo)]
+pub fn validate_auth_header(
+    _canonical: Option<&str>,
+    _alias: Option<&str>,
+    _expected_token: &str,
+) -> Result<AuthPath, AuthError> {
+    todo!(
+        "S-009: dual-accept auth validation — canonical prefix strip + sentinel constant_time_eq, \
+        alias raw-hex sentinel constant_time_eq, missing-both → MissingToken"
+    )
+}
+
+/// Outcome discriminant returned by `validate_auth_header` on success.
+///
+/// The caller (`auth_middleware`) uses this to decide whether to emit the ADR-0005 WARN
+/// log (alias path) or proceed silently (canonical path).
+#[derive(Debug, PartialEq, Eq)]
+pub enum AuthPath {
+    /// Request authenticated via the canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` header.
+    /// No WARN log required.
+    Canonical,
+    /// Request authenticated via the compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>`.
+    /// Caller MUST emit the ADR-0005 WARN per BC-2.01.009 INV-6.
+    Alias,
+}
+
+/// Auth validation error discriminant.
+///
+/// Maps to the E-AUTH error taxonomy (error-taxonomy.md):
+/// - `MissingToken` → HTTP 401 `{"error":"missing_auth_token"}` (E-AUTH-001)
+/// - `InvalidToken` → HTTP 401 `{"error":"invalid_auth_token"}` (E-AUTH-002)
+#[derive(Debug, PartialEq, Eq)]
+pub enum AuthError {
+    /// Neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present.
+    /// Maps to E-AUTH-001 in error-taxonomy.md.
+    MissingToken,
+    /// A header is present but the token value fails format or constant-time comparison.
+    /// Maps to E-AUTH-002 in error-taxonomy.md.
+    InvalidToken,
+}
+
 /// Generate a cryptographically random session token (32 bytes → 64 hex chars).
 ///
 /// Uses [`rand::rngs::OsRng`] as the entropy source, which delegates to the platform
