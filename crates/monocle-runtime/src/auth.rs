@@ -80,52 +80,46 @@ pub async fn auth_middleware(
 
     let headers = request.headers();
 
-    // Priority 1: check canonical header `X-Monocle-Authorization`.
-    if let Some(canonical_value) = headers.get(CANONICAL_HEADER) {
-        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
-        let value_str = match canonical_value.to_str() {
-            Ok(s) => s,
-            Err(_) => return invalid_token_response(),
-        };
+    // Extract both header values as &str (non-UTF-8 values are treated as absent — this is a
+    // conservative choice: a non-UTF-8 header is malformed and cannot carry a valid hex token).
+    let canonical = headers
+        .get(CANONICAL_HEADER)
+        .and_then(|v| v.to_str().ok());
+    let alias = headers
+        .get(ALIAS_HEADER)
+        .and_then(|v| v.to_str().ok());
 
-        // Must start with "monocle-v1:" prefix.
-        let Some(hex_suffix) = value_str.strip_prefix(CANONICAL_PREFIX) else {
-            return invalid_token_response();
-        };
-
-        // Constant-time comparison of the hex suffix against the stored token.
-        // NFR-010: MUST use constant_time_eq, NEVER `==`.
-        if constant_time_eq(hex_suffix.as_bytes(), state.auth_token.as_bytes()) {
-            return next.run(request).await;
-        }
-        return invalid_token_response();
-    }
-
-    // Priority 2: check alias header `X-Claude-Code-Ide-Authorization`.
-    if let Some(alias_value) = headers.get(ALIAS_HEADER) {
-        // Header is present — any failure is E-AUTH-002 (invalid), not E-AUTH-001 (missing).
-        let value_str = match alias_value.to_str() {
-            Ok(s) => s,
-            Err(_) => return invalid_token_response(),
-        };
-
-        // Emit the mandatory WARN per ADR-0005 INV-6 / AC-002.
-        // Exact string is normative — do not paraphrase.
+    // BC-2.01.009 PC-3 ordering: "first emits WARN, then validates."
+    // INV-6: WARN must be emitted on EVERY alias-path attempt regardless of outcome
+    // (success or failure). Detect alias-path entry BEFORE calling validate_auth_header
+    // so the WARN fires whether the token is correct or wrong.
+    //
+    // The alias path is entered when: canonical header is absent AND alias header is present.
+    // Emitting WARN here (in the middleware, before validation) satisfies INV-6 without
+    // changing the pure validate_auth_header function (which remains WARN-free for unit-testability).
+    let entering_alias_path = canonical.is_none() && alias.is_some();
+    if entering_alias_path {
         tracing::warn!(
             "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
             monocle-aware harness should use X-Monocle-Authorization"
         );
-
-        // Constant-time comparison of the raw hex value against the stored token.
-        // NFR-010: MUST use constant_time_eq, NEVER `==`.
-        if constant_time_eq(value_str.as_bytes(), state.auth_token.as_bytes()) {
-            return next.run(request).await;
-        }
-        return invalid_token_response();
     }
 
-    // Neither header present — E-AUTH-001 (missing).
-    missing_token_response()
+    // Delegate to `validate_auth_header` — the unit-tested pure function that implements
+    // the dual-accept protocol (ADR-0005, BC-2.01.009, INV-7 sentinel defence).
+    match validate_auth_header(canonical, alias, &state.auth_token) {
+        Ok(AuthPath::Canonical) => {
+            // Canonical path — no WARN log required.
+            next.run(request).await
+        }
+        Ok(AuthPath::Alias) => {
+            // Alias path — WARN already emitted above before validation (INV-6 ordering).
+            // Just proceed to the next handler.
+            next.run(request).await
+        }
+        Err(AuthError::MissingToken) => missing_token_response(),
+        Err(AuthError::InvalidToken) => invalid_token_response(),
+    }
 }
 
 /// Build the HTTP 401 missing-token response (E-AUTH-001).
@@ -156,6 +150,146 @@ fn invalid_token_response() -> Response {
         Json(serde_json::json!({"error": "invalid_auth_token"})),
     )
         .into_response()
+}
+
+/// Fixed-length sentinel for timing-safe constant_time_eq on length-mismatched inputs.
+///
+/// Per BC-2.01.008 INV-7 / S-009 F-D-01: when the input token does not have the correct
+/// length or format, we still call `constant_time_eq` against this sentinel rather than
+/// returning early. This prevents a timing oracle where an attacker could distinguish
+/// "correct prefix, wrong length" from "wrong prefix" by measuring response latency.
+const SENTINEL_64: [u8; 64] = [0u8; 64];
+
+/// Validate auth headers implementing the dual-accept protocol per ADR-0005.
+///
+/// Pure validation function extracted from `auth_middleware` for unit-testing the dual-accept
+/// logic independently of the axum request stack.
+///
+/// # Parameters
+///
+/// - `canonical`: value of `X-Monocle-Authorization` if present; `None` if absent.
+/// - `alias`: value of `X-Claude-Code-Ide-Authorization` if present; `None` if absent.
+/// - `expected_token`: the stored 64-hex session token (from lock file / `DaemonState::auth_token`).
+///
+/// # Decision matrix (mirrors `auth_middleware` priority order)
+///
+/// | canonical | alias | outcome |
+/// |-----------|-------|---------|
+/// | present, valid `monocle-v1:<64-hex>`, token matches | any | `Ok(AuthPath::Canonical)` |
+/// | present, any format/value failure | any | `Err(AuthError::InvalidToken)` |
+/// | absent | present, raw 64-hex token matches | `Ok(AuthPath::Alias)` — caller MUST emit WARN |
+/// | absent | present, any mismatch | `Err(AuthError::InvalidToken)` |
+/// | absent | absent | `Err(AuthError::MissingToken)` |
+///
+/// # Security invariants (NFR-010, BC-2.01.009 INV-7)
+///
+/// - ALL comparisons use `constant_time_eq::constant_time_eq`. The `==` operator is NEVER
+///   used on secret bytes.
+/// - Length-mismatched inputs still run `constant_time_eq` against a fixed-length sentinel
+///   (`[0u8; 64]`) to prevent a timing oracle on the mismatch branch (BC-2.01.008 INV-7).
+///
+/// # Warn log
+///
+/// This function does NOT emit the WARN log itself — it returns `Ok(AuthPath::Alias)` and
+/// the caller (`auth_middleware`) is responsible for emitting the ADR-0005 WARN per INV-6.
+/// This separation allows the pure function to be unit-tested without a tracing subscriber.
+pub fn validate_auth_header(
+    canonical: Option<&str>,
+    alias: Option<&str>,
+    expected_token: &str,
+) -> Result<AuthPath, AuthError> {
+    match canonical {
+        Some(canonical_value) => {
+            // Canonical header is present — any failure returns InvalidToken (E-AUTH-002),
+            // not MissingToken (E-AUTH-001). INV-2: header-present failures are always invalid.
+
+            // Strip the `monocle-v1:` prefix. If it fails, still run sentinel comparison
+            // before returning to prevent timing oracle (INV-7).
+            let Some(hex_suffix) = canonical_value.strip_prefix(CANONICAL_PREFIX) else {
+                // Wrong or missing prefix — compare against sentinel to normalise timing.
+                let _ = constant_time_eq(canonical_value.as_bytes(), &SENTINEL_64);
+                return Err(AuthError::InvalidToken);
+            };
+
+            // Validate hex suffix: must be exactly 64 lowercase hex chars (`^[0-9a-f]{64}$`).
+            // On length or character mismatch, still run constant_time_eq against sentinel (INV-7).
+            let is_valid_hex = hex_suffix.len() == 64
+                && hex_suffix.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
+
+            if !is_valid_hex {
+                // Length or character mismatch — sentinel comparison for timing safety (INV-7).
+                let _ = constant_time_eq(hex_suffix.as_bytes(), &SENTINEL_64);
+                return Err(AuthError::InvalidToken);
+            }
+
+            // Valid format — constant-time compare suffix against expected token (NFR-010).
+            if constant_time_eq(hex_suffix.as_bytes(), expected_token.as_bytes()) {
+                Ok(AuthPath::Canonical)
+            } else {
+                Err(AuthError::InvalidToken)
+            }
+        }
+
+        None => match alias {
+            Some(alias_value) => {
+                // Alias header is present — any failure returns InvalidToken (E-AUTH-002).
+                // Canonical is absent, so this is the compatibility path.
+
+                // Validate alias: must be exactly 64 lowercase hex chars (`^[0-9a-f]{64}$`).
+                // On length or character mismatch, still run constant_time_eq against sentinel (INV-7).
+                let is_valid_hex = alias_value.len() == 64
+                    && alias_value
+                        .chars()
+                        .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
+
+                if !is_valid_hex {
+                    // Length or character mismatch — sentinel comparison for timing safety (INV-7).
+                    let _ = constant_time_eq(alias_value.as_bytes(), &SENTINEL_64);
+                    return Err(AuthError::InvalidToken);
+                }
+
+                // Valid format — constant-time compare raw alias value against expected token (NFR-010).
+                // Caller is responsible for emitting the ADR-0005 WARN log on Ok(AuthPath::Alias).
+                if constant_time_eq(alias_value.as_bytes(), expected_token.as_bytes()) {
+                    Ok(AuthPath::Alias)
+                } else {
+                    Err(AuthError::InvalidToken)
+                }
+            }
+
+            // Neither header present — E-AUTH-001 (missing), not E-AUTH-002 (invalid). INV-2.
+            None => Err(AuthError::MissingToken),
+        },
+    }
+}
+
+/// Outcome discriminant returned by `validate_auth_header` on success.
+///
+/// The caller (`auth_middleware`) uses this to decide whether to emit the ADR-0005 WARN
+/// log (alias path) or proceed silently (canonical path).
+#[derive(Debug, PartialEq, Eq)]
+pub enum AuthPath {
+    /// Request authenticated via the canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` header.
+    /// No WARN log required.
+    Canonical,
+    /// Request authenticated via the compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>`.
+    /// Caller MUST emit the ADR-0005 WARN per BC-2.01.009 INV-6.
+    Alias,
+}
+
+/// Auth validation error discriminant.
+///
+/// Maps to the E-AUTH error taxonomy (error-taxonomy.md):
+/// - `MissingToken` → HTTP 401 `{"error":"missing_auth_token"}` (E-AUTH-001)
+/// - `InvalidToken` → HTTP 401 `{"error":"invalid_auth_token"}` (E-AUTH-002)
+#[derive(Debug, PartialEq, Eq)]
+pub enum AuthError {
+    /// Neither `X-Monocle-Authorization` nor `X-Claude-Code-Ide-Authorization` present.
+    /// Maps to E-AUTH-001 in error-taxonomy.md.
+    MissingToken,
+    /// A header is present but the token value fails format or constant-time comparison.
+    /// Maps to E-AUTH-002 in error-taxonomy.md.
+    InvalidToken,
 }
 
 /// Generate a cryptographically random session token (32 bytes → 64 hex chars).

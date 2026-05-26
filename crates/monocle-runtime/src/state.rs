@@ -8,10 +8,12 @@
 //! S-005 (hook-ingestion channels).
 
 use std::sync::atomic::AtomicBool;
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
 use tokio::sync::watch;
+
+use crate::ring::RingBuffer;
 
 /// Operating mode of the monocle daemon.
 ///
@@ -125,6 +127,18 @@ pub struct DaemonState {
     /// transiently to update a single field.
     pub last_hook_ts: RwLock<LastHookTimestamps>,
 
+    /// JSONL ring buffer writer for hook event records (BC-2.01.007, S-008, S-009).
+    ///
+    /// `None` — ring buffer has not been initialized (normal in tests and before XDG path
+    ///   resolution completes during daemon startup). Hook handlers MUST log WARN and
+    ///   return 200 when this is `None` (AC-005: ring write is best-effort).
+    /// `Some(ring)` — ring buffer is live; handlers call `ring.push(&record)`. On push
+    ///   failure the same best-effort policy applies (log WARN, return 200).
+    ///
+    /// Wrapped in `Arc` so the `DaemonState` can be cloned into axum's `State` extractor
+    /// while the ring buffer remains shared (no double-buffering).
+    pub ring: Option<Arc<RingBuffer>>,
+
     /// Whether a TUI client is currently attached to this daemon session.
     ///
     /// Set to `true` when a TUI session is established; `false` when the TUI disconnects.
@@ -203,6 +217,7 @@ impl DaemonState {
             lock_file_path: String::new(),
             sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
+            ring: None,
             tui_attached: AtomicBool::new(false),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
