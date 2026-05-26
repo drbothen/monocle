@@ -169,6 +169,48 @@ pub enum PreflightError {
 }
 
 // ---------------------------------------------------------------------------
+// Home directory availability guard
+// ---------------------------------------------------------------------------
+
+/// Returns `true` iff the process environment contains a non-empty home-directory
+/// variable that `directories::BaseDirs::new()` would trust on this platform.
+///
+/// On macOS, `dirs-sys` has a `getpwuid_r` fallback that resolves a home directory
+/// even when `HOME` is not set — but that path is not under the user's env control
+/// and cannot be trusted in headless / container deployments (BC-2.03.003 Invariant 3;
+/// same guard applied in `lifecycle::resolve_runtime_dir` for S-006 BC-2.01.005 PC-2d).
+///
+/// The four variables below are exactly the ones unset by the
+/// `HOME_ENV_VARS_UNSET` constant in the `engine_module_home_unresolvable` test suite.
+fn home_env_available() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var_os("HOME")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // Windows: USERPROFILE, or HOMEDRIVE+HOMEPATH together.
+        // Linux/Unix: HOME.
+        let home = std::env::var_os("HOME")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        let userprofile = std::env::var_os("USERPROFILE")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        let homedrive = std::env::var_os("HOMEDRIVE")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        let homepath = std::env::var_os("HOMEPATH")
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        home || userprofile || (homedrive && homepath)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ClaudeCodeModule
 // ---------------------------------------------------------------------------
 
@@ -261,9 +303,36 @@ impl EngineModule for ClaudeCodeModule {
     /// Returns `Err(HomeUnresolvable)` when `BaseDirs::new()` returns `None` —
     /// fail-fast with no default path substitution (BC-2.03.003 PC-1).
     /// Logs `E-ENG-001` on `HomeUnresolvable` per BC-2.03.003 PC-2.
-    #[allow(clippy::todo)]
     fn metadata(&self) -> Result<EngineMetadata, EngineMetadataError> {
-        todo!("S-015: ClaudeCodeModule::metadata — implement with BaseDirs::new()")
+        // On macOS, `dirs-sys` has a `getpwuid_r` fallback that resolves a home
+        // directory even when HOME is not set — but in that case the path is not
+        // under the user's env control and cannot be trusted in a headless/container
+        // deployment (same guard used in lifecycle::resolve_runtime_dir for S-006).
+        // We check HOME (+ Windows equivalents) before delegating to BaseDirs::new()
+        // so that temp_env::async_with_vars can reliably trigger HomeUnresolvable.
+        if !home_env_available() {
+            tracing::error!(
+                "E-ENG-001: platform home directory unresolvable (BaseDirs::new() returned None)"
+            );
+            return Err(EngineMetadataError::HomeUnresolvable);
+        }
+
+        let base_dirs = directories::BaseDirs::new().ok_or_else(|| {
+            tracing::error!(
+                "E-ENG-001: platform home directory unresolvable (BaseDirs::new() returned None)"
+            );
+            EngineMetadataError::HomeUnresolvable
+        })?;
+
+        // Claude Code stores its config under ~/.claude/
+        let config_paths = vec![base_dirs.home_dir().join(".claude").join("settings.json")];
+
+        Ok(EngineMetadata::new(
+            "Claude Code",
+            '\u{25C6}', // ◆
+            config_paths,
+            1,
+        ))
     }
 
     /// Strict basename detection — returns `true` iff `exe_path.file_name()` is
@@ -285,9 +354,39 @@ impl EngineModule for ClaudeCodeModule {
     /// Returns `Err(HomeUnresolvable)` when `BaseDirs::new()` returns `None` —
     /// fail-fast with no default path substitution (BC-2.03.003 PC-1; AC-005).
     /// Logs `E-ENG-001` on `HomeUnresolvable` per BC-2.03.003 PC-2 (AC-006).
-    #[allow(clippy::todo)]
-    async fn enrich(&self, _proc: &ProcessSnapshot) -> Result<EnrichedSession, EngineMetadataError> {
-        todo!("S-015: ClaudeCodeModule::enrich — implement with BaseDirs::new()")
+    async fn enrich(&self, proc: &ProcessSnapshot) -> Result<EnrichedSession, EngineMetadataError> {
+        // Same macOS getpwuid_r guard as in metadata() — see inline comment there.
+        if !home_env_available() {
+            tracing::error!(
+                "E-ENG-001: platform home directory unresolvable (BaseDirs::new() returned None)"
+            );
+            return Err(EngineMetadataError::HomeUnresolvable);
+        }
+
+        let base_dirs = directories::BaseDirs::new().ok_or_else(|| {
+            tracing::error!(
+                "E-ENG-001: platform home directory unresolvable (BaseDirs::new() returned None)"
+            );
+            EngineMetadataError::HomeUnresolvable
+        })?;
+
+        // Claude Code stores transcripts under ~/.claude/projects/<cwd-hash>/
+        // and config under ~/.claude/settings.json.
+        // Working dir from the process determines the project context.
+        let claude_dir = base_dirs.home_dir().join(".claude");
+        let config_path = Some(claude_dir.join("settings.json"));
+
+        // Derive a session_id from the process pid — no hook events have arrived yet.
+        let session_id = format!("claude-{}", proc.pid);
+
+        Ok(EnrichedSession::new(
+            session_id,
+            "claude-code".to_string(),
+            None, // transcript_path: no transcript path until hook events arrive
+            config_path,
+            monocle_core::engine::SessionStatus::Idle,
+            None, // last_event_micros: no hook events received yet
+        ))
     }
 
     /// Process an inbound hook event.
