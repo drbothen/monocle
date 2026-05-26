@@ -6,8 +6,11 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
-/// Engine module trait abstraction (populated by S-014: EngineModule trait).
-pub mod engine {}
+/// Engine module trait abstraction and supporting types (S-014: EngineModule trait).
+pub mod engine;
+
+/// Hook event types for the harness plane (S-014: HookEvent enum).
+pub mod hook_events;
 
 /// Factory adapter abstraction (populated by S-012: FactoryAdapter trait).
 pub mod factory {}
