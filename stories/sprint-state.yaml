@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.13"
+version: "1.14"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-05-26T12:00:00Z
@@ -184,12 +184,12 @@ stories:
     epic: EPIC-01
     wave: 3
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 3. Depends on S-006."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/14"
+    notes: "Wave 3 Batch A. PR #14 merged at develop @ 9982ff0. BC-2.01.006 fully satisfied at library level. 15 integration tests. 5 adversary rounds (3/3 convergence). Deferred: regex-lite manifest registration (architect); daemon-level AC wiring (S-005-main-wiring)."
 
   - id: S-008
     title: "JSONL Ring Format Version (FC-01)"
@@ -229,14 +229,14 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 5
+  not_started: 4
   in_progress: 0
   review: 0
-  done: 11
+  done: 12
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 49
+  points_complete: 54
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -248,3 +248,7 @@ summary:
   # - S-005 flipped not_started → done (PR #13 merged b235e3e; BC-2.01.004 satisfied; 6 adversary rounds 3/3 convergence)
   # - done: 7 → 11; not_started: 9 → 5; points_complete: 31 → 49
   # - WAVE 2 COMPLETE: 9/9 stories done (41/41 pts); total project: 11/17 stories, 49/86 pts
+  # v1.14 updates (2026-05-26):
+  # - S-007 flipped not_started → done (PR #14 merged 9982ff0; BC-2.01.006 satisfied; 5 adversary rounds 3/3 convergence)
+  # - done: 11 → 12; not_started: 5 → 4; points_complete: 49 → 54
+  # - Wave 3 Batch A: 1/4 done; Wave 3 total: 1/5 done (5/34 pts)

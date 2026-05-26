@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.02"
+version: "6.03"
 status: active
 producer: state-manager
 timestamp: 2026-05-26T20:00:00Z
@@ -12,7 +12,7 @@ mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 3 dispatch: Batch A (S-007, S-008, S-012, S-015 parallel); Batch B (S-009 after S-008). 5 stories, 34 pts."
+awaiting: "Wave 3 in progress: Batch A remaining (S-008, S-012, S-015 not_started); Batch B (S-009 after S-008). S-007 done (PR #14, 9982ff0). 4 stories remaining, 29 pts."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -92,14 +92,14 @@ next_session_resume_protocol: |
 
   1. Run factory-worktree-health check via devops-engineer (BLOCKING).
   2. Verify branch state:
-     - `git log --oneline -1 develop` → e2898be (wave-gate cleanup)
-     - `git -C .factory log --oneline -1` → this commit (STATE v6.02)
+     - `git log --oneline -1 develop` → 9982ff0 (S-007 merged)
+     - `git -C .factory log --oneline -1` → this commit (STATE v6.03)
   3. Read this STATE.md COMPLETELY.
   4. Read CLAUDE.md §Current Pipeline State.
   5. Wave 2 gate PASSED. NO ADDITIONAL HUMAN GATE REQUIRED to start Wave 3.
-  6. Read sprint-state.yaml for Wave 3 story list (5 stories, 34 pts, all status: not_started).
+  6. Read sprint-state.yaml for Wave 3 story list (4 remaining, 29 pts).
   7. Wave 3 dispatch order:
-     - Batch A (parallel, all deps satisfied): S-007 (5 pts), S-008 (5 pts), S-012 (8 pts), S-015 (8 pts)
+     - S-007 DONE (PR #14, 9982ff0). Batch A remaining (parallel): S-008 (5 pts), S-012 (8 pts), S-015 (8 pts)
      - Batch B (after S-008 merges): S-009 (8 pts, depends on S-008)
   8. CRITICAL ORCHESTRATION DISCIPLINE (SE-40):
      - Drive each story from MAIN SESSION via specialist Agent dispatches
@@ -133,13 +133,13 @@ current_cycle: cycle-001
 
 | Story | Points | Status | Batch | Deps |
 |-------|--------|--------|-------|------|
-| S-007 Crash Recovery | 5 | not_started | A | none |
+| S-007 Crash Recovery | 5 | done | A | none |
 | S-008 JSONL Ring Format | 5 | not_started | A | none |
 | S-012 FactoryAdapter Trait | 8 | not_started | A | none |
 | S-015 ClaudeCodeModule | 8 | not_started | A | none |
 | S-009 Auth Token Wire Format | 8 | not_started | B | S-008 |
 
-develop @ e2898be. 332 tests. clippy clean. 11/17 stories done, 49/86 pts.
+develop @ 9982ff0. 332+ tests. clippy clean. 12/17 stories done, 54/86 pts.
 
 ## Blocking Issues
 
@@ -186,6 +186,10 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 ## §Trace v6.01 (D-166)
 
 **D-166 WAVE 2 GATE PASSED** (2026-05-26T18:00:00Z): Wave-gate PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed in e2898be: removed monocle-proto from monocle-runtime; removed futures+semver from monocle-core; added sock_file_path to DaemonState. develop @ e2898be. Phase → `phase-3-WAVE-2-GATE-PASSED`. Wave 3 ready: Batch A parallel (S-007/S-008/S-012/S-015); Batch B after S-008 (S-009). STATE v6.00 → v6.01. SE-23 PASS. S-PHASE-3-PREP BLOCKED on rc.19+ (does NOT block Wave 3).
+
+## §Trace v6.03 (S-007 delivery)
+
+**S-007 CRASH RECOVERY CHECKPOINT DELIVERED** (2026-05-26): PR #14 merged at develop @ 9982ff0. BC-2.01.006 fully satisfied at library level. 15 integration tests. 5 adversary rounds (3/3 convergence). Deferred: regex-lite manifest registration (architect); daemon-level AC wiring (S-005-main-wiring). sprint-state v1.13→v1.14: done 11→12, not_started 5→4, points_complete 49→54. STATE v6.02→v6.03. Wave 3 Batch A: 1/4 done; Wave 3 total: 1/5 done (5/34 pts).
 
 ## §Trace v6.02 (compaction)
 
