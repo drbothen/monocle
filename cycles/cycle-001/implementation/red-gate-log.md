@@ -680,3 +680,169 @@ Confirm after S-005 implementation (before S-009 merge):
 
 Confirm after both S-005 and S-009 are merged:
 - `cargo test -p monocle-runtime --test graceful_shutdown` → 27 passed, 0 failed
+
+---
+
+---
+document_type: red-gate-log
+story_id: S-012
+step: 3
+branch: feature/S-012-factory-adapter-trait
+worktree: .worktrees/S-012
+commit: 00a784f
+timestamp: 2026-05-26T20:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-012 Step 3 (FactoryAdapter Trait + VsddFactoryAdapter)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+31 tests total across 2 new test files. 15 structural/unit tests PASS (correct — they
+test already-implemented struct definitions and the 3 implemented methods). 16 behavioral
+integration tests FAIL (correct — they exercise `detect()` and `read_state()` which are
+`todo!()` stubs). Zero regressions in any pre-existing test file.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-core/tests/factory_adapter_surface.rs` | 12 | 12 | 0 |
+| `crates/monocle-core/tests/factory_self_referential.rs` | 19 | 3 | 16 |
+| **Total (S-012)** | **31** | **15** | **16** |
+| All other workspace tests | 332 | 332 | 0 |
+
+## Passing Tests (15 — structural/unit, expected to pass before and after implementation)
+
+### factory_adapter_surface.rs (12 tests — all pass, structural/AST)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_FACTORY_001_trait_defined_open_no_sealed_bound` | Canonical VP-014 test. Trait already has 7 methods + Send+Sync+'static bounds. Stub is structurally correct. |
+| `test_BC_FACTORY_001_sealed_token_absent_from_trait_declaration` | Checks supertrait positions + where clause + method signatures. No Sealed in those positions. |
+| `test_BC_FACTORY_001_factory_state_exactly_7_fields` | FactoryState stub has correct 7 canonical fields; no raw_frontmatter. |
+| `test_BC_FACTORY_001_factory_state_custom_fields_uses_serde_yaml_ng_not_json` | custom_fields uses serde_yaml_ng::Value in stub. |
+| `test_BC_FACTORY_001_factory_state_awaiting_is_option_string` | awaiting: Option<String> in stub. |
+| `test_BC_FACTORY_001_factory_detection_3_fields` | FactoryDetection has exactly 3 fields: display_name, workspace_root, state_file. |
+| `test_BC_FACTORY_001_supporting_types_pub_in_monocle_core_factory` | Compile-time type probe — all 8 supporting types are pub. |
+| `test_BC_FACTORY_001_detect_method_has_where_self_sized` | detect() method has where Self: Sized bound. |
+| `test_BC_FACTORY_001_abi_version_has_default_impl` | abi_version() has a default body returning MONOCLE_ABI_VERSION. |
+| `test_BC_FACTORY_001_factory_read_error_is_non_exhaustive` | FactoryReadError carries #[non_exhaustive]. |
+| `test_BC_FACTORY_001_factory_subscribe_error_is_non_exhaustive` | FactorySubscribeError carries #[non_exhaustive]. |
+| `test_BC_FACTORY_001_blocking_severity_is_non_exhaustive` | BlockingSeverity carries #[non_exhaustive] (S-011 previous story intelligence). |
+
+### factory_self_referential.rs (3 tests — pass because methods are implemented)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_FACTORY_002_vsdd_adapter_new_constructor` | VsddFactoryAdapter::new() implemented without todo!(). 3 test vectors: absolute, relative, empty PathBuf. |
+| `test_BC_FACTORY_002_vsdd_adapter_display_name` | display_name() implemented, returns "VSDD Factory". |
+| `test_BC_FACTORY_002_vsdd_adapter_subscribe_empty` | subscribe() implemented, returns Ok(empty stream). Async test with StreamExt::next() → None. |
+
+## Failing Tests (16 — Red Gate confirmed)
+
+All 16 failures are caused by `todo!()` panics in `detect()` (vsdd.rs:60) and
+`read_state()` (vsdd.rs:83).
+
+### detect() failures (3 tests)
+
+| Test | BC Clause | AC | Failure |
+|------|-----------|-----|---------|
+| `test_BC_FACTORY_002_vsdd_adapter_self_referential_detection` | BC-2.02.005 PC-1, PC-2 | AC-005, AC-006 | detect() → todo!() |
+| `test_BC_FACTORY_002_vsdd_detect_negative_no_state_file` | BC-2.02.005 PC-1 | AC-005 negative | detect() → todo!() |
+| `test_BC_FACTORY_002_vsdd_detect_negative_body_only` | BC-2.02.005 INV-1, EC-021 | AC-005 | detect() → todo!() |
+
+### read_state() failures (13 tests)
+
+| Test | BC Clause | AC | Failure |
+|------|-----------|-----|---------|
+| `test_BC_FACTORY_002_vsdd_adapter_read_state_not_found` | BC-2.02.005 PC-4, E-FACT-001 | AC-008 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_adapter_read_state_success` | BC-2.02.005 PC-4, PC-3 | AC-008, AC-012 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_adapter_read_state_cycle_absent` | BC-2.02.005 PC-3 | AC-012 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_adapter_read_state_on_real_state_md` | BC-2.02.005 PC-4 | AC-008 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_adapter_read_state_parse_error_no_frontmatter` | BC-2.02.005 PC-4, E-FACT-002 | AC-008 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_empty_value_yields_none` | BC-2.02.005 PC-4, EC-061 | AC-013 guard 2 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_empty_quoted_value_yields_none` | BC-2.02.005 PC-4, EC-061, EC-022 | AC-013 guard 2 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_flow_list_yields_none` | BC-2.02.005 PC-4, EC-023 | AC-013 guard 3 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_double_quoted_scalar_unquoted` | BC-2.02.005 PC-4, EC-022 | AC-013 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_single_quoted_scalar_unquoted` | BC-2.02.005 PC-4, EC-022 | AC-013 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_block_scalar_literal_yields_none` | BC-2.02.005 PC-4 | AC-013 guard 4 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_block_scalar_folded_yields_none` | BC-2.02.005 PC-4 | AC-013 guard 4 | read_state() → todo!() |
+| `test_BC_FACTORY_002_vsdd_parse_guard_continuation_line_yields_none` | BC-2.02.005 PC-4 | AC-013 guard 1 | read_state() → todo!() |
+
+## BC Coverage Summary
+
+| BC | Clause | Test(s) | Status |
+|----|--------|---------|--------|
+| BC-2.02.004 | PC-1 (7 methods exact) | `trait_defined_open_no_sealed_bound` | GREEN (structural) |
+| BC-2.02.004 | PC-2 (no Sealed bound) | `sealed_token_absent_from_trait_declaration` | GREEN (structural) |
+| BC-2.02.004 | PC-3 (FactoryDetection 3 fields) | `factory_detection_3_fields`, `supporting_types_pub` | GREEN (structural) |
+| BC-2.02.004 | PC-4 (FactoryState 7 fields; no raw_frontmatter) | `factory_state_exactly_7_fields`, `factory_state_custom_fields_*`, `factory_state_awaiting_*` | GREEN (structural) |
+| BC-2.02.004 | INV-2 (raw_frontmatter forbidden) | `factory_state_exactly_7_fields` | GREEN (structural) |
+| BC-2.02.005 | PC-1 (detect logic) | `self_referential_detection`, `detect_negative_no_state_file` | RED (correct) |
+| BC-2.02.005 | INV-1 + EC-021 (frontmatter-only detect) | `detect_negative_body_only` | RED (correct) |
+| BC-2.02.005 | INV-2 (display_name "VSDD Factory") | `vsdd_adapter_display_name` | GREEN (implemented) |
+| BC-2.02.005 | INV-3 (subscribe() empty stream) | `vsdd_adapter_subscribe_empty` | GREEN (implemented) |
+| BC-2.02.005 | PC-1 (new() constructor) | `vsdd_adapter_new_constructor` | GREEN (implemented) |
+| BC-2.02.005 | PC-3 (cycle/awaiting: None not "unknown") | `read_state_success`, `read_state_cycle_absent` | RED (correct) |
+| BC-2.02.005 | PC-4 (read_state error handling) | `read_state_not_found`, `read_state_parse_error_no_frontmatter`, `read_state_on_real_state_md` | RED (correct) |
+| BC-2.02.005 | PC-4 guards 1-4 + EC-022/EC-023/EC-061 | 8 guard tests | RED (correct) |
+
+## VP Coverage
+
+| VP | Probe | Test | Status |
+|----|-------|------|--------|
+| VP-014 | 7 methods, no Sealed, Send+Sync+'static | `test_BC_FACTORY_001_trait_defined_open_no_sealed_bound` | GREEN |
+| VP-014 | FactoryState 7 fields, no raw_frontmatter | `test_BC_FACTORY_001_factory_state_exactly_7_fields` | GREEN |
+| VP-014 | FactoryDetection 3 fields | `test_BC_FACTORY_001_factory_detection_3_fields` | GREEN |
+| VP-015 | Self-referential detect + read_state | `test_BC_FACTORY_002_vsdd_adapter_self_referential_detection`, `test_BC_FACTORY_002_vsdd_adapter_read_state_on_real_state_md` | RED (correct) |
+
+## Notes for Implementer
+
+### Primary implementation targets
+
+**detect() — vsdd.rs:60:**
+1. Compute `state_file = workspace_root.join(".factory").join("STATE.md")`
+2. Return `None` if file does not exist
+3. Read file contents via `std::fs::read_to_string`
+4. Extract YAML frontmatter block: find first `---` marker (line 0 or 1), collect lines until second `---`, stop
+5. Frontmatter extraction is a line-scan, NOT `content.contains(...)` body search (EC-021 / BC-2.02.005 INV-1)
+6. Parse only the frontmatter block for `document_type: pipeline-state`
+7. Return `None` if frontmatter absent or key missing
+8. Return `Some(FactoryDetection { display_name: "VSDD Factory".into(), workspace_root: workspace_root.to_path_buf(), state_file })` on match
+
+**read_state() — vsdd.rs:83:**
+1. Return `Err(FactoryReadError::NotFound)` if `self.state_file` does not exist (log WARN E-FACT-001)
+2. Read file contents; return `Err(FactoryReadError::ParseError(...))` on I/O error (log WARN E-FACT-002)
+3. Extract frontmatter block (same algorithm as detect())
+4. Return `Err(FactoryReadError::ParseError(...))` if frontmatter absent
+5. Parse frontmatter line-by-line using `parse_frontmatter_field(lines, key)` helper with guards:
+   - Guard 1: skip continuation lines (lines starting with whitespace in the VALUE position)
+   - Guard 2: return `None` for empty values (after trimming and unquoting)
+   - Guard 3: return `None` for flow-style lists starting with `[`
+   - Guard 4: return `None` for block scalar markers `|` or `>`
+   - EC-022: unquote surrounding single and double quotes from values before returning `Some`
+6. Populate `FactoryState`:
+   - `phase`: required; return `ParseError` if missing
+   - `status`: required; return `ParseError` if missing
+   - `awaiting`: `parse_frontmatter_field(lines, "awaiting")` → `None` if absent/guarded
+   - `cycle`: `parse_frontmatter_field(lines, "current_cycle")` → `None` if absent/guarded
+   - `convergence`: `None` in Phase 1 (§Session Resume Checkpoint parsing is Phase 3)
+   - `blocking_issues`: `vec![]` in Phase 1 (body parsing is Phase 3)
+   - `custom_fields`: collect remaining frontmatter key-value pairs not in the canonical set
+7. `None` for `cycle` and `awaiting` MUST NOT be replaced with `"unknown"` or `"pending"` (BC-2.02.005 PC-3)
+
+### Self-referential test path
+The `test_BC_FACTORY_002_vsdd_adapter_self_referential_detection` and
+`test_BC_FACTORY_002_vsdd_adapter_read_state_on_real_state_md` tests use the
+monocle main-repo root (4 levels up from CARGO_MANIFEST_DIR) and require the
+factory-artifacts worktree to be mounted at `<main-repo>/.factory/`. This is
+the standard development environment; no special setup needed for CI.
+
+### Confirm after implementation
+- `cargo test -p monocle-core --test factory_adapter_surface` → 12 passed, 0 failed
+- `cargo test -p monocle-core --test factory_self_referential` → 19 passed, 0 failed
+- `cargo test --workspace` → 0 new failures beyond S-012 tests (363 total should all pass)
+- `cargo clippy --workspace -- -D warnings` → clean
