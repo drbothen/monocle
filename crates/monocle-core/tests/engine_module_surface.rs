@@ -52,12 +52,14 @@ fn engine_rs_path() -> PathBuf {
 
 fn hook_events_rs_path() -> PathBuf {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(manifest_dir).join("src").join("hook_events.rs")
+    PathBuf::from(manifest_dir)
+        .join("src")
+        .join("hook_events.rs")
 }
 
 fn parse_engine_rs() -> syn::File {
-    let src = fs::read_to_string(engine_rs_path())
-        .expect("cannot read engine.rs — is the path correct?");
+    let src =
+        fs::read_to_string(engine_rs_path()).expect("cannot read engine.rs — is the path correct?");
     syn::parse_file(&src).expect("engine.rs is not valid Rust syntax")
 }
 
@@ -118,11 +120,9 @@ fn test_BC_2_03_001_vp019_19a_exactly_5_methods_with_canonical_names() {
         method_names
     );
     assert_eq!(
-        method_names,
-        expected,
+        method_names, expected,
         "EngineModule method names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected,
-        method_names
+        expected, method_names
     );
 }
 
@@ -303,10 +303,14 @@ fn test_BC_2_03_001_vp019_19e_enriched_session_last_event_micros_is_option_i64()
             .unwrap_or(false)
     });
 
-    let field = last_event_field
-        .expect("EnrichedSession must have a `last_event_micros` field (AC-004)");
+    let field =
+        last_event_field.expect("EnrichedSession must have a `last_event_micros` field (AC-004)");
 
-    let field_ty_ts = { let ty = &field.ty; quote::quote!(#ty) }.to_string();
+    let field_ty_ts = {
+        let ty = &field.ty;
+        quote::quote!(#ty)
+    }
+    .to_string();
 
     // Must be Option<i64> — token stream contains "Option" and "i64"
     assert!(
@@ -391,7 +395,12 @@ fn test_BC_2_03_001_vp019_19h_async_trait_attribute_on_engine_module() {
     let trait_item = find_engine_module_trait(&file);
 
     let has_async_trait_attr = trait_item.attrs.iter().any(|attr| {
-        { let path = attr.path(); quote::quote!(#path) }.to_string().contains("async_trait")
+        {
+            let path = attr.path();
+            quote::quote!(#path)
+        }
+        .to_string()
+        .contains("async_trait")
     });
 
     assert!(
@@ -555,8 +564,7 @@ fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
 
     let e = session_status.expect("SessionStatus enum not found in engine.rs");
 
-    let variant_names: HashSet<String> =
-        e.variants.iter().map(|v| v.ident.to_string()).collect();
+    let variant_names: HashSet<String> = e.variants.iter().map(|v| v.ident.to_string()).collect();
 
     let expected: HashSet<String> = [
         "Active",
@@ -578,11 +586,9 @@ fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
         variant_names
     );
     assert_eq!(
-        variant_names,
-        expected,
+        variant_names, expected,
         "SessionStatus variant names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected,
-        variant_names
+        expected, variant_names
     );
 }
 
@@ -652,12 +658,18 @@ fn test_BC_2_03_001_ac003_hook_response_redirect_url_is_option_string() {
     let s = hook_response.expect("HookResponse struct not found in engine.rs");
 
     let redirect_field = s.fields.iter().find(|f| {
-        f.ident.as_ref().map(|id| id == "redirect_url").unwrap_or(false)
+        f.ident
+            .as_ref()
+            .map(|id| id == "redirect_url")
+            .unwrap_or(false)
     });
 
-    let field = redirect_field
-        .expect("HookResponse must have a `redirect_url` field (AC-003)");
-    let field_ty_ts = { let ty = &field.ty; quote::quote!(#ty) }.to_string();
+    let field = redirect_field.expect("HookResponse must have a `redirect_url` field (AC-003)");
+    let field_ty_ts = {
+        let ty = &field.ty;
+        quote::quote!(#ty)
+    }
+    .to_string();
 
     assert!(
         field_ty_ts.contains("Option") && field_ty_ts.contains("String"),
@@ -682,12 +694,18 @@ fn test_BC_2_03_001_ac003_hook_response_diagnostic_is_option_string() {
     let s = hook_response.expect("HookResponse struct not found in engine.rs");
 
     let diagnostic_field = s.fields.iter().find(|f| {
-        f.ident.as_ref().map(|id| id == "diagnostic").unwrap_or(false)
+        f.ident
+            .as_ref()
+            .map(|id| id == "diagnostic")
+            .unwrap_or(false)
     });
 
-    let field = diagnostic_field
-        .expect("HookResponse must have a `diagnostic` field (AC-003)");
-    let field_ty_ts = { let ty = &field.ty; quote::quote!(#ty) }.to_string();
+    let field = diagnostic_field.expect("HookResponse must have a `diagnostic` field (AC-003)");
+    let field_ty_ts = {
+        let ty = &field.ty;
+        quote::quote!(#ty)
+    }
+    .to_string();
 
     assert!(
         field_ty_ts.contains("Option") && field_ty_ts.contains("String"),
@@ -711,8 +729,7 @@ fn test_BC_2_03_001_ac003_hook_decision_has_3_canonical_variants() {
 
     let e = hook_decision.expect("HookDecision enum not found in engine.rs");
 
-    let variant_names: HashSet<String> =
-        e.variants.iter().map(|v| v.ident.to_string()).collect();
+    let variant_names: HashSet<String> = e.variants.iter().map(|v| v.ident.to_string()).collect();
 
     let expected: HashSet<String> = ["Allow", "Block", "Defer"]
         .iter()
@@ -720,8 +737,7 @@ fn test_BC_2_03_001_ac003_hook_decision_has_3_canonical_variants() {
         .collect();
 
     assert_eq!(
-        variant_names,
-        expected,
+        variant_names, expected,
         "HookDecision variants must be exactly {{Allow, Block, Defer}} (AC-003). \
          Found: {:?}",
         variant_names
@@ -745,7 +761,12 @@ fn test_BC_2_03_001_ac003_engine_metadata_error_is_non_exhaustive() {
     let e = err_enum.expect("EngineMetadataError not found in engine.rs");
 
     let has_non_exhaustive = e.attrs.iter().any(|attr| {
-        { let path = attr.path(); quote::quote!(#path) }.to_string().contains("non_exhaustive")
+        {
+            let path = attr.path();
+            quote::quote!(#path)
+        }
+        .to_string()
+        .contains("non_exhaustive")
     });
 
     assert!(
@@ -798,7 +819,12 @@ fn test_BC_2_03_001_ac003b_hook_event_is_non_exhaustive() {
     let e = hook_event.expect("HookEvent enum not found in hook_events.rs");
 
     let has_non_exhaustive = e.attrs.iter().any(|attr| {
-        { let path = attr.path(); quote::quote!(#path) }.to_string().contains("non_exhaustive")
+        {
+            let path = attr.path();
+            quote::quote!(#path)
+        }
+        .to_string()
+        .contains("non_exhaustive")
     });
 
     assert!(
@@ -826,8 +852,7 @@ fn test_BC_2_03_001_ac003b_hook_event_has_5_phase1_variants_no_post_tool_use() {
 
     let e = hook_event.expect("HookEvent enum not found in hook_events.rs");
 
-    let variant_names: HashSet<String> =
-        e.variants.iter().map(|v| v.ident.to_string()).collect();
+    let variant_names: HashSet<String> = e.variants.iter().map(|v| v.ident.to_string()).collect();
 
     let expected: HashSet<String> = [
         "SessionStart",
@@ -849,11 +874,9 @@ fn test_BC_2_03_001_ac003b_hook_event_has_5_phase1_variants_no_post_tool_use() {
         variant_names
     );
     assert_eq!(
-        variant_names,
-        expected,
+        variant_names, expected,
         "HookEvent variants do not match canonical Phase 1 set.\nExpected: {:?}\nFound:    {:?}",
-        expected,
-        variant_names
+        expected, variant_names
     );
 
     assert!(
@@ -887,10 +910,7 @@ fn test_BC_2_03_001_ac005_engine_metadata_error_home_unresolvable_exists() {
 
     let e = err_enum.expect("EngineMetadataError not found in engine.rs");
 
-    let has_home_unresolvable = e
-        .variants
-        .iter()
-        .any(|v| v.ident == "HomeUnresolvable");
+    let has_home_unresolvable = e.variants.iter().any(|v| v.ident == "HomeUnresolvable");
 
     assert!(
         has_home_unresolvable,
@@ -945,11 +965,18 @@ fn test_BC_2_03_001_ac004_last_event_micros_field_type_verified_by_ast() {
     let s = enriched_session.expect("EnrichedSession not found in engine.rs");
 
     let field = s.fields.iter().find(|f| {
-        f.ident.as_ref().map(|id| id == "last_event_micros").unwrap_or(false)
+        f.ident
+            .as_ref()
+            .map(|id| id == "last_event_micros")
+            .unwrap_or(false)
     });
 
     let f = field.expect("last_event_micros field must exist on EnrichedSession (AC-004)");
-    let ty_ts = { let ty = &f.ty; quote::quote!(#ty) }.to_string();
+    let ty_ts = {
+        let ty = &f.ty;
+        quote::quote!(#ty)
+    }
+    .to_string();
 
     assert!(
         ty_ts.contains("Option"),
@@ -1030,11 +1057,11 @@ fn test_BC_2_03_001_ec031_wildcard_match_arm_on_hook_event_produces_allow() {
 /// `monocle-core`.
 #[test]
 fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside() {
+    use monocle_core::engine::EngineModule;
     use monocle_core::engine::{
-        EnrichedSession, EngineMetadata, EngineMetadataError, HookDecision, HookResponse,
+        EngineMetadata, EngineMetadataError, EnrichedSession, HookDecision, HookResponse,
         ProcessSnapshot, SessionStatus,
     };
-    use monocle_core::engine::EngineModule;
     use monocle_core::hook_events::HookEvent;
 
     struct MockEngine;
@@ -1079,10 +1106,7 @@ fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside
     let engine = MockEngine;
     assert_eq!(engine.id(), "mock-engine");
     let proc = ProcessSnapshot::new(1, None, vec![], 0);
-    assert!(
-        !engine.detect(&proc),
-        "mock engine detects nothing"
-    );
+    assert!(!engine.detect(&proc), "mock engine detects nothing");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1097,7 +1121,12 @@ fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside
 #[test]
 fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_structs() {
     let file = parse_engine_rs();
-    let required_structs = ["EngineMetadata", "ProcessSnapshot", "EnrichedSession", "HookResponse"];
+    let required_structs = [
+        "EngineMetadata",
+        "ProcessSnapshot",
+        "EnrichedSession",
+        "HookResponse",
+    ];
 
     for struct_name in required_structs {
         let struct_item = file.items.iter().find_map(|item| {
@@ -1109,11 +1138,16 @@ fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_structs() {
             None
         });
 
-        let s = struct_item
-            .unwrap_or_else(|| panic!("{struct_name} struct not found in engine.rs"));
+        let s =
+            struct_item.unwrap_or_else(|| panic!("{struct_name} struct not found in engine.rs"));
 
         let has_non_exhaustive = s.attrs.iter().any(|attr| {
-            { let path = attr.path(); quote::quote!(#path) }.to_string().contains("non_exhaustive")
+            {
+                let path = attr.path();
+                quote::quote!(#path)
+            }
+            .to_string()
+            .contains("non_exhaustive")
         });
 
         assert!(
@@ -1141,11 +1175,15 @@ fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_enums() {
             None
         });
 
-        let e = enum_item
-            .unwrap_or_else(|| panic!("{enum_name} enum not found in engine.rs"));
+        let e = enum_item.unwrap_or_else(|| panic!("{enum_name} enum not found in engine.rs"));
 
         let has_non_exhaustive = e.attrs.iter().any(|attr| {
-            { let path = attr.path(); quote::quote!(#path) }.to_string().contains("non_exhaustive")
+            {
+                let path = attr.path();
+                quote::quote!(#path)
+            }
+            .to_string()
+            .contains("non_exhaustive")
         });
 
         assert!(

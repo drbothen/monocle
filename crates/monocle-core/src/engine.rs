@@ -7,10 +7,15 @@ use std::path::PathBuf;
 
 use crate::hook_events::HookEvent;
 
-/// Stub trait — missing production-grade rustdoc.
+/// Abstraction over an AI coding harness engine (Claude Code, CodeMachine, etc.).
 ///
-/// TODO-STUB: Add the canonical rationale text explaining why the `async_trait` macro
-/// is required. The text must appear verbatim in the rustdoc per AC-007 / BC-2.03.001 INV-3.
+/// # Why `#[async_trait]`?
+///
+/// native async fn in traits does not provide ergonomic dyn-compatibility on MSRV 1.86.
+/// The `async_trait` macro desugars async methods to `Pin<Box<dyn Future>>`, which is the
+/// only stable mechanism for `dyn EngineModule` trait objects on Rust 1.86. Once
+/// `async fn` in dyn traits stabilises (tracked in RFC 3185), the macro can be removed
+/// without changing the public API surface.
 #[async_trait::async_trait]
 pub trait EngineModule: Send + Sync + 'static {
     /// Stable identifier for this engine.
@@ -51,7 +56,12 @@ impl EngineMetadata {
         config_paths: Vec<PathBuf>,
         hook_schema_version: u32,
     ) -> Self {
-        Self { display_name, icon, config_paths, hook_schema_version }
+        Self {
+            display_name,
+            icon,
+            config_paths,
+            hook_schema_version,
+        }
     }
 }
 
@@ -104,14 +114,23 @@ impl ProcessSnapshot {
         env: HashMap<String, String>,
         start_time_secs: i64,
     ) -> Self {
-        Self { pid, ppid, exe_path, cmdline, working_dir, env, start_time_secs }
+        Self {
+            pid,
+            ppid,
+            exe_path,
+            cmdline,
+            working_dir,
+            env,
+            start_time_secs,
+        }
     }
 }
 
 /// A process snapshot enriched with engine-specific context.
 ///
-/// STUB: `last_event_micros` is `i64` — canonical is `Option<i64>` (AC-004 / probe 19.e).
-/// The VP-019 AST audit test will detect and fail on this field type.
+/// `last_event_micros` is `Option<i64>` per BC-2.03.001 PC-4 and AC-004:
+/// `None` means no hook events have been received yet. `Some(0)` is the Unix epoch
+/// (1970-01-01T00:00:00Z), NOT a sentinel — `0` as a sentinel is forbidden.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct EnrichedSession {
@@ -125,29 +144,39 @@ pub struct EnrichedSession {
     pub config_path: Option<PathBuf>,
     /// Session lifecycle status.
     pub status: SessionStatus,
-    /// STUB: bare `i64` — must be `Option<i64>` per BC-2.03.001 PC-4 and AC-004.
-    pub last_event_micros: i64,
+    /// Timestamp of the last received hook event, in microseconds since the Unix epoch (UTC).
+    /// `None` means no hook events have been received for this session yet.
+    pub last_event_micros: Option<i64>,
 }
 
 impl EnrichedSession {
-    /// Constructor stub.
-    #[allow(clippy::too_many_arguments)]
+    /// Construct an `EnrichedSession`.
+    ///
+    /// `last_event_micros` accepts any `impl Into<Option<i64>>` — pass `None` for a fresh
+    /// session with no hook events, or `Some(timestamp_micros)` for an active session.
     pub fn new(
         session_id: String,
         harness_type: String,
         transcript_path: Option<PathBuf>,
         config_path: Option<PathBuf>,
         status: SessionStatus,
-        last_event_micros: i64,
+        last_event_micros: impl Into<Option<i64>>,
     ) -> Self {
-        Self { session_id, harness_type, transcript_path, config_path, status, last_event_micros }
+        Self {
+            session_id,
+            harness_type,
+            transcript_path,
+            config_path,
+            status,
+            last_event_micros: last_event_micros.into(),
+        }
     }
 }
 
 /// Session lifecycle status.
 ///
-/// STUB: only 3 variants. Canonical is 5: Active, Idle, WaitingOnPermission, Stopping, Stopped
-/// per SS-engine-module.md v1.1.20 (F-D-01). AC-003 test will detect missing variants.
+/// Canonical 5 variants per SS-engine-module.md v1.1.20 (F-D-01):
+/// `Active`, `Idle`, `WaitingOnPermission`, `Stopping`, `Stopped`.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SessionStatus {
@@ -155,48 +184,68 @@ pub enum SessionStatus {
     Active,
     /// Waiting for user prompt.
     Idle,
+    /// Permission overlay is raised; agentic loop is paused waiting for the human decision.
+    WaitingOnPermission,
+    /// Graceful shutdown in progress; session is draining in-flight operations.
+    Stopping,
     /// Session has ended.
     Stopped,
 }
 
 /// The dispatch decision returned by `on_hook`.
 ///
-/// STUB: missing `redirect_url` and `diagnostic` fields. Canonical per SS-engine-module.md
-/// v1.1.20 (F-D-02): `decision`, `redirect_url: Option<String>`, `diagnostic: Option<String>`.
-/// AC-003 test will detect absent fields.
+/// Canonical 3-field struct per SS-engine-module.md v1.1.20 (F-D-02):
+/// `decision`, `redirect_url: Option<String>`, `diagnostic: Option<String>`.
+/// `DeferUntil` is NOT part of this type (F-D-03 ghost type dropped).
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct HookResponse {
     /// The decision the daemon should act on.
     pub decision: HookDecision,
+    /// Optional URL to redirect the Claude Code process to when decision is `Defer`.
+    pub redirect_url: Option<String>,
+    /// Optional human-readable diagnostic message surfaced in the permission overlay.
+    pub diagnostic: Option<String>,
 }
 
 impl HookResponse {
-    /// Construct a `HookResponse` with the given decision.
+    /// Construct a `HookResponse` with the given decision and no redirect or diagnostic.
     pub fn new(decision: HookDecision) -> Self {
-        Self { decision }
+        Self {
+            decision,
+            redirect_url: None,
+            diagnostic: None,
+        }
     }
 
-    /// Stub — `with_diagnostic` builder (no-op until fields are added).
-    pub fn with_diagnostic(self, _diagnostic: impl Into<String>) -> Self {
-        self
+    /// Attach a diagnostic message to this response (builder pattern).
+    pub fn with_diagnostic(self, diagnostic: impl Into<String>) -> Self {
+        Self {
+            diagnostic: Some(diagnostic.into()),
+            ..self
+        }
     }
 
-    /// Stub — `with_redirect` builder (no-op until fields are added).
-    pub fn with_redirect(self, _url: impl Into<String>) -> Self {
-        self
+    /// Attach a redirect URL to this response (builder pattern).
+    pub fn with_redirect(self, url: impl Into<String>) -> Self {
+        Self {
+            redirect_url: Some(url.into()),
+            ..self
+        }
     }
 }
 
 /// The action the daemon takes in response to a hook event.
 ///
-/// STUB: missing `Block` variant. Canonical: `Allow, Block, Defer`.
+/// Canonical 3 variants per SS-engine-module.md v1.1.20 (F-D-02): `Allow`, `Block`, `Defer`.
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HookDecision {
-    /// Proceed.
+    /// Proceed; the operation is permitted.
     Allow,
-    /// Park the decision.
+    /// Reject the operation; the daemon MUST NOT proceed.
+    Block,
+    /// Park the decision; the daemon waits for the permission overlay resolution.
     Defer,
 }
 
