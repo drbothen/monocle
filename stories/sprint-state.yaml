@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.16"
+version: "1.17"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-05-26T12:00:00Z
@@ -220,23 +220,23 @@ stories:
     epic: EPIC-03
     wave: 3
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 3. Depends on S-014. Covers BC-2.03.001 + BC-2.03.002 + BC-2.03.003 + BC-2.03.004."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/drbothen/monocle/pull/17"
+    notes: "Wave 3 Batch A. PR #17 merged at develop @ 23cfd44. BC-2.03.001..004 fully satisfied. 20 tests (18 detect/id/hook/paths + 2 HomeUnresolvable with E-ENG-001 log assertion). 4 adversary rounds (4→2→0→0, 3/3 convergence). Deferred: tracing-test manifest registration (architect); BC-2.03.001 PC-3 DeferUntil (#34, PO); HookDecision naming (S-014-ADV, architect)."
 
 summary:
   total_stories: 17
-  not_started: 2
+  not_started: 1
   in_progress: 0
   review: 0
-  done: 14
+  done: 15
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 67
+  points_complete: 75
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -260,3 +260,7 @@ summary:
   # - S-012 flipped not_started → done (PR #16 merged 599cd8c; BC-2.02.004+BC-2.02.005 satisfied; 4 adversary rounds 3/3 convergence)
   # - done: 13 → 14; not_started: 3 → 2; points_complete: 59 → 67
   # - Wave 3 Batch A: 3/4 done; Wave 3 total: 3/5 done (18/34 pts)
+  # v1.17 updates (2026-05-26):
+  # - S-015 flipped not_started → done (PR #17 merged 23cfd44; BC-2.03.001..004 satisfied; 4 adversary rounds 3/3 convergence)
+  # - done: 14 → 15; not_started: 2 → 1; points_complete: 67 → 75
+  # - Wave 3 Batch A: 4/4 COMPLETE; Wave 3 total: 4/5 done (26/34 pts); S-009 only remaining story

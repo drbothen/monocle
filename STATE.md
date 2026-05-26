@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.05"
+version: "6.06"
 status: active
 producer: state-manager
 timestamp: 2026-05-26T20:00:00Z
@@ -12,7 +12,7 @@ mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 3: S-007 DONE, S-008 DONE, S-012 DONE. S-015 + S-009 remaining (16 pts)."
+awaiting: "Wave 3 Batch A COMPLETE. Batch B: S-009 (8 pts, Auth Token Wire Format) — ONLY remaining story before wave-gate."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -88,16 +88,16 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 3 IN PROGRESS:
+  COLD-START RESUME GUIDE — WAVE 3 BATCH A COMPLETE:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → 599cd8c ([S-012]).
+  2. Verify: git log --oneline -1 develop → 23cfd44 ([S-015]).
   3. Read STATE.md + CLAUDE.md.
-  4. Wave 3 progress: S-007 DONE (PR #14), S-008 DONE (PR #15), S-012 DONE (PR #16).
-  5. Remaining: S-015 (8 pts, ClaudeCodeModule), S-009 (8 pts, Auth Token — depends on S-008 ✓).
-  6. Both remaining stories can run in parallel (S-009 dependency on S-008 is satisfied).
+  4. Wave 3 progress: S-007 DONE (PR #14), S-008 DONE (PR #15), S-012 DONE (PR #16), S-015 DONE (PR #17).
+  5. Batch A COMPLETE (4/4 stories done, 26 pts). ONE story remaining: S-009 (8 pts, Auth Token Wire Format).
+  6. S-009 dependency on S-008 is satisfied (fe4db96 merged). S-009 is the ONLY blocker before Wave 3 gate.
   7. Per-story delivery: worktree → stubs → tests → impl → adversary convergence → PR → merge → cleanup.
-  8. After all 5 Wave 3 stories merged + wave-gate: Phase 3 COMPLETE.
+  8. After S-009 merged + wave-gate: Phase 3 COMPLETE.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -126,10 +126,10 @@ current_cycle: cycle-001
 | S-007 Crash Recovery | 5 | done | A | none |
 | S-008 JSONL Ring Format | 5 | done | A | none |
 | S-012 FactoryAdapter Trait | 8 | done | A | none |
-| S-015 ClaudeCodeModule | 8 | not_started | A | none |
+| S-015 ClaudeCodeModule | 8 | done | A | none |
 | S-009 Auth Token Wire Format | 8 | not_started | B | S-008 |
 
-develop @ 599cd8c. 332+ tests. clippy clean. 14/17 stories done, 67/86 pts.
+develop @ 23cfd44. 332+ tests. clippy clean. 15/17 stories done, 75/86 pts.
 
 ## Blocking Issues
 
@@ -176,6 +176,10 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 ## §Trace v6.01 (D-166)
 
 **D-166 WAVE 2 GATE PASSED** (2026-05-26T18:00:00Z): Wave-gate PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed in e2898be: removed monocle-proto from monocle-runtime; removed futures+semver from monocle-core; added sock_file_path to DaemonState. develop @ e2898be. Phase → `phase-3-WAVE-2-GATE-PASSED`. Wave 3 ready: Batch A parallel (S-007/S-008/S-012/S-015); Batch B after S-008 (S-009). STATE v6.00 → v6.01. SE-23 PASS. S-PHASE-3-PREP BLOCKED on rc.19+ (does NOT block Wave 3).
+
+## §Trace v6.06 (S-015 delivery)
+
+**S-015 CLAUDECODEMODULE IMPLEMENTATION DELIVERED** (2026-05-26): PR #17 merged at develop @ 23cfd44. BC-2.03.001..004 fully satisfied. 20 tests (18 detect/id/hook/paths + 2 HomeUnresolvable with E-ENG-001 log assertion). 4 adversary rounds (4→2→0→0, 3/3 convergence). Deferred: tracing-test manifest registration (architect); BC-2.03.001 PC-3 DeferUntil (#34, PO); HookDecision naming (S-014-ADV, architect). sprint-state v1.16→v1.17: done 14→15, not_started 2→1, points_complete 67→75. STATE v6.05→v6.06. Wave 3 Batch A COMPLETE (4/4 stories, 26 pts). S-009 (8 pts) is the ONLY remaining Wave 3 story before wave-gate.
 
 ## §Trace v6.05 (S-012 delivery)
 

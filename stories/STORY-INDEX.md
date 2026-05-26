@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.8"
+version: "2.9"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -54,7 +54,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | done | — |
 | S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
-| S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | draft | — |
+| S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
 
 **Total stories:** 17 (15 product + 1 DTU + 1 prep)
 **Total points (product):** 80 (excl. DTU 3 pts and PREP 3 pts)
@@ -369,6 +369,16 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v2.9
+
+**Wave 3 Batch A: S-015 flipped draft→done** (2026-05-26):
+- S-015 Story Registry row: `draft` → `done`. PR #17 merged at develop @ 23cfd44.
+- BC-2.03.001..004 fully satisfied. 20 tests (18 detect/id/hook/paths + 2 HomeUnresolvable with E-ENG-001 log assertion). 4 adversary rounds (4→2→0→0, 3/3 convergence).
+- Wave 3 Batch A COMPLETE: 4/4 stories done (S-007, S-008, S-012, S-015). S-009 is the only remaining Wave 3 story.
+- No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
+- STORY-INDEX version bumped v2.8→v2.9.
 
 ## §Trace v2.8
 
