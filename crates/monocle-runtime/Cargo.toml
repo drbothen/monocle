@@ -17,7 +17,6 @@ path = "src/main.rs"
 
 [dependencies]
 monocle-core = { path = "../monocle-core" }
-monocle-proto = { path = "../monocle-proto" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 rand = { workspace = true }

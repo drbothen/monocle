@@ -110,6 +110,14 @@ pub struct DaemonState {
     /// the lock file has not been written yet.
     pub lock_file_path: String,
 
+    /// Absolute path to the companion Unix socket file (same stem as lock file, `.sock`).
+    ///
+    /// Written once during daemon startup alongside `lock_file_path`. Used by the
+    /// `POST /shutdown` fallback path to remove the socket file without recomputing the
+    /// path from `lock_file_path` (I-004: store, don't recompute). Empty string means
+    /// the socket path has not been set yet.
+    pub sock_file_path: String,
+
     /// Most-recent invocation timestamp for each hook endpoint type.
     ///
     /// Protected by a `std::sync::RwLock` (sync, not tokio) so that multiple Tokio worker
@@ -193,6 +201,7 @@ impl DaemonState {
             hook_receiver_status: None,
             auth_token: String::new(),
             lock_file_path: String::new(),
+            sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             tui_attached: AtomicBool::new(false),
             force_exit: AtomicBool::new(false),

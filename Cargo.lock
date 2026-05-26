@@ -1067,9 +1067,7 @@ name = "monocle-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "futures",
  "quote",
- "semver",
  "serde",
  "serde_json",
  "syn",
@@ -1098,7 +1096,6 @@ dependencies = [
  "directories",
  "http-body-util",
  "monocle-core",
- "monocle-proto",
  "nix",
  "rand 0.8.6",
  "regex-lite",

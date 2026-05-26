@@ -135,9 +135,17 @@ pub async fn post_shutdown(State(state): State<Arc<DaemonState>>) -> impl IntoRe
                 );
             }
         }
-        // Remove the companion .sock file (same stem, .sock extension).
-        let sock_path = lock_path.with_extension("sock");
-        if let Err(e) = std::fs::remove_file(&sock_path) {
+        // Remove the companion .sock file using the stored path (I-004: store, don't recompute).
+        // Falls back to computing from lock_path if sock_file_path was not set (e.g., tests
+        // that only populate lock_file_path).
+        let sock_path_buf;
+        let sock_path: &std::path::Path = if !state.sock_file_path.is_empty() {
+            std::path::Path::new(&state.sock_file_path)
+        } else {
+            sock_path_buf = lock_path.with_extension("sock");
+            &sock_path_buf
+        };
+        if let Err(e) = std::fs::remove_file(sock_path) {
             if e.kind() != std::io::ErrorKind::NotFound {
                 tracing::warn!(
                     path = %sock_path.display(),
