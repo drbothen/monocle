@@ -18,6 +18,12 @@ pub mod factory {}
 /// ABI surface for cross-crate stability (populated by S-011: #[non_exhaustive] policy).
 pub mod abi;
 
+/// Phase 1 permission dispatch surface for Claude Code hook integration.
+///
+/// Declares `Phase1Permission` and `ClaudeCodeTool` (exhaustive per ADR-0004) and
+/// `DenyReason`, `AllowPattern`, `DenyPattern` (non-exhaustive per BC-2.02.003 / S-011).
+pub mod permissions;
+
 // Re-export at crate root per BC-2.02.002 postcondition 2 (S-010 canonical owner;
 // S-003 references via `monocle_core::MONOCLE_ABI_VERSION`).
 pub use abi::MONOCLE_ABI_VERSION;
