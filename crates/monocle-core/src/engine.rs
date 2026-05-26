@@ -1,7 +1,7 @@
-/// EngineModule trait and supporting types (stub — implementation by S-014).
+/// EngineModule trait and supporting types (BC-2.03.001; S-014).
 ///
-/// This module contains compilable stubs. Tests in `engine_module_surface.rs` will
-/// catch structural deviations from BC-2.03.001 and SS-engine-module.md v1.1.20.
+/// Tests in `engine_module_surface.rs` (VP-019 AST audit suite) verify structural
+/// conformance to BC-2.03.001 and SS-engine-module.md v1.1.20.
 use std::collections::HashMap;
 use std::path::PathBuf;
 
