@@ -31,6 +31,10 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+# regex-lite: lightweight regex for INV-1 shutdown_utc format validation (BC-2.01.006).
+# Not in workspace.dependencies — this is the only production consumer; test suite also
+# uses it directly via the dev-dependency below.
+regex-lite = "0.1"
 
 [dev-dependencies]
 # temp-env: test-only; declared inline (NOT workspace = true) per story AC-006.

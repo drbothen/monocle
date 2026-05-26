@@ -31,7 +31,7 @@ use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 use crate::errors::DaemonStartError;
-use crate::types::RecoveryCheckpoint;
+use crate::types::{CheckpointReadResult, RecoveryCheckpoint};
 
 /// Resolve the monocle daemon runtime directory path.
 ///
@@ -239,6 +239,9 @@ pub fn write_recovery_checkpoint(
     path: &Path,
     checkpoint: &RecoveryCheckpoint,
 ) -> anyhow::Result<()> {
+    // Validate BC-2.01.006 INV-1 field constraints before writing.
+    checkpoint.validate()?;
+
     let json = serde_json::to_string(checkpoint)?;
 
     let parent = path.parent().ok_or_else(|| {
@@ -267,16 +270,24 @@ pub fn write_recovery_checkpoint(
 
 /// Read a recovery checkpoint from `path`.
 ///
-/// Returns `None` if the file does not exist or cannot be deserialised (e.g., truncated
-/// or malformed JSON from a previous crash mid-write). Malformed files are silently
-/// ignored rather than propagated as errors so that TUI startup is never blocked by a
-/// corrupt checkpoint.
+/// Returns a [`CheckpointReadResult`] distinguishing three states required by EC-054:
+/// - [`CheckpointReadResult::Valid`] — file present, valid JSON, INV-1 fields satisfied.
+/// - [`CheckpointReadResult::Malformed`] — file present but truncated, invalid JSON, or
+///   INV-1 field validation failure (e.g., `pid = 0`, empty `last_app_mode`, bad timestamp).
+/// - [`CheckpointReadResult::Absent`] — file does not exist (clean boot / graceful shutdown).
 ///
-/// Returns `Some(RecoveryCheckpoint)` when a valid checkpoint is found, indicating an
-/// unclean prior shutdown.
-pub fn read_recovery_checkpoint(path: &Path) -> Option<RecoveryCheckpoint> {
-    let contents = std::fs::read_to_string(path).ok()?;
-    serde_json::from_str(&contents).ok()
+/// TUI startup is never blocked: malformed and absent both indicate no recovery needed,
+/// but the distinction allows differentiated log messages at the call site.
+pub fn read_recovery_checkpoint(path: &Path) -> CheckpointReadResult {
+    let contents = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return CheckpointReadResult::Absent,
+        Err(_) => return CheckpointReadResult::Malformed,
+    };
+    match serde_json::from_str::<RecoveryCheckpoint>(&contents) {
+        Ok(cp) if cp.validate().is_ok() => CheckpointReadResult::Valid(cp),
+        _ => CheckpointReadResult::Malformed,
+    }
 }
 
 /// Terminate the daemon process with the exit code corresponding to `reason`.

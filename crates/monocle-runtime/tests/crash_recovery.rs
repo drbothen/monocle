@@ -1,10 +1,5 @@
 //! Integration tests for BC-2.01.006: Crash Recovery Checkpoint.
-//!
-//! Every test in this file MUST compile and MUST fail with the `todo!()` stubs
-//! in `monocle_runtime::lifecycle`. These are the Red Gate tests for S-007.
-//!
-//! Test naming follows the BC-based convention:
-//!   `test_BC_2_01_006_<assertion_name>()`
+//! Tests exercise write/read paths for `RecoveryCheckpoint` against BC-2.01.006 schema invariants.
 
 // BC-based test naming uses uppercase letters (BC_2_01_006_…) which Rust's
 // snake_case linter flags. This is intentional — the naming convention is
@@ -20,7 +15,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
 use monocle_runtime::lifecycle::{read_recovery_checkpoint, write_recovery_checkpoint};
-use monocle_runtime::types::{RecoveryCheckpoint, ShutdownReason};
+use monocle_runtime::types::{CheckpointReadResult, RecoveryCheckpoint, ShutdownReason};
 use regex_lite::Regex;
 use tempfile::TempDir;
 
@@ -93,11 +88,13 @@ fn test_BC_2_01_006_read_valid_checkpoint() {
 
     let result = read_recovery_checkpoint(&path);
 
-    assert!(
-        result.is_some(),
-        "must return Some for a valid checkpoint file"
-    );
-    let cp = result.unwrap();
+    let cp = match result {
+        CheckpointReadResult::Valid(cp) => cp,
+        other => panic!(
+            "must return Valid for a valid checkpoint file, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    };
     assert_eq!(cp.pid, 99, "pid must round-trip correctly");
     assert_eq!(
         cp.shutdown_reason,
@@ -118,7 +115,7 @@ fn test_BC_2_01_006_read_valid_checkpoint() {
 // AC-005 / AC-007: absent file returns None
 // ---------------------------------------------------------------------------
 
-/// BC-2.01.006 PC-4: when no checkpoint file is present, read returns None.
+/// BC-2.01.006 PC-4: when no checkpoint file is present, read returns Absent.
 /// TUI startup must NOT be blocked by a missing checkpoint (clean-boot case).
 #[test]
 fn test_BC_2_01_006_read_absent_file_returns_none() {
@@ -128,8 +125,8 @@ fn test_BC_2_01_006_read_absent_file_returns_none() {
     let result = read_recovery_checkpoint(&path);
 
     assert!(
-        result.is_none(),
-        "must return None when checkpoint file does not exist"
+        matches!(result, CheckpointReadResult::Absent),
+        "must return Absent when checkpoint file does not exist"
     );
 }
 
@@ -137,7 +134,7 @@ fn test_BC_2_01_006_read_absent_file_returns_none() {
 // AC-010 / EC-054: malformed JSON returns None, never panics
 // ---------------------------------------------------------------------------
 
-/// BC-2.01.006 PC-5: a truncated / malformed checkpoint file must silently return None.
+/// BC-2.01.006 PC-5: a truncated / malformed checkpoint file must return Malformed.
 /// The TUI must never be blocked by a corrupt file from a previous crash-mid-write.
 #[test]
 fn test_BC_2_01_006_read_malformed_json_returns_none() {
@@ -151,8 +148,8 @@ fn test_BC_2_01_006_read_malformed_json_returns_none() {
     let result = read_recovery_checkpoint(&path);
 
     assert!(
-        result.is_none(),
-        "must return None for malformed/truncated JSON, never panic"
+        matches!(result, CheckpointReadResult::Malformed),
+        "must return Malformed for malformed/truncated JSON, never panic"
     );
 }
 
@@ -301,7 +298,7 @@ fn test_BC_2_01_006_clean_graceful_no_recovery_file() {
     let result = read_recovery_checkpoint(&path);
 
     assert!(
-        result.is_none(),
-        "clean graceful shutdown must produce no recovery file (read must return None)"
+        matches!(result, CheckpointReadResult::Absent),
+        "clean graceful shutdown must produce no recovery file (read must return Absent)"
     );
 }
