@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.07"
+version: "6.08"
 status: active
 producer: state-manager
 timestamp: 2026-05-26T20:00:00Z
@@ -74,6 +74,26 @@ durable_task_register:
       subject: "S-005 main.rs wiring: 10s drain timeout + second-signal detection + signal-path lock release"
       status: pending
       detail: "S-005 graceful shutdown implemented at library level (BC-2.01.004 satisfied). Requires main.rs wiring for: (a) 10-second drain timeout enforcement, (b) second-signal detection (force-kill escalation), (c) signal-path lock release handoff. Deferred from S-005 scope (requires main.rs which belongs to TUI integration story). Route to integration story in Wave 3 or post-Wave-3."
+      blocking: false
+    - id: "S-008-ADV-tempfile-spec"
+      subject: "AC-003 tempfile::persist spec wording divergence"
+      status: pending
+      detail: "S-008 uses append mode (architecturally correct for JSONL) but story spec AC-003 says tempfile::persist. Story-writer update needed. Also: RingError missing #[non_exhaustive]; BC-2.01.007 story anchor says S-TBD (PO fix)."
+      blocking: false
+    - id: "S-015-ADV-tracing-test"
+      subject: "tracing-test 0.2 not in SS-deps-pin-manifest"
+      status: pending
+      detail: "S-015 added tracing-test 0.2.6 with no-env-filter feature to monocle-runtime dev-deps. Not registered in SS-deps-pin-manifest.md. Architect must add."
+      blocking: false
+    - id: "S-012-self-ref-test-fix"
+      subject: "3 self-referential tests fail — workspace root detection"
+      status: pending
+      detail: "factory_self_referential.rs tests (matches_self_referential, vsdd_adapter_self_referential_detection, read_state_on_real_state_md) fail because workspace root resolves to /Users/jmagady instead of monocle repo root. Test harness fix needed."
+      blocking: false
+    - id: "S-009-ADV-non-utf8"
+      subject: "Non-UTF-8 canonical header treated as absent"
+      status: accepted-observation
+      detail: "Non-UTF-8 X-Monocle-Authorization falls through to alias path. HTTP headers are ASCII per RFC 7230; axum rejects non-ASCII before middleware. Zero security impact."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -207,3 +227,10 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 - NORMATIVE: Decisions D-047 through D-154 archived in `cycles/cycle-001/decisions-archive.md` (prior session). STATE.md now retains only D-155 through D-166 (last 12).
 - NORMATIVE: STATE v6.01 → v6.02. SE-23 compliance: SM touched only STATE.md and cycle files; zero spec/story/sprint-state changes.
 - SE-16d PASS: 2026-05-26T20:00:00Z > 2026-05-26T18:00:00Z (D-166 entry).
+
+## §Trace v6.08 (durable pause checkpoint)
+
+**DURABLE PAUSE CHECKPOINT** (2026-05-27): Full state committed for zero-context cold-start resume.
+- CLAUDE.md §Current Pipeline State updated to reflect Wave 3 complete, wave-gate pending.
+- durable_task_register updated with 4 new Wave 3 deferred findings (S-008-ADV, S-015-ADV, S-012-self-ref, S-009-ADV).
+- STATE v6.07 → v6.08. SE-23 PASS: SM touched only STATE.md + CLAUDE.md (main branch); zero spec artifacts.
