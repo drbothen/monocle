@@ -20,19 +20,31 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-APPROVED-TO-EXECUTE`** — D-160 declared 2026-05-20T20:00:00Z. Story-uncertainty-review cycle-001 complete: 17 stories scanned by fresh-context spec-reviewer in 4 batches; 0 PASS / 8 PASS_WITH_OBSERVATIONS / 9 NEEDS_REVISION; 13 CRIT + ~30 HIGH + ~95 MED/LOW findings catalogued; ~135 findings closed across 12 commits on `factory-artifacts` (bc158ce REVERTED via 19aa5f1; productive chain 0210883 → 8ab665e → e485814 → e2fc2a3 → 6ac09b1 → 08e0347 → f23ce55 → 0c0d3d2 → 5f5f6a2 → 07daefb → 98bcf1d → D-160 finalization). Stage 4 verification spot-check (S-001, S-013, S-014) confirmed PASS or PASS_WITH_OBSERVATIONS — all CRIT defects closed; no regression. Capability proposed upstream as drbothen/vsdd-factory#150. User explicit Phase 3 approval received 2026-05-20.
-- Canonical artifact versions (post-uncertainty-review): SS-deps-pin-manifest `v1.1.18` (architect added syn 2.0 dev-dep in 8ab665e); error-taxonomy `v1.6` (PO claude.rs → claude_code.rs path fix in 5f5f6a2); 17 stories at post-fix versions: S-001 `v1.6`, S-002 `v1.1`, S-003 `v1.7`, S-004 `v1.1`, S-005 `v1.6`, S-006 `v1.5`, S-007 `v1.2`, S-008 `v1.4`, S-009 `v1.8`, S-010 `v1.2`, S-011 `v1.2`, S-012 `v1.5`, S-013 `v1.1`, S-014 `v1.4`, S-015 `v1.6`, S-DTU-001 `v1.1`, S-PHASE-3-PREP `v1.1`; dep-graph `v2.3`; STORY-INDEX `v2.2`; wave-schedule `v1.5`; sprint-state `v1.5`. Other canonical versions unchanged from D-159: PRD `v1.26.15`; BC-INDEX `v1.13`; VP-INDEX `v1.16`; ARCH-INDEX `v1.0.11`; L2-INDEX `v1.0.11`; SS-conventions-anti-patterns `v1.29.5`; SS-daemon-lifecycle `v1.0.33`; SS-engine-module `v1.1.20`; SS-core-types-and-abi `v1.2.13`; SS-forward-compatibility `v1.2.19`; SS-permissions-phase1 `v1.5.2`; ADRs 0001-0005 active; DTU assessment `v1.7.5`; nfr-catalog `v1.7`; interface-definitions `v1.5`; test-vectors `v1.3`; holdout-scenarios `v1.4`.
-- Notable Phase 3.A/B fix outcomes: (a) **S-003** OWNS `monocle-runtime/src/auth.rs` creation; **S-009** EXTENDS with dual-accept alias-path branch + 5 hook routes per ADR-0005; **S-005** depends_on adds S-003 + S-006 (auth + lock-release handoff); (b) **S-013** pivoted from hand-written struct to prost-build codegen path with canonical 4-field envelope (`schema_version=1`, `session_id=2`, `timestamp_micros=3`, `pid=4`) + `oneof event` carrying 5 inner messages (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`, `StopEvent`); (c) **S-014** SessionStatus corrected to canonical 5 variants (`Active, Idle, WaitingOnPermission, Stopping, Stopped`), HookResponse field set realigned to `decision/redirect_url/diagnostic` with `new`/`with_diagnostic`/`with_redirect` methods, ghost `DeferUntil` dropped; (d) **S-015** `XDG_HOME` → `HOMEDRIVE` corrected (`XDG_HOME` is not a real env var; would have silently uncovered `HomeUnresolvable` test on Windows); `detect()` pseudocode `?-on-bool` replaced with canonical `and_then/.map/.unwrap_or(false)` (won't compile otherwise); (e) **S-001** added `prost = "=0.14.1"` EXACT-pin + `bytes = "1.10"` direct workspace pin to close RUSTSEC-2026-0007 prost-transitive exposure; CI matrix rewritten with `include:` blocks pairing runners ↔ targets; (f) **S-008** fabricated "80%-capacity-OR-5-second-timer" flush trigger (not in any architecture document) DELETED; aligned to canonical post-batch `tempfile::persist` per SS-daemon-lifecycle L694; ring filename canonicalized `monocle-events.jsonl` (was `monocle-ring.jsonl`); rotation cascade `.1...5` (was `.bak`); (g) **S-DTU-001** Docker layout rejected (dtu-assessment §Packaging Decision mandates Rust binary); canonicalized to `crates/monocle-test-harness/src/dtu/`; `cargo xtask dtu-fidelity` oracle established; 25-fixture corpus minimum bound.
-- Outstanding non-blocking follow-ups (Task harness):
-  - **#28**: confirm `prost = "=0.14.1"` and `reqwest = "=0.13.0"` exact-patch digits against crates.io (architect; story-writer used placeholders in Batch 1 — Cargo will refresh on first build).
-  - **#34**: BC-2.03.001 v1.0.5 PC-3 still enumerates `DeferUntil` in supporting types list — Stage-4 verification of S-014 surfaced this; story v1.4 + SS-engine-module v1.1.20 win per authority hierarchy; PO mechanical fix to BC.
-  - **S-008 AC-005 flush-failure semantics** clarification under canonical post-batch model (PO; surfaced by Batch 4 story-writer).
-  - **S-008 tokio dep necessity** verification (test-writer during S-008 implementation).
-  - **dep-graph §Trace v2.1/v2.0 ordering** single-line reorder (cosmetic; surfaced by Batch 3 story-writer).
-  - **STATE.md compaction** — 1065+ lines vs <200 target; invoke `/vsdd-factory:compact-state` at next pipeline gate (deferred maintenance).
-- 39 codified disciplines in force (SE-22 sibling-sweep D-142; SE-23 SM defensive-sweep prohibition D-146; SE-22 v2 consumer-ledger D-149).
-- Residual catalog: `.factory/tech-debt-register.md` TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE + TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT both remain ACTIVE (deferred to spec-kit-mcp rc.19+).
-- **Next: Phase 3 TDD Implementation APPROVED TO EXECUTE.** Immediate dispatch: Wave 1 in parallel — `/vsdd-factory:deliver-story S-DTU-001` (3 pts; Claude Code Hook Protocol DTU clone) + `/vsdd-factory:deliver-story S-001` (5 pts; Cargo workspace + CI/DevOps setup; creates `Cargo.toml`, `crates/`, `.github/workflows/`). Both Wave 1; both verified clean (Stage 4 spot-check + Batch 1 fix application); zero inbound product-story deps. After Wave 1 PRs merge + wave-gate green: Wave 2 (9 stories). After Wave 2: Wave 3 (5 stories). S-PHASE-3-PREP remains BLOCKED on upstream `vsdd-factory:spec-kit-mcp` rc.19+; does NOT block Waves 1-3.
+- **Phase: `phase-3-WAVE-2-COMPLETE`** — Wave 2 all 9 stories delivered and merged 2026-05-26. Wave-gate pending. develop @ b235e3e.
+- **Wave 1 (DONE):** S-001 (PR #1+#2, 5 pts) + S-DTU-001 (PR #3, 3 pts) = 8 pts. Wave-gate passed D-164.
+- **Wave 2 (DONE — 9 stories, 41 pts):**
+  - S-002: Healthz Endpoint (3 pts, PR #5, f69435e). BC-2.01.001. 20 tests. 5 adversary rounds.
+  - S-003: Status Endpoint (5 pts, PR #6, 534fc9b). BC-2.01.002+BC-2.01.009+BC-2.02.001. 44 tests. Security: empty-token bypass fixed.
+  - S-004: Body Size Limit (2 pts, PR #9, 78dcac1). BC-2.01.003. 5 adversary rounds.
+  - S-006: Lock File Lifecycle (8 pts, PR #7, a43f71a). BC-2.01.005+BC-2.01.008+BC-2.01.010. 30 tests. CRIT fix in adversary.
+  - S-010: monocle-core ABI Version (5 pts, PR #8, 3926a09). BC-2.02.001+BC-2.02.002. Compile-time stability test.
+  - S-014: EngineModule Trait (5 pts, PR #10, 40dab9c). BC-2.03.001. 38 VP-019 AST audit tests. 5 adversary rounds (constructor signature + 8 coverage gaps fixed).
+  - S-011: Non-Exhaustive Enum Policy (3 pts, PR #11, 1e789f0). BC-2.02.003. 13 VP-013 syn2 audit tests. 4 adversary rounds (recursion + lint scope fixed).
+  - S-013: HookEnvelope Proto Wire Format (5 pts, PR #12, 8653977). BC-2.02.006+007+008. 19 VP-016/017/018 tests. 4 adversary rounds (oracle scope fixed).
+  - S-005: Graceful Shutdown (5 pts, PR #13, b235e3e). BC-2.01.004. 27 integration tests. 6 adversary rounds (lock RAII, shutdown channel, signal AppMode, EC-050 force_exit, doc fix).
+- **Totals:** 11 stories done (49 pts), 5 not_started (Wave 3, 34 pts), 1 blocked (S-PHASE-3-PREP). sprint-state v1.13.
+- Outstanding non-blocking follow-ups (durable task register):
+  - **#28**: prost/reqwest exact-patch pin verification (partial — prost verified, reqwest deferred to S-009).
+  - **#34**: BC-2.03.001 PC-3 DeferUntil stale (PO mechanical fix).
+  - **BC-HOOK-034-typo**: decorated_by → deprecated_by (cosmetic).
+  - **S-014-ADV**: SS-engine-module.md HookDecision code blocks stale — 4 data-carrying variants in spec vs 3 unit variants in impl (architect update).
+  - **S-011-ADV**: HookArgs struct diverges from SS-permissions-phase1.md (architect update).
+  - **S-013-ADV**: prost-types not registered in SS-deps-pin-manifest (architect).
+  - **S-005-main-wiring**: 10s drain timeout, second-signal detection, signal-path lock release — all require main.rs daemon entry point wiring (integration story, does NOT block Wave 3).
+  - **STATE.md compaction** — 1100+ lines vs <200 target; invoke `/vsdd-factory:compact-state` at wave-gate.
+- 39 codified disciplines in force.
+- Residual catalog: TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE + TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT (deferred to spec-kit-mcp rc.19+).
+- **Next: Wave-gate check → Wave 3 (5 stories, 34 pts: S-007, S-008, S-009, S-012, S-015).** Dependency order: S-007 (dep S-006✅) + S-008 (dep S-006✅) + S-012 (dep S-010✅,S-011✅) can start in parallel; S-015 (dep S-014✅) can start in parallel; S-009 (dep S-008) waits for S-008. S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+.
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
@@ -160,7 +172,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — GATE-PASS-WITH-RESIDUAL D-155) — 22 BCs, NFRs, ADRs, architecture, manifest
 - Phase 2: Story Decomposition (DONE — GATE-PASS-WITH-RESIDUAL D-159) — 17 stories, 4 waves, 86 points, 14 holdout scenarios
-- **Phase 3: TDD Implementation (CURRENT)** — dispatch `/vsdd-factory:phase-3-tdd-implementation`, Wave 0 first
+- **Phase 3: TDD Implementation (CURRENT)** — Waves 1+2 DONE (49 pts); Wave-gate pending; Wave 3 next (34 pts)
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
