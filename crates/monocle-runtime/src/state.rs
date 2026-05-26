@@ -127,6 +127,20 @@ pub struct DaemonState {
     /// fill percentages.
     pub tui_attached: AtomicBool,
 
+    /// Force-exit signal set by a second authenticated `POST /shutdown` during drain (EC-050).
+    ///
+    /// `false` on construction. Set to `true` by the shutdown handler when a second
+    /// `POST /shutdown` arrives while `AppMode` is already `ShuttingDown`. The main
+    /// run-loop reads this flag after the drain completes and calls
+    /// `exit_with(DaemonExit::AdminForceStop)` (exit code 2) instead of
+    /// `exit_with(DaemonExit::Graceful)` (exit code 0) when it is `true`.
+    ///
+    /// `Ordering::SeqCst` is used on both write and read: the write happens in the
+    /// HTTP handler task; the read happens in the main loop task. SeqCst provides the
+    /// strongest cross-thread ordering guarantee, ruling out any reordering that could
+    /// cause the main loop to read `false` after the handler has written `true`.
+    pub force_exit: AtomicBool,
+
     /// RAII guard for the daemon lock file (BC-2.01.004 PC-7).
     ///
     /// `Some(lock)` — the lock file is held on disk. The graceful-shutdown handler takes
@@ -181,6 +195,7 @@ impl DaemonState {
             lock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             tui_attached: AtomicBool::new(false),
+            force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
             shutdown_tx,
             shutdown_rx,

@@ -15,6 +15,7 @@
 //! - All hook POST requests arriving after `AppMode::ShuttingDown` is set return HTTP 503
 //!   with `Retry-After: 10` and body `{"error":"daemon_shutting_down"}` (BC-2.01.004 PC-2).
 
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -35,14 +36,22 @@ use crate::state::{AppMode, DaemonState};
 /// Authentication is enforced by the auth middleware layer on the authenticated router —
 /// this handler is only reached after the dual-accept protocol succeeds (ADR-0005).
 pub async fn post_shutdown(State(state): State<Arc<DaemonState>>) -> impl IntoResponse {
-    // Transition AppMode to ShuttingDown (idempotent — no-op if already ShuttingDown).
+    // Transition AppMode to ShuttingDown, or detect a second call during drain (EC-050).
+    //
+    // Read the current mode before writing. If it is already ShuttingDown, this is the
+    // second (or later) authenticated POST /shutdown during an active drain. Per EC-050,
+    // the response is still HTTP 200 {"status":"shutting_down"}, but the main run-loop
+    // is signalled via `force_exit` to use exit code 2 (AdminForceStop) instead of 0
+    // (Graceful) once the drain window closes.
     //
     // A poisoned write lock means a handler panicked while holding it — the daemon state
     // is unrecoverable. Proceed with shutdown anyway (best-effort): log the condition
     // and continue to release the lock file and return 200.
-    match state.mode.write() {
+    let already_shutting_down = match state.mode.write() {
         Ok(mut mode) => {
+            let was_shutting_down = *mode == AppMode::ShuttingDown;
             *mode = AppMode::ShuttingDown;
+            was_shutting_down
         }
         Err(poisoned) => {
             tracing::error!(
@@ -50,9 +59,29 @@ pub async fn post_shutdown(State(state): State<Arc<DaemonState>>) -> impl IntoRe
                 Proceeding with shutdown (best-effort) to release lock file."
             );
             // Recover the guard and overwrite to ShuttingDown regardless.
+            // Treat as a second-call (force exit) to be safe.
             let mut mode = poisoned.into_inner();
+            let was_shutting_down = *mode == AppMode::ShuttingDown;
             *mode = AppMode::ShuttingDown;
+            was_shutting_down
         }
+    };
+
+    // EC-050: second authenticated POST /shutdown during drain → signal AdminForceStop.
+    //
+    // The main run-loop reads `force_exit` after the drain window and calls
+    // `exit_with(DaemonExit::AdminForceStop)` (exit code 2) when this flag is set,
+    // rather than `exit_with(DaemonExit::Graceful)` (exit code 0).
+    //
+    // SeqCst ordering: the write is in this HTTP handler task; the read is in the main
+    // loop task. SeqCst provides the strongest cross-thread ordering guarantee so the
+    // main loop cannot observe `false` after this write completes.
+    if already_shutting_down {
+        state.force_exit.store(true, Ordering::SeqCst);
+        tracing::info!(
+            "second POST /shutdown received during drain (EC-050); \
+            force_exit flag set — main loop will use exit code 2 (AdminForceStop)"
+        );
     }
 
     // Release the daemon lock file if it has not yet been released.

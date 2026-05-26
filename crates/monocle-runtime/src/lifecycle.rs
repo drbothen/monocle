@@ -184,8 +184,13 @@ pub enum DaemonExit {
     /// POSIX convention 128+2. Exit code `130`.
     SigintDuringDrain,
 
-    /// A second SIGTERM (signal 15) was received while a drain was in progress, or the
-    /// 10-second drain timeout was reached. POSIX convention 128+15. Exit code `143`.
+    /// A second SIGTERM (signal 15) was received while a drain was in progress.
+    /// POSIX convention 128+15. Exit code `143`.
+    ///
+    /// Note: the drain timeout expiring WITHOUT a second SIGTERM is NOT this variant —
+    /// drain-timeout-forced-shutdown exits with `DaemonExit::Graceful` (exit code 0)
+    /// per story spec line 171: "drain-timeout-forced-shutdown exits 0". This variant
+    /// is exclusively for when a second SIGTERM arrives before the drain window closes.
     SigtermDuringDrain,
 }
 
