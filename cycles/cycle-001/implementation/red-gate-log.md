@@ -7,6 +7,108 @@ timestamp: 2026-05-20T22:00:00Z
 producer: vsdd-factory:test-writer
 ---
 
+---
+document_type: red-gate-log
+story_id: S-002
+step: 3
+branch: story/S-002-healthz-endpoint
+timestamp: 2026-05-25T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-002 Step 3 (Healthz Endpoint)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+12 behavioral tests FAIL. 4 structural invariant tests PASS as expected (they verify
+forbidden-import absences and test-infrastructure correctness — not handler behavior).
+`cargo build --workspace` succeeds. `cargo clippy --workspace --all-targets -- -D warnings` passes.
+No regressions in monocle-test-harness (134 tests still pass) or workspace_structure (14 tests).
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-runtime/tests/healthz_endpoint.rs` | 16 | 4 | 12 |
+| `crates/monocle-runtime/tests/workspace_structure.rs` | 14 | 14 | 0 |
+| All monocle-test-harness tests | 122 | 122 | 0 |
+
+## Failing Tests (12 — Red Gate confirmed)
+
+All 12 failures are caused by `unimplemented!()` in `unauthenticated_router()` (router.rs:25).
+The stub panics with:
+> `not implemented: S-002: unauthenticated_router — Router::new().route("/healthz", get(get_healthz)).with_state(state)`
+
+| Test | BC Clause Covered | Failure Reason |
+|------|------------------|----------------|
+| `test_BC_2_01_001_normal_mode_returns_200_alive` | PC-1 (Running → 200) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_response_body_has_exactly_three_keys` | PC-1 (3-key body shape) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_uptime_sec_is_integer_gte_zero` | PC-1 (`uptime_sec` integer ≥ 0) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_version_matches_semver_regex` | PC-1 (semver regex) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_version_equals_cargo_pkg_version` | PC-1 (version = CARGO_PKG_VERSION) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_shutting_down_mode_returns_503` | PC-2 (ShuttingDown → 503) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_shutting_down_body_has_exactly_one_key` | PC-2 (1-key body shape) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_no_auth_header_returns_200_not_401` | PC-3 (no auth → 200) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_valid_auth_header_is_ignored_returns_200` | PC-3 (valid auth ignored) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_garbage_auth_header_is_ignored_returns_200` | PC-3 (garbage auth ignored) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_large_body_returns_200_not_413` | PC-4 (no body limit) | `unimplemented!()` panic in router |
+| `test_BC_2_01_001_response_within_100ms` | EC-040 (100ms timing) | `unimplemented!()` panic in router |
+
+## Passing Tests (4 — structural invariants, expected to pass before and after implementation)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_01_001_invariant_semver_regex_shape` | Tests the regex specification itself (known-valid and known-invalid semver forms). No handler invocation. |
+| `test_BC_2_01_001_invariant_healthz_does_not_import_constant_time_eq` | Verifies forbidden import absence in non-comment code. Stub correctly omits this import. Must remain passing after implementation. |
+| `test_BC_2_01_001_invariant_healthz_does_not_import_monocle_tui` | Verifies forbidden import absence in non-comment code. Stub correctly omits this import. Must remain passing after implementation. |
+| `test_BC_2_01_001_invariant_default_body_limit_on_auth_router_only` | Verifies `DefaultBodyLimit` absent from non-comment executable lines in unauthenticated router and healthz handler. Must remain passing after implementation. |
+
+The 4 structural tests represent BC-2.01.001 Invariant 2 / VP-001 Probe 1.e (structural router
+separation). They verify that the implementation does NOT accidentally add forbidden constructs.
+If an implementer adds `use constant_time_eq` or `DefaultBodyLimit` to the healthz path, these
+tests will newly FAIL — they serve as guards against architectural drift.
+
+## VP-001 Probe Coverage
+
+| Probe | Test | Status |
+|-------|------|--------|
+| 1.a (normal, no auth → 200) | `test_BC_2_01_001_normal_mode_returns_200_alive` | RED (correct) |
+| 1.b (normal, valid auth → 200) | `test_BC_2_01_001_valid_auth_header_is_ignored_returns_200` | RED (correct) |
+| 1.c (normal, garbage auth → 200) | `test_BC_2_01_001_garbage_auth_header_is_ignored_returns_200` | RED (correct) |
+| 1.d (ShuttingDown → 503) | `test_BC_2_01_001_shutting_down_mode_returns_503` | RED (correct) |
+| 1.e (DefaultBodyLimit on auth only) | `test_BC_2_01_001_invariant_default_body_limit_on_auth_router_only` | GREEN (structural) |
+| 1.f (semver regex) | `test_BC_2_01_001_version_matches_semver_regex` | RED (correct) |
+
+## BC-2.01.001 Coverage
+
+| BC Clause | Test(s) |
+|-----------|---------|
+| Precondition 1 (daemon running + GET /healthz arrives) | All behavioral tests exercise this |
+| Postcondition 1 (Running → 200 + 3-key body + uptime int + semver version) | `normal_mode_returns_200_alive`, `response_body_has_exactly_three_keys`, `uptime_sec_is_integer_gte_zero`, `version_matches_semver_regex`, `version_equals_cargo_pkg_version` |
+| Postcondition 2 (ShuttingDown → 503 + 1-key body) | `shutting_down_mode_returns_503`, `shutting_down_body_has_exactly_one_key` |
+| Postcondition 3 (unauthenticated) | `no_auth_header_returns_200_not_401`, `valid_auth_header_is_ignored_returns_200`, `garbage_auth_header_is_ignored_returns_200` |
+| Postcondition 4 (no DefaultBodyLimit) | `large_body_returns_200_not_413` |
+| Invariant 1 (survives auth-token rotation) | Covered by Postcondition 3 tests |
+| Invariant 2 (not on authenticated router) | `invariant_default_body_limit_on_auth_router_only` (structural) |
+| Edge Case EC-040 (100ms response) | `response_within_100ms` |
+
+## Notes for Implementer
+
+- Root cause of all 12 behavioral failures: `unauthenticated_router()` in `router.rs` returns
+  `unimplemented!()`. Implementing `Router::new().route("/healthz", get(get_healthz)).with_state(state)`
+  will make all router-level failures exercise the handler stub.
+- After the router is implemented, the `get_healthz` handler still returns `StatusCode::INTERNAL_SERVER_ERROR`.
+  Implementing the handler to read `AppMode`, compute `uptime_sec`, and serialize JSON will complete the green path.
+- The `shutting_down_body_has_exactly_one_key` test asserts `obj.len() == 1`. The canonical body
+  `{"status":"shutting_down"}` has ONE key. VP-001 §Property Statement describes it as "2 keys" —
+  that is a VP wording error. The BC-2.01.001 PC-2 body literal is authoritative.
+- The 4 structural tests must REMAIN passing after implementation. If they flip to FAIL after
+  implementation, that is an architectural violation (the implementer added a forbidden import).
+
+---
+
 # Red Gate Log — S-DTU-001 Step 3
 
 ## Summary
@@ -61,17 +163,102 @@ Two categories of tests initially passed and required hardening:
    (already functional in stubs). Restructured to go through `build_router` + handler path, which
    panics at `todo!()` in `build_router`.
 
+---
+
+## R1 Remediation — Adversary Round 1 (2026-05-20)
+
+**Status: RED GATE RE-ESTABLISHED**
+
+After commit d52e823 (implementation), all 105 tests were GREEN — adversary Round 1 review
+found 5 CRIT defects. This remediation re-establishes the Red Gate by rewriting tautological
+tests and adding missing tests for binary, xtask, and workflow.
+
+### New Failures Introduced (13 total)
+
+| File | Tests Failed | CRIT Covered |
+|------|-------------|-------------|
+| `integration_fidelity.rs` | 3 | CRIT-4 |
+| `integration_binary.rs` | 2 | CRIT-1 |
+| `workspace_structure.rs` | 8 | CRIT-2, CRIT-3 |
+
+### CRIT-4: Fidelity tests rewritten (23 tests)
+
+All 23 per-fixture fidelity tests now drive the real clone router via `tower::ServiceExt`
+and capture what the mock daemon actually receives via `start_mock_daemon()`. The
+`fixture.clone()` tautological pattern is replaced with real wire capture.
+
+Failure pattern: 2 tests fail because the handler re-serializes via typed structs
+(dropping unknown fields from extra-field fixtures):
+- `test_BC_HOOK_007_fidelity_session_start_extra_fields_not_penalized` — score ≈ 0.667 < 0.95
+- `test_BC_HOOK_007_fidelity_prompt_submit_extra_fields_not_penalized` — score ≈ 0.67 < 0.95
+
+The aggregate test fails because the mean drops below 0.95.
+
+### CRIT-1: Binary entry point tests added
+
+3 new tests in `integration_binary.rs` verify:
+- Binary compiles (cargo build succeeds)
+- Binary exits 0 on `--help` — FAILS because main() is `todo!()`
+- Binary respects MONOCLE_NO_AUTOSTART — FAILS because main() is `todo!()`
+
+### CRIT-2: xtask crate structure tests added
+
+4 new tests in `workspace_structure.rs` verify:
+- `xtask/` directory exists — FAILS (not yet created)
+- `xtask/Cargo.toml` exists — FAILS
+- `xtask` in workspace.members — FAILS
+- `cargo run -p xtask -- dtu-fidelity --help` exits 0 — FAILS
+
+### CRIT-3: dtu-fidelity.yml workflow tests added
+
+4 new tests in `workspace_structure.rs` verify:
+- `.github/workflows/dtu-fidelity.yml` exists — FAILS
+- Workflow has `jobs:` key — FAILS
+- Workflow triggers on `pull_request` — FAILS
+- Workflow invokes `dtu-fidelity` — FAILS
+
+### CRIT-5: BC-HOOK-014 tests corrected
+
+Tests previously labeled BC-HOOK-014 actually tested `MONOCLE_HOOK_ENDPOINT_BASE`
+(which is BC-HOOK-005). Corrected:
+- 2 BC-HOOK-005 tests now correctly test `derive_endpoint_base` with `MONOCLE_HOOK_ENDPOINT_BASE`
+- 2 BC-HOOK-014 tests now test `MONOCLE_RUNTIME_DIR` path derivation contract
+  (both PASS at library level — binary-level MONOCLE_RUNTIME_DIR enforcement is covered
+  by CRIT-1 binary tests which fail due to `todo!()` in main())
+
+### MED-3: Fixture fixed
+
+`notification/large-message-boundary.json` `notification_type` changed from
+`assistant_message` → `permission_prompt` so the 200 KiB message exercises the
+wire boundary (previously the fixture was filtered before reaching the daemon).
+
+### MED-2: Test pollution fixed
+
+`integration_auth.rs` malformed-JSON tests: replaced `unsafe { std::env::set_var }`
+and `std::fs::write` (disallowed) with `temp_env::with_var` and `tempfile::persist`.
+`common/mod.rs` `write_lock_file`: replaced `std::fs::write` with `tempfile::persist`.
+
+### Coordination Items for Implementer
+
+1. **Fix binary main()** — implement lock file discovery, server startup, MONOCLE_NO_AUTOSTART,
+   --help flag to make `integration_binary.rs` tests pass.
+2. **Create xtask crate** (devops-engineer) — add `xtask/` with `dtu-fidelity` subcommand.
+3. **Create .github/workflows/dtu-fidelity.yml** (devops-engineer) — CI workflow.
+4. **Fix extra-field pass-through** — handlers must use raw bytes or preserve unknown fields
+   instead of re-serializing through typed structs, to pass `session-start-extra-fields`
+   and `prompt-submit-extra-fields` fidelity tests.
+
 ## BC-HOOK Coverage
 
 All 41 BC-HOOK contracts have at least one corresponding test. Coverage table:
 
 | BC | Test(s) |
 |----|---------|
-| BC-HOOK-001 | `test_BC_HOOK_001_pretooluse_fail_open_no_server` |
+| BC-HOOK-001 | `test_BC_HOOK_001_pretooluse_fail_open_no_server`, `test_BC_HOOK_001_binary_*` |
 | BC-HOOK-002 | `test_BC_HOOK_002_non_pretooluse_fail_closed_no_server` |
 | BC-HOOK-003 | `test_BC_HOOK_003_notification_filter_*` (5 tests) |
 | BC-HOOK-004 | `test_BC_HOOK_004_hook_requests_fire_and_forget` |
-| BC-HOOK-005 | `test_BC_HOOK_005_hook_target_loopback_dynamic_port` |
+| BC-HOOK-005 | `test_BC_HOOK_005_*` (3 tests) |
 | BC-HOOK-006 | `test_BC_HOOK_006_pretooluse_unconditional_stdin_echo` |
 | BC-HOOK-007 | `test_BC_HOOK_007_*` (35+ tests) |
 | BC-HOOK-008 | `test_BC_HOOK_008_no_html_escape_*` (2 tests) |
@@ -118,3 +305,193 @@ All 41 BC-HOOK contracts have at least one corresponding test. Coverage table:
   with the correct timeout values, headers, and env-independence per the BCs.
 - BC-HOOK-028 is structurally covered by the BC-HOOK-027 test (same assertion: file is at runtimeDir,
   not at a global settings path).
+- Extra-field pass-through fix required for fidelity test passage: handlers must not drop unknown
+  fields via re-serialization through typed structs.
+
+---
+
+---
+document_type: red-gate-log
+story_id: S-006
+step: 3
+branch: story/S-006-lock-file-lifecycle
+timestamp: 2026-05-25T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-006 Step 3 (Lock File Atomic Lifecycle)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+29 behavioral tests FAIL across 2 new test files. 0 tests pass vacuously. `cargo build --workspace` succeeds. `cargo clippy --workspace --all-targets -- -D warnings` is clean.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-runtime/tests/lock_file_lifecycle.rs` | 22 | 0 | 22 |
+| `crates/monocle-runtime/tests/lock_file_contract.rs` | 7 | 0 | 7 |
+| **Total (S-006)** | **29** | **0** | **29** |
+
+## Failing Tests — lock_file_lifecycle.rs (22 tests)
+
+| Test | BC Clause | Stub Hit |
+|------|-----------|----------|
+| `test_BC_2_01_005_clean_start_creates_lock_file` | BC-2.01.005 PC-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_lock_file_mode_is_0o600` | BC-2.01.005 PC-3, INV-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_lock_file_path_is_in_runtime_dir` | BC-2.01.005 PC-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_json_has_7_fields_correct_types` | BC-2.01.005 PC-4 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_json_field_contract_version_is_first` | BC-2.01.005 PC-4, BC-2.01.010 PC-2 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_json_pid_field_is_current_process` | BC-2.01.005 PC-4 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_json_app_field_is_monocle` | BC-2.01.005 PC-4, BC-2.01.010 PC-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_json_start_time_is_iso8601` | BC-2.01.005 PC-4 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_live_pid_conflict_returns_error` | BC-2.01.005 PC-1 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_stale_pid_cleaned_up` | BC-2.01.005 PC-2 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_stale_pid_new_lock_acquired` | BC-2.01.005 PC-2, PC-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_release_removes_lock_file` | BC-2.01.005 PC-6 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_release_removes_sock_file` | BC-2.01.005 PC-7 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_005_runtime_dir_created_with_0o700` | BC-2.01.005 PC-8 | `ensure_runtime_dir` unimplemented!() |
+| `test_BC_2_01_005_runtime_dir_created_recursively` | BC-2.01.005 PC-8 | `ensure_runtime_dir` unimplemented!() |
+| `test_BC_2_01_005_env_override_monocle_runtime_dir` | BC-2.01.005 PC-2a, EC-058 | `resolve_runtime_dir` unimplemented!() |
+| `test_BC_2_01_005_env_override_empty_string_falls_through` | BC-2.01.005 EC-060 | `resolve_runtime_dir` unimplemented!() |
+| `test_BC_2_01_005_runtimedirunresolvable_when_no_home` | BC-2.01.005 PC-2d, EC-059 | `resolve_runtime_dir` unimplemented!() |
+| `test_BC_2_01_008_auth_token_is_64_hex` | BC-2.01.008 PC-1 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_008_auth_token_matches_regex` | BC-2.01.008 PC-1 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_008_generate_session_token_format` | BC-2.01.008 PC-1 | `generate_session_token` unimplemented!() |
+| `test_BC_2_01_008_generate_session_token_is_random` | BC-2.01.008 PC-1, INV-3 | `generate_session_token` unimplemented!() |
+
+## Failing Tests — lock_file_contract.rs (7 tests)
+
+| Test | BC Clause | Stub Hit |
+|------|-----------|----------|
+| `test_BC_2_01_010_contract_version_equals_1_and_is_first_key` | BC-2.01.010 PC-1, PC-2 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_app_field_equals_monocle` | BC-2.01.010 PC-3 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_unknown_contract_version_treated_as_stale` | BC-2.01.010 PC-4, EC-010 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_missing_contract_version_treated_as_stale` | BC-2.01.010 EC-012 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_string_contract_version_handled_gracefully` | BC-2.01.010 EC-011 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_contract_version_key_absent_entirely_treated_as_stale` | BC-2.01.010 EC-012 | `DaemonLock::acquire` unimplemented!() |
+| `test_BC_2_01_010_invariant_contract_version_first_via_raw_scan` | BC-2.01.010 INV-1 | `DaemonLock::acquire` unimplemented!() |
+
+## BC Coverage Summary
+
+| BC | PC / INV / EC Covered | Test Count |
+|----|----------------------|-----------|
+| BC-2.01.005 | PC-1, PC-2, PC-3, PC-4, PC-6, PC-7, PC-8, INV-3, EC-058, EC-059, EC-060 | 18 |
+| BC-2.01.008 | PC-1, INV-3 | 4 |
+| BC-2.01.010 | PC-1, PC-2, PC-3, PC-4, INV-1, EC-010, EC-011, EC-012 | 7 |
+
+## Notes for Implementer
+
+- `resolve_runtime_dir`: implement env var check first (`MONOCLE_RUNTIME_DIR` non-empty → return verbatim); then `ProjectDirs::new("monocle","monocle","monocle")` → `runtime_dir()` → `data_local_dir()` fallback; if `ProjectDirs::new()` returns `None` → `Err(RuntimeDirUnresolvable)`.
+- `ensure_runtime_dir`: use `DirBuilder::new().mode(0o700).recursive(true).create(path)` with `use std::os::unix::fs::DirBuilderExt`. NOT `std::fs::create_dir_all`.
+- `DaemonLock::acquire`: (1) try read `<runtime_dir>/monocle.lock`; (2) if exists: parse JSON, check `contract_version` (must be 1 or missing → stale), check pid liveness via `nix::sys::signal::kill(Pid::from_raw(pid), None)`; (3) if live → `Err(LockFileConflict{pid})`; (4) if dead/missing/bad-version → remove existing; (5) call `generate_session_token()`; (6) build `LockFileContent` struct; (7) serialize to JSON with ordered field output; (8) write via `NamedTempFile` + `persist` with `set_permissions(0o600)`; (9) return `(DaemonLock{path, sock_path}, token)`.
+- `DaemonLock::release`: call `std::fs::remove_file(self.path)` then `std::fs::remove_file(self.sock_path)`. Both removals needed; propagate the last error.
+- `generate_session_token`: use `rand::rngs::OsRng` + `rand::RngCore::fill_bytes` (rand `=0.8.6` EXACT pin). Hex-encode 32 bytes to 64-char lowercase string.
+- Lock file JSON field order: use `serde` struct field ordering (not HashMap). The `LockFileContent` struct field ordering (`contract_version`, `pid`, `port`, `auth_token`, `start_time_utc`, `app`, `version`) must match the JSON output order. Since `serde_json` serializes struct fields in declaration order, the struct fields must appear in the correct order.
+- Mode 0o600 on lock file: after `NamedTempFile` creation, call `file.as_file().set_permissions(std::fs::Permissions::from_mode(0o600))` BEFORE calling `persist()`.
+- Assertion idiom for file modes: `metadata.permissions().mode() & 0o777 == 0o600` (mask off file-type bits). Tests use this exact form — do not use `metadata.mode()` directly.
+- AC-008 (macOS platform fallback): `resolve_runtime_dir` tests this implicitly via the `test_BC_2_01_005_env_override_monocle_runtime_dir` / `empty_string_falls_through` tests, which exercise the env var path. The platform fallback path (AC-008) requires `ProjectDirs::runtime_dir()` to return `None` — which is macOS-native behavior not mockable via env var. The `env_override_empty_string_falls_through` test exercises the fallthrough boundary (empty = unset); the platform-native macOS test is covered by running the test suite on macOS CI.
+- DEAD_PID sentinel: `i32::MAX - 1` is used as a dead PID. The implementation should check `nix::sys::signal::kill(Pid::from_raw(pid), None)` — on all supported platforms this returns `Err(ESRCH)` for `i32::MAX - 1`.
+
+---
+
+---
+document_type: red-gate-log
+story_id: S-011
+step: 3
+branch: develop
+timestamp: 2026-05-25T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-011 Step 3 (Non-Exhaustive Enum Policy FC-02)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+4 behavioral tests FAIL. 9 structural/policy tests PASS (they verify enums already
+correctly attributed by S-014 and policy guardrails that require no implementation).
+`cargo build --workspace` succeeds. `cargo clippy -p monocle-core -- -D warnings` is clean.
+No regressions in any other workspace crates.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-core/tests/enum_audit.rs` | 13 | 9 | 4 |
+| All other workspace tests | 168 | 168 | 0 |
+
+## Failing Tests (4 — Red Gate confirmed)
+
+All 4 failures are caused by the intentional stub defect in `permissions.rs`:
+`AllowPattern`, `DenyPattern`, and `DenyReason` are declared WITHOUT `#[non_exhaustive]`.
+The stubs compile but violate BC-2.02.003 PC-1. The implementer adds the missing attributes.
+
+| Test | BC Clause Covered | Failure Reason |
+|------|------------------|----------------|
+| `test_BC_2_02_003_allow_pattern_is_non_exhaustive` | BC-2.02.003 PC-1, PC-4; AC-001b | `AllowPattern` lacks `#[non_exhaustive]` in stub |
+| `test_BC_2_02_003_deny_pattern_is_non_exhaustive` | BC-2.02.003 PC-1, PC-4; AC-001b | `DenyPattern` lacks `#[non_exhaustive]` in stub |
+| `test_BC_2_02_003_deny_reason_is_non_exhaustive` | BC-2.02.003 PC-1, PC-4; AC-001b | `DenyReason` lacks `#[non_exhaustive]` in stub |
+| `test_BC_TYPES_001_non_exhaustive_enum_coverage` | BC-2.02.003 invariant 1; AC-003; VP-013 Probe 13.a | Full AST audit reports 3 violations: AllowPattern, DenyPattern, DenyReason in permissions.rs |
+
+## Passing Tests (9 — structural/policy guardrails, expected to pass before and after)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_02_003_exempt_list_length` | AC-005 length check: EXEMPT constant has exactly 2 entries matching ADR-0004. Compile-time assertion — no implementation dependency. |
+| `test_BC_2_02_003_phase1_permission_is_exhaustive` | AC-002: verifies Phase1Permission has NO #[non_exhaustive]. Stub correctly has no attribute. |
+| `test_BC_2_02_003_claude_code_tool_is_exhaustive` | AC-002: verifies ClaudeCodeTool has NO #[non_exhaustive]. Stub correctly has no attribute. |
+| `test_BC_2_02_003_hook_event_is_non_exhaustive` | AC-001: HookEvent already carries #[non_exhaustive] from S-014. |
+| `test_BC_2_02_003_hook_decision_is_non_exhaustive` | AC-001: HookDecision already carries #[non_exhaustive] from S-014. |
+| `test_BC_2_02_003_session_status_is_non_exhaustive` | AC-001: SessionStatus already carries #[non_exhaustive] from S-014. |
+| `test_BC_2_02_003_engine_metadata_error_is_non_exhaustive` | AC-001: EngineMetadataError already carries #[non_exhaustive] from S-014. |
+| `test_BC_2_02_003_fixture_missing_non_exhaustive_detected` | AC-003/VP-013 Probe 13.b: synthetic fixture BadEnum detected by audit. Proves failure-detection path works. |
+| `test_BC_2_02_003_wildcard_arm_compiler_enforced_vacuous` | AC-004: vacuous satisfaction at S-011 dispatch — monocle-runtime has zero match sites on monocle-core non-exhaustive enums. Compiler enforces at each future match site. |
+
+## BC-2.02.003 Clause Coverage
+
+| BC Clause | Test(s) | Status |
+|-----------|---------|--------|
+| Precondition 1 (source tree parseable via syn 2) | `test_BC_TYPES_001_non_exhaustive_enum_coverage` | Passes (parse succeeds) |
+| Postcondition 1 (every pub enum has #[non_exhaustive] OR exempt) | `test_BC_TYPES_001_non_exhaustive_enum_coverage` | RED (AllowPattern, DenyPattern, DenyReason missing) |
+| Postcondition 2 (Phase1Permission + ClaudeCodeTool exhaustive) | `test_BC_2_02_003_phase1_permission_is_exhaustive`, `test_BC_2_02_003_claude_code_tool_is_exhaustive` | GREEN (no attribute present) |
+| Postcondition 3 (syn 2 AST audit in enum_audit.rs) | `test_BC_TYPES_001_non_exhaustive_enum_coverage`, `test_BC_2_02_003_exempt_list_length` | RED + GREEN |
+| Postcondition 4 (canonical 9 enums exist with attribute) | All per-enum tests | 4 GREEN (S-014 enums), 3 RED (permissions enums) |
+| Invariant 1 (syn 2 AST parse, not clippy) | All tests use syn 2 to walk Item::Enum nodes | Mechanism correct |
+
+## VP-013 Probe Coverage
+
+| Probe | Test | Status |
+|-------|------|--------|
+| 13.a (walk all pub enum, assert #[non_exhaustive] or EXEMPT) | `test_BC_TYPES_001_non_exhaustive_enum_coverage` | RED (correct — 3 violations) |
+| 13.b (inject BadEnum without attribute → audit fails) | `test_BC_2_02_003_fixture_missing_non_exhaustive_detected` | GREEN (fixture parsed correctly) |
+| 13.d (EXEMPT list length == 2 → consistency check) | `test_BC_2_02_003_exempt_list_length` | GREEN (guardrail in place) |
+
+## Stub Defect Justification
+
+`AllowPattern`, `DenyPattern`, and `DenyReason` in `permissions.rs` are declared WITHOUT
+`#[non_exhaustive]` in the stub. This is the minimal Red Gate defect:
+
+- The stubs compile (Cargo accepts the code)
+- The tests fail for the correct reason (attribute absence detected by syn 2 AST walk)
+- The implementer's sole task is to add `#[non_exhaustive]` to each of these 3 enums
+- No structural changes required — variants, derives, and doc comments are all correct in the stub
+
+`AllowPattern`, `DenyPattern`, `DenyReason` comment blocks include
+"STUB: #[non_exhaustive] intentionally absent — implementer adds it" to make the
+intent clear.
+
+## Notes for Implementer
+
+Single task: add `#[non_exhaustive]` to `AllowPattern`, `DenyPattern`, and `DenyReason`
+in `crates/monocle-core/src/permissions.rs`. Remove the STUB comment lines after adding
+the attribute. All 4 failing tests will flip to GREEN. No other code changes required
+for S-011 acceptance.
+
+Confirm after implementation:
+- `cargo test -p monocle-core --test enum_audit` → 13 passed, 0 failed
+- `cargo test --workspace` → no new failures
+- `cargo clippy -p monocle-core -- -D warnings` → clean
