@@ -64,6 +64,10 @@ pub struct LastHookTimestamps {
 /// - `lock_file_path` is written once by S-004 during daemon startup; read by `/status`.
 /// - `last_hook_ts` is updated by S-005 hook-receiver tasks on each hook invocation.
 /// - `tui_attached` is an atomic flag set when a TUI client establishes a session.
+/// - `shutdown_tx` / `shutdown_rx`: graceful-shutdown notification channel (S-005).
+///   The `POST /shutdown` handler sends `true`; `run_server` wires a clone of `shutdown_rx`
+///   into `axum::serve(...).with_graceful_shutdown(...)` so the HTTP server stops accepting
+///   new connections once shutdown is signalled (BC-2.01.004 PC-5).
 #[derive(Debug)]
 pub struct DaemonState {
     /// Current operating mode of the daemon.
@@ -135,6 +139,25 @@ pub struct DaemonState {
     /// Protected by a `std::sync::Mutex` (sync, not tokio) because `DaemonLock` is not
     /// `Send` to async task boundaries and the critical section is purely a take-and-drop.
     pub daemon_lock: Mutex<Option<crate::lock::DaemonLock>>,
+
+    /// Graceful-shutdown notification sender (BC-2.01.004 PC-5, S-005).
+    ///
+    /// The `POST /shutdown` handler sends `true` after setting `AppMode::ShuttingDown` and
+    /// releasing the lock file. `run_server` clones `shutdown_rx` and passes it to
+    /// `axum::serve(...).with_graceful_shutdown(...)` so the HTTP listener stops accepting
+    /// new connections once the signal fires.
+    ///
+    /// Sending `false` has no semantic meaning — callers MUST send `true` to trigger shutdown.
+    /// The sender is never dropped before shutdown completes because `DaemonState` outlives
+    /// the server task.
+    pub shutdown_tx: watch::Sender<bool>,
+
+    /// Graceful-shutdown notification receiver (BC-2.01.004 PC-5, S-005).
+    ///
+    /// Cloned by `run_server` and passed into `with_graceful_shutdown`. Additional clones
+    /// may be held by SIGTERM/SIGINT signal tasks to trigger the same shutdown path from
+    /// OS signals. Sending on `shutdown_tx` wakes all receivers simultaneously.
+    pub shutdown_rx: watch::Receiver<bool>,
 }
 
 impl DaemonState {
@@ -145,7 +168,11 @@ impl DaemonState {
     ///
     /// `auth_token` and `lock_file_path` are empty strings. S-004 writes both during
     /// daemon startup after generating the token and claiming the lock file.
+    ///
+    /// `shutdown_tx` / `shutdown_rx` are initialized with `false` (not shutdown). The
+    /// `POST /shutdown` handler sends `true` to trigger graceful shutdown.
     pub fn new() -> Self {
+        let (shutdown_tx, shutdown_rx) = watch::channel(false);
         Self {
             mode: RwLock::new(AppMode::Running),
             start_time: Instant::now(),
@@ -155,6 +182,8 @@ impl DaemonState {
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             tui_attached: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
+            shutdown_tx,
+            shutdown_rx,
         }
     }
 }

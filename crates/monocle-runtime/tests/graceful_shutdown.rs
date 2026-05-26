@@ -36,7 +36,7 @@
 //! | AC-004 invariant | PC-8 | — | test_BC_2_01_004_invariant_all_5_exit_codes_are_distinct |
 //! | AC-004 POSIX | PC-8 INV-4 | — | test_BC_2_01_004_invariant_posix_128n_convention_sigint_is_128_plus_2 |
 //! | AC-004 POSIX | PC-8 INV-4 | — | test_BC_2_01_004_invariant_posix_128n_convention_sigterm_is_128_plus_15 |
-//! | AC-005 | INV-1 / VP-004 PC-6 | 4.e | test_BC_2_01_004_drain_completes_within_11_seconds |
+//! | AC-005 | PC-1 + PC-2 | 4.a + 4.b | test_BC_2_01_004_shutdown_and_503_gate_respond_within_budget |
 //! | AC-007 | PC-7 | — | test_BC_2_01_004_lock_file_absent_after_graceful_shutdown |
 //! | EC-050 | EC-050 | 4.h | test_BC_2_01_004_second_post_shutdown_during_drain_returns_200 |
 //! | Arch | SS-conventions-anti-patterns | — | test_BC_2_01_004_invariant_no_process_exit_in_handler_code |
@@ -836,26 +836,33 @@ fn test_BC_2_01_004_invariant_posix_128n_convention_sigterm_is_128_plus_15() {
 // AC-005 — BC-2.01.004 INV-1 — Hard timeout: drain completes within 11 seconds
 // ---------------------------------------------------------------------------
 
-/// VP-004 Probe 4.e: Drain completes within 10 seconds for a normal in-flight request.
+/// Verifies that initiating shutdown via `POST /shutdown` and observing the subsequent 503
+/// gate on hook endpoints both complete within a reasonable wall-clock budget (well under
+/// 11 seconds).
 ///
-/// BC-2.01.004 INV-1: "The 10-second drain window is a hard timeout." VP-004 §Post-conditions
-/// item 5: "With one synthetic in-flight /hooks/* POST that holds a 5-second sleep, the drain
-/// completes within 10 seconds and the daemon exits cleanly with exit code 0."
+/// # What this test actually covers
 ///
-/// This test verifies the time bound from the HTTP-observable side: after a shutdown is
-/// initiated, subsequent requests must be rejected with 503 (no new connections accepted).
-/// The 11-second bound is the VP-004 canonical assertion (elapsed < 11 seconds).
+/// This test verifies two observable HTTP behaviors in sequence:
+/// 1. `POST /shutdown` with valid auth transitions `AppMode` to `ShuttingDown` and returns
+///    HTTP 200 `{"status":"shutting_down"}` (BC-2.01.004 PC-1).
+/// 2. A subsequent `POST /hooks/pre-tool-use` against the same state returns HTTP 503
+///    (BC-2.01.004 PC-2 — new hook requests rejected during drain).
 ///
-/// Counter-example guarded: VP-004 §Counter-examples item 4 — "Drain timeout not enforced
-/// (in-flight 15-second sleep allowed to complete)" would cause the elapsed > 10 seconds.
+/// Both operations complete in-process via `tower::ServiceExt::oneshot` with no network
+/// or timer overhead. The 11-second ceiling is a sanity bound, not a drain-timer assertion.
 ///
-/// Note: this test verifies the observable HTTP behavior (503 after shutdown initiated,
-/// within 11-second wall-clock bound). The full drain-with-in-flight-sleep test is an
-/// integration test that requires process-level signal wiring (implemented by S-005).
+/// # What this test does NOT cover
 ///
-/// Traces to BC-2.01.004 INV-1, VP-004 §Post-conditions item 5/6, AC-005.
+/// VP-004 PC-5/PC-6 drain testing with a real in-flight `POST /hooks/*` holding a 5-second
+/// sleep requires the full server main loop (`run_server`) with a live TCP listener, plus
+/// a concurrent in-flight request task. That test exercises the `with_graceful_shutdown`
+/// path and the tokio-level connection drain. It will be covered in Phase 4 holdout
+/// evaluation (VP-004 Probe 4.e) once `main.rs` is wired and the daemon can be spawned
+/// as a subprocess.
+///
+/// Traces to BC-2.01.004 PC-1 + PC-2, VP-004 §Post-conditions item 1 + 2, AC-002 + AC-003.
 #[tokio::test]
-async fn test_BC_2_01_004_drain_completes_within_11_seconds() {
+async fn test_BC_2_01_004_shutdown_and_503_gate_respond_within_budget() {
     let state = make_state_with_token();
 
     // Measure the time to: (1) initiate shutdown via POST /shutdown, (2) verify subsequent
@@ -946,13 +953,14 @@ async fn test_BC_2_01_004_lock_file_absent_after_graceful_shutdown() {
         "lock file must exist before shutdown; not found at {expected_lock_path:?}"
     );
 
-    // Set up DaemonState with the real auth token and pre-built lock path.
+    // Set up DaemonState with the real auth token, pre-built lock path, and the
+    // RAII guard wired into daemon_lock so the handler exercises the primary RAII path
+    // (not the path-based fallback).
     let mut state = DaemonState::new();
     state.auth_token = auth_token.clone();
     state.lock_file_path = expected_lock_path.to_string_lossy().to_string();
-    // The S-005 implementation needs a way to call lock.release() from the handler.
-    // For this test, we verify the lock IS absent after a proper shutdown sequence.
-    // The stub handler returns 501 and doesn't release, so this test FAILS at Red Gate.
+    // Wire the RAII guard so post_shutdown takes it via daemon_lock.lock().unwrap().take().
+    *state.daemon_lock.lock().unwrap() = Some(lock);
     let state = Arc::new(state);
 
     // Trigger shutdown via POST /shutdown.
@@ -984,9 +992,8 @@ async fn test_BC_2_01_004_lock_file_absent_after_graceful_shutdown() {
         Counter-example: stub never calls exit_with, lock persists."
     );
 
-    // Clean up: release manually if the test reached this point (stub left it behind).
-    // This prevents the TempDir from being poisoned for other tests.
-    let _ = lock.release();
+    // No manual cleanup needed: lock was taken by the handler via the RAII path.
+    // TempDir drop will clean up the temporary directory itself.
 }
 
 // ---------------------------------------------------------------------------

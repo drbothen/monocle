@@ -91,8 +91,10 @@ pub async fn post_shutdown(State(state): State<Arc<DaemonState>>) -> impl IntoRe
             );
         }
     } else if !state.lock_file_path.is_empty() {
-        // Fallback path: release by removing the file at the recorded path.
+        // Fallback path: release by removing the files at the recorded path.
         // Used when the binary has not yet wired the DaemonLock into state, or in tests.
+        // Both the lock file and the companion .sock file are removed (BC-2.01.004 PC-7,
+        // BC-2.01.005 PC-6 lock+sock removal invariant).
         let lock_path = std::path::Path::new(&state.lock_file_path);
         if let Err(e) = std::fs::remove_file(lock_path) {
             if e.kind() != std::io::ErrorKind::NotFound {
@@ -104,7 +106,25 @@ pub async fn post_shutdown(State(state): State<Arc<DaemonState>>) -> impl IntoRe
                 );
             }
         }
+        // Remove the companion .sock file (same stem, .sock extension).
+        let sock_path = lock_path.with_extension("sock");
+        if let Err(e) = std::fs::remove_file(&sock_path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                tracing::warn!(
+                    path = %sock_path.display(),
+                    error = %e,
+                    "sock file path-based removal failed during graceful shutdown \
+                    (BC-2.01.005 PC-6)"
+                );
+            }
+        }
     }
+
+    // Signal the server to stop accepting new connections (BC-2.01.004 PC-5).
+    //
+    // `send()` fails only if all receivers have been dropped, which means the server
+    // task is already gone — a harmless no-op in that case.
+    let _ = state.shutdown_tx.send(true);
 
     (
         StatusCode::OK,
