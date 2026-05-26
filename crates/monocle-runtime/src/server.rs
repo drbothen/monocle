@@ -30,10 +30,11 @@
 //!
 //! Layers are applied outermost-first (last `.layer()` call = outermost = runs first):
 //! ```text
-//! Request flow: auth_middleware → body_size_limit_middleware → DefaultBodyLimit → handler
+//! Request flow: body_size_limit_middleware → auth_middleware → DefaultBodyLimit → handler
 //! ```
-//! Auth runs first to reject unauthenticated requests cheaply.
-//! Body size check runs after auth: only authenticated requests have their body size evaluated.
+//! Body size check runs first to reject oversized payloads before any auth work
+//! (defense-in-depth: Content-Length > 256 KiB is rejected at 413 regardless of auth status).
+//! Auth runs second: only correctly-sized requests have their tokens evaluated.
 //! `DefaultBodyLimit` signals extractors to enforce the 256 KiB limit when reading the body.
 
 use std::sync::Arc;
@@ -90,15 +91,15 @@ pub fn build_server(state: Arc<DaemonState>) -> Router {
         // DefaultBodyLimit signals extractors (Bytes, Json, Form) to enforce 256 KiB.
         // Must appear innermost (first .layer() call) so it wraps the routes directly.
         .layer(DefaultBodyLimit::max(262144))
-        // body_size_limit_middleware: custom JSON 413 for Content-Length-bearing oversized
-        // requests. Runs after auth (auth is outermost, this is middle layer).
-        .layer(middleware::from_fn(body_size_limit_middleware))
-        // auth_middleware: outermost layer — runs first, rejects unauthenticated requests
-        // before body size or route dispatch.
+        // auth_middleware: middle layer — runs after body size check, rejects
+        // unauthenticated requests before route dispatch.
         .layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             auth_middleware,
         ))
+        // body_size_limit_middleware: outermost layer — runs first, rejects oversized
+        // requests at 413 before any auth work (defense-in-depth).
+        .layer(middleware::from_fn(body_size_limit_middleware))
         .with_state(Arc::clone(&state));
 
     unauth_routes.merge(auth_routes)
