@@ -762,6 +762,38 @@ fn test_BC_2_01_009_vp_009_source_grep_constant_time_eq_on_alias_path() {
 }
 
 // ---------------------------------------------------------------------------
+// Uppercase hex rejection (AC-005/AC-006 charset constraint: ^[0-9a-f]{64}$ — lowercase only)
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.009 AC-005: The alias path requires raw lowercase hex (`^[0-9a-f]{64}$`).
+/// Uppercase hex digits (A-F) are NOT valid — they are valid hex numerals but violate the
+/// lowercase constraint. An alias token of 64 uppercase hex chars must be rejected with
+/// `Err(AuthError::InvalidToken)`.
+///
+/// This guards against an implementation that accepts `[0-9a-fA-F]{64}` instead of the
+/// strictly lowercase `[0-9a-f]{64}` required by BC-2.01.009 PC-3 and BC-2.01.008 AC-005.
+///
+/// Counter-example: accepting uppercase would allow a token value that byte-differs from
+/// the stored lowercase secret to pass constant-time comparison only if the comparison
+/// is case-insensitive — a security defect.
+///
+/// Traces to BC-2.01.009 AC-005 / BC-2.01.008 charset invariant.
+#[test]
+fn test_validate_uppercase_hex_rejected() {
+    let token = "a".repeat(64);
+    // Valid hex digits but uppercase — must be rejected (charset: ^[0-9a-f]{64}$).
+    let uppercase = "A".repeat(64);
+    let result = validate_auth_header(None, Some(&uppercase), &token);
+    assert!(
+        matches!(result, Err(AuthError::InvalidToken)),
+        "validate_auth_header with alias = 64 uppercase hex chars must return \
+        Err(AuthError::InvalidToken); got: {result:?}. \
+        The alias charset is strictly ^[0-9a-f]{{64}}$ (lowercase). \
+        Uppercase hex digits violate the constraint per BC-2.01.009 AC-005 / BC-2.01.008."
+    );
+}
+
+// ---------------------------------------------------------------------------
 // BC-2.01.008 INV-7 / F-D-01: Length mismatch must use sentinel (timing-oracle defense)
 // ---------------------------------------------------------------------------
 

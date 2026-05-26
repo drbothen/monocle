@@ -89,22 +89,32 @@ pub async fn auth_middleware(
         .get(ALIAS_HEADER)
         .and_then(|v| v.to_str().ok());
 
+    // BC-2.01.009 PC-3 ordering: "first emits WARN, then validates."
+    // INV-6: WARN must be emitted on EVERY alias-path attempt regardless of outcome
+    // (success or failure). Detect alias-path entry BEFORE calling validate_auth_header
+    // so the WARN fires whether the token is correct or wrong.
+    //
+    // The alias path is entered when: canonical header is absent AND alias header is present.
+    // Emitting WARN here (in the middleware, before validation) satisfies INV-6 without
+    // changing the pure validate_auth_header function (which remains WARN-free for unit-testability).
+    let entering_alias_path = canonical.is_none() && alias.is_some();
+    if entering_alias_path {
+        tracing::warn!(
+            "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
+            monocle-aware harness should use X-Monocle-Authorization"
+        );
+    }
+
     // Delegate to `validate_auth_header` — the unit-tested pure function that implements
     // the dual-accept protocol (ADR-0005, BC-2.01.009, INV-7 sentinel defence).
-    // The middleware's only added responsibility is the WARN log on Ok(AuthPath::Alias),
-    // which cannot be unit-tested in the pure function (no tracing subscriber required there).
     match validate_auth_header(canonical, alias, &state.auth_token) {
         Ok(AuthPath::Canonical) => {
             // Canonical path — no WARN log required.
             next.run(request).await
         }
         Ok(AuthPath::Alias) => {
-            // Compatibility alias path — emit the normative ADR-0005 WARN per INV-6 / AC-002.
-            // Exact string is normative — do not paraphrase.
-            tracing::warn!(
-                "WARN: hook auth via X-Claude-Code-Ide-Authorization (compatibility alias); \
-                monocle-aware harness should use X-Monocle-Authorization"
-            );
+            // Alias path — WARN already emitted above before validation (INV-6 ordering).
+            // Just proceed to the next handler.
             next.run(request).await
         }
         Err(AuthError::MissingToken) => missing_token_response(),
