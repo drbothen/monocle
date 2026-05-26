@@ -112,6 +112,9 @@ impl RingBuffer {
     ///
     /// On I/O failure (E-RING-001) the error is returned; callers should log at WARN and
     /// continue accepting events per AC-005.
+    /// Rotation failure after a successful write is downgraded to a WARN log (AC-005,
+    /// SS-daemon-lifecycle L710): the record is already persisted, so rotation failure
+    /// is not fatal to the caller.
     pub fn push(&self, record: &HookEventRecord) -> Result<(), RingError> {
         let mut line = serde_json::to_string(record)?;
         line.push('\n');
@@ -122,21 +125,50 @@ impl RingBuffer {
             .append(true)
             .open(&self.path)?;
         file.write_all(line.as_bytes())?;
-        file.flush()?;
 
-        self.rotate_if_needed()
+        // F-002: set 0o600 on each open so newly-created files are always restricted
+        // (SS-daemon-lifecycle L693). The call is best-effort; we don't fail the push
+        // if the OS rejects it (e.g., we don't own the file on some test harnesses).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            let perms = std::fs::Permissions::from_mode(0o600);
+            if let Err(e) = std::fs::set_permissions(&self.path, perms) {
+                tracing::warn!(
+                    error = %e,
+                    path = %self.path.display(),
+                    "ring file chmod 0o600 failed; continuing"
+                );
+            }
+        }
+
+        if let Err(e) = file.flush() {
+            // E-RING-001: callers log at WARN and continue (AC-005).
+            tracing::warn!(error = %e, path = %self.path.display(), "E-RING-001: ring buffer flush failed");
+            return Err(RingError::Io(e));
+        }
+
+        // F-001: rotation failure is degraded, not fatal — the record is already persisted.
+        if let Err(e) = self.rotate_if_needed() {
+            tracing::warn!(
+                error = %e,
+                path = %self.path.display(),
+                "E-RING-002: ring file rotation failed; continuing without rotation"
+            );
+        }
+        Ok(())
     }
 
-    /// Rotate the ring file when it exceeds the soft threshold.
+    /// Rotate the ring file when it exceeds the soft threshold or hard cap.
     ///
     /// Implements the `.1`...`.N` cascade: oldest rotated file is removed first, then
     /// each existing rotated file is incremented (`k` → `k+1`), and the active file
     /// becomes `.1`. The caller's next push will create a fresh active file.
     ///
     /// Rotation triggers when the active file size meets or exceeds
-    /// `config.soft_threshold_bytes`. Hard cap enforcement uses the same path since
-    /// every push checks the threshold (i.e., a single oversized record will also
-    /// trigger rotation on the following push).
+    /// `config.soft_threshold_bytes` **or** `config.hard_cap_bytes`. The hard cap is a
+    /// mandatory upper bound — a single oversized record that causes the file to exceed
+    /// `hard_cap_bytes` will force rotation immediately on the same push (F-004).
     pub fn rotate_if_needed(&self) -> Result<(), RingError> {
         // Check current file size; if it doesn't exist yet, nothing to rotate.
         let size = match std::fs::metadata(&self.path) {
@@ -145,10 +177,20 @@ impl RingBuffer {
             Err(e) => return Err(RingError::Io(e)),
         };
 
-        if size < self.config.soft_threshold_bytes {
+        // F-004: rotate on soft threshold OR hard cap breach.
+        let needs_rotation = size >= self.config.soft_threshold_bytes
+            || size >= self.config.hard_cap_bytes;
+        if !needs_rotation {
             return Ok(());
         }
 
+        self.cascade_rotate()
+    }
+
+    /// Execute the `.1`...`.N` rename cascade and retire the active file to `.1`.
+    ///
+    /// Called by [`rotate_if_needed`] once the size threshold is confirmed.
+    fn cascade_rotate(&self) -> Result<(), RingError> {
         let retained = self.config.retained;
 
         // Remove the oldest rotated file (.{retained}) if it exists.
@@ -168,6 +210,8 @@ impl RingBuffer {
 
         // Rename the active file → .1.
         std::fs::rename(&self.path, self.rotated_path(1))?;
+
+        tracing::info!(path = %self.path.display(), "ring file rotated");
 
         Ok(())
     }
