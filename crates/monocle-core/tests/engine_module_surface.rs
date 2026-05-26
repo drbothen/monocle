@@ -1084,17 +1084,15 @@ fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside
             &self,
             proc: &ProcessSnapshot,
         ) -> Result<EnrichedSession, EngineMetadataError> {
-            // NOTE: Once last_event_micros is corrected to Option<i64> (AC-004),
-            // this value should be changed to None. The 0 value is a stub-compat
-            // placeholder; the type error from None is caught by VP-019 probe 19.e.
-            #[allow(clippy::zero_prefixed_literal)]
+            // No hook events received yet for this mock session — None is the
+            // semantically correct value per BC-2.03.001 PC-4.
             Ok(EnrichedSession::new(
                 format!("pid-{}", proc.pid),
                 self.id().to_string(),
                 None,
                 None,
                 SessionStatus::Idle,
-                0, // stub-compat: must be None (Option<i64>) in production (AC-004)
+                None,
             ))
         }
 

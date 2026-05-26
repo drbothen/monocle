@@ -152,15 +152,17 @@ pub struct EnrichedSession {
 impl EnrichedSession {
     /// Construct an `EnrichedSession`.
     ///
-    /// `last_event_micros` accepts any `impl Into<Option<i64>>` — pass `None` for a fresh
-    /// session with no hook events, or `Some(timestamp_micros)` for an active session.
+    /// Pass `None` for `last_event_micros` when no hook events have been received yet.
+    /// Pass `Some(timestamp_micros)` for an active session with a known last-event time.
+    /// Note: `Some(0)` is the Unix epoch (1970-01-01T00:00:00Z), NOT a sentinel — using
+    /// `0` as a "no events" sentinel is forbidden per BC-2.03.001 PC-4.
     pub fn new(
         session_id: String,
         harness_type: String,
         transcript_path: Option<PathBuf>,
         config_path: Option<PathBuf>,
         status: SessionStatus,
-        last_event_micros: impl Into<Option<i64>>,
+        last_event_micros: Option<i64>,
     ) -> Self {
         Self {
             session_id,
@@ -168,7 +170,7 @@ impl EnrichedSession {
             transcript_path,
             config_path,
             status,
-            last_event_micros: last_event_micros.into(),
+            last_event_micros,
         }
     }
 }
