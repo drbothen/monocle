@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.06"
+version: "6.07"
 status: active
 producer: state-manager
 timestamp: 2026-05-26T20:00:00Z
-phase: phase-3-WAVE-2-GATE-PASSED
-current_step: "Wave-2-gate-passed-Wave-3-ready-to-dispatch"
+phase: phase-3-WAVE-3-COMPLETE
+current_step: "Wave-3-all-5-stories-merged-wave-gate-pending"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 3 Batch A COMPLETE. Batch B: S-009 (8 pts, Auth Token Wire Format) — ONLY remaining story before wave-gate."
+awaiting: "**WAVE 3 COMPLETE — ALL 5 STORIES MERGED.** 16/17 stories done, 83/86 pts. Wave 3 gate pending. After wave-gate PASS: Phase 3 COMPLETE → Phase 4 Holdout Evaluation."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -88,16 +88,15 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 3 BATCH A COMPLETE:
+  COLD-START RESUME GUIDE — WAVE 3 COMPLETE, WAVE-GATE PENDING:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → 23cfd44 ([S-015]).
+  2. Verify: git log --oneline -1 develop → d683c16 ([S-009]).
   3. Read STATE.md + CLAUDE.md.
-  4. Wave 3 progress: S-007 DONE (PR #14), S-008 DONE (PR #15), S-012 DONE (PR #16), S-015 DONE (PR #17).
-  5. Batch A COMPLETE (4/4 stories done, 26 pts). ONE story remaining: S-009 (8 pts, Auth Token Wire Format).
-  6. S-009 dependency on S-008 is satisfied (fe4db96 merged). S-009 is the ONLY blocker before Wave 3 gate.
-  7. Per-story delivery: worktree → stubs → tests → impl → adversary convergence → PR → merge → cleanup.
-  8. After S-009 merged + wave-gate: Phase 3 COMPLETE.
+  4. Wave 3 ALL 5 STORIES MERGED: S-007 (#14), S-008 (#15), S-012 (#16), S-015 (#17), S-009 (#18).
+  5. 16/17 stories done (83/86 pts). S-PHASE-3-PREP blocked on upstream (non-blocking).
+  6. NEXT: Run /vsdd-factory:wave-gate wave-3 — full test suite on develop, adversarial review, holdout, demo evidence.
+  7. After wave-gate PASS: Phase 3 COMPLETE. Then Phase 4 holdout evaluation.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -116,7 +115,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-155. 39 disciplines. |
 | 2 Story Decomposition | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-159. 17 stories; 86 pts. |
-| 3 TDD Implementation | IN-PROGRESS | — | Wave 1+2 DONE (49 pts); **Wave 3 READY** (34 pts) |
+| 3 TDD Implementation | IN-PROGRESS | — | Wave 1+2+3 DONE (83 pts); **Wave 3 gate pending** |
 | 4-7 | not-started | — | |
 
 ## Wave 3 Current Status
@@ -127,9 +126,9 @@ current_cycle: cycle-001
 | S-008 JSONL Ring Format | 5 | done | A | none |
 | S-012 FactoryAdapter Trait | 8 | done | A | none |
 | S-015 ClaudeCodeModule | 8 | done | A | none |
-| S-009 Auth Token Wire Format | 8 | not_started | B | S-008 |
+| S-009 Auth Token Wire Format | 8 | done | B | S-008 |
 
-develop @ 23cfd44. 332+ tests. clippy clean. 15/17 stories done, 75/86 pts.
+develop @ d683c16. 437 tests. clippy clean. 16/17 stories done, 83/86 pts.
 
 ## Blocking Issues
 
@@ -176,6 +175,10 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 ## §Trace v6.01 (D-166)
 
 **D-166 WAVE 2 GATE PASSED** (2026-05-26T18:00:00Z): Wave-gate PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed in e2898be: removed monocle-proto from monocle-runtime; removed futures+semver from monocle-core; added sock_file_path to DaemonState. develop @ e2898be. Phase → `phase-3-WAVE-2-GATE-PASSED`. Wave 3 ready: Batch A parallel (S-007/S-008/S-012/S-015); Batch B after S-008 (S-009). STATE v6.00 → v6.01. SE-23 PASS. S-PHASE-3-PREP BLOCKED on rc.19+ (does NOT block Wave 3).
+
+## §Trace v6.07 (S-009 delivery — WAVE 3 COMPLETE)
+
+**S-009 AUTH TOKEN WIRE FORMAT + HEADER VALIDATION DELIVERED** (2026-05-27): PR #18 merged at develop @ d683c16. BC-2.01.008 + BC-2.01.009 fully satisfied. 26 auth tests + 2 hook integration tests. 7 adversary rounds (5→1→1→1→0→0→0, 3/3 convergence). Security: constant_time_eq all paths, INV-7 sentinel, WARN before validate on alias path. Deferred: non-UTF-8 canonical header edge case (wave-gate); Json extractor before shutdown gate (pre-existing S-005 pattern). sprint-state v1.17→v1.18: done 15→16, not_started 1→0, points_complete 75→83. STATE v6.06→v6.07. **WAVE 3 COMPLETE: all 5 stories merged (S-007/S-008/S-009/S-012/S-015), 34/34 pts.** Total: 16/17 done, 83/86 pts. Wave 3 gate pending; after PASS → Phase 3 COMPLETE → Phase 4 Holdout Evaluation.
 
 ## §Trace v6.06 (S-015 delivery)
 

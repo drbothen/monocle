@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.9"
+version: "3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -46,7 +46,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
 | S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
 | S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-005, S-007, S-008, S-009 |
-| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | draft | — |
+| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | done | — |
 | S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-014 |
 | S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
 | S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
@@ -369,6 +369,16 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v3.0
+
+**Wave 3 Batch B: S-009 flipped draft→done — WAVE 3 COMPLETE** (2026-05-27):
+- S-009 Story Registry row: `draft` → `done`. PR #18 merged at develop @ d683c16.
+- BC-2.01.008 + BC-2.01.009 fully satisfied. 26 auth tests + 2 hook integration tests. 7 adversary rounds (5→1→1→1→0→0→0, 3/3 convergence).
+- Security: constant_time_eq all paths, INV-7 sentinel, WARN before validate on alias path.
+- **WAVE 3 COMPLETE: all 5 Wave 3 stories done** (S-007, S-008, S-009, S-012, S-015 — 34/34 pts). Total project: 16/17 done, 83/86 pts. S-PHASE-3-PREP remains blocked on upstream (non-blocking).
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.17→v1.18 (done 15→16, not_started 1→0, points_complete 75→83); STATE.md v6.06→v6.07.
+- STORY-INDEX version bumped v2.9→v3.0.
 
 ## §Trace v2.9
 

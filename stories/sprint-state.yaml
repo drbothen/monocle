@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.17"
+version: "1.18"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-05-26T12:00:00Z
@@ -124,12 +124,12 @@ stories:
     epic: EPIC-01
     wave: 3
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 3 (Decision 1: moved from Wave 2; depends on S-008 for RingBuffer). Depends on S-001, S-003, S-004, S-006, S-008, S-DTU-001 (Decision 10: DTU clone needed for alias-auth integration tests; Phase 3.A: S-003 added — S-009 EXTENDS auth.rs created by S-003). Covers BC-2.01.008 + BC-2.01.009."
+    completed_at: "2026-05-27"
+    pr_url: "https://github.com/drbothen/monocle/pull/18"
+    notes: "Wave 3 Batch B. PR #18 merged at develop @ d683c16. BC-2.01.008 + BC-2.01.009 fully satisfied. 26 auth tests + 2 hook integration tests. 7 adversary rounds (5→1→1→1→0→0→0, 3/3 convergence). Security: constant_time_eq all paths, INV-7 sentinel, WARN before validate on alias path. Deferred: non-UTF-8 canonical header edge case (wave-gate); Json extractor before shutdown gate (pre-existing S-005 pattern)."
 
   - id: S-010
     title: "monocle-core Crate Foundation + ABI Version Constant (FC-03)"
@@ -229,14 +229,14 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 1
+  not_started: 0
   in_progress: 0
   review: 0
-  done: 15
+  done: 16
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 75
+  points_complete: 83
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -264,3 +264,8 @@ summary:
   # - S-015 flipped not_started → done (PR #17 merged 23cfd44; BC-2.03.001..004 satisfied; 4 adversary rounds 3/3 convergence)
   # - done: 14 → 15; not_started: 2 → 1; points_complete: 67 → 75
   # - Wave 3 Batch A: 4/4 COMPLETE; Wave 3 total: 4/5 done (26/34 pts); S-009 only remaining story
+  # v1.18 updates (2026-05-27):
+  # - S-009 flipped not_started → done (PR #18 merged d683c16; BC-2.01.008+BC-2.01.009 satisfied; 7 adversary rounds 3/3 convergence)
+  # - done: 15 → 16; not_started: 1 → 0; points_complete: 75 → 83
+  # - Wave 3 Batch B COMPLETE: S-009 done. WAVE 3 COMPLETE: 5/5 stories done (34/34 pts)
+  # - Total project: 16/17 done (1 blocked = S-PHASE-3-PREP on upstream), 83/86 pts
