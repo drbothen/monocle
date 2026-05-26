@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.08"
+version: "6.09"
 status: active
 producer: state-manager
-timestamp: 2026-05-26T20:00:00Z
-phase: phase-3-WAVE-3-COMPLETE
-current_step: "Wave-3-all-5-stories-merged-wave-gate-pending"
+timestamp: 2026-05-27T00:00:00Z
+phase: phase-3-WAVE-3-GATE-PASSED
+current_step: "Phase-3-COMPLETE-all-waves-done-holdout-next"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "**WAVE 3 COMPLETE — ALL 5 STORIES MERGED.** 16/17 stories done, 83/86 pts. Wave 3 gate pending. After wave-gate PASS: Phase 3 COMPLETE → Phase 4 Holdout Evaluation."
+awaiting: "Phase 3 COMPLETE — all 3 waves passed. 16/17 stories done (83/86 pts). S-PHASE-3-PREP blocked on upstream (non-blocking). Next: Phase 4 Holdout Evaluation."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -77,8 +77,8 @@ durable_task_register:
       blocking: false
     - id: "S-008-ADV-tempfile-spec"
       subject: "AC-003 tempfile::persist spec wording divergence"
-      status: pending
-      detail: "S-008 uses append mode (architecturally correct for JSONL) but story spec AC-003 says tempfile::persist. Story-writer update needed. Also: RingError missing #[non_exhaustive]; BC-2.01.007 story anchor says S-TBD (PO fix)."
+      status: partial-closed
+      detail: "RingError #[non_exhaustive] fixed in-scope during wave-3-gate adversarial review (bef6f4b). Remaining: AC-003 tempfile::persist spec wording (story-writer); BC-2.01.007 S-TBD anchor (PO)."
       blocking: false
     - id: "S-015-ADV-tracing-test"
       subject: "tracing-test 0.2 not in SS-deps-pin-manifest"
@@ -87,13 +87,33 @@ durable_task_register:
       blocking: false
     - id: "S-012-self-ref-test-fix"
       subject: "3 self-referential tests fail — workspace root detection"
-      status: pending
-      detail: "factory_self_referential.rs tests (matches_self_referential, vsdd_adapter_self_referential_detection, read_state_on_real_state_md) fail because workspace root resolves to /Users/jmagady instead of monocle repo root. Test harness fix needed."
+      status: closed-fixed-in-gate
+      detail: "Fixed in ceebd2d (wave-3-gate): monocle_repo_root uses ancestors().find(.git) instead of cargo metadata. All 3 self-referential tests now pass. 447 tests total."
       blocking: false
     - id: "S-009-ADV-non-utf8"
       subject: "Non-UTF-8 canonical header treated as absent"
       status: accepted-observation
       detail: "Non-UTF-8 X-Monocle-Authorization falls through to alias path. HTTP headers are ASCII per RFC 7230; axum rejects non-ASCII before middleware. Zero security impact."
+      blocking: false
+    - id: "ADV-W3GATE-MED-001"
+      subject: "last_hook_ts never written by hook handlers (future daemon wiring)"
+      status: pending
+      detail: "Wave 3 gate adversarial: DaemonState.last_hook_ts field exists but hook handler paths never write it. Observation-only — requires daemon wiring integration story."
+      blocking: false
+    - id: "ADV-W3GATE-MED-002"
+      subject: "Ring buffer DaemonState.ring never set to Some (main.rs stub)"
+      status: pending
+      detail: "Wave 3 gate adversarial: DaemonState.ring is always None; ring_buffer_fill_pct always returns 0.0. Requires main.rs wiring in integration story."
+      blocking: false
+    - id: "ADV-W3GATE-MED-003"
+      subject: "Only 1/5 hook endpoints tested in running-mode full-stack path"
+      status: pending
+      detail: "Wave 3 gate adversarial: Full-stack integration tests cover only pre-tool endpoint. 4/5 endpoints lack running-mode full-stack coverage. Phase 4 integration story."
+      blocking: false
+    - id: "ADV-W3GATE-MED-004"
+      subject: "ring_buffer_fill_pct hardcoded to 0.0"
+      status: pending
+      detail: "Wave 3 gate adversarial: Metric always returns 0.0 because DaemonState.ring is never set. Tracked with ADV-W3GATE-MED-002 (same root cause)."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -108,15 +128,17 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 3 COMPLETE, WAVE-GATE PENDING:
+  COLD-START RESUME GUIDE — PHASE 3 COMPLETE, PHASE 4 HOLDOUT NEXT:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → d683c16 ([S-009]).
+  2. Verify: git log --oneline -1 develop → 493e1b7 (fix(server): reorder middleware).
   3. Read STATE.md + CLAUDE.md.
-  4. Wave 3 ALL 5 STORIES MERGED: S-007 (#14), S-008 (#15), S-012 (#16), S-015 (#17), S-009 (#18).
-  5. 16/17 stories done (83/86 pts). S-PHASE-3-PREP blocked on upstream (non-blocking).
-  6. NEXT: Run /vsdd-factory:wave-gate wave-3 — full test suite on develop, adversarial review, holdout, demo evidence.
-  7. After wave-gate PASS: Phase 3 COMPLETE. Then Phase 4 holdout evaluation.
+  4. Phase 3 COMPLETE: Wave 1+2+3 all GATE-PASSED. 16/17 stories done (83/86 pts).
+     S-PHASE-3-PREP blocked on upstream vsdd-factory rc.19+ (non-blocking, does not block Phase 4).
+  5. Wave 3 gate D-167: PASS. 447 tests, 6 gates all pass. develop @ 493e1b7.
+  6. NEXT: Phase 4 Holdout Evaluation — run /vsdd-factory:phase-4-holdout-evaluation.
+  7. Outstanding non-blocking: ADV-W3GATE-MED-001..004 (daemon wiring), S-005-main-wiring,
+     S-008-ADV-tempfile-spec (partial), VP-DTU-001 (Phase 4 architect), plus architect/PO items.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -135,7 +157,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-155. 39 disciplines. |
 | 2 Story Decomposition | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-159. 17 stories; 86 pts. |
-| 3 TDD Implementation | IN-PROGRESS | — | Wave 1+2+3 DONE (83 pts); **Wave 3 gate pending** |
+| 3 TDD Implementation | GATE-PASS | 2026-05-27 | Wave 1+2+3 DONE (83 pts); gate PASS (447 tests, all 6 gates) |
 | 4-7 | not-started | — | |
 
 ## Wave 3 Current Status
@@ -148,7 +170,7 @@ current_cycle: cycle-001
 | S-015 ClaudeCodeModule | 8 | done | A | none |
 | S-009 Auth Token Wire Format | 8 | done | B | S-008 |
 
-develop @ d683c16. 437 tests. clippy clean. 16/17 stories done, 83/86 pts.
+develop @ 493e1b7. 447 tests. clippy clean. fmt clean. 16/17 stories done, 83/86 pts. **Wave 3 gate PASSED (D-167).**
 
 ## Blocking Issues
 
@@ -170,6 +192,7 @@ None. All durable_task_register items non-blocking.
 | D-164 | Wave 1 FULLY CLOSED — wave-gate PASS_WITH_OBSERVATIONS. PR #4 (681c179) closeout. 134 tests. | 2026-05-21 | orchestrator |
 | D-165 | Wave 2 APPROVED-TO-EXECUTE — user authorization 2026-05-24. 9 stories/41 pts dispatched. | 2026-05-24 | human (Josh Magady) |
 | D-166 | Wave 2 GATE PASSED — PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed (e2898be). | 2026-05-26 | orchestrator |
+| D-167 | Wave 3 GATE PASSED — PASS. 447 tests, clippy clean, fmt clean. 6 gates: test-suite PASS, DTU SKIP (VP-DTU-001), adversarial PASS (0 CRIT/HIGH, 5 MED, 1 LOW), demo-evidence PASS (5/5 ACs), holdout PASS (mean 1.0, 6/6 scenarios), state-update PASS. Fixed: middleware reorder (HS-W3-006, 493e1b7), RingError #[non_exhaustive] (bef6f4b), S-012-self-ref workspace root (ceebd2d). develop @ 493e1b7. Phase 3 COMPLETE. | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -234,3 +257,18 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 - CLAUDE.md §Current Pipeline State updated to reflect Wave 3 complete, wave-gate pending.
 - durable_task_register updated with 4 new Wave 3 deferred findings (S-008-ADV, S-015-ADV, S-012-self-ref, S-009-ADV).
 - STATE v6.07 → v6.08. SE-23 PASS: SM touched only STATE.md + CLAUDE.md (main branch); zero spec artifacts.
+
+## §Trace v6.09 (Wave 3 gate PASS — Phase 3 COMPLETE)
+
+**D-167 WAVE 3 GATE PASSED** (2026-05-27T00:00:00Z): Wave-gate PASS. 447 tests, clippy clean, fmt clean.
+Gate telemetry:
+- GATE_CHECK: gate=1 name=test-suite status=pass note=447 tests, 0 failures, clippy clean, fmt clean
+- GATE_CHECK: gate=2 name=dtu-validation status=skip note=DTU clones pending (VP-DTU-001)
+- GATE_CHECK: gate=3 name=adversarial-review status=pass note=0 CRITICAL, 0 HIGH, 5 MEDIUM, 1 LOW
+- GATE_CHECK: gate=4 name=demo-evidence status=pass note=5 stories, all ACs covered
+- GATE_CHECK: gate=5 name=holdout-eval status=pass note=mean 1.0, all 6 scenarios at 1.0
+- GATE_CHECK: gate=6 name=state-update status=pass note=sprint-state already current, STATE.md updated
+In-gate fixes: middleware reorder body-limit before auth per HS-W3-006 (493e1b7); RingError #[non_exhaustive] closed S-008-ADV (bef6f4b); S-012-self-ref workspace root via ancestors().find(.git) (ceebd2d).
+Durable task updates: S-012-self-ref → closed-fixed-in-gate; S-008-ADV → partial-closed; 4 new MED observations registered (ADV-W3GATE-MED-001..004).
+Phase 3 row: IN-PROGRESS → GATE-PASS (2026-05-27). phase: phase-3-WAVE-3-GATE-PASSED. develop @ 493e1b7.
+STATE v6.08 → v6.09. SE-23 PASS: SM touched only STATE.md and .factory/ cycle files.
