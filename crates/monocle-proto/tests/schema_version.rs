@@ -8,6 +8,10 @@
 //!
 //! Test naming follows the BC-based pattern:
 //!   `test_BC_2_02_007_<assertion_name>()`
+
+// Test code panicking on assertion failure is correct behavior; `expect()` is
+// the idiomatic way to assert decode/encode invariants in tests.
+#![allow(clippy::expect_used)]
 //!   `test_BC_2_02_008_<assertion_name>()`
 //!
 //! Probe matrix (from VP-017):

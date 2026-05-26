@@ -9,6 +9,10 @@
 //! runtime. Phase 4 activates the wire path without any Phase 4 workspace changes
 //! to `monocle-proto`.
 
+// Build scripts have no caller to propagate errors to; panicking on failure is
+// the only correct behavior here.
+#![allow(clippy::expect_used)]
+
 use std::path::PathBuf;
 
 fn main() {

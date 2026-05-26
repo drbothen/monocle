@@ -8,6 +8,10 @@
 //!   `test_BC_2_02_006_<assertion_name>()`
 //!
 //! Probe matrix (from VP-016):
+
+// Test code panicking on assertion failure is correct behavior; `expect()` is
+// the idiomatic way to assert decode/encode invariants in tests.
+#![allow(clippy::expect_used)]
 //!   16.a — encode HookEnvelope, parse first wire-tag → field_number == 1, wire_type == Varint
 //!   16.b — decode FileDescriptorSet from OUT_DIR → field 1 name == "schema_version"
 //!   16.c — counter-example: encoding schema_version: 0 still produces tag 0x08 (field 1 is 0-valued)
