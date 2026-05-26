@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.11"
+version: "1.12"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-25T23:55:00Z
+timestamp: 2026-05-26T00:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -88,12 +88,12 @@ stories:
     epic: EPIC-01
     wave: 2
     points: 2
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001."
+    completed_at: "2026-05-26"
+    pr_url: "https://github.com/jmagady/monocle/pull/9"
+    notes: "Wave 2. PR #9 merged at develop @ 78dcac1. BC-2.01.003 fully satisfied. 5 adversary passes (3/3 convergence)."
 
   - id: S-005
     title: "Graceful Shutdown (10-Second Drain)"
@@ -229,19 +229,19 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 10
+  not_started: 9
   in_progress: 0
   review: 0
-  done: 6
+  done: 7
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 29
+  points_complete: 31
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.11 updates (2026-05-25T23:55:00Z):
-  # - S-010 flipped not_started → done (PR #8 merged 3926a09; BC-2.02.001 + BC-2.02.002 satisfied; 3/3 adversary convergence)
-  # - done: 5 → 6; not_started: 11 → 10; points_complete: 24 → 29
-  # - Wave 2 progress: 4/9 stories done (29/41 pts)
+  # v1.12 updates (2026-05-26T00:00:00Z):
+  # - S-004 flipped not_started → done (PR #9 merged 78dcac1; BC-2.01.003 satisfied; 5 adversary passes 3/3 convergence)
+  # - done: 6 → 7; not_started: 10 → 9; points_complete: 29 → 31
+  # - Wave 2 progress: 5/9 stories done (31/41 pts)
