@@ -42,6 +42,10 @@ use axum::{middleware, Router};
 
 use crate::auth::auth_middleware;
 use crate::body_limit::body_size_limit_middleware;
+use crate::handlers::hooks::{
+    post_hook_notification, post_hook_pre_tool_use, post_hook_prompt_submit, post_hook_session_start,
+    post_hook_stop,
+};
 use crate::handlers::shutdown::post_shutdown;
 use crate::handlers::status::get_status;
 use crate::router::unauthenticated_router;
@@ -72,6 +76,14 @@ pub fn build_server(state: Arc<DaemonState>) -> Router {
         // Registered on the authenticated router so the dual-accept auth middleware runs
         // before the handler is reached (BC-2.01.004 INV-3 + ADR-0005).
         .route("/shutdown", post(post_shutdown))
+        // Hook routes: 5 canonical endpoints (BC-2.01.004 PC-2, S-005 + S-009).
+        // S-005 registers shutdown-aware stubs that gate on AppMode::ShuttingDown.
+        // S-009 replaces the non-drain branch with full hook ingestion logic.
+        .route("/hooks/pre-tool-use", post(post_hook_pre_tool_use))
+        .route("/hooks/notification", post(post_hook_notification))
+        .route("/hooks/stop", post(post_hook_stop))
+        .route("/hooks/session-start", post(post_hook_session_start))
+        .route("/hooks/prompt-submit", post(post_hook_prompt_submit))
         // DefaultBodyLimit signals extractors (Bytes, Json, Form) to enforce 256 KiB.
         // Must appear innermost (first .layer() call) so it wraps the routes directly.
         .layer(DefaultBodyLimit::max(262144))

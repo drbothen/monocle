@@ -8,7 +8,7 @@
 //! S-005 (hook-ingestion channels).
 
 use std::sync::atomic::AtomicBool;
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 use std::time::Instant;
 
 use tokio::sync::watch;
@@ -122,6 +122,19 @@ pub struct DaemonState {
     /// the `/status` handler which already tolerates eventual consistency for floating-point
     /// fill percentages.
     pub tui_attached: AtomicBool,
+
+    /// RAII guard for the daemon lock file (BC-2.01.004 PC-7).
+    ///
+    /// `Some(lock)` — the lock file is held on disk. The graceful-shutdown handler takes
+    /// this value (leaving `None`) and calls `lock.release()` before signalling process exit.
+    ///
+    /// `None` — either the daemon has not yet acquired the lock (startup), or the lock has
+    /// already been released (shutdown path). The `POST /shutdown` handler is a no-op on
+    /// the lock when this is `None`.
+    ///
+    /// Protected by a `std::sync::Mutex` (sync, not tokio) because `DaemonLock` is not
+    /// `Send` to async task boundaries and the critical section is purely a take-and-drop.
+    pub daemon_lock: Mutex<Option<crate::lock::DaemonLock>>,
 }
 
 impl DaemonState {
@@ -141,6 +154,7 @@ impl DaemonState {
             lock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             tui_attached: AtomicBool::new(false),
+            daemon_lock: Mutex::new(None),
         }
     }
 }
