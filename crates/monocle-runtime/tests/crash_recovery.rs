@@ -302,3 +302,163 @@ fn test_BC_2_01_006_clean_graceful_no_recovery_file() {
         "clean graceful shutdown must produce no recovery file (read must return Absent)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// HIGH-002: VP-006 typed-field probes (PC-9, PC-10, PC-11)
+// ---------------------------------------------------------------------------
+
+/// VP-006 PC-9: pid field must serialize to a JSON unsigned integer >= 1.
+/// VP-006 PC-10: shutdown_reason must serialize to one of the three lowercase wire strings.
+/// VP-006 PC-11: last_app_mode must serialize to a non-empty JSON string.
+///
+/// These probes go beyond the schema presence checks in test_BC_2_01_006_checkpoint_json_schema
+/// by asserting the *type* and *value domain* of each field in the serialised output,
+/// matching the BC-2.01.006 INV-1 constraints exactly.
+#[test]
+fn test_BC_2_01_006_typed_field_probes() {
+    let checkpoint = RecoveryCheckpoint {
+        pid: 42,
+        shutdown_reason: ShutdownReason::Signal,
+        last_app_mode: "Running".to_string(),
+        shutdown_utc: "2026-05-26T10:00:00.000Z".to_string(),
+    };
+
+    let value = serde_json::to_value(&checkpoint).expect("serialisation must not fail");
+
+    // VP-006 PC-9: pid must be a JSON unsigned integer >= 1.
+    assert!(
+        value["pid"].is_u64(),
+        "pid must serialise to a JSON unsigned integer, got: {:?}",
+        value["pid"]
+    );
+    assert!(
+        value["pid"].as_u64().unwrap() >= 1,
+        "pid must be >= 1, got {}",
+        value["pid"].as_u64().unwrap()
+    );
+
+    // VP-006 PC-10: shutdown_reason must be one of the three canonical wire strings.
+    let valid_reasons = ["graceful", "signal", "forced"];
+    let reason_str = value["shutdown_reason"]
+        .as_str()
+        .expect("shutdown_reason must serialise to a JSON string");
+    assert!(
+        valid_reasons.contains(&reason_str),
+        "shutdown_reason '{}' must be one of {:?}",
+        reason_str,
+        valid_reasons
+    );
+
+    // VP-006 PC-11: last_app_mode must be a non-empty JSON string.
+    assert!(
+        value["last_app_mode"].is_string(),
+        "last_app_mode must serialise to a JSON string, got: {:?}",
+        value["last_app_mode"]
+    );
+    assert!(
+        !value["last_app_mode"].as_str().unwrap().is_empty(),
+        "last_app_mode must be non-empty"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MED-001: EC-055 overwrite — second write must replace the first
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.006 EC-055: writing a second checkpoint to the same path MUST overwrite
+/// the first atomically. Only one file must exist at the path after both writes.
+/// The second checkpoint's field values must be the ones returned by read.
+#[test]
+fn test_BC_2_01_006_overwrite_recovery_checkpoint() {
+    let dir = TempDir::new().expect("tempdir");
+    let path = dir.path().join("recovery.json");
+
+    // First write.
+    let first = RecoveryCheckpoint {
+        pid: 100,
+        shutdown_reason: ShutdownReason::Graceful,
+        last_app_mode: "Running".to_string(),
+        shutdown_utc: "2026-05-26T10:00:00.000Z".to_string(),
+    };
+    write_recovery_checkpoint(&path, &first).expect("first write must succeed");
+    assert!(path.exists(), "checkpoint file must exist after first write");
+
+    // Second write — different pid and reason.
+    let second = RecoveryCheckpoint {
+        pid: 200,
+        shutdown_reason: ShutdownReason::Signal,
+        last_app_mode: "Draining".to_string(),
+        shutdown_utc: "2026-05-26T10:00:01.000Z".to_string(),
+    };
+    write_recovery_checkpoint(&path, &second).expect("second write must succeed");
+
+    // Read back: must reflect the second checkpoint, not the first.
+    let cp = match read_recovery_checkpoint(&path) {
+        CheckpointReadResult::Valid(cp) => cp,
+        other => panic!(
+            "must return Valid after overwrite, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    };
+    assert_eq!(cp.pid, 200, "pid must reflect second write (got {})", cp.pid);
+    assert_eq!(
+        cp.shutdown_reason,
+        ShutdownReason::Signal,
+        "shutdown_reason must reflect second write"
+    );
+
+    // Exactly one file must exist at the path (no .tmp or .bak residuals).
+    let count = fs::read_dir(dir.path())
+        .expect("dir must be readable")
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("recovery")
+        })
+        .count();
+    assert_eq!(
+        count, 1,
+        "exactly one recovery* file must exist after overwrite (got {})",
+        count
+    );
+}
+
+// ---------------------------------------------------------------------------
+// LOW-001: chrono-generated timestamp matches the mandatory regex
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.006 INV-1: a timestamp produced by chrono with the canonical format string
+/// must match `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$` and must be accepted
+/// by RecoveryCheckpoint::validate().
+///
+/// This test closes the gap identified in adversary round R1 (LOW-001): the test suite
+/// previously only exercised hardcoded timestamp literals, leaving the runtime chrono
+/// formatting path untested.
+#[test]
+fn test_BC_2_01_006_chrono_generated_timestamp_matches_regex() {
+    // Generate a live timestamp using the exact format string from lifecycle.rs.
+    let ts = chrono::Utc::now()
+        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+        .to_string();
+
+    // The generated timestamp must match the canonical millisecond-precision UTC pattern.
+    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
+        .expect("regex must compile");
+    assert!(
+        re.is_match(&ts),
+        "chrono-generated timestamp '{}' must match YYYY-MM-DDTHH:MM:SS.sssZ",
+        ts
+    );
+
+    // A RecoveryCheckpoint using this timestamp must pass validate().
+    let checkpoint = RecoveryCheckpoint {
+        pid: 1,
+        shutdown_reason: ShutdownReason::Graceful,
+        last_app_mode: "Running".to_string(),
+        shutdown_utc: ts.clone(),
+    };
+    checkpoint
+        .validate()
+        .unwrap_or_else(|e| panic!("validate() must succeed for chrono-generated timestamp '{}': {}", ts, e));
+}
