@@ -1103,7 +1103,8 @@ fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside
 
     let engine = MockEngine;
     assert_eq!(engine.id(), "mock-engine");
-    let proc = ProcessSnapshot::new(1, None, vec![], 0);
+    // Use a realistic epoch (2024-05-25T16:00:00Z); 0 is the Unix epoch, not a sentinel (BC-2.03.001 PC-4).
+    let proc = ProcessSnapshot::new(1234, None, vec![], 1_716_652_800);
     assert!(!engine.detect(&proc), "mock engine detects nothing");
 }
 
@@ -1189,4 +1190,281 @@ fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_enums() {
             "{enum_name} must carry #[non_exhaustive] (SS-core-types-and-abi §General Rule)"
         );
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// F-014-P2-H01 — async-ness assertions for `metadata` and `enrich`
+// (AC-001; traces to BC-2.03.001 postcondition 1)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises AC-001 (F-014-P2-H01): `metadata` must be a sync method (asyncness.is_none()).
+///
+/// Per SS-engine-module.md v1.1.20, `metadata()` performs no I/O and must be synchronous.
+/// This is the missing async-ness assertion parallel to the existing `id` and `detect` probes.
+#[test]
+fn test_BC_2_03_001_ac001_metadata_method_is_sync() {
+    let file = parse_engine_rs();
+    let trait_item = find_engine_module_trait(&file);
+
+    let metadata_method = trait_item.items.iter().find_map(|item| {
+        if let TraitItem::Fn(m) = item {
+            if m.sig.ident == "metadata" {
+                return Some(m);
+            }
+        }
+        None
+    });
+
+    let method = metadata_method.expect("metadata method not found in EngineModule trait");
+
+    assert!(
+        method.sig.asyncness.is_none(),
+        "metadata() must be a sync method (not async) — it performs no I/O (BC-2.03.001 PC-1)"
+    );
+}
+
+/// Exercises AC-001 (F-014-P2-H01): `enrich` must be an async method (asyncness.is_some()).
+///
+/// Per SS-engine-module.md v1.1.20, `enrich()` performs engine-specific I/O and must be
+/// declared async. This is the missing async-ness assertion parallel to the existing
+/// `on_hook` probe.
+#[test]
+fn test_BC_2_03_001_ac001_enrich_method_is_async() {
+    let file = parse_engine_rs();
+    let trait_item = find_engine_module_trait(&file);
+
+    let enrich_method = trait_item.items.iter().find_map(|item| {
+        if let TraitItem::Fn(m) = item {
+            if m.sig.ident == "enrich" {
+                return Some(m);
+            }
+        }
+        None
+    });
+
+    let method = enrich_method.expect("enrich method not found in EngineModule trait");
+
+    assert!(
+        method.sig.asyncness.is_some(),
+        "enrich() must be async (BC-2.03.001 PC-1; enrich performs engine-specific I/O)"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// F-014-P2-M01 — HookResponse builder method tests
+// (AC-003; traces to BC-2.03.001 postcondition 3)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises AC-003 (F-014-P2-M01): `HookResponse::with_diagnostic` sets the diagnostic field.
+///
+/// The builder method must return a new `HookResponse` with `diagnostic` populated.
+#[test]
+fn test_BC_2_03_001_ac003_hook_response_with_diagnostic_sets_field() {
+    use monocle_core::engine::{HookDecision, HookResponse};
+
+    let response = HookResponse::new(HookDecision::Allow).with_diagnostic("test msg");
+
+    assert_eq!(
+        response.diagnostic,
+        Some("test msg".to_string()),
+        "with_diagnostic(\"test msg\") must set diagnostic to Some(\"test msg\")"
+    );
+    // Decision unchanged by builder
+    assert!(
+        matches!(response.decision, HookDecision::Allow),
+        "decision must remain Allow after with_diagnostic"
+    );
+    // redirect_url untouched
+    assert!(
+        response.redirect_url.is_none(),
+        "redirect_url must remain None when only diagnostic is set"
+    );
+}
+
+/// Exercises AC-003 (F-014-P2-M01): `HookResponse::with_redirect` sets the redirect_url field.
+///
+/// The builder method must return a new `HookResponse` with `redirect_url` populated.
+#[test]
+fn test_BC_2_03_001_ac003_hook_response_with_redirect_sets_field() {
+    use monocle_core::engine::{HookDecision, HookResponse};
+
+    let response = HookResponse::new(HookDecision::Allow).with_redirect("http://example.com");
+
+    assert_eq!(
+        response.redirect_url,
+        Some("http://example.com".to_string()),
+        "with_redirect(\"http://example.com\") must set redirect_url to Some(\"http://example.com\")"
+    );
+    // Decision unchanged
+    assert!(
+        matches!(response.decision, HookDecision::Allow),
+        "decision must remain Allow after with_redirect"
+    );
+    // diagnostic untouched
+    assert!(
+        response.diagnostic.is_none(),
+        "diagnostic must remain None when only redirect_url is set"
+    );
+}
+
+/// Exercises AC-003 (F-014-P2-M01): builder methods are chainable — both fields populated.
+///
+/// `HookResponse::new(d).with_diagnostic("d").with_redirect("r")` must populate both fields.
+#[test]
+fn test_BC_2_03_001_ac003_hook_response_builder_chaining() {
+    use monocle_core::engine::{HookDecision, HookResponse};
+
+    let response = HookResponse::new(HookDecision::Defer)
+        .with_diagnostic("blocked: policy violation")
+        .with_redirect("http://example.com/resolve");
+
+    assert_eq!(
+        response.diagnostic,
+        Some("blocked: policy violation".to_string()),
+        "diagnostic must be populated after chained with_diagnostic"
+    );
+    assert_eq!(
+        response.redirect_url,
+        Some("http://example.com/resolve".to_string()),
+        "redirect_url must be populated after chained with_redirect"
+    );
+    assert!(
+        matches!(response.decision, HookDecision::Defer),
+        "decision must be Defer (unchanged by builder chain)"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// F-014-P2-M02 — inner HookEvent struct #[non_exhaustive] audit
+// (AC-003b; traces to BC-2.03.001 invariant 2 + BC-2.02.003)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises AC-003b (F-014-P2-M02): all 5 inner HookEvent structs carry `#[non_exhaustive]`.
+///
+/// Per SS-core-types-and-abi §Non-Exhaustive Inner Structs, each inner event struct
+/// (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`,
+/// `StopEvent`) must carry `#[non_exhaustive]` to permit field additions without
+/// breaking downstream consumers.
+#[test]
+fn test_BC_2_03_001_ac003b_hook_event_inner_structs_are_non_exhaustive() {
+    let file = parse_hook_events_rs();
+
+    let required_structs = [
+        "SessionStartEvent",
+        "UserPromptSubmitEvent",
+        "PreToolUseEvent",
+        "NotificationEvent",
+        "StopEvent",
+    ];
+
+    for struct_name in required_structs {
+        let struct_item = file.items.iter().find_map(|item| {
+            if let syn::Item::Struct(s) = item {
+                if s.ident == struct_name {
+                    return Some(s);
+                }
+            }
+            None
+        });
+
+        let s = struct_item
+            .unwrap_or_else(|| panic!("{struct_name} struct not found in hook_events.rs"));
+
+        let has_non_exhaustive = s.attrs.iter().any(|attr| {
+            {
+                let path = attr.path();
+                quote::quote!(#path)
+            }
+            .to_string()
+            .contains("non_exhaustive")
+        });
+
+        assert!(
+            has_non_exhaustive,
+            "{struct_name} must carry #[non_exhaustive] \
+             (SS-core-types-and-abi §Non-Exhaustive Inner Structs, BC-2.03.001 invariant 2)"
+        );
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// F-014-P2-M03 — ProcessSnapshot::with_full_context constructor test
+// (AC-003; traces to BC-2.03.001 postcondition 3)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises AC-003 (F-014-P2-M03): `ProcessSnapshot::with_full_context` populates all 7 fields.
+///
+/// Verifies each field value is propagated correctly by the full-context constructor.
+#[test]
+fn test_BC_2_03_001_ac003_process_snapshot_with_full_context() {
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    use monocle_core::engine::ProcessSnapshot;
+
+    let exe = PathBuf::from("/usr/local/bin/claude");
+    let cwd = PathBuf::from("/home/user/project");
+    let mut env = HashMap::new();
+    env.insert("HOME".to_string(), "/home/user".to_string());
+    env.insert("TERM".to_string(), "xterm-256color".to_string());
+
+    let snap = ProcessSnapshot::with_full_context(
+        4242,
+        Some(4200),
+        Some(exe.clone()),
+        vec!["claude".to_string(), "--no-update".to_string()],
+        Some(cwd.clone()),
+        env.clone(),
+        1_716_652_800,
+    );
+
+    assert_eq!(snap.pid, 4242, "pid must be 4242");
+    assert_eq!(snap.ppid, Some(4200), "ppid must be Some(4200)");
+    assert_eq!(
+        snap.exe_path,
+        Some(exe),
+        "exe_path must match the provided path"
+    );
+    assert_eq!(
+        snap.cmdline,
+        vec!["claude".to_string(), "--no-update".to_string()],
+        "cmdline must match the provided arguments"
+    );
+    assert_eq!(
+        snap.working_dir,
+        Some(cwd),
+        "working_dir must match the provided path"
+    );
+    assert_eq!(snap.env, env, "env must match the provided HashMap");
+    assert_eq!(
+        snap.start_time_secs, 1_716_652_800,
+        "start_time_secs must be 1_716_652_800 (2024-05-25T16:00:00Z)"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// F-014-P2-L01 — realistic epoch value in mock engine test
+// (AC-006; traces to BC-2.03.001 invariant 1)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises AC-006 with a realistic epoch value for ProcessSnapshot construction.
+///
+/// The mock engine must use a realistic `start_time_secs` (not 0, which is the Unix epoch
+/// sentinel — forbidden per BC-2.03.001 PC-4 rationale). Uses 1_716_652_800 (2024-05-25).
+#[test]
+fn test_BC_2_03_001_ac006_process_snapshot_uses_realistic_epoch() {
+    use monocle_core::engine::ProcessSnapshot;
+
+    // 1_716_652_800 = 2024-05-25T16:00:00Z — realistic, non-zero, non-sentinel epoch
+    let proc = ProcessSnapshot::new(1234, None, vec![], 1_716_652_800);
+
+    assert_eq!(proc.pid, 1234, "pid must be 1234");
+    assert!(
+        proc.start_time_secs > 0,
+        "start_time_secs must be a non-zero realistic epoch value; 0 is the Unix epoch sentinel"
+    );
+    assert_eq!(
+        proc.start_time_secs, 1_716_652_800,
+        "start_time_secs must be the canonical realistic value 1_716_652_800 (2024-05-25)"
+    );
 }
