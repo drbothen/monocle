@@ -1,6 +1,6 @@
-//! Runtime directory resolution for the monocle daemon.
+//! Runtime directory resolution and daemon lifecycle (exit-code taxonomy) for the monocle daemon.
 //!
-//! Populated by S-006 (Lock File Atomic Lifecycle).
+//! Populated by S-006 (Lock File Atomic Lifecycle) and S-005 (Graceful Shutdown).
 //!
 //! # XDG / Platform Resolution Order
 //!
@@ -17,6 +17,14 @@
 //! The runtime directory MUST be created with mode `0o700` (owner-only read/write/execute)
 //! to prevent other local users from reading the lock file and extracting the auth token.
 //! `ensure_runtime_dir` enforces this via `DirBuilder::new().mode(0o700)`.
+//!
+//! # Daemon Exit-Code Taxonomy (BC-2.01.004 PC-8)
+//!
+//! [`DaemonExit`] encodes the 5-code POSIX exit taxonomy for the monocle daemon.
+//! [`exit_with`] is the **sole call-site** for `std::process::exit` in the entire codebase.
+//! No handler, task, or signal-callback may call `std::process::exit` directly.
+//! This invariant is enforced by SS-conventions-anti-patterns.md §"No `std::process::exit`
+//! in handler code" and verified by a structural source-grep test.
 
 use std::path::{Path, PathBuf};
 
@@ -120,4 +128,115 @@ pub fn ensure_runtime_dir(path: &Path) -> Result<(), DaemonStartError> {
         .recursive(true)
         .create(path)
         .map_err(DaemonStartError::RuntimeDirCreateFailure)
+}
+
+// ---------------------------------------------------------------------------
+// Daemon exit-code taxonomy (BC-2.01.004 PC-8, S-005)
+// ---------------------------------------------------------------------------
+
+/// The reason the monocle daemon is terminating.
+///
+/// Encodes the 5-code POSIX exit taxonomy from BC-2.01.004 PC-8. Every daemon termination
+/// path MUST pass through [`exit_with`], which is the **sole call-site** for
+/// `std::process::exit` in the codebase (SS-conventions-anti-patterns.md §"No
+/// `std::process::exit` in handler code").
+///
+/// # POSIX 128+N convention
+///
+/// Signal-induced exits follow the POSIX 128+N convention (128 + signal number):
+/// - SIGINT = signal 2 → exit code 130 (128+2)
+/// - SIGTERM = signal 15 → exit code 143 (128+15)
+///
+/// External monitoring systems (systemd `Restart=on-failure`, k8s
+/// `terminationGracePeriodSeconds`, CI status parsers) **MUST** use exit code 143
+/// (not 130) to detect SIGTERM hard-kill during drain. Exit 130 encodes SIGINT
+/// (Ctrl-C second press), not SIGTERM (BC-2.01.004 INV-4).
+///
+/// # Non-POSIX-128+N codes
+///
+/// - Exit `2` (AdminForceStop) is a monocle-specific code outside the POSIX 128+N
+///   range (which starts at 129). It is distinct from startup-failure exit 1 so that
+///   monitoring systems can distinguish operator-initiated force-stop from daemon
+///   startup failure.
+/// - Exit `1` (StartupFailure) is the conventional failure exit code; it covers all
+///   cases where the daemon could not start (runtime directory unresolvable, port bind
+///   failure, existing live lock file).
+/// - Exit `0` (Graceful) means all in-flight requests completed within the 10-second
+///   drain window. The lock file is removed and the UDS socket is closed before this
+///   exit fires.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DaemonExit {
+    /// All in-flight requests completed within the 10-second drain window.
+    ///
+    /// Lock file and UDS socket removed before exit. Exit code `0`.
+    Graceful,
+
+    /// Daemon failed to start (runtime directory unresolvable, port bind failure,
+    /// or existing live lock file). Exit code `1`.
+    StartupFailure,
+
+    /// A second authenticated `POST /shutdown` was received while a drain was already
+    /// in progress. Monocle-specific programmatic code (outside POSIX 128+N range).
+    /// Exit code `2`.
+    AdminForceStop,
+
+    /// A second SIGINT (signal 2, Ctrl-C) was received while a drain was in progress.
+    /// POSIX convention 128+2. Exit code `130`.
+    SigintDuringDrain,
+
+    /// A second SIGTERM (signal 15) was received while a drain was in progress, or the
+    /// 10-second drain timeout was reached. POSIX convention 128+15. Exit code `143`.
+    SigtermDuringDrain,
+}
+
+impl DaemonExit {
+    /// Map this exit reason to the OS exit code.
+    ///
+    /// | Variant | Code | Rationale |
+    /// |---------|------|-----------|
+    /// | `Graceful` | 0 | Clean drain |
+    /// | `StartupFailure` | 1 | Startup error |
+    /// | `AdminForceStop` | 2 | Second POST /shutdown during drain |
+    /// | `SigintDuringDrain` | 130 | POSIX 128+2 (SIGINT=2) |
+    /// | `SigtermDuringDrain` | 143 | POSIX 128+15 (SIGTERM=15) |
+    pub fn to_exit_code(self) -> i32 {
+        match self {
+            DaemonExit::Graceful => 0,
+            DaemonExit::StartupFailure => 1,
+            DaemonExit::AdminForceStop => 2,
+            DaemonExit::SigintDuringDrain => 130,
+            DaemonExit::SigtermDuringDrain => 143,
+        }
+    }
+}
+
+/// Terminate the daemon process with the exit code corresponding to `reason`.
+///
+/// This is the **sole call-site** for `std::process::exit` in the entire monocle codebase.
+/// All daemon termination paths MUST call this function rather than calling
+/// `std::process::exit` directly (SS-conventions-anti-patterns.md §"No
+/// `std::process::exit` in handler code").
+///
+/// On a graceful exit (`DaemonExit::Graceful`), the S-005 implementation must invoke
+/// `DaemonLock::release()` BEFORE calling this function to ensure the lock file and UDS
+/// socket are removed from the filesystem (BC-2.01.004 PC-7).
+///
+/// # Stub note (S-005 Red Gate)
+///
+/// The S-005 implementation will wire `exit_with` as the final step of the graceful
+/// shutdown sequence. During the Red Gate phase, the stub returns HTTP 501 from
+/// `handlers::shutdown::post_shutdown` and this function is not called by any test path
+/// that exercises the shutdown behavior.
+///
+/// # Returns
+///
+/// This function never returns (`-> !`). The process exits immediately.
+pub fn exit_with(reason: DaemonExit) -> ! {
+    let code = reason.to_exit_code();
+    tracing::info!(
+        exit_code = code,
+        reason = ?reason,
+        "daemon terminating"
+    );
+    std::process::exit(code)
 }

@@ -19,8 +19,9 @@ pub mod body_limit;
 pub mod errors;
 /// HTTP request handlers, organized by endpoint.
 pub mod handlers;
-/// Runtime directory resolution: [`lifecycle::resolve_runtime_dir`] and
-/// [`lifecycle::ensure_runtime_dir`] (S-006).
+/// Runtime directory resolution and daemon exit-code taxonomy:
+/// [`lifecycle::resolve_runtime_dir`], [`lifecycle::ensure_runtime_dir`] (S-006),
+/// [`lifecycle::DaemonExit`], and [`lifecycle::exit_with`] (S-005).
 pub mod lifecycle;
 /// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
 pub mod lock;

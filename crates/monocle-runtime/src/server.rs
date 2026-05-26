@@ -37,11 +37,12 @@
 use std::sync::Arc;
 
 use axum::extract::DefaultBodyLimit;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{middleware, Router};
 
 use crate::auth::auth_middleware;
 use crate::body_limit::body_size_limit_middleware;
+use crate::handlers::shutdown::post_shutdown;
 use crate::handlers::status::get_status;
 use crate::router::unauthenticated_router;
 use crate::state::DaemonState;
@@ -67,6 +68,10 @@ pub fn build_server(state: Arc<DaemonState>) -> Router {
 
     let auth_routes = Router::new()
         .route("/status", get(get_status))
+        // POST /shutdown: authenticated graceful-shutdown trigger (BC-2.01.004, S-005).
+        // Registered on the authenticated router so the dual-accept auth middleware runs
+        // before the handler is reached (BC-2.01.004 INV-3 + ADR-0005).
+        .route("/shutdown", post(post_shutdown))
         // DefaultBodyLimit signals extractors (Bytes, Json, Form) to enforce 256 KiB.
         // Must appear innermost (first .layer() call) so it wraps the routes directly.
         .layer(DefaultBodyLimit::max(262144))
