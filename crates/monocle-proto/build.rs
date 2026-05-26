@@ -21,10 +21,7 @@ fn main() {
 
     prost_build::Config::new()
         .file_descriptor_set_path(&descriptor_path)
-        .compile_protos(
-            &["proto/monocle/v1/hook_envelope.proto"],
-            &["proto/"],
-        )
+        .compile_protos(&["proto/monocle/v1/hook_envelope.proto"], &["proto/"])
         .expect("prost-build codegen failed");
 
     // Emit cargo rerun directives so the build script re-runs when proto files change.

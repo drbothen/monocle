@@ -26,9 +26,12 @@
 //! This invariant is enforced by SS-conventions-anti-patterns.md §"No `std::process::exit`
 //! in handler code" and verified by a structural source-grep test.
 
+use std::io::Write as _;
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 use crate::errors::DaemonStartError;
+use crate::types::{CheckpointReadResult, RecoveryCheckpoint};
 
 /// Resolve the monocle daemon runtime directory path.
 ///
@@ -212,6 +215,78 @@ impl DaemonExit {
             DaemonExit::SigintDuringDrain => 130,
             DaemonExit::SigtermDuringDrain => 143,
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Crash recovery checkpoint I/O (BC-2.01.006, S-007)
+// ---------------------------------------------------------------------------
+
+/// Write a crash recovery checkpoint to `path` atomically via `tempfile::persist`.
+///
+/// The checkpoint is serialised to JSON and written to a temporary file in the same
+/// directory as `path`, then renamed atomically so readers never observe a partial file.
+/// BC-2.01.006 postcondition: the checkpoint file MUST be present after the daemon
+/// writes it, even if the process is subsequently killed.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The parent directory of `path` is inaccessible.
+/// - JSON serialisation of `checkpoint` fails.
+/// - The `tempfile::persist` call fails (e.g., cross-device rename on Linux).
+pub fn write_recovery_checkpoint(
+    path: &Path,
+    checkpoint: &RecoveryCheckpoint,
+) -> anyhow::Result<()> {
+    // Validate BC-2.01.006 INV-1 field constraints before writing.
+    checkpoint.validate()?;
+
+    let json = serde_json::to_string(checkpoint)?;
+
+    let parent = path.parent().ok_or_else(|| {
+        anyhow::anyhow!(
+            "checkpoint path has no parent directory: {}",
+            path.display()
+        )
+    })?;
+
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+    tmp.write_all(json.as_bytes())?;
+
+    // Set 0o600 before persisting so the final file is always owner-only.
+    std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o600))?;
+
+    tmp.persist(path).map_err(|e| {
+        anyhow::anyhow!(
+            "failed to persist checkpoint to {}: {}",
+            path.display(),
+            e.error
+        )
+    })?;
+
+    Ok(())
+}
+
+/// Read a recovery checkpoint from `path`.
+///
+/// Returns a [`CheckpointReadResult`] distinguishing three states required by EC-054:
+/// - [`CheckpointReadResult::Valid`] — file present, valid JSON, INV-1 fields satisfied.
+/// - [`CheckpointReadResult::Malformed`] — file present but truncated, invalid JSON, or
+///   INV-1 field validation failure (e.g., `pid = 0`, empty `last_app_mode`, bad timestamp).
+/// - [`CheckpointReadResult::Absent`] — file does not exist (clean boot / graceful shutdown).
+///
+/// TUI startup is never blocked: malformed and absent both indicate no recovery needed,
+/// but the distinction allows differentiated log messages at the call site.
+pub fn read_recovery_checkpoint(path: &Path) -> CheckpointReadResult {
+    let contents = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return CheckpointReadResult::Absent,
+        Err(_) => return CheckpointReadResult::Malformed,
+    };
+    match serde_json::from_str::<RecoveryCheckpoint>(&contents) {
+        Ok(cp) if cp.validate().is_ok() => CheckpointReadResult::Valid(cp),
+        _ => CheckpointReadResult::Malformed,
     }
 }
 

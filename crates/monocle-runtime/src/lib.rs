@@ -19,9 +19,11 @@ pub mod body_limit;
 pub mod errors;
 /// HTTP request handlers, organized by endpoint.
 pub mod handlers;
-/// Runtime directory resolution and daemon exit-code taxonomy:
+/// Runtime directory resolution, daemon exit-code taxonomy, and crash recovery
+/// checkpoint I/O:
 /// [`lifecycle::resolve_runtime_dir`], [`lifecycle::ensure_runtime_dir`] (S-006),
-/// [`lifecycle::DaemonExit`], and [`lifecycle::exit_with`] (S-005).
+/// [`lifecycle::DaemonExit`], [`lifecycle::exit_with`] (S-005),
+/// [`lifecycle::write_recovery_checkpoint`], [`lifecycle::read_recovery_checkpoint`] (S-007).
 pub mod lifecycle;
 /// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
 pub mod lock;
@@ -31,3 +33,5 @@ pub mod router;
 pub mod server;
 /// Daemon shared state types: [`state::AppMode`] and [`state::DaemonState`].
 pub mod state;
+/// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
+pub mod types;

@@ -145,9 +145,8 @@ async fn post_hook_json(
         .await
         .expect("collect body")
         .to_bytes();
-    let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_else(|_| {
-        serde_json::json!({"error": "response body was not valid JSON"})
-    });
+    let value: serde_json::Value = serde_json::from_slice(&bytes)
+        .unwrap_or_else(|_| serde_json::json!({"error": "response body was not valid JSON"}));
     (status, value)
 }
 
@@ -277,11 +276,8 @@ async fn test_BC_2_01_004_post_shutdown_wrong_token_returns_401_invalid_token() 
     let state = make_state_with_token();
     // Wrong token: 64 hex chars, all zeros — format valid but value wrong.
     let wrong_token = format!("monocle-v1:{}", "0".repeat(64));
-    let (status, body) = post_shutdown_json(
-        state,
-        &[("X-Monocle-Authorization", wrong_token.as_str())],
-    )
-    .await;
+    let (status, body) =
+        post_shutdown_json(state, &[("X-Monocle-Authorization", wrong_token.as_str())]).await;
 
     assert_eq!(
         status,
@@ -485,8 +481,7 @@ async fn test_BC_2_01_004_all_hook_endpoints_return_503_during_drain() {
 
     for hook_path in hook_paths {
         let state = make_shutting_down_state_with_token();
-        let (status, body) =
-            post_hook_json(Arc::clone(&state), hook_path, TEST_TOKEN_HEX).await;
+        let (status, body) = post_hook_json(Arc::clone(&state), hook_path, TEST_TOKEN_HEX).await;
 
         assert_eq!(
             status,
@@ -729,8 +724,7 @@ fn test_BC_2_01_004_invariant_sigterm_and_sigint_exit_codes_are_distinct() {
     let sigint_code = DaemonExit::SigintDuringDrain.to_exit_code();
 
     assert_ne!(
-        sigterm_code,
-        sigint_code,
+        sigterm_code, sigint_code,
         "SigtermDuringDrain ({sigterm_code}) and SigintDuringDrain ({sigint_code}) exit codes \
         MUST be distinct (BC-2.01.004 INV-4). External monitoring (systemd, k8s) distinguishes \
         SIGTERM (143) from SIGINT (130); conflating them defeats the diagnostics contract. \
@@ -778,8 +772,7 @@ fn test_BC_2_01_004_invariant_all_5_exit_codes_are_distinct() {
             let (name_i, code_i) = codes[i];
             let (name_j, code_j) = codes[j];
             assert_ne!(
-                code_i,
-                code_j,
+                code_i, code_j,
                 "DaemonExit::{name_i} ({code_i}) and DaemonExit::{name_j} ({code_j}) have the \
                 SAME exit code — all 5 codes must be distinct (BC-2.01.004 PC-8). \
                 Counter-example: VP-004 §Counter-examples item 7+8 — shared codes prevent \
@@ -944,8 +937,7 @@ async fn test_BC_2_01_004_lock_file_absent_after_graceful_shutdown() {
     let expected_lock_path = runtime_dir.join("monocle.lock");
 
     // Acquire a real lock file at an ephemeral port.
-    let (lock, auth_token) =
-        DaemonLock::acquire(runtime_dir, 9999).expect("acquire lock file");
+    let (lock, auth_token) = DaemonLock::acquire(runtime_dir, 9999).expect("acquire lock file");
 
     // Verify lock file exists before shutdown.
     assert!(
@@ -1058,9 +1050,8 @@ async fn test_BC_2_01_004_second_post_shutdown_during_drain_returns_200() {
 fn test_BC_2_01_004_invariant_no_process_exit_in_handler_code() {
     use std::fs;
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let shutdown_src =
-        fs::read_to_string(manifest_dir.join("src/handlers/shutdown.rs"))
-            .expect("src/handlers/shutdown.rs must exist");
+    let shutdown_src = fs::read_to_string(manifest_dir.join("src/handlers/shutdown.rs"))
+        .expect("src/handlers/shutdown.rs must exist");
 
     // Helper: collect non-comment lines that contain the target string.
     let non_comment_matches = |src: &str, target: &str| -> Vec<(usize, String)> {
@@ -1109,9 +1100,8 @@ fn test_BC_2_01_004_invariant_no_process_exit_in_handler_code() {
 fn test_BC_2_01_004_invariant_exit_with_is_sole_process_exit_callsite() {
     use std::fs;
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let lifecycle_src =
-        fs::read_to_string(manifest_dir.join("src/lifecycle.rs"))
-            .expect("src/lifecycle.rs must exist");
+    let lifecycle_src = fs::read_to_string(manifest_dir.join("src/lifecycle.rs"))
+        .expect("src/lifecycle.rs must exist");
 
     // Count non-comment lines in lifecycle.rs containing std::process::exit.
     let lifecycle_exit_lines: Vec<(usize, String)> = lifecycle_src
@@ -1154,9 +1144,8 @@ fn test_BC_2_01_004_invariant_exit_with_is_sole_process_exit_callsite() {
 fn test_BC_2_01_004_invariant_shutdown_handler_does_not_import_monocle_tui() {
     use std::fs;
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let shutdown_src =
-        fs::read_to_string(manifest_dir.join("src/handlers/shutdown.rs"))
-            .expect("src/handlers/shutdown.rs must exist");
+    let shutdown_src = fs::read_to_string(manifest_dir.join("src/handlers/shutdown.rs"))
+        .expect("src/handlers/shutdown.rs must exist");
 
     let non_comment_hits: Vec<(usize, String)> = shutdown_src
         .lines()

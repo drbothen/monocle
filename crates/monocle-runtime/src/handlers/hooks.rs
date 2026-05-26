@@ -40,10 +40,9 @@ fn drain_response() -> Response {
         Json(serde_json::json!({"error": "daemon_shutting_down"})),
     )
         .into_response();
-    response.headers_mut().insert(
-        "Retry-After",
-        HeaderValue::from_static("10"),
-    );
+    response
+        .headers_mut()
+        .insert("Retry-After", HeaderValue::from_static("10"));
     response
 }
 
