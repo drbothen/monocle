@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "2.6"
+version: "2.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -52,7 +52,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
 | S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | draft | S-015 |
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | done | — |
-| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | draft | S-009 |
+| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | draft | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | draft | — |
 
@@ -369,6 +369,16 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v2.7
+
+**Wave 3 Batch A: S-008 flipped draft→done** (2026-05-26):
+- S-008 Story Registry row: `draft` → `done`. PR #15 (S-008) merged at fe4db96 on develop.
+- BC-2.01.007 fully satisfied. 13 integration tests. 5 adversary rounds (convergence with spec-text residual).
+- S-009 dependency on S-008 is now satisfied — S-009 UNBLOCKED.
+- No wave/points/BC coverage changes — story remains Wave 3, 5 pts, BC-2.01.007.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.14→v1.15 (done 12→13, not_started 4→3, points_complete 54→59); STATE.md v6.03→v6.04.
+- STORY-INDEX version bumped v2.6→v2.7.
 
 ## §Trace v2.6
 
