@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.10"
+version: "1.11"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-05-25T23:30:00Z
+timestamp: 2026-05-25T23:55:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -136,12 +136,12 @@ stories:
     epic: EPIC-02
     wave: 2
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 2. Depends on S-001. Covers BC-2.02.001 + BC-2.02.002."
+    completed_at: "2026-05-25"
+    pr_url: "https://github.com/jmagady/monocle/pull/8"
+    notes: "Wave 2. PR #8 merged at develop @ 3926a09. BC-2.02.001 + BC-2.02.002 fully satisfied. 3/3 adversary convergence."
 
   - id: S-011
     title: "Non-Exhaustive Enum Policy (FC-02)"
@@ -229,19 +229,19 @@ stories:
 
 summary:
   total_stories: 17
-  not_started: 11
+  not_started: 10
   in_progress: 0
   review: 0
-  done: 5
+  done: 6
   ready: 0
   blocked: 1
   total_points: 86
-  points_complete: 24
+  points_complete: 29
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
-  # v1.10 updates (2026-05-25T23:30:00Z):
-  # - S-006 flipped not_started → done (PR #7 merged a43f71a; 30 tests; BC-2.01.005 + BC-2.01.008 + BC-2.01.010 satisfied)
-  # - done: 4 → 5; not_started: 12 → 11; points_complete: 16 → 24
-  # - Wave 2 progress: 3/9 stories done (24/41 pts)
+  # v1.11 updates (2026-05-25T23:55:00Z):
+  # - S-010 flipped not_started → done (PR #8 merged 3926a09; BC-2.02.001 + BC-2.02.002 satisfied; 3/3 adversary convergence)
+  # - done: 5 → 6; not_started: 11 → 10; points_complete: 24 → 29
+  # - Wave 2 progress: 4/9 stories done (29/41 pts)
