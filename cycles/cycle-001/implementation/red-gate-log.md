@@ -846,3 +846,101 @@ the standard development environment; no special setup needed for CI.
 - `cargo test -p monocle-core --test factory_self_referential` → 19 passed, 0 failed
 - `cargo test --workspace` → 0 new failures beyond S-012 tests (363 total should all pass)
 - `cargo clippy --workspace -- -D warnings` → clean
+
+---
+
+---
+document_type: red-gate-log
+story_id: S-015
+step: 3
+branch: develop
+timestamp: 2026-05-26T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-015 Step 3 (ClaudeCodeModule)
+
+## Summary
+
+**Status: RED GATE VERIFIED (PARTIAL)**
+
+17 tests in `engine_module_claude.rs` PASS — these cover already-implemented methods
+(`detect()`, `id()`, `hook_paths()`, `on_hook()`, and `spawn()`/`preflight()` todo stubs).
+2 tests in `engine_module_home_unresolvable.rs` FAIL with `todo!()` panic — these cover
+`metadata()` and `enrich()` which are not yet implemented.
+
+This is the correct Red Gate posture: methods with stub implementations have tests that
+exercise and verify those stubs. Methods with `todo!()` body have tests that FAIL until the
+implementer writes `BaseDirs::new()` logic.
+
+`cargo test --workspace --no-run` succeeds (clean compile). `cargo clippy` not re-run
+(previous wave-gate passed; no new source changes in non-test files).
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-runtime/tests/engine_module_claude.rs` | 17 | 17 | 0 |
+| `crates/monocle-runtime/tests/engine_module_home_unresolvable.rs` | 2 | 0 | 2 |
+
+## Tests That Pass (17 — correctly passing stubs verified)
+
+| Test | BC Clause | Rationale for Pass |
+|------|-----------|--------------------|
+| `test_BC_2_03_002_detect_true_for_claude_basename` | BC-2.03.002 PC-4 | `detect()` implemented |
+| `test_BC_2_03_002_detect_true_for_claude_js_basename` | BC-2.03.002 PC-4 EC-034 | `detect()` implemented |
+| `test_BC_2_03_002_detect_false_for_claude_squad` | BC-2.03.002 PC-4 EC-035 | `detect()` implemented |
+| `test_BC_2_03_002_detect_false_for_claudio` | BC-2.03.002 PC-4 | `detect()` implemented |
+| `test_BC_2_03_002_detect_false_for_exe_path_none` | BC-2.03.002 PC-5 EC-032 | `detect()` implemented |
+| `test_BC_2_03_002_detect_false_case_sensitive` | BC-2.03.002 PC-4 | `detect()` implemented |
+| `test_BC_2_03_002_detect_false_for_claude_code_basename` | BC-2.03.002 PC-4 | `detect()` implemented |
+| `test_BC_2_03_002_id_returns_claude_code` | BC-2.03.002 PC-3 | `id()` implemented |
+| `test_BC_2_03_004_hook_paths_returns_exactly_5_entries` | BC-2.03.004 PC-1 VP-022 | `hook_paths()` implemented |
+| `test_BC_2_03_004_hook_paths_contains_correct_paths` | BC-2.03.004 PC-1 | `hook_paths()` implemented |
+| `test_BC_2_03_001_on_hook_session_start_returns_allow` | BC-2.03.001 EC-031 | `on_hook()` implemented |
+| `test_BC_2_03_001_on_hook_pre_tool_use_returns_allow` | BC-2.03.001 EC-031 | `on_hook()` implemented |
+| `test_BC_2_03_001_on_hook_notification_returns_allow` | BC-2.03.001 EC-031 | `on_hook()` implemented |
+| `test_BC_2_03_001_on_hook_stop_returns_allow` | BC-2.03.001 EC-031 | `on_hook()` implemented |
+| `test_BC_2_03_001_on_hook_user_prompt_submit_returns_allow` | BC-2.03.001 EC-031 | `on_hook()` implemented |
+| `test_BC_2_03_004_spawn_is_todo_stub` | BC-2.03.004 PC-2 EC-038 | `#[should_panic]` — panics as expected per spec |
+| `test_BC_2_03_004_preflight_is_todo_stub` | BC-2.03.004 PC-3 EC-039 | `#[should_panic]` — panics as expected per spec |
+
+## Tests That Fail (2 — Red Gate confirmed)
+
+| Test | BC Clause | Failure Reason |
+|------|-----------|----------------|
+| `test_BC_2_03_003_metadata_home_unresolvable` | BC-2.03.003 PC-1 AC-005 | `metadata()` is `todo!()` stub |
+| `test_BC_2_03_003_enrich_home_unresolvable` | BC-2.03.003 PC-1 AC-005 | `enrich()` is `todo!()` stub |
+
+Both failures produce:
+> `not yet implemented: S-015: ClaudeCodeModule::metadata — implement with BaseDirs::new()`
+> `not yet implemented: S-015: ClaudeCodeModule::enrich — implement with BaseDirs::new()`
+
+## Notes for Implementer
+
+- Root cause of both failures: `metadata()` and `enrich()` contain `todo!()` stubs.
+  Replacing each stub with `directories::BaseDirs::new()` → `None` → `Err(HomeUnresolvable)` logic
+  will make both tests pass — but ONLY when HOME/USERPROFILE/HOMEDRIVE/HOMEPATH are all unset
+  (the `temp_env::async_with_vars` harness ensures this).
+- The 17 passing tests must REMAIN passing after implementation. They guard detect(), id(),
+  hook_paths(), and on_hook() behavior — the implementer must not disturb these.
+- `serde_json::from_str` is the canonical construction path for `#[non_exhaustive]` HookEvent
+  inner structs from outside monocle-core (E0639 blocks struct literal construction).
+- `tracing::error!` must emit `E-ENG-001` text before returning `Err(HomeUnresolvable)` per AC-006
+  (BC-2.03.003 PC-2). The HomeUnresolvable tests do not currently assert the log output — this
+  is a known gap. The AC-006 log assertion is deferred to implementer verification.
+
+## BC Coverage
+
+| BC | Clauses Covered | Tests |
+|----|-----------------|-------|
+| BC-2.03.001 | EC-031 (fail-open wildcard), PC-6 (detect I/O-free) | `on_hook_*` (5 tests) |
+| BC-2.03.002 | PC-3 (id), PC-4 (detect strict basename), PC-5 (None exe_path) | `detect_*` (7), `id_*` (1) |
+| BC-2.03.003 | PC-1 (HomeUnresolvable on metadata/enrich) | `metadata_home_unresolvable`, `enrich_home_unresolvable` |
+| BC-2.03.004 | PC-1 (hook_paths 5 entries), PC-2 (spawn stub), PC-3 (preflight stub) | `hook_paths_*` (2), `spawn_*` (1), `preflight_*` (1) |
+
+## Confirm after implementation
+- `cargo test -p monocle-runtime --test engine_module_claude` → 17 passed, 0 failed
+- `cargo test -p monocle-runtime --test engine_module_home_unresolvable` → 2 passed, 0 failed
+- `cargo test --workspace` → 0 regressions in prior tests
+- `cargo clippy --workspace -- -D warnings` → clean
