@@ -10,6 +10,11 @@
 /// Auth middleware implementing dual-accept header validation (ADR-0005, BC-2.01.009).
 /// Extended by S-006 to include [`auth::generate_session_token`].
 pub mod auth;
+/// Body-size enforcement middleware for the authenticated router (S-004).
+///
+/// Provides [`body_limit::body_size_limit_middleware`] — a `from_fn` middleware that
+/// returns HTTP 413 with a JSON body when `Content-Length` exceeds 256 KiB.
+pub mod body_limit;
 /// Error types for daemon startup and lock-file lifecycle (S-006).
 pub mod errors;
 /// HTTP request handlers, organized by endpoint.
