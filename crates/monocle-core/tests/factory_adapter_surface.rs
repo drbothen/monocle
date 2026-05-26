@@ -304,8 +304,8 @@ fn test_BC_FACTORY_001_factory_state_custom_fields_uses_serde_yaml_ng_not_json()
             .unwrap_or(false)
     });
 
-    let field = custom_fields_field
-        .expect("FactoryState must have a `custom_fields` field (AC-004)");
+    let field =
+        custom_fields_field.expect("FactoryState must have a `custom_fields` field (AC-004)");
 
     let field_ty_ts = {
         let ty = &field.ty;
@@ -348,12 +348,10 @@ fn test_BC_FACTORY_001_factory_state_awaiting_is_option_string() {
 
     let s = factory_state.expect("FactoryState struct not found in factory/mod.rs");
 
-    let awaiting_field = s.fields.iter().find(|f| {
-        f.ident
-            .as_ref()
-            .map(|id| id == "awaiting")
-            .unwrap_or(false)
-    });
+    let awaiting_field = s
+        .fields
+        .iter()
+        .find(|f| f.ident.as_ref().map(|id| id == "awaiting").unwrap_or(false));
 
     let field = awaiting_field.expect("FactoryState must have an `awaiting` field (AC-004)");
 

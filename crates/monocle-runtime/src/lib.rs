@@ -15,6 +15,9 @@ pub mod auth;
 /// Provides [`body_limit::body_size_limit_middleware`] — a `from_fn` middleware that
 /// returns HTTP 413 with a JSON body when `Content-Length` exceeds 256 KiB.
 pub mod body_limit;
+/// Engine module implementations: [`engine::ClaudeCodeModule`] and supporting types
+/// (`SpawnArgs`, `SessionHandle`, `EngineVersion`, `SpawnError`, `PreflightError`) (S-015).
+pub mod engine;
 /// Error types for daemon startup and lock-file lifecycle (S-006).
 pub mod errors;
 /// HTTP request handlers, organized by endpoint.
@@ -39,6 +42,3 @@ pub mod server;
 pub mod state;
 /// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
 pub mod types;
-/// Engine module implementations: [`engine::ClaudeCodeModule`] and supporting types
-/// (`SpawnArgs`, `SessionHandle`, `EngineVersion`, `SpawnError`, `PreflightError`) (S-015).
-pub mod engine;

@@ -45,7 +45,9 @@ impl VsddFactoryAdapter {
 /// closing `---` line. Returns `None` if no valid frontmatter block is found.
 fn extract_frontmatter(content: &str) -> Option<&str> {
     // Must start with "---\n" or "---\r\n"
-    let after_open = content.strip_prefix("---\n").or_else(|| content.strip_prefix("---\r\n"))?;
+    let after_open = content
+        .strip_prefix("---\n")
+        .or_else(|| content.strip_prefix("---\r\n"))?;
 
     // Find the closing "---" on its own line
     // We search for "\n---" followed by end-of-string, newline, or "\r\n"
@@ -77,8 +79,14 @@ fn parse_scalar_value(raw_value: &str) -> Option<String> {
     }
 
     // Guard 4: block scalar markers
-    if v == "|" || v.starts_with("| ") || v.starts_with("|+") || v.starts_with("|-")
-        || v == ">" || v.starts_with("> ") || v.starts_with(">+") || v.starts_with(">-")
+    if v == "|"
+        || v.starts_with("| ")
+        || v.starts_with("|+")
+        || v.starts_with("|-")
+        || v == ">"
+        || v.starts_with("> ")
+        || v.starts_with(">+")
+        || v.starts_with(">-")
     {
         return None;
     }
@@ -186,10 +194,8 @@ impl FactoryAdapter for VsddFactoryAdapter {
 
         // Step 4: check for `document_type: pipeline-state` in frontmatter
         let fields = parse_frontmatter_fields(frontmatter);
-        let is_vsdd = fields
-            .get("document_type")
-            .and_then(|v| v.as_deref())
-            == Some("pipeline-state");
+        let is_vsdd =
+            fields.get("document_type").and_then(|v| v.as_deref()) == Some("pipeline-state");
 
         if !is_vsdd {
             return None;

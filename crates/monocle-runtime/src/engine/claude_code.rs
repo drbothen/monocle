@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use monocle_core::engine::{
-    EnrichedSession, EngineMetadata, EngineMetadataError, EngineModule, HookDecision, HookResponse,
+    EngineMetadata, EngineMetadataError, EngineModule, EnrichedSession, HookDecision, HookResponse,
     ProcessSnapshot,
 };
 use monocle_core::hook_events::HookEvent;

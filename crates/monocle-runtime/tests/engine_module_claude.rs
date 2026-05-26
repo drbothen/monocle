@@ -49,7 +49,7 @@
 
 use std::path::PathBuf;
 
-use monocle_core::engine::{HookDecision, EngineModule, ProcessSnapshot};
+use monocle_core::engine::{EngineModule, HookDecision, ProcessSnapshot};
 use monocle_core::hook_events::{HookEvent, HookType};
 use monocle_runtime::engine::{ClaudeCodeModule, SpawnArgs};
 
@@ -247,14 +247,17 @@ fn test_BC_2_03_004_hook_paths_contains_correct_paths() {
 #[tokio::test]
 async fn test_BC_2_03_001_on_hook_session_start_returns_allow() {
     let m = module();
-    let event: HookEvent = serde_json::from_str(r#"{
+    let event: HookEvent = serde_json::from_str(
+        r#"{
         "SessionStart": {
             "cwd": "/tmp/project",
             "transcript_path": "/tmp/transcript.json",
             "session_id": "test-session-id",
             "pid": 42
         }
-    }"#).expect("SessionStart JSON must deserialize");
+    }"#,
+    )
+    .expect("SessionStart JSON must deserialize");
     let response = m.on_hook(event).await;
     assert_eq!(
         response.decision,
@@ -267,14 +270,17 @@ async fn test_BC_2_03_001_on_hook_session_start_returns_allow() {
 #[tokio::test]
 async fn test_BC_2_03_001_on_hook_pre_tool_use_returns_allow() {
     let m = module();
-    let event: HookEvent = serde_json::from_str(r#"{
+    let event: HookEvent = serde_json::from_str(
+        r#"{
         "PreToolUse": {
             "tool_name": "Bash",
             "tool_input": {"command": "ls"},
             "session_id": "test-session-id",
             "pid": 42
         }
-    }"#).expect("PreToolUse JSON must deserialize");
+    }"#,
+    )
+    .expect("PreToolUse JSON must deserialize");
     let response = m.on_hook(event).await;
     assert_eq!(
         response.decision,
@@ -287,7 +293,8 @@ async fn test_BC_2_03_001_on_hook_pre_tool_use_returns_allow() {
 #[tokio::test]
 async fn test_BC_2_03_001_on_hook_notification_returns_allow() {
     let m = module();
-    let event: HookEvent = serde_json::from_str(r#"{
+    let event: HookEvent = serde_json::from_str(
+        r#"{
         "Notification": {
             "notification_type": "permission_prompt",
             "tool_name": "Bash",
@@ -296,7 +303,9 @@ async fn test_BC_2_03_001_on_hook_notification_returns_allow() {
             "session_id": "test-session-id",
             "pid": 42
         }
-    }"#).expect("Notification JSON must deserialize");
+    }"#,
+    )
+    .expect("Notification JSON must deserialize");
     let response = m.on_hook(event).await;
     assert_eq!(
         response.decision,
@@ -309,13 +318,16 @@ async fn test_BC_2_03_001_on_hook_notification_returns_allow() {
 #[tokio::test]
 async fn test_BC_2_03_001_on_hook_stop_returns_allow() {
     let m = module();
-    let event: HookEvent = serde_json::from_str(r#"{
+    let event: HookEvent = serde_json::from_str(
+        r#"{
         "Stop": {
             "stop_reason": "end_turn",
             "session_id": "test-session-id",
             "pid": 42
         }
-    }"#).expect("Stop JSON must deserialize");
+    }"#,
+    )
+    .expect("Stop JSON must deserialize");
     let response = m.on_hook(event).await;
     assert_eq!(
         response.decision,
@@ -328,13 +340,16 @@ async fn test_BC_2_03_001_on_hook_stop_returns_allow() {
 #[tokio::test]
 async fn test_BC_2_03_001_on_hook_user_prompt_submit_returns_allow() {
     let m = module();
-    let event: HookEvent = serde_json::from_str(r#"{
+    let event: HookEvent = serde_json::from_str(
+        r#"{
         "UserPromptSubmit": {
             "prompt": "Write a test for me",
             "session_id": "test-session-id",
             "pid": 42
         }
-    }"#).expect("UserPromptSubmit JSON must deserialize");
+    }"#,
+    )
+    .expect("UserPromptSubmit JSON must deserialize");
     let response = m.on_hook(event).await;
     assert_eq!(
         response.decision,
