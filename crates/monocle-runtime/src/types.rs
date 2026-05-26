@@ -66,6 +66,7 @@ impl RecoveryCheckpoint {
 /// Three-state return from [`crate::lifecycle::read_recovery_checkpoint`] that allows
 /// callers to distinguish between a missing file (clean boot) and a malformed file
 /// (crash mid-write or corruption) — required by EC-054 for differentiated log messages.
+#[derive(Debug)]
 pub enum CheckpointReadResult {
     /// File exists and contains a valid, field-validated checkpoint.
     Valid(RecoveryCheckpoint),

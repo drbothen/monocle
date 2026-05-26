@@ -462,3 +462,78 @@ fn test_BC_2_01_006_chrono_generated_timestamp_matches_regex() {
         .validate()
         .unwrap_or_else(|e| panic!("validate() must succeed for chrono-generated timestamp '{}': {}", ts, e));
 }
+
+// ---------------------------------------------------------------------------
+// Adversary R2 negative-path tests: validate() rejection cases
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.006 INV-1 / validate() precondition: pid == 0 is not a valid POSIX PID.
+/// validate() MUST return Err when pid is 0.
+#[test]
+fn test_BC_2_01_006_validate_rejects_pid_zero() {
+    let cp = RecoveryCheckpoint {
+        pid: 0,
+        shutdown_reason: ShutdownReason::Graceful,
+        last_app_mode: "Running".into(),
+        shutdown_utc: "2026-05-26T10:00:00.000Z".into(),
+    };
+    assert!(cp.validate().is_err(), "validate() must reject pid == 0");
+}
+
+/// BC-2.01.006 INV-1 / validate() precondition: last_app_mode must be non-empty.
+/// validate() MUST return Err when last_app_mode is the empty string.
+#[test]
+fn test_BC_2_01_006_validate_rejects_empty_app_mode() {
+    let cp = RecoveryCheckpoint {
+        pid: 1,
+        shutdown_reason: ShutdownReason::Signal,
+        last_app_mode: "".into(),
+        shutdown_utc: "2026-05-26T10:00:00.000Z".into(),
+    };
+    assert!(
+        cp.validate().is_err(),
+        "validate() must reject empty last_app_mode"
+    );
+}
+
+/// BC-2.01.006 INV-1 / validate() precondition: shutdown_utc must carry millisecond precision.
+/// `2026-05-26T10:00:00Z` (seconds-only, no fractional component) does NOT match
+/// `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$` — validate() MUST return Err.
+#[test]
+fn test_BC_2_01_006_validate_rejects_seconds_only_timestamp() {
+    let cp = RecoveryCheckpoint {
+        pid: 1,
+        shutdown_reason: ShutdownReason::Forced,
+        last_app_mode: "Running".into(),
+        shutdown_utc: "2026-05-26T10:00:00Z".into(),
+    };
+    assert!(
+        cp.validate().is_err(),
+        "validate() must reject a timestamp without millisecond precision"
+    );
+}
+
+/// BC-2.01.006 PC-5 / EC-054: a checkpoint file with structurally-valid JSON but
+/// an INV-1-violating field value (pid == 0) MUST cause read_recovery_checkpoint
+/// to return CheckpointReadResult::Malformed, not Valid.
+///
+/// This exercises the path where JSON deserialisation succeeds but validate() rejects
+/// the checkpoint — the caller must receive Malformed so it can emit the correct log
+/// message (differentiated from a truncation/JSON-parse failure per EC-054).
+#[test]
+fn test_BC_2_01_006_read_returns_malformed_for_invalid_fields() {
+    let dir = TempDir::new().expect("tempdir");
+    let path = dir.path().join("recovery.json");
+
+    // Structurally valid JSON with pid == 0, which violates INV-1.
+    let json =
+        r#"{"pid":0,"shutdown_reason":"graceful","last_app_mode":"Running","shutdown_utc":"2026-05-26T10:00:00.000Z"}"#;
+    fs::write(&path, json).expect("manual write");
+
+    let result = read_recovery_checkpoint(&path);
+
+    assert!(
+        matches!(result, CheckpointReadResult::Malformed),
+        "read_recovery_checkpoint must return Malformed when JSON is valid but INV-1 is violated (pid == 0)"
+    );
+}
