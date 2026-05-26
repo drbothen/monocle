@@ -120,27 +120,21 @@ impl RingBuffer {
         line.push('\n');
 
         use std::io::Write as _;
+        #[cfg(unix)]
+        let mut file = {
+            use std::os::unix::fs::OpenOptionsExt as _;
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .mode(0o600) // Set permissions at creation time (SS-daemon-lifecycle L693)
+                .open(&self.path)?
+        };
+        #[cfg(not(unix))]
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.path)?;
         file.write_all(line.as_bytes())?;
-
-        // F-002: set 0o600 on each open so newly-created files are always restricted
-        // (SS-daemon-lifecycle L693). The call is best-effort; we don't fail the push
-        // if the OS rejects it (e.g., we don't own the file on some test harnesses).
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt as _;
-            let perms = std::fs::Permissions::from_mode(0o600);
-            if let Err(e) = std::fs::set_permissions(&self.path, perms) {
-                tracing::warn!(
-                    error = %e,
-                    path = %self.path.display(),
-                    "ring file chmod 0o600 failed; continuing"
-                );
-            }
-        }
 
         if let Err(e) = file.flush() {
             // E-RING-001: callers log at WARN and continue (AC-005).
@@ -159,16 +153,16 @@ impl RingBuffer {
         Ok(())
     }
 
-    /// Rotate the ring file when it exceeds the soft threshold or hard cap.
+    /// Rotate the ring file when it exceeds the soft threshold.
     ///
     /// Implements the `.1`...`.N` cascade: oldest rotated file is removed first, then
     /// each existing rotated file is incremented (`k` → `k+1`), and the active file
     /// becomes `.1`. The caller's next push will create a fresh active file.
     ///
     /// Rotation triggers when the active file size meets or exceeds
-    /// `config.soft_threshold_bytes` **or** `config.hard_cap_bytes`. The hard cap is a
-    /// mandatory upper bound — a single oversized record that causes the file to exceed
-    /// `hard_cap_bytes` will force rotation immediately on the same push (F-004).
+    /// `config.soft_threshold_bytes`. The hard cap is implicitly enforced because
+    /// `soft_threshold_bytes <= hard_cap_bytes` — any file exceeding the hard cap has
+    /// already exceeded the soft threshold and triggered rotation.
     pub fn rotate_if_needed(&self) -> Result<(), RingError> {
         // Check current file size; if it doesn't exist yet, nothing to rotate.
         let size = match std::fs::metadata(&self.path) {
@@ -177,9 +171,11 @@ impl RingBuffer {
             Err(e) => return Err(RingError::Io(e)),
         };
 
-        // F-004: rotate on soft threshold OR hard cap breach.
-        let needs_rotation = size >= self.config.soft_threshold_bytes
-            || size >= self.config.hard_cap_bytes;
+        // Rotate when the active file exceeds the soft threshold.
+        // The hard cap (config.hard_cap_bytes) is implicitly enforced because
+        // soft_threshold_bytes <= hard_cap_bytes — any file that exceeds the hard
+        // cap has already exceeded the soft threshold and triggered rotation.
+        let needs_rotation = size >= self.config.soft_threshold_bytes;
         if !needs_rotation {
             return Ok(());
         }
