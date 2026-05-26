@@ -33,8 +33,8 @@
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
-use monocle_core::factory::{FactoryAdapter, FactoryReadError};
 use monocle_core::factory::vsdd::VsddFactoryAdapter;
+use monocle_core::factory::{FactoryAdapter, FactoryReadError};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Fixture helpers
@@ -49,8 +49,8 @@ fn write_fixture(dest: &Path, content: &[u8]) {
     let dir = dest
         .parent()
         .expect("fixture path must have a parent directory");
-    let mut named = tempfile::NamedTempFile::new_in(dir)
-        .expect("cannot create NamedTempFile for test fixture");
+    let mut named =
+        tempfile::NamedTempFile::new_in(dir).expect("cannot create NamedTempFile for test fixture");
     named
         .write_all(content)
         .expect("cannot write test fixture content to NamedTempFile");
@@ -100,9 +100,7 @@ fn write_body_only_state_md_in_dir(dir: &Path) -> std::io::Result<()> {
          This body contains document_type: pipeline-state but it is NOT in the frontmatter.\n";
     let mut named = tempfile::NamedTempFile::new_in(&factory_dir)?;
     named.write_all(content)?;
-    named
-        .persist(&state_path)
-        .map_err(|e| e.error)?;
+    named.persist(&state_path).map_err(|e| e.error)?;
     Ok(())
 }
 
@@ -246,13 +244,11 @@ fn test_BC_FACTORY_002_vsdd_adapter_self_referential_detection() {
 
     let det = detection.unwrap();
     assert_eq!(
-        det.display_name,
-        "VSDD Factory",
+        det.display_name, "VSDD Factory",
         "FactoryDetection::display_name must be \"VSDD Factory\" (AC-006, VP-015)"
     );
     assert_eq!(
-        det.workspace_root,
-        repo_root,
+        det.workspace_root, repo_root,
         "FactoryDetection::workspace_root must match the provided workspace root (AC-006)"
     );
     assert_eq!(
@@ -546,8 +542,7 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_empty_value_yields_none() {
 /// Traces to: BC-2.02.005 PC-4; AC-013 guard 2; EC-061; EC-022.
 #[test]
 fn test_BC_FACTORY_002_vsdd_parse_guard_empty_quoted_value_yields_none() {
-    let tmp =
-        tempfile::tempdir().expect("cannot create tempdir for guard_empty_quoted_value test");
+    let tmp = tempfile::tempdir().expect("cannot create tempdir for guard_empty_quoted_value test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     write_fixture(
@@ -737,8 +732,7 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_block_scalar_folded_yields_none() {
 /// Traces to: BC-2.02.005 PC-4; AC-013 guard 1.
 #[test]
 fn test_BC_FACTORY_002_vsdd_parse_guard_continuation_line_yields_none() {
-    let tmp =
-        tempfile::tempdir().expect("cannot create tempdir for guard_continuation_line test");
+    let tmp = tempfile::tempdir().expect("cannot create tempdir for guard_continuation_line test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     // The value on the NEXT line starts with whitespace (continuation line pattern)
@@ -771,8 +765,7 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_continuation_line_yields_none() {
 /// Traces to: BC-2.02.005 PC-4; AC-008; E-FACT-002.
 #[test]
 fn test_BC_FACTORY_002_vsdd_adapter_read_state_parse_error_no_frontmatter() {
-    let tmp =
-        tempfile::tempdir().expect("cannot create tempdir for read_state_parse_error test");
+    let tmp = tempfile::tempdir().expect("cannot create tempdir for read_state_parse_error test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     // File exists but has no frontmatter at all (not a valid VSDD state file)
@@ -826,11 +819,9 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_parse_error_no_frontmatter() {
 /// Traces to: BC-2.02.005 PC-1; matches() postcondition.
 #[test]
 fn test_BC_FACTORY_002_matches_returns_true_for_vsdd_workspace() {
-    let tmp = tempfile::tempdir()
-        .expect("cannot create tempdir for matches_true test");
+    let tmp = tempfile::tempdir().expect("cannot create tempdir for matches_true test");
     let factory_dir = tmp.path().join(".factory");
-    std::fs::create_dir_all(&factory_dir)
-        .expect("cannot create .factory dir");
+    std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     let state_path = factory_dir.join("STATE.md");
 
     write_fixture(
@@ -868,8 +859,7 @@ fn test_BC_FACTORY_002_matches_returns_true_for_vsdd_workspace() {
 /// Traces to: BC-2.02.005 PC-1; matches() postcondition.
 #[test]
 fn test_BC_FACTORY_002_matches_returns_false_for_non_factory_dir() {
-    let tmp = tempfile::tempdir()
-        .expect("cannot create tempdir for matches_false test");
+    let tmp = tempfile::tempdir().expect("cannot create tempdir for matches_false test");
     // Intentionally do NOT create .factory/STATE.md
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
