@@ -78,6 +78,7 @@ impl Default for RotationConfig {
 }
 
 /// Error type for ring buffer operations (E-RING-001 taxonomy).
+#[non_exhaustive]
 #[derive(Debug, thiserror::Error)]
 pub enum RingError {
     /// Underlying I/O failure during flush or rotation.
