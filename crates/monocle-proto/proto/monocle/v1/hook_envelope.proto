@@ -1,0 +1,55 @@
+// monocle-proto/proto/monocle/v1/hook_envelope.proto
+syntax = "proto3";
+package monocle.v1;
+
+// HookEnvelope is the canonical wire message for every hook event.
+// Phase 1 defines this schema; Phase 4 activates the wire path.
+// Field numbers 1-99: stable Phase 1 core fields.
+// Field numbers 100-999: reserved for Phase 4 federation additions.
+// Field numbers 1000+: reserved for Phase 5+.
+message HookEnvelope {
+  uint32 schema_version = 1;  // Always 1 for Phase 1 messages.
+  string session_id      = 2; // Claude Code session identifier.
+  int64  timestamp_micros = 3; // Event timestamp, UTC microseconds since Unix epoch.
+  uint32 pid             = 4;  // PID of the Claude Code process that fired the hook.
+
+  oneof event {
+    SessionStartEvent    session_start  = 10;
+    UserPromptSubmitEvent prompt_submit = 11;
+    PreToolUseEvent      pre_tool_use   = 12;
+    NotificationEvent    notification   = 13;
+    StopEvent            stop           = 14;
+  }
+}
+
+// SessionStart hook — fired when a Claude Code session begins.
+message SessionStartEvent {
+  string cwd             = 1; // Working directory of the session.
+  string transcript_path = 2; // Absolute path to Claude Code's session transcript.
+}
+
+// UserPromptSubmit hook — fired when the user submits a prompt.
+message UserPromptSubmitEvent {
+  string prompt = 1; // The submitted prompt text (may be truncated at 64KiB).
+}
+
+// PreToolUse hook — fired before Claude Code executes a tool.
+// monocle's response (exit code + optional JSON output) determines
+// whether Claude Code proceeds. Fail-open: non-response = proceed.
+message PreToolUseEvent {
+  string tool_name  = 1; // Name of the tool about to be invoked.
+  bytes  tool_input = 2; // JSON-encoded tool input arguments (raw bytes).
+}
+
+// Notification hook — fired for assistant messages and permission prompts.
+message NotificationEvent {
+  string notification_type = 1; // "permission_prompt" or "assistant_message".
+  string tool_name         = 2; // Populated when notification_type = "permission_prompt".
+  bytes  tool_input        = 3; // JSON-encoded tool input; populated on permission prompts.
+  string message           = 4; // Human-readable notification body (may be large; see BC-2.01.003).
+}
+
+// Stop hook — fired when a Claude Code session ends (agentic loop complete).
+message StopEvent {
+  string stop_reason = 1; // "end_turn" | "max_tokens" | "tool_use" | "error".
+}
