@@ -284,7 +284,7 @@ fn monocle_core_declares_phase1_modules() {
     let root = workspace_root();
     let lib = fs::read_to_string(root.join("crates/monocle-core/src/lib.rs"))
         .expect("monocle-core/src/lib.rs must exist");
-    for module in ["engine", "factory", "abi"] {
+    for module in ["engine", "hook_events", "factory", "abi"] {
         assert!(
             lib.contains(&format!("pub mod {}", module))
                 || lib.contains(&format!("pub mod {} ", module)),

@@ -63,6 +63,9 @@ prost-build = "=0.14.1"
 # violating the least-privilege principle for dev dependencies.
 # See SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
 syn = { version = "2", features = ["full"] }
+# quote: required by monocle-core AST audit tests (VP-019); proc-macro token-stream
+# construction for syn 2 round-trip assertions in engine_module_surface.rs.
+quote = "1"
 
 [workspace.lints.clippy]
 # Lint level: deny disallowed methods (the actual method list lives in clippy.toml
