@@ -5,12 +5,12 @@
 //!
 //! # Behavioral contract
 //!
-//! BC-2.01.001 Invariant 2 (body limit on authenticated router only):
+//! BC-2.01.003 Invariant 2 (body limit on authenticated router only):
 //! > `DefaultBodyLimit::max(256 * 1024)` MUST be applied to the authenticated router.
 //! > Exceeding the limit MUST produce HTTP 413 with JSON body
 //! > `{"error":"payload_too_large","limit_bytes":262144}`.
 //!
-//! BC-2.01.001 Postcondition 4 (no body limit on unauthenticated router):
+//! BC-2.01.003 Postcondition 4 (no body limit on unauthenticated router):
 //! > `GET /healthz` is never 413 regardless of body size.
 //!
 //! # Coverage Map
@@ -32,7 +32,7 @@
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{HeaderMap, Request, StatusCode};
 use http_body_util::BodyExt;
 use monocle_runtime::router::unauthenticated_router;
 use monocle_runtime::server::build_server;
@@ -83,6 +83,38 @@ async fn post_with_size(
     (status, collected.to_vec())
 }
 
+/// POST a body of `body_len` bytes to the given `path` on the full authenticated server.
+/// Returns `(StatusCode, HeaderMap, Vec<u8>)` so callers can inspect response headers.
+///
+/// Used by AC-004 to assert the 413 response carries `Content-Type: application/json`.
+async fn post_with_size_full(
+    state: Arc<DaemonState>,
+    path: &str,
+    body_len: usize,
+) -> (StatusCode, HeaderMap, Vec<u8>) {
+    let app = build_server(state);
+    let auth_header = format!("monocle-v1:{TEST_TOKEN_HEX}");
+    let body_bytes = vec![0u8; body_len];
+    let req = Request::builder()
+        .method("POST")
+        .uri(path)
+        .header("X-Monocle-Authorization", auth_header.as_str())
+        .header("Content-Length", body_len.to_string())
+        .body(Body::from(body_bytes))
+        .expect("build POST request");
+
+    let response = app.oneshot(req).await.expect("oneshot POST");
+    let status = response.status();
+    let headers = response.headers().clone();
+    let collected = response
+        .into_body()
+        .collect()
+        .await
+        .expect("collect response body")
+        .to_bytes();
+    (status, headers, collected.to_vec())
+}
+
 // ---------------------------------------------------------------------------
 // AC-001 — Body > 262144 on authenticated route → HTTP 413
 // ---------------------------------------------------------------------------
@@ -95,7 +127,7 @@ async fn post_with_size(
 /// Counter-example guarded: if the middleware is missing or the limit is wrong, the
 /// request would reach the route handler and return 200 or 405, NOT 413.
 ///
-/// Traces to BC-2.01.001 Invariant 2, SS-daemon-lifecycle.md v1.0.33 §Body Size Limit.
+/// Traces to BC-2.01.003 Invariant 2, SS-daemon-lifecycle.md v1.0.33 §Body Size Limit.
 #[tokio::test]
 async fn test_BC_S004_001_overlimit_body_returns_413() {
     let state = make_state_with_token();
@@ -126,7 +158,7 @@ async fn test_BC_S004_001_overlimit_body_returns_413() {
 /// Counter-example guarded: if the comparison is `>= 262144` (wrong boundary), a body of
 /// exactly 262144 would also return 413, incorrectly rejecting at-limit payloads.
 ///
-/// Traces to BC-2.01.001 Invariant 2 (strict > limit) / S-004 AC-002.
+/// Traces to BC-2.01.003 Invariant 2 (strict > limit) / S-004 AC-002.
 #[tokio::test]
 async fn test_BC_S004_002_atlimit_body_is_not_413() {
     let state = make_state_with_token();
@@ -161,7 +193,7 @@ async fn test_BC_S004_002_atlimit_body_is_not_413() {
 /// Counter-example guarded: if body limit middleware were mistakenly applied to the
 /// unauthenticated router, /healthz would return 413 for large bodies.
 ///
-/// Traces to BC-2.01.001 Postcondition 4 (no body limit on unauthenticated router).
+/// Traces to BC-2.01.003 Postcondition 4 (no body limit on unauthenticated router).
 #[tokio::test]
 async fn test_BC_S004_003_healthz_large_body_not_413() {
     let state = Arc::new(DaemonState::new());
@@ -185,7 +217,7 @@ async fn test_BC_S004_003_healthz_large_body_not_413() {
         StatusCode::PAYLOAD_TOO_LARGE,
         "GET /healthz with 1 MiB body must NOT return HTTP 413; got {status}. \
         The unauthenticated router must have no body limit \
-        (BC-2.01.001 Postcondition 4). \
+        (BC-2.01.003 Postcondition 4). \
         Counter-example: body limit middleware on unauth router incorrectly returns 413."
     );
     assert_eq!(
@@ -199,9 +231,12 @@ async fn test_BC_S004_003_healthz_large_body_not_413() {
 // AC-004 — 413 body is EXACTLY `{"error":"payload_too_large","limit_bytes":262144}`
 // ---------------------------------------------------------------------------
 
-/// AC-004: The JSON body of the 413 response is EXACTLY two fields, no extras.
+/// AC-004: The JSON body of the 413 response is EXACTLY two fields, no extras, and the
+/// response carries `Content-Type: application/json`.
 ///
 /// Required shape: `{"error":"payload_too_large","limit_bytes":262144}`
+/// Required header: `Content-Type: application/json` (confirms the 413 is a proper JSON
+/// response, not a plain-text or HTML error page).
 ///
 /// Counter-examples guarded:
 /// - `{"error":"payload_too_large"}` (missing `limit_bytes`) fails.
@@ -209,18 +244,30 @@ async fn test_BC_S004_003_healthz_large_body_not_413() {
 /// - `{"error":"too_large"}` (wrong error code) fails.
 /// - `{"limit_bytes":262144,"error":"payload_too_large"}` — key order may vary but values
 ///   must match; serde_json deserialization is order-independent.
+/// - Missing or wrong Content-Type fails (BC-2.01.003 requires a structured JSON response).
 ///
-/// Traces to BC-2.01.001 Invariant 2 / S-004 §Custom 413 handler.
+/// Traces to BC-2.01.003 Invariant 2 / S-004 §Custom 413 handler.
 #[tokio::test]
 async fn test_BC_S004_004_413_body_is_exact_json() {
     let state = make_state_with_token();
     let body_len = 262_145; // over the limit
-    let (status, body_bytes) = post_with_size(state, "/status", body_len).await;
+    let (status, headers, body_bytes) = post_with_size_full(state, "/status", body_len).await;
 
     assert_eq!(
         status,
         StatusCode::PAYLOAD_TOO_LARGE,
         "prerequisite: overlimit POST must return 413"
+    );
+
+    // Assert Content-Type: application/json on the 413 response.
+    let content_type = headers
+        .get(axum::http::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert!(
+        content_type.starts_with("application/json"),
+        "413 response must carry Content-Type: application/json (BC-2.01.003 structured JSON \
+        response); got Content-Type: {content_type:?}"
     );
 
     // Parse the JSON body.
@@ -271,7 +318,7 @@ async fn test_BC_S004_004_413_body_is_exact_json() {
 /// handler reads the body with `axum::body::Bytes`), routes that do not read the body would
 /// not enforce the limit. The middleware ensures enforcement before handler dispatch.
 ///
-/// Traces to BC-2.01.001 Invariant 2 (body limit applies to authenticated router, not just
+/// Traces to BC-2.01.003 Invariant 2 (body limit applies to authenticated router, not just
 /// individual extractors).
 #[tokio::test]
 async fn test_BC_S004_005_overlimit_status_route_413() {
@@ -307,7 +354,7 @@ async fn test_BC_S004_005_overlimit_status_route_413() {
 /// - Two or more occurrences: duplicate / conflicting registrations.
 /// - `DefaultBodyLimit::max(256 * 1024)` form: test accepts that form too (256 * 1024 == 262144).
 ///
-/// Traces to BC-2.01.001 Invariant 2, SS-daemon-lifecycle.md v1.0.33 §Body Size Limit.
+/// Traces to BC-2.01.003 Invariant 2, SS-daemon-lifecycle.md v1.0.33 §Body Size Limit.
 #[test]
 fn test_BC_S004_006_source_grep_default_body_limit_once() {
     use std::fs;

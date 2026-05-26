@@ -58,7 +58,7 @@ use crate::state::DaemonState;
 /// - `GET /healthz` is reachable without auth and without body limit.
 /// - `GET /status` is behind the auth middleware (BC-2.01.009 dual-accept, ADR-0005).
 /// - `DefaultBodyLimit::max(262144)` applies to the authenticated router only
-///   (BC-2.01.001 Invariant 2 / BC-2.01.002 §Architecture Compliance).
+///   (BC-2.01.003 Invariant 2 / BC-2.01.002 §Architecture Compliance).
 /// - Requests with `Content-Length > 262144` on the authenticated router return
 ///   HTTP 413 with JSON body `{"error":"payload_too_large","limit_bytes":262144}`
 ///   (S-004 custom 413 handler, via `body_size_limit_middleware`).

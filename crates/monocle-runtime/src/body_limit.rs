@@ -10,7 +10,7 @@
 //!
 //! `tower_http::limit::RequestBodyLimitLayer` provides content-length enforcement but emits a
 //! plain-text `"length limit exceeded"` response. The behavioral contract for this daemon
-//! (BC-2.01.001 Invariant 2 / SS-daemon-lifecycle.md §Body Size Limit) requires a JSON body:
+//! (BC-2.01.003 Invariant 2 / SS-daemon-lifecycle.md §Body Size Limit) requires a JSON body:
 //! `{"error":"payload_too_large","limit_bytes":262144}`. Using a custom `from_fn` middleware is
 //! the minimal-dependency approach that keeps the JSON shape under our control.
 //!
@@ -40,7 +40,7 @@ pub const BODY_LIMIT_BYTES: usize = 262_144;
 ///
 /// Shape: `{"error":"payload_too_large","limit_bytes":262144}`
 ///
-/// This is the canonical error body for BC-2.01.001 Invariant 2 (body size limit on
+/// This is the canonical error body for BC-2.01.003 Invariant 2 (body size limit on
 /// authenticated router). The shape is fixed and tested by the integration test suite.
 #[derive(Debug, serde::Serialize)]
 pub struct PayloadTooLargeBody {
