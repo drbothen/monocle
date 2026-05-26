@@ -37,6 +37,29 @@ use monocle_core::factory::{FactoryAdapter, FactoryReadError};
 use monocle_core::factory::vsdd::VsddFactoryAdapter;
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Fixture helpers
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Write test-fixture content to a path atomically using `tempfile::NamedTempFile + persist`.
+///
+/// The project's anti-pattern policy forbids `std::fs::write` even in test code
+/// (`SS-conventions-anti-patterns.md` §disallowed_methods). This helper satisfies that
+/// policy for STATE.md fixture writes.
+fn write_fixture(dest: &Path, content: &[u8]) {
+    let dir = dest
+        .parent()
+        .expect("fixture path must have a parent directory");
+    let mut named = tempfile::NamedTempFile::new_in(dir)
+        .expect("cannot create NamedTempFile for test fixture");
+    named
+        .write_all(content)
+        .expect("cannot write test fixture content to NamedTempFile");
+    named
+        .persist(dest)
+        .expect("cannot persist test fixture NamedTempFile to destination");
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -66,17 +89,20 @@ fn monocle_repo_root() -> PathBuf {
 
 /// Write a STATE.md that contains `document_type: pipeline-state` ONLY in the
 /// document body, NOT in the `---`-delimited YAML frontmatter (EC-021 vector).
+///
+/// Uses `tempfile::NamedTempFile + persist` per the project anti-pattern policy.
 fn write_body_only_state_md_in_dir(dir: &Path) -> std::io::Result<()> {
     let factory_dir = dir.join(".factory");
     std::fs::create_dir_all(&factory_dir)?;
     let state_path = factory_dir.join("STATE.md");
-    let mut f = std::fs::File::create(&state_path)?;
     // Frontmatter exists but does NOT contain the key; key only in body
-    writeln!(
-        f,
-        "---\ndocument_type: other-type\nphase: test-phase\n---\n\n\
-         This body contains document_type: pipeline-state but it is NOT in the frontmatter."
-    )?;
+    let content = b"---\ndocument_type: other-type\nphase: test-phase\n---\n\n\
+         This body contains document_type: pipeline-state but it is NOT in the frontmatter.\n";
+    let mut named = tempfile::NamedTempFile::new_in(&factory_dir)?;
+    named.write_all(content)?;
+    named
+        .persist(&state_path)
+        .map_err(|e| e.error)?;
     Ok(())
 }
 
@@ -359,7 +385,7 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_success() {
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     let state_path = factory_dir.join("STATE.md");
-    std::fs::write(
+    write_fixture(
         &state_path,
         concat!(
             "---\n",
@@ -370,9 +396,9 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_success() {
             "awaiting: \"wave-3 completion\"\n",
             "---\n\n",
             "# Body text\n",
-        ),
-    )
-    .expect("cannot write STATE.md for read_state_success test");
+        )
+        .as_bytes(),
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let result = adapter.read_state();
@@ -436,7 +462,7 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_cycle_absent() {
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     let state_path = factory_dir.join("STATE.md");
     // No `current_cycle:` key in frontmatter
-    std::fs::write(
+    write_fixture(
         &state_path,
         concat!(
             "---\n",
@@ -445,9 +471,9 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_cycle_absent() {
             "status: active\n",
             "---\n\n",
             "No cycle info in this state file.\n",
-        ),
-    )
-    .expect("cannot write STATE.md for cycle_absent test");
+        )
+        .as_bytes(),
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let result = adapter.read_state();
@@ -491,12 +517,11 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_empty_value_yields_none() {
     let tmp = tempfile::tempdir().expect("cannot create tempdir for guard_empty_value test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        // Empty value: key present, value is empty string after trimming
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: \n---\n",
-    )
-    .expect("cannot write STATE.md for guard_empty_value test");
+    // Empty value: key present, value is empty string after trimming
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: \n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -525,11 +550,10 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_empty_quoted_value_yields_none() {
         tempfile::tempdir().expect("cannot create tempdir for guard_empty_quoted_value test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: \"\"\n---\n",
-    )
-    .expect("cannot write STATE.md for guard_empty_quoted_value test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: \"\"\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -558,12 +582,11 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_flow_list_yields_none() {
     let tmp = tempfile::tempdir().expect("cannot create tempdir for guard_flow_list test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        // Flow-style list: should be guarded (returns None for the field)
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: [a, b]\n---\n",
-    )
-    .expect("cannot write STATE.md for guard_flow_list test");
+    // Flow-style list: should be guarded (returns None for the field)
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: [a, b]\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -591,11 +614,10 @@ fn test_BC_FACTORY_002_vsdd_parse_double_quoted_scalar_unquoted() {
     let tmp = tempfile::tempdir().expect("cannot create tempdir for double_quoted_scalar test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\nawaiting: \"round 18 validation chain\"\n---\n",
-    )
-    .expect("cannot write STATE.md for double_quoted_scalar test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\nawaiting: \"round 18 validation chain\"\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -624,11 +646,10 @@ fn test_BC_FACTORY_002_vsdd_parse_single_quoted_scalar_unquoted() {
     let tmp = tempfile::tempdir().expect("cannot create tempdir for single_quoted_scalar test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\nawaiting: 'single-quoted'\n---\n",
-    )
-    .expect("cannot write STATE.md for single_quoted_scalar test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\nawaiting: 'single-quoted'\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -657,11 +678,10 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_block_scalar_literal_yields_none() {
         tempfile::tempdir().expect("cannot create tempdir for guard_block_scalar_literal test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: |\n  multi-line\n  value\n---\n",
-    )
-    .expect("cannot write STATE.md for guard_block_scalar_literal test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: |\n  multi-line\n  value\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -689,11 +709,10 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_block_scalar_folded_yields_none() {
         tempfile::tempdir().expect("cannot create tempdir for guard_block_scalar_folded test");
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: > folded\n---\n",
-    )
-    .expect("cannot write STATE.md for guard_block_scalar_folded test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle: > folded\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -723,11 +742,10 @@ fn test_BC_FACTORY_002_vsdd_parse_guard_continuation_line_yields_none() {
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     // The value on the NEXT line starts with whitespace (continuation line pattern)
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle:\n  cycle-001\n---\n",
-    )
-    .expect("cannot write STATE.md for guard_continuation_line test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"---\ndocument_type: pipeline-state\nphase: p\nstatus: s\ncurrent_cycle:\n  cycle-001\n---\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let state = adapter
@@ -758,11 +776,10 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_parse_error_no_frontmatter() {
     let factory_dir = tmp.path().join(".factory");
     std::fs::create_dir_all(&factory_dir).expect("cannot create .factory dir");
     // File exists but has no frontmatter at all (not a valid VSDD state file)
-    std::fs::write(
-        factory_dir.join("STATE.md"),
-        "This file has no YAML frontmatter delimiters at all.\nJust plain text.\n",
-    )
-    .expect("cannot write STATE.md for parse_error test");
+    write_fixture(
+        &factory_dir.join("STATE.md"),
+        b"This file has no YAML frontmatter delimiters at all.\nJust plain text.\n",
+    );
 
     let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
     let result = adapter.read_state();
