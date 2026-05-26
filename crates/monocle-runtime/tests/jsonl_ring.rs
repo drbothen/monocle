@@ -288,6 +288,212 @@ fn test_BC_RING_001_rotation_at_threshold() {
 }
 
 // ---------------------------------------------------------------------------
+// F-006: round-trip deserialization (VP-007 probe 7.c)
+// ---------------------------------------------------------------------------
+
+/// VP-007 probe 7.c: a serialized HookEventRecord must deserialize back to an
+/// identical record with all fields intact.
+#[test]
+fn test_BC_RING_001_roundtrip_deserialization() {
+    let record = HookEventRecord::new(
+        "sess1".to_string(),
+        1000_i64,
+        42_u32,
+        "SessionStart".to_string(),
+        None,
+        None,
+    );
+    let json = serde_json::to_string(&record).unwrap();
+    let roundtrip: HookEventRecord = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(roundtrip.format_version, RING_FORMAT_VERSION);
+    assert_eq!(roundtrip.session_id, "sess1");
+    assert_eq!(roundtrip.timestamp_micros, 1000_i64);
+    assert_eq!(roundtrip.pid, 42_u32);
+    assert_eq!(roundtrip.hook_type, "SessionStart");
+    assert!(
+        roundtrip.tool_name.is_none(),
+        "tool_name must remain None after roundtrip"
+    );
+    assert!(
+        roundtrip.tool_input.is_none(),
+        "tool_input must remain None after roundtrip"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-007: UserPromptSubmit and Stop absence-of-field tests (VP-007 probes 7.e, 7.f)
+// ---------------------------------------------------------------------------
+
+/// VP-007 probe 7.e: UserPromptSubmit records must omit tool_name and tool_input entirely.
+///
+/// BC-2.01.007 EC-001: "Phase 1 emitters MUST emit absence (no explicit null)."
+#[test]
+fn test_BC_RING_001_user_prompt_submit_absent_tool_fields() {
+    let record = HookEventRecord::new(
+        "sess-ups-001".to_string(),
+        1_700_000_002_000_000_i64,
+        99_u32,
+        "UserPromptSubmit".to_string(),
+        None,
+        None,
+    );
+    let json = serde_json::to_string(&record).unwrap();
+
+    assert!(
+        !json.contains("tool_name"),
+        "tool_name must be ABSENT (not null) from UserPromptSubmit JSON, got: {json}"
+    );
+    assert!(
+        !json.contains("tool_input"),
+        "tool_input must be ABSENT (not null) from UserPromptSubmit JSON, got: {json}"
+    );
+}
+
+/// VP-007 probe 7.f: Stop records must omit tool_name and tool_input entirely.
+///
+/// BC-2.01.007 EC-001: "Phase 1 emitters MUST emit absence (no explicit null)."
+#[test]
+fn test_BC_RING_001_stop_absent_tool_fields() {
+    let record = HookEventRecord::new(
+        "sess-stop-001".to_string(),
+        1_700_000_003_000_000_i64,
+        99_u32,
+        "Stop".to_string(),
+        None,
+        None,
+    );
+    let json = serde_json::to_string(&record).unwrap();
+
+    assert!(
+        !json.contains("tool_name"),
+        "tool_name must be ABSENT (not null) from Stop JSON, got: {json}"
+    );
+    assert!(
+        !json.contains("tool_input"),
+        "tool_input must be ABSENT (not null) from Stop JSON, got: {json}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-008: rotation cascade coverage
+// ---------------------------------------------------------------------------
+
+/// BC-2.01.007 EC-002 / SS-daemon-lifecycle v1.0.33 §JSONL Ring Buffer Rotation Policy:
+/// Multiple sequential pushes that each exceed the soft threshold must produce a full
+/// `.1`...`.{retained}` cascade and must NOT produce a `.{retained+1}` file.
+///
+/// retained=3 → files .1, .2, .3 must exist after 4+ pushes; .4 must NOT exist.
+#[test]
+fn test_BC_RING_001_rotation_cascade_multiple() {
+    let dir = TempDir::new().expect("create tempdir");
+    let path = ring_path(&dir);
+
+    // Tiny thresholds: each record (~80 bytes) exceeds the soft threshold so
+    // every push causes a rotation of whatever is already on disk.
+    let config = RotationConfig {
+        soft_threshold_bytes: 50,
+        hard_cap_bytes: 200,
+        retained: 3,
+    };
+    let ring = RingBuffer::new(path.clone(), config);
+
+    // A record that serialises to > 50 bytes when written.
+    let record = HookEventRecord::new(
+        "cascade-session-abc123".to_string(),
+        1_700_000_000_000_001_i64,
+        1111_u32,
+        "PreToolUse".to_string(),
+        Some("Bash".to_string()),
+        Some(serde_json::json!({"command": "echo hello"})),
+    );
+
+    // Push 4 records.  Rotation check fires on each push after the first write,
+    // so after 4 pushes we expect the .1, .2, .3 slots all occupied.
+    for i in 0_u32..4 {
+        ring.push(&record)
+            .unwrap_or_else(|e| panic!("push {i} failed: {e}"));
+    }
+
+    let rotated_1 = dir.path().join("monocle-events.jsonl.1");
+    let rotated_2 = dir.path().join("monocle-events.jsonl.2");
+    let rotated_3 = dir.path().join("monocle-events.jsonl.3");
+    let rotated_4 = dir.path().join("monocle-events.jsonl.4");
+
+    assert!(
+        rotated_1.exists(),
+        "monocle-events.jsonl.1 must exist after multiple rotations"
+    );
+    assert!(
+        rotated_2.exists(),
+        "monocle-events.jsonl.2 must exist after multiple rotations"
+    );
+    assert!(
+        rotated_3.exists(),
+        "monocle-events.jsonl.3 must exist after multiple rotations (retained=3)"
+    );
+    assert!(
+        !rotated_4.exists(),
+        "monocle-events.jsonl.4 must NOT exist — retained=3 caps at .3"
+    );
+
+    // The oldest retained file (.1 or .3, depending on cascade direction) must
+    // contain valid JSONL data.
+    let contents = std::fs::read_to_string(&rotated_1).expect("rotated .1 must be readable");
+    let first_line = contents.lines().next().expect("rotated .1 must be non-empty");
+    let _parsed: serde_json::Value =
+        serde_json::from_str(first_line).expect("rotated .1 must contain valid JSONL");
+}
+
+/// BC-2.01.007 EC-002 / SS-daemon-lifecycle §JSONL Ring Buffer Rotation Policy:
+/// With retained=2, three or more rotations must delete the oldest segment so
+/// that `.3` is absent while `.1` and `.2` are present.
+#[test]
+fn test_BC_RING_001_rotation_deletes_oldest() {
+    let dir = TempDir::new().expect("create tempdir");
+    let path = ring_path(&dir);
+
+    let config = RotationConfig {
+        soft_threshold_bytes: 50,
+        hard_cap_bytes: 200,
+        retained: 2,
+    };
+    let ring = RingBuffer::new(path.clone(), config);
+
+    let record = HookEventRecord::new(
+        "delete-oldest-session-xyz987".to_string(),
+        1_700_000_000_000_002_i64,
+        2222_u32,
+        "PostToolUse".to_string(),
+        Some("Read".to_string()),
+        Some(serde_json::json!({"path": "/tmp/test.txt"})),
+    );
+
+    // Push 4 records to trigger 3+ rotations with retained=2.
+    for i in 0_u32..4 {
+        ring.push(&record)
+            .unwrap_or_else(|e| panic!("push {i} failed: {e}"));
+    }
+
+    let rotated_1 = dir.path().join("monocle-events.jsonl.1");
+    let rotated_2 = dir.path().join("monocle-events.jsonl.2");
+    let rotated_3 = dir.path().join("monocle-events.jsonl.3");
+
+    assert!(
+        rotated_1.exists(),
+        "monocle-events.jsonl.1 must exist (retained=2)"
+    );
+    assert!(
+        rotated_2.exists(),
+        "monocle-events.jsonl.2 must exist (retained=2)"
+    );
+    assert!(
+        !rotated_3.exists(),
+        "monocle-events.jsonl.3 must NOT exist — oldest deleted at retained=2"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // AC-005: flush failure returns Err, does not panic
 // ---------------------------------------------------------------------------
 
