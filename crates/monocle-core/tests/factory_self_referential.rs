@@ -810,6 +810,110 @@ fn test_BC_FACTORY_002_vsdd_adapter_read_state_parse_error_no_frontmatter() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// BC-FACTORY-002 matches() — positive, negative, and self-referential
+// (traces to BC-2.02.005; matches() delegates to detect())
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Exercises matches() positive: returns `true` for a valid VSDD workspace.
+///
+/// Creates a tempdir with `.factory/STATE.md` containing valid YAML frontmatter
+/// with `document_type: pipeline-state`, constructs a `VsddFactoryAdapter` rooted
+/// there, and asserts `adapter.matches(tempdir.path()) == true`.
+///
+/// matches() must delegate to `Self::detect()` which returns `Some(...)` iff the
+/// STATE.md frontmatter contains `document_type: pipeline-state` (BC-2.02.005 PC-1).
+///
+/// Traces to: BC-2.02.005 PC-1; matches() postcondition.
+#[test]
+fn test_BC_FACTORY_002_matches_returns_true_for_vsdd_workspace() {
+    let tmp = tempfile::tempdir()
+        .expect("cannot create tempdir for matches_true test");
+    let factory_dir = tmp.path().join(".factory");
+    std::fs::create_dir_all(&factory_dir)
+        .expect("cannot create .factory dir");
+    let state_path = factory_dir.join("STATE.md");
+
+    write_fixture(
+        &state_path,
+        concat!(
+            "---\n",
+            "document_type: pipeline-state\n",
+            "phase: phase-3-test\n",
+            "status: active\n",
+            "---\n\n",
+            "# Valid VSDD state file\n",
+        )
+        .as_bytes(),
+    );
+
+    let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
+
+    assert!(
+        adapter.matches(tmp.path()),
+        "matches() must return true for a workspace containing \
+         .factory/STATE.md with `document_type: pipeline-state` in \
+         YAML frontmatter (BC-2.02.005 PC-1)"
+    );
+}
+
+/// Exercises matches() negative: returns `false` for a directory with no STATE.md.
+///
+/// Creates an empty tempdir (no `.factory/STATE.md`), constructs a
+/// `VsddFactoryAdapter` rooted there, and asserts
+/// `adapter.matches(tempdir.path()) == false`.
+///
+/// matches() delegates to detect() which returns `None` when the state file is
+/// absent (BC-2.02.005 PC-1).
+///
+/// Traces to: BC-2.02.005 PC-1; matches() postcondition.
+#[test]
+fn test_BC_FACTORY_002_matches_returns_false_for_non_factory_dir() {
+    let tmp = tempfile::tempdir()
+        .expect("cannot create tempdir for matches_false test");
+    // Intentionally do NOT create .factory/STATE.md
+
+    let adapter = VsddFactoryAdapter::new(tmp.path().to_path_buf());
+
+    assert!(
+        !adapter.matches(tmp.path()),
+        "matches() must return false for a workspace with no \
+         .factory/STATE.md (BC-2.02.005 PC-1). detect() returns None \
+         → matches() must return false."
+    );
+}
+
+/// Exercises matches() self-referential: returns `true` for the monocle repo root.
+///
+/// Uses `monocle_repo_root()` which has a live `.factory/STATE.md` (mounted via
+/// the factory-artifacts worktree). Constructs an adapter and asserts
+/// `adapter.matches(repo_root) == true`.
+///
+/// This is the VP-015 end-to-end probe for matches() against real data.
+///
+/// Traces to: BC-2.02.005 PC-1; VP-015; matches() postcondition.
+#[test]
+fn test_BC_FACTORY_002_matches_self_referential() {
+    let repo_root = monocle_repo_root();
+
+    // Precondition: the test environment must have .factory/STATE.md
+    assert!(
+        repo_root.join(".factory").join("STATE.md").exists(),
+        "Self-referential matches() test precondition failed: \
+         {repo_root:?}/.factory/STATE.md does not exist. \
+         Ensure the factory-artifacts worktree is mounted at .factory/ in the main repo."
+    );
+
+    let adapter = VsddFactoryAdapter::new(repo_root.clone());
+
+    assert!(
+        adapter.matches(&repo_root),
+        "matches() must return true for the monocle repo root because \
+         .factory/STATE.md contains `document_type: pipeline-state` in \
+         its YAML frontmatter (BC-2.02.005 PC-1, VP-015)"
+    );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // AC-008, AC-012 — self-referential read_state() on the real monocle STATE.md
 // (FAILS — read_state() is todo!())
 // (traces to BC-2.02.005 postcondition 4)
