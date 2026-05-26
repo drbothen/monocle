@@ -20,35 +20,31 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-WAVE-2-GATE-PASSED`** — Wave 2 gate PASSED 2026-05-26. 332 tests, clippy clean. 4 dep hygiene findings fixed. develop @ e2898be.
+- **Phase: `phase-3-WAVE-3-COMPLETE`** — Wave 3 ALL STORIES MERGED. 437 tests, clippy clean. develop @ d683c16.
 - **Wave 1 (DONE):** S-001 (PR #1+#2, 5 pts) + S-DTU-001 (PR #3, 3 pts) = 8 pts. Wave-gate passed D-164.
-- **Wave 2 (DONE — 9 stories, 41 pts):**
-  - S-002: Healthz Endpoint (3 pts, PR #5, f69435e). BC-2.01.001. 20 tests. 5 adversary rounds.
-  - S-003: Status Endpoint (5 pts, PR #6, 534fc9b). BC-2.01.002+BC-2.01.009+BC-2.02.001. 44 tests. Security: empty-token bypass fixed.
-  - S-004: Body Size Limit (2 pts, PR #9, 78dcac1). BC-2.01.003. 5 adversary rounds.
-  - S-006: Lock File Lifecycle (8 pts, PR #7, a43f71a). BC-2.01.005+BC-2.01.008+BC-2.01.010. 30 tests. CRIT fix in adversary.
-  - S-010: monocle-core ABI Version (5 pts, PR #8, 3926a09). BC-2.02.001+BC-2.02.002. Compile-time stability test.
-  - S-014: EngineModule Trait (5 pts, PR #10, 40dab9c). BC-2.03.001. 38 VP-019 AST audit tests. 5 adversary rounds (constructor signature + 8 coverage gaps fixed).
-  - S-011: Non-Exhaustive Enum Policy (3 pts, PR #11, 1e789f0). BC-2.02.003. 13 VP-013 syn2 audit tests. 4 adversary rounds (recursion + lint scope fixed).
-  - S-013: HookEnvelope Proto Wire Format (5 pts, PR #12, 8653977). BC-2.02.006+007+008. 19 VP-016/017/018 tests. 4 adversary rounds (oracle scope fixed).
-  - S-005: Graceful Shutdown (5 pts, PR #13, b235e3e). BC-2.01.004. 27 integration tests. 6 adversary rounds (lock RAII, shutdown channel, signal AppMode, EC-050 force_exit, doc fix).
-- **Totals:** 11 stories done (49 pts), 5 not_started (Wave 3, 34 pts), 1 blocked (S-PHASE-3-PREP). sprint-state v1.13.
+- **Wave 2 (DONE — 9 stories, 41 pts):** S-002 (PR #5), S-003 (PR #6), S-004 (PR #9), S-006 (PR #7), S-010 (PR #8), S-014 (PR #10), S-011 (PR #11), S-013 (PR #12), S-005 (PR #13). Wave-gate passed D-166.
+- **Wave 3 (DONE — 5 stories, 34 pts):**
+  - S-007: Crash Recovery Checkpoint (5 pts, PR #14, 9982ff0). BC-2.01.006. 15 tests. 5 adversary rounds.
+  - S-008: JSONL Ring Format (5 pts, PR #15, fe4db96). BC-2.01.007. 13 tests. 5 adversary rounds.
+  - S-012: FactoryAdapter Trait (8 pts, PR #16, 599cd8c). BC-2.02.004+BC-2.02.005. 34 tests. 4 adversary rounds.
+  - S-015: ClaudeCodeModule (8 pts, PR #17, 23cfd44). BC-2.03.001..004. 20 tests. 4 adversary rounds.
+  - S-009: Auth Token Wire Format (8 pts, PR #18, d683c16). BC-2.01.008+BC-2.01.009. 28 tests. 7 adversary rounds.
+- **Totals:** 16 stories done (83 pts), 0 not_started, 1 blocked (S-PHASE-3-PREP). sprint-state v1.18.
+- **Wave 3 gate PENDING** — run `/vsdd-factory:wave-gate wave-3` next.
 - Outstanding non-blocking follow-ups (durable task register):
   - **#28**: prost/reqwest exact-patch pin verification (partial — prost verified, reqwest deferred to S-009).
   - **#34**: BC-2.03.001 PC-3 DeferUntil stale (PO mechanical fix).
   - **BC-HOOK-034-typo**: decorated_by → deprecated_by (cosmetic).
-  - **S-014-ADV**: SS-engine-module.md HookDecision code blocks stale — 4 data-carrying variants in spec vs 3 unit variants in impl (architect update).
-  - **S-011-ADV**: HookArgs struct diverges from SS-permissions-phase1.md (architect update).
+  - **S-014-ADV**: SS-engine-module.md HookDecision code blocks stale (architect).
+  - **S-011-ADV**: HookArgs struct diverges from SS-permissions-phase1.md (architect).
   - **S-013-ADV**: prost-types not registered in SS-deps-pin-manifest (architect).
-  - **S-005-main-wiring**: 10s drain timeout, second-signal detection, signal-path lock release — all require main.rs daemon entry point wiring (integration story, does NOT block Wave 3).
-  - **STATE.md compaction** — 1100+ lines vs <200 target; invoke `/vsdd-factory:compact-state` at wave-gate.
+  - **S-005-main-wiring**: 10s drain timeout, second-signal detection, signal-path lock release (integration story).
+  - **S-008-ADV**: AC-003 tempfile::persist spec wording (story-writer); RingError #[non_exhaustive] (wave-gate); BC-2.01.007 S-TBD anchor (PO).
+  - **S-015-ADV**: tracing-test 0.2 not in SS-deps-pin-manifest (architect).
+  - **S-012-self-ref**: 3 self-referential tests fail due to workspace root detection resolving to /Users/jmagady instead of repo root (test fix needed at wave-gate).
 - 39 codified disciplines in force.
-- Residual catalog: TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE + TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT (deferred to spec-kit-mcp rc.19+).
-- **Next: Wave 3 (5 stories, 34 pts).** Wave 2 gate PASSED — no additional human gate required to start Wave 3.
-  - **Batch A (parallel, all deps satisfied):** S-007 (5 pts, Crash Recovery), S-008 (5 pts, JSONL Ring Format), S-012 (8 pts, FactoryAdapter Trait), S-015 (8 pts, ClaudeCodeModule).
-  - **Batch B (after S-008 merges):** S-009 (8 pts, Auth Token Wire Format — depends on S-008).
-  - After Wave 3 all 5 stories merged + wave-gate: Phase 3 COMPLETE (all waves done). Then Phase 4 holdout evaluation.
-  - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Waves 1-3.
+- **Next: Wave 3 gate.** After gate PASS → Phase 3 COMPLETE → Phase 4 Holdout Evaluation.
+  - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3 completion.
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
@@ -176,7 +172,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — GATE-PASS-WITH-RESIDUAL D-155) — 22 BCs, NFRs, ADRs, architecture, manifest
 - Phase 2: Story Decomposition (DONE — GATE-PASS-WITH-RESIDUAL D-159) — 17 stories, 4 waves, 86 points, 14 holdout scenarios
-- **Phase 3: TDD Implementation (CURRENT)** — Waves 1+2 DONE (49 pts), Wave 2 gate PASSED; Wave 3 next (34 pts)
+- **Phase 3: TDD Implementation (CURRENT)** — Waves 1+2+3 DONE (83 pts), Wave 3 gate PENDING
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
