@@ -158,6 +158,14 @@ fn invalid_token_response() -> Response {
         .into_response()
 }
 
+/// Fixed-length sentinel for timing-safe constant_time_eq on length-mismatched inputs.
+///
+/// Per BC-2.01.008 INV-7 / S-009 F-D-01: when the input token does not have the correct
+/// length or format, we still call `constant_time_eq` against this sentinel rather than
+/// returning early. This prevents a timing oracle where an attacker could distinguish
+/// "correct prefix, wrong length" from "wrong prefix" by measuring response latency.
+const SENTINEL_64: [u8; 64] = [0u8; 64];
+
 /// Validate auth headers implementing the dual-accept protocol per ADR-0005.
 ///
 /// Pure validation function extracted from `auth_middleware` for unit-testing the dual-accept
@@ -191,16 +199,74 @@ fn invalid_token_response() -> Response {
 /// This function does NOT emit the WARN log itself — it returns `Ok(AuthPath::Alias)` and
 /// the caller (`auth_middleware`) is responsible for emitting the ADR-0005 WARN per INV-6.
 /// This separation allows the pure function to be unit-tested without a tracing subscriber.
-#[allow(clippy::todo)]
 pub fn validate_auth_header(
-    _canonical: Option<&str>,
-    _alias: Option<&str>,
-    _expected_token: &str,
+    canonical: Option<&str>,
+    alias: Option<&str>,
+    expected_token: &str,
 ) -> Result<AuthPath, AuthError> {
-    todo!(
-        "S-009: dual-accept auth validation — canonical prefix strip + sentinel constant_time_eq, \
-        alias raw-hex sentinel constant_time_eq, missing-both → MissingToken"
-    )
+    match canonical {
+        Some(canonical_value) => {
+            // Canonical header is present — any failure returns InvalidToken (E-AUTH-002),
+            // not MissingToken (E-AUTH-001). INV-2: header-present failures are always invalid.
+
+            // Strip the `monocle-v1:` prefix. If it fails, still run sentinel comparison
+            // before returning to prevent timing oracle (INV-7).
+            let Some(hex_suffix) = canonical_value.strip_prefix(CANONICAL_PREFIX) else {
+                // Wrong or missing prefix — compare against sentinel to normalise timing.
+                let _ = constant_time_eq(canonical_value.as_bytes(), &SENTINEL_64);
+                return Err(AuthError::InvalidToken);
+            };
+
+            // Validate hex suffix: must be exactly 64 lowercase hex chars (`^[0-9a-f]{64}$`).
+            // On length or character mismatch, still run constant_time_eq against sentinel (INV-7).
+            let is_valid_hex = hex_suffix.len() == 64
+                && hex_suffix.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
+
+            if !is_valid_hex {
+                // Length or character mismatch — sentinel comparison for timing safety (INV-7).
+                let _ = constant_time_eq(hex_suffix.as_bytes(), &SENTINEL_64);
+                return Err(AuthError::InvalidToken);
+            }
+
+            // Valid format — constant-time compare suffix against expected token (NFR-010).
+            if constant_time_eq(hex_suffix.as_bytes(), expected_token.as_bytes()) {
+                Ok(AuthPath::Canonical)
+            } else {
+                Err(AuthError::InvalidToken)
+            }
+        }
+
+        None => match alias {
+            Some(alias_value) => {
+                // Alias header is present — any failure returns InvalidToken (E-AUTH-002).
+                // Canonical is absent, so this is the compatibility path.
+
+                // Validate alias: must be exactly 64 lowercase hex chars (`^[0-9a-f]{64}$`).
+                // On length or character mismatch, still run constant_time_eq against sentinel (INV-7).
+                let is_valid_hex = alias_value.len() == 64
+                    && alias_value
+                        .chars()
+                        .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
+
+                if !is_valid_hex {
+                    // Length or character mismatch — sentinel comparison for timing safety (INV-7).
+                    let _ = constant_time_eq(alias_value.as_bytes(), &SENTINEL_64);
+                    return Err(AuthError::InvalidToken);
+                }
+
+                // Valid format — constant-time compare raw alias value against expected token (NFR-010).
+                // Caller is responsible for emitting the ADR-0005 WARN log on Ok(AuthPath::Alias).
+                if constant_time_eq(alias_value.as_bytes(), expected_token.as_bytes()) {
+                    Ok(AuthPath::Alias)
+                } else {
+                    Err(AuthError::InvalidToken)
+                }
+            }
+
+            // Neither header present — E-AUTH-001 (missing), not E-AUTH-002 (invalid). INV-2.
+            None => Err(AuthError::MissingToken),
+        },
+    }
 }
 
 /// Outcome discriminant returned by `validate_auth_header` on success.
