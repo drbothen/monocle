@@ -27,6 +27,10 @@ pub mod handlers;
 pub mod lifecycle;
 /// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
 pub mod lock;
+/// JSONL ring buffer writer for hook event records: [`ring::HookEventRecord`],
+/// [`ring::RingBuffer`], [`ring::RotationConfig`], [`ring::RingError`], and
+/// [`ring::RING_FORMAT_VERSION`] (BC-2.01.007, S-008).
+pub mod ring;
 /// Axum router construction — unauthenticated and authenticated router split.
 pub mod router;
 /// Full server construction: merges unauthenticated + authenticated routers.
