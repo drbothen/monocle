@@ -241,3 +241,92 @@ Active TaskList at context-clear: 5 tasks (#35 round-21-fix-burst, #36 round-21-
 | **Convergence counter** | R24: 0 CRIT + 3 MED + 2 LOW. R25 fix burst resolved all 5. R26 validation pending. Trajectory: 10→7→5→2→14→6+6→8 fixes→3→3 fixes→0 R10→13 FC-adversary→15-fix→17-fix→21-fix→3 R20→2+1 R21-fix→3 R22→3 R23-fix→3+2 R24→5 R25-fix. |
 
 ---
+
+## Session Resume Checkpoint v5.88 — Archived (was active in STATE.md v6.01)
+
+Archived to cycle file on 2026-05-26 during STATE.md v6.02 compaction.
+
+### State as of v5.88 — PHASE 2 GATE PASS WITH RESIDUAL FINALIZED (2026-05-19T19:00:00Z)
+
+**Working directory:** `/Users/jmagady/Dev/monocle`
+**Branches:** `factory-artifacts` (specs + STATE + plans + all artifacts); `main` (CLAUDE.md only)
+**Last factory-artifacts commit:** This burst — STATE v5.88 + D-159 Phase 2 GATE PASS FINALIZED + TD-VSDD-PHASE-2 8-row catalog update (SE-23 constraint respected; single-commit burst per TD-VSDD-053)
+**Prior key commits:** abe958e (r12 fix-all — 6 findings closed across 21 files); story-writer Phase 2 r12 fix chain
+**Last main commit:** c093265 (CLAUDE.md Phase 1 PASS + Phase 2 PASS update pending — orchestrator follow-up)
+**Counter state:** N/A — Phase 2 GATE PASS FINALIZED per D-159; D-047 strict exemption for propagation-discipline class only; Phase 3 PENDING HUMAN GATE per D-158
+**Phase 2 trajectory:** r01→26, r02→17, r03→13, r04→6, r05→9, r06→7, r07→7, r08→3, r09→2, r10→3, r11→1, r12→1 (fix-all abe958e), r13→1 new (F-R13-01, GAP-R13-1) — ASYMPTOTE EMPIRICALLY CONFIRMED; 96% reduction; CONVERGED-WITH-DOCUMENTED-RESIDUAL
+**Phase 2 Gate result:** PASS-WITH-RESIDUAL FINALIZED per D-159. TWO human authorizations. 8-row catalog: 6 CLOSED (abe958e) + 2 ACTIVE (F-R13-01, GAP-R13-1). TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT updated. S-PHASE-3-PREP story scope extended.
+**Phase 3 status:** PENDING HUMAN GATE per D-158. No pre-approval. Await human "go."
+
+### Immediate next action
+
+1. Run factory-worktree-health via devops-engineer (BLOCKING).
+2. Read this STATE.md completely.
+3. Read `/Users/jmagady/Dev/monocle/CLAUDE.md` — canonical principle + Correct Agent Routing bind every action.
+4. Read tech-debt-register.md — BOTH Phase 1 AND Phase 2 residual entries (Phase 2 now has 8-row catalog: 6 CLOSED + 2 ACTIVE).
+5. Verify git state: `git -C /Users/jmagady/Dev/monocle/.factory log --oneline -10`
+6. SURFACE Phase 2 gate finalization to human and AWAIT explicit Phase 3 authorization (D-158 PENDING).
+7. Upon human approval: dispatch `/vsdd-factory:phase-3-tdd-implementation` Wave 0 first (S-PHASE-3-PREP + S-DTU-001).
+
+### SE-16d cross-chain monotonicity matrix (R20 chain — 4-row)
+
+| Artifact | Timestamp | SE-16d verdict |
+|----------|-----------|----------------|
+| STATE v5.83 (116363a R20-pre) | 2026-05-19T02:50:00Z | baseline |
+| PRD v1.26.15 (68863bd R20A) | 2026-05-19T03:00:00Z | PASS > 02:50 |
+| VP-INDEX v1.16 + 22 VPs (0ae5be5 R20B) | 2026-05-19T03:30:00Z | PASS > 03:00 |
+| STATE v5.84 (this commit R20C) | 2026-05-19T04:00:00Z | PASS > 03:30 |
+
+All UTC ISO-8601 Z form. 30-minute increments. SE-16d PASS strict-greater throughout.
+
+### Canonical artifact versions post-Round 20 (R122 input set)
+
+| Artifact | Version | Notes |
+|----------|---------|-------|
+| `prd.md` | v1.26.15 | 68863bd R20A (traces_to VP-INDEX v1.14→v1.15 reverse-cascade fix; F-R121-1 CLOSED) |
+| `interface-definitions.md` | v1.5 | c307f2a; unchanged |
+| `nfr-catalog.md` | v1.7 | c0c6b99; unchanged |
+| `error-taxonomy.md` | v1.5 | c0c6b99; unchanged |
+| `test-vectors.md` | v1.3 | c307f2a; unchanged |
+| `BC-INDEX.md` | v1.11 | 442f5ac Round 18B; unchanged |
+| `BC-2.01.010.md` | v1.0.4 | 9a02f5a Round 16C; unchanged |
+| BC files (22, other) | v1.0.x | SS pins refreshed Round 9B (3334fb6); unchanged |
+| `VP-INDEX.md` | v1.16 | 0ae5be5 R20B (§References PRD v1.26.14→v1.26.15 pin; consumer-ledger SE-22 v2 closure) |
+| VP files (22) | v1.0.x | 22 VP §References cascade R20B (0ae5be5; PRD v1.26.14→v1.26.15); VP-005 v1.0.15 (patch); VP-009 v1.0.14; most others v1.0.11/.12/.13/.14/.15 |
+| `SS-daemon-lifecycle.md` | v1.0.32 | 34ee6ee Round 14; unchanged |
+| `SS-forward-compatibility.md` | v1.2.19 | 34ee6ee Round 14; unchanged |
+| `SS-engine-module.md` | v1.1.20 | 9db4df8 Round 7C; unchanged |
+| `SS-core-types-and-abi.md` | v1.2.13 | 9db4df8 Round 7C; unchanged |
+| `SS-deps-pin-manifest.md` | v1.1.17 | unchanged |
+| `SS-conventions-anti-patterns.md` | v1.29.5 | b7ce1ac Round 17D; unchanged |
+| `ARCH-INDEX.md` | v1.0.10 | aef91dc Round 16B; unchanged |
+| `dtu-assessment.md` | v1.7.5 | Round 14 34ee6ee; unchanged |
+| `ADR-0002.md` | v1.0.4 | Round 14 34ee6ee; unchanged |
+| `ADR-0005.md` | v1.0.2 | 03a4c57; unchanged |
+| `L2-INDEX.md` | v1.0.11 | 6b85e06 R19D (brief pin v1.4.29→v1.4.30 back-cascade) |
+| `CAP-001.md` | v1.6 | 6b85e06 R19D (§Trace v1.6 + brief pointer v1.4.30; SE-17g: historical §Trace v1.5 preserved) |
+| `product-brief.md` | v1.4.30 | 6c863a9 R19B (line 251 BC-INDEX v1.10→v1.11 back-cascade) |
+| `STATE.md` | v5.88 | this burst (Phase 2 GATE PASS FINALIZED; D-159; TD-VSDD-PHASE-2 8-row catalog update; SE-23 honored) |
+| `CLAUDE.md` (main) | brief ref v1.4.30 | c093265 Phase 1 PASS reflected (Phase 2 PASS + D-159 finalization update pending — orchestrator follow-up) |
+| `STORY-INDEX.md` | v1.7 | Phase 2 story corpus (17 stories; 22/22 BC coverage; dep-graph v1.8; wave-schedule v1.4) |
+| `BC-INDEX.md` | v1.13 | Phase 2 final (22 BCs; all arch-source pointers updated; SS-daemon-lifecycle v1.0.33) |
+| `ARCH-INDEX.md` | v1.0.11 | Phase 2 residual (SS-daemon-lifecycle v1.0.33 bump from Phase 2 r03) |
+
+### Discipline count and key disciplines
+
+**39 codified disciplines in force** (SE-18 34th; SE-19 35th; SE-20 36th; SE-22 37th — codified R17-pre per D-142; SE-23 38th — codified R18-pre per D-146; first-cycle PROVEN R18D; **SE-22 v2 39th — codified R19-pre per D-149**). D-140 SE-18 sub-class observation still HELD per D-114 (1st occurrence of that sub-class). SE-22 first-application cycle PROVEN (D-143). SE-23 first-application cycle PROVEN (D-147; R18D SM touched ONLY STATE.md).
+
+Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE v5.85):
+- **SE-23** (SM Defensive-Sweep Prohibition — 38th discipline; R19G is canonical SE-23 example: SM touched ONLY STATE.md; zero spec modifications)
+- **SE-22 v2** (Sibling-Sweep Consumer-Ledger Extension — 39th discipline; first-cycle PROVEN across 5 R19 applications; producer-enumeration replaced SM-surface-route pattern; D-151)
+- **SE-22** (Sibling-Sweep META — continues in effect; all R19 chain bursts honored sibling-sweep trigger discipline)
+- **SE-16d** (cross-artifact chain-time monotonicity — R19 chain PASS: 23:45→00:00→00:30→01:00→01:30→02:00→02:30)
+- **SE-18** (commit-burst hygiene; serialized dispatch honored throughout R19 chain per D-144)
+
+### Counter and convergence context (post-Round 19)
+
+- **D-047 strict:** 0 findings of any severity for 3 consecutive adversary+consistency passes
+- **Current counter:** 0/3 (R121 FAIL — 1 HIGH; R20A fix dispatched; counter advance requires R122 CLEAN)
+- **Convergence trajectory:** R113→0 (CLEAN 1/3), R114→0, R115→1 (fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15), R117→4 (FAIL, all 4+GAP-R56-002 closed R16), R118→10 (FAIL all SE-22 class, all 10 closed R17 chain), R119→3 (FAIL: all 3 closed R18 chain; SE-23 codified), R120→4 (FAIL: all 4+GAP-R59-003 closed R19 chain; SE-22 v2 first-cycle PROVEN), R121→1 (FAIL — 1 HIGH reverse-cascade; SE-22 v3 candidate HELD). Full trajectory: 30→6→4→0→0→1→4→4→10→3, R18→all-3-closed, R120→4 (FAIL), R19→all-5-closed (chain COMPLETE 2026-05-19; SE-22 v2 first-cycle proven across 5 applications; 0 SM-routing violations), R121→1 (FAIL — clear asymptotic narrowing; SE-22 v3 candidate HELD per D-114 1st occurrence).
+
+---

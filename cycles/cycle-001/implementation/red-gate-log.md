@@ -495,3 +495,188 @@ Confirm after implementation:
 - `cargo test -p monocle-core --test enum_audit` → 13 passed, 0 failed
 - `cargo test --workspace` → no new failures
 - `cargo clippy -p monocle-core -- -D warnings` → clean
+
+---
+
+---
+document_type: red-gate-log
+story_id: S-005
+step: 3
+branch: develop
+worktree: .worktrees/S-005
+timestamp: 2026-05-25T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-005 Step 3 (Graceful Shutdown — 10-Second Drain)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+27 tests total. 10 behavioral tests FAIL (correct — implementation not yet present).
+17 tests PASS (correct — split between already-implemented behavior and pure unit tests
+for the new `DaemonExit` enum). Zero vacuously-passing tests. Zero regressions in any
+pre-existing test file.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-runtime/tests/graceful_shutdown.rs` | 27 | 17 | 10 |
+| `crates/monocle-runtime/tests/healthz_endpoint.rs` | 20 | 20 | 0 |
+| `crates/monocle-runtime/tests/status_endpoint_auth.rs` | 32 | 32 | 0 |
+| `crates/monocle-runtime/tests/lock_file_lifecycle.rs` | 23 | 23 | 0 |
+| `crates/monocle-runtime/tests/body_size_limit.rs` | 6 | 6 | 0 |
+| Pre-existing totals | 81 | 81 | 0 |
+
+## Failing Tests (10 — Red Gate confirmed)
+
+All 10 failures are caused by behavioral stubs not yet implementing S-005 behavior.
+
+| Test | BC Clause | Failure Reason |
+|------|-----------|----------------|
+| `test_BC_2_01_004_post_shutdown_canonical_auth_returns_200_shutting_down` | PC-1 + INV-3 | Stub returns HTTP 501 (not yet implemented) |
+| `test_BC_2_01_004_post_shutdown_alias_auth_returns_200_shutting_down` | INV-3 + ADR-0005 | Stub returns HTTP 501 (not yet implemented) |
+| `test_BC_2_01_004_post_shutdown_transitions_appmode_to_shutting_down` | PC-1 | Stub returns HTTP 501; AppMode not changed |
+| `test_BC_2_01_004_second_post_shutdown_during_drain_returns_200` | EC-050 | Stub returns HTTP 501 |
+| `test_BC_2_01_004_drain_completes_within_11_seconds` | INV-1 / VP-004 PC-6 | Stub returns HTTP 501; drain not initiated |
+| `test_BC_2_01_004_lock_file_absent_after_graceful_shutdown` | PC-7 | Stub returns HTTP 501; lock file not released |
+| `test_BC_2_01_004_hook_post_during_drain_returns_503_with_retry_after` | PC-2 | Hook routes return 404 (S-009 adds them) |
+| `test_BC_2_01_004_hook_503_body_is_daemon_shutting_down` | PC-2 | Hook routes return 404 (S-009 adds them) |
+| `test_BC_2_01_004_hook_503_retry_after_header_is_10` | PC-2 | Hook routes return 404 (S-009 adds them) |
+| `test_BC_2_01_004_all_hook_endpoints_return_503_during_drain` | PC-2 | Hook routes return 404 (S-009 adds them) |
+
+Note on hook-endpoint failures: The 4 hook POST 503 tests fail with HTTP 404 because
+hook routes (`/hooks/*`) are registered by S-009, not S-005. The 503-during-drain gate
+requires both: (a) hook routes registered (S-009) AND (b) ShuttingDown gate in handlers
+(S-005). Both stories implement their respective pieces; the tests will pass when both
+are complete.
+
+## Passing Tests (17 — split analysis)
+
+### Category A: Pure unit tests for new `DaemonExit` implementation (11 tests)
+
+These test `DaemonExit::to_exit_code()` which IS implemented in the new `lifecycle.rs`
+additions. They are expected to pass and must remain green after S-005 implementation.
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_01_004_exit_codes_graceful_is_zero` | `DaemonExit` is fully implemented in lifecycle.rs |
+| `test_BC_2_01_004_exit_codes_startup_failure_is_one` | `DaemonExit` is fully implemented in lifecycle.rs |
+| `test_BC_2_01_004_exit_codes_admin_force_stop_is_two` | `DaemonExit` is fully implemented in lifecycle.rs |
+| `test_BC_2_01_004_exit_codes_sigint_during_drain_is_130` | `DaemonExit` is fully implemented in lifecycle.rs |
+| `test_BC_2_01_004_exit_codes_sigterm_during_drain_is_143` | `DaemonExit` is fully implemented in lifecycle.rs |
+| `test_BC_2_01_004_invariant_sigterm_and_sigint_exit_codes_are_distinct` | Invariant of the implementation |
+| `test_BC_2_01_004_invariant_all_5_exit_codes_are_distinct` | Invariant of the implementation |
+| `test_BC_2_01_004_invariant_posix_128n_convention_sigint_is_128_plus_2` | Arithmetic invariant of SIGINT=2 |
+| `test_BC_2_01_004_invariant_posix_128n_convention_sigterm_is_128_plus_15` | Arithmetic invariant of SIGTERM=15 |
+| `test_BC_2_01_004_invariant_daemon_exit_defined_in_lifecycle_module` | Compile-time import check |
+
+### Category B: Auth-rejection tests (work because auth middleware is already implemented)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_01_004_post_shutdown_no_auth_returns_401_missing_token` | Auth middleware returns 401 BEFORE reaching the stub handler |
+| `test_BC_2_01_004_post_shutdown_wrong_token_returns_401_invalid_token` | Auth middleware returns 401 BEFORE reaching the stub handler |
+
+### Category C: Cross-property tests (work because healthz/status already implement ShuttingDown)
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_01_004_healthz_returns_503_shutting_down_during_drain` | Healthz handler already implements ShuttingDown → 503 (S-002) |
+| `test_BC_2_01_004_status_continues_serving_200_during_drain` | Status handler already implements drain-exempt 200 (S-003) |
+
+### Category D: Structural source-grep invariants
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_01_004_invariant_no_process_exit_in_handler_code` | Stub correctly uses no `process::exit` in handlers |
+| `test_BC_2_01_004_invariant_exit_with_is_sole_process_exit_callsite` | `exit_with` in lifecycle.rs has exactly 1 call to `std::process::exit` |
+| `test_BC_2_01_004_invariant_shutdown_handler_does_not_import_monocle_tui` | Stub correctly omits monocle-tui import |
+
+## VP-004 Probe Coverage
+
+| Probe | Test | Status |
+|-------|------|--------|
+| 4.a (AppMode → ShuttingDown within 10ms) | `test_BC_2_01_004_post_shutdown_transitions_appmode_to_shutting_down` | RED (correct) |
+| 4.b (POST /hooks/* → 503 + Retry-After: 10) | `test_BC_2_01_004_hook_post_during_drain_returns_503_with_retry_after`, `test_BC_2_01_004_hook_503_retry_after_header_is_10`, `test_BC_2_01_004_hook_503_body_is_daemon_shutting_down` | RED (correct — 404 now, 503 after S-009+S-005 together) |
+| 4.c (GET /healthz during drain → 503) | `test_BC_2_01_004_healthz_returns_503_shutting_down_during_drain` | GREEN (cross-property via S-002) |
+| 4.d (GET /status valid auth during drain → 200) | `test_BC_2_01_004_status_continues_serving_200_during_drain` | GREEN (cross-property via S-003) |
+| 4.e (in-flight 5s drain → exit 0 within 10s) | `test_BC_2_01_004_drain_completes_within_11_seconds` | RED (correct — stub returns 501) |
+| 4.f (second SIGINT → exit 130) | Exit code unit tests | GREEN (DaemonExit implemented) |
+| 4.g (second SIGTERM → exit 143) | Exit code unit tests | GREEN (DaemonExit implemented) |
+| 4.h (second POST /shutdown → exit 2) | `test_BC_2_01_004_second_post_shutdown_during_drain_returns_200` | RED (correct — stub returns 501) |
+| 4.i (DaemonStartError → exit 1) | `test_BC_2_01_004_exit_codes_startup_failure_is_one` | GREEN (unit test) |
+| 4.j (POST /shutdown no auth → 401) | `test_BC_2_01_004_post_shutdown_no_auth_returns_401_missing_token` | GREEN (auth middleware) |
+
+## BC-2.01.004 Clause Coverage
+
+| BC Clause | Test(s) | Status |
+|-----------|---------|--------|
+| Precondition 1 (daemon running, shutdown signal arrives) | All behavioral tests | Pre-condition exercised |
+| Postcondition 1 (AppMode → ShuttingDown) | `post_shutdown_canonical_auth_returns_200`, `post_shutdown_transitions_appmode_to_shutting_down` | RED (correct) |
+| Postcondition 2 (hooks return 503 + Retry-After: 10) | `hook_post_during_drain`, `hook_503_body`, `hook_503_retry_after`, `all_hook_endpoints` | RED (correct) |
+| Postcondition 3 (/healthz → 503 during drain) | `healthz_returns_503_shutting_down_during_drain` | GREEN (cross-property) |
+| Postcondition 4 (/status → 200 during drain) | `status_continues_serving_200_during_drain` | GREEN (cross-property) |
+| Postcondition 7 (lock file removed on clean shutdown) | `lock_file_absent_after_graceful_shutdown` | RED (correct) |
+| Postcondition 8 (5-code exit taxonomy) | All `exit_codes_*` tests | GREEN (DaemonExit implemented) |
+| Invariant 1 (10-second hard timeout) | `drain_completes_within_11_seconds` | RED (correct) |
+| Invariant 3 (dual-accept auth on /shutdown) | `post_shutdown_canonical_auth_returns_200`, `post_shutdown_alias_auth_returns_200`, `post_shutdown_no_auth_returns_401` | RED + GREEN |
+| Invariant 4 (SIGTERM=143, SIGINT=130 distinct) | `invariant_sigterm_and_sigint_exit_codes_are_distinct` | GREEN |
+| EC-050 (second POST /shutdown during drain) | `second_post_shutdown_during_drain_returns_200` | RED (correct) |
+
+## Part 1: Stubs Created
+
+The following new files and changes were created for Part 1 (stubs):
+
+| File | Change | Description |
+|------|--------|-------------|
+| `crates/monocle-runtime/src/handlers/shutdown.rs` | Created | `post_shutdown` stub returning HTTP 501 |
+| `crates/monocle-runtime/src/handlers/mod.rs` | Modified | Added `pub mod shutdown;` |
+| `crates/monocle-runtime/src/lifecycle.rs` | Modified | Added `DaemonExit` enum + `exit_with()` function |
+| `crates/monocle-runtime/src/server.rs` | Modified | Added `POST /shutdown` route to authenticated router |
+| `crates/monocle-runtime/src/lib.rs` | Modified | Updated lifecycle module doc for `DaemonExit`/`exit_with` |
+
+## Notes for Implementer
+
+### Primary implementation targets (10 failing tests)
+
+1. **`post_shutdown` handler** (`handlers/shutdown.rs`):
+   - Acquire write lock on `state.mode` and set `AppMode::ShuttingDown`
+   - Return HTTP 200 `{"status":"shutting_down"}`
+   - Send on a `tokio::sync::oneshot::Sender<ShutdownReason>` to trigger the drain sequence
+
+2. **Drain + signal wiring** (`server.rs` or `main.rs`):
+   - Wire `tokio::signal::unix::signal(SignalKind::terminate())` for SIGTERM
+   - Wire `tokio::signal::ctrl_c()` for SIGINT
+   - `axum::serve(...).with_graceful_shutdown(signal_receiver)` with `tokio::time::timeout(10s, ...)`
+   - Record which signal triggered hard-shutdown for exit-code selection
+
+3. **Hook handler drain gate** (each hook handler in `handlers/hooks.rs`, created by S-009):
+   - Check `state.mode` — if `ShuttingDown`, return HTTP 503 `{"error":"daemon_shutting_down"}` with `Retry-After: 10`
+
+4. **Lock file release on clean shutdown**:
+   - `lifecycle::exit_with(DaemonExit::Graceful)` must call `lock.release()` BEFORE `std::process::exit(0)`
+   - Store `DaemonLock` in `DaemonState` or pass to the shutdown coordinator task
+
+### Already-implemented in Part 1
+
+- `DaemonExit` enum with `to_exit_code()` — fully functional
+- `exit_with()` function — calls `std::process::exit(code)` (sole call-site)
+- `POST /shutdown` route wired to authenticated router (auth middleware enforced)
+- Structural invariants (no monocle-tui import, no direct process::exit in handlers)
+
+### Note on hook 503 tests
+
+The 4 hook-related failing tests (`hook_post_during_drain`, `hook_503_*`, `all_hook_endpoints`)
+currently fail with HTTP 404 because hook routes are registered by S-009, not S-005.
+The S-005 implementer must coordinate with S-009: when S-009 registers the hook routes,
+each handler must gate on `AppMode::ShuttingDown` per BC-2.01.004 PC-2.
+
+Confirm after S-005 implementation (before S-009 merge):
+- `cargo test -p monocle-runtime --test graceful_shutdown` → 23 passed, 4 failed
+  (the 4 hook-503 tests still fail until S-009 registers the routes)
+
+Confirm after both S-005 and S-009 are merged:
+- `cargo test -p monocle-runtime --test graceful_shutdown` → 27 passed, 0 failed

@@ -2166,3 +2166,62 @@ Phase 1+ REVERTS to D-047 strict 3-clean-pass (0 findings of any severity).
 | Clean passes under (b) | 0/3 (asymptote confirmed; gate PASS via D-054 option (c)) |
 | Total defense layers codified | 18+ |
 | Next | Phase 1 Spec Crystallization — PRD synthesis + verification properties |
+
+---
+
+## §Trace v5.89 (D-160)
+
+**D-160 PHASE 3 APPROVED-TO-EXECUTE FINALIZED** (2026-05-20T20:00:00Z):
+- NORMATIVE: Phase advances from `phase-2-GATE-PASS-WITH-RESIDUAL` to `phase-3-APPROVED-TO-EXECUTE`. Story-uncertainty-review cycle-001 complete; 17 stories now ready for Phase 3 TDD dispatch on Wave 1. User explicitly authorized: "go" (2026-05-20 mid-session) and re-authorized post-context-clear: "phase 3 is approved to execute" (2026-05-20T20:00:00Z).
+- NORMATIVE: 12 commits landed on factory-artifacts spanning the remediation: bc158ce (REVERTED) / 19aa5f1 (revert) / 0210883 / 8ab665e / e485814 / e2fc2a3 / 6ac09b1 / 08e0347 / f23ce55 / 0c0d3d2 / 5f5f6a2 / 07daefb / 98bcf1d / [this commit]. ~135 findings closed across 17 stories.
+- NORMATIVE: Stage 4 verification spot-check (S-001, S-013, S-014) confirmed PASS / PASS_WITH_OBSERVATIONS. All Stage-1 CRIT findings closed; no regression detected.
+- NORMATIVE: Upstream capability proposal filed at drbothen/vsdd-factory#150 with monocle calibration evidence.
+- LESSON CODIFIED: state-manager hallucinated Stage-1 report content in bc158ce when given vague "extract from transcript" instructions; trust-but-verify caught it; the revert + re-do (this dispatch) uses VERBATIM content blocks embedded in the prompt to prevent recurrence. Future state-manager persistence dispatches MUST receive verbatim content inline, NOT references to transcript content.
+- INFORMATIONAL: STATE.md compaction remains deferred (1065+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
+- INFORMATIONAL: Outstanding non-blocking follow-ups (#28, #34, S-008 PO clarifications, dep-graph §Trace reorder) tracked in task harness.
+- SE-16d PASS: 2026-05-20T20:00:00Z > chain high-water (prior was the D-159 entry).
+
+---
+
+## §Trace v5.91 (D-162)
+
+**D-162 WAVE 1 S-001 COMPLETE** (2026-05-21T01:30:00Z):
+- NORMATIVE: S-001 fully shipped. PR #1 original merge @ a6f119c (2026-05-20). PR #2 hardening squash-merge @ 184f7d4 (2026-05-21T01:16Z). develop branch at 184f7d4 with 1016 net insertions across Cargo workspace bootstrap + CI matrix + cargo-deny + deny.toml + semgrep + dependabot + action SHA pins.
+- NORMATIVE: 3 fresh-context adversary review rounds completed post-merge: R1 FAIL (9 findings; F-001 CRIT), R2 FAIL (8 findings; 1 CRIT + 2 HIGH + 4 MED + 1 process-gap), R3 FAIL (1 finding; HIGH: println! stub in main.rs). 16 substantive findings closed. R1/R2/R3 reports persisted to .factory/plans/.
+- NORMATIVE: 2 LOW findings (F-008 bytes 1.11.1 transitive pin, F-009 architect-adjudication item) deferred to maintenance sweep — not spec-blocking; Wave 1 wave-gate not blocked.
+- NORMATIVE: SE-40 candidate logged (1st occurrence; HELD per D-114 Goodhart's-law deferral threshold): "Orchestrator drives deliver-story from main session only; never delegates per-story-delivery to a sub-orchestrator that cannot spawn fresh-context specialists." Requires 3+ explicit occurrences before codification.
+- NORMATIVE: STATE v5.90 → v5.91. SE-23 compliance confirmed: SM touched ONLY STATE.md; zero spec/story/sprint-state changes in this burst.
+- INFORMATIONAL: sprint-state.yaml S-001 done status flip + S-DTU-001 ready status flip deferred to PO's BC-HOOK burst.
+- INFORMATIONAL: STATE.md compaction remains deferred (1100+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
+- SE-16d PASS: 2026-05-21T01:30:00Z > chain high-water (2026-05-20T20:00:00Z from D-160 entry).
+- Refs: drbothen/vsdd-factory#150
+
+---
+
+## §Trace v5.93 (D-164)
+
+**D-164 WAVE 1 FULLY CLOSED** (2026-05-21T05:30:00Z):
+- NORMATIVE: Wave-gate adversary verdict: PASS_WITH_OBSERVATIONS. Wave-gate report at .factory/plans/wave-gate-wave-1-adversary.md (persisted at factory-artifacts 0bce7d3).
+- NORMATIVE: 3 HIGHs closed — F-WAVE1-001 (false-green test deleted + Red Gate comment sweep in PR #4) + F-WAVE1-002 (workflow path filter `.rs` extension added in PR #4) + F-WAVE1-003 (STORY-INDEX S-DTU-001 status ready → done via factory-artifacts story-writer cascade 06c94fb + c459b06).
+- NORMATIVE: PR #4 (closeout) squash-merged on develop at 681c179. All 4 Wave-1 PRs now merged: PR #1 (a6f119c S-001 original) + PR #2 (184f7d4 S-001 hardening) + PR #3 (cfeb1346 S-DTU-001) + PR #4 (681c179 wave-gate closeout).
+- NORMATIVE: 3 MEDs deferred to maintenance with documented trail: F-WAVE1-004 (cron collision risk — cron job names may collide under concurrent workflow runs), F-WAVE1-005 (xtask not listed in cargo-deny targets), F-WAVE1-006 (prost-build no-op cost on non-proto-touching rebuilds). Deferred MEDs do NOT block Wave 2 dispatch.
+- NORMATIVE: Test count post-closeout: 134 passed (was 135 — 1 false-green test asserting compilation rather than behavioral outcome deleted by PR #4).
+- NORMATIVE: 3 process-discovery candidates surfaced this Wave: SE-40 (2nd occurrence; HELD per D-114 — codification requires 3+ occurrences), tautological-test risk pattern (tests asserting enum variant names vs behavioral outcomes), single-giant-commit-hides-todo pattern (large first commit obscures Future: comments that survive clippy).
+- NORMATIVE: STATE v5.92 → v5.93. SE-23 compliance confirmed: SM touched ONLY STATE.md; zero spec/story/sprint-state changes in this burst.
+- INFORMATIONAL: STATE.md compaction remains deferred (1130+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
+- SE-16d PASS: 2026-05-21T05:30:00Z > chain high-water (2026-05-21T02:30:00Z from D-163 entry).
+
+---
+
+## §Trace v5.94 (D-165)
+
+**D-165 WAVE 2 APPROVED-TO-EXECUTE** (2026-05-24T12:00:00Z):
+- NORMATIVE: User authorization received 2026-05-24. Phase advances to `phase-3-WAVE-2-APPROVED-TO-EXECUTE`. No additional human gate required before Wave 2 dispatch.
+- NORMATIVE: Wave 1 FULLY CLOSED per D-164 (develop @ 681c179; 134 tests passing; 9 CI checks GREEN; wave-gate PASS_WITH_OBSERVATIONS). All 4 Wave-1 PRs merged.
+- NORMATIVE: Durable task register encoded in STATE.md frontmatter. 7 outstanding items (all non-blocking): #28 (prost/reqwest pin partial), #34 (BC DeferUntil cleanup), BC-HOOK-034-typo, VP-DTU-001 (deferred phase-4), F-WAVE1-004/005/006 (deferred maintenance).
+- NORMATIVE: SE-40 at 2nd occurrence (HELD per D-114). 5 process discoveries documented: tautological-test risk, single-giant-commit-hides-todo, Production-Grade Default Rule 1 Future-comment violations, sibling-sweep 3-place status tracking gaps, clippy --all-targets vs --workspace scope gap.
+- NORMATIVE: STATE v5.93 → v5.94. SE-23 compliance confirmed: SM touched ONLY STATE.md; zero spec/story/sprint-state changes in this burst.
+- NORMATIVE: Wave 2 dispatch: 9 stories (S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014), 41 points, partial-parallel within wave per wave-schedule.md.
+- INFORMATIONAL: This is the context-clear preparation burst. STATE.md is the primary cold-start artifact. durable_task_register replaces the prior prose outstanding-items list; new orchestrator reads it in-place.
+- INFORMATIONAL: STATE.md compaction remains deferred (1100+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
+- SE-16d PASS: 2026-05-24T12:00:00Z > chain high-water (2026-05-21T05:30:00Z from D-164 entry).
