@@ -7,6 +7,7 @@
 //! - AC-001: detect() false for `"claudio"` basename
 //! - AC-002 / BC-2.03.002 PC-5 / EC-032: detect() false when exe_path is None
 //! - AC-001: detect() false for `"Claude"` (case-sensitive)
+//! - AC-001: detect() false for `"claude-code-runner"` (suffixed look-alike)
 //! - AC-004 / BC-2.03.002 PC-3: id() returns "claude-code"
 //! - AC-007 / BC-2.03.004 PC-1 / VP-022: hook_paths() len == 5
 //! - AC-007: hook_paths() contains all 5 correct path mappings
@@ -29,6 +30,7 @@
 //! | BC-2.03.002 PC-4 | AC-001 | test_BC_2_03_002_detect_false_for_claudio |
 //! | BC-2.03.002 PC-5, EC-032 | AC-002 | test_BC_2_03_002_detect_false_for_exe_path_none |
 //! | BC-2.03.002 PC-4 | AC-001 | test_BC_2_03_002_detect_false_case_sensitive |
+//! | BC-2.03.002 PC-4 | AC-001 | test_BC_2_03_002_detect_false_for_claude_code_runner |
 //! | BC-2.03.002 PC-3 | AC-004 | test_BC_2_03_002_id_returns_claude_code |
 //! | BC-2.03.004 PC-1, VP-022 | AC-007 | test_BC_2_03_004_hook_paths_returns_exactly_5_entries |
 //! | BC-2.03.004 PC-1 | AC-007 | test_BC_2_03_004_hook_paths_contains_correct_paths |
@@ -148,6 +150,21 @@ fn test_BC_2_03_002_detect_false_for_claude_code_basename() {
     assert!(
         !m.detect(&proc),
         "detect() must return false for exe_path with basename 'claude-code'"
+    );
+}
+
+/// AC-001: detect() returns false for "claude-code-runner" — suffixed look-alike that
+/// shares the "claude" prefix but is not a Claude Code process.
+/// This is a distinct test vector from EC-035 ("claude-squad") and the "claude-code"
+/// basename test: it exercises the suffix-rejection path for runner-type wrappers that
+/// may appear in CI environments alongside the real claude binary.
+#[test]
+fn test_BC_2_03_002_detect_false_for_claude_code_runner() {
+    let m = module();
+    let proc = proc_with_exe(Some(PathBuf::from("/usr/local/bin/claude-code-runner")));
+    assert!(
+        !m.detect(&proc),
+        "detect() must return false for exe_path with basename 'claude-code-runner'"
     );
 }
 

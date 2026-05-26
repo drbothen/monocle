@@ -46,3 +46,9 @@ http-body-util = { workspace = true }
 # Test-only; NOT in workspace.dependencies (least-privilege: this is the only consumer).
 # regex-lite is the stdlib-like minimal regex crate without Unicode tables.
 regex-lite = "0.1"
+# tracing-test: structured log capture for AC-006 / BC-2.03.003 PC-2 E-ENG-001 assertions.
+# Test-only; NOT in workspace.dependencies (least-privilege: only this crate uses it for log capture).
+# `no-env-filter` feature required: integration tests in tests/ are a separate crate from the
+# implementation, so without no-env-filter the subscriber only captures the test crate's own
+# logs — not the monocle-runtime logs being tested. See tracing-test docs §"Per-crate Filtering".
+tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
