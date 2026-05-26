@@ -154,8 +154,7 @@ async fn test_hook_pre_tool_use_unauthenticated_returns_401() {
         "tool_name": "Read"
     });
 
-    let (status, resp_body) =
-        post_hook_json(state, "/hooks/pre-tool-use", &[], body).await;
+    let (status, resp_body) = post_hook_json(state, "/hooks/pre-tool-use", &[], body).await;
 
     assert_eq!(
         status,

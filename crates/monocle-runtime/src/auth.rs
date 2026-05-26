@@ -82,12 +82,8 @@ pub async fn auth_middleware(
 
     // Extract both header values as &str (non-UTF-8 values are treated as absent — this is a
     // conservative choice: a non-UTF-8 header is malformed and cannot carry a valid hex token).
-    let canonical = headers
-        .get(CANONICAL_HEADER)
-        .and_then(|v| v.to_str().ok());
-    let alias = headers
-        .get(ALIAS_HEADER)
-        .and_then(|v| v.to_str().ok());
+    let canonical = headers.get(CANONICAL_HEADER).and_then(|v| v.to_str().ok());
+    let alias = headers.get(ALIAS_HEADER).and_then(|v| v.to_str().ok());
 
     // BC-2.01.009 PC-3 ordering: "first emits WARN, then validates."
     // INV-6: WARN must be emitted on EVERY alias-path attempt regardless of outcome
@@ -214,7 +210,9 @@ pub fn validate_auth_header(
             // Validate hex suffix: must be exactly 64 lowercase hex chars (`^[0-9a-f]{64}$`).
             // On length or character mismatch, still run constant_time_eq against sentinel (INV-7).
             let is_valid_hex = hex_suffix.len() == 64
-                && hex_suffix.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
+                && hex_suffix
+                    .chars()
+                    .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase());
 
             if !is_valid_hex {
                 // Length or character mismatch — sentinel comparison for timing safety (INV-7).

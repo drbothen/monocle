@@ -65,25 +65,20 @@ fn write_fixture(dest: &Path, content: &[u8]) {
 
 /// Resolve the monocle main-repo root from the crate's CARGO_MANIFEST_DIR.
 ///
-/// Directory layout:
-/// ```text
-/// /Users/jmagady/Dev/monocle/              ← main repo root (has .factory/)
-///   .worktrees/
-///     S-012/
-///       crates/
-///         monocle-core/                    ← CARGO_MANIFEST_DIR
-/// ```
-///
-/// From CARGO_MANIFEST_DIR, going up 4 levels yields the main repo root.
+/// Walks up the ancestor chain from `CARGO_MANIFEST_DIR` until a directory
+/// containing a `.git` entry (file or directory) is found.  This is robust for
+/// both the main-repo context (`crates/monocle-core` → 2 levels up) and any
+/// worktree context (e.g. `.worktrees/S-012/crates/monocle-core` → 4 levels up
+/// to the worktree `.git` file, or further to the real repo root depending on
+/// git configuration).
 fn monocle_repo_root() -> PathBuf {
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    // crates/monocle-core → crates → S-012 → .worktrees → /Users/.../monocle
-    PathBuf::from(manifest_dir)
-        .parent() // crates/
-        .and_then(Path::parent) // .worktrees/S-012/
-        .and_then(Path::parent) // .worktrees/
-        .and_then(Path::parent) // monocle/  ← main repo root
-        .expect("cannot resolve monocle repo root from CARGO_MANIFEST_DIR")
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    // Walk up until we find a directory containing .git (file or directory).
+    // Works in both main-repo (crates/monocle-core → 2 up) and worktree contexts.
+    manifest_dir
+        .ancestors()
+        .find(|p| p.join(".git").exists())
+        .expect("cannot find git root from CARGO_MANIFEST_DIR")
         .to_path_buf()
 }
 

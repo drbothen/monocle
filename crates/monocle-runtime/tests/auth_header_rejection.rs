@@ -403,7 +403,11 @@ fn test_BC_2_01_009_validate_alias_non_hex() {
 fn test_BC_2_01_009_validate_alias_wrong_length() {
     // 32 hex chars — exactly half the required 64-char length.
     let short_token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 40 chars for a different wrong length
-    assert_ne!(short_token.len(), 64, "sanity: this value must not be 64 chars");
+    assert_ne!(
+        short_token.len(),
+        64,
+        "sanity: this value must not be 64 chars"
+    );
     let result = validate_auth_header(None, Some(short_token), TEST_TOKEN);
 
     assert_eq!(
@@ -508,7 +512,10 @@ fn test_BC_2_01_009_validate_alias_returns_alias_variant_not_canonical() {
     let result = validate_auth_header(None, Some(TEST_TOKEN), TEST_TOKEN);
 
     // First assert it's Ok at all.
-    assert!(result.is_ok(), "alias with correct token must succeed; got: {result:?}");
+    assert!(
+        result.is_ok(),
+        "alias with correct token must succeed; got: {result:?}"
+    );
 
     // Then assert the discriminant is Alias, not Canonical.
     assert_eq!(
@@ -538,7 +545,10 @@ fn test_BC_2_01_009_validate_canonical_returns_canonical_variant_not_alias() {
     let result = validate_auth_header(Some(CANONICAL_VALUE_CORRECT), None, TEST_TOKEN);
 
     // First assert it's Ok at all.
-    assert!(result.is_ok(), "canonical with correct token must succeed; got: {result:?}");
+    assert!(
+        result.is_ok(),
+        "canonical with correct token must succeed; got: {result:?}"
+    );
 
     // Then assert the discriminant is Canonical, not Alias.
     assert_eq!(
@@ -572,13 +582,18 @@ fn test_BC_2_01_009_invariant_missing_and_invalid_are_distinct() {
     let invalid = validate_auth_header(Some(CANONICAL_VALUE_WRONG), None, TEST_TOKEN);
 
     // Both must be Err variants.
-    assert!(missing.is_err(), "both-absent must return Err; got: {missing:?}");
-    assert!(invalid.is_err(), "wrong-token must return Err; got: {invalid:?}");
+    assert!(
+        missing.is_err(),
+        "both-absent must return Err; got: {missing:?}"
+    );
+    assert!(
+        invalid.is_err(),
+        "wrong-token must return Err; got: {invalid:?}"
+    );
 
     // They must be DIFFERENT Err variants.
     assert_ne!(
-        missing,
-        invalid,
+        missing, invalid,
         "AuthError::MissingToken and AuthError::InvalidToken must be distinct discriminants; \
         both returned: {missing:?}. \
         INV-2: the missing/invalid distinction provides developer-friendly diagnostics. \
