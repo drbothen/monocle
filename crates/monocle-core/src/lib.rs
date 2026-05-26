@@ -12,8 +12,8 @@ pub mod engine;
 /// Hook event types for the harness plane (S-014: HookEvent enum).
 pub mod hook_events;
 
-/// Factory adapter abstraction (populated by S-012: FactoryAdapter trait).
-pub mod factory {}
+/// Factory adapter abstraction (BC-2.02.004, BC-2.02.005, S-012).
+pub mod factory;
 
 /// ABI surface for cross-crate stability (populated by S-011: #[non_exhaustive] policy).
 pub mod abi;
