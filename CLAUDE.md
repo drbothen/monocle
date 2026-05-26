@@ -20,7 +20,7 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-WAVE-2-COMPLETE`** — Wave 2 all 9 stories delivered and merged 2026-05-26. Wave-gate pending. develop @ b235e3e.
+- **Phase: `phase-3-WAVE-2-GATE-PASSED`** — Wave 2 gate PASSED 2026-05-26. 332 tests, clippy clean. 4 dep hygiene findings fixed. develop @ e2898be.
 - **Wave 1 (DONE):** S-001 (PR #1+#2, 5 pts) + S-DTU-001 (PR #3, 3 pts) = 8 pts. Wave-gate passed D-164.
 - **Wave 2 (DONE — 9 stories, 41 pts):**
   - S-002: Healthz Endpoint (3 pts, PR #5, f69435e). BC-2.01.001. 20 tests. 5 adversary rounds.
@@ -44,7 +44,11 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   - **STATE.md compaction** — 1100+ lines vs <200 target; invoke `/vsdd-factory:compact-state` at wave-gate.
 - 39 codified disciplines in force.
 - Residual catalog: TD-VSDD-PHASE-1-ASYMPTOTIC-REVERSE-CASCADE + TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT (deferred to spec-kit-mcp rc.19+).
-- **Next: Wave-gate check → Wave 3 (5 stories, 34 pts: S-007, S-008, S-009, S-012, S-015).** Dependency order: S-007 (dep S-006✅) + S-008 (dep S-006✅) + S-012 (dep S-010✅,S-011✅) can start in parallel; S-015 (dep S-014✅) can start in parallel; S-009 (dep S-008) waits for S-008. S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+.
+- **Next: Wave 3 (5 stories, 34 pts).** Wave 2 gate PASSED — no additional human gate required to start Wave 3.
+  - **Batch A (parallel, all deps satisfied):** S-007 (5 pts, Crash Recovery), S-008 (5 pts, JSONL Ring Format), S-012 (8 pts, FactoryAdapter Trait), S-015 (8 pts, ClaudeCodeModule).
+  - **Batch B (after S-008 merges):** S-009 (8 pts, Auth Token Wire Format — depends on S-008).
+  - After Wave 3 all 5 stories merged + wave-gate: Phase 3 COMPLETE (all waves done). Then Phase 4 holdout evaluation.
+  - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Waves 1-3.
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
@@ -172,7 +176,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — GATE-PASS-WITH-RESIDUAL D-155) — 22 BCs, NFRs, ADRs, architecture, manifest
 - Phase 2: Story Decomposition (DONE — GATE-PASS-WITH-RESIDUAL D-159) — 17 stories, 4 waves, 86 points, 14 holdout scenarios
-- **Phase 3: TDD Implementation (CURRENT)** — Waves 1+2 DONE (49 pts); Wave-gate pending; Wave 3 next (34 pts)
+- **Phase 3: TDD Implementation (CURRENT)** — Waves 1+2 DONE (49 pts), Wave 2 gate PASSED; Wave 3 next (34 pts)
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
