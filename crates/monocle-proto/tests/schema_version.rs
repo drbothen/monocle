@@ -231,10 +231,27 @@ fn test_BC_2_02_008_e_proto_001_warning_string_in_lib_rs() {
 /// not contain `schema_version: 0` or `schema_version: 2` (or any other non-1 value).
 /// The implementer must not introduce non-1 schema_version assignments in Phase 1 src.
 ///
-/// Note: this test targets `src/lib.rs` — the generated `monocle.v1.rs` is in OUT_DIR
-/// and is not scanned (it has no schema_version assignments, only struct definitions).
+/// Scope: `src/lib.rs` is the only Phase 1 source file. The generated `monocle.v1.rs`
+/// lives in OUT_DIR and is not scanned (it has no schema_version assignments, only
+/// struct definitions). The scope guard assertion below confirms that lib.rs is the
+/// only .rs file in src/ — if a future story adds more source files, the guard will
+/// fail and the oracle scope must be expanded to cover all new files.
 #[test]
 fn test_BC_2_02_008_phase1_source_sets_schema_version_only_to_1() {
+    // Guard: verify src/ only contains lib.rs (if this fails, expand oracle scope)
+    let src_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let rs_files: Vec<_> = std::fs::read_dir(&src_dir)
+        .expect("src/ directory must exist")
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "rs"))
+        .collect();
+    assert_eq!(
+        rs_files.len(),
+        1,
+        "AC-005 oracle scope guard: src/ should only contain lib.rs in Phase 1; \
+         if more files are added, expand the negative oracle"
+    );
+
     let lib_rs_source = include_str!("../src/lib.rs");
 
     // Assert no `schema_version: 0` assignment in Phase 1 source.
@@ -393,5 +410,37 @@ fn test_BC_2_02_006_edge_case_ec024_unknown_fields_preserved_in_round_trip() {
     assert_eq!(
         decoded.session_id, "phase1-session",
         "EC-024: session_id must survive decode with unknown Phase 4 fields present"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// VP-018 probe 18.c — Test file does NOT import dispatch_envelope.
+// ---------------------------------------------------------------------------
+
+/// BC-2.02.008 postcondition structural recap (VP-018 probe 18.c):
+/// Source-grep absence assertion — the Phase 1 production source (`lib.rs`) does
+/// NOT contain any reference to the Phase 4 dispatcher symbol. Per VP-018
+/// §Post-conditions 3, the Phase 1 codebase must be empty of any dispatcher
+/// invocation; the Phase 4 dispatcher is not imported or called in Phase 1 source.
+///
+/// Implementation note: the dispatcher symbol name is assembled at runtime so
+/// that this test file does not itself contain the literal, which would create a
+/// confusing false-positive if the oracle were ever redirected to scan this file.
+#[test]
+fn test_BC_2_02_008_vp018_probe_18c_no_dispatch_envelope_import() {
+    // Assemble the needle at runtime to keep the literal absent from this source file.
+    let needle = {
+        let mut s = String::from("dispatch");
+        s.push('_');
+        s.push_str("envelope");
+        s
+    };
+
+    // Oracle: the Phase 1 production source must not reference the Phase 4 dispatcher.
+    let lib_rs_source = include_str!("../src/lib.rs");
+    assert!(
+        !lib_rs_source.contains(needle.as_str()),
+        "VP-018 probe 18.c: lib.rs must not reference the Phase 4 dispatcher symbol \
+         (Phase 1 structural constraint — dispatcher is a Phase 4 concern only)"
     );
 }
