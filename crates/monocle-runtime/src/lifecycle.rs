@@ -29,6 +29,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::errors::DaemonStartError;
+use crate::types::RecoveryCheckpoint;
 
 /// Resolve the monocle daemon runtime directory path.
 ///
@@ -213,6 +214,45 @@ impl DaemonExit {
             DaemonExit::SigtermDuringDrain => 143,
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Crash recovery checkpoint I/O (BC-2.01.006, S-007)
+// ---------------------------------------------------------------------------
+
+/// Write a crash recovery checkpoint to `path` atomically via `tempfile::persist`.
+///
+/// The checkpoint is serialised to JSON and written to a temporary file in the same
+/// directory as `path`, then renamed atomically so readers never observe a partial file.
+/// BC-2.01.006 postcondition: the checkpoint file MUST be present after the daemon
+/// writes it, even if the process is subsequently killed.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The parent directory of `path` is inaccessible.
+/// - JSON serialisation of `checkpoint` fails.
+/// - The `tempfile::persist` call fails (e.g., cross-device rename on Linux).
+#[allow(clippy::todo)] // Intentional stub — S-007 Step 2 (Red Gate)
+pub fn write_recovery_checkpoint(
+    _path: &Path,
+    _checkpoint: &RecoveryCheckpoint,
+) -> anyhow::Result<()> {
+    todo!("S-007: write recovery checkpoint")
+}
+
+/// Read a recovery checkpoint from `path`.
+///
+/// Returns `None` if the file does not exist or cannot be deserialised (e.g., truncated
+/// or malformed JSON from a previous crash mid-write). Malformed files are silently
+/// ignored rather than propagated as errors so that TUI startup is never blocked by a
+/// corrupt checkpoint.
+///
+/// Returns `Some(RecoveryCheckpoint)` when a valid checkpoint is found, indicating an
+/// unclean prior shutdown.
+#[allow(clippy::todo)] // Intentional stub — S-007 Step 2 (Red Gate)
+pub fn read_recovery_checkpoint(_path: &Path) -> Option<RecoveryCheckpoint> {
+    todo!("S-007: read recovery checkpoint")
 }
 
 /// Terminate the daemon process with the exit code corresponding to `reason`.
