@@ -20,7 +20,6 @@ use futures::Stream;
 /// WASM plugin adapters can implement it outside this crate (BC-2.02.004 postcondition 2).
 ///
 /// Supertrait bounds: `Send + Sync + 'static` ONLY — no `private::Sealed`.
-#[async_trait::async_trait]
 pub trait FactoryAdapter: Send + Sync + 'static {
     /// Detect whether `workspace_root` contains this factory type.
     ///
@@ -30,8 +29,10 @@ pub trait FactoryAdapter: Send + Sync + 'static {
     where
         Self: Sized;
 
-    /// Returns `true` if this adapter instance matches the given detection result.
-    fn matches(&self, detection: &FactoryDetection) -> bool;
+    /// Returns `true` if `workspace_root` is a workspace this adapter can serve.
+    ///
+    /// Delegates to `Self::detect` — returns `true` iff detection succeeds.
+    fn matches(&self, workspace_root: &Path) -> bool;
 
     /// Path to the factory state file for this adapter instance.
     fn state_file_path(&self) -> &Path;

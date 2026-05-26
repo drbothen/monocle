@@ -142,11 +142,11 @@ const KNOWN_KEYS: &[&str] = &[
     "phase",
     "status",
     "awaiting",
+    "blocking_issues",
     "current_cycle",
     "convergence",
 ];
 
-#[async_trait::async_trait]
 impl FactoryAdapter for VsddFactoryAdapter {
     /// Detect whether `workspace_root` is a VSDD factory project.
     ///
@@ -202,9 +202,11 @@ impl FactoryAdapter for VsddFactoryAdapter {
         })
     }
 
-    /// Returns `true` if `detection.display_name == "VSDD Factory"`.
-    fn matches(&self, detection: &FactoryDetection) -> bool {
-        detection.display_name == "VSDD Factory"
+    /// Returns `true` if `workspace_root` is a VSDD factory workspace.
+    ///
+    /// Delegates to `Self::detect` — no stored state needed.
+    fn matches(&self, workspace_root: &Path) -> bool {
+        Self::detect(workspace_root).is_some()
     }
 
     /// Path to this adapter's STATE.md file.
@@ -222,30 +224,30 @@ impl FactoryAdapter for VsddFactoryAdapter {
     /// §Session Resume Checkpoint section is absent. `"unknown"` MUST NOT appear
     /// as a default for absent fields (BC-2.02.005 PC-3).
     fn read_state(&self) -> Result<FactoryState, FactoryReadError> {
-        // Step 1: check existence → E-FACT-001
-        if !self.state_file.exists() {
-            tracing::error!(
-                error_code = "E-FACT-001",
-                path = %self.state_file.display(),
-                "factory state file not found"
-            );
-            return Err(FactoryReadError::NotFound);
-        }
-
-        // Step 2: read content
+        // Step 1: read content — handles both NotFound (E-FACT-001) and other IO errors
+        // (E-FACT-002). TOCTOU-safe: no separate exists() check.
         let content = std::fs::read_to_string(&self.state_file).map_err(|e| {
-            tracing::error!(
-                error_code = "E-FACT-001",
-                path = %self.state_file.display(),
-                error = %e,
-                "failed to read factory state file"
-            );
-            FactoryReadError::NotFound
+            if e.kind() == std::io::ErrorKind::NotFound {
+                tracing::warn!(
+                    error_code = "E-FACT-001",
+                    path = %self.state_file.display(),
+                    "factory state file not found"
+                );
+                FactoryReadError::NotFound
+            } else {
+                tracing::warn!(
+                    error_code = "E-FACT-002",
+                    path = %self.state_file.display(),
+                    error = %e,
+                    "factory state file read failed"
+                );
+                FactoryReadError::ParseError(format!("IO error: {e}"))
+            }
         })?;
 
-        // Step 3: extract frontmatter → E-FACT-002 if absent
+        // Step 2: extract frontmatter → E-FACT-002 if absent
         let frontmatter = extract_frontmatter(&content).ok_or_else(|| {
-            tracing::error!(
+            tracing::warn!(
                 error_code = "E-FACT-002",
                 path = %self.state_file.display(),
                 "factory state file has no valid YAML frontmatter block"
@@ -253,7 +255,7 @@ impl FactoryAdapter for VsddFactoryAdapter {
             FactoryReadError::ParseError("no valid YAML frontmatter block found".to_string())
         })?;
 
-        // Step 4: parse fields from frontmatter
+        // Step 3: parse fields from frontmatter
         let fields = parse_frontmatter_fields(frontmatter);
 
         // Extract required fields: phase and status
