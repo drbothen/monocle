@@ -95,27 +95,64 @@ impl PartialEq for Phase1Permission {
     fn eq(&self, other: &Self) -> bool {
         use Phase1Permission::*;
         match (self, other) {
-            (AllowOnce { tool: t1, args_hash: h1 }, AllowOnce { tool: t2, args_hash: h2 }) => {
-                t1 == t2 && h1 == h2
-            }
             (
-                AllowAlways { tool: t1, pattern: p1 },
-                AllowAlways { tool: t2, pattern: p2 },
+                AllowOnce {
+                    tool: t1,
+                    args_hash: h1,
+                },
+                AllowOnce {
+                    tool: t2,
+                    args_hash: h2,
+                },
+            ) => t1 == t2 && h1 == h2,
+            (
+                AllowAlways {
+                    tool: t1,
+                    pattern: p1,
+                },
+                AllowAlways {
+                    tool: t2,
+                    pattern: p2,
+                },
             ) => t1 == t2 && p1 == p2,
             (
-                DenyOnce { tool: t1, args_hash: h1, reason: r1 },
-                DenyOnce { tool: t2, args_hash: h2, reason: r2 },
+                DenyOnce {
+                    tool: t1,
+                    args_hash: h1,
+                    reason: r1,
+                },
+                DenyOnce {
+                    tool: t2,
+                    args_hash: h2,
+                    reason: r2,
+                },
             ) => t1 == t2 && h1 == h2 && r1 == r2,
             (
-                DenyAlways { tool: t1, pattern: p1, reason: r1 },
-                DenyAlways { tool: t2, pattern: p2, reason: r2 },
+                DenyAlways {
+                    tool: t1,
+                    pattern: p1,
+                    reason: r1,
+                },
+                DenyAlways {
+                    tool: t2,
+                    pattern: p2,
+                    reason: r2,
+                },
             ) => t1 == t2 && p1 == p2 && r1 == r2,
             // Two AskUser variants are equal iff they share the same Arc allocation,
             // tool, and timeout. Pointer equality is the correct identity for a parked
             // permission prompt: the same Arc means the same pending hook body.
             (
-                AskUser { tool: t1, args: a1, timeout: to1 },
-                AskUser { tool: t2, args: a2, timeout: to2 },
+                AskUser {
+                    tool: t1,
+                    args: a1,
+                    timeout: to1,
+                },
+                AskUser {
+                    tool: t2,
+                    args: a2,
+                    timeout: to2,
+                },
             ) => t1 == t2 && Arc::ptr_eq(a1, a2) && to1 == to2,
             _ => false,
         }

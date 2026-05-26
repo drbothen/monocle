@@ -149,8 +149,7 @@ fn test_BC_2_02_007_round_trip_with_session_start_event() {
     };
 
     let encoded = original.encode_to_vec();
-    let decoded =
-        HookEnvelope::decode(encoded.as_slice()).expect("Round-trip decode must succeed");
+    let decoded = HookEnvelope::decode(encoded.as_slice()).expect("Round-trip decode must succeed");
 
     assert_eq!(decoded.schema_version, 1);
     assert_eq!(decoded.session_id, "test-round-trip-with-event");
@@ -160,7 +159,10 @@ fn test_BC_2_02_007_round_trip_with_session_start_event() {
             assert_eq!(evt.cwd, "/workspace");
             assert_eq!(evt.transcript_path, "/tmp/transcript.jsonl");
         }
-        other => panic!("Expected SessionStart event after round-trip, got: {:?}", other),
+        other => panic!(
+            "Expected SessionStart event after round-trip, got: {:?}",
+            other
+        ),
     }
 }
 

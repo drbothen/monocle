@@ -10,6 +10,11 @@
 // snake_case linter flags. This is intentional — the naming convention is
 // mandated by the factory TDD spec and must be preserved for traceability.
 #![allow(non_snake_case)]
+// Test files: expect/unwrap are idiomatic assertion amplification, not production code.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+// fs::write used for test fixture setup only (not production config writes).
+// The disallowed_methods lint targets production code; test-only fixture writes are exempt.
+#![allow(clippy::disallowed_methods)]
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -88,7 +93,10 @@ fn test_BC_2_01_006_read_valid_checkpoint() {
 
     let result = read_recovery_checkpoint(&path);
 
-    assert!(result.is_some(), "must return Some for a valid checkpoint file");
+    assert!(
+        result.is_some(),
+        "must return Some for a valid checkpoint file"
+    );
     let cp = result.unwrap();
     assert_eq!(cp.pid, 99, "pid must round-trip correctly");
     assert_eq!(
@@ -157,8 +165,8 @@ fn test_BC_2_01_006_read_malformed_json_returns_none() {
 #[test]
 fn test_BC_2_01_006_shutdown_reason_serde_roundtrip() {
     // Graceful → "graceful"
-    let serialised = serde_json::to_string(&ShutdownReason::Graceful)
-        .expect("serialisation must not fail");
+    let serialised =
+        serde_json::to_string(&ShutdownReason::Graceful).expect("serialisation must not fail");
     assert_eq!(
         serialised, r#""graceful""#,
         "ShutdownReason::Graceful must serialise to \"graceful\""
@@ -172,8 +180,8 @@ fn test_BC_2_01_006_shutdown_reason_serde_roundtrip() {
     );
 
     // Signal → "signal"
-    let serialised = serde_json::to_string(&ShutdownReason::Signal)
-        .expect("serialisation must not fail");
+    let serialised =
+        serde_json::to_string(&ShutdownReason::Signal).expect("serialisation must not fail");
     assert_eq!(
         serialised, r#""signal""#,
         "ShutdownReason::Signal must serialise to \"signal\""
@@ -187,8 +195,8 @@ fn test_BC_2_01_006_shutdown_reason_serde_roundtrip() {
     );
 
     // Forced → "forced"
-    let serialised = serde_json::to_string(&ShutdownReason::Forced)
-        .expect("serialisation must not fail");
+    let serialised =
+        serde_json::to_string(&ShutdownReason::Forced).expect("serialisation must not fail");
     assert_eq!(
         serialised, r#""forced""#,
         "ShutdownReason::Forced must serialise to \"forced\""
@@ -218,8 +226,7 @@ fn test_BC_2_01_006_checkpoint_json_schema() {
     };
 
     let json = serde_json::to_string(&checkpoint).expect("serialisation must not fail");
-    let parsed: serde_json::Value =
-        serde_json::from_str(&json).expect("must be valid JSON");
+    let parsed: serde_json::Value = serde_json::from_str(&json).expect("must be valid JSON");
 
     // All 4 canonical fields must be present.
     assert!(parsed.get("pid").is_some(), "JSON must contain 'pid'");
@@ -241,8 +248,8 @@ fn test_BC_2_01_006_checkpoint_json_schema() {
     let utc_value = parsed["shutdown_utc"]
         .as_str()
         .expect("shutdown_utc must be a string");
-    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
-        .expect("regex must compile");
+    let re =
+        Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$").expect("regex must compile");
     assert!(
         re.is_match(utc_value),
         "shutdown_utc '{}' must match YYYY-MM-DDTHH:MM:SS.sssZ",

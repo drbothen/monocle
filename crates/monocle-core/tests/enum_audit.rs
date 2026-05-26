@@ -206,9 +206,8 @@ fn test_BC_2_02_003_phase1_permission_is_exhaustive() {
             permissions_path.display()
         )
     });
-    let ast: File = syn::parse_str(&source).unwrap_or_else(|e| {
-        panic!("syn failed to parse permissions.rs: {e}")
-    });
+    let ast: File = syn::parse_str(&source)
+        .unwrap_or_else(|e| panic!("syn failed to parse permissions.rs: {e}"));
 
     let mut found = false;
     for item in &ast.items {
@@ -247,9 +246,8 @@ fn test_BC_2_02_003_claude_code_tool_is_exhaustive() {
             permissions_path.display()
         )
     });
-    let ast: File = syn::parse_str(&source).unwrap_or_else(|e| {
-        panic!("syn failed to parse permissions.rs: {e}")
-    });
+    let ast: File = syn::parse_str(&source)
+        .unwrap_or_else(|e| panic!("syn failed to parse permissions.rs: {e}"));
 
     let mut found = false;
     for item in &ast.items {
@@ -283,12 +281,10 @@ fn test_BC_2_02_003_claude_code_tool_is_exhaustive() {
 fn assert_enum_is_non_exhaustive(enum_name: &str, file_name: &str) {
     let src = src_dir();
     let path = src.join(file_name);
-    let source = fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!("Cannot read {file_name} at {}: {e}", path.display())
-    });
-    let ast: File = syn::parse_str(&source).unwrap_or_else(|e| {
-        panic!("syn failed to parse {file_name}: {e}")
-    });
+    let source = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("Cannot read {file_name} at {}: {e}", path.display()));
+    let ast: File =
+        syn::parse_str(&source).unwrap_or_else(|e| panic!("syn failed to parse {file_name}: {e}"));
 
     let mut found = false;
     for item in &ast.items {
@@ -398,9 +394,8 @@ fn test_BC_TYPES_001_non_exhaustive_enum_coverage() {
     let mut all_violations: Vec<String> = Vec::new();
 
     for path in &files {
-        let source = fs::read_to_string(path).unwrap_or_else(|e| {
-            panic!("Cannot read {}: {e}", path.display())
-        });
+        let source = fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("Cannot read {}: {e}", path.display()));
         let ast: File = match syn::parse_str(&source) {
             Ok(f) => f,
             Err(e) => panic!("syn failed to parse {}: {e}", path.display()),
@@ -457,15 +452,10 @@ fn test_BC_2_02_003_fixture_missing_non_exhaustive_detected() {
         .join("fixtures")
         .join("missing_non_exhaustive.rs");
 
-    let source = fs::read_to_string(&fixture_path).unwrap_or_else(|e| {
-        panic!(
-            "Cannot read fixture at {}: {e}",
-            fixture_path.display()
-        )
-    });
-    let ast: File = syn::parse_str(&source).unwrap_or_else(|e| {
-        panic!("syn failed to parse fixture: {e}")
-    });
+    let source = fs::read_to_string(&fixture_path)
+        .unwrap_or_else(|e| panic!("Cannot read fixture at {}: {e}", fixture_path.display()));
+    let ast: File =
+        syn::parse_str(&source).unwrap_or_else(|e| panic!("syn failed to parse fixture: {e}"));
 
     let violations = audit_file(&ast);
     assert!(
@@ -506,5 +496,8 @@ fn test_BC_2_02_003_wildcard_arm_compiler_enforced_vacuous() {
     // non-exhaustive enums at S-011 dispatch time. The compiler enforces the
     // wildcard-arm requirement at every future match site. This test is a
     // traceability sentinel.
-    assert!(true, "Vacuous: compiler enforces wildcard arm requirement at each match site.");
+    assert!(
+        true,
+        "Vacuous: compiler enforces wildcard arm requirement at each match site."
+    );
 }

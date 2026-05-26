@@ -46,8 +46,8 @@ use tokio::net::TcpListener;
 use crate::auth::auth_middleware;
 use crate::body_limit::body_size_limit_middleware;
 use crate::handlers::hooks::{
-    post_hook_notification, post_hook_pre_tool_use, post_hook_prompt_submit, post_hook_session_start,
-    post_hook_stop,
+    post_hook_notification, post_hook_pre_tool_use, post_hook_prompt_submit,
+    post_hook_session_start, post_hook_stop,
 };
 use crate::handlers::shutdown::post_shutdown;
 use crate::handlers::status::get_status;

@@ -25,8 +25,6 @@ pub mod handlers;
 /// [`lifecycle::DaemonExit`], [`lifecycle::exit_with`] (S-005),
 /// [`lifecycle::write_recovery_checkpoint`], [`lifecycle::read_recovery_checkpoint`] (S-007).
 pub mod lifecycle;
-/// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
-pub mod types;
 /// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
 pub mod lock;
 /// Axum router construction — unauthenticated and authenticated router split.
@@ -35,3 +33,5 @@ pub mod router;
 pub mod server;
 /// Daemon shared state types: [`state::AppMode`] and [`state::DaemonState`].
 pub mod state;
+/// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
+pub mod types;

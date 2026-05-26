@@ -26,6 +26,8 @@
 //! This invariant is enforced by SS-conventions-anti-patterns.md §"No `std::process::exit`
 //! in handler code" and verified by a structural source-grep test.
 
+use std::io::Write as _;
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 use crate::errors::DaemonStartError;
@@ -233,12 +235,34 @@ impl DaemonExit {
 /// - The parent directory of `path` is inaccessible.
 /// - JSON serialisation of `checkpoint` fails.
 /// - The `tempfile::persist` call fails (e.g., cross-device rename on Linux).
-#[allow(clippy::todo)] // Intentional stub — S-007 Step 2 (Red Gate)
 pub fn write_recovery_checkpoint(
-    _path: &Path,
-    _checkpoint: &RecoveryCheckpoint,
+    path: &Path,
+    checkpoint: &RecoveryCheckpoint,
 ) -> anyhow::Result<()> {
-    todo!("S-007: write recovery checkpoint")
+    let json = serde_json::to_string(checkpoint)?;
+
+    let parent = path.parent().ok_or_else(|| {
+        anyhow::anyhow!(
+            "checkpoint path has no parent directory: {}",
+            path.display()
+        )
+    })?;
+
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+    tmp.write_all(json.as_bytes())?;
+
+    // Set 0o600 before persisting so the final file is always owner-only.
+    std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o600))?;
+
+    tmp.persist(path).map_err(|e| {
+        anyhow::anyhow!(
+            "failed to persist checkpoint to {}: {}",
+            path.display(),
+            e.error
+        )
+    })?;
+
+    Ok(())
 }
 
 /// Read a recovery checkpoint from `path`.
@@ -250,9 +274,9 @@ pub fn write_recovery_checkpoint(
 ///
 /// Returns `Some(RecoveryCheckpoint)` when a valid checkpoint is found, indicating an
 /// unclean prior shutdown.
-#[allow(clippy::todo)] // Intentional stub — S-007 Step 2 (Red Gate)
-pub fn read_recovery_checkpoint(_path: &Path) -> Option<RecoveryCheckpoint> {
-    todo!("S-007: read recovery checkpoint")
+pub fn read_recovery_checkpoint(path: &Path) -> Option<RecoveryCheckpoint> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str(&contents).ok()
 }
 
 /// Terminate the daemon process with the exit code corresponding to `reason`.
