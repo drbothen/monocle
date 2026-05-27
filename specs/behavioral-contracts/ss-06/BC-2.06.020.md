@@ -1,0 +1,160 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-05-26T18:00:00Z
+phase: 1a
+inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
+input-hash: "[pending]"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-06
+capability: CAP-006
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1.1.0
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.06.020: Status Bar: Breadcrumb
+
+## Description
+
+The status bar's second row (top of the two-row status bar) renders a breadcrumb string
+derived from the current `AppMode`. The breadcrumb provides orientation: it shows the
+user's current location in the navigation hierarchy at a glance, without requiring them to
+count open panels or remember how they navigated. The string is computed deterministically
+from `AppMode` and rendered on every `draw()` tick. The status bar is always visible —
+even in Fullscreen and Overlay modes.
+
+## Preconditions
+
+1. The TUI is in any valid `AppMode`.
+2. The status bar is allocated the bottom 2 rows of the terminal via the ratatui layout
+   constraint (`Constraint::Length(2)` per SS-tui.md §Rendering Architecture §Draw Loop).
+3. The breadcrumb occupies the first (upper) of the two status bar rows, alongside the
+   drop counter (BC-2.06.019) on the same row.
+
+## Postconditions
+
+1. **Breadcrumb derivation table:** The breadcrumb string is derived from `AppMode` as
+   follows:
+
+   | AppMode | Breadcrumb String |
+   |---------|------------------|
+   | `Dashboard { focused: Sessions }` | `Dashboard > Sessions` |
+   | `Dashboard { focused: EventRibbon }` | `Dashboard > Events` |
+   | `Overlay { stack, prior }` where `stack.len() == 1` | `Dashboard > Overlay [1 prompt]` |
+   | `Overlay { stack, prior }` where `stack.len() == N (N > 1)` | `Dashboard > Overlay [N prompts]` |
+   | `Fullscreen { panel: Sessions, .. }` | `Dashboard > Sessions > Fullscreen` |
+   | `Fullscreen { panel: EventRibbon, .. }` | `Dashboard > Events > Fullscreen` |
+   | `Filtering { panel: Sessions, .. }` | `Dashboard > Sessions > Filter` |
+   | `Filtering { panel: EventRibbon, .. }` | `Dashboard > Events > Filter` |
+
+2. **Grammatical plurality:** When `stack.len() == 1`, render `[1 prompt]` (singular).
+   When `stack.len() > 1`, render `[N prompts]` (plural). This distinction is load-bearing:
+   it communicates to the user exactly how many decisions are queued.
+
+3. **Always rendered:** The breadcrumb renders on every `draw()` tick regardless of
+   `AppMode`. There is no mode in which the breadcrumb is hidden or replaced with a
+   different widget.
+
+4. **No truncation on minimum terminal width:** At 80 columns, all breadcrumb strings
+   from the derivation table fit without truncation. The longest string is
+   `Dashboard > Sessions > Fullscreen` (34 characters) or
+   `Dashboard > Overlay [99 prompts]` (32 characters for 99 queued prompts).
+   Both fit within 80 columns alongside the drop counter text.
+
+5. **Left-aligned:** The breadcrumb is left-aligned on the second-to-last terminal row.
+   The drop counter (`drops: N`) is right-aligned on the same row when non-zero.
+
+## Invariants
+
+1. The breadcrumb is a pure function of `AppMode`. Given the same `AppMode`, the same
+   breadcrumb string is always produced. There is no state beyond `AppMode` that affects
+   the breadcrumb.
+2. Phase 2 will add `Customizations` and `Workflow` panel focus states. The breadcrumb
+   derivation table will be extended at that point. Phase 1 only includes `Sessions` and
+   `EventRibbon` focus variants.
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-125 | `Overlay` mode with 0 prompts in stack (should be unreachable per BC-2.06.001 empty-stack collapse) | If reached in testing, renders `Dashboard > Overlay [0 prompts]` — no panic; the impossible state is displayed faithfully |
+| EC-126 | Terminal resize reduces width to <34 columns | Breadcrumb is truncated at the right edge; no line wrap; no panic; truncation is the lesser evil compared to wrap breaking column layout |
+| EC-127 | Very large overlay stack: 99 prompts | Renders `Dashboard > Overlay [99 prompts]`; fits in 80 columns |
+| EC-128 | AppMode transitions mid-frame (race between draw and IPC message handling) | The draw loop drains IPC messages before drawing; breadcrumb reflects the `AppMode` after IPC drain; no partial-state render |
+
+## Canonical Test Vectors
+
+| AppMode | Expected Breadcrumb | Category |
+|---------|-------------------|----------|
+| `Dashboard { focused: Sessions }` | `Dashboard > Sessions` | happy-path |
+| `Dashboard { focused: EventRibbon }` | `Dashboard > Events` | happy-path |
+| `Overlay { stack: [P1], prior: Sessions }` | `Dashboard > Overlay [1 prompt]` | happy-path |
+| `Overlay { stack: [P1, P2, P3], prior: Sessions }` | `Dashboard > Overlay [3 prompts]` | happy-path |
+| `Fullscreen { panel: Sessions, prior: Sessions }` | `Dashboard > Sessions > Fullscreen` | happy-path |
+| `Filtering { panel: Sessions, query: "foo", prior: Sessions }` | `Dashboard > Sessions > Filter` | happy-path |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | Breadcrumb is a pure function of `AppMode` (same mode → same string) | unit test (snapshot test for all table entries) |
+| VP-TBD | Overlay breadcrumb uses singular `[1 prompt]` and plural `[N prompts]` correctly | unit test |
+| VP-TBD | Breadcrumb renders in all AppModes without panic | unit test (enumerate all variants) |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 |
+| Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the status bar breadcrumb which is the primary orientation aid for the "AppMode state machine" component of CAP-006 |
+| L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: breadcrumb is read-only display derived from in-memory AppMode) |
+| Architecture Module | monocle-tui (status bar renderer `draw_status_bar()`, breadcrumb derivation from `AppMode`); monocle-core (`AppMode` enum) per ARCH-INDEX SS-06 |
+| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Status Bar (breadcrumb subsection with all 4 AppMode derivation examples) |
+| Cross-Ref | BC-2.06.001 (AppMode state machine — breadcrumb is derived from it); BC-2.06.019 (drop counter — shares the same status bar row); BC-2.06.021 (keybinding hint — occupies the second status bar row) |
+| Test File | `monocle-tui/tests/status_bar.rs` |
+| Test Name | `test_BC_2_06_020_breadcrumb_derivation` |
+| Stories | S-TBD (filled by story-writer) |
+
+## Related BCs
+
+- [BC-2.06.001] — depends on: breadcrumb is a pure function of `AppMode` defined in BC-2.06.001
+- [BC-2.06.019] — composes with: drop counter shares the breadcrumb row in the status bar
+- [BC-2.06.021] — composes with: keybinding hint occupies the second status bar row (below breadcrumb)
+
+## Architecture Anchors
+
+- `architecture/SS-tui.md#status-bar` — breadcrumb subsection (derivation table and layout)
+
+## Story Anchor
+
+S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singular/plural prompt count (filled by story-writer)
+
+## VP Anchors
+
+- VP-TBD — Snapshot test: breadcrumb string for every AppMode variant
+
+## §Trace v1.0.0
+
+**Initial production** (2026-05-26T18:00:00Z):
+- BC-2.06.020 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
+- Reads: SS-tui.md v1.0.0 §Panel Architecture §Status Bar (breadcrumb derivation table);
+  prd-expansion-scope.md §3.3 BC-2.06.020 description (F-51).
+- Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
+- DI-007 cited: read-only display derivation.
+- Postcondition 2 specifies singular/plural grammar for the prompt count — prevents a
+  common "0 prompts / 1 prompts" localization error.
+- Invariant 2 explicitly documents Phase 2 scope for Customizations/Workflow focus states.
+- EC-125 handles the unreachable empty-stack Overlay state gracefully rather than
+  panicking — defense-in-depth for test isolation.

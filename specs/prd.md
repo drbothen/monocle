@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.26.15"
+version: "1.27.0"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-19T03:00:00Z
+timestamp: 2026-05-26T13:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "37b6ef2"
-traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.11; 22 BCs sharded under behavioral-contracts/ss-NN/ (Dispatch 2 commit d02bf2a + Dispatch 3 commit f259ade); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
+traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.15; 70 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-07 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -17,7 +17,7 @@ supplements:
   - nfr-catalog.md
 ---
 
-# Product Requirements Document: Monocle — Phase 1 Forward-Compatibility Contracts
+# Product Requirements Document: Monocle — Phase 1
 
 > **Index Document.** This PRD is an index. BC details live in `behavioral-contracts/ss-NN/BC-2.SS.NNN.md`.
 > NFR catalog, error taxonomy, interface definitions, and test vectors are in `prd-supplements/`.
@@ -130,6 +130,90 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods (hook_paths, spawn, preflight) | P0 |
 
 > Full contracts: `behavioral-contracts/ss-03/BC-2.03.NNN.md`
+
+### 2.4 Daemon Wiring (CAP-004)
+
+> Architecture source: `architecture/SS-daemon-wiring.md` | ARCH-INDEX: SS-04
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.04.001 | Daemon Start Sequence: Port Bind + Lock File + Token Write (SOQ-2) | P0 |
+| BC-2.04.002 | Daemon Auto-Start on TUI Launch | P0 |
+| BC-2.04.003 | MONOCLE_NO_AUTOSTART=1 Suppresses Auto-Start | P1 |
+| BC-2.04.004 | `monocle daemon start` CLI Subcommand | P0 |
+| BC-2.04.005 | `monocle daemon stop` CLI Subcommand | P0 |
+| BC-2.04.006 | `directories::ProjectDirs::runtime_dir()` Fallback Chain | P0 |
+| BC-2.04.007 | Hook Endpoint: PreToolUse Request Routing | P0 |
+| BC-2.04.008 | Hook Endpoint: Notification Request Routing (2000ms Timeout) | P0 |
+| BC-2.04.009 | Hook Endpoint: Stop/SessionStart/PromptSubmit Routing (300ms Timeout) | P0 |
+| BC-2.04.010 | Hook Tmpfile Generation at runtimeDir/hooks-settings.json | P0 |
+| BC-2.04.011 | Bounded Event Bus with Drop Counter | P0 |
+| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P1 |
+
+> Full contracts: `behavioral-contracts/ss-04/BC-2.04.NNN.md`
+
+### 2.5 IPC (CAP-005)
+
+> Architecture source: `architecture/SS-ipc.md` | ARCH-INDEX: SS-05
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.05.001 | UDS Server Bind at runtimeDir/monocle.sock | P0 |
+| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | P0 |
+| BC-2.05.003 | IPC Message Types: SessionListUpdate | P0 |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | P0 |
+| BC-2.05.005 | IPC Message Types: PermissionPromptQueued | P0 |
+| BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 |
+| BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 |
+| BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 |
+
+> Full contracts: `behavioral-contracts/ss-05/BC-2.05.NNN.md`
+
+### 2.6 TUI (CAP-006)
+
+> Architecture source: `architecture/SS-tui.md` | ARCH-INDEX: SS-06
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.06.001 | AppMode State Machine: Compile-Time Mutual Exclusion | P0 |
+| BC-2.06.002 | FocusSnapshot: Focus Restored After Overlay/Fullscreen Close | P0 |
+| BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | P0 |
+| BC-2.06.004 | Ctrl-\ Popup: Appears and Dismisses Without State Loss | P0 |
+| BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | P0 |
+| BC-2.06.006 | Sessions Panel: / Filter with Nucleo Fuzzy Match | P1 |
+| BC-2.06.007 | Sessions Panel: Enter Transitions to Fullscreen | P1 |
+| BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | P0 |
+| BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | P0 |
+| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | P1 |
+| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | P0 |
+| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | P0 |
+| BC-2.06.013 | Permission Overlay: Reject Keybinding | P0 |
+| BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | P0 |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P2 |
+| BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | P0 |
+| BC-2.06.017 | Permission Response Within Hook Timeout Budget | P0 |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | P1 |
+| BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | P0 |
+| BC-2.06.020 | Status Bar: Breadcrumb | P1 |
+| BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 |
+| BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 |
+
+> Full contracts: `behavioral-contracts/ss-06/BC-2.06.NNN.md`
+
+### 2.7 Config (CAP-007)
+
+> Architecture source: `architecture/SS-config.md` | ARCH-INDEX: SS-07
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | P0 |
+| BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | P0 |
+| BC-2.07.003 | Config Missing or Corrupted: Default Applied | P0 |
+| BC-2.07.004 | Profile Picker: Sticky-Per-Project | P1 |
+| BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | P1 |
+| BC-2.07.006 | CCR Detection via `ccr_path` Config Field | P1 |
+
+> Full contracts: `behavioral-contracts/ss-07/BC-2.07.NNN.md`
 
 ---
 
@@ -1159,6 +1243,51 @@ This v1.26.15 bump creates a new consumer-ledger surface: VP-INDEX §References 
 | all other `traces_to:` pins | unchanged | unchanged | NORMATIVE | verified current — no change |
 
 **Changes made:** frontmatter `version` v1.26.14 → v1.26.15; `timestamp` refreshed `2026-05-19T01:30:00Z` → `2026-05-19T03:00:00Z`; `traces_to:` — `verification-properties/VP-INDEX.md` v1.14 → v1.15; §Trace v1.26.15 added.
+
+---
+
+## §Trace v1.27.0 — PRD Expansion: 22 BCs → 70 BCs (Phase 1 Full Product Scope)
+
+**Bump:** v1.26.15 → v1.27.0 (minor version — new §2.4–§2.7 sections added; no content removed).
+**Predecessor pin:** v1.26.15 (R20A F-R121-1 VP-INDEX pin refresh; timestamp `2026-05-19T03:00:00Z`).
+**Timestamp:** 2026-05-26T13:00:00Z
+
+**Scope of v1.27.0 (major behavioral expansion — four new subsection groups added to §2):**
+
+PRD expanded from 22 BCs (forward-compatibility contracts only) to 70 BCs covering the complete Phase 1 product scope. The expansion is driven by the gap analysis in `prd-expansion-scope.md` which identified that the original PRD covered only 38% of Phase 1 features (forward-compatibility and infrastructure substrate), leaving the product-facing layer — TUI, IPC, config, daemon wiring, and event bus — with zero BC coverage.
+
+**Revision history entry:**
+
+| Field | Before | After |
+|-------|--------|-------|
+| Version | 1.26.15 | 1.27.0 |
+| Title | "Phase 1 Forward-Compatibility Contracts" | "Phase 1" |
+| §2 subsection count | 3 (§2.1 CAP-001, §2.2 CAP-002, §2.3 CAP-003) | 7 (§2.1–§2.3 unchanged + §2.4 CAP-004 + §2.5 CAP-005 + §2.6 CAP-006 + §2.7 CAP-007) |
+| Total BCs in §2 | 22 | 70 |
+| BC-INDEX version | v1.14 (63 BCs) | v1.15 (111 BCs including 41 SS-DTU) |
+
+**New §2 content summary:**
+
+- **§2.4 Daemon Wiring (CAP-004)** — 12 BCs (BC-2.04.001..BC-2.04.012). Architecture source: SS-daemon-wiring.md. Covers: daemon start sequence with SOQ-2 port-bind-before-lock-file ordering invariant, CLI subcommands (`daemon start`/`daemon stop`), daemon auto-start on TUI launch, `MONOCLE_NO_AUTOSTART=1` suppression, `directories::ProjectDirs` runtime_dir fallback chain, hook endpoint routing (PreToolUse, Notification, Stop/SessionStart/PromptSubmit with correct timeouts), hook tmpfile generation, bounded event bus with drop counter, JSONL ring capacity and rotation policy.
+
+- **§2.5 IPC (CAP-005)** — 8 BCs (BC-2.05.001..BC-2.05.008). Architecture source: SS-ipc.md. Covers: UDS server bind at `runtimeDir/monocle.sock`, TUI client connect and initial state push, three IPC message types (SessionListUpdate, HookEventReceived, PermissionPromptQueued), TUI reconnect after daemon restart, SOQ-3 overlay-clear-on-disconnect invariant, UDS-only Phase 1 constraint (no shared-memory transport).
+
+- **§2.6 TUI (CAP-006)** — 22 BCs (BC-2.06.001..BC-2.06.022). Architecture source: SS-tui.md. Covers: AppMode state machine compile-time mutual exclusion, FocusSnapshot focus restoration, 5-level action dispatch binding precedence, Ctrl-\ popup appear/dismiss without state loss, sessions panel (session list render, `/` filter with nucleo, Enter fullscreen), permission overlay (VecDeque stack push, `[↑↓]` rotate, diff preview via `similar 3`, Accept-Once/Accept-Always/Reject keybindings, `[Esc]` hide without reject, `[t]` trace-to-source stub, disconnect clear, timeout budget), event ribbon panel, status bar (drop counter, breadcrumb, keybinding hint), killer scenario (≤6 keystrokes for dual permission resolve).
+
+- **§2.7 Config (CAP-007)** — 6 BCs (BC-2.07.001..BC-2.07.006). Architecture source: SS-config.md. Covers: atomic write via `tempfile::persist`, config schema version 1 harness profile fields, missing/corrupted config default application, sticky-per-project profile picker, `Ctrl-P` override, CCR path detection via `ccr_path` field.
+
+**Title change rationale:** The original title "Phase 1 Forward-Compatibility Contracts" accurately described the original 22-BC scope (forward-compat focus). With the expansion to 70 BCs covering the full product, the title "Phase 1" is accurate and avoids the false implication that the PRD only covers forward-compatibility. The killer scenario (BC-2.06.022), TUI panels, IPC layer, and config are Phase 1 product features, not forward-compatibility contracts.
+
+**SE-22 v2 producer declaration:**
+
+Known consumers of PRD version pin who will have stale pins after this bump:
+- `verification-properties/VP-INDEX.md` §References: last set to v1.26.15. Dispatch: `vsdd-factory:formal-verifier`.
+- Individual VP files §References: same stale class. Dispatch: `vsdd-factory:formal-verifier`.
+- `behavioral-contracts/BC-INDEX.md` §Trace v1.15 references prd.md in the same burst — aligned.
+
+**SE-16d monotonicity PASS:** PRD v1.27.0 timestamp `2026-05-26T13:00:00Z` > PRD v1.26.15 timestamp `2026-05-19T03:00:00Z`. ARITHMETICALLY TRUE. SE-16d PASS strict-greater.
+
+**Changes made:** frontmatter `version` v1.26.15 → v1.27.0; `timestamp` refreshed `2026-05-19T03:00:00Z` → `2026-05-26T13:00:00Z`; H1 title updated (removed "Forward-Compatibility Contracts" suffix); §2.4 through §2.7 added (48 new BC rows across 4 new subsystem tables); `traces_to:` BC-INDEX pin updated v1.14 → v1.15; §Trace v1.27.0 added.
 
 ---
 

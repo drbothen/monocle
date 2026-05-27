@@ -1,11 +1,11 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.11"
+version: "1.0.15"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-19T10:00:00Z
-phase: pre-phase-1-architecture
+timestamp: 2026-05-26T03:00:00Z
+phase: phase-1-expansion
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
 traces_to: prd.md
@@ -26,10 +26,14 @@ project: monocle
 | Daemon Lifecycle | SS-daemon-lifecycle.md | ~23,730 | orchestrator, implementer, test-writer | HTTP server, hooks, auth, locking, ring buffer, crash recovery |
 | Core Types and ABI | SS-core-types-and-abi.md | ~10,072 | implementer, formal-verifier | Forward-compatible wire formats, factory abstractions, protocol versioning |
 | Engine Module | SS-engine-module.md | ~15,013 | implementer, formal-verifier | EngineModule trait, ClaudeCodeModule adapter, harness abstraction |
+| Daemon Wiring | SS-daemon-wiring.md | ~4,800 | orchestrator, implementer, test-writer | Composition root: CLI surface, daemon start sequence, event bus, hooks-settings.json |
+| IPC | SS-ipc.md | ~3,200 | implementer, test-writer | UDS transport, framing protocol, message types, reconnection, SOQ-3 overlay clear |
+| TUI | SS-tui.md | ~5,200 | implementer, test-writer, formal-verifier | AppMode state machine, Action dispatch, panels, permission overlay, Ctrl-\ integration |
 | Dependency Manifest | SS-deps-pin-manifest.md | ~9,976 | implementer, devops-engineer | Version pins, MSRV policy, workspace dependency graph |
 | Conventions & Anti-Patterns | SS-conventions-anti-patterns.md | ~25,794 | implementer, code-reviewer | Code conventions, forbidden patterns, clippy + semgrep enforcement |
 | Forward Compatibility | SS-forward-compatibility.md | ~7,871 | architect, implementer | FC contracts P2-1..P3-N |
 | Phase 1 Permissions | SS-permissions-phase1.md | ~2,661 | implementer, test-writer | Phase 1 permission enum |
+| Config | SS-config.md | ~2,600 | implementer, test-writer | Config persistence, harness profiles, profile picker, CCR detection |
 
 ## Cross-References
 
@@ -40,6 +44,10 @@ project: monocle
 | Verification plan for a module | SS-core-types-and-abi.md + SS-engine-module.md |
 | Phase 3+ upgrade impact | SS-forward-compatibility.md + SS-deps-pin-manifest.md |
 | Code review enforcement rules | SS-conventions-anti-patterns.md |
+| Daemon binary wiring (composition root) | SS-daemon-wiring.md + SS-daemon-lifecycle.md + SS-engine-module.md |
+| IPC protocol (TUI ↔ daemon transport) | SS-ipc.md + SS-daemon-wiring.md |
+| TUI implementation (panels + overlay) | SS-tui.md + SS-ipc.md + SS-core-types-and-abi.md + SS-deps-pin-manifest.md |
+| Config crate implementation | SS-config.md + SS-deps-pin-manifest.md + SS-conventions-anti-patterns.md |
 
 ## Subsystem Registry
 
@@ -52,6 +60,10 @@ project: monocle
 | SS-01 | Daemon Lifecycle | SS-daemon-lifecycle.md | monocle-runtime (daemon binary, HTTP server, ring buffer, lock file, auth) | Phase 1 |
 | SS-02 | Core Types and ABI | SS-core-types-and-abi.md | monocle-core (FactoryAdapter trait, wire format types, protocol versioning) | Phase 1 |
 | SS-03 | Engine Module | SS-engine-module.md | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) | Phase 1 |
+| SS-04 | Daemon Wiring | SS-daemon-wiring.md | monocle (binary crate — `main.rs`, `clap` CLI, daemon entrypoint, TUI entrypoint); monocle-runtime (hooks-settings.json generation, bounded event bus, MONOCLE_NO_AUTOSTART check) | Phase 1 |
+| SS-05 | IPC | SS-ipc.md | monocle-ipc (UDS client + server, Transport trait, message types, framing, reconnection logic) | Phase 1 |
+| SS-06 | TUI | SS-tui.md | monocle-core (AppMode, Action, FocusSnapshot, PanelId, PromptModal, BindingSource, Binding, transition() — pure types and transition function); monocle-tui (ratatui renderer, panel layout, crossterm event loop, IPC client, keybinding dispatcher) | Phase 1 |
+| SS-07 | Config | SS-config.md | monocle-config (config.json reader/writer, harness profile schema, profile picker logic, CCR detection) | Phase 1 |
 
 **ID format:** `SS-NN` (two-digit sequential, append-only).
 
@@ -67,6 +79,10 @@ project: monocle
 | SS-01 | CAP-001 | Daemon ingestion of Claude Code hook events; lifecycle management |
 | SS-02 | CAP-002 | Forward-compatible ABI; wire format stability; factory-state abstraction |
 | SS-03 | CAP-003 | Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter |
+| SS-04 | CAP-004 | Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation |
+| SS-05 | CAP-005 | Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear |
+| SS-06 | CAP-006 | User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration |
+| SS-07 | CAP-007 | Configuration persistence; harness profile management; profile picker; CCR detection |
 
 ## Cross-Cutting Files
 
@@ -399,3 +415,81 @@ router-level auth middleware.
   correction. This does not affect SS-engine-module.md (already correct at v1.1.20) or
   BC-2.03.002 (already correct). BC-2.03.001 is untouched (PO domain, concurrent work).
 - SE-16d PASS: 2026-05-19T10:00:00Z > chain high-water 2026-05-18T15:30:00Z (monotonic).
+
+## §Trace v1.0.12
+
+**SS-07 Config subsystem registration** (2026-05-26T00:00:00Z):
+- NORMATIVE: SS-07 (Config) row added to Subsystem Registry. Implementing crate:
+  `monocle-config`. Architecture doc: `SS-config.md` (new artifact, same burst).
+- NORMATIVE: SS-07 row added to Capability Traceability table: CAP-007 (config
+  persistence, harness profiles, profile picker, CCR detection).
+- NORMATIVE: SS-config.md added to Document Map with ~2,600 token estimate and
+  primary consumers (implementer, test-writer).
+- NORMATIVE: Cross-References row added: "Config crate implementation" →
+  `SS-config.md + SS-deps-pin-manifest.md + SS-conventions-anti-patterns.md`.
+- INFORMATIONAL: SS-04 (Daemon Wiring), SS-05 (IPC), and SS-06 (TUI) are proposed
+  in `prd-expansion-scope.md` §Section 2 but their architecture documents do not
+  exist yet at this write time. They are NOT registered here; they will be registered when their
+  respective SS-NN.md files are produced. Append-only registry discipline preserved.
+  [Correction: SS-04 was registered in §Trace v1.0.13 in the same session, after
+  SS-daemon-wiring.md was produced. SS-05 was registered in §Trace v1.0.14 after
+  SS-ipc.md was produced. SS-06 was registered in §Trace v1.0.15 after SS-tui.md
+  was produced.]
+- version: 1.0.11 → 1.0.12; timestamp: 2026-05-19T10:00:00Z → 2026-05-26T00:00:00Z.
+- SE-16d PASS: 2026-05-26T00:00:00Z > chain high-water 2026-05-19T10:00:00Z (monotonic).
+
+## §Trace v1.0.13
+
+**SS-04 Daemon Wiring subsystem registration** (2026-05-26T01:00:00Z):
+- NORMATIVE: SS-04 (Daemon Wiring) row added to Subsystem Registry. Implementing crates:
+  `monocle` (binary crate — `main.rs`, `clap` CLI, daemon entrypoint, TUI entrypoint);
+  `monocle-runtime` (hooks-settings.json generation, bounded event bus,
+  `MONOCLE_NO_AUTOSTART` check). Architecture doc: `SS-daemon-wiring.md` (new artifact,
+  this burst).
+- NORMATIVE: SS-04 row added to Capability Traceability table: CAP-004 (binary
+  composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile
+  generation).
+- NORMATIVE: `SS-daemon-wiring.md` added to Document Map with ~4,800 token estimate and
+  primary consumers (orchestrator, implementer, test-writer).
+- NORMATIVE: Cross-References row added: "Daemon binary wiring (composition root)" →
+  `SS-daemon-wiring.md + SS-daemon-lifecycle.md + SS-engine-module.md`.
+- NORMATIVE: §Trace v1.0.12 informational note corrected to record that SS-04 was
+  subsequently registered in this (v1.0.13) burst.
+- version: 1.0.12 → 1.0.13; timestamp: 2026-05-26T00:00:00Z → 2026-05-26T01:00:00Z.
+- SE-16d PASS: 2026-05-26T01:00:00Z > chain high-water 2026-05-26T00:00:00Z (monotonic).
+
+## §Trace v1.0.14
+
+**SS-05 IPC subsystem registration** (2026-05-26T02:00:00Z):
+- NORMATIVE: SS-05 (IPC) row added to Subsystem Registry. Implementing crate:
+  `monocle-ipc` (UDS client + server, Transport trait, message types, framing,
+  reconnection logic). Architecture doc: `SS-ipc.md` (new artifact, this burst).
+- NORMATIVE: SS-05 row added to Capability Traceability table: CAP-005 (internal
+  TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision
+  routing; SOQ-3 overlay clear).
+- NORMATIVE: `SS-ipc.md` added to Document Map with ~3,200 token estimate and primary
+  consumers (implementer, test-writer).
+- NORMATIVE: Cross-References row added: "IPC protocol (TUI ↔ daemon transport)" →
+  `SS-ipc.md + SS-daemon-wiring.md`.
+- version: 1.0.13 → 1.0.14; timestamp: 2026-05-26T01:00:00Z → 2026-05-26T02:00:00Z.
+- SE-16d PASS: 2026-05-26T02:00:00Z > chain high-water 2026-05-26T01:00:00Z (monotonic).
+
+## §Trace v1.0.15
+
+**SS-06 TUI subsystem registration** (2026-05-26T03:00:00Z):
+- NORMATIVE: SS-06 (TUI) row added to Subsystem Registry. Implementing crates:
+  `monocle-core` (AppMode, Action, FocusSnapshot, PanelId, PromptModal, BindingSource,
+  Binding, transition() — pure types and transition function);
+  `monocle-tui` (ratatui renderer, panel layout, crossterm event loop, IPC client,
+  keybinding dispatcher). Architecture doc: `SS-tui.md` (new artifact, this burst).
+- NORMATIVE: SS-06 row added to Capability Traceability table: CAP-006 (user-facing
+  TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon;
+  permission overlay stack; Ctrl-\ popup integration).
+- NORMATIVE: `SS-tui.md` added to Document Map with ~5,200 token estimate and primary
+  consumers (implementer, test-writer, formal-verifier).
+- NORMATIVE: Cross-References row added: "TUI implementation (panels + overlay)" →
+  `SS-tui.md + SS-ipc.md + SS-core-types-and-abi.md + SS-deps-pin-manifest.md`.
+- NORMATIVE: §Trace v1.0.12 informational note updated to record that SS-06 was
+  subsequently registered in this (v1.0.15) burst.
+- version: 1.0.14 → 1.0.15; timestamp: 2026-05-26T02:00:00Z → 2026-05-26T03:00:00Z.
+- SE-16d PASS: 2026-05-26T03:00:00Z > chain high-water 2026-05-26T02:00:00Z (monotonic).

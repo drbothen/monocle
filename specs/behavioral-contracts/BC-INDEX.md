@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.14"
+version: "1.15"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-20T21:00:00Z
+timestamp: 2026-05-26T13:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -79,6 +79,98 @@ traces_to: prd.md
 
 ---
 
+## SS-04: Daemon Wiring
+
+> Architecture source: `architecture/SS-daemon-wiring.md`
+> ARCH-INDEX subsystem: SS-04
+> Capability: CAP-004 ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint routing; bounded event bus")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.04.001 | Daemon Start Sequence: Port Bind + Lock File + Token Write (SOQ-2) | P0 | active | ss-04/BC-2.04.001.md | — |
+| BC-2.04.002 | Daemon Auto-Start on TUI Launch | P0 | active | ss-04/BC-2.04.002.md | — |
+| BC-2.04.003 | MONOCLE_NO_AUTOSTART=1 Suppresses Auto-Start | P1 | active | ss-04/BC-2.04.003.md | — |
+| BC-2.04.004 | `monocle daemon start` CLI Subcommand | P0 | active | ss-04/BC-2.04.004.md | — |
+| BC-2.04.005 | `monocle daemon stop` CLI Subcommand | P0 | active | ss-04/BC-2.04.005.md | — |
+| BC-2.04.006 | `directories::ProjectDirs::runtime_dir()` Fallback Chain | P0 | active | ss-04/BC-2.04.006.md | — |
+| BC-2.04.007 | Hook Endpoint: PreToolUse Request Routing | P0 | active | ss-04/BC-2.04.007.md | — |
+| BC-2.04.008 | Hook Endpoint: Notification Request Routing (2000ms Timeout) | P0 | active | ss-04/BC-2.04.008.md | — |
+| BC-2.04.009 | Hook Endpoint: Stop/SessionStart/PromptSubmit Routing (300ms Timeout) | P0 | active | ss-04/BC-2.04.009.md | — |
+| BC-2.04.010 | Hook Tmpfile Generation at runtimeDir/hooks-settings.json | P0 | active | ss-04/BC-2.04.010.md | — |
+| BC-2.04.011 | Bounded Event Bus with Drop Counter | P0 | active | ss-04/BC-2.04.011.md | — |
+| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P1 | active | ss-04/BC-2.04.012.md | — |
+
+---
+
+## SS-05: IPC
+
+> Architecture source: `architecture/SS-ipc.md`
+> ARCH-INDEX subsystem: SS-05
+> Capability: CAP-005 ("Unix domain socket IPC between TUI client and daemon; message types; reconnection; SOQ-3 disconnect invariant")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.05.001 | UDS Server Bind at runtimeDir/monocle.sock | P0 | active | ss-05/BC-2.05.001.md | — |
+| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | P0 | active | ss-05/BC-2.05.002.md | — |
+| BC-2.05.003 | IPC Message Types: SessionListUpdate | P0 | active | ss-05/BC-2.05.003.md | — |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | P0 | active | ss-05/BC-2.05.004.md | — |
+| BC-2.05.005 | IPC Message Types: PermissionPromptQueued | P0 | active | ss-05/BC-2.05.005.md | — |
+| BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 | active | ss-05/BC-2.05.006.md | — |
+| BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 | active | ss-05/BC-2.05.007.md | — |
+| BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 | active | ss-05/BC-2.05.008.md | — |
+
+---
+
+## SS-06: TUI
+
+> Architecture source: `architecture/SS-tui.md`
+> ARCH-INDEX subsystem: SS-06
+> Capability: CAP-006 ("ratatui TUI; AppMode state machine; keybinding dispatch; permission overlay; sessions panel; event ribbon; status bar")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.06.001 | AppMode State Machine: Compile-Time Mutual Exclusion | P0 | active | ss-06/BC-2.06.001.md | — |
+| BC-2.06.002 | FocusSnapshot: Focus Restored After Overlay/Fullscreen Close | P0 | active | ss-06/BC-2.06.002.md | — |
+| BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | P0 | active | ss-06/BC-2.06.003.md | — |
+| BC-2.06.004 | Ctrl-\ Popup: Appears and Dismisses Without State Loss | P0 | active | ss-06/BC-2.06.004.md | — |
+| BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | P0 | active | ss-06/BC-2.06.005.md | — |
+| BC-2.06.006 | Sessions Panel: / Filter with Nucleo Fuzzy Match | P1 | active | ss-06/BC-2.06.006.md | — |
+| BC-2.06.007 | Sessions Panel: Enter Transitions to Fullscreen | P1 | active | ss-06/BC-2.06.007.md | — |
+| BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | P0 | active | ss-06/BC-2.06.008.md | — |
+| BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | P0 | active | ss-06/BC-2.06.009.md | — |
+| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | P1 | active | ss-06/BC-2.06.010.md | — |
+| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | P0 | active | ss-06/BC-2.06.011.md | — |
+| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | P0 | active | ss-06/BC-2.06.012.md | — |
+| BC-2.06.013 | Permission Overlay: Reject Keybinding | P0 | active | ss-06/BC-2.06.013.md | — |
+| BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | P0 | active | ss-06/BC-2.06.014.md | — |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P2 | active | ss-06/BC-2.06.015.md | — |
+| BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | P0 | active | ss-06/BC-2.06.016.md | — |
+| BC-2.06.017 | Permission Response Within Hook Timeout Budget | P0 | active | ss-06/BC-2.06.017.md | — |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | P1 | active | ss-06/BC-2.06.018.md | — |
+| BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | P0 | active | ss-06/BC-2.06.019.md | — |
+| BC-2.06.020 | Status Bar: Breadcrumb | P1 | active | ss-06/BC-2.06.020.md | — |
+| BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 | active | ss-06/BC-2.06.021.md | — |
+| BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 | active | ss-06/BC-2.06.022.md | — |
+
+---
+
+## SS-07: Config
+
+> Architecture source: `architecture/SS-config.md`
+> ARCH-INDEX subsystem: SS-07
+> Capability: CAP-007 ("Config file schema; atomic write; harness profile; profile picker; CCR path detection")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | P0 | active | ss-07/BC-2.07.001.md | — |
+| BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | P0 | active | ss-07/BC-2.07.002.md | — |
+| BC-2.07.003 | Config Missing or Corrupted: Default Applied | P0 | active | ss-07/BC-2.07.003.md | — |
+| BC-2.07.004 | Profile Picker: Sticky-Per-Project | P1 | active | ss-07/BC-2.07.004.md | — |
+| BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | P1 | active | ss-07/BC-2.07.005.md | — |
+| BC-2.07.006 | CCR Detection via `ccr_path` Config Field | P1 | active | ss-07/BC-2.07.006.md | — |
+
+---
+
 ## SS-DTU: Claude Code Hook Protocol (DTU Gene-Source Contracts)
 
 > Gene source: `any-context-lazyclaude/internal/core/config/hooks.go` (hooks-r1/r2 ingest rounds)
@@ -142,8 +234,12 @@ traces_to: prd.md
 | SS-01 Daemon Lifecycle | 10 | 10 | 0 |
 | SS-02 Core Types and ABI | 8 | 8 | 0 |
 | SS-03 Engine Module | 4 | 4 | 0 |
+| SS-04 Daemon Wiring | 12 | 12 | 0 |
+| SS-05 IPC | 8 | 8 | 0 |
+| SS-06 TUI | 22 | 22 | 0 |
+| SS-07 Config | 6 | 6 | 0 |
 | SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
-| **Total** | **63** | **63** | **0** |
+| **Total** | **111** | **111** | **0** |
 
 ---
 
@@ -549,3 +645,18 @@ SE-16d monotonicity PASS: 2026-05-19T12:14:00Z > prior 2026-05-19T00:00:00Z (v1.
 - BC-INDEX titles: all 41 H1 titles are authoritative per bc_h1_is_title_source_of_truth policy.
 - Stories affected by BC changes: S-DTU-001. Story-writer must propagate under bc_array_changes_propagate_to_body_and_acs policy (BC coverage table in STORY-INDEX updated in this burst).
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z > prior 2026-05-19T12:14:00Z (v1.13). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.15
+
+**PRD expansion — SS-04/05/06/07 BC integration: 48 new BCs added across 4 new subsystems** (2026-05-26T13:00:00Z):
+
+- SS-04 section added: 12 new behavioral contracts (BC-2.04.001..BC-2.04.012). Capability: CAP-004. Architecture source: SS-daemon-wiring.md. Covers: daemon start sequence (SOQ-2), CLI subcommands, auto-start, ProjectDirs fallback chain, hook endpoint routing, hook tmpfile, bounded event bus, JSONL ring capacity.
+- SS-05 section added: 8 new behavioral contracts (BC-2.05.001..BC-2.05.008). Capability: CAP-005. Architecture source: SS-ipc.md. Covers: UDS server bind, TUI connect + initial state push, IPC message types (SessionListUpdate/HookEventReceived/PermissionPromptQueued), TUI reconnect, SOQ-3 overlay clear on disconnect, UDS-only Phase 1 constraint.
+- SS-06 section added: 22 new behavioral contracts (BC-2.06.001..BC-2.06.022). Capability: CAP-006. Architecture source: SS-tui.md. Covers: AppMode state machine, FocusSnapshot, 5-level action dispatch, Ctrl-\ popup, sessions panel, permission overlay (VecDeque stack, rotate, diff preview, accept-once/always/reject, Esc hide, trace-to-source stub, disconnect clear, timeout budget), event ribbon, status bar (drop counter, breadcrumb, hint line), killer scenario (≤6 keystrokes).
+- SS-07 section added: 6 new behavioral contracts (BC-2.07.001..BC-2.07.006). Capability: CAP-007. Architecture source: SS-config.md. Covers: atomic write via tempfile::persist, config schema v1, missing/corrupted default, sticky-per-project profile, Ctrl-P override, CCR path detection.
+- BC count: 63 → 111 (48 new BCs). Summary table updated: 4 new subsystem rows; Total row 63 → 111.
+- PRD version: prd.md bumped to v1.27.0 in same burst (§2.4–§2.7 added; title updated; revision history entry added).
+- Priority assignments: P0 for SOQ-2/SOQ-3 invariants, critical path behaviors, and Phase 1 success criteria features. P1 for supporting/secondary behaviors. P2 for stub features (BC-2.06.015 trace-to-source).
+- BC-INDEX titles: all 48 H1 titles are authoritative per bc_h1_is_title_source_of_truth policy. Titles extracted verbatim from BC file H1 headings.
+- Old ID (historical) column: all 48 new BCs have no historical IDs (greenfield BCs, no renumbering occurred).
+- SE-16d monotonicity PASS: 2026-05-26T13:00:00Z > prior 2026-05-20T21:00:00Z (v1.14). ARITHMETICALLY TRUE: PASS.

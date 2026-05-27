@@ -1,0 +1,164 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-05-26T18:00:00Z
+phase: 1a
+inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
+input-hash: "[pending]"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-06
+capability: CAP-006
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1.1.0
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.06.016: Permission Overlay: Cleared on Daemon Disconnect
+
+## Description
+
+When the TUI receives a daemon disconnect signal (IPC channel closed, corresponding to
+BC-2.05.007 at the IPC layer), the TUI immediately clears the entire
+`VecDeque<PromptModal>` overlay stack and transitions `AppMode` to
+`Dashboard { focused: FocusSnapshot::Sessions }`. The status bar renders
+"Daemon disconnected — reconnecting..." until reconnection. This is the SOQ-3 enforcement
+at the TUI layer: orphaned prompts from a disconnected daemon must never persist in the
+stack because the old daemon's stalled HTTP responses will time out, and any future
+decision would be sent to the wrong daemon connection.
+
+## Preconditions
+
+1. The TUI is connected to the daemon via IPC (UDS channel active).
+2. `AppMode` is any valid state — `Dashboard`, `Filtering`, `Overlay`, or `Fullscreen`.
+   The disconnect handler is unconditional.
+3. The IPC receive channel (`app.ipc_rx`) signals closure or receives a
+   `IpcServerMessage::DaemonDisconnect` sentinel (per BC-2.05.007).
+4. The overlay stack may be empty or non-empty; the clear is a no-op if already empty.
+
+## Postconditions
+
+1. **Overlay stack cleared:** The `VecDeque<PromptModal>` within the `App` struct is
+   cleared (`.clear()` called). `stack.len() == 0` after handling.
+2. **AppMode transitions to Dashboard:** After clearing, `AppMode` is set to
+   `Dashboard { focused: FocusSnapshot::Sessions }` regardless of what mode was active
+   before the disconnect (Overlay, Fullscreen, Filtering, or Dashboard).
+3. **No IPC decision sent:** The TUI does NOT attempt to send any `DecisionResponse`
+   message on disconnect. The daemon is gone; the channel is closed. No write to the IPC
+   send channel is attempted.
+4. **Status bar renders disconnect indicator:** The status bar renders the text
+   "Daemon disconnected — reconnecting..." until the IPC reconnect sequence (BC-2.05.006)
+   completes and the daemon delivers a new initial state push (BC-2.05.002).
+5. **Badge counter reset:** The overlay badge counter in the status bar resets to 0
+   as a consequence of the cleared stack.
+6. **Transition is synchronous:** The clear and mode transition happen within the same
+   `handle_ipc_message()` call that processes the disconnect signal. There is no deferred
+   or async path for this operation — the state is consistent on the next `draw()` tick.
+
+## Invariants
+
+1. After a daemon disconnect event, no `PromptModal` from the previous daemon session
+   remains in the `VecDeque`. This is a safety invariant: old prompts against a
+   disconnected daemon MUST NOT be auto-decided against a new daemon connection.
+2. The `AppMode` after disconnect is always `Dashboard { focused: FocusSnapshot::Sessions }`.
+   There is no exception for other prior modes.
+3. This invariant is the TUI-side complement of BC-2.05.007 (IPC-side: "Overlay Stack
+   Cleared on Daemon Disconnect"). BC-2.05.007 specifies the IPC layer's obligation to
+   signal the disconnect; this BC specifies the TUI layer's obligation to handle it.
+4. On daemon reconnect, the TUI does NOT restore the old overlay stack from local memory.
+   It receives a fresh `queued_prompts` in the daemon's initial state push (BC-2.05.002);
+   only the daemon's authoritative state is used to rebuild the overlay.
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-097 | Disconnect occurs when `AppMode` is `Overlay` with 3 queued prompts | Stack cleared to 0; AppMode → `Dashboard { Sessions }`; badge shows 0; status bar shows disconnect message |
+| EC-098 | Disconnect occurs when `AppMode` is `Dashboard` (no overlay active, stack already empty) | `.clear()` on empty `VecDeque` is a no-op; AppMode → `Dashboard { Sessions }` (already there); status bar shows disconnect message; no error |
+| EC-099 | Disconnect occurs when `AppMode` is `Fullscreen` | Stack cleared; AppMode → `Dashboard { Sessions }` (fullscreen forcefully exited); status bar shows disconnect message |
+| EC-100 | Disconnect occurs when `AppMode` is `Filtering` | Stack cleared (was empty in Filtering); AppMode → `Dashboard { Sessions }` (filter mode exited); status bar shows disconnect message |
+| EC-101 | Daemon reconnects within 1 second; daemon has 0 queued prompts in new session | Status bar "reconnecting..." clears; AppMode stays `Dashboard`; overlay stack stays empty — correct |
+| EC-102 | Daemon reconnects; daemon has 2 queued prompts from a NEW Claude Code session that arrived during reconnect window | TUI receives initial state push with 2 prompts; transitions to `AppMode::Overlay { stack: [P1, P2], ... }`; overlay renders — correct, these are fresh prompts from the new daemon, not the orphaned old ones |
+| EC-103 | IPC channel drops silently (no sentinel message, just EOF on the read half) | `ipc_rx.recv()` returns `None`; treated identically to `DaemonDisconnect` sentinel; stack cleared and mode reset |
+| EC-104 | User was mid-keypress when disconnect occurred (e.g., just pressed `2` for Accept-always) | If the `DecisionResponse` was already enqueued in `ipc_tx` before the disconnect: the send fails (channel closed); error is logged with `tracing::warn!` and swallowed; stack still cleared; no panic |
+
+## Canonical Test Vectors
+
+| Initial State | Event | Expected Post-State | Category |
+|---------------|-------|---------------------|----------|
+| `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, stack empty, badge 0, status bar "reconnecting..." | happy-path |
+| `AppMode::Dashboard { focused: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar "reconnecting..." | edge-case |
+| `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
+| `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
+| Stack has 1 `PromptModal`; TUI just sent `DecisionResponse`; disconnect arrives on same tick | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | After `DaemonDisconnect`, `VecDeque<PromptModal>` is empty | unit test |
+| VP-TBD | After `DaemonDisconnect`, `AppMode` is `Dashboard { focused: Sessions }` regardless of prior mode | unit test (4 prior-mode variants) |
+| VP-TBD | No `DecisionResponse` is sent to IPC on disconnect | unit test (assert `ipc_tx` has no pending messages after disconnect handling) |
+| VP-TBD | Status bar renders "Daemon disconnected — reconnecting..." on disconnect | integration test |
+| VP-TBD | On reconnect with 0 queued prompts, overlay remains empty | integration test |
+| VP-TBD | On reconnect with N queued prompts (fresh), overlay renders N prompts | integration test |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 |
+| Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "permission overlay stack" clear behavior on daemon disconnect, which is a direct component of the CAP-006 "permission overlay stack" scope |
+| L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: disconnect handling clears local state only, no file writes occur); DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — enforced upstream in daemon; TUI disconnect does not affect JSONL integrity) |
+| Architecture Module | monocle-tui (App::handle_ipc_message disconnect arm); monocle-core (AppMode state, VecDeque<PromptModal>) per ARCH-INDEX SS-06 |
+| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
+| Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh queued_prompts); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear) |
+| Test File | `monocle-tui/tests/overlay_disconnect.rs` |
+| Test Name | `test_BC_2_06_016_overlay_cleared_on_daemon_disconnect` |
+| Stories | S-TBD (filled by story-writer) |
+
+## Related BCs
+
+- [BC-2.05.007] — depends on: this is the TUI-side handler for the IPC disconnect signal specified in BC-2.05.007
+- [BC-2.05.006] — composes with: reconnect sequence follows the disconnect this BC handles
+- [BC-2.05.002] — composes with: initial state push on reconnect provides fresh queued_prompts to rebuild overlay
+- [BC-2.06.014] — CRITICAL DISTINCTION: `[Esc]` hides without clearing the stack; disconnect unconditionally clears
+
+## Architecture Anchors
+
+- `architecture/SS-tui.md#permission-overlay` — overlay stack lifecycle step 5 (daemon disconnect SOQ-3)
+- `architecture/SS-tui.md#ctrl-integration` — state preservation mechanism and daemon ownership of queued_prompts
+
+## Story Anchor
+
+S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMode to Dashboard, render reconnecting status (filled by story-writer)
+
+## VP Anchors
+
+- VP-TBD — Integration test: overlay cleared on daemon disconnect; overlay rebuilt from daemon state on reconnect
+
+## §Trace v1.0.0
+
+**Initial production** (2026-05-26T18:00:00Z):
+- BC-2.06.016 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
+- Reads: SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (daemon
+  disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show;
+  prd-expansion-scope.md §3.3 BC-2.06.016 description and §5.2 dependency table
+  (BC-2.05.007 → BC-2.06.016 dependency chain).
+- Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
+- DI-007 cited: no file writes on disconnect; DI-001 cited: JSONL ring integrity not
+  affected by TUI disconnect.
+- EC-103 covers silent EOF (channel close without sentinel) — production-grade robustness.
+- EC-104 covers in-flight send on disconnect — warn log, no panic, swallowed.
+- Invariant 4 explicitly prohibits restoring old overlay from local memory on reconnect —
+  daemon is the authoritative state source per §Ctrl-\ Integration.

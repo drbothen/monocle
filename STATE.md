@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.09"
+version: "6.10"
 status: active
 producer: state-manager
 timestamp: 2026-05-27T00:00:00Z
-phase: phase-3-WAVE-3-GATE-PASSED
-current_step: "Phase-3-COMPLETE-all-waves-done-holdout-next"
+phase: phase-1-expansion-bc-authoring-complete
+current_step: "Phase-1-expansion-BCs-done-adversarial-spec-review-next"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). See cycles/cycle-001/ for full convergence history."
-awaiting: "Phase 3 COMPLETE — all 3 waves passed. 16/17 stories done (83/86 pts). S-PHASE-3-PREP blocked on upstream (non-blocking). Next: Phase 4 Holdout Evaluation."
+awaiting: "Phase 1 Expansion: 70 BCs authored (48 new + 22 existing). Architecture docs for SS-04 through SS-07 complete. Next: adversarial spec review of expanded specs (3+ clean passes), then story decomposition for new BCs, then TDD implementation."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -128,17 +128,22 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 3 COMPLETE, PHASE 4 HOLDOUT NEXT:
+  COLD-START RESUME GUIDE — PHASE 1 EXPANSION BC AUTHORING COMPLETE:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
   2. Verify: git log --oneline -1 develop → 493e1b7 (fix(server): reorder middleware).
   3. Read STATE.md + CLAUDE.md.
-  4. Phase 3 COMPLETE: Wave 1+2+3 all GATE-PASSED. 16/17 stories done (83/86 pts).
-     S-PHASE-3-PREP blocked on upstream vsdd-factory rc.19+ (non-blocking, does not block Phase 4).
-  5. Wave 3 gate D-167: PASS. 447 tests, 6 gates all pass. develop @ 493e1b7.
-  6. NEXT: Phase 4 Holdout Evaluation — run /vsdd-factory:phase-4-holdout-evaluation.
-  7. Outstanding non-blocking: ADV-W3GATE-MED-001..004 (daemon wiring), S-005-main-wiring,
-     S-008-ADV-tempfile-spec (partial), VP-DTU-001 (Phase 4 architect), plus architect/PO items.
+  4. Phase 1 EXPANSION: BC authoring COMPLETE. 70 BCs (48 new + 22 existing).
+     4 new architecture docs: SS-04 (daemon-wiring), SS-05 (ipc), SS-06 (tui), SS-07 (config).
+     ARCH-INDEX v1.0.15 (7 subsystems). BC-INDEX v1.15. PRD v1.27.0. Gap analysis: prd-expansion-scope.md.
+  5. Phase 3 is COMPLETE (D-167) — develops @ 493e1b7, 447 tests, all waves passed.
+  6. NEXT: Adversarial spec review of expanded specs (Phase 1d) — run /vsdd-factory:phase-1d-adversarial-spec-review.
+     Minimum 3 clean adversary passes on SS-04, SS-05, SS-06, SS-07, updated BC-INDEX, and PRD v1.27.0.
+  7. Then: Story decomposition for SS-04/05/06/07 BCs — run /vsdd-factory:phase-2-story-decomposition.
+  8. Then: TDD implementation for new stories (Phase 3 continuation, likely Wave 4+).
+  9. Then: Phases 4-7 on COMPLETE product (70 BCs).
+  10. Outstanding non-blocking: ADV-W3GATE-MED-001..004 (daemon wiring), S-005-main-wiring,
+      S-008-ADV-tempfile-spec (partial), VP-DTU-001 (Phase 4 architect), plus architect/PO items.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -155,7 +160,7 @@ current_cycle: cycle-001
 | -1 Reference Ingest | DONE | 2026-05-11 | 8 repos; semport/ |
 | 0.5-0.9 Brief + arch stubs | DONE | 2026-05-14 | |
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
-| 1 Spec Crystallization | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-155. 39 disciplines. |
+| 1 Spec Crystallization | RE-ENTERED (expansion) | — | D-155 original gate. D-168: PRD 22→70 BCs. 4 new arch docs (SS-04..07). BC authoring COMPLETE. Adversarial review next. |
 | 2 Story Decomposition | GATE-PASS-WITH-RESIDUAL | 2026-05-19 | D-159. 17 stories; 86 pts. |
 | 3 TDD Implementation | GATE-PASS | 2026-05-27 | Wave 1+2+3 DONE (83 pts); gate PASS (447 tests, all 6 gates) |
 | 4-7 | not-started | — | |
@@ -193,6 +198,7 @@ None. All durable_task_register items non-blocking.
 | D-165 | Wave 2 APPROVED-TO-EXECUTE — user authorization 2026-05-24. 9 stories/41 pts dispatched. | 2026-05-24 | human (Josh Magady) |
 | D-166 | Wave 2 GATE PASSED — PASS_WITH_OBSERVATIONS. 332 tests, clippy clean. 4 dep hygiene findings fixed (e2898be). | 2026-05-26 | orchestrator |
 | D-167 | Wave 3 GATE PASSED — PASS. 447 tests, clippy clean, fmt clean. 6 gates: test-suite PASS, DTU SKIP (VP-DTU-001), adversarial PASS (0 CRIT/HIGH, 5 MED, 1 LOW), demo-evidence PASS (5/5 ACs), holdout PASS (mean 1.0, 6/6 scenarios), state-update PASS. Fixed: middleware reorder (HS-W3-006, 493e1b7), RingError #[non_exhaustive] (bef6f4b), S-012-self-ref workspace root (ceebd2d). develop @ 493e1b7. Phase 3 COMPLETE. | 2026-05-27 | orchestrator |
+| D-168 | Phase 1 RE-ENTERED for PRD expansion. Gap analysis revealed 50% of Phase 1 features (38/77) had zero BC coverage. PRD expanded from 22 to 70 BCs. 4 new architecture docs (SS-04 through SS-07). PRD title updated to "Phase 1". BC-INDEX v1.15, PRD v1.27.0, ARCH-INDEX v1.0.15. | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -201,7 +207,7 @@ Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.m
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.26.12**. **BC-INDEX v1.11**. MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.0**. **BC-INDEX v1.15** (70 numbered BCs + 41 DTU BCs = 111 total). **ARCH-INDEX v1.0.15** (7 subsystems). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
 
 ## Historical Content
 
@@ -272,3 +278,18 @@ In-gate fixes: middleware reorder body-limit before auth per HS-W3-006 (493e1b7)
 Durable task updates: S-012-self-ref → closed-fixed-in-gate; S-008-ADV → partial-closed; 4 new MED observations registered (ADV-W3GATE-MED-001..004).
 Phase 3 row: IN-PROGRESS → GATE-PASS (2026-05-27). phase: phase-3-WAVE-3-GATE-PASSED. develop @ 493e1b7.
 STATE v6.08 → v6.09. SE-23 PASS: SM touched only STATE.md and .factory/ cycle files.
+
+## §Trace v6.10 (Phase 1 expansion — 70 BCs, 4 arch docs)
+
+**D-168 PHASE 1 RE-ENTERED FOR PRD EXPANSION** (2026-05-27): Gap analysis (prd-expansion-scope.md) revealed 50% of Phase 1 features (38/77) had zero BC coverage. PRD expanded from 22 BCs to 70 BCs. BC authoring COMPLETE.
+
+New architecture subsystem docs:
+- SS-04 Daemon Wiring: `.factory/specs/architecture/SS-daemon-wiring.md` — 12 BCs (BC-2.04.001..012): daemon lifecycle, CLI entrypoint, event bus, hook routing, tmpfile atomic writes.
+- SS-05 IPC: `.factory/specs/architecture/SS-ipc.md` — 8 BCs (BC-2.05.001..008): UDS path, IPC message framing, reconnection logic, SOQ-3.
+- SS-06 TUI: `.factory/specs/architecture/SS-tui.md` — 22 BCs (BC-2.06.001..022): AppMode state machine, 5 panels, permission overlay VecDeque, killer scenario.
+- SS-07 Config: `.factory/specs/architecture/SS-config.md` — 6 BCs (BC-2.07.001..006): config schema, profile picker, CCR detection.
+
+Artifact versions bumped: BC-INDEX v1.11 → v1.15 (70 numbered BCs + 41 DTU BCs = 111 total). PRD v1.26.12 → v1.27.0 (title updated to "Phase 1"). ARCH-INDEX v1.0.15 (7 subsystems, was 3). PRD expansion scope doc: `.factory/specs/prd-expansion-scope.md` (77 features mapped, 50% were missing).
+
+Phase 1 row: GATE-PASS-WITH-RESIDUAL → RE-ENTERED (expansion). phase: phase-1-expansion-bc-authoring-complete.
+STATE v6.09 → v6.10. SE-23 PASS: SM touched only STATE.md; spec artifacts written by architect/product-owner.
