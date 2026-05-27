@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.13"
+version: "6.14"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T13:00:00Z
-phase: phase-2-reentry-story-decomposition-complete
-current_step: "Phase 2 expansion: 16 stories decomposed (S-016..S-031), 10 holdout scenarios. Adversarial review of story decomposition next (3 clean passes required)."
+timestamp: 2026-05-27T14:00:00Z
+phase: phase-2-reentry-DURABLE-PAUSE
+current_step: "DURABLE PAUSE — Phase 2 expansion story decomposition complete. Adversarial story review pending."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). See cycles/cycle-001/ for full convergence history."
-awaiting: "Adversarial review of Phase 2 expansion story decomposition (3 clean passes). 16 new stories (S-016..S-031, 109 pts) + 10 new holdout scenarios (HS-EXP-001..HS-EXP-010) produced."
+awaiting: "Fresh session → adversarial story review (3 clean passes) → human gate → Phase 3 continuation (Wave 4+)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -115,6 +115,31 @@ durable_task_register:
       status: pending
       detail: "Wave 3 gate adversarial: Metric always returns 0.0 because DaemonState.ring is never set. Tracked with ADV-W3GATE-MED-002 (same root cause)."
       blocking: false
+    - id: "SS-01-ProjectDirs-from"
+      subject: "SS-daemon-lifecycle.md ProjectDirs::new → ProjectDirs::from"
+      status: pending
+      detail: "SS-daemon-lifecycle.md line 269 uses ProjectDirs::new('monocle','monocle','monocle') — should be ::from('','','monocle') per SS-config.md and BC-2.04.006 v1.5.0 correction. Architect maintenance item."
+      blocking: false
+    - id: "IMPL-EnrichedSession-fields"
+      subject: "EnrichedSession implementation: add 4 TUI fields + serde derives"
+      status: deferred-wave-4
+      detail: "engine.rs EnrichedSession needs project_name, started_at, token_count, cost_usd fields and Serialize/Deserialize derives. Spec updated in SS-engine-module.md v1.1.22. Implementation update is a prerequisite for S-021 (IPC types) and S-025 (Sessions Panel). Must be done as part of Wave 4/5 story implementation."
+      blocking: false
+    - id: "IMPL-HookDecision-serde"
+      subject: "HookDecision + HookResponse: add Serialize/Deserialize derives"
+      status: deferred-wave-5
+      detail: "engine.rs HookDecision and HookResponse need Serialize/Deserialize. Required for IPC wire transport. Must be done as part of S-021 or S-018 implementation."
+      blocking: false
+    - id: "IMPL-on-hook-Defer"
+      subject: "ClaudeCodeModule::on_hook() implement Defer routing logic"
+      status: deferred-wave-5
+      detail: "Current implementation returns Allow unconditionally (Phase 1 placeholder). S-018 (Hook Endpoint Routing) must implement the Defer path for permission overlay activation. BC-2.04.007 PC-3 specifies the full routing."
+      blocking: false
+    - id: "ADV-P1D-pin-staleness"
+      subject: "Architecture Source pin staleness (cosmetic)"
+      status: accepted-cosmetic
+      detail: "SS-05 BCs pin SS-ipc.md v1.4.0 (current v1.6.0); SS-04 BCs pin v1.2.0 (current v1.3.0); SS-07 BCs pin v1.1.0 (current v1.3.0). Content is correct; only metadata pins lag. Will be swept at story implementation time."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -128,24 +153,29 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 2 EXPANSION ADVERSARIAL REVIEW:
+  COLD-START RESUME GUIDE — PHASE 2 EXPANSION ADVERSARIAL REVIEW PENDING:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
   2. Verify: git log --oneline -1 develop → 493e1b7 (fix(server): reorder middleware).
   3. Read STATE.md + CLAUDE.md.
-  4. Phase 2 expansion COMPLETE (D-171, 2026-05-27): 16 stories (S-016..S-031, 109 pts),
-     10 holdout scenarios (HS-EXP-001..010). STORY-INDEX.md v4.0 (33 stories, 195 pts).
-  5. Phase 3 COMPLETE (D-167) — develop @ 493e1b7, 447 tests.
-  6. CURRENT TASK: Adversarial review of Phase 2 expansion story decomposition (3 clean passes required).
-     Dispatch adversary via /vsdd-factory:adversarial-review targeting stories/S-016..S-031,
-     stories/dependency-graph-expansion.md, specs/holdout-scenarios/HS-EXP-*.md.
-  7. After adversarial GATE-PASS (3 clean passes): Wave 4+ TDD implementation (Phase 3 continuation).
-  8. Then: Phases 4-7 on complete 112-BC, 33-story product.
-  9. Implementation residuals (not spec defects): EnrichedSession 4 TUI fields + serde derives (Wave 4 story);
-     ClaudeCodeModule::on_hook() placeholder → Allow (SS-04 stories); SS-daemon-lifecycle ProjectDirs::new()
-     → ::from() (maintenance); arch source pins lag 0-2 patch versions (cosmetic).
-  10. Outstanding non-blocking: ADV-W3GATE-MED-001..004, S-005-main-wiring, S-008-ADV-tempfile-spec,
-      VP-DTU-001 (Phase 4), architect items (S-011, S-013, S-014, S-015 ADV items).
+  4. Phase 2 EXPANSION: Story decomposition COMPLETE. 16 new stories (S-016..S-031), 109 pts, Waves 4-7.
+     33 total stories, 195 pts. 10 new holdout scenarios (HS-EXP-001..010). 24 total.
+     STORY-INDEX v4.0. sprint-state v1.19. BC-INDEX v1.19 (112 BCs).
+  5. Phase 1d adversarial spec review CONVERGED (D-169, 15 passes). PRD v1.27.2.
+  6. Phase 3 Waves 1-3 COMPLETE (D-167). develop @ 493e1b7, 447 tests.
+  7. NEXT: Adversarial story review of Phase 2 expansion stories.
+     Dispatch adversary with FRESH CONTEXT targeting:
+     - All 16 story files: .factory/stories/S-016-*.md through S-031-*.md
+     - STORY-INDEX.md v4.0 (epic table, story registry, wave summary, BC coverage)
+     - dependency-graph-expansion.md (dependency graph, critical path)
+     - sprint-state.yaml v1.19
+     - Holdout scenarios: HS-EXP-001..010 + EVAL-INDEX.md
+     Review for: BC coverage gaps, dependency cycle violations, story scope (2-8 pts except S-026 at 13),
+     AC completeness (every BC postcondition mapped), wave ordering violations, holdout scenario quality.
+     Minimum 3 clean adversary passes before human gate.
+  8. After adversarial story review PASS → Human Phase 2 gate approval.
+  9. Then: Phase 3 continuation — Wave 4 implementation (S-016, S-024, S-030 — 18 pts, parallel).
+  10. Outstanding non-blocking items from durable_task_register (see below).
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -226,7 +256,7 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.13 (Phase 2 expansion — story decomposition complete, adversarial review pending)
+## §Trace v6.14 (DURABLE PAUSE CHECKPOINT — adversarial story review pending)
 
-**D-171 PHASE 2 EXPANSION STORY DECOMPOSITION COMPLETE** (2026-05-27): 16 new stories (S-016..S-031, 109 pts) across Waves 4-7. 10 expansion holdout scenarios (HS-EXP-001..HS-EXP-010). STORY-INDEX.md updated to v4.0 (33 stories, 195 pts total). sprint-state.yaml v1.19. Dependency graph expansion at stories/dependency-graph-expansion.md. Story plan at plans/phase-2-expansion-story-plan.md. Phase 2 row updated to RE-ENTERED (expansion complete, adversarial review pending). Adversarial review of story decomposition next (3 clean passes required). Full detail: `cycles/cycle-001/burst-log.md` §v6.13.
-STATE v6.12 → v6.13.
+**DURABLE PAUSE CHECKPOINT** (2026-05-27): Cold-start resume point established. Phase 2 expansion story decomposition COMPLETE (D-171). next_session_resume_protocol updated with 10-step adversarial story review guide. 5 new durable_task_register items added: SS-01-ProjectDirs-from (architect maintenance), IMPL-EnrichedSession-fields (deferred-wave-4), IMPL-HookDecision-serde (deferred-wave-5), IMPL-on-hook-Defer (deferred-wave-5), ADV-P1D-pin-staleness (accepted-cosmetic). Frontmatter: phase → phase-2-reentry-DURABLE-PAUSE, awaiting → fresh session adversarial story review. All items non-blocking. Full burst detail: `cycles/cycle-001/burst-log.md` §v6.14.
+STATE v6.13 → v6.14.
