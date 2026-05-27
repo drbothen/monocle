@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.19"
+version: "6.20"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T12:00:00Z
-phase: phase-3-wave-4
-current_step: "Wave 4 COMPLETE (3/3 stories, 18 pts). Wave gate pending."
+timestamp: 2026-05-27T14:00:00Z
+phase: phase-3-wave-5
+current_step: "Wave 4 gate PASSED. Wave 5 ready."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 4 gate → Wave 5"
+awaiting: "Wave 5 delivery: S-017, S-018, S-019, S-020, S-021 (34 pts)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -140,6 +140,21 @@ durable_task_register:
       status: accepted-cosmetic
       detail: "SS-05 BCs pin SS-ipc.md v1.4.0 (current v1.6.0); SS-04 BCs pin v1.2.0 (current v1.3.0); SS-07 BCs pin v1.1.0 (current v1.3.0). Content is correct; only metadata pins lag. Will be swept at story implementation time."
       blocking: false
+    - id: "ADV-W4GATE-MED-001"
+      subject: "PATH env mutation in detect_ccr tests (test isolation)"
+      status: pending
+      detail: "Wave 4 gate adversarial (P01): detect_ccr tests mutate PATH env var globally without isolation guard. Risk: test ordering sensitivity. Fix: use temp_env::with_var or scope the mutation. Sourced from ADV-W4GATE-P01-MED-001."
+      blocking: false
+    - id: "ADV-W4GATE-MED-002"
+      subject: "tracing::error() no-ops in monocle CLI binary (no subscriber)"
+      status: pending
+      detail: "Wave 4 gate adversarial (P01): monocle CLI binary does not initialize a tracing subscriber, so tracing::error!() calls in main.rs are silent no-ops. Fix: initialize subscriber at binary entry or replace with eprintln! for startup errors. Sourced from ADV-W4GATE-P01-MED-002."
+      blocking: false
+    - id: "HS-EXP-009-hint"
+      subject: "Exit 70 missing stderr remediation hint for MONOCLE_RUNTIME_DIR"
+      status: pending
+      detail: "Wave 4 gate holdout (HS-EXP-009 score 0.8): daemon emits exit code 70 for invalid MONOCLE_RUNTIME_DIR but provides no stderr hint to the user. BC-2.04.003 requires human-readable diagnostics. Fix: print actionable remediation message to stderr before exit. Sourced from HS-EXP-009 holdout evaluation."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -153,20 +168,14 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 3 WAVE 4 COMPLETE, WAVE GATE PENDING:
+  COLD-START RESUME GUIDE — WAVE 5 READY:
 
-  1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → b8a4ab7 (S-030 PR #21).
-  3. Read STATE.md + CLAUDE.md.
-  4. Phase 2 DONE (D-173). Phase 3 Wave 4 COMPLETE (D-174). Wave gate pending.
-  5. Wave 4 status (ALL DONE):
-     - S-016: DONE (PR #19, 87ac91fc, 33 tests, 5 review findings fixed)
-     - S-024: DONE (PR #20, d439c8b, 77 tests, 3 review findings fixed)
-     - S-030: DONE (PR #21, b8a4ab7, 36 tests) — Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection
-  6. Next action: Run wave-gate (vsdd-factory:wave-gate) — test suite + adversarial + holdout + demo evidence → Wave 5.
-  7. Wave 5 stories (after gate): S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 parallel (34 pts total).
-  8. develop @ b8a4ab7. 19/33 stories done, 101/195 pts. Waves 1-3 DONE (83 pts). Wave 4 DONE (18 pts, 146 new tests).
-  9. Artifact versions: STORY-INDEX v5.0, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16, sprint-state v1.26.
+  1. Run factory-worktree-health (BLOCKING).
+  2. develop @ b8a4ab7 (or later). 634 tests.
+  3. Wave 4 GATE PASSED (D-175). 19/33 stories done, 101/195 pts.
+  4. Wave 5 stories (34 pts): S-017 (serial first, 8pts), then S-018/S-019/S-020/S-021 (parallel, 26pts).
+  5. S-017 depends on S-016 (done). S-018/S-019 depend on S-017. S-020 depends on S-017. S-021 depends on S-017.
+  6. Non-blocking findings from Wave 4 gate: ADV-W4GATE-MED-001 (PATH test isolation), ADV-W4GATE-MED-002 (dead tracing in CLI), HS-EXP-009-hint (exit 70 missing stderr hint).
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -185,7 +194,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 4 COMPLETE | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 COMPLETE: S-016 (PR #19, 87ac91fc, 33 tests), S-024 (PR #20, d439c8b, 77 tests), S-030 (PR #21, b8a4ab7, 36 tests). 146 new tests. Wave gate pending. |
+| 3 TDD Implementation | IN PROGRESS — Wave 4 GATE PASSED | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 6 gates — test-suite PASS (634 tests), DTU SKIP, adversarial PASS (0 CRIT/HIGH, 2 MED, 3 LOW), demo-evidence PASS (3/3), holdout PASS (mean 0.90, HS-EXP-009 0.8). Wave 5 unblocked. |
 | 4-7 | not-started | — | |
 
 ## Wave 4 Current Status
@@ -196,7 +205,7 @@ current_cycle: cycle-001
 | S-024 TUI Core Types | 8 | done | PR #20, 77 tests (40 SM + 24 binding + 13 enum), 3 findings fixed |
 | S-030 Config Crate | 5 | done | PR #21, b8a4ab7, 36 tests |
 
-develop @ b8a4ab7. 19/33 stories done, 101/195 pts. Wave 4: 3/3 done (18/18 pts). Wave gate pending.
+develop @ b8a4ab7. 19/33 stories done, 101/195 pts. Wave 4: 3/3 done (18/18 pts). Wave 4 GATE PASSED (D-175). Wave 5 unblocked.
 
 ## Blocking Issues
 
@@ -226,6 +235,7 @@ None. All durable_task_register items non-blocking.
 | D-172 | Phase 2 expansion adversarial story review CONVERGED. 4 passes: P1 (18 findings, 3C/5H/6M), P2 (11, 3C/4H/4M), P3 (9, 2C/4H/3M), P4 (4, 0C/0H/4M). All findings fixed. Finding decay: 18→11→9→4 (78% reduction). Key fixes: BC-2.06.024 created (tool payload rendering), keybinding adjudication 1/2/3→y/A/n/r across BC-2.06.003/011/012/013/014/017, pop semantics→wait-for-PermissionPromptResolved, S-026 complete AC re-anchoring (16 ACs across 9 BCs), S-024 FocusSnapshot struct→enum, S-028 SessionEvents→streaming. STORY-INDEX v4.7, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16. Human gate pending. | 2026-05-27 | orchestrator |
 | D-173 | Phase 2 expansion gate APPROVED by human. 33 stories (195 pts), 113 BCs, 24 holdout scenarios. Adversarial convergence D-172 (4 passes, 0 CRIT/HIGH). Keybinding adjudication (y/A/n/r), pop semantics (wait-for-resolved), S-026 sizing (13 pts accepted), GAP-P2-005 (BC-2.06.017 deferred to integration test infrastructure) all accepted. Wave 4 authorized: S-016, S-024, S-030 (18 pts parallel). | 2026-05-27 | human (Josh Magady) |
 | D-174 | Wave 4 stories COMPLETE. S-016 (PR#19, 87ac91f, 33 tests), S-024 (PR#20, d439c8b, 77 tests), S-030 (PR#21, b8a4ab7, 36 tests). Total: 146 new tests added. develop @ b8a4ab7. Wave gate pending. | 2026-05-27 | orchestrator |
+| D-175 | Wave 4 gate PASSED. 6 gates: (1) test-suite PASS (634 tests, 0 failures, clippy clean, fmt clean), (2) DTU SKIP (clones pending, no DTU modules in wave), (3) adversarial PASS (0 CRIT/HIGH, 2 MED: PATH test isolation + dead tracing, 3 LOW), (4) demo-evidence PASS (3/3 stories, all ACs), (5) holdout PASS (mean 0.90, min must-pass 0.80; HS-EXP-007 1.0, HS-EXP-009 0.8 — missing stderr hint for exit 70), (6) state-update PASS. develop @ b8a4ab7. 634 tests. Wave 5 unblocked. | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -247,6 +257,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.20 (WAVE 4 GATE PASSED — WAVE 5 READY)
+
+**WAVE 4 GATE PASSED** (2026-05-27): D-175. All 6 gates passed: test-suite (634 tests, 0 failures, clippy clean, fmt clean), DTU SKIP (no DTU modules in wave), adversarial (0 CRIT/HIGH, 2 MED, 3 LOW), demo-evidence (3/3 stories, all ACs verified), holdout (mean 0.90, HS-EXP-007 1.0, HS-EXP-009 0.8), state-update PASS. Non-blocking gate findings added to durable_task_register: ADV-W4GATE-MED-001 (PATH test isolation in detect_ccr), ADV-W4GATE-MED-002 (dead tracing subscriber in CLI binary), HS-EXP-009-hint (exit 70 missing stderr remediation hint). Wave 5 unblocked: S-017 (serial, 8 pts), then S-018/S-019/S-020/S-021 (parallel, 26 pts). Frontmatter: phase → phase-3-wave-5, awaiting → Wave 5 delivery.
+STATE v6.19 → v6.20.
 
 ## §Trace v6.19 (WAVE 4 COMPLETE — 3/3 STORIES DONE)
 
