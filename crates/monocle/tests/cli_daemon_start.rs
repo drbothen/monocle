@@ -84,11 +84,8 @@ fn make_fake_daemon_script(dir: &std::path::Path) -> std::path::PathBuf {
     let mut f = std::fs::File::create(&script_path).expect("create fake daemon script");
     f.write_all(b"#!/bin/sh\n# Fake daemon: runs but never writes a lock file.\nsleep 30\n")
         .expect("write fake daemon script");
-    std::fs::set_permissions(
-        &script_path,
-        std::fs::Permissions::from_mode(0o755),
-    )
-    .expect("set executable on fake daemon script");
+    std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))
+        .expect("set executable on fake daemon script");
     script_path
 }
 
