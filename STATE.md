@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.20"
+version: "6.21"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T14:00:00Z
-phase: phase-3-wave-5
-current_step: "Wave 4 gate PASSED. Wave 5 ready."
+timestamp: 2026-05-27T15:00:00Z
+phase: phase-3-wave-5-DURABLE-PAUSE
+current_step: "DURABLE PAUSE — Wave 4 gate PASSED (D-175). Wave 5 ready to begin."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 5 delivery: S-017, S-018, S-019, S-020, S-021 (34 pts)"
+awaiting: "Fresh session → Wave 5 delivery (S-017 serial first, then S-018/S-019/S-020/S-021 parallel)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -168,14 +168,88 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 5 READY:
+  COLD-START RESUME GUIDE — WAVE 5 READY TO BEGIN:
 
-  1. Run factory-worktree-health (BLOCKING).
-  2. develop @ b8a4ab7 (or later). 634 tests.
-  3. Wave 4 GATE PASSED (D-175). 19/33 stories done, 101/195 pts.
-  4. Wave 5 stories (34 pts): S-017 (serial first, 8pts), then S-018/S-019/S-020/S-021 (parallel, 26pts).
-  5. S-017 depends on S-016 (done). S-018/S-019 depend on S-017. S-020 depends on S-017. S-021 depends on S-017.
-  6. Non-blocking findings from Wave 4 gate: ADV-W4GATE-MED-001 (PATH test isolation), ADV-W4GATE-MED-002 (dead tracing in CLI), HS-EXP-009-hint (exit 70 missing stderr hint).
+  SESSION CONTEXT:
+    This is a greenfield-with-reference-ingest Rust TUI project (monocle).
+    The orchestrator (vsdd-factory:orchestrator) coordinates all work.
+    Read CLAUDE.md at the repo root for project principles and conventions.
+
+  PIPELINE STATE:
+    1. Phase 1 (Spec Crystallization): DONE — 113 BCs, 7 subsystems, 5 ADRs.
+    2. Phase 2 (Story Decomposition): DONE (D-173) — 33 stories, 195 pts, 24 holdout scenarios.
+       Adversarial convergence: 4 passes (18→11→9→4, 0 CRIT/HIGH).
+    3. Phase 3 (TDD Implementation): IN PROGRESS.
+       - Waves 1-3: DONE (16 stories, 83 pts, gates D-164/D-166/D-167).
+       - Wave 4: DONE (3 stories, 18 pts, gate D-175).
+         S-016 (Daemon CLI, PR#19, 87ac91f, 33 tests)
+         S-024 (TUI Core Types, PR#20, d439c8b, 77 tests)
+         S-030 (Config Crate, PR#21, b8a4ab7, 36 tests)
+       - Wave 5: NOT STARTED — next action.
+
+  DEVELOP BRANCH STATE:
+    4. develop @ b8a4ab7 (or later if hotfixes landed).
+       Verify: git log --oneline -1 develop
+    5. 634 tests total. clippy clean. fmt clean.
+    6. Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
+       monocle (binary), monocle-config, xtask.
+
+  ARTIFACT VERSIONS:
+    7. STORY-INDEX v5.0. sprint-state v1.26. BC-INDEX v1.23 (113 BCs).
+       SS-tui v1.7.0. ARCH-INDEX v1.0.16.
+       PRD v1.27.2. dep-graph-expansion v1.5. EVAL-INDEX v1.4.
+
+  WAVE 5 PLAN:
+    8. Wave 5 has 5 stories, 34 pts total.
+       S-017: Daemon Start Sequence (8 pts, EPIC-04) — SERIAL FIRST.
+         Depends on: S-016 (done), S-006 (done), S-008 (done), S-009 (done), S-015 (done), S-012 (done).
+         Blocks: S-018, S-019, S-020, S-021.
+         Target module: monocle-runtime.
+         BCs: BC-2.04.001, BC-2.04.010.
+       S-018: Hook Routing + Event Bus (8 pts, EPIC-04) — after S-017.
+         Depends on: S-017, S-016.
+         Blocks: S-022, S-029.
+         Target module: monocle-runtime.
+         BCs: BC-2.04.002, BC-2.04.003.
+       S-019: Daemon Auto-Start (5 pts, EPIC-04) — after S-017.
+         Depends on: S-017, S-016.
+         Blocks: S-023.
+         Target module: monocle (binary).
+         BCs: BC-2.04.007, BC-2.04.008.
+       S-020: Ring Capacity + Rotation (5 pts, EPIC-04) — after S-017.
+         Depends on: S-017, S-008.
+         Blocks: none.
+         Target module: monocle-runtime.
+         BCs: BC-2.04.009, BC-2.04.010 (shared with S-017).
+       S-021: UDS Server + IPC Types (8 pts, EPIC-05) — after S-017.
+         Depends on: S-017, S-013, S-014.
+         Blocks: S-022, S-028.
+         Target module: monocle-runtime (new: monocle-ipc may be created).
+         BCs: BC-2.05.001, BC-2.05.002, BC-2.05.003, BC-2.05.004.
+
+    9. EXECUTION ORDER: S-017 first (serial), then S-018 + S-019 + S-020 + S-021 (parallel).
+
+  DELIVERY PROTOCOL:
+    10. Each story follows per-story delivery:
+        (a) devops-engineer: create worktree
+        (b) test-writer: stubs → failing tests (Red Gate)
+        (c) implementer: TDD
+        (d) demo-recorder: per-AC evidence
+        (e) push + pr-manager: full 9-step PR process
+        (f) devops-engineer: cleanup worktree
+        (g) state-manager: update sprint-state + STORY-INDEX
+    11. After all 5 stories: run wave-gate skill (6 gates).
+
+  NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix during Wave 5 unless blocking):
+    12. See durable_task_register in STATE.md frontmatter for full list.
+        Key items: ADV-W4GATE-MED-001 (PATH test isolation), ADV-W4GATE-MED-002 (dead tracing in CLI),
+        HS-EXP-009-hint (exit 70 missing stderr hint), plus ~20 prior items from Waves 1-3.
+
+  FACTORY INFRASTRUCTURE:
+    13. .factory/ mounted at factory-artifacts branch (orphan worktree).
+    14. Run factory-worktree-health via devops-engineer FIRST on session start.
+    15. Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
+        NEVER use --no-verify. NEVER add Co-Authored-By: Claude.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -257,6 +331,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.21 (DURABLE PAUSE CHECKPOINT — WAVE 5 READY TO BEGIN)
+
+**DURABLE PAUSE CHECKPOINT** (2026-05-27T15:00:00Z): Cold-start resume point established for Wave 5. Wave 4 gate PASSED (D-175): 3 stories (S-016 PR#19, S-024 PR#20, S-030 PR#21), 18 pts, 146 new tests (634 total). next_session_resume_protocol replaced with exhaustive 15-step cold-start guide covering pipeline state, develop branch state, artifact versions, Wave 5 plan (all 5 stories with dependency graph and BCs), execution order (S-017 serial, then S-018/S-019/S-020/S-021 parallel), delivery protocol, non-blocking follow-ups, and factory infrastructure. Frontmatter: version 6.20→6.21, phase → phase-3-wave-5-DURABLE-PAUSE, awaiting → Wave 5 delivery fresh session. CLAUDE.md updated on develop branch to reflect Wave 4 completion and Wave 5 next steps.
+STATE v6.20 → v6.21.
 
 ## §Trace v6.20 (WAVE 4 GATE PASSED — WAVE 5 READY)
 
