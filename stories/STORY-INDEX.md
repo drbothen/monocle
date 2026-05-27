@@ -1,23 +1,23 @@
 ---
 document_type: story-index
 level: L4
-version: "4.0"
+version: "4.8"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.23"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
 traces_to: ".factory/specs/prd.md v1.26.15"
@@ -63,7 +63,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
-| S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | not_started | S-017, S-019 |
+| S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019 |
 | S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | not_started | S-025, S-026, S-031 |
 | S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | not_started | S-025, S-031 |
 | S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | not_started | S-018, S-019, S-020, S-021 |
@@ -93,8 +93,8 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Core implementation (parallel-eligible within wave) |
 | Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | Dependent completions (S-009 moved per Decision 1: S-008→S-009 dependency) |
 | Wave 4 | S-016, S-024, S-030 | 18 | Foundation: daemon CLI + TUI core types + config crate (parallel-eligible) |
-| Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration: start sequence, hook routing, IPC server (parallel-eligible within wave) |
-| Wave 6 | S-022, S-023, S-025, S-026 | 34 | Full stack: IPC client connect, TUI binary, permission overlay core (parallel-eligible within wave) |
+| Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration — S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 (parallel after S-017). 34 pts. |
+| Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
 
 ## BC Coverage Table
@@ -151,22 +151,23 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | S-025 | AC-004..AC-006 | YES |
 | BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | S-028 | AC-001..AC-004 | YES |
 | BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | S-025 | AC-007..AC-008 | YES |
-| BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | S-026 | AC-001..AC-002 | YES |
-| BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | S-026 | AC-003..AC-004 | YES |
+| BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | S-026 | AC-001, AC-002, AC-016 | YES |
+| BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | S-026 | AC-013, AC-014 | YES |
 | BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | S-027 | AC-001..AC-003 | YES |
-| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | S-026 | AC-005..AC-006 | YES |
-| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | S-026 | AC-007..AC-008 | YES |
-| BC-2.06.013 | Permission Overlay: Reject Keybinding | S-026 | AC-009..AC-010 | YES |
-| BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | S-026 | AC-011..AC-012 | YES |
+| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | S-026 | AC-003 | YES |
+| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | S-026 | AC-004 | YES |
+| BC-2.06.013 | Permission Overlay: Reject Keybinding | S-026 | AC-005 | YES |
+| BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | S-026 | AC-008 | YES |
 | BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | AC-004 | YES |
-| BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | AC-013..AC-014 | YES |
-| BC-2.06.017 | Permission Response Within Hook Timeout Budget | S-027 | AC-005..AC-006 | YES |
-| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-005..AC-007 | YES |
+| BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | AC-011, AC-012 | YES |
+| BC-2.06.017 | Permission Response Within Hook Timeout Budget | — | — | GAP (see GAP-P2-005) |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-006..AC-009 | YES |
 | BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | S-027 | AC-007..AC-008 | YES |
 | BC-2.06.020 | Status Bar: Breadcrumb | S-027 | AC-009 | YES |
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | AC-010 | YES |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | AC-001..AC-006 | YES |
-| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | AC-015..AC-016 | YES |
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | AC-006, AC-007, AC-015 | YES |
+| BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | S-026, S-027 | S-026: AC-016; S-027: AC-003, AC-004, AC-006 | YES |
 | BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | S-030 | AC-001..AC-002 | YES |
 | BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | S-030 | AC-003..AC-005 | YES |
 | BC-2.07.003 | Config Missing or Corrupted: Default Applied | S-030 | AC-006..AC-008 | YES |
@@ -183,8 +184,8 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/49 product BCs Waves 4-7 (100%); 41/41 DTU gene-source BCs (100%)**
-**Total product BC coverage: 71/71 (100%)**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%)**
+**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027)**
 
 ## VP Coverage Table
 
@@ -269,9 +270,10 @@ nfr-catalog.md §VP Probe Citations. Covered stories will be authored at Phase 3
 | GAP-P2-002 | L3 | NFR-002 (Notification latency ≤2000ms) | Same rationale as GAP-P2-001; Phase 3 infra required | Phase 3 story decomposition at Phase 3 entry |
 | GAP-P2-003 | L3 | NFR-003 (TUI overlay render ≤100ms) | TUI permission overlay is Phase 3 deliverable; not Phase 1 scope | Phase 3 story decomposition at Phase 3 entry |
 | GAP-P2-004 | L3 | NFR-006 (1000 events/sec throughput) | Phase 3 load-test infra required; bounded-channel DESIGN is Phase 1 (in S-008), sustained VALIDATION is Phase 3 | Phase 3 story decomposition at Phase 3 entry |
+| GAP-P2-005 | L1 | BC-2.06.017 (Permission Response Within Hook Timeout Budget) | BC-2.06.017 covers render ≤100ms latency budget for tool payload rendering. PO re-anchored tool-payload rendering behavior to new BC-2.06.024; BC-2.06.017 (latency budget) has no covering story in Phase 2 waves. Latency validation requires Phase 3 integration test infrastructure. | Phase 3 story decomposition at Phase 3 entry |
 
-All gaps are L3 (NFR) deferred to Phase 3 per nfr-catalog.md authoritative ruling.
-No L1 (BC clause) gaps. No L2 (edge case) gaps.
+L3 (NFR) gaps (GAP-P2-001..004) deferred to Phase 3 per nfr-catalog.md authoritative ruling.
+GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017 requires Phase 3 integration test infrastructure; behavior covered by BC-2.06.024 (tool payload rendering) is fully implemented in S-027.
 
 ## §Trace v1.0
 
@@ -448,6 +450,79 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v4.8
+
+**Wave 4: S-016 flipped not_started → done** (2026-05-27):
+- S-016 Story Registry row: `not_started` → `done`. PR #19 merged at develop @ 87ac91fc.
+- BC-2.04.004, BC-2.04.005, BC-2.04.006 fully satisfied. 33 tests. 5 review findings fixed. 3/3 adversary convergence.
+- Wave 4: 1/3 stories done (5/18 pts). S-024 and S-030 remaining.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.23→v1.24 (done 16→17, not_started 16→15, points_complete 83→88); STATE.md updated.
+- STORY-INDEX version bumped v4.7→v4.8.
+
+## §Trace v4.7
+
+**Mechanical pin cascade: BC-INDEX v1.22 → v1.23 (BC-2.06.014 + BC-2.06.017 keybinding fixes)** (2026-05-27):
+- BC-INDEX.md input pin updated: `"1.22"` → `"1.23"`.
+- STORY-INDEX version bumped v4.6 → v4.7.
+- Sibling cascade: sprint-state.yaml v1.22→v1.23, dependency-graph-expansion.md v1.4→v1.5, EVAL-INDEX.md v1.3→v1.4.
+
+## §Trace v4.6
+
+**Pass 4 remediation — FocusSnapshot enum syntax + BC-2.06.024 title correction** (2026-05-27):
+- F-P4-MED-001: S-025 AC-006 and S-028 AC-001/AC-007 corrected — FocusSnapshot struct destructuring syntax (`FocusSnapshot { panel: PanelId::Sessions, .. }`) replaced with enum variant syntax (`FocusSnapshot::Sessions`, `FocusSnapshot::EventRibbon`) per S-024 v1.2 redefinition of FocusSnapshot as `#[non_exhaustive]` enum. S-025 bumped v1.1→v1.2; S-028 bumped v1.1→v1.2.
+- F-P4-MED-002: BC Coverage Table BC-2.06.024 title corrected — "Permission Overlay: Tool Payload Rendering by Type" → "Permission Overlay: ToolPayload Body Rendering by Variant" (BC-INDEX authoritative H1 title).
+- OBS-P4-001: Sprint-state S-026 notes BC list updated to include BC-2.06.024 (sprint-state.yaml v1.21→v1.22).
+- STORY-INDEX version bumped v4.5→v4.6.
+
+## §Trace v4.4
+
+**Phase 2 Adversarial Review Pass 3 — version pin updates + S-024 FocusSnapshot correction** (2026-05-27):
+- F-P3-CRIT-002: S-024 AC-002 corrected — FocusSnapshot redefined from struct (with `panel:
+  PanelId` and `row: Option<usize>` fields) to `#[non_exhaustive]` enum (with variants
+  `Sessions`, `EventRibbon`) per BC-2.06.002 precondition 1 and SS-tui.md v1.7.0. Methods
+  `cycle()` and `to_panel_id()` added per BC-2.06.002 preconditions 3-4. Architecture Compliance
+  Rules and Downstream Consumer Contract sections updated accordingly. Story version bumped v1.1→v1.2.
+- F-P3-MED-002: S-024 AC-010 trace corrected `BC-2.06.002 PC-1` → `BC-2.06.003 precondition 1`
+  (BindingSource lives in BC-2.06.003, not BC-2.06.002). AC-011 trace corrected `BC-2.06.002 PC-2`
+  → `BC-2.06.003 postcondition PC-4`. AC-012 trace corrected `BC-2.06.002 PC-3` → `BC-2.06.003 PC-2`.
+- F-P3-HIGH-004: HS-EXP-007 `source_bcs` corrected `BC-2.07.006` → `BC-2.07.001`; EVAL-INDEX BC
+  Coverage Traceability table row updated; EVAL-INDEX bumped v1.1→v1.2.
+- OBS-P3-001: ARCH-INDEX.md pin updated `"1.0.11"` → `"1.0.16"`.
+- OBS-P3-002: SS-tui.md pin updated `"1.6.0"` → `"1.7.0"`.
+- STORY-INDEX version bumped v4.3→v4.4.
+
+## §Trace v4.3
+
+**Phase 2 Adversarial Review Pass 2 — BC Coverage Table re-anchoring for S-026** (2026-05-27):
+- F-P2ADV-P2-001/002/009/010 (CRITICAL): BC Coverage Table rows BC-2.06.008..023 updated with correct AC references after S-026 v1.2 AC re-anchoring:
+  - BC-2.06.008: AC-001..AC-002 → AC-001, AC-002, AC-016 (adds conversion AC-016)
+  - BC-2.06.009: AC-003..AC-004 → AC-013, AC-014 (rotation ACs are now AC-013/AC-014 after renumber)
+  - BC-2.06.011: AC-005..AC-006 → AC-003 (Accept-Once is now AC-003)
+  - BC-2.06.012: AC-007..AC-008 → AC-004 (Accept-Always is now AC-004)
+  - BC-2.06.013: AC-009..AC-010 → AC-005 (Reject is now AC-005)
+  - BC-2.06.014: AC-011..AC-012 → AC-008 (Esc hide is now AC-008)
+  - BC-2.06.016: AC-013..AC-014 → AC-011, AC-012 (disconnect/reconnect now AC-011/AC-012)
+  - BC-2.06.023: AC-015..AC-016 → AC-006, AC-007, AC-015 (UUID removal is AC-006; no-op is AC-007; empty-stack is AC-015)
+  - BC-2.06.024: covering stories expanded S-027 → S-026, S-027 (AC-016 in S-026 handles payload_to_modal() conversion)
+- OBS-P2-003: BC-INDEX version pin updated 1.19 → 1.21 in frontmatter inputs.
+- STORY-INDEX version bumped v4.2 → v4.3.
+
+## §Trace v4.2
+
+**PO BC-anchoring resolution — S-027 + S-028 + BC-2.06.024** (2026-05-27):
+- S-027 v1.0 → v1.1: Re-anchored AC-003/AC-004/AC-006 from BC-2.06.017 to BC-2.06.024 ("Permission Overlay: Tool Payload Rendering by Type"). BC-2.06.017 removed from behavioral_contracts and inputs (no AC traces to its latency postconditions). BC-2.06.024 added to behavioral_contracts and inputs. Token Budget table updated (BC-2.06.017.md row removed, BC-2.06.024.md row added). traces_to field corrected.
+- S-028 v1.0 → v1.1: Removed all `ServerToClient::SessionEvents` references (no such IPC variant). Data flow corrected to: `InitialState.ring_tail` (BC-2.05.002, on connect) + `HookEventReceived` messages (BC-2.05.004, streaming) with client-side `session_id` filtering per BC-2.05.004 invariant 3. AC-006/AC-008/AC-009 rewritten. Task list updated. Previous Story Intelligence section corrected. Library table updated. BC-2.05.002 and BC-2.05.004 added to behavioral_contracts and inputs. Token Budget updated (4 BC files, ~7,600 tokens).
+- BC Coverage Table: BC-2.06.024 row added (S-027, AC-003/AC-004/AC-006). BC-2.06.017 row updated (no covering story; GAP-P2-005 registered). BC coverage note updated to 71/72.
+- Gap Register: GAP-P2-005 added (L1, BC-2.06.017 latency budget, deferred to Phase 3 integration test infrastructure).
+- STORY-INDEX version bumped v4.1 → v4.2.
+
+## §Trace v4.1
+
+**Phase 2 Adversarial Review Pass 1 — mechanical fixes** (2026-05-27):
+- F-P2ADV-008: Wave 5 description updated — S-017 is serial prerequisite; S-018/S-019/S-020/S-021 parallel after S-017.
+- F-P2ADV-014: Wave 6 description updated — S-022 is serial prerequisite; S-023+S-025 parallel after S-022; S-026 after S-023+S-022.
+- STORY-INDEX version bumped v4.0→v4.1.
 
 ## §Trace v4.0
 

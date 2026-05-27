@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.19"
+version: "1.24"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -13,16 +13,16 @@ traces_to: STORY-INDEX.md
 # All stories start as not_started for Phase 3 TDD dispatch.
 # State transitions: not_started → in_progress → review → done | blocked
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.23"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
-traces_to_full: ".factory/stories/STORY-INDEX.md v4.0"
+traces_to_full: ".factory/stories/STORY-INDEX.md v4.7"
 ---
 
 stories:
@@ -236,12 +236,12 @@ stories:
     epic: EPIC-04
     wave: 4
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 4 foundation. BCs: BC-2.04.004, BC-2.04.005, BC-2.04.006. Depends on S-001, S-006."
+    completed_at: "2026-05-27"
+    pr_url: "https://github.com/jmagady/monocle/pull/19"
+    notes: "Wave 4 foundation. PR #19 merged at develop @ 87ac91fc. BC-2.04.004, BC-2.04.005, BC-2.04.006 fully satisfied. 33 tests. 5 review findings fixed. 3/3 adversary convergence."
 
   - id: S-024
     title: "TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch"
@@ -373,7 +373,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 6. BCs: BC-2.06.008..009, BC-2.06.011..014, BC-2.06.016, BC-2.06.023. 8 P0 BCs — core permission overlay lifecycle. 13 pts at ceiling. Depends on S-024, S-022, S-023."
+    notes: "Wave 6. BCs: BC-2.06.008..009, BC-2.06.011..014, BC-2.06.016, BC-2.06.023, BC-2.06.024. 9 P0 BCs — core permission overlay lifecycle. 13 pts at ceiling. Depends on S-024, S-022, S-023."
 
   - id: S-027
     title: "Permission Overlay Rendering, Diff Preview (similar 3), Status Bar"
@@ -385,7 +385,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 7. BCs: BC-2.06.010, BC-2.06.015, BC-2.06.017, BC-2.06.019..021. Rendering layer + status bar. Depends on S-026, S-025."
+    notes: "Wave 7. BCs: BC-2.06.010, BC-2.06.015, BC-2.06.019..021, BC-2.06.024. Rendering layer + status bar. Depends on S-026, S-025."
 
   - id: S-028
     title: "Sessions Panel Nucleo Filter + Event Ribbon Rolling Log"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 16
+  not_started: 15
   in_progress: 0
   review: 0
-  done: 16
+  done: 17
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 83
+  points_complete: 88
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -475,3 +475,20 @@ summary:
   # - Waves 4-7 added: Wave 4 (18 pts), Wave 5 (34 pts), Wave 6 (34 pts), Wave 7 (23 pts)
   # - total_stories: 17 → 33; not_started: 0 → 16; total_points: 86 → 195
   # - BC-INDEX input updated: v1.13 → v1.19
+  # v1.20 updates (2026-05-27T00:00:00Z):
+  # - Phase 2 Adversarial Review Pass 3 — version pin updates + correctness fixes
+  # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
+  # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
+  # - No story status or count changes
+  # v1.24 updates (2026-05-27):
+  # - S-016 flipped not_started → done (PR #19 merged 87ac91fc; BC-2.04.004+005+006 satisfied; 33 tests; 5 review findings fixed; 3/3 convergence)
+  # - done: 16 → 17; not_started: 16 → 15; points_complete: 83 → 88
+  # - Wave 4: 1/3 done (5/18 pts). S-024 and S-030 remaining.
+  # v1.23 updates (2026-05-27):
+  # - BC-INDEX.md pin: "1.22" → "1.23" (BC-2.06.014 + BC-2.06.017 keybinding fixes)
+  # - traces_to_full: STORY-INDEX.md v4.6 → v4.7
+  # - No story status or count changes
+  # v1.22 updates (2026-05-27):
+  # - OBS-P4-001: S-026 notes BC list updated to include BC-2.06.024 (payload_to_modal() conversion AC-016 lives in S-026)
+  # - traces_to_full: STORY-INDEX.md v4.5 → v4.6 (STORY-INDEX bumped for Pass 4 title correction)
+  # - No story status or count changes
