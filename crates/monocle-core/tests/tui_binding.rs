@@ -123,7 +123,11 @@ fn test_BC_2_06_003_ac010_binding_source_all_variants_exist() {
         BindingSource::Global,
         BindingSource::Builtin,
     ];
-    assert_eq!(sources.len(), 5, "There must be exactly 5 BindingSource variants");
+    assert_eq!(
+        sources.len(),
+        5,
+        "There must be exactly 5 BindingSource variants"
+    );
 }
 
 /// BC-2.06.003 Pre-1 / AC-010: BindingSource derives Clone, PartialEq, Eq, Debug.
@@ -142,7 +146,10 @@ fn test_BC_2_06_003_ac010_binding_source_derives() {
 #[test]
 fn test_BC_2_06_003_ac010_binding_source_priority_identity() {
     // Verify each variant is distinct (no accidental equality)
-    assert_ne!(BindingSource::SearchPrompt, BindingSource::UserCustomCommand);
+    assert_ne!(
+        BindingSource::SearchPrompt,
+        BindingSource::UserCustomCommand
+    );
     assert_ne!(BindingSource::UserCustomCommand, BindingSource::PerContext);
     assert_ne!(BindingSource::PerContext, BindingSource::Global);
     assert_ne!(BindingSource::Global, BindingSource::Builtin);
@@ -210,7 +217,7 @@ fn test_BC_2_06_003_ac012_printable_char_in_filtering_resolves_search_prompt() {
 
     let result = call_resolve!(key, mode, layers);
     let (action, source) = result.expect(
-        "Printable char in Filtering mode must NOT return None — SearchPrompt must capture it"
+        "Printable char in Filtering mode must NOT return None — SearchPrompt must capture it",
     );
 
     assert_eq!(
@@ -467,7 +474,10 @@ fn test_BC_2_06_003_pc5_resolve_binding_is_deterministic() {
 
     // If both returned Some, the sources must match
     if let (Some((_, source1)), Some((_, source2))) = (out1, out2) {
-        assert_eq!(source1, source2, "Determinism: both calls must return the same BindingSource");
+        assert_eq!(
+            source1, source2,
+            "Determinism: both calls must return the same BindingSource"
+        );
     }
 }
 

@@ -59,13 +59,21 @@ pub enum FocusSnapshot {
 
 impl FocusSnapshot {
     /// Returns the next focus target in the cyclic tab order.
+    ///
+    /// Phase 1 has two panels: Sessions → EventRibbon → Sessions (round-robin).
     pub fn cycle(&self) -> FocusSnapshot {
-        todo!()
+        match self {
+            FocusSnapshot::Sessions => FocusSnapshot::EventRibbon,
+            FocusSnapshot::EventRibbon => FocusSnapshot::Sessions,
+        }
     }
 
     /// Maps this focus target to the corresponding `PanelId`.
     pub fn to_panel_id(&self) -> PanelId {
-        todo!()
+        match self {
+            FocusSnapshot::Sessions => PanelId::Sessions,
+            FocusSnapshot::EventRibbon => PanelId::EventRibbon,
+        }
     }
 }
 
@@ -109,6 +117,10 @@ pub struct PromptModal {
 ///
 /// Covers the canonical Phase 1 hook endpoint set plus a `Generic` catch-all
 /// for future or unknown tools.
+///
+/// `#[non_exhaustive]` — additional tool variants will be added as Claude Code
+/// expands its tool set in future releases.
+#[non_exhaustive]
 pub enum ToolPayload {
     /// File edit — old content replaced with new content at path.
     Edit {
@@ -190,6 +202,84 @@ pub enum Action {
 /// Consumes the current mode and an action; returns the successor mode.
 /// The function is pure (no I/O) and must be exercised by unit tests without
 /// spawning any async runtime.
-pub fn transition(_mode: AppMode, _action: Action) -> AppMode {
-    todo!()
+///
+/// Empty-stack collapse invariant (AC-005): whenever a path would produce
+/// `Overlay { stack: empty, .. }`, it collapses to `Dashboard { focused: prior }`
+/// instead. This invariant is enforced inside this function — callers need not check.
+pub fn transition(mode: AppMode, action: Action) -> AppMode {
+    match (mode, action) {
+        // --- Filtering entry ---
+        (AppMode::Dashboard { focused }, Action::StartFilter { panel }) => AppMode::Filtering {
+            panel,
+            query: String::new(),
+            prior: focused,
+        },
+
+        // --- Filtering exit (commit or cancel) ---
+        (AppMode::Filtering { prior, .. }, Action::CommitFilter) => {
+            AppMode::Dashboard { focused: prior }
+        }
+        (AppMode::Filtering { prior, .. }, Action::CancelFilter) => {
+            AppMode::Dashboard { focused: prior }
+        }
+
+        // --- Fullscreen entry ---
+        (AppMode::Dashboard { focused }, Action::EnterFullscreen { panel }) => {
+            AppMode::Fullscreen {
+                panel,
+                prior: focused,
+            }
+        }
+
+        // --- Fullscreen exit ---
+        (AppMode::Fullscreen { prior, .. }, Action::ExitFullscreen) => {
+            AppMode::Dashboard { focused: prior }
+        }
+
+        // --- Overlay push from Dashboard ---
+        (AppMode::Dashboard { focused }, Action::PushOverlay { modal }) => AppMode::Overlay {
+            stack: VecDeque::from([modal]),
+            prior: focused,
+        },
+
+        // --- Overlay push from Filtering ---
+        (AppMode::Filtering { prior, .. }, Action::PushOverlay { modal }) => AppMode::Overlay {
+            stack: VecDeque::from([modal]),
+            prior,
+        },
+
+        // --- Overlay push from existing Overlay (append to back, preserve prior) ---
+        (AppMode::Overlay { mut stack, prior }, Action::PushOverlay { modal }) => {
+            stack.push_back(modal);
+            AppMode::Overlay { stack, prior }
+        }
+
+        // --- Overlay pop ---
+        (AppMode::Overlay { mut stack, prior }, Action::PopOverlay) => {
+            stack.pop_front();
+            // Empty-stack collapse invariant (AC-005)
+            if stack.is_empty() {
+                AppMode::Dashboard { focused: prior }
+            } else {
+                AppMode::Overlay { stack, prior }
+            }
+        }
+
+        // --- Esc in Overlay is identity (AC-008) ---
+        (AppMode::Overlay { stack, prior }, Action::Esc) => AppMode::Overlay { stack, prior },
+
+        // --- OverlayCycleNext: rotates front to back, preserves prior ---
+        (AppMode::Overlay { mut stack, prior }, Action::OverlayCycleNext) => {
+            if stack.len() > 1 {
+                if let Some(front) = stack.pop_front() {
+                    stack.push_back(front);
+                }
+            }
+            AppMode::Overlay { stack, prior }
+        }
+
+        // --- Identity (all other combinations) ---
+        // EC-061: unmatched (mode, action) pairs return identity
+        (mode, _) => mode,
+    }
 }

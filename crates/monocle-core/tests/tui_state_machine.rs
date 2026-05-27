@@ -193,9 +193,7 @@ fn test_BC_2_06_002_focus_snapshot_debug() {
 /// BC-2.06.002 Pre-3 / AC-002: cycle() advances Sessions → EventRibbon.
 #[test]
 fn test_BC_2_06_002_focus_snapshot_cycle_sessions_to_event_ribbon() {
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        FocusSnapshot::Sessions.cycle()
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| FocusSnapshot::Sessions.cycle()));
     let next = result.unwrap_or_else(|_| {
         panic!("FocusSnapshot::cycle() panicked (likely todo!()) — Red Gate: not yet implemented")
     });
@@ -209,9 +207,7 @@ fn test_BC_2_06_002_focus_snapshot_cycle_sessions_to_event_ribbon() {
 /// BC-2.06.002 Pre-3 / EC-069: cycle() on EventRibbon wraps back to Sessions.
 #[test]
 fn test_BC_2_06_002_focus_snapshot_cycle_event_ribbon_wraps_to_sessions() {
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        FocusSnapshot::EventRibbon.cycle()
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| FocusSnapshot::EventRibbon.cycle()));
     let next = result.unwrap_or_else(|_| {
         panic!("FocusSnapshot::cycle() panicked (likely todo!()) — Red Gate: not yet implemented")
     });
@@ -245,9 +241,8 @@ fn test_BC_2_06_002_focus_snapshot_cycle_full_round_trip() {
 /// BC-2.06.002 Pre-4 / AC-002: Sessions maps to PanelId::Sessions.
 #[test]
 fn test_BC_2_06_002_to_panel_id_sessions() {
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        FocusSnapshot::Sessions.to_panel_id()
-    }));
+    let result =
+        std::panic::catch_unwind(AssertUnwindSafe(|| FocusSnapshot::Sessions.to_panel_id()));
     let panel_id = result.unwrap_or_else(|_| {
         panic!("to_panel_id() panicked (likely todo!()) — Red Gate: not yet implemented")
     });
@@ -303,7 +298,11 @@ fn test_BC_2_06_001_tool_payload_edit_constructs() {
         path: PathBuf::from("/tmp/edit_target.rs"),
     };
     match payload {
-        ToolPayload::Edit { old_content, new_content, path } => {
+        ToolPayload::Edit {
+            old_content,
+            new_content,
+            path,
+        } => {
             assert_eq!(old_content, "before");
             assert_eq!(new_content, "after");
             assert_eq!(path, PathBuf::from("/tmp/edit_target.rs"));
@@ -344,7 +343,10 @@ fn test_BC_2_06_001_tool_payload_generic_constructs() {
         tool_input: serde_json::json!({"key": "value"}),
     };
     match payload {
-        ToolPayload::Generic { tool_name, tool_input } => {
+        ToolPayload::Generic {
+            tool_name,
+            tool_input,
+        } => {
             assert_eq!(tool_name, "FutureTool");
             assert_eq!(tool_input["key"], "value");
         }
@@ -434,10 +436,23 @@ fn test_BC_2_06_003_ac006_start_filter_enters_filtering_with_empty_query() {
     let mode = AppMode::Dashboard {
         focused: FocusSnapshot::Sessions,
     };
-    let next = call_transition!(mode, Action::StartFilter { panel: PanelId::Sessions });
+    let next = call_transition!(
+        mode,
+        Action::StartFilter {
+            panel: PanelId::Sessions
+        }
+    );
     match next {
-        AppMode::Filtering { panel, query, prior } => {
-            assert_eq!(panel, PanelId::Sessions, "panel must match the StartFilter target");
+        AppMode::Filtering {
+            panel,
+            query,
+            prior,
+        } => {
+            assert_eq!(
+                panel,
+                PanelId::Sessions,
+                "panel must match the StartFilter target"
+            );
             assert!(query.is_empty(), "query must be empty on StartFilter");
             assert_eq!(
                 prior,
@@ -532,7 +547,11 @@ fn test_BC_2_06_003_ac007_enter_fullscreen_captures_focus() {
     );
     match next {
         AppMode::Fullscreen { panel, prior } => {
-            assert_eq!(panel, PanelId::Sessions, "panel must match EnterFullscreen target");
+            assert_eq!(
+                panel,
+                PanelId::Sessions,
+                "panel must match EnterFullscreen target"
+            );
             assert_eq!(
                 prior,
                 FocusSnapshot::Sessions,
@@ -601,11 +620,13 @@ fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::Esc)
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, prior: returned_prior } => {
+        AppMode::Overlay {
+            stack,
+            prior: returned_prior,
+        } => {
             assert_eq!(stack.len(), 1, "Esc in Overlay must NOT pop the stack");
             assert_eq!(
                 returned_prior, prior,
@@ -613,7 +634,9 @@ fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
             );
         }
         AppMode::Dashboard { .. } => {
-            panic!("Esc in Overlay must NOT collapse to Dashboard (AC-008: Esc is no-op in Overlay)")
+            panic!(
+                "Esc in Overlay must NOT collapse to Dashboard (AC-008: Esc is no-op in Overlay)"
+            )
         }
         _ => panic!("Esc in Overlay must return Overlay unchanged"),
     }
@@ -633,9 +656,8 @@ fn test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::PushOverlay { modal })
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay { stack, prior } => {
             assert_eq!(
@@ -665,9 +687,8 @@ fn test_BC_2_06_003_ac009_push_overlay_from_overlay_appends_to_stack() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::PushOverlay { modal: modal2 })
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay { stack, prior } => {
             assert_eq!(
@@ -699,12 +720,15 @@ fn test_BC_2_06_003_ac009_pop_overlay_removes_front() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::PopOverlay)
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay { stack, .. } => {
-            assert_eq!(stack.len(), 1, "PopOverlay must remove exactly 1 item from the front");
+            assert_eq!(
+                stack.len(),
+                1,
+                "PopOverlay must remove exactly 1 item from the front"
+            );
             assert_eq!(
                 stack.front().map(|m| m.prompt_id),
                 Some(modal2_id),
@@ -727,11 +751,11 @@ fn test_BC_2_06_003_ac009_pop_overlay_removes_front() {
 fn test_BC_2_06_001_ac014_monocle_core_cargo_toml_has_no_forbidden_io_deps() {
     // Locate Cargo.toml relative to the monocle-core package root.
     // In integration tests, the cwd is the workspace root; we use CARGO_MANIFEST_DIR.
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR must be set by cargo test");
+    let manifest_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set by cargo test");
     let cargo_toml_path = std::path::Path::new(&manifest_dir).join("Cargo.toml");
-    let contents = std::fs::read_to_string(&cargo_toml_path)
-        .expect("Failed to read monocle-core/Cargo.toml");
+    let contents =
+        std::fs::read_to_string(&cargo_toml_path).expect("Failed to read monocle-core/Cargo.toml");
 
     let forbidden = ["similar", "nucleo", "ratatui", "crossterm"];
     for dep in &forbidden {
@@ -759,7 +783,9 @@ fn test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions() {
             "MoveFocus",
             Box::new(|| {
                 monocle_core::tui::state::transition(
-                    AppMode::Dashboard { focused: FocusSnapshot::Sessions },
+                    AppMode::Dashboard {
+                        focused: FocusSnapshot::Sessions,
+                    },
                     Action::MoveFocus,
                 )
             }),
@@ -768,7 +794,9 @@ fn test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions() {
             "Noop",
             Box::new(|| {
                 monocle_core::tui::state::transition(
-                    AppMode::Dashboard { focused: FocusSnapshot::Sessions },
+                    AppMode::Dashboard {
+                        focused: FocusSnapshot::Sessions,
+                    },
                     Action::Noop,
                 )
             }),
@@ -777,7 +805,9 @@ fn test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions() {
             "Esc on Dashboard (identity)",
             Box::new(|| {
                 monocle_core::tui::state::transition(
-                    AppMode::Dashboard { focused: FocusSnapshot::Sessions },
+                    AppMode::Dashboard {
+                        focused: FocusSnapshot::Sessions,
+                    },
                     Action::Esc,
                 )
             }),
@@ -786,7 +816,9 @@ fn test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions() {
             "PermissionAcceptOnce on Dashboard (identity: EC-061)",
             Box::new(|| {
                 monocle_core::tui::state::transition(
-                    AppMode::Dashboard { focused: FocusSnapshot::Sessions },
+                    AppMode::Dashboard {
+                        focused: FocusSnapshot::Sessions,
+                    },
                     Action::PermissionAcceptOnce,
                 )
             }),
@@ -841,11 +873,13 @@ fn test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::OverlayCycleNext)
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, prior: returned_prior } => {
+        AppMode::Overlay {
+            stack,
+            prior: returned_prior,
+        } => {
             assert_eq!(
                 returned_prior, prior,
                 "OverlayCycleNext must NOT change prior (BC-2.06.002 PC-3)"
@@ -977,7 +1011,10 @@ fn test_BC_2_06_001_pc2_transition_is_deterministic() {
     // Both must be Dashboard with Sessions focus (deterministic)
     match (out1, out2) {
         (AppMode::Dashboard { focused: f1 }, AppMode::Dashboard { focused: f2 }) => {
-            assert_eq!(f1, f2, "transition() must be deterministic: same input → same output");
+            assert_eq!(
+                f1, f2,
+                "transition() must be deterministic: same input → same output"
+            );
         }
         _ => panic!("Both calls must return identical Dashboard — determinism violated"),
     }
@@ -999,9 +1036,8 @@ fn test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay() {
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(mode, Action::PushOverlay { modal })
     }));
-    let next = result.unwrap_or_else(|_| {
-        panic!("transition() panicked — Red Gate: not yet implemented")
-    });
+    let next =
+        result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay { stack, .. } => {
             assert_eq!(

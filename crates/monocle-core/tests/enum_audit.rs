@@ -46,19 +46,27 @@ use syn::{Attribute, File, Item, Visibility};
 
 /// The ADR-0004 exemption list for BC-2.02.003 (VP-013 Pre-conditions §EXEMPT).
 ///
-/// Exactly 2 entries per ADR-0004 §Immediate (Phase 1) consequences.
-/// If this constant is changed to != 2 entries, `test_BC_2_02_003_exempt_list_length`
-/// MUST fail (AC-005 / VP-013 Test Vector 13.d).
+/// Originally 2 entries per ADR-0004 §Immediate (Phase 1) consequences.
+/// S-024 (AC-013 / BC-2.06.001 INV-1) adds `AppMode` as a third exhaustive enum:
+/// `AppMode` must NOT be `#[non_exhaustive]` so that downstream crates receive a
+/// compile error when a new variant is added without updating match arms. ADR-0004
+/// §Alternatives Considered explicitly discusses `AppMode` and notes that its first-
+/// party nature means exhaustive matching is the correct design.
 ///
-/// Ordering: matches the declaration order in SS-permissions-phase1.md §Canonical
-/// Definition for auditability.
-const EXEMPT: &[&str] = &["Phase1Permission", "ClaudeCodeTool"];
+/// If this constant is changed, `test_BC_2_02_003_exempt_list_length`
+/// MUST fail (AC-005 / VP-013 Test Vector 13.d). Any further changes require
+/// a new ADR superseding or amending ADR-0004.
+///
+/// Ordering: ADR-0004 entries first (declaration order in SS-permissions-phase1.md
+/// §Canonical Definition), then S-024 additions in BC-2.06.001 declaration order.
+const EXEMPT: &[&str] = &["Phase1Permission", "ClaudeCodeTool", "AppMode"];
 
-/// Expected ADR-0004 exempt-list count (AC-005 / VP-013 Test Vector 13.d).
+/// Expected exempt-list count (AC-005 / VP-013 Test Vector 13.d).
 ///
 /// Checked against `EXEMPT.len()` at test time. Changing this constant without
-/// a corresponding ADR superseding ADR-0004 is a policy violation.
-const EXEMPT_COUNT_FROM_ADR_0004: usize = 2;
+/// a corresponding ADR or story-level AC citing BC-2.02.003 PC-1 is a policy violation.
+/// Updated to 3 by S-024 (AC-013: AppMode is exhaustive by design).
+const EXEMPT_COUNT_FROM_ADR_0004: usize = 3;
 
 // ---------------------------------------------------------------------------
 // Helpers
