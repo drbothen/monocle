@@ -1,3 +1,6 @@
+#![allow(non_snake_case)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::type_complexity)]
 //! S-024: Failing tests for the TUI state machine — `transition()`, `AppMode`, `FocusSnapshot`.
 //!
 //! Every test in this file corresponds to a clause from BC-2.06.001, BC-2.06.002, or

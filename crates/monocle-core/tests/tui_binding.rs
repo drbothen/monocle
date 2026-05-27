@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+#![allow(clippy::expect_used)]
 //! S-024: Failing tests for `resolve_binding()` — 5-level precedence dispatch.
 //!
 //! Covers BC-2.06.003 preconditions and postconditions for the binding resolver.
