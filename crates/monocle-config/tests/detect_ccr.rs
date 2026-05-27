@@ -39,9 +39,12 @@ use tempfile::tempdir;
 /// On Unix this sets mode 0o755 so `path.is_file()` and `which::which` can find it.
 #[cfg(unix)]
 fn make_fake_executable(dir: &std::path::Path, name: &str) -> std::path::PathBuf {
+    use std::io::Write;
     use std::os::unix::fs::PermissionsExt;
     let path = dir.join(name);
-    std::fs::write(&path, b"#!/bin/sh\necho ccr\n").expect("write fake executable");
+    let mut file = std::fs::File::create(&path).expect("create fake executable");
+    file.write_all(b"#!/bin/sh\necho ccr\n")
+        .expect("write fake executable");
     let mut perms = std::fs::metadata(&path).unwrap().permissions();
     perms.set_mode(0o755);
     std::fs::set_permissions(&path, perms).expect("set executable permissions");
@@ -101,8 +104,10 @@ fn test_BC_2_07_006_ccr_path_some_file_exists_returns_some() {
     let tmp = tempdir().expect("create temp dir");
     let fake_ccr = make_fake_executable(tmp.path(), "ccr");
 
-    let mut config = MonocleConfig::default();
-    config.ccr_path = Some(fake_ccr.to_str().unwrap().to_string());
+    let config = MonocleConfig {
+        ccr_path: Some(fake_ccr.to_str().unwrap().to_string()),
+        ..Default::default()
+    };
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
     let result = result.unwrap_or_else(|_| {
@@ -138,8 +143,10 @@ fn test_BC_2_07_006_ccr_path_some_file_missing_falls_through() {
     let nonexistent = tmp.path().join("does_not_exist_ccr");
     assert!(!nonexistent.exists(), "file must not exist for this test");
 
-    let mut config = MonocleConfig::default();
-    config.ccr_path = Some(nonexistent.to_str().unwrap().to_string());
+    let config = MonocleConfig {
+        ccr_path: Some(nonexistent.to_str().unwrap().to_string()),
+        ..Default::default()
+    };
 
     // Set PATH to empty so ccr is not found via PATH either.
     let old_path = std::env::var("PATH").unwrap_or_default();
@@ -176,8 +183,10 @@ fn test_BC_2_07_006_ccr_path_some_is_directory_falls_through() {
     let tmp = tempdir().expect("create temp dir");
 
     // The temp dir itself is a directory — not a file.
-    let mut config = MonocleConfig::default();
-    config.ccr_path = Some(tmp.path().to_str().unwrap().to_string());
+    let config = MonocleConfig {
+        ccr_path: Some(tmp.path().to_str().unwrap().to_string()),
+        ..Default::default()
+    };
 
     let old_path = std::env::var("PATH").unwrap_or_default();
     std::env::set_var("PATH", tmp.path().to_str().unwrap());
@@ -216,8 +225,10 @@ fn test_BC_2_07_006_ccr_path_some_is_directory_falls_through() {
 fn test_BC_2_07_006_ccr_path_some_empty_string_falls_through() {
     let tmp = tempdir().expect("create temp dir");
 
-    let mut config = MonocleConfig::default();
-    config.ccr_path = Some(String::new()); // empty string
+    let config = MonocleConfig {
+        ccr_path: Some(String::new()),
+        ..Default::default()
+    };
 
     let old_path = std::env::var("PATH").unwrap_or_default();
     std::env::set_var("PATH", tmp.path().to_str().unwrap());
@@ -256,24 +267,18 @@ fn test_BC_2_07_006_detect_ccr_never_returns_err() {
     let tmp = tempdir().expect("create temp dir");
 
     let configs = vec![
-        {
-            let c = MonocleConfig::default();
-            c // ccr_path: None
+        MonocleConfig::default(),
+        MonocleConfig {
+            ccr_path: Some("/absolutely/does/not/exist/ccr".to_string()),
+            ..Default::default()
         },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some("/absolutely/does/not/exist/ccr".to_string());
-            c
+        MonocleConfig {
+            ccr_path: Some(String::new()),
+            ..Default::default()
         },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some(String::new());
-            c
-        },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some(tmp.path().to_str().unwrap().to_string()); // directory
-            c
+        MonocleConfig {
+            ccr_path: Some(tmp.path().to_str().unwrap().to_string()),
+            ..Default::default()
         },
     ];
 
@@ -311,8 +316,10 @@ fn test_BC_2_07_006_detect_ccr_no_caching() {
     let tmp = tempdir().expect("create temp dir");
     let ccr_path = tmp.path().join("ccr");
 
-    let mut config = MonocleConfig::default();
-    config.ccr_path = Some(ccr_path.to_str().unwrap().to_string());
+    let config = MonocleConfig {
+        ccr_path: Some(ccr_path.to_str().unwrap().to_string()),
+        ..Default::default()
+    };
 
     // First call: file does not exist → falls through to PATH → PATH is empty → None.
     let old_path = std::env::var("PATH").unwrap_or_default();
@@ -374,29 +381,22 @@ fn test_BC_2_07_006_invariant_no_panic_under_any_input() {
     std::env::set_var("PATH", tmp.path().to_str().unwrap());
 
     let edge_cases = vec![
-        {
-            let c = MonocleConfig::default();
-            c
+        MonocleConfig::default(),
+        MonocleConfig {
+            ccr_path: Some("/".to_string()),
+            ..Default::default()
         },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some("/".to_string()); // root is a directory
-            c
+        MonocleConfig {
+            ccr_path: Some("relative/path/ccr".to_string()),
+            ..Default::default()
         },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some("relative/path/ccr".to_string()); // relative path
-            c
+        MonocleConfig {
+            ccr_path: Some("/dev/null".to_string()),
+            ..Default::default()
         },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some("/dev/null".to_string()); // special device, is_file() false
-            c
-        },
-        {
-            let mut c = MonocleConfig::default();
-            c.ccr_path = Some("\x00invalid\x00".to_string()); // null bytes in path
-            c
+        MonocleConfig {
+            ccr_path: Some("\x00invalid\x00".to_string()),
+            ..Default::default()
         },
     ];
 
