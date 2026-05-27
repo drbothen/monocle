@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.12"
+version: "6.13"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T12:30:00Z
-phase: phase-2-reentry-story-decomposition
-current_step: "Phase 2 re-entry: story decomposition for 48 new BCs (SS-04/05/06/07)"
+timestamp: 2026-05-27T13:00:00Z
+phase: phase-2-reentry-story-decomposition-complete
+current_step: "Phase 2 expansion: 16 stories decomposed (S-016..S-031), 10 holdout scenarios. Adversarial review of story decomposition next (3 clean passes required)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). See cycles/cycle-001/ for full convergence history."
-awaiting: "Story decomposition output from story-writer (48 new BCs across SS-04/05/06/07). Existing 17 stories (86 pts) remain valid. New stories will extend story set and wave schedule."
+awaiting: "Adversarial review of Phase 2 expansion story decomposition (3 clean passes). 16 new stories (S-016..S-031, 109 pts) + 10 new holdout scenarios (HS-EXP-001..HS-EXP-010) produced."
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -128,19 +128,19 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 2 RE-ENTRY (STORY DECOMPOSITION):
+  COLD-START RESUME GUIDE — PHASE 2 EXPANSION ADVERSARIAL REVIEW:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
   2. Verify: git log --oneline -1 develop → 493e1b7 (fix(server): reorder middleware).
   3. Read STATE.md + CLAUDE.md.
-  4. Phase 1d CONVERGED (D-169, 15 passes, trajectory 15→0). Human gate APPROVED (D-170, 2026-05-27).
-     BC-INDEX v1.19 (112 BCs), PRD v1.27.2. Phase 2 RE-ENTERED.
-  5. Phase 3 COMPLETE (D-167) — develop @ 493e1b7, 447 tests, all waves passed.
-  6. CURRENT: Story decomposition for 48 new BCs — SS-04 (12), SS-05 (8), SS-06 (23), SS-07 (6).
-     Dispatch story-writer via /vsdd-factory:phase-2-story-decomposition.
-     Existing 17 stories (86 pts) remain valid; new stories extend the set and wave schedule.
-  7. After story decomposition GATE-PASS: TDD implementation (Phase 3 continuation, Wave 4+).
-  8. Then: Phases 4-7 on complete 112-BC product.
+  4. Phase 2 expansion COMPLETE (D-171, 2026-05-27): 16 stories (S-016..S-031, 109 pts),
+     10 holdout scenarios (HS-EXP-001..010). STORY-INDEX.md v4.0 (33 stories, 195 pts).
+  5. Phase 3 COMPLETE (D-167) — develop @ 493e1b7, 447 tests.
+  6. CURRENT TASK: Adversarial review of Phase 2 expansion story decomposition (3 clean passes required).
+     Dispatch adversary via /vsdd-factory:adversarial-review targeting stories/S-016..S-031,
+     stories/dependency-graph-expansion.md, specs/holdout-scenarios/HS-EXP-*.md.
+  7. After adversarial GATE-PASS (3 clean passes): Wave 4+ TDD implementation (Phase 3 continuation).
+  8. Then: Phases 4-7 on complete 112-BC, 33-story product.
   9. Implementation residuals (not spec defects): EnrichedSession 4 TUI fields + serde derives (Wave 4 story);
      ClaudeCodeModule::on_hook() placeholder → Allow (SS-04 stories); SS-daemon-lifecycle ProjectDirs::new()
      → ::from() (maintenance); arch source pins lag 0-2 patch versions (cosmetic).
@@ -163,7 +163,7 @@ current_cycle: cycle-001
 | 0.5-0.9 Brief + arch stubs | DONE | 2026-05-14 | |
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
-| 2 Story Decomposition | RE-ENTERED (expansion stories) | — | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs (SS-04/05/06/07). Story-writer dispatched. |
+| 2 Story Decomposition | RE-ENTERED (expansion complete, adversarial review pending) | — | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. Adversarial review next (3 clean passes). |
 | 3 TDD Implementation | GATE-PASS | 2026-05-27 | Wave 1+2+3 DONE (83 pts); gate PASS (447 tests, all 6 gates) |
 | 4-7 | not-started | — | |
 
@@ -203,6 +203,7 @@ None. All durable_task_register items non-blocking.
 | D-168 | Phase 1 RE-ENTERED for PRD expansion. Gap analysis revealed 50% of Phase 1 features (38/77) had zero BC coverage. PRD expanded from 22 to 70 BCs. 4 new architecture docs (SS-04 through SS-07). PRD title updated to "Phase 1". BC-INDEX v1.15, PRD v1.27.0, ARCH-INDEX v1.0.15. | 2026-05-27 | orchestrator |
 | D-169 | Phase 1d adversarial spec review CONVERGED after 15 passes. Trajectory: 15→0 finding decay. 48 new BCs + 4 arch docs reviewed. 6 SS-04 BC CAP anchors fixed; PermissionDecision enum aligned; HookDecision Block/Defer units reconciled; ClientDisconnect requirement removed; EnrichedSession expanded; TransportEvent formally defined; BC-2.06.023 created; comprehensive fabricated-type-name sweep completed. BC-INDEX v1.19 (112 BCs), PRD v1.27.2. Documented implementation residuals are Phase 3 continuation tasks. | 2026-05-27 | orchestrator |
 | D-170 | Phase 1d gate APPROVED by human. Phase 2 re-entered for story decomposition of 48 new BCs across SS-04 (12 BCs), SS-05 (8 BCs), SS-06 (23 BCs), SS-07 (6 BCs). Existing 17 stories (86 pts) from original Phase 2 remain valid. New stories will extend the story set and wave schedule. | 2026-05-27 | human (Josh Magady) |
+| D-171 | Phase 2 expansion story decomposition COMPLETE. 16 new stories (S-016..S-031, 109 pts) across Waves 4-7. 10 expansion holdout scenarios (HS-EXP-001..HS-EXP-010). STORY-INDEX.md v4.0 (33 stories, 195 pts). sprint-state.yaml v1.19. Dependency graph expansion produced. Adversarial review of story decomposition now required (3 clean passes). | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -225,7 +226,7 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.12 (Phase 2 re-entry — story decomposition for 48 new BCs)
+## §Trace v6.13 (Phase 2 expansion — story decomposition complete, adversarial review pending)
 
-**D-170 PHASE 2 RE-ENTERED** (2026-05-27): Human gate approval of D-169 (Phase 1d convergence). Phase 2 re-entered for story decomposition of 48 new BCs: SS-04 (12 BCs), SS-05 (8 BCs), SS-06 (23 BCs), SS-07 (6 BCs). Existing 17 stories (86 pts) remain valid. Story-writer dispatched. Phase 1 row updated to DONE (expansion complete). Phase 2 row updated to RE-ENTERED (expansion stories). Full detail: `cycles/cycle-001/burst-log.md` §v6.12.
-STATE v6.11 → v6.12.
+**D-171 PHASE 2 EXPANSION STORY DECOMPOSITION COMPLETE** (2026-05-27): 16 new stories (S-016..S-031, 109 pts) across Waves 4-7. 10 expansion holdout scenarios (HS-EXP-001..HS-EXP-010). STORY-INDEX.md updated to v4.0 (33 stories, 195 pts total). sprint-state.yaml v1.19. Dependency graph expansion at stories/dependency-graph-expansion.md. Story plan at plans/phase-2-expansion-story-plan.md. Phase 2 row updated to RE-ENTERED (expansion complete, adversarial review pending). Adversarial review of story decomposition next (3 clean passes required). Full detail: `cycles/cycle-001/burst-log.md` §v6.13.
+STATE v6.12 → v6.13.

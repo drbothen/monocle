@@ -1,20 +1,24 @@
 ---
 document_type: story-index
 level: L4
-version: "3.0"
+version: "4.0"
 status: active
-producer: vsdd-factory:product-owner
-timestamp: 2026-05-20T21:00:00Z
+producer: vsdd-factory:story-writer
+timestamp: 2026-05-27T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+  - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
 traces_to: ".factory/specs/prd.md v1.26.15"
 ---
@@ -31,6 +35,10 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | EPIC-01 | Daemon Lifecycle | CAP-001 | SS-01 | S-001, S-002, S-003, S-004, S-005, S-006, S-007, S-008, S-009 |
 | EPIC-02 | Core Types and ABI | CAP-002 | SS-02 | S-010, S-011, S-012, S-013 |
 | EPIC-03 | Engine Module | CAP-003 | SS-03 | S-014, S-015 |
+| EPIC-04 | Daemon Wiring | CAP-004 | SS-04 | S-016, S-017, S-018, S-019, S-020 |
+| EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023 |
+| EPIC-06 | TUI | CAP-006 | SS-06 | S-024, S-025, S-026, S-027, S-028, S-029 |
+| EPIC-07 | Config | CAP-007 | SS-07 | S-030, S-031 |
 | EPIC-DTU | Claude Code Hook Protocol Clone | CAP-001 (DTU) | — | S-DTU-001 |
 | EPIC-PREP | Phase 3 Pre-Implementation Prep | — | — | S-PHASE-3-PREP |
 
@@ -55,10 +63,26 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
+| S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | not_started | S-017, S-019 |
+| S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | not_started | S-025, S-026, S-031 |
+| S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | not_started | S-025, S-031 |
+| S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | not_started | S-018, S-019, S-020, S-021 |
+| S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | not_started | S-022, S-029 |
+| S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | not_started | S-023 |
+| S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | not_started | — |
+| S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | not_started | S-022, S-028 |
+| S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | not_started | S-023, S-025, S-026, S-029 |
+| S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | not_started | S-026 |
+| S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | not_started | S-027, S-028, S-031 |
+| S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | not_started | S-027, S-029 |
+| S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | not_started | S-029 |
+| S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | not_started | — |
+| S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
+| S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | not_started | — |
 
-**Total stories:** 17 (15 product + 1 DTU + 1 prep)
-**Total points (product):** 80 (excl. DTU 3 pts and PREP 3 pts)
-**Total points (all):** 86
+**Total stories:** 33 (29 product + 1 DTU + 1 prep + 2 admin)
+**Total points (product):** 189 (excl. DTU 3 pts and PREP 3 pts)
+**Total points (all):** 195
 
 ## Wave Summary
 
@@ -68,6 +92,10 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | Wave 1 | S-DTU-001, S-001 | 8 | Foundation: DTU clone + workspace init |
 | Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Core implementation (parallel-eligible within wave) |
 | Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | Dependent completions (S-009 moved per Decision 1: S-008→S-009 dependency) |
+| Wave 4 | S-016, S-024, S-030 | 18 | Foundation: daemon CLI + TUI core types + config crate (parallel-eligible) |
+| Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration: start sequence, hook routing, IPC server (parallel-eligible within wave) |
+| Wave 6 | S-022, S-023, S-025, S-026 | 34 | Full stack: IPC client connect, TUI binary, permission overlay core (parallel-eligible within wave) |
+| Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
 
 ## BC Coverage Table
 
@@ -96,6 +124,56 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.03.003 | HomeUnresolvable Error Contract | S-015 | AC-005, AC-006 | YES |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods | S-015 | AC-007, AC-008, AC-009 | YES |
 
+| BC-2.04.001 | Daemon Start Sequence: Port Bind + Lock File + Token Write (SOQ-2) | S-017 | AC-001..AC-013 | YES |
+| BC-2.04.002 | Daemon Auto-Start on TUI Launch | S-019 | AC-001..AC-005 | YES |
+| BC-2.04.003 | `MONOCLE_NO_AUTOSTART=1` Suppresses Auto-Start | S-019 | AC-006 | YES |
+| BC-2.04.004 | `monocle daemon start` CLI Subcommand | S-016 | AC-001..AC-003 | YES |
+| BC-2.04.005 | `monocle daemon stop` CLI Subcommand | S-016 | AC-004..AC-006 | YES |
+| BC-2.04.006 | `directories::ProjectDirs::runtime_dir()` Fallback Chain | S-016 | AC-007..AC-009 | YES |
+| BC-2.04.007 | Hook Endpoint: PreToolUse Request Routing | S-018 | AC-001..AC-004 | YES |
+| BC-2.04.008 | Hook Endpoint: Notification Request Routing (2000ms Timeout) | S-018 | AC-005..AC-007 | YES |
+| BC-2.04.009 | Hook Endpoint: Stop/SessionStart/PromptSubmit Routing (300ms Timeout) | S-018 | AC-008..AC-010 | YES |
+| BC-2.04.010 | Hook Tmpfile Generation at `runtimeDir/hooks-settings.json` | S-017 | AC-009 | YES |
+| BC-2.04.011 | Bounded Event Bus with Drop Counter | S-018 | AC-011..AC-013 | YES |
+| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | S-020 | AC-001..AC-005 | YES |
+| BC-2.05.001 | UDS Server Bind at `runtimeDir/monocle.sock` | S-021 | AC-001..AC-003 | YES |
+| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022 | AC-001..AC-005 | YES |
+| BC-2.05.003 | IPC Message Types: SessionListUpdate | S-021 | AC-004..AC-006 | YES |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021 | AC-007..AC-009 | YES |
+| BC-2.05.005 | IPC Message Types: PermissionPromptQueued | S-022 | AC-006..AC-008 | YES |
+| BC-2.05.006 | TUI Reconnects After Daemon Restart | S-023 | AC-001..AC-004 | YES |
+| BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | S-023 | AC-005..AC-006 | YES |
+| BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | S-021 | AC-010..AC-011 | YES |
+| BC-2.06.001 | AppMode State Machine: Compile-Time Mutual Exclusion | S-024 | AC-001..AC-004 | YES |
+| BC-2.06.002 | FocusSnapshot: Focus Restored After Overlay/Fullscreen Close | S-024 | AC-005..AC-007 | YES |
+| BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | S-024 | AC-008..AC-012 | YES |
+| BC-2.06.004 | `Ctrl-\` Popup: Appears and Dismisses Without State Loss | S-025 | AC-001..AC-003 | YES |
+| BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | S-025 | AC-004..AC-006 | YES |
+| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | S-028 | AC-001..AC-004 | YES |
+| BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | S-025 | AC-007..AC-008 | YES |
+| BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | S-026 | AC-001..AC-002 | YES |
+| BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | S-026 | AC-003..AC-004 | YES |
+| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | S-027 | AC-001..AC-003 | YES |
+| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | S-026 | AC-005..AC-006 | YES |
+| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | S-026 | AC-007..AC-008 | YES |
+| BC-2.06.013 | Permission Overlay: Reject Keybinding | S-026 | AC-009..AC-010 | YES |
+| BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | S-026 | AC-011..AC-012 | YES |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | AC-004 | YES |
+| BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | AC-013..AC-014 | YES |
+| BC-2.06.017 | Permission Response Within Hook Timeout Budget | S-027 | AC-005..AC-006 | YES |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-005..AC-007 | YES |
+| BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | S-027 | AC-007..AC-008 | YES |
+| BC-2.06.020 | Status Bar: Breadcrumb | S-027 | AC-009 | YES |
+| BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | AC-010 | YES |
+| BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | AC-001..AC-006 | YES |
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | AC-015..AC-016 | YES |
+| BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | S-030 | AC-001..AC-002 | YES |
+| BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | S-030 | AC-003..AC-005 | YES |
+| BC-2.07.003 | Config Missing or Corrupted: Default Applied | S-030 | AC-006..AC-008 | YES |
+| BC-2.07.004 | Profile Picker: Sticky-Per-Project | S-031 | AC-001..AC-003 | YES |
+| BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-004..AC-006 | YES |
+| BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | AC-009..AC-010 | YES |
+
 | BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-003 | Notification Hook Filters on notification_type === 'permission_prompt' | S-DTU-001 | AC-001, AC-003 | YES |
@@ -105,7 +183,8 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs (100%); 41/41 DTU gene-source BCs (100%)**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/49 product BCs Waves 4-7 (100%); 41/41 DTU gene-source BCs (100%)**
+**Total product BC coverage: 71/71 (100%)**
 
 ## VP Coverage Table
 
@@ -369,6 +448,23 @@ No L1 (BC clause) gaps. No L2 (edge case) gaps.
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v4.0
+
+**Phase 2 Expansion Burst: 16 new stories (S-016..S-031) integrated** (2026-05-27T00:00:00Z):
+
+- 4 new epics added: EPIC-04 (Daemon Wiring), EPIC-05 (IPC), EPIC-06 (TUI), EPIC-07 (Config).
+- 16 new stories added (S-016 through S-031), all status: not_started.
+- 49/49 new BCs covered (100%): BC-2.04.001..012, BC-2.05.001..008, BC-2.06.001..023, BC-2.07.001..006.
+- 4 new waves added: Wave 4 (18 pts), Wave 5 (34 pts), Wave 6 (34 pts), Wave 7 (23 pts).
+- Total points: 86 (Waves 0-3) + 109 (Waves 4-7) = 195 total.
+- Total stories: 33 (17 existing + 16 new).
+- Dependency graph is acyclic (topological sort verified in dependency-graph-expansion.md).
+- Critical path: S-001 → S-016 → S-017 → S-021 → S-022 → S-026 → S-027 → S-029.
+- BC-INDEX inputs updated: v1.13 → v1.19 (expanded to 71 product BCs + 41 DTU BCs).
+- sprint-state.yaml bumped v1.18 → v1.19 (16 new not_started entries; total_stories 17→33).
+- dependency-graph-expansion.md created (new file for Waves 4-7 expansion dependency graph).
+- STORY-INDEX version bumped v3.0 → v4.0.
 
 ## §Trace v3.0
 

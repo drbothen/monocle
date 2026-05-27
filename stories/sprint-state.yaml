@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.18"
+version: "1.19"
 status: active
-producer: vsdd-factory:state-manager
-timestamp: 2026-05-26T12:00:00Z
+producer: vsdd-factory:story-writer
+timestamp: 2026-05-27T00:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -13,12 +13,16 @@ traces_to: STORY-INDEX.md
 # All stories start as not_started for Phase 3 TDD dispatch.
 # State transitions: not_started → in_progress → review → done | blocked
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
+  - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
-traces_to_full: ".factory/stories/STORY-INDEX.md v1.9"
+traces_to_full: ".factory/stories/STORY-INDEX.md v4.0"
 ---
 
 stories:
@@ -227,20 +231,216 @@ stories:
     pr_url: "https://github.com/drbothen/monocle/pull/17"
     notes: "Wave 3 Batch A. PR #17 merged at develop @ 23cfd44. BC-2.03.001..004 fully satisfied. 20 tests (18 detect/id/hook/paths + 2 HomeUnresolvable with E-ENG-001 log assertion). 4 adversary rounds (4→2→0→0, 3/3 convergence). Deferred: tracing-test manifest registration (architect); BC-2.03.001 PC-3 DeferUntil (#34, PO); HookDecision naming (S-014-ADV, architect)."
 
+  - id: S-016
+    title: "Daemon Binary Crate Init + CLI Subcommands (monocle daemon start/stop)"
+    epic: EPIC-04
+    wave: 4
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 4 foundation. BCs: BC-2.04.004, BC-2.04.005, BC-2.04.006. Depends on S-001, S-006."
+
+  - id: S-024
+    title: "TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch"
+    epic: EPIC-06
+    wave: 4
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 4 foundation. BCs: BC-2.06.001, BC-2.06.002, BC-2.06.003. Pure-core monocle-core types. Depends on S-011, S-014."
+
+  - id: S-030
+    title: "Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection"
+    epic: EPIC-07
+    wave: 4
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 4 foundation. BCs: BC-2.07.001, BC-2.07.002, BC-2.07.003, BC-2.07.006. New monocle-config crate. Depends on S-001 only."
+
+  - id: S-017
+    title: "Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation"
+    epic: EPIC-04
+    wave: 5
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 5. BCs: BC-2.04.001, BC-2.04.010. 13-step SOQ-2 start sequence. Depends on S-016, S-006, S-008, S-009, S-015, S-012."
+
+  - id: S-018
+    title: "Hook Endpoint Routing + Bounded Event Bus with Drop Counter"
+    epic: EPIC-04
+    wave: 5
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 5. BCs: BC-2.04.007, BC-2.04.008, BC-2.04.009, BC-2.04.011. Hook handlers + event bus. Depends on S-017, S-002, S-003, S-004, S-009, S-014."
+
+  - id: S-019
+    title: "Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART"
+    epic: EPIC-04
+    wave: 5
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 5. BCs: BC-2.04.002, BC-2.04.003. 5-step decision sequence. Depends on S-016, S-017."
+
+  - id: S-020
+    title: "JSONL Ring Capacity and Rotation Policy"
+    epic: EPIC-04
+    wave: 5
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 5. BCs: BC-2.04.012. 100MB cap, 5 rotation files, 4096 RAM ring. Depends on S-008, S-017."
+
+  - id: S-021
+    title: "UDS Server Bind + IPC Transport + Core Message Types"
+    epic: EPIC-05
+    wave: 5
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 5. BCs: BC-2.05.001, BC-2.05.003, BC-2.05.004, BC-2.05.008. New monocle-ipc crate. Depends on S-017, S-014, S-013."
+
+  - id: S-022
+    title: "TUI Client Connect, Initial State Push, and Permission Message Types"
+    epic: EPIC-05
+    wave: 6
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 6. BCs: BC-2.05.002, BC-2.05.005. Client connect + InitialState + PermissionPromptQueued. Depends on S-021, S-018."
+
+  - id: S-023
+    title: "TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear"
+    epic: EPIC-05
+    wave: 6
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 6. BCs: BC-2.05.006, BC-2.05.007. Reconnect exponential backoff + SOQ-3 VecDeque clear. Depends on S-022, S-019."
+
+  - id: S-025
+    title: "TUI Binary Skeleton, Ctrl-\\ Popup Integration, and Sessions Panel"
+    epic: EPIC-06
+    wave: 6
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 6. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007. monocle-tui binary + ratatui draw loop. Depends on S-024, S-022, S-030."
+
+  - id: S-026
+    title: "Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3"
+    epic: EPIC-06
+    wave: 6
+    points: 13
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 6. BCs: BC-2.06.008..009, BC-2.06.011..014, BC-2.06.016, BC-2.06.023. 8 P0 BCs — core permission overlay lifecycle. 13 pts at ceiling. Depends on S-024, S-022, S-023."
+
+  - id: S-027
+    title: "Permission Overlay Rendering, Diff Preview (similar 3), Status Bar"
+    epic: EPIC-06
+    wave: 7
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 7. BCs: BC-2.06.010, BC-2.06.015, BC-2.06.017, BC-2.06.019..021. Rendering layer + status bar. Depends on S-026, S-025."
+
+  - id: S-028
+    title: "Sessions Panel Nucleo Filter + Event Ribbon Rolling Log"
+    epic: EPIC-06
+    wave: 7
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 7. BCs: BC-2.06.006, BC-2.06.018. Nucleo fuzzy filter + event ribbon. Depends on S-025, S-021."
+
+  - id: S-029
+    title: "Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve"
+    epic: EPIC-06
+    wave: 7
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 7. BCs: BC-2.06.022. E2E integration test — full stack dual concurrent permission resolve. Depends on S-026, S-027, S-022, S-018."
+
+  - id: S-031
+    title: "Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override"
+    epic: EPIC-07
+    wave: 7
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. Depends on S-030, S-024, S-025."
+
 summary:
-  total_stories: 17
-  not_started: 0
+  total_stories: 33
+  not_started: 16
   in_progress: 0
   review: 0
   done: 16
   ready: 0
   blocked: 1
-  total_points: 86
+  total_points: 195
   points_complete: 83
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
   wave_3_points: 34
+  wave_4_points: 18
+  wave_5_points: 34
+  wave_6_points: 34
+  wave_7_points: 23
   # v1.13 updates (2026-05-26T12:00:00Z):
   # - S-014 flipped not_started → done (PR #10 merged 40dab9c; BC-2.03.001 satisfied; 5 adversary rounds 3/3 convergence)
   # - S-011 flipped not_started → done (PR #11 merged 1e789f0; BC-2.02.003 satisfied; 4 adversary rounds 3/3 convergence)
@@ -269,3 +469,9 @@ summary:
   # - done: 15 → 16; not_started: 1 → 0; points_complete: 75 → 83
   # - Wave 3 Batch B COMPLETE: S-009 done. WAVE 3 COMPLETE: 5/5 stories done (34/34 pts)
   # - Total project: 16/17 done (1 blocked = S-PHASE-3-PREP on upstream), 83/86 pts
+  # v1.19 updates (2026-05-27T00:00:00Z):
+  # - Phase 2 Expansion: 16 new stories added (S-016..S-031) across EPIC-04, EPIC-05, EPIC-06, EPIC-07
+  # - 49/49 new BCs covered (BC-2.04.001..012, BC-2.05.001..008, BC-2.06.001..023, BC-2.07.001..006)
+  # - Waves 4-7 added: Wave 4 (18 pts), Wave 5 (34 pts), Wave 6 (34 pts), Wave 7 (23 pts)
+  # - total_stories: 17 → 33; not_started: 0 → 16; total_points: 86 → 195
+  # - BC-INDEX input updated: v1.13 → v1.19
