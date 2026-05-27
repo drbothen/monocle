@@ -944,3 +944,192 @@ Both failures produce:
 - `cargo test -p monocle-runtime --test engine_module_home_unresolvable` → 2 passed, 0 failed
 - `cargo test --workspace` → 0 regressions in prior tests
 - `cargo clippy --workspace -- -D warnings` → clean
+
+---
+document_type: red-gate-log
+story_id: S-024
+step: 3
+branch: feature/S-024-tui-core-types
+worktree: .worktrees/S-024
+commit: c199ee9
+timestamp: 2026-05-27T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-024 Step 3 (TUI Core Types)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+40 tests total across 2 new test files. 21 structural tests PASS (correct — they test
+type construction, derives, and the Cargo.toml purity boundary, none of which require
+`transition()` or `resolve_binding()` implementation). 19 behavioral tests FAIL (correct —
+they call `transition()`, `FocusSnapshot::cycle()`, `FocusSnapshot::to_panel_id()`, or
+`resolve_binding()`, all of which are `todo!()` stubs). Zero vacuously-passing tests.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-core/tests/tui_state_machine.rs` | 26 + 14 = 40 total | 14 | 26 |
+| `crates/monocle-core/tests/tui_binding.rs` | 7 + 14 = 21 total | 7 | 14 |
+| **Total (S-024)** | **61** | **21** | **40** |
+
+## Failing Tests — tui_state_machine.rs (26 tests)
+
+All 26 failures are caused by `todo!()` stubs in `transition()`, `FocusSnapshot::cycle()`,
+and `FocusSnapshot::to_panel_id()`. Each test uses `catch_unwind + AssertUnwindSafe` to
+convert panics into explicit assertion failures with Red Gate messages.
+
+| Test | BC Clause | Stub Hit |
+|------|-----------|----------|
+| `test_BC_2_06_001_ac005_empty_stack_collapse_to_dashboard` | BC-2.06.001 PC-3, EC-060, AC-005 | `transition()` todo!() |
+| `test_BC_2_06_001_ac005_pop_overlay_multi_item_stays_overlay` | BC-2.06.001 PC-3, AC-005 | `transition()` todo!() |
+| `test_BC_2_06_001_ec061_unmatched_action_returns_identity` | BC-2.06.001 EC-061, AC-015 | `transition()` todo!() |
+| `test_BC_2_06_001_pc2_transition_is_deterministic` | BC-2.06.001 PC-2 | `transition()` todo!() |
+| `test_BC_2_06_002_ec065_overlay_close_after_cycle_uses_original_prior` | BC-2.06.002 EC-065 | `transition()` todo!() |
+| `test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior` | BC-2.06.002 EC-065, PC-3 | `transition()` todo!() |
+| `test_BC_2_06_002_ec066_fullscreen_from_event_ribbon_restores_event_ribbon` | BC-2.06.002 EC-066 | `transition()` todo!() |
+| `test_BC_2_06_002_ec068_esc_in_dashboard_is_identity` | BC-2.06.002 EC-068 | `transition()` todo!() |
+| `test_BC_2_06_002_filtering_close_restores_prior_focus` | BC-2.06.002 PC-4 | `transition()` todo!() |
+| `test_BC_2_06_002_focus_snapshot_cycle_event_ribbon_wraps_to_sessions` | BC-2.06.002 Pre-3, EC-069 | `FocusSnapshot::cycle()` todo!() |
+| `test_BC_2_06_002_focus_snapshot_cycle_full_round_trip` | BC-2.06.002 EC-069 | `FocusSnapshot::cycle()` todo!() |
+| `test_BC_2_06_002_focus_snapshot_cycle_sessions_to_event_ribbon` | BC-2.06.002 Pre-3, AC-002 | `FocusSnapshot::cycle()` todo!() |
+| `test_BC_2_06_002_fullscreen_exit_uses_prior_not_panel` | BC-2.06.002 PC-1 | `transition()` todo!() |
+| `test_BC_2_06_002_to_panel_id_event_ribbon` | BC-2.06.002 Pre-4, AC-002 | `FocusSnapshot::to_panel_id()` todo!() |
+| `test_BC_2_06_002_to_panel_id_sessions` | BC-2.06.002 Pre-4, AC-002 | `FocusSnapshot::to_panel_id()` todo!() |
+| `test_BC_2_06_003_ac006_cancel_filter_returns_dashboard_with_prior` | BC-2.06.003 PC-3, AC-006 | `transition()` todo!() |
+| `test_BC_2_06_003_ac006_commit_filter_returns_dashboard_with_prior` | BC-2.06.003 PC-3, AC-006 | `transition()` todo!() |
+| `test_BC_2_06_003_ac006_start_filter_enters_filtering_with_empty_query` | BC-2.06.003 PC-3, AC-006 | `transition()` todo!() |
+| `test_BC_2_06_003_ac007_enter_fullscreen_captures_focus` | BC-2.06.003 PC-4, AC-007 | `transition()` todo!() |
+| `test_BC_2_06_003_ac007_exit_fullscreen_restores_prior_focus` | BC-2.06.003 PC-4, AC-007 | `transition()` todo!() |
+| `test_BC_2_06_003_ac008_esc_in_overlay_is_identity` | BC-2.06.003 PC-5, AC-008 | `transition()` todo!() |
+| `test_BC_2_06_003_ac009_pop_overlay_removes_front` | BC-2.06.003 PC-6, AC-009 | `transition()` todo!() |
+| `test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay` | BC-2.06.003 PC-6, AC-009 | `transition()` todo!() |
+| `test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay` | BC-2.06.003 PC-6, AC-009 | `transition()` todo!() |
+| `test_BC_2_06_003_ac009_push_overlay_from_overlay_appends_to_stack` | BC-2.06.003 PC-6, AC-009 | `transition()` todo!() |
+| `test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions` | BC-2.06.003 INV-1, AC-015 | `transition()` todo!() |
+
+## Failing Tests — tui_binding.rs (14 tests)
+
+All 14 failures are caused by `todo!()` stub in `resolve_binding()`.
+
+| Test | BC Clause | Stub Hit |
+|------|-----------|----------|
+| `test_BC_2_06_003_ac011_ec070_char_y_in_dashboard_returns_none` | BC-2.06.003 EC-070, AC-011 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ac011_resolve_binding_none_on_unknown_key` | BC-2.06.003 PC-4, AC-011 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ac011_resolve_binding_none_on_unregistered_key_empty_layers` | BC-2.06.003 PC-4, AC-011 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ac012_ec075_ctrl_key_in_filtering_falls_through_search_prompt` | BC-2.06.003 EC-075, AC-012 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ac012_multiple_printable_chars_in_filtering_resolve_search_prompt` | BC-2.06.003 PC-2, AC-012 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ac012_printable_char_in_filtering_resolves_search_prompt` | BC-2.06.003 PC-2, AC-012 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_ec070_char_y_in_dashboard_no_permission_binding` | BC-2.06.003 EC-070 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc1_first_match_wins_empty_layers_returns_none` | BC-2.06.003 PC-1 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc3_char_a_upper_in_overlay_resolves_permission_accept_always` | BC-2.06.003 PC-3 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc3_char_n_in_overlay_resolves_permission_reject` | BC-2.06.003 PC-3 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc3_char_r_in_overlay_resolves_permission_reject` | BC-2.06.003 PC-3 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc3_char_y_in_overlay_resolves_permission_accept_once` | BC-2.06.003 PC-3, EC-071 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc3_enter_in_overlay_resolves_permission_accept_once` | BC-2.06.003 PC-3, EC-071 | `resolve_binding()` todo!() |
+| `test_BC_2_06_003_pc5_resolve_binding_is_deterministic` | BC-2.06.003 PC-5 | `resolve_binding()` todo!() |
+
+## Passing Tests (21 — structural/type-level, correct to pass before implementation)
+
+### tui_state_machine.rs — 14 passing
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_06_001_dashboard_variant_constructs` | AppMode variants exist as declared types |
+| `test_BC_2_06_001_filtering_variant_constructs` | AppMode variants exist as declared types |
+| `test_BC_2_06_001_overlay_variant_constructs` | AppMode variants exist as declared types |
+| `test_BC_2_06_001_fullscreen_variant_constructs` | AppMode variants exist as declared types |
+| `test_BC_2_06_001_appmode_exhaustive_match_compiles_without_wildcard` | AppMode is NOT #[non_exhaustive] — compile-time proof of AC-013 |
+| `test_BC_2_06_002_focus_snapshot_clone` | FocusSnapshot derives Clone and PartialEq |
+| `test_BC_2_06_002_focus_snapshot_eq` | FocusSnapshot derives PartialEq and Eq |
+| `test_BC_2_06_002_focus_snapshot_debug` | FocusSnapshot derives Debug |
+| `test_BC_2_06_001_prompt_modal_constructs_with_all_fields` | PromptModal struct fields match AC-003 |
+| `test_BC_2_06_001_tool_payload_edit_constructs` | ToolPayload::Edit variant matches AC-003 |
+| `test_BC_2_06_001_tool_payload_bash_constructs` | ToolPayload::Bash variant matches AC-003 |
+| `test_BC_2_06_001_tool_payload_read_constructs` | ToolPayload::Read variant matches AC-003 |
+| `test_BC_2_06_001_tool_payload_generic_constructs` | ToolPayload::Generic variant matches AC-003 |
+| `test_BC_2_06_001_ac014_monocle_core_cargo_toml_has_no_forbidden_io_deps` | Reads Cargo.toml and asserts no similar/nucleo/ratatui/crossterm |
+
+### tui_binding.rs — 7 passing
+
+| Test | Rationale for Pass |
+|------|--------------------|
+| `test_BC_2_06_003_ac010_binding_source_all_variants_exist` | All 5 BindingSource variants exist |
+| `test_BC_2_06_003_ac010_binding_source_derives` | BindingSource derives Clone/PartialEq/Eq/Debug |
+| `test_BC_2_06_003_ac010_binding_source_priority_identity` | Each variant is distinct (ne checks) |
+| `test_BC_2_06_003_key_event_constructs_correctly` | KeyEvent struct fields correct |
+| `test_BC_2_06_003_key_modifiers_default_is_no_modifiers` | KeyModifiers derives Default (all false) |
+| `test_BC_2_06_003_key_event_derives` | KeyEvent derives Clone/PartialEq/Eq/Hash/Debug |
+| `test_BC_2_06_003_binding_layers_empty_constructs` | BindingLayers::empty() does not panic |
+
+## BC Coverage
+
+| BC | ACs / Clauses Covered | Test Count |
+|----|----------------------|------------|
+| BC-2.06.001 | PC-1, PC-2, PC-3, INV-1, INV-2, EC-060, EC-061 | 18 |
+| BC-2.06.002 | Pre-2, Pre-3, Pre-4, PC-1, PC-3, PC-4, INV-1, EC-065, EC-066, EC-068, EC-069 | 16 |
+| BC-2.06.003 | Pre-1, PC-1, PC-2, PC-3, PC-4, PC-5, PC-6, INV-1, EC-070, EC-071, EC-075 | 27 |
+
+## Notes for Implementer
+
+### FocusSnapshot::cycle() (AC-002 / BC-2.06.002 Pre-3)
+
+Phase 1 has exactly 2 variants: Sessions and EventRibbon. Round-robin:
+- `Sessions.cycle()` → `EventRibbon`
+- `EventRibbon.cycle()` → `Sessions`
+
+### FocusSnapshot::to_panel_id() (AC-002 / BC-2.06.002 Pre-4)
+
+- `Sessions.to_panel_id()` → `PanelId::Sessions`
+- `EventRibbon.to_panel_id()` → `PanelId::EventRibbon`
+
+### transition() branches to implement (AC-004..AC-009, AC-015)
+
+1. `(Dashboard { focused }, StartFilter { panel })` → `Filtering { panel, query: String::new(), prior: focused }`
+2. `(Filtering { prior, .. }, CommitFilter)` → `Dashboard { focused: prior }`
+3. `(Filtering { prior, .. }, CancelFilter)` → `Dashboard { focused: prior }`
+4. `(Dashboard { focused }, EnterFullscreen { panel })` → `Fullscreen { panel, prior: focused }`
+5. `(Fullscreen { prior, .. }, ExitFullscreen)` → `Dashboard { focused: prior }`
+6. `(Overlay { stack, prior }, Esc)` → `Overlay { stack, prior }` (identity — AC-008)
+7. `(Dashboard { focused }, PushOverlay { modal })` → `Overlay { stack: VecDeque::from([modal]), prior: focused }`
+8. `(Filtering { prior, .. }, PushOverlay { modal })` → `Overlay { stack: VecDeque::from([modal]), prior }`
+9. `(Overlay { stack, prior }, PushOverlay { modal })` → push modal to back of stack
+10. `(Overlay { stack, prior }, PopOverlay)` → pop front; if empty → `Dashboard { focused: prior }`
+11. `(Dashboard { focused }, Esc)` → `Dashboard { focused }` (identity — EC-068)
+12. All unmatched `(mode, action)` pairs → identity (return `mode` unchanged — EC-061)
+13. `(Overlay { stack, prior }, OverlayCycleNext)` → rotate VecDeque (front→back), preserve `prior`
+14. **Empty-stack collapse invariant (AC-005):** at every code path that could produce `Overlay { stack: empty, .. }`, collapse to `Dashboard { focused: prior }` — enforced inside `transition()`, not at call sites.
+
+### resolve_binding() layers (AC-012 / BC-2.06.003 PC-1..PC-4)
+
+When mode is `Filtering`: SearchPrompt layer contains bindings for all printable chars
+(`KeyCode::Char(_)` with no modifiers) → `Action::FilterType(char)`. Ctrl-modified keys
+are NOT captured by SearchPrompt and fall through to lower layers.
+
+When mode is `Overlay`: SearchPrompt layer contains:
+- `Char('y')` → `Action::PermissionAcceptOnce`
+- `Enter` → `Action::PermissionAcceptOnce`
+- `Char('A')` → `Action::PermissionAcceptAlways`
+- `Char('n')` → `Action::PermissionReject`
+- `Char('r')` → `Action::PermissionReject`
+
+These bindings are NOT present when mode is `Dashboard` or `Fullscreen`.
+
+`BindingLayers::empty()` currently has `_priv: ()` — the implementer must replace this with
+five `HashMap<KeyEvent, Action>` fields (one per layer) and populate them based on current mode.
+
+### AC-014: purity boundary
+
+`monocle-core/Cargo.toml` must never gain `similar`, `nucleo`, `ratatui`, or `crossterm`
+as `[dependencies]` entries. The `test_BC_2_06_001_ac014_monocle_core_cargo_toml_has_no_forbidden_io_deps`
+test reads the Cargo.toml and fails if any of these strings appear.
+
+## Confirm after implementation
+
+- `cargo test -p monocle-core --test tui_state_machine` → 40 passed, 0 failed
+- `cargo test -p monocle-core --test tui_binding` → 21 passed, 0 failed
+- `cargo test --workspace` → 0 regressions in prior tests
+- `cargo clippy --workspace -- -D warnings` → clean
