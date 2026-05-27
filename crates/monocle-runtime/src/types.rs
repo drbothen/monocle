@@ -155,3 +155,212 @@ impl std::fmt::Display for ShutdownReason {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// S-017 types: daemon start sequence, event bus, hooks-settings
+// ---------------------------------------------------------------------------
+
+/// A hook event that has been received from a Claude Code session and enqueued
+/// on the daemon-internal event bus (S-017, BC-2.04.001 step 5).
+///
+/// This is an internal routing type distinct from `monocle_core::hook_events::HookEvent`
+/// (which carries the deserialized payload). `EventBusHookEvent` wraps the raw event
+/// plus routing metadata for the ring buffer and session registry.
+///
+/// `#[non_exhaustive]` follows SS-conventions-anti-patterns.md §"Non-Exhaustive Enum
+/// Policy": new fields can be added without breaking match sites in Phase 2+.
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct EventBusHookEvent {
+    /// The deserialized hook payload from the HTTP body.
+    pub payload: monocle_core::hook_events::HookEvent,
+    /// ISO 8601 UTC timestamp (millisecond precision) when the event was received.
+    pub received_at: String,
+}
+
+impl EventBusHookEvent {
+    /// Construct a new `EventBusHookEvent` with the given payload and reception timestamp.
+    pub fn new(payload: monocle_core::hook_events::HookEvent, received_at: String) -> Self {
+        Self {
+            payload,
+            received_at,
+        }
+    }
+}
+
+/// Bounded event bus channel sender for `EventBusHookEvent` (S-017, BC-2.04.001 step 5).
+///
+/// Created by `tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY)`.
+/// The channel capacity MUST be `EVENT_BUS_CAPACITY` (4096). Using an unbounded channel
+/// is forbidden by SS-conventions-anti-patterns.md §"No unbounded channels".
+pub type EventBusTx = tokio::sync::mpsc::Sender<EventBusHookEvent>;
+
+/// Bounded event bus channel receiver for `EventBusHookEvent` (S-017, BC-2.04.001 step 5).
+///
+/// Symmetric to [`EventBusTx`]. Stored in `DaemonState` or consumed by the ring-buffer
+/// writer task.
+pub type EventBusRx = tokio::sync::mpsc::Receiver<EventBusHookEvent>;
+
+/// Capacity of the daemon-internal hook event bus channel (S-017, BC-2.04.001 step 5).
+///
+/// BC-2.04.001 PC-5 specifies exactly 4096 slots. This constant MUST be used at the
+/// call-site of `tokio::sync::mpsc::channel` to guarantee compliance. The drop counter
+/// `AtomicU64` is incremented on each send-failure due to the channel being at capacity.
+pub const EVENT_BUS_CAPACITY: usize = 4096;
+
+/// The serialized schema for `hooks-settings.json` (S-017, BC-2.04.010).
+///
+/// Claude Code reads this file at session start to determine which hooks to invoke.
+/// The schema is derived from the Claude Code hooks-settings specification.
+///
+/// # SOQ-2 Invariant
+///
+/// This file MUST NOT be written until after `write_lock_file()` completes
+/// (BC-2.04.001 step 8 precedes step 9).
+///
+/// # Wire format
+///
+/// ```json
+/// {
+///   "hooks": {
+///     "PreToolUse": [{"hooks": [{"type": "command", "command": "..."}]}],
+///     "PostToolUse": [],
+///     "Notification": [{"hooks": [{"type": "command", "command": "..."}]}],
+///     "Stop": [{"hooks": [{"type": "command", "command": "..."}]}],
+///     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "..."}]}],
+///     "PreCompact": []
+///   }
+/// }
+/// ```
+///
+/// `SessionStart` is intentionally absent (JC-2 closure / BC-2.04.010 invariant 1).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HooksSettings {
+    /// Top-level `hooks` object keyed by hook type name.
+    pub hooks: HooksMap,
+}
+
+/// The `hooks` map inside `HooksSettings`.
+///
+/// Each key is a hook type string; each value is the list of hook matcher/command entries
+/// (may be empty to disable a hook type).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HooksMap {
+    /// PreToolUse hook entries — active.
+    #[serde(rename = "PreToolUse")]
+    pub pre_tool_use: Vec<HookEntry>,
+
+    /// PostToolUse hook entries — always empty in Phase 1 (JC-2).
+    #[serde(rename = "PostToolUse")]
+    pub post_tool_use: Vec<HookEntry>,
+
+    /// Notification hook entries — active.
+    #[serde(rename = "Notification")]
+    pub notification: Vec<HookEntry>,
+
+    /// Stop hook entries — active.
+    #[serde(rename = "Stop")]
+    pub stop: Vec<HookEntry>,
+
+    /// UserPromptSubmit hook entries — active.
+    #[serde(rename = "UserPromptSubmit")]
+    pub user_prompt_submit: Vec<HookEntry>,
+
+    /// PreCompact hook entries — always empty in Phase 1 (not in the canonical 5).
+    #[serde(rename = "PreCompact")]
+    pub pre_compact: Vec<HookEntry>,
+    // SessionStart is intentionally absent — JC-2 / BC-2.04.010 invariant 1.
+}
+
+/// A single hook matcher + command list entry.
+///
+/// The `matcher` field filters which tool invocations trigger the hook.
+/// An empty string matcher means "match all invocations" — BC-2.04.010 PC-3
+/// requires the `"matcher": ""` key to be present (not absent) in every active
+/// hook entry, so this field is always serialized.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HookEntry {
+    /// Tool name / pattern matcher. Empty string means match all.
+    ///
+    /// BC-2.04.010 PC-3 schema: `"matcher": ""` must be present in every active
+    /// hook entry. Do NOT use `Option<String>` with `skip_serializing_if` here —
+    /// the field must always be emitted so Claude Code sees the expected key.
+    #[serde(default)]
+    pub matcher: String,
+    /// The list of hook commands to execute when the hook fires.
+    pub hooks: Vec<HookCommand>,
+}
+
+impl HookEntry {
+    /// Construct a hook entry with empty matcher (matches all) and a single shell command.
+    ///
+    /// Sets `matcher` to `""` per BC-2.04.010 PC-3: the key must be present in the
+    /// serialized JSON with an empty string value for "match all" semantics.
+    pub fn command_all(command: String) -> Self {
+        Self {
+            matcher: String::new(),
+            hooks: vec![HookCommand {
+                kind: "command".to_string(),
+                command,
+            }],
+        }
+    }
+}
+
+/// A single executable hook command.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct HookCommand {
+    /// Hook kind — always `"command"` in Phase 1.
+    #[serde(rename = "type")]
+    pub kind: String,
+    /// The shell command to execute (invokes the monocle hook bridge script).
+    pub command: String,
+}
+
+/// Registry of active engine modules registered with the daemon (S-017, BC-2.04.001 step 6).
+///
+/// Phase 1 always registers exactly two modules:
+/// 1. `ClaudeCodeModule` — the primary harness engine.
+/// 2. `VsddFactoryAdapter` — factory awareness plane.
+///
+/// `#[non_exhaustive]` prevents external struct-literal construction so new fields
+/// can be added in Phase 3 (wasmtime plugin registry) without breaking callers.
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct EngineModuleRegistry {
+    /// Whether the Claude Code engine module has been registered.
+    pub claude_code_registered: bool,
+    /// Whether the VSDD factory adapter has been registered.
+    pub vsdd_factory_registered: bool,
+}
+
+impl EngineModuleRegistry {
+    /// Construct an empty registry.
+    pub fn new() -> Self {
+        Self {
+            claude_code_registered: false,
+            vsdd_factory_registered: false,
+        }
+    }
+
+    /// Register the Claude Code engine module.
+    pub fn register_claude_code(&mut self) {
+        self.claude_code_registered = true;
+    }
+
+    /// Register the VSDD factory adapter.
+    pub fn register_vsdd_factory(&mut self) {
+        self.vsdd_factory_registered = true;
+    }
+
+    /// Returns `true` if all required Phase 1 modules are registered.
+    pub fn is_complete(&self) -> bool {
+        self.claude_code_registered && self.vsdd_factory_registered
+    }
+}
+
+impl Default for EngineModuleRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}

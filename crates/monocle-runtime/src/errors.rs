@@ -50,4 +50,37 @@ pub enum DaemonStartError {
     /// directly to distinguish the error site.
     #[error("failed to create runtime directory: {0}")]
     RuntimeDirCreateFailure(std::io::Error),
+
+    /// Auth token generation failed (S-017, BC-2.04.001 step 7).
+    ///
+    /// This is structurally infallible in Phase 1 (OsRng always succeeds on supported
+    /// platforms) but the variant is required for the error taxonomy to be complete —
+    /// future platforms may surface this.
+    #[error("session token generation failed")]
+    TokenGenerationFailed,
+
+    /// TCP port bind failed (S-017, BC-2.04.001 step 3).
+    ///
+    /// Port must be bound BEFORE any file is written (SOQ-2 commit-point invariant).
+    /// If binding fails, no lock file or hooks-settings.json is created.
+    #[error("failed to bind TCP port: {0}")]
+    PortBindFailure(std::io::Error),
+
+    /// hooks-settings.json write/persist failed (S-017, BC-2.04.010 step 9).
+    ///
+    /// Wraps the underlying `std::io::Error` from the `tempfile::persist` call.
+    #[error("failed to write hooks-settings.json: {0}")]
+    HooksSettingsWriteFailure(std::io::Error),
+
+    /// Unix domain socket bind failed (S-017, BC-2.04.001 step 10).
+    ///
+    /// Wraps the underlying `std::io::Error` from `UnixListener::bind`.
+    #[error("failed to bind Unix domain socket: {0}")]
+    UdsBindFailure(std::io::Error),
+
+    /// HTTP server failed to start (S-017, BC-2.04.001 step 12/13).
+    ///
+    /// Wraps the underlying `std::io::Error` from `run_server`.
+    #[error("failed to start HTTP server: {0}")]
+    ServerStartFailure(std::io::Error),
 }
