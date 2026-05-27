@@ -46,8 +46,7 @@ fn test_HS_W3_001_crash_recovery_checkpoint_survives_restart() {
             .to_string(),
     };
 
-    write_recovery_checkpoint(&path, &checkpoint)
-        .expect("write_recovery_checkpoint must succeed");
+    write_recovery_checkpoint(&path, &checkpoint).expect("write_recovery_checkpoint must succeed");
 
     // Step 2: Verify the file exists
     assert!(
@@ -86,11 +85,7 @@ fn test_HS_W3_001_crash_recovery_checkpoint_survives_restart() {
 
     // Step 4: Verify pid >= 1
     let pid_val = obj["pid"].as_u64().expect("pid must be an integer");
-    assert!(
-        pid_val >= 1,
-        "HS-W3-001: pid must be >= 1, got {}",
-        pid_val
-    );
+    assert!(pid_val >= 1, "HS-W3-001: pid must be >= 1, got {}", pid_val);
 
     // Step 5: Verify shutdown_reason == "signal"
     let reason = obj["shutdown_reason"]
@@ -342,10 +337,7 @@ async fn test_HS_W3_006_body_limit_vs_auth_ordering() {
         .to_bytes();
     let body_str = String::from_utf8_lossy(&body);
 
-    eprintln!(
-        "HS-W3-006: status={}, body={}",
-        status, body_str
-    );
+    eprintln!("HS-W3-006: status={}, body={}", status, body_str);
 
     // The holdout scenario expects HTTP 413 (body limit checked BEFORE auth).
     // Middleware ordering: body_size_limit_middleware (outermost) → auth_middleware → handler.

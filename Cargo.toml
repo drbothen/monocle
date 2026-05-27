@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/monocle",
     "crates/monocle-core",
     "crates/monocle-runtime",
     "crates/monocle-proto",
