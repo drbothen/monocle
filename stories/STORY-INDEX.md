@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "4.9"
+version: "5.0"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -65,7 +65,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
 | S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019 |
 | S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | done | S-025, S-026, S-031 |
-| S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | not_started | S-025, S-031 |
+| S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | done | S-025, S-031 |
 | S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | not_started | S-018, S-019, S-020, S-021 |
 | S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | not_started | S-022, S-029 |
 | S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | not_started | S-023 |
@@ -450,6 +450,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.0
+
+**Wave 4 COMPLETE: S-030 flipped not_started → done** (2026-05-27):
+- S-030 Story Registry row: `not_started` → `done`. PR #21 merged at develop @ b8a4ab7.
+- BC-2.07.001, BC-2.07.002, BC-2.07.003, BC-2.07.006 fully satisfied. 36 tests. New monocle-config crate. 3/3 adversary convergence.
+- **WAVE 4 COMPLETE: 3/3 stories done (18/18 pts).** S-016 (PR #19, 87ac91f, 33 tests), S-024 (PR #20, d439c8b, 77 tests), S-030 (PR #21, b8a4ab7, 36 tests). Total 146 new tests added this wave. Wave gate pending.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.25→v1.26 (done 18→19, not_started 14→13, points_complete 96→101); STATE.md updated.
+- STORY-INDEX version bumped v4.9→v5.0.
 
 ## §Trace v4.8
 

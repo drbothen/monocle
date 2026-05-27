@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.25"
+version: "1.26"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -260,12 +260,12 @@ stories:
     epic: EPIC-07
     wave: 4
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 4 foundation. BCs: BC-2.07.001, BC-2.07.002, BC-2.07.003, BC-2.07.006. New monocle-config crate. Depends on S-001 only."
+    completed_at: "2026-05-27"
+    pr_url: "https://github.com/jmagady/monocle/pull/21"
+    notes: "Wave 4 foundation. PR #21 merged at develop @ b8a4ab7. BC-2.07.001, BC-2.07.002, BC-2.07.003, BC-2.07.006 fully satisfied. 36 tests. New monocle-config crate. 3/3 adversary convergence."
 
   - id: S-017
     title: "Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 14
+  not_started: 13
   in_progress: 0
   review: 0
-  done: 18
+  done: 19
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 96
+  points_complete: 101
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.26 updates (2026-05-27):
+  # - S-030 flipped not_started → done (PR #21 merged b8a4ab7; BC-2.07.001+002+003+006 satisfied; 36 tests; 3/3 convergence)
+  # - done: 18 → 19; not_started: 14 → 13; points_complete: 96 → 101
+  # - WAVE 4 COMPLETE: 3/3 stories done (18/18 pts). Wave gate pending.
   # v1.25 updates (2026-05-27):
   # - S-024 flipped not_started → done (PR #20 merged; BC-2.06.001+002+003 satisfied; 77 tests; 3 review findings fixed; 3/3 convergence)
   # - done: 17 → 18; not_started: 15 → 14; points_complete: 88 → 96
