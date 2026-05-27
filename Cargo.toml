@@ -50,6 +50,7 @@ interprocess = "2.4"
 semver = "1"
 notify = "8"
 serde_yaml_ng = "0.10"
+uuid = { version = "1", features = ["v4", "serde"] }
 # tower + http-body-util: integration test utilities for axum router testing.
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
