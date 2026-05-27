@@ -524,6 +524,108 @@ fn test_BC_2_06_003_key_event_derives() {
 }
 
 // ===========================================================================
+// Modifier guard: Ctrl/Alt modified keys must not fire overlay permission actions
+// ===========================================================================
+
+/// Regression guard: Ctrl+Y in Overlay mode must NOT resolve to PermissionAcceptOnce.
+///
+/// Without the modifier guard, `KeyCode::Char('y')` with `ctrl: true` would match
+/// the `'y'` arm and fire `PermissionAcceptOnce`. This is incorrect — the user
+/// pressed Ctrl+Y, not plain 'y'.
+///
+/// Traces to: PR #20 review finding (MEDIUM); binding.rs overlay modifier guard.
+#[test]
+fn test_ctrl_y_in_overlay_does_not_resolve_accept() {
+    let key = ctrl_key('y');
+    let layers = BindingLayers::empty();
+    let mode = overlay_mode();
+
+    let result = call_resolve!(key, mode, layers);
+    // Ctrl+Y must NOT resolve to PermissionAcceptOnce or any permission action.
+    // With empty layers and the modifier guard, it must fall through to None.
+    if let Some((action, _source)) = result {
+        match action {
+            monocle_core::tui::state::Action::PermissionAcceptOnce => {
+                panic!(
+                    "Ctrl+Y in Overlay must NOT resolve to PermissionAcceptOnce \
+                     — modifier guard must filter Ctrl-modified keys"
+                )
+            }
+            monocle_core::tui::state::Action::PermissionAcceptAlways => {
+                panic!(
+                    "Ctrl+Y in Overlay must NOT resolve to PermissionAcceptAlways \
+                     — modifier guard must filter Ctrl-modified keys"
+                )
+            }
+            monocle_core::tui::state::Action::PermissionReject => {
+                panic!(
+                    "Ctrl+Y in Overlay must NOT resolve to PermissionReject \
+                     — modifier guard must filter Ctrl-modified keys"
+                )
+            }
+            _ => {
+                // Some other action from a lower layer is acceptable.
+            }
+        }
+    }
+    // None is the expected result with empty layers and the modifier guard active.
+}
+
+/// Regression guard: Alt+N in Overlay mode must NOT resolve to PermissionReject.
+///
+/// Mirror of the Ctrl+Y test for Alt modifier on 'n'.
+///
+/// Traces to: PR #20 review finding (MEDIUM); binding.rs overlay modifier guard.
+#[test]
+fn test_alt_n_in_overlay_does_not_resolve_reject() {
+    let key = KeyEvent {
+        code: KeyCode::Char('n'),
+        modifiers: KeyModifiers {
+            shift: false,
+            ctrl: false,
+            alt: true,
+        },
+    };
+    let layers = BindingLayers::empty();
+    let mode = overlay_mode();
+
+    let result = call_resolve!(key, mode, layers);
+    if let Some((monocle_core::tui::state::Action::PermissionReject, _source)) = result {
+        panic!(
+            "Alt+N in Overlay must NOT resolve to PermissionReject \
+             — modifier guard must filter Alt-modified keys"
+        );
+    }
+}
+
+/// Sanity check: plain 'y' (no modifiers) in Overlay must still work after the modifier guard.
+///
+/// The modifier guard must not break the normal permission-accept path.
+///
+/// Traces to: PR #20 review finding (MEDIUM) — regression guard for the fix.
+#[test]
+fn test_plain_y_in_overlay_still_resolves_accept_after_modifier_guard() {
+    let key = char_key('y');
+    let layers = BindingLayers::empty();
+    let mode = overlay_mode();
+
+    let result = call_resolve!(key, mode, layers);
+    let (action, source) = result.expect(
+        "Plain 'y' (no modifiers) in Overlay must still resolve to PermissionAcceptOnce \
+         after the modifier guard is applied",
+    );
+    assert_eq!(
+        source,
+        BindingSource::SearchPrompt,
+        "Plain 'y' in Overlay must still resolve from SearchPrompt after modifier guard"
+    );
+    match action {
+        monocle_core::tui::state::Action::PermissionAcceptOnce => {}
+        _ => panic!("Plain 'y' in Overlay must still map to PermissionAcceptOnce"),
+    }
+}
+
+// ===========================================================================
 // BindingLayers::empty() returns a valid (non-panicking) value
 // ===========================================================================
 

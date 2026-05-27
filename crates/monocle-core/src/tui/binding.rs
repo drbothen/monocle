@@ -209,13 +209,26 @@ pub fn resolve_binding(
         }
         AppMode::Overlay { .. } => {
             // In Overlay mode: permission decision keys captured by SearchPrompt.
-            let overlay_action = match &key.code {
-                KeyCode::Char('y') => Some(Action::PermissionAcceptOnce),
-                KeyCode::Enter => Some(Action::PermissionAcceptOnce),
-                KeyCode::Char('A') => Some(Action::PermissionAcceptAlways),
-                KeyCode::Char('n') => Some(Action::PermissionReject),
-                KeyCode::Char('r') => Some(Action::PermissionReject),
-                _ => None,
+            //
+            // Modifier guard: only match if Ctrl and Alt are NOT held. Shift is
+            // permitted because 'A' (AcceptAlways) is the uppercase form and shift
+            // is already encoded in the KeyCode::Char('A') value.
+            //
+            // Without this guard, Ctrl+Y would match KeyCode::Char('y') and fire
+            // PermissionAcceptOnce — incorrect since modifier keys change the
+            // semantic intent of a keypress.
+            let overlay_action = if key.modifiers.ctrl || key.modifiers.alt {
+                // Ctrl/Alt modified keys are not permission decisions — fall through.
+                None
+            } else {
+                match &key.code {
+                    KeyCode::Char('y') => Some(Action::PermissionAcceptOnce),
+                    KeyCode::Enter => Some(Action::PermissionAcceptOnce),
+                    KeyCode::Char('A') => Some(Action::PermissionAcceptAlways),
+                    KeyCode::Char('n') => Some(Action::PermissionReject),
+                    KeyCode::Char('r') => Some(Action::PermissionReject),
+                    _ => None,
+                }
             };
             if let Some(action) = overlay_action {
                 return Some((action, BindingSource::SearchPrompt));
@@ -281,6 +294,13 @@ fn clone_action(action: &Action) -> Action {
             // is not expected to be stored in BindingLayers — it arrives via IPC.
             // Provide a fallback: Noop. In practice this branch is unreachable
             // from BindingLayers storage.
+            //
+            // debug_assert fires in test builds if this branch is ever reached,
+            // surfacing a BindingLayers misconfiguration early.
+            debug_assert!(
+                false,
+                "PushOverlay cannot be cloned from binding table — use direct dispatch"
+            );
             Action::Noop
         }
         Action::PopOverlay => Action::PopOverlay,
