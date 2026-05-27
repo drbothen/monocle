@@ -1,0 +1,20 @@
+
+running 15 tests
+test test_ac_005_no_autostart_env_does_not_affect_daemon_start ... ok
+test test_ac_005_stale_lock_treated_as_absent ... ok
+test test_ac_005_start_no_lock_file_exits_zero ... ok
+test test_ac_005_start_no_stdout_on_success ... ok
+test test_ac_006_already_running_produces_no_stdout ... ok
+test test_ac_006_start_already_running_exits_1_with_stderr ... ok
+test test_ac_006_start_already_running_stderr_format ... ok
+test test_ac_007_start_timeout_exits_1_with_stderr ... ok
+test test_ac_007_start_timeout_stderr_format ... ok
+test test_ac_007_timeout_produces_no_stdout ... ok
+test test_ac_008_exit_code_1_already_running ... ok
+test test_ac_008_exit_code_1_timeout ... ok
+test test_ac_008_exit_code_70_runtime_dir_unresolvable ... ok
+test test_ac_008_exit_code_71_internal_error ... ok
+test test_ac_008_exit_code_zero_on_success ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.81s
+

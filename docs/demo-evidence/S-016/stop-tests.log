@@ -1,0 +1,19 @@
+
+running 14 tests
+test test_ac_009_exit_code_70_runtime_dir_unresolvable ... ok
+test test_ac_009_malformed_lock_file_exits_1 ... ok
+test test_ac_009_malformed_lock_file_stderr_format ... ok
+test test_ac_009_stop_no_stderr_on_success ... ok
+test test_ac_009_stop_no_stdout_on_success ... ok
+test test_ac_009_stop_running_daemon_exits_zero ... ok
+test test_ac_010_stop_no_lock_file_exits_1_with_stderr ... ok
+test test_ac_010_stop_no_lock_file_stderr_format ... ok
+test test_ac_011_stop_stale_lock_exits_1_with_stderr ... ok
+test test_ac_011_stop_stale_lock_stderr_format ... ok
+test test_ac_012_stop_timeout_daemon_still_alive_no_sigkill ... ok
+test test_ac_012_stop_timeout_exits_2_with_stderr ... ok
+test test_ac_012_stop_timeout_stderr_format ... ok
+test test_ac_013_no_sigkill_ever_sent ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.15s
+
