@@ -4,7 +4,7 @@
 //! It uses a `syn 2` AST walk over every `.rs` file in `monocle-core/src/` to
 //! assert that every `pub enum` either:
 //!   (a) carries `#[non_exhaustive]`, OR
-//!   (b) is listed in the ADR-0004 EXEMPT list.
+//!   (b) is listed in the ADR-0004/ADR-0006 EXEMPT list.
 //!
 //! Canonical test name: `test_BC_TYPES_001_non_exhaustive_enum_coverage`
 //! (per VP-013 §Harness Location; to be migrated to
@@ -16,7 +16,7 @@
 //!            each is `#[non_exhaustive]` OR in EXEMPT.
 //! - 13.b — Inject `pub enum BadEnum { ... }` without `#[non_exhaustive]`:
 //!            audit fails with descriptive error.
-//! - 13.d — EXEMPT list has exactly 2 entries matching ADR-0004 documented count:
+//! - 13.d — EXEMPT list has exactly 3 entries (ADR-0004: 2, ADR-0006: 1):
 //!            consistency check fails on length mismatch.
 //!
 //! Tests for AC-001, AC-002, AC-003, AC-004 (vacuous), AC-005.
@@ -44,21 +44,41 @@ use syn::{Attribute, File, Item, Visibility};
 // ADR-0004 Exemption List
 // ---------------------------------------------------------------------------
 
-/// The ADR-0004 exemption list for BC-2.02.003 (VP-013 Pre-conditions §EXEMPT).
+/// The ADR-0004 / ADR-0006 exemption list for BC-2.02.003 (VP-013 Pre-conditions §EXEMPT).
 ///
-/// Exactly 2 entries per ADR-0004 §Immediate (Phase 1) consequences.
-/// If this constant is changed to != 2 entries, `test_BC_2_02_003_exempt_list_length`
-/// MUST fail (AC-005 / VP-013 Test Vector 13.d).
+/// Originally 2 entries per ADR-0004 §Immediate (Phase 1) consequences:
+///   - `Phase1Permission` — exhaustive by correctness requirement (ADR-0004)
+///   - `ClaudeCodeTool`   — exhaustive by explicit tool-set tracking requirement (ADR-0004)
 ///
-/// Ordering: matches the declaration order in SS-permissions-phase1.md §Canonical
-/// Definition for auditability.
-const EXEMPT: &[&str] = &["Phase1Permission", "ClaudeCodeTool"];
+/// S-024 adds `AppMode` as a third exhaustive enum per ADR-0006:
+///   - `AppMode` — first-party, compile-time safety mechanism. Downstream crates
+///     (`monocle-tui`) use exhaustive match over AppMode variants to render the TUI.
+///     A new variant without an updated match arm is a compile error — the intended
+///     forward-change signal. `#[non_exhaustive]` would silently allow wildcard arms,
+///     hiding unhandled variants.
+///
+/// ADR-0004 §Alternatives Considered noted that AppMode was first-party and that "if
+/// Phase 3 or 4 requires a new AppMode variant, a new ADR would be produced at that
+/// time." S-024 (BC-2.06.001 INV-1 / AC-013) triggers the Phase 3+ scenario described
+/// by ADR-0004: AppMode is now consumed exhaustively. ADR-0006 formalizes the exemption
+/// per the BC-TYPES-001 extension protocol.
+///
+/// If this constant is changed, `test_BC_2_02_003_exempt_list_length`
+/// MUST fail (AC-005 / VP-013 Test Vector 13.d). Any further changes require
+/// a new ADR superseding or amending ADR-0004/ADR-0006.
+///
+/// Traces to: ADR-0004 §Extension strategy; ADR-0006; BC-2.06.001 INV-1; AC-013.
+///
+/// Ordering: ADR-0004 entries first (declaration order in SS-permissions-phase1.md
+/// §Canonical Definition), then S-024 addition in BC-2.06.001 declaration order.
+const EXEMPT: &[&str] = &["Phase1Permission", "ClaudeCodeTool", "AppMode"];
 
-/// Expected ADR-0004 exempt-list count (AC-005 / VP-013 Test Vector 13.d).
+/// Expected exempt-list count (AC-005 / VP-013 Test Vector 13.d).
 ///
 /// Checked against `EXEMPT.len()` at test time. Changing this constant without
-/// a corresponding ADR superseding ADR-0004 is a policy violation.
-const EXEMPT_COUNT_FROM_ADR_0004: usize = 2;
+/// a corresponding ADR or story-level AC citing BC-2.02.003 PC-1 is a policy violation.
+/// Updated to 3 by S-024 (AC-013: AppMode is exhaustive by design per ADR-0006).
+const EXEMPT_COUNT_FROM_ADR_0004: usize = 3;
 
 // ---------------------------------------------------------------------------
 // Helpers

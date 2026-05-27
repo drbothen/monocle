@@ -1,0 +1,48 @@
+   Compiling monocle-core v0.1.0 (/Users/jmagady/Dev/monocle/.worktrees/S-024/crates/monocle-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.72s
+     Running tests/tui_state_machine.rs (target/debug/deps/tui_state_machine-9fea467aa6cb2f08)
+
+running 40 tests
+test test_BC_2_06_001_ac005_empty_stack_collapse_to_dashboard ... ok
+test test_BC_2_06_001_ac005_pop_overlay_multi_item_stays_overlay ... ok
+test test_BC_2_06_001_ac014_monocle_core_cargo_toml_has_no_forbidden_io_deps ... ok
+test test_BC_2_06_001_appmode_exhaustive_match_compiles_without_wildcard ... ok
+test test_BC_2_06_001_dashboard_variant_constructs ... ok
+test test_BC_2_06_001_ec061_unmatched_action_returns_identity ... ok
+test test_BC_2_06_001_filtering_variant_constructs ... ok
+test test_BC_2_06_001_fullscreen_variant_constructs ... ok
+test test_BC_2_06_001_overlay_variant_constructs ... ok
+test test_BC_2_06_001_pc2_transition_is_deterministic ... ok
+test test_BC_2_06_001_prompt_modal_constructs_with_all_fields ... ok
+test test_BC_2_06_001_tool_payload_bash_constructs ... ok
+test test_BC_2_06_001_tool_payload_edit_constructs ... ok
+test test_BC_2_06_001_tool_payload_generic_constructs ... ok
+test test_BC_2_06_001_tool_payload_read_constructs ... ok
+test test_BC_2_06_002_ec065_overlay_close_after_cycle_uses_original_prior ... ok
+test test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior ... ok
+test test_BC_2_06_002_ec066_fullscreen_from_event_ribbon_restores_event_ribbon ... ok
+test test_BC_2_06_002_ec068_esc_in_dashboard_is_identity ... ok
+test test_BC_2_06_002_filtering_close_restores_prior_focus ... ok
+test test_BC_2_06_002_focus_snapshot_clone ... ok
+test test_BC_2_06_002_focus_snapshot_cycle_event_ribbon_wraps_to_sessions ... ok
+test test_BC_2_06_002_focus_snapshot_cycle_full_round_trip ... ok
+test test_BC_2_06_002_focus_snapshot_cycle_sessions_to_event_ribbon ... ok
+test test_BC_2_06_002_focus_snapshot_debug ... ok
+test test_BC_2_06_002_focus_snapshot_eq ... ok
+test test_BC_2_06_002_fullscreen_exit_uses_prior_not_panel ... ok
+test test_BC_2_06_002_to_panel_id_event_ribbon ... ok
+test test_BC_2_06_002_to_panel_id_sessions ... ok
+test test_BC_2_06_003_ac006_cancel_filter_returns_dashboard_with_prior ... ok
+test test_BC_2_06_003_ac006_commit_filter_returns_dashboard_with_prior ... ok
+test test_BC_2_06_003_ac006_start_filter_enters_filtering_with_empty_query ... ok
+test test_BC_2_06_003_ac007_enter_fullscreen_captures_focus ... ok
+test test_BC_2_06_003_ac007_exit_fullscreen_restores_prior_focus ... ok
+test test_BC_2_06_003_ac008_esc_in_overlay_is_identity ... ok
+test test_BC_2_06_003_ac009_pop_overlay_removes_front ... ok
+test test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay ... ok
+test test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay ... ok
+test test_BC_2_06_003_ac009_push_overlay_from_overlay_appends_to_stack ... ok
+test test_BC_2_06_003_ac015_transition_totality_dashboard_identity_actions ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
