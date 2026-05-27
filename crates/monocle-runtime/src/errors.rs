@@ -72,7 +72,7 @@ pub enum DaemonStartError {
     #[error("failed to write hooks-settings.json: {0}")]
     HooksSettingsWriteFailure(std::io::Error),
 
-    /// Unix domain socket bind failed (S-017, BC-2.04.001 step 13).
+    /// Unix domain socket bind failed (S-017, BC-2.04.001 step 10).
     ///
     /// Wraps the underlying `std::io::Error` from `UnixListener::bind`.
     #[error("failed to bind Unix domain socket: {0}")]

@@ -343,6 +343,15 @@ struct StartSequenceLockContent {
 
 /// Execute the full 13-step daemon start sequence (BC-2.04.001).
 ///
+/// # Return type note
+///
+/// This function currently returns `Result<(), DaemonStartError>`. The assembled daemon
+/// state (listener, ring buffer, event bus tx/rx, registry, auth token, daemon lock) is
+/// constructed internally and the binding variables (`_ring`, `_event_tx`, `_event_rx`,
+/// `_drop_counter`) are prefixed with `_` because they are discarded at this stage.
+/// Downstream stories S-018 and S-021 will integrate these components into `DaemonState`
+/// and refactor this function to return `Result<DaemonState, DaemonStartError>`.
+///
 /// # SOQ-2 Commit-Point Invariant
 ///
 /// Steps are executed in strict order. The SOQ-2 invariant requires:
@@ -652,6 +661,9 @@ pub fn write_hooks_settings(
             format!("JSON serialize failed: {e}"),
         ))
     })?;
+
+    tmp.flush()
+        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
 
     tmp.persist(&hs_path)
         .map_err(|e| DaemonStartError::HooksSettingsWriteFailure(e.error))?;

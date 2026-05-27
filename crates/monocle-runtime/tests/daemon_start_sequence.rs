@@ -25,6 +25,8 @@
 //! | test_BC_2_04_001_step8_failure_no_hooks_settings_generated | AC-016 | BC-2.04.001 INV-6 |
 //! | test_BC_2_04_001_ring_buffer_in_daemon_state | AC-004 | BC-2.04.001 PC-4 |
 //! | test_BC_2_04_001_event_bus_bounded_4096 | AC-005 | BC-2.04.001 PC-5 |
+//! | test_BC_2_04_001_step2_stale_lock_removed_and_new_daemon_starts | AC-002 | BC-2.04.001 PC-2 (stale path) |
+//! | test_BC_2_04_001_step2_live_lock_returns_conflict | AC-002 | BC-2.04.001 PC-2 (live path) |
 //!
 //! # Red Gate
 //!
@@ -1063,6 +1065,132 @@ fn test_BC_2_04_010_hook_commands_contain_wire_token() {
                      {command_str}"
                 );
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MED-001: Step 2 stale/live lock coverage (BC-2.04.001 PC-2)
+// ---------------------------------------------------------------------------
+
+/// Exercises BC-2.04.001 PC-2 (stale path): a lock file referencing a dead PID is
+/// removed and the daemon start sequence completes successfully.
+///
+/// Plants a lock file with `i32::MAX - 1` as the PID — a value almost certainly not
+/// held by any running process. `daemon_start_sequence` must detect the stale lock via
+/// signal 0, remove it, and proceed to a successful start.
+#[tokio::test]
+async fn test_BC_2_04_001_step2_stale_lock_removed_and_new_daemon_starts() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path().join("monocle-runtime");
+    std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
+
+    // Plant a stale lock file using a dead PID.
+    let dead_pid: i32 = i32::MAX - 1;
+    let lock_path = runtime_dir.join("monocle.lock");
+
+    // Use tempfile::NamedTempFile::new_in → write → persist (project convention: no naked fs::write).
+    let mut stale_tmp =
+        tempfile::NamedTempFile::new_in(&runtime_dir).expect("create stale lock tempfile");
+    let stale_json = format!(
+        r#"{{"pid": {dead_pid}, "port": 12345, "token": "monocle-v1:aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd", "contract_version": "monocle-lock-v1", "started_at": "2026-01-01T00:00:00.000Z"}}"#
+    );
+    use std::io::Write as _;
+    stale_tmp
+        .write_all(stale_json.as_bytes())
+        .expect("write stale lock content");
+    stale_tmp.flush().expect("flush stale lock tempfile");
+    stale_tmp
+        .persist(&lock_path)
+        .expect("persist stale lock file");
+
+    assert!(
+        lock_path.exists(),
+        "stale lock file must exist before sequence"
+    );
+
+    // daemon_start_sequence must detect the dead PID, remove the stale lock, and succeed.
+    daemon_start_sequence(&runtime_dir)
+        .await
+        .expect("daemon_start_sequence must succeed when stale lock is present");
+
+    // After a successful start, a new lock file must exist (fresh, not the stale one).
+    assert!(
+        lock_path.exists(),
+        "monocle.lock must exist after successful start (fresh lock, not stale)"
+    );
+
+    // The new lock file must reference the current process PID, not the stale dead PID.
+    let new_lock_content =
+        std::fs::read_to_string(&lock_path).expect("read new lock file after stale recovery");
+    let new_lock_json: serde_json::Value =
+        serde_json::from_str(&new_lock_content).expect("new lock file must be valid JSON");
+    let new_pid = new_lock_json
+        .get("pid")
+        .and_then(|v| v.as_i64())
+        .expect("new lock file must have pid field");
+    assert_ne!(
+        new_pid, dead_pid as i64,
+        "new lock file must NOT contain the stale dead PID"
+    );
+    assert_eq!(
+        new_pid,
+        std::process::id() as i64,
+        "new lock file must contain the current process PID"
+    );
+}
+
+/// Exercises BC-2.04.001 PC-2 (live path): a lock file referencing the current process
+/// PID causes `daemon_start_sequence` to return `DaemonStartError::LockFileConflict`
+/// with the correct PID.
+///
+/// The current process PID (from `std::process::id()`) is live by definition: signal 0
+/// always succeeds for oneself. This triggers the conflict detection path.
+#[tokio::test]
+async fn test_BC_2_04_001_step2_live_lock_returns_conflict() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path().join("monocle-runtime");
+    std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
+
+    // Plant a lock file with the current process's PID (live by definition).
+    let live_pid = std::process::id() as i32;
+    let lock_path = runtime_dir.join("monocle.lock");
+
+    // Use tempfile::NamedTempFile::new_in → write → persist (project convention).
+    let mut live_tmp =
+        tempfile::NamedTempFile::new_in(&runtime_dir).expect("create live lock tempfile");
+    let live_json = format!(
+        r#"{{"pid": {live_pid}, "port": 12345, "token": "monocle-v1:aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd", "contract_version": "monocle-lock-v1", "started_at": "2026-01-01T00:00:00.000Z"}}"#
+    );
+    use std::io::Write as _;
+    live_tmp
+        .write_all(live_json.as_bytes())
+        .expect("write live lock content");
+    live_tmp.flush().expect("flush live lock tempfile");
+    live_tmp
+        .persist(&lock_path)
+        .expect("persist live lock file");
+
+    assert!(
+        lock_path.exists(),
+        "live lock file must exist before sequence"
+    );
+
+    // daemon_start_sequence must detect the live PID and return LockFileConflict.
+    let result = daemon_start_sequence(&runtime_dir).await;
+
+    match result {
+        Err(DaemonStartError::LockFileConflict { pid }) => {
+            assert_eq!(
+                pid, live_pid,
+                "LockFileConflict must report the PID from the lock file (got {pid}, expected {live_pid})"
+            );
+        }
+        Err(other) => {
+            panic!("expected DaemonStartError::LockFileConflict, got: {other:?}");
+        }
+        Ok(()) => {
+            panic!("daemon_start_sequence must NOT succeed when a live lock is present");
         }
     }
 }
