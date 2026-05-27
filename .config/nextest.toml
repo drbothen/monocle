@@ -1,0 +1,14 @@
+# nextest.toml — cargo-nextest configuration for monocle workspace.
+#
+# detect_ccr tests mutate the process PATH environment variable and restore it
+# after each test. Under cargo-nextest, each test runs in its own process, so
+# there is no inter-test race. Under plain `cargo test --test-threads>1`, tests
+# share a process and the set_var/restore pattern is inherently racy.
+#
+# Nextest is the canonical test runner for this workspace (see CI scripts).
+# Plain `cargo test` should be run with `-- --test-threads=1` for the
+# detect_ccr test binary when nextest is unavailable.
+
+[profile.default]
+# Run each test in its own process (default for nextest; makes env-var tests safe).
+test-threads = "num-cpus"
