@@ -789,7 +789,7 @@ pub fn write_lock_file(
 /// Remove `hooks-settings.json` from the runtime directory on graceful shutdown.
 ///
 /// Called by the graceful shutdown path after `DaemonLock::release()` completes
-/// and before `exit_with(DaemonExit::Graceful)` is called (BC-2.04.010 PC-7).
+/// and before `exit_with(DaemonExit::Graceful)` is called (BC-2.04.010 PC-5).
 ///
 /// Removing hooks-settings.json ensures Claude Code stops posting hooks to the
 /// (now-dead) daemon endpoint. If the file does not exist (e.g., daemon crashed
@@ -806,7 +806,7 @@ pub fn remove_hooks_settings(runtime_dir: &Path) -> std::io::Result<()> {
         Ok(()) => {
             tracing::info!(
                 path = %hs_path.display(),
-                "hooks-settings.json removed on graceful shutdown (BC-2.04.010 PC-7)"
+                "hooks-settings.json removed on graceful shutdown (BC-2.04.010 PC-5)"
             );
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
