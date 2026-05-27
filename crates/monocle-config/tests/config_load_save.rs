@@ -32,10 +32,10 @@
 #![allow(clippy::panic)]
 
 use monocle_config::{load_config, write_config, ConfigError, HarnessProfile, MonocleConfig};
-use tracing_test::traced_test;
 use std::io::Write as _;
 use std::panic::AssertUnwindSafe;
 use tempfile::tempdir;
+use tracing_test::traced_test;
 
 // ---------------------------------------------------------------------------
 // Helper: write test fixture atomically (per project semgrep rule — no naked fs::write)
