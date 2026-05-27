@@ -1,0 +1,29 @@
+   Compiling monocle-core v0.1.0 (/Users/jmagady/Dev/monocle/.worktrees/S-024/crates/monocle-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/tui_binding.rs (target/debug/deps/tui_binding-a0ab8aa741fb438a)
+
+running 21 tests
+test test_BC_2_06_003_ac010_binding_source_all_variants_exist ... ok
+test test_BC_2_06_003_ac010_binding_source_derives ... ok
+test test_BC_2_06_003_ac010_binding_source_priority_identity ... ok
+test test_BC_2_06_003_ac011_ec070_char_y_in_dashboard_returns_none ... ok
+test test_BC_2_06_003_ac011_resolve_binding_none_on_unknown_key ... ok
+test test_BC_2_06_003_ac011_resolve_binding_none_on_unregistered_key_empty_layers ... ok
+test test_BC_2_06_003_ac012_ec075_ctrl_key_in_filtering_falls_through_search_prompt ... ok
+test test_BC_2_06_003_ac012_multiple_printable_chars_in_filtering_resolve_search_prompt ... ok
+test test_BC_2_06_003_ac012_printable_char_in_filtering_resolves_search_prompt ... ok
+test test_BC_2_06_003_binding_layers_empty_constructs ... ok
+test test_BC_2_06_003_ec070_char_y_in_dashboard_no_permission_binding ... ok
+test test_BC_2_06_003_key_event_constructs_correctly ... ok
+test test_BC_2_06_003_key_event_derives ... ok
+test test_BC_2_06_003_key_modifiers_default_is_no_modifiers ... ok
+test test_BC_2_06_003_pc1_first_match_wins_empty_layers_returns_none ... ok
+test test_BC_2_06_003_pc3_char_a_upper_in_overlay_resolves_permission_accept_always ... ok
+test test_BC_2_06_003_pc3_char_n_in_overlay_resolves_permission_reject ... ok
+test test_BC_2_06_003_pc3_char_r_in_overlay_resolves_permission_reject ... ok
+test test_BC_2_06_003_pc3_char_y_in_overlay_resolves_permission_accept_once ... ok
+test test_BC_2_06_003_pc3_enter_in_overlay_resolves_permission_accept_once ... ok
+test test_BC_2_06_003_pc5_resolve_binding_is_deterministic ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
