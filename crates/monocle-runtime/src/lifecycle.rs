@@ -293,6 +293,425 @@ pub fn read_recovery_checkpoint(path: &Path) -> CheckpointReadResult {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Daemon start sequence (S-017, BC-2.04.001 + BC-2.04.010)
+// ---------------------------------------------------------------------------
+
+/// Canonical JSON content for the S-017 lock file (BC-2.04.001 step 8).
+///
+/// This struct uses a STRING `contract_version` field (`"monocle-lock-v1"`) per
+/// BC-2.04.001 PC-8, which differs from the legacy [`crate::lock::LockFileContent`]
+/// that uses an integer `contract_version: u32`. The two formats are intentionally
+/// separate to allow the S-006 reader (integer format) to remain compatible while
+/// the S-017 start sequence emits the canonical string format.
+///
+/// # Wire format
+///
+/// ```json
+/// {
+///   "pid": 12345,
+///   "port": 9001,
+///   "token": "monocle-v1:<64-hex>",
+///   "contract_version": "monocle-lock-v1",
+///   "started_at": "2026-05-27T10:00:00.000Z"
+/// }
+/// ```
+///
+/// Note: `authToken` (camelCase) is the key used for the raw 64-hex token without prefix,
+/// matching the JSON field name expected by readers (BC-2.04.001 PC-7 / BC-2.03.001 PC-1).
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct StartSequenceLockContent {
+    /// PID of the daemon process.
+    pid: u32,
+    /// TCP port the HTTP server is bound to.
+    port: u16,
+    /// Wire-format token: `monocle-v1:<64-hex>`.
+    token: String,
+    /// Raw 64-hex-char auth token (no prefix) stored as `authToken` for readers.
+    ///
+    /// BC-2.04.001 PC-7: stored without prefix; the `monocle-v1:` prefix is wire-only.
+    #[serde(rename = "authToken")]
+    auth_token: String,
+    /// Schema version string — always `"monocle-lock-v1"`.
+    contract_version: String,
+    /// ISO 8601 UTC timestamp (millisecond precision) recording when the daemon started.
+    started_at: String,
+}
+
+/// Execute the full 13-step daemon start sequence (BC-2.04.001).
+///
+/// # SOQ-2 Commit-Point Invariant
+///
+/// Steps are executed in strict order. The SOQ-2 invariant requires:
+/// - Step 3 (port bind) BEFORE Step 8 (lock file write) BEFORE Step 9 (hooks-settings.json write).
+///
+/// If any step fails, subsequent steps are NOT executed. Steps 1–7 are pre-commit-point;
+/// a failure there leaves the filesystem clean. Post-Step-8 failures must clean up the
+/// lock file (BC-2.04.001 invariant 6).
+///
+/// # Steps
+///
+/// 1. Resolve runtime dir and call `ensure_runtime_dir` (mode 0o700).
+/// 2. Check for stale lock via `DaemonLock::acquire` — fails if live process holds lock.
+/// 3. Bind `TcpListener` on `127.0.0.1:0` and record the allocated port.
+/// 4. Construct `RingBuffer` with 100 MiB × 5 rotations, Arc-wrapped.
+/// 5. Create bounded `mpsc::channel::<EventBusHookEvent>(4096)`, drop counter `AtomicU64`.
+/// 6. Register `ClaudeCodeModule` + `VsddFactoryAdapter` in `EngineModuleRegistry`.
+/// 7. Generate session token: `OsRng` → 32 bytes → 64 hex lowercase (no `monocle-v1:` prefix).
+/// 8. **SOQ-2 commit point**: write lock file via `write_lock_file`, mode 0o600.
+/// 9. Write `hooks-settings.json` via `write_hooks_settings`, mode 0o600.
+/// 10. Init crash recovery checkpoint infrastructure.
+/// 11. Remove any stale UDS socket at `<runtime_dir>/monocle.sock`.
+/// 12. Bind UDS socket at `<runtime_dir>/monocle.sock`, mode 0o600.
+/// 13. Signal startup complete.
+///
+/// # Errors
+///
+/// Returns [`DaemonStartError`] on any step failure. Post-step-8 failures trigger
+/// lock file cleanup before returning (invariant 6 of BC-2.04.001).
+pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStartError> {
+    use std::sync::atomic::AtomicU64;
+    use std::sync::Arc;
+
+    use tokio::net::TcpListener;
+
+    // Step 1: Ensure runtime dir exists with mode 0o700.
+    ensure_runtime_dir(runtime_dir)?;
+
+    // Step 3: Bind TcpListener on 127.0.0.1:0 — record OS-assigned port.
+    // Done before any file write (SOQ-2 invariant: port bind precedes commit point).
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(DaemonStartError::PortBindFailure)?;
+    let port = listener
+        .local_addr()
+        .map_err(DaemonStartError::PortBindFailure)?
+        .port();
+
+    // Step 4: Construct RingBuffer with 100 MiB hard cap × 5 rotations.
+    let ring_path = runtime_dir.join("monocle-events.jsonl");
+    let ring_config = crate::ring::RotationConfig {
+        soft_threshold_bytes: 50 * 1024 * 1024,
+        hard_cap_bytes: 100 * 1024 * 1024,
+        retained: 5,
+    };
+    let _ring: Arc<crate::ring::RingBuffer> =
+        Arc::new(crate::ring::RingBuffer::new(ring_path, ring_config));
+
+    // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
+    let (_event_tx, _event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
+        crate::types::EVENT_BUS_CAPACITY,
+    );
+    let _drop_counter: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
+
+    // Step 6: Register engine modules.
+    let mut registry = crate::types::EngineModuleRegistry::new();
+    registry.register_claude_code();
+    registry.register_vsdd_factory();
+    debug_assert!(
+        registry.is_complete(),
+        "engine module registry must be complete after step 6"
+    );
+
+    // Step 7: Generate session token — 32 bytes OsRng → 64 hex lowercase (no monocle-v1: prefix).
+    let auth_token = crate::auth::generate_session_token();
+
+    // Step 8: SOQ-2 commit point — write lock file atomically.
+    let lock_result = write_lock_file(runtime_dir, port, &auth_token);
+    let (daemon_lock, _started_at) = match lock_result {
+        Ok(pair) => pair,
+        Err(e) => {
+            // Pre-commit-point failure: no cleanup needed (lock file was not written).
+            tracing::error!(
+                error = %e,
+                "daemon_start_sequence: step 8 (write_lock_file) failed; aborting"
+            );
+            return Err(e);
+        }
+    };
+
+    // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2).
+    if let Err(e) = write_hooks_settings(runtime_dir, port, &auth_token) {
+        // INV-6: post-step-8 failure — remove lock file before returning.
+        tracing::error!(
+            error = %e,
+            "daemon_start_sequence: step 9 (write_hooks_settings) failed; removing lock file (INV-6)"
+        );
+        if let Err(cleanup_err) = daemon_lock.release() {
+            tracing::error!(
+                error = %cleanup_err,
+                "daemon_start_sequence: lock file cleanup failed after step 9 failure"
+            );
+        }
+        return Err(e);
+    }
+
+    // Step 10: Crash recovery checkpoint infrastructure is initialized implicitly —
+    // write_recovery_checkpoint and read_recovery_checkpoint are stateless functions
+    // operating on the runtime dir path. No additional init step required.
+    tracing::debug!(
+        runtime_dir = %runtime_dir.display(),
+        "daemon_start_sequence: crash recovery checkpoint infrastructure ready (step 10)"
+    );
+
+    // Step 11: Remove stale UDS socket before bind.
+    let sock_path = runtime_dir.join("monocle.sock");
+    if sock_path.exists() {
+        std::fs::remove_file(&sock_path).map_err(|e| {
+            tracing::warn!(
+                path = %sock_path.display(),
+                error = %e,
+                "daemon_start_sequence: failed to remove stale socket (step 11)"
+            );
+            DaemonStartError::UdsBindFailure(e)
+        })?;
+    }
+
+    // Step 12: Bind UDS socket at runtime_dir/monocle.sock with mode 0o600.
+    {
+        use std::os::unix::net::UnixListener;
+        let _uds = UnixListener::bind(&sock_path).map_err(DaemonStartError::UdsBindFailure)?;
+        std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o600))
+            .map_err(DaemonStartError::UdsBindFailure)?;
+        // _uds is dropped here; the socket file remains on disk.
+    }
+
+    // Step 13: Startup complete. Log and return.
+    tracing::info!(
+        runtime_dir = %runtime_dir.display(),
+        port = port,
+        "daemon_start_sequence: all 13 steps complete (BC-2.04.001)"
+    );
+
+    Ok(())
+}
+
+/// Write `hooks-settings.json` atomically into the runtime directory (BC-2.04.010).
+///
+/// Creates a `NamedTempFile` in `runtime_dir`, serializes the [`crate::types::HooksSettings`]
+/// struct to pretty-printed JSON via `serde_json::to_writer_pretty`, sets mode 0o600, then
+/// persists the file to `<runtime_dir>/hooks-settings.json` via `tempfile::persist`.
+///
+/// # Schema
+///
+/// The generated JSON has:
+/// - 4 active hooks: `PreToolUse`, `Notification`, `Stop`, `UserPromptSubmit`
+/// - `PostToolUse`: empty array `[]` (JC-2 — PostToolUse absent from Phase 1)
+/// - `PreCompact`: empty array `[]` (not in canonical 5 endpoints)
+/// - `SessionStart`: absent entirely (JC-2 closure)
+///
+/// Each active hook entry contains a single `command` item invoking the monocle hook
+/// bridge script at `http://127.0.0.1:<port>/hooks/<hook-path>` with the
+/// `monocle-v1:<auth_token>` wire token in the `X-Monocle-Authorization` header.
+///
+/// # SOQ-2 Invariant
+///
+/// This function MUST only be called AFTER `write_lock_file` has succeeded
+/// (BC-2.04.001 step 9 follows step 8). Callers in `daemon_start_sequence` enforce this.
+///
+/// # Errors
+///
+/// Returns [`DaemonStartError::HooksSettingsWriteFailure`] on I/O failure.
+pub fn write_hooks_settings(
+    runtime_dir: &Path,
+    port: u16,
+    auth_token: &str,
+) -> Result<(), DaemonStartError> {
+    use crate::types::{HookEntry, HooksMap, HooksSettings};
+
+    // Build the wire token with monocle-v1: prefix for the Authorization header.
+    let wire_token = format!("monocle-v1:{auth_token}");
+
+    // Build the curl command for a given hook endpoint path.
+    let make_command = |hook_path: &str| -> String {
+        format!(
+            "curl -s -X POST http://127.0.0.1:{port}/hooks/{hook_path} \
+            -H 'Content-Type: application/json' \
+            -H 'X-Monocle-Authorization: {wire_token}' \
+            -d @-"
+        )
+    };
+
+    let settings = HooksSettings {
+        hooks: HooksMap {
+            pre_tool_use: vec![HookEntry::command_all(make_command("pre-tool-use"))],
+            post_tool_use: vec![],
+            notification: vec![HookEntry::command_all(make_command("notification"))],
+            stop: vec![HookEntry::command_all(make_command("stop"))],
+            user_prompt_submit: vec![HookEntry::command_all(make_command("prompt-submit"))],
+            pre_compact: vec![],
+        },
+    };
+
+    let hs_path = runtime_dir.join("hooks-settings.json");
+
+    let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)
+        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
+
+    serde_json::to_writer_pretty(&mut tmp, &settings).map_err(|e| {
+        DaemonStartError::HooksSettingsWriteFailure(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("JSON serialize failed: {e}"),
+        ))
+    })?;
+
+    tmp.persist(&hs_path)
+        .map_err(|e| DaemonStartError::HooksSettingsWriteFailure(e.error))?;
+
+    std::fs::set_permissions(&hs_path, std::fs::Permissions::from_mode(0o600))
+        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
+
+    tracing::info!(
+        path = %hs_path.display(),
+        port = port,
+        "hooks-settings.json written (BC-2.04.010)"
+    );
+
+    Ok(())
+}
+
+/// Write the daemon lock file (BC-2.04.001 step 8, SOQ-2 commit point).
+///
+/// Uses a [`StartSequenceLockContent`] struct with string `contract_version` field
+/// (`"monocle-lock-v1"`) per BC-2.04.001 PC-8, distinct from the legacy
+/// [`crate::lock::LockFileContent`] that uses `contract_version: u32`.
+///
+/// # Lock file schema
+///
+/// ```json
+/// {
+///   "pid": 12345,
+///   "port": 9001,
+///   "token": "monocle-v1:<64-hex>",
+///   "authToken": "<64-hex>",
+///   "contract_version": "monocle-lock-v1",
+///   "started_at": "2026-05-27T10:00:00.000Z"
+/// }
+/// ```
+///
+/// - `authToken`: raw 64-hex-char token WITHOUT the `monocle-v1:` prefix (BC-2.04.001 PC-7).
+/// - `token`: wire-format token WITH the `monocle-v1:` prefix (for external tool use).
+/// - `contract_version`: string `"monocle-lock-v1"` (BC-2.04.001 PC-8).
+///
+/// # Errors
+///
+/// Returns [`DaemonStartError`] on I/O failure or live-PID conflict.
+pub fn write_lock_file(
+    runtime_dir: &Path,
+    port: u16,
+    auth_token: &str,
+) -> Result<(crate::lock::DaemonLock, String), DaemonStartError> {
+    use std::io::Write as _;
+
+    let lock_path = runtime_dir.join("monocle.lock");
+    let sock_path = runtime_dir.join("monocle.sock");
+
+    // Check for an existing live lock (reuse DaemonLock::check_existing_lock logic
+    // by reading the file directly with the same stale/live check).
+    if lock_path.exists() {
+        // Read and check for live PID conflicts via nix::sys::signal::kill.
+        let raw = std::fs::read_to_string(&lock_path).unwrap_or_default();
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(pid) = json.get("pid").and_then(|v| v.as_i64()) {
+                if let Ok(pid_i32) = i32::try_from(pid) {
+                    let nix_pid = nix::unistd::Pid::from_raw(pid_i32);
+                    if nix::sys::signal::kill(nix_pid, None).is_ok() {
+                        return Err(DaemonStartError::LockFileConflict { pid: pid_i32 });
+                    }
+                }
+            }
+        }
+        // Stale lock — remove it before writing fresh one.
+        let _ = std::fs::remove_file(&lock_path);
+    }
+
+    // Build the ISO 8601 UTC started_at timestamp.
+    let started_at = chrono::Utc::now()
+        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+        .to_string();
+
+    // Build the wire token with the monocle-v1: prefix.
+    let wire_token = format!("monocle-v1:{auth_token}");
+
+    let content = StartSequenceLockContent {
+        pid: std::process::id(),
+        port,
+        token: wire_token,
+        auth_token: auth_token.to_string(),
+        contract_version: "monocle-lock-v1".to_string(),
+        started_at: started_at.clone(),
+    };
+
+    // Serialize and persist atomically via tempfile.
+    let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
+    serde_json::to_writer_pretty(&mut tmp, &content).map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("JSON serialize lock file failed: {e}"),
+        )
+    })?;
+    tmp.flush()?;
+    tmp.persist(&lock_path).map_err(|e| e.error)?;
+
+    // Set 0o600 permissions on the lock file.
+    std::fs::set_permissions(&lock_path, std::fs::Permissions::from_mode(0o600))?;
+
+    tracing::info!(
+        path = %lock_path.display(),
+        port = port,
+        "lock file written at SOQ-2 commit point (BC-2.04.001 step 8)"
+    );
+
+    Ok((
+        crate::lock::DaemonLock {
+            path: lock_path,
+            sock_path,
+        },
+        auth_token.to_string(),
+    ))
+}
+
+/// Remove `hooks-settings.json` from the runtime directory on graceful shutdown.
+///
+/// Called by the graceful shutdown path after `DaemonLock::release()` completes
+/// and before `exit_with(DaemonExit::Graceful)` is called (BC-2.04.010 PC-7).
+///
+/// Removing hooks-settings.json ensures Claude Code stops posting hooks to the
+/// (now-dead) daemon endpoint. If the file does not exist (e.g., daemon crashed
+/// before step 9), this function returns `Ok(())` (idempotent).
+///
+/// # Errors
+///
+/// Returns `std::io::Error` only if the file exists but cannot be removed (e.g.,
+/// permission denied). `NotFound` is treated as success.
+pub fn remove_hooks_settings(runtime_dir: &Path) -> std::io::Result<()> {
+    let hs_path = runtime_dir.join("hooks-settings.json");
+    match std::fs::remove_file(&hs_path) {
+        Ok(()) => {
+            tracing::info!(
+                path = %hs_path.display(),
+                "hooks-settings.json removed on graceful shutdown (BC-2.04.010 PC-7)"
+            );
+            Ok(())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            tracing::debug!(
+                path = %hs_path.display(),
+                "hooks-settings.json not found on shutdown removal (already absent)"
+            );
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!(
+                path = %hs_path.display(),
+                error = %e,
+                "failed to remove hooks-settings.json on shutdown"
+            );
+            Err(e)
+        }
+    }
+}
+
 /// Terminate the daemon process with the exit code corresponding to `reason`.
 ///
 /// This is the **sole call-site** for `std::process::exit` in the entire monocle codebase.

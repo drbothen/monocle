@@ -340,6 +340,13 @@ fn test_BC_2_01_010_string_contract_version_handled_gracefully() {
                 BC-2.01.010 EC-011 / AC-012"
             );
         }
+        // S-017 added new variants to DaemonStartError; all are unexpected here.
+        Err(other) => {
+            panic!(
+                "DaemonLock::acquire returned unexpected error variant on string \
+                contract_version lock file: {other:?}; BC-2.01.010 EC-011 / AC-012"
+            );
+        }
     }
 
     // Main contract: no panic, no crash. If result is Ok, assert the new lock is valid.
