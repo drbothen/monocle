@@ -22,6 +22,7 @@
 //! | test_BC_2_07_001_write_config_json_is_valid | AC-005 | BC-2.07.001 PC-3 |
 //! | test_BC_2_07_002_schema_version_mismatch_error | AC-004 | story AC-004 |
 //! | test_BC_2_07_003_invariant_no_panic_on_any_input | — | BC-2.07.003 INV-1, VP |
+//! | test_BC_2_07_003_corrupted_config_emits_warn | — | BC-2.07.003 PC-9 (log assertion) |
 
 // Tests use expect/unwrap as assertion amplification — not production code.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
@@ -31,6 +32,7 @@
 #![allow(clippy::panic)]
 
 use monocle_config::{load_config, write_config, ConfigError, HarnessProfile, MonocleConfig};
+use tracing_test::traced_test;
 use std::io::Write as _;
 use std::panic::AssertUnwindSafe;
 use tempfile::tempdir;
@@ -601,4 +603,39 @@ fn test_BC_2_07_003_invariant_no_panic_on_any_input() {
         );
         // The inner result may be Ok or Err but must not panic.
     }
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.07.003 PC-9 — tracing::warn! emitted on parse failure
+// ---------------------------------------------------------------------------
+
+/// BC-2.07.003 PC-9: When `load_config()` encounters a parse failure (Case 3),
+/// it MUST emit a `tracing::warn!` log message before returning the default config.
+///
+/// Uses `tracing_test::traced_test` to capture log output and assert the warn was
+/// emitted with the expected log target "monocle_config".
+#[test]
+#[traced_test]
+fn test_BC_2_07_003_corrupted_config_emits_warn() {
+    let tmp = tempdir().expect("create temp dir");
+    let config_path = tmp.path().join("config.json");
+
+    // Write deliberately corrupted JSON — will trigger Case 3 parse failure.
+    write_fixture(tmp.path(), "config.json", r#"{"not_valid_json": "#);
+
+    let result = load_config(&config_path);
+    assert!(
+        result.is_ok(),
+        "load_config() must return Ok(default) on parse failure (BC-2.07.003 PC-9); \
+        got Err: {:?}",
+        result.err()
+    );
+
+    // Assert that a warn-level log was emitted containing the expected substring.
+    // BC-2.07.003 PC-9: "a tracing::warn! MUST be emitted" on parse failure.
+    assert!(
+        logs_contain("monocle-config: failed to parse config file"),
+        "load_config() must emit tracing::warn! containing 'monocle-config: failed to parse \
+        config file' on parse failure (BC-2.07.003 PC-9)"
+    );
 }

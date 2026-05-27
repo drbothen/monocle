@@ -3,7 +3,6 @@
 //! Per BC-2.07.001 §Edge Cases and BC-2.07.003 §Postconditions.
 //! All variants use `thiserror 2.x` derives for library error types.
 
-use std::path::PathBuf;
 use thiserror::Error;
 
 /// All failure modes from the monocle-config crate.
@@ -48,10 +47,4 @@ pub enum ConfigError {
     /// Per story AC-004.
     #[error("config schema version mismatch: found {found}, expected {expected}")]
     SchemaMismatch { found: u32, expected: u32 },
-
-    /// The path resolved correctly but the parent directory could not be determined.
-    /// Separate from `InvalidPath` to distinguish path-resolution failures from
-    /// config-path-construction failures.
-    #[error("config path parent directory unresolvable: {path}")]
-    ParentUnresolvable { path: PathBuf },
 }
