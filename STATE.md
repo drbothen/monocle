@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.17"
+version: "6.18"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T11:00:00Z
+timestamp: 2026-05-27T12:00:00Z
 phase: phase-3-wave-4
-current_step: "Phase 3 Wave 4 — S-016 DONE (PR #19, 87ac91fc). S-024 and S-030 in progress."
+current_step: "Phase 3 Wave 4 — S-016 DONE (PR #19, 87ac91fc). S-024 DONE (PR #20, 77 tests). S-030 in progress."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 4 remaining: S-024 (TUI Core Types, 8pts), S-030 (Config Crate, 5pts)"
+awaiting: "Wave 4 remaining: S-030 (Config Crate, 5pts)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -156,17 +156,17 @@ next_session_resume_protocol: |
   COLD-START RESUME GUIDE — PHASE 3 WAVE 4 IN PROGRESS:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → 87ac91fc (or later if more Wave 4 stories merged).
+  2. Verify: git log --oneline -1 develop → latest (S-024 PR #20 or later if more Wave 4 stories merged).
   3. Read STATE.md + CLAUDE.md.
   4. Phase 2 DONE (D-173). Phase 3 Wave 4 IN PROGRESS.
   5. Wave 4 status:
      - S-016: DONE (PR #19 merged 87ac91fc; 33 tests; 5 review findings fixed)
-     - S-024: TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch (8 pts, EPIC-06, monocle-core) — not_started
+     - S-024: DONE (PR #20 merged; 77 tests; 3 review findings fixed; modifier guard, ADR-0006, debug_assert)
      - S-030: Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection (5 pts, EPIC-07, monocle-config) — not_started
   6. Per-story delivery: test-writer stubs → failing tests → implementer TDD → demo-recorder → pr-manager → merge to develop.
   7. After Wave 4: wave-gate (test suite + adversarial + holdout + demo evidence) → Wave 5.
-  8. develop @ 87ac91fc. 17/33 stories done, 88/195 pts. Waves 1-3 DONE (83 pts). Wave 4: 1/3 done (5/18 pts).
-  9. Artifact versions: STORY-INDEX v4.8, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16, sprint-state v1.24.
+  8. develop @ latest. 18/33 stories done, 96/195 pts. Waves 1-3 DONE (83 pts). Wave 4: 2/3 done (13/18 pts).
+  9. Artifact versions: STORY-INDEX v4.9, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16, sprint-state v1.25.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -185,7 +185,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 4 | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4: S-016 DONE (PR #19, 87ac91fc, 33 tests). S-024 + S-030 in progress. |
+| 3 TDD Implementation | IN PROGRESS — Wave 4 | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4: S-016 DONE (PR #19, 87ac91fc, 33 tests). S-024 DONE (PR #20, 77 tests). S-030 remaining. |
 | 4-7 | not-started | — | |
 
 ## Wave 4 Current Status
@@ -193,10 +193,10 @@ current_cycle: cycle-001
 | Story | Points | Status | Notes |
 |-------|--------|--------|-------|
 | S-016 Daemon Binary Crate Init + CLI | 5 | done | PR #19, 87ac91fc, 33 tests, 5 findings fixed |
-| S-024 TUI Core Types | 8 | not_started | — |
+| S-024 TUI Core Types | 8 | done | PR #20, 77 tests (40 SM + 24 binding + 13 enum), 3 findings fixed |
 | S-030 Config Crate | 5 | not_started | — |
 
-develop @ 87ac91fc. 17/33 stories done, 88/195 pts. Wave 4: 1/3 done (5/18 pts).
+develop @ latest. 18/33 stories done, 96/195 pts. Wave 4: 2/3 done (13/18 pts).
 
 ## Blocking Issues
 
@@ -233,7 +233,7 @@ Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.m
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v4.8** (33 stories, 195 pts). **sprint-state v1.24** (17/33 done, 88/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v4.9** (33 stories, 195 pts). **sprint-state v1.25** (18/33 done, 96/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
 
 ## Historical Content
 
@@ -246,6 +246,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.18 (S-024 DONE — WAVE 4 2/3 COMPLETE)
+
+**S-024 DELIVERED** (2026-05-27): S-024 TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch delivered. PR #20 merged. 77 tests (40 state machine + 24 binding + 13 enum audit). 3 review findings fixed (modifier guard, ADR-0006, debug_assert). 3/3 adversary convergence. BC-2.06.001, BC-2.06.002, BC-2.06.003 fully satisfied. Wave 4: 2/3 done (13/18 pts). S-030 remaining. sprint-state v1.24→v1.25 (done 17→18, not_started 15→14, points_complete 88→96). STORY-INDEX v4.8→v4.9.
+STATE v6.17 → v6.18.
 
 ## §Trace v6.17 (S-016 DONE — WAVE 4 1/3 COMPLETE)
 

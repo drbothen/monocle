@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "4.8"
+version: "4.9"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -64,7 +64,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
 | S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
 | S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019 |
-| S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | not_started | S-025, S-026, S-031 |
+| S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | done | S-025, S-026, S-031 |
 | S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | not_started | S-025, S-031 |
 | S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | not_started | S-018, S-019, S-020, S-021 |
 | S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | not_started | S-022, S-029 |

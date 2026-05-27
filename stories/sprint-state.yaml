@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.24"
+version: "1.25"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -248,12 +248,12 @@ stories:
     epic: EPIC-06
     wave: 4
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 4 foundation. BCs: BC-2.06.001, BC-2.06.002, BC-2.06.003. Pure-core monocle-core types. Depends on S-011, S-014."
+    completed_at: "2026-05-27"
+    pr_url: "https://github.com/jmagady/monocle/pull/20"
+    notes: "Wave 4 foundation. PR #20 merged. 77 tests (40 state machine + 24 binding + 13 enum audit). BC-2.06.001, BC-2.06.002, BC-2.06.003 fully satisfied. 3 review findings fixed (modifier guard, ADR-0006, debug_assert). 3/3 adversary convergence."
 
   - id: S-030
     title: "Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 15
+  not_started: 14
   in_progress: 0
   review: 0
-  done: 17
+  done: 18
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 88
+  points_complete: 96
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.25 updates (2026-05-27):
+  # - S-024 flipped not_started → done (PR #20 merged; BC-2.06.001+002+003 satisfied; 77 tests; 3 review findings fixed; 3/3 convergence)
+  # - done: 17 → 18; not_started: 15 → 14; points_complete: 88 → 96
+  # - Wave 4: 2/3 done (13/18 pts). S-030 remaining.
   # v1.24 updates (2026-05-27):
   # - S-016 flipped not_started → done (PR #19 merged 87ac91fc; BC-2.04.004+005+006 satisfied; 33 tests; 5 review findings fixed; 3/3 convergence)
   # - done: 16 → 17; not_started: 16 → 15; points_complete: 83 → 88
