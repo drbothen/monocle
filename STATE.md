@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.15"
+version: "6.16"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T10:00:00Z
-phase: phase-2-expansion-CONVERGED
-current_step: "Phase 2 expansion adversarial story review CONVERGED (4 passes). Human Phase 2 gate approval pending."
+timestamp: 2026-05-27T11:00:00Z
+phase: phase-3-wave-4
+current_step: "Phase 3 continuation — Wave 4 implementation. S-016, S-024, S-030 (18 pts parallel)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Human Phase 2 gate approval → Phase 3 continuation (Wave 4+)"
+awaiting: "Wave 4 delivery: S-016 (Daemon CLI, 5pts), S-024 (TUI Core Types, 8pts), S-030 (Config Crate, 5pts)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -153,17 +153,20 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 2 CONVERGED, HUMAN GATE PENDING:
+  COLD-START RESUME GUIDE — PHASE 3 WAVE 4 IN PROGRESS:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → f0b70ee.
+  2. Verify: git log --oneline -1 develop → f0b70ee (or later if Wave 4 stories merged).
   3. Read STATE.md + CLAUDE.md.
-  4. Phase 2 EXPANSION CONVERGED (D-172). Adversarial story review: 4 passes, 0 CRIT/0 HIGH.
-  5. 33 stories, 195 pts. STORY-INDEX v4.7. BC-INDEX v1.23 (113 BCs). sprint-state v1.23.
-  6. NEXT: Human Phase 2 gate approval.
-  7. After gate: Phase 3 continuation — Wave 4 (S-016, S-024, S-030 — 18 pts parallel).
-  8. Artifact versions: SS-tui v1.7.0, ARCH-INDEX v1.0.16, dep-graph v1.5, EVAL-INDEX v1.4.
-  9. Outstanding non-blocking items: see durable_task_register (unchanged from v6.14).
+  4. Phase 2 DONE (D-173). Phase 3 Wave 4 IN PROGRESS.
+  5. Wave 4 stories (18 pts, parallel — no inter-dependencies):
+     - S-016: Daemon Binary Crate Init + CLI Subcommands (5 pts, EPIC-04, monocle-daemon)
+     - S-024: TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch (8 pts, EPIC-06, monocle-core)
+     - S-030: Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection (5 pts, EPIC-07, monocle-config)
+  6. Per-story delivery: test-writer stubs → failing tests → implementer TDD → demo-recorder → pr-manager → merge to develop.
+  7. After Wave 4: wave-gate (test suite + adversarial + holdout + demo evidence) → Wave 5.
+  8. develop @ f0b70ee. 447 tests. Waves 1-3 DONE (83 pts).
+  9. Artifact versions: STORY-INDEX v4.7, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16, sprint-state v1.23.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -181,8 +184,8 @@ current_cycle: cycle-001
 | 0.5-0.9 Brief + arch stubs | DONE | 2026-05-14 | |
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
-| 2 Story Decomposition | CONVERGED (adversarial review complete) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). BC-2.06.024 created. BC-2.06.003/011/012/013/014/017 keybinding propagated. S-026 fully re-anchored (16 ACs). S-024 FocusSnapshot struct→enum. STORY-INDEX v4.7. BC-INDEX v1.23 (113 BCs). Human gate pending. |
-| 3 TDD Implementation | GATE-PASS | 2026-05-27 | Wave 1+2+3 DONE (83 pts); gate PASS (447 tests, all 6 gates) |
+| 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
+| 3 TDD Implementation | IN PROGRESS — Wave 4 | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 authorized: S-016, S-024, S-030 (18 pts parallel). |
 | 4-7 | not-started | — | |
 
 ## Wave 3 Current Status
@@ -201,7 +204,7 @@ develop @ 493e1b7. 447 tests. clippy clean. fmt clean. 16/17 stories done, 83/86
 
 None. All durable_task_register items non-blocking.
 
-## Decisions Log (D-155 through D-172)
+## Decisions Log (D-155 through D-173)
 
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
@@ -223,6 +226,7 @@ None. All durable_task_register items non-blocking.
 | D-170 | Phase 1d gate APPROVED by human. Phase 2 re-entered for story decomposition of 48 new BCs across SS-04 (12 BCs), SS-05 (8 BCs), SS-06 (23 BCs), SS-07 (6 BCs). Existing 17 stories (86 pts) from original Phase 2 remain valid. New stories will extend the story set and wave schedule. | 2026-05-27 | human (Josh Magady) |
 | D-171 | Phase 2 expansion story decomposition COMPLETE. 16 new stories (S-016..S-031, 109 pts) across Waves 4-7. 10 expansion holdout scenarios (HS-EXP-001..HS-EXP-010). STORY-INDEX.md v4.0 (33 stories, 195 pts). sprint-state.yaml v1.19. Dependency graph expansion produced. Adversarial review of story decomposition now required (3 clean passes). | 2026-05-27 | orchestrator |
 | D-172 | Phase 2 expansion adversarial story review CONVERGED. 4 passes: P1 (18 findings, 3C/5H/6M), P2 (11, 3C/4H/4M), P3 (9, 2C/4H/3M), P4 (4, 0C/0H/4M). All findings fixed. Finding decay: 18→11→9→4 (78% reduction). Key fixes: BC-2.06.024 created (tool payload rendering), keybinding adjudication 1/2/3→y/A/n/r across BC-2.06.003/011/012/013/014/017, pop semantics→wait-for-PermissionPromptResolved, S-026 complete AC re-anchoring (16 ACs across 9 BCs), S-024 FocusSnapshot struct→enum, S-028 SessionEvents→streaming. STORY-INDEX v4.7, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16. Human gate pending. | 2026-05-27 | orchestrator |
+| D-173 | Phase 2 expansion gate APPROVED by human. 33 stories (195 pts), 113 BCs, 24 holdout scenarios. Adversarial convergence D-172 (4 passes, 0 CRIT/HIGH). Keybinding adjudication (y/A/n/r), pop semantics (wait-for-resolved), S-026 sizing (13 pts accepted), GAP-P2-005 (BC-2.06.017 deferred to integration test infrastructure) all accepted. Wave 4 authorized: S-016, S-024, S-030 (18 pts parallel). | 2026-05-27 | human (Josh Magady) |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -244,6 +248,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.16 (PHASE 2 GATE APPROVED — PHASE 3 WAVE 4 AUTHORIZED)
+
+**HUMAN GATE APPROVAL** (2026-05-27): Phase 2 expansion gate APPROVED by human (D-173, Josh Magady). 33 stories (195 pts), 113 BCs, 24 holdout scenarios accepted. Adversarial convergence (D-172, 4 passes, 0 CRIT/HIGH) satisfied gate criteria. Human accepted all adjudication decisions: keybinding scheme y/A/n/r, pop semantics wait-for-PermissionPromptResolved, S-026 sizing at 13 pts, GAP-P2-005 (BC-2.06.017 deferred to integration test infrastructure). Phase 3 Wave 4 authorized: S-016 (Daemon CLI, 5 pts), S-024 (TUI Core Types, 8 pts), S-030 (Config Crate, 5 pts) — 18 pts parallel, no inter-dependencies. Frontmatter updated: phase → phase-3-wave-4, awaiting → Wave 4 delivery, current_step → Wave 4 implementation. Phase 2 row: DONE (D-173 APPROVED). Phase 3 row: IN PROGRESS — Wave 4.
+STATE v6.15 → v6.16.
 
 ## §Trace v6.15 (PHASE 2 EXPANSION ADVERSARIAL CONVERGED)
 
