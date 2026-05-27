@@ -20,12 +20,13 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-2-reentry-DURABLE-PAUSE`** — Phase 1 expansion + Phase 2 story decomposition complete. Adversarial story review pending.
+- **Phase: `phase-3-wave-5-DURABLE-PAUSE`** — Wave 4 complete, Wave 5 ready to begin.
 - **Waves 1-3 (DONE):** 16 stories merged (83 pts). 447 tests, clippy clean. develop @ 493e1b7. Wave gates D-164, D-166, D-167 all PASSED.
+- **Wave 4 (DONE, D-175):** S-016 (PR#19), S-024 (PR#20), S-030 (PR#21). 18 pts, 146 tests. Gate PASSED.
 - **Phase 1 Expansion (DONE, D-168+D-169):** PRD expanded 22 → 70 BCs. 4 new arch docs (SS-04 Daemon Wiring, SS-05 IPC, SS-06 TUI, SS-07 Config). 15-pass adversarial spec review CONVERGED.
 - **Phase 2 Expansion (DONE, D-170+D-171):** 16 new stories (S-016..S-031), 109 pts, Waves 4-7. 10 new holdout scenarios (HS-EXP-001..010).
-- **Totals:** 33 stories (195 pts), 16 done (83 pts), 16 not_started (109 pts), 1 blocked (S-PHASE-3-PREP). sprint-state v1.19. BC-INDEX v1.19 (112 BCs). STORY-INDEX v4.0.
-- **Artifact versions:** PRD v1.27.2, SS-daemon-wiring v1.3.0, SS-ipc v1.6.0, SS-tui v1.6.0, SS-config v1.3.0, SS-engine-module v1.1.22, ARCH-INDEX v1.0.15.
+- **Totals:** 33 stories (195 pts), 19 done (101 pts), 14 not_started (94 pts), 1 blocked (S-PHASE-3-PREP). sprint-state v1.26. BC-INDEX v1.23 (113 BCs). STORY-INDEX v5.0.
+- **Artifact versions:** PRD v1.27.2, SS-daemon-wiring v1.3.0, SS-ipc v1.6.0, SS-tui v1.7.0, SS-config v1.3.0, SS-engine-module v1.1.22, ARCH-INDEX v1.0.16.
 - Outstanding non-blocking follow-ups (durable task register):
   - **#28**: prost/reqwest exact-patch pin verification (partial).
   - **#34**: BC-2.03.001 PC-3 DeferUntil cleanup (closed by SS-engine-module v1.1.22 — DeferUntil removed).
@@ -36,9 +37,9 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   - **IMPL-HookDecision-serde**: Add Serialize/Deserialize to HookDecision + HookResponse (deferred-wave-5).
   - **IMPL-on-hook-Defer**: Implement Defer routing in ClaudeCodeModule::on_hook() (deferred-wave-5).
   - **ADV-P1D-pin-staleness**: Architecture Source pin lag (accepted-cosmetic).
-  - Plus: ADV-W3GATE-MED-001..004 (daemon wiring observations), S-008-ADV (partial-closed), S-015-ADV, S-014-ADV, S-011-ADV, S-013-ADV.
+  - Plus: ADV-W4GATE-MED-001 (PATH test isolation), ADV-W4GATE-MED-002 (dead tracing in CLI), HS-EXP-009-hint (exit 70 missing stderr hint), ADV-W3GATE-MED-001..004 (daemon wiring observations).
 - 39 codified disciplines in force.
-- **Next: Adversarial story review** (3 clean passes) → Human Phase 2 gate → Phase 3 continuation (Wave 4: S-016, S-024, S-030 — 18 pts parallel).
+- **Next: Wave 5 delivery** — S-017 serial first (8 pts), then S-018/S-019/S-020/S-021 parallel (26 pts).
   - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
 - Mode: greenfield-with-reference-ingest.
 
@@ -167,7 +168,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — D-155 original, D-168 expansion, D-169 adversarial convergence) — 70 BCs (expanded from 22), 7 subsystems, 5 ADRs, 15-pass adversarial review
 - Phase 2: Story Decomposition (DONE original D-159; EXPANSION D-170+D-171 — adversarial review pending) — 33 stories, 7 waves, 195 points, 24 holdout scenarios
-- **Phase 3: TDD Implementation (PAUSED)** — Waves 1-3 DONE (83 pts, 447 tests). Wave 4 ready after Phase 2 adversarial gate.
+- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-4 DONE (101 pts, 634 tests, gates D-164/D-166/D-167/D-175). Wave 5 ready (S-017 serial, then S-018/S-019/S-020/S-021 parallel).
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
