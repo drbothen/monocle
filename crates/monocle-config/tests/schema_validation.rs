@@ -124,7 +124,10 @@ fn test_BC_2_07_002_binding_overrides_default_is_empty_object() {
         config.binding_overrides
     );
 
-    let obj = config.binding_overrides.as_object().expect("must be object");
+    let obj = config
+        .binding_overrides
+        .as_object()
+        .expect("must be object");
     assert!(
         obj.is_empty(),
         "default binding_overrides must be an empty JSON object `{{}}` \
@@ -217,8 +220,9 @@ fn test_BC_2_07_002_config_dir_none_round_trips() {
         ]
     }"#;
 
-    let config: MonocleConfig = serde_json::from_str(json)
-        .expect("config with HarnessProfile missing config_dir must deserialize (BC-2.07.002 EC-082)");
+    let config: MonocleConfig = serde_json::from_str(json).expect(
+        "config with HarnessProfile missing config_dir must deserialize (BC-2.07.002 EC-082)",
+    );
 
     assert_eq!(config.harness_profiles.len(), 1);
     assert_eq!(
@@ -403,7 +407,10 @@ fn test_BC_2_07_002_invariant_binding_overrides_is_object() {
         config.binding_overrides
     );
 
-    let obj = config.binding_overrides.as_object().expect("must be object");
+    let obj = config
+        .binding_overrides
+        .as_object()
+        .expect("must be object");
     assert_eq!(
         obj.get("ctrl_p").and_then(|v| v.as_str()),
         Some("profile-picker"),

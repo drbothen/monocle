@@ -45,8 +45,7 @@ use tempfile::tempdir;
 /// in the monocle-config crate. We replicate the atomic pattern in tests too
 /// so that the test setup is consistent with production behavior.
 fn write_fixture(dir: &std::path::Path, filename: &str, content: &str) {
-    let mut tmp = tempfile::NamedTempFile::new_in(dir)
-        .expect("create NamedTempFile in test dir");
+    let mut tmp = tempfile::NamedTempFile::new_in(dir).expect("create NamedTempFile in test dir");
     tmp.write_all(content.as_bytes())
         .expect("write test fixture");
     let dest = dir.join(filename);
@@ -68,7 +67,10 @@ fn test_BC_2_07_003_missing_config_returns_default() {
     let config_path = tmp.path().join("config.json");
 
     // Verify the file really doesn't exist.
-    assert!(!config_path.exists(), "config.json must not exist for this test");
+    assert!(
+        !config_path.exists(),
+        "config.json must not exist for this test"
+    );
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&config_path)));
 
@@ -88,7 +90,8 @@ fn test_BC_2_07_003_missing_config_returns_default() {
 
     let config = result.expect("must be Ok");
     assert_eq!(
-        config, MonocleConfig::default(),
+        config,
+        MonocleConfig::default(),
         "load_config() must return MonocleConfig::default() when config file is absent \
         (BC-2.07.003 PC-2 / story AC-003)"
     );
@@ -124,7 +127,8 @@ fn test_BC_2_07_003_corrupted_config_returns_default() {
 
     let config = result.expect("must be Ok");
     assert_eq!(
-        config, MonocleConfig::default(),
+        config,
+        MonocleConfig::default(),
         "load_config() must return MonocleConfig::default() on corrupted JSON \
         (BC-2.07.003 PC-9)"
     );
@@ -157,7 +161,8 @@ fn test_BC_2_07_003_zero_byte_config_returns_default() {
 
     let config = result.expect("must be Ok");
     assert_eq!(
-        config, MonocleConfig::default(),
+        config,
+        MonocleConfig::default(),
         "zero-byte config must return MonocleConfig::default() (BC-2.07.003 EC-089)"
     );
 }
@@ -235,8 +240,7 @@ fn test_BC_2_07_003_valid_config_round_trips() {
         binding_overrides: serde_json::Value::Object(serde_json::Map::new()),
         project_profiles: std::collections::HashMap::new(),
     };
-    let json =
-        serde_json::to_string_pretty(&original).expect("original config must serialize");
+    let json = serde_json::to_string_pretty(&original).expect("original config must serialize");
     write_fixture(tmp.path(), "config.json", &json);
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&config_path)));
@@ -275,9 +279,7 @@ fn test_BC_2_07_001_write_config_creates_file() {
 
     let config = MonocleConfig::default();
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        write_config(&config, &config_path)
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&config, &config_path)));
     let result = result.unwrap_or_else(|_| {
         panic!(
             "write_config() panicked (likely todo!()) — \
@@ -309,13 +311,14 @@ fn test_BC_2_07_001_write_config_creates_parent_dir() {
     let nested_dir = tmp.path().join("level1").join("level2");
     let config_path = nested_dir.join("config.json");
 
-    assert!(!nested_dir.exists(), "nested dir must not exist before test");
+    assert!(
+        !nested_dir.exists(),
+        "nested dir must not exist before test"
+    );
 
     let config = MonocleConfig::default();
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        write_config(&config, &config_path)
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&config, &config_path)));
     let result = result.unwrap_or_else(|_| {
         panic!(
             "write_config() panicked (likely todo!()) on missing parent dir — \
@@ -352,9 +355,8 @@ fn test_BC_2_07_001_write_config_round_trip() {
     let original = MonocleConfig::default();
 
     // Step 1: write.
-    let write_result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        write_config(&original, &config_path)
-    }));
+    let write_result =
+        std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&original, &config_path)));
     let write_result = write_result.unwrap_or_else(|_| {
         panic!(
             "write_config() panicked (likely todo!()) — \
@@ -369,8 +371,7 @@ fn test_BC_2_07_001_write_config_round_trip() {
     );
 
     // Step 2: load back.
-    let load_result =
-        std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&config_path)));
+    let load_result = std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&config_path)));
     let load_result = load_result.unwrap_or_else(|_| {
         panic!(
             "load_config() panicked (likely todo!()) after write — \
@@ -401,9 +402,7 @@ fn test_BC_2_07_001_write_config_json_is_valid() {
     let config_path = tmp.path().join("config.json");
     let config = MonocleConfig::default();
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        write_config(&config, &config_path)
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&config, &config_path)));
     let result = result.unwrap_or_else(|_| {
         panic!(
             "write_config() panicked (likely todo!()) — \
@@ -413,8 +412,8 @@ fn test_BC_2_07_001_write_config_json_is_valid() {
     result.expect("write_config must succeed (BC-2.07.001 PC-3)");
 
     // Read raw content and parse as JSON.
-    let raw = std::fs::read_to_string(&config_path)
-        .expect("config file must be readable after write");
+    let raw =
+        std::fs::read_to_string(&config_path).expect("config file must be readable after write");
     let value: serde_json::Value =
         serde_json::from_str(&raw).expect("written config must be valid JSON (BC-2.07.001 PC-3)");
 
@@ -463,9 +462,7 @@ fn test_BC_2_07_001_write_config_no_partial_write() {
             .collect(),
     };
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        write_config(&config, &config_path)
-    }));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&config, &config_path)));
     let result = result.unwrap_or_else(|_| {
         panic!(
             "write_config() panicked (likely todo!()) — \
@@ -566,7 +563,7 @@ fn test_BC_2_07_002_schema_version_mismatch_error() {
 #[test]
 fn test_BC_2_07_003_invariant_no_panic_on_any_input() {
     let test_cases: &[(&str, &str)] = &[
-        ("absent", ""),   // We'll handle this specially below.
+        ("absent", ""), // We'll handle this specially below.
         ("empty", ""),
         ("truncated", r#"{"not_valid_json": "#),
         ("json_array", "[1, 2, 3]"),
@@ -583,8 +580,7 @@ fn test_BC_2_07_003_invariant_no_panic_on_any_input() {
 
     // Test absent file.
     let absent_path = tmp.path().join("nonexistent.json");
-    let result =
-        std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&absent_path)));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| load_config(&absent_path)));
     assert!(
         result.is_ok(),
         "load_config() must not panic on absent file (BC-2.07.003 INV-1)"

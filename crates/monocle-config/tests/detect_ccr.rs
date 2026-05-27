@@ -104,8 +104,7 @@ fn test_BC_2_07_006_ccr_path_some_file_exists_returns_some() {
     let mut config = MonocleConfig::default();
     config.ccr_path = Some(fake_ccr.to_str().unwrap().to_string());
 
-    let result =
-        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
     let result = result.unwrap_or_else(|_| {
         panic!(
             "detect_ccr() panicked (likely todo!()) — \
@@ -402,8 +401,7 @@ fn test_BC_2_07_006_invariant_no_panic_under_any_input() {
     ];
 
     for (i, config) in edge_cases.into_iter().enumerate() {
-        let result =
-            std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config)));
+        let result = std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config)));
         assert!(
             result.is_ok(),
             "detect_ccr() must not panic for edge case config {i} \

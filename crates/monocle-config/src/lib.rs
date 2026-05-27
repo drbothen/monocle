@@ -14,6 +14,6 @@ mod config;
 mod detect_ccr;
 mod error;
 
-pub use config::{HarnessProfile, MonocleConfig, load_config, write_config};
+pub use config::{load_config, write_config, HarnessProfile, MonocleConfig};
 pub use detect_ccr::detect_ccr;
 pub use error::ConfigError;

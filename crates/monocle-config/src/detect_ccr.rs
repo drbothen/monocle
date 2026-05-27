@@ -30,5 +30,22 @@ use std::path::PathBuf;
 /// **No panic, no `Err`:** All fallible operations return `bool` or `Result`;
 /// neither causes a panic. All failure modes produce `None` (BC-2.07.006 INV-1, INV-2).
 pub fn detect_ccr(config: &MonocleConfig) -> Option<PathBuf> {
-    todo!("detect_ccr(): not yet implemented")
+    // Step 1: Explicit config path check (BC-2.07.006 PC-1).
+    if let Some(ref path_str) = config.ccr_path {
+        let path = PathBuf::from(path_str);
+        if path.is_file() {
+            // PC-1c: file exists — return it, skip PATH search.
+            return Some(path);
+        }
+        // PC-1d: configured path did not resolve to a file — warn and fall through.
+        tracing::warn!(
+            ccr_path = %path.display(),
+            "monocle-config: configured ccr_path is not a file — falling through to PATH search \
+            (BC-2.07.006 PC-1d)"
+        );
+    }
+
+    // Step 2: PATH fallback (BC-2.07.006 PC-2,3).
+    // which::which("ccr") returns Ok(path) if found, Err if not — never panics.
+    which::which("ccr").ok()
 }

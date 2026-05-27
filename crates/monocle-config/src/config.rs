@@ -105,7 +105,9 @@ impl MonocleConfig {
     /// Returns `Err(ConfigError::HomeUnresolvable)` if `ProjectDirs::from`
     /// returns `None`. Per BC-2.07.001 PC-2 and story AC-010.
     pub fn config_path() -> Result<PathBuf, ConfigError> {
-        todo!("MonocleConfig::config_path(): not yet implemented")
+        let project_dirs = directories::ProjectDirs::from("", "", "monocle")
+            .ok_or(ConfigError::HomeUnresolvable)?;
+        Ok(project_dirs.config_dir().join("config.json"))
     }
 }
 
@@ -124,7 +126,39 @@ impl MonocleConfig {
 ///
 /// Does not panic under any condition (BC-2.07.003 INV-1).
 pub fn load_config(path: &Path) -> Result<MonocleConfig, ConfigError> {
-    todo!("load_config(): not yet implemented")
+    // Case 1: file does not exist → return default silently.
+    let raw = match std::fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(MonocleConfig::default());
+        }
+        // Case 2: real I/O error → propagate.
+        Err(e) => return Err(ConfigError::Io(e)),
+    };
+
+    // Case 3: parse failure → warn + return default.
+    let config: MonocleConfig = match serde_json::from_str(&raw) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!(
+                path = %path.display(),
+                error = %e,
+                "monocle-config: failed to parse config file — using default (BC-2.07.003 PC-9)"
+            );
+            return Ok(MonocleConfig::default());
+        }
+    };
+
+    // Story AC-004: schema version mismatch check (after successful parse).
+    if config.schema_version != MonocleConfig::CURRENT_SCHEMA_VERSION {
+        return Err(ConfigError::SchemaMismatch {
+            found: config.schema_version,
+            expected: MonocleConfig::CURRENT_SCHEMA_VERSION,
+        });
+    }
+
+    // Case 4: success.
+    Ok(config)
 }
 
 // ---------------------------------------------------------------------------
@@ -145,5 +179,26 @@ pub fn load_config(path: &Path) -> Result<MonocleConfig, ConfigError> {
 ///
 /// Returns `Err` on any failure; the original file is never partially written (INV-1, INV-2).
 pub fn write_config(config: &MonocleConfig, path: &Path) -> Result<(), ConfigError> {
-    todo!("write_config(): not yet implemented")
+    use std::io::Write as _;
+
+    // PC-1: resolve parent directory; return error if path has no parent.
+    let parent = path.parent().ok_or(ConfigError::InvalidPath)?;
+
+    // PC-1: create parent directory (and all ancestors) if absent.
+    std::fs::create_dir_all(parent)?;
+
+    // PC-3: serialize to pretty JSON.
+    let json = serde_json::to_string_pretty(config)?;
+
+    // PC-2: create temp file in same directory as target (ensures same filesystem).
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+
+    // PC-3/PC-4: write and flush.
+    tmp.write_all(json.as_bytes())?;
+    tmp.flush()?;
+
+    // PC-5: atomic rename to target path.
+    tmp.persist(path)?;
+
+    Ok(())
 }
