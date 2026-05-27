@@ -148,10 +148,12 @@ async fn test_BC_2_04_001_lock_file_contract_version_string() {
 // AC-007: Step 7 — auth token 64 hex chars, no monocle-v1: prefix
 // ---------------------------------------------------------------------------
 
-/// Exercises BC-2.04.001 PC-7: auth token is 64 lowercase hex chars WITHOUT prefix.
+/// Exercises BC-2.04.001 PC-7: auth token hex portion is 64 lowercase hex chars.
 ///
-/// The token stored in the lock file's `authToken` field must be exactly 64 lowercase
-/// hex characters. The `monocle-v1:` prefix is a wire-format concern only (not stored).
+/// The lock file's `token` field carries the wire-format `monocle-v1:<64-hex>` string.
+/// The hex portion (after stripping the `monocle-v1:` prefix) must be exactly 64 lowercase
+/// hex characters. BC-2.04.001 PC-15 defines exactly 5 fields: pid, port, token,
+/// contract_version, started_at — there is no separate `authToken` field.
 #[tokio::test]
 async fn test_BC_2_04_001_auth_token_64_hex_chars_no_prefix() {
     let tmp = isolated_runtime_dir();
@@ -167,29 +169,44 @@ async fn test_BC_2_04_001_auth_token_64_hex_chars_no_prefix() {
     let lock_json: serde_json::Value =
         serde_json::from_str(&lock_content).expect("lock file must be valid JSON");
 
-    let auth_token = lock_json
-        .get("authToken")
+    // BC-2.04.001 PC-15: the lock file has exactly 5 fields (pid, port, token,
+    // contract_version, started_at). `authToken` is NOT a separate field; the raw hex
+    // is embedded as the suffix of `token` after the `monocle-v1:` prefix.
+    let token_field = lock_json
+        .get("token")
         .and_then(|v| v.as_str())
-        .expect("lock file must have authToken string field");
+        .expect("lock file must have 'token' string field (BC-2.04.001 PC-15)");
+
+    // token field must have the monocle-v1: prefix.
+    assert!(
+        token_field.starts_with("monocle-v1:"),
+        "token field must start with 'monocle-v1:' prefix (got: {token_field})"
+    );
+
+    // Strip prefix and verify the hex portion.
+    let hex_part = token_field
+        .strip_prefix("monocle-v1:")
+        .expect("already asserted starts_with");
 
     // Must be exactly 64 chars.
     assert_eq!(
-        auth_token.len(),
+        hex_part.len(),
         64,
-        "authToken must be exactly 64 chars (got {})",
-        auth_token.len()
+        "token hex portion must be exactly 64 chars (got {})",
+        hex_part.len()
     );
-    // Must be all lowercase hex — no `monocle-v1:` prefix.
+    // Must be all lowercase hex.
     assert!(
-        auth_token
+        hex_part
             .chars()
             .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
-        "authToken must be 64 lowercase hex chars with no prefix (got: {auth_token})"
+        "token hex portion must be 64 lowercase hex chars (got: {hex_part})"
     );
-    // Explicitly assert no prefix stored in the file.
+
+    // BC-2.04.001 PC-15: no separate `authToken` field should be present in the lock file.
     assert!(
-        !auth_token.starts_with("monocle-v1:"),
-        "authToken must NOT have monocle-v1: prefix in lock file (BC-2.04.001 PC-7)"
+        lock_json.get("authToken").is_none(),
+        "lock file must NOT have a separate 'authToken' field (BC-2.04.001 PC-15 — exactly 5 fields)"
     );
 }
 
@@ -995,4 +1012,96 @@ fn test_BC_2_04_010_hooks_settings_type_serialization_roundtrip() {
             .is_none(),
         "SessionStart must be absent from serialized HooksSettings"
     );
+}
+
+// ---------------------------------------------------------------------------
+// MED-002: Token embedded in hook commands (BC-2.04.010 PC-3 wire token)
+// MED-003: matcher field present as "" in every active hook entry
+// ---------------------------------------------------------------------------
+
+/// Exercises BC-2.04.010 PC-3: each active hook command contains
+/// `monocle-v1:<token>` in the X-Monocle-Authorization header.
+///
+/// The `write_hooks_settings` function must embed the wire token
+/// `monocle-v1:<auth_token>` in the `-H 'X-Monocle-Authorization: ...'`
+/// argument of every active hook curl command.
+#[test]
+fn test_BC_2_04_010_hook_commands_contain_wire_token() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path();
+
+    let auth_token = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+    write_hooks_settings(runtime_dir, 9001, auth_token).expect("write_hooks_settings must succeed");
+
+    let hs_path = runtime_dir.join("hooks-settings.json");
+    let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
+    let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+    let expected_wire_token = format!("monocle-v1:{auth_token}");
+    let hooks = json.get("hooks").expect("'hooks' key must exist");
+
+    for hook_name in &["PreToolUse", "Notification", "Stop", "UserPromptSubmit"] {
+        let entries = hooks
+            .get(hook_name)
+            .and_then(|v| v.as_array())
+            .unwrap_or_else(|| panic!("hooks.{hook_name} must be an array"));
+        for entry in entries {
+            let cmds = entry
+                .get("hooks")
+                .and_then(|v| v.as_array())
+                .unwrap_or_else(|| panic!("hooks.{hook_name}[].hooks must be an array"));
+            for cmd in cmds {
+                let command_str =
+                    cmd.get("command")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_else(|| {
+                            panic!("hooks.{hook_name}[].hooks[].command must be a string")
+                        });
+                assert!(
+                    command_str.contains(&expected_wire_token),
+                    "hook command for {hook_name} must contain wire token '{expected_wire_token}': \
+                     {command_str}"
+                );
+            }
+        }
+    }
+}
+
+/// Exercises BC-2.04.010 PC-3 schema: each active hook entry must have a `"matcher"` field
+/// with value `""` (empty string).
+///
+/// BC-2.04.010 PC-3 requires `"matcher": ""` to be present — not absent — in the
+/// serialized JSON for every active hook entry (match-all semantics).
+#[test]
+fn test_BC_2_04_010_hook_entries_have_empty_matcher_field() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path();
+
+    let auth_token = "e".repeat(64);
+    write_hooks_settings(runtime_dir, 9002, &auth_token)
+        .expect("write_hooks_settings must succeed");
+
+    let hs_path = runtime_dir.join("hooks-settings.json");
+    let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
+    let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+    let hooks = json.get("hooks").expect("'hooks' key must exist");
+
+    for hook_name in &["PreToolUse", "Notification", "Stop", "UserPromptSubmit"] {
+        let entries = hooks
+            .get(hook_name)
+            .and_then(|v| v.as_array())
+            .unwrap_or_else(|| panic!("hooks.{hook_name} must be an array"));
+        for entry in entries {
+            // BC-2.04.010 PC-3: the `matcher` key must be present with value `""`.
+            let matcher = entry.get("matcher").unwrap_or_else(|| {
+                panic!("hooks.{hook_name} entry must have a 'matcher' field (BC-2.04.010 PC-3)")
+            });
+            assert_eq!(
+                matcher.as_str(),
+                Some(""),
+                "hooks.{hook_name} matcher must be empty string \"\" (BC-2.04.010 PC-3), got: {matcher}"
+            );
+        }
+    }
 }

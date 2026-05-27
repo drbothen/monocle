@@ -305,7 +305,14 @@ pub fn read_recovery_checkpoint(path: &Path) -> CheckpointReadResult {
 /// separate to allow the S-006 reader (integer format) to remain compatible while
 /// the S-017 start sequence emits the canonical string format.
 ///
-/// # Wire format
+/// # Code duplication note
+///
+/// `StartSequenceLockContent` (this struct) and `crate::lock::LockFileContent` coexist
+/// intentionally: they serve different schemas. The S-006 `LockFileContent` uses integer
+/// `contract_version: u32` (legacy). This struct uses string `contract_version` per the
+/// canonical S-017 BC-2.04.001 PC-8 wire format. The two must not be merged.
+///
+/// # Wire format (BC-2.04.001 PC-15 — exactly 5 fields)
 ///
 /// ```json
 /// {
@@ -317,21 +324,17 @@ pub fn read_recovery_checkpoint(path: &Path) -> CheckpointReadResult {
 /// }
 /// ```
 ///
-/// Note: `authToken` (camelCase) is the key used for the raw 64-hex token without prefix,
-/// matching the JSON field name expected by readers (BC-2.04.001 PC-7 / BC-2.03.001 PC-1).
+/// Note: `pid` is `i32` for consistency with nix PID types.
+/// `token` stores the full `monocle-v1:<64-hex>` wire token.
+/// `started_at` is an ISO 8601 UTC timestamp with millisecond precision.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct StartSequenceLockContent {
-    /// PID of the daemon process.
-    pid: u32,
+    /// PID of the daemon process. `i32` for consistency with nix::unistd::Pid.
+    pid: i32,
     /// TCP port the HTTP server is bound to.
     port: u16,
     /// Wire-format token: `monocle-v1:<64-hex>`.
     token: String,
-    /// Raw 64-hex-char auth token (no prefix) stored as `authToken` for readers.
-    ///
-    /// BC-2.04.001 PC-7: stored without prefix; the `monocle-v1:` prefix is wire-only.
-    #[serde(rename = "authToken")]
-    auth_token: String,
     /// Schema version string — always `"monocle-lock-v1"`.
     contract_version: String,
     /// ISO 8601 UTC timestamp (millisecond precision) recording when the daemon started.
@@ -346,13 +349,14 @@ struct StartSequenceLockContent {
 /// - Step 3 (port bind) BEFORE Step 8 (lock file write) BEFORE Step 9 (hooks-settings.json write).
 ///
 /// If any step fails, subsequent steps are NOT executed. Steps 1–7 are pre-commit-point;
-/// a failure there leaves the filesystem clean. Post-Step-8 failures must clean up the
+/// a failure there leaves the filesystem clean. Post-Step-8 failures MUST clean up the
 /// lock file (BC-2.04.001 invariant 6).
 ///
 /// # Steps
 ///
 /// 1. Resolve runtime dir and call `ensure_runtime_dir` (mode 0o700).
-/// 2. Check for stale lock via `DaemonLock::acquire` — fails if live process holds lock.
+/// 2. Fail-fast stale lock check: read lock file if present, send signal 0 to check PID
+///    liveness. If live, return `LockFileConflict`. If stale, remove and continue.
 /// 3. Bind `TcpListener` on `127.0.0.1:0` and record the allocated port.
 /// 4. Construct `RingBuffer` with 100 MiB × 5 rotations, Arc-wrapped.
 /// 5. Create bounded `mpsc::channel::<EventBusHookEvent>(4096)`, drop counter `AtomicU64`.
@@ -360,10 +364,9 @@ struct StartSequenceLockContent {
 /// 7. Generate session token: `OsRng` → 32 bytes → 64 hex lowercase (no `monocle-v1:` prefix).
 /// 8. **SOQ-2 commit point**: write lock file via `write_lock_file`, mode 0o600.
 /// 9. Write `hooks-settings.json` via `write_hooks_settings`, mode 0o600.
-/// 10. Init crash recovery checkpoint infrastructure.
-/// 11. Remove any stale UDS socket at `<runtime_dir>/monocle.sock`.
-/// 12. Bind UDS socket at `<runtime_dir>/monocle.sock`, mode 0o600.
-/// 13. Signal startup complete.
+/// 10. Remove any stale UDS socket at `<runtime_dir>/monocle.sock`; bind new socket, mode 0o600.
+/// 11. Init crash recovery checkpoint infrastructure (stateless; verifies path is writable).
+/// 12. Signal startup complete.
 ///
 /// # Errors
 ///
@@ -378,6 +381,49 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
     // Step 1: Ensure runtime dir exists with mode 0o700.
     ensure_runtime_dir(runtime_dir)?;
 
+    // Step 2: Fail-fast stale lock check — detect a live daemon before any expensive
+    // operations (BC-2.04.001 step 2). Read the lock file if present, check PID liveness
+    // via signal 0. If live: return LockFileConflict. If stale: remove and continue.
+    // This is a fail-fast optimization; write_lock_file also checks (defense in depth).
+    {
+        let lock_path = runtime_dir.join("monocle.lock");
+        if lock_path.exists() {
+            let raw = match std::fs::read_to_string(&lock_path) {
+                Ok(s) => s,
+                Err(_) => {
+                    tracing::warn!(
+                        path = %lock_path.display(),
+                        "daemon_start_sequence: step 2 — lock file exists but cannot be read; \
+                         treating as stale and removing"
+                    );
+                    let _ = std::fs::remove_file(&lock_path);
+                    String::new()
+                }
+            };
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) {
+                if let Some(pid) = json.get("pid").and_then(|v| v.as_i64()) {
+                    if let Ok(pid_i32) = i32::try_from(pid) {
+                        let nix_pid = nix::unistd::Pid::from_raw(pid_i32);
+                        if nix::sys::signal::kill(nix_pid, None).is_ok() {
+                            tracing::warn!(
+                                pid = pid_i32,
+                                "daemon_start_sequence: step 2 — live daemon detected (LockFileConflict)"
+                            );
+                            return Err(DaemonStartError::LockFileConflict { pid: pid_i32 });
+                        }
+                        // Stale lock: process not found — remove it.
+                        tracing::info!(
+                            pid = pid_i32,
+                            path = %lock_path.display(),
+                            "daemon_start_sequence: step 2 — stale lock detected; removing"
+                        );
+                        let _ = std::fs::remove_file(&lock_path);
+                    }
+                }
+            }
+        }
+    }
+
     // Step 3: Bind TcpListener on 127.0.0.1:0 — record OS-assigned port.
     // Done before any file write (SOQ-2 invariant: port bind precedes commit point).
     let listener = TcpListener::bind("127.0.0.1:0")
@@ -389,6 +435,7 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         .port();
 
     // Step 4: Construct RingBuffer with 100 MiB hard cap × 5 rotations.
+    // Filename: monocle-events.jsonl (established by S-008 ring buffer tests).
     let ring_path = runtime_dir.join("monocle-events.jsonl");
     let ring_config = crate::ring::RotationConfig {
         soft_threshold_bytes: 50 * 1024 * 1024,
@@ -418,7 +465,7 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
 
     // Step 8: SOQ-2 commit point — write lock file atomically.
     let lock_result = write_lock_file(runtime_dir, port, &auth_token);
-    let (daemon_lock, _started_at) = match lock_result {
+    let (daemon_lock, _auth_token) = match lock_result {
         Ok(pair) => pair,
         Err(e) => {
             // Pre-commit-point failure: no cleanup needed (lock file was not written).
@@ -431,8 +478,8 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
     };
 
     // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2).
+    // INV-6: on failure, remove lock file before returning.
     if let Err(e) = write_hooks_settings(runtime_dir, port, &auth_token) {
-        // INV-6: post-step-8 failure — remove lock file before returning.
         tracing::error!(
             error = %e,
             "daemon_start_sequence: step 9 (write_hooks_settings) failed; removing lock file (INV-6)"
@@ -446,41 +493,92 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         return Err(e);
     }
 
-    // Step 10: Crash recovery checkpoint infrastructure is initialized implicitly —
+    // Step 10: Remove any stale UDS socket then bind fresh socket with mode 0o600.
+    //
+    // NOTE (S-017 scope): `daemon_start_sequence` only validates the socket path is
+    // bindable and creates the socket file with correct permissions. The std UnixListener
+    // is used here for path validation + file creation + permission setting only — it is
+    // immediately dropped after permissions are set. S-021 will rebind the socket with
+    // `tokio::net::UnixListener` for actual async connection handling. The socket file
+    // remains on disk after the std listener drops so that monocle.sock exists in
+    // `runtime_dir` as required by BC-2.04.001 PC-13.
+    {
+        let sock_path = runtime_dir.join("monocle.sock");
+        if sock_path.exists() {
+            if let Err(e) = std::fs::remove_file(&sock_path) {
+                tracing::warn!(
+                    path = %sock_path.display(),
+                    error = %e,
+                    "daemon_start_sequence: failed to remove stale socket (step 10)"
+                );
+                // INV-6: post-step-8 failure — remove lock file before returning.
+                if let Err(cleanup_err) = daemon_lock.release() {
+                    tracing::error!(
+                        error = %cleanup_err,
+                        "daemon_start_sequence: lock file cleanup failed after step 10 \
+                         (stale socket removal) failure"
+                    );
+                }
+                return Err(DaemonStartError::UdsBindFailure(e));
+            }
+        }
+
+        use std::os::unix::net::UnixListener;
+        match UnixListener::bind(&sock_path) {
+            Ok(_uds) => {
+                // Set mode 0o600 before the listener is dropped.
+                if let Err(e) =
+                    std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o600))
+                {
+                    tracing::error!(
+                        path = %sock_path.display(),
+                        error = %e,
+                        "daemon_start_sequence: failed to set socket permissions (step 10)"
+                    );
+                    // INV-6: remove lock file before returning.
+                    if let Err(cleanup_err) = daemon_lock.release() {
+                        tracing::error!(
+                            error = %cleanup_err,
+                            "daemon_start_sequence: lock file cleanup failed after step 10 \
+                             (socket permission) failure"
+                        );
+                    }
+                    return Err(DaemonStartError::UdsBindFailure(e));
+                }
+                // _uds dropped here — socket file remains, S-021 rebinds with tokio listener.
+            }
+            Err(e) => {
+                tracing::error!(
+                    path = %sock_path.display(),
+                    error = %e,
+                    "daemon_start_sequence: UDS bind failed (step 10)"
+                );
+                // INV-6: remove lock file before returning.
+                if let Err(cleanup_err) = daemon_lock.release() {
+                    tracing::error!(
+                        error = %cleanup_err,
+                        "daemon_start_sequence: lock file cleanup failed after step 10 \
+                         (UDS bind) failure"
+                    );
+                }
+                return Err(DaemonStartError::UdsBindFailure(e));
+            }
+        }
+    }
+
+    // Step 11: Crash recovery checkpoint infrastructure is initialized implicitly —
     // write_recovery_checkpoint and read_recovery_checkpoint are stateless functions
-    // operating on the runtime dir path. No additional init step required.
+    // operating on the runtime dir path. No additional init required.
     tracing::debug!(
         runtime_dir = %runtime_dir.display(),
-        "daemon_start_sequence: crash recovery checkpoint infrastructure ready (step 10)"
+        "daemon_start_sequence: crash recovery checkpoint infrastructure ready (step 11)"
     );
 
-    // Step 11: Remove stale UDS socket before bind.
-    let sock_path = runtime_dir.join("monocle.sock");
-    if sock_path.exists() {
-        std::fs::remove_file(&sock_path).map_err(|e| {
-            tracing::warn!(
-                path = %sock_path.display(),
-                error = %e,
-                "daemon_start_sequence: failed to remove stale socket (step 11)"
-            );
-            DaemonStartError::UdsBindFailure(e)
-        })?;
-    }
-
-    // Step 12: Bind UDS socket at runtime_dir/monocle.sock with mode 0o600.
-    {
-        use std::os::unix::net::UnixListener;
-        let _uds = UnixListener::bind(&sock_path).map_err(DaemonStartError::UdsBindFailure)?;
-        std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o600))
-            .map_err(DaemonStartError::UdsBindFailure)?;
-        // _uds is dropped here; the socket file remains on disk.
-    }
-
-    // Step 13: Startup complete. Log and return.
+    // Step 12: Startup complete. Log and return.
     tracing::info!(
         runtime_dir = %runtime_dir.display(),
         port = port,
-        "daemon_start_sequence: all 13 steps complete (BC-2.04.001)"
+        "daemon_start_sequence: all steps complete (BC-2.04.001)"
     );
 
     Ok(())
@@ -576,22 +674,21 @@ pub fn write_hooks_settings(
 /// (`"monocle-lock-v1"`) per BC-2.04.001 PC-8, distinct from the legacy
 /// [`crate::lock::LockFileContent`] that uses `contract_version: u32`.
 ///
-/// # Lock file schema
+/// # Lock file schema (BC-2.04.001 PC-15 — exactly 5 fields)
 ///
 /// ```json
 /// {
 ///   "pid": 12345,
 ///   "port": 9001,
 ///   "token": "monocle-v1:<64-hex>",
-///   "authToken": "<64-hex>",
 ///   "contract_version": "monocle-lock-v1",
 ///   "started_at": "2026-05-27T10:00:00.000Z"
 /// }
 /// ```
 ///
-/// - `authToken`: raw 64-hex-char token WITHOUT the `monocle-v1:` prefix (BC-2.04.001 PC-7).
-/// - `token`: wire-format token WITH the `monocle-v1:` prefix (for external tool use).
+/// - `token`: wire-format token WITH the `monocle-v1:` prefix.
 /// - `contract_version`: string `"monocle-lock-v1"` (BC-2.04.001 PC-8).
+/// - `pid`: `i32` for consistency with nix::unistd::Pid (safe — modern OS PIDs fit in i32).
 ///
 /// # Errors
 ///
@@ -606,11 +703,17 @@ pub fn write_lock_file(
     let lock_path = runtime_dir.join("monocle.lock");
     let sock_path = runtime_dir.join("monocle.sock");
 
-    // Check for an existing live lock (reuse DaemonLock::check_existing_lock logic
-    // by reading the file directly with the same stale/live check).
+    // Defense-in-depth check for an existing live lock (primary check is step 2
+    // in daemon_start_sequence; this is a second guard at the write call-site).
     if lock_path.exists() {
         // Read and check for live PID conflicts via nix::sys::signal::kill.
-        let raw = std::fs::read_to_string(&lock_path).unwrap_or_default();
+        let raw = std::fs::read_to_string(&lock_path).unwrap_or_else(|_| {
+            tracing::warn!(
+                path = %lock_path.display(),
+                "write_lock_file: lock file exists but cannot be read; treating as stale"
+            );
+            String::new()
+        });
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) {
             if let Some(pid) = json.get("pid").and_then(|v| v.as_i64()) {
                 if let Ok(pid_i32) = i32::try_from(pid) {
@@ -634,10 +737,10 @@ pub fn write_lock_file(
     let wire_token = format!("monocle-v1:{auth_token}");
 
     let content = StartSequenceLockContent {
-        pid: std::process::id(),
+        // i32 cast is safe: modern OS PIDs always fit in i32 (max 4194304 on Linux).
+        pid: std::process::id() as i32,
         port,
         token: wire_token,
-        auth_token: auth_token.to_string(),
         contract_version: "monocle-lock-v1".to_string(),
         started_at: started_at.clone(),
     };
@@ -680,10 +783,11 @@ pub fn write_lock_file(
 /// (now-dead) daemon endpoint. If the file does not exist (e.g., daemon crashed
 /// before step 9), this function returns `Ok(())` (idempotent).
 ///
-/// # Errors
+/// # Error handling (BC-2.04.010 PC-5)
 ///
-/// Returns `std::io::Error` only if the file exists but cannot be removed (e.g.,
-/// permission denied). `NotFound` is treated as success.
+/// Errors are logged at WARN level and swallowed — shutdown MUST continue even if
+/// the file cannot be removed (e.g., permission denied). This function always
+/// returns `Ok(())`.
 pub fn remove_hooks_settings(runtime_dir: &Path) -> std::io::Result<()> {
     let hs_path = runtime_dir.join("hooks-settings.json");
     match std::fs::remove_file(&hs_path) {
@@ -692,24 +796,24 @@ pub fn remove_hooks_settings(runtime_dir: &Path) -> std::io::Result<()> {
                 path = %hs_path.display(),
                 "hooks-settings.json removed on graceful shutdown (BC-2.04.010 PC-7)"
             );
-            Ok(())
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             tracing::debug!(
                 path = %hs_path.display(),
                 "hooks-settings.json not found on shutdown removal (already absent)"
             );
-            Ok(())
         }
         Err(e) => {
-            tracing::error!(
+            // BC-2.04.010 PC-5: log at WARN and continue — shutdown must not be blocked
+            // by a hooks-settings.json removal failure.
+            tracing::warn!(
                 path = %hs_path.display(),
                 error = %e,
-                "failed to remove hooks-settings.json on shutdown"
+                "failed to remove hooks-settings.json on shutdown; continuing (BC-2.04.010 PC-5)"
             );
-            Err(e)
         }
     }
+    Ok(())
 }
 
 /// Terminate the daemon process with the exit code corresponding to `reason`.

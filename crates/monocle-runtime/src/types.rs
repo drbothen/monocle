@@ -275,21 +275,30 @@ pub struct HooksMap {
 /// A single hook matcher + command list entry.
 ///
 /// The `matcher` field filters which tool invocations trigger the hook.
-/// An absent matcher means "all invocations".
+/// An empty string matcher means "match all invocations" — BC-2.04.010 PC-3
+/// requires the `"matcher": ""` key to be present (not absent) in every active
+/// hook entry, so this field is always serialized.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HookEntry {
-    /// Optional tool name / pattern matcher. `None` means match all.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub matcher: Option<String>,
+    /// Tool name / pattern matcher. Empty string means match all.
+    ///
+    /// BC-2.04.010 PC-3 schema: `"matcher": ""` must be present in every active
+    /// hook entry. Do NOT use `Option<String>` with `skip_serializing_if` here —
+    /// the field must always be emitted so Claude Code sees the expected key.
+    #[serde(default)]
+    pub matcher: String,
     /// The list of hook commands to execute when the hook fires.
     pub hooks: Vec<HookCommand>,
 }
 
 impl HookEntry {
-    /// Construct a hook entry with no matcher (matches all) and a single shell command.
+    /// Construct a hook entry with empty matcher (matches all) and a single shell command.
+    ///
+    /// Sets `matcher` to `""` per BC-2.04.010 PC-3: the key must be present in the
+    /// serialized JSON with an empty string value for "match all" semantics.
     pub fn command_all(command: String) -> Self {
         Self {
-            matcher: None,
+            matcher: String::new(),
             hooks: vec![HookCommand {
                 kind: "command".to_string(),
                 command,
