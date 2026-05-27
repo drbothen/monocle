@@ -55,6 +55,24 @@ fn stop_cmd(runtime_dir: &std::path::Path) -> Command {
     cmd
 }
 
+/// Spawn the `test-stubborn-daemon` binary as a surrogate "daemon" process that ignores
+/// SIGTERM. Returns the `Child` handle.
+///
+/// This binary is the preferred surrogate for stop-timeout tests because:
+/// - It installs SIG_IGN for SIGTERM atomically on startup (no race window).
+/// - It has NO child processes (eliminates orphan process accumulation between tests).
+/// - It exits cleanly on SIGKILL (test cleanup).
+///
+/// The `spawn()` call here returns a `std::process::Child` — separate from
+/// `assert_cmd::Command`, which wraps the child differently. We use `std::process::Child`
+/// directly so we can call `.id()`, `.kill()`, and `.wait()` on it.
+fn spawn_stubborn_daemon() -> std::process::Child {
+    let bin_path = assert_cmd::cargo::cargo_bin("test-stubborn-daemon");
+    std::process::Command::new(bin_path)
+        .spawn()
+        .expect("spawn test-stubborn-daemon")
+}
+
 /// Write a lock file fixture to `dir/monocle.lock` with the given PID and port.
 /// Uses `NamedTempFile + persist` per the project anti-pattern rule against naked
 /// `std::fs::write`.
@@ -277,72 +295,60 @@ fn test_ac_011_stop_stale_lock_stderr_format() {
 /// write `error: daemon did not exit within 15 s; it may still be draining` to stderr
 /// and exit 2. The daemon is NOT killed.
 ///
-/// We simulate a process that does not exit by using `sleep 60` as the target "daemon".
-/// After SIGTERM, `sleep` will exit; however, for the timeout path we need a process
-/// that ignores SIGTERM. This is complex to set up in a unit integration test environment.
+/// # Test Design
 ///
-/// For Red Gate purposes, the todo!() stub produces exit 101, which is the wrong exit
-/// code. The test asserts exit 2 → fails.
+/// We use the `test-stubborn-daemon` binary (a Rust test helper compiled alongside
+/// monocle) as the surrogate "daemon". It installs SIG_IGN for SIGTERM on startup,
+/// has no child processes (eliminating orphan accumulation between tests), and sleeps
+/// for 60 seconds before exiting normally.
 ///
-/// NOTE: A full implementation test for the timeout path would require a process that
-/// ignores SIGTERM for >15 seconds. This test documents the contract; the full trigger
-/// is exercised in S-018 with a custom subprocess that overrides SIGTERM handling.
-///
-/// RED GATE: This test will FAIL because `cmd_daemon_stop()` is `todo!()`.
+/// The stop timeout is shortened to 2 seconds via `MONOCLE_STOP_TIMEOUT_SECS=2` to
+/// keep CI fast. The error message in stderr always reads "15 s" (per the BC contract)
+/// regardless of the configured timeout.
 ///
 /// Traces to BC-2.04.005 PC-7, EC-2.04.005-04, AC-012.
 #[test]
 fn test_ac_012_stop_timeout_exits_2_with_stderr() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
 
-    // Spawn a process that ignores SIGTERM by trapping it in a shell subshell.
-    // `sh -c 'trap "" TERM; sleep 60'` — ignores SIGTERM for the duration.
-    // This ensures the 15-second poll window expires without process exit.
-    let mut stubborn = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("trap '' TERM; sleep 60")
-        .spawn()
-        .expect("spawn SIGTERM-ignoring surrogate");
+    // Spawn the test-stubborn-daemon: ignores SIGTERM, no child processes.
+    let mut stubborn = spawn_stubborn_daemon();
 
     let stubborn_pid = stubborn.id() as i32;
     write_lock_fixture(tmp.path(), stubborn_pid, 39_205);
 
-    // Allow 20 seconds: 15-second poll window + 5 seconds buffer.
+    // MONOCLE_STOP_TIMEOUT_SECS=2 shortens the poll window to 2 seconds for CI speed.
+    // The error message always says "15 s" per the BC contract.
     stop_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(20))
+        .env("MONOCLE_STOP_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(2); // WILL FAIL: todo!() produces 101
+        .code(2);
 
-    // SIGKILL the surrogate to release it (test cleanup only — NOT what the stop command does).
     let _ = stubborn.kill();
     let _ = stubborn.wait();
 }
 
 /// BC-2.04.005 PC-7: Verify the exact stderr message for the timeout path.
 ///
-/// RED GATE: This test will FAIL because `cmd_daemon_stop()` is `todo!()`.
-///
 /// Traces to BC-2.04.005 PC-7, AC-012.
 #[test]
 fn test_ac_012_stop_timeout_stderr_format() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
 
-    let mut stubborn = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("trap '' TERM; sleep 60")
-        .spawn()
-        .expect("spawn SIGTERM-ignoring surrogate");
+    let mut stubborn = spawn_stubborn_daemon();
 
     let stubborn_pid = stubborn.id() as i32;
     write_lock_fixture(tmp.path(), stubborn_pid, 39_206);
 
     stop_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(20))
+        .env("MONOCLE_STOP_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(2) // WILL FAIL: todo!() produces 101
+        .code(2)
         .stderr(predicate::str::contains(
             "error: daemon did not exit within 15 s; it may still be draining",
-        )); // WILL FAIL: todo!() panic message instead
+        ));
 
     let _ = stubborn.kill();
     let _ = stubborn.wait();
@@ -352,27 +358,22 @@ fn test_ac_012_stop_timeout_stderr_format() {
 /// (SIGKILL was NOT sent). Verify that the target PID remains alive after `daemon stop`
 /// exits with code 2.
 ///
-/// RED GATE: This test will FAIL because `cmd_daemon_stop()` is `todo!()`.
-///
 /// Traces to BC-2.04.005 PC-7, INV-1, INV-5, AC-012, AC-013.
 #[test]
 fn test_ac_012_stop_timeout_daemon_still_alive_no_sigkill() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
 
-    let mut stubborn = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("trap '' TERM; sleep 60")
-        .spawn()
-        .expect("spawn SIGTERM-ignoring surrogate");
+    let mut stubborn = spawn_stubborn_daemon();
 
     let stubborn_pid = stubborn.id() as i32;
     write_lock_fixture(tmp.path(), stubborn_pid, 39_207);
 
-    // Run stop; expect exit 2 and that the surrogate is still alive afterward.
+    // Run stop with a 2-second timeout; expect exit 2.
     stop_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(20))
+        .env("MONOCLE_STOP_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(2); // WILL FAIL: todo!() produces 101
+        .code(2);
 
     // After stop exits with code 2, verify the process is still alive.
     // `kill(pid, 0)` returns Ok(()) when the process exists, Err when it does not.

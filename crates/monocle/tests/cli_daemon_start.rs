@@ -67,6 +67,31 @@ fn start_cmd(runtime_dir: &std::path::Path) -> Command {
     cmd
 }
 
+/// Create a fake daemon script in `dir` that sleeps for 30 seconds but never writes a
+/// lock file. Returns the path to the script.
+///
+/// This script is used by the start-timeout tests: by pointing `MONOCLE_DAEMON_BIN` at
+/// this script and setting `MONOCLE_START_TIMEOUT_SECS=2`, we simulate the scenario where
+/// the daemon subprocess runs but never signals readiness (lock file never appears).
+///
+/// The script sleeps long enough to outlast the 2-second test timeout without exiting
+/// prematurely (which would trigger exit 71 instead of the timeout path exit 1).
+fn make_fake_daemon_script(dir: &std::path::Path) -> std::path::PathBuf {
+    use std::io::Write as _;
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let script_path = dir.join("fake-daemon.sh");
+    let mut f = std::fs::File::create(&script_path).expect("create fake daemon script");
+    f.write_all(b"#!/bin/sh\n# Fake daemon: runs but never writes a lock file.\nsleep 30\n")
+        .expect("write fake daemon script");
+    std::fs::set_permissions(
+        &script_path,
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .expect("set executable on fake daemon script");
+    script_path
+}
+
 /// Write a lock file fixture to `dir/monocle.lock` with the given PID and port.
 /// Uses `NamedTempFile + persist` per the project anti-pattern rule against naked
 /// `std::fs::write`. The `pid` in the fixture is used to simulate a live or dead daemon.
@@ -189,46 +214,49 @@ fn test_ac_006_start_already_running_stderr_format() {
 /// BC-2.04.004 PC-7: When the lock file does not appear within 10 seconds, the command
 /// must write `error: daemon failed to start within 10 s` to stderr and exit 1.
 ///
-/// We simulate the timeout by providing a MONOCLE_RUNTIME_DIR where the daemon subprocess
-/// (if it ran) would write a lock file, but since the subprocess is not actually started
-/// (todo!() panics before spawning anything), this exercises a narrower path: the binary
-/// panics at the todo!() call site before even attempting to poll.
+/// # Test Design
 ///
-/// The meaningful test for the timeout path will succeed once cmd_daemon_start() is
-/// implemented by S-017. For Red Gate purposes, the failure mode here is exit 101
-/// (todo!() panic) instead of exit 1 with the timeout message.
+/// We simulate the timeout by:
+/// 1. Pointing `MONOCLE_DAEMON_BIN` at a fake daemon script that sleeps for 30 seconds
+///    but never writes a lock file.
+/// 2. Setting `MONOCLE_START_TIMEOUT_SECS=2` to shorten the polling window to 2 seconds
+///    (keeps CI fast while still exercising the full timeout code path).
 ///
-/// RED GATE: This test will FAIL because `cmd_daemon_start()` is `todo!()`.
+/// The fake daemon subprocess runs and stays alive, so the implemention does NOT detect
+/// premature subprocess exit (which would give exit 71). Instead, it polls for the lock
+/// file for 2 seconds, finds nothing, and exits 1 with the timeout message.
 ///
 /// Traces to BC-2.04.004 PC-7, EC-2.04.004-04, AC-007.
 #[test]
 fn test_ac_007_start_timeout_exits_1_with_stderr() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
+    let fake_daemon = make_fake_daemon_script(tmp.path());
 
-    // No lock file written → if the implementation ran, it would time out after 10 s.
-    // With todo!() the binary panics at entry, producing exit 101.
     start_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(15)) // allow room for real polling
+        .env("MONOCLE_DAEMON_BIN", &fake_daemon)
+        .env("MONOCLE_START_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10)) // allow room: 2s timeout + buffer
         .assert()
-        .code(1); // WILL FAIL: todo!() produces 101
+        .code(1);
 }
 
 /// BC-2.04.004 PC-7: Verify the exact stderr message format for the timeout case.
-///
-/// RED GATE: This test will FAIL because `cmd_daemon_start()` is `todo!()`.
 ///
 /// Traces to BC-2.04.004 PC-7, AC-007.
 #[test]
 fn test_ac_007_start_timeout_stderr_format() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
+    let fake_daemon = make_fake_daemon_script(tmp.path());
 
     start_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(15))
+        .env("MONOCLE_DAEMON_BIN", &fake_daemon)
+        .env("MONOCLE_START_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(1) // WILL FAIL: todo!() produces 101
+        .code(1)
         .stderr(predicate::str::contains(
             "error: daemon failed to start within 10 s",
-        )); // WILL FAIL: todo!() panic message
+        ));
 }
 
 // ---------------------------------------------------------------------------
@@ -264,18 +292,21 @@ fn test_ac_008_exit_code_1_already_running() {
 
 /// BC-2.04.004 PC-8: Exit code 1 on timeout.
 ///
-/// RED GATE: This test will FAIL because `cmd_daemon_start()` is `todo!()`.
+/// Uses the fake daemon script + short timeout (2 s) to exercise the timeout path
+/// without blocking CI for 10 seconds.
 ///
 /// Traces to BC-2.04.004 PC-8, AC-008.
 #[test]
 fn test_ac_008_exit_code_1_timeout() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
+    let fake_daemon = make_fake_daemon_script(tmp.path());
 
-    // No lock file → timeout path (if implementation ran). todo!() panics first.
     start_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(15))
+        .env("MONOCLE_DAEMON_BIN", &fake_daemon)
+        .env("MONOCLE_START_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(1); // WILL FAIL: todo!() produces 101
+        .code(1);
 }
 
 /// BC-2.04.004 PC-8 + EC-2.04.004-06: Exit code 70 when runtime directory cannot be resolved.
@@ -417,16 +448,20 @@ fn test_ac_006_already_running_produces_no_stdout() {
 
 /// BC-2.04.004 INV-4: Timeout error path produces no stdout output.
 ///
-/// RED GATE: This test will FAIL because `cmd_daemon_start()` is `todo!()`.
+/// Uses the fake daemon script + short timeout (2 s) to exercise the timeout path
+/// without blocking CI for 10 seconds.
 ///
 /// Traces to BC-2.04.004 INV-4, AC-007.
 #[test]
 fn test_ac_007_timeout_produces_no_stdout() {
     let tmp = tempfile::tempdir().expect("create temp runtime dir");
+    let fake_daemon = make_fake_daemon_script(tmp.path());
 
     start_cmd(tmp.path())
-        .timeout(std::time::Duration::from_secs(15))
+        .env("MONOCLE_DAEMON_BIN", &fake_daemon)
+        .env("MONOCLE_START_TIMEOUT_SECS", "2")
+        .timeout(std::time::Duration::from_secs(10))
         .assert()
-        .code(1) // WILL FAIL: todo!() produces 101
+        .code(1)
         .stdout(predicate::str::is_empty());
 }

@@ -15,6 +15,10 @@ workspace = true
 name = "monocle"
 path = "src/main.rs"
 
+[[bin]]
+name = "test-stubborn-daemon"
+path = "src/bin/test_stubborn_daemon.rs"
+
 [dependencies]
 monocle-runtime = { path = "../monocle-runtime" }
 clap = { workspace = true, features = ["derive"] }

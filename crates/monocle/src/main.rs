@@ -59,20 +59,44 @@ const EXIT_RUNTIME_DIR_UNRESOLVABLE: i32 = 70;
 const EXIT_INTERNAL_ERROR: i32 = 71;
 
 // ---------------------------------------------------------------------------
-// Timing constants
+// Timing constants (with test-override env vars)
 // ---------------------------------------------------------------------------
 
-/// Maximum time to wait for the lock file to appear after spawning the daemon (BC-2.04.004 PC-7).
-const DAEMON_START_TIMEOUT: Duration = Duration::from_secs(10);
+/// Default maximum time to wait for the lock file to appear after spawning the daemon.
+///
+/// Per BC-2.04.004 PC-7, production default is 10 seconds.
+/// Override via `MONOCLE_START_TIMEOUT_SECS` for testing (e.g., set to 1 or 2).
+const DAEMON_START_TIMEOUT_DEFAULT_SECS: u64 = 10;
 
 /// Poll interval when waiting for the lock file to appear (100 ms per spec).
 const DAEMON_START_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
-/// Maximum time to wait for the daemon process to exit after SIGTERM (BC-2.04.005 PC-7).
-const DAEMON_STOP_TIMEOUT: Duration = Duration::from_secs(15);
+/// Default maximum time to wait for the daemon process to exit after SIGTERM.
+///
+/// Per BC-2.04.005 PC-7, production default is 15 seconds.
+/// Override via `MONOCLE_STOP_TIMEOUT_SECS` for testing (e.g., set to 1 or 2).
+const DAEMON_STOP_TIMEOUT_DEFAULT_SECS: u64 = 15;
 
 /// Poll interval when waiting for the daemon process to exit (1 s per spec).
 const DAEMON_STOP_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Resolve the daemon start timeout from `MONOCLE_START_TIMEOUT_SECS` or the default (10 s).
+fn daemon_start_timeout() -> Duration {
+    std::env::var("MONOCLE_START_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(Duration::from_secs(DAEMON_START_TIMEOUT_DEFAULT_SECS))
+}
+
+/// Resolve the daemon stop timeout from `MONOCLE_STOP_TIMEOUT_SECS` or the default (15 s).
+fn daemon_stop_timeout() -> Duration {
+    std::env::var("MONOCLE_STOP_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(Duration::from_secs(DAEMON_STOP_TIMEOUT_DEFAULT_SECS))
+}
 
 fn main() {
     let cli = Cli::parse();
@@ -161,9 +185,11 @@ fn cmd_daemon_start() -> i32 {
         }
     };
 
-    // Step 5: Poll for the lock file to appear (100 ms intervals, 10 s total).
+    // Step 5: Poll for the lock file to appear (100 ms intervals, configurable timeout).
     // Also check whether the daemon subprocess exited prematurely.
-    let deadline = Instant::now() + DAEMON_START_TIMEOUT;
+    // The timeout is configurable via MONOCLE_START_TIMEOUT_SECS (for testing) and
+    // defaults to 10 seconds in production (BC-2.04.004 PC-7).
+    let deadline = Instant::now() + daemon_start_timeout();
 
     loop {
         // Lock file appeared → daemon is ready.
@@ -191,7 +217,7 @@ fn cmd_daemon_start() -> i32 {
 
         // Check timeout.
         if Instant::now() >= deadline {
-            // Kill the orphaned subprocess (it failed to write lock within 10 s).
+            // Kill the orphaned subprocess (it failed to write lock within the timeout).
             let _ = nix::sys::signal::kill(
                 nix::unistd::Pid::from_raw(child.id() as i32),
                 nix::sys::signal::Signal::SIGTERM,
@@ -293,8 +319,10 @@ fn cmd_daemon_stop() -> i32 {
         return EXIT_CONFLICT;
     }
 
-    // Step 6: Poll for the daemon process to exit (1 s intervals, 15 s total).
-    let deadline = Instant::now() + DAEMON_STOP_TIMEOUT;
+    // Step 6: Poll for the daemon process to exit (1 s intervals, configurable timeout).
+    // The timeout is configurable via MONOCLE_STOP_TIMEOUT_SECS (for testing) and
+    // defaults to 15 seconds in production (BC-2.04.005 PC-7).
+    let deadline = Instant::now() + daemon_stop_timeout();
 
     loop {
         std::thread::sleep(DAEMON_STOP_POLL_INTERVAL);
@@ -312,6 +340,8 @@ fn cmd_daemon_stop() -> i32 {
         if Instant::now() >= deadline {
             // BC-2.04.005 PC-7: Timeout — do NOT send SIGKILL. Report to user.
             // BC-2.04.005 INV-1: SIGKILL is forbidden under any circumstances.
+            // The stderr message always says "15 s" per the BC contract
+            // (regardless of MONOCLE_STOP_TIMEOUT_SECS, which is test-only).
             eprintln!("error: daemon did not exit within 15 s; it may still be draining");
             return EXIT_STOP_TIMEOUT;
         }
@@ -385,12 +415,28 @@ fn read_lock_pid_if_live(lock_path: &std::path::Path) -> Option<i32> {
     }
 }
 
-/// Find the `monocle-runtime` binary, expected to be a sibling of the current executable.
+/// Find the `monocle-runtime` binary to spawn as the daemon subprocess.
 ///
 /// Resolution order:
-/// 1. Same directory as the current executable (`current_exe()` parent + "monocle-runtime").
-/// 2. Returns `Err` if `current_exe()` cannot be determined or the sibling does not exist.
+/// 1. `MONOCLE_DAEMON_BIN` environment variable — if set, use that path directly.
+///    This is a test-only escape hatch: tests can set this to a fake binary (e.g.,
+///    a `sleep` command) to simulate specific daemon behaviors (e.g., never writing
+///    a lock file, which triggers the start-timeout code path).
+/// 2. Same directory as the current executable (`current_exe()` parent + "monocle-runtime").
+/// 3. Returns `Err` if `current_exe()` cannot be determined or the sibling does not exist.
 fn find_daemon_binary() -> Result<std::path::PathBuf, anyhow::Error> {
+    // Test-only override: MONOCLE_DAEMON_BIN lets tests inject a fake daemon binary.
+    if let Ok(override_bin) = std::env::var("MONOCLE_DAEMON_BIN") {
+        let path = std::path::PathBuf::from(&override_bin);
+        if path.exists() {
+            return Ok(path);
+        }
+        // If the override path doesn't exist as a file (e.g., it's a shell builtin like
+        // `/bin/sleep`), still return it — Command::new() can invoke it via PATH resolution.
+        // We trust the test to provide a valid binary path.
+        return Ok(path);
+    }
+
     let current_exe = std::env::current_exe()
         .map_err(|e| anyhow::anyhow!("cannot determine current executable path: {}", e))?;
 

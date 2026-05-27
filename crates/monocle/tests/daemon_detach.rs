@@ -40,8 +40,9 @@
 //! The test verifies this by:
 //! - Sending SIGHUP to the daemon PID after start exits.
 //! - Checking that the daemon is still alive 100ms later.
-//! (A non-detached daemon would terminate on SIGHUP if its process group inherits the
-//! terminal; a properly detached daemon ignores SIGHUP or has a new session.)
+//!
+//! A non-detached daemon would terminate on SIGHUP if its process group inherits the
+//! terminal; a properly detached daemon ignores SIGHUP or has a new session.
 
 // Test files: unwrap/expect are idiomatic assertion amplification in tests, not production.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
