@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:04:00Z
@@ -15,7 +15,7 @@ capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D-012, F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -100,6 +100,20 @@ On graceful shutdown (SIGTERM/SIGINT, BC-2.01.004), the `EventBusTx` sender stor
 causing `EventBusRx.recv()` in the fan-out task to return `None`, terminating the fan-out
 loop cleanly. The fan-out task MUST NOT be forcibly aborted; it must exit via channel close.
 
+**PC-8 — DropCounterUpdate debounce: at most once per 100ms.**
+The daemon sends `ServerToClient::DropCounterUpdate` messages to connected TUI clients at
+most once per 100ms, regardless of how many drop events occur within that window. The value
+sent in each `DropCounterUpdate` reflects the cumulative `DaemonState.drop_counter` value
+at debounce-fire time (not a delta since the last update). Implementation: a debounce timer
+(tokio interval or `tokio::time::sleep` loop) fires at 100ms cadence; the timer task reads
+`DaemonState.drop_counter` with `Ordering::Relaxed` and sends `DropCounterUpdate` only if
+the value has changed since the last send. Architecture source: SS-ipc.md lines 288-289
+(DropCounterUpdate debounce specification).
+- **Rationale:** Without debounce, a burst of 4,096 drop events in 10ms would generate
+  4,096 IPC messages, saturating the TUI IPC channel. The 100ms debounce coalesces all
+  drops in the window into a single status update, protecting TUI IPC bandwidth while
+  still providing timely drop visibility to the operator.
+
 ## Invariants
 
 1. The channel capacity is exactly N=4096. No runtime override of this value is permitted
@@ -157,7 +171,7 @@ loop cleanly. The fan-out task MUST NOT be forcibly aborted; it must exit via ch
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — "bounded event bus" is named explicitly as a CAP-004 responsibility; this BC is the direct operationalization of the bounded event bus architecture: channel capacity, try_send semantics, drop counter, and fan-out task wiring |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — the event bus drop counter does NOT exempt events from ring writes; ring append (PC-6 in BC-2.04.007/008/009) happens independently of bus saturation; bus drops affect TUI delivery only, not ring persistence) |
 | Architecture Module | monocle-runtime (event bus initialization, fan-out task) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §Bounded Event Bus |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §Bounded Event Bus |
 | Cross-Ref | BC-2.04.007 (PreToolUse handler — PC-5 uses this event bus); BC-2.04.008 (Notification handler — PC-5 uses this bus); BC-2.04.009 (Stop/SessionStart/PromptSubmit — PC-5 uses this bus); BC-2.04.001 (daemon start sequence step 5 initializes this bus) |
 | Test File | `monocle-runtime/tests/event_bus.rs` |
 | Test Name | `test_BC_2_04_011_bounded_event_bus` |
@@ -195,3 +209,26 @@ S-TBD — Implement bounded event bus with `mpsc::channel(4096)`, try_send drop 
 - DI-001 clarification: event bus drops affect TUI delivery only; ring appends in hook
   handlers (BC-2.04.007/008/009 PC-6) are independent and not affected by bus saturation.
 - SE-16d PASS: 2026-05-26T12:04:00Z > chain prior 2026-05-26T12:03:00Z. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D-012 MEDIUM — DropCounterUpdate debounce postcondition added** (2026-05-26T00:00:00Z):
+- PC-8 added: `ServerToClient::DropCounterUpdate` is sent at most once per 100ms regardless
+  of how many drop events occur within that window; value reflects cumulative counter at
+  debounce-fire time. Architecture source: SS-ipc.md lines 288-289.
+- Rationale: without debounce, a 4,096-drop burst would generate 4,096 IPC messages,
+  saturating the TUI IPC channel. The 100ms window coalesces drops into a single status
+  update while preserving timely operator visibility.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.2.0
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.3.0
+
+**F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.

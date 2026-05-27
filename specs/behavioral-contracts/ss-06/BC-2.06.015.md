@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T14:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -126,7 +126,7 @@ future keybinding conflicts when the full trace-to-source behavior is implemente
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the `[t]` trace-to-source stub within the "permission overlay stack" component of CAP-006; the stub reserves the keybinding for Phase 2 Static plane integration while ensuring the binding is discoverable in Phase 1 via the hint line |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: the stub sends no IPC message and writes no files; it is a pure render-state change) |
 | Architecture Module | monocle-core (Action::PermissionTraceToSource variant — reserved); monocle-tui (overlay renderer stub arm for PermissionTraceToSource) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Trace-to-Source Stub; §Action Enum (PermissionTraceToSource variant with `// Phase 1: stub` comment); §Status Bar §Keybinding hint line (Overlay mode includes `t: trace`) |
+| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Trace-to-Source Stub; §Action Enum (PermissionTraceToSource variant with `// Phase 1: stub` comment); §Status Bar §Keybinding hint line (Overlay mode includes `t: trace`) |
 | Cross-Ref | BC-2.06.001 (pure transition function — PermissionTraceToSource identity arm), BC-2.06.003 (5-level binding precedence — Builtin level for `[t]`) |
 | Test File | `monocle-tui/tests/overlay_stub.rs` |
 | Test Name | `test_BC_2_06_015_trace_to_source_stub_renders_placeholder` |
@@ -154,7 +154,7 @@ S-TBD — Implement `[t]` trace-to-source stub: register Builtin binding, render
 
 **Initial production** (2026-05-26T14:00:00Z):
 - BC-2.06.015 created as part of SS-06 TUI behavioral contract burst (BCs 009–015).
-- Reads: SS-tui.md v1.0.0 §Permission Overlay §Trace-to-Source Stub, §Action Enum
+- Reads: SS-tui.md v1.1.0 §Permission Overlay §Trace-to-Source Stub, §Action Enum
   (PermissionTraceToSource variant); prd-expansion-scope.md §3.3 BC-2.06.015 description.
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
 - DI-007 cited: stub renders placeholder text only; no file writes or IPC sends.
@@ -162,3 +162,22 @@ S-TBD — Implement `[t]` trace-to-source stub: register Builtin binding, render
 - Invariant 1 records that `[t]` is a `Builtin` binding (non-overridable in Phase 1).
 - Postcondition 7 documents why the variant must be defined in `monocle-core` even though
   it does nothing in Phase 1: to prevent missing-match-arm compiler errors.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

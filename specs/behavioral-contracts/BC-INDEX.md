@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.15"
+version: "1.19"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T13:00:00Z
+timestamp: 2026-05-27T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -83,7 +83,7 @@ traces_to: prd.md
 
 > Architecture source: `architecture/SS-daemon-wiring.md`
 > ARCH-INDEX subsystem: SS-04
-> Capability: CAP-004 ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint routing; bounded event bus")
+> Capability: CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation")
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
@@ -106,7 +106,7 @@ traces_to: prd.md
 
 > Architecture source: `architecture/SS-ipc.md`
 > ARCH-INDEX subsystem: SS-05
-> Capability: CAP-005 ("Unix domain socket IPC between TUI client and daemon; message types; reconnection; SOQ-3 disconnect invariant")
+> Capability: CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear")
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
@@ -125,7 +125,7 @@ traces_to: prd.md
 
 > Architecture source: `architecture/SS-tui.md`
 > ARCH-INDEX subsystem: SS-06
-> Capability: CAP-006 ("ratatui TUI; AppMode state machine; keybinding dispatch; permission overlay; sessions panel; event ribbon; status bar")
+> Capability: CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration")
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
@@ -151,6 +151,7 @@ traces_to: prd.md
 | BC-2.06.020 | Status Bar: Breadcrumb | P1 | active | ss-06/BC-2.06.020.md | — |
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 | active | ss-06/BC-2.06.021.md | — |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 | active | ss-06/BC-2.06.022.md | — |
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 | active | ss-06/BC-2.06.023.md | — |
 
 ---
 
@@ -236,10 +237,10 @@ traces_to: prd.md
 | SS-03 Engine Module | 4 | 4 | 0 |
 | SS-04 Daemon Wiring | 12 | 12 | 0 |
 | SS-05 IPC | 8 | 8 | 0 |
-| SS-06 TUI | 22 | 22 | 0 |
+| SS-06 TUI | 23 | 23 | 0 |
 | SS-07 Config | 6 | 6 | 0 |
 | SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
-| **Total** | **111** | **111** | **0** |
+| **Total** | **112** | **112** | **0** |
 
 ---
 
@@ -660,3 +661,89 @@ SE-16d monotonicity PASS: 2026-05-19T12:14:00Z > prior 2026-05-19T00:00:00Z (v1.
 - BC-INDEX titles: all 48 H1 titles are authoritative per bc_h1_is_title_source_of_truth policy. Titles extracted verbatim from BC file H1 headings.
 - Old ID (historical) column: all 48 new BCs have no historical IDs (greenfield BCs, no renumbering occurred).
 - SE-16d monotonicity PASS: 2026-05-26T13:00:00Z > prior 2026-05-20T21:00:00Z (v1.14). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.16
+
+**Phase 1d Pass 1 adversarial findings — F-P1D-001/002/003/006/012 closure** (2026-05-27T00:00:00Z):
+
+**F-P1D-001 CRITICAL — capability mis-anchoring corrected in 6 SS-04 BCs:**
+- BC-2.04.001, BC-2.04.002, BC-2.04.003, BC-2.04.004, BC-2.04.005, BC-2.04.006:
+  frontmatter `capability: CAP-001` → `capability: CAP-004` per F-P1D-001.
+- Traceability §L2 Capability and §Capability Anchor Justification updated in all 6 files
+  to cite CAP-004 ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant;
+  hook endpoint routing; bounded event bus") per ARCH-INDEX §SS-04 Capability Traceability.
+- Root cause: SS-04 BCs were authored with CAP-001 (daemon lifecycle, an SS-01 capability)
+  instead of CAP-004 (daemon wiring, the correct SS-04 capability).
+- Version bumps: all 6 BCs: v1.0.0 → v1.1.0.
+
+**F-P1D-002 CRITICAL — PermissionDecision variant names corrected in BC-2.06.022:**
+- BC-2.06.022 Step 2: `PermissionDecision::Always` → `PermissionDecision::AcceptAlways`.
+- BC-2.06.022 Step 3: `PermissionDecision::Once` → `PermissionDecision::Accept`.
+- Canonical enum per SS-ipc.md: `Accept`, `AcceptAlways`, `Reject`.
+- Version bump: BC-2.06.022: v1.0.0 → v1.1.0.
+
+**F-P1D-003 CRITICAL — Action variant name corrected in BC-2.07.005:**
+- BC-2.07.005: all occurrences of `Action::OpenProfilePicker` → `Action::ProfilePicker`.
+- Canonical enum per SS-tui.md: variant is `ProfilePicker`, not `OpenProfilePicker`.
+- Version bump: BC-2.07.005: v1.0.0 → v1.1.0.
+
+**F-P1D-006 HIGH — Missing BC for PermissionPromptResolved TUI handling: BC-2.06.023 created:**
+- BC-2.06.023 "TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved"
+  added to SS-06. Priority: P0.
+- Specifies: matching VecDeque removal (PC-1), empty-stack AppMode collapse (PC-2),
+  no-op for unknown prompt_id (PC-3), non-empty overlay remains open (PC-4).
+- Closes gap identified by adversary: BC-2.05.005 broadcast had no TUI-side consumer BC.
+- SS-06 BC count: 22 → 23. Summary table: SS-06 22 → 23. Grand total: 111 → 112.
+
+**F-P1D-012 MEDIUM — DropCounterUpdate debounce postcondition added to BC-2.04.011:**
+- BC-2.04.011 PC-8 added: `ServerToClient::DropCounterUpdate` sent at most once per 100ms;
+  value reflects cumulative counter at debounce-fire time. Source: SS-ipc.md lines 288-289.
+- Version bump: BC-2.04.011: v1.0.0 → v1.1.0.
+
+BC-INDEX titles: BC-2.06.023 H1 title is authoritative per bc_h1_is_title_source_of_truth.
+All other BC H1 headings unchanged. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-27T00:00:00Z > prior 2026-05-26T13:00:00Z (v1.15). ARITHMETICALLY TRUE. PASS.
+
+## §Trace v1.17
+
+**CV-P1D-001 + CV-P1D-002 consistency-check closure — BC-2.05.005 timeout contradiction + §Trace v1.16 timestamp monotonicity fix** (2026-05-27T00:00:00Z):
+
+**CV-P1D-001 CRITICAL — BC-2.05.005 v1.0.0 → v1.1.0 (timeout sends PermissionPromptResolved):**
+- BC-2.05.005 Postcondition 4, EC-002, test vector (timeout row), and VP-TBD (timeout row)
+  all stated the daemon does NOT send `PermissionPromptResolved` on hook timeout.
+- SS-ipc.md was updated by F-P1D-007 in the Phase 1d adversarial pass to specify that
+  `PermissionPromptResolved` IS sent on timeout so TUI clients can remove stale overlay entries.
+  BC-2.05.005 was not updated in that burst, creating a direct contradiction between the BC
+  and its architecture source of truth.
+- All 4 contradiction sites corrected in BC-2.05.005 v1.1.0. See BC-2.05.005 §Trace v1.1.0
+  for full before/after.
+
+**CV-P1D-002 MINOR — §Trace v1.16 body timestamp violated SE-16d monotonicity:**
+- §Trace v1.16 was authored with body timestamp `2026-05-26T00:00:00Z`, which is EARLIER
+  than the v1.15 frontmatter timestamp `2026-05-26T13:00:00Z`. This violated SE-16d
+  strict-greater monotonicity.
+- Fix: §Trace v1.16 body timestamp corrected to `2026-05-27T00:00:00Z`; BC-INDEX frontmatter
+  version bumped v1.16 → v1.17; frontmatter timestamp updated to `2026-05-27T00:00:00Z`.
+
+BC-INDEX titles unchanged. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-27T00:00:00Z >= prior 2026-05-27T00:00:00Z (v1.16). PASS (equal-or-greater; same burst).
+
+## §Trace v1.18
+
+**F-P1D6-003 + F-P1D6-005 + F-P1D7-001 + F-P1D7-004 — Comprehensive IPC type sweep** (2026-05-26T00:00:00Z):
+
+**F-P1D7-004 HIGH — SS-05 and SS-06 section header capability text aligned to ARCH-INDEX verbatim:**
+- SS-05 capability: `"Unix domain socket IPC between TUI client and daemon; message types; reconnection; SOQ-3 disconnect invariant"` → `"Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear"` (verbatim from ARCH-INDEX v1.0.13 §SS-05 row).
+- SS-06 capability: `"ratatui TUI; AppMode state machine; keybinding dispatch; permission overlay; sessions panel; event ribbon; status bar"` → `"User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration"` (verbatim from ARCH-INDEX v1.0.13 §SS-06 row).
+
+BC-INDEX version: 1.17 → 1.18. No BC ID retirements or removals. All BC H1 titles unchanged.
+SE-16d monotonicity PASS: 2026-05-26T00:00:00Z timestamp is within the same burst as v1.17. PASS.
+
+## §Trace v1.19
+
+**F-P1D10-002 HIGH — SS-04 section header capability text aligned to ARCH-INDEX verbatim** (2026-05-26T00:00:00Z):
+- SS-04 capability: `"Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint routing; bounded event bus"` → `"Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation"` (verbatim from ARCH-INDEX §Capability Traceability SS-04 row).
+- Note: BC-2.04.001..BC-2.04.006 Traceability tables also carried the stale text; those 6 BCs are updated in this same burst (individual BC versions bumped). BC-2.04.007..BC-2.04.012 already had the correct ARCH-INDEX verbatim text.
+
+BC-INDEX version: 1.18 → 1.19. No BC ID retirements or removals. All BC H1 titles unchanged.
+SE-16d monotonicity PASS: 2026-05-26T00:00:00Z timestamp is within the same burst as v1.18. PASS.

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010, F-P1D7-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -42,8 +42,10 @@ decision would be sent to the wrong daemon connection.
 1. The TUI is connected to the daemon via IPC (UDS channel active).
 2. `AppMode` is any valid state — `Dashboard`, `Filtering`, `Overlay`, or `Fullscreen`.
    The disconnect handler is unconditional.
-3. The IPC receive channel (`app.ipc_rx`) signals closure or receives a
-   `IpcServerMessage::DaemonDisconnect` sentinel (per BC-2.05.007).
+3. The IPC transport signals `TransportEvent::Disconnected` (per BC-2.05.007): this occurs
+   when `read_framed` returns `UnexpectedEof`, `BrokenPipe`, or `ConnectionReset` on the UDS
+   connection. There is no explicit sentinel message — the disconnect is detected at the
+   transport layer, not as a `ServerToClient` variant.
 4. The overlay stack may be empty or non-empty; the clear is a no-op if already empty.
 
 ## Postconditions
@@ -53,7 +55,7 @@ decision would be sent to the wrong daemon connection.
 2. **AppMode transitions to Dashboard:** After clearing, `AppMode` is set to
    `Dashboard { focused: FocusSnapshot::Sessions }` regardless of what mode was active
    before the disconnect (Overlay, Fullscreen, Filtering, or Dashboard).
-3. **No IPC decision sent:** The TUI does NOT attempt to send any `DecisionResponse`
+3. **No IPC decision sent:** The TUI does NOT attempt to send any `ClientToServer::PermissionDecision`
    message on disconnect. The daemon is gone; the channel is closed. No write to the IPC
    send channel is attempted.
 4. **Status bar renders disconnect indicator:** The status bar renders the text
@@ -76,7 +78,7 @@ decision would be sent to the wrong daemon connection.
    Cleared on Daemon Disconnect"). BC-2.05.007 specifies the IPC layer's obligation to
    signal the disconnect; this BC specifies the TUI layer's obligation to handle it.
 4. On daemon reconnect, the TUI does NOT restore the old overlay stack from local memory.
-   It receives a fresh `queued_prompts` in the daemon's initial state push (BC-2.05.002);
+   It receives a fresh `overlay_stack` in the daemon's initial state push (BC-2.05.002);
    only the daemon's authoritative state is used to rebuild the overlay.
 
 ## Edge Cases
@@ -90,17 +92,17 @@ decision would be sent to the wrong daemon connection.
 | EC-101 | Daemon reconnects within 1 second; daemon has 0 queued prompts in new session | Status bar "reconnecting..." clears; AppMode stays `Dashboard`; overlay stack stays empty — correct |
 | EC-102 | Daemon reconnects; daemon has 2 queued prompts from a NEW Claude Code session that arrived during reconnect window | TUI receives initial state push with 2 prompts; transitions to `AppMode::Overlay { stack: [P1, P2], ... }`; overlay renders — correct, these are fresh prompts from the new daemon, not the orphaned old ones |
 | EC-103 | IPC channel drops silently (no sentinel message, just EOF on the read half) | `ipc_rx.recv()` returns `None`; treated identically to `DaemonDisconnect` sentinel; stack cleared and mode reset |
-| EC-104 | User was mid-keypress when disconnect occurred (e.g., just pressed `2` for Accept-always) | If the `DecisionResponse` was already enqueued in `ipc_tx` before the disconnect: the send fails (channel closed); error is logged with `tracing::warn!` and swallowed; stack still cleared; no panic |
+| EC-104 | User was mid-keypress when disconnect occurred (e.g., just pressed `2` for Accept-always) | If the `ClientToServer::PermissionDecision` was already enqueued in `ipc_tx` before the disconnect: the send fails (channel closed); error is logged with `tracing::warn!` and swallowed; stack still cleared; no panic |
 
 ## Canonical Test Vectors
 
 | Initial State | Event | Expected Post-State | Category |
 |---------------|-------|---------------------|----------|
-| `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, stack empty, badge 0, status bar "reconnecting..." | happy-path |
-| `AppMode::Dashboard { focused: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar "reconnecting..." | edge-case |
-| `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
-| `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `DaemonDisconnect` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
-| Stack has 1 `PromptModal`; TUI just sent `DecisionResponse`; disconnect arrives on same tick | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
+| `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty, badge 0, status bar "reconnecting..." | happy-path |
+| `AppMode::Dashboard { focused: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar "reconnecting..." | edge-case |
+| `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
+| `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
+| Stack has 1 `PromptModal`; TUI just sent `ClientToServer::PermissionDecision`; disconnect arrives on same tick | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
 
 ## Verification Properties
 
@@ -108,7 +110,7 @@ decision would be sent to the wrong daemon connection.
 |--------|----------|-------------|
 | VP-TBD | After `DaemonDisconnect`, `VecDeque<PromptModal>` is empty | unit test |
 | VP-TBD | After `DaemonDisconnect`, `AppMode` is `Dashboard { focused: Sessions }` regardless of prior mode | unit test (4 prior-mode variants) |
-| VP-TBD | No `DecisionResponse` is sent to IPC on disconnect | unit test (assert `ipc_tx` has no pending messages after disconnect handling) |
+| VP-TBD | No `ClientToServer::PermissionDecision` is sent to IPC on disconnect | unit test (assert `ipc_tx` has no pending messages after disconnect handling) |
 | VP-TBD | Status bar renders "Daemon disconnected — reconnecting..." on disconnect | integration test |
 | VP-TBD | On reconnect with 0 queued prompts, overlay remains empty | integration test |
 | VP-TBD | On reconnect with N queued prompts (fresh), overlay renders N prompts | integration test |
@@ -121,8 +123,8 @@ decision would be sent to the wrong daemon connection.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "permission overlay stack" clear behavior on daemon disconnect, which is a direct component of the CAP-006 "permission overlay stack" scope |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: disconnect handling clears local state only, no file writes occur); DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — enforced upstream in daemon; TUI disconnect does not affect JSONL integrity) |
 | Architecture Module | monocle-tui (App::handle_ipc_message disconnect arm); monocle-core (AppMode state, VecDeque<PromptModal>) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
-| Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh queued_prompts); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear) |
+| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
+| Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh overlay_stack); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear) |
 | Test File | `monocle-tui/tests/overlay_disconnect.rs` |
 | Test Name | `test_BC_2_06_016_overlay_cleared_on_daemon_disconnect` |
 | Stories | S-TBD (filled by story-writer) |
@@ -131,13 +133,13 @@ decision would be sent to the wrong daemon connection.
 
 - [BC-2.05.007] — depends on: this is the TUI-side handler for the IPC disconnect signal specified in BC-2.05.007
 - [BC-2.05.006] — composes with: reconnect sequence follows the disconnect this BC handles
-- [BC-2.05.002] — composes with: initial state push on reconnect provides fresh queued_prompts to rebuild overlay
+- [BC-2.05.002] — composes with: initial state push on reconnect provides fresh overlay_stack to rebuild overlay
 - [BC-2.06.014] — CRITICAL DISTINCTION: `[Esc]` hides without clearing the stack; disconnect unconditionally clears
 
 ## Architecture Anchors
 
 - `architecture/SS-tui.md#permission-overlay` — overlay stack lifecycle step 5 (daemon disconnect SOQ-3)
-- `architecture/SS-tui.md#ctrl-integration` — state preservation mechanism and daemon ownership of queued_prompts
+- `architecture/SS-tui.md#ctrl-integration` — state preservation mechanism and daemon ownership of overlay_stack
 
 ## Story Anchor
 
@@ -151,7 +153,7 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 
 **Initial production** (2026-05-26T18:00:00Z):
 - BC-2.06.016 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
-- Reads: SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (daemon
+- Reads: SS-tui.md v1.1.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (daemon
   disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show;
   prd-expansion-scope.md §3.3 BC-2.06.016 description and §5.2 dependency table
   (BC-2.05.007 → BC-2.06.016 dependency chain).
@@ -162,3 +164,46 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 - EC-104 covers in-flight send on disconnect — warn log, no panic, swallowed.
 - Invariant 4 explicitly prohibits restoring old overlay from local memory on reconnect —
   daemon is the authoritative state source per §Ctrl-\ Integration.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.4
+
+**IPC field name corrected: `queued_prompts` → `overlay_stack`** (2026-05-26T00:00:00Z):
+- Invariant 4: `queued_prompts` in the daemon's initial state push → `overlay_stack`.
+  Canonical IPC field name is `overlay_stack` from `ServerToClient::InitialState`;
+  `queued_prompts` was a stale fabrication.
+- Cross-Ref table (BC-2.05.002 entry): `fresh queued_prompts` → `fresh overlay_stack`.
+- Related BCs (BC-2.05.002 bullet): `fresh queued_prompts` → `fresh overlay_stack`.
+- Architecture Anchors (SS-tui.md#ctrl-integration): `queued_prompts` → `overlay_stack`.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.3
+
+**F-P1D7-001 HIGH — Fabricated `IpcServerMessage::DaemonDisconnect` and `DecisionResponse` replaced** (2026-05-26T00:00:00Z):
+- Precondition 3: `IpcServerMessage::DaemonDisconnect` sentinel → `TransportEvent::Disconnected`
+  signal. Per SS-ipc.md §Reconnection Behavior and BC-2.05.007, disconnect is detected at the
+  transport layer when `read_framed` returns `UnexpectedEof`/`BrokenPipe`/`ConnectionReset`.
+  There is no `DaemonDisconnect` variant in `ServerToClient`. The BC-2.05.007 mechanism is
+  `TransportEvent::Disconnected`.
+- All test vector rows: `DaemonDisconnect` → `TransportEvent::Disconnected`.
+- Postcondition 3, EC-104, test vector row, VP table: `DecisionResponse` →
+  `ClientToServer::PermissionDecision`.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.5
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.

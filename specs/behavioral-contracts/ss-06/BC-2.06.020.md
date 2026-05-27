@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -121,7 +121,7 @@ even in Fullscreen and Overlay modes.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the status bar breadcrumb which is the primary orientation aid for the "AppMode state machine" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: breadcrumb is read-only display derived from in-memory AppMode) |
 | Architecture Module | monocle-tui (status bar renderer `draw_status_bar()`, breadcrumb derivation from `AppMode`); monocle-core (`AppMode` enum) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Status Bar (breadcrumb subsection with all 4 AppMode derivation examples) |
+| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Status Bar (breadcrumb subsection with all 4 AppMode derivation examples) |
 | Cross-Ref | BC-2.06.001 (AppMode state machine — breadcrumb is derived from it); BC-2.06.019 (drop counter — shares the same status bar row); BC-2.06.021 (keybinding hint — occupies the second status bar row) |
 | Test File | `monocle-tui/tests/status_bar.rs` |
 | Test Name | `test_BC_2_06_020_breadcrumb_derivation` |
@@ -149,7 +149,7 @@ S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singula
 
 **Initial production** (2026-05-26T18:00:00Z):
 - BC-2.06.020 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Status Bar (breadcrumb derivation table);
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Status Bar (breadcrumb derivation table);
   prd-expansion-scope.md §3.3 BC-2.06.020 description (F-51).
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
 - DI-007 cited: read-only display derivation.
@@ -158,3 +158,22 @@ S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singula
 - Invariant 2 explicitly documents Phase 2 scope for Customizations/Workflow focus states.
 - EC-125 handles the unreachable empty-stack Overlay state gracefully rather than
   panicking — defense-in-depth for test isolation.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

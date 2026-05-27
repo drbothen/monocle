@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "tui"
 subsystem: SS-06
-version: "1.0.0"
+version: "1.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
-timestamp: 2026-05-26T02:00:00Z
+timestamp: 2026-05-26T12:30:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
@@ -117,6 +117,44 @@ pub enum PanelId {
 }
 ```
 
+### Profile Picker: Transient Overlay (Not an AppMode Variant)
+
+The profile picker (triggered by `Action::ProfilePicker` / `Ctrl-P`) is a brief
+dropdown-like interaction that must not be modeled as an `AppMode` variant. The
+architectural decision:
+
+**Decision:** The profile picker is managed by a separate `Option<ProfilePickerState>`
+field in the `App` struct, NOT via the `AppMode` state machine.
+
+Rationale:
+1. The profile picker is a transient overlay lasting one interaction (select or dismiss);
+   adding an `AppMode::ProfilePicker` variant would inflate the state machine and all
+   `match` sites with a variant that carries no distinct transition behavior.
+2. The picker can appear over any `AppMode` (`Dashboard`, `Fullscreen`, `Overlay`)
+   without replacing it. Modeling this as an `AppMode` would require stacking or
+   wrapping, introducing the same `prior` field complexity as `Overlay` for a much
+   simpler case.
+3. When the picker closes (selection made or `Esc`), the underlying `AppMode` is
+   unchanged — no focus restoration logic is needed.
+4. The `Option<ProfilePickerState>` field gives the draw loop a clear nil-check:
+   `if let Some(picker) = &app.picker { draw_profile_picker(...) }`.
+
+The `App` struct includes this field alongside `mode`:
+
+```rust
+pub struct App {
+    pub mode: AppMode,
+    pub picker: Option<ProfilePickerState>,  // transient; does not affect AppMode
+    // ... other fields (see §Rendering Architecture §App Struct)
+}
+```
+
+`ProfilePickerState` is defined in `monocle-tui` (not `monocle-core`) because it
+holds config read state and is effectful. The picker's keystrokes (`Enter` to select,
+`Esc` to dismiss, arrow keys to navigate) are consumed in `app.handle_action()` before
+reaching `transition()` when `app.picker.is_some()` — the profile picker short-circuits
+normal `AppMode` dispatch while it is open.
+
 ### Transition Function Contract
 
 The `transition` function is a pure function in `monocle-core`. It takes ownership
@@ -200,6 +238,42 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
    atomically.
 3. `Escape` from `Overlay` is a no-op on the stack (SOQ-3 support): prompts survive
    the `Ctrl-\` hide/show cycle because `Escape` does not pop any `PromptModal`.
+
+**BC-2.06.023 — IPC-Initiated Prompt Removal (transition() scope boundary):**
+
+The `transition()` function handles `Action`-based state transitions only. It is a pure
+function that maps `(AppMode, Action) → AppMode`; it has no access to a `prompt_id`.
+
+IPC-initiated operations such as removing a specific prompt on receipt of
+`ServerToClient::PermissionPromptResolved` are handled by the TUI event handler
+directly, outside `transition()`:
+
+```rust
+// monocle-tui/src/app.rs — IPC message handler (not transition())
+
+fn handle_ipc_message(&mut self, msg: ServerToClient) {
+    match msg {
+        ServerToClient::PermissionPromptResolved { prompt_id } => {
+            if let AppMode::Overlay { ref mut stack, ref prior } = self.mode {
+                stack.retain(|m| m.prompt_id != prompt_id);
+                if stack.is_empty() {
+                    self.mode = AppMode::Dashboard { focused: prior.clone() };
+                }
+            }
+            // No-op if prompt_id not present (already decided or daemon timeout race)
+        }
+        // ... other variants
+    }
+}
+```
+
+The empty-stack-to-Dashboard collapse after IPC-initiated removal reuses the same
+invariant as `transition(Overlay { empty_stack }, PermissionAcceptOnce)` — an empty
+`Overlay` stack always collapses to `Dashboard { focused: prior }`. But the collapse
+in the IPC path is triggered by `stack.is_empty()` after `retain()`, not by dispatching
+an `Action`. This is intentional: `Action::PermissionPromptResolved` does not exist as
+a variant; IPC events are not `Action`s and must not be routed through the `transition()`
+function.
 
 ---
 
@@ -339,11 +413,15 @@ Renders `Vec<EnrichedSession>` received via `SessionListUpdate` IPC messages.
 | Column | Source field | Notes |
 |--------|-------------|-------|
 | Icon | `EngineMetadata::icon` | Single `char`; `●` for Claude Code in Phase 1 |
-| Project | `EnrichedSession::project_name` | Derived from working directory |
-| Phase | `EnrichedSession::phase_tag` | From FactoryAdapter; blank if not a factory project |
-| Tokens | `EnrichedSession::token_count` | Human-formatted: `142k` |
-| Cost | `EnrichedSession::cost_usd` | `$0.83`; blank if not available |
-| Uptime | `EnrichedSession::uptime` | `HH:MM:SS` wall clock since SessionStart |
+| Project | `EnrichedSession::project_name` | Derived from transcript directory name; `"—"` when `None` |
+| Status | `EnrichedSession::status` | `SessionStatus` display: Active, Idle, WaitingOnPermission, etc. |
+| Tokens | `EnrichedSession::token_count` | Human-formatted: `142k`; accumulated from hook event metadata |
+| Cost | `EnrichedSession::cost_usd` | `$0.83`; `"—"` when `None` (harness not emitting cost data) |
+| Uptime | `EnrichedSession::started_at` | `HH:MM:SS` wall clock computed as `now - started_at`; `"—"` when `None` |
+
+> **Note:** `phase_tag` is not present on `EnrichedSession` in Phase 1 — it requires
+> `FactoryAdapter` integration not available in Phase 1. `uptime` is derived at render
+> time from `started_at`; there is no dedicated `uptime` field on the struct.
 
 **Empty state:** When `Vec<EnrichedSession>` is empty, the panel renders:
 
@@ -439,7 +517,104 @@ pub enum ToolPayload {
     Edit { old_content: String, new_content: String, path: String },
     Bash { command: String },
     Read { path: String },
-    Generic { raw: serde_json::Value },
+    /// Fallback for tools not explicitly handled (WebSearch, mcp__*, etc.).
+    /// Carries `tool_name` so the overlay header can display the tool name
+    /// without requiring a separate `tool_name` field lookup on `PromptModal`.
+    Generic { tool_name: String, tool_input: serde_json::Value },
+}
+```
+
+### §IPC Payload to PromptModal Conversion
+
+When the TUI event handler receives a `ServerToClient::PermissionPromptQueued` message
+(or rebuilds the overlay stack from `ServerToClient::InitialState`), it constructs a
+`PromptModal` from the `PermissionPromptPayload`. The conversion is defined here to
+ensure a single canonical mapping between IPC wire types and TUI display types:
+
+1. `payload.prompt_id` → `PromptModal::prompt_id` (copied directly; both `Uuid`)
+2. `payload.session_id` → `PromptModal::session_id` (copied directly; both `String`)
+3. `payload.tool_name` → selects `ToolPayload` variant:
+   - `"Edit"` if `old_content.is_some() || new_content.is_some()` → `ToolPayload::Edit { old_content, new_content, path: tool_input["file_path"].as_str() }`
+   - `"Bash"` → `ToolPayload::Bash { command: tool_input["command"].as_str() }`
+   - `"Read"` → `ToolPayload::Read { path: tool_input["file_path"].as_str() }`
+   - `_` (including `"Edit"` with both content fields absent) → `ToolPayload::Generic { tool_name: payload.tool_name, tool_input: payload.tool_input }`
+4. `received_at` → `std::time::Instant::now()` set at TUI reception time; not
+   deserialized from IPC (Instant is not serializable; the daemon's reception time is
+   not forwarded over the wire).
+
+**Fallback rules:** Two conditions force fallback to `ToolPayload::Generic { tool_name, tool_input }`:
+1. If `tool_input` does not contain the expected field for the matched variant (e.g.,
+   `"file_path"` absent for `"Edit"` or `"Read"`, `"command"` absent for `"Bash"`).
+2. If `tool_name == "Edit"` but BOTH `old_content` and `new_content` are `None` — an
+   `Edit` with no content to diff renders as an empty diff pane; the `Generic` fallback
+   renders the raw `tool_input` JSON, which is more informative.
+
+These rules prevent a missing or empty field from causing a panic or a failed push — the
+overlay always receives something renderable.
+
+The `old_content` and `new_content` fields on `PermissionPromptPayload` are flattened
+into the `ToolPayload::Edit` variant rather than passed separately, consolidating all
+tool-specific data into a single matched arm.
+
+```rust
+// monocle-tui/src/ipc_conversion.rs (sketch)
+
+fn payload_to_modal(payload: PermissionPromptPayload) -> PromptModal {
+    let tool_payload = match payload.tool_name.as_str() {
+        // Guard 1: path must be present for a meaningful Edit variant.
+        // Guard 2: at least one of old_content / new_content must be Some — an Edit with
+        //          neither field has no content to diff and MUST fall back to Generic so
+        //          the overlay renders the raw tool_input rather than an empty diff pane.
+        "Edit" if (payload.old_content.is_some() || payload.new_content.is_some()) => {
+            let path = payload.tool_input["file_path"]
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_default();
+            if path.is_empty() {
+                ToolPayload::Generic { tool_name: payload.tool_name.clone(), tool_input: payload.tool_input.clone() }
+            } else {
+                ToolPayload::Edit {
+                    old_content: payload.old_content.unwrap_or_default(),
+                    new_content: payload.new_content.unwrap_or_default(),
+                    path,
+                }
+            }
+        }
+        "Bash" => {
+            let command = payload.tool_input["command"]
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_default();
+            if command.is_empty() {
+                ToolPayload::Generic { tool_name: payload.tool_name.clone(), tool_input: payload.tool_input.clone() }
+            } else {
+                ToolPayload::Bash { command }
+            }
+        }
+        "Read" => {
+            let path = payload.tool_input["file_path"]
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_default();
+            if path.is_empty() {
+                ToolPayload::Generic { tool_name: payload.tool_name.clone(), tool_input: payload.tool_input.clone() }
+            } else {
+                ToolPayload::Read { path }
+            }
+        }
+        // Fallback: covers (a) "Edit" with both old_content and new_content absent,
+        //           (b) any unrecognised tool name.
+        _ => ToolPayload::Generic { tool_name: payload.tool_name.clone(), tool_input: payload.tool_input.clone() },
+    };
+    PromptModal {
+        prompt_id: payload.prompt_id,
+        session_id: payload.session_id,
+        // tool_name is kept on PromptModal for overlay header rendering so callers do not
+        // need to pattern-match ToolPayload just to display the tool name.
+        tool_name: payload.tool_name,
+        tool_payload,
+        received_at: std::time::Instant::now(),
+    }
 }
 ```
 
@@ -447,7 +622,7 @@ pub enum ToolPayload {
 
 The overlay stack lifecycle in `monocle-tui`:
 
-1. **Push:** When an `IpcMessage::PermissionPromptQueued` arrives on the IPC
+1. **Push:** When a `ServerToClient::PermissionPromptQueued` arrives on the IPC
    receiver channel, the TUI:
    - Constructs a `PromptModal` from the message payload.
    - Pushes it to the back of the `VecDeque<PromptModal>`.
@@ -464,7 +639,7 @@ The overlay stack lifecycle in `monocle-tui`:
    - Identifies the decision type from the action (`PermissionAcceptOnce`,
      `PermissionAcceptAlways`, `PermissionReject`).
    - Reads the `prompt_id` from the current front `PromptModal`.
-   - Sends `IpcMessage::DecisionResponse { prompt_id, decision }` to the daemon
+   - Sends `ClientToServer::PermissionDecision { prompt_id, decision }` to the daemon
      via the IPC send channel. This is non-blocking: the TUI enqueues the message
      and continues.
    - Passes the action to `transition()` which pops the front `PromptModal` and
@@ -589,8 +764,9 @@ The reconnecting TUI receives:
 
 - Current `Vec<EnrichedSession>` (session list)
 - Recent `HookEventReceived` messages (ring tail)
-- The current `VecDeque<PromptModal>` overlay stack (daemon holds queued prompts
-  in its own state, not in the TUI process)
+- The pending overlay prompts as `Vec<PermissionPromptPayload>` (converted by the TUI
+  to `VecDeque<PromptModal>` via `payload_to_modal()`; daemon stores the IPC-serializable
+  form, not `PromptModal` which contains `Instant` and is not serializable)
 
 The overlay stack survives `Ctrl-\` because the daemon owns it, not the TUI process.
 The daemon's UDS server sends the queued overlay stack in the initial state push
@@ -601,10 +777,11 @@ This satisfies the requirement from BC-2.06.004 and BC-2.06.014: "overlay surviv
 `Ctrl-\` hide/show cycle without dropping queued prompts." The daemon is the durable
 state store; the TUI is the stateless view.
 
-**Critical implication for the daemon:** The daemon's `DaemonState` must include
-a `queued_prompts: VecDeque<PromptModal>` field that is pushed to every new TUI
-client connection as part of the initial state push (BC-2.05.002). This is the
-mechanism by which overlay state survives TUI process restart.
+**Critical implication for the daemon:** The daemon stores pending prompts as
+`Vec<PermissionPromptPayload>` in its pending-decision registry. The IPC
+`InitialState` push sends `overlay_stack: Vec<PermissionPromptPayload>`. The TUI
+converts each to a `PromptModal` via `payload_to_modal()` on receipt. This is the
+mechanism by which overlay state survives TUI process restart (BC-2.05.002).
 
 ---
 
@@ -617,8 +794,8 @@ prompts without leaving the editor (Success Criterion: ≤6 keystrokes).
 
 - User is in nvim (or any editor) inside a tmux session.
 - Two Claude Code sessions have stalled, each waiting for a PreToolUse decision.
-- Daemon has received 2 `PermissionPromptQueued` events; `DaemonState::queued_prompts`
-  holds both `PromptModal` entries.
+- Daemon has received 2 `PermissionPromptQueued` events; its pending-decision registry
+  holds both as `PermissionPromptPayload` entries.
 - TUI is not running (last popup was dismissed).
 
 ### Step-by-Step
@@ -661,18 +838,34 @@ pub struct App {
     /// Nucleo matcher for filter mode. Re-used across filter inputs.
     pub matcher: nucleo::Matcher,
 
-    /// IPC send channel — for outbound DecisionResponse messages.
-    pub ipc_tx: tokio::sync::mpsc::Sender<IpcClientMessage>,
+    /// IPC send channel — for outbound ClientToServer messages (e.g., PermissionDecision).
+    pub ipc_tx: tokio::sync::mpsc::Sender<ClientToServer>,
 
-    /// IPC receive channel — for inbound daemon pushes.
-    pub ipc_rx: tokio::sync::mpsc::Receiver<IpcServerMessage>,
+    /// IPC receive channel — for inbound ServerToClient daemon pushes.
+    pub ipc_rx: tokio::sync::mpsc::Receiver<ServerToClient>,
 }
 ```
 
 ### Draw Loop
 
+> **Async event loop note (F-P13-003):** The `event::poll()` and `event::read()` calls
+> in the sketch below are **synchronous blocking calls** from `crossterm`. In the actual
+> Phase 1 implementation, the event loop MUST NOT block the Tokio async executor thread.
+> Two correct approaches:
+>
+> 1. **`crossterm::event::EventStream`** (preferred): use the `event-stream` feature of
+>    `crossterm` to obtain an async `Stream<Item = Result<Event>>`. `select!` on the
+>    stream alongside the IPC receiver channel and the tick interval. This is the
+>    fully-async, Tokio-native pattern and avoids any blocking.
+> 2. **Dedicated OS thread**: run the crossterm event poll on a `std::thread::spawn`
+>    thread that communicates with the async task via a bounded `mpsc::channel`. The
+>    async task awaits the channel receiver; no blocking on the executor thread.
+>
+> The sketch below uses the synchronous form for clarity of the control flow; the
+> implementation MUST use one of the two async-safe patterns above.
+
 ```rust
-// monocle-tui/src/main.rs (sketch)
+// monocle-tui/src/main.rs (synchronous sketch — see async note above for implementation guidance)
 
 async fn run_app(mut terminal: Terminal<CrosstermBackend<Stdout>>,
                  mut app: App) -> Result<()> {
@@ -689,17 +882,24 @@ async fn run_app(mut terminal: Terminal<CrosstermBackend<Stdout>>,
         terminal.draw(|frame| draw(frame, &app))?;
 
         // 3. Poll crossterm events with remaining tick budget
+        // NOTE: event::poll() and event::read() are blocking — use EventStream or
+        // a dedicated thread in the actual implementation (see async note above).
         let timeout = tick_rate.saturating_sub(last_tick.elapsed());
         if event::poll(timeout)? {
-            if let Event::Key(key) = event::read()? {
-                if let Some(binding) = app.dispatcher.resolve(key, &app.mode) {
-                    let new_mode = transition(app.mode.clone(), binding.action.clone());
-                    app.mode = new_mode;
-                    app.handle_action(binding.action).await?;
-                }
-            }
-            if let Event::Resize(_, _) = event::read()? {
-                // ratatui handles resize automatically on next draw
+            // Single event::read() call — calling read() twice would block waiting
+            // for a second event that may never arrive in this tick window.
+            match event::read()? {
+                Event::Key(key) => {
+                    if let Some(binding) = app.dispatcher.resolve(key, &app.mode) {
+                        let new_mode = transition(app.mode.clone(), binding.action.clone());
+                        app.mode = new_mode;
+                        app.handle_action(binding.action).await?;
+                    }
+                },
+                Event::Resize(_, _) => {
+                    // ratatui handles resize automatically on next draw
+                },
+                _ => {}
             }
         }
 
@@ -821,7 +1021,7 @@ its pure-type surface. The only additions to `monocle-core`'s `Cargo.toml` are:
 
 ## Behavioral Contracts
 
-All 22 Phase 1 BCs for SS-06. Priority P0 must be delivered in Waves 6–7; P1 may
+All 23 Phase 1 BCs for SS-06. Priority P0 must be delivered in Waves 6–7; P1 may
 follow in a later wave within Phase 1.
 
 | BC ID | Title | Priority |
@@ -831,23 +1031,24 @@ follow in a later wave within Phase 1.
 | BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | P0 |
 | BC-2.06.004 | `Ctrl-\` Popup: Appears and Dismisses Without State Loss | P0 |
 | BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | P0 |
-| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | P0 |
-| BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | P0 |
+| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | P1 |
+| BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | P1 |
 | BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | P0 |
 | BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | P0 |
-| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | P0 |
+| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | P1 |
 | BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | P0 |
 | BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | P0 |
 | BC-2.06.013 | Permission Overlay: Reject Keybinding | P0 |
 | BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | P0 |
-| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P1 |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P2 |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | P0 |
 | BC-2.06.017 | Permission Response Within Hook Timeout Budget | P0 |
-| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | P0 |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | P1 |
 | BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | P0 |
 | BC-2.06.020 | Status Bar: Breadcrumb | P1 |
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 |
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 |
 
 ---
 
@@ -868,16 +1069,142 @@ SS-06 types. Violations are blocking in any PR review:
    (see §Ctrl-\ Integration).
 5. **Bounded channels only.** All `mpsc` channels in `monocle-tui` use bounded
    variants. Drop counters are required on any channel that can drop messages.
-6. **All `monocle-core` SS-06 types are `#[non_exhaustive]`.** Exception: `PanelId`
-   and `FocusSnapshot` are `non_exhaustive` to allow Phase 2 panel additions without
-   breaking `match` sites in `monocle-tui`.
+6. **`#[non_exhaustive]` scope for SS-06 `monocle-core` types.** The following types
+   are `#[non_exhaustive]`: `PanelId`, `FocusSnapshot`, `BindingSource`, `Action`.
+   `AppMode` is explicitly NOT `#[non_exhaustive]` — all match sites must handle every
+   variant exhaustively per BC-2.06.001. Rationale: `PanelId`, `FocusSnapshot`,
+   `BindingSource`, and `Action` are extended in Phase 2+ without a breaking change;
+   `AppMode` must be exhaustively matched so the compiler enforces mutual-exclusion
+   invariants at all call sites.
 7. **TUI is a client.** No direct mutation of daemon state from `monocle-tui`. All
-   mutations flow through IPC `DecisionResponse` messages. `monocle-tui` has no
+   mutations flow through IPC `ClientToServer::PermissionDecision` messages. `monocle-tui` has no
    dependency on `monocle-runtime`.
 8. **No `println!` in production code.** Use `tracing::debug!` / `tracing::info!`
    for all diagnostic output.
 
 ---
+
+## §Trace v1.6.0
+
+**PR review findings** (F-P13-001, F-P13-003) (2026-05-26):
+- **F-P13-001** [CRITICAL] `EnrichedSession` field mismatch in Sessions Panel column table —
+  corrected the column layout table to reference fields that actually exist on `EnrichedSession`.
+  Removed `phase_tag` (requires `FactoryAdapter` integration not available in Phase 1) and
+  `uptime` (no dedicated field; computed from `started_at` at render time). Replaced with
+  `status` (from `EnrichedSession::status`) and updated the Uptime row to source from
+  `EnrichedSession::started_at`. Added a note explaining the exclusions. The corresponding
+  `EnrichedSession` struct expansion (adding `project_name`, `started_at`, `token_count`,
+  `cost_usd`) is recorded in SS-engine-module.md §Trace v1.1.21.
+- **F-P13-003** [HIGH] sync/async draw loop — added "Async event loop note" block above the
+  draw loop sketch. The note clarifies that `crossterm::event::poll()` and `event::read()` are
+  synchronous blocking calls and MUST NOT be used directly on the Tokio executor thread in the
+  actual implementation. Specifies two correct async-safe patterns: (1) `crossterm::event::EventStream`
+  with `select!` (preferred), (2) dedicated `std::thread` communicating via bounded `mpsc`. The
+  sketch is labeled "(synchronous sketch — see async note above for implementation guidance)" and
+  includes an inline comment at the poll/read site reinforcing the constraint.
+
+## §Trace v1.5.0
+
+**Adversarial Pass 6 review corrections** (F-P1D6-002, F-P1D7-002) (2026-05-26):
+- **F-P1D6-002** [CRITICAL] `DaemonState` wrong type for queued prompts — corrected
+  all references that implied the daemon stores `VecDeque<PromptModal>`. The daemon
+  stores pending prompts as `Vec<PermissionPromptPayload>` in its pending-decision
+  registry. The IPC `InitialState` push sends `overlay_stack: Vec<PermissionPromptPayload>`.
+  The TUI converts each to a `PromptModal` via `payload_to_modal()` on receipt.
+  `PromptModal` contains `received_at: std::time::Instant` which is not serializable
+  and is a TUI-side display type; it must not appear in the daemon's persistent state
+  or on the IPC wire. Updated: §Ctrl-\ Integration "Critical implication" paragraph,
+  §Ctrl-\ Integration reconnect bullet, and §Killer Scenario precondition.
+- **F-P1D7-002** [CRITICAL] Fabricated IPC type aliases — `IpcServerMessage` and
+  `IpcClientMessage` are not canonical types. Replaced ALL occurrences with the
+  canonical names from SS-ipc.md: `IpcServerMessage` → `ServerToClient`,
+  `IpcClientMessage` → `ClientToServer`. Also replaced `IpcMessage::DecisionResponse`
+  → `ClientToServer::PermissionDecision` (canonical variant name) in §Overlay Stack
+  Lifecycle step 3 and Constraint 7. Replaced `IpcMessage::PermissionPromptQueued`
+  → `ServerToClient::PermissionPromptQueued` in §Overlay Stack Lifecycle step 1.
+  Affected locations: `App` struct `ipc_tx`/`ipc_rx` field types, overlay lifecycle
+  push step, overlay lifecycle decision step, Constraint 7.
+
+## §Trace v1.4.0
+
+**Adversarial Pass 4 review corrections** (F-P1D4-001, F-P1D4-008) (2026-05-26):
+- **F-P1D4-001** [CRITICAL] `ToolPayload::Generic` struct mismatch — corrected the
+  `Generic` variant definition from `{ raw: serde_json::Value }` to
+  `{ tool_name: String, tool_input: serde_json::Value }`. The previous definition was
+  inconsistent with every call site in `payload_to_modal()`, which constructed the variant
+  with `tool_name` and `tool_input` fields — the code would not compile against the old
+  type. `tool_name` is carried inside `Generic` so the overlay header can display the
+  unrecognised tool name without an additional lookup. The `PromptModal::tool_name` field
+  is retained and now populated from `payload.tool_name.clone()` for all variants (not
+  left as `String::new()`) so callers rendering the modal header do not need to pattern-match
+  `ToolPayload` to display the tool name.
+- **F-P1D4-008** [HIGH] Empty `old_content`/`new_content` fallback for `"Edit"` arm —
+  added a match guard to the `"Edit"` arm in `payload_to_modal()`: the arm now only
+  activates when `payload.old_content.is_some() || payload.new_content.is_some()`. When
+  both are `None`, the fallthrough `_` arm produces `ToolPayload::Generic` instead of
+  `ToolPayload::Edit { old_content: "", new_content: "" }`. An `Edit` with no content to
+  diff renders as an empty diff pane, which is confusing and wastes overlay layout space;
+  the Generic fallback renders the raw `tool_input` JSON instead. Updated the conversion
+  sketch to use `"Edit" if (payload.old_content.is_some() || payload.new_content.is_some())`
+  as the arm head, with an explanatory comment. The `_` fallback arm comment now explicitly
+  names both cases it covers: (a) `"Edit"` with both content fields absent, (b) any
+  unrecognised tool name.
+
+## §Trace v1.3.0
+
+**Adversarial Pass 3 review corrections** (F-P1D3-004, F-P1D3-005, F-P1D3-007) (2026-05-26):
+- **F-P1D3-004** [HIGH] Profile picker AppMode design gap — added §"Profile Picker:
+  Transient Overlay (Not an AppMode Variant)" in the AppMode section. The profile picker
+  is modeled as `Option<ProfilePickerState>` in the `App` struct, NOT as an `AppMode`
+  variant. Rationale: the picker is a brief transient interaction that can appear over
+  any `AppMode` without replacing it; no focus restoration is needed on close; adding an
+  `AppMode` variant would inflate all `match` sites for a variant with no distinct transition
+  semantics. The section specifies the `App` struct field signature, the draw-loop nil-check
+  pattern, and the action dispatch short-circuit rule while `picker.is_some()`.
+- **F-P1D3-005** [HIGH] `PermissionPromptPayload` → `PromptModal` conversion unspecified —
+  added §"IPC Payload to PromptModal Conversion" immediately before §"Overlay Stack
+  Lifecycle". Specifies the canonical field-by-field mapping: `prompt_id` (Uuid→Uuid),
+  `session_id` (String→String), `tool_name` → `ToolPayload` variant selection with fallback
+  rules for missing `tool_input` fields, and `received_at` set to `Instant::now()` at TUI
+  reception time (not deserialized from IPC). Includes a Rust sketch of `payload_to_modal()`.
+- **F-P1D3-007** [HIGH] BC-2.06.023 Invariant 2 — `transition()` scope boundary for
+  IPC-initiated prompt removal — added clarifying block immediately after the Key Invariants
+  list in §Transition Function Contract. Specifies that `PermissionPromptResolved` IPC
+  messages are handled by `handle_ipc_message()` (VecDeque `retain()` by `prompt_id`),
+  NOT by dispatching an `Action` through `transition()`. The empty-stack-to-Dashboard
+  collapse reuses the same invariant as the action path but is triggered by `stack.is_empty()`
+  after `retain()`. `Action::PermissionPromptResolved` is not a variant and must not exist.
+
+## §Trace v1.2.0
+
+**Adversarial Pass 2 review corrections** (F-P1D2-004, F-P1D2-005, F-P1D2-013) (2026-05-26):
+- **F-P1D2-004** Priority drift — corrected 3 BCs to match BC-INDEX (source of truth):
+  - BC-2.06.007 corrected P0 → P1 (BC-INDEX §SS-06 row 7: P1).
+  - BC-2.06.010 corrected P0 → P1 (BC-INDEX §SS-06 row 10: P1).
+  - BC-2.06.018 corrected P0 → P1 (BC-INDEX §SS-06 row 18: P1).
+- **F-P1D2-005** Added missing BC-2.06.023 row to §Behavioral Contracts table:
+  `BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0`.
+  Updated section count text from "All 22 Phase 1 BCs" to "All 23 Phase 1 BCs".
+- **F-P1D2-013** Rewrote Constraint 6 to eliminate ambiguity about `#[non_exhaustive]`
+  scope. The previous wording stated "All monocle-core SS-06 types are #[non_exhaustive]"
+  then named `PanelId` and `FocusSnapshot` as examples in the exception clause, creating
+  confusion about which types were the general rule and which were the exception. The
+  rewrite explicitly enumerates the non_exhaustive types (`PanelId`, `FocusSnapshot`,
+  `BindingSource`, `Action`) and states unambiguously that `AppMode` is NOT
+  `#[non_exhaustive]` — exhaustive matching is required per BC-2.06.001.
+
+## §Trace v1.1.0
+
+**Adversarial review corrections** (F-P1D-004, F-P1D-013) (2026-05-26):
+- **F-P1D-004** Priority sync with BC-INDEX (source of truth):
+  - BC-2.06.006 corrected P0 → P1 (BC-INDEX §SS-06 row 6: P1).
+  - BC-2.06.015 corrected P1 → P2 (BC-INDEX §SS-06 row 15: P2).
+- **F-P1D-013** Fixed double `event::read()` bug in draw loop sketch. The original sketch
+  called `event::read()` once inside `if let Event::Key(...)` and again inside a second
+  `if let Event::Resize(...)` block. The second call would block the event loop waiting for
+  a second event that may never arrive within the tick window, causing up to 16ms of
+  spurious stall per tick when only a key event arrived. Replaced with a single
+  `event::read()` + `match` expression covering `Event::Key`, `Event::Resize`, and `_ => {}`.
 
 ## §Trace v1.0.0
 

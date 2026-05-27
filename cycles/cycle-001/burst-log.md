@@ -2225,3 +2225,43 @@ Phase 1+ REVERTS to D-047 strict 3-clean-pass (0 findings of any severity).
 - INFORMATIONAL: This is the context-clear preparation burst. STATE.md is the primary cold-start artifact. durable_task_register replaces the prior prose outstanding-items list; new orchestrator reads it in-place.
 - INFORMATIONAL: STATE.md compaction remains deferred (1100+ lines vs <200 target). Invoke /vsdd-factory:compact-state at next pipeline gate.
 - SE-16d PASS: 2026-05-24T12:00:00Z > chain high-water (2026-05-21T05:30:00Z from D-164 entry).
+
+## §Trace v6.11 (Phase 1d adversarial spec review CONVERGED — D-169)
+
+**D-169 PHASE 1D ADVERSARIAL SPEC REVIEW CONVERGED** (2026-05-27): 15 passes on SS-daemon-wiring, SS-ipc, SS-tui, SS-config, SS-engine-module, BC-INDEX, PRD v1.27.x.
+
+Finding trajectory: 15→13→7→8→6→4→4→6→3→3→1→2→4→6→0 spec defects. Pass 15 clean (0 spec defects, 1 spec gap TransportEvent fixed in-pass).
+
+Key fixes across 15 passes:
+- 6 SS-04 BCs (BC-2.04.001..BC-2.04.006) CAP-001..CAP-004 capability anchoring fixed
+- PermissionDecision enum variants (Allow/Deny/AskUser) aligned across all BCs and arch docs
+- Action::ProfilePicker naming aligned
+- PreToolUse timeout changed to fail-open (matching BC-HOOK-001)
+- PromptAutoResolved fabrication replaced with PermissionPromptResolved
+- PermissionDecision serde wire format: per-variant #[serde(rename)]
+- ToolPayload::Generic struct corrected
+- ClientDisconnect requirement removed (daemon-as-durable-store architecture confirmed)
+- HookDecision reconciled with implementation: Block(unit)/Defer(unit) only; no Modify/DeferUntil
+- EnrichedSession expanded for TUI fields + serde derives added
+- TransportEvent formally defined
+- Comprehensive fabricated-type-name sweep (IpcClientMessage, DecisionResponse, etc.)
+- ProjectDirs::from() consistency (was ::new())
+- on_hook 1-param signature aligned
+- BC-2.06.023 (PermissionPromptResolved TUI handling) created — new BC
+
+Artifact versions at convergence:
+- SS-daemon-wiring.md: v1.3.0
+- SS-ipc.md: v1.6.0
+- SS-tui.md: v1.6.0
+- SS-config.md: v1.3.0
+- SS-engine-module.md: v1.1.22
+- BC-INDEX: v1.19 (71 numbered BCs + 41 DTU BCs = 112 total)
+- PRD: v1.27.2
+
+Implementation residuals (not spec defects — expected in spec-first development):
+- EnrichedSession implementation missing 4 TUI fields and serde derives (Wave 4 story)
+- ClaudeCodeModule::on_hook() is a placeholder returning Allow (SS-04 stories implement full routing)
+- SS-daemon-lifecycle.md ProjectDirs::new() should be ::from() (maintenance item)
+- Architecture source pins lag by 0-2 patch versions (cosmetic metadata)
+
+STATE v6.10 → v6.11. SE-23 PASS: SM touched only STATE.md and cycle files.

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T14:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -97,7 +97,7 @@ rendered in the default terminal color. For all other `ToolPayload` variants (`B
 | EC-072 | `old_content` / `new_content` contains non-UTF-8 bytes | `PromptModal.tool_payload` stores `String` (Rust guarantees UTF-8); non-UTF-8 bytes are rejected at IPC deserialization before reaching the renderer; no panic in renderer |
 | EC-073 | Diff produces more lines than `(overlay_height - 8)` rows | Diff area is truncated at the height cap; no scroll indicator required in Phase 1 (P2 enhancement); no panic |
 | EC-074 | `tool_payload` is `ToolPayload::Bash { command }` | Diff renderer is not called; overlay body shows `command: <cmd>` in default styling |
-| EC-075 | `tool_payload` is `ToolPayload::Generic { raw }` | Diff renderer is not called; overlay body shows a JSON representation of `raw` or a truncated excerpt |
+| EC-075 | `tool_payload` is `ToolPayload::Generic { tool_name, tool_input }` | Diff renderer is not called; overlay body shows `tool_name: <name>` and a JSON representation of `tool_input` or a truncated excerpt |
 | EC-076 | `old_content` contains a trailing newline but `new_content` does not | `similar::TextDiff::from_lines` treats lines as ending at `\n`; the trailing newline difference appears as a one-line change; rendered per normal delete/insert rules |
 
 ## Canonical Test Vectors
@@ -128,7 +128,7 @@ rendered in the default terminal color. For all other `ToolPayload` variants (`B
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the diff preview feature within the "permission overlay stack" component of CAP-006, which is the product's primary competitive differentiator over lazygit's single-popup and NikiforovAll's Option<Panel> patterns |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: diff rendering is a pure read-only computation producing ratatui `Line` values; no file writes occur) |
 | Architecture Module | monocle-tui (overlay.rs render_diff function; `similar 3.x` dependency) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Diff Preview; §Dependency Graph (`similar 3.x`); §Purity Boundary (similar::TextDiff in monocle-tui only) |
+| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Diff Preview; §Dependency Graph (`similar 3.x`); §Purity Boundary (similar::TextDiff in monocle-tui only) |
 | Cross-Ref | BC-2.06.008 (overlay push — PromptModal carrying ToolPayload::Edit arrives via this path), BC-2.06.001 (purity boundary — similar is monocle-tui only), BC-2.01.003 (256 KiB body limit bounds diff input size) |
 | Test File | `monocle-tui/tests/overlay_diff_preview.rs` |
 | Test Name | `test_BC_2_06_010_diff_preview_color_coding` |
@@ -158,9 +158,38 @@ S-TBD — Implement diff preview for Edit ToolPayload using similar 3.x in overl
 
 **Initial production** (2026-05-26T14:00:00Z):
 - BC-2.06.010 created as part of SS-06 TUI behavioral contract burst (BCs 009–015).
-- Reads: SS-tui.md v1.0.0 §Permission Overlay §Diff Preview, §Dependency Graph,
+- Reads: SS-tui.md v1.1.0 §Permission Overlay §Diff Preview, §Dependency Graph,
   §Purity Boundary; prd-expansion-scope.md §3.3 BC-2.06.010 description.
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
 - DI-007 cited: diff rendering is read-only; no file writes.
 - Postcondition 10 documents `Wrap { trim: false }` per the SS-tui.md sketch.
 - EC-072 documents the UTF-8 safety guarantee from Rust's `String` type.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**IPC sweep — fabricated `ToolPayload::Generic { raw }` replaced with canonical `{ tool_name, tool_input }`** (2026-05-26T14:30:00Z):
+- EC-075: `ToolPayload::Generic { raw }` → `ToolPayload::Generic { tool_name, tool_input }`.
+  The `Generic` variant has fields `tool_name: String` and `tool_input: serde_json::Value`,
+  NOT a single `raw` field. This aligns with SS-tui.md §ToolPayload enum definition and the
+  F-P1D4-001 correction already applied to SS-tui.md (CRITICAL finding — corrected variant definition).
+  The edge case description is updated to reflect the correct rendering behavior.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.27.0"
+version: "1.27.2"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-26T13:00:00Z
+timestamp: 2026-05-26T00:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "37b6ef2"
-traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.15; 70 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-07 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
+traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.17; 70 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-07 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
 project: monocle
 supplements:
   - interface-definitions.md
@@ -197,6 +197,7 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.06.020 | Status Bar: Breadcrumb | P1 |
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 |
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 |
 
 > Full contracts: `behavioral-contracts/ss-06/BC-2.06.NNN.md`
 
@@ -365,6 +366,7 @@ In-flight requests complete before daemon exits; crash-recovery state offered to
 | BC-2.03.003 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §BC-ENGINE-002-ERR | P0 | `monocle-runtime/tests/engine_module_home_unresolvable.rs` | Integration (env-isolation) |
 | BC-2.03.004 | §Scope §In Scope (ClaudeCodeModule) | SS-engine-module.md v1.1.20 §Inherent operations | P0 | `monocle-runtime/tests/engine_module_claude_methods.rs` | Integration |
 | NFR-012 | §Scope (daemon start — runtime_dir fallback chain; lock-file 0o600 + runtime_dir 0o700) | SS-daemon-lifecycle.md v1.0.32 §Start Sequence | P0 | `monocle-runtime/tests/daemon_lifecycle.rs` | Integration (VP-005 Post-condition 9 / probe 5.e) |
+| BC-2.06.023 | §Success Criteria (killer scenario — permission overlay; concurrent prompt resolution) | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle; SS-ipc.md v1.0.0 §ServerToClient::PermissionPromptResolved | P0 | `monocle-tui/tests/permission_overlay_resolved.rs` | Integration |
 
 ---
 
@@ -1316,3 +1318,68 @@ Known consumers of PRD version pin who will have stale pins after this bump:
 | `Phase1Permission` | Exhaustive enum in `monocle-core::permissions`. Five variants. ADR-0004 exempts it from `#[non_exhaustive]`. | ADR-0004; SS-permissions-phase1.md |
 | `schema_version` | Proto field number 1 in `HookEnvelope`. Value `1` for all Phase 1 messages. Used by Phase 4 federation to validate message format compatibility. | BC-2.02.006, BC-2.02.007, BC-2.02.008 |
 | `VsddFactoryAdapter` | Phase 1 static implementation of `FactoryAdapter`. Detects VSDD Factory workspaces via `document_type: pipeline-state` in `.factory/STATE.md`. | BC-2.02.005 |
+
+---
+
+## §Trace v1.27.1 — CV-P1D-003 closure: BC-2.06.023 added to §7 RTM (2026-05-27T00:00:00Z)
+
+**Bump:** v1.27.0 → v1.27.1.
+**Predecessor pin:** v1.27.0 (PRD expansion 22 BCs → 70 BCs; timestamp `2026-05-26T13:00:00Z`).
+**Timestamp:** 2026-05-27T00:00:00Z
+
+**CV-P1D-003 MINOR — BC-2.06.023 missing from §7 RTM:**
+
+BC-2.06.023 ("TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved")
+was created in BC-INDEX v1.16 (F-P1D-006 closure during the Phase 1d adversarial pass). It
+was added to the BC-INDEX SS-06 table and the §2.6 TUI BC index table, but was not added to
+the §7 Requirements Traceability Matrix. This gap was flagged by the consistency validator as
+CV-P1D-003.
+
+**Row added to §7 RTM:**
+
+```
+| BC-2.06.023 | §Success Criteria (killer scenario — permission overlay; concurrent prompt resolution) | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle; SS-ipc.md v1.0.0 §ServerToClient::PermissionPromptResolved | P0 | monocle-tui/tests/permission_overlay_resolved.rs | Integration |
+```
+
+Architecture source cites: SS-tui.md v1.0.0 (overlay stack lifecycle is the primary module),
+SS-ipc.md v1.0.0 (PermissionPromptResolved message type definition, the trigger). Both version
+pins are included per pin-symmetry convention (F-R117-3, SE-17e).
+
+**BC-INDEX pin updated:** `behavioral-contracts/BC-INDEX.md v1.15` → `v1.17` in `traces_to:`
+(BC-INDEX was bumped to v1.16 for F-P1D-006 closure and v1.17 in this CV-P1D-001/002 burst).
+
+**Changes made:** §7 RTM — BC-2.06.023 row added; frontmatter `version` v1.27.0 → v1.27.1;
+`timestamp` refreshed `2026-05-26T13:00:00Z` → `2026-05-27T00:00:00Z`; `traces_to:`
+BC-INDEX pin v1.15 → v1.17; §Trace v1.27.1 added.
+
+SE-16d monotonicity PASS: 2026-05-27T00:00:00Z > prior 2026-05-26T13:00:00Z (v1.27.0). ARITHMETICALLY TRUE. PASS.
+
+---
+
+## §Trace v1.27.2 — F-P1D2-006 closure: BC-2.06.023 added to §2.6 BC index table (2026-05-26T00:00:00Z)
+
+**Bump:** v1.27.1 → v1.27.2.
+**Predecessor pin:** v1.27.1 (CV-P1D-003 BC-2.06.023 added to §7 RTM; timestamp `2026-05-27T00:00:00Z`).
+**Timestamp:** 2026-05-26T00:00:00Z
+
+**F-P1D2-006 HIGH — BC-2.06.023 missing from §2.6 TUI BC index table:**
+
+BC-2.06.023 ("TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved") was
+added to §7 RTM in v1.27.1 and to BC-INDEX, but was NOT added to the §2.6 TUI BC index table.
+The §Trace v1.27.1 claimed this was done ("added to the §2.6 TUI BC index table") but the claim
+was incorrect — the row was missing. F-P1D2-006 from Pass 2 adversarial review identified this gap.
+
+**Row added to §2.6 TUI BC index table:**
+
+```
+| BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 |
+```
+
+**Correction to §Trace v1.27.1:** The §Trace v1.27.1 claim "added to the §2.6 TUI BC index table"
+was incorrect. The row was added only to §7 RTM. This v1.27.2 patch adds the missing §2.6 row.
+
+**Changes made:** §2.6 TUI BC index table — BC-2.06.023 row added; frontmatter `version`
+v1.27.1 → v1.27.2; `timestamp` refreshed `2026-05-27T00:00:00Z` → `2026-05-26T00:00:00Z`;
+§Trace v1.27.2 added.
+
+SE-16d monotonicity PASS: v1.27.2 is a later version than v1.27.1. PASS.

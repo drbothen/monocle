@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010, F-P1D7-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -29,7 +29,7 @@ removal_reason: null
 ## Description
 
 The Event Ribbon panel renders a scrollable, newest-first log of hook events received via
-`IpcServerMessage::HookEventReceived` messages. Each row shows four columns: timestamp
+`ServerToClient::HookEventReceived` messages. Each row shows four columns: timestamp
 (HH:MM:SS.mmm), hook type (display name), session ID (first 8 chars), and latency-ms. A
 fifth `Status` column shows `PENDING` in yellow for unresolved `PreToolUse` events; blank
 otherwise. N is determined by the visible panel height — no artificial cap beyond the
@@ -69,9 +69,9 @@ and the daemon-side bounded event bus (BC-2.04.011).
    fixed-size sliding window, not an infinite log.
 
 4. **`PENDING` status in yellow:** An unresolved `PreToolUse` event (one for which a
-   `PromptModal` has been pushed but no `DecisionResponse` yet sent) renders `PENDING` in
+   `PromptModal` has been pushed but no `ClientToServer::PermissionDecision` yet sent) renders `PENDING` in
    the Status column using `ratatui::Style::default().fg(Color::Yellow)`. When the
-   `DecisionResponse` is sent (or the prompt is auto-resolved by timeout), the Status
+   `ClientToServer::PermissionDecision` is sent (or the prompt is auto-resolved by timeout), the Status
    column for that row reverts to blank (default color).
 
 5. **Scroll behavior:** When `Action::ScrollUp` is dispatched in `Dashboard` mode with
@@ -121,7 +121,7 @@ and the daemon-side bounded event bus (BC-2.04.011).
 | 5 `HookEventReceived` events arrive in order (E1 oldest, E5 newest) | Panel renders E5 at top, E1 at bottom | happy-path |
 | Panel height is 10; 15 events arrive | First 5 (oldest) are dropped; 10 newest remain in `VecDeque` | edge-case |
 | `PreToolUse` event arrives; overlay pushed | Status column shows `PENDING` in yellow for that row | happy-path |
-| `DecisionResponse` sent for the `PreToolUse` event above | Status column for that row reverts to blank | happy-path |
+| `ClientToServer::PermissionDecision` sent for the `PreToolUse` event above | Status column for that row reverts to blank | happy-path |
 | `ScrollUp` dispatched when at top of ribbon | No change to scroll offset; no error | edge-case |
 | `ScrollDown` dispatched at bottom (most recent event visible) | No change; no error | edge-case |
 | `Notification` event arrives | Renders in ribbon; NO overlay push; Status blank | happy-path |
@@ -133,7 +133,7 @@ and the daemon-side bounded event bus (BC-2.04.011).
 | VP-TBD | Event Ribbon renders newest event at row 0 | unit test |
 | VP-TBD | `VecDeque` is bounded to `panel_height`; no unbounded growth under load | unit test (inject panel_height=10, add 20 events, assert len==10) |
 | VP-TBD | `PreToolUse` unresolved events render `PENDING` in yellow | unit test (inspect ratatui `Style` on row) |
-| VP-TBD | `PENDING` status reverts to blank after `DecisionResponse` | unit test |
+| VP-TBD | `PENDING` status reverts to blank after `ClientToServer::PermissionDecision` | unit test |
 | VP-TBD | Under 1000 events/sec synthetic load, TUI renders without crash | integration/load test |
 | VP-TBD | Scroll offset is clamped — no out-of-bounds panic | unit test (scroll past end) |
 
@@ -145,7 +145,7 @@ and the daemon-side bounded event bus (BC-2.04.011).
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC directly specifies the "event ribbon" component of CAP-006, the rolling hook event log that is one of the product's three Phase 1 panels |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon MUST be written to the JSONL ring — the TUI Event Ribbon is a render view derived from IPC pushes, not from the ring directly; DI-001 is enforced by the daemon before the IPC push, not by this TUI BC); DI-007 (monocle MUST NOT write to files owned by a harness — satisfied: ribbon is read-only rendering) |
 | Architecture Module | monocle-tui (Event Ribbon panel renderer, `VecDeque<HookEventRow>`, scroll state); monocle-core (PanelId::EventRibbon, FocusSnapshot::EventRibbon) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Event Ribbon Panel (column layout, scroll, `PENDING` status, panel height cap, newest-first ordering) |
+| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Event Ribbon Panel (column layout, scroll, `PENDING` status, panel height cap, newest-first ordering) |
 | Cross-Ref | BC-2.01.007 (JSONL ring buffer — daemon-side storage; DISTINCT from this TUI render state); BC-2.04.011 (bounded event bus — daemon-side drop counter; TUI ribbon is downstream of this); BC-2.05.004 (IPC HookEventReceived — the IPC message type this BC processes); BC-2.06.019 (drop counter in status bar — shows daemon-side drops visible alongside ribbon); BC-2.06.017 (Notification hooks: appear in ribbon but never defer) |
 | Test File | `monocle-tui/tests/event_ribbon_panel.rs` |
 | Test Name | `test_BC_2_06_018_event_ribbon_rolling_log` |
@@ -175,7 +175,7 @@ S-TBD — Implement Event Ribbon panel: column layout, newest-first prepend, bou
 
 **Initial production** (2026-05-26T18:00:00Z):
 - BC-2.06.018 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Event Ribbon Panel (full section);
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Event Ribbon Panel (full section);
   §Rendering Architecture §Draw Function Dispatch (40% width allocation);
   prd-expansion-scope.md §3.3 BC-2.06.018 description (F-42, F-43, F-44).
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
@@ -186,3 +186,31 @@ S-TBD — Implement Event Ribbon panel: column layout, newest-first prepend, bou
 - EC-118 covers `None` latency — avoids misleading `0ms` display for unmetered events.
 - Postcondition 3 defines the rolling window as panel_height-bounded — no artificial cap,
   but no infinite growth either.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-P1D7-001 HIGH — Fabricated `IpcServerMessage` type name replaced with canonical `ServerToClient`** (2026-05-26T00:00:00Z):
+- `IpcServerMessage::HookEventReceived` → `ServerToClient::HookEventReceived`. The canonical
+  server-to-client enum is `ServerToClient` per SS-ipc.md §Server-to-Client Messages.
+- `DecisionResponse` → `ClientToServer::PermissionDecision` (3 occurrences: Postcondition 4,
+  test vector table, VP table).
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

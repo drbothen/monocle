@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -18,7 +18,7 @@ capability: CAP-007
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -139,7 +139,7 @@ conditions.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the resilience contract of the config load path, which is the precondition for all harness profile management and picker behavior |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Missing or Corrupted Config Handling |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.0.0 §Missing or Corrupted Config Handling and §Error Taxonomy |
+| Architecture Source | SS-config.md v1.1.0 §Missing or Corrupted Config Handling and §Error Taxonomy |
 | Cross-Ref | BC-2.07.001 (atomic write ensures partial files are minimized); BC-2.07.002 (schema parse errors governed by Case 3 here) |
 | Brief Features | F-53 (monocle-config reads config.json gracefully) |
 | Test File | `monocle-config/tests/load_config_resilience.rs` |
@@ -172,3 +172,10 @@ VP-TBD — config load resilience integration tests (filled after VP creation)
 - Four-case decision tree (missing / I/O error / parse failure / success) fully specified.
 - Brief feature traced: F-53.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-config.md v1.0.0` → `SS-config.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.

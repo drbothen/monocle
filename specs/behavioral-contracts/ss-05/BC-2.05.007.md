@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-005
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -124,7 +124,7 @@ specified in BC-2.06.016.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — the capability description explicitly names "SOQ-3 overlay clear" as a responsibility of SS-05; this BC is the canonical specification of that invariant at the IPC transport layer |
 | L2 Domain Invariants | DI-001 (hook events written before ACK — SOQ-3 protects the integrity of this invariant by ensuring TUI clients cannot send decisions for timed-out prompts after daemon restart, which would corrupt the decision channel); DI-007 (monocle must not write to harness-owned files — ghost approvals would cause monocle to indirectly influence Claude Code behavior via a stale decision channel; SOQ-3 prevents this) |
 | Architecture Module | monocle-ipc (UdsTransport, TransportEvent::Disconnected) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.0.0 §SOQ-3 Overlay Clear on Disconnect; SS-ipc.md v1.0.0 §Reconnection Behavior |
+| Architecture Source | SS-ipc.md v1.4.0 §SOQ-3 Overlay Clear on Disconnect; SS-ipc.md v1.4.0 §Reconnection Behavior |
 | Cross-Ref | BC-2.05.006 (reconnect loop — SOQ-3 fires before the loop begins); BC-2.06.016 (TUI-layer handler that clears VecDeque<PromptModal> in response to TransportEvent::Disconnected); product-brief.md line 145 (SOQ-3 definition) |
 | Test File | `monocle-ipc/tests/soq3_overlay_clear.rs` |
 | Test Name | `test_BC_2_05_007_overlay_cleared_on_disconnect` |
@@ -161,3 +161,22 @@ VP-TBD — SOQ-3 invariant verification properties (filled after VP creation)
 - DI-007 cited: SOQ-3 prevents monocle from indirectly influencing Claude Code behavior via
   stale decision channels, upholding the observe-only invariant.
 - SE-16d PASS: 2026-05-26T04:00:00Z is the production timestamp for this wave.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.0.0` → `SS-ipc.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-004 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.1.0` (2 occurrences) → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.3.0` (2 occurrences) → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

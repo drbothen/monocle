@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T14:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010, F-P1D7-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -30,7 +30,7 @@ removal_reason: null
 
 In `AppMode::Overlay`, pressing `3` (bound to `Action::PermissionReject` in the `PerContext`
 binding table) sends a deny decision to the daemon and pops the front `PromptModal` from
-the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt_id, decision: Decision::Deny }` to the daemon via `App::ipc_tx`. The daemon forwards `{"decision": "deny"}` to the stalled Claude Code HTTP response; Claude Code receives the deny and does not execute the tool. The TUI-side stack management and mode transition behavior are identical to Accept-Once (BC-2.06.011) and Accept-Always (BC-2.06.012), except the decision value is `Deny`.
+the `VecDeque` stack. The TUI sends `ClientToServer::PermissionDecision { prompt_id, decision: PermissionDecision::Reject }` to the daemon via `App::ipc_tx`. The daemon forwards `{"decision": "deny"}` to the stalled Claude Code HTTP response; Claude Code receives the deny and does not execute the tool. The TUI-side stack management and mode transition behavior are identical to Accept-Once (BC-2.06.011) and Accept-Always (BC-2.06.012), except the decision value is `Reject`.
 
 ## Preconditions
 
@@ -38,12 +38,12 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 2. The `PerContext` binding table for `AppMode::Overlay` maps key `3` to
    `Action::PermissionReject`.
 3. `stack.front()` is the `PromptModal` whose `prompt_id` will be sent in the
-   `DecisionResponse`.
+   `ClientToServer::PermissionDecision`.
 4. The IPC send channel (`App::ipc_tx`) has capacity for at least one additional message.
 
 ## Postconditions
 
-1. **IPC send enqueued:** `IpcClientMessage::DecisionResponse { prompt_id: stack.front().prompt_id, decision: Decision::Deny }` is enqueued on `App::ipc_tx` before the state transition. This is non-blocking.
+1. **IPC send enqueued:** `ClientToServer::PermissionDecision { prompt_id: stack.front().prompt_id, decision: PermissionDecision::Reject }` is enqueued on `App::ipc_tx` before the state transition. This is non-blocking.
 2. **Front `PromptModal` popped:** `transition(Overlay { stack, prior }, PermissionReject)` calls `stack.pop_front()`, removing the front item.
 3. **Stack-empty collapse:** If `stack.is_empty()` after the pop, the transition returns `AppMode::Dashboard { focused: prior }`.
 4. **Stack-non-empty continuation:** If `stack.len() >= 1` after the pop, the transition returns `AppMode::Overlay { stack, prior }` with the new front item rendered.
@@ -53,8 +53,8 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 
 ## Invariants
 
-1. `Decision::Deny` carries the same `prompt_id` as `Decision::AcceptOnce` and
-   `Decision::AcceptAlways`. The TUI-side stack management is identical for all three
+1. `PermissionDecision::Reject` carries the same `prompt_id` as `PermissionDecision::Accept` and
+   `PermissionDecision::AcceptAlways`. The TUI-side stack management is identical for all three
    decision types.
 2. The `[3]` binding is active ONLY in `AppMode::Overlay` (PerContext table). Pressing `3`
    in `AppMode::Dashboard` or `AppMode::Filtering` has no effect.
@@ -68,7 +68,7 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-087 | Stack has exactly 1 item when `[3]` is pressed | Pop leaves stack empty; `AppMode` transitions to `Dashboard { focused: prior }`; IPC `Decision::Deny` enqueued |
+| EC-087 | Stack has exactly 1 item when `[3]` is pressed | Pop leaves stack empty; `AppMode` transitions to `Dashboard { focused: prior }`; IPC `PermissionDecision::Reject` enqueued |
 | EC-088 | Stack has 4 items when `[3]` is pressed | Pop leaves 3 items; `AppMode` stays `Overlay`; overlay renders next front item; badge decrements |
 | EC-089 | IPC send channel is full when Reject is enqueued | Message dropped; drop counter increments; state transition still occurs; user may not see Claude Code response; the hook will eventually time out at the daemon with fail-open semantics (BC-HOOK-001) |
 | EC-090 | `[3]` pressed in `AppMode::Dashboard` | No binding match; identity transition; keypress silently discarded |
@@ -78,8 +78,8 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 
 | Input (mode, action) | Expected Output | Category |
 |----------------------|----------------|----------|
-| `Overlay { stack: [P1], prior: Sessions }`, `PermissionReject` | `Dashboard { focused: Sessions }` + `DecisionResponse { prompt_id: P1.id, decision: Deny }` enqueued | happy-path |
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `PermissionReject` | `Overlay { stack: [P2], prior: Sessions }` + `DecisionResponse { prompt_id: P1.id, decision: Deny }` enqueued | happy-path |
+| `Overlay { stack: [P1], prior: Sessions }`, `PermissionReject` | `Dashboard { focused: Sessions }` + `PermissionDecision { prompt_id: P1.id, decision: PermissionDecision::Reject }` enqueued | happy-path |
+| `Overlay { stack: [P1, P2], prior: Sessions }`, `PermissionReject` | `Overlay { stack: [P2], prior: Sessions }` + `PermissionDecision { prompt_id: P1.id, decision: PermissionDecision::Reject }` enqueued | happy-path |
 | `Dashboard { focused: Sessions }`, `PermissionReject` | `Dashboard { focused: Sessions }` (identity; no IPC send) | edge-case |
 | `Overlay { stack: [P1], prior: Sessions }`, `Escape` | `Overlay { stack: [P1], prior: Sessions }` (Esc does NOT pop; must be distinguished from Reject) | edge-case |
 
@@ -87,7 +87,7 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | IPC `DecisionResponse` with `decision: Deny` and correct `prompt_id` is enqueued before state transition | integration test |
+| VP-TBD | IPC `ClientToServer::PermissionDecision` with `decision: PermissionDecision::Reject` and correct `prompt_id` is enqueued before state transition | integration test |
 | VP-TBD | `Action::Escape` in `Overlay` does NOT call `stack.pop_front()` | unit test (confirm Esc-vs-Reject distinction) |
 | VP-TBD | Empty stack after reject collapses `AppMode` to `Dashboard` | unit test |
 
@@ -99,7 +99,7 @@ the `VecDeque` stack. The TUI sends `IpcClientMessage::DecisionResponse { prompt
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the Reject (deny) decision path within the "permission overlay stack" component of CAP-006, which is the user's mechanism to prevent a Claude Code tool from executing |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: Reject sends an IPC decision message; the TUI writes no files) |
 | Architecture Module | monocle-core (transition() PermissionReject arm); monocle-tui (App::handle_action enqueues IPC message) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionReject arm) |
+| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionReject arm) |
 | Cross-Ref | BC-2.06.011 (Accept-Once — sibling), BC-2.06.012 (Accept-Always — sibling), BC-2.06.014 (Esc Hide — CRITICAL distinction: Esc does NOT pop), BC-2.06.001 (pure transition function), BC-2.04.011 (bounded event bus) |
 | Test File | `monocle-tui/tests/overlay_decisions.rs` |
 | Test Name | `test_BC_2_06_013_reject_pops_front_and_sends_deny_ipc` |
@@ -131,10 +131,48 @@ S-TBD — Implement Reject keybinding for permission overlay with IPC deny send 
 
 **Initial production** (2026-05-26T14:00:00Z):
 - BC-2.06.013 created as part of SS-06 TUI behavioral contract burst (BCs 009–015).
-- Reads: SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle step 3,
+- Reads: SS-tui.md v1.1.0 §Permission Overlay §Overlay Stack Lifecycle step 3,
   §AppMode State Machine §Transition Function Contract; prd-expansion-scope.md §3.3
   BC-2.06.013 description.
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
 - DI-007 cited: TUI sends IPC message only; no file writes.
 - Postcondition 7 and EC-091 + Related BCs explicitly flag the CRITICAL Esc-vs-Reject
   distinction to prevent implementation conflation.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-P1D7-001 HIGH — Fabricated IPC type names replaced with canonical types** (2026-05-26T00:00:00Z):
+- `IpcClientMessage::DecisionResponse` → `ClientToServer::PermissionDecision`. The canonical
+  client-to-server enum is `ClientToServer` per SS-ipc.md §Client-to-Server Messages.
+- `Decision::Deny` → `PermissionDecision::Reject`. The canonical reject variant is `Reject`
+  (wire value `"deny"`) per SS-ipc.md §PermissionDecision enum. The bare `Decision::Deny`
+  enum does not exist.
+- All occurrences updated: Description, Postcondition 1, Invariant 1, EC-087, test vectors, VP table.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**IPC sweep — Precondition 3 residual fix** (2026-05-26T14:30:00Z):
+- Precondition 3: "sent in the `DecisionResponse`" → "sent in the `ClientToServer::PermissionDecision`".
+  This occurrence was missed in the v1.0.3 sweep; the fabricated `DecisionResponse` shorthand
+  has now been eliminated from all sections of this file.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.

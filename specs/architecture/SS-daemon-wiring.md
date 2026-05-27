@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "daemon-wiring"
 subsystem: SS-04
-version: "1.0.0"
+version: "1.3.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -253,14 +253,32 @@ POST /hooks/<type>
         │
         ├── Deserialize JSON body into HookEnvelope (monocle-proto)
         ├── Extract session_id; look up or create EnrichedSession in registry
-        ├── Call EngineModule::on_hook(hook_type, session_id, &payload) on each registered module
-        │     └── ClaudeCodeModule::on_hook() → HookDecision
+        ├── Construct HookEvent variant from HookEnvelope fields
+        │     (e.g., HookEvent::PreToolUse(PreToolUseEvent { tool_name, tool_input, session_id, pid }))
+        ├── Call engine.on_hook(hook_event).await on each registered module
+        │     └── ClaudeCodeModule::on_hook(HookEvent) → HookResponse { decision, redirect_url, diagnostic }
         ├── Publish HookEvent to event bus (EventBusTx::try_send; drop if full, increment counter)
         ├── Append JSONL record to RingBuffer (best-effort; WARN + 200 on failure per AC-005)
         └── Return HTTP response based on HookDecision within timeout budget
               PreToolUse / Stop / SessionStart / PromptSubmit: ≤300ms
               Notification: ≤2000ms
 ```
+
+### SessionStart Invocation Path Note (F-P1D-009)
+
+`POST /hooks/session-start` is called by Claude Code's internal lifecycle mechanism —
+NOT through user-configurable hook scripts in `hooks-settings.json`. Claude Code fires
+`SessionStart` events autonomously when a session begins; monocle does not configure
+this via the `UserPromptSubmit` or similar hooks-settings entries. The
+`hooks-settings.json` written by monocle at step 9 of the start sequence does NOT
+include a `SessionStart` handler entry — Claude Code invokes this endpoint on its own
+initiative.
+
+Implementers: do NOT add a `SessionStart` key to the `hooks-settings.json` schema in
+§Hook Tmpfile Generation. The `hooks-settings.json` configures only the 5 hook types
+that support user-configurable scripts (`PreToolUse`, `Notification`, `Stop`,
+`PostToolUse`, `UserPromptSubmit`). `SessionStart` arrives because Claude Code calls it
+regardless of hooks-settings configuration.
 
 ### Timeout Budget Enforcement
 
@@ -273,7 +291,7 @@ to ensure the daemon does not hold open HTTP connections indefinitely.
 
 ### PreToolUse — Permission Decision Hold
 
-When `ClaudeCodeModule::on_hook()` returns `HookDecision::Defer` on a `PreToolUse` event,
+When `ClaudeCodeModule::on_hook()` returns a `HookResponse` with `decision: HookDecision::Defer` on a `PreToolUse` event,
 the handler holds the HTTP response open and waits for a user decision from the TUI. The
 daemon pushes a `PermissionPromptQueued` IPC message to all connected TUI clients
 (BC-2.05.005). The response is sent when:
@@ -376,8 +394,12 @@ Claude Code to discover the daemon's hook endpoints via the `--settings` flag.
 ```
 
 Key properties:
-- All 5 hook endpoint URLs embed the OS-assigned port and the full wire token
-  `monocle-v1:<64-hex>`.
+- The daemon serves 5 hook endpoints; hooks-settings.json configures 4 of them with
+  URLs (`PreToolUse`, `Notification`, `Stop`, `UserPromptSubmit`). `SessionStart` is
+  invoked by Claude Code's internal lifecycle, not via hooks-settings.json (see
+  §SessionStart Invocation Path Note above). `PostToolUse` and `PreCompact` are
+  included as reserved empty arrays (forward-compatibility). All configured URL entries
+  embed the OS-assigned port and the full wire token `monocle-v1:<64-hex>`.
 - `PostToolUse` and `PreCompact` are included with empty hook arrays for forward-compatibility
   (Claude Code ignores hook types with empty arrays).
 - The file is written atomically via `tempfile::persist` at mode `0o600`.
@@ -470,7 +492,7 @@ the authoritative contract text is in the BC files.
 |-------|-------|----------|----------|
 | BC-2.04.001 | Daemon Start Sequence: Port Bind + Lock File + Token Write (SOQ-2) | P0 | F-02, F-03, F-22 |
 | BC-2.04.002 | Daemon Auto-Start on TUI Launch | P0 | F-05, F-60 |
-| BC-2.04.003 | `MONOCLE_NO_AUTOSTART=1` Suppresses Auto-Start | P0 | F-23, F-61 |
+| BC-2.04.003 | `MONOCLE_NO_AUTOSTART=1` Suppresses Auto-Start | P1 | F-23, F-61 |
 | BC-2.04.004 | `monocle daemon start` CLI Subcommand | P0 | F-01, F-59 |
 | BC-2.04.005 | `monocle daemon stop` CLI Subcommand | P0 | F-01, F-59 |
 | BC-2.04.006 | `directories::ProjectDirs::runtime_dir()` Fallback Chain | P0 | F-04 |
@@ -479,7 +501,7 @@ the authoritative contract text is in the BC files.
 | BC-2.04.009 | Hook Endpoint: Stop/SessionStart/PromptSubmit Routing | P0 | F-06 |
 | BC-2.04.010 | Hook Tmpfile Generation at `runtimeDir/hooks-settings.json` | P0 | F-12, F-62 |
 | BC-2.04.011 | Bounded Event Bus with Drop Counter | P0 | F-63, F-50 |
-| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P0 | F-13 |
+| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P1 | F-13 |
 
 ### BC Dependency Map
 
@@ -531,6 +553,18 @@ exit, not the exclusive mutex — the lock file atomic write is the true exclusi
 
 ---
 
+## §Trace v1.2.0
+
+**Adversarial Pass 2 review corrections** (F-P1D2-007) (2026-05-26):
+- **F-P1D2-007** Clarified hook endpoint URL count in §Hook Tmpfile Generation §Key
+  properties. The previous text "All 5 hook endpoint URLs" was ambiguous — the daemon
+  serves 5 hook endpoints but hooks-settings.json only configures 4 with URLs. Rewrote
+  to state explicitly: hooks-settings.json configures 4 URLs (`PreToolUse`,
+  `Notification`, `Stop`, `UserPromptSubmit`); `SessionStart` is invoked by Claude
+  Code's internal lifecycle (not configurable via hooks-settings.json, per §SessionStart
+  Invocation Path Note); `PostToolUse` and `PreCompact` are present as reserved empty
+  arrays for forward-compatibility.
+
 ## §Trace v1.0.0
 
 **Initial production** (2026-05-26T00:00:00Z):
@@ -545,3 +579,40 @@ exit, not the exclusive mutex — the lock file atomic write is the true exclusi
   by section, not repeated.
 - input-hash: [pending] — to be populated by compute-input-hash after human review.
 - SE-16d PASS: 2026-05-26T00:00:00Z is the chain origin for this artifact.
+
+## §Trace v1.1.0
+
+**Adversarial review corrections** (F-P1D-004, F-P1D-009) (2026-05-26):
+- **F-P1D-004** Priority sync with BC-INDEX (source of truth):
+  - BC-2.04.003 corrected P0 → P1 (BC-INDEX §SS-04 row 3: P1).
+  - BC-2.04.012 corrected P0 → P1 (BC-INDEX §SS-04 row 12: P1).
+- **F-P1D-009** Added §SessionStart Invocation Path Note clarifying that
+  `POST /hooks/session-start` is invoked by Claude Code's internal lifecycle mechanism,
+  NOT via user-configurable hooks-settings.json entries. Implementers must NOT add a
+  `SessionStart` entry to the hooks-settings.json schema. This eliminates routing
+  ambiguity that could cause implementers to mistakenly configure hooks-settings.json
+  to call the session-start endpoint.
+
+## §Trace v1.3.0
+
+**F-P12-001 (partial) — on_hook signature corrected in §Hook Endpoint Routing diagram** (2026-05-26):
+- **F-P12-001** The ASCII routing diagram incorrectly described the `EngineModule::on_hook`
+  call as `on_hook(hook_type, session_id, &payload)` — three separate parameters. The actual
+  trait signature (engine.rs line 34; SS-engine-module.md §EngineModule Trait Signature) is
+  `async fn on_hook(&self, event: HookEvent) -> HookResponse` — a single `HookEvent` enum
+  value. The hook handler must first construct a `HookEvent` variant (e.g.,
+  `HookEvent::PreToolUse(PreToolUseEvent { tool_name, tool_input, session_id, pid })`) from
+  the deserialized `HookEnvelope` fields, then call `engine.on_hook(hook_event).await`.
+  The return type is `HookResponse { decision, redirect_url, diagnostic }`, not `HookDecision`
+  directly. The ASCII diagram now reflects the correct two-step construction-then-dispatch
+  flow.
+- **Note for PO (BC-2.04.006 fix required):** BC-2.04.006 PC-4, PC-5, PC-11 specify
+  `ProjectDirs::new("monocle", "monocle", "monocle")` as the constructor. SS-config.md uses
+  `ProjectDirs::from("", "", "monocle")`. These produce DIFFERENT paths on macOS: `from("",
+  "", "monocle")` yields project path `monocle` → `data_local_dir()` =
+  `~/Library/Application Support/monocle/`; `new("monocle", "monocle", "monocle")` treats all
+  three arguments as qualifier/org/app and yields project path `monocle.monocle.monocle` →
+  `data_local_dir()` = `~/Library/Application Support/monocle.monocle.monocle/`. The correct
+  call is `ProjectDirs::from("", "", "monocle")` per SS-config.md. BC-2.04.006 must be updated
+  by the PO. SS-daemon-wiring.md delegates constructor selection to BC-2.04.006 and
+  SS-daemon-lifecycle.md; no direct fix is needed in this file.

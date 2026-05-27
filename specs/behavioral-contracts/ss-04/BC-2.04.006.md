@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:05:00Z
@@ -11,11 +11,11 @@ input-hash: "[pending]"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
-capability: CAP-001
+capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D-001, F-P1D2-010, F-P12-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -62,10 +62,10 @@ PC-3. If `MONOCLE_RUNTIME_DIR` is set to an empty string, it is treated as unset
 
 **Level 2 — `directories::ProjectDirs::runtime_dir()`.**
 
-PC-4. `ProjectDirs::new("monocle", "monocle", "monocle")` is called. If the call returns
+PC-4. `ProjectDirs::from("", "", "monocle")` is called. If the call returns
       `None` (no home directory available), proceed immediately to Level 4 (Level 3 also
       requires a `ProjectDirs` instance).
-PC-5. If `ProjectDirs::new(...)` returns `Some(proj)`, call `proj.runtime_dir()`. This
+PC-5. If `ProjectDirs::from(...)` returns `Some(proj)`, call `proj.runtime_dir()`. This
       returns `Some` on Linux (the XDG runtime directory, typically
       `$XDG_RUNTIME_DIR/monocle`), and `None` on macOS and Windows by platform-ABI design
       (not a misconfiguration).
@@ -76,7 +76,7 @@ PC-7. If `proj.runtime_dir()` returns `None` (expected on macOS/Windows), procee
 **Level 3 — `directories::ProjectDirs::data_local_dir()` fallback.**
 
 PC-8. Using the `ProjectDirs` instance from Level 2 (which returned `Some`), call
-      `proj.data_local_dir()`. This method always returns a valid path when `ProjectDirs::new`
+      `proj.data_local_dir()`. This method always returns a valid path when `ProjectDirs::from`
       returned `Some` (it never returns `None`).
       Platform resolution:
       - macOS: `$HOME/Library/Application Support/monocle/`
@@ -88,7 +88,7 @@ PC-10. Use `proj.data_local_dir()` as the runtime directory.
 
 **Level 4 — Fail-fast.**
 
-PC-11. Level 4 is reached only if `ProjectDirs::new("monocle", "monocle", "monocle")`
+PC-11. Level 4 is reached only if `ProjectDirs::from("", "", "monocle")`
        returned `None`. This occurs only in environments with no usable home directory
        (misconfigured containers, minimal environments with no `/etc/passwd` entry).
 PC-12. The resolution function returns `Err(DaemonStartError::RuntimeDirUnresolvable)`.
@@ -107,7 +107,7 @@ PC-14. After a valid path is returned by the resolution function, the caller (BC
 1. **Evaluation order is strict.** Level 1 is always checked before Level 2; Level 2 before
    Level 3; Level 3 before Level 4. There is no reordering and no skipping (except when a
    level produces a result, in which case remaining levels are skipped).
-2. **Single `ProjectDirs` instance.** `ProjectDirs::new("monocle", "monocle", "monocle")`
+2. **Single `ProjectDirs` instance.** `ProjectDirs::from("", "", "monocle")`
    is called at most once per resolution. The result is reused for both Level 2
    (`runtime_dir()`) and Level 3 (`data_local_dir()`).
 3. **Empty string treated as unset.** `MONOCLE_RUNTIME_DIR=""` falls through to Level 2.
@@ -131,7 +131,7 @@ PC-14. After a valid path is returned by the resolution function, the caller (BC
 | EC-2.04.006-03 | Linux with `XDG_RUNTIME_DIR=/run/user/1000` set | Level 2 wins; runtime dir is `/run/user/1000/monocle`; INFO: `runtime_dir from ProjectDirs::runtime_dir()` |
 | EC-2.04.006-04 | Linux with `XDG_RUNTIME_DIR` unset | Level 2 returns `None`; Level 3 wins; runtime dir is `$HOME/.local/share/monocle`; INFO: `runtime_dir fallback to data_local_dir (platform: linux)` |
 | EC-2.04.006-05 | macOS (no `XDG_RUNTIME_DIR`, no `runtime_dir()` support) | Level 2 returns `None`; Level 3 wins; runtime dir is `~/Library/Application Support/monocle/`; INFO: `runtime_dir fallback to data_local_dir (platform: macos)` |
-| EC-2.04.006-06 | Container with no home directory (`/etc/passwd` missing entry) | `ProjectDirs::new(...)` returns `None`; Level 4: exit 70; ERROR: `cannot resolve runtime directory; set MONOCLE_RUNTIME_DIR to specify an explicit path` |
+| EC-2.04.006-06 | Container with no home directory (`/etc/passwd` missing entry) | `ProjectDirs::from(...)` returns `None`; Level 4: exit 70; ERROR: `cannot resolve runtime directory; set MONOCLE_RUNTIME_DIR to specify an explicit path` |
 | EC-2.04.006-07 | `MONOCLE_RUNTIME_DIR` set to a relative path (e.g., `./runtime`) | Level 1 wins verbatim; the relative path is used as-is; the caller resolves it relative to the current working directory. This is the operator's responsibility; monocle does not canonicalize the path. |
 | EC-2.04.006-08 | Two calls to the resolution function in the same process | Both calls produce the same result (env var and ProjectDirs are deterministic given the same environment); no caching is required but is permitted as an optimization |
 
@@ -153,7 +153,7 @@ PC-14. After a valid path is returned by the resolution function, the caller (BC
 | VP-TBD | Level 1 (env override) wins over Level 2 and Level 3 | unit (env mock) |
 | VP-TBD | Level 2 wins on Linux with XDG_RUNTIME_DIR set | unit (env mock) |
 | VP-TBD | Level 3 wins on macOS (runtime_dir() returns None) | unit (env mock + ProjectDirs mock) |
-| VP-TBD | Level 4 returns RuntimeDirUnresolvable when ProjectDirs::new() returns None | unit (ProjectDirs mock) |
+| VP-TBD | Level 4 returns RuntimeDirUnresolvable when ProjectDirs::from() returns None | unit (ProjectDirs mock) |
 | VP-TBD | Empty MONOCLE_RUNTIME_DIR falls through to Level 2 | unit (env mock) |
 | VP-TBD | Exactly one INFO log line emitted per resolution call | unit (tracing subscriber capture) |
 
@@ -161,11 +161,11 @@ PC-14. After a valid path is returned by the resolution function, the caller (BC
 
 | Field | Value |
 |-------|-------|
-| L2 Capability | CAP-001 ("Daemon Lifecycle") per domain-spec/L2-INDEX.md §Capabilities Registry |
-| Capability Anchor Justification | CAP-001 ("Daemon Lifecycle") per CAP-001-daemon-lifecycle.md — runtime directory resolution is a foundational component of daemon lifecycle management; all daemon files (lock, socket, JSONL ring, hooks-settings) live under the resolved `runtime_dir`, making this resolution the single point of truth for daemon data locality |
+| L2 Capability | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §Capability Traceability §SS-04 |
+| Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — runtime directory resolution is a foundational concern of the binary composition root: all daemon files (lock, socket, JSONL ring, hooks-settings) live under the resolved `runtime_dir`, and this 4-level fallback chain is part of the composition root wiring that determines where all SS-04-managed files are stored |
 | L2 Domain Invariants | DI-002 (lock file must be present at a known path before hook endpoints accept connections — this BC defines how that path is determined; without a correct runtime_dir resolution, the lock file cannot be created at a predictable location); DI-003 (token written to lock file after port bound — this BC is a prerequisite for DI-003 enforcement since the lock file path must be known before either operation) |
 | Architecture Module | `monocle-runtime` per ARCH-INDEX Subsystem Registry SS-04 (`resolve_runtime_dir()` function is classified as "Pure core (impure-adjacent)" per SS-daemon-wiring.md §Module Purity Classification) |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §Daemon Start Sequence Step 1; SS-daemon-lifecycle.md §Start Sequence step 1 (cross-referenced) |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence Step 1; SS-daemon-lifecycle.md v1.0.33 §Start Sequence step 1 (cross-referenced) |
 | Cross-Ref | BC-2.01.005 (Postcondition 2 and Precondition 2 specify this same resolution chain; BC-2.04.006 is the normative specification; BC-2.01.005 delegates to it); BC-2.04.001 step 1 (calls this resolution function); BC-2.04.002 PC-1 (calls this function); BC-2.04.004 (uses lock file path derived from runtime_dir) |
 | Test File | `monocle-runtime/tests/runtime_dir_resolution.rs` |
 | Test Name | `test_BC_2_04_006_runtime_dir_fallback_chain` |
@@ -205,3 +205,43 @@ VP-TBD — Runtime directory resolution unit tests with env mocking (filled afte
   source as SS-04 formalizes the wiring layer.
 - input-hash: [pending] — to be populated by compute-input-hash after human review.
 - SE-16d PASS: 2026-05-26T12:05:00Z > prior 2026-05-26T12:04:00Z (BC-2.04.005).
+
+## §Trace v1.1.0
+
+**F-P1D-001 CRITICAL — capability mis-anchor corrected** (2026-05-26T00:00:00Z):
+- Frontmatter `capability: CAP-001` → `capability: CAP-004` per F-P1D-001.
+- Traceability §L2 Capability and §Capability Anchor Justification updated to cite CAP-004
+  ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint
+  routing; bounded event bus") per ARCH-INDEX §SS-04 Capability Traceability.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.2.0
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.4.0
+
+**F-P1D10-002 HIGH — CAP-004 capability text corrected to ARCH-INDEX verbatim** (2026-05-26T00:00:00Z):
+- L2 Capability and Capability Anchor Justification: stale text → ARCH-INDEX verbatim
+  `"Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation"`.
+- SE-16d monotonicity: v1.4.0 timestamp >= v1.3.0. PASS.
+
+## §Trace v1.5.0
+
+**F-P12-001 HIGH — ProjectDirs constructor corrected from `::new` to `::from`** (2026-05-26T00:00:00Z):
+- PC-4, PC-11, Invariant 2: `ProjectDirs::new("monocle", "monocle", "monocle")` →
+  `ProjectDirs::from("", "", "monocle")` to match the actual `directories` crate API.
+  The `directories::ProjectDirs` type does not have a `new` constructor; the correct
+  factory method is `from(qualifier, organization, application)`. Per SS-config.md §3.1
+  line 51, monocle uses `ProjectDirs::from("", "", "monocle")` with empty qualifier and
+  organization (no reverse-domain-notation needed for a user-facing CLI tool).
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.
+
+## §Trace v1.3.0
+
+**F-P1D4-006 HIGH — Architecture Source pins updated; SS-daemon-lifecycle.md version pin added** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- Architecture Source: `SS-daemon-lifecycle.md §Start Sequence step 1` → `SS-daemon-lifecycle.md v1.0.33 §Start Sequence step 1` — version pin was missing (F-P1D4-006 HIGH finding); pin added.
+- SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.

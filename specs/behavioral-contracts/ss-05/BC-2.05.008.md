@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-005
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -132,7 +132,7 @@ of shared-memory crates), and a semgrep check in CI (detecting direct `libc::mma
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC constrains the transport implementation to UDS-only, which defines the Phase 1 boundary of the internal transport capability and provides the `Transport` trait abstraction point for Phase 4 |
 | L2 Domain Invariants | DI-007 (monocle must not write to harness-owned files — shared-memory primitives could theoretically be used to violate this; the prohibition on shared-memory in monocle-ipc upholds DI-007's spirit at the transport layer) |
 | Architecture Module | monocle-ipc (Transport trait, UdsTransport, `#![forbid(unsafe_code)]`) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.0.0 §Transport Layer §Transport Trait; SS-ipc.md v1.0.0 §Phase 1 Transport Constraint |
+| Architecture Source | SS-ipc.md v1.4.0 §Transport Layer §Transport Trait; SS-ipc.md v1.4.0 §Phase 1 Transport Constraint |
 | Cross-Ref | SS-deps-pin-manifest.md v1.1.17 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.29.5 §Forbidden Patterns (shared-memory primitives) |
 | Test File | CI enforcement (cargo deny, semgrep, rustc compile gate) — not an integration test |
 | Test Name | `test_BC_2_05_008_uds_only_constraint` (static analysis CI job) |
@@ -169,3 +169,22 @@ VP-TBD — UDS-only constraint static analysis verification (filled after VP cre
 - Priority P1 (not P0) because this is a constraint enforcement contract, not a user-visible
   behavioral feature; it is enforced entirely at build/CI time rather than at runtime.
 - SE-16d PASS: 2026-05-26T04:00:00Z is the production timestamp for this wave.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.0.0` → `SS-ipc.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-004 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.1.0` (2 occurrences) → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.3.0` (2 occurrences) → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

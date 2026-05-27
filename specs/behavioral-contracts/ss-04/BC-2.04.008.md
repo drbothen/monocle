@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:01:00Z
@@ -15,7 +15,7 @@ capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D2-010, F-P1D6-003, F-P12-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -45,9 +45,9 @@ fire-and-forward hook type.
 3. `auth_middleware` has verified the auth token in `X-Monocle-Authorization` or
    `X-Claude-Code-Ide-Authorization` (BC-2.01.009 postcondition satisfied).
 4. At least one `EngineModule` implementation is registered in `DaemonState.engine_registry`
-   (guaranteed by daemon start sequence step 6, BC-2.04.001 PC-6).
-5. `DaemonState.event_bus_tx` (`Arc<EventBusTx>`) is initialized (BC-2.04.001 PC-5).
-6. `DaemonState.ring` (`Arc<RingBuffer>`) is initialized (BC-2.04.001 PC-4).
+   (guaranteed by daemon start sequence step 6, BC-2.04.001 PC-11).
+5. `DaemonState.event_bus_tx` (`Arc<EventBusTx>`) is initialized (BC-2.04.001 PC-10).
+6. `DaemonState.ring` (`Arc<RingBuffer>`) is initialized (BC-2.04.001 PC-7).
 
 ## Postconditions
 
@@ -62,8 +62,18 @@ in `DaemonState.session_registry`. The session object is accessed under the regi
 internal lock; mutations complete before the handler proceeds to dispatch.
 
 **PC-3 — EngineModule dispatch (fire-and-forward, no Defer).**
-The handler calls `EngineModule::on_hook(HookType::Notification, session_id, &payload)` on
-each registered module. The `HookDecision` for Notification MUST be one of:
+The HTTP handler extracts the relevant fields from the deserialized `HookEnvelope` and
+constructs a `HookEvent::Notification(NotificationEvent { notification_type, tool_name,
+tool_input, message, session_id, pid })`. It then calls `engine.on_hook(hook_event).await`
+on each registered module. The signature is:
+
+```
+async fn on_hook(&self, event: HookEvent) -> HookResponse
+```
+
+The `HookEvent` is fully constructed by the handler before `on_hook` is invoked; the
+`EngineModule` receives a single typed event argument. The `HookResponse.decision` for
+Notification MUST be one of:
 - `HookDecision::Allow` — proceed.
 - `HookDecision::Block` — allowed structurally (the module may block a notification for
   filtering purposes) — proceed.
@@ -153,7 +163,7 @@ notification filtering is internal-only).
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC defines the wiring of the Notification hook endpoint (one of the 5 hook types) from HTTP ingress through EngineModule dispatch to event bus and ring, which is the composition-root routing responsibility assigned to SS-04/CAP-004 |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — PC-6 implements ring append; best-effort caveat applies only to I/O-layer failures); DI-005 (auth token prefix enforcement — upstream auth middleware, Precondition 3) |
 | Architecture Module | monocle-runtime (hook handlers, axum router) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §Hook Endpoint Routing |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing |
 | Cross-Ref | BC-2.01.003 (body size limit — upstream); BC-2.01.009 (auth — upstream); BC-2.03.001 (EngineModule trait); BC-2.04.007 (PreToolUse routing — sibling, 300ms budget); BC-2.04.011 (event bus) |
 | Test File | `monocle-runtime/tests/hook_routing_notification.rs` |
 | Test Name | `test_BC_2_04_008_notification_routing` |
@@ -189,3 +199,43 @@ S-TBD — Implement Notification hook routing handler with 2000ms timeout (fille
   semantics (always HTTP 200 `{"decision": "allow"}`), event bus try_send, ring append.
 - Capability anchor: CAP-004 per ARCH-INDEX §SS-04 Capability Traceability row.
 - SE-16d PASS: 2026-05-26T12:01:00Z > chain prior 2026-05-26T12:00:00Z. PASS.
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.1.0
+
+**F-P12-001 HIGH — `on_hook` call signature corrected from 3-param to 1-param** (2026-05-26T00:00:00Z):
+- PC-3: Replaced fabricated `EngineModule::on_hook(HookType::Notification, session_id,
+  &payload)` (3-parameter form that does not exist) with the correct 1-parameter form:
+  `engine.on_hook(hook_event).await` where `hook_event: HookEvent` is pre-constructed by
+  the HTTP handler from `HookEnvelope` fields before dispatching to the trait method.
+- The actual trait signature is `async fn on_hook(&self, event: HookEvent) -> HookResponse`
+  per `monocle-core/src/engine.rs`. The `HookEvent` variant is `HookEvent::Notification(
+  NotificationEvent { notification_type, tool_name, tool_input, message, session_id, pid })`.
+- The `HookType` discriminant enum exists in `hook_events.rs` for use as a map key in
+  `ClaudeCodeModule::hook_paths()` — it is NOT a parameter to `on_hook`.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.3
+
+**F-P1D6-003 HIGH — BC-2.04.001 PC cross-reference numbers corrected** (2026-05-26T00:00:00Z):
+- Precondition 4: `BC-2.04.001 PC-6` → `BC-2.04.001 PC-11`. PC-11 is where the EngineModule
+  registry is populated in the start sequence (Step 6). The former PC-6 was the bind-failure
+  exit code (Step 3), not the EngineModule step.
+- Precondition 5: `BC-2.04.001 PC-5` → `BC-2.04.001 PC-10`. PC-10 is where the bounded event
+  bus is created (Step 5). The former PC-5 was the port-in-local-variable step (Step 3).
+- Precondition 6: `BC-2.04.001 PC-4` → `BC-2.04.001 PC-7`. PC-7 is where the RingBuffer is
+  constructed (Step 4). The former PC-4 was the TcpListener::bind call (Step 3).
+- Root cause: off-by-one between step numbers and PC numbers in BC-2.04.001; each step covers
+  multiple PCs, so step N ≠ PC-N.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

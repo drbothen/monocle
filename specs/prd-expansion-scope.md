@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L3
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-27T00:00:00Z
@@ -289,7 +289,7 @@ Based on the gap analysis, four new subsystems are required to cover the missing
 |----------------|-------|----------|-------------|---------------|
 | BC-2.04.001 | Daemon Start Sequence: Port Bind + Lock File + Token Write (SOQ-2) | P0 | Daemon binds OS-assigned port, then writes lock file with `{port, pid, token, contract_version}` at mode `0o600`, then the hooks-settings file reads the token. Any failure in write order causes startup abort. Enforces SOQ-2 invariant. | F-02, F-03, F-22 |
 | BC-2.04.002 | Daemon Auto-Start on TUI Launch | P0 | When `monocle` (TUI mode) launches and no daemon is running, it starts a daemon subprocess before rendering the TUI. The daemon PID must pass liveness check before TUI connection attempt. | F-05, F-60 |
-| BC-2.04.003 | `MONOCLE_NO_AUTOSTART=1` Suppresses Auto-Start | P0 | When `MONOCLE_NO_AUTOSTART=1` env var is set, `monocle` (TUI mode) does NOT start a daemon. TUI renders with "daemon offline" state. | F-23, F-61 |
+| BC-2.04.003 | `MONOCLE_NO_AUTOSTART=1` Suppresses Auto-Start | P1 | When `MONOCLE_NO_AUTOSTART=1` env var is set, `monocle` (TUI mode) does NOT start a daemon. TUI renders with "daemon offline" state. | F-23, F-61 |
 | BC-2.04.004 | `monocle daemon start` CLI Subcommand | P0 | `monocle daemon start` starts the daemon in background (detached), writes lock file, exits with code 0. If daemon is already running (lock file exists + PID alive), exits code 1 with structured error. | F-01, F-59 |
 | BC-2.04.005 | `monocle daemon stop` CLI Subcommand | P0 | `monocle daemon stop` sends SIGTERM to the PID in the lock file. Waits up to 15 seconds for graceful shutdown. If PID does not exist, exits code 1. | F-01, F-59 |
 | BC-2.04.006 | `directories::ProjectDirs::runtime_dir()` Fallback Chain | P0 | Lock file path resolves via `runtime_dir()` → `state_dir()` → `data_dir()` → `~/.monocle`. First non-None result is used. All fallback levels must be tested. | F-04 |
@@ -298,7 +298,7 @@ Based on the gap analysis, four new subsystems are required to cover the missing
 | BC-2.04.009 | Hook Endpoint: Stop/SessionStart/PromptSubmit Routing | P0 | POST `/hooks/stop`, `/hooks/session-start`, `/hooks/prompt-submit` — each dispatches to `EngineModule::on_hook()` and responds within 300ms. | F-06 |
 | BC-2.04.010 | Hook Tmpfile Generation at `runtimeDir/hooks-settings.json` | P0 | Daemon generates `hooks-settings.json` at `runtimeDir/hooks-settings.json` with mode `0o600` using `tempfile::persist`. File contains all 5 hook endpoint URLs. File is regenerated on daemon restart (new port). | F-12, F-62 |
 | BC-2.04.011 | Bounded Event Bus with Drop Counter | P0 | The daemon uses `mpsc::channel(N)` (bounded, N defined at startup). When the channel is full, the oldest event is dropped and the drop counter increments by 1. Drop counter value is published to all TUI clients on each state push. | F-63, F-50 |
-| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P0 | The ring buffer retains at most 100MB of JSONL data per rotation file. When a rotation file reaches 100MB, it is renamed `.1`/`.2`... up to 5 rotations; the oldest (`.5`) is deleted. RAM ring holds last N events in memory for instant TUI access. | F-13 |
+| BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | P1 | The ring buffer retains at most 100MB of JSONL data per rotation file. When a rotation file reaches 100MB, it is renamed `.1`/`.2`... up to 5 rotations; the oldest (`.5`) is deleted. RAM ring holds last N events in memory for instant TUI access. | F-13 |
 
 ### 3.2 SS-05: IPC (BC-2.05.NNN)
 
@@ -322,7 +322,7 @@ Based on the gap analysis, four new subsystems are required to cover the missing
 | BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | P0 | The keybinding dispatcher walks `SearchPrompt > UserCustomCommand > PerContext > Global > Builtin` and stops at the first matching binding. If no binding matches, the keypress is discarded. Dispatcher is deterministic (same key always resolves same action in same AppMode). | F-48 |
 | BC-2.06.004 | `Ctrl-\` Popup: Appears and Dismisses Without State Loss | P0 | `Ctrl-\` makes the monocle TUI pane visible (via tmux `display-popup` or equivalent). Second `Ctrl-\` hides it. The TUI continues receiving IPC pushes from daemon while hidden. AppMode state is preserved across hide/show cycles. | F-33, F-38 |
 | BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | P0 | The sessions panel renders one row per `EnrichedSession` received via IPC `SessionListUpdate`. Each row shows: harness icon, project name, phase tag (if available), token count, cost, uptime. Empty state shows "No sessions detected". | F-29, F-32 |
-| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | P0 | Pressing `/` in sessions panel activates `Filtering` AppMode. Typed characters are sent to nucleo-matcher. Only sessions whose project name or harness name fuzzy-match the query are shown. `Esc` clears filter and returns to `Dashboard`. | F-30 |
+| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | P1 | Pressing `/` in sessions panel activates `Filtering` AppMode. Typed characters are sent to nucleo-matcher. Only sessions whose project name or harness name fuzzy-match the query are shown. `Esc` clears filter and returns to `Dashboard`. | F-30 |
 | BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | P0 | Pressing `Enter` on a focused session row transitions AppMode to `Fullscreen { panel: Sessions, prior: Dashboard { focused: Sessions } }`. Fullscreen view shows session detail: token history, cost breakdown, hook event count. | F-31 |
 | BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | P0 | When the TUI receives `PermissionPromptQueued` IPC message, a `PromptModal` is pushed to the back of the `VecDeque<PromptModal>`. AppMode transitions to `Overlay { stack: [...], prior: <current focus> }`. The overlay badge in the status bar increments. | F-34, F-38 |
 | BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | P0 | In `Overlay` AppMode, `Action::OverlayCycleNext` rotates the `VecDeque`: the front `PromptModal` moves to the back, exposing the next queued prompt. The overlay renders the current front item. | F-40 |
@@ -331,7 +331,7 @@ Based on the gap analysis, four new subsystems are required to cover the missing
 | BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | P0 | In `Overlay` AppMode, pressing `2` triggers `Action::PermissionAcceptAlways`. The daemon sends `{"decision": "always"}` to the hook response and records the pattern for future auto-accept. Front `PromptModal` popped. | F-36, F-41 |
 | BC-2.06.013 | Permission Overlay: Reject Keybinding | P0 | In `Overlay` AppMode, pressing `3` triggers `Action::PermissionReject`. The daemon sends `{"decision": "deny"}` to the hook response. Front `PromptModal` popped. | F-36, F-41 |
 | BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | P0 | In `Overlay` AppMode, `Esc` hides the overlay (closes `Ctrl-\` popup) without popping any `PromptModal`. Prompts remain queued. Next `Ctrl-\` shows the overlay again with the same stack. | F-38, F-40 |
-| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P1 | Pressing `[t]` in `Overlay` AppMode renders a "Trace to source: Phase 2 feature" placeholder message. Does NOT navigate. Stub is required in Phase 1 so the keybinding exists and is discoverable. | F-37 |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P2 | Pressing `[t]` in `Overlay` AppMode renders a "Trace to source: Phase 2 feature" placeholder message. Does NOT navigate. Stub is required in Phase 1 so the keybinding exists and is discoverable. | F-37 |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | P0 | When the TUI receives a daemon disconnect notification (from IPC layer BC-2.05.007), the `VecDeque<PromptModal>` is cleared. AppMode transitions back to `Dashboard`. | F-39 |
 | BC-2.06.017 | Permission Response Within Hook Timeout Budget | P0 | The time between TUI receiving `PermissionPromptQueued` and the daemon sending the decision response (after user keypress) must not stall the hook response beyond Claude Code's timeout. The daemon holds the HTTP response open until a decision is made OR the hook timeout (300ms for PreToolUse) is reached. On timeout, daemon returns fail-open or fail-closed per BC-HOOK-001/BC-HOOK-002. | F-41 |
 | BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | P0 | The event ribbon panel renders the last N hook events received via IPC `HookEventReceived` messages. Each row shows: timestamp, hook type, session ID, latency-ms. New events prepend to the top. The panel scrolls via `Action::ScrollUp/ScrollDown`. | F-42, F-43, F-44 |
@@ -448,6 +448,18 @@ The new BCs suggest the following wave ordering, following the TDD dependency ch
 | New subsystems proposed | 4 (SS-04 through SS-07) |
 
 ---
+
+## §Trace v1.1
+
+**Adversarial review corrections** (F-P1D-004) (2026-05-26):
+- **F-P1D-004** Priority sync with BC-INDEX (source of truth for priorities):
+  - BC-2.04.003 corrected P0 → P1 in §3.1 SS-04 table (BC-INDEX §SS-04 row 3: P1).
+  - BC-2.04.012 corrected P0 → P1 in §3.1 SS-04 table (BC-INDEX §SS-04 row 12: P1).
+  - BC-2.06.006 corrected P0 → P1 in §3.3 SS-06 table (BC-INDEX §SS-06 row 6: P1).
+  - BC-2.06.015 corrected P1 → P2 in §3.3 SS-06 table (BC-INDEX §SS-06 row 15: P2).
+  - Rationale: BC-INDEX is the authoritative source for priority assignments per the
+    Source-of-Truth Invariants policy. This document's §3.x tables are derivative;
+    they must match BC-INDEX at all times.
 
 ## §Trace v1.0
 

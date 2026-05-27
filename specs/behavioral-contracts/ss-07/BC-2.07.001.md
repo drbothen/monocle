@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -18,7 +18,7 @@ capability: CAP-007
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D2-010, F-P1D3-003]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -31,13 +31,14 @@ removal_reason: null
 
 ## Description
 
-All writes to `~/.monocle/config.json` (and its platform-specific equivalents) must use
-the `tempfile::persist` pattern: write serialized JSON to a `NamedTempFile` created in the
-same directory as the target, flush and sync the temp file, then atomically rename it into
-place via `tempfile::NamedTempFile::persist()`. This ensures no partial config file is ever
-observable by a concurrent reader or on crash/power-loss. Naked `std::fs::write` directly to
-the config path is categorically forbidden and enforced at PR merge by the semgrep rule
-`monocle-no-direct-config-write`.
+All writes to `<config_dir>/config.json` (the platform-dependent path resolved via
+`directories::ProjectDirs::config_dir()` — see SS-config.md §Config File Location for
+per-platform expansions) must use the `tempfile::persist` pattern: write serialized JSON to
+a `NamedTempFile` created in the same directory as the target, flush and sync the temp file,
+then atomically rename it into place via `tempfile::NamedTempFile::persist()`. This ensures
+no partial config file is ever observable by a concurrent reader or on crash/power-loss.
+Naked `std::fs::write` directly to the config path is categorically forbidden and enforced
+at PR merge by the semgrep rule `monocle-no-direct-config-write`.
 
 ## Preconditions
 
@@ -124,7 +125,7 @@ the config path is categorically forbidden and enforced at PR merge by the semgr
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the atomic write contract that is the correctness foundation of the entire config persistence layer; without it, any config-writing operation risks data loss |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Atomic Write Contract |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.0.0 §Atomic Write Contract |
+| Architecture Source | SS-config.md v1.1.0 §Atomic Write Contract |
 | Cross-Ref | BC-2.07.002 (schema written by write_config); BC-2.07.003 (read path that relies on atomic writes to never see partial content); BC-2.01.005 (same tempfile::persist pattern for lock file) |
 | Brief Features | F-53 (monocle-config reads/writes config.json via tempfile::persist), F-58 (monocle-config atomic write requirement) |
 | Test File | `monocle-config/tests/atomic_write.rs` |
@@ -155,6 +156,25 @@ VP-TBD — config atomic write integration tests (filled after VP creation)
 **Initial production** (2026-05-26T00:00:00Z):
 - Created as new artifact for SS-07 (Config subsystem) per `prd-expansion-scope.md` §3.4 BC-2.07.001
   and `SS-config.md` §Atomic Write Contract.
-- Grounded in SS-config.md v1.0.0 §Atomic Write Contract (write pattern, semgrep enforcement, why atomic matters).
+- Grounded in SS-config.md v1.1.0 §Atomic Write Contract (write pattern, semgrep enforcement, why atomic matters).
 - Brief features traced: F-53, F-58.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
+
+
+## §Trace v1.1.0
+
+**F-P1D3-003 HIGH — Deprecated config path replaced with platform-canonical form** (2026-05-26T14:00:00Z):
+- Description: `~/.monocle/config.json` → `<config_dir>/config.json` (the platform-dependent
+  path resolved via `directories::ProjectDirs::config_dir()`).
+- Rationale: SS-config.md v1.1.0 §Config File Location §F-P1D-005 fix established that
+  `~/.monocle/config.json` is NOT the canonical path on any supported platform (macOS uses
+  `~/Library/Application Support/monocle/config.json`; Linux uses
+  `~/.config/monocle/config.json`). Using `<config_dir>/config.json` with a pointer to
+  §Config File Location is the correct canonical reference form per SS-config.md v1.1.0.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-26T14:00:00Z > v1.0.1. PASS.
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-config.md v1.0.0` → `SS-config.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.

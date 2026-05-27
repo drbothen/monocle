@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -128,7 +128,7 @@ documentation to know what keys are available in the current mode.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the keybinding hint line which is the discoverable surface for the "keybinding dispatch" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: hint line is read-only display derived from in-memory AppMode) |
 | Architecture Module | monocle-tui (status bar renderer `draw_status_bar()`, hint line derivation from `AppMode`); monocle-core (`AppMode`, `Dispatcher::builtin` binding table) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Status Bar (keybinding hint line subsection with all 4 AppMode hint examples) |
+| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Status Bar (keybinding hint line subsection with all 4 AppMode hint examples) |
 | Cross-Ref | BC-2.06.001 (AppMode state machine — hint is derived from it); BC-2.06.003 (5-level binding precedence — hint shows Builtin level only); BC-2.06.020 (breadcrumb — shares the status bar, occupies the upper row); BC-2.06.014 (Esc in Overlay — hint says `Esc: hide` to match the no-op behavior); BC-2.06.015 (`[t]` trace stub — hint shows `t: trace` as a discoverable stub) |
 | Test File | `monocle-tui/tests/status_bar.rs` |
 | Test Name | `test_BC_2_06_021_keybinding_hint_line` |
@@ -157,7 +157,7 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
 
 **Initial production** (2026-05-26T18:00:00Z):
 - BC-2.06.021 created as part of SS-06 TUI behavioral contract burst (BCs 016–022).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Status Bar (hint line subsection with 4
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Status Bar (hint line subsection with 4
   AppMode examples); prd-expansion-scope.md §3.3 BC-2.06.021 description (F-52).
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
 - DI-007 cited: read-only display derivation.
@@ -169,3 +169,22 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
   a story implementer from omitting the hint entry for unimplemented Phase 2 features.
 - Invariant 3 adds a forward-compatibility constraint: new hint entries must fit in 80
   columns before being added, preventing silent overflow in future phases.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

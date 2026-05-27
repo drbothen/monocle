@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010, F-P14-004]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -31,7 +31,7 @@ removal_reason: null
 The Sessions Panel in `monocle-tui` renders one row per `EnrichedSession` received from
 the daemon via `SessionListUpdate` IPC messages. The panel never reads from disk, process
 state, or any source other than the most recently received IPC message. Each row displays
-six columns: harness icon, project name, phase tag, token count, cost, and uptime. When
+six columns: harness icon, project name, status, token count, cost, and uptime. When
 the session list is empty, the panel renders a two-line empty state message. The Sessions
 Panel occupies the left 60% of the main area in Dashboard layout.
 
@@ -39,13 +39,23 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 
 1. The TUI has connected to the daemon UDS and received at least one `SessionListUpdate`
    IPC message (or an initial state push per BC-2.05.002 which includes the session list).
-2. `EnrichedSession` is the struct carried by `SessionListUpdate`. It includes:
-   - `engine_metadata: EngineMetadata` (with `icon: char`, `display_name: String`)
-   - `project_name: String` (derived from working directory basename)
-   - `phase_tag: Option<String>` (from `FactoryAdapter`; `None` if not a factory project)
+2. `EnrichedSession` is the struct carried by `SessionListUpdate`. It includes the
+   following Phase 1 fields (per SS-engine-module.md §EnrichedSession):
+   - `session_id: String`
+   - `harness_type: String` (e.g., `"claude-code"`; used to derive the icon character)
+   - `transcript_path: Option<PathBuf>`
+   - `config_path: Option<PathBuf>`
+   - `status: SessionStatus`
+   - `last_event_micros: Option<i64>`
+   - `project_name: Option<String>` (derived from transcript directory name; `None` when
+     `transcript_path` is unknown)
+   - `started_at: Option<chrono::DateTime<chrono::Utc>>` (from the first `SessionStart`
+     hook event; `None` until received; used to compute uptime at render time)
    - `token_count: u64`
    - `cost_usd: Option<f64>`
-   - `uptime: Duration` (wall clock since `SessionStart` hook)
+   Note: `phase_tag` was considered but removed from `EnrichedSession` in Phase 1
+   (requires `FactoryAdapter` integration not yet available). `uptime` is not a field;
+   it is computed as `now - started_at` at render time.
 3. `AppMode` is `Dashboard` or `Filtering` (Sessions Panel is visible in these modes).
 4. The draw loop runs at ~60fps (16ms tick rate).
 
@@ -55,18 +65,21 @@ Panel occupies the left 60% of the main area in Dashboard layout.
    rendered in the Sessions Panel. Rows are rendered in the order received from the daemon
    (most recently started session last, unless the daemon orders differently — ordering is
    daemon-determined and the TUI renders it as-is).
-2. **Column layout:**
-   - Icon column: renders `EngineMetadata::icon` as a single character. For Claude Code in
-     Phase 1, this is `●` (U+25CF BLACK CIRCLE).
-   - Project column: renders `EnrichedSession::project_name` (truncated with `…` if the
-     column is too narrow to display the full name).
-   - Phase column: renders `EnrichedSession::phase_tag` if `Some(tag)`; renders blank
-     (empty string) if `None`.
+2. **Column layout** (per SS-tui.md v1.6.0 §Sessions Panel):
+   - Icon column: renders a single `char` derived from `EnrichedSession::harness_type`.
+     For Claude Code (`harness_type == "claude-code"`) in Phase 1, this is `●`
+     (U+25CF BLACK CIRCLE). The render path must not hardcode Claude-specific logic —
+     see EC-088.
+   - Project column: renders `EnrichedSession::project_name` if `Some(name)` (truncated
+     with `…` if the column is too narrow); renders `"—"` if `None`.
+   - Status column: renders `EnrichedSession::status` as the `SessionStatus` display
+     string (e.g., `Active`, `Idle`, `WaitingOnPermission`).
    - Tokens column: renders `EnrichedSession::token_count` in human-readable format
      (e.g., `142k` for 142,000; `1.2M` for 1,200,000; raw count for < 1,000).
    - Cost column: renders `EnrichedSession::cost_usd` as `$N.NN` (two decimal places) if
-     `Some(cost)`; renders blank if `None`.
-   - Uptime column: renders `EnrichedSession::uptime` as `HH:MM:SS` (e.g., `00:03:47`).
+     `Some(cost)`; renders `"—"` if `None`.
+   - Uptime column: computed as `now - EnrichedSession::started_at` and rendered as
+     `HH:MM:SS` (e.g., `00:03:47`); renders `"—"` if `started_at` is `None`.
 3. **Empty state:** When `app.sessions` is empty (zero `EnrichedSession` items), the
    Sessions Panel renders exactly two lines:
    ```
@@ -89,9 +102,10 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 1. The Sessions Panel never initiates I/O. It is a pure render of `app.sessions`.
 2. The token count formatter is deterministic: the same `u64` always produces the same
    string representation.
-3. Phase tag renders blank (not "None" or "N/A") when `phase_tag` is `None`. Blank
-   is the correct empty state for the Phase column — it signals "not a factory project"
-   without cluttering the display.
+3. The Cost column renders `"—"` (not `"None"` or `"N/A"`) when `cost_usd` is `None`.
+   The Project column renders `"—"` when `project_name` is `None`. The Uptime column
+   renders `"—"` when `started_at` is `None`. Using `"—"` for all optional columns is
+   consistent and signals missing data without cluttering the display.
 
 ## Edge Cases
 
@@ -99,22 +113,25 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 |----|-------------|-------------------|
 | EC-082 | Session list updated (new `SessionListUpdate` arrives) while panel is rendering | Next draw tick renders the updated list; no visual tearing (ratatui double-buffer) |
 | EC-083 | Session with very long project name (e.g., 80-character monorepo path) | Truncated to fit column width with trailing `…`; no panic, no line wrap |
-| EC-084 | Session with `cost_usd = None` (harness does not report cost) | Cost column renders blank |
+| EC-084 | Session with `cost_usd = None` (harness does not report cost) | Cost column renders `"—"` |
 | EC-085 | Session with `token_count = 0` | Tokens column renders `0` (not blank) |
-| EC-086 | Session with `uptime` exceeding 99 hours (e.g., 100:00:00) | Uptime column renders `100:00:00` (extended format); no truncation |
+| EC-086 | `started_at` is set such that `now - started_at` exceeds 99 hours (e.g., 100:00:00) | Uptime column renders `100:00:00` (extended format); no truncation |
 | EC-087 | Session list transitions from non-empty to empty (all sessions ended) | Empty state message renders immediately on the next draw tick after `app.sessions` is cleared |
-| EC-088 | `icon` character for a future non-Claude harness (Phase 2) | Renders whatever `char` the engine provides; no hardcoded Claude-specific logic in the render path |
+| EC-088 | `harness_type` value for a future non-Claude harness (Phase 2) | Renders whatever `char` the harness type maps to; no hardcoded Claude-specific logic in the render path |
 
 ## Canonical Test Vectors
 
 | Input | Expected Rendered Content | Category |
 |-------|--------------------------|----------|
 | `app.sessions = []` | Two-line empty state message | happy-path |
-| `app.sessions = [session with project="monocle", phase_tag=Some("phase-3"), tokens=437000, cost=None, uptime=3h47m]` | Row: `● monocle phase-3 437k [blank] 03:47:00` | happy-path |
-| `app.sessions = [session with cost=0.83]` | Cost column: `$0.83` | happy-path |
-| `app.sessions = [session with tokens=999]` | Tokens column: `999` (no suffix) | edge-case |
-| `app.sessions = [session with tokens=1000]` | Tokens column: `1k` | edge-case |
-| `app.sessions = [session with tokens=1200000]` | Tokens column: `1.2M` | edge-case |
+| `app.sessions = [session with harness_type="claude-code", project_name=Some("monocle"), status=Active, token_count=437000, cost_usd=None, started_at=Some(now - 3h47m)]` | Row: `● monocle Active 437k — 03:47:00` | happy-path |
+| `app.sessions = [session with project_name=None]` | Project column: `—` | happy-path |
+| `app.sessions = [session with cost_usd=Some(0.83)]` | Cost column: `$0.83` | happy-path |
+| `app.sessions = [session with cost_usd=None]` | Cost column: `—` | happy-path |
+| `app.sessions = [session with started_at=None]` | Uptime column: `—` | edge-case |
+| `app.sessions = [session with token_count=999]` | Tokens column: `999` (no suffix) | edge-case |
+| `app.sessions = [session with token_count=1000]` | Tokens column: `1k` | edge-case |
+| `app.sessions = [session with token_count=1200000]` | Tokens column: `1.2M` | edge-case |
 
 ## Verification Properties
 
@@ -122,7 +139,7 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 |--------|----------|-------------|
 | VP-TBD | Empty state message renders when `app.sessions` is empty | Unit test (ratatui TestBackend) |
 | VP-TBD | Token formatter: 999 → "999", 1000 → "1k", 142000 → "142k", 1200000 → "1.2M" | Unit test (table-driven) |
-| VP-TBD | Cost formatter: None → "", 0.83 → "$0.83" | Unit test (table-driven) |
+| VP-TBD | Cost formatter: None → "—", 0.83 → "$0.83" | Unit test (table-driven) |
 | VP-TBD | Sessions panel has no `std::fs`, `std::process`, or OS API imports | `cargo check` + `grep` in CI |
 
 ## Traceability
@@ -133,7 +150,7 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "sessions panel" component of CAP-006: the primary panel the user sees when managing multiple Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — the Sessions Panel is read-only: it renders IPC-pushed data and performs no writes) |
 | Architecture Module | monocle-tui (draw_dashboard(), draw_sessions_panel()) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (column layout table, empty state, filter mode, fullscreen) |
+| Architecture Source | SS-tui.md v1.6.0 §Panel Architecture §Sessions Panel (column layout table, empty state, filter mode, fullscreen) |
 | Cross-Ref | BC-2.05.003 (SessionListUpdate IPC message — the source of `app.sessions`), BC-2.06.006 (filter mode for Sessions Panel), BC-2.06.007 (Enter → Fullscreen) |
 | Test File | `monocle-tui/tests/sessions_panel.rs` |
 | Test Name | `test_BC_2_06_005_sessions_panel_renders_from_ipc_state` |
@@ -163,7 +180,7 @@ S-TBD — Implement Sessions Panel renderer with 6-column layout, empty state, t
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.005 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (column layout table, empty
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Sessions Panel (column layout table, empty
   state, filter mode, fullscreen); prd-expansion-scope.md §3.3 BC-2.06.005 description;
   ARCH-INDEX.md §Capability Traceability SS-06.
 - Postcondition 6 ("selected row highlighting") specifies Phase 1 behavior: no intra-panel
@@ -172,3 +189,54 @@ S-TBD — Implement Sessions Panel renderer with 6-column layout, empty state, t
 - EC-088 future-proofs the icon render path: the `icon: char` field comes from
   `EngineMetadata`, which is harness-specific. The Sessions Panel render must not hardcode
   Claude-specific logic.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-P14-004 CRITICAL — EnrichedSession field fabrication corrected** (2026-05-26T00:00:00Z):
+- Finding: Precondition 2 listed four fields that do not exist on `EnrichedSession` per
+  SS-engine-module.md: `engine_metadata: EngineMetadata`, `project_name: String`
+  (non-optional), `phase_tag: Option<String>` (removed per F-P13-001), and
+  `uptime: Duration` (not a field; computed at render time).
+- Fix — Precondition 2: replaced fabricated field list with the actual Phase 1
+  `EnrichedSession` fields: `session_id`, `harness_type`, `transcript_path`,
+  `config_path`, `status`, `last_event_micros`, `project_name: Option<String>`,
+  `started_at: Option<chrono::DateTime<chrono::Utc>>`, `token_count`, `cost_usd`.
+  Added notes explaining `phase_tag` exclusion and that `uptime` is computed from
+  `started_at` at render time.
+- Fix — Description: "phase tag" column renamed to "status" column (the sixth column
+  is Status, not Phase Tag, per SS-tui.md v1.6.0 §Sessions Panel).
+- Fix — Postcondition 2: Column layout table corrected. Icon column now derives from
+  `harness_type` (not `EngineMetadata`). Phase column replaced by Status column
+  (`EnrichedSession::status`). Project column now shows `"—"` for `None`.
+  Cost column now shows `"—"` for `None`. Uptime column now correctly sources from
+  `started_at` (computed) and shows `"—"` when `None`.
+- Fix — Invariant 3: replaced `phase_tag` reference with correct documentation of
+  `"—"` sentinel for `cost_usd`, `project_name`, and `started_at` optional fields.
+- Fix — EC-086: reworded to reference `started_at` computation instead of fabricated
+  `uptime` field. EC-088: reworded to reference `harness_type` instead of `EngineMetadata`.
+- Fix — Canonical Test Vectors: replaced `phase_tag`/`uptime` references with
+  `status`/`started_at`-derived values. Added `project_name=None` → `"—"` and
+  `started_at=None` → `"—"` test cases. Added `cost_usd=None` → `"—"` case.
+- Fix — Architecture Source: pinned to SS-tui.md v1.6.0 (current).
+- Source-of-truth reads: SS-engine-module.md (EnrichedSession struct lines 311–368);
+  SS-tui.md v1.6.0 §Sessions Panel column layout table (lines 415–420).
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

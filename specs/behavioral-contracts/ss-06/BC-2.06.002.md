@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -120,7 +120,7 @@ where modal-close from Sessions loses the Sessions context.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the FocusSnapshot capture/restore mechanism that is part of the AppMode state machine component of CAP-006, preventing the gap identified in the NikiforovAll reference implementation |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — orthogonally reinforced here: the `FocusSnapshot` design ensures the TUI panel focus is tracked via pure value types, not shared mutable state) |
 | Architecture Module | monocle-core (FocusSnapshot enum, cycle(), to_panel_id()) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §AppMode State Machine (FocusSnapshot definition, transition function arms for Filtering/Fullscreen/Overlay exit) |
+| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine (FocusSnapshot definition, transition function arms for Filtering/Fullscreen/Overlay exit) |
 | Cross-Ref | BC-2.06.001 (transition function definition that enforces this contract), BC-2.06.016 (daemon-disconnect focus reset — the one documented exception to pure prior restoration) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_002_focus_snapshot_restored_after_modal_close` |
@@ -150,7 +150,7 @@ S-TBD — Implement FocusSnapshot enum with cycle() and to_panel_id() methods; v
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.002 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §AppMode State Machine (FocusSnapshot definition, key invariants
+- Reads: SS-tui.md v1.1.0 §AppMode State Machine (FocusSnapshot definition, key invariants
   paragraph, transition function arms for Fullscreen, Filtering, and Overlay exit);
   prd-expansion-scope.md §3.3 BC-2.06.002 description; ARCH-INDEX.md §Capability Traceability SS-06.
 - EC-069 notes that Phase 1 has only two panel variants (Sessions, EventRibbon); cycle() on
@@ -158,3 +158,22 @@ S-TBD — Implement FocusSnapshot enum with cycle() and to_panel_id() methods; v
   will extend the cycle order without changing this BC.
 - Postcondition 5 explicitly documents the IPC-disconnect exception (BC-2.06.016) to prevent
   false adversary findings about "hardcoded Sessions" in the disconnect path.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

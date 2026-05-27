@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -130,7 +130,7 @@ with no I/O, no ratatui dependency, and no runtime panics.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC defines the AppMode enum and pure transition function that are the foundation of the TUI state machine, directly operationalizing the "AppMode state machine" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — enforced here by the purity boundary: `transition()` is a pure function with no file I/O, and `monocle-core` has no I/O crate dependencies) |
 | Architecture Module | monocle-core (AppMode, Action, FocusSnapshot, transition() — pure types); monocle-tui (App struct, draw loop, dispatcher) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §AppMode State Machine; §Purity Boundary; §Constraints |
+| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine; §Purity Boundary; §Constraints |
 | Cross-Ref | BC-2.06.002 (FocusSnapshot restore, depends on this), BC-2.06.003 (5-level dispatch, depends on this), BC-2.06.008 (overlay push, depends on this) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_001_appmode_compile_time_mutual_exclusion` |
@@ -160,7 +160,7 @@ S-TBD — Implement AppMode enum, Action enum, FocusSnapshot, PanelId, PromptMod
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.001 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §AppMode State Machine, §Purity Boundary, §Constraints,
+- Reads: SS-tui.md v1.1.0 §AppMode State Machine, §Purity Boundary, §Constraints,
   §Rendering Architecture; prd-expansion-scope.md §3.3 BC-2.06.001 description;
   ARCH-INDEX.md §Capability Traceability SS-06.
 - Capability anchored to CAP-006 per ARCH-INDEX §Capability Traceability table row SS-06.
@@ -169,3 +169,22 @@ S-TBD — Implement AppMode enum, Action enum, FocusSnapshot, PanelId, PromptMod
 - EC-063 corrects a subtle design decision: AppMode itself is NOT #[non_exhaustive] because
   all match sites in monocle-tui must handle all variants explicitly. Only PanelId,
   FocusSnapshot, BindingSource, Action are non_exhaustive per SS-tui.md §Constraints item 6.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

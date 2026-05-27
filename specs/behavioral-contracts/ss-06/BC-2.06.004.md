@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -32,7 +32,7 @@ The monocle TUI is launched as a `tmux display-popup` bound to `Ctrl-\` in the u
 `tmux.conf`. Each `Ctrl-\` press either spawns a new `monocle` process (if no popup is
 visible) or hides the popup window (if visible). Because the TUI is a stateless view over
 the daemon's durable state, the overlay stack and session list survive the hide/show cycle:
-the daemon owns `queued_prompts: VecDeque<PromptModal>` and pushes the current state to
+the daemon owns the pending-prompt registry (`overlay_stack: Vec<PermissionPromptPayload>` in IPC) and pushes the current state to
 every new TUI client on connection. The TUI process itself is short-lived; the daemon is
 the durable state store.
 
@@ -41,7 +41,7 @@ the durable state store.
 1. The user's `tmux.conf` contains a binding equivalent to:
    `bind-key -n C-\\ display-popup -E -w 80% -h 80% 'monocle'`
 2. A monocle daemon is running (or auto-starts per BC-2.04.002) and holds the current
-   `DaemonState` including `queued_prompts: VecDeque<PromptModal>`.
+   `DaemonState` including the pending-prompt registry (`overlay_stack: Vec<PermissionPromptPayload>` in IPC).
 3. The daemon UDS server sends an initial state push to every new TUI client connection
    per BC-2.05.002. The initial state push includes the current session list, hook event
    ring tail, and any queued overlay stack.
@@ -54,15 +54,15 @@ the durable state store.
 1. **First `Ctrl-\` spawns the TUI:** The popup appears over the user's active tmux pane.
    The TUI process starts, connects to the daemon UDS, receives the initial state push, and
    renders the current `AppMode` within 16ms of the first frame tick.
-2. **AppMode on reconnect is derived from daemon state:** If the daemon reports any
-   `queued_prompts` in its initial state push, the new TUI process transitions to
-   `AppMode::Overlay { stack: queued_prompts, prior: FocusSnapshot::Sessions }` before
-   rendering the first frame. If no queued prompts, it starts in
+2. **AppMode on reconnect is derived from daemon state:** If the daemon's initial state push contains a non-empty `overlay_stack`, the new TUI process transitions to
+   `AppMode::Overlay { stack: <VecDeque<PromptModal> built from overlay_stack>, prior: FocusSnapshot::Sessions }` before
+   rendering the first frame. If `overlay_stack` is empty, it starts in
    `AppMode::Dashboard { focused: FocusSnapshot::Sessions }`.
 3. **Second `Ctrl-\` hides the popup without dropping queued prompts:** The TUI process
-   exits. The daemon retains the `VecDeque<PromptModal>` intact. The queued prompts are
-   NOT cleared on TUI disconnect (SOQ-3 clearance only applies to unexpected disconnects —
-   see BC-2.06.016; a user-initiated `Ctrl-\` hide is NOT an unexpected disconnect).
+   exits. The daemon retains the pending-prompt registry (`overlay_stack`) intact — the
+   daemon's registry is never cleared by TUI process exit, regardless of how the process
+   exits. When the next TUI connects, it receives `InitialState { overlay_stack }` with all
+   still-pending prompts and rebuilds `VecDeque<PromptModal>` via `payload_to_modal()`.
 4. **Third `Ctrl-\` shows the popup again with the same overlay stack:** The new TUI
    process receives the still-queued prompts from the daemon's initial state push and
    renders `AppMode::Overlay` with the same stack as before the hide.
@@ -79,11 +79,15 @@ the durable state store.
 1. The daemon is the durable state store. The TUI process carries zero durable state.
    Any `AppMode` value that is not derivable from the daemon's initial state push is lost
    on TUI exit — this is by design (the TUI is a view, not a database).
-2. A user-initiated hide via `Ctrl-\` (tmux closes the popup, TUI process exits) MUST NOT
-   trigger `BC-2.06.016` (daemon-disconnect overlay clear). The distinction is signaled by
-   whether the TUI sends a clean disconnect message before exiting. The TUI MUST send a
-   clean `ClientDisconnect` IPC message during graceful exit so the daemon can distinguish
-   intentional hide from crash.
+2. The daemon's pending-prompt registry persists across TUI client connect/disconnect cycles.
+   When the TUI process exits (`Ctrl-\` hide), the daemon retains all pending prompts. When a
+   new TUI connects (`Ctrl-\` show), the daemon pushes `InitialState { overlay_stack }` with
+   the current prompts, and the TUI rebuilds its `VecDeque<PromptModal>` via
+   `payload_to_modal()`. No `ClientDisconnect` IPC message is required or sent; the daemon
+   does not distinguish "intentional hide" from "process exit" at the IPC level — the pending-
+   prompt registry is always retained. BC-2.06.016 (daemon-disconnect overlay clear) applies
+   only to the TUI-side overlay stack on loss of the UDS connection, not to the daemon's
+   registry.
 3. The popup geometry (80% width, 80% height of the current tmux window) is determined by
    the user's `tmux.conf`. monocle does not hardcode or control the popup dimensions.
 
@@ -100,8 +104,8 @@ the durable state store.
 
 ## Canonical Test Vectors
 
-| Scenario | Daemon `queued_prompts` at hide | Expected AppMode on reconnect | Category |
-|----------|--------------------------------|------------------------------|----------|
+| Scenario | Daemon `overlay_stack` at hide | Expected AppMode on reconnect | Category |
+|----------|-------------------------------|------------------------------|----------|
 | Hide with no queued prompts; reconnect | `[]` (empty) | `Dashboard { focused: Sessions }` | happy-path |
 | Hide with 2 queued prompts; reconnect | `[P1, P2]` | `Overlay { stack: [P1, P2], prior: Sessions }` | happy-path |
 | Hide in Filtering mode; reconnect | `[]` | `Dashboard { focused: Sessions }` (Filtering lost, not daemon state) | edge-case |
@@ -111,7 +115,7 @@ the durable state store.
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | TUI sends `ClientDisconnect` IPC message on graceful exit | Integration test (mock IPC server records received messages) |
+| VP-TBD | TUI connects → receives queued prompts via `InitialState.overlay_stack` → TUI process exits → new TUI connects → receives same prompts via `InitialState.overlay_stack` (daemon retained them) | Integration test (mock daemon; simulate TUI connect, disconnect, reconnect; assert overlay_stack same in both InitialState pushes) |
 | VP-TBD | TUI transitions to `Overlay` on reconnect when daemon reports queued prompts | Integration test |
 | VP-TBD | TUI starts in `Dashboard` on reconnect when daemon reports no queued prompts | Integration test |
 
@@ -121,10 +125,10 @@ the durable state store.
 |-------|-------|
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "Ctrl-\ popup integration" component of CAP-006 and is the primary contract for the product's core UX promise: "one Ctrl-\ popup without leaving your editor" |
-| L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — the TUI is a client; it reads from the daemon and sends DecisionResponse messages, but never writes to Claude Code files directly) |
-| Architecture Module | monocle-tui (run_app event loop, graceful exit path); monocle-ipc (initial state push, ClientDisconnect message) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Ctrl-\ Integration; §State Preservation Across Hide/Show |
-| Cross-Ref | BC-2.05.002 (daemon initial state push — precondition for Postcondition 3 here), BC-2.06.008 (overlay push from IPC, which is the mechanism by which queued_prompts becomes AppMode::Overlay), BC-2.06.016 (daemon-disconnect overlay clear — the contrast to the graceful hide/show cycle) |
+| L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — the TUI is a client; it reads from the daemon and sends `ClientToServer::PermissionDecision` messages, but never writes to Claude Code files directly) |
+| Architecture Module | monocle-tui (run_app event loop, exit path); monocle-ipc (initial state push delivering `overlay_stack`; daemon retains registry across TUI process exit/restart) per ARCH-INDEX SS-06 |
+| Architecture Source | SS-tui.md v1.5.0 §Ctrl-\ Integration; §State Preservation Across Hide/Show |
+| Cross-Ref | BC-2.05.002 (daemon initial state push — precondition for Postcondition 3 here), BC-2.06.008 (overlay push from IPC, which is the mechanism by which `overlay_stack` becomes AppMode::Overlay), BC-2.06.016 (daemon-disconnect overlay clear — the contrast to the graceful hide/show cycle) |
 | Test File | `monocle-tui/tests/popup_lifecycle.rs` |
 | Test Name | `test_BC_2_06_004_ctrl_backslash_state_preserved_across_hide_show` |
 | Stories | S-TBD (filled by story-writer) |
@@ -142,7 +146,7 @@ the durable state store.
 
 ## Story Anchor
 
-S-TBD — Implement graceful TUI exit with ClientDisconnect IPC message; verify popup state preserved across hide/show (filled by story-writer)
+S-TBD — Implement TUI exit and reconnect lifecycle; verify popup state preserved across hide/show via daemon InitialState push (filled by story-writer)
 
 ## VP Anchors
 
@@ -152,7 +156,7 @@ S-TBD — Implement graceful TUI exit with ClientDisconnect IPC message; verify 
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.004 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Ctrl-\ Integration, §State Preservation Across Hide/Show;
+- Reads: SS-tui.md v1.1.0 §Ctrl-\ Integration, §State Preservation Across Hide/Show;
   prd-expansion-scope.md §3.3 BC-2.06.004 description; ARCH-INDEX.md §Capability Traceability SS-06.
 - Invariant 2 is critical: the daemon must distinguish intentional TUI hide from unexpected
   disconnect (crash). The mechanism is a clean `ClientDisconnect` IPC message. Without this
@@ -162,3 +166,60 @@ S-TBD — Implement graceful TUI exit with ClientDisconnect IPC message; verify 
 - EC-077 documents a deliberate design decision: Filtering state is NOT preserved across
   hide/show because it is transient TUI state (not daemon state). The user must re-enter
   filter mode after a hide/show cycle. This is consistent with the lazygit philosophy.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**IPC sweep — fabricated `DecisionResponse` in DI-007 citation replaced** (2026-05-26T14:30:00Z):
+- Traceability table, L2 Domain Invariants row: "sends DecisionResponse messages" →
+  "sends `ClientToServer::PermissionDecision` messages". DI-007 paraphrase now uses the
+  canonical IPC type name per SS-ipc.md §Client-to-Server Messages.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-FINAL-001 MEDIUM — Daemon-side `queued_prompts: VecDeque<PromptModal>` replaced with canonical IPC field name** (2026-05-26T00:00:00Z):
+- Description paragraph: `queued_prompts: VecDeque<PromptModal>` → `overlay_stack: Vec<PermissionPromptPayload>` (IPC).
+- Precondition 2: `queued_prompts: VecDeque<PromptModal>` → pending-prompt registry description.
+- Postcondition 2: `queued_prompts` → `overlay_stack` (IPC field); clarified that TUI builds `VecDeque<PromptModal>` from it.
+- Postcondition 3: `VecDeque<PromptModal>` → pending-prompt registry.
+- Test vector table header: `Daemon queued_prompts at hide` → `Daemon overlay_stack at hide`.
+- Cross-Ref row: `queued_prompts becomes AppMode::Overlay` → `overlay_stack becomes AppMode::Overlay`.
+- Architecture Module: daemon-ownership description updated to reference `overlay_stack`.
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per final bulk pin update.
+- The TUI-side `VecDeque<PromptModal>` references (Postcondition 2 and BC-2.06.001 Overlay type) are RETAINED — the TUI stores `VecDeque<PromptModal>` locally; only the IPC/daemon field name was wrong.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D9-001 / F-P1D10-001 CRITICAL — Remove fabricated `ClientDisconnect` IPC message** (2026-05-26T00:00:00Z):
+- **Architectural decision (confirmed):** No `ClientDisconnect` message is needed or exists.
+  When the user presses Ctrl-\, tmux kills the TUI process. The daemon retains its pending-
+  prompt registry. A new TUI process connects and gets the current `overlay_stack` via
+  `InitialState`. The "graceful vs crash" distinction is not needed at the IPC level.
+- **Invariant 2 replaced:** Removed "TUI MUST send a clean `ClientDisconnect` IPC message
+  during graceful exit so the daemon can distinguish intentional hide from crash." Replaced
+  with: daemon registry persists across all TUI connect/disconnect cycles; new TUI rebuilds
+  from `InitialState { overlay_stack }` via `payload_to_modal()`.
+- **Postcondition 3 updated:** Removed "SOQ-3 clearance only applies to unexpected disconnects"
+  hedging (that's TUI-side overlay stack behavior, not daemon registry). Replaced with the
+  correct mechanism: daemon retains `overlay_stack`; new TUI receives it via InitialState.
+- **Verification Properties:** VP for `ClientDisconnect` replaced with VP testing the actual
+  mechanism: TUI connect → disconnect → reconnect → same `overlay_stack` in both pushes.
+- **Architecture Module:** Removed `ClientDisconnect message` reference.
+- **Story Anchor:** Removed "graceful TUI exit with ClientDisconnect IPC message" framing.
+- BC-2.06.016 relationship clarified: it applies to TUI-side overlay stack on UDS connection
+  loss, not to the daemon's pending-prompt registry.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.4. PASS.

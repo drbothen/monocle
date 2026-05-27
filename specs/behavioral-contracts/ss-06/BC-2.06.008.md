@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010, F-P1D7-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -38,7 +38,7 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
 
 ## Preconditions
 
-1. The TUI's IPC receive channel (`app.ipc_rx`) delivers `IpcServerMessage::PermissionPromptQueued`
+1. The TUI's IPC receive channel (`app.ipc_rx`) delivers `ServerToClient::PermissionPromptQueued`
    messages from the daemon.
 2. `PromptModal` is defined in `monocle-core/src/prompt_modal.rs` with fields:
    - `prompt_id: Uuid` (stable ID from daemon for decision correlation)
@@ -144,7 +144,7 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "permission overlay stack" component of CAP-006: the VecDeque push on PermissionPromptQueued is the entry point for the permission overlay system and the product's primary competitive differentiator (D-2 in the PRD: simultaneous multi-session permission handling without prompt drop) |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — overlay push path performs no file writes; it only modifies in-memory `app.mode` and logs via tracing) |
 | Architecture Module | monocle-tui (App::handle_ipc_message(), draw loop IPC drain phase) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Permission Overlay §Overlay Stack Lifecycle (Push section, step 1); §PromptModal Type; §Rendering Architecture (draw loop drain phase) |
+| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle (Push section, step 1); §PromptModal Type; §Rendering Architecture (draw loop drain phase) |
 | Cross-Ref | BC-2.05.005 (PermissionPromptQueued IPC message — the daemon-side precondition for this BC), BC-2.06.001 (Overlay AppMode variant and VecDeque non-empty invariant), BC-2.06.009 (stack rotation, the next operation after push), BC-2.06.011..013 (decision actions that pop from the stack pushed here) |
 | Test File | `monocle-tui/tests/permission_overlay_push.rs` |
 | Test Name | `test_BC_2_06_008_overlay_vecdeque_push_on_permission_prompt_queued` |
@@ -178,7 +178,7 @@ S-TBD — Implement App::handle_ipc_message() for PermissionPromptQueued; VecDeq
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.008 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Permission Overlay (PromptModal type, Overlay Stack Lifecycle
+- Reads: SS-tui.md v1.1.0 §Permission Overlay (PromptModal type, Overlay Stack Lifecycle
   §Push, §Rotate, §Decide, §Hide, §Daemon disconnect); prd-expansion-scope.md §3.3
   BC-2.06.008 description; ARCH-INDEX.md §Capability Traceability SS-06.
 - Invariant 3 (Fullscreen handling) is a design decision made here and not explicitly in
@@ -191,3 +191,30 @@ S-TBD — Implement App::handle_ipc_message() for PermissionPromptQueued; VecDeq
 - EC-104 documents the Filtering → Overlay transition carefully: the Filtering::prior
   (not Filtering::panel) is used as the Overlay::prior. This is correct because Filtering
   carries the pre-filter FocusSnapshot in its own prior field.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-P1D7-001 HIGH — Fabricated `IpcServerMessage` replaced with canonical `ServerToClient`** (2026-05-26T00:00:00Z):
+- All occurrences of `IpcServerMessage::PermissionPromptQueued` replaced with
+  `ServerToClient::PermissionPromptQueued`. The canonical enum in SS-ipc.md §Server-to-Client
+  Messages is `ServerToClient` (not `IpcServerMessage`).
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

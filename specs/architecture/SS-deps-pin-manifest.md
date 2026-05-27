@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.1.20"
+version: "1.1.22"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-20T00:00:00Z
+timestamp: 2026-05-26T12:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
 input-hash: "4d4ef16"
 traces_to: architecture/ARCH-INDEX.md
@@ -61,7 +61,8 @@ All versions verified against crates.io REST API on 2026-05-12.
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
 | serde | 1 | Serialize/Deserialize derive macros for `HookEventRecord` in `monocle-runtime::ring` (`#[derive(serde::Serialize, serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain) and multiple core types in `monocle-core` (HookEvent, EnrichedSession, SessionStatus, EngineMetadata, ProcessSnapshot, HookResponse, HookType per SS-core-types-and-abi.md and SS-engine-module.md) | caret pin; feature `derive` required — declare as `serde = { version = "1", features = ["derive"] }` in workspace `[dependencies]`; bare `serde` is a separate crate from `serde_json` and `serde_yaml_ng`; the `derive` feature activates the `Serialize`/`Deserialize` proc-macro; `serde 1.x` is the current stable series (no RUSTSEC advisories on 1.x line); not on untrusted-input deserialization path (that is `serde_json`'s role); F-R76-1 closure |
-| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision) | caret pin; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; Extension 7 comprehensive audit discovery |
+| chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision). Also used in `monocle-core` for `EnrichedSession::started_at: Option<chrono::DateTime<chrono::Utc>>` (Phase 1 TUI session uptime field, BC-2.06.005; SS-engine-module.md §Trace v1.1.21). | caret pin; declare as `chrono = { version = "0.4", features = ["serde"] }` in workspace `[dependencies]` — the `serde` feature is required so `chrono::DateTime<Utc>` derives `Serialize + Deserialize` for IPC wire transport of `EnrichedSession::started_at`; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; dep graph edges: `runtime → chrono` (Extension 7), `core → chrono` (F-P13-001 closure); Extension 7 comprehensive audit discovery |
+| which | 7 | PATH search for CCR binary detection in `monocle-config::detect_ccr()` (BC-2.07.006, SS-config.md §CCR Detection); called as `which::which("ccr")` to locate the Claude Code Router binary when `ccr_path` is not set in `config.json`; no-op if binary absent (returns `None`) | caret pin (`^7`); `which 7.x` is the current stable series as of 2026-05 (crates.io verified); MSRV 1.70 — well within Phase 1 floor of Rust 1.86; used in `monocle-config` only, not on untrusted-input deserialization path; F-P1D-008 closure (missing from manifest, found in adversarial review Pass 1) |
 
 ## Dev Dependencies
 
@@ -175,6 +176,7 @@ graph TD
     runtime --> axum
     runtime --> serde
     runtime --> chrono
+    core --> chrono
 
     ipc --> interprocess
     ipc --> tokio
@@ -188,6 +190,7 @@ graph TD
     config --> tempfile
     config --> serde_json
     config --> core
+    config --> which
 
     sdk[monocle-plugin-sdk] -.->|Phase 3| wasmtime
 
@@ -265,6 +268,17 @@ pinned versions block merge until either:
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
 ## §Trace
+
+v1.1.21 changes (F-P1D-008: `which` crate missing from manifest) (2026-05-26):
+- **F-P1D-008** RESOLVED: `which 7.x` added to Phase 1 Pin Manifest.
+  - SS-config.md §CCR Detection uses `which::which("ccr")` for PATH-based CCR binary
+    detection (BC-2.07.006). The crate was referenced in SS-config.md but absent from this
+    manifest — an oversight identified during adversarial review Phase 1d Pass 1.
+  - Pin: caret `^7` (current stable series as of 2026-05; MSRV 1.70, within Phase 1 floor 1.86).
+  - Workspace dependency graph: `config --> which` edge added.
+  - No security implications: `which` is a PATH search utility; not on the untrusted-input
+    deserialization path. Caret pin is correct per the Patch-Pinning Policy.
+- Version bumped from 1.1.20 → 1.1.21.
 
 v1.1.15 changes (F-R99 Burst 2 — F-R99-6 MED closure: §Trace v1.1.14 "16+" imprecision corrected; SE-17f + SE-16d first application):
 
@@ -837,3 +851,20 @@ v1.1.6 changes (round-22 fix F-R22-3):
 - Refs: S-002 (Healthz Endpoint, Wave 2); `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`.
 - SE-16b monotonicity check PASS: v1.1.19 → v1.1.20 is a monotonic increment.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-25T00:00:00Z >= chain high-water 2026-05-20T21:30:00Z. PASS.
+
+**§Trace v1.1.22** (2026-05-26T12:30:00Z) — F-P13-001: `chrono` dep graph expansion to `monocle-core`:
+- NORMATIVE: `chrono` row in Phase 1 Pin Manifest updated with two changes:
+  1. Role column: added `EnrichedSession::started_at: Option<chrono::DateTime<chrono::Utc>>` use
+     case (Phase 1 TUI session uptime field, BC-2.06.005; SS-engine-module.md §Trace v1.1.21).
+  2. Cargo.toml Note column: pin declaration updated from bare caret pin to
+     `chrono = { version = "0.4", features = ["serde"] }` — the `serde` feature is required so
+     `chrono::DateTime<Utc>` derives `Serialize + Deserialize` for IPC wire transport of
+     `EnrichedSession::started_at`.
+- NORMATIVE: dep graph edge `core → chrono` added (was `runtime → chrono` only). Both edges
+  now reflected in the Mermaid dep graph diagram.
+- INFORMATIONAL: Production crate count unchanged (32); no new crates added. Only the scope
+  of an existing crate's usage is widened from `runtime` to `runtime + core`.
+- SE-16b monotonicity check PASS: v1.1.20 → v1.1.22 (skipping v1.1.21 which was used by
+  SS-engine-module.md §Trace to label the sibling change in that document; dep-manifest version
+  numbering is independent).
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-26T12:30:00Z >= chain high-water 2026-05-25T00:00:00Z. PASS.

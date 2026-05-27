@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -11,11 +11,11 @@ input-hash: "[pending]"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
-capability: CAP-001
+capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D-001, F-P1D2-010, F-P1D2-012, F-P1D3-002]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -117,8 +117,10 @@ PC-17. The `contract_version` field value is `"monocle-lock-v1"`. Lock file sche
 PC-18. `<runtime_dir>/hooks-settings.json` is written via `tempfile::persist` at mode
        `0o600`. This MUST occur AFTER step 8 (SOQ-2: lock file committed before
        hooks-settings reads the token). Failure causes exit code 72.
-PC-19. All 5 hook endpoint URLs embed the OS-assigned port (from step 3) and the full wire
-       token `monocle-v1:<64-hex>` (from step 7). See BC-2.04.010 for the full schema.
+PC-19. All 4 hook endpoint URLs embed the OS-assigned port (from step 3) and the full wire
+       token `monocle-v1:<64-hex>` (from step 7). (PreToolUse, Notification, Stop,
+       UserPromptSubmit — SessionStart is invoked by Claude Code's internal lifecycle, not via
+       hooks-settings.json.) See BC-2.04.010 for the full schema.
 
 **Step 10 — UDS socket created.**
 PC-20. A Unix domain socket is bound at `<runtime_dir>/monocle.sock` with mode `0o600`.
@@ -152,6 +154,14 @@ PC-26. The foreground caller exits with code 0 and no stdout output upon detecti
    No HTTP server is ever started without all prior steps having succeeded.
 5. **Token stored split-form:** `DaemonState.auth_token` holds only the 64-hex suffix; the
    full `monocle-v1:<64-hex>` wire token is composed at write time (steps 8 and 9).
+6. **Lock file cleanup on post-step-8 failure:** If any step N > 8 fails, the lock file
+   written at step 8 MUST be removed before process exit to prevent orphaned lock files.
+   An orphaned lock file (with a valid PID that matches a dead process) is cleaned up by
+   the next start's stale-lock detection (step 2 / BC-2.01.005 PC-3), but removing the
+   lock file on failure is cleaner and avoids a confusing start sequence on immediate restart.
+   Example: step 9 (hooks-settings.json write failure) already documents this at
+   EC-2.04.001-02 — the lock file is explicitly removed before exit. The same obligation
+   applies to steps 10–12 failures.
 
 ## Edge Cases
 
@@ -190,11 +200,11 @@ PC-26. The foreground caller exits with code 0 and no stdout output upon detecti
 
 | Field | Value |
 |-------|-------|
-| L2 Capability | CAP-001 ("Daemon Lifecycle") per domain-spec/L2-INDEX.md §Capabilities Registry |
-| Capability Anchor Justification | CAP-001 ("Daemon Lifecycle") per CAP-001-daemon-lifecycle.md — this BC specifies the full 13-step daemon startup sequence that is the foundation of all daemon lifecycle management; the SOQ-2 ordering enforced here is the mechanism by which DI-002 and DI-003 are satisfied at startup |
+| L2 Capability | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §Capability Traceability §SS-04 |
+| Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC specifies the full 13-step daemon startup sequence enforcing SOQ-2; the "binary composition root" names the daemon binary crate that owns this start sequence, and the sequence wires together CLI surface, daemon auto-start, bounded event bus, and hook tmpfile generation in exact order |
 | L2 Domain Invariants | DI-002 (lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — PC-15 through PC-17 enforce lock file creation before step 12 starts HTTP serving); DI-003 (auth token MUST be written to lock file after port is bound — PC-4/PC-5 bind port, PC-13/PC-14 generate token, PC-15 writes both to lock file in that order; SOQ-2 invariant formalizes this) |
 | Architecture Module | `monocle` binary crate + `monocle-runtime` per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §Daemon Start Sequence (BC-2.04.001) |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.001) |
 | Cross-Ref | BC-2.01.005 (lock file atomic lifecycle — step 2 delegates to this BC); BC-2.01.008 (auth token wire format — PC-13 and PC-15 must conform); BC-2.01.010 (lock file JSON schema — PC-15 and PC-17 must conform); BC-2.04.006 (runtime_dir resolution — step 1 delegates to this BC); BC-2.04.010 (hooks-settings.json schema — step 9 delegates to this BC) |
 | Test File | `monocle/tests/daemon_start_sequence.rs` |
 | Test Name | `test_BC_2_04_001_daemon_start_sequence_soq2` |
@@ -233,3 +243,54 @@ VP-TBD — Daemon start sequence integration tests (filled after VP creation)
   7 edge cases, 5 test vectors, 6 verification properties.
 - input-hash: [pending] — to be populated by compute-input-hash after human review.
 - SE-16d PASS: 2026-05-26T12:00:00Z is the chain origin for this artifact.
+
+## §Trace v1.5.0
+
+**F-P1D10-002 HIGH — CAP-004 capability text corrected to ARCH-INDEX verbatim** (2026-05-26T00:00:00Z):
+- L2 Capability and Capability Anchor Justification: stale `"Daemon binary crate wiring;
+  CLI surface; SOQ-2 start-sequence invariant; hook endpoint routing; bounded event bus"` →
+  ARCH-INDEX verbatim `"Binary composition root; CLI surface; daemon auto-start; bounded
+  event bus; hook tmpfile generation"`.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.
+
+## §Trace v1.4.0
+
+**F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- SE-16d monotonicity: v1.4.0 timestamp >= v1.3.0. PASS.
+
+## §Trace v1.3.0
+
+**F-P1D3-002 CRITICAL — PC-19 hook endpoint count corrected from 5 to 4** (2026-05-26T14:00:00Z):
+- PC-19: "All 5 hook endpoint URLs" → "All 4 hook endpoint URLs".
+- Added clarifying note to PC-19: "(PreToolUse, Notification, Stop, UserPromptSubmit —
+  SessionStart is invoked by Claude Code's internal lifecycle, not via hooks-settings.json.)"
+- Rationale: Only 4 hook types carry non-empty curl command arrays in hooks-settings.json.
+  PostToolUse and PreCompact are present with empty arrays (forward-compat). SessionStart is
+  routed via Claude Code's internal lifecycle and is not configurable via hooks-settings.json
+  in Phase 1.
+- SE-16d monotonicity: v1.3.0 timestamp 2026-05-26T14:00:00Z >= v1.2.0. PASS.
+
+## §Trace v1.2.0
+
+**F-P1D2-012 LOW — Lock file cleanup invariant added** (2026-05-26T00:00:00Z):
+- Added Invariant 6: "If any step N > 8 fails, the lock file written at step 8 MUST be removed before process exit to prevent orphaned lock files." This invariant lifts the requirement already documented in EC-2.04.001-02 (step 9 failure → lock file removal) to a general invariant covering all post-step-8 failures (steps 10–12). The obligation was implicit from EC-2.04.001-02 but needed to be stated as an explicit invariant to be machine-checkable.
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh; this file was already at v1.1.0 from F-P1D-001; Architecture Source pin independently updated to v1.1.0).
+
+SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D-001 CRITICAL — capability mis-anchor corrected** (2026-05-26T00:00:00Z):
+- Frontmatter `capability: CAP-001` → `capability: CAP-004` per F-P1D-001 finding from
+  Phase 1d Pass 1 adversarial review.
+- Traceability §L2 Capability and §Capability Anchor Justification updated to cite CAP-004
+  ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint
+  routing; bounded event bus") per ARCH-INDEX §SS-04 Capability Traceability.
+- Rationale: BC-2.04.001 covers the SOQ-2 start-sequence, which is a CAP-004 responsibility
+  (named explicitly in the CAP-004 statement), not CAP-001 (daemon lifecycle management in
+  the SS-01 sense). SS-04 subsystem BCs trace to CAP-004 per ARCH-INDEX §Capability
+  Traceability table.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0 origin. PASS.

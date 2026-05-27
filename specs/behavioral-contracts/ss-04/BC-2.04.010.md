@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:03:00Z
@@ -15,7 +15,7 @@ capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D2-010, F-P1D3-002]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -29,7 +29,7 @@ removal_reason: null
 ## Description
 
 The daemon generates `<runtime_dir>/hooks-settings.json` during startup (step 9 of the start
-sequence, after the lock file is written at step 8) to publish its 5 hook endpoint URLs and
+sequence, after the lock file is written at step 8) to publish its 4 hook endpoint URLs and
 auth token to Claude Code. Claude Code reads this file via its `--settings` flag to discover
 the daemon's dynamically-assigned port and the full wire token for the `X-Monocle-Authorization`
 header. The file is written atomically via `tempfile::persist` at mode `0o600`, regenerated on
@@ -70,7 +70,7 @@ After `tempfile::persist`, the implementation calls:
 The resulting file is readable and writable by the daemon user only. Other OS users cannot
 read the file or discover the auth token via the hooks-settings.json path.
 
-**PC-3 — Schema: 5 hook endpoint URLs with port and token embedded.**
+**PC-3 — Schema: 4 hook endpoint URLs with port and token embedded.**
 The JSON content follows the schema:
 ```json
 {
@@ -211,7 +211,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — "hook tmpfile generation" is named explicitly as a CAP-004 responsibility; this BC is the direct operationalization of that named responsibility, specifying the atomic write, mode, schema, SOQ-2 ordering, and removal contract for `hooks-settings.json` |
 | L2 Domain Invariants | DI-002 (the lock file MUST be present and contain a valid token before any hook endpoint accepts connections — this BC's SOQ-2 ordering invariant ensures hooks-settings.json embeds a token that is already in the lock file; Claude Code cannot reach hook endpoints with a token that hasn't been committed to the lock file); DI-003 (auth token MUST be written to lock file after port is bound — PC-4 enforces that hooks-settings.json is written after the lock file, which was written after port bind, preserving DI-003 as a transitivity guarantee) |
 | Architecture Module | monocle-runtime (`write_hooks_settings()` function) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §Hook Tmpfile Generation |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Tmpfile Generation |
 | Cross-Ref | BC-2.01.005 (lock file lifecycle — SOQ-2 upstream step); BC-2.01.008 (auth token wire format — token embedded in command strings); BC-2.04.001 (daemon start sequence — step 9 calls this contract) |
 | Test File | `monocle-runtime/tests/hooks_settings_generation.rs` |
 | Test Name | `test_BC_2_04_010_hooks_settings_generation` |
@@ -248,3 +248,28 @@ S-TBD — Implement hooks-settings.json generation with atomic write, mode 0o600
 - Capability anchor: CAP-004 per ARCH-INDEX §SS-04 Capability Traceability row ("hook tmpfile
   generation" named explicitly in CAP-004 statement).
 - SE-16d PASS: 2026-05-26T12:03:00Z > chain prior 2026-05-26T12:02:00Z. PASS.
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T13:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp 2026-05-26T13:00:00Z > v1.0.0 timestamp 2026-05-26T12:03:00Z. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D3-002 CRITICAL — Hook endpoint count corrected from 5 to 4; O-P1D3-003 timestamp monotonicity fixed** (2026-05-26T14:00:00Z):
+- Description: "5 hook endpoint URLs" → "4 hook endpoint URLs". Only PreToolUse, Notification,
+  Stop, and UserPromptSubmit have non-empty hook arrays in hooks-settings.json. PostToolUse and
+  PreCompact have empty arrays; SessionStart is not listed in hooks-settings.json (it is invoked
+  via Claude Code's internal lifecycle, not via hooks-settings.json). The count 4 is the number
+  of endpoints that carry actual curl command URLs.
+- PC-3 header: "Schema: 5 hook endpoint URLs" → "Schema: 4 hook endpoint URLs".
+- O-P1D3-003: §Trace v1.0.1 timestamp updated from 2026-05-26T00:00:00Z to 2026-05-26T13:00:00Z
+  (strictly greater than v1.0.0 2026-05-26T12:03:00Z) to restore monotonicity.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-26T14:00:00Z > v1.0.1 timestamp 2026-05-26T13:00:00Z. PASS.
+
+## §Trace v1.2.0
+
+**F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.

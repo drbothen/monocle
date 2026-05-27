@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-005
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -128,7 +128,7 @@ transitions to "daemon offline" mode and polls the lock file every 5 seconds for
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the reconnection behavior that makes the IPC transport resilient to daemon restarts, which is a key availability property of the internal transport |
 | L2 Domain Invariants | DI-002 (lock file must be present before connections accepted — this BC's lock-file re-read after each retry enforces DI-002 from the client side: TUI only connects when a valid lock file exists) |
 | Architecture Module | monocle-ipc (UdsTransport reconnect loop, TransportEvent::Disconnected) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.0.0 §Reconnection Behavior; SS-ipc.md v1.0.0 §SOQ-3 Overlay Clear on Disconnect |
+| Architecture Source | SS-ipc.md v1.4.0 §Reconnection Behavior; SS-ipc.md v1.4.0 §SOQ-3 Overlay Clear on Disconnect |
 | Cross-Ref | BC-2.05.001 (new daemon rebinds same socket path after stale removal); BC-2.05.002 (InitialState on reconnect); BC-2.05.007 (SOQ-3 overlay clear — happens before reconnect loop); BC-2.01.005 (lock file re-read to discover new daemon) |
 | Test File | `monocle-ipc/tests/reconnect.rs` |
 | Test Name | `test_BC_2_05_006_tui_reconnects_after_daemon_restart` |
@@ -166,3 +166,22 @@ VP-TBD — Reconnect loop and offline-mode transition verification properties (f
   successful reconnect.
 - 7 edge cases documented (EC-001..EC-007).
 - SE-16d PASS: 2026-05-26T04:00:00Z is the production timestamp for this wave.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.0.0` → `SS-ipc.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-004 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.1.0` (2 occurrences) → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.3.0` (2 occurrences) → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

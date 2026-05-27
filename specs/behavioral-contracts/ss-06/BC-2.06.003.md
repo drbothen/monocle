@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -132,7 +132,7 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "keybinding dispatch" component of CAP-006: the 5-level precedence system is the mechanism by which user customizations interact safely with builtin bindings and AppMode-specific context bindings |
 | L2 Domain Invariants | DI-006 (EngineModule statelessness — orthogonally supported: `Dispatcher::resolve()` is stateless beyond the pre-populated tables; no global mutable state is read during resolution) |
 | Architecture Module | monocle-core (BindingSource, Binding enums); monocle-tui (Dispatcher, per_context rebuild) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Action Enum and 5-Level Binding Precedence (Dispatcher Logic sketch, BindingSource enum) |
+| Architecture Source | SS-tui.md v1.5.0 §Action Enum and 5-Level Binding Precedence (Dispatcher Logic sketch, BindingSource enum) |
 | Cross-Ref | BC-2.06.001 (Action enum definition), BC-2.06.004 (Ctrl-\ binding is external to dispatcher — in tmux, not monocle), BC-2.06.011 (accept-once `[1]` key is a PerContext binding exercised here) |
 | Test File | `monocle-tui/tests/keybinding_dispatcher.rs` |
 | Test Name | `test_BC_2_06_003_five_level_binding_precedence` |
@@ -162,7 +162,7 @@ S-TBD — Implement Dispatcher with 5-level HashMap tables; update_context() reb
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.003 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Action Enum and 5-Level Binding Precedence (Dispatcher struct
+- Reads: SS-tui.md v1.1.0 §Action Enum and 5-Level Binding Precedence (Dispatcher struct
   sketch, BindingSource enum, per_context rebuild note); prd-expansion-scope.md §3.3
   BC-2.06.003 description; ARCH-INDEX.md §Capability Traceability SS-06.
 - EC-075 documents an important edge case: Ctrl-P is a modifier combination, not a printable
@@ -170,4 +170,32 @@ S-TBD — Implement Dispatcher with 5-level HashMap tables; update_context() reb
   to the Global or Builtin tables. This ensures ProfilePicker is always accessible.
 - Postcondition 3 explicitly lists the Overlay per_context bindings because the
   `[1]`/`[2]`/`[3]`/`[t]` key assignments are the most safety-critical dispatch rules
-  in the system (they trigger IPC DecisionResponse messages to the daemon).
+  in the system (they trigger IPC `ClientToServer::PermissionDecision` messages to the daemon).
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**IPC sweep — fabricated `DecisionResponse` in rationale note replaced** (2026-05-26T14:30:00Z):
+- Design Notes paragraph: "trigger IPC DecisionResponse messages" → "trigger IPC `ClientToServer::PermissionDecision` messages".
+  This is an explanatory note about why the `[1]`/`[2]`/`[3]`/`[t]` key assignments are
+  safety-critical; the informal shorthand `DecisionResponse` was replaced with the canonical
+  `ClientToServer::PermissionDecision` per SS-ipc.md §Client-to-Server Messages.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

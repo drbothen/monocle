@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -18,7 +18,7 @@ capability: CAP-007
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -102,7 +102,7 @@ readers.
 |----|-------------|-------------------|
 | EC-078 | `harness_profiles` absent from JSON | Deserializes to `harness_profiles: []` (via `#[serde(default)]`) |
 | EC-079 | `ccr_path` absent from JSON | Deserializes to `ccr_path: None` (via `#[serde(default)]`) |
-| EC-080 | `binding_overrides` absent from JSON | Deserializes to `binding_overrides: {}` (via `#[serde(default)]`) |
+| EC-080 | `binding_overrides` absent from JSON | Deserializes to `binding_overrides: {}` (via custom default function `default_binding_overrides()` returning `Value::Object(Map::new())`) |
 | EC-081 | `project_profiles` absent from JSON | Deserializes to `project_profiles: HashMap::new()` (via `#[serde(default)]`) |
 | EC-082 | `config_dir` absent from a `HarnessProfile` element | Deserializes to `config_dir: None` (via `#[serde(default)]`) |
 | EC-083 | JSON contains unknown top-level field (e.g., `"new_phase2_field": 42`) | Field is silently ignored; `MonocleConfig` deserializes with known fields populated normally |
@@ -141,7 +141,7 @@ readers.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC defines the data schema that is the carrier for harness profile management and config persistence |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Config Schema v1 |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.0.0 §Config Schema v1 |
+| Architecture Source | SS-config.md v1.1.0 §Config Schema v1 |
 | Cross-Ref | BC-2.07.001 (write_config serializes this schema atomically); BC-2.07.003 (parse failure path); BC-2.07.004 (project_profiles field consumed by profile picker); BC-2.07.006 (ccr_path field consumed by CCR detection) |
 | Brief Features | F-53 (config.json schema), F-54 (harness profile schema), F-55 (ccr_path field), F-56 (binding_overrides stub) |
 | Test File | `monocle-config/tests/schema_v1.rs` |
@@ -175,3 +175,23 @@ VP-TBD — config schema v1 unit tests (filled after VP creation)
   and `SS-config.md` §Config Schema v1 and §Forward Compatibility.
 - Brief features traced: F-53, F-54, F-55, F-56.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
+
+
+## §Trace v1.0.2
+
+**F-P1D10-002 HIGH — EC-080 serde default mechanism corrected from `#[serde(default)]` to `default_binding_overrides()`** (2026-05-26T00:00:00Z):
+- EC-080: `"Deserializes to binding_overrides: {} (via #[serde(default)])"` →
+  `"Deserializes to binding_overrides: {} (via custom default function
+  default_binding_overrides() returning Value::Object(Map::new()))"`.
+- Rationale: `serde_json::Value` does not implement `Default` returning an empty object.
+  A plain `#[serde(default)]` on a `Value` field would default to `Value::Null`, not `{}`.
+  The correct implementation uses a named custom default function
+  `#[serde(default = "default_binding_overrides")]` with a function that returns
+  `Value::Object(Map::new())`. The EC description was misleading implementers.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-config.md v1.0.0` → `SS-config.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.

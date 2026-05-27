@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -124,7 +124,7 @@ matcher on every keystroke. Only `EnrichedSession` entries whose `project_name` 
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the filter feature of the "sessions panel" component of CAP-006, enabling telescope-style session discovery for users managing many concurrent sessions |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — filter operates purely on in-memory `app.sessions` with no disk access) |
 | Architecture Module | monocle-tui (draw_filter_overlay(), nucleo Matcher usage, SearchPrompt keybinding table) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (Filter mode paragraph); §Dependency Graph (nucleo 0.5) |
+| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Sessions Panel (Filter mode paragraph); §Dependency Graph (nucleo 0.5) |
 | Cross-Ref | BC-2.06.001 (Filtering AppMode variant and transition function), BC-2.06.003 (SearchPrompt dispatch level captures printable keys during Filtering), BC-2.06.002 (Esc restores FocusSnapshot) |
 | Test File | `monocle-tui/tests/sessions_filter.rs` |
 | Test Name | `test_BC_2_06_006_sessions_filter_nucleo_fuzzy_match` |
@@ -153,7 +153,7 @@ S-TBD — Implement Sessions Panel filter mode with nucleo 0.5 matcher; match hi
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.006 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (filter mode paragraph);
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Sessions Panel (filter mode paragraph);
   §Rendering Architecture (draw_filter_overlay call); §Dependency Graph (nucleo 0.5);
   prd-expansion-scope.md §3.3 BC-2.06.006 description; ARCH-INDEX.md §Capability Traceability SS-06.
 - Postcondition 8 ("zero matches renders empty state variant") distinguishes the filter-no-match
@@ -162,3 +162,22 @@ S-TBD — Implement Sessions Panel filter mode with nucleo 0.5 matcher; match hi
 - EC-093 confirms that filter state is NOT preserved across Ctrl-\ hide/show — intentional
   design per the lazygit philosophy. Transient TUI state (filter query, scroll position) is
   ephemeral. Only daemon-owned state (session list, queued prompts) survives reconnection.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

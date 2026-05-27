@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D-002, F-P1D2-002, F-P1D2-010, F-P1D7-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -43,7 +43,7 @@ The Success Criterion is ≤6 keystrokes; the canonical happy path achieves exac
 2. Two Claude Code sessions are running as background processes. Each is stalled, awaiting
    a `PreToolUse` decision from the hook server.
 3. The daemon has received 2 `PermissionPromptQueued` events via the `PreToolUse` hook
-   endpoint. The daemon's `DaemonState::queued_prompts` holds both `PromptModal` entries
+   endpoint. The daemon's pending-prompt registry (`overlay_stack: Vec<PermissionPromptPayload>`) holds both entries
    (P1 and P2, in insertion order).
 4. The monocle TUI process is NOT running. The last `Ctrl-\` popup was previously
    dismissed (the user's tmux session has the `Ctrl-\` → `display-popup -E monocle`
@@ -63,8 +63,8 @@ preconditions, postconditions, and daemon actions.
 | Action | User presses `Ctrl-\` in tmux |
 | tmux behavior | `display-popup -E monocle` spawns a new `monocle` process |
 | TUI startup | `monocle` starts, reads lock file, connects to UDS at `<runtime_dir>/monocle.sock` |
-| Daemon initial state push | Daemon sends `IpcServerMessage::InitialState { queued_prompts: [P1, P2], sessions: [...], recent_events: [...] }` |
-| TUI AppMode | Transitions to `AppMode::Overlay { stack: [P1, P2], prior: FocusSnapshot::Sessions }` because `queued_prompts` is non-empty |
+| Daemon initial state push | Daemon sends `ServerToClient::InitialState { overlay_stack: [P1, P2], sessions: [...], ring_tail: [...], drop_counter: 0 }` |
+| TUI AppMode | Transitions to `AppMode::Overlay { stack: [P1, P2], prior: FocusSnapshot::Sessions }` because `overlay_stack` is non-empty |
 | Screen render | Overlay renders P1 (front of stack) with its `ToolPayload`; peek shows P2 header; status bar breadcrumb shows `Dashboard > Overlay [2 prompts]`; hint shows `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` |
 | Latency | TUI overlay is on screen within 100ms of receiving `InitialState` (Success Criterion per BC-2.06.017) |
 | Editor focus | Editor is NOT disturbed. tmux popup floats over the editor; the editor process is not sent any signal |
@@ -75,9 +75,9 @@ preconditions, postconditions, and daemon actions.
 |--------|---------------|
 | Action | User presses `2` in the TUI overlay |
 | Keybinding resolution | `PerContext` table for `AppMode::Overlay` maps `2` → `Action::PermissionAcceptAlways` |
-| Decision send | TUI sends `IpcClientMessage::DecisionResponse { prompt_id: P1.prompt_id, decision: PermissionDecision::Always }` to daemon via `ipc_tx` (non-blocking) |
-| Daemon action | Daemon receives `DecisionResponse` for P1; sends `{"decision":"always"}` HTTP response to P1's stalled Claude Code session; P1's Claude Code process unblocks and resumes |
-| Pattern recording | Daemon records the `PermissionDecision::Always` pattern for future auto-accept (per BC-2.06.012) |
+| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P1.prompt_id, decision: PermissionDecision::AcceptAlways }` to daemon via `ipc_tx` (non-blocking) |
+| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P1; sends `{"decision":"always"}` HTTP response to P1's stalled Claude Code session; P1's Claude Code process unblocks and resumes |
+| Pattern recording | Daemon records the `PermissionDecision::AcceptAlways` pattern for future auto-accept (per BC-2.06.012) |
 | TUI AppMode transition | `transition(Overlay { stack: [P1, P2], prior: Sessions }, PermissionAcceptAlways)` → `Overlay { stack: [P2], prior: Sessions }` (P1 popped from front, P2 now front) |
 | Screen render | Overlay re-renders with P2 as the active prompt; badge shows `[1 prompt]`; breadcrumb shows `Dashboard > Overlay [1 prompt]` |
 | Claude Code session P1 | Unblocked. Resumes execution. Developer does NOT need to be aware of this. |
@@ -88,8 +88,8 @@ preconditions, postconditions, and daemon actions.
 |--------|---------------|
 | Action | User presses `1` in the TUI overlay |
 | Keybinding resolution | `PerContext` table for `AppMode::Overlay` maps `1` → `Action::PermissionAcceptOnce` |
-| Decision send | TUI sends `IpcClientMessage::DecisionResponse { prompt_id: P2.prompt_id, decision: PermissionDecision::Once }` to daemon |
-| Daemon action | Daemon receives `DecisionResponse` for P2; sends `{"decision":"accept"}` HTTP response to P2's stalled Claude Code session; P2's Claude Code process unblocks |
+| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P2.prompt_id, decision: PermissionDecision::Accept }` to daemon |
+| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P2; sends `{"decision":"accept"}` HTTP response to P2's stalled Claude Code session; P2's Claude Code process unblocks |
 | TUI AppMode transition | `transition(Overlay { stack: [P2], prior: Sessions }, PermissionAcceptOnce)` → `Dashboard { focused: Sessions }` (P2 popped; stack empty; collapses to Dashboard per BC-2.06.001 invariant) |
 | Screen render | Dashboard renders. Sessions panel shows. Status bar shows `Dashboard > Sessions`. Overlay is gone. |
 | Claude Code session P2 | Unblocked. Resumes execution. |
@@ -102,7 +102,7 @@ preconditions, postconditions, and daemon actions.
 | tmux behavior | `display-popup` closes the popup window. The `monocle` TUI process exits (or is SIGTERM'd by tmux). |
 | Editor focus | Editor regains focus immediately. The user is back in `nvim` exactly where they left off. |
 | Post-state | Both Claude Code sessions are running. The developer never left the editor. No tmux window switch. No pane switch. |
-| Daemon state | `DaemonState::queued_prompts` is empty. Daemon is healthy and continues receiving hooks from both sessions. |
+| Daemon state | Daemon's pending-prompt registry (`overlay_stack`) is empty. Daemon is healthy and continues receiving hooks from both sessions. |
 
 ### Summary Postcondition
 
@@ -139,10 +139,10 @@ After completing all 4 steps:
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-134 | A third Claude Code session queues a new prompt (P3) between keystrokes 2 and 3 | P3 is pushed to the back of the `VecDeque` after P2. After keystroke 3 resolves P2, `stack = [P3]` — overlay remains open showing P3. The flow requires a 5th keystroke to resolve P3. Total: 5 keystrokes ≤ 6. Still within Success Criterion. |
-| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `2` | Daemon sends fail-open for P1; pushes `PromptAutoResolved { P1 }` to TUI; TUI removes P1 from stack; overlay shows P2 only. User still needs to decide P2. P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
+| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `2` | Daemon sends fail-open for P1; pushes `PermissionPromptResolved { prompt_id: P1.prompt_id }` to TUI (canonical type per SS-ipc.md v1.1.0); TUI removes P1 from stack; overlay shows P2 only. User still needs to decide P2. P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
 | EC-136 | User presses `2` for P1 at exactly 299ms (near-timeout) | Race between user decision and daemon timeout. If daemon sends fail-open before decision arrives: duplicate resolution — daemon MUST handle idempotently (log warning, ignore duplicate). If user decision arrives first: normal flow. Either outcome is acceptable. |
-| EC-137 | 6 Claude Code sessions are all stalled simultaneously | `DaemonState::queued_prompts` holds 6 entries. Overlay stack shows 6. User needs up to 6 keystrokes for the overlay decisions (1 per session) + 2 for open/close = 8 total. This exceeds the ≤6 success criterion for >4 concurrent stalled sessions. The ≤6 criterion is defined for the 2-session (dual) case. |
-| EC-138 | User dismisses the popup (`Ctrl-\`) before resolving all prompts (between steps 2 and 3) | P2 remains in daemon's `queued_prompts`. On next `Ctrl-\`, new TUI process opens overlay with P2 at front. Total keystrokes across two openings: `Ctrl-\`, `2`, `Ctrl-\`, `Ctrl-\`, `1`, `Ctrl-\` = 6. Still ≤6 Success Criterion if this is counted. |
+| EC-137 | 6 Claude Code sessions are all stalled simultaneously | Daemon's `overlay_stack` holds 6 entries. Overlay stack shows 6. User needs up to 6 keystrokes for the overlay decisions (1 per session) + 2 for open/close = 8 total. This exceeds the ≤6 success criterion for >4 concurrent stalled sessions. The ≤6 criterion is defined for the 2-session (dual) case. |
+| EC-138 | User dismisses the popup (`Ctrl-\`) before resolving all prompts (between steps 2 and 3) | P2 remains in daemon's pending-prompt registry (`overlay_stack`). On next `Ctrl-\`, new TUI process opens overlay with P2 at front. Total keystrokes across two openings: `Ctrl-\`, `2`, `Ctrl-\`, `Ctrl-\`, `1`, `Ctrl-\` = 6. Still ≤6 Success Criterion if this is counted. |
 | EC-139 | `monocle` daemon is not running when user presses `Ctrl-\` | Daemon auto-starts (per BC-2.04.001 MONOCLE_NO_AUTOSTART not set). TUI connects after auto-start. Overlay shows queued prompts from the new daemon session. First `Ctrl-\` is the startup keystroke. Adds ~1s latency for daemon start; not a blocker for the killer scenario correctness. |
 
 ## Canonical Test Vectors
@@ -163,7 +163,7 @@ the component BCs. The E2E test vector is:
 | VP-TBD | E2E: 2 stalled sessions unblocked in 4 keystrokes (`[connect]`, `2`, `1`, `[disconnect]`) | E2E integration test with mock daemon and mock Claude Code HTTP endpoint |
 | VP-TBD | Editor focus not lost during flow (no tmux pane switch) | E2E test with tmux automation (verify active pane ID unchanged across all steps) |
 | VP-TBD | Overlay auto-collapses to Dashboard when last PromptModal is resolved | unit test (steps 1–3 without tmux) |
-| VP-TBD | Both `DecisionResponse` messages delivered to daemon before HTTP response timeout | integration test (assert Claude Code mock HTTP responses received within 300ms) |
+| VP-TBD | Both `ClientToServer::PermissionDecision` messages delivered to daemon before HTTP response timeout | integration test (assert Claude Code mock HTTP responses received within 300ms) |
 
 ## Traceability
 
@@ -172,8 +172,8 @@ the component BCs. The E2E test vector is:
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC is the E2E validation contract for CAP-006 in its entirety: it exercises AppMode state machine, keybinding dispatch, permission overlay stack, and Ctrl-\ popup integration in a single end-to-end scenario that is the product's core value proposition |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon MUST be written to the JSONL ring — both P1 and P2 `PreToolUse` events were written to the ring when the daemon received them; this BC verifies the decision path after ring write); DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: decisions are sent via IPC HTTP response; no harness files are modified by the TUI) |
-| Architecture Module | monocle-tui (overlay rendering, keybinding dispatch, IPC decision send); monocle-core (AppMode transition function, VecDeque pop-and-collapse); monocle-ipc (DecisionResponse delivery); monocle-runtime (daemon HTTP response hold and release) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Killer Scenario Flow (complete step-by-step table including AppMode transitions, daemon actions, and Claude Code unblock verification); §Permission Overlay §Overlay Stack Lifecycle steps 3 and 2 (decision send and rotate) |
+| Architecture Module | monocle-tui (overlay rendering, keybinding dispatch, IPC decision send); monocle-core (AppMode transition function, VecDeque pop-and-collapse); monocle-ipc (ClientToServer::PermissionDecision delivery); monocle-runtime (daemon HTTP response hold and release) per ARCH-INDEX SS-06 |
+| Architecture Source | SS-tui.md v1.5.0 §Killer Scenario Flow (complete step-by-step table including AppMode transitions, daemon actions, and Claude Code unblock verification); §Permission Overlay §Overlay Stack Lifecycle steps 3 and 2 (decision send and rotate) |
 | Cross-Ref | BC-2.06.008 (overlay push on PermissionPromptQueued — Step 1 precondition); BC-2.06.012 (Accept-Always — Step 2); BC-2.06.011 (Accept-Once — Step 3); BC-2.06.001 (AppMode empty-stack collapse — Step 3 automatic Dashboard return); BC-2.06.017 (hook timeout budget — overall timing constraint); BC-2.05.002 (initial state push — Step 1 mechanism for receiving queued prompts) |
 | Test File | `monocle-tui/tests/killer_scenario.rs` |
 | Test Name | `test_BC_2_06_022_killer_scenario_dual_permission_resolve` |
@@ -203,6 +203,60 @@ S-TBD — Implement and verify killer scenario: E2E integration test proving ≤
 ## VP Anchors
 
 - VP-TBD — E2E integration test: `[connect]` + `2` + `1` + `[disconnect]`; both mock HTTP responses delivered; total keystrokes = 4
+
+## §Trace v1.2.0
+
+**F-P1D2-002 CRITICAL — Fabricated `PromptAutoResolved` replaced with `PermissionPromptResolved`** (2026-05-26T00:00:00Z):
+- EC-135: `PromptAutoResolved { P1 }` → `PermissionPromptResolved { prompt_id: P1.prompt_id }` per F-P1D2-002. The canonical `ServerToClient` variant for daemon-initiated prompt resolution is `PermissionPromptResolved` per SS-ipc.md v1.1.0. The fabricated `PromptAutoResolved` variant does not exist.
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010.
+
+SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.3.0
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.4.0
+
+**F-P1D7-001 HIGH — Fabricated IPC type names replaced with canonical types** (2026-05-26T00:00:00Z):
+- Step 1 Daemon initial state push: `IpcServerMessage::InitialState { queued_prompts: ..., recent_events: ... }`
+  → `ServerToClient::InitialState { overlay_stack: ..., ring_tail: ..., sessions: [...], drop_counter: 0 }`.
+  The canonical `InitialState` fields are `overlay_stack` (not `queued_prompts`) and `ring_tail`
+  (not `recent_events`) per SS-ipc.md §Server-to-Client Messages.
+- Step 1 TUI AppMode: `queued_prompts` → `overlay_stack` (the InitialState field name the TUI
+  uses to populate the overlay stack).
+- Step 2 Decision send: `IpcClientMessage::DecisionResponse` → `ClientToServer::PermissionDecision`.
+- Step 3 Decision send: `IpcClientMessage::DecisionResponse` → `ClientToServer::PermissionDecision`.
+- Daemon action rows for Steps 2/3: `DecisionResponse` → `ClientToServer::PermissionDecision`.
+- VP table and Architecture Module row updated.
+- §Trace v1.2.0 note: `IpcServerMessage` → `ServerToClient` (correcting the historical trace
+  note to use canonical type name).
+- SE-16d monotonicity: v1.4.0 timestamp >= v1.3.0. PASS.
+
+## §Trace v1.5.0
+
+**F-FINAL-001 MEDIUM — Remaining daemon-side `queued_prompts` references replaced with canonical IPC field name** (2026-05-26T00:00:00Z):
+- Precondition 3: `DaemonState::queued_prompts holds both PromptModal entries` → `pending-prompt registry (overlay_stack: Vec<PermissionPromptPayload>) holds both entries`.
+- Step 4 post-state table: `DaemonState::queued_prompts is empty` → `pending-prompt registry (overlay_stack) is empty`.
+- EC-137: `DaemonState::queued_prompts holds 6 entries` → `Daemon's overlay_stack holds 6 entries`.
+- EC-138: `daemon's queued_prompts` → `daemon's pending-prompt registry (overlay_stack)`.
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per final bulk pin update.
+- Note: The §Trace v1.4.0 fix already corrected the Step 1 IPC push field name (overlay_stack). This pass fixes the remaining body prose uses of the stale DaemonState field name.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D-002 CRITICAL — PermissionDecision variant names corrected** (2026-05-26T00:00:00Z):
+- Step 2 Postconditions table: `PermissionDecision::Always` → `PermissionDecision::AcceptAlways`
+  per F-P1D-002. The canonical enum in SS-ipc.md defines `Accept`, `AcceptAlways`, `Reject`.
+  `Always` is not a valid variant — the correct variant is `AcceptAlways`.
+- Step 2 Postconditions table: `PermissionDecision::Always` pattern recording reference
+  → `PermissionDecision::AcceptAlways`.
+- Step 3 Postconditions table: `PermissionDecision::Once` → `PermissionDecision::Accept`
+  per F-P1D-002. The canonical enum variant for accept-once is `Accept`, not `Once`.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0. PASS.
 
 ## §Trace v1.0.0
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:03:00Z
@@ -11,11 +11,11 @@ input-hash: "[pending]"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
-capability: CAP-001
+capability: CAP-004
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.0.0
-modified: []
+modified: [F-P1D-001, F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -139,11 +139,11 @@ PC-8. Exit codes for `monocle daemon start`:
 
 | Field | Value |
 |-------|-------|
-| L2 Capability | CAP-001 ("Daemon Lifecycle") per domain-spec/L2-INDEX.md §Capabilities Registry |
-| Capability Anchor Justification | CAP-001 ("Daemon Lifecycle") per CAP-001-daemon-lifecycle.md — this BC specifies the CLI surface through which operators and the auto-start path launch the daemon; it is the primary user-accessible entry point to daemon lifecycle management |
+| L2 Capability | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §Capability Traceability §SS-04 |
+| Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — `monocle daemon start` is the primary CLI subcommand through which operators launch the daemon; "CLI surface" and "daemon auto-start" are both named CAP-004 responsibilities; this BC specifies the complete `daemon start` CLI contract including exit codes, foreground polling, detachment, and error messaging |
 | L2 Domain Invariants | DI-002 (lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — PC-3 enforces this by making the foreground caller wait for the lock file before declaring success; hook endpoints are guaranteed present once the lock file appears, per BC-2.04.001 step 12 occurring after step 8) |
 | Architecture Module | `monocle` binary crate per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.0.0 §CLI Interface §Subcommand: `monocle daemon start` |
+| Architecture Source | SS-daemon-wiring.md v1.2.0 §CLI Interface §Subcommand: `monocle daemon start` |
 | Cross-Ref | BC-2.04.001 (daemon start sequence — the subprocess executes this); BC-2.01.005 (PID liveness check — PC-1 delegates to this); BC-2.04.006 (runtime_dir resolution — used for lock file polling path) |
 | Test File | `monocle/tests/cli_daemon_start.rs` |
 | Test Name | `test_BC_2_04_004_daemon_start_subcommand` |
@@ -183,3 +183,31 @@ VP-TBD — `monocle daemon start` CLI integration tests (filled after VP creatio
   sequence ample time while bounding user-visible wait).
 - input-hash: [pending] — to be populated by compute-input-hash after human review.
 - SE-16d PASS: 2026-05-26T12:03:00Z > prior 2026-05-26T12:02:00Z (BC-2.04.003).
+
+## §Trace v1.1.0
+
+**F-P1D-001 CRITICAL — capability mis-anchor corrected** (2026-05-26T00:00:00Z):
+- Frontmatter `capability: CAP-001` → `capability: CAP-004` per F-P1D-001.
+- Traceability §L2 Capability and §Capability Anchor Justification updated to cite CAP-004
+  ("Daemon binary crate wiring; CLI surface; SOQ-2 start-sequence invariant; hook endpoint
+  routing; bounded event bus") per ARCH-INDEX §SS-04 Capability Traceability.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.2.0
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.0.0` → `SS-daemon-wiring.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.4.0
+
+**F-P1D10-002 HIGH — CAP-004 capability text corrected to ARCH-INDEX verbatim** (2026-05-26T00:00:00Z):
+- L2 Capability and Capability Anchor Justification: stale text → ARCH-INDEX verbatim
+  `"Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation"`.
+- SE-16d monotonicity: v1.4.0 timestamp >= v1.3.0. PASS.
+
+## §Trace v1.3.0
+
+**F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
+- SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-005
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -107,7 +107,7 @@ file is removed alongside `monocle.lock` and `hooks-settings.json`.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC governs the UDS socket bind lifecycle that establishes the transport foundation on which all TUI-to-daemon communication depends |
 | L2 Domain Invariants | DI-002 (the lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — this BC extends that invariant to the UDS socket: the socket is bound after the lock file is written, ensuring ordered initialization); DI-003 (auth token written to lock file after port is bound — the socket bind happens after lock file write, preserving SOQ-2 ordering) |
 | Architecture Module | monocle-ipc (UDS server bind), monocle-runtime (daemon start sequence step 10) per ARCH-INDEX Subsystem Registry SS-05 and SS-04 |
-| Architecture Source | SS-ipc.md v1.0.0 §Transport Layer §Lifecycle; SS-daemon-wiring.md §Daemon Start Sequence |
+| Architecture Source | SS-ipc.md v1.4.0 §Transport Layer §Lifecycle; SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence |
 | Cross-Ref | BC-2.01.005 (lock file atomic lifecycle — socket bind happens after lock file write per SOQ-2); BC-2.05.002 (TUI connects to this socket) |
 | Test File | `monocle-ipc/tests/uds_bind_lifecycle.rs` |
 | Test Name | `test_BC_2_05_001_uds_bind_and_cleanup` |
@@ -142,3 +142,23 @@ VP-TBD — UDS socket bind lifecycle verification properties (filled after VP cr
 - SOQ-2 ordering invariant cited: socket bind follows lock file write (Invariant 1).
 - 5 edge cases documented (EC-001..EC-005).
 - SE-16d PASS: 2026-05-26T04:00:00Z > chain high-water 2026-05-26T03:00:00Z (SS-06 registration).
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.0.0` → `SS-ipc.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.1.0
+
+**F-P1D4-007 HIGH — Architecture Source pins updated; SS-daemon-wiring.md version pin added** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.1.0` → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
+- Architecture Source: `SS-daemon-wiring.md §Daemon Start Sequence` → `SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence` — version pin was missing (F-P1D4-007 HIGH finding); pin added.
+- SE-16d monotonicity: v1.1.0 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.2.0
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-ipc.md v1.3.0` → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.

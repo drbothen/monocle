@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: []
+modified: [F-P1D2-010]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -116,7 +116,7 @@ current phase tag. Pressing `Escape` returns to `Dashboard { focused: FocusSnaps
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the fullscreen transition for the "sessions panel" component of CAP-006, enabling the session detail view that is referenced in the Phase 1 delivery contract |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — Fullscreen view is read-only: it renders data received via IPC; no writes) |
 | Architecture Module | monocle-tui (draw_fullscreen(), transition() enter arm) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (Fullscreen paragraph); §Rendering Architecture (draw_fullscreen() call in AppMode::Fullscreen match arm) |
+| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Sessions Panel (Fullscreen paragraph); §Rendering Architecture (draw_fullscreen() call in AppMode::Fullscreen match arm) |
 | Cross-Ref | BC-2.06.001 (Fullscreen AppMode variant and Enter transition arm), BC-2.06.002 (FocusSnapshot restored on Escape from Fullscreen) |
 | Test File | `monocle-tui/tests/sessions_fullscreen.rs` |
 | Test Name | `test_BC_2_06_007_sessions_enter_transitions_to_fullscreen` |
@@ -145,7 +145,7 @@ S-TBD — Implement Sessions Panel fullscreen view with session detail (token hi
 
 **Initial production** (2026-05-26T12:00:00Z):
 - BC-2.06.007 created as part of SS-06 TUI behavioral contract burst (BCs 001–008).
-- Reads: SS-tui.md v1.0.0 §Panel Architecture §Sessions Panel (Fullscreen paragraph);
+- Reads: SS-tui.md v1.1.0 §Panel Architecture §Sessions Panel (Fullscreen paragraph);
   §Rendering Architecture (draw_fullscreen call); prd-expansion-scope.md §3.3 BC-2.06.007
   description; ARCH-INDEX.md §Capability Traceability SS-06.
 - Invariant 1 is critical for test-writer: `transition()` does not inspect `app.sessions`.
@@ -156,3 +156,22 @@ S-TBD — Implement Sessions Panel fullscreen view with session detail (token hi
 - EC-097 notes that Enter on EventRibbon also triggers Fullscreen — this is covered by the
   general `(Dashboard { focused }, Action::Enter)` transition arm in BC-2.06.001, not by
   a separate BC for EventRibbon fullscreen.
+
+
+## §Trace v1.0.1
+
+**F-P1D2-010 LOW — Architecture Source pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.0.0` → `SS-tui.md v1.1.0` per F-P1D2-010 bulk update (cosmetic pin refresh).
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**F-P1D4-005 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
+- SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

@@ -4,11 +4,11 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.20"
+version: "1.1.22"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-18T05:00:00Z
+timestamp: 2026-05-26T14:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
 input-hash: "1678f0f"
 traces_to: architecture/ARCH-INDEX.md
@@ -76,7 +76,6 @@ The trait carries no sealed bound (vision-verbatim; see §Purpose).
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Duration;
 
 /// Implemented by each AI coding harness adapter.
 ///
@@ -296,8 +295,24 @@ impl ProcessSnapshot {
 ///
 /// Returned by `EngineModule::enrich`. May perform I/O (transcript path
 /// resolution, harness config file reads) — it runs off the hot path.
+///
+/// **Phase 1 TUI fields (added for SS-06 Sessions Panel rendering, BC-2.06.005):**
+/// `project_name`, `started_at`, `token_count`, and `cost_usd` are the Phase 1 set
+/// of TUI display fields accumulated by the daemon and included in `SessionListUpdate`
+/// IPC pushes. `project_name` is derived from the transcript directory name (parent
+/// of `transcript_path`, if known). `token_count` and `cost_usd` are accumulated from
+/// hook event metadata as events arrive. `phase_tag` was considered but removed —
+/// it requires `FactoryAdapter` integration not available in Phase 1.
+/// `uptime` is computable from `started_at` at render time; no dedicated field is
+/// needed on the struct.
+///
+/// **Serde requirement:** All types that appear in `ServerToClient` or `ClientToServer`
+/// IPC message variants MUST derive `Serialize, Deserialize` for IPC transport.
+/// `EnrichedSession` is included in `SessionListUpdate` IPC pushes; both derives are
+/// required. The `chrono` workspace dep MUST be declared with `features = ["serde"]`
+/// so that `started_at: Option<chrono::DateTime<chrono::Utc>>` round-trips correctly.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EnrichedSession {
     /// Engine-specific session identifier (e.g., Claude Code's own session UUID).
     pub session_id: String,
@@ -328,6 +343,34 @@ pub struct EnrichedSession {
     ///   against a reap threshold — that would wrongly classify new sessions as 56
     ///   years idle.
     pub last_event_micros: Option<i64>,
+    /// Human-readable project name derived from the transcript directory name.
+    ///
+    /// Typically the parent directory name of `transcript_path` (e.g., a transcript
+    /// at `~/.claude/projects/my-project/session.jsonl` yields
+    /// `project_name: Some("my-project")`). `None` when `transcript_path` is unknown
+    /// at enrichment time. The TUI Sessions panel renders `"—"` for `None` in the
+    /// Project column.
+    pub project_name: Option<String>,
+    /// UTC timestamp when this session started (when the `SessionStart` hook was first
+    /// received by the daemon, or when the process was first detected).
+    ///
+    /// `None` at initial enrichment time if no `SessionStart` hook has arrived yet.
+    /// The daemon sets this to `Some(t)` on receipt of the first `SessionStart` hook
+    /// event for this session. The TUI computes `uptime = now - started_at` at render
+    /// time; no separate `uptime` field is required on the struct.
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Cumulative token count accumulated from hook event metadata for this session.
+    ///
+    /// Starts at `0` at enrichment time. The daemon increments this field each time a
+    /// hook event carrying token-usage metadata arrives for this session. The TUI
+    /// Sessions panel renders this as a human-formatted string (e.g., `"142k"`).
+    pub token_count: u64,
+    /// Cumulative cost estimate in USD accumulated from hook event metadata.
+    ///
+    /// `None` when no cost metadata has been received (e.g., the harness does not
+    /// emit cost data). `Some(v)` carries the running total cost in USD. The TUI
+    /// Sessions panel renders `"$0.83"` for `Some(0.83)` and `"—"` for `None`.
+    pub cost_usd: Option<f64>,
 }
 
 impl EnrichedSession {
@@ -379,7 +422,18 @@ impl EnrichedSession {
         status: SessionStatus,
         last_event_micros: Option<i64>,
     ) -> Self {
-        Self { session_id, harness_type, transcript_path, config_path, status, last_event_micros }
+        Self {
+            session_id,
+            harness_type,
+            transcript_path,
+            config_path,
+            status,
+            last_event_micros,
+            project_name: None,
+            started_at: None,
+            token_count: 0,
+            cost_usd: None,
+        }
     }
 }
 
@@ -400,8 +454,11 @@ pub enum SessionStatus {
 }
 
 /// The dispatch decision returned by `EngineModule::on_hook`.
+///
+/// **Serde requirement:** `HookResponse` appears on the IPC wire (daemon → TUI push);
+/// all types in IPC message variants MUST derive `Serialize, Deserialize`.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HookResponse {
     /// The decision the daemon should act on.
     pub decision: HookDecision,
@@ -496,39 +553,40 @@ impl HookResponse {
 }
 
 /// The action the daemon takes in response to a hook event.
+///
+/// Phase 1 canonical 3-variant unit enum (Wave 3 simplification, F-D-02/F-D-03):
+/// - `Deny { reason: String }` was renamed to `Block` (unit variant). The block reason
+///   is carried in `HookResponse.diagnostic: Option<String>`, not inside the enum variant.
+/// - `Defer { until: DeferUntil }` was simplified to `Defer` (unit variant). Phase 1
+///   defers unconditionally to user decision. The `DeferUntil` sub-enum was dropped in
+///   Wave 3 (F-D-03). Phase 2+ may reintroduce conditional deferral.
+/// - `Modify { event: HookEvent }` was dropped from Phase 1 scope (F-D-02). Phase 2+
+///   may reintroduce event rewriting.
+///
+/// All types appearing in IPC message variants MUST derive `Serialize, Deserialize`.
+/// `HookDecision` is carried inside `HookResponse` which appears on the IPC wire;
+/// the serde derives below are required for IPC transport.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum HookDecision {
-    /// Proceed; Claude Code's hook receives a passing response.
+    /// Proceed; the operation is permitted.
     Allow,
-    /// Abort; Claude Code's hook receives a failing response.
-    Deny {
-        /// Human-readable reason surfaced to the user in the TUI overlay.
-        reason: String,
-    },
-    /// Park the hook response until a future condition is met.
-    Defer {
-        until: DeferUntil,
-    },
-    /// The engine rewrote the event before dispatch; the daemon should
-    /// use the modified event for subsequent processing.
-    Modify {
-        /// The rewritten event. Phase 1: unused (ClaudeCodeModule never rewrites).
-        event: HookEvent,
-    },
+    /// Reject the operation; the daemon MUST NOT proceed.
+    ///
+    /// The block reason (if any) is carried in `HookResponse.diagnostic: Option<String>`.
+    Block,
+    /// Park the decision; the daemon waits for the permission overlay resolution.
+    ///
+    /// Phase 1: unconditional deferral to user decision. Phase 2+ may reintroduce
+    /// `DeferUntil` sub-enum for conditional deferral; `#[non_exhaustive]` ensures
+    /// match arms remain exhaustive without a SemVer-major bump.
+    Defer,
 }
 
-/// Specifies when a deferred hook response should be resolved.
-#[non_exhaustive]
-#[derive(Debug, Clone)]
-pub enum DeferUntil {
-    /// Park until the user acts via the TUI permission overlay.
-    UserDecision,
-    /// Park until the next hook event arrives for this session.
-    NextHook,
-    /// Park until the specified duration elapses (daemon-side timeout).
-    Timeout(Duration),
-}
+// NOTE: `DeferUntil` (Phase 2 planned) — not implemented in Phase 1.
+// The sub-enum was dropped in Wave 3 (F-D-03). Phase 2+ may reintroduce it as:
+//   pub enum DeferUntil { UserDecision, NextHook, Timeout(Duration) }
+// Do NOT add it here until the Phase 2 story for conditional deferral ships.
 ```
 
 ---
@@ -546,7 +604,7 @@ of the zero-dependency `monocle-core` crate.
 // monocle-runtime/src/engine/claude_code.rs
 
 use monocle_core::engine::{
-    DeferUntil, EnrichedSession, EngineMetadata, EngineModule,
+    EnrichedSession, EngineMetadata, EngineModule,
     HookDecision, HookResponse, ProcessSnapshot, SessionStatus,
 };
 use monocle_core::hook_events::HookEvent;
@@ -941,8 +999,10 @@ the exact vision-aligned signature in §EngineModule Trait Signature (methods: `
 default path for `EngineMetadataError::HomeUnresolvable`; daemon initialization MUST
 fail fast with a diagnostic (no silent-fallback contract, CLAUDE.md SOUL #4).
 Supporting types `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`, `SessionStatus`,
-`HookResponse`, `HookDecision`, `DeferUntil`, `EngineMetadataError` are co-located in
-`monocle-core::engine`. The trait carries NO sealed bound.
+`HookResponse`, `HookDecision`, `EngineMetadataError` are co-located in
+`monocle-core::engine`. `DeferUntil` is NOT present in Phase 1 — it was dropped in Wave 3
+(F-D-03); Phase 2+ may reintroduce it. `HookDecision` is a 3-variant unit enum:
+`Allow`, `Block`, `Defer` (Wave 3 simplification, F-D-02/F-D-03). The trait carries NO sealed bound.
 `EnrichedSession::last_event_micros` is `Option<i64>`: `None` = no hook events received
 yet; `Some(t)` = microseconds since epoch of most recent hook event. Consumers MUST
 distinguish `None` from any numeric value — treating `0` as a sentinel is forbidden
@@ -1632,3 +1692,58 @@ Cross-references:
   regressed below prior §Trace v1.1.20 entry at 2026-05-18T01:00:00Z. Arithmetic correction
   applied across all 5 affected files in parallel Round 9A burst.
 - SE-16d PASS: 2026-05-18T05:30:00Z > chain high-water 2026-05-18T05:00:00Z (monotonic).
+
+**§Trace v1.1.21** (2026-05-26T12:00:00Z) — F-P13-001: expand `EnrichedSession` with Phase 1 TUI fields:
+- NORMATIVE (F-P13-001 CRITICAL): Added four new fields to `EnrichedSession` required by the
+  SS-06 Sessions Panel (BC-2.06.005): `project_name: Option<String>`, `started_at: Option<chrono::DateTime<chrono::Utc>>`,
+  `token_count: u64`, `cost_usd: Option<f64>`. Added doc-comment block on the struct explaining
+  Phase 1 TUI field provenance and that `phase_tag` was excluded (requires FactoryAdapter, not
+  available in Phase 1) and `uptime` is computed from `started_at` at render time (no field needed).
+- NORMATIVE: `EnrichedSession::new` constructor updated to initialize the four new fields to their
+  zero/None defaults (`project_name: None`, `started_at: None`, `token_count: 0`, `cost_usd: None`).
+  The struct carries `#[non_exhaustive]`; the constructor is the only legal construction path for
+  external crates, so the zero-default initialization is the correct pattern — callers set the
+  fields via daemon update paths rather than at construction time.
+- NORMATIVE (deps impact): `started_at: Option<chrono::DateTime<chrono::Utc>>` introduces `chrono`
+  as a new direct dependency of `monocle-core`. The current `SS-deps-pin-manifest.md` Phase 1 Pin
+  Manifest table lists `chrono 0.4` as a dependency of `monocle-runtime` only (dep graph edge
+  `runtime → chrono`). The dep manifest must be updated to add `core → chrono` and expand the
+  chrono row Role column to include: "Phase 1 TUI field `EnrichedSession::started_at`
+  (`monocle-core/src/engine.rs`) for session uptime display (BC-2.06.005)." The feature flag
+  `features = ["serde"]` should be added to the `chrono` workspace dep declaration so that
+  `EnrichedSession` (which derives `serde::Serialize + serde::Deserialize`) can round-trip the
+  `started_at` field over the IPC wire. This deps-manifest update is the responsibility of the
+  architect role when next editing SS-deps-pin-manifest.md.
+- SE-16d PASS: 2026-05-26T12:00:00Z > chain high-water 2026-05-18T05:30:00Z (monotonic).
+
+**§Trace v1.1.22** (2026-05-26T14:00:00Z) — F-P14-001/003/005/006: HookDecision simplification + serde derives (Wave 3 drift repair):
+
+- NORMATIVE (F-P14-001/005 HIGH): `HookDecision` enum replaced with the Wave 3 implementation
+  shape. `Deny { reason: String }` → `Block` (unit variant); block reason is now carried in
+  `HookResponse.diagnostic: Option<String>`. `Defer { until: DeferUntil }` → `Defer` (unit
+  variant); Phase 1 defers unconditionally to user decision. `Modify { event: HookEvent }`
+  removed (F-D-02 Phase 1 scope drop). Serde derives `serde::Serialize, serde::Deserialize`
+  added to `HookDecision` (IPC wire requirement).
+
+- NORMATIVE (F-P14-006 HIGH): `DeferUntil` enum definition removed from §Supporting Types.
+  Replaced with a `// NOTE` comment documenting Phase 2+ planned reintroduction. Removed
+  `DeferUntil` from BC-2.03.001 co-location list. Removed `std::time::Duration` import
+  from the trait code block (was only needed for `DeferUntil::Timeout`). Removed `DeferUntil`
+  from the ClaudeCodeModule use statement.
+
+- NORMATIVE (F-P14-003 HIGH): `EnrichedSession` derive updated from `#[derive(Debug, Clone)]`
+  to `#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]`. `HookResponse` derive
+  updated to add `serde::Serialize, serde::Deserialize`. IPC wire requirement note added to
+  both structs: "All types that appear in `ServerToClient` or `ClientToServer` message variants
+  MUST derive `Serialize, Deserialize` for IPC transport." `SessionStatus` and `HookDecision`
+  already carried serde derives (SessionStatus since v1.1.21 / implementation; HookDecision
+  added in this burst).
+
+- INFORMATIONAL: The implementation in `monocle-core/src/engine.rs` already reflects the
+  Wave 3 simplified shape (3-variant unit `HookDecision`, no `DeferUntil`). The SS-06 TUI
+  stories will add the four `EnrichedSession` TUI fields and serde derives to the implementation;
+  the spec leads. `EngineMetadata` and `ProcessSnapshot` do not appear on the IPC wire in
+  Phase 1 (they are daemon-internal); serde derives for these are deferred to the Phase 2+
+  story that introduces IPC serialization of metadata payloads.
+
+- SE-16d PASS: 2026-05-26T14:00:00Z > chain high-water 2026-05-26T12:00:00Z (monotonic).
