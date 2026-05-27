@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.0"
+version: "5.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -66,7 +66,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019 |
 | S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | done | S-025, S-026, S-031 |
 | S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | done | S-025, S-031 |
-| S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | not_started | S-018, S-019, S-020, S-021 |
+| S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | done | S-018, S-019, S-020, S-021 |
 | S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | not_started | S-022, S-029 |
 | S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | not_started | S-023 |
 | S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | not_started | — |
@@ -450,6 +450,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.1
+
+**Wave 5: S-017 flipped not_started → done** (2026-05-27):
+- S-017 Story Registry row: `not_started` → `done`. PR #22 merged at develop @ 06432cf.
+- BC-2.04.001 and BC-2.04.010 fully satisfied. 29 tests. Adversarial convergence: 3 passes, trajectory 13→5→0.
+- Wave 5: 1/5 done (8/34 pts). S-018 (Hook Routing), S-019 (Auto-Start), S-020 (Ring Capacity), S-021 (UDS Server) all unblocked for parallel delivery.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.26→v1.27 (done 19→20, not_started 13→12, points_complete 101→109); STATE.md v6.21→v6.22.
+- STORY-INDEX version bumped v5.0→v5.1.
 
 ## §Trace v5.0
 

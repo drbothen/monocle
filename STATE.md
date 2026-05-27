@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.21"
+version: "6.22"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T15:00:00Z
-phase: phase-3-wave-5-DURABLE-PAUSE
-current_step: "DURABLE PAUSE — Wave 4 gate PASSED (D-175). Wave 5 ready to begin."
+timestamp: 2026-05-27T16:00:00Z
+phase: phase-3-wave-5
+current_step: "Wave 5: S-017 done, S-018/S-019/S-020/S-021 parallel unblocked"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Fresh session → Wave 5 delivery (S-017 serial first, then S-018/S-019/S-020/S-021 parallel)"
+awaiting: "Wave 5 parallel delivery: S-018, S-019, S-020, S-021 (S-017 done)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -168,7 +168,7 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 5 READY TO BEGIN:
+  COLD-START RESUME GUIDE — WAVE 5: S-017 DONE, PARALLEL STORIES READY:
 
   SESSION CONTEXT:
     This is a greenfield-with-reference-ingest Rust TUI project (monocle).
@@ -185,49 +185,45 @@ next_session_resume_protocol: |
          S-016 (Daemon CLI, PR#19, 87ac91f, 33 tests)
          S-024 (TUI Core Types, PR#20, d439c8b, 77 tests)
          S-030 (Config Crate, PR#21, b8a4ab7, 36 tests)
-       - Wave 5: NOT STARTED — next action.
+       - Wave 5: IN PROGRESS.
+         S-017 (Daemon Start Sequence, PR#22, 06432cf, 29 tests) — DONE (D-176).
+         S-018, S-019, S-020, S-021 — NOT STARTED, parallel unblocked.
 
   DEVELOP BRANCH STATE:
-    4. develop @ b8a4ab7 (or later if hotfixes landed).
+    4. develop @ 06432cf (or later if hotfixes landed).
        Verify: git log --oneline -1 develop
-    5. 634 tests total. clippy clean. fmt clean.
+    5. 663 tests total (634 + 29 from S-017). clippy clean. fmt clean.
     6. Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
        monocle (binary), monocle-config, xtask.
 
   ARTIFACT VERSIONS:
-    7. STORY-INDEX v5.0. sprint-state v1.26. BC-INDEX v1.23 (113 BCs).
+    7. STORY-INDEX v5.1. sprint-state v1.27. BC-INDEX v1.23 (113 BCs).
        SS-tui v1.7.0. ARCH-INDEX v1.0.16.
        PRD v1.27.2. dep-graph-expansion v1.5. EVAL-INDEX v1.4.
 
-  WAVE 5 PLAN:
-    8. Wave 5 has 5 stories, 34 pts total.
-       S-017: Daemon Start Sequence (8 pts, EPIC-04) — SERIAL FIRST.
-         Depends on: S-016 (done), S-006 (done), S-008 (done), S-009 (done), S-015 (done), S-012 (done).
-         Blocks: S-018, S-019, S-020, S-021.
-         Target module: monocle-runtime.
-         BCs: BC-2.04.001, BC-2.04.010.
-       S-018: Hook Routing + Event Bus (8 pts, EPIC-04) — after S-017.
-         Depends on: S-017, S-016.
+  WAVE 5 REMAINING (parallel — all unblocked now that S-017 is done):
+    8. S-018: Hook Endpoint Routing + Bounded Event Bus (8 pts, EPIC-04).
+         Depends on: S-017 (done), S-016 (done).
          Blocks: S-022, S-029.
          Target module: monocle-runtime.
-         BCs: BC-2.04.002, BC-2.04.003.
-       S-019: Daemon Auto-Start (5 pts, EPIC-04) — after S-017.
-         Depends on: S-017, S-016.
+         BCs: BC-2.04.007, BC-2.04.008, BC-2.04.009, BC-2.04.011.
+       S-019: Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART (5 pts, EPIC-04).
+         Depends on: S-016 (done), S-017 (done).
          Blocks: S-023.
          Target module: monocle (binary).
-         BCs: BC-2.04.007, BC-2.04.008.
-       S-020: Ring Capacity + Rotation (5 pts, EPIC-04) — after S-017.
-         Depends on: S-017, S-008.
+         BCs: BC-2.04.002, BC-2.04.003.
+       S-020: JSONL Ring Capacity and Rotation Policy (5 pts, EPIC-04).
+         Depends on: S-008 (done), S-017 (done).
          Blocks: none.
          Target module: monocle-runtime.
-         BCs: BC-2.04.009, BC-2.04.010 (shared with S-017).
-       S-021: UDS Server + IPC Types (8 pts, EPIC-05) — after S-017.
-         Depends on: S-017, S-013, S-014.
+         BCs: BC-2.04.012.
+       S-021: UDS Server Bind + IPC Transport + Core Message Types (8 pts, EPIC-05).
+         Depends on: S-017 (done), S-014 (done), S-013 (done).
          Blocks: S-022, S-028.
          Target module: monocle-runtime (new: monocle-ipc may be created).
-         BCs: BC-2.05.001, BC-2.05.002, BC-2.05.003, BC-2.05.004.
+         BCs: BC-2.05.001, BC-2.05.003, BC-2.05.004, BC-2.05.008.
 
-    9. EXECUTION ORDER: S-017 first (serial), then S-018 + S-019 + S-020 + S-021 (parallel).
+    9. EXECUTION ORDER: S-018 + S-019 + S-020 + S-021 in parallel.
 
   DELIVERY PROTOCOL:
     10. Each story follows per-story delivery:
@@ -268,18 +264,20 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 4 GATE PASSED | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 6 gates — test-suite PASS (634 tests), DTU SKIP, adversarial PASS (0 CRIT/HIGH, 2 MED, 3 LOW), demo-evidence PASS (3/3), holdout PASS (mean 0.90, HS-EXP-009 0.8). Wave 5 unblocked. |
+| 3 TDD Implementation | IN PROGRESS — Wave 5 (1/5 done) | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5: S-017 done (D-176, PR#22, 06432cf, 29 tests, adv 13→5→0). S-018/S-019/S-020/S-021 parallel unblocked. |
 | 4-7 | not-started | — | |
 
-## Wave 4 Current Status
+## Wave 5 Current Status
 
 | Story | Points | Status | Notes |
 |-------|--------|--------|-------|
-| S-016 Daemon Binary Crate Init + CLI | 5 | done | PR #19, 87ac91fc, 33 tests, 5 findings fixed |
-| S-024 TUI Core Types | 8 | done | PR #20, 77 tests (40 SM + 24 binding + 13 enum), 3 findings fixed |
-| S-030 Config Crate | 5 | done | PR #21, b8a4ab7, 36 tests |
+| S-017 Daemon Start Sequence + Hook Tmpfile | 8 | done | PR #22, 06432cf, 29 tests, adv 13→5→0 (3 passes) |
+| S-018 Hook Endpoint Routing + Event Bus | 8 | not_started | unblocked — depends on S-017 (done) |
+| S-019 Daemon Auto-Start + MONOCLE_NO_AUTOSTART | 5 | not_started | unblocked — depends on S-017 (done) |
+| S-020 JSONL Ring Capacity and Rotation | 5 | not_started | unblocked — depends on S-017 (done) |
+| S-021 UDS Server + IPC Transport + Core Message Types | 8 | not_started | unblocked — depends on S-017 (done) |
 
-develop @ b8a4ab7. 19/33 stories done, 101/195 pts. Wave 4: 3/3 done (18/18 pts). Wave 4 GATE PASSED (D-175). Wave 5 unblocked.
+develop @ 06432cf. 20/33 stories done, 109/195 pts. Wave 5: 1/5 done (8/34 pts). S-018/S-019/S-020/S-021 parallel unblocked.
 
 ## Blocking Issues
 
@@ -310,6 +308,7 @@ None. All durable_task_register items non-blocking.
 | D-173 | Phase 2 expansion gate APPROVED by human. 33 stories (195 pts), 113 BCs, 24 holdout scenarios. Adversarial convergence D-172 (4 passes, 0 CRIT/HIGH). Keybinding adjudication (y/A/n/r), pop semantics (wait-for-resolved), S-026 sizing (13 pts accepted), GAP-P2-005 (BC-2.06.017 deferred to integration test infrastructure) all accepted. Wave 4 authorized: S-016, S-024, S-030 (18 pts parallel). | 2026-05-27 | human (Josh Magady) |
 | D-174 | Wave 4 stories COMPLETE. S-016 (PR#19, 87ac91f, 33 tests), S-024 (PR#20, d439c8b, 77 tests), S-030 (PR#21, b8a4ab7, 36 tests). Total: 146 new tests added. develop @ b8a4ab7. Wave gate pending. | 2026-05-27 | orchestrator |
 | D-175 | Wave 4 gate PASSED. 6 gates: (1) test-suite PASS (634 tests, 0 failures, clippy clean, fmt clean), (2) DTU SKIP (clones pending, no DTU modules in wave), (3) adversarial PASS (0 CRIT/HIGH, 2 MED: PATH test isolation + dead tracing, 3 LOW), (4) demo-evidence PASS (3/3 stories, all ACs), (5) holdout PASS (mean 0.90, min must-pass 0.80; HS-EXP-007 1.0, HS-EXP-009 0.8 — missing stderr hint for exit 70), (6) state-update PASS. develop @ b8a4ab7. 634 tests. Wave 5 unblocked. | 2026-05-27 | orchestrator |
+| D-176 | S-017 DELIVERED — PR #22 merged at develop @ 06432cf. 29 tests. BC-2.04.001 and BC-2.04.010 fully satisfied. Adversarial convergence: 3 passes, trajectory 13→5→0. S-018/S-019/S-020/S-021 unblocked for parallel delivery. | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -318,7 +317,7 @@ Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.m
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v5.0** (33 stories, 195 pts). **sprint-state v1.26** (19/33 done, 101/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v5.1** (33 stories, 195 pts). **sprint-state v1.27** (20/33 done, 109/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
 
 ## Historical Content
 
@@ -331,6 +330,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.22 (S-017 DELIVERED — WAVE 5 PARALLEL STORIES UNBLOCKED)
+
+**S-017 DELIVERED** (2026-05-27): Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation delivered. PR #22 merged at develop @ 06432cf. 29 tests. BC-2.04.001 and BC-2.04.010 fully satisfied. Adversarial convergence: 3 passes, trajectory 13→5→0. S-018 (Hook Routing + Event Bus), S-019 (Daemon Auto-Start), S-020 (Ring Capacity + Rotation), S-021 (UDS Server + IPC Types) all unblocked for parallel delivery. sprint-state v1.26→v1.27 (done 19→20, not_started 13→12, points_complete 101→109). STORY-INDEX v5.0→v5.1.
+STATE v6.21 → v6.22.
 
 ## §Trace v6.21 (DURABLE PAUSE CHECKPOINT — WAVE 5 READY TO BEGIN)
 

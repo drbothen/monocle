@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.26"
+version: "1.27"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -272,12 +272,12 @@ stories:
     epic: EPIC-04
     wave: 5
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 5. BCs: BC-2.04.001, BC-2.04.010. 13-step SOQ-2 start sequence. Depends on S-016, S-006, S-008, S-009, S-015, S-012."
+    completed_at: "2026-05-27"
+    pr_url: "https://github.com/jmagady/monocle/pull/22"
+    notes: "Wave 5 serial prerequisite. PR #22 merged at develop @ 06432cf. BC-2.04.001, BC-2.04.010 fully satisfied. 29 tests. Adversarial convergence: 3 passes, trajectory 13→5→0."
 
   - id: S-018
     title: "Hook Endpoint Routing + Bounded Event Bus with Drop Counter"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 13
+  not_started: 12
   in_progress: 0
   review: 0
-  done: 19
+  done: 20
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 101
+  points_complete: 109
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.27 updates (2026-05-27):
+  # - S-017 flipped not_started → done (PR #22 merged 06432cf; BC-2.04.001+010 satisfied; 29 tests; adversarial 13→5→0; 3/3 convergence)
+  # - done: 19 → 20; not_started: 13 → 12; points_complete: 101 → 109
+  # - Wave 5: 1/5 done (8/34 pts). S-018/S-019/S-020/S-021 parallel unblocked.
   # v1.26 updates (2026-05-27):
   # - S-030 flipped not_started → done (PR #21 merged b8a4ab7; BC-2.07.001+002+003+006 satisfied; 36 tests; 3/3 convergence)
   # - done: 18 → 19; not_started: 14 → 13; points_complete: 96 → 101
