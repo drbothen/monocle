@@ -1,0 +1,60 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 13 tests
+test test_BC_2_07_001_write_config_creates_file ... ok
+test test_BC_2_07_001_write_config_creates_parent_dir ... ok
+test test_BC_2_07_001_write_config_json_is_valid ... ok
+test test_BC_2_07_001_write_config_no_partial_write ... ok
+test test_BC_2_07_001_write_config_round_trip ... ok
+test test_BC_2_07_002_schema_version_mismatch_error ... ok
+test test_BC_2_07_003_corrupted_config_returns_default ... ok
+test test_BC_2_07_003_invariant_no_panic_on_any_input ... ok
+test test_BC_2_07_003_missing_config_returns_default ... ok
+test test_BC_2_07_003_missing_schema_version_returns_default ... ok
+test test_BC_2_07_003_valid_config_round_trips ... ok
+test test_BC_2_07_003_valid_json_not_object_returns_default ... ok
+test test_BC_2_07_003_zero_byte_config_returns_default ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 9 tests
+test test_BC_2_07_006_ccr_path_none_ccr_not_on_path_returns_none ... ok
+test test_BC_2_07_006_ccr_path_none_ccr_on_path_returns_some ... ok
+test test_BC_2_07_006_ccr_path_some_empty_string_falls_through ... ok
+test test_BC_2_07_006_ccr_path_some_file_exists_returns_some ... ok
+test test_BC_2_07_006_ccr_path_some_file_missing_falls_through ... ok
+test test_BC_2_07_006_ccr_path_some_is_directory_falls_through ... ok
+test test_BC_2_07_006_detect_ccr_never_returns_err ... ok
+test test_BC_2_07_006_detect_ccr_no_caching ... ok
+test test_BC_2_07_006_invariant_no_panic_under_any_input ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 13 tests
+test test_BC_2_07_002_binding_overrides_default_is_empty_object ... ok
+test test_BC_2_07_002_binding_overrides_never_null_after_default ... ok
+test test_BC_2_07_002_ccr_path_absent_defaults_none ... ok
+test test_BC_2_07_002_config_dir_none_round_trips ... ok
+test test_BC_2_07_002_default_schema_version_is_1 ... ok
+test test_BC_2_07_002_full_round_trip ... ok
+test test_BC_2_07_002_harness_profile_round_trip ... ok
+test test_BC_2_07_002_harness_profiles_absent_defaults_empty ... ok
+test test_BC_2_07_002_invariant_binding_overrides_is_object ... ok
+test test_BC_2_07_002_missing_schema_version_is_parse_error ... ok
+test test_BC_2_07_002_project_profiles_absent_defaults_empty ... ok
+test test_BC_2_07_002_schema_version_is_first_key ... ok
+test test_BC_2_07_002_unknown_top_level_fields_ignored ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
