@@ -1,0 +1,9 @@
+
+running 4 tests
+test test_BC_2_01_005_env_override_monocle_runtime_dir ... ok
+test test_BC_2_01_005_lock_file_path_is_in_runtime_dir ... ok
+test test_BC_2_01_005_runtime_dir_created_recursively ... ok
+test test_BC_2_01_005_runtime_dir_created_with_0o700 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+

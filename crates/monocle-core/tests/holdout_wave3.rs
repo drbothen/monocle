@@ -24,8 +24,7 @@ fn write_fixture(dest: &Path, content: &[u8]) {
     let dir = dest
         .parent()
         .expect("fixture path must have a parent directory");
-    let mut named =
-        tempfile::NamedTempFile::new_in(dir).expect("cannot create NamedTempFile");
+    let mut named = tempfile::NamedTempFile::new_in(dir).expect("cannot create NamedTempFile");
     named.write_all(content).expect("cannot write fixture");
     named.persist(dest).expect("cannot persist fixture");
 }
@@ -137,11 +136,8 @@ async fn test_HS_W3_005_subscribe_stream_is_empty() {
 
     // First poll must return None immediately (not block)
     // Use tokio::time::timeout to ensure we don't block forever
-    let poll_result = tokio::time::timeout(
-        std::time::Duration::from_millis(100),
-        stream.next(),
-    )
-    .await;
+    let poll_result =
+        tokio::time::timeout(std::time::Duration::from_millis(100), stream.next()).await;
 
     match poll_result {
         Ok(None) => {
