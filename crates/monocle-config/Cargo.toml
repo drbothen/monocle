@@ -1,0 +1,28 @@
+[package]
+name = "monocle-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Configuration schema, load/save, CCR detection for monocle."
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+directories = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+which = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+# tracing-test: structured log capture for BC-2.07.003 Case 3 warn! assertions.
+# Test-only; NOT in workspace.dependencies (least-privilege: only this crate uses it for log capture).
+# no-env-filter feature: integration tests are a separate crate from the implementation.
+tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
