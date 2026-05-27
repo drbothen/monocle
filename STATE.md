@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.14"
+version: "6.15"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T14:00:00Z
-phase: phase-2-reentry-DURABLE-PAUSE
-current_step: "DURABLE PAUSE — Phase 2 expansion story decomposition complete. Adversarial story review pending."
+timestamp: 2026-05-27T10:00:00Z
+phase: phase-2-expansion-CONVERGED
+current_step: "Phase 2 expansion adversarial story review CONVERGED (4 passes). Human Phase 2 gate approval pending."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). See cycles/cycle-001/ for full convergence history."
-awaiting: "Fresh session → adversarial story review (3 clean passes) → human gate → Phase 3 continuation (Wave 4+)"
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
+awaiting: "Human Phase 2 gate approval → Phase 3 continuation (Wave 4+)"
 durable_task_register:
   outstanding:
     - id: "#28"
@@ -153,29 +153,17 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — PHASE 2 EXPANSION ADVERSARIAL REVIEW PENDING:
+  COLD-START RESUME GUIDE — PHASE 2 CONVERGED, HUMAN GATE PENDING:
 
   1. Run factory-worktree-health via devops-engineer (BLOCKING).
-  2. Verify: git log --oneline -1 develop → 493e1b7 (fix(server): reorder middleware).
+  2. Verify: git log --oneline -1 develop → f0b70ee.
   3. Read STATE.md + CLAUDE.md.
-  4. Phase 2 EXPANSION: Story decomposition COMPLETE. 16 new stories (S-016..S-031), 109 pts, Waves 4-7.
-     33 total stories, 195 pts. 10 new holdout scenarios (HS-EXP-001..010). 24 total.
-     STORY-INDEX v4.0. sprint-state v1.19. BC-INDEX v1.19 (112 BCs).
-  5. Phase 1d adversarial spec review CONVERGED (D-169, 15 passes). PRD v1.27.2.
-  6. Phase 3 Waves 1-3 COMPLETE (D-167). develop @ 493e1b7, 447 tests.
-  7. NEXT: Adversarial story review of Phase 2 expansion stories.
-     Dispatch adversary with FRESH CONTEXT targeting:
-     - All 16 story files: .factory/stories/S-016-*.md through S-031-*.md
-     - STORY-INDEX.md v4.0 (epic table, story registry, wave summary, BC coverage)
-     - dependency-graph-expansion.md (dependency graph, critical path)
-     - sprint-state.yaml v1.19
-     - Holdout scenarios: HS-EXP-001..010 + EVAL-INDEX.md
-     Review for: BC coverage gaps, dependency cycle violations, story scope (2-8 pts except S-026 at 13),
-     AC completeness (every BC postcondition mapped), wave ordering violations, holdout scenario quality.
-     Minimum 3 clean adversary passes before human gate.
-  8. After adversarial story review PASS → Human Phase 2 gate approval.
-  9. Then: Phase 3 continuation — Wave 4 implementation (S-016, S-024, S-030 — 18 pts, parallel).
-  10. Outstanding non-blocking items from durable_task_register (see below).
+  4. Phase 2 EXPANSION CONVERGED (D-172). Adversarial story review: 4 passes, 0 CRIT/0 HIGH.
+  5. 33 stories, 195 pts. STORY-INDEX v4.7. BC-INDEX v1.23 (113 BCs). sprint-state v1.23.
+  6. NEXT: Human Phase 2 gate approval.
+  7. After gate: Phase 3 continuation — Wave 4 (S-016, S-024, S-030 — 18 pts parallel).
+  8. Artifact versions: SS-tui v1.7.0, ARCH-INDEX v1.0.16, dep-graph v1.5, EVAL-INDEX v1.4.
+  9. Outstanding non-blocking items: see durable_task_register (unchanged from v6.14).
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -193,7 +181,7 @@ current_cycle: cycle-001
 | 0.5-0.9 Brief + arch stubs | DONE | 2026-05-14 | |
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
-| 2 Story Decomposition | RE-ENTERED (expansion complete, adversarial review pending) | — | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. Adversarial review next (3 clean passes). |
+| 2 Story Decomposition | CONVERGED (adversarial review complete) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). BC-2.06.024 created. BC-2.06.003/011/012/013/014/017 keybinding propagated. S-026 fully re-anchored (16 ACs). S-024 FocusSnapshot struct→enum. STORY-INDEX v4.7. BC-INDEX v1.23 (113 BCs). Human gate pending. |
 | 3 TDD Implementation | GATE-PASS | 2026-05-27 | Wave 1+2+3 DONE (83 pts); gate PASS (447 tests, all 6 gates) |
 | 4-7 | not-started | — | |
 
@@ -213,7 +201,7 @@ develop @ 493e1b7. 447 tests. clippy clean. fmt clean. 16/17 stories done, 83/86
 
 None. All durable_task_register items non-blocking.
 
-## Decisions Log (D-155 through D-166)
+## Decisions Log (D-155 through D-172)
 
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
@@ -234,6 +222,7 @@ None. All durable_task_register items non-blocking.
 | D-169 | Phase 1d adversarial spec review CONVERGED after 15 passes. Trajectory: 15→0 finding decay. 48 new BCs + 4 arch docs reviewed. 6 SS-04 BC CAP anchors fixed; PermissionDecision enum aligned; HookDecision Block/Defer units reconciled; ClientDisconnect requirement removed; EnrichedSession expanded; TransportEvent formally defined; BC-2.06.023 created; comprehensive fabricated-type-name sweep completed. BC-INDEX v1.19 (112 BCs), PRD v1.27.2. Documented implementation residuals are Phase 3 continuation tasks. | 2026-05-27 | orchestrator |
 | D-170 | Phase 1d gate APPROVED by human. Phase 2 re-entered for story decomposition of 48 new BCs across SS-04 (12 BCs), SS-05 (8 BCs), SS-06 (23 BCs), SS-07 (6 BCs). Existing 17 stories (86 pts) from original Phase 2 remain valid. New stories will extend the story set and wave schedule. | 2026-05-27 | human (Josh Magady) |
 | D-171 | Phase 2 expansion story decomposition COMPLETE. 16 new stories (S-016..S-031, 109 pts) across Waves 4-7. 10 expansion holdout scenarios (HS-EXP-001..HS-EXP-010). STORY-INDEX.md v4.0 (33 stories, 195 pts). sprint-state.yaml v1.19. Dependency graph expansion produced. Adversarial review of story decomposition now required (3 clean passes). | 2026-05-27 | orchestrator |
+| D-172 | Phase 2 expansion adversarial story review CONVERGED. 4 passes: P1 (18 findings, 3C/5H/6M), P2 (11, 3C/4H/4M), P3 (9, 2C/4H/3M), P4 (4, 0C/0H/4M). All findings fixed. Finding decay: 18→11→9→4 (78% reduction). Key fixes: BC-2.06.024 created (tool payload rendering), keybinding adjudication 1/2/3→y/A/n/r across BC-2.06.003/011/012/013/014/017, pop semantics→wait-for-PermissionPromptResolved, S-026 complete AC re-anchoring (16 ACs across 9 BCs), S-024 FocusSnapshot struct→enum, S-028 SessionEvents→streaming. STORY-INDEX v4.7, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16. Human gate pending. | 2026-05-27 | orchestrator |
 
 Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.md`
 
@@ -242,7 +231,7 @@ Decisions D-047 through D-154 archived at: `cycles/cycle-001/decisions-archive.m
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.19** (71 numbered BCs + 41 DTU BCs = 112 total). **ARCH-INDEX v1.0.15** (7 subsystems). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v4.7** (33 stories, 195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate).
 
 ## Historical Content
 
@@ -255,6 +244,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.15 (PHASE 2 EXPANSION ADVERSARIAL CONVERGED)
+
+**ADVERSARIAL CONVERGENCE** (2026-05-27): Phase 2 expansion adversarial story review CONVERGED (D-172). 4 passes, finding decay 18→11→9→4 (78% reduction). Pass 4: 0 CRIT, 0 HIGH, 4 MED — convergence threshold met. Key spec changes from review: BC-2.06.024 created (tool payload rendering contract), keybinding adjudication propagated 1/2/3→y/A/n/r across BC-2.06.003/011/012/013/014/017, pop semantics corrected to wait-for-PermissionPromptResolved, S-026 fully re-anchored (16 ACs across 9 BCs), S-024 FocusSnapshot struct→enum, S-028 SessionEvents→streaming. Artifact versions updated: STORY-INDEX v4.7, BC-INDEX v1.23 (113 BCs), SS-tui v1.7.0, ARCH-INDEX v1.0.16, dep-graph v1.5, EVAL-INDEX v1.4, sprint-state v1.23. Phase status: phase-2-expansion-CONVERGED. Awaiting human Phase 2 gate approval before Wave 4 continuation. Full burst detail: `cycles/cycle-001/burst-log.md` §v6.15.
+STATE v6.14 → v6.15.
 
 ## §Trace v6.14 (DURABLE PAUSE CHECKPOINT — adversarial story review pending)
 
