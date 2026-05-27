@@ -6,10 +6,10 @@
 //!
 //! 1. `MONOCLE_RUNTIME_DIR` environment variable (highest priority; used in tests and
 //!    container deployments).
-//! 2. `directories::ProjectDirs::new("monocle", "monocle", "monocle")`:
-//!    - `runtime_dir()` — returns `None` on macOS (no XDG_RUNTIME_DIR equivalent).
+//! 2. `directories::ProjectDirs::from("", "", "monocle")`:
+//!    - `runtime_dir()` — returns `Some` on Linux (XDG_RUNTIME_DIR), `None` on macOS.
 //!    - Fallback: `data_local_dir()` — always set on all supported platforms.
-//! 3. If `ProjectDirs::new(...)` returns `None` (e.g., `$HOME` is unset):
+//! 3. If `ProjectDirs::from("", "", "monocle")` returns `None` (e.g., `$HOME` is unset):
 //!    `Err(DaemonStartError::RuntimeDirUnresolvable)`.
 //!
 //! # Security
@@ -36,14 +36,14 @@ use crate::types::{CheckpointReadResult, RecoveryCheckpoint};
 /// Resolve the monocle daemon runtime directory path.
 ///
 /// Checks `MONOCLE_RUNTIME_DIR` first, then falls back to
-/// `directories::ProjectDirs::new("monocle", "monocle", "monocle")`.
+/// `directories::ProjectDirs::from("", "", "monocle")`.
 /// On macOS, `runtime_dir()` returns `None`; the fallback is `data_local_dir()`.
 ///
 /// # Errors
 ///
 /// Returns [`DaemonStartError::RuntimeDirUnresolvable`] when both the environment
-/// variable is absent AND `ProjectDirs::new(...)` returns `None` (which happens when
-/// `$HOME` is unset or the platform provides no home directory equivalent).
+/// variable is absent AND `ProjectDirs::from("", "", "monocle")` returns `None` (which
+/// happens when `$HOME` is unset or the platform provides no home directory equivalent).
 pub fn resolve_runtime_dir() -> Result<PathBuf, DaemonStartError> {
     // Priority 1: MONOCLE_RUNTIME_DIR env var (non-empty).
     if let Ok(dir) = std::env::var("MONOCLE_RUNTIME_DIR") {
@@ -95,16 +95,19 @@ pub fn resolve_runtime_dir() -> Result<PathBuf, DaemonStartError> {
         return Err(DaemonStartError::RuntimeDirUnresolvable);
     }
 
-    let proj = directories::ProjectDirs::from("", "monocle", "monocle")
+    let proj = directories::ProjectDirs::from("", "", "monocle")
         .ok_or(DaemonStartError::RuntimeDirUnresolvable)?;
 
     // runtime_dir() is Some on Linux (XDG_RUNTIME_DIR), None on macOS.
     if let Some(rd) = proj.runtime_dir() {
+        // BC-2.04.006 PC-6: log Level 2 selection before returning.
+        tracing::info!("runtime_dir from ProjectDirs::runtime_dir()");
         Ok(rd.to_path_buf())
     } else {
+        // BC-2.04.006 PC-9: log Level 3 selection with platform inline in message.
         tracing::info!(
-            platform = std::env::consts::OS,
-            "runtime_dir fallback to data_local_dir"
+            "runtime_dir fallback to data_local_dir (platform: {})",
+            std::env::consts::OS
         );
         Ok(proj.data_local_dir().to_path_buf())
     }

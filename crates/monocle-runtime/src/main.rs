@@ -60,13 +60,19 @@ fn main() {
         Ok(dir) => dir,
         Err(e) => {
             tracing::error!(error = %e, "daemon: failed to resolve runtime directory");
-            std::process::exit(1);
+            // SS-conventions-anti-patterns.md: use exit_with(), not std::process::exit().
+            // exit_with(StartupFailure) emits the shutdown tracing log then exits 1.
+            monocle_runtime::lifecycle::exit_with(
+                monocle_runtime::lifecycle::DaemonExit::StartupFailure,
+            );
         }
     };
 
     if let Err(e) = monocle_runtime::lifecycle::ensure_runtime_dir(&runtime_dir) {
         tracing::error!(error = %e, "daemon: failed to create runtime directory");
-        std::process::exit(1);
+        monocle_runtime::lifecycle::exit_with(
+            monocle_runtime::lifecycle::DaemonExit::StartupFailure,
+        );
     }
 
     // --- Step 3: Acquire lock file ---
@@ -78,7 +84,9 @@ fn main() {
         Ok((lock, _token)) => lock,
         Err(e) => {
             tracing::error!(error = %e, "daemon: failed to acquire lock file");
-            std::process::exit(1);
+            monocle_runtime::lifecycle::exit_with(
+                monocle_runtime::lifecycle::DaemonExit::StartupFailure,
+            );
         }
     };
 
