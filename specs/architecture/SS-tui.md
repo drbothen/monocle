@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "tui"
 subsystem: SS-06
-version: "1.8.1"
+version: "1.8.2"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
-timestamp: 2026-05-28T12:30:00Z
+timestamp: 2026-05-28T14:00:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/product-brief.md, version: "1.4.30"}
   - {path: .factory/specs/research/domain-monocle-vision-synthesis.md, version: "1.1.3"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
-input-hash: "958ae3b"
+input-hash: "31b6e71"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -665,7 +665,7 @@ The overlay stack lifecycle in `monocle-tui`:
 5. **Daemon disconnect (SOQ-3):** When the IPC channel signals a disconnect, the TUI:
    - Clears the entire `VecDeque<PromptModal>`.
    - Transitions `AppMode` to `Dashboard { focused: FocusSnapshot::Sessions }`.
-   - Renders "Daemon disconnected — reconnecting..." in the status bar.
+   - Renders "[disconnected] reconnecting..." in the status bar.
    Rationale: Claude Code subprocesses will time out stalled hook responses when the
    daemon restarts. Queued prompts against the old daemon are orphaned and will never
    be resolved via the new daemon connection. Clearing prevents ghost approvals.
@@ -1104,6 +1104,23 @@ SS-06 types. Violations are blocking in any PR review:
    for all diagnostic output.
 
 ---
+
+## §Trace v1.8.2
+
+**F-S025-ADV11-HIGH-001 — bracketed daemon-status style propagated from BC-2.06.016 v1.0.8** (2026-05-28T14:00:00Z):
+
+PO Option B (commit `4563bfa`) chose the production bracketed-tag style for daemon status
+display. BC-2.06.016 was updated to v1.0.8 in that commit. Cross-document follow-up
+identified that SS-tui.md §Overlay Stack Behavior item 5 still cited the prose form
+`"Daemon disconnected — reconnecting..."`, which diverged from the BC postcondition and
+the canonical production rendering in `app.rs:304`.
+
+Change:
+- §Overlay Stack Behavior, item 5 ("Daemon disconnect (SOQ-3)"): status-bar rendering
+  updated from `"Daemon disconnected — reconnecting..."` to `"[disconnected] reconnecting..."`.
+- Grep sweep of entire SS-tui.md for prose form confirmed no other occurrences.
+- No structural changes. One line modified.
+- SE-16d monotonicity: v1.8.2 timestamp 2026-05-28T14:00:00Z > v1.8.1 timestamp 2026-05-28T12:30:00Z. PASS.
 
 ## §Trace v1.8.1
 
