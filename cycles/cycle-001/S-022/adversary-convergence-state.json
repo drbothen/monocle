@@ -1,6 +1,10 @@
 {
   "story": "S-022",
+  "cycle": "cycle-001",
   "convergence_criterion": "passes_clean_consecutive >= 3 AND last_classification == 'NITPICK_ONLY'",
+  "converged": false,
+  "passes_clean_consecutive": 0,
+  "last_classification": "BLOCKER_PRESENT",
   "passes": [
     {
       "pass": 1,
@@ -18,10 +22,16 @@
       "prior_pass_resolution": {"resolved": 10, "partial": 1, "not_fixed": 1, "phantom": 1, "over_corrected": 0},
       "report_file": ".factory/cycles/cycle-001/S-022/adversarial/pass-2.md",
       "branch_sha": "b50252e"
+    },
+    {
+      "pass": 3,
+      "timestamp": "2026-05-28T00:00:00Z",
+      "classification": "BLOCKER_PRESENT",
+      "findings_count": {"blocker": 0, "high": 2, "medium": 3, "nitpick": 3},
+      "prior_pass_resolution": {"resolved": 18, "resolved_with_new_defect": 1, "partial": 0, "not_fixed": 0, "phantom": 1, "over_corrected": 0},
+      "report_file": ".factory/cycles/cycle-001/S-022/adversarial/pass-3.md",
+      "branch_sha": "7121c31"
     }
   ],
-  "passes_clean_consecutive": 0,
-  "last_classification": "BLOCKER_PRESENT",
-  "converged": false,
   "deferred_findings": []
 }
