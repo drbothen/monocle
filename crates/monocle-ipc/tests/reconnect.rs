@@ -284,11 +284,9 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
             "port": 9002,
             "authToken": "token-v2"
         });
-        std::fs::write( // nosemgrep: monocle-no-naked-fs-write
-            dir_clone.join("monocle.lock"),
-            serde_json::to_string(&lock_v2).unwrap(),
-        )
-        .expect("write new lock file");
+        #[rustfmt::skip]
+        std::fs::write(dir_clone.join("monocle.lock"), serde_json::to_string(&lock_v2).unwrap()) // nosemgrep: monocle-no-naked-fs-write
+            .expect("write new lock file");
 
         // Keep listener alive so reconnect() can connect.
         tokio::time::sleep(Duration::from_secs(3)).await;
@@ -338,11 +336,9 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
             "port": 9002,
             "authToken": "token-restarted"
         });
-        std::fs::write( // nosemgrep: monocle-no-naked-fs-write
-            dir_clone.join("monocle.lock"),
-            serde_json::to_string(&lock_v2).unwrap(),
-        )
-        .expect("write");
+        #[rustfmt::skip]
+        std::fs::write(dir_clone.join("monocle.lock"), serde_json::to_string(&lock_v2).unwrap()) // nosemgrep: monocle-no-naked-fs-write
+            .expect("write");
         tokio::time::sleep(Duration::from_secs(3)).await;
     });
 
@@ -412,11 +408,9 @@ async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down(
         "port": 9001,
         "authToken": "stale-token"
     });
-    std::fs::write( // nosemgrep: monocle-no-naked-fs-write
-        dir.path().join("monocle.lock"),
-        serde_json::to_string(&stale_lock).unwrap(),
-    )
-    .unwrap();
+    #[rustfmt::skip]
+    std::fs::write(dir.path().join("monocle.lock"), serde_json::to_string(&stale_lock).unwrap()) // nosemgrep: monocle-no-naked-fs-write
+        .unwrap();
     // Do NOT bind the socket — daemon is permanently down.
 
     pause();
