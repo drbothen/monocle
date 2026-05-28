@@ -1,0 +1,27 @@
+[package]
+name = "monocle-ipc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "IPC message types and transport for monocle daemon-TUI communication (S-021)."
+
+[lints]
+workspace = true
+
+[dependencies]
+monocle-core = { path = "../monocle-core" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true }
+tracing-subscriber = "0.3"

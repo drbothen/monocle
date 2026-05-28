@@ -4,6 +4,7 @@ members = [
     "crates/monocle",
     "crates/monocle-config",
     "crates/monocle-core",
+    "crates/monocle-ipc",
     "crates/monocle-runtime",
     "crates/monocle-proto",
     "crates/monocle-test-harness",
@@ -47,7 +48,6 @@ constant_time_eq = "0.3"
 futures = "0.3"
 async-trait = "0.1"
 clap = "4.6"
-interprocess = "2.4"
 semver = "1"
 notify = "8"
 serde_yaml_ng = "0.10"

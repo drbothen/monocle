@@ -1158,6 +1158,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "monocle-ipc"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "monocle-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "monocle-proto"
 version = "0.1.0"
 dependencies = [

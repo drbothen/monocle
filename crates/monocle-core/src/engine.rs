@@ -131,8 +131,13 @@ impl ProcessSnapshot {
 /// `last_event_micros` is `Option<i64>` per BC-2.03.001 PC-4 and AC-004:
 /// `None` means no hook events have been received yet. `Some(0)` is the Unix epoch
 /// (1970-01-01T00:00:00Z), NOT a sentinel — `0` as a sentinel is forbidden.
+///
+/// `Serialize + Deserialize` are required for IPC wire format: `EnrichedSession` is
+/// embedded in `ServerToClient::SessionListUpdate` and `ServerToClient::InitialState`
+/// (S-021 BC-2.05.003). `serde_json::to_vec` is called on the containing `ServerToClient`
+/// enum by `monocle-ipc::framing::write_framed`.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EnrichedSession {
     /// Engine-specific session identifier.
     pub session_id: String,
