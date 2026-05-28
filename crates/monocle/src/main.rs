@@ -7,6 +7,10 @@
 //!   exit 0 on success or exit 1/2 on error / exit 70 on runtime-dir error.
 //!
 //! Implemented in S-016.
+//!
+//! TUI auto-start (S-019):
+//! - No subcommand → TUI mode: `auto_start::auto_start_daemon()` is called before TUI init.
+//! - `MONOCLE_NO_AUTOSTART` non-empty → offline mode, no daemon started.
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
@@ -14,14 +18,18 @@
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
+mod auto_start;
+
 use clap::{Parser, Subcommand};
+
+use crate::auto_start::auto_start_daemon;
 
 /// monocle — AI coding harness session manager.
 #[derive(Parser, Debug)]
 #[command(name = "monocle", version, about)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 /// Top-level subcommands.
@@ -102,10 +110,36 @@ fn main() {
     let cli = Cli::parse();
 
     let exit_code = match cli.command {
-        Commands::Daemon { action } => match action {
+        Some(Commands::Daemon { action }) => match action {
             DaemonAction::Start => cmd_daemon_start(),
             DaemonAction::Stop => cmd_daemon_stop(),
         },
+        None => {
+            // TUI mode: run the daemon auto-start decision sequence (BC-2.04.002, BC-2.04.003).
+            // auto_start_daemon() is async; build a tokio runtime to drive it.
+            // The auto-start sequence calls std::process::exit(70) directly on runtime-dir failure.
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to create tokio runtime for TUI auto-start");
+                    eprintln!("error: failed to initialize async runtime: {e}");
+                    std::process::exit(EXIT_INTERNAL_ERROR);
+                }
+            };
+            let result = rt.block_on(auto_start_daemon());
+            // The TUI layer would use `result` to render initial state.
+            // For S-019 scope: the auto-start verdict is determined; TUI rendering is out of scope.
+            // Report the verdict and exit 0 (normal TUI exit — the TUI hasn't been built yet).
+            match result {
+                auto_start::AutoStartResult::Connected { port, token: _ } => {
+                    tracing::info!(port = port, "TUI mode: daemon connected");
+                }
+                auto_start::AutoStartResult::OfflineMode => {
+                    tracing::info!("TUI mode: [daemon: offline]");
+                }
+            }
+            EXIT_SUCCESS
+        }
     };
 
     std::process::exit(exit_code);
