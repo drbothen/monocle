@@ -25,7 +25,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "[pending]"
+input-hash: "a47e758"
 traces_to: "Implements BC-2.06.004 (Ctrl-\\ popup: appears and dismisses without state loss), BC-2.06.005 (Sessions panel rendering), BC-2.06.007 (Sessions panel: Enter transitions to fullscreen), BC-2.05.002 Invariant 4 (apply_permission_prompt_queued idempotency helper)"
 ---
 
