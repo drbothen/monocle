@@ -227,6 +227,40 @@ pub struct DaemonState {
     /// creates a `SessionEntry` keyed by `HookEnvelope.session_id`. The Stop handler
     /// additionally marks the session as `Stopped`.
     pub session_registry: Option<Arc<crate::hooks::SessionRegistry>>,
+
+    // -------------------------------------------------------------------------
+    // Test-only fields: engine decision injection
+    //
+    // These fields are Option<_> (zero cost when None) and are NEVER set by
+    // production code. They exist solely so integration tests can inject specific
+    // engine decisions and artificial delays without coupling tests to a mock
+    // engine type or a cargo feature flag.
+    //
+    // Production code: these fields remain None for the entire daemon lifetime.
+    //
+    // hook_decision_override: when Some((decision, diagnostic)), hook handlers
+    //   short-circuit the real ClaudeCodeModule call and return this decision.
+    //
+    // hook_delay_ms: when Some(ms), hook handlers sleep for ms milliseconds
+    //   inside the 300ms timeout budget, reliably triggering the timeout path.
+    // -------------------------------------------------------------------------
+
+    /// Engine decision override for integration tests.
+    ///
+    /// `None` — use the real `ClaudeCodeModule::on_hook()` (production default).
+    /// `Some((decision, diagnostic))` — return this decision without calling `on_hook()`.
+    ///
+    /// NEVER set by production code. Only tests assign a `Some(_)` value.
+    pub hook_decision_override: Option<(monocle_core::engine::HookDecision, Option<String>)>,
+
+    /// Artificial delay override for integration tests.
+    ///
+    /// `None` — no delay (production default).
+    /// `Some(ms)` — sleep `ms` milliseconds inside the handler, before the decision is
+    ///   returned. Use a value > 300 to reliably trigger the 300ms outer timeout path.
+    ///
+    /// NEVER set by production code. Only tests assign a `Some(_)` value.
+    pub hook_delay_ms: Option<u64>,
 }
 
 impl DaemonState {
@@ -259,6 +293,8 @@ impl DaemonState {
             event_bus_tx: None,
             drop_counter: None,
             session_registry: None,
+            hook_decision_override: None,
+            hook_delay_ms: None,
         }
     }
 }

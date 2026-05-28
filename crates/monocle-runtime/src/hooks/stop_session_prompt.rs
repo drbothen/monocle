@@ -467,8 +467,19 @@ async fn handle_prompt_submit_inner(state: Arc<DaemonState>, envelope: HookEnvel
     let bus_event_payload = hook_event.clone();
 
     // BC-2.04.009 PC-3: dispatch to EngineModule.
-    let engine = ClaudeCodeModule::new(String::new());
-    let response = engine.on_hook(hook_event).await;
+    // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
+    // that need to exercise the Block path (Phase 1 ClaudeCodeModule always returns Allow).
+    let response = if let Some((ref decision, ref diagnostic)) = state.hook_decision_override {
+        let base = monocle_core::engine::HookResponse::new(decision.clone());
+        if let Some(ref diag) = diagnostic {
+            base.with_diagnostic(diag.clone())
+        } else {
+            base
+        }
+    } else {
+        let engine = ClaudeCodeModule::new(String::new());
+        engine.on_hook(hook_event).await
+    };
 
     // BC-2.04.009 PC-7, AC-018: build HTTP response based on decision.
     // No Defer support — Defer treated as Allow with WARN.

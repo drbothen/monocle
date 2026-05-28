@@ -135,9 +135,27 @@ async fn handle_pre_tool_use_inner(state: Arc<DaemonState>, envelope: HookEnvelo
     // Clone event for bus publish (before dispatch consumes it).
     let bus_event_payload = hook_event.clone();
 
+    // Artificial delay for integration tests exercising the 300ms timeout path.
+    // hook_delay_ms is None in production; Some(ms) only in tests.
+    if let Some(delay_ms) = state.hook_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // BC-2.04.007 PC-3: dispatch to EngineModule.
-    let engine = ClaudeCodeModule::new(String::new());
-    let response = engine.on_hook(hook_event).await;
+    // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
+    // that need to exercise the Block or Defer paths (Phase 1 ClaudeCodeModule always
+    // returns Allow, so tests that need Block/Defer inject the decision here).
+    let response = if let Some((ref decision, ref diagnostic)) = state.hook_decision_override {
+        let base = monocle_core::engine::HookResponse::new(decision.clone());
+        if let Some(ref diag) = diagnostic {
+            base.with_diagnostic(diag.clone())
+        } else {
+            base
+        }
+    } else {
+        let engine = ClaudeCodeModule::new(String::new());
+        engine.on_hook(hook_event).await
+    };
 
     // BC-2.04.007 PC-3: handle HookDecision.
     let http_response = match &response.decision {

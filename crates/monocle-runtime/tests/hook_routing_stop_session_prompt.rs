@@ -33,7 +33,7 @@
 // Non-snake-case test names encode BC IDs with dots-as-underscores per naming convention.
 #![allow(non_snake_case)]
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use axum::body::Body;
@@ -107,6 +107,31 @@ fn make_state_with_bus_and_registry() -> (
     state.drop_counter = Some(Arc::clone(&drop_counter));
     state.session_registry = Some(Arc::clone(&session_registry));
     (Arc::new(state), rx, session_registry)
+}
+
+/// Build a `DaemonState` with a Block decision override wired in.
+///
+/// Used by `test_BC_2_04_009_prompt_submit_block_returns_block_with_reason` to exercise
+/// the Block path in `handle_prompt_submit_inner` without depending on a real engine
+/// that returns Block (Phase 1 ClaudeCodeModule always returns Allow).
+fn make_state_with_block_decision() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(Arc::clone(&session_registry));
+    state.hook_decision_override = Some((
+        monocle_core::engine::HookDecision::Block,
+        Some("policy-denied".to_owned()),
+    ));
+    (Arc::new(state), rx)
 }
 
 async fn post_json(
@@ -294,9 +319,7 @@ async fn test_BC_2_04_009_prompt_submit_allow_returns_allow() {
 /// NOTE: Phase 1 ClaudeCodeModule always returns Allow. Red Gate assertion.
 #[tokio::test]
 async fn test_BC_2_04_009_prompt_submit_block_returns_block_with_reason() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: Phase 1 engine returns Allow; block path requires mock engine injection.
-    // Also fails because inner handler is todo!().
+    let (state, _rx) = make_state_with_block_decision();
     let (status, body) = post_json(state, "/hooks/prompt-submit", prompt_submit_body()).await;
 
     assert_eq!(status, StatusCode::OK);

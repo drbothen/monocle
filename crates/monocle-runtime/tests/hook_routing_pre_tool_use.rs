@@ -113,6 +113,77 @@ fn make_state_with_full_bus() -> (Arc<DaemonState>, Arc<AtomicU64>) {
     (Arc::new(state), drop_counter)
 }
 
+/// Build a `DaemonState` with a Block decision override wired in.
+///
+/// Used by `test_BC_2_04_007_block_returns_200_decision_block_with_reason` to exercise
+/// the Block path in `handle_pre_tool_use_inner` without depending on a real engine
+/// that returns Block (Phase 1 ClaudeCodeModule always returns Allow).
+fn make_state_with_block_decision() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    state.hook_decision_override = Some((
+        monocle_core::engine::HookDecision::Block,
+        Some("policy-denied".to_owned()),
+    ));
+    (Arc::new(state), rx)
+}
+
+/// Build a `DaemonState` with a Defer decision override and a >300ms delay wired in.
+///
+/// Used by `test_BC_2_04_007_defer_timeout_returns_allow` and
+/// `test_BC_2_04_007_timeout_returns_fail_open_allow` to exercise the timeout path.
+/// The 400ms delay exceeds the 300ms budget, ensuring the outer timeout fires.
+fn make_state_with_slow_engine() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    // 400ms delay > 300ms timeout budget — guarantees the outer timeout fires.
+    state.hook_delay_ms = Some(400);
+    (Arc::new(state), rx)
+}
+
+/// Build a `DaemonState` with Defer decision override + slow delay.
+///
+/// The Defer path awaits a oneshot that never fires. Combined with the 400ms delay,
+/// the outer 300ms timeout fires and returns fail-open allow with reason:"timeout".
+fn make_state_with_defer_and_slow_engine() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    state.hook_decision_override = Some((monocle_core::engine::HookDecision::Defer, None));
+    // The Defer path awaits a oneshot that never resolves; the 300ms timeout fires.
+    // No extra delay needed because the oneshot await itself is unbounded.
+    (Arc::new(state), rx)
+}
+
 /// POST to `uri` with auth and a JSON body; returns `(StatusCode, serde_json::Value)`.
 async fn post_json(
     state: Arc<DaemonState>,
@@ -250,9 +321,7 @@ async fn test_BC_2_04_007_allow_returns_200_decision_allow() {
 /// and should FAIL on the `{"decision":"block"}` assertion — confirming Red Gate.
 #[tokio::test]
 async fn test_BC_2_04_007_block_returns_200_decision_block_with_reason() {
-    let (state, _rx) = make_state_with_bus();
-    // With Phase 1 ClaudeCodeModule, this will return allow (not block).
-    // Red Gate: this assertion must fail until the implementation provides a mock engine.
+    let (state, _rx) = make_state_with_block_decision();
     let (status, body) = post_json(state, "/hooks/pre-tool-use", pre_tool_use_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -282,11 +351,7 @@ async fn test_BC_2_04_007_block_returns_200_decision_block_with_reason() {
 /// Red Gate: this assertion fails (engine returns in <300ms, no "reason":"timeout").
 #[tokio::test]
 async fn test_BC_2_04_007_timeout_returns_fail_open_allow() {
-    let (state, _rx) = make_state_with_bus();
-    // With Phase 1 ClaudeCodeModule, on_hook() returns immediately — no timeout fires.
-    // Red Gate: the timeout path is unreachable with the current stub engine.
-    // This test requires a slow-engine injection to reliably test the timeout path.
-    // For now, assert that the response has the expected shape for the timeout case.
+    let (state, _rx) = make_state_with_slow_engine();
     let (status, body) = post_json(state, "/hooks/pre-tool-use", pre_tool_use_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -441,10 +506,10 @@ async fn test_BC_2_04_007_defer_sends_permission_prompt_queued() {
 /// NOTE: Requires engine injection (Defer-returning module). Red Gate assertion.
 #[tokio::test]
 async fn test_BC_2_04_007_defer_timeout_returns_allow() {
-    // Red Gate: Phase 1 engine always returns Allow (no Defer path exercised here).
-    // The timeout assertion is the same as test_BC_2_04_007_timeout_returns_fail_open_allow
-    // but specifically documents the Defer+timeout path from BC-2.04.007 PC-3/PC-4.
-    let (state, _rx) = make_state_with_bus();
+    // Defer path: the engine returns Defer, the inner handler awaits a oneshot that
+    // never fires. The outer 300ms timeout fires and returns fail-open allow with
+    // reason:"timeout" (BC-2.04.007 PC-3/PC-4).
+    let (state, _rx) = make_state_with_defer_and_slow_engine();
     let (status, body) = post_json(state, "/hooks/pre-tool-use", pre_tool_use_body()).await;
 
     assert_eq!(status, StatusCode::OK);
