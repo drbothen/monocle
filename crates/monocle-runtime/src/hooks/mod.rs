@@ -145,4 +145,34 @@ impl SessionRegistry {
         let guard = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         guard.get(session_id).map(|e| e.state.clone())
     }
+
+    /// Snapshot all sessions as `EnrichedSession` values (BC-2.05.002 AC-002, S-022).
+    ///
+    /// Maps each `SessionEntry` to an `EnrichedSession` using the following field mapping:
+    /// - `session_id`: verbatim.
+    /// - `harness_type`: `"claude-code"` (Phase 1 only harness; multi-harness is Phase 4).
+    /// - `transcript_path`, `config_path`: `None` (not tracked per session in Phase 1).
+    /// - `status`: `SessionState::Active` → `SessionStatus::Active`;
+    ///   `SessionState::Stopped` → `SessionStatus::Stopped`.
+    /// - `last_event_micros`: `None` (not tracked in `SessionEntry` in Phase 1).
+    pub fn snapshot_enriched_sessions(&self) -> Vec<monocle_core::engine::EnrichedSession> {
+        let guard = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        guard
+            .values()
+            .map(|entry| {
+                let status = match entry.state {
+                    SessionState::Active => monocle_core::engine::SessionStatus::Active,
+                    SessionState::Stopped => monocle_core::engine::SessionStatus::Stopped,
+                };
+                monocle_core::engine::EnrichedSession::new(
+                    entry.session_id.clone(),
+                    "claude-code".to_owned(),
+                    None,
+                    None,
+                    status,
+                    None,
+                )
+            })
+            .collect()
+    }
 }

@@ -35,8 +35,9 @@ async fn test_BC_2_05_001_uds_bind_creates_socket_with_mode_0o600() {
     let dir = tempfile::tempdir().expect("tempdir");
     let runtime_dir = dir.path();
 
-    // Bind the UDS transport — stub will panic with todo!() until implemented.
-    let transport = UdsTransport::bind(runtime_dir)
+    // Bind the UDS transport. The returned listener is transferred to the accept loop;
+    // tests that only exercise fan-out / path / cleanup discard it with `_`.
+    let (transport, _listener) = UdsTransport::bind(runtime_dir)
         .await
         .expect("bind should succeed on a fresh tempdir");
 
@@ -72,7 +73,7 @@ async fn test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind() {
     assert!(sock_path.exists(), "stale socket must exist before bind");
 
     // Bind should remove the stale file and create a real socket.
-    let transport = UdsTransport::bind(runtime_dir)
+    let (transport, _listener) = UdsTransport::bind(runtime_dir)
         .await
         .expect("bind should succeed after removing stale socket");
 
@@ -102,7 +103,7 @@ async fn test_BC_2_05_001_uds_bind_cleanup_removes_socket_on_shutdown() {
     let dir = tempfile::tempdir().expect("tempdir");
     let runtime_dir = dir.path();
 
-    let transport = UdsTransport::bind(runtime_dir).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(runtime_dir).await.expect("bind");
 
     let sock_path = runtime_dir.join("monocle.sock");
     assert!(sock_path.exists(), "socket must exist before cleanup");
@@ -144,7 +145,7 @@ async fn test_BC_2_05_001_uds_bind_returns_error_on_path_too_long() {
         return;
     }
 
-    let result = UdsTransport::bind(&long_dir).await;
+    let result = UdsTransport::bind(&long_dir).await.map(|(t, _)| t);
 
     assert!(
         result.is_err(),
@@ -174,7 +175,7 @@ async fn test_BC_2_05_001_uds_bind_socket_path_construction_uses_path_join() {
     let runtime_dir = dir.path();
     let expected_sock_path = Path::new(runtime_dir).join("monocle.sock");
 
-    let transport = UdsTransport::bind(runtime_dir).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(runtime_dir).await.expect("bind");
     assert_eq!(
         transport.sock_path(),
         expected_sock_path,

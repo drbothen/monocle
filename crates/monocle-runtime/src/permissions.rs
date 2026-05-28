@@ -100,10 +100,14 @@ impl PendingDecisionRegistry {
     ///   awaiting on its receiver end.
     pub fn register_prompt(
         &self,
-        payload: PermissionPromptPayload,
+        mut payload: PermissionPromptPayload,
         sender: tokio::sync::oneshot::Sender<PermissionDecisionKind>,
     ) -> Uuid {
         let prompt_id = Uuid::new_v4();
+        // Overwrite the caller-supplied placeholder with the stable, registry-assigned UUID.
+        // This ensures snapshot_payloads() returns the correct prompt_id for late-connecting TUI
+        // clients (BC-2.05.002 AC-002 — overlay_stack uses the real UUID, not Uuid::nil()).
+        payload.prompt_id = prompt_id;
         let entry = PendingEntry { payload, sender };
         let mut map = self
             .inner

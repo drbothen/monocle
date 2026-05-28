@@ -82,6 +82,18 @@ pub struct SessionStartEvent {
     pub pid: u32,
 }
 
+impl SessionStartEvent {
+    /// Construct a `SessionStartEvent`.
+    pub fn new(cwd: String, transcript_path: String, session_id: String, pid: u32) -> Self {
+        Self {
+            cwd,
+            transcript_path,
+            session_id,
+            pid,
+        }
+    }
+}
+
 /// UserPromptSubmit hook — fired when the user submits a prompt.
 ///
 /// Gene-source body fields: `pid`, `session_id`.
@@ -95,6 +107,17 @@ pub struct UserPromptSubmitEvent {
     pub session_id: String,
     /// PID of the Claude Code subprocess.
     pub pid: u32,
+}
+
+impl UserPromptSubmitEvent {
+    /// Construct a `UserPromptSubmitEvent`.
+    pub fn new(prompt: String, session_id: String, pid: u32) -> Self {
+        Self {
+            prompt,
+            session_id,
+            pid,
+        }
+    }
 }
 
 /// PreToolUse hook — fired before Claude Code executes a tool.
@@ -112,6 +135,18 @@ pub struct PreToolUseEvent {
     pub session_id: String,
     /// PID of the Claude Code subprocess.
     pub pid: u32,
+}
+
+impl PreToolUseEvent {
+    /// Construct a `PreToolUseEvent`.
+    pub fn new(tool_name: String, tool_input: Value, session_id: String, pid: u32) -> Self {
+        Self {
+            tool_name,
+            tool_input,
+            session_id,
+            pid,
+        }
+    }
 }
 
 /// Notification hook — fired for permission prompts and assistant messages.
@@ -137,6 +172,27 @@ pub struct NotificationEvent {
     pub pid: u32,
 }
 
+impl NotificationEvent {
+    /// Construct a `NotificationEvent`.
+    pub fn new(
+        notification_type: String,
+        tool_name: String,
+        tool_input: Value,
+        message: String,
+        session_id: String,
+        pid: u32,
+    ) -> Self {
+        Self {
+            notification_type,
+            tool_name,
+            tool_input,
+            message,
+            session_id,
+            pid,
+        }
+    }
+}
+
 /// Stop hook — fired when a Claude Code session ends.
 ///
 /// Gene-source body fields: `pid`, `stop_reason`, `session_id`.
@@ -150,4 +206,15 @@ pub struct StopEvent {
     pub session_id: String,
     /// PID of the Claude Code subprocess.
     pub pid: u32,
+}
+
+impl StopEvent {
+    /// Construct a `StopEvent`.
+    pub fn new(stop_reason: String, session_id: String, pid: u32) -> Self {
+        Self {
+            stop_reason,
+            session_id,
+            pid,
+        }
+    }
 }

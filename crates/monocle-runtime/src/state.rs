@@ -229,7 +229,7 @@ pub struct DaemonState {
     pub session_registry: Option<Arc<crate::hooks::SessionRegistry>>,
 
     // -------------------------------------------------------------------------
-    // S-022 fields: pending-decision registry for permission prompts
+    // S-022 fields: pending-decision registry + IPC subscriber list
     // -------------------------------------------------------------------------
     /// Pending-decision registry for in-flight permission prompts (S-022, BC-2.05.005).
     ///
@@ -244,6 +244,17 @@ pub struct DaemonState {
     /// Wrapped in `Arc` to allow the registry to be shared across axum handler tasks
     /// and the per-client IPC task without cloning the registry struct.
     pub pending_decisions: Option<crate::permissions::SharedPendingDecisionRegistry>,
+
+    /// Fan-out subscriber list for broadcasting IPC messages to connected TUI clients (S-022).
+    ///
+    /// `None` — IPC subscriber list not yet initialized (daemon startup or test stub).
+    /// `Some(list)` — live list. The `PreToolUse` Defer path broadcasts
+    ///   `ServerToClient::PermissionPromptQueued` through this list.
+    ///   The `handle_permission_decision` path broadcasts `PermissionPromptResolved`
+    ///   through the same list.
+    ///
+    /// Arc-wrapped to share the same list across axum handler tasks and the accept loop.
+    pub ipc_subscribers: Option<monocle_ipc::server::SubscriberList>,
 
     // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
@@ -310,6 +321,7 @@ impl DaemonState {
             drop_counter: None,
             session_registry: None,
             pending_decisions: None,
+            ipc_subscribers: None,
             hook_decision_override: None,
             hook_delay_ms: None,
         }
@@ -339,7 +351,7 @@ const _: () = {
 ///
 /// The snapshot captures, at the moment of the call:
 /// - `sessions`: clone of the current session roster from `state.session_registry`.
-/// - `ring_tail`: last N hook events from the RAM ring (currently empty — see design note).
+/// - `ring_tail`: last N hook events from the RAM ring, converted from `HookEventRecord`.
 /// - `overlay_stack`: clone of all currently-pending permission prompt payloads from
 ///   `state.pending_decisions`.
 /// - `drop_counter`: current value of `state.drop_counter`.
@@ -347,15 +359,15 @@ const _: () = {
 /// When any of the optional fields is `None` (registry / ring / counter not yet
 /// initialized), the corresponding `InitialState` field is an empty Vec / 0.
 ///
-/// # Design note — ring_tail type mismatch
+/// # Design note — ring_tail best-effort conversion
 ///
 /// `InitialState.ring_tail` is typed `Vec<HookEvent>` (the rich typed enum), but the
 /// RAM ring stores `HookEventRecord` (the JSONL record struct). `HookEventRecord` does
-/// not carry enough fields to reconstruct all `HookEvent` variants faithfully (e.g.
-/// `cwd` and `transcript_path` are absent for `SessionStart`). Until S-023 aligns the
-/// ring storage type or adds a separate `HookEvent` ring, `ring_tail` returns empty Vec.
-/// All Phase 1 tests exercise the empty-ring case; the non-empty ring_tail path is
-/// deferred to the story that normalises the ring storage type.
+/// not carry all fields needed for perfect `HookEvent` reconstruction — `cwd`,
+/// `transcript_path` (SessionStart), `prompt` (UserPromptSubmit), and `stop_reason`
+/// (Stop) are absent. `hook_event_record_to_hook_event` fills these with empty-string
+/// defaults, which is acceptable: `ring_tail` is used for TUI timeline display, not for
+/// exact state reconstruction. Unknown `hook_type` strings are silently filtered out.
 ///
 /// # 256 KiB guard
 ///
@@ -369,16 +381,29 @@ const _: () = {
 pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::ServerToClient {
     use std::sync::atomic::Ordering;
 
-    // Sessions: clone from session_registry if available, else empty.
-    let sessions: Vec<monocle_core::engine::EnrichedSession> = Vec::new();
-    // Suppress unused warning — sessions_from_registry is correct but registry
-    // does not expose an EnrichedSession iterator; this will be wired in S-023.
-    let _ = &state.session_registry;
+    // Sessions: snapshot all current sessions from session_registry.
+    // Maps SessionEntry → EnrichedSession via SessionRegistry::snapshot_enriched_sessions.
+    let sessions: Vec<monocle_core::engine::EnrichedSession> = state
+        .session_registry
+        .as_ref()
+        .map(|reg| reg.snapshot_enriched_sessions())
+        .unwrap_or_default();
 
-    // ring_tail: RAM ring stores HookEventRecord, not HookEvent — see design note.
-    // Returns empty Vec until the ring storage type is aligned.
-    let ring_tail: Vec<monocle_core::hook_events::HookEvent> = Vec::new();
-    let _ = &state.ring;
+    // ring_tail: last RING_TAIL_N events from the RAM ring, converted to HookEvent.
+    // Conversion is best-effort: fields absent from HookEventRecord (cwd, transcript_path,
+    // stop_reason, prompt) are filled with empty-string defaults. The TUI uses ring_tail
+    // for timeline display only; exact field values for pre-existing events are not required.
+    const RING_TAIL_N: usize = 50;
+    let ring_tail: Vec<monocle_core::hook_events::HookEvent> = state
+        .ring
+        .as_ref()
+        .map(|ring| {
+            ring.latest_events(RING_TAIL_N)
+                .into_iter()
+                .filter_map(hook_event_record_to_hook_event)
+                .collect()
+        })
+        .unwrap_or_default();
 
     // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
     let overlay_stack: Vec<monocle_ipc::types::PermissionPromptPayload> = state
@@ -399,5 +424,64 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
         ring_tail,
         overlay_stack,
         drop_counter,
+    }
+}
+
+/// Best-effort conversion from a `HookEventRecord` (ring storage type) to a `HookEvent`
+/// (rich typed enum used in `InitialState.ring_tail`).
+///
+/// Missing fields are filled with empty-string defaults:
+/// - `SessionStartEvent.cwd` and `.transcript_path` → `""`
+/// - `UserPromptSubmitEvent.prompt` → `""`
+/// - `StopEvent.stop_reason` → `""`
+///
+/// Returns `None` for unknown `hook_type` strings (unknown variants are silently skipped
+/// rather than causing a snapshot failure).
+fn hook_event_record_to_hook_event(
+    record: crate::ring::HookEventRecord,
+) -> Option<monocle_core::hook_events::HookEvent> {
+    use monocle_core::hook_events::{
+        HookEvent, NotificationEvent, PreToolUseEvent, SessionStartEvent, StopEvent,
+        UserPromptSubmitEvent,
+    };
+
+    match record.hook_type.as_str() {
+        "SessionStart" => Some(HookEvent::SessionStart(SessionStartEvent::new(
+            String::new(),
+            String::new(),
+            record.session_id,
+            record.pid,
+        ))),
+        "UserPromptSubmit" => Some(HookEvent::UserPromptSubmit(UserPromptSubmitEvent::new(
+            String::new(),
+            record.session_id,
+            record.pid,
+        ))),
+        "PreToolUse" => Some(HookEvent::PreToolUse(PreToolUseEvent::new(
+            record.tool_name.unwrap_or_default(),
+            record.tool_input.unwrap_or(serde_json::Value::Null),
+            record.session_id,
+            record.pid,
+        ))),
+        "Notification" => Some(HookEvent::Notification(NotificationEvent::new(
+            String::new(),
+            record.tool_name.unwrap_or_default(),
+            record.tool_input.unwrap_or(serde_json::Value::Null),
+            String::new(),
+            record.session_id,
+            record.pid,
+        ))),
+        "Stop" => Some(HookEvent::Stop(StopEvent::new(
+            String::new(),
+            record.session_id,
+            record.pid,
+        ))),
+        _ => {
+            tracing::debug!(
+                hook_type = %record.hook_type,
+                "hook_event_record_to_hook_event: unknown hook_type; skipping"
+            );
+            None
+        }
     }
 }

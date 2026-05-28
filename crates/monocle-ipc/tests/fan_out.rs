@@ -146,7 +146,8 @@ fn test_BC_2_05_004_payload_excerpt_always_valid_utf8_property() {
 #[tokio::test]
 async fn test_BC_2_05_003_broadcast_session_list_update_sends_to_all_clients() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
+    let transport = std::sync::Arc::new(transport);
 
     // Add 2 subscribers.
     let (tx1, mut rx1) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -200,7 +201,7 @@ async fn test_BC_2_05_003_broadcast_session_list_update_sends_to_all_clients() {
 #[tokio::test]
 async fn test_BC_2_05_003_broadcast_session_list_update_empty_sessions() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = UdsTransport::bind(dir.path()).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
 
     // Empty sessions Vec — broadcast should succeed (not panic, not error).
     transport.broadcast_session_list_update(vec![]).await;
@@ -214,7 +215,8 @@ async fn test_BC_2_05_003_broadcast_session_list_update_empty_sessions() {
 #[tokio::test]
 async fn test_BC_2_05_003_broadcast_session_list_update_256_kib_limit() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
+    let transport = std::sync::Arc::new(transport);
 
     // Add a real subscriber so we can assert it receives nothing.
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -249,7 +251,8 @@ async fn test_BC_2_05_003_broadcast_session_list_update_256_kib_limit() {
 #[tokio::test]
 async fn test_BC_2_05_004_broadcast_hook_event_received_sends_to_all_clients() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
+    let transport = std::sync::Arc::new(transport);
 
     // Add 2 subscribers.
     let (tx1, mut rx1) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -298,7 +301,7 @@ async fn test_BC_2_05_004_broadcast_hook_event_received_sends_to_all_clients() {
 #[tokio::test]
 async fn test_BC_2_05_004_broadcast_hook_event_received_latency_ms_propagated() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = UdsTransport::bind(dir.path()).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
 
     // Add a subscriber to receive the broadcast.
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -335,7 +338,7 @@ async fn test_BC_2_05_004_broadcast_hook_event_received_latency_ms_propagated() 
 #[tokio::test]
 async fn test_BC_2_05_004_invariant_drop_counter_not_incremented_by_ipc_send() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = UdsTransport::bind(dir.path()).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
 
     // When implemented: add a subscriber with a closed receiver (simulating slow client),
     // call broadcast, assert drop counter is NOT incremented.
@@ -353,7 +356,8 @@ async fn test_BC_2_05_004_invariant_drop_counter_not_incremented_by_ipc_send() {
 #[tokio::test]
 async fn test_BC_2_05_004_slow_client_removed_from_subscriber_list() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
+    let (transport, _listener) = UdsTransport::bind(dir.path()).await.expect("bind");
+    let transport = std::sync::Arc::new(transport);
 
     // Slow subscriber: capacity 1, pre-filled so the next send will fail with TrySendError::Full.
     let (slow_tx, _slow_rx) = tokio::sync::mpsc::channel::<ServerToClient>(1);

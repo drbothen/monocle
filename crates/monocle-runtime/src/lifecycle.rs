@@ -343,14 +343,11 @@ struct StartSequenceLockContent {
 
 /// Execute the full 13-step daemon start sequence (BC-2.04.001).
 ///
-/// # Return type note
+/// # Return value
 ///
-/// This function currently returns `Result<(), DaemonStartError>`. The assembled daemon
-/// state (listener, ring buffer, event bus tx/rx, registry, auth token, daemon lock) is
-/// constructed internally and the binding variables (`_ring`, `_event_tx`, `_event_rx`,
-/// `_drop_counter`) are prefixed with `_` because they are discarded at this stage.
-/// Downstream stories S-018 and S-021 will integrate these components into `DaemonState`
-/// and refactor this function to return `Result<DaemonState, DaemonStartError>`.
+/// Returns `Ok(Arc<DaemonState>)` on success. The returned `DaemonState` is fully
+/// wired: it holds the ring buffer, event bus, session registry, pending-decisions
+/// registry, auth token, daemon lock, and the spawned UDS accept loop join handle.
 ///
 /// # SOQ-2 Commit-Point Invariant
 ///
@@ -373,7 +370,8 @@ struct StartSequenceLockContent {
 /// 7. Generate session token: `OsRng` → 32 bytes → 64 hex lowercase (no `monocle-v1:` prefix).
 /// 8. **SOQ-2 commit point**: write lock file via `write_lock_file`, mode 0o600.
 /// 9. Write `hooks-settings.json` via `write_hooks_settings`, mode 0o600.
-/// 10. Remove any stale UDS socket at `<runtime_dir>/monocle.sock`; bind new socket, mode 0o600.
+/// 10. Remove stale UDS socket at `<runtime_dir>/monocle.sock`, bind tokio `UnixListener`,
+///     mode 0o600. Spawn `run_accept_loop` as a Tokio task.
 /// 11. Init crash recovery checkpoint infrastructure (stateless; verifies path is writable).
 /// 12. Signal startup complete.
 ///
@@ -381,7 +379,9 @@ struct StartSequenceLockContent {
 ///
 /// Returns [`DaemonStartError`] on any step failure. Post-step-8 failures trigger
 /// lock file cleanup before returning (invariant 6 of BC-2.04.001).
-pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStartError> {
+pub async fn daemon_start_sequence(
+    runtime_dir: &Path,
+) -> Result<std::sync::Arc<crate::state::DaemonState>, DaemonStartError> {
     use std::sync::atomic::AtomicU64;
     use std::sync::Arc;
 
@@ -451,14 +451,14 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         hard_cap_bytes: 100 * 1024 * 1024,
         retained: 5,
     };
-    let _ring: Arc<crate::ring::RingBuffer> =
+    let ring: Arc<crate::ring::RingBuffer> =
         Arc::new(crate::ring::RingBuffer::new(ring_path, ring_config));
 
     // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
-    let (_event_tx, _event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
+    let (event_tx, _event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
         crate::types::EVENT_BUS_CAPACITY,
     );
-    let _drop_counter: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
+    let drop_counter: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
 
     // Step 6: Register engine modules.
     let mut registry = crate::types::EngineModuleRegistry::new();
@@ -474,7 +474,7 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
 
     // Step 8: SOQ-2 commit point — write lock file atomically.
     let lock_result = write_lock_file(runtime_dir, port, &auth_token);
-    let (daemon_lock, _auth_token) = match lock_result {
+    let (daemon_lock, auth_token) = match lock_result {
         Ok(pair) => pair,
         Err(e) => {
             // Pre-commit-point failure: no cleanup needed (lock file was not written).
@@ -502,16 +502,12 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         return Err(e);
     }
 
-    // Step 10: Remove any stale UDS socket then bind fresh socket with mode 0o600.
+    // Step 10: Remove stale UDS socket, bind tokio UnixListener (mode 0o600),
+    // build DaemonState with all wired components, and spawn run_accept_loop.
     //
-    // NOTE (S-017 scope): `daemon_start_sequence` only validates the socket path is
-    // bindable and creates the socket file with correct permissions. The std UnixListener
-    // is used here for path validation + file creation + permission setting only — it is
-    // immediately dropped after permissions are set. S-021 will rebind the socket with
-    // `tokio::net::UnixListener` for actual async connection handling. The socket file
-    // remains on disk after the std listener drops so that monocle.sock exists in
-    // `runtime_dir` as required by BC-2.04.001 PC-13.
-    {
+    // The tokio UnixListener is retained for the accept loop — it is NOT dropped after bind.
+    // The socket file remains on disk as required by BC-2.04.001 PC-13.
+    let uds_listener = {
         let sock_path = runtime_dir.join("monocle.sock");
         if sock_path.exists() {
             if let Err(e) = std::fs::remove_file(&sock_path) {
@@ -532,10 +528,9 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
             }
         }
 
-        use std::os::unix::net::UnixListener;
-        match UnixListener::bind(&sock_path) {
-            Ok(_uds) => {
-                // Set mode 0o600 before the listener is dropped.
+        match tokio::net::UnixListener::bind(&sock_path) {
+            Ok(uds) => {
+                // Set mode 0o600 — owner-only access (BC-2.05.001 PC-2).
                 if let Err(e) =
                     std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o600))
                 {
@@ -554,7 +549,7 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
                     }
                     return Err(DaemonStartError::UdsBindFailure(e));
                 }
-                // _uds dropped here — socket file remains, S-021 rebinds with tokio listener.
+                uds
             }
             Err(e) => {
                 tracing::error!(
@@ -573,7 +568,54 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
                 return Err(DaemonStartError::UdsBindFailure(e));
             }
         }
-    }
+    };
+
+    // Build the fully-wired DaemonState (BC-2.04.001 all steps assembled).
+    //
+    // pending_decisions is initialised here so the PreToolUse Defer path can
+    // register prompts without a None-guard failure (BC-2.05.005 PC-1).
+    //
+    // ipc_subscribers is constructed before DaemonState so the Arc can be cloned
+    // for the accept-loop spawn without reaching into Option<> after construction.
+    let ipc_subscribers: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let sock_file_path = runtime_dir
+        .join("monocle.sock")
+        .to_string_lossy()
+        .into_owned();
+    let lock_file_path = runtime_dir
+        .join("monocle.lock")
+        .to_string_lossy()
+        .into_owned();
+    let daemon_state = Arc::new(crate::state::DaemonState {
+        mode: std::sync::RwLock::new(crate::state::AppMode::Running),
+        start_time: std::time::Instant::now(),
+        hook_receiver_status: None,
+        auth_token,
+        lock_file_path,
+        sock_file_path,
+        last_hook_ts: std::sync::RwLock::new(crate::state::LastHookTimestamps::default()),
+        ring: Some(ring),
+        tui_attached: std::sync::atomic::AtomicBool::new(false),
+        force_exit: std::sync::atomic::AtomicBool::new(false),
+        daemon_lock: std::sync::Mutex::new(Some(daemon_lock)),
+        shutdown_tx,
+        shutdown_rx,
+        event_bus_tx: Some(Arc::new(event_tx)),
+        drop_counter: Some(drop_counter),
+        session_registry: Some(Arc::new(crate::hooks::SessionRegistry::new())),
+        pending_decisions: Some(Arc::new(crate::permissions::PendingDecisionRegistry::new())),
+        ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
+        hook_decision_override: None,
+        hook_delay_ms: None,
+    });
+
+    // Spawn the UDS accept loop (BC-2.05.002 PC-1).
+    let accept_state = Arc::clone(&daemon_state);
+    tokio::spawn(async move {
+        crate::ipc_server::run_accept_loop(uds_listener, accept_state, ipc_subscribers).await;
+    });
 
     // Step 11: Crash recovery checkpoint infrastructure is initialized implicitly —
     // write_recovery_checkpoint and read_recovery_checkpoint are stateless functions
@@ -590,12 +632,7 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         "daemon_start_sequence: all steps complete (BC-2.04.001)"
     );
 
-    // S-022 TODO: spawn connection accept loop after UDS bind (step 10).
-    // The accept loop is not yet started here — that wiring is the S-022 implementation
-    // task. At that point: create Arc<UdsTransport> from the listener; spawn
-    // `monocle_ipc::server::run_accept_loop(listener, state, subscribers)` as a Tokio task.
-
-    Ok(())
+    Ok(daemon_state)
 }
 
 /// Write `hooks-settings.json` atomically into the runtime directory (BC-2.04.010).

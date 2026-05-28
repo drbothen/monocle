@@ -34,7 +34,6 @@ const PRE_TOOL_USE_TIMEOUT_MS: u64 = 300;
 /// event bus try_send, ring append. Fail-open on timeout.
 ///
 /// BC-2.01.004 PC-2: during `AppMode::ShuttingDown`, returns HTTP 503.
-#[allow(clippy::todo)]
 pub async fn post_hook_pre_tool_use(
     State(state): State<Arc<DaemonState>>,
     body: axum::body::Bytes,
@@ -68,10 +67,21 @@ pub async fn post_hook_pre_tool_use(
         }
     };
 
+    // Track any deferred prompt_id registered during this handler invocation.
+    // The inner handler writes to this cell when a Defer prompt is registered;
+    // the timeout handler reads it to clean up the registry entry and broadcast
+    // PermissionPromptResolved (BC-2.05.005 postcondition PC-4).
+    let deferred_prompt_id: std::sync::Arc<std::sync::Mutex<Option<uuid::Uuid>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+
     // Wrap entire handler logic in 300ms timeout (BC-2.04.007 PC-4, invariant 1).
     let result = tokio::time::timeout(
         Duration::from_millis(PRE_TOOL_USE_TIMEOUT_MS),
-        handle_pre_tool_use_inner(Arc::clone(&state), envelope),
+        handle_pre_tool_use_inner(
+            Arc::clone(&state),
+            envelope,
+            std::sync::Arc::clone(&deferred_prompt_id),
+        ),
     )
     .await;
 
@@ -83,6 +93,32 @@ pub async fn post_hook_pre_tool_use(
                 "pre_tool_use handler timeout after {}ms; returning fail-open allow",
                 PRE_TOOL_USE_TIMEOUT_MS
             );
+
+            // Step 6 (BC-2.05.005 PC-4): If a Defer prompt was registered, clean up
+            // the registry and broadcast PermissionPromptResolved to all TUI clients.
+            //
+            // Read the prompt_id and immediately release the Mutex before any .await
+            // (std::sync::MutexGuard is not Send across .await boundaries).
+            let timed_out_prompt_id: Option<uuid::Uuid> =
+                deferred_prompt_id.lock().ok().and_then(|guard| *guard);
+
+            if let Some(prompt_id) = timed_out_prompt_id {
+                // Remove the stale registry entry (non-async — no await needed).
+                if let Some(registry) = state.pending_decisions.as_ref() {
+                    registry.remove_timed_out_prompt(prompt_id);
+                }
+                // Broadcast PermissionPromptResolved so TUI clients dismiss the overlay.
+                if let Some(subscribers) = state.ipc_subscribers.as_ref() {
+                    let resolved_msg =
+                        monocle_ipc::types::ServerToClient::PermissionPromptResolved { prompt_id };
+                    crate::ipc_server::broadcast_to_subscribers(subscribers, resolved_msg).await;
+                    tracing::info!(
+                        %prompt_id,
+                        "PreToolUse timeout: PermissionPromptResolved broadcast to TUI clients"
+                    );
+                }
+            }
+
             (
                 StatusCode::OK,
                 Json(serde_json::json!({"decision": "allow", "reason": "timeout"})),
@@ -93,7 +129,15 @@ pub async fn post_hook_pre_tool_use(
 }
 
 /// Inner handler logic (runs inside the 300ms timeout budget).
-async fn handle_pre_tool_use_inner(state: Arc<DaemonState>, envelope: HookEnvelope) -> Response {
+///
+/// `deferred_prompt_id` is written with the registered prompt_id if the engine returns
+/// `HookDecision::Defer`. The outer handler reads this cell after the timeout fires to
+/// clean up the registry and broadcast `PermissionPromptResolved`.
+async fn handle_pre_tool_use_inner(
+    state: Arc<DaemonState>,
+    envelope: HookEnvelope,
+    deferred_prompt_id: std::sync::Arc<std::sync::Mutex<Option<uuid::Uuid>>>,
+) -> Response {
     use crate::engine::ClaudeCodeModule;
     use crate::event_bus::try_publish_event;
     use crate::ring::HookEventRecord;
@@ -177,33 +221,111 @@ async fn handle_pre_tool_use_inner(state: Arc<DaemonState>, envelope: HookEnvelo
                 .into_response()
         }
         HookDecision::Defer => {
-            // BC-2.04.007 invariant 5: Defer → push PermissionPromptQueued IPC (S-022 scope).
-            // Phase 1: no TUI clients yet; await a oneshot that will never fire, which means
-            // the 300ms outer timeout wrapping this function will fire, returning fail-open allow.
-            // This correctly documents the Defer path and lets the timeout test fire.
-            let (_tx, rx) = tokio::sync::oneshot::channel::<HookDecision>();
-            tracing::info!(
-                session_id = %envelope.session_id,
-                "PreToolUse Defer: awaiting permission prompt resolution (S-022 will wire TUI IPC)"
-            );
-            // S-022 TODO: register_prompt + broadcast PermissionPromptQueued on Defer path.
-            // Implementation:
-            //   1. Build PermissionPromptPayload from envelope fields.
-            //   2. Create oneshot::channel::<PermissionDecisionKind>().
-            //   3. Call state.pending_decisions.register_prompt(payload, decision_tx).
-            //   4. Broadcast ServerToClient::PermissionPromptQueued { payload } to all subscribers.
-            //   5. Await decision_rx (instead of the never-resolving _tx/rx pair here).
-            //   6. On timeout: call state.pending_decisions.remove_timed_out_prompt(prompt_id);
-            //      broadcast ServerToClient::PermissionPromptResolved { prompt_id }.
-            //
-            // Await the oneshot. The outer 300ms timeout will fire before this resolves.
-            let _ = rx.await;
-            // This line is unreachable in Phase 1; the outer timeout catches it.
-            (
-                axum::http::StatusCode::OK,
-                Json(serde_json::json!({"decision": "allow", "reason": "defer-resolved"})),
-            )
-                .into_response()
+            // BC-2.04.007 invariant 5: Defer → register prompt + broadcast PermissionPromptQueued
+            // to all connected TUI clients; await the decision oneshot.
+            // The outer 300ms timeout wrapping this function fires on no-decision.
+            use monocle_ipc::types::{PermissionDecisionKind, PermissionPromptPayload};
+            use uuid::Uuid;
+
+            // Step 1: Build PermissionPromptPayload from envelope fields.
+            // prompt_id will be overwritten by register_prompt; use a placeholder here.
+            let payload_pre = PermissionPromptPayload {
+                prompt_id: Uuid::nil(), // overwritten by register_prompt
+                session_id: envelope.session_id.clone(),
+                tool_name: envelope.tool_name.clone().unwrap_or_default(),
+                tool_input: envelope
+                    .tool_input
+                    .clone()
+                    .unwrap_or(serde_json::Value::Null),
+                old_content: None,
+                new_content: None,
+            };
+
+            // Steps 2+3: Create decision oneshot; register prompt → obtain stable prompt_id.
+            let defer_response = if let Some(registry) = state.pending_decisions.as_ref() {
+                let (decision_tx, decision_rx) =
+                    tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+                let prompt_id = registry.register_prompt(payload_pre.clone(), decision_tx);
+
+                // Record the prompt_id so the outer timeout handler can clean up.
+                if let Ok(mut guard) = deferred_prompt_id.lock() {
+                    *guard = Some(prompt_id);
+                }
+
+                // Build payload with the assigned prompt_id.
+                let payload = PermissionPromptPayload {
+                    prompt_id,
+                    ..payload_pre
+                };
+
+                // Step 4: Broadcast PermissionPromptQueued to all connected TUI clients.
+                if let Some(subscribers) = state.ipc_subscribers.as_ref() {
+                    let queued_msg = monocle_ipc::types::ServerToClient::PermissionPromptQueued {
+                        payload: payload.clone(),
+                    };
+                    crate::ipc_server::broadcast_to_subscribers(subscribers, queued_msg).await;
+                    tracing::info!(
+                        session_id = %envelope.session_id,
+                        %prompt_id,
+                        "PreToolUse Defer: PermissionPromptQueued broadcast to TUI clients"
+                    );
+                } else {
+                    tracing::warn!(
+                        session_id = %envelope.session_id,
+                        %prompt_id,
+                        "PreToolUse Defer: ipc_subscribers=None; PermissionPromptQueued not broadcast"
+                    );
+                }
+
+                // Step 5: Await decision_rx inside the existing outer 300ms timeout.
+                match decision_rx.await {
+                    Ok(PermissionDecisionKind::Allow) => (
+                        axum::http::StatusCode::OK,
+                        Json(serde_json::json!({"decision": "allow", "reason": "user-approved"})),
+                    )
+                        .into_response(),
+                    Ok(PermissionDecisionKind::Deny) => (
+                        axum::http::StatusCode::OK,
+                        Json(serde_json::json!({"decision": "block", "reason": "user-denied"})),
+                    )
+                        .into_response(),
+                    Err(_dropped) => {
+                        // Oneshot sender dropped (e.g., daemon shutting down).
+                        // Fail-open: allow.
+                        tracing::warn!(
+                            session_id = %envelope.session_id,
+                            %prompt_id,
+                            "PreToolUse Defer: decision oneshot dropped; failing open"
+                        );
+                        (
+                                axum::http::StatusCode::OK,
+                                Json(serde_json::json!({"decision": "allow", "reason": "oneshot-dropped"})),
+                            )
+                                .into_response()
+                    }
+                }
+            } else {
+                // pending_decisions=None (test stub without registry).
+                // Await a never-resolving future so the outer 300ms timeout fires.
+                tracing::warn!(
+                    session_id = %envelope.session_id,
+                    "PreToolUse Defer: pending_decisions=None; awaiting timeout (fail-open)"
+                );
+                let (_tx, rx) = tokio::sync::oneshot::channel::<()>();
+                let _ = rx.await;
+                // Unreachable — outer timeout fires first.
+                (
+                    axum::http::StatusCode::OK,
+                    Json(serde_json::json!({"decision": "allow", "reason": "defer-no-registry"})),
+                )
+                    .into_response()
+            };
+
+            defer_response
+
+            // Step 6 (timeout path): Handled by the outer timeout in `post_hook_pre_tool_use`.
+            // When the 300ms timeout fires, it broadcasts PermissionPromptResolved and
+            // removes the registry entry. See the timeout arm in `post_hook_pre_tool_use`.
         }
         // Wildcard for #[non_exhaustive] — fail-open (EC-031).
         _ => (

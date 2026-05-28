@@ -1194,7 +1194,7 @@ async fn test_BC_2_04_001_step2_live_lock_returns_conflict() {
         Err(other) => {
             panic!("expected DaemonStartError::LockFileConflict, got: {other:?}");
         }
-        Ok(()) => {
+        Ok(_) => {
             panic!("daemon_start_sequence must NOT succeed when a live lock is present");
         }
     }
@@ -1237,4 +1237,211 @@ fn test_BC_2_04_010_hook_entries_have_empty_matcher_field() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// S-022 IPC integration tests
+//
+// These tests verify that the fully-wired daemon (daemon_start_sequence or manually
+// wired DaemonState + ipc_subscribers) correctly delivers IPC messages to connected
+// TUI clients. Exit condition 2 (daemon_start_sequence → UDS → InitialState) and
+// exit condition 3 (Defer → PermissionPromptQueued broadcast) are covered here.
+// ---------------------------------------------------------------------------
+
+/// S-022 exit condition 2: `daemon_start_sequence` → UDS connect → `InitialState` arrives.
+///
+/// After a successful `daemon_start_sequence`, a TUI client that connects to the
+/// UDS socket MUST receive exactly one `ServerToClient::InitialState` message as the
+/// first and only message (BC-2.05.002 PC-2, AC-002).
+#[tokio::test]
+async fn test_S022_daemon_start_sequence_uds_connect_receives_initial_state() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path().join("monocle-runtime");
+
+    // daemon_start_sequence creates the runtime dir, binds the UDS socket, and spawns
+    // the accept loop. The returned DaemonState has ipc_subscribers wired (S-022).
+    let _daemon_state = daemon_start_sequence(&runtime_dir)
+        .await
+        .expect("daemon_start_sequence must succeed");
+
+    // Connect a TUI client to the UDS socket.
+    // Retry briefly — the accept loop task may need a scheduler tick to start.
+    let mut stream = {
+        let sock_path = runtime_dir.join("monocle.sock");
+        let mut last_err = None;
+        let mut stream_opt: Option<tokio::net::UnixStream> = None;
+        for _ in 0..20 {
+            match tokio::net::UnixStream::connect(&sock_path).await {
+                Ok(s) => {
+                    stream_opt = Some(s);
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                }
+            }
+        }
+        stream_opt.unwrap_or_else(|| {
+            panic!(
+                "TUI client failed to connect after 20 attempts: {}",
+                last_err.unwrap()
+            )
+        })
+    };
+
+    // Read the first message — must be InitialState (BC-2.05.002 PC-2 / AC-002).
+    let msg: monocle_ipc::types::ServerToClient = monocle_ipc::framing::read_framed(&mut stream)
+        .await
+        .expect("must receive the first message from daemon");
+
+    match msg {
+        monocle_ipc::types::ServerToClient::InitialState {
+            sessions,
+            ring_tail,
+            overlay_stack,
+            drop_counter,
+        } => {
+            // Fresh daemon: all fields are empty / zero.
+            assert!(
+                sessions.is_empty(),
+                "fresh daemon: sessions must be empty, got {} sessions",
+                sessions.len()
+            );
+            assert!(
+                ring_tail.is_empty(),
+                "fresh daemon: ring_tail must be empty, got {} events",
+                ring_tail.len()
+            );
+            assert!(
+                overlay_stack.is_empty(),
+                "fresh daemon: overlay_stack must be empty"
+            );
+            assert_eq!(drop_counter, 0, "fresh daemon: drop_counter must be 0");
+        }
+        other => panic!("first message from daemon MUST be InitialState, got: {other:?}"),
+    }
+}
+
+/// S-022 exit condition 3: PreToolUse Defer → PermissionPromptQueued broadcast to TUI client.
+///
+/// When the engine returns `HookDecision::Defer`, the handler must:
+/// 1. Register the prompt in `pending_decisions`.
+/// 2. Broadcast `ServerToClient::PermissionPromptQueued` to all connected TUI clients
+///    BEFORE awaiting the decision oneshot (BC-2.04.007 invariant 5, BC-2.05.005 PC-2).
+///
+/// This test uses the `hook_decision_override` test-injection field to force the Defer
+/// path without requiring a real engine that returns Defer. A synthetic IPC subscriber
+/// is injected directly into `ipc_subscribers` to observe the broadcast.
+#[tokio::test]
+async fn test_S022_pre_tool_use_defer_broadcasts_permission_prompt_queued() {
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode};
+    use http_body_util::BodyExt;
+    use monocle_runtime::server::build_server;
+    use monocle_runtime::state::DaemonState;
+    use monocle_runtime::types::EVENT_BUS_CAPACITY;
+    use std::sync::atomic::AtomicU64;
+    use tower::ServiceExt;
+
+    const TEST_TOKEN: &str = "aabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccddaabbccdd";
+
+    // Build a DaemonState with all S-022 fields wired:
+    // - event_bus_tx: required by the pre-tool-use handler
+    // - pending_decisions: required for register_prompt (Defer path)
+    // - ipc_subscribers: required for PermissionPromptQueued broadcast
+    // - hook_decision_override: force Defer without a real engine
+    let (event_tx, _event_rx) =
+        tokio::sync::mpsc::channel::<monocle_runtime::types::EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let ipc_subscribers: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(Vec::new()));
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(event_tx));
+    state.drop_counter = Some(Arc::new(AtomicU64::new(0)));
+    state.session_registry = Some(Arc::new(monocle_runtime::hooks::SessionRegistry::new()));
+    state.pending_decisions = Some(Arc::new(
+        monocle_runtime::permissions::PendingDecisionRegistry::new(),
+    ));
+    state.ipc_subscribers = Some(Arc::clone(&ipc_subscribers));
+    state.hook_decision_override = Some((monocle_core::engine::HookDecision::Defer, None));
+
+    let state = Arc::new(state);
+
+    // Inject a TUI subscriber that will receive PermissionPromptQueued.
+    let (tui_tx, mut tui_rx) = tokio::sync::mpsc::channel::<monocle_ipc::types::ServerToClient>(16);
+    ipc_subscribers.lock().await.push(tui_tx);
+
+    // Build the Axum server and POST to /hooks/pre-tool-use.
+    // The Defer path is async: it broadcasts PermissionPromptQueued, then awaits the
+    // decision oneshot (which never fires since no TUI client resolves it). The outer
+    // 300ms timeout fires and returns fail-open allow.
+    let app = build_server(Arc::clone(&state));
+    let body = serde_json::json!({
+        "session_id": "s022-test-session",
+        "pid": 42000,
+        "tool_name": "Bash",
+        "tool_input": {"command": "rm -rf /"}
+    });
+    let req = Request::builder()
+        .method("POST")
+        .uri("/hooks/pre-tool-use")
+        .header("Content-Type", "application/json")
+        .header(
+            "X-Monocle-Authorization",
+            format!("monocle-v1:{TEST_TOKEN}"),
+        )
+        .body(Body::from(serde_json::to_vec(&body).unwrap()))
+        .unwrap();
+
+    // Spawn the POST in a separate task so we can concurrently read from tui_rx.
+    let post_task = tokio::spawn(async move {
+        let resp = app.oneshot(req).await.expect("oneshot must not fail");
+        let status = resp.status();
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json: serde_json::Value =
+            serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+        (status, json)
+    });
+
+    // The Defer path broadcasts PermissionPromptQueued BEFORE awaiting the oneshot.
+    // Wait up to 500ms for the broadcast to arrive (budget: 300ms timeout + margin).
+    let queued_msg = tokio::time::timeout(tokio::time::Duration::from_millis(500), tui_rx.recv())
+        .await
+        .expect("PermissionPromptQueued must arrive within 500ms")
+        .expect("subscriber channel must not close before receiving PermissionPromptQueued");
+
+    match queued_msg {
+        monocle_ipc::types::ServerToClient::PermissionPromptQueued { payload } => {
+            assert_eq!(
+                payload.tool_name, "Bash",
+                "PermissionPromptQueued.tool_name must match the hook body"
+            );
+            assert_eq!(
+                payload.session_id, "s022-test-session",
+                "PermissionPromptQueued.session_id must match the hook body"
+            );
+            // prompt_id must NOT be Uuid::nil() — register_prompt assigns a real UUID.
+            assert_ne!(
+                payload.prompt_id,
+                uuid::Uuid::nil(),
+                "PermissionPromptQueued.prompt_id must be a real UUID, not Uuid::nil()"
+            );
+        }
+        other => panic!("expected PermissionPromptQueued from Defer path, got: {other:?}"),
+    }
+
+    // The POST will eventually return fail-open allow (after 300ms timeout).
+    let (status, resp_json) = post_task.await.expect("post task must complete");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "Defer+timeout must return HTTP 200, got: {resp_json}"
+    );
+    assert_eq!(
+        resp_json.get("reason").and_then(|v| v.as_str()),
+        Some("timeout"),
+        "Defer+timeout must produce reason:timeout, got: {resp_json}"
+    );
 }

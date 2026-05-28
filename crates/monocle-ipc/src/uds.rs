@@ -4,10 +4,12 @@
 //! - Socket bind at `<runtime_dir>/monocle.sock` with mode 0o600 (BC-2.05.001 PC-1/PC-2).
 //! - Stale socket removal before bind (BC-2.05.001 PC-3).
 //! - UDS path length validation (BC-2.05.001 EC-002).
-//! - Per-client Tokio task spawner.
 //! - Fan-out subscriber list (`Vec<Sender<ServerToClient>>`).
 //! - `broadcast_session_list_update` / `broadcast_hook_event_received` with 256 KiB guard.
 //! - Slow client disconnect (BC-2.05.004 EC-005).
+//!
+//! The accept loop and per-client task spawner live in `monocle-runtime::ipc_server`
+//! (S-022) to avoid a circular crate dependency.
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
@@ -29,12 +31,6 @@ use crate::types::{ClientToServer, ServerToClient};
 /// BC-2.05.001 EC-002 references this limit.
 pub const UDS_PATH_LIMIT_BYTES: usize = 104;
 
-/// Bounded fan-out channel capacity.
-///
-/// Each subscriber channel holds up to this many messages before the sender
-/// detects a full buffer and disconnects the slow client.
-const FAN_OUT_CHANNEL_CAPACITY: usize = 64;
-
 /// A single TUI client connection handle on the server side.
 ///
 /// Each connected TUI client has a `Sender<ServerToClient>` in the fan-out list.
@@ -49,8 +45,10 @@ type ClientSender = mpsc::Sender<ServerToClient>;
 ///
 /// # Construction
 ///
-/// Use [`UdsTransport::bind`] to create a bound listener. The returned `UdsTransport`
-/// is ready to accept connections via [`UdsTransport::accept_loop`].
+/// Use [`UdsTransport::bind`] to create a bound socket. The bound `UnixListener`
+/// is transferred to `monocle_runtime::ipc_server::run_accept_loop` (S-022) which
+/// owns the per-client task spawner. The returned `UdsTransport` manages the path
+/// and fan-out subscriber list.
 ///
 /// # Fan-out
 ///
@@ -61,14 +59,17 @@ type ClientSender = mpsc::Sender<ServerToClient>;
 pub struct UdsTransport {
     /// Absolute path to the bound socket file.
     sock_path: PathBuf,
-    /// The bound `UnixListener` accepting incoming TUI client connections.
-    listener: UnixListener,
     /// Fan-out subscriber list — one sender per connected TUI client.
     subscribers: Arc<tokio::sync::Mutex<Vec<ClientSender>>>,
 }
 
 impl UdsTransport {
     /// Bind a new `UnixListener` at `<runtime_dir>/monocle.sock`.
+    ///
+    /// Returns `(UdsTransport, UnixListener)`. The caller is responsible for passing
+    /// the `UnixListener` to `monocle_runtime::ipc_server::run_accept_loop` (S-022).
+    /// `UdsTransport` manages the socket path and fan-out subscriber list; the listener
+    /// itself is owned by the accept-loop task.
     ///
     /// # Steps performed (BC-2.05.001)
     ///
@@ -88,7 +89,7 @@ impl UdsTransport {
     ///
     /// Returns [`IpcError::PathTooLong`], [`IpcError::IoError`], or
     /// [`IpcError::BindFailure`] on failure.
-    pub async fn bind(runtime_dir: &Path) -> Result<Self, IpcError> {
+    pub async fn bind(runtime_dir: &Path) -> Result<(Self, UnixListener), IpcError> {
         // Step 1: Compute socket path via Path::join (never string concatenation).
         let sock_path = Path::new(runtime_dir).join("monocle.sock");
 
@@ -123,11 +124,24 @@ impl UdsTransport {
         let permissions = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&sock_path, permissions)?;
 
-        Ok(Self {
+        let transport = Self {
             sock_path,
-            listener,
             subscribers: Arc::new(tokio::sync::Mutex::new(Vec::new())),
-        })
+        };
+        Ok((transport, listener))
+    }
+
+    /// Add a subscriber sender to the fan-out list (test helper and accept-loop wiring).
+    ///
+    /// Production callers: `monocle_runtime::ipc_server::register_subscriber`.
+    /// Test callers: fan_out integration tests that inject senders directly.
+    pub async fn add_subscriber(&self, sender: ClientSender) {
+        self.subscribers.lock().await.push(sender);
+    }
+
+    /// Return the number of currently registered subscribers (test helper).
+    pub async fn subscriber_count(&self) -> usize {
+        self.subscribers.lock().await.len()
     }
 
     /// Return the absolute path of the bound socket file.
@@ -215,53 +229,6 @@ impl UdsTransport {
         };
 
         self.fan_out_message(&msg).await;
-    }
-
-    /// Add a new TUI client sender to the fan-out subscriber list.
-    ///
-    /// Called by the per-client task spawner after a client connects and the
-    /// `InitialState` push completes.
-    pub async fn add_subscriber(&self, sender: ClientSender) {
-        let mut subs = self.subscribers.lock().await;
-        subs.push(sender);
-    }
-
-    /// Return the current number of live subscribers.
-    ///
-    /// Used by tests to assert slow-client removal (BC-2.05.004 EC-005).
-    pub async fn subscriber_count(&self) -> usize {
-        self.subscribers.lock().await.len()
-    }
-
-    /// Accept incoming TUI client connections in a loop.
-    ///
-    /// Each accepted connection is handed off to a per-client Tokio task.
-    /// This method runs until the `UnixListener` is closed (daemon shutdown).
-    pub async fn accept_loop(self: Arc<Self>) {
-        loop {
-            match self.listener.accept().await {
-                Ok((stream, _addr)) => {
-                    let transport = Arc::clone(&self);
-                    tokio::spawn(async move {
-                        let (tx, mut rx) =
-                            mpsc::channel::<ServerToClient>(FAN_OUT_CHANNEL_CAPACITY);
-                        transport.add_subscriber(tx).await;
-
-                        let mut client = UdsClientTransport::new(stream);
-                        // Drain outbound messages to the client.
-                        while let Some(msg) = rx.recv().await {
-                            if client.send_message(&msg).await.is_err() {
-                                break;
-                            }
-                        }
-                    });
-                }
-                Err(e) => {
-                    tracing::error!("UDS accept error: {e}");
-                    break;
-                }
-            }
-        }
     }
 
     /// Fan-out a `ServerToClient` message to all connected TUI clients.

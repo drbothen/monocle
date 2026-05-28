@@ -189,6 +189,35 @@ pub async fn send_initial_state(
     write_framed(writer, &msg).await
 }
 
+/// Broadcast a `ServerToClient` message to all connected TUI clients.
+///
+/// Implements the drain-and-retain pattern (slow-client disconnect):
+/// - For each sender: calls `try_send(msg.clone())`.
+/// - On `TrySendError::Full` (slow client): logs WARN and removes the sender.
+/// - On `TrySendError::Closed` (disconnected): silently removes the sender.
+///
+/// This is the canonical broadcast helper; all broadcast sites MUST use it to ensure
+/// consistent slow-client handling (BC-2.05.004 EC-005).
+pub(crate) async fn broadcast_to_subscribers(subscribers: &SubscriberList, msg: ServerToClient) {
+    let mut subs = subscribers.lock().await;
+    let mut live: Vec<tokio::sync::mpsc::Sender<ServerToClient>> = Vec::with_capacity(subs.len());
+
+    for sender in subs.drain(..) {
+        match sender.try_send(msg.clone()) {
+            Ok(()) => live.push(sender),
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                // Slow client — send buffer full. Disconnect and log WARN (BC-2.05.004 EC-005).
+                tracing::warn!("removed slow TUI client during broadcast (send buffer full)");
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                // Disconnected client — silently remove.
+            }
+        }
+    }
+
+    *subs = live;
+}
+
 /// Route a `PermissionDecision` from a TUI client to the pending-decision registry.
 ///
 /// # Contract (BC-2.05.005 postcondition PC-3)
@@ -216,14 +245,7 @@ async fn handle_permission_decision(
         Some(_payload) => {
             // First resolution: broadcast PermissionPromptResolved to ALL clients.
             let resolved_msg = ServerToClient::PermissionPromptResolved { prompt_id };
-            let subs = subscribers.lock().await;
-            for sender in subs.iter() {
-                if let Err(e) = sender.try_send(resolved_msg.clone()) {
-                    tracing::warn!(
-                        "failed to broadcast PermissionPromptResolved to subscriber: {e}"
-                    );
-                }
-            }
+            broadcast_to_subscribers(subscribers, resolved_msg).await;
             tracing::debug!("PermissionDecision for {prompt_id} resolved; Resolved broadcast sent");
         }
         None => {
