@@ -20,26 +20,30 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.30` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-wave-5-DURABLE-PAUSE`** — Wave 4 complete, Wave 5 ready to begin.
-- **Waves 1-3 (DONE):** 16 stories merged (83 pts). 447 tests, clippy clean. develop @ 493e1b7. Wave gates D-164, D-166, D-167 all PASSED.
-- **Wave 4 (DONE, D-175):** S-016 (PR#19), S-024 (PR#20), S-030 (PR#21). 18 pts, 146 tests. Gate PASSED.
+- **Phase: `phase-3-wave-5-GATE-PASSED`** — Wave 5 complete, Wave 6 ready to begin.
+- **Waves 1-4 (DONE):** 19 stories merged (101 pts), gates D-164/D-166/D-167/D-175.
+- **Wave 5 (DONE, D-182):** S-017 (PR#22), S-018 (PR#26), S-019 (PR#25), S-020 (PR#24), S-021 (PR#23). 34 pts, 173 new tests. Gate PASSED.
 - **Phase 1 Expansion (DONE, D-168+D-169):** PRD expanded 22 → 70 BCs. 4 new arch docs (SS-04 Daemon Wiring, SS-05 IPC, SS-06 TUI, SS-07 Config). 15-pass adversarial spec review CONVERGED.
 - **Phase 2 Expansion (DONE, D-170+D-171):** 16 new stories (S-016..S-031), 109 pts, Waves 4-7. 10 new holdout scenarios (HS-EXP-001..010).
-- **Totals:** 33 stories (195 pts), 19 done (101 pts), 14 not_started (94 pts), 1 blocked (S-PHASE-3-PREP). sprint-state v1.26. BC-INDEX v1.23 (113 BCs). STORY-INDEX v5.0.
+- **Totals:** 33 stories (195 pts), **24 done (143 pts, 73%)**, 9 not_started (52 pts). sprint-state v1.28. BC-INDEX v1.23 (113 BCs). STORY-INDEX v5.2.
+- **develop @ 1ce7838** (latest). **753 tests total**, clippy clean, fmt clean.
+- **8 workspace crates**: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, **monocle-ipc (NEW, S-021)**, xtask.
 - **Artifact versions:** PRD v1.27.2, SS-daemon-wiring v1.3.0, SS-ipc v1.6.0, SS-tui v1.7.0, SS-config v1.3.0, SS-engine-module v1.1.22, ARCH-INDEX v1.0.16.
 - Outstanding non-blocking follow-ups (durable task register):
-  - **#28**: prost/reqwest exact-patch pin verification (partial).
-  - **#34**: BC-2.03.001 PC-3 DeferUntil cleanup (closed by SS-engine-module v1.1.22 — DeferUntil removed).
-  - **BC-HOOK-034-typo**: decorated_by → deprecated_by (cosmetic).
-  - **S-005-main-wiring**: 10s drain timeout, second-signal detection (integration story).
-  - **SS-01-ProjectDirs-from**: SS-daemon-lifecycle.md ProjectDirs::new → ::from (architect maintenance).
-  - **IMPL-EnrichedSession-fields**: Add 4 TUI fields + serde derives to engine.rs (deferred-wave-4/5).
-  - **IMPL-HookDecision-serde**: Add Serialize/Deserialize to HookDecision + HookResponse (deferred-wave-5).
-  - **IMPL-on-hook-Defer**: Implement Defer routing in ClaudeCodeModule::on_hook() (deferred-wave-5).
-  - **ADV-P1D-pin-staleness**: Architecture Source pin lag (accepted-cosmetic).
-  - Plus: ADV-W4GATE-MED-001 (PATH test isolation), ADV-W4GATE-MED-002 (dead tracing in CLI), HS-EXP-009-hint (exit 70 missing stderr hint), ADV-W3GATE-MED-001..004 (daemon wiring observations).
+  - **ADV-W5GATE-HIGH-001**: daemon_start_sequence() DaemonState wiring (integration story needed).
+  - **ADV-W5GATE-HIGH-002**: Duplicate S-009 handler dead code (cleanup needed).
+  - **ADV-W5GATE-MED-001**: S-017 UDS socket spurious WARN.
+  - **ADV-W5GATE-MED-003**: HookEvent serde constructors (architect + implementer).
+  - **ADV-W4GATE-MED-001**: PATH test isolation in detect_ccr.
+  - **ADV-W4GATE-MED-002**: Dead tracing subscriber in CLI binary.
+  - **HS-EXP-009-hint**: Exit 70 missing stderr remediation hint.
+  - Plus prior items from Waves 1-4 (see `.factory/STATE.md` durable_task_register for full list).
 - 39 codified disciplines in force.
-- **Next: Wave 5 delivery** — S-017 serial first (8 pts), then S-018/S-019/S-020/S-021 parallel (26 pts).
+- **Next: Wave 6 delivery** — 4 stories, 34 pts:
+  - **S-022** (8 pts, EPIC-05) — TUI Connect + Initial State Subscribe — SERIAL FIRST. Depends on S-021, S-018 (both done). Blocks S-023, S-025, S-026, S-029.
+  - **S-023** (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — after S-022. Depends on S-019.
+  - **S-025** (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — after S-022. Depends on S-024 (done), S-030 (done).
+  - **S-026** (13 pts, EPIC-06) — Permission Overlay Core — after S-022 and S-023.
   - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
 - Mode: greenfield-with-reference-ingest.
 
@@ -168,7 +172,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — D-155 original, D-168 expansion, D-169 adversarial convergence) — 70 BCs (expanded from 22), 7 subsystems, 5 ADRs, 15-pass adversarial review
 - Phase 2: Story Decomposition (DONE original D-159; EXPANSION D-170+D-171 — adversarial review pending) — 33 stories, 7 waves, 195 points, 24 holdout scenarios
-- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-4 DONE (101 pts, 634 tests, gates D-164/D-166/D-167/D-175). Wave 5 ready (S-017 serial, then S-018/S-019/S-020/S-021 parallel).
+- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-5 DONE (143 pts, 753 tests, gates D-164/D-166/D-167/D-175/D-182). Wave 6 ready (S-022 serial, then S-023/S-025/S-026 parallel).
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
