@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.25"
+version: "1.26"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T13:00:00Z
+timestamp: 2026-05-28T14:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -901,3 +901,18 @@ BC-INDEX H1 titles: unchanged for all three BCs.
 No BC retirements or removals.
 
 SE-16d monotonicity PASS: 2026-05-28T13:00:00Z > 2026-05-28T00:00:00Z (v1.24). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.26
+
+**F-S025-ADV5-HIGH-002 — BC-2.06.014 EC-096 Overlay shape corrected** (2026-05-28T14:00:00Z):
+
+BC-2.06.014 v1.0.6 → v1.0.7 (F-S025-ADV5-HIGH-002):
+- EC-096 Expected Behavior: stale `Overlay { stack: empty, prior }` → `Overlay { prior }` with
+  App-level note (`App.overlay_stack` remains empty). §Trace v1.0.6 incorrectly claimed sweep
+  completion; v1.0.7 honestly documents the missed EC row.
+- Cross-sweep audit: no other stale `Overlay { stack` references found in live content.
+
+BC-INDEX H1 title for BC-2.06.014: unchanged ("Permission Overlay: `[Esc]` Hides Without Rejecting").
+No BC retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-28T14:00:00Z > 2026-05-28T13:00:00Z (v1.25). ARITHMETICALLY TRUE: PASS.

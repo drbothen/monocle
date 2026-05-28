@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T14:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "45d1bfe"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -98,7 +98,7 @@ being answered or dropped.
 | EC-093 | User presses `[Esc]` then immediately presses `[n/r]` (Reject) | `[Esc]` is a no-op; `[n/r]` sends Reject IPC; modal remains until `PermissionPromptResolved` arrives from daemon; correct behavior |
 | EC-094 | New `PermissionPromptQueued` IPC message arrives while the user is in `Overlay` AppMode (process still alive, not hidden) | The new `PromptModal` is pushed to the back of `stack`; if already `Overlay`, the existing `prior` is preserved; overlay badge increments; no `[Esc]` involvement |
 | EC-095 | User hides popup (`Ctrl-\`) then daemon disconnects while popup is hidden | On next `Ctrl-\`, new TUI process connects to daemon; if daemon is down, TUI renders "Daemon disconnected — reconnecting..." (BC-2.06.016 path); no overlay shown because there is no daemon to push queued prompts |
-| EC-096 | `stack.len() == 0` when `[Esc]` is dispatched (impossible in valid state) | `transition()` identity arm returns `Overlay { stack: empty, prior }` — but the empty-stack collapse (BC-2.06.001) guarantees this state cannot be reached via normal decision paths; if it occurs in testing, the no-op arm returns the impossible state unchanged |
+| EC-096 | `stack.len() == 0` when `[Esc]` is dispatched (impossible in valid state) | `transition()` identity arm returns `Overlay { prior }`; the empty-stack invariant is enforced at App-level (`App.overlay_stack` remains empty) — the empty-stack collapse (BC-2.06.001) guarantees this state cannot be reached via normal decision paths; if it occurs in testing, the no-op arm returns the impossible state unchanged |
 
 ## Canonical Test Vectors
 
@@ -197,6 +197,14 @@ S-TBD — Implement Esc no-op behavior in Overlay mode and verify overlay surviv
 - Related BCs entry for BC-2.06.013: "Reject (key `3`) pops and sends deny" → "Reject (keys `[n/r]`) sends deny IPC and waits for `PermissionPromptResolved`".
 - Traceability Cross-Ref: same correction applied to the BC-2.06.013 parenthetical.
 - SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
+
+## §Trace v1.0.7
+
+**F-S025-ADV5-HIGH-002 — EC-096 Overlay shape corrected; prior §Trace v1.0.6 sweep was incomplete** (2026-05-28T14:00:00Z):
+- EC-096 Expected Behavior: `Overlay { stack: empty, prior }` → `Overlay { prior }`; added explicit App-level note: "`App.overlay_stack` remains empty" as an adjacent clarification.
+- §Trace v1.0.6 claimed "Preconditions, Postconditions, Invariants, and test vectors updated throughout" but EC-096 in the Edge Cases table was not updated in that sweep. This entry honestly documents the missed row.
+- No other stale `Overlay { stack` references found in live content (§Trace v1.0.6 historical text at lines 203–204 is historiography and retained verbatim).
+- SE-16d monotonicity: v1.0.7 timestamp 2026-05-28T14:00:00Z > v1.0.6 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.0.6
 
