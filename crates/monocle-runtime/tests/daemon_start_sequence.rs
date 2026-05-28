@@ -1582,3 +1582,84 @@ async fn test_S022_pre_tool_use_defer_broadcasts_permission_prompt_queued() {
         "Defer+timeout must produce reason:timeout, got: {resp_json}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-ADV3-HIGH-001: BC-2.05.001 EC-002 path-length enforcement via daemon_start_sequence
+// ---------------------------------------------------------------------------
+
+/// Exercises BC-2.05.001 EC-002: `daemon_start_sequence` returns
+/// `DaemonStartError::UdsPathTooLong` when the computed `<runtime_dir>/monocle.sock`
+/// path exceeds `UDS_PATH_LIMIT_BYTES` (104 bytes).
+///
+/// Verifies that the production bind path (via `UdsTransport::bind`) enforces the
+/// path-length check — the previous inline bind in lifecycle.rs bypassed it entirely
+/// (F-ADV3-HIGH-001).
+///
+/// The ERROR log line "UDS socket path exceeds OS limit (<N> bytes, limit <M>)" is
+/// produced by `UdsTransport::bind` before returning `IpcError::PathTooLong`.
+#[tokio::test]
+async fn test_BC_2_05_001_daemon_start_sequence_returns_err_when_uds_path_too_long() {
+    // Construct a runtime_dir whose path, when joined with "monocle.sock" (+12 bytes),
+    // exceeds UDS_PATH_LIMIT_BYTES (104 bytes). We use a TempDir base and then append a
+    // subdirectory whose total length pushes the socket path over 104 bytes.
+    //
+    // Strategy: tempdir on macOS produces paths like /var/folders/.../T/... which are
+    // typically ~50 bytes. We append enough path components to exceed 104 bytes total.
+    // monocle.sock adds 12 bytes (including the '/'), so we need runtime_dir > 92 bytes.
+    use monocle_ipc::uds::UDS_PATH_LIMIT_BYTES;
+
+    let base = tempfile::tempdir().expect("create base tempdir");
+    // Build a runtime_dir path that will push the socket path above UDS_PATH_LIMIT_BYTES.
+    // Append a long component so runtime_dir > UDS_PATH_LIMIT_BYTES - len("monocle.sock") - 1.
+    let long_segment = "a".repeat(UDS_PATH_LIMIT_BYTES);
+    let runtime_dir = base.path().join(&long_segment);
+
+    let sock_path = runtime_dir.join("monocle.sock");
+    let path_len = sock_path.as_os_str().len();
+
+    // Only run this test if the path is actually over the limit.
+    // On platforms where tempdir produces a very short base, this assertion verifies
+    // the test is exercising the right scenario.
+    assert!(
+        path_len > UDS_PATH_LIMIT_BYTES,
+        "test setup: sock_path must exceed {UDS_PATH_LIMIT_BYTES} bytes, got {path_len}"
+    );
+
+    // Create runtime_dir so daemon_start_sequence can proceed past step 1.
+    std::fs::create_dir_all(&runtime_dir).expect("create long-path runtime_dir");
+
+    // daemon_start_sequence must fail at step 10 with UdsPathTooLong.
+    let result = daemon_start_sequence(&runtime_dir).await;
+
+    match result {
+        Err(DaemonStartError::UdsPathTooLong { length, limit }) => {
+            assert_eq!(
+                length, path_len,
+                "UdsPathTooLong.length must equal computed path length ({path_len}), got {length}"
+            );
+            assert_eq!(
+                limit, UDS_PATH_LIMIT_BYTES,
+                "UdsPathTooLong.limit must be UDS_PATH_LIMIT_BYTES ({UDS_PATH_LIMIT_BYTES}), got {limit}"
+            );
+        }
+        Err(other) => {
+            panic!(
+                "expected DaemonStartError::UdsPathTooLong, got: {other:?} \
+                (sock_path len = {path_len}, limit = {UDS_PATH_LIMIT_BYTES})"
+            );
+        }
+        Ok(_) => {
+            panic!(
+                "daemon_start_sequence must NOT succeed when UDS path exceeds OS limit \
+                (sock_path len = {path_len}, limit = {UDS_PATH_LIMIT_BYTES})"
+            );
+        }
+    }
+
+    // INV-6: lock file must have been cleaned up (not left behind on step 10 failure).
+    let lock_path = runtime_dir.join("monocle.lock");
+    assert!(
+        !lock_path.exists(),
+        "INV-6: monocle.lock must be removed on step 10 UdsPathTooLong failure"
+    );
+}
