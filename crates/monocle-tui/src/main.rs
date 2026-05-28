@@ -56,10 +56,17 @@ fn restore_terminal() {
 ///
 /// # Errors
 ///
-/// Returns `Err` if either `enable_raw_mode` or `EnterAlternateScreen` fails.
+/// Returns `Err` if either step fails. On partial failure (raw mode enabled
+/// but alternate-screen entry fails), raw mode is cleaned up before returning
+/// the error, preventing a terminal raw-mode leak (F-S025-ADV2-HIGH-001).
 fn setup_terminal() -> Result<()> {
     enable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen)?;
+    if let Err(e) = execute!(io::stdout(), EnterAlternateScreen) {
+        // raw_mode succeeded; alt-screen failed — clean up raw mode before propagating
+        // so the caller's terminal is left in a usable state.
+        let _ = disable_raw_mode();
+        return Err(e.into());
+    }
     Ok(())
 }
 
