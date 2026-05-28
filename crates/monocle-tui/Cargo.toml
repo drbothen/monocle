@@ -44,6 +44,9 @@ directories = { workspace = true }
 # serde_json for stub types
 serde_json = { workspace = true }
 
+# chrono for uptime formatting (started_at → elapsed duration)
+chrono = { workspace = true }
+
 [dev-dependencies]
 tokio = { workspace = true }
 

@@ -28,6 +28,7 @@
 //! The status bar at the bottom of the panel shows `"[dropped: N]"` in yellow
 //! when `app.drop_counter > 0`; nothing when it is zero.
 
+use chrono::Utc;
 use monocle_core::engine::{EnrichedSession, SessionStatus};
 use ratatui::{
     buffer::Buffer,
@@ -85,6 +86,33 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
     }
 }
 
+/// Format uptime from an optional `started_at` timestamp.
+///
+/// Returns `"—"` (U+2014 EM DASH) when `started_at` is `None` (BC-2.06.005 Invariant 3).
+/// Returns a human-readable elapsed duration string when `started_at` is `Some`.
+///
+/// Duration display:
+/// - < 60 seconds: `"Ns"` (e.g., `"42s"`)
+/// - < 3600 seconds: `"Nm"` (e.g., `"5m"`)
+/// - >= 3600 seconds: `"Nh"` (e.g., `"2h"`)
+pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> String {
+    match started_at {
+        None => "\u{2014}".to_string(), // U+2014 EM DASH
+        Some(start) => {
+            let now = Utc::now();
+            let elapsed = now.signed_duration_since(start);
+            let secs = elapsed.num_seconds().max(0) as u64;
+            if secs < 60 {
+                format!("{secs}s")
+            } else if secs < 3600 {
+                format!("{}m", secs / 60)
+            } else {
+                format!("{}h", secs / 3600)
+            }
+        }
+    }
+}
+
 /// Render state for `SessionsPanel` — tracks the currently selected row index.
 ///
 /// Wraps `ratatui::widgets::ListState` so that the implementer can call
@@ -125,15 +153,13 @@ fn harness_icon(harness_type: &str) -> char {
 
 /// Derive the project name from an `EnrichedSession`.
 ///
-/// Uses the directory component of `transcript_path` as the project name.
-/// Returns `"—"` (U+2014) when `transcript_path` is `None` (BC-2.06.005 PC-2).
+/// Uses `session.project_name` directly (BC-2.06.005 PC-2, HIGH-001 fix).
+/// Returns `"—"` (U+2014) when `project_name` is `None`.
 fn session_project(session: &EnrichedSession) -> String {
     session
-        .transcript_path
-        .as_ref()
-        .and_then(|p| p.parent())
-        .and_then(|p| p.file_name())
-        .map(|n| n.to_string_lossy().into_owned())
+        .project_name
+        .as_deref()
+        .map(str::to_owned)
         .unwrap_or_else(|| "\u{2014}".to_string()) // U+2014 EM DASH
 }
 
@@ -185,11 +211,12 @@ impl StatefulWidget for SessionsPanel<'_> {
                     let icon = harness_icon(&s.harness_type);
                     let project = session_project(s);
                     let status = format_status(&s.status);
-                    // token_count / cost / uptime not yet on EnrichedSession Phase 1 —
-                    // render "—" per BC-2.06.005 Invariant 3 until fields are added.
-                    let tokens = "\u{2014}";
-                    let cost = "\u{2014}";
-                    let uptime = "\u{2014}";
+                    // Wire real data from EnrichedSession fields (F-S025-ADV1-BLOCKER-003).
+                    // Phase 1 daemon emits None/0 defaults; formatters render "—" per
+                    // BC-2.06.005 Invariant 3.
+                    let tokens = format_token_count(s.token_count);
+                    let cost = format_cost(s.cost_usd);
+                    let uptime = format_uptime(s.started_at);
                     let row = format!(
                         "{icon} {} | {} | {} | {} | {} | {}",
                         s.session_id, project, status, tokens, cost, uptime

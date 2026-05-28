@@ -416,17 +416,47 @@ pub async fn run() -> Result<()> {
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
 
+    // Render state for the Sessions panel (selection tracking).
+    let mut sessions_state = crate::ui::sessions_panel::SessionsPanelState::default();
+
     // Main event loop.
     let tick_rate = Duration::from_millis(16); // ~60fps
 
     loop {
-        // Render the current frame.
-        let _ = terminal.draw(|_frame| {
-            // TODO(S-025): full layout rendering is wired in S-026/S-027.
-            // For S-025, we have the app state ready; render is exercised via
-            // unit tests. The main.rs draw loop will be completed in S-027
-            // which adds the full layout render pass.
-        });
+        // Render the current frame (AC-001, AC-005, BLOCKER-004).
+        terminal.draw(|frame| {
+            use crate::ui::layout::build_dashboard_layout;
+            use crate::ui::sessions_panel::SessionsPanel;
+            use ratatui::{
+                style::{Color, Style},
+                text::{Line, Span},
+                widgets::{Paragraph, StatefulWidget, Widget},
+            };
+
+            let layout = build_dashboard_layout(frame.area());
+
+            // Render the Sessions panel (left 60%).
+            let panel = SessionsPanel::new(&app);
+            panel.render(layout.sessions_area, frame.buffer_mut(), &mut sessions_state);
+
+            // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
+            let status_line = if app.drop_counter > 0 {
+                Line::from(vec![Span::styled(
+                    format!("[dropped: {}] monocle", app.drop_counter),
+                    Style::default().fg(Color::Yellow),
+                )])
+            } else {
+                Line::from(Span::styled(
+                    "monocle",
+                    Style::default().fg(Color::DarkGray),
+                ))
+            };
+            Widget::render(
+                Paragraph::new(status_line),
+                layout.status_bar_area,
+                frame.buffer_mut(),
+            );
+        })?;
 
         // Poll for input events.
         if event::poll(tick_rate)? {
