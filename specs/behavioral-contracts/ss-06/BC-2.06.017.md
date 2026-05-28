@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.6.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "6e22061"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -69,7 +69,7 @@ user acts.
    - Total TUI hop: ≤100ms
 
 2. **Decision delivery: no artificial delay.** When the user presses a decision key
-   (`[1]`, `[2]`, `[3]`) in `AppMode::Overlay`, the TUI sends `ClientToServer::PermissionDecision`
+   (`[y]/[Enter]`, `[A]`, `[n]/[r]`) in `AppMode::Overlay`, the TUI sends `ClientToServer::PermissionDecision`
    to the daemon immediately via the non-blocking IPC send channel. The send is fire-and-forget
    from the TUI's perspective; the daemon correlates by `prompt_id`.
 
@@ -121,7 +121,7 @@ user acts.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-105 | User presses decision key (`[1]`) at 299ms into a 300ms budget | Decision sent to daemon at ~299ms; daemon receives it just before timeout; daemon resolves with user's decision (not fail-open); Both TUI and Claude Code proceed correctly |
+| EC-105 | User presses decision key (`[y]`) at 299ms into a 300ms budget | Decision sent to daemon at ~299ms; daemon receives it just before timeout; daemon resolves with user's decision (not fail-open); Both TUI and Claude Code proceed correctly |
 | EC-106 | User is mid-read of the diff preview when 300ms elapses | Daemon times out; sends fail-open to Claude Code; pushes `PermissionPromptResolved { prompt_id }` to TUI; TUI removes `PromptModal` from stack; TUI transitions to Dashboard if empty; user sees prompt disappear from overlay |
 | EC-107 | Two prompts in overlay; first prompt times out while user is cycling to view the second | Daemon resolves P1 fail-open; TUI receives `PermissionPromptResolved { prompt_id: P1 }`; TUI removes P1 from `VecDeque`; P2 is now at the front; overlay re-renders showing P2 only |
 | EC-108 | `Notification` hook arrives while overlay is open (PreToolUse pending) | Daemon acknowledges Notification immediately (no `PermissionPromptQueued`); Notification appears in Event Ribbon (BC-2.06.018); overlay is NOT affected; PreToolUse prompt remains in stack |
@@ -133,11 +133,11 @@ user acts.
 
 | Scenario | Input | Expected Output | Category |
 |----------|-------|----------------|----------|
-| Decision within budget | `ServerToClient::PermissionPromptQueued` at T=0; user presses `[1]` at T=50ms | `ClientToServer::PermissionDecision { decision: PermissionDecision::Accept }` sent at T=50ms; Claude Code unblocks | happy-path |
+| Decision within budget | `ServerToClient::PermissionPromptQueued` at T=0; user presses `[y]` at T=50ms | `ClientToServer::PermissionDecision { decision: PermissionDecision::Accept }` sent at T=50ms; Claude Code unblocks | happy-path |
 | PreToolUse timeout | `PermissionPromptQueued` at T=0; no user input; daemon timeout at T=300ms | Daemon sends fail-open; `PermissionPromptResolved { prompt_id }` pushed to TUI; overlay cleared; Dashboard shown | edge-case |
 | Notification — no defer | `HookEventReceived { hook_type: Notification }` | No `PermissionPromptQueued`; event appears in ribbon; no overlay | happy-path |
 | Render within 100ms | Inject `PermissionPromptQueued`; measure time to first `draw()` containing overlay | ≤100ms elapsed | performance |
-| IPC send channel full | Inject full `ipc_tx` channel; user presses `[1]` | Warn logged; drop counter incremented; no panic; daemon applies fail-open on timeout | error |
+| IPC send channel full | Inject full `ipc_tx` channel; user presses `[y]` | Warn logged; drop counter incremented; no panic; daemon applies fail-open on timeout | error |
 
 ## Verification Properties
 
@@ -218,6 +218,15 @@ S-TBD — Verify hook timeout budget compliance: render latency test, decision d
 - Description (PC-2 text), Postcondition 2, PC-7 text (timeout scenario), EC-109, test vector
   (Decision within budget row), VP table (send-channel row): all updated.
 - SE-16d monotonicity: v1.4.0 timestamp >= v1.3.0. PASS.
+
+## §Trace v1.6.0
+
+**Stale keybinding references replaced throughout** (2026-05-27T00:00:00Z):
+- Postcondition 2: "`[1]`, `[2]`, `[3]`" → "`[y]/[Enter]`, `[A]`, `[n]/[r]`" (canonical decision keys per BC-2.06.013 v1.1.0).
+- EC-105: "`[1]`" → "`[y]`" (Accept-Once keybinding; canonical per BC-2.06.011).
+- Test vector "Decision within budget": "`[1]` at T=50ms" → "`[y]` at T=50ms".
+- Test vector "IPC send channel full": "`[1]`" → "`[y]`".
+- SE-16d monotonicity: v1.6.0 timestamp >= v1.5.0. PASS.
 
 ## §Trace v1.5.0
 

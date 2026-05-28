@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.15"
+version: "1.0.16"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-26T03:00:00Z
@@ -493,3 +493,21 @@ router-level auth middleware.
   subsequently registered in this (v1.0.15) burst.
 - version: 1.0.14 → 1.0.15; timestamp: 2026-05-26T02:00:00Z → 2026-05-26T03:00:00Z.
 - SE-16d PASS: 2026-05-26T03:00:00Z > chain high-water 2026-05-26T02:00:00Z (monotonic).
+
+## §Trace v1.0.16
+
+**SS-tui.md keybinding canonicalization and IPC-driven pop semantics** (2026-05-27T00:00:00Z):
+- NORMATIVE: SS-tui.md bumped 1.6.0 → 1.7.0. No Subsystem Registry or Document Map
+  structural changes; the doc token estimate is unchanged.
+- INFORMATIONAL: BC-2.06.011, BC-2.06.012, BC-2.06.013 updated to v1.1.0 by PO with
+  mnemonic keybindings (`y`/`Enter` = Accept-Once; `A` = Accept-Always; `n`/`r` = Reject)
+  replacing the numeric set (`[1]`/`[2]`/`[3]`). SS-tui.md v1.7.0 propagates these changes
+  to all affected locations: §Dispatcher Logic comment, §Status Bar keybinding hint line,
+  §Overlay Stack Lifecycle Step 3, §Killer Scenario table.
+- INFORMATIONAL: SS-tui.md v1.7.0 also corrects overlay pop semantics: per BC-2.06.023,
+  the TUI does NOT pop the front `PromptModal` on decision keypress. The `transition()`
+  decision arms now leave `AppMode::Overlay` unchanged; removal is exclusively IPC-driven
+  via `ServerToClient::PermissionPromptResolved { prompt_id }` → `handle_ipc_message()`
+  → `stack.retain()`. Key Invariant 2 rewritten to reflect this.
+- version: 1.0.15 → 1.0.16; timestamp: 2026-05-26T03:00:00Z → 2026-05-27T00:00:00Z.
+- SE-16d PASS: 2026-05-27T00:00:00Z > chain high-water 2026-05-26T03:00:00Z (monotonic).

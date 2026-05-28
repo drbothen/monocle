@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-030
 epic_id: EPIC-07
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-07/BC-2.07.006.md, version: "1.0.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.07.001 (config schema), BC-2.07.002 (load/save lifecycle), BC-2.07.003 (detect_ccr), BC-2.07.006 (atomic write policy)"
+traces_to: "Implements BC-2.07.001 (atomic write via tempfile::persist), BC-2.07.002 (config schema v1: harness profile fields), BC-2.07.003 (missing or corrupted config: default applied), BC-2.07.006 (CCR detection via ccr_path config field)"
 ---
 
 # S-030: Config Crate Foundation — Schema, Load/Save, detect_ccr, Atomic Writes

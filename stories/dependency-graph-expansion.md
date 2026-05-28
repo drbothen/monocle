@@ -1,16 +1,16 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T16:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.25"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.26"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.1"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
   - {path: .factory/stories/STORY-INDEX.md, version: "4.7"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
@@ -280,6 +280,14 @@ NFR-001/002/003/006 are now covered by expansion stories. GAP-P2-001..004 are re
 | GAP-EXP-002 | L3 | BC-2.07.005 Ctrl-P hardware key in test | Ctrl-P keybinding simulation in ratatui test context needs crossterm event injection helper — design deferred to test-writer for S-031 | S-031 test-writer dispatch |
 
 Both gaps are L3 (test infrastructure design choices) with mandatory resolution at their respective story's test-writer dispatch. No L1 (BC clause) gaps. No L2 (edge case) gaps.
+
+## §Trace v1.7
+
+**F-S025-ADV5-HIGH-003 + Pass 5 cumulative pin propagation** (2026-05-28):
+- SS-tui.md pin v1.8.0 → v1.8.1 (Pass 5 architect).
+- BC-INDEX.md pin v1.25 → v1.26 (BC-2.06.014 v1.0.7 bump).
+- Version bumped v1.6 → v1.7.
+- SE-16d monotonicity: v1.7 timestamp 2026-05-28T16:00:00Z >= v1.6 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.6
 

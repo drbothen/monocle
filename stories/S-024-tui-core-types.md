@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-024
 epic_id: EPIC-06
-version: "1.3"
+version: "1.4"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T16:00:00Z
 phase: 2
 points: 8
 wave: 4
@@ -44,7 +44,7 @@ correct, tested state machine with no I/O dependencies.
 `#[non_exhaustive]`) with exactly four variants:
 - `Dashboard { focused: FocusSnapshot }`
 - `Filtering { panel: PanelId, query: String, prior: FocusSnapshot }`
-- `Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }`
+- `Overlay { prior: FocusSnapshot }` (modal stack is carried in `App.overlay_stack: VecDeque<PromptModal>`, not in this variant)
 - `Fullscreen { panel: PanelId, prior: FocusSnapshot }`
 
 ### AC-002 (traces to BC-2.06.002 precondition 1 — FocusSnapshot enum definition)
@@ -74,7 +74,7 @@ in the TUI (except the PermissionPromptQueued IPC push path and BC-2.06.023 UUID
 removal path) flow through `transition()`.
 
 ### AC-005 (traces to BC-2.06.003 postcondition PC-2 — empty-stack collapse invariant)
-When `transition()` produces `Overlay { stack, prior }` where `stack` is empty,
+When `transition()` would produce `Overlay { prior }` while `App.overlay_stack` is empty,
 it MUST instead return `Dashboard { focused: prior }`. This invariant is enforced
 inside `transition()` itself — callers need not check.
 
@@ -93,17 +93,18 @@ inside `transition()` itself — callers need not check.
 `Dashboard { focused: prior }`.
 
 ### AC-008 (traces to BC-2.06.003 postcondition PC-5 — Overlay Esc is identity)
-`transition(Overlay { stack, prior }, Action::Esc)` returns
-`Overlay { stack, prior }` unchanged. Esc in Overlay mode is a no-op; it NEVER
+`transition(Overlay { prior }, Action::Esc)` returns
+`Overlay { prior }` unchanged. Esc in Overlay mode is a no-op; it NEVER
 rejects a prompt or pops the stack.
 
 ### AC-009 (traces to BC-2.06.003 postcondition PC-6 — overlay push/pop)
 `transition(mode, Action::PushOverlay { modal })`: if `mode` is `Dashboard` or
-`Filtering`, returns `Overlay { stack: VecDeque::from([modal]), prior: current_focus }`.
-If `mode` is `Overlay { stack, prior }`, pushes `modal` to back of stack.
-`transition(Overlay { stack, prior }, Action::PopOverlay)`: removes front of stack;
+`Filtering`, pushes `modal` to `App.overlay_stack` and returns `Overlay { prior: current_focus }`.
+If `mode` is `Overlay { prior }`, pushes `modal` to back of `App.overlay_stack`
+(the modal stack lives in `App.overlay_stack`, not in the `Overlay` variant).
+`transition(Overlay { prior }, Action::PopOverlay)`: removes front of `App.overlay_stack`;
 if stack becomes empty returns `Dashboard { focused: prior }`; otherwise returns
-`Overlay { stack: remaining, prior }`.
+`Overlay { prior }` (stack shrinks in `App.overlay_stack`).
 
 ### AC-010 (traces to BC-2.06.003 precondition 1 — BindingSource enum)
 `BindingSource` is `#[non_exhaustive]` with variants:
@@ -160,7 +161,7 @@ No panic, no `unreachable!()`, no `todo!()` in the final implementation.
 - [ ] Implement `FocusSnapshot::cycle()` (round-robin; single-panel idempotent) and `FocusSnapshot::to_panel_id()` (converts variant to corresponding PanelId)
 - [ ] Add `#[non_exhaustive]` to `FocusSnapshot`, `PanelId`, `BindingSource`, `Action`; ensure `AppMode` is NOT `#[non_exhaustive]`
 - [ ] Implement `transition()` covering all `(AppMode, Action)` branches: StartFilter, CommitFilter, CancelFilter, EnterFullscreen, ExitFullscreen, PushOverlay, PopOverlay, Esc, MoveFocus, and fallthrough identity
-- [ ] Enforce empty-stack collapse invariant inside `transition()` — at every code path that could produce `Overlay { stack: empty, .. }`, collapse to `Dashboard { focused: prior }`
+- [ ] Enforce empty-stack collapse invariant inside `transition()` — whenever `App.overlay_stack` is empty after a `PopOverlay` or `PushOverlay` path produces `Overlay { prior }`, collapse to `Dashboard { focused: prior }`
 - [ ] Create `monocle-core/src/tui/binding.rs` — define `BindingSource`, `BindingLayers`, `resolve_binding()`
 - [ ] Implement 5-level priority order in `resolve_binding()`: SearchPrompt > UserCustomCommand > PerContext > Global > Builtin; SearchPrompt layer checked first when mode is Filtering
 - [ ] Add `uuid` (workspace pin) to `monocle-core/Cargo.toml` for `Uuid` in `PromptModal`
@@ -246,6 +247,23 @@ pub fn resolve_binding(key: KeyEvent, mode: &AppMode, layers: &BindingLayers) ->
 ```
 
 S-025, S-026, S-031 all depend on these types being available in monocle-core.
+
+## §Trace v1.4
+
+**F-S025-ADV5-HIGH-003 — S-024 body sweep: Overlay shape annotation update (post-merge propagation)** (2026-05-28):
+- Annotation-only sweep; status remains `not_started`; no behavioral change.
+- Line 47: `Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }` → `Overlay { prior: FocusSnapshot }`
+  with adjacent note that modal stack lives in `App.overlay_stack: VecDeque<PromptModal>`.
+- Line 77 (AC-005): `Overlay { stack, prior } where stack is empty` → `Overlay { prior }` while `App.overlay_stack` is empty.
+- Lines 96–97 (AC-008): `transition(Overlay { stack, prior }, Action::Esc) returns Overlay { stack, prior }` →
+  `transition(Overlay { prior }, Action::Esc) returns Overlay { prior }`.
+- Lines 101–106 (AC-009): `Overlay { stack: VecDeque::from([modal]), prior }`, `Overlay { stack, prior }`,
+  `Overlay { stack: remaining, prior }` → all corrected to `Overlay { prior }` with explicit `App.overlay_stack` notation.
+- Line 163 (Tasks): `Overlay { stack: empty, .. }` → `App.overlay_stack` is empty (collapse trigger corrected).
+- Rationale: S-024 defined the original `Overlay { stack, prior }` shape that architect Pass 2 HIGH-003 (F-S025-ADV4-BLOCKER-001)
+  retired in favour of `Overlay { prior }` + `App.overlay_stack`. Future readers referencing S-024 would otherwise
+  be misled. This is an annotation-only propagation, not a behavioral revision.
+- SE-16d monotonicity: v1.4 timestamp 2026-05-28T16:00:00Z >= v1.3 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.3
 

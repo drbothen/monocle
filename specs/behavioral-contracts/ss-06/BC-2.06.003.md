@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "6e22061"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: [F-P1D2-010]
+modified: [F-P1D2-010, ADJ-ADV2-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -64,12 +64,18 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
    `Action::FilterType(char)`) and for `Escape` (mapped to `Action::Escape`). This ensures
    that printable keystrokes during filter mode are captured before any lower-level table
    can intercept them.
-3. **PerContext is AppMode-specific:** In `Overlay` mode, the `per_context` table contains:
-   - `KeyCode::Char('1')` → `Action::PermissionAcceptOnce`
-   - `KeyCode::Char('2')` → `Action::PermissionAcceptAlways`
-   - `KeyCode::Char('3')` → `Action::PermissionReject`
+3. **SearchPrompt captures overlay decision keys:** In `Overlay` mode, the `search_prompt`
+   table (highest priority) contains the permission decision bindings:
+   - `KeyCode::Char('y')` → `Action::PermissionAcceptOnce`
+   - `KeyCode::Enter` → `Action::PermissionAcceptOnce`
+   - `KeyCode::Char('A')` → `Action::PermissionAcceptAlways`
+   - `KeyCode::Char('n')` → `Action::PermissionReject`
+   - `KeyCode::Char('r')` → `Action::PermissionReject`
    - `KeyCode::Char('t')` → `Action::PermissionTraceToSource`
-   These bindings are NOT present in `per_context` when `AppMode` is `Dashboard` or
+   These bindings reside in the `SearchPrompt` layer (not `PerContext`) because overlay
+   decision keys must take highest priority, overriding any `PerContext`, `Global`, or
+   `Builtin` bindings that might otherwise intercept `y`, `Enter`, `A`, `n`, or `r` during
+   overlay mode. They are NOT present in `search_prompt` when `AppMode` is `Dashboard` or
    `Fullscreen`, preventing accidental permission decisions outside overlay mode.
 4. **No-match returns `None`:** If a `KeyEvent` is not present in any of the five tables
    at the time of resolution, `resolve()` returns `None`. The TUI draw loop discards the
@@ -96,8 +102,8 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-070 | `Char('1')` pressed in `Dashboard` mode | `per_context` table for Dashboard has no `Char('1')` entry; `user_custom`, `global`, `builtin` are checked; if none match, returns `None` |
-| EC-071 | `Char('1')` pressed in `Overlay` mode | `per_context` contains `Char('1')` → `PermissionAcceptOnce`; resolved before reaching `builtin`; returns `Binding { action: PermissionAcceptOnce, source: PerContext }` |
+| EC-070 | `Char('y')` pressed in `Dashboard` mode | `search_prompt` table for Dashboard has no `Char('y')` overlay entry; `per_context`, `user_custom`, `global`, `builtin` are checked; if none match, returns `None` |
+| EC-071 | `Char('y')` or `Enter` pressed in `Overlay` mode | `search_prompt` contains `Char('y')` and `Enter` → `PermissionAcceptOnce`; resolved at highest priority before reaching any lower-level table; returns `Binding { action: PermissionAcceptOnce, source: SearchPrompt }` |
 | EC-072 | User binds `Tab` to a custom action in `user_custom` table | `Tab` → custom action from `user_custom` wins over `Tab` → `CyclePanel` from `builtin` |
 | EC-073 | `update_context()` called twice in rapid succession (e.g., two AppMode transitions in one tick) | Second call replaces the `per_context` table set by the first; no stale entries; final state is correct for the last `AppMode` passed |
 | EC-074 | `Dispatcher` constructed with empty `user_custom` and `per_context` tables | `resolve()` falls through to `global` and `builtin`; builtin defaults are always present |
@@ -110,8 +116,11 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 | `Tab` | `Dashboard { focused: Sessions }` | `CyclePanel` | `Builtin` | happy-path |
 | `Char('/')` | `Dashboard { focused: Sessions }` | `FilterStart` | `Builtin` | happy-path |
 | `Char('a')` | `Filtering { .. }` | `FilterType('a')` | `SearchPrompt` | happy-path |
-| `Char('1')` | `Overlay { .. }` | `PermissionAcceptOnce` | `PerContext` | happy-path |
-| `Char('1')` | `Dashboard { .. }` | `None` (no match) | N/A | edge-case |
+| `Char('y')` | `Overlay { .. }` | `PermissionAcceptOnce` | `SearchPrompt` | happy-path |
+| `Enter` | `Overlay { .. }` | `PermissionAcceptOnce` | `SearchPrompt` | happy-path |
+| `Char('A')` | `Overlay { .. }` | `PermissionAcceptAlways` | `SearchPrompt` | happy-path |
+| `Char('n')` | `Overlay { .. }` | `PermissionReject` | `SearchPrompt` | happy-path |
+| `Char('y')` | `Dashboard { .. }` | `None` (no match) | N/A | edge-case |
 | `Char('q')` | `Dashboard { .. }` | `Quit` | `Builtin` | happy-path |
 | `Ctrl-P` | `Dashboard { .. }` | `ProfilePicker` | `Builtin` | happy-path |
 | Unknown key (e.g., `F12`) | Any | `None` | N/A | edge-case |
@@ -120,7 +129,7 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | `Char('1')` resolves to `PermissionAcceptOnce` in Overlay and `None` in Dashboard | Unit test (table-driven) |
+| VP-TBD | `Char('y')` and `Enter` resolve to `PermissionAcceptOnce` (source: `SearchPrompt`) in Overlay and `None` in Dashboard | Unit test (table-driven) |
 | VP-TBD | `update_context()` removes all prior per_context bindings before installing new ones | Unit test |
 | VP-TBD | For any key in `user_custom`, `resolve()` returns `UserCustomCommand` source regardless of `builtin` contents | Unit test |
 
@@ -133,7 +142,7 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 | L2 Domain Invariants | DI-006 (EngineModule statelessness — orthogonally supported: `Dispatcher::resolve()` is stateless beyond the pre-populated tables; no global mutable state is read during resolution) |
 | Architecture Module | monocle-core (BindingSource, Binding enums); monocle-tui (Dispatcher, per_context rebuild) per ARCH-INDEX SS-06 |
 | Architecture Source | SS-tui.md v1.5.0 §Action Enum and 5-Level Binding Precedence (Dispatcher Logic sketch, BindingSource enum) |
-| Cross-Ref | BC-2.06.001 (Action enum definition), BC-2.06.004 (Ctrl-\ binding is external to dispatcher — in tmux, not monocle), BC-2.06.011 (accept-once `[1]` key is a PerContext binding exercised here) |
+| Cross-Ref | BC-2.06.001 (Action enum definition), BC-2.06.004 (Ctrl-\ binding is external to dispatcher — in tmux, not monocle), BC-2.06.011 (accept-once `[y]`/`[Enter]` bindings are in SearchPrompt layer per this dispatch contract), BC-2.06.012 (accept-always `[A]` binding — SearchPrompt layer), BC-2.06.013 (reject `[n]`/`[r]` bindings — SearchPrompt layer) |
 | Test File | `monocle-tui/tests/keybinding_dispatcher.rs` |
 | Test Name | `test_BC_2_06_003_five_level_binding_precedence` |
 | Stories | S-TBD (filled by story-writer) |
@@ -141,9 +150,9 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 ## Related BCs
 
 - [BC-2.06.001] — depends on: `Action` enum is defined in monocle-core (same crate as BindingSource/Binding)
-- [BC-2.06.011] — composes with: `[1]` accept-once binding is registered in PerContext for Overlay mode per this dispatch contract
-- [BC-2.06.012] — composes with: `[2]` accept-always binding is registered in PerContext for Overlay mode
-- [BC-2.06.013] — composes with: `[3]` reject binding is registered in PerContext for Overlay mode
+- [BC-2.06.011] — composes with: `[y]`/`[Enter]` accept-once bindings are registered in SearchPrompt (highest priority) for Overlay mode per this dispatch contract
+- [BC-2.06.012] — composes with: `[A]` accept-always binding is registered in SearchPrompt for Overlay mode
+- [BC-2.06.013] — composes with: `[n]`/`[r]` reject bindings are registered in SearchPrompt for Overlay mode
 
 ## Architecture Anchors
 
@@ -168,8 +177,8 @@ S-TBD — Implement Dispatcher with 5-level HashMap tables; update_context() reb
 - EC-075 documents an important edge case: Ctrl-P is a modifier combination, not a printable
   character, so it is NOT captured by search_prompt during Filtering mode — it falls through
   to the Global or Builtin tables. This ensures ProfilePicker is always accessible.
-- Postcondition 3 explicitly lists the Overlay per_context bindings because the
-  `[1]`/`[2]`/`[3]`/`[t]` key assignments are the most safety-critical dispatch rules
+- Postcondition 3 explicitly lists the Overlay search_prompt bindings because the
+  `[y]`/`[Enter]`/`[A]`/`[n]`/`[r]`/`[t]` key assignments are the most safety-critical dispatch rules
   in the system (they trigger IPC `ClientToServer::PermissionDecision` messages to the daemon).
 
 
@@ -189,7 +198,7 @@ S-TBD — Implement Dispatcher with 5-level HashMap tables; update_context() reb
 
 **IPC sweep — fabricated `DecisionResponse` in rationale note replaced** (2026-05-26T14:30:00Z):
 - Design Notes paragraph: "trigger IPC DecisionResponse messages" → "trigger IPC `ClientToServer::PermissionDecision` messages".
-  This is an explanatory note about why the `[1]`/`[2]`/`[3]`/`[t]` key assignments are
+  This is an explanatory note about why the permission key assignments are
   safety-critical; the informal shorthand `DecisionResponse` was replaced with the canonical
   `ClientToServer::PermissionDecision` per SS-ipc.md §Client-to-Server Messages.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
@@ -199,3 +208,36 @@ S-TBD — Implement Dispatcher with 5-level HashMap tables; update_context() reb
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.0
+
+**ADJ-ADV2-001 HIGH — Keybinding + layer propagation from BC-2.06.011/012/013 v1.1.0** (2026-05-27T09:00:00Z):
+
+BC-2.06.011, BC-2.06.012, and BC-2.06.013 were updated to v1.1.0 in the same burst as BC-INDEX
+v1.21 (ADJ-ADV2-001 adjudication). BC-2.06.003 was NOT updated in that burst — it still referenced
+`1`/`2`/`3` keybindings in the `PerContext` layer. This trace records the propagation fix.
+
+**Keybinding changes (Postcondition 3, EC-070, EC-071, Test Vectors, VP, Cross-Refs, Related BCs):**
+- `KeyCode::Char('1')` → `Action::PermissionAcceptOnce` replaced with `KeyCode::Char('y')` + `KeyCode::Enter` → `Action::PermissionAcceptOnce`.
+- `KeyCode::Char('2')` → `Action::PermissionAcceptAlways` replaced with `KeyCode::Char('A')` → `Action::PermissionAcceptAlways`.
+- `KeyCode::Char('3')` → `Action::PermissionReject` replaced with `KeyCode::Char('n')` + `KeyCode::Char('r')` → `Action::PermissionReject`.
+- Rationale: mnemonic set (`y`/`Enter`/`A`/`n`/`r`) is canonical per ADJ-ADV2-001 adjudication
+  (lazygit-philosophy verb keybindings; S-026/S-027 are authoritative UX design artifacts).
+
+**Layer change (Postcondition 3):**
+- Permission decision bindings moved from `per_context` table to `search_prompt` table (highest
+  priority). This matches BC-2.06.011 v1.1.0 Precondition 2, BC-2.06.012 v1.1.0 Precondition 2,
+  BC-2.06.013 v1.1.0 Precondition 2, and S-026 AC-009 (all of which specify `SearchPrompt` layer).
+- Rationale: overlay decision keys must override any `PerContext`, `Global`, or `Builtin` bindings
+  that could intercept `y`, `Enter`, `A`, `n`, or `r` during overlay mode. The `SearchPrompt`
+  layer is the correct home for modal-input capture (as it is for filter-mode printable-char capture).
+
+**Sections updated:** frontmatter version + modified[], Postcondition 3, EC-070, EC-071, all three
+overlay-key test vector rows (replaced with 5 rows covering y/Enter/A/n/y-in-Dashboard), VP first
+row, Cross-Ref table cell, Related BCs bullet points for 011/012/013, §Trace v1.0.0 and §Trace v1.0.3
+notes referencing `[1]/[2]/[3]`.
+
+**Sections NOT changed:** Postconditions 1/2/4/5/6, all Invariants, EC-072/EC-073/EC-074/EC-075, VP rows 2+3,
+Architecture Anchors, Story Anchor, VP Anchors, Traceability rows other than Cross-Ref.
+
+SE-16d monotonicity: v1.1.0 timestamp 2026-05-27T09:00:00Z > v1.0.4 (2026-05-26T00:00:00Z). PASS.

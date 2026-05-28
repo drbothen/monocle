@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-028
 epic_id: EPIC-06
-version: "1.0"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -16,15 +16,17 @@ depends_on: [S-025, S-021]
 blocks: []
 target_module: monocle-tui
 subsystems: [SS-06]
-behavioral_contracts: [BC-2.06.006, BC-2.06.018]
+behavioral_contracts: [BC-2.05.002, BC-2.05.004, BC-2.06.006, BC-2.06.018]
 verification_properties: []
 estimated_days: 2
 inputs:
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.06.006 (sessions fuzzy filter), BC-2.06.018 (event ribbon panel)"
+traces_to: "Implements BC-2.05.002 (InitialState ring_tail delivery), BC-2.05.004 (HookEventReceived streaming), BC-2.06.006 (sessions fuzzy filter), BC-2.06.018 (event ribbon panel)"
 ---
 
 # S-028: Sessions Filter + Event Ribbon
@@ -39,7 +41,7 @@ recent activity.
 ## Acceptance Criteria
 
 ### AC-001 (traces to BC-2.06.006 postcondition PC-1 — filter entry)
-From `Dashboard { focused: FocusSnapshot { panel: PanelId::Sessions, .. } }`, pressing `/`
+From `Dashboard { focused: FocusSnapshot::Sessions }`, pressing `/`
 or `f` dispatches `Action::StartFilter { panel: PanelId::Sessions }` via `resolve_binding()`,
 transitioning to `Filtering { panel: PanelId::Sessions, query: String::new(), prior: focused }`.
 A search input box is rendered at the top of the Sessions panel with cursor.
@@ -69,11 +71,15 @@ keystroke would reset internal caches and degrade performance.
 ### AC-006 (traces to BC-2.06.018 postcondition PC-1 — event ribbon panel)
 The EventRibbon panel renders a scrollable chronological list of events for the
 currently selected session (highlighted row in Sessions panel). Each event row shows:
-`<timestamp> | <event_type> | <summary>`. Events are sourced from the ring buffer
-(S-008/S-020) via `ServerToClient::SessionEvents { session_id, events }` IPC messages.
+`<timestamp> | <event_type> | <summary>`. Events are sourced from two paths per
+BC-2.05.004 invariant 3 (no filtering at the IPC layer; the TUI filters for display):
+- `InitialState.ring_tail` (received on connect, per BC-2.05.002) — backfills historical events
+- `HookEventReceived` messages (streaming, per BC-2.05.004) — delivers live events as they arrive
+The TUI holds a `VecDeque<HookEventRow>` in `App.event_ribbon_events` and filters it
+client-side by `session_id` to display only events for the selected session.
 
 ### AC-007 (traces to BC-2.06.018 postcondition PC-2 — event ribbon keyboard navigation)
-In `Dashboard { focused: FocusSnapshot { panel: PanelId::EventRibbon, .. } }` mode:
+In `Dashboard { focused: FocusSnapshot::EventRibbon }` mode:
 - `j` / `↓` scrolls down one event
 - `k` / `↑` scrolls up one event
 - `G` jumps to the newest event (bottom)
@@ -82,29 +88,35 @@ In `Dashboard { focused: FocusSnapshot { panel: PanelId::EventRibbon, .. } }` mo
 These bindings are dispatched via `resolve_binding()` using the `Global` layer.
 
 ### AC-008 (traces to BC-2.06.018 postcondition PC-3 — event ribbon auto-scroll)
-When a new event arrives for the selected session (via `ServerToClient::SessionEvents`),
-the event ribbon auto-scrolls to the bottom UNLESS the user has manually scrolled up
-(i.e., the current scroll position is not at the bottom). This is a standard "follow
-tail unless pinned" pattern — track whether the user has scrolled away from bottom.
+When a new `HookEventReceived` message arrives (per BC-2.05.004) and the incoming event
+matches the selected session (client-side filter by `session_id`), the event ribbon
+auto-scrolls to the bottom UNLESS the user has manually scrolled up (i.e., the current
+scroll position is not at the bottom). This is a standard "follow tail unless pinned"
+pattern — track whether the user has scrolled away from bottom via a `pinned_top: bool` flag.
 
 ### AC-009 (traces to BC-2.06.018 invariant INV-1 — event ribbon panel scope)
 The event ribbon shows events ONLY for the session currently selected in the Sessions
 panel. When session selection changes (via `j`/`k` navigation or filter commit), the
-event ribbon clears its event list and requests a fresh `SessionEvents` load for the
-new `session_id`.
+event ribbon re-filters `App.event_ribbon_events` (the full `VecDeque<HookEventRow>`)
+by the new `session_id` and resets the scroll position to the bottom. No new IPC request
+is issued on selection change — all events across all sessions are already held
+client-side from `InitialState.ring_tail` (BC-2.05.002) and ongoing `HookEventReceived`
+messages (BC-2.05.004); filtering is purely client-side per BC-2.05.004 invariant 3.
 
 ## Token Budget Estimate
 
 | Component | Tokens |
 |-----------|--------|
-| This story spec | ~1,800 |
+| This story spec | ~1,900 |
+| BC-2.05.002.md | ~700 |
+| BC-2.05.004.md | ~700 |
 | BC-2.06.006.md | ~900 |
 | BC-2.06.018.md | ~900 |
 | S-025 (TUI skeleton, Sessions panel, layout) | ~700 |
-| S-021 (UDS IPC types, SessionEvents) | ~500 |
+| S-021 (UDS IPC types, HookEventReceived, InitialState) | ~500 |
 | nucleo 0.5 API | ~400 |
 | Test files | ~900 |
-| **Total estimate** | **~6,100** |
+| **Total estimate** | **~7,600** |
 
 ## Tasks
 
@@ -118,10 +130,15 @@ new `session_id`.
 - [ ] Implement `Action::CommitFilter` handler: retain selected filtered session, transition to Dashboard
 - [ ] Implement `Action::CancelFilter` handler: restore full session list, transition to Dashboard
 - [ ] Create `monocle-tui/src/ui/event_ribbon.rs` — EventRibbon panel widget with scroll state
-- [ ] Implement `ServerToClient::SessionEvents` IPC handler: update `App.event_ribbon_events` for selected session
+- [ ] Add `App.event_ribbon_events: VecDeque<HookEventRow>` — holds ALL events from all sessions;
+      populated from `InitialState.ring_tail` on connect (BC-2.05.002) and from each `HookEventReceived`
+      message (BC-2.05.004); client-side filtered by `session_id` in the render function
+- [ ] Implement `HookEventReceived` IPC handler: append new event to `App.event_ribbon_events`
+- [ ] Implement `InitialState` handler: pre-populate `App.event_ribbon_events` from `ring_tail` on connect
 - [ ] Implement auto-scroll logic: auto-follow bottom unless user has scrolled up (bool flag `pinned_top`)
 - [ ] Implement event ribbon keyboard navigation: `j`/`k`/`G`/`gg`/`Enter` bindings in Global layer
-- [ ] Implement session-change event ribbon reset: on selection change, clear events, request fresh load
+- [ ] Implement session-change event ribbon reset: on selection change, re-filter `App.event_ribbon_events`
+      by new `session_id` (client-side only — no IPC request issued) and reset scroll to bottom
 - [ ] Unit tests `monocle-tui/tests/filter_sessions.rs` — filter entry/exit, nucleo scoring, empty query
 - [ ] Unit tests `monocle-tui/tests/event_ribbon.rs` — auto-scroll, pin/unpin, session-change reset
 
@@ -132,8 +149,12 @@ The Sessions panel uses ratatui `ListState` for scroll/selection tracking. The `
 mode query field is in `AppMode::Filtering { query, .. }` — extract it from `App.mode`
 in the render function.
 
-S-021 (UDS IPC types): `ServerToClient::SessionEvents { session_id: String, events: Vec<RingEvent> }`
-is the IPC message for event ribbon data. Confirm exact field names in S-021 before
+S-021 (UDS IPC types): `ServerToClient::HookEventReceived { session_id: String, event: RingEvent }`
+delivers individual events as they arrive (BC-2.05.004). There is NO `ServerToClient::SessionEvents`
+variant — event ribbon data is sourced from `InitialState.ring_tail` (BC-2.05.002) on connect and
+from ongoing `HookEventReceived` messages (BC-2.05.004) while running. Filtering by session_id
+is done client-side in the TUI per BC-2.05.004 invariant 3; no session-scoped IPC request exists.
+Confirm exact field names for `HookEventReceived` and `InitialState.ring_tail` in S-021 before
 implementing.
 
 nucleo 0.5 API: `Matcher::new(Config::DEFAULT)` creates a matcher. `matcher.fuzzy_match(haystack, needle, false)`
@@ -162,7 +183,7 @@ From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-pattern
 | nucleo | 0.5 | `Matcher`, `Pattern` for fuzzy session filtering |
 | ratatui | workspace pin | `StatefulWidget`, `ListState`, `Paragraph` for filter input |
 | monocle-core | workspace path | `AppMode::Filtering`, `Action`, `transition()`, `PanelId` |
-| monocle-ipc | workspace path | `ServerToClient::SessionEvents` |
+| monocle-ipc | workspace path | `ServerToClient::HookEventReceived`, `ServerToClient::InitialState` (ring_tail) |
 
 ## File Structure Requirements
 
@@ -173,8 +194,9 @@ Files to create:
 
 Files to modify:
 - `monocle-tui/Cargo.toml` — add `nucleo 0.5`
-- `monocle-tui/src/app.rs` — add `matcher: nucleo::Matcher` field; add `SessionEvents` handler;
-  add event ribbon state (`event_ribbon_events`, `pinned_top`)
+- `monocle-tui/src/app.rs` — add `matcher: nucleo::Matcher` field; add `HookEventReceived` handler
+  (append to `event_ribbon_events`); add `InitialState` ring_tail pre-population;
+  add event ribbon state (`event_ribbon_events: VecDeque<HookEventRow>`, `pinned_top: bool`)
 - `monocle-tui/src/ui/sessions_panel.rs` (from S-025) — add filter input box rendering; add nucleo scoring
 - `monocle-tui/src/ui/mod.rs` — declare `event_ribbon` module
 

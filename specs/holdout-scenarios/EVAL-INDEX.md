@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.0"
+version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-27T00:00:00Z
@@ -10,16 +10,16 @@ visibility: holdout-evaluator-only
 inputs:
   - {path: .factory/stories/S-016-daemon-binary-cli.md, version: "1.0"}
   - {path: .factory/stories/S-017-daemon-start-sequence.md, version: "1.0"}
-  - {path: .factory/stories/S-018-hook-routing-event-bus.md, version: "1.0"}
-  - {path: .factory/stories/S-019-daemon-auto-start.md, version: "1.0"}
-  - {path: .factory/stories/S-022-tui-connect-permission-prompt.md, version: "1.0"}
+  - {path: .factory/stories/S-018-hook-routing-event-bus.md, version: "1.1"}
+  - {path: .factory/stories/S-019-daemon-auto-start.md, version: "1.1"}
+  - {path: .factory/stories/S-022-tui-connect-permission-prompt.md, version: "1.1"}
   - {path: .factory/stories/S-023-reconnect-soq3.md, version: "1.0"}
-  - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.0"}
-  - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.0"}
+  - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.1"}
+  - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.2"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
-  - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.0"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
-traces_to: ".factory/stories/STORY-INDEX.md v4.0"
+  - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.23"}
+traces_to: ".factory/stories/STORY-INDEX.md v4.7"
 input-hash: "[pending]"
 ---
 
@@ -77,7 +77,7 @@ input-hash: "[pending]"
 | HS-EXP-004 | BC-2.05.007, BC-2.06.016 | SOQ-3: overlay clear before reconnect |
 | HS-EXP-005 | BC-2.05.006 | InitialState state rebuild after daemon restart |
 | HS-EXP-006 | BC-2.06.004, BC-2.06.007, BC-2.06.008 | Ctrl-\\ popup prompt survival |
-| HS-EXP-007 | BC-2.07.002, BC-2.07.006 | Config atomic write; no partial write |
+| HS-EXP-007 | BC-2.07.001, BC-2.07.002 | Config atomic write; no partial write |
 | HS-EXP-008 | BC-2.06.022, BC-2.06.009, BC-2.06.011 | Killer scenario; ≤6 keystrokes |
 | HS-EXP-009 | BC-2.04.006, BC-2.04.004 | runtime_dir Level 4 fail-fast exit code 70 |
 | HS-EXP-010 | BC-2.05.005, BC-2.06.011, BC-2.06.016 | Timeout-resolved + disconnect-cleared overlap |
@@ -95,6 +95,34 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 - **Combined total: 24 holdout scenarios**
 
 ---
+
+## §Trace v1.3
+
+**Mechanical pin cascade: BC-INDEX v1.22 → v1.23 + STORY-INDEX traces_to v4.5 → v4.7** (2026-05-27):
+- BC-INDEX.md input pin updated: `"1.22"` → `"1.23"`.
+- traces_to updated: `v4.5` → `v4.7`.
+- Version bumped v1.3 → v1.4.
+
+## §Trace v1.2
+
+**Phase 2 Adversarial Review Pass 3 — HS-EXP-007 BC reference corrected** (2026-05-27):
+- F-P3-HIGH-004: HS-EXP-007 `source_bcs` corrected — `BC-2.07.006` (CCR Detection) replaced
+  with `BC-2.07.001` (Config File Atomic Write via tempfile::persist). This is the correct BC
+  for atomic write holdout testing; BC-2.07.006 is about CCR path detection, not atomicity.
+- BC Coverage Traceability table row for HS-EXP-007 updated: `BC-2.07.002, BC-2.07.006` →
+  `BC-2.07.001, BC-2.07.002`.
+- BC-INDEX.md pin updated: `"1.19"` → `"1.21"`.
+- traces_to updated: `v4.0` → `v4.4`.
+- Version bumped v1.1→v1.2.
+
+## §Trace v1.1
+
+**Phase 2 Adversarial Review Pass 2 — stale story version pins updated** (2026-05-27):
+- F-P2ADV-P2-008: Story version pins updated to match actual story file versions after Pass 1/Pass 2 remediation:
+  - S-018: "1.0" → "1.1"; S-019: "1.0" → "1.1"; S-022: "1.0" → "1.1"
+  - S-025: "1.0" → "1.1"; S-026: "1.0" → "1.2"; S-030: "1.0" → "1.1"
+  - S-016: remains "1.0" (no Pass 1/2 changes); S-017: remains "1.0"; S-023: remains "1.0"; S-029: remains "1.0"
+- Version bumped v1.0→v1.1.
 
 ## §Trace v1.0
 

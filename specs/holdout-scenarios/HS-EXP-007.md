@@ -3,7 +3,7 @@ scenario_id: HS-EXP-007
 title: "Config Atomic Write: tempfile::persist — No Partial Config Under Concurrent Save Failure"
 wave: 4
 stories_tested: [S-030]
-source_bcs: [BC-2.07.002, BC-2.07.006]
+source_bcs: [BC-2.07.001, BC-2.07.002]
 severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
@@ -13,7 +13,7 @@ timestamp: 2026-05-27T00:00:00Z
 # HS-EXP-007: Config Atomic Write — tempfile::persist Leaves No Partial Config Under Concurrent Save Failure
 
 **Wave:** 4
-**Source BC:** BC-2.07.006 (postcondition PC-1), BC-2.07.002 (invariant INV-1)
+**Source BC:** BC-2.07.001 (postcondition PC-1 — tempfile::persist atomic write), BC-2.07.002 (invariant INV-1 — no partial write)
 **Stories Tested:** S-030
 
 ## Setup

@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.5"
+version: "1.6"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T16:00:00Z
 phase: 2
 points: 13
 wave: 6
@@ -25,7 +25,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.011.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.012.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.2.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.4.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
@@ -307,6 +307,15 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.6
+
+**F-S025-ADV5-HIGH-003 / Pass 5 cumulative pin propagation** (2026-05-28):
+- BC-2.06.014 inputs pin updated: v1.0.6 → v1.0.7.
+- BC-2.06.014 v1.0.7 corrected EC-096 edge-case Expected Behavior text (Overlay shape: `Overlay { stack: empty, prior }` →
+  `Overlay { prior }` with adjacent `App.overlay_stack` note). Behavioral semantics of AC-008 (Esc is no-op identity)
+  are unchanged — no body edits to AC-008 required.
+- SE-16d monotonicity: v1.6 timestamp 2026-05-28T16:00:00Z >= v1.5 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.5
 

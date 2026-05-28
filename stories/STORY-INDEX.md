@@ -1,14 +1,14 @@
 ---
 document_type: story-index
 level: L4
-version: "5.7"
+version: "5.8"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T16:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.25"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.26"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
@@ -17,7 +17,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.1"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
 traces_to: ".factory/specs/prd.md v1.26.15"
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.8
+
+**F-S025-ADV5-HIGH-003 + Pass 5 cumulative pin propagation** (2026-05-28):
+- S-024 v1.3 → v1.4: Overlay shape annotation sweep (F-S025-ADV5-HIGH-003). Status unchanged (not_started).
+  Lines 47, 77, 96–97, 101–106, 163 updated from `Overlay { stack, prior }` to `Overlay { prior }` + `App.overlay_stack` notation.
+- S-026 v1.5 → v1.6: BC-2.06.014 pin v1.0.6 → v1.0.7 (EC-096 edge-case shape correction — no AC body changes needed).
+- STORY-INDEX: SS-tui.md pin v1.8.0 → v1.8.1; BC-INDEX pin v1.25 → v1.26.
+- dependency-graph-expansion.md v1.6 → v1.7: same SS-tui and BC-INDEX pin bumps.
+- SE-16d monotonicity: v5.8 timestamp 2026-05-28T16:00:00Z >= v5.7 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v5.7
 

@@ -7,7 +7,7 @@ producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "94a6c14"
+input-hash: "7ae5e0d"
 traces_to: prd.md
 source_bc: BC-2.01.005
 module: monocle-runtime
