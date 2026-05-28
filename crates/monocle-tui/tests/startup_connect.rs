@@ -45,6 +45,10 @@ fn make_session(id: &str) -> EnrichedSession {
         None,
         SessionStatus::Active,
         None,
+        None,  // project_name
+        None,  // started_at
+        0,     // token_count
+        None,  // cost_usd
     )
 }
 

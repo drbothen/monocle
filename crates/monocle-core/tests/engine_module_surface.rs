@@ -1093,6 +1093,10 @@ fn test_BC_2_03_001_ac006_engine_module_is_open_trait_implementable_from_outside
                 None,
                 SessionStatus::Idle,
                 None,
+                None,  // project_name
+                None,  // started_at
+                0,     // token_count
+                None,  // cost_usd
             ))
         }
 

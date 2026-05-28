@@ -386,6 +386,10 @@ impl EngineModule for ClaudeCodeModule {
             config_path,
             monocle_core::engine::SessionStatus::Idle,
             None, // last_event_micros: no hook events received yet
+            None, // project_name: Phase 1 default
+            None, // started_at: Phase 1 default
+            0,    // token_count: Phase 1 default
+            None, // cost_usd: Phase 1 default
         ))
     }
 
