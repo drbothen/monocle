@@ -4,7 +4,6 @@
 //! Per AC-013, `AppMode` is NOT `#[non_exhaustive]` — exhaustive matching is
 //! required in the binary crate so the compiler enforces complete mode coverage.
 
-use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
 use uuid::Uuid;
@@ -33,9 +32,17 @@ pub enum AppMode {
         prior: FocusSnapshot,
     },
     /// One or more permission overlays stacked on the view.
+    ///
+    /// The actual stack of `PromptModal` items lives ONLY in `App::overlay_stack`
+    /// (the single source of truth — F-S025-ADV2-HIGH-003). The existence of this
+    /// mode variant indicates "TUI is in overlay mode"; the stack is accessed via
+    /// the App-level field, not embedded here.
+    ///
+    /// Stack mutations (push, pop, cycle) are performed by App methods that update
+    /// `App::overlay_stack` directly and then call `transition()` for mode changes.
+    /// `transition()` itself never touches the stack — it remains pure on
+    /// `(AppMode, Action) → AppMode`.
     Overlay {
-        /// Stack of pending permission modals; never empty while this mode is active.
-        stack: VecDeque<PromptModal>,
         /// The focus state to restore when all overlays are dismissed.
         prior: FocusSnapshot,
     },
@@ -102,8 +109,9 @@ pub enum PanelId {
 
 /// A pending permission prompt awaiting user disposition.
 ///
-/// Stacked in `AppMode::Overlay::stack` as a `VecDeque<PromptModal>` — never
-/// wrapped in `Option` (forbidden pattern per SS-conventions-anti-patterns.md).
+/// Stored in `App::overlay_stack` as a `VecDeque<PromptModal>` — the single
+/// source of truth per F-S025-ADV2-HIGH-003. Never wrapped in `Option`
+/// (forbidden pattern per SS-conventions-anti-patterns.md).
 #[derive(Clone)]
 pub struct PromptModal {
     /// Stable identifier correlating this modal to the originating hook request.
@@ -258,33 +266,37 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         }
 
         // --- Overlay push from Dashboard ---
-        (AppMode::Dashboard { focused }, Action::PushOverlay { modal }) => AppMode::Overlay {
-            stack: VecDeque::from([modal]),
+        //
+        // F-S025-ADV2-HIGH-003: The modal is NOT stored in AppMode::Overlay anymore.
+        // The caller (App-level handler) must push the modal to `App::overlay_stack`
+        // BEFORE calling transition(). transition() here only records the prior focus.
+        (AppMode::Dashboard { focused }, Action::PushOverlay { .. }) => AppMode::Overlay {
             prior: focused,
         },
 
         // --- Overlay push from Filtering ---
-        (AppMode::Filtering { prior, .. }, Action::PushOverlay { modal }) => AppMode::Overlay {
-            stack: VecDeque::from([modal]),
+        // Same as Dashboard push: record prior focus, stack mutation is App-level.
+        (AppMode::Filtering { prior, .. }, Action::PushOverlay { .. }) => AppMode::Overlay {
             prior,
         },
 
-        // --- Overlay push from existing Overlay (append to back, preserve prior) ---
-        (AppMode::Overlay { mut stack, prior }, Action::PushOverlay { modal }) => {
-            stack.push_back(modal);
-            AppMode::Overlay { stack, prior }
-        }
+        // --- Overlay push from existing Overlay (identity mode change — prior preserved) ---
+        //
+        // App-level handler has already pushed to overlay_stack. Mode stays Overlay.
+        // The `modal` field is ignored here — App::overlay_stack is the single source.
+        (AppMode::Overlay { prior }, Action::PushOverlay { .. }) => AppMode::Overlay { prior },
 
-        // --- Overlay pop ---
-        (AppMode::Overlay { mut stack, prior }, Action::PopOverlay) => {
-            stack.pop_front();
-            // Empty-stack collapse invariant (AC-005)
-            if stack.is_empty() {
-                AppMode::Dashboard { focused: prior }
-            } else {
-                AppMode::Overlay { stack, prior }
-            }
-        }
+        // --- Overlay pop (collapse invariant enforcement is App-level) ---
+        //
+        // F-S025-ADV2-HIGH-003: transition() always collapses to Dashboard.
+        // The App-level handler:
+        //   1. Pops from overlay_stack.
+        //   2. Calls transition(mode, PopOverlay) → Dashboard { focused: prior }.
+        //   3. If overlay_stack is still non-empty, re-enters Overlay: sets
+        //      app.mode = AppMode::Overlay { prior: <captured prior> }.
+        // This preserves the empty-stack collapse invariant (AC-005) while keeping
+        // transition() stack-agnostic.
+        (AppMode::Overlay { prior }, Action::PopOverlay) => AppMode::Dashboard { focused: prior },
 
         // --- MoveFocus: cycle focus in Dashboard via FocusSnapshot::cycle() ---
         // BC-2.06.005 PC-2 / AC-006: Tab cycles focus through the panel tab order.
@@ -295,17 +307,14 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         },
 
         // --- Esc in Overlay is identity (AC-008) ---
-        (AppMode::Overlay { stack, prior }, Action::Esc) => AppMode::Overlay { stack, prior },
+        (AppMode::Overlay { prior }, Action::Esc) => AppMode::Overlay { prior },
 
-        // --- OverlayCycleNext: rotates front to back, preserves prior ---
-        (AppMode::Overlay { mut stack, prior }, Action::OverlayCycleNext) => {
-            if stack.len() > 1 {
-                if let Some(front) = stack.pop_front() {
-                    stack.push_back(front);
-                }
-            }
-            AppMode::Overlay { stack, prior }
-        }
+        // --- OverlayCycleNext: identity mode change; App-level rotates overlay_stack ---
+        //
+        // F-S025-ADV2-HIGH-003: the rotation of overlay_stack is an App-level mutation.
+        // transition() returns Overlay unchanged — the visual change is from the render
+        // loop reading overlay_stack.front() after App rotates it.
+        (AppMode::Overlay { prior }, Action::OverlayCycleNext) => AppMode::Overlay { prior },
 
         // --- Identity (all other combinations) ---
         // EC-061: unmatched (mode, action) pairs return identity

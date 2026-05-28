@@ -254,8 +254,9 @@ pub fn on_initial_state(
     }
 
     if !app.overlay_stack.is_empty() {
+        // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
+        // App::overlay_stack IS the stack. Mode variant signals "in overlay mode".
         app.mode = AppMode::Overlay {
-            stack: app.overlay_stack.clone(),
             prior: FocusSnapshot::Sessions,
         };
     }
@@ -508,14 +509,47 @@ pub async fn run() -> Result<()> {
                     }
                     Some((action, _)) => {
                         // All other actions: drive the AppMode state machine.
-                        use monocle_core::tui::state::transition;
+                        use monocle_core::tui::state::{transition, Action};
                         // Check for clean exit: Action::Quit (bound to `q` in Dashboard
                         // via per-context layer — F-S025-ADV2-HIGH-002 / MED-004 fix).
                         // `q` in Filtering mode is intercepted by SearchPrompt as FilterType,
                         // so it never reaches this arm in non-Dashboard modes.
-                        let is_quit =
-                            matches!(&action, monocle_core::tui::state::Action::Quit);
-                        app.mode = transition(app.mode.clone(), action);
+                        let is_quit = matches!(&action, Action::Quit);
+
+                        // F-S025-ADV2-HIGH-003: Overlay stack mutations are App-level.
+                        // PopOverlay: pop from overlay_stack first; transition() always
+                        // returns Dashboard; re-enter Overlay if stack still non-empty.
+                        // OverlayCycleNext: rotate overlay_stack; mode stays Overlay.
+                        // PushOverlay from key binding is unusual (normally IPC-driven)
+                        // but still handled correctly: push to overlay_stack, then transition.
+                        match &action {
+                            Action::PopOverlay => {
+                                app.overlay_stack.pop_front();
+                                // transition() collapses to Dashboard { prior }.
+                                app.mode = transition(app.mode.clone(), action);
+                                // Re-enter Overlay if stack still has items.
+                                if !app.overlay_stack.is_empty() {
+                                    let prior = match &app.mode {
+                                        AppMode::Dashboard { focused } => focused.clone(),
+                                        _ => FocusSnapshot::Sessions,
+                                    };
+                                    app.mode = AppMode::Overlay { prior };
+                                }
+                            }
+                            Action::OverlayCycleNext => {
+                                // Rotate overlay_stack; transition() is identity.
+                                if app.overlay_stack.len() > 1 {
+                                    if let Some(front) = app.overlay_stack.pop_front() {
+                                        app.overlay_stack.push_back(front);
+                                    }
+                                }
+                                app.mode = transition(app.mode.clone(), action);
+                            }
+                            _ => {
+                                app.mode = transition(app.mode.clone(), action);
+                            }
+                        }
+
                         if is_quit {
                             break;
                         }
@@ -582,9 +616,28 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         }
         ServerToClient::PermissionPromptQueued { payload } => {
             apply_permission_prompt_queued(&mut app.overlay_stack, payload);
+            // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
+            // mutate overlay_stack. Enter Overlay mode if not already in it.
+            if !app.overlay_stack.is_empty() {
+                if !matches!(app.mode, AppMode::Overlay { .. }) {
+                    let prior = match &app.mode {
+                        AppMode::Dashboard { focused } => focused.clone(),
+                        AppMode::Filtering { prior, .. } => prior.clone(),
+                        AppMode::Fullscreen { prior, .. } => prior.clone(),
+                        AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
+                    };
+                    app.mode = AppMode::Overlay { prior };
+                }
+            }
         }
         ServerToClient::PermissionPromptResolved { prompt_id } => {
             app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
+            // F-S025-ADV2-HIGH-003: if stack is now empty, collapse to Dashboard.
+            if app.overlay_stack.is_empty() {
+                if let AppMode::Overlay { prior } = app.mode.clone() {
+                    app.mode = AppMode::Dashboard { focused: prior };
+                }
+            }
         }
         ServerToClient::HookEventReceived { .. } => {
             // Hook events update the event ribbon — handled in S-027.

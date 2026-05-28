@@ -12,7 +12,7 @@
 
 use monocle_core::tui::binding::{BindingLayers, BindingSource, KeyCode, KeyEvent, KeyModifiers};
 use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
-use std::collections::VecDeque;
+
 use std::panic::AssertUnwindSafe;
 use std::time::Instant;
 use uuid::Uuid;
@@ -85,8 +85,9 @@ fn make_test_modal() -> PromptModal {
 }
 
 fn overlay_mode() -> AppMode {
+    // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
+    // The prior field is sufficient to construct the Overlay mode sentinel.
     AppMode::Overlay {
-        stack: VecDeque::from([make_test_modal()]),
         prior: FocusSnapshot::Sessions,
     }
 }

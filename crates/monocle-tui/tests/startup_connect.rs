@@ -292,12 +292,14 @@ fn test_bc_2_06_004_pc2_ac008_initial_state_nonempty_overlay_enters_overlay_mode
 
     on_initial_state(&mut app, vec![], ring, overlay_stack, 0);
 
+    // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
+    // Verify mode is Overlay AND that App::overlay_stack has the correct count.
     match &app.mode {
-        AppMode::Overlay { stack, .. } => {
+        AppMode::Overlay { .. } => {
             assert_eq!(
-                stack.len(),
+                app.overlay_stack.len(),
                 2,
-                "AC-008: Overlay stack must have 2 entries from InitialState"
+                "AC-008: App::overlay_stack must have 2 entries from InitialState"
             );
         }
         other => panic!(
