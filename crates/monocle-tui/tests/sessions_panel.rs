@@ -20,7 +20,7 @@ use monocle_core::tui::state::{Action, AppMode, FocusSnapshot, PanelId, PromptMo
 use monocle_tui::app::App;
 use monocle_tui::ui::sessions_panel::{
     format_cost, format_session_row, format_token_count, format_uptime_at, SessionsPanel,
-    SessionsPanelState,
+    SessionsPanelState, SESSIONS_EMPTY_LINE_1, SESSIONS_EMPTY_LINE_2,
 };
 use ratatui::{backend::TestBackend, layout::Rect, Terminal};
 use std::time::Instant;
@@ -116,20 +116,35 @@ fn make_modal() -> PromptModal {
 /// message when app.sessions is empty.
 ///
 /// Test vector: app.sessions = [] →
-///   contains "No sessions detected"
-///   contains "Start Claude Code in any terminal to see it here."
+///   contains SESSIONS_EMPTY_LINE_1 ("No sessions detected")
+///   contains SESSIONS_EMPTY_LINE_2 ("Start Claude Code in any terminal to see it here.")
+///
+/// Uses pub consts (single source of truth) — eliminates vacuous-mirror drift
+/// between test and production (F-S025-ADV10-MED-001 sweep).
 #[test]
 fn test_bc_2_06_005_pc3_ac005_renders_empty_state_when_no_sessions() {
+    // Pin canonical strings to their pub const definitions.
+    assert_eq!(
+        SESSIONS_EMPTY_LINE_1,
+        "No sessions detected",
+        "BC-2.06.005 PC-3: SESSIONS_EMPTY_LINE_1 must match canonical text verbatim"
+    );
+    assert_eq!(
+        SESSIONS_EMPTY_LINE_2,
+        "Start Claude Code in any terminal to see it here.",
+        "BC-2.06.005 PC-3: SESSIONS_EMPTY_LINE_2 must match canonical text verbatim"
+    );
+
     let app = App::new(MonocleConfig::default());
     let rendered = render_sessions_panel(&app, 0);
     assert!(
-        rendered.contains("No sessions detected"),
-        "BC-2.06.005 PC-3: rendered output must contain 'No sessions detected'; got:\n{}",
+        rendered.contains(SESSIONS_EMPTY_LINE_1),
+        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_1; got:\n{}",
         rendered
     );
     assert!(
-        rendered.contains("Start Claude Code in any terminal to see it here."),
-        "BC-2.06.005 PC-3: rendered output must contain the second empty-state line; got:\n{}",
+        rendered.contains(SESSIONS_EMPTY_LINE_2),
+        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_2; got:\n{}",
         rendered
     );
 }
@@ -470,9 +485,9 @@ fn test_bc_2_06_007_pc7_fullscreen_renderer_no_panic_empty_sessions() {
     // BC-2.06.007 Invariant 1: the guard is in the renderer, not the transition.
     // The renderer must not panic on empty sessions — it shows the empty-state message.
     let rendered = render_sessions_panel(&app, 0);
-    // Empty sessions: the renderer shows "No sessions detected" (same as Dashboard empty state).
+    // Empty sessions: renderer shows SESSIONS_EMPTY_LINE_1 (single source of truth).
     assert!(
-        rendered.contains("No sessions detected"),
+        rendered.contains(SESSIONS_EMPTY_LINE_1),
         "BC-2.06.007 PC-7: empty-session render must not panic and must show empty-state msg; got:\n{}",
         rendered
     );
@@ -859,5 +874,99 @@ fn test_bc_2_06_005_columns_separated_by_single_space() {
     assert!(
         !row.contains(" | "),
         "BC-2.06.005: row must not contain ' | ' pipe separator; got: {row:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV10-MED-002 — BC-2.06.005 PC-6 selected-row blue highlight
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV10-MED-002 / BC-2.06.005 PC-6: the currently-focused row is rendered
+/// with the terminal's selection highlight style (Color::Blue background).
+///
+/// Exercises `list_state.select(Some(1))` with three sessions so the middle row
+/// is selected. The selected row must have `bg == Some(Color::Blue)` on every cell.
+///
+/// Mental bug-injection: if `highlight_style(Style::default().bg(Color::Blue))` were
+/// removed from production, `cell.style().bg` would be `None` and this test would
+/// fail with `bg == None`.
+#[test]
+fn test_bc_2_06_005_pc6_selected_row_renders_blue_highlight_background() {
+    use ratatui::{layout::Position, style::Color, widgets::StatefulWidget};
+
+    let app = app_with_sessions(vec![
+        session("sess-a"),
+        session("sess-b"),
+        session("sess-c"),
+    ]);
+
+    let backend = ratatui::backend::TestBackend::new(80, 8);
+    let mut terminal = ratatui::Terminal::new(backend).expect("TestBackend terminal");
+
+    let mut sessions_state = SessionsPanelState::default();
+    // Select the middle row (index 1 — "sess-b").
+    sessions_state.list_state.select(Some(1));
+
+    terminal
+        .draw(|frame| {
+            // Use the full 80×8 area.  SessionsPanel splits it into [Min(0), Length(1)];
+            // the list_area starts at y=0 with no border, so list item index 1 renders
+            // at y=1 in the buffer.
+            let area = frame.area();
+            SessionsPanel::new(&app).render(area, frame.buffer_mut(), &mut sessions_state);
+        })
+        .expect("terminal draw");
+
+    let buffer = terminal.backend().buffer().clone();
+
+    // Index 1 with a BORDERS::NONE list and no block border → row y = 1 in the buffer.
+    let selected_y: u16 = 1;
+
+    // Assert that every non-empty cell in the selected row has Color::Blue background.
+    // We check columns 0-9 (well within the session_id text "sess-b") to avoid
+    // asserting on padding cells at the right margin that may retain default style.
+    for x in 0u16..10 {
+        let pos = Position::new(x, selected_y);
+        let cell = buffer.cell(pos).unwrap_or_else(|| {
+            panic!("BC-2.06.005 PC-6: expected a cell at ({x}, {selected_y}) in the buffer")
+        });
+        assert_eq!(
+            cell.style().bg,
+            Some(Color::Blue),
+            "BC-2.06.005 PC-6: selected row (y={selected_y}, x={x}) must have \
+             Color::Blue background; got {:?}",
+            cell.style().bg
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV10-LOW-003 — format_uptime_at clock-skew sentinel
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV10-LOW-003 / BC-2.06.005: when `started_at > now` (positive clock
+/// skew), `format_uptime_at` must return the em-dash sentinel `"—"` (U+2014).
+///
+/// The production guard at `sessions_panel.rs:135-138` checks `total_secs < 0`
+/// and returns `"\u{2014}"`.
+///
+/// Mental bug-injection: if the `total_secs < 0` guard were removed, a negative
+/// duration would underflow to a large positive value (or panic on the `as u64`
+/// cast), producing a nonsensical uptime string — never `"—"`. The test would fail.
+#[test]
+fn test_bc_2_06_005_uptime_clock_skew_renders_em_dash() {
+    use chrono::{TimeZone, Utc};
+
+    let now = Utc.with_ymd_and_hms(2026, 5, 28, 12, 0, 0).unwrap();
+    // started_at is 5 seconds in the future — positive clock skew.
+    let started_at_in_future = now + chrono::Duration::seconds(5);
+
+    let result = format_uptime_at(Some(started_at_in_future), now);
+
+    assert_eq!(
+        result, "\u{2014}",
+        "BC-2.06.005: clock skew (started_at > now) must render em-dash sentinel '—'; \
+         got {:?}",
+        result
     );
 }
