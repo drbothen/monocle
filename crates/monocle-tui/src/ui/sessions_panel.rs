@@ -66,8 +66,12 @@ pub fn format_token_count(count: u64) -> String {
     } else if count < 1_000_000 {
         let k = count / 1_000;
         format!("{k}k")
+    } else if count >= 1_000_000_000 {
+        // F-S025-ADV9-LOW-002: cap at "999M+" to prevent unbounded column width.
+        // EC-086 pattern extended to token counts: same cap discipline as uptime 999:59:59.
+        "999M+".to_string()
     } else {
-        // >= 1_000_000: render as N.NM (one decimal place per BC-2.06.005)
+        // >= 1_000_000 and < 1_000_000_000: render as N.NM (one decimal place per BC-2.06.005)
         let m_int = count / 1_000_000;
         let m_dec = (count % 1_000_000) / 100_000; // tenths of millions
         if m_dec == 0 {
@@ -81,13 +85,19 @@ pub fn format_token_count(count: u64) -> String {
 /// Format an optional cost as a USD string (BC-2.06.005 PC-2, Invariant 3).
 ///
 /// Returns `"—"` (U+2014 EM DASH) when `cost_usd` is `None`.
-/// Returns `"$N.NN"` (two decimal places) when `cost_usd` is `Some(f)`.
+/// Returns `"—"` when `cost_usd` is `Some(NaN)` or `Some(±inf)` — invalid
+/// float values are semantically equivalent to "missing data" and must not
+/// produce `"$NaN"`, `"$inf"`, or `"$-inf"` in the TUI column.
+/// Returns `"$N.NN"` (two decimal places) for finite values.
 ///
 /// Invariant 3 (BC-2.06.005): `None` always renders as `"—"`, never as
 /// `"None"`, `"N/A"`, `"-"`, or any other sentinel.
+/// F-S025-ADV9-MED-001: NaN and ±infinity are treated as `"—"` to satisfy
+/// BC-2.06.005 PC-2's `"$N.NN"` or `"—"` mandate.
 pub fn format_cost(cost_usd: Option<f64>) -> String {
     match cost_usd {
         None => "\u{2014}".to_string(), // U+2014 EM DASH
+        Some(cost) if cost.is_nan() || cost.is_infinite() => "\u{2014}".to_string(),
         Some(cost) => format!("${cost:.2}"),
     }
 }
@@ -268,7 +278,12 @@ mod format_session_row_tests {
 
     fn fixed_now() -> chrono::DateTime<Utc> {
         // 2026-01-01T00:00:00Z — stable reference instant for deterministic tests.
-        chrono::DateTime::from_timestamp(1_767_225_600, 0).expect("valid timestamp")
+        // SAFETY: 1_767_225_600 is a valid Unix timestamp (2026-01-01T00:00:00Z).
+        // chrono::DateTime::from_timestamp is infallible for values in [0, i64::MAX]
+        // that fit within the chrono representable range; this value does.
+        #[allow(clippy::expect_used)]
+        chrono::DateTime::from_timestamp(1_767_225_600, 0)
+            .expect("1_767_225_600 is a valid Unix timestamp (2026-01-01T00:00:00Z)")
     }
 
     /// F-S025-ADV9-LOW-001: empty session_id must render as "?" prefix, not " ● ".
@@ -364,9 +379,17 @@ pub fn format_session_row(s: &EnrichedSession, now: DateTime<Utc>) -> String {
     let tokens = format_token_count(s.token_count);
     let cost = format_cost(s.cost_usd);
     let uptime = format_uptime_at(s.started_at, now);
+    // F-S025-ADV9-LOW-001: daemon does not enforce non-empty session_id at the
+    // EnrichedSession::new() level, so we guard here defensively. An empty id
+    // would produce a leading-space artefact (" ● project …"); substitute "?".
+    let id = if s.session_id.is_empty() {
+        "?"
+    } else {
+        &s.session_id
+    };
     format!(
-        "{} {icon} {} {} {} {} {}",
-        s.session_id, project, status, tokens, cost, uptime
+        "{id} {icon} {} {} {} {} {}",
+        project, status, tokens, cost, uptime
     )
 }
 
