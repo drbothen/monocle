@@ -414,25 +414,6 @@ impl UdsClientTransport {
         }
     }
 
-    /// Construct a `UdsClientTransport` with an externally owned event channel (S-023).
-    ///
-    /// Used internally by [`connect_with_events`] (the background-reader path). Callers
-    /// that need the event channel should use `connect_with_events` instead of this method.
-    pub(crate) fn with_event_channel(
-        stream: tokio::net::UnixStream,
-        event_tx: EventSender,
-    ) -> Self {
-        let (reader, writer) = stream.into_split();
-        Self {
-            writer,
-            read_strategy: ReadStrategy::Direct {
-                reader,
-                event_tx,
-                graceful: false,
-            },
-        }
-    }
-
     // -----------------------------------------------------------------------
     // S-023: disconnect-path detection helpers
     // -----------------------------------------------------------------------
@@ -541,10 +522,7 @@ impl Transport for UdsClientTransport {
             ReadStrategy::Buffered { msg_rx } => {
                 // Background task has already emitted the event before placing the
                 // error in the channel — ordering invariant is preserved.
-                msg_rx
-                    .recv()
-                    .await
-                    .unwrap_or(Err(IpcError::Disconnected))
+                msg_rx.recv().await.unwrap_or(Err(IpcError::Disconnected))
             }
         }
     }

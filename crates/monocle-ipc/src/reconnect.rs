@@ -112,10 +112,10 @@ impl BackoffState {
         // Backoff schedule (BC-2.05.006 PC-4):
         // Attempt 0 → 250ms, Attempt 1 → 500ms, Attempt 2 → 1000ms, Attempt 3+ → 2000ms cap.
         let delay_ms = match self.attempt {
-            0 => BACKOFF_INITIAL_MS,           // 250ms
-            1 => BACKOFF_INITIAL_MS * 2,       // 500ms
-            2 => BACKOFF_INITIAL_MS * 4,       // 1000ms
-            _ => BACKOFF_CAP_MS,               // 2000ms cap
+            0 => BACKOFF_INITIAL_MS,     // 250ms
+            1 => BACKOFF_INITIAL_MS * 2, // 500ms
+            2 => BACKOFF_INITIAL_MS * 4, // 1000ms
+            _ => BACKOFF_CAP_MS,         // 2000ms cap
         };
         self.attempt = self.attempt.saturating_add(1);
         Duration::from_millis(delay_ms)
@@ -277,7 +277,7 @@ pub async fn reconnect(
 ///
 /// Returns [`IpcError::IoError`] if the lock file cannot be read.
 /// Returns [`IpcError::SerializeError`] if the lock file JSON is malformed.
-pub(crate) async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, IpcError> {
+pub async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, IpcError> {
     let lock_path = runtime_dir.join("monocle.lock");
     // Use tokio::fs for async I/O (does not block the runtime on large lock files).
     let contents = tokio::fs::read_to_string(&lock_path)
@@ -321,7 +321,7 @@ pub(crate) async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathB
 ///
 /// This function does not return errors — transient lock-file read failures are logged
 /// at `DEBUG` level and the poll continues.
-pub(crate) async fn poll_for_new_daemon(runtime_dir: &Path) {
+pub async fn poll_for_new_daemon(runtime_dir: &Path) {
     let lock_path = runtime_dir.join("monocle.lock");
     // Read the initial PID to detect when a NEW daemon starts.
     let initial_pid = read_lock_pid(&lock_path).await;

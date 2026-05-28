@@ -1,3 +1,12 @@
+#![allow(
+    non_snake_case,
+    dead_code,
+    unused_assignments,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::disallowed_methods,
+    clippy::unnecessary_cast
+)]
 //! Reconnect backoff, lock-file re-read, offline mode, and state rebuild tests
 //! (S-023, BC-2.05.006).
 //!
@@ -59,8 +68,7 @@ fn soq3_handler(overlay: &mut VecDeque<PromptModal>, mode: &mut AppMode) {
 #[test]
 fn test_BC_2_05_006_constants_backoff_initial_is_250ms() {
     assert_eq!(
-        BACKOFF_INITIAL_MS,
-        250,
+        BACKOFF_INITIAL_MS, 250,
         "BC-2.05.006 PC-4: BACKOFF_INITIAL_MS must be 250 (first retry wait)"
     );
 }
@@ -69,8 +77,7 @@ fn test_BC_2_05_006_constants_backoff_initial_is_250ms() {
 #[test]
 fn test_BC_2_05_006_constants_backoff_cap_is_2000ms() {
     assert_eq!(
-        BACKOFF_CAP_MS,
-        2_000,
+        BACKOFF_CAP_MS, 2_000,
         "BC-2.05.006 PC-4: BACKOFF_CAP_MS must be 2000 (cap at Attempt 4+)"
     );
 }
@@ -79,8 +86,7 @@ fn test_BC_2_05_006_constants_backoff_cap_is_2000ms() {
 #[test]
 fn test_BC_2_05_006_constants_reconnect_window_is_5s() {
     assert_eq!(
-        RECONNECT_WINDOW_SECS,
-        5,
+        RECONNECT_WINDOW_SECS, 5,
         "BC-2.05.006 PC-5: RECONNECT_WINDOW_SECS must be 5"
     );
 }
@@ -89,8 +95,7 @@ fn test_BC_2_05_006_constants_reconnect_window_is_5s() {
 #[test]
 fn test_BC_2_05_006_constants_offline_poll_is_5s() {
     assert_eq!(
-        OFFLINE_POLL_INTERVAL_SECS,
-        5,
+        OFFLINE_POLL_INTERVAL_SECS, 5,
         "BC-2.05.006 PC-5: OFFLINE_POLL_INTERVAL_SECS must be 5 (distinct from auto-start 100ms)"
     );
 }
@@ -253,7 +258,7 @@ async fn test_BC_2_05_006_pc_3_lock_file_reread_after_failed_attempt() {
 async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
     use tempfile::tempdir;
     use tokio::net::UnixListener;
-    use tokio::time::{pause, advance};
+    use tokio::time::{advance, pause};
 
     let dir = tempdir().expect("tempdir");
     let lock_path = dir.path().join("monocle.lock");
@@ -285,8 +290,11 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
             "authToken": "token-v2",
             "socketPath": new_sock_path.to_string_lossy()
         });
-        std::fs::write(dir_clone.join("monocle.lock"), serde_json::to_string(&lock_v2).unwrap())
-            .expect("write new lock file");
+        std::fs::write(
+            dir_clone.join("monocle.lock"),
+            serde_json::to_string(&lock_v2).unwrap(),
+        )
+        .expect("write new lock file");
 
         // Keep listener alive so reconnect() can connect.
         tokio::time::sleep(Duration::from_secs(3)).await;
@@ -339,8 +347,11 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
             "authToken": "token-restarted",
             "socketPath": dir_clone.join("monocle.sock").to_string_lossy()
         });
-        std::fs::write(dir_clone.join("monocle.lock"), serde_json::to_string(&lock_v2).unwrap())
-            .expect("write");
+        std::fs::write(
+            dir_clone.join("monocle.lock"),
+            serde_json::to_string(&lock_v2).unwrap(),
+        )
+        .expect("write");
         tokio::time::sleep(Duration::from_secs(3)).await;
     });
 
@@ -366,7 +377,7 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
 #[tokio::test]
 async fn test_BC_2_05_006_pc_5_reconnect_timeout_after_5_second_window() {
     use tempfile::tempdir;
-    use tokio::time::{pause, advance};
+    use tokio::time::{advance, pause};
 
     let dir = tempdir().expect("tempdir");
 
@@ -383,7 +394,10 @@ async fn test_BC_2_05_006_pc_5_reconnect_timeout_after_5_second_window() {
     // Advance past the full 5-second window.
     advance(Duration::from_secs(RECONNECT_WINDOW_SECS + 1)).await;
 
-    let result_display = result.as_ref().map(|_| "<connected>").map_err(|e| e.to_string());
+    let result_display = result
+        .as_ref()
+        .map(|_| "<connected>")
+        .map_err(|e| e.to_string());
     assert!(
         matches!(result, Err(IpcError::ReconnectTimeout)),
         "BC-2.05.006 PC-5 / AC-010: reconnect() must return IpcError::ReconnectTimeout \
@@ -397,7 +411,7 @@ async fn test_BC_2_05_006_pc_5_reconnect_timeout_after_5_second_window() {
 #[tokio::test]
 async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down() {
     use tempfile::tempdir;
-    use tokio::time::{pause, advance};
+    use tokio::time::{advance, pause};
 
     let dir = tempdir().expect("tempdir");
 
@@ -421,7 +435,10 @@ async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down(
     let result = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff).await;
     advance(Duration::from_secs(RECONNECT_WINDOW_SECS + 1)).await;
 
-    let result_display = result.as_ref().map(|_| "<connected>").map_err(|e| e.to_string());
+    let result_display = result
+        .as_ref()
+        .map(|_| "<connected>")
+        .map_err(|e| e.to_string());
     assert!(
         matches!(result, Err(IpcError::ReconnectTimeout)),
         "BC-2.05.006 EC-002: permanently down daemon must yield ReconnectTimeout; \
@@ -435,7 +452,7 @@ async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down(
 #[tokio::test]
 async fn test_BC_2_05_006_ec_005_offline_mode_when_lock_file_absent() {
     use tempfile::tempdir;
-    use tokio::time::{pause, advance};
+    use tokio::time::{advance, pause};
 
     let dir = tempdir().expect("tempdir");
     // No monocle.lock written — lock file is absent.
@@ -446,7 +463,10 @@ async fn test_BC_2_05_006_ec_005_offline_mode_when_lock_file_absent() {
     let result = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff).await;
     advance(Duration::from_secs(RECONNECT_WINDOW_SECS + 1)).await;
 
-    let result_display = result.as_ref().map(|_| "<connected>").map_err(|e| e.to_string());
+    let result_display = result
+        .as_ref()
+        .map(|_| "<connected>")
+        .map_err(|e| e.to_string());
     assert!(
         matches!(result, Err(IpcError::ReconnectTimeout)),
         "BC-2.05.006 EC-005 / AC-010: absent lock file must yield ReconnectTimeout; \
@@ -687,13 +707,15 @@ async fn test_BC_2_05_006_invariant_1_soq3_before_reconnect_loop() {
     let dir = tempdir().expect("tempdir");
 
     // Simulate SOQ-3 clear before calling reconnect().
-    let mut overlay: VecDeque<PromptModal> = VecDeque::from([
-        PromptModal { prompt_id: 10 },
-        PromptModal { prompt_id: 11 },
-    ]);
+    let mut overlay: VecDeque<PromptModal> =
+        VecDeque::from([PromptModal { prompt_id: 10 }, PromptModal { prompt_id: 11 }]);
     let mut mode = AppMode::Overlay;
 
-    assert_eq!(overlay.len(), 2, "precondition: 2 queued prompts before disconnect");
+    assert_eq!(
+        overlay.len(),
+        2,
+        "precondition: 2 queued prompts before disconnect"
+    );
 
     // SOQ-3 clears overlay synchronously (before reconnect).
     soq3_handler(&mut overlay, &mut mode);
@@ -736,21 +758,20 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
     let stale_prompt_id: u64 = 42;
     let fresh_prompt_id: u64 = 43;
 
-    let mut overlay: VecDeque<PromptModal> =
-        VecDeque::from([PromptModal { prompt_id: stale_prompt_id }]);
+    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal {
+        prompt_id: stale_prompt_id,
+    }]);
     let mut mode = AppMode::Overlay;
 
     // SOQ-3 clears stale prompt.
     soq3_handler(&mut overlay, &mut mode);
 
-    assert_eq!(
-        overlay.len(),
-        0,
-        "precondition: overlay empty after SOQ-3"
-    );
+    assert_eq!(overlay.len(), 0, "precondition: overlay empty after SOQ-3");
 
     // Simulate reconnect + InitialState re-delivery (only fresh prompt).
-    overlay.push_back(PromptModal { prompt_id: fresh_prompt_id });
+    overlay.push_back(PromptModal {
+        prompt_id: fresh_prompt_id,
+    });
 
     // The stale prompt must NOT be in the overlay after reconnect.
     let ghost = overlay.iter().find(|p| p.prompt_id == stale_prompt_id);
@@ -795,9 +816,15 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
     for cycle in 0..4 {
         // Before each cycle: populate overlay with stale prompts (simulate state from previous cycle).
         let mut overlay: VecDeque<PromptModal> = (0..cycle as u64)
-            .map(|i| PromptModal { prompt_id: cycle * 100 + i })
+            .map(|i| PromptModal {
+                prompt_id: cycle * 100 + i,
+            })
             .collect();
-        let mut mode = if !overlay.is_empty() { AppMode::Overlay } else { AppMode::Dashboard };
+        let mut mode = if !overlay.is_empty() {
+            AppMode::Overlay
+        } else {
+            AppMode::Dashboard
+        };
 
         // SOQ-3 fires on disconnect.
         soq3_handler(&mut overlay, &mut mode);
@@ -823,8 +850,7 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
     // All 4 cycles should produce an empty overlay post-SOQ-3.
     for (i, len) in cycle_overlays.iter().enumerate() {
         assert_eq!(
-            *len,
-            0,
+            *len, 0,
             "BC-2.05.006 EC-004: cycle {i}: overlay length must be 0 (no leakage), got {len}"
         );
     }
@@ -923,8 +949,9 @@ async fn test_BC_2_05_006_ac_007_status_bar_reconnecting_after_soq3() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Accept + drop server side → triggers disconnect.
     let (server_stream, _) = listener.accept().await.expect("accept");

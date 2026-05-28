@@ -1,3 +1,11 @@
+#![allow(
+    non_snake_case,
+    dead_code,
+    unused_assignments,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::disallowed_methods
+)]
 //! SOQ-3 overlay-clear invariant tests (S-023, BC-2.05.007).
 //!
 //! Verifies:
@@ -86,8 +94,9 @@ async fn test_BC_2_05_007_pc_1_disconnected_emitted_before_reconnect_loop() {
 
     let dir = tempdir().expect("tempdir");
     // connect_with_events is a todo!() stub — this will panic, hitting the Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // If we reach here (post-implementation), verify Disconnected arrives before
     // any reconnect logic is invoked.
@@ -116,14 +125,13 @@ async fn test_BC_2_05_007_pc_2_overlay_cleared_on_disconnect() {
 
     let dir = tempdir().expect("tempdir");
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Set up overlay stack with 2 prompts.
-    let mut overlay: VecDeque<PromptModal> = VecDeque::from([
-        PromptModal { prompt_id: 1 },
-        PromptModal { prompt_id: 2 },
-    ]);
+    let mut overlay: VecDeque<PromptModal> =
+        VecDeque::from([PromptModal { prompt_id: 1 }, PromptModal { prompt_id: 2 }]);
     let mut mode = AppMode::Overlay;
 
     assert_eq!(overlay.len(), 2, "precondition: overlay has 2 entries");
@@ -163,11 +171,11 @@ async fn test_BC_2_05_007_pc_3_clear_synchronous_before_reconnect() {
 
     let dir = tempdir().expect("tempdir");
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
-    let mut overlay: VecDeque<PromptModal> =
-        VecDeque::from([PromptModal { prompt_id: 1 }]);
+    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal { prompt_id: 1 }]);
     let mut mode = AppMode::Overlay;
 
     // Receive disconnect event.
@@ -215,8 +223,9 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_unexpected_eof() {
     let listener = UnixListener::bind(&sock_path).expect("bind UDS socket");
 
     // connect_with_events is the S-023 production entry point — todo!() stub, Red Gate.
-    let (mut transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (mut transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Accept the connection then immediately drop the server stream to cause EOF.
     let (server_stream, _) = listener.accept().await.expect("accept");
@@ -255,8 +264,9 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_broken_pipe() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (mut transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (mut transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Accept + immediately shut down server write half to force BrokenPipe.
     let (server_stream, _) = listener.accept().await.expect("accept");
@@ -299,8 +309,9 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_connection_reset() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (mut transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (mut transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Accept the connection; server drops stream abruptly (simulates ConnectionReset).
     let (server_stream, _) = listener.accept().await.expect("accept");
@@ -345,8 +356,9 @@ async fn test_BC_2_05_007_pc_6_no_disconnect_event_on_graceful_tui_exit() {
     let _listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (mut transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (mut transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Mark as graceful — this is the S-023 production method, also a todo!() stub.
     transport.graceful_disconnect();
@@ -381,15 +393,15 @@ async fn test_BC_2_05_007_pc_4_app_mode_transitions_to_dashboard_after_clear() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     // Accept and drop server side to trigger disconnect.
     let (server_stream, _) = listener.accept().await.expect("accept");
     drop(server_stream);
 
-    let mut overlay: VecDeque<PromptModal> =
-        VecDeque::from([PromptModal { prompt_id: 42 }]);
+    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal { prompt_id: 42 }]);
     let mut mode = AppMode::Overlay;
 
     assert_eq!(mode, AppMode::Overlay, "precondition: mode is Overlay");
@@ -432,8 +444,9 @@ async fn test_BC_2_05_007_invariant_3_idempotent_clear_empty_deque() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     let (server_stream, _) = listener.accept().await.expect("accept");
     drop(server_stream);
@@ -496,8 +509,9 @@ async fn test_BC_2_05_007_invariant_1_soq3_ordering_unconditional() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     let (server_stream, _) = listener.accept().await.expect("accept");
     drop(server_stream);
@@ -565,15 +579,17 @@ async fn test_BC_2_05_007_invariant_2_zero_ghost_approval_window() {
     let listener = UnixListener::bind(&sock_path).expect("bind");
 
     // connect_with_events is a todo!() stub — Red Gate.
-    let (_transport, mut event_rx) =
-        connect_with_events(dir.path()).await.expect("connect_with_events");
+    let (_transport, mut event_rx) = connect_with_events(dir.path())
+        .await
+        .expect("connect_with_events");
 
     let (server_stream, _) = listener.accept().await.expect("accept");
     drop(server_stream);
 
     let stale_prompt_id: u64 = 99;
-    let mut overlay: VecDeque<PromptModal> =
-        VecDeque::from([PromptModal { prompt_id: stale_prompt_id }]);
+    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal {
+        prompt_id: stale_prompt_id,
+    }]);
     let mut mode = AppMode::Overlay;
 
     let evt = event_rx
