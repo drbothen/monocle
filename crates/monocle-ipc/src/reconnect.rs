@@ -123,12 +123,12 @@ impl BackoffState {
     ///
     /// # Backoff schedule (BC-2.05.006 PC-4)
     ///
-    /// | `attempt` before call | Returned delay |
-    /// |----------------------|----------------|
-    /// | 0                    | 250ms          |
-    /// | 1                    | 500ms          |
-    /// | 2                    | 1000ms         |
-    /// | 3+                   | 2000ms (cap)   |
+    /// | Attempt number (1-indexed, matches BC-2.05.006 AC-009) | Returned delay |
+    /// |--------------------------------------------------------|----------------|
+    /// | 1                                                      | 250ms          |
+    /// | 2                                                      | 500ms          |
+    /// | 3                                                      | 1000ms         |
+    /// | 4+                                                     | 2000ms (cap)   |
     pub fn next_delay(&mut self) -> Duration {
         // Backoff schedule (BC-2.05.006 PC-4):
         // Attempt 0 → 250ms, Attempt 1 → 500ms, Attempt 2 → 1000ms, Attempt 3+ → 2000ms cap.
