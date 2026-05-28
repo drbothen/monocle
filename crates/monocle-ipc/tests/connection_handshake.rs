@@ -100,10 +100,10 @@ async fn ac_002_initial_state_is_first_message() {
 ///
 /// Traces to BC-2.05.002 postcondition PC-3 / AC-003.
 ///
-/// # Pure framing (already implemented — no Red Gate hit in Part 1)
+/// Verifies BC-2.05.002 PC-3 (4-byte LE framing for all `ServerToClient` variants) — production GREEN.
 ///
-/// Part 1 exercises `write_framed`/`read_framed` which are already implemented (S-021).
-/// Part 2 exercises end-to-end integration via `spawn_test_daemon` + `connect_test_client`.
+/// Part 1 exercises `write_framed`/`read_framed` round-trip for all variants (S-021, GREEN).
+/// Part 2 exercises end-to-end framing via `spawn_test_daemon` + `connect_test_client` (S-022, GREEN).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_003_four_byte_le_framing() {
     // Part 1: pure framing check (already implemented — no todo!() hit).
@@ -154,7 +154,7 @@ async fn ac_003_four_byte_le_framing() {
         let _ = decoded; // structural equality; variant identity verified by encode.
     }
 
-    // Part 2: integration path — spawn daemon + connect client (both hit todo!()).
+    // Part 2: integration path — spawn daemon + connect client (production GREEN).
     let dir = tempfile::tempdir().expect("tempdir for ac_003 part 2");
     let runtime_dir = dir.path().to_path_buf();
 
