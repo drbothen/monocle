@@ -14,7 +14,7 @@ inputs:
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.13"}
   - {path: .factory/specs/product-brief.md, version: "1.4.30"}
   - {path: .factory/specs/research/domain-monocle-vision-synthesis.md, version: "1.1.3"}
-input-hash: "[pending]"
+input-hash: "50aa63d"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -941,5 +941,5 @@ prompts are never re-pushed.
   referenced from SS-daemon-wiring.md §PreToolUse Permission Decision Hold.
 - `PermissionDecision::AcceptAlways` maps to `{"decision": "always"}` per BC-2.06.012.
 - `PermissionDecision::Reject` maps to `{"decision": "deny"}` per BC-2.06.013.
-- input-hash: [pending] — to be populated by compute-input-hash.
+- input-hash: 50aa63d — computed manually (YAML-object inputs: not resolved by compute-input-hash scan; see F-S025-ADV5-HIGH-001).
 - SE-16d PASS: 2026-05-26T02:00:00Z > chain high-water 2026-05-26T01:00:00Z (monotonic).

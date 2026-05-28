@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "tui"
 subsystem: SS-06
-version: "1.8.0"
+version: "1.8.1"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T12:30:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/product-brief.md, version: "1.4.30"}
   - {path: .factory/specs/research/domain-monocle-vision-synthesis.md, version: "1.1.3"}
   - {path: .factory/specs/architecture/SS-core-types-and-abi.md, version: "1.2.13"}
-input-hash: "[pending]"
+input-hash: "958ae3b"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -415,12 +415,15 @@ Renders `Vec<EnrichedSession>` received via `SessionListUpdate` IPC messages.
 
 | Column | Source field | Notes |
 |--------|-------------|-------|
-| Icon | `EngineMetadata::icon` | Single `char`; `●` for Claude Code in Phase 1 |
+| Session ID | `EnrichedSession::session_id` | Short identifier, e.g. `sess-001`; required for operator clarity when multiple sessions share the same project name or harness type |
+| Icon | `EnrichedSession::harness_type` | Single `char` derived from harness type; `●` (U+25CF) for `"claude-code"` in Phase 1 via a harness-type → icon lookup; render path must not hardcode Claude-specific logic |
 | Project | `EnrichedSession::project_name` | Derived from transcript directory name; `"—"` when `None` |
 | Status | `EnrichedSession::status` | `SessionStatus` display: Active, Idle, WaitingOnPermission, etc. |
 | Tokens | `EnrichedSession::token_count` | Human-formatted: `142k`; accumulated from hook event metadata |
 | Cost | `EnrichedSession::cost_usd` | `$0.83`; `"—"` when `None` (harness not emitting cost data) |
 | Uptime | `EnrichedSession::started_at` | `HH:MM:SS` wall clock computed as `now - started_at`; `"—"` when `None` |
+
+**Canonical example row:** `sess-001 ● monocle Active 437k — 03:47:00`
 
 > **Note:** `phase_tag` is not present on `EnrichedSession` in Phase 1 — it requires
 > `FactoryAdapter` integration not available in Phase 1. `uptime` is derived at render
@@ -1101,6 +1104,34 @@ SS-06 types. Violations are blocking in any PR review:
    for all diagnostic output.
 
 ---
+
+## §Trace v1.8.1
+
+**F-S025-ADV5-BLOCKER-002 — §Sessions Panel column table corrected: 6 → 7 columns; Icon source corrected** (2026-05-28T12:30:00Z):
+
+Finding: The §Sessions Panel column-layout table listed only 6 columns (Icon, Project,
+Status, Tokens, Cost, Uptime), omitting Session ID. BC-2.06.005 v1.0.5 was amended to 7
+columns per Pass 4 BLOCKER-002 adjudication (§Trace v1.0.5 in that BC), but SS-tui.md
+was not updated in the same burst — the Pass 4 sweep (commit `6d4fbb3`) focused on the
+AppMode shape, and the column-table propagation was missed.
+
+Secondary drift: the Icon row sourced from `EngineMetadata::icon`, which is not a Phase 1
+`EnrichedSession` field (per F-P14-004 correction in both SS-tui v1.6.0 §Trace and
+BC-2.06.005 §Trace v1.0.4). The canonical source is `EnrichedSession::harness_type`.
+
+Changes:
+- §Sessions Panel column table: **Session ID** row added as first row, sourcing
+  `EnrichedSession::session_id` (e.g., `sess-001`).
+- Icon row: source corrected from `EngineMetadata::icon` to `EnrichedSession::harness_type`
+  with harness-type → icon lookup note; explicit prohibition on hardcoding Claude-specific
+  logic (matching BC-2.06.005 v1.0.5 EC-088).
+- Column order now matches BC-2.06.005 v1.0.5 PC-2: Session ID, Icon, Project, Status,
+  Tokens, Cost, Uptime.
+- **Canonical example row** added immediately after the column table:
+  `sess-001 ● monocle Active 437k — 03:47:00` (matches BC-2.06.005 v1.0.5 test vector).
+- No other §Sessions Panel drift found: empty state, filter mode, fullscreen, and all
+  breadcrumb references in this section remain consistent with the 7-column model.
+- SE-16d monotonicity: v1.8.1 timestamp 2026-05-28T12:30:00Z > v1.8.0 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.8.0
 
