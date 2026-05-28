@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "0b525de"
+input-hash: "dc7e110"
 traces_to: STATE.md
 ---
 
@@ -2265,3 +2265,47 @@ Implementation residuals (not spec defects — expected in spec-first developmen
 - Architecture source pins lag by 0-2 patch versions (cosmetic metadata)
 
 STATE v6.10 → v6.11. SE-23 PASS: SM touched only STATE.md and cycle files.
+
+---
+
+## Burst W6-S023 (2026-05-28) — Wave 6 S-023 Delivery Cycle (D-186)
+
+**Type:** story delivery burst — Wave 6 parallel (S-023 alongside S-025)
+**Agents dispatched:** test-writer, implementer (multiple rounds), architect (Pass 2 Option C directive), adversary (5 passes), demo-recorder, pr-manager, pr-reviewer, devops-engineer
+**Files touched:** monocle-ipc/ (reconnect logic, subscriber signal channel), monocle-core/ (detect_ccr PATH isolation), .factory/stories/ (S-022 v1.2→v1.3, sprint-state.yaml v1.29→v1.30, STORY-INDEX.md v5.6→v5.7), .factory/STATE.md (v6.30→v6.31), cycles/cycle-001/ (this burst-log, lessons.md)
+**Versions bumped:** S-023 → done; sprint-state v1.29→v1.30; STORY-INDEX v5.6→v5.7; STATE v6.30→v6.31
+**Develop:** 7a52041 (PR #29 squash-merged 2026-05-28T19:31:07Z)
+
+### Summary
+
+S-023 (TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear, 5 pts, EPIC-05) fully delivered. PR #29 squash-merged. BC-2.05.006 (reconnect exponential backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 VecDeque clear on disconnect) satisfied. 15 ACs. 99 tests in monocle-ipc. 9/9 CI gates GREEN.
+
+S-023 ran in parallel with S-025 (TUI Skeleton) per D-185 human authorization. Both target independent crates (monocle-ipc vs monocle-tui), no code-path overlap.
+
+**Adversarial convergence:** Pass 1-2 = HIGH-PRIORITY (3 HIGH + 4 MED + 3 LOW each). Pass 3-5 = NITPICK_ONLY (3 consecutive clean). Trajectory: HIGH_PRIORITY → HIGH_PRIORITY → NITPICK_ONLY → NITPICK_ONLY → NITPICK_ONLY. CONVERGED 3/3.
+
+**Notable in-scope scope expansions (orchestrator-authorized):**
+- F-ADV6-HIGH-001 carry-over from S-022: slow-disconnect signal channel added to IPC subscribers (commit 9bddd7b). Production-grade per Pass 5 adversary.
+- ADV-W4GATE-MED-001 carry-over from Wave 4: detect_ccr PATH isolation migrated to temp_env::with_vars (commit 295dc1b). Closed.
+- F-S022-ADV15-LOW-001: story S-022 v1.2→v1.3 ring_tail type doc drift (commit 545b634). Closed.
+
+**Process discoveries registered:**
+1. Semgrep silently skipped for Waves 1-5 when Preflight failed-fast on protoc (PROC-SEMGREP-DECOUPLE).
+2. Build+Test silently skipped in many prior CI runs; need GATE_SKIPPED loud indicator (PROC-GATE-SKIPPED-LOUD).
+3. Architect-decision binding propagation to spec bodies requires dedicated orchestrator dispatch — SS-tui missed in BC sweep (PROC-SS-ARCH-PROPAGATION).
+4. Pass 4 adversary found 2 BLOCKERs missed by Passes 1-3; novelty-spike pattern confirms 3-consecutive-NITPICK_ONLY rule.
+5. compute-input-hash YAML-object parser gap — fixed manually, tooling fix pending (PROC-COMPUTE-INPUT-HASH-YAML).
+
+| Agent | Task | Output |
+|-------|------|--------|
+| test-writer | S-023 test stubs (reconnect + SOQ-3 clear) | monocle-ipc tests/reconnect*.rs stubs |
+| implementer | S-023 implementation rounds (reconnect backoff + lock re-read + offline mode + SOQ-3 VecDeque clear) | monocle-ipc/src/reconnect.rs + subscriber.rs |
+| architect | Pass 2 Option C: slow-disconnect signal channel directive | commit 9bddd7b |
+| implementer | scope expansion: detect_ccr PATH isolation → temp_env::with_vars | commit 295dc1b |
+| story-writer | S-022 v1.2→v1.3 ring_tail doc drift fix | commit 545b634 |
+| adversary (x5) | 5 adversarial passes | cycles/cycle-001/adversarial-reviews/s023-pass-1..5.md |
+| demo-recorder | S-023 demo evidence | docs/demo-evidence/S-023/ |
+| pr-manager | PR #29 created + reviewer dispatch + merge | github.com/jmagady/monocle/pull/29 |
+| pr-reviewer | Final fresh-eyes diff review | APPROVED |
+| devops-engineer | CI verification (9/9 gates GREEN) | develop @ 7a52041 |
+| state-manager | D-186 state update: STATE.md v6.30→v6.31 + sprint-state v1.30 + STORY-INDEX v5.7 + burst-log + lessons | this commit |

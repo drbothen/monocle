@@ -1760,3 +1760,65 @@ Until the hook is implemented, the SM closure burst MUST include an explicit SE-
 - **F-R93 demonstrates the deepest serial cascade observed in this cycle — 4-step chain validates SE-15e dispatch enforcement (per D-092 / 2026-05-15):** F-R93 serial fix-burst (SM v5.37 4039afa → architect arch v1.0.20 8533ea2 → PO PRD v1.20 9371348 → FV VP v1.27 202e15c) is the first 4-agent serial chain in the cycle (prior chains were 3-agent: arch → PO → FV). The C-R93-1 closure required all 3 artifact-owners to act: arch for the verification clause at 1 site; PO for PRD §7 RTM 6 rows + §3 §Verification 4 body sites; FV for VP cleanup (O-R93-1/2) + pin propagation. SE-15e dispatch enforcement was applied: no agents were skipped. Critical lesson: SE-15e is proven effective even for the deepest cascade depth encountered to date. The F-R88-5 partial-fix pattern (3rd recurrence across R88 → R92 → R93) is now definitively closed: all 5 taxonomy tiers (VP §Mechanism Distribution, VP §Harness annotations, PRD §7 RTM, PRD §3 §Verification body, arch clause) are aligned on "Integration" taxonomy. SE-14b AUTHORING audit in VP v1.27 returned no-op (no new BC content lifts in this serial chain) — confirming the chain is content-stable at the VP layer; only cleanup (O-R93-1/2) and pin propagation were required. SE-16b monotonicity PASS throughout the 4-step chain.
 
 - **SE-14b: Per-probe BC-VP coherence discipline — VP §Post-condition probes MUST match BC text precision; Extension 14 sub-extension (per I-R91-3/4/5/6 / C-R91-1 / R91 / 2026-05-15):** R91 adversary (pass 1 attempt 24) found SYSTEMATIC 4-finding pattern: VP v1.24 (I-R90-1/2/4 closures) added VP §Post-condition probes with typed constraints (pid ≥ 1, last_app_mode non-empty string, shutdown_reason 4-value enum, semver regex) without simultaneously lifting BC text to specify the same constraint. Additionally: C-R91-1 CRITICAL — VP-FACTORY-002 §Post-cond 7 cites fabricated anchor (`BC-FACTORY-002 EC "idempotency invariant"`) that does not exist; I-R91-2 HIGH — VP-DAEMON-006 §Post-cond 10 cites §Postcondition 1 (wrong — shutdown_reason enum is in §Invariant 1). SE-14b rule: when a VP introduces a §Post-condition probe asserting a TYPED-FIELD constraint not yet in the corresponding BC text, the BC text MUST be lifted in the SAME burst (or the immediately preceding PO burst per Extension 15 SERIAL). The VP `Traces to:` MUST cite a BC element that explicitly covers the matching constraint. Anchor verification sub-rule: every `per BC-XXX §Postcondition N` or `per BC-XXX §Invariant N` cite MUST resolve to a real existing element. SE-14b is Extension 14 sub-extension (within-layer propagation family). 27 codified disciplines in force (was 26 + SE-14b). Full codification in `cycles/cycle-001/lessons.md §SE-14b`.
+
+---
+
+## Wave 6 S-023 Cycle Lessons (D-186 / 2026-05-28)
+
+### L-W6-S023-001: Architect-decision BC/SS propagation requires dedicated orchestrator dispatch
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** S-023 cycle adversarial pass 2 + S-025 cycle adversarial pass 4 (2 BLOCKERs for BC-2.06.005 + BC-2.06.021 stale pins)
+
+**Pattern:** When an architect makes a decision that bumps a BC or SS document (e.g., BC-2.06.005 v1.0.0 → v1.0.5, SS-tui v1.7.0 → v1.8.0), the propagation to downstream story bodies requires a dedicated orchestrator dispatch to the story-writer agent. The implementer is NOT responsible for spec propagation — the implementer writes code, not spec documents. If the orchestrator dispatches only implementer + adversary without a parallel story-writer + consistency-validator sweep, the BC version pins in story bodies go stale and are caught by a later adversarial pass as BLOCKERs.
+
+**Rule:** When an architect commits a BC or SS version bump mid-delivery-cycle, orchestrator MUST dispatch a parallel story-writer sweep of all downstream stories that cite the bumped artifact. Do not defer to the next pass; the stale pin is a BLOCKER by the time the adversary sees it.
+
+---
+
+### L-W6-S023-002: Multi-pass adversarial convergence novelty-spike confirms 3-consecutive-NITPICK_ONLY threshold
+
+**Date:** 2026-05-28
+**Severity:** process validation
+**Origin:** S-025 adversarial pass 4 found 2 BLOCKERs (BC-2.06.005 stale pin + AC-005 6→7 column) that were invisible to Passes 1-3
+
+**Pattern:** Adversarial passes do not monotonically decay in severity. Pass N+1 can find higher-severity findings than Pass N if: (a) the spec was modified to close a prior finding and the modification introduced a new gap, or (b) the adversary rotated lens focus. The S-025 cycle demonstrated: Passes 1-3 were HIGH-PRIORITY but closed their respective findings, Pass 4 found 2 fresh BLOCKERs from the Pin bump propagation that Passes 1-3 did not audit. This confirms the 3-consecutive-NITPICK_ONLY convergence criterion is necessary and sufficient — any earlier declaration of convergence would have been wrong.
+
+**Rule:** Never declare convergence at a single NITPICK_ONLY pass. Do not lower the threshold below 3 consecutive passes under any schedule pressure. A novelty-spike at Pass N means the spec surface was not yet stable at Pass N-1.
+
+---
+
+### L-W6-S023-003: CI gate decoupling — downstream gates must not silently skip when upstream gates fail
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** PROC-SEMGREP-DECOUPLE + PROC-GATE-SKIPPED-LOUD discoveries in S-023 cycle
+
+**Pattern:** When a CI gate fails early (e.g., Preflight fails on missing protoc), subsequent gates in the pipeline may silently not run rather than emitting a clear GATE_SKIPPED signal. This caused Semgrep to silently not run for 24 stories (Waves 1-5). The CI log showed "steps skipped" but not "SEMGREP_GATE_SKIPPED — protoc missing" with a clear indication that security scanning was absent. A human reviewer reading the CI summary would reasonably conclude all gates ran.
+
+**Rule:** Every CI gate that is skipped due to upstream failure MUST emit a loud GATE_SKIPPED log line (not a silent omission) with: (a) which gate was skipped, (b) why (upstream failure), (c) what risk was accepted. Gates must be independently runnable where toolchain permits. Route devops-engineer to decouple Semgrep from Preflight fast-fail chain.
+
+---
+
+### L-W6-S023-004: Architecture-source documents (SS-*) must be swept alongside BCs during spec propagation
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** F-S025-ADV4-BLOCKER-001 — BC-2.06.005 pin stale in S-025; root cause was SS-tui.md v1.7.0 → v1.8.0 bump not propagated to story bodies
+
+**Pattern:** When PO sweeps BCs for a version bump, the routing table assigns SS-* documents to the architect. If the orchestrator dispatches only PO (for BCs) without simultaneously dispatching architect (for SS-*), the SS-* version pins in story inputs: sections go stale. Story-writer reads both BCs and SS-* documents — both must be current. The adversary correctly caught the BC pin as a BLOCKER but the root cause was the SS-* document version bump not being propagated atomically with the BC sweep.
+
+**Rule:** Any burst that bumps a BC MUST check: does this BC depend on an SS-* document that was also bumped in the same cycle? If yes, dispatch architect for SS-* propagation in the same serial chain as the PO BC sweep. PO cannot be the sole propagation agent for a BC that derives from an SS-* document.
+
+---
+
+### L-W6-S023-005: Pre-existing technical debt can be cleared in-scope of a fix PR when CI cascade-fails — orchestrator-authorized scope expansion per CLAUDE.md Principle 4
+
+**Date:** 2026-05-28
+**Severity:** process codification
+**Origin:** S-023 PR #29 scope expansion: ADV-W4GATE-MED-001 (PATH isolation) cleared in-scope
+
+**Pattern:** S-023 CI first run triggered a cascade failure that surfaced ADV-W4GATE-MED-001 (PATH env mutation in detect_ccr tests, tracked since Wave 4). The implementer surfaced the finding to the orchestrator rather than silently deferring. Orchestrator invoked CLAUDE.md Principle 4 ("AI-built defects are the AI's responsibility to fix") and authorized in-scope scope expansion: commit 295dc1b migrated the detect_ccr tests to temp_env::with_vars. This cleared a Wave-4 durable task register item without requiring a separate fix PR.
+
+**Rule:** When a story's CI run cascades into a pre-existing durable task register item that can be fixed in 1-2 commits, the correct default is orchestrator-authorized in-scope expansion (CLAUDE.md Principle 4). The implementer surfaces the finding + proposed fix; orchestrator authorizes or defers based on scope risk. This is preferable to accumulating fix PRs for mechanical test-isolation fixes. The tech-debt-register must be updated atomically in the same state burst as the fix.

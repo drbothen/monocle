@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.6"
+version: "5.7"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -72,7 +72,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | done | — |
 | S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028 |
 | S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | done | S-023, S-025, S-026, S-029 |
-| S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | not_started | S-026 |
+| S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | done | S-026 |
 | S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | not_started | S-027, S-028, S-031 |
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | not_started | S-027, S-029 |
 | S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | not_started | S-029 |
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.7
+
+**Wave 6: S-023 flipped not_started → done + D-186** (2026-05-28):
+- S-023 Story Registry row: `not_started` → `done`. PR #29 squash-merged at develop @ 7a52041 (2026-05-28T19:31:07Z).
+- BC-2.05.006 (TUI reconnect backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 overlay clear on disconnect) fully satisfied. 15 ACs. 5 adversarial passes (3 consecutive NITPICK_ONLY convergence). 99 tests in monocle-ipc. 9/9 CI gates pass.
+- F-ADV6-HIGH-001 (S-022 carry-over: slow-disconnect signal channel) production-grade resolved via commit 9bddd7b in S-023 PR.
+- ADV-W4GATE-MED-001 (PATH isolation in detect_ccr) closed: migrated to temp_env::with_vars in commit 295dc1b (orchestrator-authorized scope expansion).
+- Wave 6: 2/4 done (13/34 pts). S-025 in flight (parallel), S-026 still BLOCKED on S-025.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.29→v1.30 (done 25→26, not_started 7→6, points_complete 151→156); STATE.md v6.30→v6.31.
+- STORY-INDEX version bumped v5.6→v5.7.
 
 ## §Trace v5.6
 
