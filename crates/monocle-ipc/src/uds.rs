@@ -311,16 +311,19 @@ impl UdsTransport {
 /// The TUI calls this after confirming daemon liveness via the lock file PID check
 /// (BC-2.05.002 precondition 2). The returned `UdsClientTransport` is ready to receive
 /// the `InitialState` message via `recv_message()`.
-#[allow(clippy::todo)]
-pub async fn connect(_runtime_dir: &Path) -> Result<UdsClientTransport, IpcError> {
-    todo!("S-022: connect — UnixStream::connect(runtime_dir/monocle.sock) → UdsClientTransport")
+pub async fn connect(runtime_dir: &Path) -> Result<UdsClientTransport, IpcError> {
+    let sock_path = runtime_dir.join("monocle.sock");
+    let stream = tokio::net::UnixStream::connect(&sock_path)
+        .await
+        .map_err(IpcError::IoError)?;
+    Ok(UdsClientTransport::new(stream))
 }
 
 /// Read a single framed `ClientToServer` message from a raw `UnixStream` read half.
 ///
 /// This is a low-level helper for callers that hold an `OwnedReadHalf` directly
-/// (e.g., per-client receive loops in `monocle-ipc::server`) rather than going through
-/// the `Transport` trait.
+/// (e.g., per-client receive loops in `monocle-runtime::ipc_server`) rather than going
+/// through the `Transport` trait.
 ///
 /// Delegates to [`crate::framing::read_framed`] for the 4-byte LE length-prefix decoding.
 ///
@@ -329,11 +332,10 @@ pub async fn connect(_runtime_dir: &Path) -> Result<UdsClientTransport, IpcError
 /// Returns [`IpcError::Disconnected`] on EOF, [`IpcError::MessageTooLarge`] when the
 /// declared payload exceeds 256 KiB, [`IpcError::IoError`] on socket errors, and
 /// [`IpcError::SerializeError`] when the payload is not valid JSON.
-#[allow(clippy::todo)]
 pub async fn read_framed_from_stream(
-    _reader: &mut tokio::net::unix::OwnedReadHalf,
+    reader: &mut tokio::net::unix::OwnedReadHalf,
 ) -> Result<crate::types::ClientToServer, IpcError> {
-    todo!("S-022: read_framed_from_stream — delegate to crate::framing::read_framed")
+    crate::framing::read_framed(reader).await
 }
 
 /// Per-TUI-client transport handle.

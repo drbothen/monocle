@@ -17,6 +17,10 @@
 //! When acquiring both the pending-decision registry lock and the fan-out subscriber list
 //! lock, ALWAYS acquire the pending-decision registry lock FIRST to prevent deadlock.
 //! (Do NOT hold the subscriber list lock while acquiring the registry lock.)
+// Mutex::lock() returns Err only on mutex poison (a previous holder panicked while holding
+// the lock). Panicking on poison is the correct response — the registry state is undefined
+// and continuing would risk data corruption. We allow expect_used here for this pattern only.
+#![allow(clippy::expect_used)]
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -33,7 +37,6 @@ use monocle_ipc::types::{PermissionDecisionKind, PermissionPromptPayload};
 ///
 /// The `sender` is consumed exactly once by [`PendingDecisionRegistry::resolve_prompt`].
 /// After resolution, the entry is removed from the registry.
-#[allow(dead_code)]
 struct PendingEntry {
     /// Full payload for this prompt (stable for the lifetime of the entry).
     pub payload: PermissionPromptPayload,
@@ -63,11 +66,7 @@ pub struct PendingDecisionRegistry {
 impl std::fmt::Debug for PendingDecisionRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Only expose the count of pending entries — do not expose payloads or senders.
-        let count = self
-            .inner
-            .lock()
-            .map(|g| g.len())
-            .unwrap_or(0);
+        let count = self.inner.lock().map(|g| g.len()).unwrap_or(0);
         f.debug_struct("PendingDecisionRegistry")
             .field("pending_count", &count)
             .finish()
@@ -99,13 +98,19 @@ impl PendingDecisionRegistry {
     ///   clients).
     /// - `sender`: The `oneshot::Sender<PermissionDecisionKind>` that the HTTP handler is
     ///   awaiting on its receiver end.
-    #[allow(clippy::todo)]
     pub fn register_prompt(
         &self,
-        _payload: PermissionPromptPayload,
-        _sender: tokio::sync::oneshot::Sender<PermissionDecisionKind>,
+        payload: PermissionPromptPayload,
+        sender: tokio::sync::oneshot::Sender<PermissionDecisionKind>,
     ) -> Uuid {
-        todo!("S-022: register_prompt — generate prompt_id, insert into registry, return id")
+        let prompt_id = Uuid::new_v4();
+        let entry = PendingEntry { payload, sender };
+        let mut map = self
+            .inner
+            .lock()
+            .expect("PendingDecisionRegistry mutex poisoned");
+        map.insert(prompt_id, entry);
+        prompt_id
     }
 
     /// Resolve a pending permission prompt with the given user decision.
@@ -126,13 +131,25 @@ impl PendingDecisionRegistry {
     ///
     /// `Some(PermissionPromptPayload)` on first resolution; `None` on subsequent
     /// resolution attempts for the same `prompt_id`.
-    #[allow(clippy::todo)]
     pub fn resolve_prompt(
         &self,
-        _prompt_id: Uuid,
-        _decision: PermissionDecisionKind,
+        prompt_id: Uuid,
+        decision: PermissionDecisionKind,
     ) -> Option<PermissionPromptPayload> {
-        todo!("S-022: resolve_prompt — remove entry, send decision on oneshot, return payload")
+        let entry = {
+            let mut map = self
+                .inner
+                .lock()
+                .expect("PendingDecisionRegistry mutex poisoned");
+            map.remove(&prompt_id)
+        };
+        entry.map(|e| {
+            // Ignore send result: receiver may have been dropped (e.g. timeout already
+            // resolved the HTTP response). The at-most-one invariant is satisfied by the
+            // registry removal above.
+            let _ = e.sender.send(decision);
+            e.payload
+        })
     }
 
     /// Remove a timed-out prompt from the registry.
@@ -152,9 +169,12 @@ impl PendingDecisionRegistry {
     /// # Returns
     ///
     /// `Some(PermissionPromptPayload)` if the entry was present; `None` if already removed.
-    #[allow(clippy::todo)]
-    pub fn remove_timed_out_prompt(&self, _prompt_id: Uuid) -> Option<PermissionPromptPayload> {
-        todo!("S-022: remove_timed_out_prompt — remove stale entry, return payload for broadcast")
+    pub fn remove_timed_out_prompt(&self, prompt_id: Uuid) -> Option<PermissionPromptPayload> {
+        let mut map = self
+            .inner
+            .lock()
+            .expect("PendingDecisionRegistry mutex poisoned");
+        map.remove(&prompt_id).map(|e| e.payload)
     }
 
     /// Return a snapshot of all currently-pending prompt payloads.
@@ -165,9 +185,12 @@ impl PendingDecisionRegistry {
     /// The snapshot is a clone of all payloads at the moment of the call. Prompts
     /// resolved between snapshot time and `InitialState` delivery will generate a
     /// subsequent `PermissionPromptResolved` message (AC-006 no-gap-window guarantee).
-    #[allow(clippy::todo)]
     pub fn snapshot_payloads(&self) -> Vec<PermissionPromptPayload> {
-        todo!("S-022: snapshot_payloads — clone all pending payloads for InitialState.overlay_stack")
+        let map = self
+            .inner
+            .lock()
+            .expect("PendingDecisionRegistry mutex poisoned");
+        map.values().map(|e| e.payload.clone()).collect()
     }
 }
 

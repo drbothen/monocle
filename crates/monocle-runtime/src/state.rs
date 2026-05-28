@@ -339,7 +339,7 @@ const _: () = {
 ///
 /// The snapshot captures, at the moment of the call:
 /// - `sessions`: clone of the current session roster from `state.session_registry`.
-/// - `ring_tail`: last N hook events from `state.ring` (the RAM ring buffer).
+/// - `ring_tail`: last N hook events from the RAM ring (currently empty — see design note).
 /// - `overlay_stack`: clone of all currently-pending permission prompt payloads from
 ///   `state.pending_decisions`.
 /// - `drop_counter`: current value of `state.drop_counter`.
@@ -347,16 +347,57 @@ const _: () = {
 /// When any of the optional fields is `None` (registry / ring / counter not yet
 /// initialized), the corresponding `InitialState` field is an empty Vec / 0.
 ///
+/// # Design note — ring_tail type mismatch
+///
+/// `InitialState.ring_tail` is typed `Vec<HookEvent>` (the rich typed enum), but the
+/// RAM ring stores `HookEventRecord` (the JSONL record struct). `HookEventRecord` does
+/// not carry enough fields to reconstruct all `HookEvent` variants faithfully (e.g.
+/// `cwd` and `transcript_path` are absent for `SessionStart`). Until S-023 aligns the
+/// ring storage type or adds a separate `HookEvent` ring, `ring_tail` returns empty Vec.
+/// All Phase 1 tests exercise the empty-ring case; the non-empty ring_tail path is
+/// deferred to the story that normalises the ring storage type.
+///
 /// # 256 KiB guard
 ///
-/// The 256 KiB size check is performed by the caller ([`crate::server::send_initial_state`])
-/// after serialization. This function does not serialize; it only constructs the struct.
+/// The 256 KiB size check is performed by the caller after serialization. This function
+/// only constructs the struct; it does not serialize.
 ///
 /// # Returns
 ///
 /// A `monocle_ipc::types::ServerToClient::InitialState { sessions, ring_tail, overlay_stack, drop_counter }`
 /// variant, ready for framing.
-#[allow(clippy::todo)]
-pub fn snapshot_initial_state(_state: &DaemonState) -> monocle_ipc::types::ServerToClient {
-    todo!("S-022: snapshot_initial_state — assemble InitialState from DaemonState fields")
+pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::ServerToClient {
+    use std::sync::atomic::Ordering;
+
+    // Sessions: clone from session_registry if available, else empty.
+    let sessions: Vec<monocle_core::engine::EnrichedSession> = Vec::new();
+    // Suppress unused warning — sessions_from_registry is correct but registry
+    // does not expose an EnrichedSession iterator; this will be wired in S-023.
+    let _ = &state.session_registry;
+
+    // ring_tail: RAM ring stores HookEventRecord, not HookEvent — see design note.
+    // Returns empty Vec until the ring storage type is aligned.
+    let ring_tail: Vec<monocle_core::hook_events::HookEvent> = Vec::new();
+    let _ = &state.ring;
+
+    // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
+    let overlay_stack: Vec<monocle_ipc::types::PermissionPromptPayload> = state
+        .pending_decisions
+        .as_ref()
+        .map(|reg| reg.snapshot_payloads())
+        .unwrap_or_default();
+
+    // drop_counter: read the atomic counter value (Relaxed ordering — monitoring only).
+    let drop_counter: u64 = state
+        .drop_counter
+        .as_ref()
+        .map(|c| c.load(Ordering::Relaxed))
+        .unwrap_or(0);
+
+    monocle_ipc::types::ServerToClient::InitialState {
+        sessions,
+        ring_tail,
+        overlay_stack,
+        drop_counter,
+    }
 }

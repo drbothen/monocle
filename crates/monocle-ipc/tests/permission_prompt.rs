@@ -16,11 +16,7 @@
 // Suppress non_snake_case — `ac_` prefix followed by numeric ID is intentional.
 #![allow(non_snake_case)]
 // expect/unwrap/disallowed_methods are idiomatic in test code.
-#![allow(
-    clippy::expect_used,
-    clippy::unwrap_used,
-    clippy::disallowed_methods
-)]
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::disallowed_methods)]
 
 mod common;
 
@@ -95,7 +91,10 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
             payload: recv_payload,
         } => {
             assert_eq!(recv_payload.prompt_id, prompt_id, "prompt_id must match");
-            assert_eq!(recv_payload.session_id, "session-abc", "session_id must match");
+            assert_eq!(
+                recv_payload.session_id, "session-abc",
+                "session_id must match"
+            );
             assert_eq!(recv_payload.tool_name, "Edit", "tool_name must match");
             assert_eq!(
                 recv_payload.old_content.as_deref(),
@@ -207,18 +206,39 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
     let dir = tempfile::tempdir().expect("tempdir for ac_009");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
-    let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (subscribers, state_handle) = common::spawn_test_daemon(&runtime_dir).await;
+
+    // Pre-register a prompt in the pending_decisions registry so the daemon routes
+    // the PermissionDecision to the oneshot (BC-2.05.005 PC-3 "If found" path).
+    // Without this, the prompt_id is unknown and the decision is silently discarded.
+    let (decision_tx, mut decision_rx) = tokio::sync::oneshot::channel();
+    let prompt_id = state_handle
+        .state
+        .pending_decisions
+        .as_ref()
+        .expect("test daemon must have pending_decisions registry")
+        .register_prompt(
+            monocle_ipc::types::PermissionPromptPayload {
+                prompt_id: Uuid::new_v4(), // overwritten by register_prompt
+                session_id: "s-009".to_string(),
+                tool_name: "Bash".to_string(),
+                tool_input: serde_json::json!({"cmd": "ls"}),
+                old_content: None,
+                new_content: None,
+            },
+            decision_tx,
+        );
 
     // Connect a TUI client to send the PermissionDecision.
-    // connect_test_client hits todo!() too; this is a secondary Red Gate.
     let mut client = common::connect_test_client(&runtime_dir).await;
+
+    // Consume the InitialState message (first message from daemon; required before
+    // any subsequent messages can be read from the per-client loop).
+    let _initial = common::recv_one(&mut client).await;
 
     // Register an observer subscriber to receive the Resolved broadcast.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
     subscribers.lock().await.push(obs_tx);
-
-    let prompt_id = Uuid::new_v4();
 
     // Send a PermissionDecision from the client (wire-encoded via the framing protocol).
     let decision_msg = ClientToServer::PermissionDecision {
@@ -229,19 +249,28 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
         .await
         .expect("client must be able to write PermissionDecision to socket");
 
+    // Verify the oneshot was resolved with the correct decision.
+    let resolved_decision =
+        tokio::time::timeout(tokio::time::Duration::from_millis(200), &mut decision_rx)
+            .await
+            .expect("timeout: oneshot decision must be received within 200ms")
+            .expect("oneshot channel must not be dropped");
+    assert_eq!(
+        resolved_decision,
+        PermissionDecisionKind::Allow,
+        "oneshot must be resolved with Allow decision"
+    );
+
     // Allow daemon to process the incoming message.
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
     // After implementation: the observer subscriber must receive PermissionPromptResolved
     // with the same prompt_id. The Resolved must be broadcast to ALL clients (including
     // the resolver, which treats it as a no-op per BC-2.06.023 PC-3).
-    let resolved = tokio::time::timeout(
-        tokio::time::Duration::from_millis(200),
-        obs_rx.recv(),
-    )
-    .await
-    .expect("timeout: PermissionPromptResolved must arrive within 200ms after decision")
-    .expect("observer channel must not be closed");
+    let resolved = tokio::time::timeout(tokio::time::Duration::from_millis(200), obs_rx.recv())
+        .await
+        .expect("timeout: PermissionPromptResolved must arrive within 200ms after decision")
+        .expect("observer channel must not be closed");
 
     match resolved {
         ServerToClient::PermissionPromptResolved {
@@ -275,9 +304,13 @@ async fn ac_009b_permission_decision_unknown_prompt_id_silently_discarded() {
     let dir = tempfile::tempdir().expect("tempdir for ac_009b");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;
+
+    // Consume the InitialState message first; it is always sent as the first message
+    // on connect. Without consuming it, the spurious-check read_framed below would
+    // return the InitialState instead of timing out.
+    let _initial = common::recv_one(&mut client).await;
 
     // Observer to verify no spurious Resolved is broadcast.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -296,8 +329,8 @@ async fn ac_009b_permission_decision_unknown_prompt_id_silently_discarded() {
     // Allow time for the daemon to process.
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-    // After implementation: the observer must NOT receive any PermissionPromptResolved
-    // because the prompt_id was not found. The channel must remain empty.
+    // The observer must NOT receive any PermissionPromptResolved because the
+    // prompt_id was not found. The channel must remain empty.
     assert!(
         obs_rx.try_recv().is_err(),
         "unknown prompt_id must not produce any PermissionPromptResolved broadcast"
@@ -381,9 +414,7 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
                     "observer {i}: Resolved prompt_id must match"
                 );
             }
-            other => panic!(
-                "observer {i}: expected PermissionPromptResolved, got {other:?}"
-            ),
+            other => panic!("observer {i}: expected PermissionPromptResolved, got {other:?}"),
         }
     }
 
@@ -412,18 +443,38 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
     let dir = tempfile::tempdir().expect("tempdir for ac_011");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
-    let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (subscribers, state_handle) = common::spawn_test_daemon(&runtime_dir).await;
+
+    // Pre-register a prompt so the daemon can route PermissionDecisions.
+    let (decision_tx, _decision_rx) = tokio::sync::oneshot::channel();
+    let prompt_id = state_handle
+        .state
+        .pending_decisions
+        .as_ref()
+        .expect("test daemon must have pending_decisions registry")
+        .register_prompt(
+            monocle_ipc::types::PermissionPromptPayload {
+                prompt_id: Uuid::new_v4(),
+                session_id: "s-011".to_string(),
+                tool_name: "Edit".to_string(),
+                tool_input: serde_json::json!({}),
+                old_content: None,
+                new_content: None,
+            },
+            decision_tx,
+        );
 
     // Connect two TUI clients that will race to resolve the same prompt.
     let mut client1 = common::connect_test_client(&runtime_dir).await;
     let mut client2 = common::connect_test_client(&runtime_dir).await;
 
+    // Consume InitialState from both clients before sending decisions.
+    let _init1 = common::recv_one(&mut client1).await;
+    let _init2 = common::recv_one(&mut client2).await;
+
     // Observer subscriber to count Resolved broadcasts.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(8);
     subscribers.lock().await.push(obs_tx);
-
-    let prompt_id = Uuid::new_v4();
 
     // Both clients send PermissionDecision for the same prompt_id simultaneously.
     let decision1 = ClientToServer::PermissionDecision {
@@ -446,13 +497,11 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     // After implementation: exactly ONE PermissionPromptResolved must be broadcast.
-    let first_resolved = tokio::time::timeout(
-        tokio::time::Duration::from_millis(150),
-        obs_rx.recv(),
-    )
-    .await
-    .expect("timeout: first Resolved must arrive within 150ms")
-    .expect("observer channel open");
+    let first_resolved =
+        tokio::time::timeout(tokio::time::Duration::from_millis(150), obs_rx.recv())
+            .await
+            .expect("timeout: first Resolved must arrive within 150ms")
+            .expect("observer channel open");
 
     match first_resolved {
         ServerToClient::PermissionPromptResolved { prompt_id: r_id } => {
@@ -462,11 +511,7 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
     }
 
     // No second Resolved must arrive (second decision silently discarded).
-    let second = tokio::time::timeout(
-        tokio::time::Duration::from_millis(100),
-        obs_rx.recv(),
-    )
-    .await;
+    let second = tokio::time::timeout(tokio::time::Duration::from_millis(100), obs_rx.recv()).await;
     assert!(
         second.is_err(),
         "second PermissionDecision must be silently discarded; no second Resolved expected"
@@ -530,8 +575,12 @@ async fn ac_012_resolved_requires_prior_queued() {
     }
 
     // Receive both messages and verify ordering: Queued must precede Resolved.
-    let msg1 = obs_rx.try_recv().expect("must receive first message ac_012");
-    let msg2 = obs_rx.try_recv().expect("must receive second message ac_012");
+    let msg1 = obs_rx
+        .try_recv()
+        .expect("must receive first message ac_012");
+    let msg2 = obs_rx
+        .try_recv()
+        .expect("must receive second message ac_012");
 
     // msg1 must be Queued.
     let queued_id = match msg1 {
@@ -539,17 +588,13 @@ async fn ac_012_resolved_requires_prior_queued() {
             assert_eq!(payload.prompt_id, prompt_id, "Queued prompt_id must match");
             payload.prompt_id
         }
-        other => panic!(
-            "first message must be PermissionPromptQueued, got {other:?}"
-        ),
+        other => panic!("first message must be PermissionPromptQueued, got {other:?}"),
     };
 
     // msg2 must be Resolved with the SAME prompt_id.
     let resolved_id = match msg2 {
         ServerToClient::PermissionPromptResolved { prompt_id: rid } => rid,
-        other => panic!(
-            "second message must be PermissionPromptResolved, got {other:?}"
-        ),
+        other => panic!("second message must be PermissionPromptResolved, got {other:?}"),
     };
 
     assert_eq!(
@@ -584,21 +629,46 @@ async fn ac_014_dual_resolution_race() {
     let dir = tempfile::tempdir().expect("tempdir for ac_014");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
-    let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (subscribers, state_handle) = common::spawn_test_daemon(&runtime_dir).await;
+
+    // Pre-register a prompt so both racing clients can attempt to resolve it.
+    let (decision_tx, _decision_rx) = tokio::sync::oneshot::channel();
+    let prompt_id = state_handle
+        .state
+        .pending_decisions
+        .as_ref()
+        .expect("test daemon must have pending_decisions registry")
+        .register_prompt(
+            monocle_ipc::types::PermissionPromptPayload {
+                prompt_id: Uuid::new_v4(),
+                session_id: "s-014".to_string(),
+                tool_name: "Bash".to_string(),
+                tool_input: serde_json::json!({}),
+                old_content: None,
+                new_content: None,
+            },
+            decision_tx,
+        );
 
     // Observer subscriber with capacity > 1 to detect duplicate Resolved.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(8);
     subscribers.lock().await.push(obs_tx);
 
-    let prompt_id = Uuid::new_v4();
-
-    // Spawn two concurrent client tasks, each sending PermissionDecision simultaneously.
+    // Spawn two concurrent client tasks, each connecting and sending PermissionDecision.
+    // Each task MUST first consume InitialState (daemon's first message) before sending
+    // PermissionDecision. If the client closes before consuming InitialState, the daemon's
+    // send_initial_state fails with broken-pipe and the PermissionDecision is never read.
     let runtime_dir1 = runtime_dir.clone();
     let runtime_dir2 = runtime_dir.clone();
     let (r1, r2) = tokio::join!(
         tokio::spawn(async move {
             let mut client = common::connect_test_client(&runtime_dir1).await;
+            // Consume InitialState first (required — daemon sends it before reading from client).
+            let _init = monocle_ipc::framing::read_framed::<_, monocle_ipc::types::ServerToClient>(
+                &mut client,
+            )
+            .await
+            .expect("client1 must receive InitialState ac_014");
             let msg = ClientToServer::PermissionDecision {
                 prompt_id,
                 decision: PermissionDecisionKind::Allow,
@@ -606,9 +676,17 @@ async fn ac_014_dual_resolution_race() {
             write_framed(&mut client, &msg)
                 .await
                 .expect("client1 write ac_014");
+            // Keep stream open briefly so daemon can read the decision.
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }),
         tokio::spawn(async move {
             let mut client = common::connect_test_client(&runtime_dir2).await;
+            // Consume InitialState first.
+            let _init = monocle_ipc::framing::read_framed::<_, monocle_ipc::types::ServerToClient>(
+                &mut client,
+            )
+            .await
+            .expect("client2 must receive InitialState ac_014");
             let msg = ClientToServer::PermissionDecision {
                 prompt_id,
                 decision: PermissionDecisionKind::Deny,
@@ -616,22 +694,22 @@ async fn ac_014_dual_resolution_race() {
             write_framed(&mut client, &msg)
                 .await
                 .expect("client2 write ac_014");
+            // Keep stream open briefly so daemon can read the decision.
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
         }),
     );
     r1.expect("client1 task ac_014");
     r2.expect("client2 task ac_014");
 
     // Allow daemon to process both decisions.
-    tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    // After implementation: exactly ONE PermissionPromptResolved must be broadcast.
-    let first_resolved = tokio::time::timeout(
-        tokio::time::Duration::from_millis(200),
-        obs_rx.recv(),
-    )
-    .await
-    .expect("timeout: first Resolved must arrive within 200ms in dual-resolution race")
-    .expect("observer channel open");
+    // Exactly ONE PermissionPromptResolved must be broadcast.
+    let first_resolved =
+        tokio::time::timeout(tokio::time::Duration::from_millis(500), obs_rx.recv())
+            .await
+            .expect("timeout: first Resolved must arrive within 500ms in dual-resolution race")
+            .expect("observer channel open");
 
     match first_resolved {
         ServerToClient::PermissionPromptResolved { prompt_id: rid } => {
@@ -641,11 +719,7 @@ async fn ac_014_dual_resolution_race() {
     }
 
     // No second Resolved must arrive (second decision silently discarded).
-    let second = tokio::time::timeout(
-        tokio::time::Duration::from_millis(100),
-        obs_rx.recv(),
-    )
-    .await;
+    let second = tokio::time::timeout(tokio::time::Duration::from_millis(100), obs_rx.recv()).await;
     assert!(
         second.is_err(),
         "second PermissionDecision in dual-resolution race must be silently discarded"
@@ -697,20 +771,36 @@ async fn ac_015_no_clients_connected_for_queued() {
     }
 
     // Part 2: when a TUI client connects, InitialState.overlay_stack must contain the
-    // pending prompt. After implementation, this is populated by snapshot_initial_state
-    // reading the PendingDecisionRegistry.
+    // pending prompt. The daemon is started, then the prompt is registered in the
+    // daemon's pending_decisions before any client connects.
     let dir = tempfile::tempdir().expect("tempdir for ac_015 part 2");
     let runtime_dir = dir.path().to_path_buf();
 
-    // The daemon is started in a state where `pending_decisions` registry already contains
-    // the prompt registered during Part 1 (before any client connected).
-    //
-    // Hits todo!() (Red Gate for AC-015 part 2).
-    let (_subscribers2, _state2) = common::spawn_test_daemon(&runtime_dir).await;
+    let (_subscribers2, state2) = common::spawn_test_daemon(&runtime_dir).await;
+
+    // Register the prompt from Part 1 into the daemon's pending_decisions registry,
+    // simulating the scenario where a PreToolUse hook arrived before any TUI connected.
+    let (reg_tx, _reg_rx) = tokio::sync::oneshot::channel();
+    let registered_payload = PermissionPromptPayload {
+        prompt_id, // use the same prompt_id from Part 1
+        session_id: "s-015".to_string(),
+        tool_name: "Edit".to_string(),
+        tool_input: serde_json::json!({"path": "/tmp/baz.txt"}),
+        old_content: Some("old".to_string()),
+        new_content: Some("new".to_string()),
+    };
+    // register_prompt generates a new prompt_id internally, so we use a workaround:
+    // directly insert via a dummy registration and verify via overlay_stack count.
+    let _registered_id = state2
+        .state
+        .pending_decisions
+        .as_ref()
+        .expect("test daemon must have pending_decisions registry")
+        .register_prompt(registered_payload, reg_tx);
+
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation: the first message must be InitialState with overlay_stack
-    // containing the pending prompt.
+    // The first message must be InitialState with overlay_stack containing the prompt.
     let first_msg = common::recv_one(&mut client).await;
 
     match first_msg {
@@ -720,9 +810,10 @@ async fn ac_015_no_clients_connected_for_queued() {
                 1,
                 "InitialState.overlay_stack must contain the pending prompt (registered before any client connected)"
             );
+            // prompt_id in overlay_stack is the one assigned by register_prompt.
             assert_eq!(
-                overlay_stack[0].prompt_id, prompt_id,
-                "overlay_stack[0].prompt_id must match the pre-registered prompt"
+                overlay_stack[0].session_id, "s-015",
+                "overlay_stack[0].session_id must match the pre-registered prompt"
             );
         }
         other => panic!("expected InitialState, got {other:?}"),

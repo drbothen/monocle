@@ -17,11 +17,7 @@
 // Suppress non_snake_case — `ac_` prefix followed by numeric ID is intentional.
 #![allow(non_snake_case)]
 // expect/unwrap/disallowed_methods are idiomatic in test code.
-#![allow(
-    clippy::expect_used,
-    clippy::unwrap_used,
-    clippy::disallowed_methods
-)]
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::disallowed_methods)]
 
 mod common;
 
@@ -105,9 +101,7 @@ async fn ac_002_initial_state_is_first_message() {
             // Specific values are tested in ac_013 (empty-state vector).
             let _ = (sessions, ring_tail, overlay_stack, drop_counter);
         }
-        other => panic!(
-            "first message from daemon must be InitialState, got {other:?}"
-        ),
+        other => panic!("first message from daemon must be InitialState, got {other:?}"),
     }
 }
 
@@ -160,8 +154,7 @@ async fn ac_003_four_byte_le_framing() {
 
         // Verify 4-byte LE prefix encodes the payload length.
         assert!(buf.len() >= 4, "framed output must have at least 4 bytes");
-        let declared_len =
-            u32::from_le_bytes(buf[..4].try_into().expect("first 4 bytes")) as usize;
+        let declared_len = u32::from_le_bytes(buf[..4].try_into().expect("first 4 bytes")) as usize;
         let actual_payload_len = buf.len() - 4;
         assert_eq!(
             declared_len, actual_payload_len,
@@ -221,16 +214,41 @@ async fn ac_004_initial_state_too_large_closes_connection() {
     let dir = tempfile::tempdir().expect("tempdir for ac_004");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
-    let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (_subscribers, state_handle) = common::spawn_test_daemon(&runtime_dir).await;
 
-    // After implementation: pre-populate state with oversized ring_tail so that
-    // InitialState would exceed 256 KiB, then connect and assert the client
-    // receives EOF (IpcError::Disconnected) as its first event.
+    // Pre-populate pending_decisions with ~300 large PermissionPromptPayload entries
+    // so that snapshot_initial_state produces an overlay_stack whose serialized
+    // InitialState exceeds 256 KiB (262,144 bytes), triggering MessageTooLarge.
+    // Each payload carries ~1 KiB of tool_input data; 300 × ~1 KiB ≈ 300 KiB.
+    {
+        let registry = state_handle
+            .state
+            .pending_decisions
+            .as_ref()
+            .expect("test daemon must have pending_decisions registry");
+        for i in 0..300u32 {
+            let (tx, _rx) = tokio::sync::oneshot::channel();
+            let large_tool_input = serde_json::json!({
+                "path": format!("/tmp/file_{i}.txt"),
+                "content": "A".repeat(1024),
+            });
+            registry.register_prompt(
+                monocle_ipc::types::PermissionPromptPayload {
+                    prompt_id: uuid::Uuid::new_v4(),
+                    session_id: format!("session-{i}"),
+                    tool_name: "Edit".to_string(),
+                    tool_input: large_tool_input,
+                    old_content: Some("old".repeat(100)),
+                    new_content: Some("new".repeat(100)),
+                },
+                tx,
+            );
+        }
+    }
+
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation: first recv must return Err(IpcError::Disconnected)
-    // (daemon closed the connection after MessageTooLarge detection).
+    // Daemon closed the connection after MessageTooLarge detection; client receives EOF.
     let first_result: Result<ServerToClient, IpcError> =
         monocle_ipc::framing::read_framed(&mut client).await;
     match first_result {
@@ -270,6 +288,26 @@ async fn ac_005_push_only_no_polling() {
     // 2. Push a DropCounterUpdate via the subscriber list to simulate a daemon push.
     // 3. Assert the client receives the push message without sending any request.
 
+    // Wait until the daemon has registered the client in the subscriber list.
+    // There is a scheduling race: connect_test_client returns as soon as the
+    // OS-level accept() handshake completes, but the per-client task runs
+    // asynchronously and may not have reached register_subscriber yet.
+    // Polling here ensures the push goes to a non-empty subscriber list.
+    let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(2);
+    loop {
+        {
+            let subs = subscribers.lock().await;
+            if !subs.is_empty() {
+                break;
+            }
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "ac_005: subscriber not registered within 2 s after connect"
+        );
+        tokio::task::yield_now().await;
+    }
+
     // Simulate a daemon push directly via the subscriber list.
     let push_msg = ServerToClient::DropCounterUpdate { drop_counter: 99 };
     {
@@ -290,9 +328,7 @@ async fn ac_005_push_only_no_polling() {
         ServerToClient::DropCounterUpdate { drop_counter } => {
             assert_eq!(drop_counter, 99, "pushed drop_counter value must be 99");
         }
-        other => panic!(
-            "second message must be the DropCounterUpdate push, got {other:?}"
-        ),
+        other => panic!("second message must be the DropCounterUpdate push, got {other:?}"),
     }
 }
 
