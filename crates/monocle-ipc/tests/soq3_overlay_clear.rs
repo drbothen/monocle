@@ -1,7 +1,6 @@
 #![allow(
     non_snake_case,
     dead_code,
-    unused_assignments,
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::disallowed_methods

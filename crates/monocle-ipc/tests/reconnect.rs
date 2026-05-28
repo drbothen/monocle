@@ -1,7 +1,6 @@
 #![allow(
     non_snake_case,
     dead_code,
-    unused_assignments,
     clippy::expect_used,
     clippy::unwrap_used,
     clippy::disallowed_methods,
@@ -958,6 +957,13 @@ async fn test_BC_2_05_006_ac_007_status_bar_reconnecting_after_soq3() {
     drop(server_stream);
 
     let mut status = StatusBar::Normal;
+    // Observe initial state before SOQ-3 fires — proves the transition is from Normal,
+    // not that Normal was set and thrown away.
+    assert_eq!(
+        status,
+        StatusBar::Normal,
+        "AC-007 precondition: status must be Normal before SOQ-3 fires"
+    );
 
     // Receive Disconnected event.
     let evt = event_rx
