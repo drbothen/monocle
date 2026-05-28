@@ -259,14 +259,14 @@ pub async fn reconnect(
 
         attempt = attempt.saturating_add(1);
         let delay = backoff.next_delay();
+        let delay_ms = delay.as_millis();
 
         tracing::debug!(
             attempt,
             runtime_dir = %runtime_dir.display(),
-            delay_ms = delay.as_millis(),
+            delay_ms,
             sock_path = %sock_path.display(),
-            "reconnect: attempt {attempt} — waiting {delay_ms}ms before trying to connect",
-            delay_ms = delay.as_millis()
+            "reconnect: attempt {attempt} — waiting {delay_ms}ms before trying to connect"
         );
 
         // Wait for the backoff delay. tokio::time::sleep is compatible with mock time
