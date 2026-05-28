@@ -41,6 +41,22 @@ use ratatui::{
 use crate::app::App;
 
 // ---------------------------------------------------------------------------
+// Empty-state canonical strings (BC-2.06.005 PC-3)
+// ---------------------------------------------------------------------------
+
+/// Line 1 of the sessions panel empty-state message (BC-2.06.005 PC-3).
+///
+/// Single source of truth shared by production render and integration tests.
+/// Any change must be accompanied by a BC-2.06.005 version bump.
+pub const SESSIONS_EMPTY_LINE_1: &str = "No sessions detected";
+
+/// Line 2 of the sessions panel empty-state message (BC-2.06.005 PC-3).
+///
+/// Single source of truth shared by production render and integration tests.
+/// Any change must be accompanied by a BC-2.06.005 version bump.
+pub const SESSIONS_EMPTY_LINE_2: &str = "Start Claude Code in any terminal to see it here.";
+
+// ---------------------------------------------------------------------------
 // Token and cost formatters (BC-2.06.005 PC-2, Invariant 2 + 3)
 // ---------------------------------------------------------------------------
 
@@ -413,9 +429,10 @@ impl StatefulWidget for SessionsPanel<'_> {
         // --- Render the session list or empty-state message ---
         if self.app.sessions.is_empty() {
             // BC-2.06.005 PC-3: two-line empty state message.
+            // Uses pub consts — single source of truth with integration tests.
             let empty = Paragraph::new(vec![
-                Line::from("No sessions detected"),
-                Line::from("Start Claude Code in any terminal to see it here."),
+                Line::from(SESSIONS_EMPTY_LINE_1),
+                Line::from(SESSIONS_EMPTY_LINE_2),
             ])
             .block(Block::default().borders(Borders::NONE));
             Widget::render(empty, list_area, buf);
