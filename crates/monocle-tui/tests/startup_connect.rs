@@ -168,10 +168,17 @@ fn test_bc_2_06_004_pc2_ac003_on_disconnect_transitions_to_dashboard() {
             core::mem::discriminant(other)
         ),
     }
+
+    // F-S025-ADV9-MED-002: assert the canonical status_message text from AC-003.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("[disconnected] reconnecting..."),
+        "AC-003: status_message must be '[disconnected] reconnecting...' exactly after Disconnected"
+    );
 }
 
 /// BC-2.06.004 PC-2 / AC-003: on_transport_event(Disconnected) clears
-/// overlay_stack before transitioning.
+/// overlay_stack before transitioning and sets the canonical status_message.
 #[test]
 fn test_bc_2_06_004_pc2_ac003_on_disconnect_clears_overlay_stack() {
     let mut app = App::new(MonocleConfig::default());
@@ -194,6 +201,14 @@ fn test_bc_2_06_004_pc2_ac003_on_disconnect_clears_overlay_stack() {
         app.overlay_stack.len(),
         0,
         "AC-003: overlay_stack must be empty after Disconnected"
+    );
+
+    // F-S025-ADV9-MED-002: canonical status_message must also be set (same contract,
+    // different teardown precondition — 2-prompt overlay vs 1-prompt above).
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some("[disconnected] reconnecting..."),
+        "AC-003: status_message must be '[disconnected] reconnecting...' exactly after Disconnected"
     );
 }
 
