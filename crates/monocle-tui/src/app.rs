@@ -16,11 +16,13 @@ use directories::ProjectDirs;
 use monocle_config::{load_config, MonocleConfig};
 use monocle_core::engine::EnrichedSession;
 use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
+use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload, ServerToClient};
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
+use tokio::io::AsyncReadExt;
 
 // ---------------------------------------------------------------------------
 // Stub types
@@ -319,6 +321,78 @@ pub fn resolve_runtime_dir() -> Result<PathBuf> {
 }
 
 // ---------------------------------------------------------------------------
+// Dedicated IPC reader task (Option B — F-S025-ADV2-BLOCKER-001)
+// ---------------------------------------------------------------------------
+
+/// Spawn a dedicated reader task that calls `read_framed` in a loop and forwards
+/// `Result<ServerToClient, IpcError>` into a bounded `mpsc::channel(64)`.
+///
+/// # Cancellation safety
+///
+/// `read_framed` is NOT cancellation-safe: the two sequential `read_exact` calls
+/// inside it will silently corrupt the byte stream if the future is dropped between
+/// the first and second call (e.g., inside a `tokio::time::timeout` wrapper).
+/// This dedicated task holds `read_framed` to completion on every call — the event
+/// loop never cancels it. The event loop uses `ipc_rx.try_recv()` (non-blocking,
+/// infallible) to drain available messages each tick instead.
+///
+/// # Channel semantics (BC-2.05.002 Invariant 4 — at-least-once delivery)
+///
+/// The sender uses `tx.send(msg).await` (blocking backpressure), NOT `try_send`.
+/// Dropping messages silently when the channel is full would violate the at-least-once
+/// delivery guarantee for `PermissionPromptQueued`. Backpressure is the correct policy:
+/// if the event loop is consistently slower than the daemon, that is a render
+/// performance problem to diagnose, not a message-loss policy to encode.
+///
+/// # Lifecycle
+///
+/// The task exits when:
+/// 1. `read_framed` returns any `IpcError` (disconnect forwarded to channel, then break).
+/// 2. The channel receiver is dropped (TUI exiting — task exits cleanly without error).
+///
+/// The caller retains the `JoinHandle` to call `.abort()` on clean exit or reconnect.
+///
+/// # Reconnect
+///
+/// On reconnect, the caller calls `reader_handle.abort()` to ensure the old task is
+/// cleaned up, then calls `spawn_ipc_reader(new_reader, ipc_tx.clone())` with the new
+/// transport reader. The channel receiver (`ipc_rx`) is reused across reconnections —
+/// the same channel is provisioned once; new `ipc_tx` clones are derived from the
+/// channel's `Sender` end, which remains valid across task restarts.
+pub fn spawn_ipc_reader<R>(
+    mut reader: R,
+    tx: tokio::sync::mpsc::Sender<Result<ServerToClient, IpcError>>,
+) -> tokio::task::JoinHandle<()>
+where
+    R: AsyncReadExt + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        loop {
+            match read_framed::<_, ServerToClient>(&mut reader).await {
+                Ok(msg) => {
+                    if tx.send(Ok(msg)).await.is_err() {
+                        // Receiver dropped (TUI exiting): exit cleanly without error.
+                        return;
+                    }
+                }
+                Err(IpcError::Disconnected) => {
+                    // Forwarding the disconnect signal lets the event loop fire
+                    // on_transport_event(Disconnected) and enter the reconnect path.
+                    let _ = tx.send(Err(IpcError::Disconnected)).await;
+                    return;
+                }
+                Err(e) => {
+                    // All other errors (MessageTooLarge, IoError, SerializeError):
+                    // forward and exit. The event loop treats any Err as a disconnect.
+                    let _ = tx.send(Err(e)).await;
+                    return;
+                }
+            }
+        }
+    })
+}
+
+// ---------------------------------------------------------------------------
 // Main async run loop
 // ---------------------------------------------------------------------------
 
@@ -420,6 +494,21 @@ pub async fn run() -> Result<()> {
         }
     }
 
+    // Transfer transport ownership to the reader task (Option B — F-S025-ADV2-BLOCKER-001).
+    //
+    // The reader task loops forever, calling read_framed to completion and forwarding
+    // completed frames (or disconnect errors) into the bounded mpsc channel.
+    // The event loop drains ipc_rx with try_recv() — never calling read_framed directly.
+    //
+    // Channel capacity N=64: at 1000 events/sec (SS-conventions channel convention) and
+    // 16ms render cadence, the loop drains ~16 events/tick — well within budget. N=64
+    // provides 4× headroom against burst (64 × ~1KB ≈ 64KB max enqueued).
+    //
+    // Drop policy: BLOCK (tx.send().await). Silent drop on full would violate at-least-once
+    // delivery for PermissionPromptQueued (BC-2.05.002 Invariant 4).
+    let (ipc_tx, mut ipc_rx) = tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
+    let reader_handle = spawn_ipc_reader(transport, ipc_tx.clone());
+
     // Set up the ratatui terminal.
     let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
@@ -431,11 +520,11 @@ pub async fn run() -> Result<()> {
     // Future: merge user-custom and per-context layers from config.
     let binding_layers = build_builtin_binding_layers();
 
-    // Main event loop.
-    let tick_rate = Duration::from_millis(16); // ~60fps
+    // Main event loop (~60fps render cadence, keyboard polling, IPC drain).
+    let tick_rate = Duration::from_millis(16); // ~60fps; also the keyboard poll ceiling
 
     loop {
-        // Render the current frame (AC-001, AC-005, BLOCKER-004).
+        // 1. Render the current frame (AC-001, AC-005, BLOCKER-004).
         terminal.draw(|frame| {
             use crate::ui::layout::build_dashboard_layout;
             use crate::ui::sessions_panel::SessionsPanel;
@@ -474,7 +563,9 @@ pub async fn run() -> Result<()> {
             );
         })?;
 
-        // Poll for input events (BLOCKER-002: full binding dispatch via resolve_binding).
+        // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
+        //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
+        //    implementation; the 1ms was only in the removed timeout wrapper.
         if event::poll(tick_rate)? {
             if let Event::Key(ct_key) = event::read()? {
                 // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
@@ -565,32 +656,85 @@ pub async fn run() -> Result<()> {
             }
         }
 
-        // Poll for IPC messages (non-blocking: use try_recv equivalent).
-        // We use a 1ms poll to avoid blocking the render loop.
-        match tokio::time::timeout(
-            Duration::from_millis(1),
-            read_framed::<_, ServerToClient>(&mut transport),
-        )
-        .await
-        {
-            Ok(Ok(msg)) => {
-                if let Err(e) = handle_server_message(&mut app, msg) {
-                    // Protocol violation (e.g., duplicate InitialState) — close connection.
-                    tracing::error!(error = %e, "fatal protocol error; closing IPC connection");
+        // 3. Drain IPC channel — non-blocking try_recv; process all available messages
+        //    this tick (Option B — F-S025-ADV2-BLOCKER-001 fix; replaces the removed
+        //    `tokio::time::timeout(Duration::from_millis(1), read_framed(...))` wrapper).
+        loop {
+            use tokio::sync::mpsc::error::TryRecvError;
+
+            match ipc_rx.try_recv() {
+                Ok(Ok(msg)) => {
+                    if let Err(e) = handle_server_message(&mut app, msg) {
+                        // Fatal protocol violation (e.g., duplicate InitialState).
+                        tracing::error!(error = %e, "fatal protocol error; closing IPC connection");
+                        on_transport_event(&mut app, TransportEvent::Disconnected);
+                        reader_handle.abort();
+
+                        // TODO(S-023-merge): reconnect call site.
+                        //
+                        // Reconnect logic (exponential backoff 250ms→2s, 5s total window)
+                        // belongs to S-023's `monocle_ipc::reconnect` module. S-023 is
+                        // in parallel development and has NOT merged to develop yet.
+                        //
+                        // When S-023 merges:
+                        //   1. Replace this block with:
+                        //      match monocle_ipc::reconnect::reconnect_with_backoff(&sock_path).await {
+                        //          Ok((new_transport, _)) => {
+                        //              reader_handle = spawn_ipc_reader(new_transport, ipc_tx.clone());
+                        //              app.status_message = None; // reconnected
+                        //          }
+                        //          Err(IpcError::ReconnectTimeout) => {
+                        //              app.status_message = Some("[daemon: offline]".to_string());
+                        //          }
+                        //          Err(e) => { tracing::error!(error = %e, "reconnect failed"); }
+                        //      }
+                        //   2. Delete this TODO block.
+                        //   3. Verify variant shapes against BC-2.05.007.
+                        //
+                        // This is the ONE acceptable TODO marker in S-025 — it tracks a
+                        // merge-coordination dependency (S-023 not yet on develop), NOT a
+                        // deferred defect. The reconnect scaffolding exists; S-023 provides
+                        // the API. See F-S025-ADV2-BLOCKER-001 architect decision doc §Cross-Story.
+                        tracing::warn!(
+                            "reconnect not yet available (pending S-023 merge); \
+                                        entering offline mode"
+                        );
+                        app.status_message = Some("[daemon: offline]".to_string());
+                        break;
+                    }
+                }
+                Ok(Err(e)) => {
+                    // Reader task forwarded a disconnect or transport error.
+                    tracing::warn!(error = %e, "IPC reader task disconnect; entering reconnect state");
+                    on_transport_event(&mut app, TransportEvent::Disconnected);
+                    reader_handle.abort();
+
+                    // TODO(S-023-merge): same reconnect call site as above.
+                    // See the detailed comment in the protocol-violation arm above.
+                    tracing::warn!(
+                        "reconnect not yet available (pending S-023 merge); \
+                                    entering offline mode"
+                    );
+                    app.status_message = Some("[daemon: offline]".to_string());
+                    break;
+                }
+                Err(TryRecvError::Empty) => {
+                    // No message available this tick — normal, proceed to next iteration.
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    // Reader task exited unexpectedly (should not happen except on TUI exit).
+                    tracing::warn!("IPC reader task channel disconnected unexpectedly");
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     break;
                 }
             }
-            Ok(Err(e)) => {
-                // Connection lost — treat as Disconnected.
-                tracing::warn!(error = %e, "IPC read error; treating as disconnect");
-                on_transport_event(&mut app, TransportEvent::Disconnected);
-            }
-            Err(_timeout) => {
-                // Normal: no message within 1ms.
-            }
         }
     }
+
+    // Clean exit: abort the reader task before returning so the tokio runtime doesn't
+    // leak the background task between test runs or on graceful shutdown.
+    reader_handle.abort();
 
     Ok(())
 }
