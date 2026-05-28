@@ -28,20 +28,26 @@
 //! `<runtime_dir>/monocle.lock` every 5 seconds. When a new lock file is detected, it
 //! re-enters the reconnect loop with a fresh `BackoffState` (backoff resets to 250ms).
 //!
-//! # Lock File Format
+//! # Lock File Format and UDS Socket Path Convention
 //!
 //! The lock file is JSON with at minimum the following fields:
 //! ```json
 //! {
 //!   "pid": 12345,
 //!   "port": 9001,
-//!   "authToken": "...",
-//!   "socketPath": "/path/to/monocle.sock"
+//!   "authToken": "..."
 //! }
 //! ```
 //!
-//! The `socketPath` field is used directly for reconnect attempts. The `pid` field
-//! is used as the stable discriminant for detecting a new daemon in [`poll_for_new_daemon`].
+//! The reconnect loop reads `(pid, port, authToken)` from the lock file as a
+//! change-detection discriminant (BC-2.05.006 PC-3). The daemon's UDS socket path is
+//! NOT stored in the lock file — the canonical path is always
+//! `<runtime_dir>/monocle.sock` by convention (established by SS-ipc and SS-daemon-wiring).
+//! This is the same path the daemon binds to in [`crate::uds::UdsTransport::bind`].
+//! [`canonical_sock_path`] encodes this convention for all reconnect call sites.
+//!
+//! The `pid` field is the stable discriminant for detecting a new daemon in
+//! [`poll_for_new_daemon`].
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -201,35 +207,34 @@ pub async fn reconnect(
     let mut attempt = 0u32;
 
     loop {
-        // Read current socket path from lock file (BC-2.05.006 PC-3).
-        // On first attempt OR after each failed attempt, re-read to discover daemon restart.
-        let sock_path = match read_lock_file_sock_path(runtime_dir).await {
-            Ok(p) => {
+        // Re-read the lock file after each failed attempt to detect a restarted daemon
+        // (BC-2.05.006 PC-3). The lock file provides the change-detection discriminant
+        // (pid, port, authToken); the socket path is always the canonical convention path.
+        let sock_path = match read_lock_discriminant(&runtime_dir.join("monocle.lock")).await {
+            Some(_discriminant) => {
                 // Successful read — reset consecutive failure counter.
                 backoff.lock_read_failures = 0;
-                p
+                canonical_sock_path(runtime_dir)
             }
-            Err(e) => {
+            None => {
                 backoff.lock_read_failures = backoff.lock_read_failures.saturating_add(1);
                 if backoff.lock_read_failures == 2 {
                     tracing::warn!(
                         attempt,
                         runtime_dir = %runtime_dir.display(),
                         consecutive_failures = backoff.lock_read_failures,
-                        error = %e,
                         "reconnect: repeated lock file read failures — daemon may have removed lock"
                     );
                 } else {
                     tracing::debug!(
                         attempt,
                         runtime_dir = %runtime_dir.display(),
-                        error = %e,
                         "reconnect: lock file unavailable, will retry after backoff"
                     );
                 }
-                // No socket path — use default path as fallback so we can still
-                // attempt the connection (the daemon may have started by the time sleep ends).
-                runtime_dir.join("monocle.sock")
+                // Lock file absent — use the canonical path anyway; the daemon may have
+                // started by the time the backoff sleep completes.
+                canonical_sock_path(runtime_dir)
             }
         };
 
@@ -332,40 +337,25 @@ pub async fn reconnect(
 }
 
 // ---------------------------------------------------------------------------
-// Lock-file re-read helper
+// Socket path convention helper
 // ---------------------------------------------------------------------------
 
-/// Re-read `<runtime_dir>/monocle.lock` and return the socket path for the next attempt.
+/// Return the canonical UDS socket path for the monocle daemon in the given runtime directory.
 ///
-/// Called after each failed reconnect attempt (BC-2.05.006 PC-3). If the lock file has
-/// changed since the last read (new `pid`, `port`, or `authToken`), the returned
-/// `PathBuf` reflects the updated socket path, enabling the TUI to discover a restarted
-/// daemon that may be bound to a different port.
+/// The daemon always binds at `<runtime_dir>/monocle.sock` (established by
+/// [`crate::uds::UdsTransport::bind`] and codified in SS-ipc / SS-daemon-wiring).
+/// The lock file does NOT contain a `socketPath` field — that field was a lock-file
+/// shape mismatch removed in S-023. Reconnect call sites MUST use this helper rather
+/// than constructing the path inline.
 ///
-/// # Lock file format
+/// # Lock file and socket path separation
 ///
-/// The lock file is JSON with a `"socketPath"` field containing the absolute path to the
-/// daemon's UDS socket. If `"socketPath"` is absent, falls back to
-/// `<runtime_dir>/monocle.sock` as the canonical default.
-///
-/// # Errors
-///
-/// Returns [`IpcError::IoError`] if the lock file cannot be read.
-/// Returns [`IpcError::SerializeError`] if the lock file JSON is malformed.
-pub async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, IpcError> {
-    let lock_path = runtime_dir.join("monocle.lock");
-    // Use tokio::fs for async I/O (does not block the runtime on large lock files).
-    let contents = tokio::fs::read_to_string(&lock_path)
-        .await
-        .map_err(IpcError::IoError)?;
-    let json: serde_json::Value = serde_json::from_str(&contents)?;
-    // Extract the socketPath field if present; otherwise default to runtime_dir/monocle.sock.
-    let sock_path = json
-        .get("socketPath")
-        .and_then(|v| v.as_str())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| runtime_dir.join("monocle.sock"));
-    Ok(sock_path)
+/// The lock file fields `(pid, port, authToken)` serve as a change-detection discriminant
+/// for detecting daemon restarts (BC-2.05.006 PC-3). The socket path is a stable convention
+/// that does not change between daemon restarts within the same runtime directory.
+/// These concerns are intentionally separated.
+pub fn canonical_sock_path(runtime_dir: &Path) -> PathBuf {
+    runtime_dir.join("monocle.sock")
 }
 
 // ---------------------------------------------------------------------------
