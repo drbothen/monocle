@@ -1,21 +1,21 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "1.0"
+version: "1.6"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.19"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.25"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.0"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
-  - {path: .factory/stories/STORY-INDEX.md, version: "4.0"}
+  - {path: .factory/stories/STORY-INDEX.md, version: "4.7"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v4.0"
+traces_to: ".factory/stories/STORY-INDEX.md v4.7"
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-7)
@@ -172,7 +172,7 @@ Performing topological sort to confirm the graph is acyclic:
 
 **Critical path:** S-001 → S-016 → S-017 → S-021 → S-022 → S-026 → S-027 → S-029
 
-Critical path length: 8 stories, 60 total points (5+8+8+8+8+13+8+5 = 63 pts on path).
+Critical path length: 8 stories, 63 total points (5+8+8+8+8+13+8+5 = 63 pts on path).
 
 ## Dependency Adjacency Table
 
@@ -235,13 +235,14 @@ Critical path length: 8 stories, 60 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 | BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | S-026 | YES |
 | BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | YES |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | YES |
-| BC-2.06.017 | Permission Response Within Hook Timeout Budget | S-027 | YES |
+| BC-2.06.017 | Permission Response Within Hook Timeout Budget | — | GAP (GAP-P2-005) |
 | BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | YES |
 | BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | S-027 | YES |
 | BC-2.06.020 | Status Bar: Breadcrumb | S-027 | YES |
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | YES |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | YES |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | YES |
+| BC-2.06.024 | Permission Overlay: Tool Payload Rendering by Type | S-027 | YES |
 | BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | S-030 | YES |
 | BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | S-030 | YES |
 | BC-2.07.003 | Config Missing or Corrupted: Default Applied | S-030 | YES |
@@ -249,7 +250,7 @@ Critical path length: 8 stories, 60 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | YES |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | YES |
 
-**Coverage: 49/49 BCs covered (100%)**
+**Coverage: 49/50 BCs covered (BC-2.06.017 deferred — GAP-P2-005; BC-2.06.024 added — covered by S-027)**
 
 ## Subsystem to Story Matrix
 
@@ -266,7 +267,7 @@ Critical path length: 8 stories, 60 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 |--------|----------|---------------|-------------------|
 | NFR-001 | Hook latency ≤300ms | S-018 (hook routing + bus), S-029 (killer scenario) | Integration test: hook-to-decision roundtrip under 300ms; S-029 E2E validates full path |
 | NFR-002 | Notification latency ≤2000ms | S-018 (Notification routing 2000ms timeout) | Integration test: notification handler asserts 2000ms budget |
-| NFR-003 | TUI overlay render ≤100ms | S-027 (BC-2.06.017 — timeout budget assertion) | BC-2.06.017 AC validates overlay visible within 100ms of PermissionPromptQueued |
+| NFR-003 | TUI overlay render ≤100ms | S-027 (latency budget — Phase 3 integration test infrastructure) | BC-2.06.017 latency validation deferred to Phase 3 (GAP-P2-005); tool payload rendering behavior covered by BC-2.06.024 in S-027 |
 | NFR-006 | 1000 events/sec throughput | S-018 (bounded event bus drop counter) | S-018 integration test: 1000 events injected, drop counter asserted ≤N |
 
 NFR-001/002/003/006 are now covered by expansion stories. GAP-P2-001..004 are resolved by Waves 5-7 stories. The NFR deferred-to-Phase-3 classification from the original STORY-INDEX v3.0 is superseded by these assignments.
@@ -279,6 +280,44 @@ NFR-001/002/003/006 are now covered by expansion stories. GAP-P2-001..004 are re
 | GAP-EXP-002 | L3 | BC-2.07.005 Ctrl-P hardware key in test | Ctrl-P keybinding simulation in ratatui test context needs crossterm event injection helper — design deferred to test-writer for S-031 | S-031 test-writer dispatch |
 
 Both gaps are L3 (test infrastructure design choices) with mandatory resolution at their respective story's test-writer dispatch. No L1 (BC clause) gaps. No L2 (edge case) gaps.
+
+## §Trace v1.6
+
+**F-S025-ADV4-BLOCKER-001 + BLOCKER-002 propagation** (2026-05-28):
+- SS-tui.md pin v1.7.0 → v1.8.0 (Overlay shape sweep).
+- BC-INDEX.md pin v1.23 → v1.25.
+- Version bumped v1.5 → v1.6.
+- SE-16d monotonicity: v1.6 timestamp 2026-05-28 >= v1.5 timestamp 2026-05-27. PASS.
+
+## §Trace v1.4
+
+**Mechanical pin cascade: BC-INDEX v1.22 → v1.23 + STORY-INDEX v4.5 → v4.7** (2026-05-27):
+- BC-INDEX.md input pin updated: `"1.22"` → `"1.23"`.
+- STORY-INDEX.md input pin updated: `"4.5"` → `"4.7"`.
+- traces_to updated: `v4.5` → `v4.7`.
+- Version bumped v1.4 → v1.5.
+
+## §Trace v1.3
+
+**Phase 2 Adversarial Review Pass 3 — version pin updates** (2026-05-27):
+- OBS-P3-001/002: BC-INDEX.md pin updated `"1.19"` → `"1.21"`; STORY-INDEX.md pin updated
+  `"4.0"` → `"4.4"`; traces_to updated to `v4.4`.
+- Version bumped v1.2→v1.3.
+
+## §Trace v1.2
+
+**Phase 2 Adversarial Review Pass 2 — BC-2.06.017 gap, BC-2.06.024 addition, NFR-003 fix** (2026-05-27):
+- F-P2ADV-P2-004: BC-2.06.017 row changed from `S-027 | YES` to `— | GAP (GAP-P2-005)` (no covering story for latency budget; deferred to Phase 3).
+- BC-2.06.024 row added: `S-027 | YES` (tool payload rendering behavior now covered by S-027 per BC-2.06.024).
+- Coverage count updated: 49/49 (100%) → 49/50 (BC-2.06.017 gap, BC-2.06.024 added).
+- NFR-003 row updated: removed stale BC-2.06.017 reference; updated to reflect GAP-P2-005 and BC-2.06.024 distinction.
+- Version bumped v1.1→v1.2.
+
+## §Trace v1.1
+
+**Phase 2 Adversarial Review Pass 1 — critical path point sum fix** (2026-05-27):
+- F-P2ADV-012: Critical path point sum corrected — "60 total points" → "63 total points". The arithmetic 5+8+8+8+8+13+8+5 = 63 was already shown correctly; the prose label was wrong.
+- dependency-graph-expansion.md version bumped v1.0→v1.1.
 
 ## §Trace v1.0
 

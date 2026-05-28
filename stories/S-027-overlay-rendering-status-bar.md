@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.2"
+version: "1.3"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -24,10 +24,10 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "[pending]"
+input-hash: "d74870e"
 traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
 ---
 
@@ -206,6 +206,12 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.3
+
+**F-S025-ADV4-BLOCKER-001 + BLOCKER-002 propagation** (2026-05-28):
+- BC-2.06.021 pin v1.0.0 → v1.0.4 (Overlay shape sweep — no body changes required).
+- SE-16d monotonicity: v1.3 timestamp 2026-05-28 >= v1.2 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.2
 

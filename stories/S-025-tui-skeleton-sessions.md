@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.5"
+version: "1.6"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -21,11 +21,11 @@ verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "a47e758"
+input-hash: "1666756"
 traces_to: "Implements BC-2.06.004 (Ctrl-\\ popup: appears and dismisses without state loss), BC-2.06.005 (Sessions panel rendering), BC-2.06.007 (Sessions panel: Enter transitions to fullscreen), BC-2.05.002 Invariant 4 (apply_permission_prompt_queued idempotency helper)"
 ---
 
@@ -70,9 +70,11 @@ than missing file (e.g., `ParseError`, `SchemaMismatch`) are displayed to the us
 modal before the TUI proceeds with defaults.
 
 ### AC-005 (traces to BC-2.06.005 postcondition PC-1 — Sessions panel renders session list)
-The Sessions panel renders a scrollable list of active sessions. Each row shows six
-columns: icon, project name, status, token count, cost, uptime (in that order). For
-example: `● monocle Active 437k — 03:47:00`. The list is sourced from
+The Sessions panel renders a scrollable list of active sessions. Each row shows seven
+columns: session ID, harness icon, project name, status, token count, cost, uptime (in
+that order). For example: `sess-001 ● monocle Active 437k — 03:47:00`. The session ID
+column is required for operator clarity and debuggability when multiple sessions share
+the same project name or harness type. The list is sourced from
 `ServerToClient::SessionListUpdate` IPC messages. If no sessions are active, the panel
 renders two lines:
 ```
@@ -232,6 +234,17 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.6
+
+**F-S025-ADV4-BLOCKER-001 + BLOCKER-002 propagation** (2026-05-28):
+- BC-2.06.005 pin v1.0.0 → v1.0.5 (session_id 7th column adjudication — Option A: amend BC).
+- AC-005 body updated: "six columns: icon, project name, status, token count, cost, uptime"
+  → "seven columns: session ID, harness icon, project name, status, token count, cost, uptime".
+  Example row updated: `● monocle Active 437k — 03:47:00` → `sess-001 ● monocle Active 437k — 03:47:00`.
+  Rationale: BC-2.06.005 v1.0.5 PC-2 adds `session_id` as the first column; the implementation
+  already matched the 7-column spec; the story was the outlier. No body changes beyond AC-005.
+- SE-16d monotonicity: v1.6 timestamp 2026-05-28 >= v1.5 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.5
 

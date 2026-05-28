@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.4"
+version: "1.5"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -26,12 +26,12 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.012.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.4.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "[pending]"
+input-hash: "b8e5828"
 traces_to: "Implements BC-2.06.008 (overlay push/FIFO), BC-2.06.009 (stack rotation), BC-2.06.011 (Accept-Once keybinding), BC-2.06.012 (Accept-Always keybinding), BC-2.06.013 (Reject keybinding), BC-2.06.014 (Esc hide), BC-2.06.016 (disconnect clear/reconnect), BC-2.06.023 (UUID removal), BC-2.06.024 (PermissionPromptPayload→PromptModal conversion), BC-2.05.002 Invariant 4 (idempotent PermissionPromptQueued handler)"
 ---
 
@@ -307,6 +307,12 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.5
+
+**F-S025-ADV4-BLOCKER-001 + BLOCKER-002 propagation** (2026-05-28):
+- BC-2.06.016 pin v1.0.6 → v1.0.7 (Overlay shape sweep — no body changes required).
+- SE-16d monotonicity: v1.5 timestamp 2026-05-28 >= v1.4 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.4
 

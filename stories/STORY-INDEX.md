@@ -1,14 +1,14 @@
 ---
 document_type: story-index
 level: L4
-version: "5.5"
+version: "5.6"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.23"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.25"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
@@ -17,7 +17,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.0"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
 traces_to: ".factory/specs/prd.md v1.26.15"
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.6
+
+**F-S025-ADV4-BLOCKER-001 + BLOCKER-002 propagation** (2026-05-28):
+- S-025 v1.5 → v1.6: BC-2.06.005 pin v1.0.0 → v1.0.5; AC-005 updated 6-column → 7-column (session_id added as first column).
+- S-026 v1.4 → v1.5: BC-2.06.016 pin v1.0.6 → v1.0.7 (no body changes required).
+- S-027 v1.2 → v1.3: BC-2.06.021 pin v1.0.0 → v1.0.4 (no body changes required).
+- SS-tui.md pin v1.7.0 → v1.8.0 in STORY-INDEX and dependency-graph-expansion.md.
+- BC-INDEX.md pin v1.23 → v1.25 in STORY-INDEX and dependency-graph-expansion.md.
+- dependency-graph-expansion.md v1.5 → v1.6 (pin cascade).
+- STORY-INDEX version bumped v5.5 → v5.6.
 
 ## §Trace v5.5
 
