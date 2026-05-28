@@ -126,7 +126,8 @@ pub enum ServerToClient {
     /// Using the ring's storage type directly avoids lossy reconstruction: the RAM ring
     /// stores `HookEventRecord`; reconstructing `HookEvent` variants from records requires
     /// fabricating absent fields (cwd, transcript_path, prompt, stop_reason) with empty-string
-    /// defaults, producing silently incorrect data. The TUI (S-025) renders the event ribbon
+    /// defaults, producing silently incorrect data (previous attempt; superseded by
+    /// ADR-0006 / BC-2.05.002 v1.0.4). The TUI (S-025) renders the event ribbon
     /// from `HookEventRecord` fields (`hook_type`, `session_id`, `timestamp_micros`,
     /// `tool_name`) which are sufficient for display.
     InitialState {

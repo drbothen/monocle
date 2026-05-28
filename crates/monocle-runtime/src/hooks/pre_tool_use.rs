@@ -71,6 +71,11 @@ pub async fn post_hook_pre_tool_use(
     // The inner handler writes to this cell when a Defer prompt is registered;
     // the timeout handler reads it to clean up the registry entry and broadcast
     // PermissionPromptResolved (BC-2.05.005 postcondition PC-4).
+    // Arc<Mutex<Option<Uuid>>> is required here rather than Cell<Option<Uuid>>: the value
+    // is shared across two async closures (inner handler + timeout handler) that may run
+    // on different OS threads under tokio's work-stealing scheduler. Cell<T> is not Send,
+    // so it cannot be moved into an async block that crosses an await point on a multi-
+    // thread runtime. Mutex adds minimal overhead for a single write/read pair.
     let deferred_prompt_id: std::sync::Arc<std::sync::Mutex<Option<uuid::Uuid>>> =
         std::sync::Arc::new(std::sync::Mutex::new(None));
 
