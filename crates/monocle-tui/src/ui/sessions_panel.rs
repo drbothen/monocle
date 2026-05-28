@@ -34,7 +34,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Span},
+    text::Line,
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
@@ -51,6 +51,12 @@ use crate::app::App;
 /// | < 1,000        | raw     | `"999"`         |
 /// | 1,000..999,999 | Nk      | `"142k"`, `"1k"` |
 /// | >= 1,000,000   | N.NM    | `"1.2M"`        |
+///
+/// **Rounding policy:** integer truncation (floor) for both the `k` and `M` ranges.
+/// `1_050_000` → `"1.0M"` (not `"1.1M"`). `999_999` → `"999k"` (not `"1000k"`).
+/// This matches the `k`-range where `1_999` → `"1k"` (not `"2k"`). Consistent
+/// floor-truncation avoids surprising "up-rounding" on column widths and is easier
+/// to reason about for debugging (F-S025-ADV2-LOW-002).
 ///
 /// Invariant 2 (BC-2.06.005): the formatter is deterministic — the same `u64`
 /// always produces the same string.

@@ -273,6 +273,47 @@ fn test_bc_2_06_005_pc2_token_formatter_1200000_renders_1_2m() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// F-S025-ADV2-LOW-002: token formatter rounding policy edge cases
+// ---------------------------------------------------------------------------
+//
+// Rounding policy: floor/truncation. 1_050_000 → "1.0M" (not "1.1M").
+// 999_999 → "999k". 1_999_999 → "1.9M".
+
+/// F-S025-ADV2-LOW-002: format_token_count(1_050_000) == "1M" (floor truncation, zero decimal omitted).
+///
+/// The formatter omits the trailing `.0` when the tenths digit is zero (consistent
+/// with the k-range where no decimal is shown). 1_050_000: m_dec = 0 → "1M" not "1.0M".
+/// This is distinguishable from 1_000_000 → "1M" as well; the distinction is intentional.
+#[test]
+fn test_bc_2_06_005_token_formatter_low002_1_050_000_truncates_omits_zero_decimal() {
+    assert_eq!(
+        format_token_count(1_050_000),
+        "1M",
+        "LOW-002: 1_050_000 floor-truncates to m_dec=0; formats as '1M' (no .0 suffix)"
+    );
+}
+
+/// F-S025-ADV2-LOW-002: format_token_count(1_999_999) == "1.9M" (floor truncation).
+#[test]
+fn test_bc_2_06_005_token_formatter_low002_1_999_999_renders_1_9m() {
+    assert_eq!(
+        format_token_count(1_999_999),
+        "1.9M",
+        "LOW-002: 1_999_999 must floor-truncate to '1.9M'"
+    );
+}
+
+/// F-S025-ADV2-LOW-002: format_token_count(999_999) == "999k" (floor truncation, stays in k range).
+#[test]
+fn test_bc_2_06_005_token_formatter_low002_999_999_renders_999k() {
+    assert_eq!(
+        format_token_count(999_999),
+        "999k",
+        "LOW-002: 999_999 must render as '999k' (just under the 1M boundary)"
+    );
+}
+
 /// BC-2.06.005 PC-2 / AC-005: format_cost(None) == "—".
 ///
 /// Canonical test vector from BC-2.06.005 Invariant 3.
