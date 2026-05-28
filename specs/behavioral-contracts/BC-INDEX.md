@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.24"
+version: "1.25"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T13:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -874,3 +874,30 @@ Version bumps:
 BC titles: unchanged. No BC retirements or removals.
 
 SE-16d monotonicity PASS: 2026-05-28T00:00:00Z > prior 2026-05-27T10:00:00Z (v1.23). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.25
+
+**F-S025-ADV4-BLOCKER-002 + HIGH-001 — Column adjudication + incomplete body sweep cleanup** (2026-05-28T13:00:00Z):
+
+BC-2.06.005 v1.0.4 → v1.0.5 (F-S025-ADV4-BLOCKER-002, Option A):
+- Column count: 6 → 7. `session_id` added as first column. Rationale: required for operator
+  debuggability when multiple sessions share project name or harness type.
+- Description, PC-2 (column layout), canonical test vector happy-path row, Story Anchor updated.
+- H1 title unchanged: "Sessions Panel: Session List Renders from IPC State" (column count
+  is body-level detail, not a title-level discriminator).
+
+BC-2.06.016 v1.0.6 → v1.0.7 (F-S025-ADV4-HIGH-001):
+- EC-102 Expected Behavior column: stale `AppMode::Overlay { stack: [P1, P2], ... }` →
+  `App.overlay_stack = [P1, P2]`; `AppMode::Overlay { prior: Sessions }`.
+- Canonical test vector row 1 Initial State column: same shape correction.
+- §Trace v1.0.6 retrospectively corrected to note the pass was "partial", not complete.
+
+BC-2.06.021 v1.0.3 → v1.0.4 (F-S025-ADV4-HIGH-001):
+- Canonical test vector row 3 AppMode column: stale `Overlay { stack: [P1], prior: Sessions }` →
+  `Overlay { prior: Sessions }` (with `App.overlay_stack = [P1]`).
+- No §Trace entry existed for the Pass 3 sweep omission — v1.0.4 is the first sweep entry.
+
+BC-INDEX H1 titles: unchanged for all three BCs.
+No BC retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-28T13:00:00Z > 2026-05-28T00:00:00Z (v1.24). ARITHMETICALLY TRUE: PASS.

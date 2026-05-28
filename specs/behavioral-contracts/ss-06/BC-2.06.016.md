@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "989c7f6"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -91,7 +91,7 @@ decision would be sent to the wrong daemon connection.
 | EC-099 | Disconnect occurs when `AppMode` is `Fullscreen` | Stack cleared; AppMode → `Dashboard { Sessions }` (fullscreen forcefully exited); status bar shows disconnect message |
 | EC-100 | Disconnect occurs when `AppMode` is `Filtering` | Stack cleared (was empty in Filtering); AppMode → `Dashboard { Sessions }` (filter mode exited); status bar shows disconnect message |
 | EC-101 | Daemon reconnects within 1 second; daemon has 0 queued prompts in new session | Status bar "reconnecting..." clears; AppMode stays `Dashboard`; overlay stack stays empty — correct |
-| EC-102 | Daemon reconnects; daemon has 2 queued prompts from a NEW Claude Code session that arrived during reconnect window | TUI receives initial state push with 2 prompts; transitions to `AppMode::Overlay { stack: [P1, P2], ... }`; overlay renders — correct, these are fresh prompts from the new daemon, not the orphaned old ones |
+| EC-102 | Daemon reconnects; daemon has 2 queued prompts from a NEW Claude Code session that arrived during reconnect window | TUI receives initial state push with 2 prompts; `App.overlay_stack = [P1, P2]` (populated via `payload_to_modal()`); transitions to `AppMode::Overlay { prior: Sessions }`; overlay renders — correct, these are fresh prompts from the new daemon, not the orphaned old ones |
 | EC-103 | IPC channel drops silently (no sentinel message, just EOF on the read half) | `ipc_rx.recv()` returns `None`; treated identically to `DaemonDisconnect` sentinel; stack cleared and mode reset |
 | EC-104 | User was mid-keypress when disconnect occurred (e.g., just pressed `2` for Accept-always) | If the `ClientToServer::PermissionDecision` was already enqueued in `ipc_tx` before the disconnect: the send fails (channel closed); error is logged with `tracing::warn!` and swallowed; stack still cleared; no panic |
 
@@ -99,7 +99,7 @@ decision would be sent to the wrong daemon connection.
 
 | Initial State | Event | Expected Post-State | Category |
 |---------------|-------|---------------------|----------|
-| `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty, badge 0, status bar "reconnecting..." | happy-path |
+| `AppMode::Overlay { prior: Sessions }`, `App.overlay_stack = [P1, P2]` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, `App.overlay_stack` empty, badge 0, status bar "reconnecting..." | happy-path |
 | `AppMode::Dashboard { focused: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar "reconnecting..." | edge-case |
 | `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
 | `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
@@ -211,6 +211,25 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 
 ## §Trace v1.0.6
 
-**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
-- Resolves F-S025-ADV3-BLOCKER-002. `VecDeque<PromptModal>` overlay stack is now `App.overlay_stack` (single source of truth). Description, Postcondition 1, Invariants 1 and 4, VP table updated to reference `App.overlay_stack` explicitly.
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed (partial)** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002 (partial). `VecDeque<PromptModal>` overlay stack is now `App.overlay_stack` (single source of truth). Description, Postcondition 1, Invariants 1 and 4, VP table updated to reference `App.overlay_stack` explicitly.
+- NOTE: EC-102 and canonical test vector row 1 were NOT updated in this pass — they retained stale `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` shape. Corrected in v1.0.7.
 - SE-16d monotonicity: v1.0.6 timestamp 2026-05-28T00:00:00Z > v1.0.5. PASS.
+
+## §Trace v1.0.7
+
+**F-S025-ADV4-HIGH-001 — EC-102 and test vector row 1 body sweep completion** (2026-05-28T13:00:00Z):
+- Finding: §Trace v1.0.6 falsely claimed the `Overlay { stack }` shape sweep was complete.
+  EC-102 (Expected Behavior column) and canonical test vector row 1 (Initial State column)
+  still contained the stale `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` shape.
+- Fix — EC-102: `transitions to AppMode::Overlay { stack: [P1, P2], ... }` →
+  `App.overlay_stack = [P1, P2]` (populated via `payload_to_modal()`); `AppMode::Overlay { prior: Sessions }`.
+  The stack content is now expressed as an `App.overlay_stack` assignment adjacent to the mode,
+  consistent with the canonical two-step semantics from BC-2.06.004 PC-2.
+- Fix — Canonical test vector row 1 (Initial State column):
+  `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` →
+  `AppMode::Overlay { prior: Sessions }`, `App.overlay_stack = [P1, P2]`.
+  Post-State column: `stack empty` → `App.overlay_stack empty` for consistency.
+- §Trace v1.0.6 note retrospectively updated to mark the pass as "partial" rather than
+  complete, accurately reflecting what was and was not changed in that pass.
+- SE-16d monotonicity: v1.0.7 timestamp 2026-05-28T13:00:00Z > v1.0.6 timestamp 2026-05-28T00:00:00Z. PASS.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "989c7f6"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -31,9 +31,11 @@ removal_reason: null
 The Sessions Panel in `monocle-tui` renders one row per `EnrichedSession` received from
 the daemon via `SessionListUpdate` IPC messages. The panel never reads from disk, process
 state, or any source other than the most recently received IPC message. Each row displays
-six columns: harness icon, project name, status, token count, cost, and uptime. When
-the session list is empty, the panel renders a two-line empty state message. The Sessions
-Panel occupies the left 60% of the main area in Dashboard layout.
+seven columns: session ID, harness icon, project name, status, token count, cost, and
+uptime. The session ID column is essential for operator clarity and debuggability when
+multiple sessions are running simultaneously. When the session list is empty, the panel
+renders a two-line empty state message. The Sessions Panel occupies the left 60% of the
+main area in Dashboard layout.
 
 ## Preconditions
 
@@ -66,6 +68,10 @@ Panel occupies the left 60% of the main area in Dashboard layout.
    (most recently started session last, unless the daemon orders differently — ordering is
    daemon-determined and the TUI renders it as-is).
 2. **Column layout** (per SS-tui.md v1.6.0 §Sessions Panel):
+   - Session ID column: renders `EnrichedSession::session_id` as a short identifier
+     (e.g., `sess-001`). This column is required for operator clarity when multiple
+     sessions share the same project name or harness type, and for debuggability when
+     correlating TUI rows to daemon logs.
    - Icon column: renders a single `char` derived from `EnrichedSession::harness_type`.
      For Claude Code (`harness_type == "claude-code"`) in Phase 1, this is `●`
      (U+25CF BLACK CIRCLE). The render path must not hardcode Claude-specific logic —
@@ -124,7 +130,7 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 | Input | Expected Rendered Content | Category |
 |-------|--------------------------|----------|
 | `app.sessions = []` | Two-line empty state message | happy-path |
-| `app.sessions = [session with harness_type="claude-code", project_name=Some("monocle"), status=Active, token_count=437000, cost_usd=None, started_at=Some(now - 3h47m)]` | Row: `● monocle Active 437k — 03:47:00` | happy-path |
+| `app.sessions = [session with session_id="sess-001", harness_type="claude-code", project_name=Some("monocle"), status=Active, token_count=437000, cost_usd=None, started_at=Some(now - 3h47m)]` | Row: `sess-001 ● monocle Active 437k — 03:47:00` | happy-path |
 | `app.sessions = [session with project_name=None]` | Project column: `—` | happy-path |
 | `app.sessions = [session with cost_usd=Some(0.83)]` | Cost column: `$0.83` | happy-path |
 | `app.sessions = [session with cost_usd=None]` | Cost column: `—` | happy-path |
@@ -170,7 +176,7 @@ Panel occupies the left 60% of the main area in Dashboard layout.
 
 ## Story Anchor
 
-S-TBD — Implement Sessions Panel renderer with 6-column layout, empty state, token/cost formatters (filled by story-writer)
+S-TBD — Implement Sessions Panel renderer with 7-column layout, empty state, token/cost formatters (filled by story-writer)
 
 ## VP Anchors
 
@@ -240,3 +246,23 @@ S-TBD — Implement Sessions Panel renderer with 6-column layout, empty state, t
 - Source-of-truth reads: SS-engine-module.md (EnrichedSession struct lines 311–368);
   SS-tui.md v1.6.0 §Sessions Panel column layout table (lines 415–420).
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**F-S025-ADV4-BLOCKER-002 — Column count adjudication: 6 → 7 columns (Option A: amend BC)** (2026-05-28T12:00:00Z):
+- Finding: Implementation (`sessions_panel.rs:304-307`) renders SEVEN columns including
+  `session_id` (format `{session_id} {icon} {project} | {status} | {tokens} | {cost} | {uptime}`).
+  BC-2.06.005 PC-2 previously specified six columns, omitting `session_id`.
+- Adjudication: Option A chosen. `session_id` IS required for production-grade operator clarity
+  and debuggability: when multiple sessions share the same project name or harness type,
+  the session ID is the only stable discriminator for correlating TUI rows to daemon logs.
+  The implementation correctly identified the under-specification. The BC was wrong, not the impl.
+- Fix — Description: "six columns" → "seven columns"; `session_id` added with rationale.
+- Fix — Postcondition 2 (Column layout): `Session ID column` added as first column entry,
+  rendering `EnrichedSession::session_id` (e.g., `sess-001`).
+- Fix — Canonical Test Vector (happy-path row): `session_id="sess-001"` added to input;
+  `● monocle Active 437k — 03:47:00` → `sess-001 ● monocle Active 437k — 03:47:00`.
+- Fix — Story Anchor: "6-column" → "7-column".
+- No EC changes required: existing EC table rows describe column-specific behaviors that
+  are unaffected by the addition of the session_id column (EC-082 through EC-088 remain valid).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-28T12:00:00Z > v1.0.4 timestamp 2026-05-26T00:00:00Z. PASS.

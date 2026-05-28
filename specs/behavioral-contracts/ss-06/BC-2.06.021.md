@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "[pending]"
+input-hash: "989c7f6"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -106,7 +106,7 @@ documentation to know what keys are available in the current mode.
 |---------|-------------------|----------|
 | `Dashboard { focused: Sessions }` | `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit` | happy-path |
 | `Dashboard { focused: EventRibbon }` | `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit` | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }` | `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` | happy-path |
+| `Overlay { prior: Sessions }` (with `App.overlay_stack = [P1]`) | `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` | happy-path |
 | `Fullscreen { panel: Sessions, prior: Sessions }` | `Esc: back  /: filter  q: quit` | happy-path |
 | `Filtering { panel: Sessions, query: "", prior: Sessions }` | `(type to filter)  Esc: cancel` | happy-path |
 | AppMode transition: Overlay → Dashboard (decision made) | Hint changes from Overlay hint to Dashboard hint on next draw | edge-case |
@@ -188,3 +188,20 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-S025-ADV4-HIGH-001 — Test vector row 3 body sweep completion** (2026-05-28T13:00:00Z):
+- Finding: The Architect Pass 2 HIGH-003 sweep (commit `6d4fbb3`, §Trace v1.24 of BC-INDEX)
+  updated 16 BCs for the `AppMode::Overlay { stack }` shape removal but did NOT include
+  BC-2.06.021. No §Trace entry was added at that time. Canonical test vector row 3
+  (AppMode column) still contained the stale `Overlay { stack: [P1], prior: Sessions }` shape.
+- Fix — Canonical test vector row 3 (AppMode column):
+  `Overlay { stack: [P1], prior: Sessions }` →
+  `Overlay { prior: Sessions }` (with `App.overlay_stack = [P1]`).
+  The parenthetical makes the stack content visible in the test vector without embedding
+  it in the `AppMode` shape, consistent with the canonical two-step semantics.
+- No other body content in BC-2.06.021 contained stale `Overlay { stack }` shape —
+  all other references use `Overlay` without stack fields (hint line content is
+  mode-agnostic w.r.t. stack shape).
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T13:00:00Z > v1.0.3 timestamp 2026-05-26T00:00:00Z. PASS.
