@@ -54,6 +54,15 @@ jobs:
         with:
           shared-key: preflight
 
+      - name: Install protoc (monocle-proto prost-build dependency)
+        # protobuf-compiler on ubuntu-24.04 ships protoc 3.21.x, compatible with prost-build =0.14.1.
+        # Required because prost-build invokes the protoc binary at compile time; it is NOT bundled.
+        # ubuntu-24.04 runner images no longer pre-install protoc as of image 20260525.161+.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends protobuf-compiler
+
       - name: cargo fmt --all --check
         run: |
           set -euo pipefail
@@ -263,6 +272,19 @@ jobs:
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
         with:
           shared-key: ${{ matrix.target }}
+
+      - name: Install protoc (monocle-proto prost-build dependency)
+        # prost-build =0.14.1 requires the protoc binary at compile time; it is NOT bundled.
+        # Ubuntu: protobuf-compiler 3.21.x (apt); macOS: protobuf via Homebrew (includes protoc).
+        # ubuntu-24.04 runner images no longer pre-install protoc as of image 20260525.161+.
+        run: |
+          set -euo pipefail
+          if [ "$(uname)" = "Darwin" ]; then
+            brew install protobuf
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends protobuf-compiler
+          fi
 
       # --locked rejects an out-of-date Cargo.lock. A drifted lockfile is a
       # security smell -- it can silently re-resolve to an unaudited version.
