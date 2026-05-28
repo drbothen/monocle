@@ -301,8 +301,11 @@ impl StatefulWidget for SessionsPanel<'_> {
                     let tokens = format_token_count(s.token_count);
                     let cost = format_cost(s.cost_usd);
                     let uptime = format_uptime(s.started_at);
+                    // BC-2.06.005 v1.0.5 canonical column order:
+                    // session_id icon project status tokens cost uptime
+                    // Separator: SPACE (not ` | `). Test vector: `sess-001 ● monocle Active 437k — 03:47:00`.
                     let row = format!(
-                        "{icon} {} | {} | {} | {} | {} | {}",
+                        "{} {icon} {} {} {} {} {}",
                         s.session_id, project, status, tokens, cost, uptime
                     );
                     ListItem::new(row)
