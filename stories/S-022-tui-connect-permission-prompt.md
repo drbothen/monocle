@@ -3,8 +3,8 @@ document_type: story
 level: L4
 story_id: S-022
 epic_id: EPIC-05
-version: "1.1"
-status: not_started
+version: "1.2"
+status: in_progress
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
 phase: 2
