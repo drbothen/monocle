@@ -18,6 +18,7 @@ use monocle_tui::app::{
     TransportEvent,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
+use monocle_tui::{format_drop_counter, DAEMON_DISCONNECT_STATUS, MONOCLE_STATUS_LABEL};
 use std::collections::VecDeque;
 use std::time::Instant;
 use uuid::Uuid;
@@ -205,11 +206,19 @@ fn test_bc_2_06_004_pc2_ac003_on_disconnect_transitions_to_dashboard() {
         ),
     }
 
+    // F-S025-ADV11-SWEEP: canonical-pin — single source of truth assertion.
+    // If the production const text changes, this assert fails first (prevents
+    // silent drift between the const definition and the BC-2.06.004 contract).
+    assert_eq!(
+        DAEMON_DISCONNECT_STATUS, "[disconnected] reconnecting...",
+        "DAEMON_DISCONNECT_STATUS must match BC-2.06.004 AC-003 canonical text verbatim"
+    );
+
     // F-S025-ADV9-MED-002: assert the canonical status_message text from AC-003.
     assert_eq!(
         app.status_message.as_deref(),
-        Some("[disconnected] reconnecting..."),
-        "AC-003: status_message must be '[disconnected] reconnecting...' exactly after Disconnected"
+        Some(DAEMON_DISCONNECT_STATUS),
+        "AC-003: status_message must equal DAEMON_DISCONNECT_STATUS exactly after Disconnected"
     );
 }
 
@@ -243,8 +252,8 @@ fn test_bc_2_06_004_pc2_ac003_on_disconnect_clears_overlay_stack() {
     // different teardown precondition — 2-prompt overlay vs 1-prompt above).
     assert_eq!(
         app.status_message.as_deref(),
-        Some("[disconnected] reconnecting..."),
-        "AC-003: status_message must be '[disconnected] reconnecting...' exactly after Disconnected"
+        Some(DAEMON_DISCONNECT_STATUS),
+        "AC-003: status_message must equal DAEMON_DISCONNECT_STATUS exactly after Disconnected"
     );
 }
 
@@ -920,22 +929,27 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
         .map(|(x, y)| buffer[(x, y)].symbol().to_string())
         .collect();
 
+    // F-S025-ADV11-SWEEP: use format_drop_counter(5) as the single source of truth.
+    // If the production format changes, this assertion tracks it automatically.
     assert!(
-        status_rows.contains("[dropped: 5]"),
-        "AC-007: page-level status bar must contain '[dropped: 5]' when drop_counter=5; \
+        status_rows.contains(&format_drop_counter(5)),
+        "AC-007: page-level status bar must contain {:?} when drop_counter=5; \
          got status rows: {:?}",
+        format_drop_counter(5),
         status_rows.trim()
     );
     assert!(
-        status_rows.contains("monocle"),
-        "AC-007: page-level status bar must contain 'monocle' when drop_counter=5; \
+        status_rows.contains(MONOCLE_STATUS_LABEL),
+        "AC-007: page-level status bar must contain MONOCLE_STATUS_LABEL ({:?}) when drop_counter=5; \
          got status rows: {:?}",
+        MONOCLE_STATUS_LABEL,
         status_rows.trim()
     );
 
     // Verify the drop counter span is styled yellow (not default color).
-    // Find the first cell of "[dropped: 5] monocle" in the bottom two rows.
-    let target = "[dropped: 5] monocle";
+    // Find the first cell of format_drop_counter(5) in the bottom two rows.
+    // F-S025-ADV11-SWEEP: use format_drop_counter instead of literal string.
+    let target = format_drop_counter(5);
     let target_bytes: Vec<char> = target.chars().collect();
     let mut found_yellow = false;
     'outer: for y in (height - 2) as u16..(height as u16) {
@@ -957,7 +971,8 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
 
     assert!(
         found_yellow,
-        "AC-007: '[dropped: 5] monocle' must be rendered with Yellow foreground in the status bar"
+        "AC-007: {:?} must be rendered with Yellow foreground in the status bar",
+        format_drop_counter(5)
     );
 }
 
