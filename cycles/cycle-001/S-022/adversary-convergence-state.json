@@ -1,0 +1,27 @@
+{
+  "story": "S-022",
+  "convergence_criterion": "passes_clean_consecutive >= 3 AND last_classification == 'NITPICK_ONLY'",
+  "passes": [
+    {
+      "pass": 1,
+      "timestamp": "2026-05-27T22:45:00Z",
+      "classification": "BLOCKER_PRESENT",
+      "findings_count": {"blocker": 5, "high": 3, "medium": 4, "nitpick": 1},
+      "report_file": ".factory/cycles/cycle-001/S-022/adversarial/pass-1.md",
+      "branch_sha": "fb436a3"
+    },
+    {
+      "pass": 2,
+      "timestamp": "2026-05-27T23:30:00Z",
+      "classification": "BLOCKER_PRESENT",
+      "findings_count": {"blocker": 0, "high": 3, "medium": 4, "nitpick": 0},
+      "prior_pass_resolution": {"resolved": 10, "partial": 1, "not_fixed": 1, "phantom": 1, "over_corrected": 0},
+      "report_file": ".factory/cycles/cycle-001/S-022/adversarial/pass-2.md",
+      "branch_sha": "b50252e"
+    }
+  ],
+  "passes_clean_consecutive": 0,
+  "last_classification": "BLOCKER_PRESENT",
+  "converged": false,
+  "deferred_findings": []
+}
