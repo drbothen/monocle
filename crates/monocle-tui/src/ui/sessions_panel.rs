@@ -117,10 +117,9 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
     match cost_usd {
         None => "\u{2014}".to_string(), // U+2014 EM DASH
         // NaN, ±infinity, and any negative value (including -0.0) are invalid.
-        // cost < 0.0 does not catch -0.0 in IEEE 754 (-0.0 == 0.0), so we also
-        // check is_sign_negative() to catch the -0.0 edge case explicitly.
-        Some(cost)
-            if cost.is_nan() || cost.is_infinite() || cost < 0.0 || cost.is_sign_negative() =>
+        // is_sign_negative() covers both cost < 0.0 and -0.0 in IEEE 754;
+        // the explicit `cost < 0.0` term was a redundant strict subset.
+        Some(cost) if cost.is_nan() || cost.is_infinite() || cost.is_sign_negative() =>
         {
             "\u{2014}".to_string()
         }
