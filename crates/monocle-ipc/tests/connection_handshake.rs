@@ -430,3 +430,123 @@ async fn ac_013_empty_initial_state() {
         other => panic!("expected InitialState with all empties, got {other:?}"),
     }
 }
+
+// ---------------------------------------------------------------------------
+// test_BC_2_05_002_ring_tail_non_empty_passes_through:
+// ring_tail in InitialState carries Vec<HookEventRecord> populated from the RAM ring.
+// Verifies F-S022-ADV2-HIGH-002 architect directive: no lossy conversion, no fabrication.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_05_002_ring_tail_non_empty_passes_through:
+/// When the daemon RAM ring contains N records, `snapshot_initial_state` populates
+/// `InitialState.ring_tail` with exactly those N `HookEventRecord` values — session_ids,
+/// pids, and hook_types intact.
+///
+/// Traces to BC-2.05.002 PC-2 v1.0.4 / architect decision F-S022-ADV2-HIGH-002.
+///
+/// No `todo!()` call — exercises `snapshot_initial_state` directly without the accept loop.
+#[test]
+fn test_BC_2_05_002_ring_tail_non_empty_passes_through() {
+    use std::sync::Arc;
+
+    // Build a DaemonState with a live RingBuffer pre-populated with 3 records.
+    let tmp = tempfile::tempdir().expect("tempdir for ring_tail test");
+    let ring_path = tmp.path().join("monocle.jsonl");
+
+    let ring = Arc::new(monocle_runtime::ring::RingBuffer::new(
+        ring_path,
+        monocle_runtime::ring::RotationConfig::default(),
+    ));
+
+    // Push 3 records with distinct session_ids and pids via the legacy push() API
+    // (synchronous; no flush task needed — push() writes directly).
+    let records = vec![
+        monocle_runtime::ring::HookEventRecord::new(
+            "session-aaa".to_string(),
+            1_000_001_i64,
+            1001_u32,
+            "SessionStart".to_string(),
+            None,
+            None,
+        ),
+        monocle_runtime::ring::HookEventRecord::new(
+            "session-bbb".to_string(),
+            1_000_002_i64,
+            1002_u32,
+            "PreToolUse".to_string(),
+            Some("Bash".to_string()),
+            None,
+        ),
+        monocle_runtime::ring::HookEventRecord::new(
+            "session-ccc".to_string(),
+            1_000_003_i64,
+            1003_u32,
+            "Stop".to_string(),
+            None,
+            None,
+        ),
+    ];
+
+    for record in &records {
+        ring.push(record).expect("ring push must succeed");
+    }
+
+    // Also push to RAM ring via append() so latest_events() returns them.
+    // (push() writes to disk; append() writes to RAM ring. Both paths are needed for
+    //  snapshot_initial_state to see the records via ring.latest_events().)
+    for record in records.clone() {
+        ring.append(record).expect("ring append must succeed");
+    }
+
+    let mut state = monocle_runtime::state::DaemonState::new();
+    state.ring = Some(Arc::clone(&ring));
+
+    // snapshot_initial_state must populate ring_tail from the RAM ring directly.
+    let snapshot = monocle_runtime::state::snapshot_initial_state(&state);
+
+    match snapshot {
+        ServerToClient::InitialState { ring_tail, .. } => {
+            assert_eq!(
+                ring_tail.len(),
+                3,
+                "ring_tail must contain exactly 3 records (one per push)"
+            );
+            // Verify each record's session_id and pid survived pass-through (no fabrication).
+            assert_eq!(
+                ring_tail[0].session_id, "session-aaa",
+                "ring_tail[0].session_id must be session-aaa"
+            );
+            assert_eq!(ring_tail[0].pid, 1001, "ring_tail[0].pid must be 1001");
+            assert_eq!(
+                ring_tail[0].hook_type, "SessionStart",
+                "ring_tail[0].hook_type must be SessionStart"
+            );
+
+            assert_eq!(
+                ring_tail[1].session_id, "session-bbb",
+                "ring_tail[1].session_id must be session-bbb"
+            );
+            assert_eq!(ring_tail[1].pid, 1002, "ring_tail[1].pid must be 1002");
+            assert_eq!(
+                ring_tail[1].hook_type, "PreToolUse",
+                "ring_tail[1].hook_type must be PreToolUse"
+            );
+            assert_eq!(
+                ring_tail[1].tool_name.as_deref(),
+                Some("Bash"),
+                "ring_tail[1].tool_name must be Bash"
+            );
+
+            assert_eq!(
+                ring_tail[2].session_id, "session-ccc",
+                "ring_tail[2].session_id must be session-ccc"
+            );
+            assert_eq!(ring_tail[2].pid, 1003, "ring_tail[2].pid must be 1003");
+            assert_eq!(
+                ring_tail[2].hook_type, "Stop",
+                "ring_tail[2].hook_type must be Stop"
+            );
+        }
+        other => panic!("snapshot_initial_state must return InitialState, got {other:?}"),
+    }
+}

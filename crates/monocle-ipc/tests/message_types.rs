@@ -11,9 +11,10 @@
 //! All test names follow `test_BC_S_SS_NNN_[description]` convention.
 
 use monocle_core::engine::{EnrichedSession, SessionStatus};
-use monocle_core::hook_events::{HookEvent, HookType};
+use monocle_core::hook_events::HookType;
 use monocle_ipc::types::{
-    ClientToServer, PermissionDecisionKind, PermissionPromptPayload, ServerToClient,
+    ClientToServer, HookEventRecord, PermissionDecisionKind, PermissionPromptPayload,
+    ServerToClient,
 };
 use uuid::Uuid;
 
@@ -44,6 +45,8 @@ fn test_BC_2_05_003_server_to_client_session_list_update_serde_roundtrip() {
 /// `ServerToClient::InitialState` survives a JSON roundtrip with all fields intact.
 ///
 /// Verifies sessions count, ring_tail count, overlay_stack count, and drop_counter value.
+/// ring_tail uses `HookEventRecord` per BC-2.05.002 PC-2 v1.0.4 (architect decision
+/// F-S022-ADV2-HIGH-002: ring_tail uses Vec<HookEventRecord>, the native ring storage type).
 #[test]
 fn test_server_to_client_initial_state_serde_roundtrip() {
     let session = EnrichedSession::new(
@@ -55,17 +58,17 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
         None,
     );
 
-    // SessionStartEvent is #[non_exhaustive] so it cannot be constructed outside monocle-core.
-    // Deserialize from JSON to work around the non_exhaustive restriction in tests.
-    let hook_event: HookEvent = serde_json::from_value(serde_json::json!({
-        "SessionStart": {
-            "cwd": "/home/user",
-            "transcript_path": "/tmp/transcript.jsonl",
-            "session_id": "session-init-001",
-            "pid": 12345
-        }
-    }))
-    .expect("construct HookEvent::SessionStart via serde");
+    // ring_tail now uses HookEventRecord (the native RAM ring storage type) per
+    // architect decision F-S022-ADV2-HIGH-002 and BC-2.05.002 PC-2 v1.0.4.
+    // HookEventRecord::new() uses the public constructor (ADR-0006).
+    let record = HookEventRecord::new(
+        "session-init-001".to_string(),
+        1_000_000_i64,
+        12345_u32,
+        "SessionStart".to_string(),
+        None,
+        None,
+    );
 
     let prompt_id = Uuid::new_v4();
     let overlay = PermissionPromptPayload {
@@ -79,7 +82,7 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
 
     let msg = ServerToClient::InitialState {
         sessions: vec![session],
-        ring_tail: vec![hook_event],
+        ring_tail: vec![record],
         overlay_stack: vec![overlay],
         drop_counter: 42,
     };
@@ -107,6 +110,14 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
                 ring_tail.len(),
                 1,
                 "ring_tail must have 1 entry after roundtrip"
+            );
+            assert_eq!(
+                ring_tail[0].session_id, "session-init-001",
+                "ring_tail[0].session_id must survive roundtrip"
+            );
+            assert_eq!(
+                ring_tail[0].hook_type, "SessionStart",
+                "ring_tail[0].hook_type must survive roundtrip"
             );
             assert_eq!(
                 overlay_stack.len(),

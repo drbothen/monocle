@@ -354,11 +354,13 @@ const _: () = {
 
 /// Produce an `InitialState` snapshot from the current `DaemonState`.
 ///
-/// # Contract (BC-2.05.002 postcondition PC-2, AC-002)
+/// # Contract (BC-2.05.002 v1.0.4 postcondition PC-2, AC-002)
 ///
 /// The snapshot captures, at the moment of the call:
 /// - `sessions`: clone of the current session roster from `state.session_registry`.
-/// - `ring_tail`: last N hook events from the RAM ring, converted from `HookEventRecord`.
+/// - `ring_tail`: last N events from the RAM ring as `Vec<HookEventRecord>` — the native
+///   ring storage type (architect decision F-S022-ADV2-HIGH-002, ADR-0006).
+///   No type conversion or field fabrication is performed.
 /// - `overlay_stack`: clone of all currently-pending permission prompt payloads from
 ///   `state.pending_decisions`.
 /// - `drop_counter`: current value of `state.drop_counter`.
@@ -366,15 +368,13 @@ const _: () = {
 /// When any of the optional fields is `None` (registry / ring / counter not yet
 /// initialized), the corresponding `InitialState` field is an empty Vec / 0.
 ///
-/// # Design note — ring_tail best-effort conversion
+/// # ring_tail type rationale
 ///
-/// `InitialState.ring_tail` is typed `Vec<HookEvent>` (the rich typed enum), but the
-/// RAM ring stores `HookEventRecord` (the JSONL record struct). `HookEventRecord` does
-/// not carry all fields needed for perfect `HookEvent` reconstruction — `cwd`,
-/// `transcript_path` (SessionStart), `prompt` (UserPromptSubmit), and `stop_reason`
-/// (Stop) are absent. `hook_event_record_to_hook_event` fills these with empty-string
-/// defaults, which is acceptable: `ring_tail` is used for TUI timeline display, not for
-/// exact state reconstruction. Unknown `hook_type` strings are silently filtered out.
+/// `InitialState.ring_tail` is typed `Vec<HookEventRecord>` per BC-2.05.002 PC-2 v1.0.4.
+/// The previous `Vec<HookEvent>` typing required converting `HookEventRecord` → `HookEvent`,
+/// which involved fabricating absent fields (cwd, transcript_path, prompt, stop_reason)
+/// with empty-string defaults — silently incorrect data. The correct fix is to match the
+/// IPC type to the ring's native storage type (F-S022-ADV2-HIGH-002).
 ///
 /// # 256 KiB guard
 ///
@@ -396,20 +396,14 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
         .map(|reg| reg.snapshot_enriched_sessions())
         .unwrap_or_default();
 
-    // ring_tail: last RING_TAIL_N events from the RAM ring, converted to HookEvent.
-    // Conversion is best-effort: fields absent from HookEventRecord (cwd, transcript_path,
-    // stop_reason, prompt) are filled with empty-string defaults. The TUI uses ring_tail
-    // for timeline display only; exact field values for pre-existing events are not required.
+    // ring_tail: last RING_TAIL_N events from the RAM ring as Vec<HookEventRecord>.
+    // Pass-through — no type conversion, no field fabrication (architect decision
+    // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2 v1.0.4, ADR-0006).
     const RING_TAIL_N: usize = 50;
-    let ring_tail: Vec<monocle_core::hook_events::HookEvent> = state
+    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = state
         .ring
         .as_ref()
-        .map(|ring| {
-            ring.latest_events(RING_TAIL_N)
-                .into_iter()
-                .filter_map(hook_event_record_to_hook_event)
-                .collect()
-        })
+        .map(|ring| ring.latest_events(RING_TAIL_N))
         .unwrap_or_default();
 
     // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
@@ -431,64 +425,5 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
         ring_tail,
         overlay_stack,
         drop_counter,
-    }
-}
-
-/// Best-effort conversion from a `HookEventRecord` (ring storage type) to a `HookEvent`
-/// (rich typed enum used in `InitialState.ring_tail`).
-///
-/// Missing fields are filled with empty-string defaults:
-/// - `SessionStartEvent.cwd` and `.transcript_path` → `""`
-/// - `UserPromptSubmitEvent.prompt` → `""`
-/// - `StopEvent.stop_reason` → `""`
-///
-/// Returns `None` for unknown `hook_type` strings (unknown variants are silently skipped
-/// rather than causing a snapshot failure).
-fn hook_event_record_to_hook_event(
-    record: crate::ring::HookEventRecord,
-) -> Option<monocle_core::hook_events::HookEvent> {
-    use monocle_core::hook_events::{
-        HookEvent, NotificationEvent, PreToolUseEvent, SessionStartEvent, StopEvent,
-        UserPromptSubmitEvent,
-    };
-
-    match record.hook_type.as_str() {
-        "SessionStart" => Some(HookEvent::SessionStart(SessionStartEvent::new(
-            String::new(),
-            String::new(),
-            record.session_id,
-            record.pid,
-        ))),
-        "UserPromptSubmit" => Some(HookEvent::UserPromptSubmit(UserPromptSubmitEvent::new(
-            String::new(),
-            record.session_id,
-            record.pid,
-        ))),
-        "PreToolUse" => Some(HookEvent::PreToolUse(PreToolUseEvent::new(
-            record.tool_name.unwrap_or_default(),
-            record.tool_input.unwrap_or(serde_json::Value::Null),
-            record.session_id,
-            record.pid,
-        ))),
-        "Notification" => Some(HookEvent::Notification(NotificationEvent::new(
-            String::new(),
-            record.tool_name.unwrap_or_default(),
-            record.tool_input.unwrap_or(serde_json::Value::Null),
-            String::new(),
-            record.session_id,
-            record.pid,
-        ))),
-        "Stop" => Some(HookEvent::Stop(StopEvent::new(
-            String::new(),
-            record.session_id,
-            record.pid,
-        ))),
-        _ => {
-            tracing::debug!(
-                hook_type = %record.hook_type,
-                "hook_event_record_to_hook_event: unknown hook_type; skipping"
-            );
-            None
-        }
     }
 }
