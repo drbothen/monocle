@@ -364,6 +364,32 @@ fn test_bc_2_06_005_pc2_cost_formatter_0_83_renders_dollar_0_83() {
     );
 }
 
+/// F-S025-ADV10-LOW-002: format_cost(Some(-0.0)) must render "—" (not "$-0.00").
+///
+/// Cost is never semantically negative. Negative values (including -0.0) indicate
+/// invalid/corrupt producer data and must render as the missing-data sentinel.
+/// Per CLAUDE.md Principle 1: production-grade default — do not produce "$-0.00".
+#[test]
+fn test_f_s025_adv10_low002_format_cost_negative_zero_renders_em_dash() {
+    assert_eq!(
+        format_cost(Some(-0.0)),
+        "—",
+        "F-S025-ADV10-LOW-002: format_cost(Some(-0.0)) must render '—', not '$-0.00'"
+    );
+}
+
+/// F-S025-ADV10-LOW-002: format_cost(Some(-1.0)) must render "—" (not "$-1.00").
+///
+/// Any negative cost value is treated as invalid producer data → "—" sentinel.
+#[test]
+fn test_f_s025_adv10_low002_format_cost_negative_value_renders_em_dash() {
+    assert_eq!(
+        format_cost(Some(-1.0)),
+        "—",
+        "F-S025-ADV10-LOW-002: format_cost(Some(-1.0)) must render '—', not '$-1.00'"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // AC-007 — Drop counter display in page-level status bar (BC-2.06.005 PC-3)
 // ---------------------------------------------------------------------------

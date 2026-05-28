@@ -103,19 +103,30 @@ pub fn format_token_count(count: u64) -> String {
 /// Format an optional cost as a USD string (BC-2.06.005 PC-2, Invariant 3).
 ///
 /// Returns `"—"` (U+2014 EM DASH) when `cost_usd` is `None`.
-/// Returns `"—"` when `cost_usd` is `Some(NaN)` or `Some(±inf)` — invalid
-/// float values are semantically equivalent to "missing data" and must not
-/// produce `"$NaN"`, `"$inf"`, or `"$-inf"` in the TUI column.
-/// Returns `"$N.NN"` (two decimal places) for finite values.
+/// Returns `"—"` when `cost_usd` is `Some(NaN)`, `Some(±inf)`, or `Some(negative)` —
+/// all of these are invalid/corrupt producer data and must not produce `"$NaN"`,
+/// `"$inf"`, `"$-inf"`, `"$-0.00"`, or `"$-N.NN"` in the TUI column. Cost is never
+/// semantically negative; negative values indicate upstream corruption.
+/// Returns `"$N.NN"` (two decimal places) for finite, non-negative values.
 ///
 /// Invariant 3 (BC-2.06.005): `None` always renders as `"—"`, never as
 /// `"None"`, `"N/A"`, `"-"`, or any other sentinel.
-/// F-S025-ADV9-MED-001: NaN and ±infinity are treated as `"—"` to satisfy
-/// BC-2.06.005 PC-2's `"$N.NN"` or `"—"` mandate.
+/// F-S025-ADV9-MED-001: NaN and ±infinity are treated as `"—"`.
+/// F-S025-ADV10-LOW-002: negative values (including -0.0) are treated as `"—"`.
 pub fn format_cost(cost_usd: Option<f64>) -> String {
     match cost_usd {
         None => "\u{2014}".to_string(), // U+2014 EM DASH
-        Some(cost) if cost.is_nan() || cost.is_infinite() => "\u{2014}".to_string(),
+        // NaN, ±infinity, and any negative value (including -0.0) are invalid.
+        // cost < 0.0 does not catch -0.0 in IEEE 754 (-0.0 == 0.0), so we also
+        // check is_sign_negative() to catch the -0.0 edge case explicitly.
+        Some(cost)
+            if cost.is_nan()
+                || cost.is_infinite()
+                || cost < 0.0
+                || cost.is_sign_negative() =>
+        {
+            "\u{2014}".to_string()
+        }
         Some(cost) => format!("${cost:.2}"),
     }
 }
