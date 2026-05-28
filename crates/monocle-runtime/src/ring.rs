@@ -39,7 +39,12 @@ use std::{
 pub const WRITE_QUEUE_CAPACITY: usize = 4096;
 
 /// Ring format version constant — FC-01 forward-compatibility contract.
-pub const RING_FORMAT_VERSION: u32 = 1;
+///
+/// Re-exported from `monocle-ipc::types` where `HookEventRecord` now lives.
+/// `monocle-runtime` callers may use either path; this re-export preserves the
+/// pre-relocation API so that existing call sites (`crate::ring::RING_FORMAT_VERSION`)
+/// continue to compile without modification.
+pub use monocle_ipc::types::RING_FORMAT_VERSION;
 
 /// Compile-time capacity of the in-memory RAM ring (BC-2.04.012 PC-1).
 ///
@@ -53,53 +58,15 @@ pub const ROTATION_HARD_CAP_BYTES: u64 = 104_857_600;
 
 /// A single hook event record written to the JSONL ring buffer.
 ///
-/// Fields are in canonical declaration order per SS-core-types-and-abi.md §HookEventRecord.
-/// `format_version` MUST serialize as the first JSON key (struct field order preservation).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[non_exhaustive]
-pub struct HookEventRecord {
-    /// FC-01 forward-compatibility version stamp; always set to [`RING_FORMAT_VERSION`].
-    pub format_version: u32,
-    /// Opaque session identifier (UUID string).
-    pub session_id: String,
-    /// Unix epoch timestamp in microseconds (signed per SS-core-types-and-abi.md §HookEventRecord).
-    pub timestamp_micros: i64,
-    /// Process ID of the originating harness process.
-    pub pid: u32,
-    /// Hook type discriminant (e.g. `"PreToolUse"`, `"SessionStart"`).
-    pub hook_type: String,
-    /// Tool name present only for tool-context hook types (e.g. `"PreToolUse"`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_name: Option<String>,
-    /// Tool input JSON present only for tool-context hook types.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_input: Option<serde_json::Value>,
-}
-
-impl HookEventRecord {
-    /// Construct a new record. `format_version` is set to [`RING_FORMAT_VERSION`] internally.
-    ///
-    /// External callers MUST use this constructor — `#[non_exhaustive]` forbids struct-literal
-    /// construction outside `monocle-runtime::ring` (BC-2.01.007 PC-5, Rust E0639).
-    pub fn new(
-        session_id: String,
-        timestamp_micros: i64,
-        pid: u32,
-        hook_type: String,
-        tool_name: Option<String>,
-        tool_input: Option<serde_json::Value>,
-    ) -> Self {
-        Self {
-            format_version: RING_FORMAT_VERSION,
-            session_id,
-            timestamp_micros,
-            pid,
-            hook_type,
-            tool_name,
-            tool_input,
-        }
-    }
-}
+/// Relocated to `monocle-ipc::types` per architect decision F-S022-ADV2-HIGH-002 (ADR-0006):
+/// `HookEventRecord` is the canonical IPC + JSONL ring transport format. Defining it in
+/// `monocle-ipc` prevents the circular dependency that would arise from `monocle-ipc`
+/// importing from `monocle-runtime` (which already depends on `monocle-ipc`).
+///
+/// This re-export preserves the pre-relocation API (`monocle_runtime::ring::HookEventRecord`)
+/// so that existing call sites in `monocle-runtime` production code and tests continue to
+/// compile without modification.
+pub use monocle_ipc::types::HookEventRecord;
 
 /// Configuration for ring buffer rotation (SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer
 /// Rotation Policy L675-719).

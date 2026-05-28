@@ -11,12 +11,88 @@
 //!
 //! [`monocle_core::engine::EnrichedSession`] is used directly in `SessionListUpdate` and
 //! `InitialState`. The struct carries `#[non_exhaustive]` per BC-2.02.003.
+//!
+//! # HookEventRecord (relocated from monocle-runtime)
+//!
+//! [`HookEventRecord`] is defined here because it is the canonical IPC + JSONL ring transport
+//! format (architect decision F-S022-ADV2-HIGH-002, ADR-0006). It belongs in `monocle-ipc`
+//! as the wire type that crosses the daemon-TUI boundary. `monocle-runtime::ring` re-exports
+//! it from here, breaking the potential circular dependency that would arise from
+//! `monocle-ipc` importing from `monocle-runtime` (which already depends on `monocle-ipc`).
 
 use monocle_core::engine::EnrichedSession;
-use monocle_core::hook_events::HookEvent;
 // HookType is already non_exhaustive + serde in monocle-core; re-export for downstream consumers.
 pub use monocle_core::hook_events::HookType;
 use uuid::Uuid;
+
+/// Ring format version constant — FC-01 forward-compatibility contract.
+///
+/// Relocated from `monocle-runtime::ring` to `monocle-ipc::types` per architect decision
+/// F-S022-ADV2-HIGH-002 (ADR-0006): `HookEventRecord` is the canonical IPC + JSONL ring
+/// transport format and belongs in `monocle-ipc`.
+pub const RING_FORMAT_VERSION: u32 = 1;
+
+/// A single hook event record written to the JSONL ring buffer and transported over IPC.
+///
+/// This is the canonical IPC + JSONL ring transport format (architect decision
+/// F-S022-ADV2-HIGH-002, ADR-0006, BC-2.04.012 PC-1). The RAM ring in `monocle-runtime`
+/// stores `HookEventRecord` directly; `InitialState.ring_tail` uses `Vec<HookEventRecord>`
+/// so that no lossy reconstruction from ring storage to a richer type is required.
+///
+/// # Relocation note
+///
+/// Previously defined in `monocle-runtime::ring`. Moved here to break the circular
+/// dependency that would arise from `monocle-ipc` importing from `monocle-runtime`
+/// (which already depends on `monocle-ipc`). `monocle-runtime::ring` re-exports
+/// `HookEventRecord` from this location for backward compatibility.
+///
+/// Fields are in canonical declaration order per SS-core-types-and-abi.md §HookEventRecord.
+/// `format_version` MUST serialize as the first JSON key (struct field order preservation).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
+pub struct HookEventRecord {
+    /// FC-01 forward-compatibility version stamp; always set to [`RING_FORMAT_VERSION`].
+    pub format_version: u32,
+    /// Opaque session identifier (UUID string).
+    pub session_id: String,
+    /// Unix epoch timestamp in microseconds (signed per SS-core-types-and-abi.md §HookEventRecord).
+    pub timestamp_micros: i64,
+    /// Process ID of the originating harness process.
+    pub pid: u32,
+    /// Hook type discriminant (e.g. `"PreToolUse"`, `"SessionStart"`).
+    pub hook_type: String,
+    /// Tool name present only for tool-context hook types (e.g. `"PreToolUse"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+    /// Tool input JSON present only for tool-context hook types.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_input: Option<serde_json::Value>,
+}
+
+impl HookEventRecord {
+    /// Construct a new record. `format_version` is set to [`RING_FORMAT_VERSION`] internally.
+    ///
+    /// External callers MUST use this constructor — `#[non_exhaustive]` forbids struct-literal
+    /// construction outside `monocle-ipc::types` (BC-2.01.007 PC-5, Rust E0639).
+    pub fn new(
+        session_id: String,
+        timestamp_micros: i64,
+        pid: u32,
+        hook_type: String,
+        tool_name: Option<String>,
+        tool_input: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            format_version: RING_FORMAT_VERSION,
+            session_id,
+            timestamp_micros,
+            pid,
+            hook_type,
+            tool_name,
+            tool_input,
+        }
+    }
+}
 
 /// Messages sent from the daemon to TUI clients.
 ///
@@ -38,16 +114,28 @@ use uuid::Uuid;
 pub enum ServerToClient {
     /// Full initial state push sent immediately after a TUI client connects.
     ///
-    /// Fields per BC-2.05.002 (InitialState push on connect):
+    /// Fields per BC-2.05.002 v1.0.4 (InitialState push on connect):
     /// - `sessions`: complete current session roster
-    /// - `ring_tail`: last N hook events from the JSONL ring
+    /// - `ring_tail`: last N events from the RAM ring as `Vec<HookEventRecord>`
     /// - `overlay_stack`: current permission prompt queue
     /// - `drop_counter`: cumulative event drops since daemon start
+    ///
+    /// # ring_tail type (architect decision F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2)
+    ///
+    /// `ring_tail` is `Vec<HookEventRecord>` — the native RAM ring storage type.
+    /// Using the ring's storage type directly avoids lossy reconstruction: the RAM ring
+    /// stores `HookEventRecord`; reconstructing `HookEvent` variants from records requires
+    /// fabricating absent fields (cwd, transcript_path, prompt, stop_reason) with empty-string
+    /// defaults, producing silently incorrect data. The TUI (S-025) renders the event ribbon
+    /// from `HookEventRecord` fields (`hook_type`, `session_id`, `timestamp_micros`,
+    /// `tool_name`) which are sufficient for display.
     InitialState {
         /// Complete current session roster at time of connection.
         sessions: Vec<EnrichedSession>,
-        /// Last N hook events from the JSONL ring (event ribbon backfill).
-        ring_tail: Vec<HookEvent>,
+        /// Last N events from the RAM ring as native ring storage type (BC-2.05.002 PC-2,
+        /// BC-2.04.012 PC-1). No lossy reconstruction — the TUI renders from
+        /// `hook_type`, `session_id`, `timestamp_micros`, `tool_name` fields.
+        ring_tail: Vec<HookEventRecord>,
         /// Current permission prompt overlay stack.
         overlay_stack: Vec<PermissionPromptPayload>,
         /// Cumulative event drop count since daemon start.
