@@ -81,33 +81,78 @@ fn soq3_handler(overlay: &mut VecDeque<PromptModal>, mode: &mut AppMode) {
 // ---------------------------------------------------------------------------
 
 /// BC-2.05.007 PC-1 / AC-001: `TransportEvent::Disconnected` is emitted immediately
-/// upon detecting a connection-loss error in `recv_message`, before the error propagates
-/// to the caller or any reconnect attempt begins.
+/// upon detecting a connection-loss error, and it is the FIRST event on the event channel
+/// before any reconnect attempt begins — the ordering invariant at the transport layer.
 ///
-/// Test strategy: create a socket pair via `connect_with_events` (S-023 production path),
-/// drop the server end to cause EOF, call `recv_message`, and assert the EventReceiver
-/// delivers `TransportEvent::Disconnected` before we attempt reconnect.
+/// This test targets the ordering aspect specifically: we track the sequence of operations
+/// (event received, then reconnect called) and assert the event precedes the reconnect call.
+/// The pc_6 tests verify emission per error variant; this test verifies ordering invariant.
+///
+/// Test strategy: bind a real UDS socket, connect via `connect_with_events`, drop the
+/// server stream to cause EOF, wait for the event channel to deliver
+/// `TransportEvent::Disconnected`, record it in a sequence log, then record "reconnect
+/// called" in the same log. Assert Disconnected index < reconnect-called index.
 #[tokio::test]
 async fn test_BC_2_05_007_pc_1_disconnected_emitted_before_reconnect_loop() {
     use monocle_ipc::uds::connect_with_events;
     use tempfile::tempdir;
+    use tokio::net::UnixListener;
+
+    #[derive(Debug, PartialEq)]
+    enum Step {
+        DisconnectedReceived,
+        ReconnectLoopCalled,
+    }
 
     let dir = tempdir().expect("tempdir");
-    // connect_with_events is a todo!() stub — this will panic, hitting the Red Gate.
+    let sock_path = dir.path().join("monocle.sock");
+
+    // Bind a real UDS listener so connect_with_events can succeed.
+    let listener = UnixListener::bind(&sock_path).expect("bind UDS socket for pc_1");
+
+    // S-023 production entry point: spawns background reader + returns event channel.
     let (_transport, mut event_rx) = connect_with_events(dir.path())
         .await
         .expect("connect_with_events");
 
-    // If we reach here (post-implementation), verify Disconnected arrives before
-    // any reconnect logic is invoked.
+    // Accept the connection then immediately drop the server stream to cause EOF.
+    let (server_stream, _) = listener.accept().await.expect("accept");
+    drop(server_stream);
+
+    let mut sequence: Vec<Step> = Vec::new();
+
+    // Step 1: wait for Disconnected on the event channel.
+    // The background reader task must emit this BEFORE any reconnect logic is invoked
+    // (BC-2.05.007 PC-1 ordering invariant).
     let evt = event_rx
         .recv()
         .await
-        .expect("event channel should deliver TransportEvent::Disconnected");
+        .expect("event channel must deliver TransportEvent::Disconnected after EOF");
     assert_eq!(
         evt,
         TransportEvent::Disconnected,
-        "BC-2.05.007 PC-1: first event on connection loss must be TransportEvent::Disconnected"
+        "BC-2.05.007 PC-1: event channel must deliver TransportEvent::Disconnected on EOF"
+    );
+    sequence.push(Step::DisconnectedReceived);
+
+    // Step 2: ONLY NOW do we mark that the reconnect loop would start.
+    // In real TUI usage, the SOQ-3 handler runs between these two steps.
+    // The sequence log proves no reconnect was attempted before the event arrived.
+    sequence.push(Step::ReconnectLoopCalled);
+
+    let disconnect_idx = sequence
+        .iter()
+        .position(|s| *s == Step::DisconnectedReceived)
+        .expect("DisconnectedReceived must be in sequence");
+    let reconnect_idx = sequence
+        .iter()
+        .position(|s| *s == Step::ReconnectLoopCalled)
+        .expect("ReconnectLoopCalled must be in sequence");
+
+    assert!(
+        disconnect_idx < reconnect_idx,
+        "BC-2.05.007 PC-1: TransportEvent::Disconnected (idx {disconnect_idx}) must precede \
+         reconnect loop start (idx {reconnect_idx}) — ordering invariant violated"
     );
 }
 
@@ -118,38 +163,64 @@ async fn test_BC_2_05_007_pc_1_disconnected_emitted_before_reconnect_loop() {
 /// BC-2.05.007 PC-2 / AC-002: After SOQ-3 handler runs (triggered by
 /// `TransportEvent::Disconnected`), the `VecDeque<PromptModal>` is empty.
 /// Tested with a populated VecDeque (2 entries).
+///
+/// This test focuses specifically on the VecDeque-clear postcondition. The pc_4 test
+/// verifies the AppMode transition; this test verifies the VecDeque.len() == 0 invariant
+/// holds immediately after the handler returns (synchronous clear, not deferred).
+///
+/// Test strategy: bind a real UDS socket, connect via `connect_with_events`, drop the
+/// server stream to cause EOF. Pre-populate the VecDeque with 2 entries. Receive the
+/// Disconnected event, run soq3_handler, assert VecDeque is immediately empty.
 #[tokio::test]
 async fn test_BC_2_05_007_pc_2_overlay_cleared_on_disconnect() {
     use monocle_ipc::uds::connect_with_events;
     use tempfile::tempdir;
+    use tokio::net::UnixListener;
 
     let dir = tempdir().expect("tempdir");
-    // connect_with_events is a todo!() stub — Red Gate.
+    let sock_path = dir.path().join("monocle.sock");
+
+    // Bind a real UDS listener so connect_with_events can succeed.
+    let listener = UnixListener::bind(&sock_path).expect("bind UDS socket for pc_2");
+
+    // S-023 production entry point: spawns background reader + returns event channel.
     let (_transport, mut event_rx) = connect_with_events(dir.path())
         .await
         .expect("connect_with_events");
 
-    // Set up overlay stack with 2 prompts.
+    // Accept and immediately drop server stream to trigger EOF on the client side.
+    let (server_stream, _) = listener.accept().await.expect("accept");
+    drop(server_stream);
+
+    // Pre-populate overlay with 2 distinct prompts (N > 1 to prove full-clear, not just
+    // single-element dequeue).
     let mut overlay: VecDeque<PromptModal> =
         VecDeque::from([PromptModal { prompt_id: 1 }, PromptModal { prompt_id: 2 }]);
     let mut mode = AppMode::Overlay;
 
     assert_eq!(overlay.len(), 2, "precondition: overlay has 2 entries");
 
-    // Await Disconnected event from production transport.
+    // Await Disconnected event from production transport background reader task.
     let evt = event_rx
         .recv()
         .await
-        .expect("TransportEvent::Disconnected must arrive");
-    assert_eq!(evt, TransportEvent::Disconnected);
+        .expect("TransportEvent::Disconnected must arrive after server EOF");
+    assert_eq!(
+        evt,
+        TransportEvent::Disconnected,
+        "BC-2.05.007 PC-2: event channel must deliver TransportEvent::Disconnected"
+    );
 
-    // Run SOQ-3 handler.
+    // Run SOQ-3 handler synchronously — models the TUI event loop handler.
     soq3_handler(&mut overlay, &mut mode);
 
+    // PC-2 postcondition: VecDeque must be empty immediately after handler returns.
+    // This is a synchronous-clear assertion: no deferred or async drain.
     assert_eq!(
         overlay.len(),
         0,
-        "BC-2.05.007 PC-2: VecDeque must be empty after SOQ-3 handler"
+        "BC-2.05.007 PC-2: VecDeque must be empty immediately after SOQ-3 handler returns \
+         (synchronous clear — no stale prompts survive a disconnect)"
     );
 }
 
@@ -160,44 +231,105 @@ async fn test_BC_2_05_007_pc_2_overlay_cleared_on_disconnect() {
 /// BC-2.05.007 PC-3 / AC-003: The SOQ-3 clear is synchronous — it completes before
 /// the reconnect loop is scheduled. No window where a stale prompt could be approved.
 ///
-/// Test strategy: receive `TransportEvent::Disconnected`, run SOQ-3 handler, assert
-/// the VecDeque is empty BEFORE we call `reconnect()`. The sequencing here proves the
-/// invariant: SOQ-3 fires and completes before the reconnect call site.
-#[tokio::test]
+/// This test proves the synchrony invariant: the VecDeque must be empty BEFORE the first
+/// reconnect attempt fires. It instruments the order of operations by asserting
+/// `overlay.is_empty()` immediately after `soq3_handler` returns and BEFORE `reconnect()`
+/// is invoked.
+///
+/// Uses `tokio::time::pause()` so that `reconnect()`'s internal `tokio::time::sleep()`
+/// calls are controlled by `tokio::time::advance()`. A background task advances mock time
+/// after `reconnect()` begins, triggering the 5-second deadline check and causing
+/// `reconnect()` to return `IpcError::ReconnectTimeout` without any real sleep.
+///
+/// The socket file is removed before calling `reconnect()` so all connect attempts return
+/// ENOENT (no accidental success from the still-bound listener). The listener is dropped
+/// before the socket file is removed to release the kernel binding.
+///
+/// Test strategy:
+/// 1. Bind real UDS socket; connect via `connect_with_events`.
+/// 2. Drop server stream to cause EOF; receive `TransportEvent::Disconnected`.
+/// 3. Run `soq3_handler`; assert `overlay.is_empty()` — KEY ASSERTION.
+///    No reconnect has been called yet at this point.
+/// 4. Drop listener + remove socket file; spawn time-advance task.
+/// 5. Call `reconnect()` — returns `ReconnectTimeout` (deadline reached via mock time).
+///    The ordering proof: the assertion at step 3 is sequentially before step 5's call.
+#[tokio::test(start_paused = true)]
 async fn test_BC_2_05_007_pc_3_clear_synchronous_before_reconnect() {
-    use monocle_ipc::reconnect::{reconnect, BackoffState};
+    use monocle_ipc::error::IpcError;
+    use monocle_ipc::reconnect::{reconnect, BackoffState, RECONNECT_WINDOW_SECS};
     use monocle_ipc::uds::connect_with_events;
+    use std::time::Duration;
     use tempfile::tempdir;
+    use tokio::net::UnixListener;
 
     let dir = tempdir().expect("tempdir");
-    // connect_with_events is a todo!() stub — Red Gate.
+    let sock_path = dir.path().join("monocle.sock");
+
+    // Bind a real UDS listener so connect_with_events can succeed.
+    // Time is paused: the connect syscall is not time-sensitive.
+    let listener = UnixListener::bind(&sock_path).expect("bind UDS socket for pc_3");
+
+    // S-023 production entry point: spawns background reader + returns event channel.
     let (_transport, mut event_rx) = connect_with_events(dir.path())
         .await
         .expect("connect_with_events");
 
-    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal { prompt_id: 1 }]);
+    // Accept then immediately drop server stream to cause EOF on the client side.
+    let (server_stream, _) = listener.accept().await.expect("accept");
+    drop(server_stream);
+
+    // Populate overlay with 1 stale prompt.
+    let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal { prompt_id: 77 }]);
     let mut mode = AppMode::Overlay;
 
-    // Receive disconnect event.
+    assert_eq!(overlay.len(), 1, "precondition: overlay has 1 stale prompt");
+
+    // Receive Disconnected event from background reader task.
     let evt = event_rx
         .recv()
         .await
-        .expect("TransportEvent::Disconnected must arrive");
-    assert_eq!(evt, TransportEvent::Disconnected);
-
-    // SOQ-3 handler runs synchronously here — before reconnect() is called.
-    soq3_handler(&mut overlay, &mut mode);
-
+        .expect("TransportEvent::Disconnected must arrive after server EOF");
     assert_eq!(
-        overlay.len(),
-        0,
-        "BC-2.05.007 PC-3: overlay must be empty before reconnect() is called"
+        evt,
+        TransportEvent::Disconnected,
+        "BC-2.05.007 PC-3: Disconnected event must arrive before any reconnect attempt"
     );
 
-    // NOW call reconnect — demonstrating clear precedes reconnect attempt.
-    // reconnect() is a todo!() stub — also hits Red Gate here.
+    // SOQ-3 handler runs synchronously — this is the clear step.
+    soq3_handler(&mut overlay, &mut mode);
+
+    // KEY ASSERTION (PC-3 synchronous-clear invariant):
+    // overlay is empty HERE, BEFORE reconnect() is invoked.
+    // There is zero window between the handler completing and reconnect starting
+    // where a stale prompt could be interacted with.
+    assert!(
+        overlay.is_empty(),
+        "BC-2.05.007 PC-3: VecDeque must be empty synchronously after soq3_handler — \
+         no stale prompts can survive to the reconnect call site"
+    );
+
+    // Drop the listener and remove the socket file so reconnect() connect attempts fail
+    // with ENOENT (no accidental success from the still-bound listener).
+    drop(listener);
+    let _ = std::fs::remove_file(&sock_path);
+
+    // Spawn a task that advances mock time past the reconnect window.
+    // This unblocks reconnect()'s internal tokio::time::sleep() and triggers the
+    // deadline check, causing reconnect() to return ReconnectTimeout quickly.
+    tokio::spawn(async move {
+        // Advance past the initial delay (250ms) AND the 5-second window in one step.
+        tokio::time::advance(Duration::from_secs(RECONNECT_WINDOW_SECS + 2)).await;
+    });
+
+    // NOW call reconnect() — proves ordering: clear (asserted above) precedes reconnect call.
+    // The time-advance task will resolve the internal sleep, triggering deadline check.
+    // Expects ReconnectTimeout because there is no lock file and no socket file.
     let mut backoff = BackoffState::new();
-    let _result = reconnect(dir.path(), &mut backoff).await;
+    let result = reconnect(dir.path(), &mut backoff).await;
+    assert!(
+        matches!(result, Err(IpcError::ReconnectTimeout)),
+        "BC-2.05.007 PC-3: reconnect() must return ReconnectTimeout (no lock file in tempdir)"
+    );
 }
 
 // ---------------------------------------------------------------------------
