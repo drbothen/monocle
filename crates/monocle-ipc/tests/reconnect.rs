@@ -745,42 +745,83 @@ async fn test_BC_2_05_006_invariant_1_soq3_before_reconnect_loop() {
 /// cleared (SOQ-3) before reconnect; the fresh InitialState re-delivers only
 /// still-pending prompts.
 ///
-/// Test: populate overlay, run SOQ-3, verify the cleared prompt id is not findable
-/// in the overlay (cannot be approved), then simulate reconnect with new InitialState
-/// containing only a different prompt (fresh re-delivery).
+/// Test strategy:
+/// 1. Populate the overlay with a stale prompt (id=42) and set AppMode::Overlay.
+/// 2. Drop the server stream (simulate disconnect) and run soq3_handler — overlay drains.
+/// 3. Call production `reconnect()` against a real bound socket to get
+///    `(UdsClientTransport, EventReceiver)` — the production return is consumed, not discarded.
+/// 4. Simulate InitialState re-delivery from the new daemon: push only a FRESH prompt (id=43).
+/// 5. Assert: stale prompt 42 is NOT in the overlay (ghost-approval is structurally impossible).
+/// 6. Assert: fresh prompt 43 IS in the overlay (re-delivered prompts survive reconnect).
+/// 7. Assert: the `EventReceiver` from `reconnect()` is a FRESH channel — it does NOT carry
+///    any residual TransportEvent from the prior connection, confirming no cross-cycle leakage
+///    at the production layer.
 #[tokio::test]
 async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconnect() {
     use tempfile::tempdir;
+    use tokio::net::UnixListener;
 
     let dir = tempdir().expect("tempdir");
+    let sock_path = dir.path().join("monocle.sock");
+    let lock_path = dir.path().join("monocle.lock");
 
     let stale_prompt_id: u64 = 42;
     let fresh_prompt_id: u64 = 43;
 
+    // --- Step 1: Set up overlay with stale prompt ---
     let mut overlay: VecDeque<PromptModal> = VecDeque::from([PromptModal {
         prompt_id: stale_prompt_id,
     }]);
     let mut mode = AppMode::Overlay;
+    assert_eq!(overlay.len(), 1, "precondition: 1 stale prompt in overlay");
 
-    // SOQ-3 clears stale prompt.
+    // --- Step 2: SOQ-3 clears the overlay ---
     soq3_handler(&mut overlay, &mut mode);
+    assert_eq!(
+        overlay.len(),
+        0,
+        "BC-2.05.006 Invariant 2: overlay must be empty after SOQ-3 (stale prompt cleared)"
+    );
+    assert_eq!(mode, AppMode::Dashboard, "mode must be Dashboard after SOQ-3");
 
-    assert_eq!(overlay.len(), 0, "precondition: overlay empty after SOQ-3");
+    // --- Step 3: Call production reconnect() with a real bound socket ---
+    let listener = UnixListener::bind(&sock_path).expect("bind");
+    let lock = serde_json::json!({
+        "pid": 20001,
+        "port": 9001,
+        "authToken": "token-invariant2",
+        "socketPath": sock_path.to_string_lossy()
+    });
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
-    // Simulate reconnect + InitialState re-delivery (only fresh prompt).
+    // Spawn acceptor — accepts the reconnect() connection and holds it open.
+    let _server_task = tokio::spawn(async move {
+        let (_stream, _) = listener.accept().await.expect("accept invariant-2");
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    });
+
+    let mut backoff = BackoffState::new();
+    // Consume the production return — this is the key change from the vacuous version.
+    let (_transport, mut event_rx) =
+        monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
+            .await
+            .expect("BC-2.05.006 Invariant 2: reconnect() must succeed with daemon up");
+
+    // --- Step 4: Simulate InitialState re-delivery with ONLY the fresh prompt ---
+    // (The stale prompt was cleared by SOQ-3 and must NOT reappear.)
     overlay.push_back(PromptModal {
         prompt_id: fresh_prompt_id,
     });
 
-    // The stale prompt must NOT be in the overlay after reconnect.
+    // --- Step 5: Stale prompt must be absent (ghost-approval is structurally impossible) ---
     let ghost = overlay.iter().find(|p| p.prompt_id == stale_prompt_id);
     assert!(
         ghost.is_none(),
         "BC-2.05.006 Invariant 2 / AC-005: stale prompt (id={stale_prompt_id}) must NOT \
-         appear in overlay after reconnect — only fresh re-deliveries from InitialState"
+         appear in overlay after reconnect — SOQ-3 drains the VecDeque synchronously"
     );
 
-    // Only the fresh prompt exists.
+    // --- Step 6: Fresh prompt must be present ---
     let fresh = overlay.iter().find(|p| p.prompt_id == fresh_prompt_id);
     assert!(
         fresh.is_some(),
@@ -788,9 +829,17 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
          after InitialState re-delivery"
     );
 
-    // reconnect() is a todo!() stub — Red Gate.
-    let mut backoff = BackoffState::new();
-    let _result = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff).await;
+    // --- Step 7: Verify the production EventReceiver from reconnect() is fresh ---
+    // A fresh channel has no residual events from the prior connection — try_recv must
+    // return Err (channel empty), proving no cross-cycle event leakage at the IPC layer.
+    // (The reconnect() return's event_rx is a brand-new channel created inside reconnect().)
+    let residual_event = event_rx.try_recv();
+    assert!(
+        residual_event.is_err(),
+        "BC-2.05.006 Invariant 2: EventReceiver from reconnect() must be empty (fresh channel) — \
+         no stale TransportEvent carried over from the prior connection; got: {:?}",
+        residual_event.ok()
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -800,57 +849,104 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
 /// BC-2.05.006 EC-004 / AC-001: Daemon crashes and restarts 4 times within 30 seconds.
 /// TUI reconnects on each restart; no cumulative state leakage between reconnects.
 ///
-/// Test strategy: simulate 4 crash-restart cycles. On each cycle: disconnect detected
-/// (SOQ-3 fires), overlay cleared, reconnect succeeds, InitialState received, state rebuilt.
-/// After each cycle, verify the overlay is fresh (no leakage from previous cycle).
+/// Test strategy: simulate 4 real crash-restart cycles against production `reconnect()`.
+/// Each cycle:
+/// 1. Binds a new UDS listener + writes a fresh lock file (simulates daemon restart).
+/// 2. Calls production `reconnect()` which returns `(UdsClientTransport, EventReceiver)`.
+/// 3. Drops the transport (simulates TUI detecting next crash — closes the socket).
+/// 4. Waits for `TransportEvent::Disconnected` on the returned event receiver — proves
+///    a fresh disconnect event arrives per cycle (no stale event from a prior cycle).
+/// 5. Runs `soq3_handler` on a fresh overlay (seeded with N stale prompts for cycle N)
+///    and asserts it drains to zero — proves no leakage across cycles.
+///
+/// The overlay is seeded with cycle-count prompts (cycle 0 → 0, cycle 1 → 1, etc.)
+/// to simulate incrementally-accumulating stale state. SOQ-3 must drain all of them.
 #[tokio::test]
 async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage() {
+    use monocle_ipc::events::TransportEvent;
     use tempfile::tempdir;
+    use tokio::net::UnixListener;
 
     let dir = tempdir().expect("tempdir");
+    let lock_path = dir.path().join("monocle.lock");
 
-    let mut cycle_overlays: Vec<usize> = Vec::new();
+    for cycle in 0u64..4 {
+        // --- Simulate daemon restart: bind a new listener + update lock file ---
+        let sock_path = dir.path().join("monocle.sock");
+        // Remove previous cycle's socket file if it exists.
+        let _ = std::fs::remove_file(&sock_path);
+        let listener = UnixListener::bind(&sock_path).expect("bind cycle socket");
 
-    // Simulate 4 reconnect cycles.
-    for cycle in 0..4 {
-        // Before each cycle: populate overlay with stale prompts (simulate state from previous cycle).
-        let mut overlay: VecDeque<PromptModal> = (0..cycle as u64)
+        let lock = serde_json::json!({
+            "pid": 4000 + cycle,
+            "port": 9000 + cycle as u16,
+            "authToken": format!("token-cycle-{cycle}"),
+            "socketPath": sock_path.to_string_lossy()
+        });
+        std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+
+        // Spawn an acceptor task that accepts and immediately drops the connection.
+        // Dropping the accepted stream causes the background reader in the transport
+        // to see EOF and emit TransportEvent::Disconnected.
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept cycle");
+            // Drop immediately — triggers disconnect on the client's event_rx.
+            drop(stream);
+        });
+
+        // --- Call production reconnect() — consumes the real return value ---
+        let mut backoff = BackoffState::new();
+        let (transport, mut event_rx) =
+            monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
+                .await
+                .unwrap_or_else(|e| {
+                    panic!("BC-2.05.006 EC-004: cycle {cycle}: reconnect() must succeed, got: {e}")
+                });
+
+        // Drop the transport to close the write half, triggering EOF on the server side.
+        // The background reader will detect the resulting EOF and emit Disconnected.
+        drop(transport);
+
+        // Assert: the event receiver delivers TransportEvent::Disconnected for this cycle.
+        // This proves a FRESH disconnect event is emitted per cycle — not a stale event
+        // carried over from a prior cycle's event channel.
+        let evt = tokio::time::timeout(Duration::from_secs(2), event_rx.recv())
+            .await
+            .expect("BC-2.05.006 EC-004: event channel recv must not time out")
+            .expect("BC-2.05.006 EC-004: event channel must deliver Disconnected");
+        assert_eq!(
+            evt,
+            TransportEvent::Disconnected,
+            "BC-2.05.006 EC-004: cycle {cycle}: fresh TransportEvent::Disconnected must arrive \
+             per cycle — no stale event leakage from prior cycles"
+        );
+
+        // --- Prove overlay state is zeroed per cycle via SOQ-3 ---
+        // Seed overlay with `cycle` stale prompts (accumulating to test full-clear invariant).
+        let mut overlay: VecDeque<PromptModal> = (0..cycle)
             .map(|i| PromptModal {
                 prompt_id: cycle * 100 + i,
             })
             .collect();
+        let stale_count = overlay.len();
         let mut mode = if !overlay.is_empty() {
             AppMode::Overlay
         } else {
             AppMode::Dashboard
         };
 
-        // SOQ-3 fires on disconnect.
         soq3_handler(&mut overlay, &mut mode);
 
         assert_eq!(
             overlay.len(),
             0,
-            "BC-2.05.006 EC-004: cycle {cycle}: overlay must be empty after SOQ-3"
+            "BC-2.05.006 EC-004: cycle {cycle}: overlay must be empty after SOQ-3 \
+             (had {stale_count} stale prompts — no leakage from prior cycles)"
         );
         assert_eq!(
             mode,
             AppMode::Dashboard,
             "BC-2.05.006 EC-004: cycle {cycle}: mode must be Dashboard after SOQ-3"
-        );
-
-        cycle_overlays.push(overlay.len());
-
-        // reconnect() is a todo!() stub — Red Gate.
-        let mut backoff = BackoffState::new();
-        let _result = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff).await;
-    }
-
-    // All 4 cycles should produce an empty overlay post-SOQ-3.
-    for (i, len) in cycle_overlays.iter().enumerate() {
-        assert_eq!(
-            *len, 0,
-            "BC-2.05.006 EC-004: cycle {i}: overlay length must be 0 (no leakage), got {len}"
         );
     }
 }
