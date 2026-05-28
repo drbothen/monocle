@@ -107,41 +107,41 @@ fn test_bc_2_06_007_pc1_ac001_app_constructs_for_startup() {
 /// must render the error panel and exit with code 1.
 ///
 /// This test verifies the connection failure path: when no daemon socket exists,
-/// `run()` calls `std::process::exit(1)` after rendering the error panel.
-/// We cannot call `process::exit(1)` in a test runner without killing the test
-/// process; instead we verify that `resolve_runtime_dir()` succeeds (a prerequisite
-/// of the error path) and that the error message text is the canonical BC-2.06.004 string.
+/// `run()` returns `Err` after rendering the error panel.
+/// We cannot exercise the full `run()` path (it requires a UDS connection failure)
+/// without a live socket; instead this test:
+///   1. Pins the canonical error text to `monocle_tui::DAEMON_NOT_RUNNING_ERROR`
+///      — a `pub const` in production code. If production changes the string,
+///      this test fails. The test and production share a SINGLE source of truth
+///      (eliminates vacuous-mirror drift; F-S025-ADV10-MED-001).
+///   2. Renders the error panel into a `TestBackend` using the same const,
+///      confirming the string renders into the ratatui buffer without panic.
 ///
 /// Full integration verification (mock daemon, TTY simulation) is deferred to
 /// Phase 4 holdout scenario HS-EXP-009.
-///
-/// F-S025-ADV9 canonical-text sweep: `run()` embeds `error_msg` as a local string
-/// literal (not a pub const). We cannot import it. Instead this test asserts the
-/// canonical text verbatim as a compile-time constant, and separately renders the
-/// error panel into a TestBackend to verify the production code produces it.
 #[test]
 fn test_bc_2_06_004_pc1_ac002_error_message_text_is_canonical() {
+    use monocle_tui::DAEMON_NOT_RUNNING_ERROR;
     use ratatui::{backend::TestBackend, Terminal};
 
-    // The canonical AC-002 error message (BC-2.06.004).
-    // assert_eq! — NOT contains() — because this is a pinned canonical string.
-    // Any change to the production string must be reflected here AND in the BC.
-    let canonical_msg = "Daemon not running. Start it with: monocle daemon start";
+    // Pin: the canonical AC-002 error message from the production const.
+    // If the production const changes, this assert fails — single source of truth.
     assert_eq!(
-        canonical_msg, "Daemon not running. Start it with: monocle daemon start",
-        "AC-002: canonical error text must match BC-2.06.004 verbatim"
+        DAEMON_NOT_RUNNING_ERROR,
+        "Daemon not running. Start it with: monocle daemon start",
+        "AC-002: DAEMON_NOT_RUNNING_ERROR must match BC-2.06.004 canonical text verbatim"
     );
 
     // Verify the canonical text is renderable via the production render path.
     // Use a TestBackend to render the error paragraph the same way run() does.
-    // This confirms the string reaches the ratatui Paragraph without panic.
+    // This confirms the const string reaches the ratatui Paragraph without panic.
     let backend = TestBackend::new(80, 10);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
     terminal
         .draw(|frame| {
             use ratatui::text::Text;
             use ratatui::widgets::{Block, Borders, Paragraph, Widget};
-            let p = Paragraph::new(Text::raw(canonical_msg))
+            let p = Paragraph::new(Text::raw(DAEMON_NOT_RUNNING_ERROR))
                 .block(Block::default().borders(Borders::ALL).title("Error"));
             Widget::render(p, frame.area(), frame.buffer_mut());
         })
@@ -157,10 +157,11 @@ fn test_bc_2_06_004_pc1_ac002_error_message_text_is_canonical() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    // The exact canonical string must appear verbatim in the rendered buffer.
+    // The production const must appear verbatim in the rendered buffer.
+    // Using DAEMON_NOT_RUNNING_ERROR (not a local copy) — single source of truth.
     assert!(
-        rendered.contains("Daemon not running. Start it with: monocle daemon start"),
-        "AC-002: full canonical error string must appear in rendered error panel; got:\n{}",
+        rendered.contains(DAEMON_NOT_RUNNING_ERROR),
+        "AC-002: DAEMON_NOT_RUNNING_ERROR must appear in rendered error panel; got:\n{}",
         rendered.trim()
     );
 

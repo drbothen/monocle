@@ -64,6 +64,16 @@ pub enum TransportEvent {
 /// create a monocle-tui → monocle-runtime dependency not in the current dep graph.
 pub const EVENT_RING_CAPACITY: usize = 4096;
 
+/// Canonical error message shown when the TUI fails to connect to the daemon.
+///
+/// This is the single source of truth for AC-002 (BC-2.06.004 PC-1). Both the
+/// production `run()` path and the AC-002 integration test reference this const —
+/// eliminating any possibility of vacuous-mirror drift between test and production.
+///
+/// Any change to this string must be accompanied by a BC-2.06.004 version bump.
+pub const DAEMON_NOT_RUNNING_ERROR: &str =
+    "Daemon not running. Start it with: monocle daemon start";
+
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
@@ -443,7 +453,7 @@ pub async fn run() -> Result<()> {
             terminal.draw(|frame| {
                 use ratatui::text::Text;
                 use ratatui::widgets::{Block, Borders, Paragraph};
-                let error_msg = "Daemon not running. Start it with: monocle daemon start";
+                let error_msg = DAEMON_NOT_RUNNING_ERROR;
                 let p = Paragraph::new(Text::raw(error_msg))
                     .block(Block::default().borders(Borders::ALL).title("Error"));
                 frame.render_widget(p, frame.area());
