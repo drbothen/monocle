@@ -786,10 +786,10 @@ pub fn crossterm_key_to_core(
         CtCode::Right => KeyCode::Right,
         CtCode::Tab => KeyCode::Tab,
         CtCode::Backspace => KeyCode::Backspace,
-        // Any other crossterm key code maps to Noop via no binding match.
-        // We emit Char('\0') as a safe unmappable sentinel that won't match
-        // any registered binding.
-        _ => KeyCode::Char('\0'),
+        // Any other crossterm key code maps to Unknown — the canonical sentinel
+        // for unmapped keys (F-S025-ADV2-LOW-001). The binding resolver never
+        // registers Unknown, so these keys silently produce no action.
+        _ => KeyCode::Unknown,
     };
 
     let modifiers = KeyModifiers {

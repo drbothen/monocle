@@ -120,6 +120,11 @@ pub struct KeyEvent {
 ///
 /// `#[non_exhaustive]` — additional key codes (e.g., function keys, media keys)
 /// may be added as terminal backend support expands.
+///
+/// `Unknown` is the sentinel for crossterm key codes that don't map to any named
+/// variant. The binding resolver never matches `Unknown`, ensuring unmapped keys
+/// produce no action. This replaces the fragile `Char('\0')` sentinel pattern
+/// (F-S025-ADV2-LOW-001).
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum KeyCode {
@@ -141,6 +146,12 @@ pub enum KeyCode {
     Tab,
     /// The Backspace key.
     Backspace,
+    /// An unknown or unmapped crossterm key code.
+    ///
+    /// The binding resolver never registers bindings for `Unknown`, so any key
+    /// that maps here silently produces no action. This is the canonical sentinel
+    /// for crossterm keys not listed in this enum (F-S025-ADV2-LOW-001).
+    Unknown,
 }
 
 /// Modifier keys held simultaneously with a key press.
