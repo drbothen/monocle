@@ -784,7 +784,7 @@ impl Transport for UdsClientTransport {
 
     /// Receive one framed `ClientToServer` message.
     ///
-    /// # Direct read strategy (new() / with_event_channel())
+    /// # Direct read strategy (new())
     ///
     /// Reads directly from the socket. On connection-loss errors (`UnexpectedEof`,
     /// `BrokenPipe`, `ConnectionReset`), emits `TransportEvent::Disconnected` via the
