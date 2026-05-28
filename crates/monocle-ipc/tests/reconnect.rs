@@ -219,8 +219,7 @@ async fn test_BC_2_05_006_pc_3_lock_file_reread_after_failed_attempt() {
     let initial_lock = serde_json::json!({
         "pid": 1001,
         "port": 9001,
-        "authToken": "token-initial",
-        "socketPath": dir.path().join("monocle.sock").to_string_lossy()
+        "authToken": "token-initial"
     });
     std::fs::write(&lock_path, serde_json::to_string(&initial_lock).unwrap())
         .expect("write lock file");
@@ -260,14 +259,12 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
 
     let dir = tempdir().expect("tempdir");
     let lock_path = dir.path().join("monocle.lock");
-    let sock_path = dir.path().join("monocle.sock");
 
     // Write initial lock file (no daemon yet — socket absent).
     let lock_v1 = serde_json::json!({
         "pid": 2001,
         "port": 9001,
-        "authToken": "token-v1",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-v1"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap();
 
@@ -285,8 +282,7 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
         let lock_v2 = serde_json::json!({
             "pid": 2002,
             "port": 9002,
-            "authToken": "token-v2",
-            "socketPath": new_sock_path.to_string_lossy()
+            "authToken": "token-v2"
         });
         std::fs::write(
             dir_clone.join("monocle.lock"),
@@ -321,14 +317,12 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
 
     let dir = tempdir().expect("tempdir");
     let lock_path = dir.path().join("monocle.lock");
-    let sock_path = dir.path().join("monocle.sock");
 
     // Lock file v1: original daemon.
     let lock_v1 = serde_json::json!({
         "pid": 3001,
         "port": 9001,
-        "authToken": "token-original",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-original"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap();
 
@@ -342,8 +336,7 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
         let lock_v2 = serde_json::json!({
             "pid": 3002,
             "port": 9002,
-            "authToken": "token-restarted",
-            "socketPath": dir_clone.join("monocle.sock").to_string_lossy()
+            "authToken": "token-restarted"
         });
         std::fs::write(
             dir_clone.join("monocle.lock"),
@@ -417,8 +410,7 @@ async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down(
     let stale_lock = serde_json::json!({
         "pid": 5001,
         "port": 9001,
-        "authToken": "stale-token",
-        "socketPath": dir.path().join("monocle.sock").to_string_lossy()
+        "authToken": "stale-token"
     });
     std::fs::write(
         dir.path().join("monocle.lock"),
@@ -499,8 +491,7 @@ async fn test_BC_2_05_006_pc_6_initial_state_rebuild_on_reconnect() {
     let lock = serde_json::json!({
         "pid": 6001,
         "port": 9001,
-        "authToken": "token-reconnect",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-reconnect"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -562,8 +553,7 @@ async fn test_BC_2_05_006_pc_7_app_mode_overlay_after_reconnect_with_pending_pro
     let lock = serde_json::json!({
         "pid": 7001,
         "port": 9001,
-        "authToken": "token-overlay",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-overlay"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -645,8 +635,7 @@ async fn test_BC_2_05_006_pc_7_app_mode_dashboard_after_reconnect_no_pending_pro
     let lock = serde_json::json!({
         "pid": 8001,
         "port": 9001,
-        "authToken": "token-dashboard",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-dashboard"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -792,8 +781,7 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
     let lock = serde_json::json!({
         "pid": 20001,
         "port": 9001,
-        "authToken": "token-invariant2",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-invariant2"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -883,8 +871,7 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
         let lock = serde_json::json!({
             "pid": 4000 + cycle,
             "port": port,
-            "authToken": format!("token-cycle-{cycle}"),
-            "socketPath": sock_path.to_string_lossy()
+            "authToken": format!("token-cycle-{cycle}")
         });
         std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -985,8 +972,7 @@ async fn test_BC_2_05_006_pc_8_status_bar_reverts_after_reconnect() {
     let lock = serde_json::json!({
         "pid": 9001,
         "port": 9001,
-        "authToken": "token-status",
-        "socketPath": sock_path.to_string_lossy()
+        "authToken": "token-status"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
 
@@ -1116,8 +1102,7 @@ async fn test_BC_2_05_006_high_001_connect_timeout_within_reconnect_window() {
     let lock = serde_json::json!({
         "pid": 99001,
         "port": 9901,
-        "authToken": "token-timeout-test",
-        "socketPath": dir.path().join("no-such.sock").to_string_lossy()
+        "authToken": "token-timeout-test"
     });
     std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).expect("write lock");
 
