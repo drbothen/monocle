@@ -2,6 +2,10 @@
 // Test function names follow the VSDD `test_BC_S_SS_NNN_xxx` convention (uppercase BC).
 // Suppress non_snake_case lint for test files — BC_ prefix is intentional for traceability.
 #![allow(non_snake_case)]
+// expect/unwrap are idiomatic in test code for assertion amplification.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+// std::fs::write used here to plant stale socket fixture files; not a production config write.
+#![allow(clippy::disallowed_methods)]
 //!
 //! Tests the UDS socket bind, stale socket removal, mode 0o600, path length limit,
 //! and graceful shutdown cleanup.

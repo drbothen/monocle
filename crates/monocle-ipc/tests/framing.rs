@@ -2,6 +2,8 @@
 // Test function names follow the VSDD `test_BC_S_SS_NNN_xxx` convention (uppercase BC).
 // Suppress non_snake_case lint for test files — BC_ prefix is intentional for traceability.
 #![allow(non_snake_case)]
+// expect/unwrap are idiomatic in test code for assertion amplification.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 //!
 //! Tests the 4-byte LE length-prefix framing protocol.
 //!

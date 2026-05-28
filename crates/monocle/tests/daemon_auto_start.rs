@@ -4,6 +4,9 @@
 #![allow(non_snake_case)]
 // unwrap/expect are idiomatic in test code for assertion amplification.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
+// std::fs::write used here to plant test fixture files (lock files, socket stubs);
+// this is not a production config write — the disallowed_methods rule targets config writes.
+#![allow(clippy::disallowed_methods)]
 //!
 //! # Coverage Map
 //!

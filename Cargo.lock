@@ -1197,6 +1197,7 @@ dependencies = [
  "directories",
  "http-body-util",
  "monocle-core",
+ "monocle-ipc",
  "nix",
  "rand 0.8.6",
  "regex-lite",
@@ -1210,6 +1211,7 @@ dependencies = [
  "tower",
  "tracing",
  "tracing-test",
+ "uuid",
 ]
 
 [[package]]

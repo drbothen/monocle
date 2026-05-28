@@ -38,6 +38,11 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 // Non-snake-case test names encode BC IDs with dots-as-underscores per naming convention.
 #![allow(non_snake_case)]
+// std::fs::write is used here to plant a stale socket file for the stale-removal test;
+// this is not a config-file write — the disallowed_methods rule targets production config writes.
+#![allow(clippy::disallowed_methods)]
+// Test imports: some types are imported for the wildcard-use pattern or to verify the import path.
+#![allow(unused_imports)]
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::sync::atomic::AtomicU64;

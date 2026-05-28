@@ -229,6 +229,23 @@ pub struct DaemonState {
     pub session_registry: Option<Arc<crate::hooks::SessionRegistry>>,
 
     // -------------------------------------------------------------------------
+    // S-022 fields: pending-decision registry for permission prompts
+    // -------------------------------------------------------------------------
+    /// Pending-decision registry for in-flight permission prompts (S-022, BC-2.05.005).
+    ///
+    /// `None` — registry not yet initialized (daemon startup or test stub without IPC).
+    /// `Some(registry)` — live registry. The `PreToolUse` Defer path calls
+    ///   `registry.register_prompt(payload, sender)` to create the entry and obtain a
+    ///   stable `prompt_id`. The per-client IPC task calls `registry.resolve_prompt(...)`
+    ///   when a `ClientToServer::PermissionDecision` arrives. The timeout path calls
+    ///   `registry.remove_timed_out_prompt(prompt_id)` before broadcasting
+    ///   `PermissionPromptResolved`.
+    ///
+    /// Wrapped in `Arc` to allow the registry to be shared across axum handler tasks
+    /// and the per-client IPC task without cloning the registry struct.
+    pub pending_decisions: Option<crate::permissions::SharedPendingDecisionRegistry>,
+
+    // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
     // These fields are Option<_> (zero cost when None) and are NEVER set by
@@ -292,6 +309,7 @@ impl DaemonState {
             event_bus_tx: None,
             drop_counter: None,
             session_registry: None,
+            pending_decisions: None,
             hook_decision_override: None,
             hook_delay_ms: None,
         }
@@ -310,3 +328,35 @@ const _: () = {
         assert_send_sync::<DaemonState>();
     }
 };
+
+// ---------------------------------------------------------------------------
+// S-022: InitialState snapshot (BC-2.05.002 PC-2, AC-002)
+// ---------------------------------------------------------------------------
+
+/// Produce an `InitialState` snapshot from the current `DaemonState`.
+///
+/// # Contract (BC-2.05.002 postcondition PC-2, AC-002)
+///
+/// The snapshot captures, at the moment of the call:
+/// - `sessions`: clone of the current session roster from `state.session_registry`.
+/// - `ring_tail`: last N hook events from `state.ring` (the RAM ring buffer).
+/// - `overlay_stack`: clone of all currently-pending permission prompt payloads from
+///   `state.pending_decisions`.
+/// - `drop_counter`: current value of `state.drop_counter`.
+///
+/// When any of the optional fields is `None` (registry / ring / counter not yet
+/// initialized), the corresponding `InitialState` field is an empty Vec / 0.
+///
+/// # 256 KiB guard
+///
+/// The 256 KiB size check is performed by the caller ([`crate::server::send_initial_state`])
+/// after serialization. This function does not serialize; it only constructs the struct.
+///
+/// # Returns
+///
+/// A `monocle_ipc::types::ServerToClient::InitialState { sessions, ring_tail, overlay_stack, drop_counter }`
+/// variant, ready for framing.
+#[allow(clippy::todo)]
+pub fn snapshot_initial_state(_state: &DaemonState) -> monocle_ipc::types::ServerToClient {
+    todo!("S-022: snapshot_initial_state — assemble InitialState from DaemonState fields")
+}

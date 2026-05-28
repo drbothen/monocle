@@ -186,6 +186,16 @@ async fn handle_pre_tool_use_inner(state: Arc<DaemonState>, envelope: HookEnvelo
                 session_id = %envelope.session_id,
                 "PreToolUse Defer: awaiting permission prompt resolution (S-022 will wire TUI IPC)"
             );
+            // S-022 TODO: register_prompt + broadcast PermissionPromptQueued on Defer path.
+            // Implementation:
+            //   1. Build PermissionPromptPayload from envelope fields.
+            //   2. Create oneshot::channel::<PermissionDecisionKind>().
+            //   3. Call state.pending_decisions.register_prompt(payload, decision_tx).
+            //   4. Broadcast ServerToClient::PermissionPromptQueued { payload } to all subscribers.
+            //   5. Await decision_rx (instead of the never-resolving _tx/rx pair here).
+            //   6. On timeout: call state.pending_decisions.remove_timed_out_prompt(prompt_id);
+            //      broadcast ServerToClient::PermissionPromptResolved { prompt_id }.
+            //
             // Await the oneshot. The outer 300ms timeout will fire before this resolves.
             let _ = rx.await;
             // This line is unreachable in Phase 1; the outer timeout catches it.

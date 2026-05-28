@@ -59,6 +59,14 @@ pub mod types;
 /// [`event_bus::try_publish_event`] (canonical try_send helper used by all hook handlers).
 pub mod event_bus;
 
+/// Pending-decision registry for in-flight permission prompts (S-022, BC-2.05.005).
+///
+/// Provides [`permissions::PendingDecisionRegistry`] with `register_prompt`,
+/// `resolve_prompt`, `remove_timed_out_prompt`, and `snapshot_payloads` methods.
+/// Also exports [`permissions::SharedPendingDecisionRegistry`] (Arc-wrapped handle used
+/// as the type of `DaemonState.pending_decisions`).
+pub mod permissions;
+
 /// Hook endpoint handler modules for S-018 (BC-2.04.007, BC-2.04.008, BC-2.04.009).
 ///
 /// Sub-modules:

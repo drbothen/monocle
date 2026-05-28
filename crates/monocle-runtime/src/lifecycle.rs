@@ -590,6 +590,11 @@ pub async fn daemon_start_sequence(runtime_dir: &Path) -> Result<(), DaemonStart
         "daemon_start_sequence: all steps complete (BC-2.04.001)"
     );
 
+    // S-022 TODO: spawn connection accept loop after UDS bind (step 10).
+    // The accept loop is not yet started here — that wiring is the S-022 implementation
+    // task. At that point: create Arc<UdsTransport> from the listener; spawn
+    // `monocle_ipc::server::run_accept_loop(listener, state, subscribers)` as a Tokio task.
+
     Ok(())
 }
 
