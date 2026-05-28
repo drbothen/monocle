@@ -127,8 +127,7 @@ fn test_bc_2_06_004_pc1_ac002_error_message_text_is_canonical() {
     // Pin: the canonical AC-002 error message from the production const.
     // If the production const changes, this assert fails — single source of truth.
     assert_eq!(
-        DAEMON_NOT_RUNNING_ERROR,
-        "Daemon not running. Start it with: monocle daemon start",
+        DAEMON_NOT_RUNNING_ERROR, "Daemon not running. Start it with: monocle daemon start",
         "AC-002: DAEMON_NOT_RUNNING_ERROR must match BC-2.06.004 canonical text verbatim"
     );
 

@@ -120,10 +120,7 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
         // cost < 0.0 does not catch -0.0 in IEEE 754 (-0.0 == 0.0), so we also
         // check is_sign_negative() to catch the -0.0 edge case explicitly.
         Some(cost)
-            if cost.is_nan()
-                || cost.is_infinite()
-                || cost < 0.0
-                || cost.is_sign_negative() =>
+            if cost.is_nan() || cost.is_infinite() || cost < 0.0 || cost.is_sign_negative() =>
         {
             "\u{2014}".to_string()
         }

@@ -125,13 +125,11 @@ fn make_modal() -> PromptModal {
 fn test_bc_2_06_005_pc3_ac005_renders_empty_state_when_no_sessions() {
     // Pin canonical strings to their pub const definitions.
     assert_eq!(
-        SESSIONS_EMPTY_LINE_1,
-        "No sessions detected",
+        SESSIONS_EMPTY_LINE_1, "No sessions detected",
         "BC-2.06.005 PC-3: SESSIONS_EMPTY_LINE_1 must match canonical text verbatim"
     );
     assert_eq!(
-        SESSIONS_EMPTY_LINE_2,
-        "Start Claude Code in any terminal to see it here.",
+        SESSIONS_EMPTY_LINE_2, "Start Claude Code in any terminal to see it here.",
         "BC-2.06.005 PC-3: SESSIONS_EMPTY_LINE_2 must match canonical text verbatim"
     );
 
