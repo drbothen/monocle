@@ -131,8 +131,7 @@ async fn test_BC_2_05_001_uds_bind_returns_error_on_path_too_long() {
 
     // long_dir path + "/monocle.sock" should exceed UDS_PATH_LIMIT_BYTES.
     let sock_path = long_dir.join("monocle.sock");
-    let sock_path_str = sock_path.to_string_lossy();
-    let path_len = sock_path_str.len();
+    let path_len = sock_path.as_os_str().len();
 
     // Only run this test if the constructed path actually exceeds the limit.
     if path_len <= monocle_ipc::uds::UDS_PATH_LIMIT_BYTES {

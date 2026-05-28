@@ -226,6 +226,13 @@ impl UdsTransport {
         subs.push(sender);
     }
 
+    /// Return the current number of live subscribers.
+    ///
+    /// Used by tests to assert slow-client removal (BC-2.05.004 EC-005).
+    pub async fn subscriber_count(&self) -> usize {
+        self.subscribers.lock().await.len()
+    }
+
     /// Accept incoming TUI client connections in a loop.
     ///
     /// Each accepted connection is handed off to a per-client Tokio task.

@@ -8,7 +8,8 @@
 //!
 //! All test names follow `test_BC_S_SS_NNN_[description]` convention.
 
-use monocle_core::hook_events::HookType;
+use monocle_core::engine::{EnrichedSession, SessionStatus};
+use monocle_core::hook_events::{HookEvent, HookType};
 use monocle_ipc::types::{
     ClientToServer, PermissionDecisionKind, PermissionPromptPayload, ServerToClient,
 };
@@ -34,6 +35,78 @@ fn test_BC_2_05_003_server_to_client_session_list_update_serde_roundtrip() {
             );
         }
         other => panic!("expected SessionListUpdate, got {other:?}"),
+    }
+}
+
+/// test_server_to_client_initial_state_serde_roundtrip:
+/// `ServerToClient::InitialState` survives a JSON roundtrip with all fields intact.
+///
+/// Verifies sessions count, ring_tail count, overlay_stack count, and drop_counter value.
+#[test]
+fn test_server_to_client_initial_state_serde_roundtrip() {
+    let session = EnrichedSession::new(
+        "session-init-001".to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        SessionStatus::Active,
+        None,
+    );
+
+    // SessionStartEvent is #[non_exhaustive] so it cannot be constructed outside monocle-core.
+    // Deserialize from JSON to work around the non_exhaustive restriction in tests.
+    let hook_event: HookEvent = serde_json::from_value(serde_json::json!({
+        "SessionStart": {
+            "cwd": "/home/user",
+            "transcript_path": "/tmp/transcript.jsonl",
+            "session_id": "session-init-001",
+            "pid": 12345
+        }
+    }))
+    .expect("construct HookEvent::SessionStart via serde");
+
+    let prompt_id = Uuid::new_v4();
+    let overlay = PermissionPromptPayload {
+        prompt_id,
+        session_id: "session-init-001".to_string(),
+        tool_name: "Bash".to_string(),
+        tool_input: serde_json::json!({"command": "ls"}),
+        old_content: None,
+        new_content: None,
+    };
+
+    let msg = ServerToClient::InitialState {
+        sessions: vec![session],
+        ring_tail: vec![hook_event],
+        overlay_stack: vec![overlay],
+        drop_counter: 42,
+    };
+
+    let json = serde_json::to_string(&msg).expect("serialize InitialState");
+    let decoded: ServerToClient = serde_json::from_str(&json).expect("deserialize InitialState");
+
+    match decoded {
+        ServerToClient::InitialState {
+            sessions,
+            ring_tail,
+            overlay_stack,
+            drop_counter,
+        } => {
+            assert_eq!(sessions.len(), 1, "sessions must have 1 entry after roundtrip");
+            assert_eq!(
+                sessions[0].session_id, "session-init-001",
+                "session_id must survive roundtrip"
+            );
+            assert_eq!(ring_tail.len(), 1, "ring_tail must have 1 entry after roundtrip");
+            assert_eq!(
+                overlay_stack.len(),
+                1,
+                "overlay_stack must have 1 entry after roundtrip"
+            );
+            assert_eq!(overlay_stack[0].prompt_id, prompt_id, "prompt_id must survive roundtrip");
+            assert_eq!(drop_counter, 42, "drop_counter must survive roundtrip");
+        }
+        other => panic!("expected InitialState, got {other:?}"),
     }
 }
 

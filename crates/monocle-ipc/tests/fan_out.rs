@@ -141,16 +141,50 @@ fn test_BC_2_05_004_payload_excerpt_always_valid_utf8_property() {
 /// `broadcast_session_list_update` sends the complete session list to all connected clients.
 ///
 /// BC-2.05.003 PC-1, invariant 1.
-///
-/// **RED GATE**: Calls `UdsTransport::bind` + `broadcast_session_list_update` — panics with `todo!()`.
 #[tokio::test]
 async fn test_BC_2_05_003_broadcast_session_list_update_sends_to_all_clients() {
     let dir = tempfile::tempdir().expect("tempdir");
     let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
 
-    // This will panic at bind (todo!()), satisfying the Red Gate.
-    // When implemented: add 2 subscribers, call broadcast, verify both receive the message.
-    transport.broadcast_session_list_update(vec![]).await;
+    // Add 2 subscribers.
+    let (tx1, mut rx1) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    let (tx2, mut rx2) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    transport.add_subscriber(tx1).await;
+    transport.add_subscriber(tx2).await;
+
+    // Broadcast a session list with one identifiable session.
+    let session = monocle_core::engine::EnrichedSession::new(
+        "session-fanout-001".to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        monocle_core::engine::SessionStatus::Active,
+        None,
+    );
+    transport
+        .broadcast_session_list_update(vec![session])
+        .await;
+
+    // Both subscribers must receive the SessionListUpdate with the correct session.
+    let msg1 = rx1
+        .try_recv()
+        .expect("subscriber 1 must receive the broadcast");
+    let msg2 = rx2
+        .try_recv()
+        .expect("subscriber 2 must receive the broadcast");
+
+    for msg in [msg1, msg2] {
+        match msg {
+            ServerToClient::SessionListUpdate { sessions } => {
+                assert_eq!(sessions.len(), 1, "sessions list must contain exactly 1 entry");
+                assert_eq!(
+                    sessions[0].session_id, "session-fanout-001",
+                    "session_id must match what was broadcast"
+                );
+            }
+            other => panic!("expected SessionListUpdate, got {other:?}"),
+        }
+    }
 }
 
 /// test_BC_2_05_003_broadcast_session_list_update_empty_sessions:
@@ -208,35 +242,73 @@ async fn test_BC_2_05_003_broadcast_session_list_update_256_kib_limit() {
 /// `broadcast_hook_event_received` sends a `HookEventReceived` message to all connected clients.
 ///
 /// BC-2.05.004 PC-1.
-///
-/// **RED GATE**: Calls `UdsTransport::bind` — panics with `todo!()`.
 #[tokio::test]
 async fn test_BC_2_05_004_broadcast_hook_event_received_sends_to_all_clients() {
     let dir = tempfile::tempdir().expect("tempdir");
     let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
 
+    // Add 2 subscribers.
+    let (tx1, mut rx1) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    let (tx2, mut rx2) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    transport.add_subscriber(tx1).await;
+    transport.add_subscriber(tx2).await;
+
     let body = br#"{"session_id":"abc","tool":"Bash"}"#;
     transport
         .broadcast_hook_event_received(HookType::PreToolUse, "abc".to_string(), body, 5)
         .await;
+
+    // Both subscribers must receive the HookEventReceived with correct fields.
+    let msg1 = rx1
+        .try_recv()
+        .expect("subscriber 1 must receive the broadcast");
+    let msg2 = rx2
+        .try_recv()
+        .expect("subscriber 2 must receive the broadcast");
+
+    for msg in [msg1, msg2] {
+        match msg {
+            ServerToClient::HookEventReceived {
+                hook_type,
+                session_id,
+                latency_ms,
+                ..
+            } => {
+                assert_eq!(hook_type, HookType::PreToolUse, "hook_type must be PreToolUse");
+                assert_eq!(session_id, "abc", "session_id must match");
+                assert_eq!(latency_ms, 5, "latency_ms must match");
+            }
+            other => panic!("expected HookEventReceived, got {other:?}"),
+        }
+    }
 }
 
 /// test_BC_2_05_004_broadcast_hook_event_received_latency_ms_propagated:
 /// The `latency_ms` value is propagated to the `HookEventReceived` message.
 ///
 /// BC-2.05.004 PC-1 (latency_ms field).
-///
-/// **RED GATE**: Calls `UdsTransport::bind` — panics with `todo!()`.
 #[tokio::test]
 async fn test_BC_2_05_004_broadcast_hook_event_received_latency_ms_propagated() {
     let dir = tempfile::tempdir().expect("tempdir");
     let transport = UdsTransport::bind(dir.path()).await.expect("bind");
 
-    // latency_ms = 99; the implemented broadcast must embed this value in the IPC message.
+    // Add a subscriber to receive the broadcast.
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    transport.add_subscriber(tx).await;
+
+    // latency_ms = 99 must be embedded verbatim in the IPC message.
     let body = b"{}";
     transport
         .broadcast_hook_event_received(HookType::Stop, "session-x".to_string(), body, 99)
         .await;
+
+    let msg = rx.try_recv().expect("subscriber must receive the broadcast");
+    match msg {
+        ServerToClient::HookEventReceived { latency_ms, .. } => {
+            assert_eq!(latency_ms, 99, "latency_ms must be propagated verbatim");
+        }
+        other => panic!("expected HookEventReceived, got {other:?}"),
+    }
 }
 
 /// test_BC_2_05_004_invariant_drop_counter_not_incremented_by_ipc_send:
@@ -268,21 +340,46 @@ async fn test_BC_2_05_004_invariant_drop_counter_not_incremented_by_ipc_send() {
 /// and other clients continue to receive messages.
 ///
 /// BC-2.05.004 EC-005 / AC-017.
-///
-/// **RED GATE**: Calls `UdsTransport::bind` — panics with `todo!()`.
 #[tokio::test]
 async fn test_BC_2_05_004_slow_client_removed_from_subscriber_list() {
     let dir = tempfile::tempdir().expect("tempdir");
     let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
 
-    // When implemented:
-    // 1. Add two subscribers (healthy + slow/closed).
-    // 2. Call broadcast_hook_event_received.
-    // 3. Assert: slow client received an error and was removed.
-    // 4. Assert: healthy client received the message.
-    // 5. Assert: subsequent broadcast goes to only 1 subscriber.
+    // Slow subscriber: capacity 1, pre-filled so the next send will fail with TrySendError::Full.
+    let (slow_tx, _slow_rx) = tokio::sync::mpsc::channel::<ServerToClient>(1);
+    let dummy_msg = ServerToClient::DropCounterUpdate { drop_counter: 0 };
+    slow_tx
+        .try_send(dummy_msg)
+        .expect("pre-fill slow channel: first send must succeed");
+    // Channel is now full; any further try_send will return TrySendError::Full.
+
+    // Healthy subscriber: large capacity, empty.
+    let (healthy_tx, mut healthy_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+
+    transport.add_subscriber(slow_tx).await;
+    transport.add_subscriber(healthy_tx).await;
+    assert_eq!(transport.subscriber_count().await, 2, "should start with 2 subscribers");
+
     let body = b"{}";
     transport
         .broadcast_hook_event_received(HookType::SessionStart, "s".to_string(), body, 0)
         .await;
+
+    // After the broadcast, the slow subscriber must have been removed.
+    assert_eq!(
+        transport.subscriber_count().await,
+        1,
+        "slow client must be removed; only healthy subscriber remains"
+    );
+
+    // The healthy subscriber must have received the message.
+    let msg = healthy_rx
+        .try_recv()
+        .expect("healthy subscriber must receive the broadcast");
+    match msg {
+        ServerToClient::HookEventReceived { session_id, .. } => {
+            assert_eq!(session_id, "s");
+        }
+        other => panic!("expected HookEventReceived, got {other:?}"),
+    }
 }
