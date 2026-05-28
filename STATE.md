@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.24"
+version: "6.25"
 status: active
 producer: state-manager
 timestamp: 2026-05-27T22:00:00Z
@@ -12,7 +12,7 @@ mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 6 authorization. S-022 through S-027 (6 stories, 52 pts)."
+awaiting: "Wave 6 authorization. S-022 through S-026 (4 stories, 34 pts)."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -216,10 +216,22 @@ next_session_resume_protocol: |
        SS-tui v1.7.0. ARCH-INDEX v1.0.16. PRD v1.27.2.
 
   NEXT ACTION — WAVE 6 AUTHORIZATION:
-    8. Wave 6: 6 stories (S-022 through S-027), 52 pts.
-       S-022 (8 pts, serial first — depends on S-018 + S-021 now done).
-       Then S-023 + S-025 parallel (13 pts total).
-       Then S-026 (13 pts). S-027 closes out wave.
+    8. Wave 6: 4 stories, 34 pts total.
+       S-022 (8 pts, EPIC-05) — TUI Connect + Initial State + Permission Prompt — SERIAL FIRST.
+         Depends on: S-021 (done), S-018 (done).
+         Blocks: S-023, S-025, S-026.
+         Target: monocle-ipc. BCs: BC-2.05.002, BC-2.05.005.
+       S-023 (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — after S-022.
+         Depends on: S-022, S-019 (done).
+         Target: monocle-ipc. BCs: BC-2.05.006, BC-2.05.007.
+       S-025 (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — after S-022.
+         Depends on: S-022, S-024 (done), S-030 (done).
+         Target: monocle-tui. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007.
+       S-026 (13 pts, EPIC-06) — Permission Overlay Core — after S-022 and S-023.
+         Depends on: S-022, S-023, S-024 (done).
+         Target: monocle-tui. BCs: BC-2.06.008-014, 016, 023, 024.
+
+       EXECUTION ORDER: S-022 serial first, then S-023 + S-025 parallel, then S-026.
        Authorize: confirm "Wave 6 approved" to begin.
 
   NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix unless specifically tasked):
@@ -268,7 +280,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 1ce7838. 753 tests, 0 failures. 24/33 stories done, 143/195 pts (73%). Wave 5 gate PASSED (D-182). Wave 6 ready: S-022 through S-027.
+develop @ 1ce7838. 753 tests, 0 failures. 24/33 stories done, 143/195 pts (73%). Wave 5 gate PASSED (D-182). Wave 6 ready: S-022, S-023, S-025, S-026 (4 stories, 34 pts).
 
 ## Blocking Issues
 
@@ -308,6 +320,11 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
+## §Trace v6.25 (WAVE 6 COUNT CORRECTION — DURABILITY HARDENING)
+
+**WAVE 6 COUNT CORRECTED** (2026-05-27): Documentation-only fix. Wave 6 has 4 stories (S-022, S-023, S-025, S-026; 34 pts), not 6 stories (52 pts). S-027 is Wave 7, not Wave 6. Updated: frontmatter `awaiting`, `next_session_resume_protocol` NEXT ACTION block (expanded to concrete per-story dependencies + BCs + execution order), Phase Progress row footer, §Trace v6.24 footer line. No story data changed — correction of a count propagation error introduced at v6.24.
+STATE v6.24 → v6.25.
+
 ## §Trace v6.24 (WAVE 5 GATE PASSED — WAVE 6 READY)
 
 **WAVE 5 GATE PASSED** (2026-05-27): D-182. All 6 gates passed.
@@ -317,7 +334,7 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 - Gate 4 demo-evidence PASS: 5/5 stories, all ACs verified by integration tests.
 - Gate 5 holdout PASS: mean 0.94, min 0.80. HS-EXP-001 1.0, HS-EXP-002 0.95, HS-EXP-007 1.0, HS-EXP-009 0.80.
 - Gate 6 state-update PASS.
-- develop @ 1ce7838. 24/33 stories done (143/195 pts, 73%). Wave 6 unblocked: S-022 through S-027 (52 pts).
+- develop @ 1ce7838. 24/33 stories done (143/195 pts, 73%). Wave 6 unblocked: S-022, S-023, S-025, S-026 (4 stories, 34 pts).
 - Durable task register: +4 items (ADV-W5GATE-HIGH-001, ADV-W5GATE-HIGH-002, ADV-W5GATE-MED-001, ADV-W5GATE-MED-003).
 - Frontmatter: version 6.23→6.24, phase → phase-3-wave-5-GATE-PASSED, awaiting → Wave 6 authorization.
 STATE v6.23 → v6.24.
