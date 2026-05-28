@@ -22,6 +22,7 @@ pub use app::payload_to_modal;
 pub use app::resolve_runtime_dir;
 pub use app::spawn_ipc_reader;
 pub use app::App;
+pub use app::format_drop_counter;
 pub use app::DAEMON_DISCONNECT_STATUS;
 pub use app::DAEMON_NOT_RUNNING_ERROR;
 pub use app::DAEMON_OFFLINE_STATUS;

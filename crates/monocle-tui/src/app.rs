@@ -88,6 +88,22 @@ pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
 /// this const is the single authoritative source for both.
 pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 
+/// Format the status-bar drop-counter label shown when `app.drop_counter > 0`.
+///
+/// Single source of truth for the `"[dropped: N] monocle"` pattern (BC-2.06.007).
+/// Both the production render path and unit tests reference this helper to
+/// prevent vacuous-mirror drift.
+///
+/// # Examples
+/// ```
+/// use monocle_tui::format_drop_counter;
+/// assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
+/// assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
+/// ```
+pub fn format_drop_counter(n: u64) -> String {
+    format!("[dropped: {n}] monocle")
+}
+
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
@@ -899,7 +915,7 @@ pub fn render_frame(
     // Build the status line (shared between Dashboard and Fullscreen).
     let status_line = if app.drop_counter > 0 {
         Line::from(vec![Span::styled(
-            format!("[dropped: {}] monocle", app.drop_counter),
+            format_drop_counter(app.drop_counter),
             Style::default().fg(Color::Yellow),
         )])
     } else {
@@ -1099,4 +1115,20 @@ pub fn crossterm_key_to_core(
     };
 
     KeyEvent { code, modifiers }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_drop_counter;
+
+    #[test]
+    fn test_format_drop_counter_zero() {
+        assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
+    }
+
+    #[test]
+    fn test_format_drop_counter_nonzero() {
+        assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
+        assert_eq!(format_drop_counter(1_000_000), "[dropped: 1000000] monocle");
+    }
 }
