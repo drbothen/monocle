@@ -48,6 +48,12 @@ deny = [
     { name = "openssl-sys", reason = "see openssl" },
     { name = "tokio", version = "<1.52", reason = "RUSTSEC remediated 1.52+" },
     { name = "russh", version = "<0.60", reason = "transitive rsa pre-release RUSTSEC-2023-0071" },
+    # BC-2.05.008 PC-2/PC-3: shared-memory crates are prohibited in monocle-ipc (Phase 1 UDS-only
+    # constraint). monocle-ipc uses #![forbid(unsafe_code)]; these crates require unsafe to function.
+    # If Phase 4 ShmTransport ever requires these, they must live in the separate monocle-ipc-shm crate.
+    { name = "shared_memory", reason = "BC-2.05.008: shared-memory transport prohibited in Phase 1 monocle-ipc; Phase 4 ShmTransport lives in monocle-ipc-shm" },
+    { name = "raw-sync", reason = "BC-2.05.008: shared-memory companion crate prohibited in Phase 1 monocle-ipc; Phase 4 ShmTransport lives in monocle-ipc-shm" },
+    { name = "ipc-channel", reason = "BC-2.05.008: uses shared memory on some platforms; prohibited in Phase 1 monocle-ipc; Phase 4 ShmTransport lives in monocle-ipc-shm" },
 ]
 # skip entries for transitive duplicates forced by EXACT-pinned crates in Phase 1 workspace.
 # These are human-accepted duplicates; resolution requires future wave decisions.

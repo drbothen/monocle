@@ -4,6 +4,7 @@ members = [
     "crates/monocle",
     "crates/monocle-config",
     "crates/monocle-core",
+    "crates/monocle-ipc",
     "crates/monocle-runtime",
     "crates/monocle-proto",
     "crates/monocle-test-harness",
