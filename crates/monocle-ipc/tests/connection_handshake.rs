@@ -287,8 +287,9 @@ async fn ac_005_push_only_no_polling() {
     let push_msg = ServerToClient::DropCounterUpdate { drop_counter: 99 };
     {
         let subs = subscribers.lock().await;
-        for sender in subs.iter() {
-            sender
+        for entry in subs.iter() {
+            entry
+                .tx
                 .try_send(push_msg.clone())
                 .expect("push DropCounterUpdate to subscriber");
         }
@@ -328,15 +329,19 @@ async fn ac_006_no_gap_window_between_snapshot_and_streaming() {
     // any event arriving during the send is queued in the channel, not dropped.
     // This enforces the no-gap invariant (AC-006, BC-2.05.002 invariant 3).
 
-    register_subscriber(&subscribers, tx).await;
+    // Discard the returned disconnect notify — this test does not exercise slow-disconnect.
+    let _ = register_subscriber(&subscribers, tx).await;
 
     // Simulate an event arriving after subscription but before InitialState completes
     // by pushing a DropCounterUpdate directly to the subscriber list.
     let gap_event = ServerToClient::DropCounterUpdate { drop_counter: 1 };
     {
         let subs = subscribers.lock().await;
-        for sender in subs.iter() {
-            sender.try_send(gap_event.clone()).expect("gap event push");
+        for entry in subs.iter() {
+            entry
+                .tx
+                .try_send(gap_event.clone())
+                .expect("gap event push");
         }
     }
 

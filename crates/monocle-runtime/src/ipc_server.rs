@@ -113,7 +113,9 @@ async fn spawn_client_task(
 
     // Step 2: Register in subscribers BEFORE snapshot (AC-006 — no gap window).
     // Any event published after registration is queued in this channel, not lost.
-    register_subscriber(&subscribers, tx.clone()).await;
+    // The returned `disconnect_notify` is triggered by `broadcast_to_subscribers` when
+    // this client's channel is found full (slow-client disconnect, BC-2.05.004 EC-005).
+    let disconnect_notify = register_subscriber(&subscribers, tx.clone()).await;
 
     // Increment TUI attachment count now that the client is registered.
     // BC-2.01.002 PC-1: tui_attached reports true when count > 0.
@@ -130,12 +132,14 @@ async fn spawn_client_task(
         }
     }
 
-    // Step 5: Concurrent per-client send loop + receive loop.
+    // Step 5: Concurrent per-client send loop + receive loop + slow-disconnect signal.
     // The send loop drains the mpsc channel to the client's write half.
     // The receive loop reads ClientToServer messages and dispatches them.
+    // The disconnect branch exits when broadcast_to_subscribers fires the slow-disconnect
+    // signal (TrySendError::Full, BC-2.05.004 EC-005).
     //
-    // Use tokio::select! to run both concurrently. When either loop exits
-    // (EOF, error, or channel closed), cleanup and return.
+    // Use tokio::select! to run all three concurrently. When any branch exits
+    // (EOF, error, channel closed, or slow-disconnect signal), cleanup and return.
 
     loop {
         tokio::select! {
@@ -175,6 +179,15 @@ async fn spawn_client_task(
                         break;
                     }
                 }
+            }
+
+            // Slow-disconnect signal: broadcast_to_subscribers removed this client from the
+            // fan-out list because its channel was full (BC-2.05.004 EC-005). Break out of
+            // the loop here so that write_half and read_half are dropped, closing the UDS
+            // socket. The slow client will observe EOF on its read side.
+            _ = disconnect_notify.notified() => {
+                tracing::debug!("TUI client slow-disconnect signal received; closing connection");
+                break;
             }
         }
     }
@@ -225,21 +238,27 @@ pub async fn send_initial_state(
 /// Broadcast a `ServerToClient` message to all connected TUI clients.
 ///
 /// Implements the drain-and-retain pattern (slow-client disconnect):
-/// - For each sender: calls `try_send(msg.clone())`.
-/// - On `TrySendError::Full` (slow client): logs WARN and removes the sender.
-/// - On `TrySendError::Closed` (disconnected): silently removes the sender.
+/// - For each entry: calls `try_send(msg.clone())` on `entry.tx`.
+/// - On `TrySendError::Full` (slow client): removes the entry, logs WARN, and fires
+///   `entry.disconnect.notify_one()` so the per-client task's `select!` branch exits,
+///   closing the UDS socket (BC-2.05.004 EC-005).
+/// - On `TrySendError::Closed` (disconnected): silently removes the entry.
 ///
 /// This is the canonical broadcast helper; all broadcast sites MUST use it to ensure
 /// consistent slow-client handling (BC-2.05.004 EC-005).
 pub async fn broadcast_to_subscribers(subscribers: &SubscriberList, msg: ServerToClient) {
-    let mut subs = subscribers.lock().await;
-    let mut live: Vec<tokio::sync::mpsc::Sender<ServerToClient>> = Vec::with_capacity(subs.len());
+    use monocle_ipc::server::ClientEntry;
 
-    for sender in subs.drain(..) {
-        match sender.try_send(msg.clone()) {
-            Ok(()) => live.push(sender),
+    let mut subs = subscribers.lock().await;
+    let mut live: Vec<ClientEntry> = Vec::with_capacity(subs.len());
+
+    for entry in subs.drain(..) {
+        match entry.tx.try_send(msg.clone()) {
+            Ok(()) => live.push(entry),
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-                // Slow client — send buffer full. Disconnect and log WARN (BC-2.05.004 EC-005).
+                // Slow client — send buffer full. Signal per-client task to close connection,
+                // then log WARN (BC-2.05.004 EC-005).
+                entry.disconnect.notify_one();
                 tracing::warn!("removed slow TUI client during broadcast (send buffer full)");
             }
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {

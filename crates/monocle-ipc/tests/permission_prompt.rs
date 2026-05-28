@@ -18,6 +18,7 @@ mod common;
 use std::sync::Arc;
 
 use monocle_ipc::framing::{read_framed, write_framed};
+use monocle_ipc::server::ClientEntry;
 use monocle_ipc::types::{
     ClientToServer, PermissionDecisionKind, PermissionPromptPayload, ServerToClient,
 };
@@ -46,7 +47,7 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
 
     // Subscribe a test receiver to observe broadcasts.
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
-    subscribers.lock().await.push(tx);
+    subscribers.lock().await.push(ClientEntry::new(tx));
 
     // Simulate the daemon broadcasting PermissionPromptQueued for a PreToolUse event
     // with decision_required: true. In production, this broadcast originates from
@@ -67,8 +68,9 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
     // Push the broadcast to the subscriber list (simulates the hook handler broadcast).
     {
         let subs = subscribers.lock().await;
-        for sender in subs.iter() {
-            sender
+        for entry in subs.iter() {
+            entry
+                .tx
                 .try_send(queued_msg.clone())
                 .expect("broadcast PermissionPromptQueued");
         }
@@ -122,7 +124,7 @@ async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
-    subscribers.lock().await.push(tx);
+    subscribers.lock().await.push(ClientEntry::new(tx));
 
     // The same prompt_id must appear in both Queued and Resolved messages.
     let prompt_id = Uuid::new_v4();
@@ -140,8 +142,11 @@ async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
     };
     {
         let subs = subscribers.lock().await;
-        for s in subs.iter() {
-            s.try_send(queued.clone()).expect("broadcast Queued ac_008");
+        for entry in subs.iter() {
+            entry
+                .tx
+                .try_send(queued.clone())
+                .expect("broadcast Queued ac_008");
         }
     }
 
@@ -149,8 +154,10 @@ async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
     let resolved = ServerToClient::PermissionPromptResolved { prompt_id };
     {
         let subs = subscribers.lock().await;
-        for s in subs.iter() {
-            s.try_send(resolved.clone())
+        for entry in subs.iter() {
+            entry
+                .tx
+                .try_send(resolved.clone())
                 .expect("broadcast Resolved ac_008");
         }
     }
@@ -224,7 +231,7 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
 
     // Register an observer subscriber to receive the Resolved broadcast.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
-    subscribers.lock().await.push(obs_tx);
+    subscribers.lock().await.push(ClientEntry::new(obs_tx));
 
     // Send a PermissionDecision from the client (wire-encoded via the framing protocol).
     let decision_msg = ClientToServer::PermissionDecision {
@@ -298,7 +305,7 @@ async fn ac_009b_permission_decision_unknown_prompt_id_silently_discarded() {
 
     // Observer to verify no spurious Resolved is broadcast.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
-    subscribers.lock().await.push(obs_tx);
+    subscribers.lock().await.push(ClientEntry::new(obs_tx));
 
     // Send a PermissionDecision for a completely unknown prompt_id.
     let unknown_id = Uuid::new_v4();
@@ -358,8 +365,8 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let (obs_tx2, mut obs_rx2) = tokio::sync::mpsc::channel::<ServerToClient>(64);
     {
         let mut subs = subscribers.lock().await;
-        subs.push(obs_tx1);
-        subs.push(obs_tx2);
+        subs.push(ClientEntry::new(obs_tx1));
+        subs.push(ClientEntry::new(obs_tx2));
     }
 
     let prompt_id = Uuid::new_v4();
@@ -372,8 +379,9 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let resolved_msg = ServerToClient::PermissionPromptResolved { prompt_id };
     {
         let subs = subscribers.lock().await;
-        for sender in subs.iter() {
-            sender
+        for entry in subs.iter() {
+            entry
+                .tx
                 .try_send(resolved_msg.clone())
                 .expect("broadcast timeout Resolved");
         }
@@ -452,7 +460,7 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
 
     // Observer subscriber to count Resolved broadcasts.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(8);
-    subscribers.lock().await.push(obs_tx);
+    subscribers.lock().await.push(ClientEntry::new(obs_tx));
 
     // Both clients send PermissionDecision for the same prompt_id simultaneously.
     let decision1 = ClientToServer::PermissionDecision {
@@ -516,7 +524,7 @@ async fn ac_012_resolved_requires_prior_queued() {
 
     // Observer subscriber to track message sequence.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
-    subscribers.lock().await.push(obs_tx);
+    subscribers.lock().await.push(ClientEntry::new(obs_tx));
 
     let prompt_id = Uuid::new_v4();
 
@@ -537,14 +545,19 @@ async fn ac_012_resolved_requires_prior_queued() {
 
     {
         let subs = subscribers.lock().await;
-        for s in subs.iter() {
-            s.try_send(queued.clone()).expect("broadcast Queued ac_012");
+        for entry in subs.iter() {
+            entry
+                .tx
+                .try_send(queued.clone())
+                .expect("broadcast Queued ac_012");
         }
     }
     {
         let subs = subscribers.lock().await;
-        for s in subs.iter() {
-            s.try_send(resolved.clone())
+        for entry in subs.iter() {
+            entry
+                .tx
+                .try_send(resolved.clone())
                 .expect("broadcast Resolved ac_012");
         }
     }
@@ -624,7 +637,7 @@ async fn ac_014_dual_resolution_race() {
 
     // Observer subscriber with capacity > 1 to detect duplicate Resolved.
     let (obs_tx, mut obs_rx) = tokio::sync::mpsc::channel::<ServerToClient>(8);
-    subscribers.lock().await.push(obs_tx);
+    subscribers.lock().await.push(ClientEntry::new(obs_tx));
 
     // Spawn two concurrent client tasks, each connecting and sending PermissionDecision.
     // Each task MUST first consume InitialState (daemon's first message) before sending

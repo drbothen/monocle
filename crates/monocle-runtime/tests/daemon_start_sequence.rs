@@ -1508,7 +1508,10 @@ async fn test_S022_pre_tool_use_defer_broadcasts_permission_prompt_queued() {
 
     // Inject a TUI subscriber that will receive PermissionPromptQueued.
     let (tui_tx, mut tui_rx) = tokio::sync::mpsc::channel::<monocle_ipc::types::ServerToClient>(16);
-    ipc_subscribers.lock().await.push(tui_tx);
+    ipc_subscribers
+        .lock()
+        .await
+        .push(monocle_ipc::server::ClientEntry::new(tui_tx));
 
     // Build the Axum server and POST to /hooks/pre-tool-use.
     // The Defer path is async: it broadcasts PermissionPromptQueued, then awaits the
