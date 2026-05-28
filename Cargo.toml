@@ -8,6 +8,7 @@ members = [
     "crates/monocle-runtime",
     "crates/monocle-proto",
     "crates/monocle-test-harness",
+    "crates/monocle-tui",
     "xtask",
 ]
 
@@ -33,6 +34,10 @@ reqwest = "=0.13.0"
 wasmtime = "=44.0.1"
 russh = "=0.60.2"
 # rmcp omitted from Phase 1 workspace per OQ-09 resolution (Phase 4 scope)
+
+# --- TUI / terminal crates (workspace-level so monocle-tui can inherit) ---
+ratatui = "0.30"
+crossterm = "0.29"
 
 # --- Caret-pinned direct workspace deps ---
 bytes = "1.11" # Direct pin overrides prost-transitive RUSTSEC-2026-0007; floor = 1.11 per SS-deps-pin-manifest v1.1.19 Option B (fix-from = 1.11.1)

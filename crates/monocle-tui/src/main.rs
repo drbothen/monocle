@@ -1,0 +1,82 @@
+//! `monocle-tui` binary entry point.
+//!
+//! Responsibilities (AC-001, AC-009):
+//! 1. Install a panic hook that restores the terminal before unwinding.
+//! 2. Put the terminal into raw mode and switch to the alternate screen.
+//! 3. Drive the main application event loop via [`monocle_tui::app::run`].
+//! 4. Restore the terminal on all exit paths (normal, error, panic).
+
+use anyhow::Result;
+use crossterm::{
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use std::io::{self, Stdout};
+
+/// Install a panic hook that restores the terminal to normal mode before
+/// the default panic handler runs (AC-009).
+///
+/// Without this hook, a panic in raw-mode leaves the terminal corrupted,
+/// requiring the user to run `reset` or close the terminal emulator.
+fn install_panic_hook() {
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        // Best-effort terminal restore — errors are ignored because:
+        // (a) the process is panicking and about to exit, and
+        // (b) logging may not be functional during unwinding.
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        // Invoke the original (default) panic handler after restoring the terminal
+        // so the panic message is visible to the user.
+        original_hook(panic_info);
+    }));
+}
+
+/// Restore the terminal to normal mode: disable raw mode and leave the
+/// alternate screen. Called on all exit paths.
+///
+/// Errors from teardown are logged at WARN level and ignored — the process
+/// is exiting and there is nothing useful to do with a teardown failure.
+fn restore_terminal() {
+    if let Err(e) = disable_raw_mode() {
+        tracing::warn!(error = %e, "failed to disable raw mode during terminal restore");
+    }
+    if let Err(e) = execute!(io::stdout(), LeaveAlternateScreen) {
+        tracing::warn!(error = %e, "failed to leave alternate screen during terminal restore");
+    }
+}
+
+/// Initialise the terminal: enable raw mode and enter the alternate screen.
+///
+/// Returns the stdout handle used for terminal writes.
+///
+/// # Errors
+///
+/// Returns `Err` if either `enable_raw_mode` or `EnterAlternateScreen` fails.
+fn setup_terminal() -> Result<Stdout> {
+    let mut stdout = io::stdout();
+    enable_raw_mode()?;
+    execute!(stdout, EnterAlternateScreen)?;
+    Ok(stdout)
+}
+
+/// Binary entry point. Wires terminal setup/teardown around the async app loop.
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Install structured tracing subscriber for structured logging (AC-001 / conventions).
+    // Best-effort — if tracing setup fails we still proceed without logging rather than crash.
+    let _ = tracing_subscriber::fmt()
+        .with_target(false)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .try_init();
+
+    install_panic_hook();
+    let _stdout = setup_terminal()?;
+
+    let result = monocle_tui::app::run().await;
+
+    // Restore terminal on all exit paths (AC-009).
+    restore_terminal();
+
+    result
+}

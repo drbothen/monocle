@@ -1052,3 +1052,73 @@ fn test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay() {
         _ => panic!("PushOverlay from Filtering must return Overlay"),
     }
 }
+
+// ===========================================================================
+// BC-2.06.005 PC-2 / AC-006 / S-025: Action::MoveFocus cycles focus in Dashboard
+// ===========================================================================
+//
+// The MoveFocus arm was missing from transition() at S-025 story start (cross-story
+// gap). These tests document and guard the canonical two-panel tab order:
+//   Sessions → EventRibbon → Sessions  (FocusSnapshot::cycle())
+// per SS-tui.md §FocusSnapshot::cycle and BC-2.06.005 AC-006.
+
+/// BC-2.06.005 PC-2 / AC-006: Dashboard { Sessions } + MoveFocus → Dashboard { EventRibbon }.
+///
+/// This is the canonical "Tab" binding in Dashboard mode — cycles focus to the
+/// next panel in the two-panel round-robin order (Sessions → EventRibbon).
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_sessions_to_event_ribbon() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+    let next = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    match next {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::EventRibbon,
+        } => { /* expected */ }
+        other => panic!(
+            "MoveFocus from Sessions must yield Dashboard {{EventRibbon}}, got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.005 PC-2 / AC-006: Dashboard { EventRibbon } + MoveFocus → Dashboard { Sessions }.
+///
+/// Completes the two-panel round-robin: EventRibbon → Sessions.
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_event_ribbon_to_sessions() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    let next = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    match next {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected */ }
+        other => panic!(
+            "MoveFocus from EventRibbon must yield Dashboard {{Sessions}}, got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.005 PC-2 / AC-006: MoveFocus is idempotent over two applications —
+/// after two Tab presses, focus returns to the original panel.
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_round_trip_two_tabs() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+    let after_one = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    let after_two = monocle_core::tui::state::transition(after_one, Action::MoveFocus);
+    match after_two {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected: round-trip restores Sessions */ }
+        other => panic!(
+            "Two MoveFocus applications must return to original focus; got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
+    }
+}

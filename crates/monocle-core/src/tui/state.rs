@@ -100,6 +100,7 @@ pub enum PanelId {
 ///
 /// Stacked in `AppMode::Overlay::stack` as a `VecDeque<PromptModal>` — never
 /// wrapped in `Option` (forbidden pattern per SS-conventions-anti-patterns.md).
+#[derive(Clone)]
 pub struct PromptModal {
     /// Stable identifier correlating this modal to the originating hook request.
     pub prompt_id: Uuid,
@@ -121,6 +122,7 @@ pub struct PromptModal {
 /// `#[non_exhaustive]` — additional tool variants will be added as Claude Code
 /// expands its tool set in future releases.
 #[non_exhaustive]
+#[derive(Clone)]
 pub enum ToolPayload {
     /// File edit — old content replaced with new content at path.
     Edit {
@@ -264,6 +266,14 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
                 AppMode::Overlay { stack, prior }
             }
         }
+
+        // --- MoveFocus: cycle focus in Dashboard via FocusSnapshot::cycle() ---
+        // BC-2.06.005 PC-2 / AC-006: Tab cycles focus through the panel tab order.
+        // FocusSnapshot::cycle() encodes the canonical two-panel round-robin:
+        //   Sessions → EventRibbon → Sessions (per SS-tui.md §FocusSnapshot::cycle).
+        (AppMode::Dashboard { focused }, Action::MoveFocus) => AppMode::Dashboard {
+            focused: focused.cycle(),
+        },
 
         // --- Esc in Overlay is identity (AC-008) ---
         (AppMode::Overlay { stack, prior }, Action::Esc) => AppMode::Overlay { stack, prior },

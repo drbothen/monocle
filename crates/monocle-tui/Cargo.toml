@@ -1,0 +1,51 @@
+[package]
+name = "monocle-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "monocle TUI binary — terminal user interface for the monocle session manager"
+
+# Binary target: monocle-tui is the effectful TUI binary.
+# The crate also exposes a lib target (default for Cargo) so that integration
+# tests in tests/ can import app::App and apply_permission_prompt_queued.
+[[bin]]
+name = "monocle-tui"
+path = "src/main.rs"
+
+[dependencies]
+# TUI / terminal rendering — effectful boundary (SS-tui-core.md)
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Structured logging (tracing for events; tracing-subscriber for subscriber init in binary)
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling (anyhow for binary crate)
+anyhow = { workspace = true }
+
+# Workspace crates
+monocle-core = { path = "../monocle-core" }
+monocle-config = { path = "../monocle-config" }
+monocle-ipc = { path = "../monocle-ipc" }
+
+# uuid for PromptModal.prompt_id
+uuid = { workspace = true }
+
+# directories: resolve XDG runtime dir for UDS socket path (same as monocle-config)
+directories = { workspace = true }
+
+# serde_json for stub types
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true
