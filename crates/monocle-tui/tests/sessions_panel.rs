@@ -808,26 +808,68 @@ fn test_bc_2_06_005_column_order_session_id_first() {
     );
 }
 
-/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: separator between columns is
-/// SPACE (not ` | `).
+/// F-S025-ADV6-LOW-001 / BC-2.06.005 v1.0.5: every inter-column boundary uses
+/// single-space separation, verified at each of the 6 boundaries.
 ///
-/// The canonical BC vector uses space-separated columns, NOT pipe-separated.
-/// Fails before the format-string fix (which uses ` | `); passes after.
+/// Explicitly asserts each boundary pair in canonical order:
+///   session_id·●  ·project·  ·status·  ·tokens·  ·cost·  ·uptime
+/// A tab-separator or double-space regression would fail at the relevant boundary.
+/// The original `!contains(" | ")` test proved only absence of pipe, not presence
+/// of single-space at every boundary.
 #[test]
-fn test_bc_2_06_005_separator_is_space_not_pipe() {
-    let app = app_with_sessions(vec![session("sess-001")]);
-    let rendered = render_sessions_panel(&app, 0);
+fn test_bc_2_06_005_columns_separated_by_single_space() {
+    use chrono::Utc;
 
-    assert!(
-        !rendered.contains(" | "),
-        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: separator must be SPACE not ' | '; \
-         got:\n{}",
-        rendered
+    // Use deterministic time via format_session_row so boundary substrings are stable.
+    let now = Utc::now();
+    let started_at = now - chrono::Duration::hours(3) - chrono::Duration::minutes(47);
+    let s = monocle_core::engine::EnrichedSession::new(
+        "sess-001".to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        monocle_core::engine::SessionStatus::Active,
+        None,
+        Some("monocle".to_string()),
+        Some(started_at),
+        437_000,
+        None,
     );
+    let row = format_session_row(&s, now);
+
+    // Boundary 1: session_id → icon
     assert!(
-        rendered.contains("sess-001 \u{25CF}"),
-        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id and icon must be \
-         space-separated; expected 'sess-001 ●' in:\n{}",
-        rendered
+        row.contains("sess-001 \u{25CF}"),
+        "BC-2.06.005: boundary session_id→icon must be single space; got: {row:?}"
+    );
+    // Boundary 2: icon → project
+    assert!(
+        row.contains("\u{25CF} monocle"),
+        "BC-2.06.005: boundary icon→project must be single space; got: {row:?}"
+    );
+    // Boundary 3: project → status
+    assert!(
+        row.contains("monocle Active"),
+        "BC-2.06.005: boundary project→status must be single space; got: {row:?}"
+    );
+    // Boundary 4: status → tokens
+    assert!(
+        row.contains("Active 437k"),
+        "BC-2.06.005: boundary status→tokens must be single space; got: {row:?}"
+    );
+    // Boundary 5: tokens → cost
+    assert!(
+        row.contains("437k \u{2014}"),
+        "BC-2.06.005: boundary tokens→cost must be single space; got: {row:?}"
+    );
+    // Boundary 6: cost → uptime (uptime starts with "03:47:")
+    assert!(
+        row.contains("\u{2014} 03:47:"),
+        "BC-2.06.005: boundary cost→uptime must be single space; got: {row:?}"
+    );
+    // Confirm no pipe separators anywhere in the row.
+    assert!(
+        !row.contains(" | "),
+        "BC-2.06.005: row must not contain ' | ' pipe separator; got: {row:?}"
     );
 }
