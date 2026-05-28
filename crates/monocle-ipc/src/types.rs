@@ -13,6 +13,7 @@
 //! `InitialState`. The struct carries `#[non_exhaustive]` per BC-2.02.003.
 
 use monocle_core::engine::EnrichedSession;
+use monocle_core::hook_events::HookEvent;
 // HookType is already non_exhaustive + serde in monocle-core; re-export for downstream consumers.
 pub use monocle_core::hook_events::HookType;
 use uuid::Uuid;
@@ -46,7 +47,7 @@ pub enum ServerToClient {
         /// Complete current session roster at time of connection.
         sessions: Vec<EnrichedSession>,
         /// Last N hook events from the JSONL ring (event ribbon backfill).
-        ring_tail: Vec<serde_json::Value>,
+        ring_tail: Vec<HookEvent>,
         /// Current permission prompt overlay stack.
         overlay_stack: Vec<PermissionPromptPayload>,
         /// Cumulative event drop count since daemon start.
@@ -125,6 +126,13 @@ pub enum ClientToServer {
 }
 
 /// The kind of permission decision the user made.
+///
+/// # Naming
+///
+/// This enum is named `PermissionDecisionKind` rather than `PermissionDecision` to avoid
+/// a name collision with the `ClientToServer::PermissionDecision` variant. Using the same
+/// name for both the enum and the variant it appears in would require fully-qualified syntax
+/// at every use site and create confusion when reading IPC message construction code.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PermissionDecisionKind {
     /// The user approved the tool invocation.

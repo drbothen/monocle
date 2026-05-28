@@ -222,13 +222,15 @@ fn test_BC_2_05_008_uds_only_constraint_no_forbidden_files_in_src() {
     }
 }
 
-/// Walk the src directory and return all .rs files.
-fn walkdir_src(src_dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+/// Walk the src directory recursively and return all .rs files.
+fn walkdir_src(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(src_dir) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            if path.is_dir() {
+                files.extend(walkdir_src(&path));
+            } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
                 files.push(path);
             }
         }

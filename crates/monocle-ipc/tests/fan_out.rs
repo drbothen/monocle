@@ -15,8 +15,9 @@
 //!
 //! **RED GATE**: Tests that call `UdsTransport::bind` / `broadcast_*` panic with `todo!()`.
 
+use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::hook_events::HookType;
-use monocle_ipc::types::{truncate_to_utf8_boundary, PAYLOAD_EXCERPT_MAX_BYTES};
+use monocle_ipc::types::{truncate_to_utf8_boundary, ServerToClient, PAYLOAD_EXCERPT_MAX_BYTES};
 use monocle_ipc::uds::UdsTransport;
 
 // ---------------------------------------------------------------------------
@@ -169,25 +170,38 @@ async fn test_BC_2_05_003_broadcast_session_list_update_empty_sessions() {
 
 /// test_BC_2_05_003_broadcast_session_list_update_256_kib_limit:
 /// `broadcast_session_list_update` logs an error and does NOT broadcast when the
-/// serialized message exceeds 256 KiB.
+/// serialized message exceeds 256 KiB. A connected subscriber must receive nothing.
 ///
 /// BC-2.05.003 PC-3 / AC-008.
-///
-/// **RED GATE**: Calls `UdsTransport::bind` — panics with `todo!()`.
-///
-/// Note: When implemented, verifying the "no broadcast" behavior requires a mock
-/// subscriber that can assert it received nothing. The test structure here establishes
-/// the call site and the assertion shape for the implementer.
 #[tokio::test]
 async fn test_BC_2_05_003_broadcast_session_list_update_256_kib_limit() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let transport = UdsTransport::bind(dir.path()).await.expect("bind");
+    let transport = std::sync::Arc::new(UdsTransport::bind(dir.path()).await.expect("bind"));
 
-    // Build a session list that will exceed 256 KiB when serialized.
-    // EnrichedSession has string fields; we pad them to inflate the size.
-    // The exact construction is deferred to the implementer's test fixture setup.
-    // This test stub just verifies the call compiles and the transport exists.
-    transport.broadcast_session_list_update(vec![]).await;
+    // Add a real subscriber so we can assert it receives nothing.
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
+    transport.add_subscriber(tx).await;
+
+    // Build a session whose session_id alone is 300 KiB — far above the 256 KiB limit.
+    // A single EnrichedSession with a 300 KiB session_id will cause the serialized
+    // SessionListUpdate to exceed MAX_MESSAGE_BYTES (262144 bytes).
+    let big_session = EnrichedSession::new(
+        "x".repeat(300 * 1024), // 300 KiB session_id
+        "claude-code".to_string(),
+        None,
+        None,
+        SessionStatus::Active,
+        None,
+    );
+    transport
+        .broadcast_session_list_update(vec![big_session])
+        .await;
+
+    // The subscriber channel must be empty — no message was broadcast.
+    assert!(
+        rx.try_recv().is_err(),
+        "subscriber must NOT receive a message when SessionListUpdate exceeds 256 KiB"
+    );
 }
 
 /// test_BC_2_05_004_broadcast_hook_event_received_sends_to_all_clients:

@@ -54,6 +54,13 @@ pub enum IpcError {
     ///
     /// Wraps the underlying `std::io::Error`. Logged as
     /// `ERROR: failed to bind UDS socket at <path>: <reason>`.
+    ///
+    /// # Extension note
+    ///
+    /// This variant is not in the BC-2.05.008 base set but is required for operational
+    /// correctness: without it, bind failures collapse into the generic `IoError` variant
+    /// and lose the specific context needed for diagnostics. Added as an operational
+    /// extension per the production-grade default.
     #[error("UDS bind failed: {0}")]
     BindFailure(std::io::Error),
 }

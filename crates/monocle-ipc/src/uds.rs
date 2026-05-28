@@ -93,8 +93,10 @@ impl UdsTransport {
         let sock_path = Path::new(runtime_dir).join("monocle.sock");
 
         // Step 2: Validate path length against OS UDS limit (BC-2.05.001 EC-002).
-        let path_str = sock_path.to_string_lossy();
-        let path_len = path_str.len();
+        // Use as_os_str().len() to get the true byte count of the OS path representation,
+        // avoiding the lossy UTF-8 round-trip from to_string_lossy() which can inflate or
+        // truncate the byte count when the path contains non-UTF-8 bytes.
+        let path_len = sock_path.as_os_str().len();
         if path_len > UDS_PATH_LIMIT_BYTES {
             tracing::error!(
                 "UDS socket path exceeds OS limit ({path_len} bytes, limit {UDS_PATH_LIMIT_BYTES})"
@@ -164,6 +166,8 @@ impl UdsTransport {
         let msg = ServerToClient::SessionListUpdate { sessions };
 
         // 256 KiB guard (BC-2.05.003 PC-3).
+        // Serialize once to measure size; the message itself is passed to fan_out_message
+        // to avoid a redundant deserialize step.
         let serialized = match serde_json::to_vec(&msg) {
             Ok(v) => v,
             Err(e) => {
@@ -176,7 +180,7 @@ impl UdsTransport {
             return;
         }
 
-        self.fan_out_bytes(&serialized).await;
+        self.fan_out_message(&msg).await;
     }
 
     /// Broadcast `ServerToClient::HookEventReceived` to all connected TUI clients.
@@ -210,15 +214,7 @@ impl UdsTransport {
             latency_ms,
         };
 
-        let serialized = match serde_json::to_vec(&msg) {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!("HookEventReceived serialization failed: {e}");
-                return;
-            }
-        };
-
-        self.fan_out_bytes(&serialized).await;
+        self.fan_out_message(&msg).await;
     }
 
     /// Add a new TUI client sender to the fan-out subscriber list.
@@ -261,28 +257,14 @@ impl UdsTransport {
         }
     }
 
-    /// Fan-out pre-serialized message bytes to all connected TUI clients.
+    /// Fan-out a `ServerToClient` message to all connected TUI clients.
     ///
-    /// Writes the 4-byte LE length prefix + payload directly to each subscriber's
-    /// channel as a `ServerToClient` message. Subscribers whose channels are full
-    /// (slow clients) or whose receivers are dropped (disconnected clients) are
-    /// removed from the list after the broadcast pass.
+    /// Clones the message into each subscriber's bounded channel. Subscribers whose
+    /// channels are full (slow clients) or whose receivers are dropped (disconnected
+    /// clients) are removed from the list after the broadcast pass.
     ///
     /// The `drop_counter` is NOT touched here (BC-2.05.004 PC-4).
-    async fn fan_out_bytes(&self, serialized: &[u8]) {
-        // Deserialize back into the message type for channel delivery.
-        // This avoids per-client serialization at the cost of one deserialization.
-        // The alternative (Arc<[u8]> byte slices) would require changing the channel type,
-        // which would require changing the per-client task architecture. The overhead
-        // is acceptable for Phase 1 (small subscriber counts).
-        let msg: ServerToClient = match serde_json::from_slice(serialized) {
-            Ok(m) => m,
-            Err(e) => {
-                tracing::error!("fan_out_bytes: failed to deserialize message for relay: {e}");
-                return;
-            }
-        };
-
+    async fn fan_out_message(&self, msg: &ServerToClient) {
         let mut subs = self.subscribers.lock().await;
         let mut live: Vec<ClientSender> = Vec::with_capacity(subs.len());
 
