@@ -13,8 +13,8 @@ use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
 use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload};
 use monocle_tui::app::{
-    apply_permission_prompt_queued, on_drop_counter_update, on_initial_state, on_transport_event,
-    App, TransportEvent,
+    apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event,
+    on_drop_counter_update, on_initial_state, on_transport_event, App, KeyOutcome, TransportEvent,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use std::collections::VecDeque;
@@ -660,18 +660,22 @@ fn test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction() {
 // F-S025-ADV3-MED-001 — SelectNext/SelectPrev gated on Dashboard+Sessions focus
 // ---------------------------------------------------------------------------
 
-/// F-S025-ADV3-MED-001 / AC-006: SelectNext in Overlay mode must NOT mutate the
-/// sessions_state selection cursor.
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectNext in Overlay mode
+/// must NOT mutate the sessions_state selection cursor.
 ///
-/// UX bug scenario: user is in Overlay mode (permission prompt), presses `j`.
-/// Without the gate, `j` resolves to SelectNext via the builtin layer and shifts
-/// the sessions list cursor behind the overlay — user sees a different highlighted
-/// row on overlay close.
+/// UX bug scenario: user is in Overlay mode (permission prompt visible), presses `j`.
+/// Without the gate, `j` resolves to SelectNext via the builtin binding layer and
+/// shifts the sessions list cursor behind the overlay — user sees a different
+/// highlighted row on overlay close.
 ///
-/// This test simulates the event loop gate by applying the same `matches!()` guard
-/// the production code uses and verifying the selection is unchanged.
+/// This test dispatches through the PRODUCTION `dispatch_key_event()` helper —
+/// the same function called by `run()`. If the AC-006 gate is removed from
+/// `dispatch_key_event`, this test will fail (vacuous-mirror anti-pattern eliminated
+/// per F-S025-ADV4-MED-004).
 #[test]
 fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
     // Set up: 2 sessions, selection on index 0.
     let mut app = App::new(MonocleConfig::default());
     let ring: Vec<HookEventRecord> = Vec::new();
@@ -683,7 +687,7 @@ fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
         0,
     );
 
-    // Simulate production state: Overlay mode (permission prompt visible).
+    // Precondition: enter Overlay mode (permission prompt visible).
     app.mode = AppMode::Overlay {
         prior: FocusSnapshot::Sessions,
     };
@@ -691,27 +695,15 @@ fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
     let mut sessions_state = SessionsPanelState::default();
     sessions_state.list_state.select(Some(0));
 
-    // Apply the AC-006 gate (same logic as app.rs run() loop).
-    // The gate: SelectNext only fires when mode is Dashboard { Sessions }.
-    let is_dashboard_sessions = matches!(
-        app.mode,
-        AppMode::Dashboard {
-            focused: FocusSnapshot::Sessions
-        }
-    );
-    if is_dashboard_sessions {
-        let len = app.sessions.len();
-        if len > 0 {
-            let next = sessions_state
-                .list_state
-                .selected()
-                .map(|i| (i + 1).min(len - 1))
-                .unwrap_or(0);
-            sessions_state.list_state.select(Some(next));
-        }
-    }
+    // Construct a real `j` KeyEvent and dispatch through production dispatch path.
+    let key_j = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    let outcome = dispatch_key_event(&mut app, &key_j, &binding_layers, &mut sessions_state);
 
-    // Assert: selection UNCHANGED (still 0 — overlay mode blocked the action).
+    // AC-006 gate must hold: selection is UNCHANGED (Overlay mode blocked SelectNext).
     assert_eq!(
         sessions_state.list_state.selected(),
         Some(0),
@@ -719,12 +711,22 @@ fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
          expected Some(0), got {:?}",
         sessions_state.list_state.selected()
     );
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "dispatch_key_event must return Continue in Overlay mode (not Quit)"
+    );
 }
 
-/// F-S025-ADV3-MED-001 / AC-006: SelectNext in Dashboard+Sessions focus DOES move
-/// the cursor (positive case — confirms the gate permits the action in the correct mode).
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectNext in
+/// Dashboard+Sessions focus DOES advance the cursor (positive case — confirms
+/// the gate permits the action in the correct mode).
+///
+/// Dispatches through production `dispatch_key_event()` — not a local gate duplicate.
 #[test]
 fn test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
     let mut app = App::new(MonocleConfig::default());
     let ring: Vec<HookEventRecord> = Vec::new();
     on_initial_state(
@@ -735,33 +737,29 @@ fn test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode() {
         0,
     );
 
-    // Mode is already Dashboard { Sessions } from App::new().
-    let mut sessions_state = SessionsPanelState::default();
-    sessions_state.list_state.select(Some(0));
-
-    let is_dashboard_sessions = matches!(
-        app.mode,
-        AppMode::Dashboard {
-            focused: FocusSnapshot::Sessions
-        }
-    );
+    // Precondition: App::new starts in Dashboard { Sessions }.
     assert!(
-        is_dashboard_sessions,
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
         "precondition: App::new starts in Dashboard {{ Sessions }}"
     );
 
-    if is_dashboard_sessions {
-        let len = app.sessions.len();
-        if len > 0 {
-            let next = sessions_state
-                .list_state
-                .selected()
-                .map(|i| (i + 1).min(len - 1))
-                .unwrap_or(0);
-            sessions_state.list_state.select(Some(next));
-        }
-    }
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
 
+    // Dispatch `j` through production path.
+    let key_j = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    dispatch_key_event(&mut app, &key_j, &binding_layers, &mut sessions_state);
+
+    // AC-006: cursor must have advanced to index 1.
     assert_eq!(
         sessions_state.list_state.selected(),
         Some(1),
@@ -769,10 +767,14 @@ fn test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode() {
     );
 }
 
-/// F-S025-ADV3-MED-001 / AC-006: SelectPrev in Overlay mode must NOT mutate the
-/// sessions_state selection cursor.
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectPrev in Overlay mode
+/// must NOT mutate the sessions_state selection cursor.
+///
+/// Dispatches through production `dispatch_key_event()` — vacuous-mirror eliminated.
 #[test]
 fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
     let mut app = App::new(MonocleConfig::default());
     let ring: Vec<HookEventRecord> = Vec::new();
     on_initial_state(
@@ -790,20 +792,13 @@ fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
     let mut sessions_state = SessionsPanelState::default();
     sessions_state.list_state.select(Some(1));
 
-    let is_dashboard_sessions = matches!(
-        app.mode,
-        AppMode::Dashboard {
-            focused: FocusSnapshot::Sessions
-        }
-    );
-    if is_dashboard_sessions && !app.sessions.is_empty() {
-        let prev = sessions_state
-            .list_state
-            .selected()
-            .map(|i| i.saturating_sub(1))
-            .unwrap_or(0);
-        sessions_state.list_state.select(Some(prev));
-    }
+    // Dispatch `k` (SelectPrev) through production path.
+    let key_k = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    let outcome = dispatch_key_event(&mut app, &key_k, &binding_layers, &mut sessions_state);
 
     // Selection must remain at 1 (Overlay mode blocked SelectPrev).
     assert_eq!(
@@ -812,5 +807,10 @@ fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
         "MED-001/AC-006: SelectPrev in Overlay mode must NOT mutate list selection; \
          expected Some(1), got {:?}",
         sessions_state.list_state.selected()
+    );
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "dispatch_key_event must return Continue in Overlay mode (not Quit)"
     );
 }

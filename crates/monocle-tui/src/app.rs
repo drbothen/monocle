@@ -620,104 +620,13 @@ pub async fn run() -> Result<()> {
                 // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
                 let core_key = crossterm_key_to_core(&ct_key);
 
-                // Resolve the binding through the 5-level precedence chain.
-                let resolved = monocle_core::tui::binding::resolve_binding(
-                    &core_key,
-                    &app.mode,
-                    &binding_layers,
-                );
-
-                match resolved {
-                    Some((monocle_core::tui::state::Action::Noop, _)) | None => {
-                        // No binding or explicit no-op — do nothing.
-                    }
-                    Some((monocle_core::tui::state::Action::SelectNext, _)) => {
-                        // AC-006: SelectNext is confined to Dashboard { focused: Sessions }.
-                        // In Overlay or Fullscreen mode, the keypress is dropped — no
-                        // cursor mutation behind the overlay or in other modes.
-                        if matches!(
-                            app.mode,
-                            AppMode::Dashboard {
-                                focused: FocusSnapshot::Sessions
-                            }
-                        ) {
-                            let len = app.sessions.len();
-                            if len > 0 {
-                                let next = sessions_state
-                                    .list_state
-                                    .selected()
-                                    .map(|i| (i + 1).min(len - 1))
-                                    .unwrap_or(0);
-                                sessions_state.list_state.select(Some(next));
-                            }
-                        }
-                    }
-                    Some((monocle_core::tui::state::Action::SelectPrev, _)) => {
-                        // AC-006: SelectPrev is confined to Dashboard { focused: Sessions }.
-                        // In Overlay or Fullscreen mode, the keypress is dropped — no
-                        // cursor mutation behind the overlay or in other modes.
-                        if matches!(
-                            app.mode,
-                            AppMode::Dashboard {
-                                focused: FocusSnapshot::Sessions
-                            }
-                        ) && !app.sessions.is_empty()
-                        {
-                            let prev = sessions_state
-                                .list_state
-                                .selected()
-                                .map(|i| i.saturating_sub(1))
-                                .unwrap_or(0);
-                            sessions_state.list_state.select(Some(prev));
-                        }
-                    }
-                    Some((action, _)) => {
-                        // All other actions: drive the AppMode state machine.
-                        use monocle_core::tui::state::{transition, Action};
-                        // Check for clean exit: Action::Quit (bound to `q` in Dashboard
-                        // via per-context layer — F-S025-ADV2-HIGH-002 / MED-004 fix).
-                        // `q` in Filtering mode is intercepted by SearchPrompt as FilterType,
-                        // so it never reaches this arm in non-Dashboard modes.
-                        let is_quit = matches!(&action, Action::Quit);
-
-                        // F-S025-ADV2-HIGH-003: Overlay stack mutations are App-level.
-                        // PopOverlay: pop from overlay_stack first; transition() always
-                        // returns Dashboard; re-enter Overlay if stack still non-empty.
-                        // OverlayCycleNext: rotate overlay_stack; mode stays Overlay.
-                        // PushOverlay from key binding is unusual (normally IPC-driven)
-                        // but still handled correctly: push to overlay_stack, then transition.
-                        match &action {
-                            Action::PopOverlay => {
-                                app.overlay_stack.pop_front();
-                                // transition() collapses to Dashboard { prior }.
-                                app.mode = transition(app.mode.clone(), action);
-                                // Re-enter Overlay if stack still has items.
-                                if !app.overlay_stack.is_empty() {
-                                    let prior = match &app.mode {
-                                        AppMode::Dashboard { focused } => focused.clone(),
-                                        _ => FocusSnapshot::Sessions,
-                                    };
-                                    app.mode = AppMode::Overlay { prior };
-                                }
-                            }
-                            Action::OverlayCycleNext => {
-                                // Rotate overlay_stack; transition() is identity.
-                                if app.overlay_stack.len() > 1 {
-                                    if let Some(front) = app.overlay_stack.pop_front() {
-                                        app.overlay_stack.push_back(front);
-                                    }
-                                }
-                                app.mode = transition(app.mode.clone(), action);
-                            }
-                            _ => {
-                                app.mode = transition(app.mode.clone(), action);
-                            }
-                        }
-
-                        if is_quit {
-                            break;
-                        }
-                    }
+                // Dispatch through the full binding chain (F-S025-ADV4-MED-004:
+                // extracted to `dispatch_key_event` for testability — tests call
+                // the same function rather than duplicating the gate logic).
+                if dispatch_key_event(&mut app, &core_key, &binding_layers, &mut sessions_state)
+                    == KeyOutcome::Quit
+                {
+                    break;
                 }
             }
         }
@@ -865,6 +774,137 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         }
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Key dispatch helper (extracted for testability — F-S025-ADV4-MED-004)
+// ---------------------------------------------------------------------------
+
+/// Outcome returned by [`dispatch_key_event`].
+///
+/// The run loop inspects this to decide whether to break the event loop.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyOutcome {
+    /// The user triggered a quit action (e.g., `q` in Dashboard); the run loop
+    /// should exit cleanly.
+    Quit,
+    /// Normal dispatch — continue the event loop.
+    Continue,
+}
+
+/// Dispatch a single key event through the full 5-level binding chain.
+///
+/// Extracted from `run()` so that integration tests can exercise the SAME code
+/// path without spawning an async runtime or connecting to a real UDS socket
+/// (F-S025-ADV4-MED-004: eliminates vacuous-mirror anti-pattern in AC-006 tests).
+///
+/// # Behaviour
+///
+/// 1. Resolves the key against `binding_layers` in the context of `app.mode`.
+/// 2. For `SelectNext` / `SelectPrev`: applies the AC-006 gate (only fires in
+///    `Dashboard { focused: Sessions }`); mutates `sessions_state` on pass.
+/// 3. For all other actions: drives the `AppMode` state machine via
+///    `monocle_core::tui::state::transition()`.  Overlay-stack mutations
+///    (`PopOverlay`, `OverlayCycleNext`) are applied at App-level here (see
+///    F-S025-ADV2-HIGH-003).
+/// 4. Returns [`KeyOutcome::Quit`] when an `Action::Quit` fires; the caller
+///    is responsible for breaking the event loop.
+pub fn dispatch_key_event(
+    app: &mut App,
+    core_key: &monocle_core::tui::binding::KeyEvent,
+    binding_layers: &monocle_core::tui::binding::BindingLayers,
+    sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
+) -> KeyOutcome {
+    use monocle_core::tui::binding::resolve_binding;
+    use monocle_core::tui::state::{transition, Action};
+
+    let resolved = resolve_binding(core_key, &app.mode, binding_layers);
+
+    match resolved {
+        Some((Action::Noop, _)) | None => KeyOutcome::Continue,
+
+        Some((Action::SelectNext, _)) => {
+            // AC-006: SelectNext is confined to Dashboard { focused: Sessions }.
+            // In Overlay or Fullscreen mode the keypress is dropped — no cursor
+            // mutation behind the overlay or in other modes.
+            if matches!(
+                app.mode,
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions
+                }
+            ) {
+                let len = app.sessions.len();
+                if len > 0 {
+                    let next = sessions_state
+                        .list_state
+                        .selected()
+                        .map(|i| (i + 1).min(len - 1))
+                        .unwrap_or(0);
+                    sessions_state.list_state.select(Some(next));
+                }
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::SelectPrev, _)) => {
+            // AC-006: SelectPrev is confined to Dashboard { focused: Sessions }.
+            if matches!(
+                app.mode,
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions
+                }
+            ) && !app.sessions.is_empty()
+            {
+                let prev = sessions_state
+                    .list_state
+                    .selected()
+                    .map(|i| i.saturating_sub(1))
+                    .unwrap_or(0);
+                sessions_state.list_state.select(Some(prev));
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((action, _)) => {
+            // All other actions: drive the AppMode state machine.
+            let is_quit = matches!(&action, Action::Quit);
+
+            // F-S025-ADV2-HIGH-003: Overlay stack mutations are App-level.
+            match &action {
+                Action::PopOverlay => {
+                    app.overlay_stack.pop_front();
+                    // transition() collapses to Dashboard { prior }.
+                    app.mode = transition(app.mode.clone(), action);
+                    // Re-enter Overlay if stack still has items.
+                    if !app.overlay_stack.is_empty() {
+                        let prior = match &app.mode {
+                            AppMode::Dashboard { focused } => focused.clone(),
+                            _ => FocusSnapshot::Sessions,
+                        };
+                        app.mode = AppMode::Overlay { prior };
+                    }
+                }
+                Action::OverlayCycleNext => {
+                    // Rotate overlay_stack; transition() is identity.
+                    if app.overlay_stack.len() > 1 {
+                        if let Some(front) = app.overlay_stack.pop_front() {
+                            app.overlay_stack.push_back(front);
+                        }
+                    }
+                    app.mode = transition(app.mode.clone(), action);
+                }
+                _ => {
+                    app.mode = transition(app.mode.clone(), action);
+                }
+            }
+
+            if is_quit {
+                KeyOutcome::Quit
+            } else {
+                KeyOutcome::Continue
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
