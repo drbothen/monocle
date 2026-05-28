@@ -8,10 +8,11 @@
 
 use anyhow::Result;
 use crossterm::{
+    cursor,
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::io::{self, Stdout};
+use std::io::{self, Write};
 
 /// Install a panic hook that restores the terminal to normal mode before
 /// the default panic handler runs (AC-009).
@@ -25,15 +26,16 @@ fn install_panic_hook() {
         // (a) the process is panicking and about to exit, and
         // (b) logging may not be functional during unwinding.
         let _ = disable_raw_mode();
-        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, cursor::Show);
+        let _ = io::stdout().flush();
         // Invoke the original (default) panic handler after restoring the terminal
         // so the panic message is visible to the user.
         original_hook(panic_info);
     }));
 }
 
-/// Restore the terminal to normal mode: disable raw mode and leave the
-/// alternate screen. Called on all exit paths.
+/// Restore the terminal to normal mode: disable raw mode, leave the alternate
+/// screen, restore cursor visibility, and flush stdout. Called on all exit paths.
 ///
 /// Errors from teardown are logged at WARN level and ignored — the process
 /// is exiting and there is nothing useful to do with a teardown failure.
@@ -41,23 +43,25 @@ fn restore_terminal() {
     if let Err(e) = disable_raw_mode() {
         tracing::warn!(error = %e, "failed to disable raw mode during terminal restore");
     }
-    if let Err(e) = execute!(io::stdout(), LeaveAlternateScreen) {
+    if let Err(e) = execute!(io::stdout(), LeaveAlternateScreen, cursor::Show) {
         tracing::warn!(error = %e, "failed to leave alternate screen during terminal restore");
+    }
+    // Flush stdout after leaving the alternate screen so the cursor-show command
+    // and any buffered output reach the terminal before the process exits.
+    if let Err(e) = io::stdout().flush() {
+        tracing::warn!(error = %e, "failed to flush stdout during terminal restore");
     }
 }
 
 /// Initialise the terminal: enable raw mode and enter the alternate screen.
 ///
-/// Returns the stdout handle used for terminal writes.
-///
 /// # Errors
 ///
 /// Returns `Err` if either `enable_raw_mode` or `EnterAlternateScreen` fails.
-fn setup_terminal() -> Result<Stdout> {
-    let mut stdout = io::stdout();
+fn setup_terminal() -> Result<()> {
     enable_raw_mode()?;
-    execute!(stdout, EnterAlternateScreen)?;
-    Ok(stdout)
+    execute!(io::stdout(), EnterAlternateScreen)?;
+    Ok(())
 }
 
 /// Binary entry point. Wires terminal setup/teardown around the async app loop.
@@ -71,11 +75,12 @@ async fn main() -> Result<()> {
         .try_init();
 
     install_panic_hook();
-    let _stdout = setup_terminal()?;
+    setup_terminal()?;
 
     let result = monocle_tui::app::run().await;
 
-    // Restore terminal on all exit paths (AC-009).
+    // Restore terminal on all exit paths (AC-009): raw mode off, leave alternate
+    // screen, show cursor, flush stdout — BEFORE returning the result.
     restore_terminal();
 
     result

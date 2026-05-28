@@ -365,7 +365,10 @@ pub async fn run() -> Result<()> {
                     .block(Block::default().borders(Borders::ALL).title("Error"));
                 frame.render_widget(p, frame.area());
             })?;
-            // Wait for any keypress before exiting with code 1 (AC-002).
+            // Wait for any keypress before returning the error (AC-002).
+            // Return Err instead of std::process::exit(1) so main() can call
+            // restore_terminal() before exiting — prevents terminal raw-mode leak
+            // (F-S025-ADV1-BLOCKER-001).
             loop {
                 if event::poll(Duration::from_millis(200))? {
                     if let Event::Key(_) = event::read()? {
@@ -373,7 +376,7 @@ pub async fn run() -> Result<()> {
                     }
                 }
             }
-            std::process::exit(1);
+            return Err(anyhow::anyhow!("daemon unavailable: {e}"));
         }
     };
 
