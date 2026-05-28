@@ -365,37 +365,36 @@ async fn test_BC_2_04_003_tui_renders_offline_in_suppressed_mode() {
 ///
 /// Ordering verification strategy:
 ///
-/// `check_no_autostart()` is a pure env-var read with no side effects. We verify the
-/// structural ordering property by calling it directly and confirming it returns `true`
-/// when `MONOCLE_NO_AUTOSTART=1`, then verifying that `auto_start_daemon()` returns
-/// `OfflineMode` immediately — before reaching `resolve_runtime_dir()`.
+/// This test verifies integration behavior at two levels:
 ///
-/// The filesystem-ordering property is verified by setting `MONOCLE_RUNTIME_DIR` to an
-/// unresolvable path. If the implementation called `resolve_runtime_dir()` BEFORE
-/// `check_no_autostart()`, it would call `std::process::exit(70)` and the test process
-/// would terminate with a non-zero exit code rather than returning `OfflineMode`.
-/// The test completing normally with `OfflineMode` is the proof that no filesystem
-/// access occurred before the env-var check.
+/// **Structural (unit):** `check_no_autostart()` is called directly with
+/// `MONOCLE_NO_AUTOSTART=1` set, confirming it returns `true` in isolation.
+///
+/// **Integration:** `auto_start_daemon()` is called with `MONOCLE_NO_AUTOSTART=1` set.
+/// It must return `OfflineMode` immediately without proceeding to daemon lifecycle steps.
+///
+/// The ordering guarantee — that `check_no_autostart()` is invoked BEFORE
+/// `resolve_runtime_dir()` — is verified by code inspection of `auto_start.rs`, which
+/// shows the suppression check as the first statement in `auto_start_daemon()`. The
+/// integration assertion below confirms the observable outcome: `OfflineMode` is
+/// returned when suppression is active, regardless of the runtime dir configuration.
 #[tokio::test]
 async fn test_BC_2_04_003_check_first_before_filesystem() {
     // Structural property: check_no_autostart() returns true with MONOCLE_NO_AUTOSTART=1.
-    let suppressed = temp_env::with_vars(
-        [("MONOCLE_NO_AUTOSTART", Some("1"))],
-        check_no_autostart,
-    );
+    let suppressed = temp_env::with_vars([("MONOCLE_NO_AUTOSTART", Some("1"))], check_no_autostart);
     assert!(
         suppressed,
         "BC-2.04.003 PC-1 (AC-001): check_no_autostart() must return true when \
          MONOCLE_NO_AUTOSTART=1"
     );
 
-    // Ordering property: auto_start_daemon() returns OfflineMode without any filesystem
-    // access when MONOCLE_NO_AUTOSTART=1, even with an unresolvable runtime dir.
-    //
-    // An unresolvable path is set for MONOCLE_RUNTIME_DIR so that if resolve_runtime_dir()
-    // is invoked BEFORE check_no_autostart(), it would call std::process::exit(70) and
-    // terminate the test process. The test completing normally with OfflineMode proves
-    // the ordering: suppression check happens FIRST, filesystem is never touched.
+    // Integration property: auto_start_daemon() returns OfflineMode when
+    // MONOCLE_NO_AUTOSTART=1, confirming the suppression path is taken. MONOCLE_RUNTIME_DIR
+    // is set to a non-existent path to isolate this test from the host filesystem; since
+    // resolve_runtime_dir() accepts any non-empty env var value without validation, the
+    // suppression short-circuit is what prevents daemon lifecycle activity — not a
+    // filesystem failure. The ordering guarantee (check_no_autostart first) is verified
+    // by code inspection of auto_start.rs.
     let result = temp_env::async_with_vars(
         [
             (
@@ -411,9 +410,9 @@ async fn test_BC_2_04_003_check_first_before_filesystem() {
     assert_eq!(
         result,
         AutoStartResult::OfflineMode,
-        "BC-2.04.003 PC-1 (AC-001): MONOCLE_NO_AUTOSTART must be checked FIRST — before \
-         resolve_runtime_dir(). Returning OfflineMode here proves no filesystem access \
-         occurred (a pre-check filesystem call would have called process::exit(70))."
+        "BC-2.04.003 PC-1 (AC-001): auto_start_daemon() must return OfflineMode when \
+         MONOCLE_NO_AUTOSTART=1 — suppression is active and no daemon lifecycle steps \
+         should execute"
     );
 }
 
@@ -456,32 +455,9 @@ fn test_BC_2_04_003_daemon_start_subcommand_unaffected() {
 
     // The command must NOT exit 0 (that would mean it was suppressed incorrectly).
     // It should exit 1 (timeout) because the fake daemon never writes a lock file.
+    // BC-2.04.003 EC-07 (AC-005): `monocle daemon start` must not exit 0 when
+    // MONOCLE_NO_AUTOSTART=1 — suppression must not affect the daemon subcommand.
     cmd.assert().failure();
-
-    // Additionally: the exit code must not be 0 (which would indicate the daemon
-    // start was silently skipped due to MONOCLE_NO_AUTOSTART).
-    let output = assert_cmd::Command::cargo_bin("monocle")
-        .expect("monocle binary")
-        .args(["daemon", "start"])
-        .env(
-            "MONOCLE_RUNTIME_DIR",
-            runtime_dir.path().to_str().expect("path str"),
-        )
-        .env("MONOCLE_NO_AUTOSTART", "1")
-        .env(
-            "MONOCLE_DAEMON_BIN",
-            false_bin.to_str().expect("false path"),
-        )
-        .env("MONOCLE_START_TIMEOUT_SECS", "1")
-        .output()
-        .expect("spawn monocle daemon start");
-
-    assert_ne!(
-        output.status.code(),
-        Some(0),
-        "BC-2.04.003 EC-07 (AC-005): `monocle daemon start` must not exit 0 when \
-         MONOCLE_NO_AUTOSTART=1 (suppression must not affect daemon subcommand)"
-    );
 }
 
 /// test_BC_2_04_003_daemon_stop_subcommand_unaffected
