@@ -26,12 +26,19 @@ use std::time::Instant;
 // Stub types
 // ---------------------------------------------------------------------------
 
+// MERGE-COORDINATION (S-023 → S-025):
+// `TransportEvent` is defined here as a local stub because S-023 introduces
+// the canonical type in `monocle-ipc::events::TransportEvent`. When S-023 merges
+// to develop, S-025's merge-time conflict resolution MUST:
+//   1. Delete this local enum.
+//   2. Replace `use crate::app::TransportEvent` with `use monocle_ipc::events::TransportEvent`.
+//   3. Verify variant shape matches BC-2.05.007 (single `Disconnected` variant currently).
+// Surfaced by F-S025-ADV2-MED-003.
+
 /// Signal that the IPC transport has changed connection state.
 ///
-/// TODO(S-025): align with monocle-ipc::TransportEvent once S-023 (daemon
-/// reconnect) is merged and `TransportEvent` is defined in `monocle-ipc`.
-/// Until then this local stub provides the minimal surface for tests and
-/// the event loop match arm.
+/// Local stub — see MERGE-COORDINATION block above. Aligns with the canonical
+/// `monocle-ipc::events::TransportEvent` type being defined in S-023.
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum TransportEvent {
