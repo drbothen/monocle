@@ -19,6 +19,12 @@ path = "src/main.rs"
 name = "test-stubborn-daemon"
 path = "src/bin/test_stubborn_daemon.rs"
 
+# Library target so that integration tests in tests/ can access pub items
+# from modules like auto_start without going through the binary entry point.
+[lib]
+name = "monocle"
+path = "src/lib.rs"
+
 [dependencies]
 monocle-runtime = { path = "../monocle-runtime" }
 clap = { workspace = true, features = ["derive"] }
@@ -27,8 +33,17 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+# tokio: required for auto_start_daemon() async polling loop (S-019, BC-2.04.002 PC-4).
+tokio = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = "2"
 predicates = "3"
 tempfile = { workspace = true }
+tokio = { workspace = true }
+# temp-env: test-only env var isolation for MONOCLE_NO_AUTOSTART tests (BC-2.04.003).
+# Declared inline (NOT workspace = true) per least-privilege dev-dependency policy
+# (same pattern as monocle-runtime).  The `async_closure` feature is required for
+# `temp_env::async_with_vars` used in tokio test bodies.
+# SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
+temp-env = { version = "0.3", features = ["async_closure"] }

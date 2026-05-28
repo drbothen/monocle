@@ -7,6 +7,10 @@
 //!   exit 0 on success or exit 1/2 on error / exit 70 on runtime-dir error.
 //!
 //! Implemented in S-016.
+//!
+//! TUI auto-start (S-019):
+//! - No subcommand → TUI mode: `auto_start::auto_start_daemon()` is called before TUI init.
+//! - `MONOCLE_NO_AUTOSTART` non-empty → offline mode, no daemon started.
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
@@ -14,14 +18,18 @@
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
+mod auto_start;
+
 use clap::{Parser, Subcommand};
+
+use crate::auto_start::auto_start_daemon;
 
 /// monocle — AI coding harness session manager.
 #[derive(Parser, Debug)]
 #[command(name = "monocle", version, about)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 /// Top-level subcommands.
@@ -102,10 +110,36 @@ fn main() {
     let cli = Cli::parse();
 
     let exit_code = match cli.command {
-        Commands::Daemon { action } => match action {
+        Some(Commands::Daemon { action }) => match action {
             DaemonAction::Start => cmd_daemon_start(),
             DaemonAction::Stop => cmd_daemon_stop(),
         },
+        None => {
+            // TUI mode: run the daemon auto-start decision sequence (BC-2.04.002, BC-2.04.003).
+            // auto_start_daemon() is async; build a tokio runtime to drive it.
+            // The auto-start sequence calls std::process::exit(70) directly on runtime-dir failure.
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    tracing::error!(error = %e, "failed to create tokio runtime for TUI auto-start");
+                    eprintln!("error: failed to initialize async runtime: {e}");
+                    std::process::exit(EXIT_INTERNAL_ERROR);
+                }
+            };
+            let result = rt.block_on(auto_start_daemon());
+            // The TUI layer would use `result` to render initial state.
+            // For S-019 scope: the auto-start verdict is determined; TUI rendering is out of scope.
+            // Report the verdict and exit 0 (normal TUI exit — the TUI hasn't been built yet).
+            match result {
+                auto_start::AutoStartResult::Connected { port, token: _ } => {
+                    tracing::info!(port = port, "TUI mode: daemon connected");
+                }
+                auto_start::AutoStartResult::OfflineMode => {
+                    tracing::info!("TUI mode: [daemon: offline]");
+                }
+            }
+            EXIT_SUCCESS
+        }
     };
 
     std::process::exit(exit_code);
@@ -417,41 +451,14 @@ fn read_lock_pid_if_live(lock_path: &std::path::Path) -> Option<i32> {
 
 /// Find the `monocle-runtime` binary to spawn as the daemon subprocess.
 ///
-/// Resolution order:
-/// 1. `MONOCLE_DAEMON_BIN` environment variable — if set, use that path directly.
-///    This is a test-only escape hatch: tests can set this to a fake binary (e.g.,
-///    a `sleep` command) to simulate specific daemon behaviors (e.g., never writing
-///    a lock file, which triggers the start-timeout code path).
-/// 2. Same directory as the current executable (`current_exe()` parent + "monocle-runtime").
-/// 3. Returns `Err` if `current_exe()` cannot be determined or the sibling does not exist.
+/// Delegates to `auto_start::find_daemon_binary()` (the shared canonical implementation)
+/// and converts the `Option<PathBuf>` result to `Result<PathBuf, anyhow::Error>` for use
+/// in `cmd_daemon_start()`. The shared function also includes the `deps/` parent-dir
+/// fallback required for integration-test layout.
 fn find_daemon_binary() -> Result<std::path::PathBuf, anyhow::Error> {
-    // Test-only override: MONOCLE_DAEMON_BIN lets tests inject a fake daemon binary.
-    if let Ok(override_bin) = std::env::var("MONOCLE_DAEMON_BIN") {
-        let path = std::path::PathBuf::from(&override_bin);
-        if path.exists() {
-            return Ok(path);
-        }
-        // If the override path doesn't exist as a file (e.g., it's a shell builtin like
-        // `/bin/sleep`), still return it — Command::new() can invoke it via PATH resolution.
-        // We trust the test to provide a valid binary path.
-        return Ok(path);
-    }
-
-    let current_exe = std::env::current_exe()
-        .map_err(|e| anyhow::anyhow!("cannot determine current executable path: {}", e))?;
-
-    let bin_dir = current_exe
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("current executable has no parent directory"))?;
-
-    let daemon_bin = bin_dir.join("monocle-runtime");
-
-    if daemon_bin.exists() {
-        Ok(daemon_bin)
-    } else {
-        Err(anyhow::anyhow!(
-            "monocle-runtime binary not found at {}; ensure it is installed alongside monocle",
-            daemon_bin.display()
-        ))
-    }
+    auto_start::find_daemon_binary().ok_or_else(|| {
+        anyhow::anyhow!(
+            "monocle-runtime binary not found; ensure it is installed alongside monocle"
+        )
+    })
 }
