@@ -1,0 +1,21 @@
+AC-004 — InitialState > 256 KiB closes connection with IpcError::MessageTooLarge
+BC-2.05.002 postcondition PC-4
+
+TEST: monocle-ipc::connection_handshake::ac_004_initial_state_too_large_closes_connection
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_004_initial_state_too_large_closes_connection -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_004_initial_state_too_large_closes_connection ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  300 PermissionPromptPayload entries (each ~1 KiB of tool_input), totalling ~300 KiB in
+  overlay_stack, are pre-registered in the daemon's pending_decisions registry before
+  the client connects. send_initial_state serializes the payload, detects len > 262144
+  bytes, logs ERROR, and closes the connection returning IpcError::MessageTooLarge.
+  The test client then reads from the socket and receives Err(IpcError::Disconnected)
+  (EOF), confirming the daemon closed the connection rather than sending an oversized frame.

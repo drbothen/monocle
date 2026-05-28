@@ -158,9 +158,13 @@ pub async fn get_status(State(state): State<Arc<DaemonState>>) -> impl IntoRespo
         ring_buffer_fill_pct: 0.0,
         channel_saturation_pct: 0.0,
         last_hook_ts,
+        // tui_attached is true when at least one TUI client is connected
+        // (count > 0). SeqCst ordering matches the write ordering in ipc_server.rs
+        // (F-ADV2-HIGH-003: count-based to prevent flicker with multiple clients).
         tui_attached: state
-            .tui_attached
-            .load(std::sync::atomic::Ordering::Relaxed),
+            .tui_attached_count
+            .load(std::sync::atomic::Ordering::SeqCst)
+            > 0,
     };
     (StatusCode::OK, Json(response))
 }

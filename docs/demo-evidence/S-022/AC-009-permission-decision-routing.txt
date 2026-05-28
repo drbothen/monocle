@@ -1,0 +1,36 @@
+AC-009 — PermissionDecision routes to oneshot; PermissionPromptResolved broadcast to all
+BC-2.05.005 postcondition PC-3
+
+PRIMARY TEST (found path):
+  monocle-ipc::permission_prompt::ac_009_permission_decision_routes_to_oneshot
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_009_permission_decision_routes_to_oneshot -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_009_permission_decision_routes_to_oneshot ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.05s
+
+SECONDARY TEST (not-found path — unknown prompt_id silently discarded):
+  monocle-ipc::permission_prompt::ac_009b_permission_decision_unknown_prompt_id_silently_discarded
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_009b_permission_decision_unknown_prompt_id_silently_discarded -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_009b_permission_decision_unknown_prompt_id_silently_discarded ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.05s
+
+WHAT THIS DEMONSTRATES:
+  PRIMARY: A prompt is pre-registered in the pending_decisions registry. A TUI client
+  connects, consumes InitialState, then sends ClientToServer::PermissionDecision{Allow}
+  over the wire. The test awaits the oneshot receiver (200ms timeout) and asserts it
+  receives PermissionDecisionKind::Allow — confirming the daemon routed the wire message
+  to the oneshot. An observer subscriber also receives PermissionPromptResolved with the
+  matching prompt_id, confirming broadcast to ALL clients. SECONDARY: An unknown prompt_id
+  produces no response to the client and no Resolved broadcast to observers — confirmed
+  by a 50ms timeout asserting the observer channel remains empty.

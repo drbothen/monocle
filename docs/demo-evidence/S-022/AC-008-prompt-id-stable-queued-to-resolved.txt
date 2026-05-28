@@ -1,0 +1,20 @@
+AC-008 — prompt_id is stable across PermissionPromptQueued and PermissionPromptResolved
+BC-2.05.005 postcondition PC-2
+
+TEST: monocle-ipc::permission_prompt::ac_008_prompt_id_stable_across_queued_and_resolved
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_008_prompt_id_stable_across_queued_and_resolved -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_008_prompt_id_stable_across_queued_and_resolved ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  A single Uuid is assigned when the prompt is created. Both the PermissionPromptQueued
+  (payload.prompt_id) and the subsequent PermissionPromptResolved (prompt_id) messages
+  carry this exact same value. The test extracts prompt_id from each received message and
+  asserts equality (queued_id == resolved_id), confirming TUI clients can use prompt_id
+  as a stable key for overlay stack management across the full Queued → Resolved lifecycle.

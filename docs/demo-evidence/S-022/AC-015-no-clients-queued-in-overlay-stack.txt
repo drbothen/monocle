@@ -1,0 +1,22 @@
+AC-015 — No clients connected: PermissionPromptQueued not sent; pending prompt in next InitialState.overlay_stack
+BC-2.05.005 edge case EC-003
+
+TEST: monocle-ipc::permission_prompt::ac_015_no_clients_connected_for_queued
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_015_no_clients_connected_for_queued -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_015_no_clients_connected_for_queued ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  Part 1: an empty SubscriberList is locked and confirmed to have zero entries; no broadcast
+  attempt is made (for() over an empty iterator is a no-op). Part 2: before any TUI client
+  connects, a PermissionPromptPayload is registered in the daemon's pending_decisions
+  registry (simulating a PreToolUse hook that arrived with no clients connected). When a
+  TUI client subsequently connects, the InitialState received has overlay_stack.len() == 1
+  with session_id == "s-015", confirming the pending prompt was captured in the snapshot
+  and is waiting for the first available TUI client to act on it.

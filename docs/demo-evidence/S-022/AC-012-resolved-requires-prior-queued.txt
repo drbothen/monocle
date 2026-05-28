@@ -1,0 +1,22 @@
+AC-012 — PermissionPromptResolved requires prior PermissionPromptQueued for same prompt_id
+BC-2.05.005 invariant 3
+
+TEST: monocle-ipc::permission_prompt::ac_012_resolved_requires_prior_queued
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_012_resolved_requires_prior_queued -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_012_resolved_requires_prior_queued ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  An observer receives two sequential messages and the test asserts: (1) the first message
+  is PermissionPromptQueued for the expected prompt_id, and (2) the second message is
+  PermissionPromptResolved for the same prompt_id. This confirms message ordering and that
+  Resolved cannot precede Queued. The broader structural invariant is enforced at the
+  registry level: PermissionPromptResolved is only produced by resolve_prompt() or
+  remove_timed_out_prompt(), both of which require a prior register_prompt() call for the
+  same prompt_id — no orphan Resolved messages are architecturally possible.

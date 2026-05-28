@@ -7,7 +7,7 @@
 //! last-hook timestamps, TUI attachment flag), S-004 (lock-file path write),
 //! S-005 (hook-ingestion channels), S-018 (event bus, drop counter, session registry).
 
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
@@ -65,7 +65,8 @@ pub struct LastHookTimestamps {
 ///   `constant_time_eq::constant_time_eq` on both canonical and alias auth paths, NFR-010).
 /// - `lock_file_path` is written once by S-004 during daemon startup; read by `/status`.
 /// - `last_hook_ts` is updated by S-005 hook-receiver tasks on each hook invocation.
-/// - `tui_attached` is an atomic flag set when a TUI client establishes a session.
+/// - `tui_attached_count` is an `AtomicUsize` incremented on TUI connect, decremented on
+///   disconnect. The `/status` handler exposes `tui_attached: count > 0` (BC-2.01.002 PC-1).
 /// - `shutdown_tx` / `shutdown_rx`: graceful-shutdown notification channel (S-005).
 ///   The `POST /shutdown` handler sends `true`; `run_server` wires a clone of `shutdown_rx`
 ///   into `axum::serve(...).with_graceful_shutdown(...)` so the HTTP server stops accepting
@@ -139,15 +140,21 @@ pub struct DaemonState {
     /// while the ring buffer remains shared (no double-buffering).
     pub ring: Option<Arc<RingBuffer>>,
 
-    /// Whether a TUI client is currently attached to this daemon session.
+    /// Count of TUI clients currently attached to this daemon session (F-ADV2-HIGH-003).
     ///
-    /// Set to `true` when a TUI session is established; `false` when the TUI disconnects.
-    /// Read by the `/status` handler and surfaced as `tui_attached` (BC-2.01.002 PC-1).
+    /// Incremented by 1 (`fetch_add`) when a TUI client connects and registers its
+    /// subscriber channel; decremented by 1 (`fetch_sub`) when the same client disconnects
+    /// and its subscriber is removed. The `/status` handler reads this as a `bool` via
+    /// `tui_attached_count.load(...) > 0` (BC-2.01.002 PC-1: `tui_attached` field).
     ///
-    /// `Ordering::Relaxed` is sufficient: this flag is informational and is read only in
-    /// the `/status` handler which already tolerates eventual consistency for floating-point
-    /// fill percentages.
-    pub tui_attached: AtomicBool,
+    /// Using `AtomicUsize` instead of `AtomicBool` prevents flicker when multiple TUI
+    /// clients connect concurrently — a plain bool would oscillate between `false` and
+    /// `true` as each connect increments and the corresponding disconnect later decrements.
+    ///
+    /// `Ordering::SeqCst` on both write and read: per-client tasks run on different Tokio
+    /// worker threads; `SeqCst` ensures the increment and decrement are globally ordered
+    /// relative to any `/status` read that follows on another thread.
+    pub tui_attached_count: AtomicUsize,
 
     /// Force-exit signal set by a second authenticated `POST /shutdown` during drain (EC-050).
     ///
@@ -229,6 +236,46 @@ pub struct DaemonState {
     pub session_registry: Option<Arc<crate::hooks::SessionRegistry>>,
 
     // -------------------------------------------------------------------------
+    // S-022 fields: pending-decision registry + IPC subscriber list
+    // -------------------------------------------------------------------------
+    /// Pending-decision registry for in-flight permission prompts (S-022, BC-2.05.005).
+    ///
+    /// `None` — registry not yet initialized (daemon startup or test stub without IPC).
+    /// `Some(registry)` — live registry. The `PreToolUse` Defer path calls
+    ///   `registry.register_prompt(payload, sender)` to create the entry and obtain a
+    ///   stable `prompt_id`. The per-client IPC task calls `registry.resolve_prompt(...)`
+    ///   when a `ClientToServer::PermissionDecision` arrives. The timeout path calls
+    ///   `registry.remove_timed_out_prompt(prompt_id)` before broadcasting
+    ///   `PermissionPromptResolved`.
+    ///
+    /// Wrapped in `Arc` to allow the registry to be shared across axum handler tasks
+    /// and the per-client IPC task without cloning the registry struct.
+    pub pending_decisions: Option<crate::permissions::SharedPendingDecisionRegistry>,
+
+    /// Fan-out subscriber list for broadcasting IPC messages to connected TUI clients (S-022).
+    ///
+    /// `None` — IPC subscriber list not yet initialized (daemon startup or test stub).
+    /// `Some(list)` — live list. The `PreToolUse` Defer path broadcasts
+    ///   `ServerToClient::PermissionPromptQueued` through this list.
+    ///   The `handle_permission_decision` path broadcasts `PermissionPromptResolved`
+    ///   through the same list.
+    ///
+    /// Arc-wrapped to share the same list across axum handler tasks and the accept loop.
+    pub ipc_subscribers: Option<monocle_ipc::server::SubscriberList>,
+
+    /// UDS transport lifecycle manager (S-022, BC-2.05.001).
+    ///
+    /// `None` — UDS socket not yet bound (daemon startup or test stub without IPC).
+    /// `Some(transport)` — bound and active. `transport.cleanup()` removes the socket file
+    ///   on graceful shutdown (BC-2.05.001 PC-4).
+    ///
+    /// This field ensures the UDS path-length check (BC-2.05.001 EC-002) is enforced
+    /// before any socket is bound: `UdsTransport::bind` validates the path and returns
+    /// `IpcError::PathTooLong` if the limit is exceeded, which `daemon_start_sequence`
+    /// maps to `DaemonStartError::UdsPathTooLong`.
+    pub uds_transport: Option<monocle_ipc::uds::UdsTransport>,
+
+    // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
     // These fields are Option<_> (zero cost when None) and are NEVER set by
@@ -284,7 +331,7 @@ impl DaemonState {
             sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             ring: None,
-            tui_attached: AtomicBool::new(false),
+            tui_attached_count: AtomicUsize::new(0),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
             shutdown_tx,
@@ -292,6 +339,9 @@ impl DaemonState {
             event_bus_tx: None,
             drop_counter: None,
             session_registry: None,
+            pending_decisions: None,
+            ipc_subscribers: None,
+            uds_transport: None,
             hook_decision_override: None,
             hook_delay_ms: None,
         }
@@ -310,3 +360,83 @@ const _: () = {
         assert_send_sync::<DaemonState>();
     }
 };
+
+// ---------------------------------------------------------------------------
+// S-022: InitialState snapshot (BC-2.05.002 PC-2, AC-002)
+// ---------------------------------------------------------------------------
+
+/// Produce an `InitialState` snapshot from the current `DaemonState`.
+///
+/// # Contract (BC-2.05.002 v1.0.4 postcondition PC-2, AC-002)
+///
+/// The snapshot captures, at the moment of the call:
+/// - `sessions`: clone of the current session roster from `state.session_registry`.
+/// - `ring_tail`: last N events from the RAM ring as `Vec<HookEventRecord>` — the native
+///   ring storage type (architect decision F-S022-ADV2-HIGH-002, ADR-0006).
+///   No type conversion or field fabrication is performed.
+/// - `overlay_stack`: clone of all currently-pending permission prompt payloads from
+///   `state.pending_decisions`.
+/// - `drop_counter`: current value of `state.drop_counter`.
+///
+/// When any of the optional fields is `None` (registry / ring / counter not yet
+/// initialized), the corresponding `InitialState` field is an empty Vec / 0.
+///
+/// # ring_tail type rationale
+///
+/// `InitialState.ring_tail` is typed `Vec<HookEventRecord>` per BC-2.05.002 PC-2 v1.0.4.
+/// The previous `Vec<HookEvent>` typing required converting `HookEventRecord` → `HookEvent`,
+/// which involved fabricating absent fields (cwd, transcript_path, prompt, stop_reason)
+/// with empty-string defaults — silently incorrect data. The correct fix is to match the
+/// IPC type to the ring's native storage type (F-S022-ADV2-HIGH-002).
+///
+/// # 256 KiB guard
+///
+/// The 256 KiB size check is performed by the caller after serialization. This function
+/// only constructs the struct; it does not serialize.
+///
+/// # Returns
+///
+/// A `monocle_ipc::types::ServerToClient::InitialState { sessions, ring_tail, overlay_stack, drop_counter }`
+/// variant, ready for framing.
+pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::ServerToClient {
+    use std::sync::atomic::Ordering;
+
+    // Sessions: snapshot all current sessions from session_registry.
+    // Maps SessionEntry → EnrichedSession via SessionRegistry::snapshot_enriched_sessions.
+    let sessions: Vec<monocle_core::engine::EnrichedSession> = state
+        .session_registry
+        .as_ref()
+        .map(|reg| reg.snapshot_enriched_sessions())
+        .unwrap_or_default();
+
+    // ring_tail: last RING_TAIL_N events from the RAM ring as Vec<HookEventRecord>.
+    // Pass-through — no type conversion, no field fabrication (architect decision
+    // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2 v1.0.4, ADR-0006).
+    const RING_TAIL_N: usize = 50;
+    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = state
+        .ring
+        .as_ref()
+        .map(|ring| ring.latest_events(RING_TAIL_N))
+        .unwrap_or_default();
+
+    // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
+    let overlay_stack: Vec<monocle_ipc::types::PermissionPromptPayload> = state
+        .pending_decisions
+        .as_ref()
+        .map(|reg| reg.snapshot_payloads())
+        .unwrap_or_default();
+
+    // drop_counter: read the atomic counter value (Relaxed ordering — monitoring only).
+    let drop_counter: u64 = state
+        .drop_counter
+        .as_ref()
+        .map(|c| c.load(Ordering::Relaxed))
+        .unwrap_or(0);
+
+    monocle_ipc::types::ServerToClient::InitialState {
+        sessions,
+        ring_tail,
+        overlay_stack,
+        drop_counter,
+    }
+}

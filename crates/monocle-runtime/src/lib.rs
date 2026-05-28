@@ -59,6 +59,23 @@ pub mod types;
 /// [`event_bus::try_publish_event`] (canonical try_send helper used by all hook handlers).
 pub mod event_bus;
 
+/// Pending-decision registry for in-flight permission prompts (S-022, BC-2.05.005).
+///
+/// Provides [`permissions::PendingDecisionRegistry`] with `register_prompt`,
+/// `resolve_prompt`, `remove_timed_out_prompt`, and `snapshot_payloads` methods.
+/// Also exports [`permissions::SharedPendingDecisionRegistry`] (Arc-wrapped handle used
+/// as the type of `DaemonState.pending_decisions`).
+pub mod permissions;
+
+/// UDS connection accept loop and per-client task spawner (S-022, BC-2.05.002).
+///
+/// Lives in `monocle-runtime` (not `monocle-ipc`) to avoid a circular crate dependency:
+/// `monocle-runtime` depends on `monocle-ipc`, and the accept loop needs both
+/// `monocle_ipc` types and `monocle_runtime::state::DaemonState`.
+///
+/// Provides [`ipc_server::run_accept_loop`] and [`ipc_server::send_initial_state`].
+pub mod ipc_server;
+
 /// Hook endpoint handler modules for S-018 (BC-2.04.007, BC-2.04.008, BC-2.04.009).
 ///
 /// Sub-modules:

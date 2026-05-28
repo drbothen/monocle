@@ -1,0 +1,20 @@
+AC-013 — Empty daemon state produces InitialState with all-empty fields and drop_counter=0
+BC-2.05.002 edge case EC-001
+
+TEST: monocle-ipc::connection_handshake::ac_013_empty_initial_state
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_013_empty_initial_state -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_013_empty_initial_state ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  The test daemon is started with a freshly constructed DaemonState (no sessions, no ring
+  events, no queued prompts). The connecting client receives InitialState and the test
+  asserts: sessions.is_empty(), ring_tail.is_empty(), overlay_stack.is_empty(), and
+  drop_counter == 0. This is the baseline "No sessions detected" scenario that the TUI
+  renders on first launch before any Claude Code sessions have been observed.

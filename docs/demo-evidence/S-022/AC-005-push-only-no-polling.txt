@@ -1,0 +1,21 @@
+AC-005 — Push-only model; no polling after InitialState
+BC-2.05.002 postconditions PC-5 and PC-6
+
+TEST: monocle-ipc::connection_handshake::ac_005_push_only_no_polling
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_005_push_only_no_polling -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_005_push_only_no_polling ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  After the client receives its InitialState message, the test injects a
+  DropCounterUpdate(99) directly into the subscriber list — simulating a daemon push
+  that does not result from any client request. The client receives this push as its
+  second message without having sent any intervening bytes. The client never calls a
+  "poll" request; all state changes arrive via server-initiated push over the open
+  UnixStream, confirming the push-only model.

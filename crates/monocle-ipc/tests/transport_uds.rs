@@ -2,13 +2,16 @@
 // Test function names follow the VSDD `test_BC_S_SS_NNN_xxx` convention (uppercase BC).
 // Suppress non_snake_case lint for test files — BC_ prefix is intentional for traceability.
 #![allow(non_snake_case)]
+// expect/unwrap are idiomatic in test code for assertion amplification.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+// std::fs::write used here to plant stale socket fixture files; not a production config write.
+#![allow(clippy::disallowed_methods)]
 //!
 //! Tests the UDS socket bind, stale socket removal, mode 0o600, path length limit,
 //! and graceful shutdown cleanup.
 //!
 //! All test names follow `test_BC_S_SS_NNN_[description]` convention.
-//! These tests call `UdsTransport::bind(...)` which is a `todo!()` stub — they MUST FAIL
-//! at runtime to satisfy the Red Gate requirement.
+//! These tests call `UdsTransport::bind(...)` to verify UDS socket lifecycle behavior.
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
@@ -25,14 +28,16 @@ use monocle_ipc::uds::UdsTransport;
 ///
 /// Traces to BC-2.05.001 PC-1 (bind) and PC-2 (mode 0o600).
 ///
-/// **RED GATE**: This test calls `UdsTransport::bind` which panics with `todo!()`.
+/// Verifies BC-2.05.001 PC-1 (bind creates listener at `<runtime_dir>/monocle.sock`) and
+/// PC-2 (socket file created with mode 0o600) — production GREEN.
 #[tokio::test]
 async fn test_BC_2_05_001_uds_bind_creates_socket_with_mode_0o600() {
     let dir = tempfile::tempdir().expect("tempdir");
     let runtime_dir = dir.path();
 
-    // Bind the UDS transport — stub will panic with todo!() until implemented.
-    let transport = UdsTransport::bind(runtime_dir)
+    // Bind the UDS transport. The returned listener is transferred to the accept loop;
+    // tests that only exercise fan-out / path / cleanup discard it with `_`.
+    let (transport, _listener) = UdsTransport::bind(runtime_dir)
         .await
         .expect("bind should succeed on a fresh tempdir");
 
@@ -56,7 +61,7 @@ async fn test_BC_2_05_001_uds_bind_creates_socket_with_mode_0o600() {
 ///
 /// Traces to BC-2.05.001 PC-3 / EC-001.
 ///
-/// **RED GATE**: Calls `UdsTransport::bind` which panics with `todo!()`.
+/// Verifies BC-2.05.001 PC-3 / EC-001 (stale socket removed before rebind) — production GREEN.
 #[tokio::test]
 async fn test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -68,7 +73,7 @@ async fn test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind() {
     assert!(sock_path.exists(), "stale socket must exist before bind");
 
     // Bind should remove the stale file and create a real socket.
-    let transport = UdsTransport::bind(runtime_dir)
+    let (transport, _listener) = UdsTransport::bind(runtime_dir)
         .await
         .expect("bind should succeed after removing stale socket");
 
@@ -92,13 +97,13 @@ async fn test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind() {
 ///
 /// Traces to BC-2.05.001 PC-4 (graceful shutdown removal).
 ///
-/// **RED GATE**: Calls `UdsTransport::bind` + `cleanup()` which panic with `todo!()`.
+/// Verifies BC-2.05.001 PC-4 (socket file removed on graceful shutdown) — production GREEN.
 #[tokio::test]
 async fn test_BC_2_05_001_uds_bind_cleanup_removes_socket_on_shutdown() {
     let dir = tempfile::tempdir().expect("tempdir");
     let runtime_dir = dir.path();
 
-    let transport = UdsTransport::bind(runtime_dir).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(runtime_dir).await.expect("bind");
 
     let sock_path = runtime_dir.join("monocle.sock");
     assert!(sock_path.exists(), "socket must exist before cleanup");
@@ -117,7 +122,7 @@ async fn test_BC_2_05_001_uds_bind_cleanup_removes_socket_on_shutdown() {
 ///
 /// Traces to BC-2.05.001 EC-002 / AC-016.
 ///
-/// **RED GATE**: Calls `UdsTransport::bind` which panics with `todo!()`.
+/// Verifies BC-2.05.001 EC-002 / AC-016 (`IpcError::PathTooLong` returned when path exceeds OS limit) — production GREEN.
 #[tokio::test]
 async fn test_BC_2_05_001_uds_bind_returns_error_on_path_too_long() {
     // Construct a runtime_dir whose path + "/monocle.sock" (12 bytes) exceeds 104 bytes.
@@ -140,7 +145,7 @@ async fn test_BC_2_05_001_uds_bind_returns_error_on_path_too_long() {
         return;
     }
 
-    let result = UdsTransport::bind(&long_dir).await;
+    let result = UdsTransport::bind(&long_dir).await.map(|(t, _)| t);
 
     assert!(
         result.is_err(),
@@ -163,14 +168,14 @@ async fn test_BC_2_05_001_uds_bind_returns_error_on_path_too_long() {
 ///
 /// This is validated by verifying that the resulting sock_path matches the expected join.
 ///
-/// **RED GATE**: Calls `UdsTransport::bind` which panics with `todo!()`.
+/// Verifies BC-2.05.001 PC-1 (sock_path equals `Path::new(runtime_dir).join("monocle.sock")`) — production GREEN.
 #[tokio::test]
 async fn test_BC_2_05_001_uds_bind_socket_path_construction_uses_path_join() {
     let dir = tempfile::tempdir().expect("tempdir");
     let runtime_dir = dir.path();
     let expected_sock_path = Path::new(runtime_dir).join("monocle.sock");
 
-    let transport = UdsTransport::bind(runtime_dir).await.expect("bind");
+    let (transport, _listener) = UdsTransport::bind(runtime_dir).await.expect("bind");
     assert_eq!(
         transport.sock_path(),
         expected_sock_path,

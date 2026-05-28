@@ -23,6 +23,8 @@
 
 pub mod error;
 pub mod framing;
+/// Server-side connection accept loop and per-client task spawner (S-022, BC-2.05.002).
+pub mod server;
 pub mod transport;
 pub mod types;
 pub mod uds;

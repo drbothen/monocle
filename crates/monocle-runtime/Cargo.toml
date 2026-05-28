@@ -17,6 +17,8 @@ path = "src/main.rs"
 
 [dependencies]
 monocle-core = { path = "../monocle-core" }
+monocle-ipc = { path = "../monocle-ipc" }
+uuid = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 rand = { workspace = true }

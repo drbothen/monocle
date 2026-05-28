@@ -1,0 +1,21 @@
+AC-006 — No gap window between InitialState snapshot and streaming phase
+BC-2.05.002 invariant 3
+
+TEST: monocle-ipc::connection_handshake::ac_006_no_gap_window_between_snapshot_and_streaming
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_006_no_gap_window_between_snapshot_and_streaming -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_006_no_gap_window_between_snapshot_and_streaming ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  register_subscriber adds the client to the SubscriberList BEFORE InitialState is written.
+  The test injects a DropCounterUpdate event into the subscriber list immediately after
+  registration (simulating an event arriving during the InitialState send), then asserts
+  the event is present in the subscriber's channel via try_recv(). This proves no events
+  can be lost in the gap between snapshot time and streaming phase — the subscriber is
+  already registered to receive incremental events while InitialState is in flight.

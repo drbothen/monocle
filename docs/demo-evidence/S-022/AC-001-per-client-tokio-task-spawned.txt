@@ -1,0 +1,20 @@
+AC-001 — Per-client Tokio task spawned; subscriber removed on EOF
+BC-2.05.002 postcondition PC-1
+
+TEST: monocle-ipc::connection_handshake::ac_001_per_client_tokio_task_spawned
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_001_per_client_tokio_task_spawned -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_001_per_client_tokio_task_spawned ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  The daemon's accept loop spawns a dedicated Tokio task for each connecting TUI client
+  and registers it in the SubscriberList (len goes 0 -> 1 after connect). When the client
+  drops its UnixStream (simulating TUI EOF), the per-client task detects IpcError::Disconnected
+  and calls remove_subscriber, draining the SubscriberList back to 0. Both transitions are
+  asserted with 2-second polling deadlines, proving the lifecycle is deterministic.

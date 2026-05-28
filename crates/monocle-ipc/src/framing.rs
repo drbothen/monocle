@@ -51,6 +51,35 @@ where
     Ok(())
 }
 
+/// Write a pre-serialized payload to `writer` using 4-byte LE length-prefix framing.
+///
+/// Unlike [`write_framed`], this function does NOT serialize `value` — the caller
+/// already has the serialized bytes. This avoids a double-serialize pattern when the
+/// caller needs both the byte count (for a size check) and the bytes themselves.
+///
+/// # Wire Format
+///
+/// Writes `[u32 LE length][payload bytes]`.  No trailing delimiter.
+///
+/// # Errors
+///
+/// - [`IpcError::MessageTooLarge`] — if `payload.len()` exceeds `MAX_MESSAGE_BYTES`.
+/// - [`IpcError::IoError`] — if writing to `writer` fails.
+pub async fn write_framed_bytes<W>(writer: &mut W, payload: &[u8]) -> Result<(), IpcError>
+where
+    W: AsyncWriteExt + Unpin,
+{
+    if payload.len() > MAX_MESSAGE_BYTES {
+        return Err(IpcError::MessageTooLarge);
+    }
+    // Safety: we just checked payload.len() <= MAX_MESSAGE_BYTES <= u32::MAX.
+    let len = payload.len() as u32;
+    writer.write_all(&len.to_le_bytes()).await?;
+    writer.write_all(payload).await?;
+    writer.flush().await?;
+    Ok(())
+}
+
 /// Read a 4-byte LE length-prefix framed message from `reader` and deserialize it.
 ///
 /// # Wire Format

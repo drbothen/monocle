@@ -1,0 +1,36 @@
+AC-010 — 300ms timeout: fail-open resolution + PermissionPromptResolved broadcast + registry removal
+BC-2.05.005 postcondition PC-4
+
+PRIMARY TEST (registry-level timeout path):
+  monocle-ipc::permission_prompt::ac_010_timeout_broadcasts_resolved_and_removes_registry
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_010_timeout_broadcasts_resolved_and_removes_registry -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_010_timeout_broadcasts_resolved_and_removes_registry ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+SUPPLEMENTARY TEST (production hook handler timeout path):
+  monocle-runtime::hook_defer_race::test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout
+
+INVOCATION:
+  cargo test -p monocle-runtime --test hook_defer_race test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.30s
+
+WHAT THIS DEMONSTRATES:
+  PRIMARY: remove_timed_out_prompt(prompt_id) returns Some(payload), removing the registry
+  entry (verified via snapshot_payloads before/after). Two observer subscribers both receive
+  PermissionPromptResolved with the matching prompt_id. A subsequent resolve_prompt call
+  returns None, proving the entry was removed. SUPPLEMENTARY: the axum handler stack for
+  post_hook_pre_tool_use is exercised end-to-end with HookDecision::Defer. After 300ms
+  timeout, the handler returns {reason:"timeout"} (fail-open) and the subscriber channel
+  contains exactly 1 PermissionPromptQueued + 1 PermissionPromptResolved — confirming both
+  broadcasts fire atomically in the timeout arm.

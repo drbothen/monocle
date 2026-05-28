@@ -1,0 +1,22 @@
+AC-003 — 4-byte little-endian length-prefix framing for all variants
+BC-2.05.002 postcondition PC-3
+
+TEST: monocle-ipc::connection_handshake::ac_003_four_byte_le_framing
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_003_four_byte_le_framing -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_003_four_byte_le_framing ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  Part 1 (unit): write_framed/read_framed round-trip is exercised for all four
+  ServerToClient variants (InitialState, PermissionPromptQueued, PermissionPromptResolved,
+  DropCounterUpdate). For each, buf[0..4] is decoded as a LE u32 and asserted equal to
+  buf.len() - 4, confirming the 4-byte prefix encodes the exact payload length. Each
+  variant is then re-decoded via read_framed to confirm round-trip fidelity.
+  Part 2 (integration): the full accept-loop path is exercised end-to-end — the InitialState
+  received over a live UnixStream decodes cleanly, proving framing works in production I/O.
