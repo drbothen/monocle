@@ -94,7 +94,16 @@ impl BackoffState {
     /// | 2                    | 1000ms         |
     /// | 3+                   | 2000ms (cap)   |
     pub fn next_delay(&mut self) -> Duration {
-        todo!("S-023: compute exponential backoff delay for attempt {}", self.attempt)
+        // Backoff schedule (BC-2.05.006 PC-4):
+        // Attempt 0 → 250ms, Attempt 1 → 500ms, Attempt 2 → 1000ms, Attempt 3+ → 2000ms cap.
+        let delay_ms = match self.attempt {
+            0 => BACKOFF_INITIAL_MS,                           // 250ms
+            1 => BACKOFF_INITIAL_MS * 2,                       // 500ms
+            2 => BACKOFF_INITIAL_MS * 4,                       // 1000ms
+            _ => BACKOFF_CAP_MS,                               // 2000ms cap
+        };
+        self.attempt = self.attempt.saturating_add(1);
+        Duration::from_millis(delay_ms)
     }
 }
 
