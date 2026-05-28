@@ -2,12 +2,12 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.27"
+version: "6.28"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T10:30:00Z
+timestamp: 2026-05-28T12:30:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "Wave 6 authorized (D-183). S-022 adversarial Pass 13 NITPICK_ONLY (1/3 clean). Pass 14 next."
+current_step: "S-022 CONVERGED at Pass 15 (3 consecutive NITPICK_ONLY). Advance to demo-recorder + pr-manager."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
@@ -15,6 +15,11 @@ traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESI
 awaiting: "S-022 delivery (TUI Client Connect + Initial State + Permission Msg Types)."
 durable_task_register:
   outstanding:
+    - id: "F-S022-ADV15-LOW-001"
+      subject: "Story S-022 AC-002 ring_tail type doc drift"
+      status: pending
+      detail: "Story v1.2 AC-002 says Vec<HookEvent>; canonical BC-2.05.002 v1.0.5 PC-2 + implementation says Vec<HookEventRecord>. Pass-2 architect Option B updated BC + SS-ipc but not story body. Per CLAUDE.md precedence, BC wins. Documentation polish — bump story to v1.3 with corrected AC-002. Routed to story-writer post-merge."
+      blocking: false
     - id: "ADV-W5GATE-HIGH-001"
       subject: "daemon_start_sequence() doesn't wire DaemonState — integration story needed"
       status: pending
@@ -320,6 +325,16 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.28 (S-022 CONVERGED — PASS 15, 3 CONSECUTIVE NITPICK_ONLY)
+
+**S-022 CONVERGED at Pass 15** (2026-05-28): 15 adversary passes, 3 consecutive NITPICK_ONLY (Passes 13/14/15). converged=TRUE in adversary-convergence-state.json.
+- Pass 15: 0 BLOCKER/HIGH/MED. 1 LOW doc-drift finding (F-S022-ADV15-LOW-001) routed to story-writer post-merge. Does not block convergence.
+- F-S022-ADV15-LOW-001: story AC-002 ring_tail Vec<HookEvent> vs canonical BC-2.05.002 Vec<HookEventRecord>. BC wins per CLAUDE.md precedence. Story v1.2→v1.3 post-merge.
+- Production code enterprise-grade. Tests provide production-invoking coverage of all BC postconditions + edge cases.
+- Next: demo-recorder + pr-manager.
+- Frontmatter: version 6.27 → 6.28, current_step updated.
+STATE v6.27 → v6.28.
 
 ## §Trace v6.27 (S-022 PASS 13 — NITPICK_ONLY, 1/3 CLEAN)
 
