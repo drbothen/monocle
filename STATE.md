@@ -2,12 +2,12 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.26"
+version: "6.27"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T22:30:00Z
+timestamp: 2026-05-28T10:30:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "Wave 6 authorized (D-183). S-022 in progress (serial-first). S-023 + S-025 parallel after S-022. S-026 last."
+current_step: "Wave 6 authorized (D-183). S-022 adversarial Pass 13 NITPICK_ONLY (1/3 clean). Pass 14 next."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
@@ -320,6 +320,15 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.27 (S-022 PASS 13 — NITPICK_ONLY, 1/3 CLEAN)
+
+**S-022 Adversarial Pass 13 PERSISTED** (2026-05-28): NITPICK_ONLY — 0 findings.
+- Pass 12 F-S022-ADV12-MED-001 RESOLVED (commit 7dacab7): 3 integration tests in hook_defer_race.rs invoke production handler stack.
+- Documented architectural limitation (no async yield between timeout-Err and guard) adjudicated as legitimate acceptance per CLAUDE.md Principle 1.
+- passes_clean_consecutive: 0 → 1. last_classification: MEDIUM_PRESENT → NITPICK_ONLY. Earliest convergence: Pass 15.
+- Frontmatter: version 6.26 → 6.27, current_step updated.
+STATE v6.26 → v6.27.
 
 ## §Trace v6.26 (WAVE 6 AUTHORIZED — S-022 IN PROGRESS)
 
