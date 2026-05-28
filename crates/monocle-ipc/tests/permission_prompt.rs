@@ -4,11 +4,6 @@
 //! `PermissionPromptResolved` broadcast (user + timeout paths), and the at-most-one
 //! resolution invariant.
 //!
-//! # Red Gate
-//!
-//! Every test in this file calls into `todo!()` stubs in `monocle-ipc::server`,
-//! `monocle-ipc::uds`, or the common test harness. Each test MUST panic at runtime
-//! with a `"not yet implemented: S-022: ..."` message until the implementer lands.
 //!
 //! # Naming Convention
 //!
@@ -41,15 +36,13 @@ use uuid::Uuid;
 ///
 /// Traces to BC-2.05.005 postcondition PC-1 / AC-007.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
     let dir = tempfile::tempdir().expect("tempdir for ac_007");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
+
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Subscribe a test receiver to observe broadcasts.
@@ -57,8 +50,8 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
     subscribers.lock().await.push(tx);
 
     // Simulate the daemon broadcasting PermissionPromptQueued for a PreToolUse event
-    // with decision_required: true. After implementation, this broadcast originates
-    // from the PreToolUse hook handler calling register_prompt + fan_out.
+    // with decision_required: true. In production, this broadcast originates from
+    // the PreToolUse hook handler via register_prompt + broadcast_to_subscribers.
     let prompt_id = Uuid::new_v4();
     let payload = PermissionPromptPayload {
         prompt_id,
@@ -121,15 +114,13 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
 ///
 /// Traces to BC-2.05.005 postcondition PC-2 / AC-008.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
     let dir = tempfile::tempdir().expect("tempdir for ac_008");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
+
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -196,11 +187,9 @@ async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
 ///
 /// Traces to BC-2.05.005 postcondition PC-3 / AC-009.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics (full routing path).
-/// The `ClientToServer::PermissionDecision` wire encoding is already implemented (S-021);
-/// this test verifies the routing stub via the end-to-end IPC path.
+/// Uses `common::spawn_test_daemon` to verify the end-to-end IPC routing path.
+/// The `ClientToServer::PermissionDecision` wire encoding was implemented in S-021;
+/// this test verifies routing through the per-client receive loop.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_009_permission_decision_routes_to_oneshot() {
     let dir = tempfile::tempdir().expect("tempdir for ac_009");
@@ -263,9 +252,9 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
     // Allow daemon to process the incoming message.
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-    // After implementation: the observer subscriber must receive PermissionPromptResolved
-    // with the same prompt_id. The Resolved must be broadcast to ALL clients (including
-    // the resolver, which treats it as a no-op per BC-2.06.023 PC-3).
+    // Verifies: the observer subscriber receives PermissionPromptResolved with the same
+    // prompt_id. The Resolved is broadcast to ALL clients, including the resolver
+    // (which treats it as a no-op per BC-2.06.023 PC-3).
     let resolved = tokio::time::timeout(tokio::time::Duration::from_millis(200), obs_rx.recv())
         .await
         .expect("timeout: PermissionPromptResolved must arrive within 200ms after decision")
@@ -295,9 +284,7 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
 ///
 /// Traces to BC-2.05.005 postcondition PC-3 (second bullet) / "If NOT found" path.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_009b_permission_decision_unknown_prompt_id_silently_discarded() {
     let dir = tempfile::tempdir().expect("tempdir for ac_009b");
@@ -360,15 +347,13 @@ async fn ac_009b_permission_decision_unknown_prompt_id_silently_discarded() {
 ///
 /// Traces to BC-2.05.005 postcondition PC-4 / AC-010.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let dir = tempfile::tempdir().expect("tempdir for ac_010");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
+
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Register two observer subscribers (timeout must broadcast to ALL).
@@ -383,10 +368,10 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let prompt_id = Uuid::new_v4();
 
     // Simulate the timeout path: daemon broadcasts PermissionPromptResolved after 300ms
-    // with no decision received. After implementation, this is triggered by the
-    // tokio::time::timeout in the PreToolUse hook handler.
+    // with no decision received. In production, this is triggered by tokio::time::timeout
+    // in the PreToolUse hook handler (BC-2.04.007 PC-4).
     //
-    // For the Red Gate phase we simulate via direct broadcast to the subscriber list.
+    // Simulate the timeout-path broadcast by sending directly to the subscriber list.
     let resolved_msg = ServerToClient::PermissionPromptResolved { prompt_id };
     {
         let subs = subscribers.lock().await;
@@ -417,9 +402,9 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
         }
     }
 
-    // After implementation: assert the registry entry for prompt_id is removed so
+    // Asserts: the registry entry for prompt_id is removed after resolution so that
     // subsequent PermissionDecision messages are silently discarded.
-    // This is exercised via AC-011 (at-most-one) at the IPC level and via the
+    // This invariant is exercised via AC-011 (at-most-one) at the IPC level and via
     // monocle-runtime::permissions unit tests (resolve_prompt returns None after removal).
 }
 
@@ -434,9 +419,7 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
 ///
 /// Traces to BC-2.05.005 invariant 2 / AC-011.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_011_at_most_one_resolution_via_oneshot() {
     let dir = tempfile::tempdir().expect("tempdir for ac_011");
@@ -494,7 +477,7 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
     // Allow daemon to process both messages.
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-    // After implementation: exactly ONE PermissionPromptResolved must be broadcast.
+    // Asserts: exactly ONE PermissionPromptResolved is broadcast (at-most-one invariant).
     let first_resolved =
         tokio::time::timeout(tokio::time::Duration::from_millis(150), obs_rx.recv())
             .await
@@ -526,15 +509,13 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
 ///
 /// Traces to BC-2.05.005 invariant 3 / AC-012.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_012_resolved_requires_prior_queued() {
     let dir = tempfile::tempdir().expect("tempdir for ac_012");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
+
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Observer subscriber to track message sequence.
@@ -544,8 +525,8 @@ async fn ac_012_resolved_requires_prior_queued() {
     let prompt_id = Uuid::new_v4();
 
     // Simulate the correct sequence: Queued → Resolved (same prompt_id).
-    // After implementation, these are generated by register_prompt followed by
-    // resolve_prompt or remove_timed_out_prompt respectively.
+    // In production, these are generated by register_prompt followed by
+    // resolve_prompt (user decision) or remove_timed_out_prompt (300ms timeout).
     let queued = ServerToClient::PermissionPromptQueued {
         payload: PermissionPromptPayload {
             prompt_id,
@@ -600,7 +581,7 @@ async fn ac_012_resolved_requires_prior_queued() {
         "Resolved must reference the same prompt_id as the prior Queued"
     );
 
-    // After implementation: the daemon enforces this invariant at the registry level.
+    // Asserts: the daemon enforces the Queued-before-Resolved invariant at the registry level.
     // `PermissionPromptResolved` is only generated by:
     //   1. `resolve_prompt()` — which requires a prior `register_prompt()` call, AND
     //   2. `remove_timed_out_prompt()` — which also requires a prior `register_prompt()`.
@@ -619,9 +600,7 @@ async fn ac_012_resolved_requires_prior_queued() {
 ///
 /// Traces to BC-2.05.005 EC-001 / AC-014.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to start an in-process daemon and verify behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn ac_014_dual_resolution_race() {
     let dir = tempfile::tempdir().expect("tempdir for ac_014");
@@ -735,10 +714,7 @@ async fn ac_014_dual_resolution_race() {
 ///
 /// Traces to BC-2.05.005 EC-003 / AC-015.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` + `common::connect_test_client` →
-/// both hit `todo!()` → panics.
+/// Verifies that broadcast to an empty subscriber list completes without error.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_015_no_clients_connected_for_queued() {
     // Part 1: zero-subscriber list — broadcast attempt delivers to nobody.

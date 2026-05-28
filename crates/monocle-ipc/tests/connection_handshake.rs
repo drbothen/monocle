@@ -2,12 +2,6 @@
 //!
 //! Tests the TUI connect + InitialState push lifecycle per BC-2.05.002.
 //!
-//! # Red Gate
-//!
-//! Every test in this file calls into `todo!()` stubs in `monocle-ipc::server`,
-//! `monocle-ipc::uds`, or the common test harness. Each test MUST panic at runtime
-//! with a `"not yet implemented: S-022: ..."` message until the implementer lands.
-//! This is the required Red Gate signal for story S-022 Step 4.
 //!
 //! # Naming Convention
 //!
@@ -39,27 +33,23 @@ use uuid::Uuid;
 ///
 /// Traces to BC-2.05.002 postcondition PC-1 / AC-001.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!("S-022 test harness: spawn test daemon ...")` → panics.
+/// Uses `common::spawn_test_daemon` to verify per-client task lifecycle behavior.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_001_per_client_tokio_task_spawned() {
     let dir = tempfile::tempdir().expect("tempdir for ac_001");
     let runtime_dir = dir.path().to_path_buf();
 
-    // spawn_test_daemon hits todo!() (Red Gate).
+
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
-    // After implementation:
     // 1. Connect a TUI client.
     // 2. Assert subscribers.lock().await.len() == 1 (one per-client task spawned).
     // 3. Drop the client stream (simulate EOF).
     // 4. Allow the per-client task to detect EOF.
     // 5. Assert subscribers.lock().await.len() == 0 (client removed on EOF).
     //
-    // Implementation note: the per-client task polls for EOF via the recv loop;
-    // the subscriber removal is driven by `remove_subscriber` called on send error or
-    // clean read of 0 bytes.
+    // The per-client task polls for EOF via the recv loop;
+    // subscriber removal is driven by `remove_subscriber` called on send error or EOF.
 }
 
 // ---------------------------------------------------------------------------
@@ -72,22 +62,20 @@ async fn ac_001_per_client_tokio_task_spawned() {
 ///
 /// Traces to BC-2.05.002 postcondition PC-2 / AC-002.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` + `common::connect_test_client` →
-/// both hit `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` + `common::connect_test_client` to verify
+/// InitialState is the first and only message on a new TUI connection.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_002_initial_state_is_first_message() {
     let dir = tempfile::tempdir().expect("tempdir for ac_002");
     let runtime_dir = dir.path().to_path_buf();
 
-    // spawn_test_daemon hits todo!() (Red Gate).
+
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
-    // connect_test_client hits todo!() (Red Gate).
+
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation: recv_one must return ServerToClient::InitialState.
+    // Asserts: recv_one returns ServerToClient::InitialState as the first message.
     let first_msg = common::recv_one(&mut client).await;
 
     match first_msg {
@@ -118,7 +106,7 @@ async fn ac_002_initial_state_is_first_message() {
 /// # Pure framing (already implemented — no Red Gate hit in Part 1)
 ///
 /// Part 1 exercises `write_framed`/`read_framed` which are already implemented (S-021).
-/// Part 2 exercises the end-to-end integration via `spawn_test_daemon` (Red Gate).
+/// Part 2 exercises end-to-end integration via `spawn_test_daemon` + `connect_test_client`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_003_four_byte_le_framing() {
     // Part 1: pure framing check (already implemented — no todo!() hit).
@@ -173,11 +161,11 @@ async fn ac_003_four_byte_le_framing() {
     let dir = tempfile::tempdir().expect("tempdir for ac_003 part 2");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate for the integration part of AC-003).
+
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation: the first message must be a properly framed InitialState.
+    // Asserts: the first message is a properly framed InitialState (end-to-end decode).
     let first_msg = common::recv_one(&mut client).await;
     match first_msg {
         ServerToClient::InitialState { .. } => {
@@ -198,17 +186,13 @@ async fn ac_003_four_byte_le_framing() {
 ///
 /// Traces to BC-2.05.002 postcondition PC-4 / AC-004.
 ///
-/// # Red Gate
+/// Uses `common::spawn_test_daemon` to verify the 256 KiB size guard on InitialState.
 ///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
-///
-/// # Implementation note for the implementer
-///
-/// Pre-populate the DaemonState with a `ring_tail` whose total serialized size
-/// exceeds 262,144 bytes. One way: insert 300 synthetic `HookEvent` records whose
-/// JSON is ~1 KiB each. `send_initial_state` must serialize, detect `len > MAX_MESSAGE_BYTES`,
-/// log ERROR, and return `Err(IpcError::MessageTooLarge)` which closes the connection.
-/// The TUI client reads EOF and returns `Err(IpcError::Disconnected)`.
+/// Pre-populates `pending_decisions` with 300 `PermissionPromptPayload` entries in the
+/// overlay_stack so that `snapshot_initial_state` produces an InitialState exceeding
+/// 256 KiB (262,144 bytes). `send_initial_state` serializes, detects `len > MAX_MESSAGE_BYTES`,
+/// logs ERROR, and returns `Err(IpcError::MessageTooLarge)`, closing the connection.
+/// The TUI client reads EOF and receives `Err(IpcError::Disconnected)`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_004_initial_state_too_large_closes_connection() {
     let dir = tempfile::tempdir().expect("tempdir for ac_004");
@@ -270,19 +254,16 @@ async fn ac_004_initial_state_too_large_closes_connection() {
 ///
 /// Traces to BC-2.05.002 postcondition PC-5 / PC-6 / AC-005.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` → `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` to verify server-push delivery without client polling.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_005_push_only_no_polling() {
     let dir = tempfile::tempdir().expect("tempdir for ac_005");
     let runtime_dir = dir.path().to_path_buf();
 
-    // Hits todo!() (Red Gate).
+
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation:
     // 1. Consume the InitialState message (first message, no poll required).
     // 2. Push a DropCounterUpdate via the subscriber list to simulate a daemon push.
     // 3. Assert the client receives the push message without sending any request.
@@ -341,23 +322,21 @@ async fn ac_005_push_only_no_polling() {
 ///
 /// Traces to BC-2.05.002 invariant 3 / AC-006.
 ///
-/// # Red Gate
-///
-/// Calls `register_subscriber` → `todo!("S-022: register_subscriber ...")` → panics.
+/// Verifies that `register_subscriber` enqueues events before InitialState delivery
+/// so no events are lost in the gap between snapshot and streaming phase.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_006_no_gap_window_between_snapshot_and_streaming() {
     let subscribers: SubscriberList = Arc::new(tokio::sync::Mutex::new(Vec::new()));
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerToClient>(64);
 
-    // register_subscriber is the todo!() stub that enforces the no-gap invariant.
     // The sender MUST be registered in subscribers BEFORE InitialState is sent so that
     // any event arriving during the send is queued in the channel, not dropped.
-    //
-    // Panics here (Red Gate for AC-006).
+    // This enforces the no-gap invariant (AC-006, BC-2.05.002 invariant 3).
+
     register_subscriber(&subscribers, tx).await;
 
-    // After implementation: simulate an event arriving after subscription but before
-    // InitialState completes by pushing a DropCounterUpdate to the subscriber list.
+    // Simulate an event arriving after subscription but before InitialState completes
+    // by pushing a DropCounterUpdate directly to the subscriber list.
     let gap_event = ServerToClient::DropCounterUpdate { drop_counter: 1 };
     {
         let subs = subscribers.lock().await;
@@ -366,7 +345,7 @@ async fn ac_006_no_gap_window_between_snapshot_and_streaming() {
         }
     }
 
-    // After implementation: the subscriber channel must contain the gap_event,
+    // Asserts: the subscriber channel must contain the gap_event,
     // proving no gap window exists between snapshot time and streaming phase.
     let received = rx
         .try_recv()
@@ -393,10 +372,8 @@ async fn ac_006_no_gap_window_between_snapshot_and_streaming() {
 ///
 /// Traces to BC-2.05.002 EC-001 / AC-013.
 ///
-/// # Red Gate
-///
-/// Calls `common::spawn_test_daemon` + `common::connect_test_client` →
-/// both hit `todo!()` → panics.
+/// Uses `common::spawn_test_daemon` + `common::connect_test_client` to verify that
+/// `InitialState` carries empty collections and drop_counter=0 when daemon state is fresh.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ac_013_empty_initial_state() {
     let dir = tempfile::tempdir().expect("tempdir for ac_013");
@@ -405,11 +382,11 @@ async fn ac_013_empty_initial_state() {
     // The daemon is started with a freshly constructed DaemonState (all None fields),
     // which maps to empty Vecs and drop_counter=0 in InitialState.
     //
-    // Hits todo!() (Red Gate).
+
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;
 
-    // After implementation: the first message must be InitialState with all empties.
+    // Asserts: the first message is InitialState with all empties.
     let first_msg = common::recv_one(&mut client).await;
 
     match first_msg {

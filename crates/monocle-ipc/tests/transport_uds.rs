@@ -11,8 +11,7 @@
 //! and graceful shutdown cleanup.
 //!
 //! All test names follow `test_BC_S_SS_NNN_[description]` convention.
-//! These tests call `UdsTransport::bind(...)` which is a `todo!()` stub — they MUST FAIL
-//! at runtime to satisfy the Red Gate requirement.
+//! These tests call `UdsTransport::bind(...)` to verify UDS socket lifecycle behavior.
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Path;
