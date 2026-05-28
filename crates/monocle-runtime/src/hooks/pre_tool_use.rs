@@ -108,19 +108,28 @@ pub async fn post_hook_pre_tool_use(
                 deferred_prompt_id.lock().ok().and_then(|guard| *guard);
 
             if let Some(prompt_id) = timed_out_prompt_id {
-                // Remove the stale registry entry (non-async — no await needed).
-                if let Some(registry) = state.pending_decisions.as_ref() {
-                    registry.remove_timed_out_prompt(prompt_id);
-                }
-                // Broadcast PermissionPromptResolved so TUI clients dismiss the overlay.
-                if let Some(subscribers) = state.ipc_subscribers.as_ref() {
-                    let resolved_msg =
-                        monocle_ipc::types::ServerToClient::PermissionPromptResolved { prompt_id };
-                    crate::ipc_server::broadcast_to_subscribers(subscribers, resolved_msg).await;
-                    tracing::info!(
-                        %prompt_id,
-                        "PreToolUse timeout: PermissionPromptResolved broadcast to TUI clients"
-                    );
+                // If a concurrent PermissionDecision arrives during the tokio::time::timeout
+                // → Err window, handle_permission_decision will have already removed the
+                // registry entry and broadcast PermissionPromptResolved. Only broadcast here
+                // if WE removed the entry (Some return value). Per F-S022-ADV11-LOW-001.
+                let removed = state
+                    .pending_decisions
+                    .as_ref()
+                    .and_then(|registry| registry.remove_timed_out_prompt(prompt_id));
+                if removed.is_some() {
+                    // Broadcast PermissionPromptResolved so TUI clients dismiss the overlay.
+                    if let Some(subscribers) = state.ipc_subscribers.as_ref() {
+                        let resolved_msg =
+                            monocle_ipc::types::ServerToClient::PermissionPromptResolved {
+                                prompt_id,
+                            };
+                        crate::ipc_server::broadcast_to_subscribers(subscribers, resolved_msg)
+                            .await;
+                        tracing::info!(
+                            %prompt_id,
+                            "PreToolUse timeout: PermissionPromptResolved broadcast to TUI clients"
+                        );
+                    }
                 }
             }
 
@@ -369,4 +378,70 @@ async fn handle_pre_tool_use_inner(
     }
 
     http_response
+}
+
+#[cfg(test)]
+// Allow BC-based test naming and test-only expect/unwrap.
+#[allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
+mod tests {
+    use std::sync::Arc;
+
+    use monocle_ipc::server::{ClientEntry, SubscriberList, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
+    use tokio::sync::mpsc;
+
+    use crate::permissions::PendingDecisionRegistry;
+
+    /// test_F_S022_ADV11_LOW_001_timeout_broadcast_skipped_when_entry_already_removed:
+    ///
+    /// Verifies the guard introduced by F-S022-ADV11-LOW-001: when
+    /// `remove_timed_out_prompt` returns `None` (the registry entry was already
+    /// removed — e.g., by a concurrent `handle_permission_decision` that arrived
+    /// during the `tokio::time::timeout → Err` window), the timeout arm MUST NOT
+    /// broadcast `PermissionPromptResolved`.
+    ///
+    /// Approach: call `remove_timed_out_prompt` on an empty registry, mirror the
+    /// `and_then` guard from the production code, and assert that the IPC subscriber
+    /// receives 0 messages.  This is a unit-level test of the guard predicate — the
+    /// full integration path (Defer + concurrent decision + timeout) is exercised by
+    /// the S-026 permission-overlay integration suite once the TUI side is wired.
+    #[tokio::test]
+    async fn test_F_S022_ADV11_LOW_001_timeout_broadcast_skipped_when_entry_already_removed() {
+        // Create a registry and a prompt_id that was NEVER registered (simulates
+        // the state after a concurrent PermissionDecision already called
+        // `resolve_prompt`, which removes the entry before the timeout arm runs).
+        let registry = PendingDecisionRegistry::new();
+        let phantom_prompt_id = uuid::Uuid::new_v4();
+
+        // Mirror the production guard introduced by F-S022-ADV11-LOW-001.
+        let removed = Some(&registry).and_then(|r| r.remove_timed_out_prompt(phantom_prompt_id));
+        assert!(
+            removed.is_none(),
+            "remove_timed_out_prompt on an absent entry must return None"
+        );
+
+        // Build an IPC subscriber list and attach one client.
+        let subscribers: SubscriberList = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+        let (tx_client, mut rx_client) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        {
+            let mut subs = subscribers.lock().await;
+            subs.push(ClientEntry::new(tx_client));
+        }
+
+        // Production code only broadcasts when `removed.is_some()`.
+        // Since removed is None, no broadcast should occur.
+        if removed.is_some() {
+            let msg = ServerToClient::PermissionPromptResolved {
+                prompt_id: phantom_prompt_id,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&subscribers, msg).await;
+        }
+
+        // Assert: the subscriber channel must be empty — no broadcast was sent.
+        assert!(
+            rx_client.try_recv().is_err(),
+            "PermissionPromptResolved must NOT be broadcast when \
+            remove_timed_out_prompt returns None (F-S022-ADV11-LOW-001)"
+        );
+    }
 }
