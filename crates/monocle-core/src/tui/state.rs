@@ -232,9 +232,17 @@ pub enum Action {
 /// The function is pure (no I/O) and must be exercised by unit tests without
 /// spawning any async runtime.
 ///
-/// Empty-stack collapse invariant (AC-005): whenever a path would produce
-/// `Overlay { stack: empty, .. }`, it collapses to `Dashboard { focused: prior }`
-/// instead. This invariant is enforced inside this function — callers need not check.
+/// Empty-stack collapse invariant (AC-005): `AppMode::Overlay` has shape
+/// `Overlay { prior: FocusSnapshot }` — there is no `stack` field on the mode.
+/// The overlay stack lives in `App::overlay_stack` (a `VecDeque<PromptModal>`).
+///
+/// `transition()` is stack-agnostic: it cannot enforce the empty-stack collapse
+/// invariant because it has no access to `App::overlay_stack`. The collapse is
+/// enforced APP-LEVEL in `App::pop_overlay` (the `Action::PopOverlay` arm of
+/// the run-loop key handler): after popping from `overlay_stack`, if the stack
+/// is now empty, the run-loop transitions to `Dashboard { focused: prior }`;
+/// if the stack is still non-empty, it re-enters `Overlay`. Callers of
+/// `transition()` must perform this post-call check themselves.
 pub fn transition(mode: AppMode, action: Action) -> AppMode {
     match (mode, action) {
         // --- Filtering entry ---
