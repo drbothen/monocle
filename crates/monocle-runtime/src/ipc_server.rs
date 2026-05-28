@@ -231,7 +231,7 @@ pub async fn send_initial_state(
 ///
 /// This is the canonical broadcast helper; all broadcast sites MUST use it to ensure
 /// consistent slow-client handling (BC-2.05.004 EC-005).
-pub(crate) async fn broadcast_to_subscribers(subscribers: &SubscriberList, msg: ServerToClient) {
+pub async fn broadcast_to_subscribers(subscribers: &SubscriberList, msg: ServerToClient) {
     let mut subs = subscribers.lock().await;
     let mut live: Vec<tokio::sync::mpsc::Sender<ServerToClient>> = Vec::with_capacity(subs.len());
 
