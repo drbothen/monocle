@@ -205,6 +205,84 @@ mod uptime_tests {
     }
 }
 
+#[cfg(test)]
+mod format_cost_tests {
+    use super::format_cost;
+
+    /// F-S025-ADV9-MED-001: NaN must render as em dash, not "$NaN".
+    #[test]
+    fn test_format_cost_nan_renders_em_dash() {
+        assert_eq!(format_cost(Some(f64::NAN)), "\u{2014}");
+    }
+
+    /// F-S025-ADV9-MED-001: positive infinity must render as em dash, not "$inf".
+    #[test]
+    fn test_format_cost_positive_infinity_renders_em_dash() {
+        assert_eq!(format_cost(Some(f64::INFINITY)), "\u{2014}");
+    }
+
+    /// F-S025-ADV9-MED-001: negative infinity must render as em dash, not "$-inf".
+    #[test]
+    fn test_format_cost_negative_infinity_renders_em_dash() {
+        assert_eq!(format_cost(Some(f64::NEG_INFINITY)), "\u{2014}");
+    }
+}
+
+#[cfg(test)]
+mod format_token_count_cap_tests {
+    use super::format_token_count;
+
+    /// F-S025-ADV9-LOW-002: 1_000_000_000 (1B) must cap to "999M+".
+    #[test]
+    fn test_format_token_count_billion_caps_at_999m_plus() {
+        assert_eq!(format_token_count(1_000_000_000), "999M+");
+    }
+
+    /// F-S025-ADV9-LOW-002: u64::MAX must cap to "999M+".
+    #[test]
+    fn test_format_token_count_u64_max_caps_at_999m_plus() {
+        assert_eq!(format_token_count(u64::MAX), "999M+");
+    }
+}
+
+#[cfg(test)]
+mod format_session_row_tests {
+    use super::format_session_row;
+    use chrono::Utc;
+    use monocle_core::engine::{EnrichedSession, SessionStatus};
+
+    fn make_session_with_id(id: &str) -> EnrichedSession {
+        EnrichedSession::new(
+            id.to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Idle,
+            None,
+            Some("monocle".to_string()),
+            None,
+            0,
+            None,
+        )
+    }
+
+    fn fixed_now() -> chrono::DateTime<Utc> {
+        // 2026-01-01T00:00:00Z — stable reference instant for deterministic tests.
+        chrono::DateTime::from_timestamp(1_767_225_600, 0).expect("valid timestamp")
+    }
+
+    /// F-S025-ADV9-LOW-001: empty session_id must render as "?" prefix, not " ● ".
+    #[test]
+    fn test_format_session_row_empty_session_id_renders_question_mark() {
+        let session = make_session_with_id("");
+        let row = format_session_row(&session, fixed_now());
+        assert!(
+            row.starts_with("? ● "),
+            "expected row to start with '? ● '; got: {row}"
+        );
+    }
+}
+
 /// Render state for `SessionsPanel` — tracks the currently selected row index.
 ///
 /// Wraps `ratatui::widgets::ListState` so that the implementer can call
