@@ -358,7 +358,7 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let dir = tempfile::tempdir().expect("tempdir for ac_010");
     let runtime_dir = dir.path().to_path_buf();
 
-    let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (subscribers, state_handle) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Register two observer subscribers (timeout must broadcast to ALL).
     let (obs_tx1, mut obs_rx1) = tokio::sync::mpsc::channel::<ServerToClient>(64);
@@ -369,12 +369,55 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
         subs.push(ClientEntry::new(obs_tx2));
     }
 
-    let prompt_id = Uuid::new_v4();
+    // Pre-register a prompt so the registry-removal assertion has an entry to verify.
+    let registry = state_handle
+        .state
+        .pending_decisions
+        .as_ref()
+        .expect("ac_010: test daemon must have pending_decisions registry");
+    let (decision_tx, _decision_rx) = tokio::sync::oneshot::channel();
+    let (prompt_id, _payload) = registry.register_prompt(
+        monocle_ipc::types::PromptPayloadInputs {
+            session_id: "s-010".to_string(),
+            tool_name: "Edit".to_string(),
+            tool_input: serde_json::json!({}),
+            old_content: None,
+            new_content: None,
+        },
+        decision_tx,
+    );
 
-    // Simulate the timeout path: daemon broadcasts PermissionPromptResolved after 300ms
-    // with no decision received. In production, this is triggered by tokio::time::timeout
-    // in the PreToolUse hook handler (BC-2.04.007 PC-4).
-    //
+    // Sanity: entry is present before removal.
+    let snapshot_before = registry.snapshot_payloads();
+    assert!(
+        snapshot_before.iter().any(|p| p.prompt_id == prompt_id),
+        "ac_010: registered prompt_id must appear in snapshot before removal"
+    );
+
+    // Simulate the timeout path: daemon calls remove_timed_out_prompt and then broadcasts
+    // PermissionPromptResolved.  In production both happen atomically in the hook handler
+    // timeout branch (BC-2.04.007 PC-4 / BC-2.05.005 PC-4).
+    let removed = registry.remove_timed_out_prompt(prompt_id);
+    assert!(
+        removed.is_some(),
+        "ac_010: remove_timed_out_prompt must return Some(payload) for a registered prompt"
+    );
+
+    // Post-removal: the entry must no longer appear in the snapshot, so that any late
+    // PermissionDecision for this prompt_id is silently discarded (BC-2.05.005 PC-4).
+    let snapshot_after = registry.snapshot_payloads();
+    assert!(
+        !snapshot_after.iter().any(|p| p.prompt_id == prompt_id),
+        "ac_010: registry must not contain prompt_id after remove_timed_out_prompt"
+    );
+
+    // A second resolve call must return None — the entry is gone (at-most-one invariant).
+    let second_resolve = registry.resolve_prompt(prompt_id, PermissionDecisionKind::Allow);
+    assert!(
+        second_resolve.is_none(),
+        "ac_010: resolve_prompt after remove_timed_out_prompt must return None (silently discarded)"
+    );
+
     // Simulate the timeout-path broadcast by sending directly to the subscriber list.
     let resolved_msg = ServerToClient::PermissionPromptResolved { prompt_id };
     {
@@ -406,11 +449,6 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
             other => panic!("observer {i}: expected PermissionPromptResolved, got {other:?}"),
         }
     }
-
-    // Asserts: the registry entry for prompt_id is removed after resolution so that
-    // subsequent PermissionDecision messages are silently discarded.
-    // This invariant is exercised via AC-011 (at-most-one) at the IPC level and via
-    // monocle-runtime::permissions unit tests (resolve_prompt returns None after removal).
 }
 
 // ---------------------------------------------------------------------------
