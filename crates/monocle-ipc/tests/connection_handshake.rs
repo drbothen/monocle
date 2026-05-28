@@ -233,8 +233,7 @@ async fn ac_004_initial_state_too_large_closes_connection() {
                 "content": "A".repeat(1024),
             });
             registry.register_prompt(
-                monocle_ipc::types::PermissionPromptPayload {
-                    prompt_id: uuid::Uuid::new_v4(),
+                monocle_ipc::types::PromptPayloadInputs {
                     session_id: format!("session-{i}"),
                     tool_name: "Edit".to_string(),
                     tool_input: large_tool_input,

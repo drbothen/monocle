@@ -27,7 +27,7 @@ use std::sync::{Arc, Mutex};
 
 use uuid::Uuid;
 
-use monocle_ipc::types::{PermissionDecisionKind, PermissionPromptPayload};
+use monocle_ipc::types::{PermissionDecisionKind, PermissionPromptPayload, PromptPayloadInputs};
 
 /// A single pending-decision entry in the registry.
 ///
@@ -81,40 +81,62 @@ impl PendingDecisionRegistry {
         }
     }
 
-    /// Register a new in-flight permission prompt and return its stable `prompt_id`.
+    /// Register a new in-flight permission prompt and return its assigned `prompt_id`
+    /// together with the complete `PermissionPromptPayload` (F-ADV2-MED-001).
     ///
     /// # Contract (BC-2.05.005 postcondition PC-1)
     ///
     /// - Generates a fresh `Uuid::new_v4()` as the `prompt_id`.
+    /// - Constructs a [`PermissionPromptPayload`] from `inputs` with the assigned `prompt_id`.
     /// - Inserts `(payload, sender)` into the registry keyed by `prompt_id`.
-    /// - Returns the `prompt_id` so the caller can include it in the
-    ///   `PermissionPromptQueued { payload }` broadcast.
+    /// - Returns `(prompt_id, payload)` so the caller can broadcast
+    ///   `PermissionPromptQueued { payload }` and record the `prompt_id` for cleanup.
     /// - The `prompt_id` is stable: it will appear identically in `PermissionPromptResolved`.
+    ///
+    /// # API contract clarification (F-ADV2-MED-001)
+    ///
+    /// Callers pass [`PromptPayloadInputs`] (no `prompt_id` field). The registry assigns the
+    /// UUID and returns the complete payload. This eliminates the previous silent-overwrite
+    /// pattern where a caller-supplied placeholder was discarded.
     ///
     /// # Parameters
     ///
-    /// - `payload`: The full `PermissionPromptPayload` to store (will also be broadcast
-    ///   to TUI clients and included in `InitialState.overlay_stack` for late-connecting
-    ///   clients).
+    /// - `inputs`: The caller-controlled fields for the prompt (session_id, tool_name, etc.).
+    ///   No `prompt_id` — the registry owns that.
     /// - `sender`: The `oneshot::Sender<PermissionDecisionKind>` that the HTTP handler is
     ///   awaiting on its receiver end.
+    ///
+    /// # Returns
+    ///
+    /// `(prompt_id, payload)` — the caller broadcasts `payload` to TUI clients and stores
+    /// `prompt_id` for the timeout cleanup path.
     pub fn register_prompt(
         &self,
-        mut payload: PermissionPromptPayload,
+        inputs: PromptPayloadInputs,
         sender: tokio::sync::oneshot::Sender<PermissionDecisionKind>,
-    ) -> Uuid {
+    ) -> (Uuid, PermissionPromptPayload) {
         let prompt_id = Uuid::new_v4();
-        // Overwrite the caller-supplied placeholder with the stable, registry-assigned UUID.
+        // Build the complete payload with the registry-assigned prompt_id.
         // This ensures snapshot_payloads() returns the correct prompt_id for late-connecting TUI
         // clients (BC-2.05.002 AC-002 — overlay_stack uses the real UUID, not Uuid::nil()).
-        payload.prompt_id = prompt_id;
-        let entry = PendingEntry { payload, sender };
+        let payload = PermissionPromptPayload {
+            prompt_id,
+            session_id: inputs.session_id,
+            tool_name: inputs.tool_name,
+            tool_input: inputs.tool_input,
+            old_content: inputs.old_content,
+            new_content: inputs.new_content,
+        };
+        let entry = PendingEntry {
+            payload: payload.clone(),
+            sender,
+        };
         let mut map = self
             .inner
             .lock()
             .expect("PendingDecisionRegistry mutex poisoned");
         map.insert(prompt_id, entry);
-        prompt_id
+        (prompt_id, payload)
     }
 
     /// Resolve a pending permission prompt with the given user decision.

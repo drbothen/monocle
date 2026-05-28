@@ -212,14 +212,13 @@ async fn ac_009_permission_decision_routes_to_oneshot() {
     // the PermissionDecision to the oneshot (BC-2.05.005 PC-3 "If found" path).
     // Without this, the prompt_id is unknown and the decision is silently discarded.
     let (decision_tx, mut decision_rx) = tokio::sync::oneshot::channel();
-    let prompt_id = state_handle
+    let (prompt_id, _payload) = state_handle
         .state
         .pending_decisions
         .as_ref()
         .expect("test daemon must have pending_decisions registry")
         .register_prompt(
-            monocle_ipc::types::PermissionPromptPayload {
-                prompt_id: Uuid::new_v4(), // overwritten by register_prompt
+            monocle_ipc::types::PromptPayloadInputs {
                 session_id: "s-009".to_string(),
                 tool_name: "Bash".to_string(),
                 tool_input: serde_json::json!({"cmd": "ls"}),
@@ -447,14 +446,13 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
 
     // Pre-register a prompt so the daemon can route PermissionDecisions.
     let (decision_tx, _decision_rx) = tokio::sync::oneshot::channel();
-    let prompt_id = state_handle
+    let (prompt_id, _payload) = state_handle
         .state
         .pending_decisions
         .as_ref()
         .expect("test daemon must have pending_decisions registry")
         .register_prompt(
-            monocle_ipc::types::PermissionPromptPayload {
-                prompt_id: Uuid::new_v4(),
+            monocle_ipc::types::PromptPayloadInputs {
                 session_id: "s-011".to_string(),
                 tool_name: "Edit".to_string(),
                 tool_input: serde_json::json!({}),
@@ -633,14 +631,13 @@ async fn ac_014_dual_resolution_race() {
 
     // Pre-register a prompt so both racing clients can attempt to resolve it.
     let (decision_tx, _decision_rx) = tokio::sync::oneshot::channel();
-    let prompt_id = state_handle
+    let (prompt_id, _payload) = state_handle
         .state
         .pending_decisions
         .as_ref()
         .expect("test daemon must have pending_decisions registry")
         .register_prompt(
-            monocle_ipc::types::PermissionPromptPayload {
-                prompt_id: Uuid::new_v4(),
+            monocle_ipc::types::PromptPayloadInputs {
                 session_id: "s-014".to_string(),
                 tool_name: "Bash".to_string(),
                 tool_input: serde_json::json!({}),
@@ -778,25 +775,25 @@ async fn ac_015_no_clients_connected_for_queued() {
 
     let (_subscribers2, state2) = common::spawn_test_daemon(&runtime_dir).await;
 
-    // Register the prompt from Part 1 into the daemon's pending_decisions registry,
-    // simulating the scenario where a PreToolUse hook arrived before any TUI connected.
+    // Register a prompt into the daemon's pending_decisions registry, simulating
+    // the scenario where a PreToolUse hook arrived before any TUI connected.
+    // We verify via overlay_stack count (1 prompt), not by matching the exact prompt_id.
     let (reg_tx, _reg_rx) = tokio::sync::oneshot::channel();
-    let registered_payload = PermissionPromptPayload {
-        prompt_id, // use the same prompt_id from Part 1
-        session_id: "s-015".to_string(),
-        tool_name: "Edit".to_string(),
-        tool_input: serde_json::json!({"path": "/tmp/baz.txt"}),
-        old_content: Some("old".to_string()),
-        new_content: Some("new".to_string()),
-    };
-    // register_prompt generates a new prompt_id internally, so we use a workaround:
-    // directly insert via a dummy registration and verify via overlay_stack count.
-    let _registered_id = state2
+    let _registered = state2
         .state
         .pending_decisions
         .as_ref()
         .expect("test daemon must have pending_decisions registry")
-        .register_prompt(registered_payload, reg_tx);
+        .register_prompt(
+            monocle_ipc::types::PromptPayloadInputs {
+                session_id: "s-015".to_string(),
+                tool_name: "Edit".to_string(),
+                tool_input: serde_json::json!({"path": "/tmp/baz.txt"}),
+                old_content: Some("old".to_string()),
+                new_content: Some("new".to_string()),
+            },
+            reg_tx,
+        );
 
     let mut client = common::connect_test_client(&runtime_dir).await;
 

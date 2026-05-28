@@ -224,13 +224,11 @@ async fn handle_pre_tool_use_inner(
             // BC-2.04.007 invariant 5: Defer → register prompt + broadcast PermissionPromptQueued
             // to all connected TUI clients; await the decision oneshot.
             // The outer 300ms timeout wrapping this function fires on no-decision.
-            use monocle_ipc::types::{PermissionDecisionKind, PermissionPromptPayload};
-            use uuid::Uuid;
+            use monocle_ipc::types::{PermissionDecisionKind, PromptPayloadInputs};
 
-            // Step 1: Build PermissionPromptPayload from envelope fields.
-            // prompt_id will be overwritten by register_prompt; use a placeholder here.
-            let payload_pre = PermissionPromptPayload {
-                prompt_id: Uuid::nil(), // overwritten by register_prompt
+            // Step 1: Build PromptPayloadInputs from envelope fields.
+            // No prompt_id — the registry assigns it (F-ADV2-MED-001).
+            let inputs = PromptPayloadInputs {
                 session_id: envelope.session_id.clone(),
                 tool_name: envelope.tool_name.clone().unwrap_or_default(),
                 tool_input: envelope
@@ -241,22 +239,17 @@ async fn handle_pre_tool_use_inner(
                 new_content: None,
             };
 
-            // Steps 2+3: Create decision oneshot; register prompt → obtain stable prompt_id.
+            // Steps 2+3: Create decision oneshot; register prompt → obtain stable prompt_id
+            // and complete payload (both returned by register_prompt).
             let defer_response = if let Some(registry) = state.pending_decisions.as_ref() {
                 let (decision_tx, decision_rx) =
                     tokio::sync::oneshot::channel::<PermissionDecisionKind>();
-                let prompt_id = registry.register_prompt(payload_pre.clone(), decision_tx);
+                let (prompt_id, payload) = registry.register_prompt(inputs, decision_tx);
 
                 // Record the prompt_id so the outer timeout handler can clean up.
                 if let Ok(mut guard) = deferred_prompt_id.lock() {
                     *guard = Some(prompt_id);
                 }
-
-                // Build payload with the assigned prompt_id.
-                let payload = PermissionPromptPayload {
-                    prompt_id,
-                    ..payload_pre
-                };
 
                 // Step 4: Broadcast PermissionPromptQueued to all connected TUI clients.
                 if let Some(subscribers) = state.ipc_subscribers.as_ref() {

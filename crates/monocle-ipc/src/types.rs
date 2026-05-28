@@ -145,10 +145,44 @@ pub enum PermissionDecisionKind {
 ///
 /// Sent in `ServerToClient::PermissionPromptQueued` and stored in
 /// `ServerToClient::InitialState::overlay_stack`.
+///
+/// The `prompt_id` field is always assigned by the registry, never by the caller.
+/// Callers build a `PermissionPromptPayload` through
+/// [`PendingDecisionRegistry::register_prompt`] which accepts a
+/// [`PromptPayloadInputs`] (no `prompt_id`) and returns `(prompt_id, payload)`.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PermissionPromptPayload {
     /// Unique identifier for this prompt instance.
+    ///
+    /// Assigned by [`crate::permissions::PendingDecisionRegistry::register_prompt`];
+    /// callers MUST NOT supply this value.
     pub prompt_id: Uuid,
+    /// Session that raised this permission prompt.
+    pub session_id: String,
+    /// The tool being invoked (e.g., `"Bash"`, `"Edit"`).
+    pub tool_name: String,
+    /// JSON-encoded tool input arguments.
+    pub tool_input: serde_json::Value,
+    /// Original file content (for Edit/Write tools). `None` for non-file tools.
+    pub old_content: Option<String>,
+    /// Proposed new file content (for Edit/Write tools). `None` for non-file tools.
+    pub new_content: Option<String>,
+}
+
+/// Caller-supplied fields for registering a new permission prompt (F-ADV2-MED-001).
+///
+/// Separates the caller-controlled inputs from the registry-assigned `prompt_id`.
+/// Pass this to [`PendingDecisionRegistry::register_prompt`]; the registry generates
+/// and assigns the `prompt_id`, returning a complete [`PermissionPromptPayload`].
+///
+/// # Why a separate type?
+///
+/// The previous API accepted a `PermissionPromptPayload` whose `prompt_id` field was
+/// silently overwritten by `register_prompt`. This was an API leak: callers had to know
+/// that the field they set would be discarded. `PromptPayloadInputs` makes the contract
+/// explicit — there is no `prompt_id` to set.
+#[derive(Debug, Clone)]
+pub struct PromptPayloadInputs {
     /// Session that raised this permission prompt.
     pub session_id: String,
     /// The tool being invoked (e.g., `"Bash"`, `"Edit"`).
