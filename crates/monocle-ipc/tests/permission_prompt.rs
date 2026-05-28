@@ -42,7 +42,6 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
     let dir = tempfile::tempdir().expect("tempdir for ac_007");
     let runtime_dir = dir.path().to_path_buf();
 
-
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Subscribe a test receiver to observe broadcasts.
@@ -119,7 +118,6 @@ async fn ac_007_permission_prompt_queued_broadcast_on_decision_required() {
 async fn ac_008_prompt_id_stable_across_queued_and_resolved() {
     let dir = tempfile::tempdir().expect("tempdir for ac_008");
     let runtime_dir = dir.path().to_path_buf();
-
 
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
@@ -353,7 +351,6 @@ async fn ac_010_timeout_broadcasts_resolved_and_removes_registry() {
     let dir = tempfile::tempdir().expect("tempdir for ac_010");
     let runtime_dir = dir.path().to_path_buf();
 
-
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // Register two observer subscribers (timeout must broadcast to ALL).
@@ -514,7 +511,6 @@ async fn ac_011_at_most_one_resolution_via_oneshot() {
 async fn ac_012_resolved_requires_prior_queued() {
     let dir = tempfile::tempdir().expect("tempdir for ac_012");
     let runtime_dir = dir.path().to_path_buf();
-
 
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 

@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use tokio::sync::mpsc;
 
-use monocle_ipc::server::{CLIENT_CHANNEL_CAPACITY, SubscriberList};
+use monocle_ipc::server::{SubscriberList, CLIENT_CHANNEL_CAPACITY};
 use monocle_ipc::types::ServerToClient;
 use monocle_runtime::ipc_server::broadcast_to_subscribers;
 

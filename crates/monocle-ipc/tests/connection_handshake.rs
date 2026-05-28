@@ -39,7 +39,6 @@ async fn ac_001_per_client_tokio_task_spawned() {
     let dir = tempfile::tempdir().expect("tempdir for ac_001");
     let runtime_dir = dir.path().to_path_buf();
 
-
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
     // 1. Connect a TUI client.
@@ -69,9 +68,7 @@ async fn ac_002_initial_state_is_first_message() {
     let dir = tempfile::tempdir().expect("tempdir for ac_002");
     let runtime_dir = dir.path().to_path_buf();
 
-
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
-
 
     let mut client = common::connect_test_client(&runtime_dir).await;
 
@@ -160,7 +157,6 @@ async fn ac_003_four_byte_le_framing() {
     // Part 2: integration path — spawn daemon + connect client (both hit todo!()).
     let dir = tempfile::tempdir().expect("tempdir for ac_003 part 2");
     let runtime_dir = dir.path().to_path_buf();
-
 
     let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;
@@ -259,7 +255,6 @@ async fn ac_004_initial_state_too_large_closes_connection() {
 async fn ac_005_push_only_no_polling() {
     let dir = tempfile::tempdir().expect("tempdir for ac_005");
     let runtime_dir = dir.path().to_path_buf();
-
 
     let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
     let mut client = common::connect_test_client(&runtime_dir).await;

@@ -515,34 +515,35 @@ pub async fn daemon_start_sequence(
     //
     // The returned `uds_transport` is stored on DaemonState for cleanup on shutdown.
     // The returned `uds_listener` is passed to run_accept_loop.
-    let (uds_transport, uds_listener) = match monocle_ipc::uds::UdsTransport::bind(runtime_dir).await {
-        Ok(pair) => pair,
-        Err(monocle_ipc::error::IpcError::PathTooLong { length, limit }) => {
-            // INV-6: post-step-8 failure — remove lock file before returning.
-            if let Err(cleanup_err) = daemon_lock.release() {
-                tracing::error!(
-                    error = %cleanup_err,
-                    "daemon_start_sequence: lock file cleanup failed after step 10 \
-                     (path-too-long) failure"
-                );
+    let (uds_transport, uds_listener) =
+        match monocle_ipc::uds::UdsTransport::bind(runtime_dir).await {
+            Ok(pair) => pair,
+            Err(monocle_ipc::error::IpcError::PathTooLong { length, limit }) => {
+                // INV-6: post-step-8 failure — remove lock file before returning.
+                if let Err(cleanup_err) = daemon_lock.release() {
+                    tracing::error!(
+                        error = %cleanup_err,
+                        "daemon_start_sequence: lock file cleanup failed after step 10 \
+                         (path-too-long) failure"
+                    );
+                }
+                return Err(DaemonStartError::UdsPathTooLong { length, limit });
             }
-            return Err(DaemonStartError::UdsPathTooLong { length, limit });
-        }
-        Err(e) => {
-            // INV-6: post-step-8 failure — remove lock file before returning.
-            if let Err(cleanup_err) = daemon_lock.release() {
-                tracing::error!(
-                    error = %cleanup_err,
-                    "daemon_start_sequence: lock file cleanup failed after step 10 \
-                     (UDS bind) failure"
-                );
+            Err(e) => {
+                // INV-6: post-step-8 failure — remove lock file before returning.
+                if let Err(cleanup_err) = daemon_lock.release() {
+                    tracing::error!(
+                        error = %cleanup_err,
+                        "daemon_start_sequence: lock file cleanup failed after step 10 \
+                         (UDS bind) failure"
+                    );
+                }
+                return Err(DaemonStartError::UdsBindFailure(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("UDS bind error: {e}"),
+                )));
             }
-            return Err(DaemonStartError::UdsBindFailure(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("UDS bind error: {e}"),
-            )));
-        }
-    };
+        };
 
     // Build the fully-wired DaemonState (BC-2.04.001 all steps assembled).
     //
