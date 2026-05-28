@@ -441,7 +441,11 @@ pub async fn run() -> Result<()> {
 
             // Render the Sessions panel (left 60%).
             let panel = SessionsPanel::new(&app);
-            panel.render(layout.sessions_area, frame.buffer_mut(), &mut sessions_state);
+            panel.render(
+                layout.sessions_area,
+                frame.buffer_mut(),
+                &mut sessions_state,
+            );
 
             // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
             let status_line = if app.drop_counter > 0 {
@@ -508,7 +512,10 @@ pub async fn run() -> Result<()> {
                         // Check for clean exit: q or Esc from Dashboard.
                         let is_quit = matches!(
                             (&app.mode, &action),
-                            (AppMode::Dashboard { .. }, monocle_core::tui::state::Action::Esc)
+                            (
+                                AppMode::Dashboard { .. },
+                                monocle_core::tui::state::Action::Esc
+                            )
                         );
                         app.mode = transition(app.mode.clone(), action);
                         if is_quit {
@@ -615,44 +622,70 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     // Global bindings (active in all modes).
     // Tab → MoveFocus
     layers.global.insert(
-        KeyEvent { code: KeyCode::Tab, modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Tab,
+            modifiers: no_mod.clone(),
+        },
         Action::MoveFocus,
     );
 
     // Builtin bindings (lowest precedence; hard-coded fallbacks).
     // Esc → Esc (handled by transition; Dashboard+Esc is the quit path)
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Esc, modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: no_mod.clone(),
+        },
         Action::Esc,
     );
     // q (no modifiers) → Esc (same as physical Esc for Dashboard quit)
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Char('q'), modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Char('q'),
+            modifiers: no_mod.clone(),
+        },
         Action::Esc,
     );
     // Enter → EnterFullscreen { Sessions }
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Enter, modifiers: no_mod.clone() },
-        Action::EnterFullscreen { panel: PanelId::Sessions },
+        KeyEvent {
+            code: KeyCode::Enter,
+            modifiers: no_mod.clone(),
+        },
+        Action::EnterFullscreen {
+            panel: PanelId::Sessions,
+        },
     );
     // j → SelectNext
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Char('j'), modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: no_mod.clone(),
+        },
         Action::SelectNext,
     );
     // ↓ → SelectNext
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Down, modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Down,
+            modifiers: no_mod.clone(),
+        },
         Action::SelectNext,
     );
     // k → SelectPrev
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Char('k'), modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Char('k'),
+            modifiers: no_mod.clone(),
+        },
         Action::SelectPrev,
     );
     // ↑ → SelectPrev
     layers.builtin.insert(
-        KeyEvent { code: KeyCode::Up, modifiers: no_mod.clone() },
+        KeyEvent {
+            code: KeyCode::Up,
+            modifiers: no_mod.clone(),
+        },
         Action::SelectPrev,
     );
 

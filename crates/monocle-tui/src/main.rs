@@ -8,8 +8,7 @@
 
 use anyhow::Result;
 use crossterm::{
-    cursor,
-    execute,
+    cursor, execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::io::{self, Write};

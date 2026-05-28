@@ -322,6 +322,7 @@ dependencies = [
  "iana-time-zone",
  "js-sys",
  "num-traits",
+ "serde",
  "wasm-bindgen",
  "windows-link",
 ]
@@ -1552,6 +1553,7 @@ name = "monocle-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "futures",
  "quote",
  "serde",
@@ -1646,6 +1648,7 @@ name = "monocle-tui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "crossterm",
  "directories",
  "monocle-config",

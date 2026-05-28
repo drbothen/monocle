@@ -45,10 +45,10 @@ fn make_session(id: &str) -> EnrichedSession {
         None,
         SessionStatus::Active,
         None,
-        None,  // project_name
-        None,  // started_at
-        0,     // token_count
-        None,  // cost_usd
+        None, // project_name
+        None, // started_at
+        0,    // token_count
+        None, // cost_usd
     )
 }
 
@@ -598,8 +598,7 @@ fn test_f_s025_adv1_high002_event_ring_seeded_from_ring_tail() {
     );
     // Verify capacity constant matches daemon ring size (BC-2.04.012 PC-1).
     assert_eq!(
-        EVENT_RING_CAPACITY,
-        4096,
+        EVENT_RING_CAPACITY, 4096,
         "HIGH-002: EVENT_RING_CAPACITY must equal daemon RAM_RING_CAPACITY"
     );
 }

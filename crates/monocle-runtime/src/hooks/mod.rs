@@ -171,10 +171,10 @@ impl SessionRegistry {
                     None,
                     status,
                     None,
-                    None,  // project_name: Phase 1 default
-                    None,  // started_at: Phase 1 default
-                    0,     // token_count: Phase 1 default
-                    None,  // cost_usd: Phase 1 default
+                    None, // project_name: Phase 1 default
+                    None, // started_at: Phase 1 default
+                    0,    // token_count: Phase 1 default
+                    None, // cost_usd: Phase 1 default
                 )
             })
             .collect()
