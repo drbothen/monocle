@@ -3,7 +3,8 @@
 //! Stub created in S-001. Populated by S-002 (daemon lifecycle), S-003 (auth),
 //! S-004 (lock file), S-005 (hook ingestion), S-006 (lock file atomic lifecycle),
 //! S-008 (ring), S-009 (hook routes), S-015 (XDG path resolution),
-//! S-017 (daemon start sequence + hooks-settings.json).
+//! S-017 (daemon start sequence + hooks-settings.json),
+//! S-018 (hook routing + bounded event bus + drop counter).
 
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
@@ -50,3 +51,23 @@ pub mod state;
 /// [`types::HooksMap`], [`types::HookEntry`], [`types::HookCommand`],
 /// and [`types::EngineModuleRegistry`].
 pub mod types;
+
+/// Bounded event bus fan-out task and drop counter utilities (S-018, BC-2.04.011).
+///
+/// Provides [`event_bus::event_bus_fan_out_task`] (fan-out from channel to TUI clients),
+/// [`event_bus::drop_counter_debounce_task`] (100ms DropCounterUpdate debounce), and
+/// [`event_bus::try_publish_event`] (canonical try_send helper used by all hook handlers).
+pub mod event_bus;
+
+/// Hook endpoint handler modules for S-018 (BC-2.04.007, BC-2.04.008, BC-2.04.009).
+///
+/// Sub-modules:
+/// - [`hooks::pre_tool_use`]: `POST /hooks/pre-tool-use` (300ms timeout, Defer support)
+/// - [`hooks::notification`]: `POST /hooks/notification` (2000ms timeout, no Defer)
+/// - [`hooks::stop_session_prompt`]: `POST /hooks/stop`, `/session-start`, `/prompt-submit`
+///
+/// Shared types:
+/// - [`hooks::HookEnvelope`]: deserialized JSON body (all 5 hook types share this)
+/// - [`hooks::SessionRegistry`]: session lifecycle state tracker
+/// - [`hooks::SessionState`]: Active / Stopped
+pub mod hooks;
