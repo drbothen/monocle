@@ -47,7 +47,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::error::IpcError;
-use crate::uds::UdsClientTransport;
+use crate::uds::{EventReceiver, UdsClientTransport};
 
 // ---------------------------------------------------------------------------
 // Backoff constants (BC-2.05.006 PC-4)
@@ -83,10 +83,22 @@ pub const OFFLINE_POLL_INTERVAL_SECS: u64 = 5;
 /// A `BackoffState` is per-reconnect-session. When the TUI enters offline mode and
 /// later detects a new lock file, it creates a fresh `BackoffState::new()` (backoff resets
 /// to 250ms — BC-2.05.006 PC-5: "re-enters the reconnect loop from the beginning").
+///
+/// # ADR-0006
+///
+/// `#[non_exhaustive]` is required per ADR-0006 for all public structs with a `new()`
+/// constructor to prevent out-of-crate struct literal construction.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct BackoffState {
     /// Number of reconnect attempts made so far (0-indexed).
     attempt: u32,
+    /// Consecutive lock-file read failures in the current reconnect session.
+    ///
+    /// Reset to 0 on the first successful lock-file read. Used for telemetry escalation
+    /// (F-S023-ADV1-MED-002): WARN once after ≥2 consecutive failures; ERROR before
+    /// returning `IpcError::ReconnectTimeout` when ALL lock reads in the session failed.
+    lock_read_failures: u32,
 }
 
 impl BackoffState {
@@ -95,7 +107,10 @@ impl BackoffState {
     /// `attempt` starts at 0; the first call to [`Self::next_delay`] returns the
     /// Attempt 1 delay (250ms) and increments to 1.
     pub fn new() -> Self {
-        Self { attempt: 0 }
+        Self {
+            attempt: 0,
+            lock_read_failures: 0,
+        }
     }
 
     /// Return the pre-retry delay for the current attempt and advance the counter.
@@ -146,8 +161,11 @@ impl Default for BackoffState {
 ///
 /// # Returns
 ///
-/// - `Ok(UdsClientTransport)` — a fresh connected transport. The caller MUST await a
-///   `ServerToClient::InitialState` push to rebuild TUI state (BC-2.05.002).
+/// - `Ok((UdsClientTransport, EventReceiver))` — a fresh connected transport and its
+///   associated disconnect event channel. The receiver MUST be drained by the consumer
+///   to observe `Disconnected` events on subsequent disconnects (2nd SOQ-3 cycle).
+///   The caller MUST await a `ServerToClient::InitialState` push to rebuild TUI state
+///   (BC-2.05.002).
 /// - `Err(IpcError::ReconnectTimeout)` — the 5-second window was exhausted without a
 ///   successful connection. The TUI MUST enter offline mode (passive observe-only;
 ///   poll lock file every 5 seconds).
@@ -159,12 +177,17 @@ impl Default for BackoffState {
 ///    subsequent attempts use the updated socket path.
 /// 3. The reconnect loop never starts before the SOQ-3 clear completes (enforced by
 ///    the caller contract, not inside this function — the function assumes SOQ-3 has run).
+/// 4. Each `connect` attempt is bounded by the remaining reconnect window via
+///    `tokio::time::timeout` — a hung connect cannot exceed the 5-second deadline
+///    (BC-2.05.006 PC-5 hard window requirement).
 ///
 /// # Logging
 ///
 /// - `DEBUG` on each reconnect attempt (with attempt number and runtime_dir).
 /// - `INFO` on successful reconnect.
 /// - `WARN` on 5-second timeout and offline mode entry.
+/// - `WARN` after ≥2 consecutive lock-file read failures.
+/// - `ERROR` before returning `ReconnectTimeout` when all lock reads in the session failed.
 ///
 /// # Errors
 ///
@@ -172,7 +195,7 @@ impl Default for BackoffState {
 pub async fn reconnect(
     runtime_dir: &Path,
     backoff: &mut BackoffState,
-) -> Result<UdsClientTransport, IpcError> {
+) -> Result<(UdsClientTransport, EventReceiver), IpcError> {
     let window = Duration::from_secs(RECONNECT_WINDOW_SECS);
     let deadline = tokio::time::Instant::now() + window;
     let mut attempt = 0u32;
@@ -181,14 +204,29 @@ pub async fn reconnect(
         // Read current socket path from lock file (BC-2.05.006 PC-3).
         // On first attempt OR after each failed attempt, re-read to discover daemon restart.
         let sock_path = match read_lock_file_sock_path(runtime_dir).await {
-            Ok(p) => p,
+            Ok(p) => {
+                // Successful read — reset consecutive failure counter.
+                backoff.lock_read_failures = 0;
+                p
+            }
             Err(e) => {
-                tracing::debug!(
-                    attempt,
-                    runtime_dir = %runtime_dir.display(),
-                    error = %e,
-                    "reconnect: lock file unavailable, will retry after backoff"
-                );
+                backoff.lock_read_failures = backoff.lock_read_failures.saturating_add(1);
+                if backoff.lock_read_failures == 2 {
+                    tracing::warn!(
+                        attempt,
+                        runtime_dir = %runtime_dir.display(),
+                        consecutive_failures = backoff.lock_read_failures,
+                        error = %e,
+                        "reconnect: repeated lock file read failures — daemon may have removed lock"
+                    );
+                } else {
+                    tracing::debug!(
+                        attempt,
+                        runtime_dir = %runtime_dir.display(),
+                        error = %e,
+                        "reconnect: lock file unavailable, will retry after backoff"
+                    );
+                }
                 // No socket path — use default path as fallback so we can still
                 // attempt the connection (the daemon may have started by the time sleep ends).
                 runtime_dir.join("monocle.sock")
@@ -198,10 +236,19 @@ pub async fn reconnect(
         // Check if we've already exceeded the window BEFORE the backoff sleep.
         // This handles the case where previous attempts consumed most of the 5s window.
         if tokio::time::Instant::now() >= deadline {
-            tracing::warn!(
-                runtime_dir = %runtime_dir.display(),
-                "reconnect: 5-second window exhausted — entering offline mode (BC-2.05.006 PC-5)"
-            );
+            if backoff.lock_read_failures > 0 {
+                tracing::error!(
+                    runtime_dir = %runtime_dir.display(),
+                    consecutive_lock_failures = backoff.lock_read_failures,
+                    "reconnect: 5-second window exhausted with all lock reads failing — \
+                     daemon likely removed lock file before shutdown"
+                );
+            } else {
+                tracing::warn!(
+                    runtime_dir = %runtime_dir.display(),
+                    "reconnect: 5-second window exhausted — entering offline mode (BC-2.05.006 PC-5)"
+                );
+            }
             return Err(IpcError::ReconnectTimeout);
         }
 
@@ -224,25 +271,43 @@ pub async fn reconnect(
 
         // Re-check deadline after sleep (the sleep itself may have consumed time).
         if tokio::time::Instant::now() >= deadline {
-            tracing::warn!(
-                runtime_dir = %runtime_dir.display(),
-                "reconnect: 5-second window exhausted after backoff sleep — entering offline mode"
-            );
+            if backoff.lock_read_failures > 0 {
+                tracing::error!(
+                    runtime_dir = %runtime_dir.display(),
+                    consecutive_lock_failures = backoff.lock_read_failures,
+                    "reconnect: 5-second window exhausted after sleep with all lock reads failing"
+                );
+            } else {
+                tracing::warn!(
+                    runtime_dir = %runtime_dir.display(),
+                    "reconnect: 5-second window exhausted after backoff sleep — entering offline mode"
+                );
+            }
             return Err(IpcError::ReconnectTimeout);
         }
 
-        // Attempt connection.
-        match tokio::net::UnixStream::connect(&sock_path).await {
-            Ok(stream) => {
+        // Attempt connection — bounded by the remaining window (BC-2.05.006 PC-5 hard deadline).
+        // A hung connect() on a path with no listener would otherwise exceed the 5-second window.
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let connect_result =
+            tokio::time::timeout(remaining, tokio::net::UnixStream::connect(&sock_path)).await;
+
+        match connect_result {
+            Ok(Ok(stream)) => {
                 tracing::info!(
                     attempt,
                     runtime_dir = %runtime_dir.display(),
                     sock_path = %sock_path.display(),
                     "reconnect: connection succeeded on attempt {attempt}"
                 );
-                return Ok(UdsClientTransport::new(stream));
+                // Use connect_with_events to get a fresh event channel for this connection.
+                // The consumer MUST drain event_rx to observe Disconnected on subsequent
+                // disconnects (2nd SOQ-3 cycle — AC-EC-004).
+                let (transport, event_rx) =
+                    crate::uds::connect_with_events_from_stream(stream).await;
+                return Ok((transport, event_rx));
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 tracing::debug!(
                     attempt,
                     runtime_dir = %runtime_dir.display(),
@@ -251,6 +316,16 @@ pub async fn reconnect(
                 );
                 // Re-read lock file before next attempt (BC-2.05.006 PC-3 — done at top of loop).
                 // Continue loop for next attempt.
+            }
+            Err(_elapsed) => {
+                // tokio::time::timeout elapsed — the connect() hung past the remaining window.
+                tracing::warn!(
+                    attempt,
+                    runtime_dir = %runtime_dir.display(),
+                    sock_path = %sock_path.display(),
+                    "reconnect: connect() timed out within remaining window — entering offline mode"
+                );
+                return Err(IpcError::ReconnectTimeout);
             }
         }
     }
@@ -305,11 +380,13 @@ pub async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, Ipc
 /// mode and this function drives the 5-second lock-file poll. When it returns, the caller
 /// MUST call [`reconnect`] again with a fresh [`BackoffState::new()`] (backoff resets).
 ///
-/// # Lock-file change detection
+/// # Lock-file change detection (BC-2.05.006 PC-3 / EC-003)
 ///
-/// A "new lock file" is one whose `pid` field differs from the last observed `pid`. The
-/// PID is the stable discriminant: the same daemon process cannot crash and restart without
-/// changing its PID.
+/// A "new lock file" is one whose `(pid, port, auth_token)` tuple differs from the last
+/// observed value. Using all three fields ensures detection of same-path daemon restarts
+/// where only the `authToken` changed (e.g., daemon process kept the same PID after a
+/// rapid restart edge case), matching the full set of change indicators in BC-2.05.006
+/// PC-3 / EC-003.
 ///
 /// # Cancellation
 ///
@@ -323,11 +400,11 @@ pub async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, Ipc
 /// at `DEBUG` level and the poll continues.
 pub async fn poll_for_new_daemon(runtime_dir: &Path) {
     let lock_path = runtime_dir.join("monocle.lock");
-    // Read the initial PID to detect when a NEW daemon starts.
-    let initial_pid = read_lock_pid(&lock_path).await;
+    // Read the initial (pid, port, authToken) discriminant to detect when a NEW daemon starts.
+    let initial_discriminant = read_lock_discriminant(&lock_path).await;
     tracing::debug!(
         runtime_dir = %runtime_dir.display(),
-        initial_pid,
+        initial_pid = initial_discriminant.as_ref().map(|(pid, _, _)| *pid),
         "offline mode: polling for new daemon every {}s (BC-2.05.006 PC-5)",
         OFFLINE_POLL_INTERVAL_SECS
     );
@@ -336,39 +413,56 @@ pub async fn poll_for_new_daemon(runtime_dir: &Path) {
         // Poll interval is 5 seconds (BC-2.05.006 PC-5 — NOT the 100ms auto-start interval).
         tokio::time::sleep(Duration::from_secs(OFFLINE_POLL_INTERVAL_SECS)).await;
 
-        let current_pid = read_lock_pid(&lock_path).await;
-        if let (Some(initial), Some(current)) = (initial_pid, current_pid) {
-            if current != initial {
+        let current_discriminant = read_lock_discriminant(&lock_path).await;
+        match (&initial_discriminant, &current_discriminant) {
+            (Some(initial), Some(current)) if current != initial => {
+                let (old_pid, old_port, _) = initial;
+                let (new_pid, new_port, _) = current;
                 tracing::info!(
                     runtime_dir = %runtime_dir.display(),
-                    old_pid = initial,
-                    new_pid = current,
-                    "offline mode: new daemon detected (PID changed) — re-entering reconnect loop"
+                    old_pid,
+                    old_port,
+                    new_pid,
+                    new_port,
+                    "offline mode: new daemon detected (pid/port/authToken changed) — \
+                     re-entering reconnect loop"
                 );
                 return;
             }
-        } else if initial_pid.is_none() && current_pid.is_some() {
-            // Lock file appeared (no initial PID → new daemon).
-            tracing::info!(
-                runtime_dir = %runtime_dir.display(),
-                new_pid = current_pid,
-                "offline mode: lock file appeared — re-entering reconnect loop"
-            );
-            return;
+            (None, Some((new_pid, new_port, _))) => {
+                // Lock file appeared (no initial discriminant → new daemon).
+                tracing::info!(
+                    runtime_dir = %runtime_dir.display(),
+                    new_pid,
+                    new_port,
+                    "offline mode: lock file appeared — re-entering reconnect loop"
+                );
+                return;
+            }
+            _ => {
+                tracing::debug!(
+                    runtime_dir = %runtime_dir.display(),
+                    current_pid = current_discriminant.as_ref().map(|(pid, _, _)| *pid),
+                    "offline mode: no new daemon detected, continuing poll"
+                );
+            }
         }
-        tracing::debug!(
-            runtime_dir = %runtime_dir.display(),
-            current_pid,
-            "offline mode: no new daemon detected, continuing poll"
-        );
     }
 }
 
-/// Read the `pid` field from the lock file, returning `None` if not readable.
+/// Read the `(pid, port, authToken)` discriminant from the lock file.
 ///
-/// Used by [`poll_for_new_daemon`] for change detection.
-async fn read_lock_pid(lock_path: &Path) -> Option<u64> {
+/// Used by [`poll_for_new_daemon`] for change detection (BC-2.05.006 PC-3 / EC-003).
+/// Returns `None` if the lock file is absent or malformed.
+async fn read_lock_discriminant(lock_path: &Path) -> Option<(u64, u64, String)> {
     let contents = tokio::fs::read_to_string(lock_path).await.ok()?;
     let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
-    json.get("pid").and_then(|v| v.as_u64())
+    let pid = json.get("pid").and_then(|v| v.as_u64())?;
+    let port = json.get("port").and_then(|v| v.as_u64()).unwrap_or(0);
+    let auth_token = json
+        .get("authToken")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    Some((pid, port, auth_token))
 }

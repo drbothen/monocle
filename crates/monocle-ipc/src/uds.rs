@@ -282,6 +282,10 @@ pub async fn connect_with_events(
     let stream = tokio::net::UnixStream::connect(&sock_path)
         .await
         .map_err(IpcError::IoError)?;
+    tracing::info!(
+        sock_path = ?sock_path,
+        "monocle-ipc: UDS transport connected with event channel"
+    );
     let (mut reader, writer) = stream.into_split();
 
     // Spawn the background reader task.
@@ -290,6 +294,12 @@ pub async fn connect_with_events(
     //   1. Emit TransportEvent::Disconnected via event_tx (SOQ-3 signal — BC-2.05.007 PC-1).
     //   2. Forward the error via msg_tx (so recv_message() callers get the error too).
     //   3. Exit the loop (connection is gone; no further reads possible).
+    //
+    // Channel send discipline (F-S023-ADV1-HIGH-002):
+    // Use try_send + match rather than `let _ = .send().await` to distinguish:
+    //   - Closed receiver (consumer gone): debug log + break
+    //   - Full channel (consumer hung): warn log + break
+    // This matches the emit_disconnected() discipline on the Direct path.
     tokio::spawn(async move {
         loop {
             let result: Result<ClientToServer, IpcError> =
@@ -299,9 +309,38 @@ pub async fn connect_with_events(
                     // Clean EOF — daemon shut down or crashed.
                     tracing::debug!("background reader: EOF on socket — emitting Disconnected");
                     // Emit SOQ-3 signal first (ordering invariant BC-2.05.007 Invariant 1).
-                    let _ = event_tx.send(TransportEvent::Disconnected).await;
+                    match event_tx.try_send(TransportEvent::Disconnected) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: event channel full on Disconnected \
+                                 (SOQ-3 may already be queued)"
+                            );
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            // Consumer (TUI event loop) dropped the receiver — gone.
+                            tracing::debug!(
+                                "background reader: event receiver closed — consumer gone"
+                            );
+                            break;
+                        }
+                    }
                     // Forward error to recv_message() callers.
-                    let _ = msg_tx.send(result).await;
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: msg channel full on Disconnected — consumer hung"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader: msg receiver closed — consumer gone"
+                            );
+                            break;
+                        }
+                    }
                     break;
                 }
                 Err(IpcError::IoError(io_err))
@@ -312,16 +351,58 @@ pub async fn connect_with_events(
                         "background reader: connection loss ({:?}) — emitting Disconnected",
                         io_err.kind()
                     );
-                    let _ = event_tx.send(TransportEvent::Disconnected).await;
-                    let _ = msg_tx.send(result).await;
+                    match event_tx.try_send(TransportEvent::Disconnected) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: event channel full on connection loss"
+                            );
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader: event receiver closed — consumer gone"
+                            );
+                            break;
+                        }
+                    }
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: msg channel full on connection loss — consumer hung"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader: msg receiver closed — consumer gone"
+                            );
+                            break;
+                        }
+                    }
                     break;
                 }
                 Err(_) => {
                     // Other error (e.g., framing error, MessageTooLarge).
-                    let _ = msg_tx.send(result).await;
                     // Do NOT break — recoverable errors should not kill the read loop.
                     // (In practice, MessageTooLarge / SerializeError are protocol bugs;
                     // the daemon sends malformed data. The TUI can handle and continue.)
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: msg channel full on recoverable error — \
+                                 consumer hung; breaking to avoid message loss"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader: msg receiver closed on recoverable error"
+                            );
+                            break;
+                        }
+                    }
                 }
                 Ok(_) => {
                     // Successful message — forward to recv_message() callers.
@@ -340,6 +421,145 @@ pub async fn connect_with_events(
         read_strategy: ReadStrategy::Buffered { msg_rx },
     };
     Ok((transport, event_rx))
+}
+
+/// Wrap an already-connected `UnixStream` into a `(UdsClientTransport, EventReceiver)` pair
+/// with a background reader task (S-023, for use by [`crate::reconnect::reconnect`]).
+///
+/// This is the internal constructor used by `reconnect()` after a successful
+/// `tokio::net::UnixStream::connect()`. It splits the stream, spawns the background reader
+/// task, and returns both the transport and the disconnect event channel.
+///
+/// The caller (reconnect) owns the stream and passes it here; this avoids a second
+/// `connect()` call on reconnect and ensures the event channel is created atomically
+/// with the connection.
+///
+/// # Background Reader
+///
+/// Identical to the reader spawned by [`connect_with_events`]. See that function's
+/// documentation for the channel capacities and ordering invariants.
+pub(crate) async fn connect_with_events_from_stream(
+    stream: tokio::net::UnixStream,
+) -> (UdsClientTransport, EventReceiver) {
+    // Event channel capacity 1: exactly one Disconnected event per connection lifetime.
+    let (event_tx, event_rx) = mpsc::channel::<TransportEvent>(1);
+    // Message channel capacity 8: small buffer for push messages during render cycles.
+    let (msg_tx, msg_rx) = mpsc::channel::<Result<ClientToServer, IpcError>>(8);
+
+    let (mut reader, writer) = stream.into_split();
+
+    // Spawn the background reader task (same logic as connect_with_events).
+    tokio::spawn(async move {
+        loop {
+            let result: Result<ClientToServer, IpcError> =
+                crate::framing::read_framed(&mut reader).await;
+            match &result {
+                Err(IpcError::Disconnected) => {
+                    tracing::debug!(
+                        "background reader (reconnect): EOF on socket — emitting Disconnected"
+                    );
+                    // SOQ-3 signal first (ordering invariant BC-2.05.007 Invariant 1).
+                    match event_tx.try_send(TransportEvent::Disconnected) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): event channel full on Disconnected"
+                            );
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader (reconnect): event receiver dropped — consumer gone"
+                            );
+                            break;
+                        }
+                    }
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): msg channel full on Disconnected"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader (reconnect): msg receiver dropped — consumer gone"
+                            );
+                            break;
+                        }
+                    }
+                    break;
+                }
+                Err(IpcError::IoError(io_err))
+                    if UdsClientTransport::is_connection_loss_error_static(io_err) =>
+                {
+                    tracing::debug!(
+                        "background reader (reconnect): connection loss ({:?}) — emitting Disconnected",
+                        io_err.kind()
+                    );
+                    match event_tx.try_send(TransportEvent::Disconnected) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): event channel full on connection loss"
+                            );
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader (reconnect): event receiver dropped — consumer gone"
+                            );
+                            break;
+                        }
+                    }
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): msg channel full on connection loss"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader (reconnect): msg receiver dropped — consumer gone"
+                            );
+                            break;
+                        }
+                    }
+                    break;
+                }
+                Err(_) => {
+                    // Other error — recoverable; do not break the read loop.
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): msg channel full on recoverable error — consumer hung"
+                            );
+                            break;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!("background reader (reconnect): msg receiver dropped");
+                            break;
+                        }
+                    }
+                }
+                Ok(_) => {
+                    if msg_tx.send(result).await.is_err() {
+                        // Transport was dropped; stop the background task.
+                        break;
+                    }
+                }
+            }
+        }
+        tracing::debug!("background reader task (reconnect) exiting");
+    });
+
+    let transport = UdsClientTransport {
+        writer,
+        read_strategy: ReadStrategy::Buffered { msg_rx },
+    };
+    (transport, event_rx)
 }
 
 /// Read a single framed `ClientToServer` message from a raw `UnixStream` read half.
@@ -422,6 +642,14 @@ impl UdsClientTransport {
     ///
     /// Returns `true` if `err` is one of the three connection-loss error kinds defined
     /// by BC-2.05.007 Precondition 2: `UnexpectedEof`, `BrokenPipe`, `ConnectionReset`.
+    ///
+    /// # Note on `UnexpectedEof`
+    ///
+    /// `read_framed` normally converts `UnexpectedEof` to `IpcError::Disconnected` before
+    /// this function is reached, so the `UnexpectedEof` arm is typically unreachable in
+    /// practice. It is retained as a belt-and-suspenders defensive arm: if the framing layer
+    /// is ever refactored and stops converting `UnexpectedEof`, this classifier still
+    /// handles it correctly rather than silently letting it fall through as a non-loss error.
     pub(crate) fn is_connection_loss_error_static(err: &std::io::Error) -> bool {
         matches!(
             err.kind(),
