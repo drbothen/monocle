@@ -19,7 +19,8 @@ use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::tui::state::{Action, AppMode, FocusSnapshot, PanelId, PromptModal, ToolPayload};
 use monocle_tui::app::App;
 use monocle_tui::ui::sessions_panel::{
-    format_cost, format_token_count, SessionsPanel, SessionsPanelState,
+    format_cost, format_session_row, format_token_count, format_uptime_at, SessionsPanel,
+    SessionsPanelState,
 };
 use ratatui::{backend::TestBackend, layout::Rect, Terminal};
 use std::time::Instant;
@@ -658,17 +659,16 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
 // These tests encode the canonical order and separator. They are RED GATE
 // until the format-string is fixed.
 
-/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: canonical test vector exact match.
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: canonical row — jitter-tolerant integration.
 ///
-/// Constructs an `EnrichedSession` matching the BC vector:
-///   session_id=`sess-001`, harness_type=`claude-code` (→ `●`),
-///   project_name=`monocle`, status=Active, token_count=437_000,
-///   cost_usd=None (→ `—`), started_at=now-3h47m (→ `03:47:00`).
+/// Renders against a live wall clock (`started_at = Utc::now() - 3h47m`) so uptime
+/// seconds may increment between the `started_at` assignment and the render call.
+/// This test allows seconds 00–04 (5-second window); it does NOT claim verbatim match.
 ///
-/// The rendered row must contain the EXACT string `sess-001 ● monocle Active 437k — 03:47:00`.
-/// This test FAILS before the format-string fix and PASSES after.
+/// For the byte-exact verbatim assertion against the canonical BC vector, see
+/// `test_bc_2_06_005_canonical_row_verbatim_with_mocked_time`.
 #[test]
-fn test_bc_2_06_005_canonical_row_verbatim_match() {
+fn test_bc_2_06_005_canonical_row_jitter_tolerant_integration() {
     use chrono::Utc;
 
     let started_at = Utc::now()
@@ -692,15 +692,34 @@ fn test_bc_2_06_005_canonical_row_verbatim_match() {
     let app = app_with_sessions(vec![session]);
     let rendered = render_sessions_panel(&app, 0);
 
-    // Column order: session_id SPACE icon SPACE project SPACE status SPACE tokens SPACE cost SPACE uptime
+    // Extract the seconds component from the rendered uptime "03:47:SS".
+    // Accept only 00–04 (5-second jitter window — not 00–09 which is too loose).
+    let prefix = "sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:";
     assert!(
-        rendered.contains("sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:0"),
-        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: rendered row must match \
-         canonical vector `sess-001 ● monocle Active 437k — 03:47:0x`; got:\n{}",
+        rendered.contains(prefix),
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: rendered row must contain \
+         'sess-001 ● monocle Active 437k — 03:47:'; got:\n{}",
         rendered
     );
-    // Also assert session_id appears before icon (belt-and-suspenders).
-    // Use unwrap_or_else (not .expect) to avoid clippy::expect_used on Option.
+    // Find and extract the two-digit seconds after the prefix.
+    if let Some(start_idx) = rendered.find(prefix) {
+        let rest = &rendered[start_idx + prefix.len()..];
+        let secs_str = &rest[..2]; // exactly two digits
+        let secs: u32 = secs_str.parse().unwrap_or_else(|_| {
+            panic!(
+                "BC-2.06.005: uptime seconds must be two-digit numeric, got {:?} in:\n{}",
+                secs_str, rendered
+            )
+        });
+        assert!(
+            secs < 5,
+            "BC-2.06.005 jitter-tolerant integration: seconds must be 00–04 \
+             (5-second window), got {:02} in:\n{}",
+            secs,
+            rendered
+        );
+    }
+    // Belt-and-suspenders: session_id before icon.
     let id_pos = rendered
         .find("sess-001")
         .unwrap_or_else(|| panic!("session_id must appear in rendered output; got:\n{rendered}"));
@@ -710,6 +729,57 @@ fn test_bc_2_06_005_canonical_row_verbatim_match() {
     assert!(
         id_pos < icon_pos,
         "F-S025-ADV5-BLOCKER-001: session_id must appear before icon in rendered row"
+    );
+}
+
+/// F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.5: verbatim match against canonical BC vector
+/// using deterministic mocked time — ZERO jitter tolerance.
+///
+/// Uses `format_session_row(s, now)` directly with a pinned `now` timestamp so that
+/// `format_uptime_at` produces exactly `"03:47:00"` — byte-for-byte, no substring tolerance.
+///
+/// Canonical BC vector (BC-2.06.005 v1.0.5 test vector table):
+///   `sess-001 ● monocle Active 437k — 03:47:00`
+///
+/// This is the authoritative verbatim assertion. Any change to the column format,
+/// separator, or uptime rendering MUST update this test.
+#[test]
+fn test_bc_2_06_005_canonical_row_verbatim_with_mocked_time() {
+    use chrono::Utc;
+
+    // Pin `now` to a fixed instant. started_at is exactly 3h47m before now.
+    let now = Utc::now();
+    let started_at = now - chrono::Duration::hours(3) - chrono::Duration::minutes(47);
+
+    let session = monocle_core::engine::EnrichedSession::new(
+        "sess-001".to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        monocle_core::engine::SessionStatus::Active,
+        None,
+        Some("monocle".to_string()), // project_name
+        Some(started_at),            // started_at
+        437_000,                     // token_count → "437k"
+        None,                        // cost_usd → "—"
+    );
+
+    // Call format_session_row with the same pinned `now` — no wall-clock drift.
+    let row = format_session_row(&session, now);
+
+    // Verbatim assertion: EXACT canonical BC-2.06.005 v1.0.5 test vector.
+    // No substring tolerance. No jitter tolerance. Byte-for-byte equality.
+    assert_eq!(
+        row, "sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:00",
+        "F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.5: format_session_row must produce \
+         the exact canonical vector; got: {row:?}"
+    );
+
+    // Also verify the uptime component alone via format_uptime_at for traceability.
+    let uptime = format_uptime_at(Some(started_at), now);
+    assert_eq!(
+        uptime, "03:47:00",
+        "BC-2.06.005 v1.0.5: format_uptime_at(3h47m, now) must return exactly '03:47:00'"
     );
 }
 
