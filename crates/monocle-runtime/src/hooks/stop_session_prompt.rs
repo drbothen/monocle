@@ -271,9 +271,26 @@ async fn handle_stop_inner(state: Arc<DaemonState>, envelope: HookEnvelope) -> R
 
     let bus_event_payload = hook_event.clone();
 
+    // Artificial delay for integration tests exercising the 300ms timeout path.
+    // hook_delay_ms is None in production; Some(ms) only in tests.
+    if let Some(delay_ms) = state.hook_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // BC-2.04.009 PC-3: dispatch to EngineModule.
-    let engine = ClaudeCodeModule::new(String::new());
-    let response = engine.on_hook(hook_event).await;
+    // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
+    // that need to exercise the Defer path (Phase 1 ClaudeCodeModule always returns Allow).
+    let response = if let Some((ref decision, ref diagnostic)) = state.hook_decision_override {
+        let base = monocle_core::engine::HookResponse::new(decision.clone());
+        if let Some(ref diag) = diagnostic {
+            base.with_diagnostic(diag.clone())
+        } else {
+            base
+        }
+    } else {
+        let engine = ClaudeCodeModule::new(String::new());
+        engine.on_hook(hook_event).await
+    };
 
     // BC-2.04.009 invariant 2, AC-017: Defer → treat as Allow with WARN.
     // Stop cannot be deferred or blocked — monocle cannot prevent session termination.
@@ -297,6 +314,8 @@ async fn handle_stop_inner(state: Arc<DaemonState>, envelope: HookEnvelope) -> R
     try_publish_event(&state, bus_event);
 
     // Ring append — best-effort.
+    // DI-001 best-effort: ring append runs after decision but before function return.
+    // Under timeout cancellation, this append may be skipped (BC-2.04.009 best-effort caveat).
     let now_micros = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_micros() as i64)
@@ -372,9 +391,26 @@ async fn handle_session_start_inner(state: Arc<DaemonState>, envelope: HookEnvel
 
     let bus_event_payload = hook_event.clone();
 
+    // Artificial delay for integration tests exercising the 300ms timeout path.
+    // hook_delay_ms is None in production; Some(ms) only in tests.
+    if let Some(delay_ms) = state.hook_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // BC-2.04.009 PC-3: dispatch to EngineModule.
-    let engine = ClaudeCodeModule::new(String::new());
-    let response = engine.on_hook(hook_event).await;
+    // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
+    // that need to exercise the Defer path (Phase 1 ClaudeCodeModule always returns Allow).
+    let response = if let Some((ref decision, ref diagnostic)) = state.hook_decision_override {
+        let base = monocle_core::engine::HookResponse::new(decision.clone());
+        if let Some(ref diag) = diagnostic {
+            base.with_diagnostic(diag.clone())
+        } else {
+            base
+        }
+    } else {
+        let engine = ClaudeCodeModule::new(String::new());
+        engine.on_hook(hook_event).await
+    };
 
     // BC-2.04.009 invariant 2, AC-017, EC-085: Defer → treat as Allow with WARN.
     if response.decision == HookDecision::Defer {
@@ -392,6 +428,8 @@ async fn handle_session_start_inner(state: Arc<DaemonState>, envelope: HookEnvel
     try_publish_event(&state, bus_event);
 
     // Ring append — best-effort.
+    // DI-001 best-effort: ring append runs after decision but before function return.
+    // Under timeout cancellation, this append may be skipped (BC-2.04.009 best-effort caveat).
     let now_micros = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_micros() as i64)
@@ -466,6 +504,12 @@ async fn handle_prompt_submit_inner(state: Arc<DaemonState>, envelope: HookEnvel
 
     let bus_event_payload = hook_event.clone();
 
+    // Artificial delay for integration tests exercising the 300ms timeout path.
+    // hook_delay_ms is None in production; Some(ms) only in tests.
+    if let Some(delay_ms) = state.hook_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // BC-2.04.009 PC-3: dispatch to EngineModule.
     // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
     // that need to exercise the Block path (Phase 1 ClaudeCodeModule always returns Allow).
@@ -529,6 +573,8 @@ async fn handle_prompt_submit_inner(state: Arc<DaemonState>, envelope: HookEnvel
     try_publish_event(&state, bus_event);
 
     // Ring append — best-effort.
+    // DI-001 best-effort: ring append runs after decision but before function return.
+    // Under timeout cancellation, this append may be skipped (BC-2.04.009 best-effort caveat).
     let now_micros = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_micros() as i64)

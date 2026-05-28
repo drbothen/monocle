@@ -70,6 +70,66 @@ fn make_state_with_bus() -> (
     (Arc::new(state), rx)
 }
 
+/// Build a `DaemonState` with a Block decision override wired in.
+///
+/// Used to exercise the Block path in `handle_notification_inner` without depending on a
+/// real engine that returns Block (Phase 1 ClaudeCodeModule always returns Allow).
+fn make_state_with_block_decision() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    state.hook_decision_override = Some((monocle_core::engine::HookDecision::Block, None));
+    (Arc::new(state), rx)
+}
+
+/// Build a `DaemonState` with a Defer decision override wired in.
+///
+/// Used to exercise the Defer path in `handle_notification_inner`.
+fn make_state_with_defer_decision() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    state.hook_decision_override = Some((monocle_core::engine::HookDecision::Defer, None));
+    (Arc::new(state), rx)
+}
+
+/// Build a `DaemonState` with a 2100ms artificial delay, reliably triggering the 2000ms timeout.
+fn make_state_with_slow_engine() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(session_registry);
+    // 2100ms > 2000ms timeout budget → reliably triggers the timeout path.
+    state.hook_delay_ms = Some(2100);
+    (Arc::new(state), rx)
+}
+
 fn make_state_with_full_bus() -> (Arc<DaemonState>, Arc<AtomicU64>) {
     let (tx, _rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(1);
     let drop_counter = Arc::new(AtomicU64::new(0));
@@ -194,12 +254,10 @@ async fn test_BC_2_04_008_allow_returns_200_decision_allow() {
 /// Even if the EngineModule returns Block (internal filtering), the HTTP response
 /// to Claude Code is always `{"decision":"allow"}` (notifications are fire-and-forward).
 ///
-/// NOTE: Phase 1 ClaudeCodeModule always returns Allow. This test documents the invariant
-/// but cannot exercise the Block path with the current engine.
+/// Injects a Block decision override to exercise the code path directly.
 #[tokio::test]
 async fn test_BC_2_04_008_block_still_returns_allow_response() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: fails because handle_notification_inner is todo!()
+    let (state, _rx) = make_state_with_block_decision();
     let (status, body) = post_json(state, "/hooks/notification", notification_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -221,12 +279,11 @@ async fn test_BC_2_04_008_block_still_returns_allow_response() {
 
 /// Exercises BC-2.04.008 PC-4 / EC-079: 2000ms timeout → HTTP 200 `{"decision":"allow"}`.
 ///
-/// NOTE: This test cannot reliably trigger the timeout without a slow engine injection.
-/// It documents the timeout contract. Red Gate: inner handler is todo!().
+/// Injects a 2100ms artificial delay (> 2000ms budget) to reliably trigger the timeout path.
+/// NOTE: This test takes ~2000ms real time (waits for the timeout budget to expire).
 #[tokio::test]
 async fn test_BC_2_04_008_timeout_returns_allow() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: fails because inner handler is todo!()
+    let (state, _rx) = make_state_with_slow_engine();
     let (status, body) = post_json(state, "/hooks/notification", notification_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -251,12 +308,10 @@ async fn test_BC_2_04_008_timeout_returns_allow() {
 /// - No PermissionPromptQueued IPC sent.
 /// - Response: HTTP 200 `{"decision":"allow"}`.
 ///
-/// NOTE: Phase 1 engine never returns Defer. This test requires mock engine injection.
-/// Red Gate: documents the invariant but inner handler is todo!().
+/// Injects a Defer decision override to exercise the code path directly.
 #[tokio::test]
 async fn test_BC_2_04_008_defer_treated_as_allow_with_warn() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: fails because inner handler is todo!()
+    let (state, _rx) = make_state_with_defer_decision();
     let (status, body) = post_json(state, "/hooks/notification", notification_body()).await;
 
     assert_eq!(status, StatusCode::OK);

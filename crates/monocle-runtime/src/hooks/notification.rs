@@ -137,9 +137,27 @@ async fn handle_notification_inner(state: Arc<DaemonState>, envelope: HookEnvelo
 
     let bus_event_payload = hook_event.clone();
 
+    // Artificial delay for integration tests exercising the 2000ms timeout path.
+    // hook_delay_ms is None in production; Some(ms) only in tests.
+    if let Some(delay_ms) = state.hook_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // BC-2.04.008 PC-3: dispatch to EngineModule.
-    let engine = ClaudeCodeModule::new(String::new());
-    let response = engine.on_hook(hook_event).await;
+    // hook_decision_override is None in production; Some((decision, diagnostic)) in tests
+    // that need to exercise the Block or Defer paths (Phase 1 ClaudeCodeModule always
+    // returns Allow, so tests that need Block/Defer inject the decision here).
+    let response = if let Some((ref decision, ref diagnostic)) = state.hook_decision_override {
+        let base = monocle_core::engine::HookResponse::new(decision.clone());
+        if let Some(ref diag) = diagnostic {
+            base.with_diagnostic(diag.clone())
+        } else {
+            base
+        }
+    } else {
+        let engine = ClaudeCodeModule::new(String::new());
+        engine.on_hook(hook_event).await
+    };
 
     // BC-2.04.008 PC-3, invariant 4: response to Claude Code is ALWAYS allow.
     // Internal Block decision is handled (future: could log/filter) but not surfaced.
@@ -169,6 +187,8 @@ async fn handle_notification_inner(state: Arc<DaemonState>, envelope: HookEnvelo
     try_publish_event(&state, bus_event);
 
     // Ring append — best-effort, WARN on failure.
+    // DI-001 best-effort: ring append runs after decision but before function return.
+    // Under timeout cancellation, this append may be skipped (BC-2.04.008 invariant 4 best-effort caveat).
     let now_micros = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_micros() as i64)

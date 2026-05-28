@@ -134,6 +134,45 @@ fn make_state_with_block_decision() -> (
     (Arc::new(state), rx)
 }
 
+/// Build a `DaemonState` with a Defer decision override wired in.
+///
+/// Used to exercise the Defer-treated-as-Allow path in Stop and SessionStart handlers.
+fn make_state_with_defer_decision() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(Arc::clone(&session_registry));
+    state.hook_decision_override = Some((monocle_core::engine::HookDecision::Defer, None));
+    (Arc::new(state), rx)
+}
+
+/// Build a `DaemonState` with a 400ms artificial delay, reliably triggering the 300ms timeout.
+fn make_state_with_slow_engine() -> (
+    Arc<DaemonState>,
+    tokio::sync::mpsc::Receiver<EventBusHookEvent>,
+) {
+    let (tx, rx) = tokio::sync::mpsc::channel::<EventBusHookEvent>(EVENT_BUS_CAPACITY);
+    let drop_counter = Arc::new(AtomicU64::new(0));
+    let session_registry = Arc::new(monocle_runtime::hooks::SessionRegistry::new());
+
+    let mut state = DaemonState::new();
+    state.auth_token = TEST_TOKEN.to_string();
+    state.event_bus_tx = Some(Arc::new(tx));
+    state.drop_counter = Some(Arc::clone(&drop_counter));
+    state.session_registry = Some(Arc::clone(&session_registry));
+    // 400ms > 300ms timeout budget → reliably triggers the timeout path.
+    state.hook_delay_ms = Some(400);
+    (Arc::new(state), rx)
+}
+
 async fn post_json(
     state: Arc<DaemonState>,
     uri: &str,
@@ -336,13 +375,11 @@ async fn test_BC_2_04_009_prompt_submit_block_returns_block_with_reason() {
 
 /// Exercises BC-2.04.009 PC-4 / EC-086: PromptSubmit timeout → fail-open allow.
 ///
-/// When the 300ms budget expires, returns HTTP 200 `{"decision":"allow"}` (fail-open).
-/// NOTE: Requires slow engine injection to trigger. Red Gate assertion.
+/// Injects a 400ms artificial delay (> 300ms budget) to reliably trigger the timeout path.
+/// NOTE: This test takes ~300ms real time (waits for the timeout budget to expire).
 #[tokio::test]
 async fn test_BC_2_04_009_prompt_submit_timeout_returns_allow() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: Phase 1 engine completes in <300ms; timeout path not reached.
-    // Also fails because inner handler is todo!().
+    let (state, _rx) = make_state_with_slow_engine();
     let (status, body) = post_json(state, "/hooks/prompt-submit", prompt_submit_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -354,17 +391,49 @@ async fn test_BC_2_04_009_prompt_submit_timeout_returns_allow() {
     );
 }
 
+/// Exercises BC-2.04.009 PC-4: Stop timeout → fail-open allow.
+///
+/// Injects a 400ms artificial delay (> 300ms budget) to reliably trigger the timeout path.
+/// NOTE: This test takes ~300ms real time (waits for the timeout budget to expire).
+#[tokio::test]
+async fn test_BC_2_04_009_stop_timeout_returns_allow() {
+    let (state, _rx) = make_state_with_slow_engine();
+    let (status, body) = post_json(state, "/hooks/stop", stop_body()).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["decision"], "allow",
+        "Stop timeout must produce allow (fail-open): {body}"
+    );
+}
+
+/// Exercises BC-2.04.009 PC-4: SessionStart timeout → fail-open allow.
+///
+/// Injects a 400ms artificial delay (> 300ms budget) to reliably trigger the timeout path.
+/// NOTE: This test takes ~300ms real time (waits for the timeout budget to expire).
+#[tokio::test]
+async fn test_BC_2_04_009_session_start_timeout_returns_allow() {
+    let (state, _rx) = make_state_with_slow_engine();
+    let (status, body) = post_json(state, "/hooks/session-start", session_start_body()).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["decision"], "allow",
+        "SessionStart timeout must produce allow (fail-open): {body}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // BC-2.04.009 PC-3, invariant 2, AC-017: Defer → Allow + WARN
 // ---------------------------------------------------------------------------
 
 /// Exercises BC-2.04.009 invariant 2 / AC-017: Defer on Stop → treated as Allow + WARN.
 ///
+/// Injects a Defer decision override to exercise the code path directly.
 /// No oneshot channel created; no PermissionPromptQueued IPC sent.
 #[tokio::test]
 async fn test_BC_2_04_009_defer_on_stop_treated_as_allow() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: inner handler is todo!()
+    let (state, _rx) = make_state_with_defer_decision();
     let (status, body) = post_json(state, "/hooks/stop", stop_body()).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -375,10 +444,11 @@ async fn test_BC_2_04_009_defer_on_stop_treated_as_allow() {
 }
 
 /// Exercises BC-2.04.009 invariant 2 / AC-017 / EC-085: Defer on SessionStart → Allow + WARN.
+///
+/// Injects a Defer decision override to exercise the code path directly.
 #[tokio::test]
 async fn test_BC_2_04_009_defer_on_session_start_treated_as_allow() {
-    let (state, _rx) = make_state_with_bus();
-    // Red Gate: inner handler is todo!()
+    let (state, _rx) = make_state_with_defer_decision();
     let (status, body) = post_json(state, "/hooks/session-start", session_start_body()).await;
 
     assert_eq!(status, StatusCode::OK);
