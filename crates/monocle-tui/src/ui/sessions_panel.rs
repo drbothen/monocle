@@ -69,10 +69,12 @@ pub const SESSIONS_EMPTY_LINE_2: &str = "Start Claude Code in any terminal to se
 /// | >= 1,000,000   | N.NM    | `"1.2M"`        |
 ///
 /// **Rounding policy:** integer truncation (floor) for both the `k` and `M` ranges.
-/// `1_050_000` → `"1.0M"` (not `"1.1M"`). `999_999` → `"999k"` (not `"1000k"`).
+/// `1_050_000` → `"1M"` (m_dec == 0, decimal elided; not `"1.1M"`). `999_999` → `"999k"` (not `"1000k"`).
 /// This matches the `k`-range where `1_999` → `"1k"` (not `"2k"`). Consistent
 /// floor-truncation avoids surprising "up-rounding" on column widths and is easier
 /// to reason about for debugging (F-S025-ADV2-LOW-002).
+/// When the tenths digit is zero the `.0` suffix is elided: `1_000_000` → `"1M"`,
+/// `1_050_000` → `"1M"`, `1_100_000` → `"1.1M"` (F-S025-ADV10-LOW-001).
 ///
 /// Invariant 2 (BC-2.06.005): the formatter is deterministic — the same `u64`
 /// always produces the same string.
