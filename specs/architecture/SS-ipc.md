@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.8.0"
+version: "1.9.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
-timestamp: 2026-05-26T02:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.0.0"}
@@ -392,6 +392,90 @@ When the daemon receives a client disconnect (the per-client Tokio task gets an 
 `BrokenPipe`), it removes the client from the fan-out subscriber list and drops the per-client
 sender. No explicit goodbye message is required.
 
+### §TUI IPC Read Loop Pattern
+
+> **WARNING:** `read_framed` performs sequential `read_exact` calls. It is NOT
+> cancellation-safe across `tokio::time::timeout` or `tokio::select!` arms that may drop
+> the future mid-read. Doing so will lose bytes from the kernel socket buffer and corrupt
+> frame alignment.
+
+**Forbidden pattern — cancellation-unsafe; will corrupt the frame stream:**
+
+```rust
+// FORBIDDEN — cancellation-unsafe; will corrupt the frame stream:
+match tokio::time::timeout(
+    Duration::from_millis(1),
+    read_framed::<_, ServerToClient>(&mut transport),
+).await {
+    Ok(Ok(msg)) => { /* handle msg */ }
+    Err(_timeout) => { /* loop again — bytes may have been consumed from kernel buffer */ }
+}
+```
+
+**Canonical pattern — dedicated reader task + bounded `mpsc::channel(64)`:**
+
+- Spawn a dedicated reader task that owns the transport exclusively:
+
+```rust
+/// Spawn a dedicated IPC reader task.
+/// Returns a JoinHandle; the event loop holds the Receiver.
+pub fn spawn_ipc_reader(
+    mut transport: UdsClientTransport,
+    tx: mpsc::Sender<ServerToClient>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        loop {
+            match transport.recv_message().await {
+                Ok(msg) => {
+                    if tx.send(msg).await.is_err() {
+                        // Receiver dropped — event loop has exited; stop reading.
+                        break;
+                    }
+                }
+                Err(_) => {
+                    // EOF, BrokenPipe, or ConnectionReset — signal disconnect.
+                    let _ = tx.send(ServerToClient::Disconnected).await;
+                    break;
+                }
+            }
+        }
+    })
+}
+```
+
+- Event loop holds `mpsc::Receiver<ServerToClient>` and `JoinHandle<()>`; drains via
+  `ipc_rx.try_recv()` on each keyboard tick (16ms / ~60Hz cadence).
+
+**Design invariants:**
+
+- **Channel capacity:** 64. Bounded backpressure preserves at-least-once delivery per
+  BC-2.05.002 Invariant 4; 64 covers typical burst sizes without unbounded memory growth.
+- **Drop policy on full:** BLOCK — sender uses `.await` (NOT `try_send`). Silent drop on
+  full would violate BC-2.05.002 Invariant 4.
+- **Keyboard polling cadence:** 16ms (~60Hz). The keyboard tick is the natural rate-limiter
+  of the consumer drain loop; the IPC reader task is decoupled and runs at the socket's
+  natural rate.
+- **Transport ownership:** reader task takes exclusive `move` ownership of
+  `UdsClientTransport`. The event loop holds `mpsc::Receiver` and `JoinHandle`. No
+  `Arc<Mutex<UdsClientTransport>>`.
+- **Reconnect handoff:** on disconnect (`Ok(Err(_))` or channel `Disconnected`):
+  1. `reader_handle.abort()` — terminate the stale reader task.
+  2. Invoke SOQ-3 handler — clear the TUI's local `VecDeque<PromptModal>` overlay stack.
+  3. Call `monocle_ipc::reconnect::reconnect(...)` to obtain a fresh
+     `(UdsClientTransport, EventReceiver)`.
+  4. Spawn a new `spawn_ipc_reader(new_transport, ipc_tx.clone())` task.
+
+**Reference implementation:** `crates/monocle-tui/src/app.rs::spawn_ipc_reader` (S-025).
+
+**Proof of cancellation safety:** integration test
+`test_bc_2_05_002_pc_6_no_frame_corruption_across_inter_message_gap` validates that
+frame alignment is preserved across inter-message gaps and that no bytes are lost.
+
+**Cross-references:**
+- BC-2.05.002 — At-Least-Once delivery (Invariant 4: `prompt_id` idempotency)
+- BC-2.05.007 — SOQ-3 overlay ordering
+- BC-2.05.006 — Reconnect backoff policy
+
 ---
 
 ## §Client Disconnect and Overlay Persistence
@@ -476,8 +560,14 @@ arrivals and timeouts, not by client lifecycle.
 
 ## Reconnection Behavior
 
-The TUI monitors its `UnixStream` connection via the receive loop. If `read_framed` returns an
-error (EOF, `BrokenPipe`, or `ConnectionReset`), the TUI enters reconnection mode:
+The TUI monitors its `UnixStream` connection via the dedicated IPC reader task (see
+§TUI IPC Read Loop Pattern). The reader task calls `recv_message()` (which calls
+`read_framed` internally) in a blocking loop. On `recv_message` returning an error
+(EOF, `BrokenPipe`, or `ConnectionReset`), the task sends a disconnect signal over
+the `mpsc::channel(64)` and exits. The event loop receives the signal and enters
+reconnection mode. **Do NOT poll `read_framed` directly inside a `tokio::select!` or
+`tokio::time::timeout` arm — see §TUI IPC Read Loop Pattern for the forbidden pattern
+and the canonical replacement.**
 
 1. **Overlay clear (SOQ-3) — TUI LOCAL stack only.** Immediately clear all entries from the
    TUI's local `VecDeque<PromptModal>` overlay stack. This clears the TUI's in-memory view
@@ -680,6 +770,26 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.9.0
+
+**architect-decisions-pass-2.md binding directive — §TUI IPC Read Loop Pattern added** (2026-05-28):
+- Added §TUI IPC Read Loop Pattern section after §Phase 3: Disconnect in §Connection Lifecycle.
+- Forbids the cancellation-unsafe `tokio::time::timeout(1ms, read_framed(...))` pattern
+  (F-S025-ADV2-BLOCKER-001): wrapping a `read_framed` future in a 1ms timeout will silently
+  consume bytes from the kernel socket buffer on cancellation, corrupting frame alignment.
+- Mandates the canonical pattern: dedicated `spawn_ipc_reader` task with `move` ownership
+  of `UdsClientTransport` + bounded `mpsc::channel(64)`. Consumer drains via `ipc_rx.try_recv()`
+  at 16ms keyboard-tick cadence.
+- Encodes all design invariants: capacity=64, drop-policy=BLOCK (`.await`, not `try_send`),
+  exclusive transport ownership (no `Arc<Mutex>`), reconnect handoff sequence (abort →
+  SOQ-3 clear → reconnect → respawn reader).
+- Updated §Reconnection Behavior to forbid direct `read_framed` polling in `tokio::select!`
+  / `tokio::time::timeout` arms and redirect to §TUI IPC Read Loop Pattern.
+- Cross-references: BC-2.05.002 (Invariant 4 at-least-once), BC-2.05.007 (SOQ-3),
+  BC-2.05.006 (reconnect backoff). Reference implementation:
+  `crates/monocle-tui/src/app.rs::spawn_ipc_reader` (S-025). Proof of cancellation safety:
+  integration test `test_bc_2_05_002_pc_6_no_frame_corruption_across_inter_message_gap`.
 
 ## §Trace v1.8.0
 
