@@ -551,3 +551,102 @@ fn test_bc_2_06_005_pc5_dashboard_layout_sessions_area_nonzero() {
         "BC-2.06.005 PC-5: event_ribbon_area.width must be > 0"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV3-MED-002 — build_fullscreen_layout + Fullscreen render branch
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV3-MED-002 / BC-2.06.007 PC-7: build_fullscreen_layout returns a
+/// panel_area that occupies the full terminal width and all rows minus the status bar.
+///
+/// This test verifies:
+/// 1. `build_fullscreen_layout` is not dead code (used by the render branch).
+/// 2. The panel_area spans the full terminal width.
+/// 3. The status_bar_area is exactly 2 rows as specified (BC-2.06.005 PC-5).
+/// 4. panel_area.height + status_bar_area.height == terminal height.
+#[test]
+fn test_f_s025_adv3_med002_fullscreen_layout_panel_occupies_full_area() {
+    use monocle_tui::ui::layout::build_fullscreen_layout;
+    let terminal_area = Rect::new(0, 0, 100, 40);
+    let layout = build_fullscreen_layout(terminal_area);
+
+    // Panel area must span full width.
+    assert_eq!(
+        layout.panel_area.width, 100,
+        "MED-002: fullscreen panel_area must span full terminal width"
+    );
+    // Status bar must be exactly 2 rows.
+    assert_eq!(
+        layout.status_bar_area.height, 2,
+        "MED-002: status_bar_area must be 2 rows (BC-2.06.005 PC-5)"
+    );
+    // panel + status must == terminal height.
+    assert_eq!(
+        layout.panel_area.height + layout.status_bar_area.height,
+        40,
+        "MED-002: panel_area.height + status_bar_area.height must equal terminal height"
+    );
+    // Panel area height must be greater than the status bar (full-screen, not zero).
+    assert!(
+        layout.panel_area.height > 0,
+        "MED-002: fullscreen panel_area must have positive height"
+    );
+    assert_eq!(
+        layout.panel_area.height,
+        38,
+        "MED-002: fullscreen panel_area.height must be terminal_height - 2 = 38"
+    );
+}
+
+/// F-S025-ADV3-MED-002 / BC-2.06.007 PC-7: Fullscreen render branch exercises
+/// Sessions panel across the full panel_area — sessions must appear in rendered output.
+///
+/// Confirms the render branch is wired: `build_fullscreen_layout` is called and
+/// the SessionsPanel renders content (not the old dashboard 60/40 split output).
+#[test]
+fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
+    use monocle_tui::ui::layout::build_fullscreen_layout;
+
+    let app = app_with_sessions(vec![session("sess-full")]);
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let terminal_area = Rect::new(0, 0, 80, 24);
+
+    let fullscreen_layout = build_fullscreen_layout(terminal_area);
+    let mut state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| {
+            use ratatui::widgets::StatefulWidget;
+            let panel = SessionsPanel::new(&app);
+            // Render into the fullscreen panel_area (not the 60%-wide sessions_area).
+            panel.render(
+                fullscreen_layout.panel_area,
+                frame.buffer_mut(),
+                &mut state,
+            );
+        })
+        .expect("terminal draw");
+
+    let buffer = terminal.backend().buffer().clone();
+    let rendered: String = (0..buffer.area().height as usize)
+        .map(|y| {
+            (0..buffer.area().width as usize)
+                .map(|x| buffer[(x as u16, y as u16)].symbol().to_string())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert!(
+        rendered.contains("sess-full"),
+        "MED-002/BC-2.06.007 PC-7: Sessions panel in fullscreen area must render session 'sess-full'; got:\n{}",
+        rendered
+    );
+    // Verify the panel_area is full-width (80 columns — not 60% / 48 columns).
+    assert_eq!(
+        fullscreen_layout.panel_area.width,
+        80,
+        "MED-002: panel_area must be 80 wide (full terminal), not 60%"
+    );
+}

@@ -524,27 +524,18 @@ pub async fn run() -> Result<()> {
     let tick_rate = Duration::from_millis(16); // ~60fps; also the keyboard poll ceiling
 
     loop {
-        // 1. Render the current frame (AC-001, AC-005, BLOCKER-004).
+        // 1. Render the current frame (AC-001, AC-005, BLOCKER-004, BC-2.06.007 PC-7).
         terminal.draw(|frame| {
-            use crate::ui::layout::build_dashboard_layout;
+            use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
             use crate::ui::sessions_panel::SessionsPanel;
+            use monocle_core::tui::state::PanelId;
             use ratatui::{
                 style::{Color, Style},
                 text::{Line, Span},
                 widgets::{Paragraph, StatefulWidget, Widget},
             };
 
-            let layout = build_dashboard_layout(frame.area());
-
-            // Render the Sessions panel (left 60%).
-            let panel = SessionsPanel::new(&app);
-            panel.render(
-                layout.sessions_area,
-                frame.buffer_mut(),
-                &mut sessions_state,
-            );
-
-            // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
+            // Build the status line (shared between Dashboard and Fullscreen).
             let status_line = if app.drop_counter > 0 {
                 Line::from(vec![Span::styled(
                     format!("[dropped: {}] monocle", app.drop_counter),
@@ -556,11 +547,58 @@ pub async fn run() -> Result<()> {
                     Style::default().fg(Color::DarkGray),
                 ))
             };
-            Widget::render(
-                Paragraph::new(status_line),
-                layout.status_bar_area,
-                frame.buffer_mut(),
-            );
+
+            // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
+            // Fullscreen mode: panel occupies full main area; Dashboard: 60/40 split.
+            match &app.mode {
+                AppMode::Fullscreen { panel, .. } => {
+                    let layout = build_fullscreen_layout(frame.area());
+                    match panel {
+                        PanelId::Sessions => {
+                            let p = SessionsPanel::new(&app);
+                            p.render(layout.panel_area, frame.buffer_mut(), &mut sessions_state);
+                        }
+                        _ => {
+                            // Future panels (EventRibbon fullscreen — S-027, others).
+                            // PanelId is #[non_exhaustive]; render a placeholder until
+                            // each panel's fullscreen renderer is implemented.
+                            Widget::render(
+                                Paragraph::new(Line::from(Span::styled(
+                                    "Panel (S-027+)",
+                                    Style::default().fg(Color::DarkGray),
+                                ))),
+                                layout.panel_area,
+                                frame.buffer_mut(),
+                            );
+                        }
+                    }
+                    Widget::render(
+                        Paragraph::new(status_line),
+                        layout.status_bar_area,
+                        frame.buffer_mut(),
+                    );
+                }
+                _ => {
+                    // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
+                    // Overlay is rendered on top by S-026. Sessions panel always visible.
+                    let layout = build_dashboard_layout(frame.area());
+
+                    // Render the Sessions panel (left 60%).
+                    let panel = SessionsPanel::new(&app);
+                    panel.render(
+                        layout.sessions_area,
+                        frame.buffer_mut(),
+                        &mut sessions_state,
+                    );
+
+                    // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
+                    Widget::render(
+                        Paragraph::new(status_line),
+                        layout.status_bar_area,
+                        frame.buffer_mut(),
+                    );
+                }
+            }
         })?;
 
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
