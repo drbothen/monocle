@@ -661,15 +661,14 @@ pub async fn run() -> Result<()> {
                             AppMode::Dashboard {
                                 focused: FocusSnapshot::Sessions
                             }
-                        ) {
-                            if !app.sessions.is_empty() {
-                                let prev = sessions_state
-                                    .list_state
-                                    .selected()
-                                    .map(|i| i.saturating_sub(1))
-                                    .unwrap_or(0);
-                                sessions_state.list_state.select(Some(prev));
-                            }
+                        ) && !app.sessions.is_empty()
+                        {
+                            let prev = sessions_state
+                                .list_state
+                                .selected()
+                                .map(|i| i.saturating_sub(1))
+                                .unwrap_or(0);
+                            sessions_state.list_state.select(Some(prev));
                         }
                     }
                     Some((action, _)) => {

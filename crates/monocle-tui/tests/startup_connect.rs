@@ -796,15 +796,13 @@ fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
             focused: FocusSnapshot::Sessions
         }
     );
-    if is_dashboard_sessions {
-        if !app.sessions.is_empty() {
-            let prev = sessions_state
-                .list_state
-                .selected()
-                .map(|i| i.saturating_sub(1))
-                .unwrap_or(0);
-            sessions_state.list_state.select(Some(prev));
-        }
+    if is_dashboard_sessions && !app.sessions.is_empty() {
+        let prev = sessions_state
+            .list_state
+            .selected()
+            .map(|i| i.saturating_sub(1))
+            .unwrap_or(0);
+        sessions_state.list_state.select(Some(prev));
     }
 
     // Selection must remain at 1 (Overlay mode blocked SelectPrev).

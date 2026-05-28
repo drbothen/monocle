@@ -592,8 +592,7 @@ fn test_f_s025_adv3_med002_fullscreen_layout_panel_occupies_full_area() {
         "MED-002: fullscreen panel_area must have positive height"
     );
     assert_eq!(
-        layout.panel_area.height,
-        38,
+        layout.panel_area.height, 38,
         "MED-002: fullscreen panel_area.height must be terminal_height - 2 = 38"
     );
 }
@@ -620,11 +619,7 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
             use ratatui::widgets::StatefulWidget;
             let panel = SessionsPanel::new(&app);
             // Render into the fullscreen panel_area (not the 60%-wide sessions_area).
-            panel.render(
-                fullscreen_layout.panel_area,
-                frame.buffer_mut(),
-                &mut state,
-            );
+            panel.render(fullscreen_layout.panel_area, frame.buffer_mut(), &mut state);
         })
         .expect("terminal draw");
 
@@ -645,8 +640,7 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
     );
     // Verify the panel_area is full-width (80 columns — not 60% / 48 columns).
     assert_eq!(
-        fullscreen_layout.panel_area.width,
-        80,
+        fullscreen_layout.panel_area.width, 80,
         "MED-002: panel_area must be 80 wide (full terminal), not 60%"
     );
 }
