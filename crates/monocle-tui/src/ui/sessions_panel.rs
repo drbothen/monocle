@@ -92,10 +92,12 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
     }
 }
 
-/// Format uptime given an explicit `now` instant — the clock-injected core.
+/// Format uptime given an explicit `now` instant — the canonical entry point.
 ///
 /// Accepts `now: DateTime<Utc>` so callers can supply a deterministic value for
-/// testing. Production code calls `format_uptime` (below) which passes `Utc::now()`.
+/// testing. Production callers (e.g., `format_session_row`) inject a per-frame
+/// `Utc::now()` captured once at render time. Tests inject a fixed instant for
+/// deterministic assertions.
 ///
 /// Returns `"—"` (U+2014 EM DASH) when `started_at` is `None` (BC-2.06.005 Invariant 3).
 /// Returns `"—"` when the elapsed duration is negative (clock skew guard).
@@ -143,24 +145,16 @@ pub fn format_uptime_at(
     }
 }
 
-/// Format uptime from an optional `started_at` timestamp (live wall-clock variant).
-///
-/// Delegates to `format_uptime_at` with `Utc::now()`. Use `format_uptime_at`
-/// directly when deterministic output is required (e.g., in tests).
-pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> String {
-    format_uptime_at(started_at, Utc::now())
-}
-
 #[cfg(test)]
 mod uptime_tests {
-    use super::format_uptime;
+    use super::format_uptime_at;
     use chrono::Utc;
 
     /// BC-2.06.005 PC-2 canonical test vector: 3h47m → "03:47:00".
     #[test]
     fn test_bc_2_06_005_uptime_canonical_3h47m() {
         let start = Utc::now() - chrono::Duration::seconds(3 * 3600 + 47 * 60);
-        let result = format_uptime(Some(start));
+        let result = format_uptime_at(Some(start), Utc::now());
         assert_eq!(result, "03:47:00", "3h47m must format as 03:47:00");
     }
 
@@ -168,7 +162,7 @@ mod uptime_tests {
     #[test]
     fn test_bc_2_06_005_uptime_ec086_100h() {
         let start = Utc::now() - chrono::Duration::seconds(100 * 3600);
-        let result = format_uptime(Some(start));
+        let result = format_uptime_at(Some(start), Utc::now());
         assert_eq!(
             result, "100:00:00",
             "100h must format as 100:00:00 (EC-086)"
@@ -178,7 +172,7 @@ mod uptime_tests {
     /// None → "—" sentinel.
     #[test]
     fn test_bc_2_06_005_uptime_none_renders_em_dash() {
-        let result = format_uptime(None);
+        let result = format_uptime_at(None, Utc::now());
         assert_eq!(result, "—", "None must render as em dash");
     }
 
@@ -186,7 +180,7 @@ mod uptime_tests {
     #[test]
     fn test_bc_2_06_005_uptime_1h2m3s() {
         let start = Utc::now() - chrono::Duration::seconds(3600 + 2 * 60 + 3);
-        let result = format_uptime(Some(start));
+        let result = format_uptime_at(Some(start), Utc::now());
         assert_eq!(result, "01:02:03");
     }
 
@@ -194,7 +188,7 @@ mod uptime_tests {
     #[test]
     fn test_bc_2_06_005_uptime_59s() {
         let start = Utc::now() - chrono::Duration::seconds(59);
-        let result = format_uptime(Some(start));
+        let result = format_uptime_at(Some(start), Utc::now());
         assert_eq!(result, "00:00:59");
     }
 
@@ -202,7 +196,7 @@ mod uptime_tests {
     #[test]
     fn test_bc_2_06_005_uptime_0s() {
         let start = Utc::now();
-        let result = format_uptime(Some(start));
+        let result = format_uptime_at(Some(start), Utc::now());
         // Allow "00:00:00" or "00:00:01" due to sub-second timing jitter.
         assert!(
             result == "00:00:00" || result == "00:00:01",
