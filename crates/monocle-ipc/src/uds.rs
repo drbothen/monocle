@@ -5,8 +5,20 @@
 //! - Stale socket removal before bind (BC-2.05.001 PC-3).
 //! - UDS path length validation (BC-2.05.001 EC-002).
 //! - Fan-out subscriber list (`Vec<Sender<ServerToClient>>`).
-//! - `broadcast_session_list_update` / `broadcast_hook_event_received` with 256 KiB guard.
 //! - Slow client disconnect (BC-2.05.004 EC-005).
+//!
+//! # Fan-out broadcast (F-ADV2-MED-002)
+//!
+//! All fan-out broadcasts to TUI clients go through
+//! `monocle_runtime::ipc_server::broadcast_to_subscribers`, which is the canonical
+//! broadcast helper with consistent slow-client handling (BC-2.05.004 EC-005).
+//! The previous `broadcast_session_list_update` and `broadcast_hook_event_received`
+//! methods on `UdsTransport` were dead code — the lifecycle path used
+//! `monocle_runtime::ipc_server` directly, not the `UdsTransport` fan-out methods.
+//! Those dead methods enforced a 256 KiB guard that production's
+//! `broadcast_to_subscribers` did NOT; retaining them risked future SessionListUpdate
+//! wiring bypassing the guard. They were deleted (F-ADV2-MED-002). Future callers
+//! MUST add an explicit size check in `ipc_server.rs` before broadcasting large messages.
 //!
 //! The accept loop and per-client task spawner live in `monocle-runtime::ipc_server`
 //! (S-022) to avoid a circular crate dependency.
@@ -20,7 +32,7 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 
 use crate::error::IpcError;
-use crate::framing::{write_framed, MAX_MESSAGE_BYTES};
+use crate::framing::write_framed;
 use crate::transport::Transport;
 use crate::types::{ClientToServer, ServerToClient};
 
@@ -47,14 +59,12 @@ type ClientSender = mpsc::Sender<ServerToClient>;
 ///
 /// Use [`UdsTransport::bind`] to create a bound socket. The bound `UnixListener`
 /// is transferred to `monocle_runtime::ipc_server::run_accept_loop` (S-022) which
-/// owns the per-client task spawner. The returned `UdsTransport` manages the path
-/// and fan-out subscriber list.
+/// owns the per-client task spawner. The returned `UdsTransport` manages the socket path.
 ///
 /// # Fan-out
 ///
-/// [`UdsTransport::broadcast_session_list_update`] and
-/// [`UdsTransport::broadcast_hook_event_received`] serialize and send messages to all
-/// connected clients. Disconnected clients are silently removed from the subscriber list.
+/// Fan-out broadcasts go through `monocle_runtime::ipc_server::broadcast_to_subscribers`.
+/// `UdsTransport` no longer exposes broadcast methods; see module-level doc for rationale.
 #[derive(Debug)]
 pub struct UdsTransport {
     /// Absolute path to the bound socket file.
@@ -163,101 +173,6 @@ impl UdsTransport {
         }
     }
 
-    /// Broadcast `ServerToClient::SessionListUpdate` to all connected TUI clients.
-    ///
-    /// # Contract (BC-2.05.003)
-    ///
-    /// - The `sessions` Vec contains the **complete current session list** (not a diff).
-    /// - If the serialized message exceeds 256 KiB:
-    ///   log `ERROR: SessionListUpdate exceeds 256 KiB; cannot broadcast` and return.
-    ///   No message is sent to any client.
-    /// - Disconnected clients (closed receiver) are silently removed from the subscriber list.
-    /// - The `drop_counter` is NOT incremented by IPC send failures (AC-010).
-    pub async fn broadcast_session_list_update(
-        &self,
-        sessions: Vec<monocle_core::engine::EnrichedSession>,
-    ) {
-        let msg = ServerToClient::SessionListUpdate { sessions };
-
-        // 256 KiB guard (BC-2.05.003 PC-3).
-        // Serialize once to measure size; the message itself is passed to fan_out_message
-        // to avoid a redundant deserialize step.
-        let serialized = match serde_json::to_vec(&msg) {
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!("SessionListUpdate serialization failed: {e}");
-                return;
-            }
-        };
-        if serialized.len() > MAX_MESSAGE_BYTES {
-            tracing::error!("SessionListUpdate exceeds 256 KiB; cannot broadcast");
-            return;
-        }
-
-        self.fan_out_message(&msg).await;
-    }
-
-    /// Broadcast `ServerToClient::HookEventReceived` to all connected TUI clients.
-    ///
-    /// # Contract (BC-2.05.004)
-    ///
-    /// - `payload_excerpt` is constructed from `body_bytes` by:
-    ///   1. Interpreting `body_bytes` as UTF-8 (losslessly, via `String::from_utf8_lossy`).
-    ///   2. Calling [`crate::types::truncate_to_utf8_boundary`] with `max_bytes = 256`.
-    /// - `latency_ms` is passed through from the HTTP handler's measurement.
-    /// - Slow clients (send buffer full): removed from subscriber list; log
-    ///   `WARN: removed slow TUI client (send buffer full)`. Other clients unaffected.
-    /// - The `drop_counter` is NOT incremented on IPC slow-client disconnect (AC-010).
-    pub async fn broadcast_hook_event_received(
-        &self,
-        hook_type: monocle_core::hook_events::HookType,
-        session_id: String,
-        body_bytes: &[u8],
-        latency_ms: u64,
-    ) {
-        use crate::types::{truncate_to_utf8_boundary, PAYLOAD_EXCERPT_MAX_BYTES};
-
-        let body_str = String::from_utf8_lossy(body_bytes);
-        let payload_excerpt =
-            truncate_to_utf8_boundary(&body_str, PAYLOAD_EXCERPT_MAX_BYTES).to_owned();
-
-        let msg = ServerToClient::HookEventReceived {
-            hook_type,
-            session_id,
-            payload_excerpt,
-            latency_ms,
-        };
-
-        self.fan_out_message(&msg).await;
-    }
-
-    /// Fan-out a `ServerToClient` message to all connected TUI clients.
-    ///
-    /// Clones the message into each subscriber's bounded channel. Subscribers whose
-    /// channels are full (slow clients) or whose receivers are dropped (disconnected
-    /// clients) are removed from the list after the broadcast pass.
-    ///
-    /// The `drop_counter` is NOT touched here (BC-2.05.004 PC-4).
-    async fn fan_out_message(&self, msg: &ServerToClient) {
-        let mut subs = self.subscribers.lock().await;
-        let mut live: Vec<ClientSender> = Vec::with_capacity(subs.len());
-
-        for sender in subs.drain(..) {
-            match sender.try_send(msg.clone()) {
-                Ok(()) => live.push(sender),
-                Err(mpsc::error::TrySendError::Full(_)) => {
-                    // Slow client — send buffer full. Disconnect and log WARN (BC-2.05.004 EC-005).
-                    tracing::warn!("removed slow TUI client (send buffer full)");
-                    // sender is dropped here, which closes the channel.
-                }
-                Err(mpsc::error::TrySendError::Closed(_)) => {
-                    // Disconnected client — silently remove from subscriber list.
-                }
-            }
-        }
-
-        *subs = live;
-    }
 }
 
 /// Connect a TUI client to the daemon's Unix domain socket (S-022, BC-2.05.002 precondition 3).
