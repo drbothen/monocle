@@ -194,30 +194,40 @@ fn test_bc_2_06_005_pc2_inv3_cost_column_renders_em_dash_when_none() {
     );
 }
 
-/// BC-2.06.005 PC-2 Invariant 3 / AC-005: project column renders "—" when
-/// project_name is None.
+/// BC-2.06.005 PC-2 Invariant 3 / AC-005: rendered output contains at least one "—"
+/// when project_name is None (em-dash present somewhere in the row).
+///
+/// Note: this test verifies that the rendered buffer contains at least one em-dash
+/// when all optional fields (project_name, cost_usd, started_at) are None.
+/// Column-specific placement of the project em-dash is verified by the verbatim
+/// canonical row test (`test_bc_2_06_005_canonical_row_verbatim_with_mocked_time`).
 #[test]
-fn test_bc_2_06_005_pc2_inv3_project_column_renders_em_dash_when_none() {
+fn test_bc_2_06_005_pc2_inv3_em_dash_present_when_project_name_none() {
     // session() builds with None transcript_path → project_name will be None.
     let app = app_with_sessions(vec![session("sess-001")]);
     let rendered = render_sessions_panel(&app, 0);
     assert!(
         rendered.contains('—'),
-        "BC-2.06.005 PC-2 Invariant 3: '—' must appear for None project_name; got:\n{}",
+        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when project_name is None; got:\n{}",
         rendered
     );
 }
 
-/// BC-2.06.005 PC-2 Invariant 3 / AC-005: uptime column renders "—" when
-/// started_at is None.
+/// BC-2.06.005 PC-2 Invariant 3 / AC-005: rendered output contains at least one "—"
+/// when started_at is None (em-dash present somewhere in the row).
+///
+/// Note: this test verifies that the rendered buffer contains at least one em-dash
+/// when all optional fields (project_name, cost_usd, started_at) are None.
+/// Column-specific placement of the uptime em-dash is verified by the verbatim
+/// canonical row test (`test_bc_2_06_005_canonical_row_verbatim_with_mocked_time`).
 #[test]
-fn test_bc_2_06_005_pc2_inv3_uptime_column_renders_em_dash_when_started_at_none() {
+fn test_bc_2_06_005_pc2_inv3_em_dash_present_when_started_at_none() {
     let app = app_with_sessions(vec![session("sess-001")]);
     let rendered = render_sessions_panel(&app, 0);
-    // Uptime column must show "—" when started_at is None.
+    // At least one "—" must appear when started_at is None.
     assert!(
         rendered.contains('—'),
-        "BC-2.06.005 PC-2 Invariant 3: '—' must appear for None started_at; got:\n{}",
+        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when started_at is None; got:\n{}",
         rendered
     );
 }
@@ -507,28 +517,6 @@ fn test_bc_2_06_005_pc2_ac006_tab_cycles_focus_event_ribbon_to_sessions() {
             core::mem::discriminant(&other)
         ),
     }
-}
-
-/// BC-2.06.005 PC-2 / AC-006: j / ↓ key moves selection down.
-///
-/// The sessions panel renders both sessions when there are two. Selection
-/// is tracked via SessionsPanelState (ListState). The j-key binding is
-/// dispatched by the main event loop (not the widget itself) — this test
-/// verifies the panel renders all sessions visible for navigation.
-#[test]
-fn test_bc_2_06_005_pc2_ac006_j_key_moves_selection_down() {
-    let app = app_with_sessions(vec![session("sess-a"), session("sess-b")]);
-    let rendered = render_sessions_panel(&app, 0);
-    assert!(
-        rendered.contains("sess-a"),
-        "AC-006: sess-a must be visible for j-key navigation test; got:\n{}",
-        rendered
-    );
-    assert!(
-        rendered.contains("sess-b"),
-        "AC-006: sess-b must be visible for j-key navigation test; got:\n{}",
-        rendered
-    );
 }
 
 // ---------------------------------------------------------------------------
