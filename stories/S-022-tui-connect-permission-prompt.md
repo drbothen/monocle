@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-022
 epic_id: EPIC-05
-version: "1.2"
+version: "1.3"
 status: in_progress
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 8
 wave: 6
@@ -49,7 +49,7 @@ removing the client from the fan-out subscriber list on disconnect (clean EOF or
 The daemon sends exactly one `ServerToClient::InitialState` message immediately upon
 connection, before any other message. The message contains:
 - `sessions: Vec<EnrichedSession>` — the full current session roster (may be empty).
-- `ring_tail: Vec<HookEvent>` — the last N events from the RAM ring (may be empty).
+- `ring_tail: Vec<HookEventRecord>` — the last N events from the RAM ring (may be empty).
 - `overlay_stack: Vec<PermissionPromptPayload>` — queued permission prompts awaiting decision
   (may be empty).
 - `drop_counter: u64` — the current daemon drop counter value.
@@ -255,3 +255,14 @@ Files to modify:
 - `monocle-runtime/src/state.rs` — add `pending_decisions: Arc<Mutex<PendingDecisionRegistry>>` to `DaemonState`; add `snapshot_initial_state` function
 - `monocle-runtime/src/lifecycle.rs` — integrate connection accept loop start at end of `daemon_start_sequence()` (after step 10 UDS bind from S-021)
 - `monocle-runtime/src/hook_handlers.rs` (or equivalent from S-018) — on `decision_required: true` path: `register_prompt`; broadcast `PermissionPromptQueued`; on timeout: `remove_timed_out_prompt`; broadcast `PermissionPromptResolved`
+
+## §Trace v1.3
+
+**F-S022-ADV15-LOW-001 — ring_tail type corrected to Vec<HookEventRecord>** (2026-05-28):
+- Finding: AC-002 listed `ring_tail: Vec<HookEvent>`. BC-2.05.002 v1.0.5 PC-2 and the
+  implementation use `Vec<HookEventRecord>` — `HookEventRecord` is the persisted ring
+  entry type (in `monocle-ipc::types`), distinct from the raw `HookEvent` enum.
+  `HookEventRecord` carries timestamp and additional metadata; `HookEvent` is the
+  parsed hook payload only.
+- Fix: AC-002 updated from `Vec<HookEvent>` to `Vec<HookEventRecord>`.
+- No BC update required: BC-2.05.002 v1.0.5 already uses the correct type.

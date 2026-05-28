@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.3"
+version: "1.4"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 8
 wave: 6
@@ -62,17 +62,23 @@ to `Dashboard` mode (discarding any Overlay state) and renders a status bar noti
 BC-2.06.004 v1.1.0 behavior was removed.
 
 ### AC-004 (traces to BC-2.06.004 postcondition PC-3 — config load on startup)
-On startup, `monocle-tui` calls `MonocleConfig::load(MonocleConfig::config_path()?)`.
-If `config_path()` returns `Err(ConfigError::HomeDirUnresolvable)`, the TUI logs the
-error and falls back to `MonocleConfig::default()`. Config load errors other than
-missing file (e.g., `ParseError`, `SchemaMismatch`) are displayed to the user in a
+On startup, `monocle-tui` calls `load_config(MonocleConfig::config_path()?)` (the free
+function from `monocle-config`, NOT a `MonocleConfig::load` method — no such method
+exists). If `config_path()` returns `Err(ConfigError::HomeDirUnresolvable)`, the TUI
+logs the error and falls back to `MonocleConfig::default()`. Config load errors other
+than missing file (e.g., `ParseError`, `SchemaMismatch`) are displayed to the user in a
 modal before the TUI proceeds with defaults.
 
 ### AC-005 (traces to BC-2.06.005 postcondition PC-1 — Sessions panel renders session list)
-The Sessions panel renders a scrollable list of active sessions. Each row shows:
-`<session_id> | <harness_type> | <status> | <uptime>`. The list is sourced from
+The Sessions panel renders a scrollable list of active sessions. Each row shows six
+columns: icon, project name, status, token count, cost, uptime (in that order). For
+example: `● monocle Active 437k — 03:47:00`. The list is sourced from
 `ServerToClient::SessionListUpdate` IPC messages. If no sessions are active, the panel
-renders: `"No active sessions"`.
+renders two lines:
+```
+No sessions detected
+Start Claude Code in any terminal to see it here.
+```
 
 ### AC-006 (traces to BC-2.06.005 postcondition PC-2 — Sessions panel keyboard navigation)
 In `Dashboard { focused: FocusSnapshot::Sessions }` mode:
@@ -225,6 +231,27 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.4
+
+**F-S025-ADV3-HIGH-001 — MonocleConfig::load API drift corrected** (2026-05-28):
+- Finding: AC-004 referenced `MonocleConfig::load(MonocleConfig::config_path()?)` —
+  no such method exists. The actual API is the free function `load_config(&path)` from
+  `monocle-config`, confirmed in `crates/monocle-tui/src/app.rs:16,423`.
+- Fix: AC-004 updated to reference `load_config(MonocleConfig::config_path()?)` and
+  explicitly note the method-vs-free-function distinction to prevent re-introduction.
+
+**F-S025-ADV3-HIGH-002 — Sessions panel columns and empty-state drift corrected** (2026-05-28):
+- Finding: AC-005 specified 4 columns (`session_id | harness_type | status | uptime`)
+  and empty-state `"No active sessions"`. BC-2.06.005 PC-1 canonically specifies 6
+  columns (icon, project, status, tokens, cost, uptime) and empty-state "No sessions
+  detected" / "Start Claude Code...". Implementation in `sessions_panel.rs:284-305`
+  matches the BC, not the story.
+- Root cause: story text was stale from a pre-BC-2.06.005 draft; BC and implementation
+  are already in agreement. Story was the outlier.
+- Fix: AC-005 updated to 6-column layout with correct empty-state text, matching both
+  BC-2.06.005 PC-1 and the implementation. No escalation required.
+- SE-16d monotonicity: v1.4 timestamp 2026-05-28 >= v1.3 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.3
 

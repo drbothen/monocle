@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-023
 epic_id: EPIC-05
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 5
 wave: 6
@@ -152,7 +152,7 @@ is a no-op. AppMode remains Dashboard.
   - On `TransportEvent::Disconnected` received: call `overlay_stack.clear()`; if `AppMode == Overlay` → set `AppMode = Dashboard`
   - This must be synchronous within the event loop iteration — completed before reconnect loop is scheduled
 - [ ] Implement reconnect loop in `monocle-ipc/src/reconnect.rs`:
-  - `reconnect(runtime_dir, backoff_state) -> Result<UdsTransport, IpcError>`
+  - `reconnect(runtime_dir, backoff_state) -> Result<(UdsClientTransport, EventReceiver), IpcError>`
   - Backoff schedule: 250ms → 500ms → 1000ms → 2000ms cap
   - After each failed attempt: re-read `<runtime_dir>/monocle.lock`; update `auth_token`, `pid` from new lock file if changed
   - Total window: 5 seconds; on exhaustion → return `Err(IpcError::ReconnectTimeout)`
@@ -221,7 +221,6 @@ From `architecture/SS-ipc.md v1.4.0 §Reconnection Behavior`:
 | Crate | Version | Usage |
 |-------|---------|-------|
 | tokio | =1.52.0 | `time::sleep` for backoff intervals; async select on reconnect timeout; 5-second offline poll |
-| interprocess | 2.4 | `UnixStream::connect` for reconnect attempts |
 | serde_json | =1.0.149 | Lock file JSON parsing on re-read after each retry |
 | tracing | 0.1 | DEBUG on reconnect attempt; INFO on reconnect success; WARN on 5-second timeout and offline mode entry |
 
@@ -238,3 +237,18 @@ Files to modify:
 - `monocle-ipc/src/transport.rs` — add `TransportEvent` enum; add event channel to `UdsTransport`
 - `monocle-ipc/src/lib.rs` — re-export `reconnect`, `events` modules
 - TUI event loop (`monocle-tui/src/app.rs` or equivalent) — SOQ-3 handler: `overlay_stack.clear()` on `TransportEvent::Disconnected`; AppMode Dashboard transition; status bar updates; offline mode entry; offline poll loop
+
+## §Trace v1.1
+
+**F-S023-ADV5-LOW-001 — reconnect() return type drift corrected** (2026-05-28):
+- Finding: Tasks section (line 155) documented `reconnect(...) -> Result<UdsTransport, IpcError>`.
+  Actual implementation in `monocle-ipc/src/reconnect.rs:201-204` returns
+  `Result<(UdsClientTransport, EventReceiver), IpcError>` — a tuple because the EventReceiver
+  must be returned alongside the transport for the caller to set up event handling.
+- Fix: Updated to `Result<(UdsClientTransport, EventReceiver), IpcError>`.
+
+**F-S023-ADV5-LOW-002 — stale interprocess 2.4 dependency removed** (2026-05-28):
+- Finding: Library Requirements listed `interprocess 2.4` for `UnixStream::connect`.
+  Production implementation uses `tokio::net::UnixStream` (from the tokio dep already
+  listed). The `interprocess` crate is not present in `monocle-ipc/Cargo.toml`.
+- Fix: Removed the `interprocess 2.4` row. `tokio` already listed covers the transport.
