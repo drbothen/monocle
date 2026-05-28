@@ -273,8 +273,18 @@ impl RingBuffer {
         // BC-2.04.012 PC-4: non-blocking enqueue to write-queue.
         // On full queue: return WriteFull immediately (no disk I/O, no blocking).
         self.write_tx.try_send(record).map_err(|e| match e {
-            tokio::sync::mpsc::error::TrySendError::Full(_) => RingError::WriteFull,
-            tokio::sync::mpsc::error::TrySendError::Closed(_) => RingError::WriteFull,
+            tokio::sync::mpsc::error::TrySendError::Full(_) => {
+                tracing::warn!("E-RING-003: ring write-queue full — event discarded (WriteFull)");
+                RingError::WriteFull
+            }
+            tokio::sync::mpsc::error::TrySendError::Closed(_) => {
+                // Flush task has exited (receiver dropped) — this is a fatal state distinct
+                // from a transiently full queue. Log at ERROR to distinguish from Full/WARN.
+                tracing::error!(
+                    "E-RING-006: ring write-queue channel closed (flush task dead) — event discarded"
+                );
+                RingError::WriteFull
+            }
         })?;
 
         Ok(())
@@ -317,6 +327,10 @@ impl RingBuffer {
             return Ok(());
         }
 
+        // LOW-001: reads the full file to find the last '\n'. For Phase 1, ring files are
+        // bounded to 100 MiB before rotation, so this is acceptable. A streaming/seek-based
+        // scan from the end of the file would be more efficient for very large files, but is
+        // not necessary until Phase 4 when the hard cap may be tuned higher.
         let content = std::fs::read(path)?;
 
         // If the file is empty or already ends with '\n', nothing to truncate.
@@ -346,6 +360,21 @@ impl RingBuffer {
     /// it matches the actual on-disk file size exactly (BC-2.04.012 invariant 4).
     pub fn current_byte_count(&self) -> u64 {
         *self.byte_count.lock().expect("byte_count mutex poisoned")
+    }
+
+    /// Return a cloned `Arc` to the byte-count tracker.
+    ///
+    /// Allows tests to hold a reference to `byte_count` independently of the `RingBuffer`,
+    /// so they can drop the ring (closing the write channel) and then read the final
+    /// byte count after the flush task drains.
+    ///
+    /// # Note
+    ///
+    /// This method is public so that integration tests can access it.
+    /// Production callers should use `current_byte_count()` instead.
+    #[doc(hidden)]
+    pub fn byte_count_handle(&self) -> Arc<Mutex<u64>> {
+        Arc::clone(&self.byte_count)
     }
 
     /// Spawn the background flush task that drains the write-queue and writes to disk.
@@ -511,6 +540,22 @@ impl RingBuffer {
     fn rotated_path(&self, n: usize) -> PathBuf {
         rotated_path_for(&self.path, n)
     }
+
+    /// Forcibly set the disk-error state for testing.
+    ///
+    /// When set to `true`, subsequent `append()` calls return `Err(RingError::DiskFull)`.
+    /// This allows integration tests to verify the EC-103 disk-full error path without
+    /// actually filling the filesystem.
+    ///
+    /// # Note
+    ///
+    /// This method is public so that integration tests (which compile as separate crates)
+    /// can access it.  Production callers MUST NOT use this method — it exists solely to
+    /// inject the disk-error state that the flush task sets on ENOSPC.
+    #[doc(hidden)]
+    pub fn set_disk_error_for_testing(&self, val: bool) {
+        *self.disk_error.lock().expect("disk_error mutex poisoned") = val;
+    }
 }
 
 /// Build the path for rotated segment `n` (e.g., `monocle.jsonl.1`).
@@ -666,6 +711,12 @@ async fn flush_task_loop(
                     path = %path.display(),
                     "E-RING-002: ring file rotation failed; continuing without rotation"
                 );
+                // MED-001: After a failed rotation, re-read the actual on-disk file size
+                // and reset byte_count to match. Without this, the stale accumulated count
+                // would keep triggering the rotation threshold on every subsequent write,
+                // flooding the log with spurious E-RING-002 warnings.
+                let actual_size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                *byte_count.lock().expect("byte_count mutex poisoned") = actual_size;
             }
         }
     }

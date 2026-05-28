@@ -388,40 +388,6 @@ fn test_BC_2_04_012_append_non_blocking_does_not_block_caller() {
     );
 }
 
-/// BC-2.04.012 PC-4 (AC-004): When the write-queue is full, `append()` returns
-/// `Err(RingError::WriteFull)` without blocking or panicking.
-///
-/// EXPECTED TO FAIL (Red Gate): `append()` body is `todo!()`.
-#[test]
-fn test_BC_2_04_012_append_returns_write_full_when_queue_full() {
-    let dir = TempDir::new().expect("create tempdir");
-    let path = active_path(&dir);
-    // Use a tiny write queue to make it easy to fill in tests.
-    // The implementation stub will panic via todo!() before reaching queue-full logic,
-    // so this test correctly fails at the Red Gate.
-    let ring = RingBuffer::new(path, RotationConfig::default());
-
-    // We cannot easily fill the queue without spawning the flush task (no consumer),
-    // so we rely on the todo!() panic to satisfy the Red Gate.  The implementation
-    // must fill the queue by dropping the receiver and sending until full.
-    let record = make_record("write-full-test", 0);
-
-    // This call panics via todo!() — satisfying the Red Gate requirement.
-    let result = ring.append(record);
-
-    // After implementation, when the queue is full, this MUST be WriteFull.
-    match result {
-        Err(RingError::WriteFull) => { /* correct post-implementation behavior */ }
-        Ok(()) => {
-            // Expected path for the first append when queue is not yet full.
-            // The test will need the flush task dropped to fill the queue.
-            // This branch is acceptable for the normal case; the explicit WriteFull
-            // scenario is tested by fill_queue helpers in the implementation test suite.
-        }
-        Err(other) => panic!("unexpected error: {other:?}"),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-008 / BC-2.04.012 PC-8: Crash recovery — partial-line truncation
 // ---------------------------------------------------------------------------
@@ -646,47 +612,57 @@ async fn test_BC_2_04_012_byte_count_reflects_written_bytes() {
         "byte count must be 0 before any writes"
     );
 
-    // Spawn flush task, append one record, drain flush task.
+    // Grab a handle to the byte_count tracker BEFORE dropping the ring.
+    // This lets us read the final byte_count after the flush task drains
+    // without keeping the RingBuffer alive (which would keep write_tx alive and
+    // prevent the channel from closing, causing the flush task to hang indefinitely).
+    let byte_count_handle = ring.byte_count_handle();
+
+    // Spawn flush task, append one record.
     let handle = ring.spawn_flush_task();
     let record = make_record("byte-count-test", 0);
     ring.append(record).expect("append must succeed");
 
-    // Drop ring to close sender; drain flush task so record is written to disk.
+    // Drop ring — this drops write_tx, closing the channel.
+    // The flush task will write the queued record and then exit when recv() returns None.
     drop(ring);
     handle.await.expect("flush task must complete");
 
-    // After flush task drains, byte count must match the on-disk file size (invariant 4).
-    // Re-create ring pointing at the same path to read byte_count via fresh metadata.
-    let on_disk = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    // After the flush task drains, the byte_count must match the on-disk file size
+    // (BC-2.04.012 invariant 4).
+    let on_disk = std::fs::metadata(&path)
+        .expect("active file must exist after flush")
+        .len();
     assert!(
         on_disk > 0,
         "on-disk file must be non-empty after flush task writes"
     );
-    // The flush task tracks bytes accurately — verify by reading the file and comparing.
-    // We cannot re-read byte_count from the dropped ring, so we verify the file content.
-    let contents = std::fs::read_to_string(&path).expect("active file must be readable");
-    let line_count = contents.lines().count();
+
+    let reported = *byte_count_handle
+        .lock()
+        .expect("byte_count mutex poisoned");
     assert_eq!(
-        line_count, 1,
-        "exactly one JSONL line must be written after one append"
-    );
-    assert!(
-        on_disk > 0,
-        "current_byte_count() (via on-disk size) must be > 0 after flush (invariant 4)"
+        reported, on_disk,
+        "current_byte_count() must equal on-disk file size after flush task drains (invariant 4); \
+         reported={reported}, on_disk={on_disk}"
     );
 }
 
 /// BC-2.04.012 PC-3 step 8: After rotation, the byte count tracker must be reset to 0.
 ///
 /// The flush task performs rotation and resets `byte_count`.  After draining the flush task,
-/// `current_byte_count()` must reflect only the bytes in the new active file (post-rotation).
+/// `current_byte_count()` must reflect only the bytes in the new active file (post-rotation),
+/// which must equal the actual on-disk file size (BC-2.04.012 invariant 4).
 #[tokio::test]
 async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
     let dir = TempDir::new().expect("create tempdir");
     let path = active_path(&dir);
     // Use threshold=100, hard_cap=100 so the flush task rotates immediately.
     let config = tiny_rotation_config(100, 5);
-    let ring = std::sync::Arc::new(RingBuffer::new(path.clone(), config));
+    let ring = RingBuffer::new(path.clone(), config);
+
+    // Grab a handle to the byte_count tracker BEFORE dropping the ring.
+    let byte_count_handle = ring.byte_count_handle();
 
     // Spawn flush task before appending.
     let handle = ring.spawn_flush_task();
@@ -699,7 +675,7 @@ async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
     ring.append(large_record)
         .expect("second append — rotation triggered");
 
-    // Drop ring to close sender; drain flush task.
+    // Drop ring to close the write channel; flush task drains and exits.
     drop(ring);
     handle.await.expect("flush task must complete");
 
@@ -715,6 +691,17 @@ async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
     assert!(
         rotated_1.exists(),
         "monocle.jsonl.1 must exist after rotation"
+    );
+
+    // After rotation, current_byte_count() must equal the on-disk active file size
+    // (invariant 4: byte_count reset to 0 then updated for each post-rotation write).
+    let reported = *byte_count_handle
+        .lock()
+        .expect("byte_count mutex poisoned");
+    assert_eq!(
+        reported, active_size,
+        "current_byte_count() after rotation must equal on-disk active file size (invariant 4); \
+         reported={reported}, active_size={active_size}"
     );
 }
 
@@ -874,6 +861,66 @@ fn test_BC_2_04_012_append_returns_write_full_when_queue_full_structural() {
 }
 
 // ---------------------------------------------------------------------------
+// HIGH-003: DiskFull error returned when disk_error state is active
+// ---------------------------------------------------------------------------
+
+/// BC-2.04.012 EC-103: While the disk-error state is active, `append()` must return
+/// `Err(RingError::DiskFull)` immediately without performing any disk I/O.
+///
+/// Uses `set_disk_error_for_testing(true)` to inject the error state without actually
+/// filling the filesystem.
+#[test]
+fn test_BC_2_04_012_disk_full_error_returned_on_append() {
+    let dir = TempDir::new().expect("create tempdir");
+    let path = active_path(&dir);
+    let ring = RingBuffer::new(path, RotationConfig::default());
+
+    // Inject disk-error state (simulates ENOSPC set by the flush task).
+    ring.set_disk_error_for_testing(true);
+
+    let record = make_record("disk-full-test", 0);
+    let result = ring.append(record);
+
+    assert!(
+        matches!(result, Err(RingError::DiskFull)),
+        "append() must return Err(RingError::DiskFull) when disk-error state is active (EC-103); got: {result:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MED-003: Initial file creation mode 0o600
+// ---------------------------------------------------------------------------
+
+/// BC-2.04.012 PC-6: The active JSONL file must be created with mode `0o600`
+/// (owner read/write only) to protect potentially sensitive hook event data.
+///
+/// Verified by checking the file's Unix permissions after the first flush-task write.
+#[cfg(unix)]
+#[tokio::test]
+async fn test_BC_2_04_012_initial_file_creation_mode_0o600() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let dir = TempDir::new().expect("create tempdir");
+    let path = active_path(&dir);
+    let ring = RingBuffer::new(path.clone(), RotationConfig::default());
+
+    // Spawn flush task, append one record, drain flush task.
+    let handle = ring.spawn_flush_task();
+    ring.append(make_record("mode-test", 0))
+        .expect("append must succeed");
+    drop(ring);
+    handle.await.expect("flush task must complete");
+
+    // The active file must exist and have mode 0o600.
+    let meta = std::fs::metadata(&path).expect("active file must exist after flush");
+    let mode = meta.permissions().mode() & 0o777;
+    assert_eq!(
+        mode, 0o600,
+        "active JSONL file must have mode 0o600 (BC-2.04.012 PC-6); got 0o{mode:03o}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // MED-002: Rotation cascade content ordering verification
 // ---------------------------------------------------------------------------
 
@@ -881,7 +928,8 @@ fn test_BC_2_04_012_append_returns_write_full_when_queue_full_structural() {
 /// After multiple rotations, `.jsonl.1` contains the most recent pre-rotation data
 /// and higher-numbered files contain older data.
 ///
-/// Uses distinguishable `session_id` values in each rotation cycle to verify ordering.
+/// Uses distinguishable `session_id` prefixes in each rotation cycle to verify that
+/// the content in `.jsonl.1` is more recent (higher cycle index) than `.jsonl.2`.
 #[tokio::test]
 async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
     let dir = TempDir::new().expect("create tempdir");
@@ -894,8 +942,9 @@ async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
     // Spawn flush task.
     let handle = ring.spawn_flush_task();
 
-    // Append distinguishable records across 3 rotation cycles.
-    // Each cycle: append one large record that fills the file past the threshold.
+    // Append 3 distinguishable records: cycle-alpha (oldest), cycle-beta, cycle-gamma (newest).
+    // Pad session_id so each record exceeds the 100-byte threshold and forces rotation.
+    // Each record must be > 100 bytes when serialised to trigger the hard cap.
     let cycles = ["cycle-alpha", "cycle-beta", "cycle-gamma"];
     for (i, cycle) in cycles.iter().enumerate() {
         ring.append(make_tool_record(
@@ -910,27 +959,70 @@ async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
     drop(ring);
     handle.await.expect("flush task must complete");
 
-    // `.jsonl.1` must exist and contain the most recent rotated data (cycle-beta or cycle-gamma).
-    let rotated_1 = dir.path().join("monocle.jsonl.1");
-    if rotated_1.exists() {
-        let contents_1 = std::fs::read_to_string(&rotated_1).expect(".1 must be readable");
-        // The content in .1 must be valid JSONL.
-        for (i, line) in contents_1.lines().enumerate() {
-            let _: serde_json::Value = serde_json::from_str(line)
-                .unwrap_or_else(|e| panic!(".1 line {i} must be valid JSON: {e}"));
-        }
-    }
+    // After 3 appends each exceeding 100 bytes, each write triggers rotation:
+    //
+    //   After append(cycle-alpha): rotate → .jsonl.1=cycle-alpha, .jsonl=empty
+    //   After append(cycle-beta):  rotate → .jsonl.2=cycle-alpha, .jsonl.1=cycle-beta, .jsonl=empty
+    //   After append(cycle-gamma): rotate → .jsonl.3=cycle-alpha, .jsonl.2=cycle-beta,
+    //                                        .jsonl.1=cycle-gamma, .jsonl=empty
+    //
+    // Expected final state:
+    //   .jsonl.1 = cycle-gamma (most recent — just rotated out)
+    //   .jsonl.2 = cycle-beta  (second most recent)
+    //   .jsonl.3 = cycle-alpha (oldest)
+    //   .jsonl    = empty (new active file after gamma's rotation)
 
-    // `.jsonl.2` (if it exists) must contain older data than `.jsonl.1`.
+    // `.jsonl.1` MUST exist — assert rather than if-guard so test failure is explicit.
+    let rotated_1 = dir.path().join("monocle.jsonl.1");
+    assert!(
+        rotated_1.exists(),
+        "monocle.jsonl.1 must exist after 3 rotation cycles"
+    );
+
+    // Extract session_id from the first valid JSONL line in a file.
+    let session_id_in = |file_path: &std::path::Path| -> String {
+        let contents =
+            std::fs::read_to_string(file_path).unwrap_or_else(|e| panic!("read {file_path:?}: {e}"));
+        let first_line = contents
+            .lines()
+            .next()
+            .unwrap_or_else(|| panic!("{file_path:?} must not be empty"));
+        let v: serde_json::Value = serde_json::from_str(first_line)
+            .unwrap_or_else(|e| panic!("{file_path:?}: invalid JSON: {e}"));
+        v["session_id"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{file_path:?}: session_id must be a string"))
+            .to_string()
+    };
+
+    let session_1 = session_id_in(&rotated_1);
+
+    // `.jsonl.1` must contain cycle-gamma (the most recent cycle — last to rotate out).
+    assert!(
+        session_1.starts_with("cycle-gamma"),
+        ".jsonl.1 must contain cycle-gamma (most recent data); got session_id={session_1:?}"
+    );
+
+    // `.jsonl.2` must exist and contain cycle-beta (second most recent).
     let rotated_2 = dir.path().join("monocle.jsonl.2");
-    if rotated_2.exists() {
-        // Both files must contain valid JSONL.
-        let contents_2 = std::fs::read_to_string(&rotated_2).expect(".2 must be readable");
-        for (i, line) in contents_2.lines().enumerate() {
-            let _: serde_json::Value = serde_json::from_str(line)
-                .unwrap_or_else(|e| panic!(".2 line {i} must be valid JSON: {e}"));
-        }
-    }
+    assert!(
+        rotated_2.exists(),
+        "monocle.jsonl.2 must exist after 3 rotation cycles"
+    );
+
+    let session_2 = session_id_in(&rotated_2);
+
+    // `.jsonl.2` must contain cycle-beta (older than .jsonl.1).
+    assert!(
+        session_2.starts_with("cycle-beta"),
+        ".jsonl.2 must contain cycle-beta (second oldest data); got session_id={session_2:?}"
+    );
+
+    // Ordering invariant: .jsonl.1 is newer than .jsonl.2.
+    assert_ne!(
+        session_1, session_2,
+        ".jsonl.1 and .jsonl.2 must contain records from different rotation cycles"
+    );
 }
 
 // ---------------------------------------------------------------------------
