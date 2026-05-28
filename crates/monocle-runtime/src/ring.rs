@@ -7,6 +7,23 @@
 //! - Crash recovery for partial JSONL lines at EOF (BC-2.04.012 PC-8)
 //! - `current_byte_count()` for on-disk tracking (BC-2.04.012 PC-2)
 //! - `latest_events()` for zero-disk-read TUI queries (BC-2.04.012 PC-1)
+//!
+//! ## Async-flush architecture
+//!
+//! `append()` is a PURE enqueue operation — it pushes to the RAM ring and sends to the
+//! bounded write-queue channel.  It NEVER performs disk I/O (BC-2.04.012 PC-4, AC-004).
+//!
+//! All disk I/O (serialise → write → flush → rotate) is performed exclusively by the
+//! flush task, which is spawned via `spawn_flush_task()` at daemon start step 4
+//! (BC-2.04.012 PC-4, SS-daemon-wiring.md §Daemon Start Sequence step 4).
+//!
+//! Crash recovery (`recover_partial_line`) is called synchronously in `new()` BEFORE
+//! reading file metadata for byte count initialisation (BC-2.04.012 PC-8).
+
+// Mutex::lock() can only return Err on poison (i.e. a panic while holding the lock),
+// which is a programming error. The correct Rust idiom for this is expect() or
+// unwrap() with a clear message. We allow expect_used in this file for mutex guards.
+#![allow(clippy::expect_used)]
 
 use std::{
     collections::VecDeque,
@@ -18,7 +35,8 @@ use std::{
 /// Bounded write-queue capacity for the async-jsonl flush task (BC-2.04.012 PC-4).
 ///
 /// If the queue is full, `append()` returns `Err(RingError::WriteFull)` without blocking.
-const WRITE_QUEUE_CAPACITY: usize = 4096;
+/// This constant can be overridden in tests by using `RingBuffer::with_queue_capacity`.
+pub const WRITE_QUEUE_CAPACITY: usize = 4096;
 
 /// Ring format version constant — FC-01 forward-compatibility contract.
 pub const RING_FORMAT_VERSION: u32 = 1;
@@ -87,9 +105,12 @@ impl HookEventRecord {
 /// Rotation Policy L675-719).
 #[derive(Debug, Clone)]
 pub struct RotationConfig {
-    /// Soft rotation threshold in bytes; rotation is checked on each flush batch (default 50 MiB).
+    /// Soft rotation threshold in bytes; kept for API compatibility (default 50 MiB).
+    /// Phase 1 flush task uses `hard_cap_bytes` as the authoritative rotation trigger
+    /// (BC-2.04.012 PC-2: "100 MB per-file hard cap").
     pub soft_threshold_bytes: u64,
     /// Absolute per-file cap in bytes; rotation is mandatory above this limit (default 100 MiB).
+    /// This is the authoritative threshold checked by the flush task (BC-2.04.012 PC-2).
     pub hard_cap_bytes: u64,
     /// Number of rotated files to retain via `.1`...`.N` cascade (default 5).
     pub retained: usize,
@@ -129,15 +150,17 @@ pub enum RingError {
 
 /// JSONL ring buffer writer.
 ///
-/// Writes [`HookEventRecord`] lines to `<runtime_dir>/monocle.jsonl` with
-/// post-batch flush (SS-daemon-lifecycle.md L694).
-/// Rotation follows the `.1`...`.5` cascade policy (SS-daemon-lifecycle.md L675-719).
+/// Writes [`HookEventRecord`] lines to `<runtime_dir>/monocle.jsonl` asynchronously via
+/// the flush task spawned by `spawn_flush_task()`.
 ///
-/// Extended by S-020 with:
-/// - `ram_ring`: in-memory circular buffer of the last [`RAM_RING_CAPACITY`] events (BC-2.04.012 PC-1).
-/// - `byte_count`: tracks on-disk bytes written to the active file (BC-2.04.012 PC-2).
-/// - `write_tx`: bounded write-queue sender; the background flush task owns the receiver (BC-2.04.012 PC-4).
-/// - `disk_error`: tracks whether the ring is in a disk-error state (BC-2.04.012 EC-103).
+/// `append()` is a PURE enqueue operation — no disk I/O on the caller thread.
+/// The flush task owns all disk I/O, serialisation, and rotation (BC-2.04.012 PC-4).
+///
+/// Rotation follows the `.1`...`.5` cascade policy, triggered when the active file
+/// reaches `config.hard_cap_bytes` (BC-2.04.012 PC-2/PC-3).
+///
+/// Crash recovery (`recover_partial_line`) is called at construction before the ring is
+/// used (BC-2.04.012 PC-8, SS-daemon-lifecycle.md §JSONL Ring Buffer).
 #[derive(Debug)]
 pub struct RingBuffer {
     path: PathBuf,
@@ -145,77 +168,90 @@ pub struct RingBuffer {
     /// In-memory circular buffer of the last [`RAM_RING_CAPACITY`] hook events.
     /// Protected by a `Mutex` for concurrent TUI reads and flush-task writes (BC-2.04.012 PC-1, EC-106).
     ram_ring: Mutex<VecDeque<HookEventRecord>>,
-    /// Tracks the cumulative bytes written to the active JSONL file.
+    /// Tracks the cumulative bytes written to the active JSONL file by the flush task.
     /// Reset to 0 after each rotation (BC-2.04.012 PC-2/PC-3 step 8).
-    byte_count: Mutex<u64>,
+    /// Updated exclusively by the flush task; read by `current_byte_count()`.
+    byte_count: Arc<Mutex<u64>>,
     /// Bounded sender side of the write-queue.
     /// `append()` calls `try_send()` — non-blocking; returns `WriteFull` when at capacity.
-    /// Wrapped in `Arc` so it can be cloned into the flush task (BC-2.04.012 PC-4).
+    /// Wrapped in `Arc` so it can be cloned into callers that need shared ownership.
     write_tx: Arc<tokio::sync::mpsc::Sender<HookEventRecord>>,
-    /// Receiver side of the write-queue, stored here until the flush task is spawned.
-    /// `Option::None` after the flush task has been spawned.
-    // Phase 1: flush task is not yet spawned (S-020 scope). Field read by `spawn_flush_task()`.
-    // Suppress dead_code lint until S-020 wires the flush task spawn.
-    #[allow(dead_code)]
+    /// Receiver side of the write-queue, held until `spawn_flush_task()` takes ownership.
+    /// Set to `None` once the flush task takes the receiver (BC-2.04.012 PC-4).
     write_rx: Mutex<Option<tokio::sync::mpsc::Receiver<HookEventRecord>>>,
     /// Disk-error state: set to `true` when rotation or flush fails due to a full disk.
     /// While `true`, `append()` returns `Err(RingError::DiskFull)` (BC-2.04.012 EC-103).
-    disk_error: Mutex<bool>,
+    disk_error: Arc<Mutex<bool>>,
 }
 
 impl RingBuffer {
     /// Create a new ring buffer pointing at `path` with the given rotation config.
     ///
-    /// Initialises the RAM ring and the bounded write-queue channel.
-    /// The flush task is NOT spawned here — it is spawned separately at daemon start step 4
-    /// via `spawn_flush_task()` (BC-2.04.012 PC-4, SS-daemon-wiring.md §Daemon Start Sequence step 4).
+    /// ## Initialisation sequence (BC-2.04.012 PC-8 + PC-4)
     ///
-    /// Crash recovery (partial-line truncation at EOF) is performed here before the ring is
-    /// used (BC-2.04.012 PC-8, SS-daemon-lifecycle.md §JSONL Ring Buffer).
+    /// 1. Call `recover_partial_line(&path)` — truncate any partial JSONL line at EOF.
+    ///    On error: log WARN and continue (best-effort; ring is still usable).
+    /// 2. Read file metadata to initialise `byte_count` from the post-recovery size.
+    ///    If the file does not exist, `byte_count` starts at 0.
+    /// 3. Initialise the bounded write-queue channel.
+    ///    The flush task is NOT spawned here — call `spawn_flush_task()` separately at
+    ///    daemon start step 4 (SS-daemon-wiring.md §Daemon Start Sequence step 4).
     pub fn new(path: PathBuf, config: RotationConfig) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(WRITE_QUEUE_CAPACITY);
+        Self::with_queue_capacity(path, config, WRITE_QUEUE_CAPACITY)
+    }
 
-        // Initialise byte_count from the existing active file size (if any).
-        // If the file doesn't exist yet, byte_count starts at 0.
+    /// Create a ring buffer with a custom write-queue capacity.
+    ///
+    /// Used in tests to create a small queue that fills quickly, enabling `WriteFull` testing
+    /// without spawning the flush task (BC-2.04.012 PC-4 / HIGH-004 adversarial fix).
+    /// In production, always use `new()` which uses the canonical `WRITE_QUEUE_CAPACITY`.
+    pub fn with_queue_capacity(
+        path: PathBuf,
+        config: RotationConfig,
+        queue_capacity: usize,
+    ) -> Self {
+        // Step 1 (BC-2.04.012 PC-8): crash recovery BEFORE reading file metadata.
+        if let Err(e) = Self::recover_partial_line(&path) {
+            tracing::warn!(
+                error = %e,
+                path = %path.display(),
+                "E-RING-005: crash recovery (recover_partial_line) failed — continuing without truncation"
+            );
+        }
+
+        // Step 2: initialise byte_count from the existing active file size (post-recovery).
+        // If the file doesn't exist yet, byte_count starts at 0 (EC-102).
         let initial_byte_count = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+
+        // Step 3: initialise bounded write-queue channel.
+        let (tx, rx) = tokio::sync::mpsc::channel(queue_capacity);
 
         Self {
             path,
             config,
             ram_ring: Mutex::new(VecDeque::with_capacity(RAM_RING_CAPACITY)),
-            byte_count: Mutex::new(initial_byte_count),
+            byte_count: Arc::new(Mutex::new(initial_byte_count)),
             write_tx: Arc::new(tx),
             write_rx: Mutex::new(Some(rx)),
-            disk_error: Mutex::new(false),
+            disk_error: Arc::new(Mutex::new(false)),
         }
     }
 
     /// Enqueue a hook event record for async-jsonl flush (BC-2.04.012 PC-4, AC-004).
     ///
-    /// This method MUST NOT block the calling hook handler thread on disk I/O.
-    /// It enqueues the record to the bounded write-queue via a non-blocking `try_send`.
-    /// If the queue is full, returns `Err(RingError::WriteFull)`; the caller must log
-    /// `WARN: ring append failed: write queue full` and discard the event.
+    /// ## Invariants (BC-2.04.012 AC-004, AC-010, invariant 5)
     ///
-    /// Also inserts the record into the RAM ring, evicting the oldest entry if at capacity
-    /// (BC-2.04.012 PC-1).
-    ///
-    /// The actual disk I/O is performed inline (serialise → write → flush → rotate) so that
-    /// the test suite — which does not spawn a tokio runtime — can observe disk effects
-    /// synchronously. In the live daemon, the write-queue sender (`write_tx`) also receives
-    /// a copy so the background flush task can pick up any events that arrive after the task
-    /// is started.
+    /// - This method MUST NOT perform any disk I/O. All disk writes happen in the flush task.
+    /// - Enqueues the record to the bounded write-queue via a non-blocking `try_send`.
+    /// - Pushes the record into the RAM ring, evicting the oldest entry if at capacity
+    ///   (BC-2.04.012 PC-1).
+    /// - If the queue is full, returns `Err(RingError::WriteFull)`; the caller must log
+    ///   `WARN: ring append failed: write queue full` and discard the event.
+    /// - If the disk-error state is active, returns `Err(RingError::DiskFull)` immediately.
     ///
     /// # Errors
     /// - `RingError::WriteFull` — write-queue is full; event must be discarded.
     /// - `RingError::DiskFull` — disk-error state is active (EC-103).
-    ///
-    /// # Panics
-    ///
-    /// Panics if an internal `std::sync::Mutex` is poisoned (another thread panicked while
-    /// holding the lock). Mutex poisoning indicates an unrecoverable state — `expect()` with
-    /// an actionable message is appropriate per SS-conventions-anti-patterns.md.
-    #[allow(clippy::expect_used)]
     pub fn append(&self, record: HookEventRecord) -> Result<(), RingError> {
         // AC-010 / BC-2.04.012 invariant 5: if disk error is active, return DiskFull immediately.
         {
@@ -234,62 +270,22 @@ impl RingBuffer {
             ring.push_back(record.clone());
         }
 
-        // Serialise the record to a JSONL line (one JSON object + newline).
-        let mut line = serde_json::to_string(&record)?;
-        line.push('\n');
-        let line_bytes = line.len() as u64;
-
-        // Write the serialised JSONL line to the active file (create if absent, append otherwise).
-        if let Err(e) = self.write_line_to_active_file(line.as_bytes()) {
-            tracing::warn!(
-                error = %e,
-                path = %self.path.display(),
-                "E-RING-001: ring buffer write failed"
-            );
-            return Err(RingError::Io(e));
-        }
-
-        // Update the tracked byte count after a successful write (BC-2.04.012 invariant 4).
-        {
-            let mut byte_count = self.byte_count.lock().expect("byte_count mutex poisoned");
-            *byte_count += line_bytes;
-        }
-
-        // Check rotation threshold AFTER writing and updating byte count (BC-2.04.012 PC-2).
-        // Rotation is triggered when the tracked byte count reaches or exceeds soft_threshold_bytes.
-        // Doing the check after the write means byte_count is reset to 0 after rotation,
-        // so the next call to current_byte_count() reflects only the new active file's content.
-        {
-            let byte_count = *self.byte_count.lock().expect("byte_count mutex poisoned");
-            if byte_count >= self.config.soft_threshold_bytes {
-                if let Err(e) = self.cascade_rotate_and_reset() {
-                    let is_disk_full = matches!(e, RingError::Io(ref io_err)
-                        if io_err.kind() == std::io::ErrorKind::OutOfMemory
-                        || io_err.raw_os_error() == Some(libc_enospc()));
-                    if is_disk_full {
-                        tracing::error!(
-                            error = %e,
-                            path = %self.path.display(),
-                            "E-RING-004: disk full during rotation — entering disk-error state"
-                        );
-                        *self.disk_error.lock().expect("disk_error mutex poisoned") = true;
-                        return Err(RingError::DiskFull);
-                    }
-                    tracing::warn!(
-                        error = %e,
-                        path = %self.path.display(),
-                        "E-RING-002: ring file rotation failed; continuing without rotation"
-                    );
-                }
+        // BC-2.04.012 PC-4: non-blocking enqueue to write-queue.
+        // On full queue: return WriteFull immediately (no disk I/O, no blocking).
+        self.write_tx.try_send(record).map_err(|e| match e {
+            tokio::sync::mpsc::error::TrySendError::Full(_) => {
+                tracing::warn!("E-RING-003: ring write-queue full — event discarded (WriteFull)");
+                RingError::WriteFull
             }
-        }
-
-        // Also try to enqueue to the write-queue for the async flush task (non-blocking).
-        // If the queue is full, we DO NOT return WriteFull here — the disk write already
-        // succeeded above.  The queue-full error path is only reached when the disk write
-        // has NOT happened (i.e. when the flush task is the sole writer).
-        // For the current inline-write design this is a best-effort secondary path.
-        let _ = self.write_tx.try_send(record);
+            tokio::sync::mpsc::error::TrySendError::Closed(_) => {
+                // Flush task has exited (receiver dropped) — this is a fatal state distinct
+                // from a transiently full queue. Log at ERROR to distinguish from Full/WARN.
+                tracing::error!(
+                    "E-RING-006: ring write-queue channel closed (flush task dead) — event discarded"
+                );
+                RingError::WriteFull
+            }
+        })?;
 
         Ok(())
     }
@@ -301,7 +297,6 @@ impl RingBuffer {
     /// in-memory ring, making it safe to call from the TUI render loop (BC-2.04.012 EC-106).
     ///
     /// If the RAM ring contains fewer than `n` events, all available events are returned.
-    #[allow(clippy::expect_used)]
     pub fn latest_events(&self, n: usize) -> Vec<HookEventRecord> {
         let ring = self.ram_ring.lock().expect("ram_ring mutex poisoned");
         let available = ring.len();
@@ -326,17 +321,20 @@ impl RingBuffer {
     ///
     /// # Errors
     /// - `RingError::Io` — truncation I/O failure (permissions, device error, etc.)
-    #[allow(clippy::expect_used)]
     pub fn recover_partial_line(path: &Path) -> Result<(), RingError> {
         // EC-102: absent file is a no-op.
         if !path.exists() {
             return Ok(());
         }
 
+        // LOW-001: reads the full file to find the last '\n'. For Phase 1, ring files are
+        // bounded to 100 MiB before rotation, so this is acceptable. A streaming/seek-based
+        // scan from the end of the file would be more efficient for very large files, but is
+        // not necessary until Phase 4 when the hard cap may be tuned higher.
         let content = std::fs::read(path)?;
 
         // If the file is empty or already ends with '\n', nothing to truncate.
-        if content.is_empty() || *content.last().expect("checked non-empty") == b'\n' {
+        if content.is_empty() || content[content.len() - 1] == b'\n' {
             return Ok(());
         }
 
@@ -356,16 +354,68 @@ impl RingBuffer {
 
     /// Return the current on-disk byte count for the active JSONL file (BC-2.04.012 PC-2).
     ///
-    /// The byte count is maintained in internal state and updated after every successful
+    /// The byte count is maintained by the flush task and updated after every successful
     /// flush write. It is reset to `0` after each rotation (BC-2.04.012 PC-3 step 8).
-    /// The returned value MUST match the actual on-disk file size within one write cycle
-    /// (BC-2.04.012 invariant 4).
-    #[allow(clippy::expect_used)]
+    /// The returned value reflects the last flush cycle's write; in the flush task loop,
+    /// it matches the actual on-disk file size exactly (BC-2.04.012 invariant 4).
     pub fn current_byte_count(&self) -> u64 {
         *self.byte_count.lock().expect("byte_count mutex poisoned")
     }
 
-    /// Push a record to the ring buffer.
+    /// Return a cloned `Arc` to the byte-count tracker.
+    ///
+    /// Allows tests to hold a reference to `byte_count` independently of the `RingBuffer`,
+    /// so they can drop the ring (closing the write channel) and then read the final
+    /// byte count after the flush task drains.
+    ///
+    /// # Note
+    ///
+    /// This method is public so that integration tests can access it.
+    /// Production callers should use `current_byte_count()` instead.
+    #[doc(hidden)]
+    pub fn byte_count_handle(&self) -> Arc<Mutex<u64>> {
+        Arc::clone(&self.byte_count)
+    }
+
+    /// Spawn the background flush task that drains the write-queue and writes to disk.
+    ///
+    /// This method takes ownership of the `write_rx` receiver from the ring buffer.
+    /// It MUST be called exactly once, at daemon start step 4
+    /// (BC-2.04.012 PC-4, SS-daemon-wiring.md §Daemon Start Sequence step 4).
+    ///
+    /// ## Flush task loop
+    ///
+    /// 1. `recv()` from channel — returns `None` when sender is dropped (graceful shutdown).
+    /// 2. Serialise record to a JSONL line (one JSON object + `\n`).
+    /// 3. Write to the active file (open-append with mode `0o600`).
+    /// 4. Update `byte_count` after a successful write (invariant 4).
+    /// 5. If `byte_count >= config.hard_cap_bytes`: execute cascade rotation and reset to 0.
+    ///
+    /// On rotation failure: log WARN and continue without rotation (AC-005).
+    /// On disk-full (ENOSPC): set `disk_error = true`, log ERROR (EC-103).
+    ///
+    /// ## Panics
+    ///
+    /// Panics if called after the receiver has already been taken (i.e., called twice).
+    pub fn spawn_flush_task(&self) -> tokio::task::JoinHandle<()> {
+        let rx = self
+            .write_rx
+            .lock()
+            .expect("write_rx mutex poisoned")
+            .take()
+            .expect("spawn_flush_task() called twice — flush task is already running");
+
+        let path = self.path.clone();
+        let config = self.config.clone();
+        let byte_count = Arc::clone(&self.byte_count);
+        let disk_error = Arc::clone(&self.disk_error);
+
+        tokio::spawn(async move {
+            flush_task_loop(rx, path, config, byte_count, disk_error).await;
+        })
+    }
+
+    /// Push a record to the ring buffer (legacy synchronous API — S-008 compatibility).
     ///
     /// Serializes the record as a JSONL line and appends it to the ring file.
     /// Flushes after each write to ensure durability (SS-daemon-lifecycle.md L694).
@@ -413,16 +463,9 @@ impl RingBuffer {
         Ok(())
     }
 
-    /// Rotate the ring file when it exceeds the soft threshold.
+    /// Rotate the ring file when it exceeds the soft threshold (legacy synchronous path).
     ///
-    /// Implements the `.1`...`.N` cascade: oldest rotated file is removed first, then
-    /// each existing rotated file is incremented (`k` → `k+1`), and the active file
-    /// becomes `.1`. The caller's next push will create a fresh active file.
-    ///
-    /// Rotation triggers when the active file size meets or exceeds
-    /// `config.soft_threshold_bytes`. The hard cap is implicitly enforced because
-    /// `soft_threshold_bytes <= hard_cap_bytes` — any file exceeding the hard cap has
-    /// already exceeded the soft threshold and triggered rotation.
+    /// Used by the legacy `push()` API. The flush task uses `hard_cap_bytes` directly.
     pub fn rotate_if_needed(&self) -> Result<(), RingError> {
         // Check current file size; if it doesn't exist yet, nothing to rotate.
         let size = match std::fs::metadata(&self.path) {
@@ -431,10 +474,6 @@ impl RingBuffer {
             Err(e) => return Err(RingError::Io(e)),
         };
 
-        // Rotate when the active file exceeds the soft threshold.
-        // The hard cap (config.hard_cap_bytes) is implicitly enforced because
-        // soft_threshold_bytes <= hard_cap_bytes — any file that exceeds the hard
-        // cap has already exceeded the soft threshold and triggered rotation.
         let needs_rotation = size >= self.config.soft_threshold_bytes;
         if !needs_rotation {
             return Ok(());
@@ -445,7 +484,7 @@ impl RingBuffer {
 
     /// Execute the `.1`...`.N` rename cascade and retire the active file to `.1`.
     ///
-    /// Called by [`rotate_if_needed`] once the size threshold is confirmed.
+    /// Called by the legacy `rotate_if_needed()` once the size threshold is confirmed.
     fn cascade_rotate(&self) -> Result<(), RingError> {
         let retained = self.config.retained;
 
@@ -472,51 +511,10 @@ impl RingBuffer {
         Ok(())
     }
 
-    /// Execute the rotation cascade for use from `append()`.
-    ///
-    /// Differs from `cascade_rotate()` in that it also:
-    /// - Creates the new active file with mode `0o600` after the cascade (BC-2.04.012 PC-3 step 7).
-    /// - Resets the byte-count tracker to 0 (BC-2.04.012 PC-3 step 8).
-    #[allow(clippy::expect_used)]
-    fn cascade_rotate_and_reset(&self) -> Result<(), RingError> {
-        let retained = self.config.retained;
-
-        // Step 1: Remove the oldest rotated file (.{retained}) if it exists.
-        let oldest = self.rotated_path(retained);
-        if oldest.exists() {
-            std::fs::remove_file(&oldest)?;
-        }
-
-        // Steps 2-5: Cascade rename .{k} → .{k+1} from largest index downward.
-        for k in (1..retained).rev() {
-            let src = self.rotated_path(k);
-            let dst = self.rotated_path(k + 1);
-            if src.exists() {
-                std::fs::rename(&src, &dst)?;
-            }
-        }
-
-        // Step 6: Rename the active file → .1.
-        std::fs::rename(&self.path, self.rotated_path(1))?;
-
-        // Step 7: Create a new empty active file with mode 0o600.
-        self.create_active_file()?;
-
-        // Step 8: Reset byte-count tracker to 0.
-        {
-            let mut byte_count = self.byte_count.lock().expect("byte_count mutex poisoned");
-            *byte_count = 0;
-        }
-
-        tracing::info!(path = %self.path.display(), "ring file rotated (cascade_rotate_and_reset)");
-
-        Ok(())
-    }
-
     /// Create the active JSONL file with mode `0o600` (BC-2.04.012 PC-6).
     ///
     /// Used after rotation (step 7) and on the first write if the file does not exist yet.
-    fn create_active_file(&self) -> Result<(), std::io::Error> {
+    fn create_active_file(path: &Path) -> Result<(), std::io::Error> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt as _;
@@ -525,7 +523,7 @@ impl RingBuffer {
                 .write(true)
                 .truncate(false)
                 .mode(0o600)
-                .open(&self.path)?;
+                .open(path)?;
         }
         #[cfg(not(unix))]
         {
@@ -533,49 +531,202 @@ impl RingBuffer {
                 .create(true)
                 .write(true)
                 .truncate(false)
-                .open(&self.path)?;
+                .open(path)?;
         }
-        Ok(())
-    }
-
-    /// Append a line to the active JSONL file.
-    ///
-    /// Creates the file with mode `0o600` if it does not yet exist.
-    fn write_line_to_active_file(&self, line: &[u8]) -> Result<(), std::io::Error> {
-        #[cfg(unix)]
-        let mut file = {
-            use std::os::unix::fs::OpenOptionsExt as _;
-            std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .mode(0o600)
-                .open(&self.path)?
-        };
-        #[cfg(not(unix))]
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.path)?;
-
-        file.write_all(line)?;
-        file.flush()?;
         Ok(())
     }
 
     /// Build the path for rotated segment `n` (e.g., `monocle.jsonl.1`).
     fn rotated_path(&self, n: usize) -> PathBuf {
-        let mut p = self.path.clone().into_os_string();
-        p.push(format!(".{n}"));
-        PathBuf::from(p)
+        rotated_path_for(&self.path, n)
+    }
+
+    /// Forcibly set the disk-error state for testing.
+    ///
+    /// When set to `true`, subsequent `append()` calls return `Err(RingError::DiskFull)`.
+    /// This allows integration tests to verify the EC-103 disk-full error path without
+    /// actually filling the filesystem.
+    ///
+    /// # Note
+    ///
+    /// This method is public so that integration tests (which compile as separate crates)
+    /// can access it.  Production callers MUST NOT use this method — it exists solely to
+    /// inject the disk-error state that the flush task sets on ENOSPC.
+    #[doc(hidden)]
+    pub fn set_disk_error_for_testing(&self, val: bool) {
+        *self.disk_error.lock().expect("disk_error mutex poisoned") = val;
+    }
+}
+
+/// Build the path for rotated segment `n` (e.g., `monocle.jsonl.1`).
+/// Free function for use by the async flush task (avoids capturing `&self` across await).
+fn rotated_path_for(base: &Path, n: usize) -> PathBuf {
+    let mut p = base.as_os_str().to_os_string();
+    p.push(format!(".{n}"));
+    PathBuf::from(p)
+}
+
+/// Execute the rotation cascade for use from the async flush task.
+///
+/// Differs from the legacy `cascade_rotate()` in that it also:
+/// - Creates the new active file with mode `0o600` after the cascade (BC-2.04.012 PC-3 step 7).
+/// - Resets the byte-count tracker to 0 (BC-2.04.012 PC-3 step 8).
+fn cascade_rotate_and_reset(
+    path: &Path,
+    retained: usize,
+    byte_count: &Mutex<u64>,
+) -> Result<(), RingError> {
+    // Step 1: Remove the oldest rotated file (.{retained}) if it exists.
+    let oldest = rotated_path_for(path, retained);
+    if oldest.exists() {
+        std::fs::remove_file(&oldest)?;
+    }
+
+    // Steps 2-5: Cascade rename .{k} → .{k+1} from largest index downward.
+    for k in (1..retained).rev() {
+        let src = rotated_path_for(path, k);
+        let dst = rotated_path_for(path, k + 1);
+        if src.exists() {
+            std::fs::rename(&src, &dst)?;
+        }
+    }
+
+    // Step 6: Rename the active file → .1.
+    std::fs::rename(path, rotated_path_for(path, 1))?;
+
+    // Step 7: Create a new empty active file with mode 0o600.
+    RingBuffer::create_active_file(path)?;
+
+    // Step 8: Reset byte-count tracker to 0.
+    {
+        let mut count = byte_count.lock().expect("byte_count mutex poisoned");
+        *count = 0;
+    }
+
+    tracing::info!(path = %path.display(), "ring file rotated (async flush task)");
+
+    Ok(())
+}
+
+/// Open (or create) the active file in append mode with `0o600` permissions.
+fn open_active_file_append(path: &Path) -> Result<std::fs::File, std::io::Error> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .mode(0o600)
+            .open(path)
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+    }
+}
+
+/// The flush task loop.
+///
+/// Drains the write-queue, serialises records to JSONL, and writes to the active file.
+/// Performs rotation when the active file reaches `config.hard_cap_bytes`.
+/// Terminates when the sender is dropped (receiver returns `None`).
+async fn flush_task_loop(
+    mut rx: tokio::sync::mpsc::Receiver<HookEventRecord>,
+    path: PathBuf,
+    config: RotationConfig,
+    byte_count: Arc<Mutex<u64>>,
+    disk_error: Arc<Mutex<bool>>,
+) {
+    while let Some(record) = rx.recv().await {
+        // Serialise to JSONL line.
+        let line = match serde_json::to_string(&record) {
+            Ok(mut s) => {
+                s.push('\n');
+                s
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "E-RING-001: flush task — JSON serialisation failed; record discarded"
+                );
+                continue;
+            }
+        };
+        let line_bytes = line.len() as u64;
+
+        // Write to active file.
+        let write_result = (|| -> Result<(), std::io::Error> {
+            let mut file = open_active_file_append(&path)?;
+            file.write_all(line.as_bytes())?;
+            file.flush()?;
+            Ok(())
+        })();
+
+        if let Err(e) = write_result {
+            // Check for ENOSPC (disk full).
+            if e.raw_os_error() == Some(libc_enospc()) {
+                tracing::error!(
+                    error = %e,
+                    path = %path.display(),
+                    "E-RING-004: disk full during flush — entering disk-error state"
+                );
+                *disk_error.lock().expect("disk_error mutex poisoned") = true;
+                return; // Terminate flush task; daemon still runs but ring is in error state.
+            }
+            tracing::warn!(
+                error = %e,
+                path = %path.display(),
+                "E-RING-001: ring buffer write failed in flush task"
+            );
+            continue;
+        }
+
+        // Update byte count after successful write (BC-2.04.012 invariant 4).
+        let current_count = {
+            let mut count = byte_count.lock().expect("byte_count mutex poisoned");
+            *count += line_bytes;
+            *count
+        };
+
+        // Check rotation threshold: use hard_cap_bytes (BC-2.04.012 PC-2).
+        if current_count >= config.hard_cap_bytes {
+            if let Err(e) = cascade_rotate_and_reset(&path, config.retained, &byte_count) {
+                // Check for ENOSPC during rotation.
+                let is_disk_full = matches!(&e, RingError::Io(io_err)
+                    if io_err.raw_os_error() == Some(libc_enospc()));
+                if is_disk_full {
+                    tracing::error!(
+                        error = %e,
+                        path = %path.display(),
+                        "E-RING-004: disk full during rotation — entering disk-error state"
+                    );
+                    *disk_error.lock().expect("disk_error mutex poisoned") = true;
+                    return;
+                }
+                tracing::warn!(
+                    error = %e,
+                    path = %path.display(),
+                    "E-RING-002: ring file rotation failed; continuing without rotation"
+                );
+                // MED-001: After a failed rotation, re-read the actual on-disk file size
+                // and reset byte_count to match. Without this, the stale accumulated count
+                // would keep triggering the rotation threshold on every subsequent write,
+                // flooding the log with spurious E-RING-002 warnings.
+                let actual_size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                *byte_count.lock().expect("byte_count mutex poisoned") = actual_size;
+            }
+        }
     }
 }
 
 /// Returns the `ENOSPC` errno value (28 on Linux/macOS) for disk-full detection.
 ///
 /// Using a constant rather than `libc::ENOSPC` avoids a build-time dependency on `libc`
-/// for this single check.
+/// for this single check. ENOSPC = 28 is POSIX-mandated for both Linux and macOS.
 #[inline]
 fn libc_enospc() -> i32 {
-    // ENOSPC = 28 on Linux and macOS (POSIX-mandated value).
     28
 }
