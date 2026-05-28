@@ -894,7 +894,7 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
                 // Check if this is the start of our target string.
                 let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
-                    cx < width as u16 && buffer[(cx, y)].symbol().chars().next() == Some(ch)
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
                 });
                 if matches && cell.style().fg == Some(Color::Yellow) {
                     found_yellow = true;
