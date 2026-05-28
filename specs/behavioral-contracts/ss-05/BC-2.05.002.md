@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -82,6 +82,13 @@ delivered as incremental push messages (no polling required).
    acceptance. Hook events or session changes that occur after the connection is accepted
    but before the `InitialState` is fully written are delivered as subsequent incremental
    updates (no gap window).
+4. The TUI MUST apply `PermissionPromptQueued` messages with idempotent-on-`prompt_id`
+   semantics: if a `prompt_id` is already present in the local overlay stack (either from
+   `InitialState.overlay_stack` or from a prior `PermissionPromptQueued` message), the second
+   delivery MUST be silently discarded. The IPC layer provides at-least-once delivery for
+   `PermissionPromptQueued` across the snapshot window; consumer idempotency on `prompt_id` is
+   the correct resolution. This invariant is symmetric with the no-op behavior already required
+   for `PermissionPromptResolved` (if `prompt_id` absent, no-op).
 
 ## Edge Cases
 
@@ -91,7 +98,7 @@ delivered as incremental push messages (no polling required).
 | EC-002 | Multiple TUI clients connect simultaneously | Each client receives its own `InitialState` push. Each client has a dedicated Tokio task. State is consistent across all clients (snapshot of daemon state at connection time). |
 | EC-003 | TUI process is killed (SIGKILL) immediately after connecting | Daemon detects EOF on the per-client stream; removes client from fan-out subscriber list; logs disconnect at DEBUG level. No crash or panic. |
 | EC-004 | `InitialState` message exceeds 256 KiB (ring_tail very large) | Daemon closes connection with `IpcError::MessageTooLarge`; logs `ERROR: InitialState for client exceeds 256 KiB limit (<N> bytes)`. TUI receives EOF and enters reconnect mode (BC-2.05.006). |
-| EC-005 | Daemon is under high load (many hook events per second) when TUI connects | `InitialState` uses the ring_tail snapshot at connection time; incremental `HookEventReceived` messages deliver events that arrived after snapshot. No duplicate events; no gap. |
+| EC-005 | Daemon is under high load (many hook events per second) when TUI connects | `InitialState` uses the ring_tail snapshot at connection time; incremental `HookEventReceived` messages deliver events that arrived after snapshot. `HookEventReceived` and `ring_tail` cover non-overlapping time windows by construction — no gap, no structural duplicate for hook events. `PermissionPromptQueued` messages may duplicate across the snapshot window (at-least-once semantics); TUI applies Invariant 4 idempotency on `prompt_id`. |
 | EC-006 | TUI connects when a permission prompt is already queued and awaiting decision | `InitialState.overlay_stack` contains the queued `PermissionPromptPayload`. TUI immediately renders the overlay without waiting for a new `PermissionPromptQueued` push. |
 
 ## Canonical Test Vectors
@@ -101,6 +108,7 @@ delivered as incremental push messages (no polling required).
 | TUI connects; daemon has 2 sessions, 5 ring events, 1 queued prompt, drop_counter=3 | `InitialState` push with sessions=[2 items], ring_tail=[5 items], overlay_stack=[1 item], drop_counter=3 | happy-path |
 | TUI connects; daemon is in empty initial state | `InitialState` with sessions=[], ring_tail=[], overlay_stack=[], drop_counter=0 | happy-path |
 | TUI connects; daemon sends `InitialState`; daemon then receives a new hook event | TUI receives `InitialState` first, then `HookEventReceived` for the new event; no events duplicated | happy-path |
+| TUI connects while daemon concurrently queues a new prompt (race: prompt appears in both overlay_stack and streaming PermissionPromptQueued) | TUI overlay stack contains the prompt exactly once; second PermissionPromptQueued delivery silently discarded via Invariant 4 idempotency | race/idempotency |
 | TUI sends garbage bytes after connecting (protocol violation) | Daemon deserializes framed payload; JSON parse failure; daemon closes connection; logs WARN | error |
 | `InitialState` JSON would be >256 KiB | Connection closed with `IpcError::MessageTooLarge`; TUI enters reconnect loop | error |
 
@@ -172,6 +180,25 @@ VP-TBD — Connection handshake and InitialState push verification properties (f
 **F-P1D4-004 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-ipc.md v1.1.0` (2 occurrences) → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
 - SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.5
+
+**F-S022-ADV6-MED-001 MED — EC-005 clarified; Invariant 4 (prompt_id idempotency) added** (2026-05-28T00:00:00Z):
+- Invariant 3 and EC-005 were in contradiction: register-before-snapshot ordering (Invariant 3)
+  allows a `PermissionPromptQueued` message to appear in both `InitialState.overlay_stack` and
+  the streaming send path, delivering the same prompt twice.
+- Resolution (Option D per architect-decisions-pass-6.md): IPC layer provides at-least-once
+  delivery for `PermissionPromptQueued` across the snapshot window. Consumer (TUI) is required
+  to apply `prompt_id` idempotency on insert, symmetric with the existing no-op-on-remove
+  requirement for `PermissionPromptResolved`.
+- Changes:
+  - Added Invariant 4: TUI MUST apply `PermissionPromptQueued` with idempotent-on-`prompt_id`
+    semantics; second delivery MUST be silently discarded.
+  - EC-005: Clarified "no duplicate events; no gap" to mean non-overlapping windows for
+    `HookEventReceived`/`ring_tail` by construction, and at-least-once with TUI idempotency
+    for `PermissionPromptQueued`.
+  - Added race/idempotency test vector.
+- SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
 
 ## §Trace v1.0.4
 

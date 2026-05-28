@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.7.0"
+version: "1.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -648,6 +648,26 @@ broadcasts `PermissionPromptResolved` after the first resolution; the second TUI
 overlay stack entry will have already been removed by that broadcast before its own decision
 message arrives at the daemon.
 
+### PermissionPromptQueued Delivered Twice Across Snapshot Window
+
+Risk: A `PermissionPromptQueued` broadcast can arrive in a new client's mpsc channel between
+`register_subscriber` and `snapshot_initial_state`. The snapshot includes the prompt in
+`InitialState.overlay_stack`; the streaming send loop also delivers the queued
+`PermissionPromptQueued` message. The TUI receives the same prompt twice.
+
+Mitigation: The IPC layer intentionally provides **at-least-once delivery** for
+`PermissionPromptQueued` across the connection snapshot window. The register-before-snapshot
+ordering is preserved to guarantee no-gap delivery (BC-2.05.002 Invariant 3). The consumer
+(TUI `VecDeque<PromptModal>`) is required to apply `PermissionPromptQueued` with
+idempotent-on-`prompt_id` semantics: if the `prompt_id` is already present in the overlay
+stack, the second delivery is silently discarded (BC-2.05.002 Invariant 4).
+
+This design mirrors the existing no-op requirement for `PermissionPromptResolved`: if a
+`prompt_id` is absent from the VecDeque, removal is a no-op. Insert and remove are both
+`prompt_id`-idempotent by design. No protocol epoch fields, no daemon-side per-client dedup
+logic, and no global snapshot lock are required. Decision rationale: F-S022-ADV6-MED-001,
+`cycles/cycle-001/S-022/adversarial/architect-decisions-pass-6.md`.
+
 ### TUI Reconnects During a Pending Decision
 
 Risk: TUI disconnects while the user was viewing a `PermissionPromptQueued` overlay. The user
@@ -660,6 +680,16 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.8.0
+
+**F-S022-ADV6-MED-001 MED — at-least-once semantics documented; prompt_id idempotency invariant** (2026-05-28):
+- Added §Risk Mitigations entry: "PermissionPromptQueued Delivered Twice Across Snapshot Window".
+- Documents IPC layer at-least-once delivery for `PermissionPromptQueued` across the connection
+  snapshot window. Mandates TUI-side `prompt_id` idempotency (BC-2.05.002 Invariant 4).
+- Rationale: register-subscriber-before-snapshot ordering (BC-2.05.002 Invariant 3) is correct
+  and preserved; duplicate delivery is resolved by consumer idempotency, not daemon-side dedup
+  or global locking. See architect-decisions-pass-6.md for Option D rationale vs A/B/C.
 
 ## §Trace v1.7.0
 
