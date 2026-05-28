@@ -612,9 +612,21 @@ pub async fn daemon_start_sequence(
     });
 
     // Spawn the UDS accept loop (BC-2.05.002 PC-1).
+    // Clone shutdown_rx and ipc_subscribers before moving into the spawned task.
+    // The accept loop races accept() against the shutdown watch receiver so that
+    // graceful shutdown terminates the loop cleanly within ~1 scheduler tick
+    // instead of blocking on the next accept() call (F-ADV2-HIGH-001).
+    let accept_shutdown_rx = daemon_state.shutdown_rx.clone();
     let accept_state = Arc::clone(&daemon_state);
+    let accept_subscribers = Arc::clone(&ipc_subscribers);
     tokio::spawn(async move {
-        crate::ipc_server::run_accept_loop(uds_listener, accept_state, ipc_subscribers).await;
+        crate::ipc_server::run_accept_loop(
+            uds_listener,
+            accept_state,
+            accept_subscribers,
+            accept_shutdown_rx,
+        )
+        .await;
     });
 
     // Step 11: Crash recovery checkpoint infrastructure is initialized implicitly —

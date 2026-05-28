@@ -48,9 +48,17 @@ pub async fn spawn_test_daemon(runtime_dir: &Path) -> (SubscriberList, TestDaemo
     let accept_state = Arc::clone(&state);
     let accept_subscribers = Arc::clone(&subscribers);
 
+    // Provide a shutdown receiver cloned from the state's watch channel.
+    // In tests, shutdown is never sent, so the accept loop runs until the task is dropped.
+    let accept_shutdown_rx = accept_state.shutdown_rx.clone();
     let accept_task = tokio::spawn(async move {
-        monocle_runtime::ipc_server::run_accept_loop(listener, accept_state, accept_subscribers)
-            .await;
+        monocle_runtime::ipc_server::run_accept_loop(
+            listener,
+            accept_state,
+            accept_subscribers,
+            accept_shutdown_rx,
+        )
+        .await;
     });
 
     let handle = TestDaemonHandle {

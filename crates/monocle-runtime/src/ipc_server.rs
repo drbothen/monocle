@@ -35,7 +35,8 @@ use crate::state::{snapshot_initial_state, DaemonState};
 /// Entry point for the daemon UDS connection accept loop (BC-2.05.002 postcondition PC-1).
 ///
 /// Accepts incoming TUI client connections from `listener` and spawns a dedicated Tokio task
-/// per client. Runs until the listener is closed (daemon shutdown).
+/// per client. Runs until the listener is closed (daemon shutdown) OR a shutdown signal is
+/// received on `shutdown_rx`.
 ///
 /// # Parameters
 ///
@@ -43,26 +44,50 @@ use crate::state::{snapshot_initial_state, DaemonState};
 /// - `state`: Shared daemon state; used to take the `InitialState` snapshot and look up the
 ///   pending-decision registry.
 /// - `subscribers`: Shared fan-out subscriber list to which new client senders are added.
+/// - `mut shutdown_rx`: Watch receiver cloned from `DaemonState.shutdown_rx`. When the value
+///   changes to `true` (graceful shutdown), the accept loop terminates cleanly. In-flight
+///   per-client tasks are NOT aborted — they are allowed to complete naturally (draining
+///   any queued messages before closing their socket).
 pub async fn run_accept_loop(
     listener: UnixListener,
     state: Arc<DaemonState>,
     subscribers: SubscriberList,
+    mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
 ) {
     loop {
-        match listener.accept().await {
-            Ok((stream, _addr)) => {
-                let state = Arc::clone(&state);
-                let subscribers = Arc::clone(&subscribers);
-                tokio::spawn(async move {
-                    spawn_client_task(stream, state, subscribers).await;
-                });
+        tokio::select! {
+            // Bias toward shutdown check so a pending shutdown signal
+            // is never delayed by a queued accept event.
+            biased;
+
+            // Shutdown signal received — terminate accept loop cleanly.
+            _ = shutdown_rx.changed() => {
+                if *shutdown_rx.borrow() {
+                    tracing::debug!("run_accept_loop: shutdown signal received; stopping accept loop");
+                    break;
+                }
+                // Value changed to false (reset) — not a shutdown; continue.
             }
-            Err(e) => {
-                tracing::error!("UDS accept error: {e}");
-                break;
+
+            // New TUI client connection arrived.
+            accept_result = listener.accept() => {
+                match accept_result {
+                    Ok((stream, _addr)) => {
+                        let state = Arc::clone(&state);
+                        let subscribers = Arc::clone(&subscribers);
+                        tokio::spawn(async move {
+                            spawn_client_task(stream, state, subscribers).await;
+                        });
+                    }
+                    Err(e) => {
+                        tracing::error!("UDS accept error: {e}");
+                        break;
+                    }
+                }
             }
         }
     }
+    tracing::debug!("run_accept_loop: exited");
 }
 
 /// Spawn a dedicated Tokio task for a single accepted TUI client connection.
