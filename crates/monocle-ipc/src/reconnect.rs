@@ -27,6 +27,21 @@
 //! After `IpcError::ReconnectTimeout`, the TUI polls
 //! `<runtime_dir>/monocle.lock` every 5 seconds. When a new lock file is detected, it
 //! re-enters the reconnect loop with a fresh `BackoffState` (backoff resets to 250ms).
+//!
+//! # Lock File Format
+//!
+//! The lock file is JSON with at minimum the following fields:
+//! ```json
+//! {
+//!   "pid": 12345,
+//!   "port": 9001,
+//!   "authToken": "...",
+//!   "socketPath": "/path/to/monocle.sock"
+//! }
+//! ```
+//!
+//! The `socketPath` field is used directly for reconnect attempts. The `pid` field
+//! is used as the stable discriminant for detecting a new daemon in [`poll_for_new_daemon`].
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -97,10 +112,10 @@ impl BackoffState {
         // Backoff schedule (BC-2.05.006 PC-4):
         // Attempt 0 → 250ms, Attempt 1 → 500ms, Attempt 2 → 1000ms, Attempt 3+ → 2000ms cap.
         let delay_ms = match self.attempt {
-            0 => BACKOFF_INITIAL_MS,                           // 250ms
-            1 => BACKOFF_INITIAL_MS * 2,                       // 500ms
-            2 => BACKOFF_INITIAL_MS * 4,                       // 1000ms
-            _ => BACKOFF_CAP_MS,                               // 2000ms cap
+            0 => BACKOFF_INITIAL_MS,           // 250ms
+            1 => BACKOFF_INITIAL_MS * 2,       // 500ms
+            2 => BACKOFF_INITIAL_MS * 4,       // 1000ms
+            _ => BACKOFF_CAP_MS,               // 2000ms cap
         };
         self.attempt = self.attempt.saturating_add(1);
         Duration::from_millis(delay_ms)
@@ -158,10 +173,87 @@ pub async fn reconnect(
     runtime_dir: &Path,
     backoff: &mut BackoffState,
 ) -> Result<UdsClientTransport, IpcError> {
-    todo!(
-        "S-023: implement reconnect loop with exponential backoff for runtime_dir={:?}",
-        runtime_dir
-    )
+    let window = Duration::from_secs(RECONNECT_WINDOW_SECS);
+    let deadline = tokio::time::Instant::now() + window;
+    let mut attempt = 0u32;
+
+    loop {
+        // Read current socket path from lock file (BC-2.05.006 PC-3).
+        // On first attempt OR after each failed attempt, re-read to discover daemon restart.
+        let sock_path = match read_lock_file_sock_path(runtime_dir).await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::debug!(
+                    attempt,
+                    runtime_dir = %runtime_dir.display(),
+                    error = %e,
+                    "reconnect: lock file unavailable, will retry after backoff"
+                );
+                // No socket path — use default path as fallback so we can still
+                // attempt the connection (the daemon may have started by the time sleep ends).
+                runtime_dir.join("monocle.sock")
+            }
+        };
+
+        // Check if we've already exceeded the window BEFORE the backoff sleep.
+        // This handles the case where previous attempts consumed most of the 5s window.
+        if tokio::time::Instant::now() >= deadline {
+            tracing::warn!(
+                runtime_dir = %runtime_dir.display(),
+                "reconnect: 5-second window exhausted — entering offline mode (BC-2.05.006 PC-5)"
+            );
+            return Err(IpcError::ReconnectTimeout);
+        }
+
+        attempt = attempt.saturating_add(1);
+        let delay = backoff.next_delay();
+
+        tracing::debug!(
+            attempt,
+            runtime_dir = %runtime_dir.display(),
+            delay_ms = delay.as_millis(),
+            sock_path = %sock_path.display(),
+            "reconnect: attempt {attempt} — waiting {delay_ms}ms before trying to connect",
+            delay_ms = delay.as_millis()
+        );
+
+        // Wait for the backoff delay. tokio::time::sleep is compatible with mock time
+        // (tokio::time::pause() + advance()) used in tests (BC-2.05.006 PC-4).
+        // MUST NOT use std::thread::sleep here (blocks the Tokio runtime).
+        tokio::time::sleep(delay).await;
+
+        // Re-check deadline after sleep (the sleep itself may have consumed time).
+        if tokio::time::Instant::now() >= deadline {
+            tracing::warn!(
+                runtime_dir = %runtime_dir.display(),
+                "reconnect: 5-second window exhausted after backoff sleep — entering offline mode"
+            );
+            return Err(IpcError::ReconnectTimeout);
+        }
+
+        // Attempt connection.
+        match tokio::net::UnixStream::connect(&sock_path).await {
+            Ok(stream) => {
+                tracing::info!(
+                    attempt,
+                    runtime_dir = %runtime_dir.display(),
+                    sock_path = %sock_path.display(),
+                    "reconnect: connection succeeded on attempt {attempt}"
+                );
+                return Ok(UdsClientTransport::new(stream));
+            }
+            Err(e) => {
+                tracing::debug!(
+                    attempt,
+                    runtime_dir = %runtime_dir.display(),
+                    error = %e,
+                    "reconnect: connection attempt {attempt} failed — will re-read lock file"
+                );
+                // Re-read lock file before next attempt (BC-2.05.006 PC-3 — done at top of loop).
+                // Continue loop for next attempt.
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -175,18 +267,30 @@ pub async fn reconnect(
 /// `PathBuf` reflects the updated socket path, enabling the TUI to discover a restarted
 /// daemon that may be bound to a different port.
 ///
+/// # Lock file format
+///
+/// The lock file is JSON with a `"socketPath"` field containing the absolute path to the
+/// daemon's UDS socket. If `"socketPath"` is absent, falls back to
+/// `<runtime_dir>/monocle.sock` as the canonical default.
+///
 /// # Errors
 ///
 /// Returns [`IpcError::IoError`] if the lock file cannot be read.
 /// Returns [`IpcError::SerializeError`] if the lock file JSON is malformed.
-#[allow(dead_code)]
-pub(crate) async fn read_lock_file_sock_path(
-    runtime_dir: &Path,
-) -> Result<PathBuf, IpcError> {
-    todo!(
-        "S-023: read monocle.lock from {:?} and return resolved socket path",
-        runtime_dir
-    )
+pub(crate) async fn read_lock_file_sock_path(runtime_dir: &Path) -> Result<PathBuf, IpcError> {
+    let lock_path = runtime_dir.join("monocle.lock");
+    // Use tokio::fs for async I/O (does not block the runtime on large lock files).
+    let contents = tokio::fs::read_to_string(&lock_path)
+        .await
+        .map_err(IpcError::IoError)?;
+    let json: serde_json::Value = serde_json::from_str(&contents)?;
+    // Extract the socketPath field if present; otherwise default to runtime_dir/monocle.sock.
+    let sock_path = json
+        .get("socketPath")
+        .and_then(|v| v.as_str())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| runtime_dir.join("monocle.sock"));
+    Ok(sock_path)
 }
 
 // ---------------------------------------------------------------------------
@@ -217,11 +321,54 @@ pub(crate) async fn read_lock_file_sock_path(
 ///
 /// This function does not return errors — transient lock-file read failures are logged
 /// at `DEBUG` level and the poll continues.
-#[allow(dead_code)]
 pub(crate) async fn poll_for_new_daemon(runtime_dir: &Path) {
-    todo!(
-        "S-023: poll {:?}/monocle.lock every {}s for new daemon PID",
-        runtime_dir,
+    let lock_path = runtime_dir.join("monocle.lock");
+    // Read the initial PID to detect when a NEW daemon starts.
+    let initial_pid = read_lock_pid(&lock_path).await;
+    tracing::debug!(
+        runtime_dir = %runtime_dir.display(),
+        initial_pid,
+        "offline mode: polling for new daemon every {}s (BC-2.05.006 PC-5)",
         OFFLINE_POLL_INTERVAL_SECS
-    )
+    );
+
+    loop {
+        // Poll interval is 5 seconds (BC-2.05.006 PC-5 — NOT the 100ms auto-start interval).
+        tokio::time::sleep(Duration::from_secs(OFFLINE_POLL_INTERVAL_SECS)).await;
+
+        let current_pid = read_lock_pid(&lock_path).await;
+        if let (Some(initial), Some(current)) = (initial_pid, current_pid) {
+            if current != initial {
+                tracing::info!(
+                    runtime_dir = %runtime_dir.display(),
+                    old_pid = initial,
+                    new_pid = current,
+                    "offline mode: new daemon detected (PID changed) — re-entering reconnect loop"
+                );
+                return;
+            }
+        } else if initial_pid.is_none() && current_pid.is_some() {
+            // Lock file appeared (no initial PID → new daemon).
+            tracing::info!(
+                runtime_dir = %runtime_dir.display(),
+                new_pid = current_pid,
+                "offline mode: lock file appeared — re-entering reconnect loop"
+            );
+            return;
+        }
+        tracing::debug!(
+            runtime_dir = %runtime_dir.display(),
+            current_pid,
+            "offline mode: no new daemon detected, continuing poll"
+        );
+    }
+}
+
+/// Read the `pid` field from the lock file, returning `None` if not readable.
+///
+/// Used by [`poll_for_new_daemon`] for change detection.
+async fn read_lock_pid(lock_path: &Path) -> Option<u64> {
+    let contents = tokio::fs::read_to_string(lock_path).await.ok()?;
+    let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
+    json.get("pid").and_then(|v| v.as_u64())
 }
