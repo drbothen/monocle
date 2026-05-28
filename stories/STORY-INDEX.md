@@ -1,14 +1,14 @@
 ---
 document_type: story-index
 level: L4
-version: "5.8"
+version: "5.9"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T16:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.26"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.27"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
@@ -17,7 +17,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.1"}
+  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
 traces_to: ".factory/specs/prd.md v1.26.15"
@@ -450,6 +450,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.9
+
+**F-S025-ADV11-HIGH-001 PO Option B — cumulative pin propagation** (2026-05-28):
+- S-026 v1.6 → v1.7: BC-2.06.016 inputs pin v1.0.7 → v1.0.8 (PO Option B: disconnect text style).
+- STORY-INDEX: SS-tui.md pin v1.8.1 → v1.8.2; BC-INDEX pin v1.26 → v1.27.
+- dependency-graph-expansion.md v1.7 → v1.8: same SS-tui and BC-INDEX pin bumps.
+- BC-INDEX v1.26 → v1.27: §Trace v1.27 added (BC-2.06.016 v1.0.7 → v1.0.8 bump reflected).
+- SE-16d monotonicity: v5.9 timestamp 2026-05-28T00:00:00Z >= v5.8 timestamp 2026-05-28T16:00:00Z. PASS (same-day).
 
 ## §Trace v5.8
 

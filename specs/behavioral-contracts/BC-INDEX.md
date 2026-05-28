@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.26"
+version: "1.27"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -916,3 +916,15 @@ BC-INDEX H1 title for BC-2.06.014: unchanged ("Permission Overlay: `[Esc]` Hides
 No BC retirements or removals.
 
 SE-16d monotonicity PASS: 2026-05-28T14:00:00Z > 2026-05-28T13:00:00Z (v1.25). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.27
+
+**F-S025-ADV11-HIGH-001 PO Option B — BC-2.06.016 v1.0.7 → v1.0.8** (2026-05-28T00:00:00Z):
+
+BC-2.06.016 v1.0.7 → v1.0.8 (PO Option B decision — commit 4563bfa):
+- PC-1 and PC-2 disconnect text style updated per PO Option B adjudication.
+- No BC H1 title change.
+
+BC-INDEX titles unchanged: BC-2.06.016 H1 "Permission Overlay: Cleared on Daemon Disconnect" is stable. No BC retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-28T00:00:00Z >= 2026-05-28T14:00:00Z (v1.26). PASS (same-day).

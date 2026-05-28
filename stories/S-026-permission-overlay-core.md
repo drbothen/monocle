@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.6"
+version: "1.7"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T16:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 13
 wave: 6
@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.012.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.7"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.8"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.4.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
@@ -307,6 +307,13 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.7
+
+**F-S025-ADV11-HIGH-001 PO Option B — BC-2.06.016 pin propagation** (2026-05-28):
+- BC-2.06.016 inputs pin updated: v1.0.7 → v1.0.8 (PO Option B decision: disconnect text style in PC-1/PC-2).
+- No body changes required: AC-011 and AC-012 behavioral semantics unchanged.
+- SE-16d monotonicity: v1.7 timestamp 2026-05-28T00:00:00Z >= v1.6 timestamp 2026-05-28T16:00:00Z. PASS (same-day).
 
 ## §Trace v1.6
 
