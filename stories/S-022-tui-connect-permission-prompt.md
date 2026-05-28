@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-022
 epic_id: EPIC-05
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -13,7 +13,7 @@ wave: 6
 tdd_mode: strict
 priority: P0
 depends_on: [S-021, S-018]
-blocks: [S-023, S-025, S-026]
+blocks: [S-023, S-025, S-026, S-029]
 target_module: monocle-ipc
 subsystems: [SS-05]
 behavioral_contracts: [BC-2.05.002, BC-2.05.005]
@@ -23,7 +23,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.3"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.005.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "[pending]"
+input-hash: "931a19a"
 traces_to: "Implements BC-2.05.002 (TUI connect + InitialState push), BC-2.05.005 (PermissionPromptQueued broadcast + PermissionDecision routing)"
 ---
 
