@@ -53,6 +53,7 @@ fn make_session(id: &str) -> EnrichedSession {
 }
 
 /// Build a minimal `PromptModal` from a payload for overlay assertions.
+// test-writer follow-up: invoke this helper in production-wired overlay render tests (S-026).
 #[allow(dead_code)]
 fn make_modal(payload: &PermissionPromptPayload) -> PromptModal {
     PromptModal {

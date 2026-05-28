@@ -93,6 +93,7 @@ fn render_sessions_panel(app: &App, _drop_counter: u64) -> String {
 }
 
 /// Build a PromptModal for overlay tests.
+// test-writer follow-up: invoke this helper in production-wired overlay render tests (S-026).
 #[allow(dead_code)]
 fn make_modal() -> PromptModal {
     PromptModal {

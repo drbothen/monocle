@@ -493,7 +493,7 @@ pub async fn run() -> Result<()> {
                     }
                     Some((monocle_core::tui::state::Action::SelectPrev, _)) => {
                         // Move selection up in the current panel list.
-                        if app.sessions.len() > 0 {
+                        if !app.sessions.is_empty() {
                             let prev = sessions_state
                                 .list_state
                                 .selected()
