@@ -537,79 +537,7 @@ pub async fn run() -> Result<()> {
     loop {
         // 1. Render the current frame (AC-001, AC-005, BLOCKER-004, BC-2.06.007 PC-7).
         terminal.draw(|frame| {
-            use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
-            use crate::ui::sessions_panel::SessionsPanel;
-            use monocle_core::tui::state::PanelId;
-            use ratatui::{
-                style::{Color, Style},
-                text::{Line, Span},
-                widgets::{Paragraph, StatefulWidget, Widget},
-            };
-
-            // Build the status line (shared between Dashboard and Fullscreen).
-            let status_line = if app.drop_counter > 0 {
-                Line::from(vec![Span::styled(
-                    format!("[dropped: {}] monocle", app.drop_counter),
-                    Style::default().fg(Color::Yellow),
-                )])
-            } else {
-                Line::from(Span::styled(
-                    "monocle",
-                    Style::default().fg(Color::DarkGray),
-                ))
-            };
-
-            // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
-            // Fullscreen mode: panel occupies full main area; Dashboard: 60/40 split.
-            match &app.mode {
-                AppMode::Fullscreen { panel, .. } => {
-                    let layout = build_fullscreen_layout(frame.area());
-                    match panel {
-                        PanelId::Sessions => {
-                            let p = SessionsPanel::new(&app);
-                            p.render(layout.panel_area, frame.buffer_mut(), &mut sessions_state);
-                        }
-                        _ => {
-                            // Future panels (EventRibbon fullscreen — S-027, others).
-                            // PanelId is #[non_exhaustive]; render a placeholder until
-                            // each panel's fullscreen renderer is implemented.
-                            Widget::render(
-                                Paragraph::new(Line::from(Span::styled(
-                                    "Panel (S-027+)",
-                                    Style::default().fg(Color::DarkGray),
-                                ))),
-                                layout.panel_area,
-                                frame.buffer_mut(),
-                            );
-                        }
-                    }
-                    Widget::render(
-                        Paragraph::new(status_line),
-                        layout.status_bar_area,
-                        frame.buffer_mut(),
-                    );
-                }
-                _ => {
-                    // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
-                    // Overlay is rendered on top by S-026. Sessions panel always visible.
-                    let layout = build_dashboard_layout(frame.area());
-
-                    // Render the Sessions panel (left 60%).
-                    let panel = SessionsPanel::new(&app);
-                    panel.render(
-                        layout.sessions_area,
-                        frame.buffer_mut(),
-                        &mut sessions_state,
-                    );
-
-                    // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
-                    Widget::render(
-                        Paragraph::new(status_line),
-                        layout.status_bar_area,
-                        frame.buffer_mut(),
-                    );
-                }
-            }
+            render_frame(&app, &mut sessions_state, frame);
         })?;
 
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
@@ -903,6 +831,101 @@ pub fn dispatch_key_event(
             } else {
                 KeyOutcome::Continue
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Frame render helper (extracted for testability — F-S025-ADV4 AC-007)
+// ---------------------------------------------------------------------------
+
+/// Render a single application frame into the given ratatui `Frame`.
+///
+/// Extracted from `run()` so that integration tests can assert on the buffer
+/// contents using `TestBackend` without spinning up an async event loop
+/// (F-S025-ADV4 coverage: AC-007 page-level status bar drop counter).
+///
+/// # Layout branches
+///
+/// - `AppMode::Fullscreen` — panel occupies the full main area; status bar below.
+/// - All other modes (Dashboard, Overlay, Filtering) — 60/40 dashboard split;
+///   Sessions panel left, status bar below.
+///
+/// # Drop counter (AC-007, BC-2.06.005 PC-3)
+///
+/// When `app.drop_counter > 0`, the page-level status bar renders
+/// `"[dropped: N] monocle"` in yellow. When `app.drop_counter == 0`, it renders
+/// `"monocle"` in dark-gray. This is the ONLY location where the drop counter
+/// text is rendered — the Sessions panel widget itself does NOT duplicate it
+/// (F-S025-ADV2-MED-002).
+pub fn render_frame(
+    app: &App,
+    sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
+    frame: &mut ratatui::Frame,
+) {
+    use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
+    use crate::ui::sessions_panel::SessionsPanel;
+    use monocle_core::tui::state::PanelId;
+    use ratatui::{
+        style::{Color, Style},
+        text::{Line, Span},
+        widgets::{Paragraph, StatefulWidget, Widget},
+    };
+
+    // Build the status line (shared between Dashboard and Fullscreen).
+    let status_line = if app.drop_counter > 0 {
+        Line::from(vec![Span::styled(
+            format!("[dropped: {}] monocle", app.drop_counter),
+            Style::default().fg(Color::Yellow),
+        )])
+    } else {
+        Line::from(Span::styled(
+            "monocle",
+            Style::default().fg(Color::DarkGray),
+        ))
+    };
+
+    // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
+    match &app.mode {
+        AppMode::Fullscreen { panel, .. } => {
+            let layout = build_fullscreen_layout(frame.area());
+            match panel {
+                PanelId::Sessions => {
+                    let p = SessionsPanel::new(app);
+                    p.render(layout.panel_area, frame.buffer_mut(), sessions_state);
+                }
+                _ => {
+                    // Future panels (EventRibbon fullscreen — S-027, others).
+                    Widget::render(
+                        Paragraph::new(Line::from(Span::styled(
+                            "Panel (S-027+)",
+                            Style::default().fg(Color::DarkGray),
+                        ))),
+                        layout.panel_area,
+                        frame.buffer_mut(),
+                    );
+                }
+            }
+            Widget::render(
+                Paragraph::new(status_line),
+                layout.status_bar_area,
+                frame.buffer_mut(),
+            );
+        }
+        _ => {
+            // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
+            let layout = build_dashboard_layout(frame.area());
+
+            // Render the Sessions panel (left 60%).
+            let panel = SessionsPanel::new(app);
+            panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+
+            // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
+            Widget::render(
+                Paragraph::new(status_line),
+                layout.status_bar_area,
+                frame.buffer_mut(),
+            );
         }
     }
 }

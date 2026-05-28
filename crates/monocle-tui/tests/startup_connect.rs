@@ -14,7 +14,8 @@ use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload}
 use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload};
 use monocle_tui::app::{
     apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event,
-    on_drop_counter_update, on_initial_state, on_transport_event, App, KeyOutcome, TransportEvent,
+    on_drop_counter_update, on_initial_state, on_transport_event, render_frame, App, KeyOutcome,
+    TransportEvent,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use std::collections::VecDeque;
@@ -812,5 +813,99 @@ fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
         outcome,
         KeyOutcome::Continue,
         "dispatch_key_event must return Continue in Overlay mode (not Quit)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV4 — AC-007 page-level status bar drop counter positive test
+// ---------------------------------------------------------------------------
+
+/// AC-007 (positive path): when `app.drop_counter > 0`, the page-level status bar
+/// renders `"[dropped: N] monocle"` in yellow.
+///
+/// Uses `render_frame()` (the production render helper extracted from `run()`) with
+/// a `TestBackend` to exercise the actual status bar rendering path.  If the
+/// `format!("[dropped: {}] monocle", ...)` branch is removed or the yellow style is
+/// stripped, this test fails.
+///
+/// Coverage gap addressed: F-S025-ADV4 noted that only the negative case (no drop
+/// counter in the panel widget) was tested; the positive case (page-level bar renders
+/// the counter text) was untested.
+#[test]
+fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app with drop_counter = 5.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+    on_drop_counter_update(&mut app, 5);
+
+    assert_eq!(
+        app.drop_counter, 5,
+        "precondition: drop_counter must be 5 before render"
+    );
+
+    // Render into a TestBackend (80 columns × 6 rows — small but enough to see status bar).
+    // Layout: build_dashboard_layout splits into main area + 2-row status bar.
+    // Use 80×6: rows 0-3 are main area, rows 4-5 are status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Inspect the buffer for the status bar text.
+    let buffer = terminal.backend().buffer().clone();
+
+    // Collect the full text content of the last two rows (status bar area).
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        status_rows.contains("[dropped: 5]"),
+        "AC-007: page-level status bar must contain '[dropped: 5]' when drop_counter=5; \
+         got status rows: {:?}",
+        status_rows.trim()
+    );
+    assert!(
+        status_rows.contains("monocle"),
+        "AC-007: page-level status bar must contain 'monocle' when drop_counter=5; \
+         got status rows: {:?}",
+        status_rows.trim()
+    );
+
+    // Verify the drop counter span is styled yellow (not default color).
+    // Find the first cell of "[dropped: 5] monocle" in the bottom two rows.
+    let target = "[dropped: 5] monocle";
+    let target_bytes: Vec<char> = target.chars().collect();
+    let mut found_yellow = false;
+    'outer: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == "[" {
+                // Check if this is the start of our target string.
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().chars().next() == Some(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer;
+                }
+            }
+        }
+    }
+
+    assert!(
+        found_yellow,
+        "AC-007: '[dropped: 5] monocle' must be rendered with Yellow foreground in the status bar"
     );
 }
