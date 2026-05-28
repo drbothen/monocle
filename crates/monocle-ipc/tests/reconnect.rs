@@ -221,7 +221,7 @@ async fn test_BC_2_05_006_pc_3_lock_file_reread_after_failed_attempt() {
         "port": 9001,
         "authToken": "token-initial"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&initial_lock).unwrap())
+    std::fs::write(&lock_path, serde_json::to_string(&initial_lock).unwrap()) // nosemgrep: monocle-no-naked-fs-write
         .expect("write lock file");
 
     let mut backoff = BackoffState::new();
@@ -266,7 +266,7 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
         "port": 9001,
         "authToken": "token-v1"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     // Spawn a task that binds the socket and writes a new lock file after a short delay.
     let dir_clone = dir.path().to_path_buf();
@@ -284,7 +284,7 @@ async fn test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file() {
             "port": 9002,
             "authToken": "token-v2"
         });
-        std::fs::write(
+        std::fs::write( // nosemgrep: monocle-no-naked-fs-write
             dir_clone.join("monocle.lock"),
             serde_json::to_string(&lock_v2).unwrap(),
         )
@@ -324,7 +324,7 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
         "port": 9001,
         "authToken": "token-original"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock_v1).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     let dir_clone = dir.path().to_path_buf();
     let _daemon_task = tokio::spawn(async move {
@@ -338,7 +338,7 @@ async fn test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid() {
             "port": 9002,
             "authToken": "token-restarted"
         });
-        std::fs::write(
+        std::fs::write( // nosemgrep: monocle-no-naked-fs-write
             dir_clone.join("monocle.lock"),
             serde_json::to_string(&lock_v2).unwrap(),
         )
@@ -412,7 +412,7 @@ async fn test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down(
         "port": 9001,
         "authToken": "stale-token"
     });
-    std::fs::write(
+    std::fs::write( // nosemgrep: monocle-no-naked-fs-write
         dir.path().join("monocle.lock"),
         serde_json::to_string(&stale_lock).unwrap(),
     )
@@ -493,7 +493,7 @@ async fn test_BC_2_05_006_pc_6_initial_state_rebuild_on_reconnect() {
         "port": 9001,
         "authToken": "token-reconnect"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     // Bind the listener and spawn a task to accept + send InitialState.
     let listener = UnixListener::bind(&sock_path).expect("bind");
@@ -555,7 +555,7 @@ async fn test_BC_2_05_006_pc_7_app_mode_overlay_after_reconnect_with_pending_pro
         "port": 9001,
         "authToken": "token-overlay"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     let prompt = PermissionPromptPayload {
         prompt_id: Uuid::new_v4(),
@@ -637,7 +637,7 @@ async fn test_BC_2_05_006_pc_7_app_mode_dashboard_after_reconnect_no_pending_pro
         "port": 9001,
         "authToken": "token-dashboard"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     let listener = UnixListener::bind(&sock_path).expect("bind");
     let _daemon_task = tokio::spawn(async move {
@@ -783,7 +783,7 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
         "port": 9001,
         "authToken": "token-invariant2"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     // Spawn acceptor — accepts the reconnect() connection and holds it open.
     let _server_task = tokio::spawn(async move {
@@ -873,7 +873,7 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
             "port": port,
             "authToken": format!("token-cycle-{cycle}")
         });
-        std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+        std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
         // Spawn an acceptor task that accepts and immediately drops the connection.
         // Dropping the accepted stream causes the background reader in the transport
@@ -974,7 +974,7 @@ async fn test_BC_2_05_006_pc_8_status_bar_reverts_after_reconnect() {
         "port": 9001,
         "authToken": "token-status"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap();
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).unwrap(); // nosemgrep: monocle-no-naked-fs-write
 
     let listener = UnixListener::bind(&sock_path).expect("bind");
     let _daemon_task = tokio::spawn(async move {
@@ -1104,7 +1104,7 @@ async fn test_BC_2_05_006_high_001_connect_timeout_within_reconnect_window() {
         "port": 9901,
         "authToken": "token-timeout-test"
     });
-    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).expect("write lock");
+    std::fs::write(&lock_path, serde_json::to_string(&lock).unwrap()).expect("write lock"); // nosemgrep: monocle-no-naked-fs-write
 
     pause();
     let mut backoff = BackoffState::new();
