@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.1"
+version: "5.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -67,10 +67,10 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | done | S-025, S-026, S-031 |
 | S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | done | S-025, S-031 |
 | S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | done | S-018, S-019, S-020, S-021 |
-| S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | not_started | S-022, S-029 |
-| S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | not_started | S-023 |
-| S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | not_started | — |
-| S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | not_started | S-022, S-028 |
+| S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | done | S-022, S-029 |
+| S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | done | S-023 |
+| S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | done | — |
+| S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028 |
 | S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | not_started | S-023, S-025, S-026, S-029 |
 | S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | not_started | S-026 |
 | S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | not_started | S-027, S-028, S-031 |
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.2
+
+**Wave 5 COMPLETE: S-018, S-019, S-020, S-021 flipped not_started → done** (2026-05-27):
+- S-018 Story Registry row: `not_started` → `done`. PR #26 merged at develop @ 654e281. 46 tests. BC-2.04.007, BC-2.04.008, BC-2.04.009, BC-2.04.011 fully satisfied. Adversarial convergence: 3 passes, trajectory 10→4→4 (CONVERGED).
+- S-019 Story Registry row: `not_started` → `done`. PR #25 merged at develop @ 11540fc. 25 tests (1 ignored). BC-2.04.002, BC-2.04.003 fully satisfied. Adversarial convergence: 3 passes, trajectory 7→2→1 (CONVERGED).
+- S-020 Story Registry row: `not_started` → `done`. PR #24 merged at develop @ f69d53a. 24 tests. BC-2.04.012 fully satisfied. Fix commit 5a3eaf4 (restored ring.rs after S-018 merge conflict). Adversarial convergence: 3 passes, trajectory 12→8→0 (CONVERGED).
+- S-021 Story Registry row: `not_started` → `done`. PR #23 merged at develop @ acaacb9. 49 tests. BC-2.05.001, BC-2.05.003, BC-2.05.004, BC-2.05.008 fully satisfied. New monocle-ipc crate. Adversarial convergence: 3 passes, trajectory 9→4→4 (CONVERGED).
+- **WAVE 5 COMPLETE: 5/5 stories done (34/34 pts).** Wave gate pending.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.27→v1.28 (done 20→24, not_started 12→8, points_complete 109→143); STATE.md v6.22→v6.23.
+- STORY-INDEX version bumped v5.1→v5.2.
 
 ## §Trace v5.1
 
