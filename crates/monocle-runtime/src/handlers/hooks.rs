@@ -103,6 +103,12 @@ fn ring_push_best_effort(state: &DaemonState, record: &HookEventRecord) {
 ///
 /// Shared across all 5 hook stubs (BC-2.01.004 PC-2). The `Retry-After: 10` header value
 /// is normative and MUST be the exact integer string `"10"` per VP-004 §Post-conditions item 2.
+///
+/// Also exposed as `drain_response_pub` for use by S-018 handlers in `src/hooks/`.
+pub fn drain_response_pub() -> Response {
+    drain_response()
+}
+
 fn drain_response() -> Response {
     let mut response = (
         StatusCode::SERVICE_UNAVAILABLE,

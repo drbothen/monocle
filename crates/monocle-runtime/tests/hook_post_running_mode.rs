@@ -84,15 +84,19 @@ async fn post_hook_json(
 // AC-010b — BC-2.01.002 PC-1 — POST /hooks/pre-tool-use Running mode → 200 {"status":"ok"}
 // ---------------------------------------------------------------------------
 
-/// BC-2.01.002 AC-010b: `POST /hooks/pre-tool-use` with valid canonical auth and a JSON body
-/// in `AppMode::Running` returns HTTP 200 with body `{"status":"ok"}`.
+/// BC-2.04.007 PC-3 / BC-2.01.002 AC-010b: `POST /hooks/pre-tool-use` with valid canonical
+/// auth and a JSON body in `AppMode::Running` returns HTTP 200 with body `{"decision":"allow"}`.
+///
+/// S-018 replaced the S-009 stub handler (which returned `{"status":"ok"}`) with the full
+/// hook-routing handler that dispatches to `ClaudeCodeModule::on_hook()`. Phase 1 engine
+/// returns `Allow` for all hook types, producing `{"decision":"allow"}`.
 ///
 /// This verifies the full stack in Running mode:
 /// 1. Auth middleware passes (canonical `X-Monocle-Authorization: monocle-v1:<64-hex>`).
 /// 2. Body-limit middleware passes (small JSON body, well within 256 KiB).
-/// 3. `post_hook_pre_tool_use` handler is reached and returns the hook-ok response.
+/// 3. `post_hook_pre_tool_use` handler is reached and returns the hook-decision response.
 ///
-/// Traces to BC-2.01.002 PC-1 / AC-010b, BC-2.01.009 PC-2.
+/// Traces to BC-2.04.007 PC-3 / PC-7, BC-2.01.009 PC-2.
 #[tokio::test]
 async fn test_hook_pre_tool_use_running_canonical_auth_returns_200() {
     let state = make_running_state();
@@ -116,22 +120,15 @@ async fn test_hook_pre_tool_use_running_canonical_auth_returns_200() {
         StatusCode::OK,
         "POST /hooks/pre-tool-use with valid canonical auth in Running mode must return HTTP 200; \
         got {status}. Body: {resp_body}. \
-        Traces to BC-2.01.002 AC-010b."
+        Traces to BC-2.04.007 PC-3."
     );
+    // S-018: handler now returns {"decision":"allow"} (Phase 1 engine returns Allow for all hooks).
+    // Previous S-009 stub returned {"status":"ok"}; S-018 replaces with full hook-routing response.
     assert_eq!(
-        resp_body.get("status").and_then(|v| v.as_str()),
-        Some("ok"),
-        "POST /hooks/pre-tool-use 200 body must be {{\"status\":\"ok\"}}; got: {resp_body}. \
-        Traces to BC-2.01.002 AC-010b."
-    );
-    let obj = resp_body.as_object().expect("body must be a JSON object");
-    assert_eq!(
-        obj.len(),
-        1,
-        "POST /hooks/pre-tool-use 200 body must have exactly 1 key; \
-        got {} key(s): {:?}",
-        obj.len(),
-        obj.keys().collect::<Vec<_>>()
+        resp_body.get("decision").and_then(|v| v.as_str()),
+        Some("allow"),
+        "POST /hooks/pre-tool-use 200 body must contain {{\"decision\":\"allow\"}}; got: {resp_body}. \
+        Traces to BC-2.04.007 PC-3 / PC-7."
     );
 }
 

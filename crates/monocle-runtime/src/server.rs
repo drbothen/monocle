@@ -46,12 +46,15 @@ use tokio::net::TcpListener;
 
 use crate::auth::auth_middleware;
 use crate::body_limit::body_size_limit_middleware;
-use crate::handlers::hooks::{
-    post_hook_notification, post_hook_pre_tool_use, post_hook_prompt_submit,
-    post_hook_session_start, post_hook_stop,
-};
+// S-018: replace S-009 handler stubs with the full routing + event-bus + ring-append handlers.
+// The S-009 handlers in handlers/hooks.rs are retained for the drain_response_pub() helper.
 use crate::handlers::shutdown::post_shutdown;
 use crate::handlers::status::get_status;
+use crate::hooks::notification::post_hook_notification;
+use crate::hooks::pre_tool_use::post_hook_pre_tool_use;
+use crate::hooks::stop_session_prompt::{
+    post_hook_prompt_submit, post_hook_session_start, post_hook_stop,
+};
 use crate::router::unauthenticated_router;
 use crate::state::{AppMode, DaemonState};
 
@@ -80,9 +83,9 @@ pub fn build_server(state: Arc<DaemonState>) -> Router {
         // Registered on the authenticated router so the dual-accept auth middleware runs
         // before the handler is reached (BC-2.01.004 INV-3 + ADR-0005).
         .route("/shutdown", post(post_shutdown))
-        // Hook routes: 5 canonical endpoints (BC-2.01.004 PC-2, S-005 + S-009).
-        // S-005 registers shutdown-aware stubs that gate on AppMode::ShuttingDown.
-        // S-009 replaces the non-drain branch with full hook ingestion logic.
+        // Hook routes: 5 canonical endpoints (BC-2.04.007, BC-2.04.008, BC-2.04.009, S-018).
+        // S-018 replaces the S-009 stubs with full routing + event-bus + ring-append handlers
+        // sourced from src/hooks/{pre_tool_use,notification,stop_session_prompt}.rs.
         .route("/hooks/pre-tool-use", post(post_hook_pre_tool_use))
         .route("/hooks/notification", post(post_hook_notification))
         .route("/hooks/stop", post(post_hook_stop))

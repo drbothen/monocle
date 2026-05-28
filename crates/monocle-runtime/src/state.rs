@@ -5,9 +5,9 @@
 //!
 //! Populated by S-002 (healthz endpoint). Extended by S-003 (auth token, lock-file,
 //! last-hook timestamps, TUI attachment flag), S-004 (lock-file path write),
-//! S-005 (hook-ingestion channels).
+//! S-005 (hook-ingestion channels), S-018 (event bus, drop counter, session registry).
 
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
@@ -194,6 +194,39 @@ pub struct DaemonState {
     /// may be held by SIGTERM/SIGINT signal tasks to trigger the same shutdown path from
     /// OS signals. Sending on `shutdown_tx` wakes all receivers simultaneously.
     pub shutdown_rx: watch::Receiver<bool>,
+
+    // -------------------------------------------------------------------------
+    // S-018 fields: bounded event bus, drop counter, session registry
+    // -------------------------------------------------------------------------
+    /// Bounded event bus sender (BC-2.04.011 PC-1, S-018).
+    ///
+    /// `None` — event bus not yet initialized (daemon startup or test stub without event bus).
+    ///   Hook handlers log WARN and discard the event when this is `None`.
+    /// `Some(tx)` — live `mpsc::channel(4096)` sender.
+    ///   Hook handlers MUST call `tx.try_send()` (non-blocking); blocking `.send().await`
+    ///   is forbidden (BC-2.04.011 invariant 2).
+    ///
+    /// Wrapped in `Arc` to allow cheap clones across axum handler tasks.
+    pub event_bus_tx: Option<Arc<crate::types::EventBusTx>>,
+
+    /// Drop counter for the event bus (BC-2.04.011 PC-2, PC-3a, S-018).
+    ///
+    /// `None` — counter not yet initialized (startup or test stub).
+    /// `Some(counter)` — incremented by 1 on each `TrySendError::Full` (Ordering::Relaxed).
+    ///   NEVER reset during a daemon run (BC-2.04.011 PC-2, invariant 3).
+    ///
+    /// Ordering::Relaxed is sufficient: this counter is for monitoring only.
+    pub drop_counter: Option<Arc<AtomicU64>>,
+
+    /// Session registry for tracking active and stopped Claude Code sessions (S-018).
+    ///
+    /// `None` — registry not yet initialized (startup or test stub without session tracking).
+    /// `Some(registry)` — live registry. Hook handlers look up or create entries.
+    ///
+    /// BC-2.04.007 PC-2, BC-2.04.008 PC-2, BC-2.04.009 PC-2: each handler looks up or
+    /// creates a `SessionEntry` keyed by `HookEnvelope.session_id`. The Stop handler
+    /// additionally marks the session as `Stopped`.
+    pub session_registry: Option<Arc<crate::hooks::SessionRegistry>>,
 }
 
 impl DaemonState {
@@ -223,6 +256,9 @@ impl DaemonState {
             daemon_lock: Mutex::new(None),
             shutdown_tx,
             shutdown_rx,
+            event_bus_tx: None,
+            drop_counter: None,
+            session_registry: None,
         }
     }
 }
