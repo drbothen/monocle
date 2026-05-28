@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
@@ -32,7 +32,7 @@ When the TUI receives a daemon disconnect signal (IPC channel closed, correspond
 BC-2.05.007 at the IPC layer), the TUI immediately clears `App.overlay_stack: VecDeque<PromptModal>`
 (the single source of truth for the modal stack) and transitions `AppMode` to
 `Dashboard { focused: FocusSnapshot::Sessions }`. The status bar renders
-"Daemon disconnected — reconnecting..." until reconnection. This is the SOQ-3 enforcement
+`"[disconnected] reconnecting..."` until reconnection. This is the SOQ-3 enforcement
 at the TUI layer: orphaned prompts from a disconnected daemon must never persist in
 `App.overlay_stack` because the old daemon's stalled HTTP responses will time out, and any future
 decision would be sent to the wrong daemon connection.
@@ -59,7 +59,7 @@ decision would be sent to the wrong daemon connection.
    message on disconnect. The daemon is gone; the channel is closed. No write to the IPC
    send channel is attempted.
 4. **Status bar renders disconnect indicator:** The status bar renders the text
-   "Daemon disconnected — reconnecting..." until the IPC reconnect sequence (BC-2.05.006)
+   `"[disconnected] reconnecting..."` until the IPC reconnect sequence (BC-2.05.006)
    completes and the daemon delivers a new initial state push (BC-2.05.002).
 5. **Badge counter reset:** The overlay badge counter in the status bar resets to 0
    as a consequence of the cleared stack.
@@ -99,10 +99,10 @@ decision would be sent to the wrong daemon connection.
 
 | Initial State | Event | Expected Post-State | Category |
 |---------------|-------|---------------------|----------|
-| `AppMode::Overlay { prior: Sessions }`, `App.overlay_stack = [P1, P2]` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, `App.overlay_stack` empty, badge 0, status bar "reconnecting..." | happy-path |
-| `AppMode::Dashboard { focused: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar "reconnecting..." | edge-case |
-| `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
-| `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar "reconnecting..." | edge-case |
+| `AppMode::Overlay { prior: Sessions }`, `App.overlay_stack = [P1, P2]` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, `App.overlay_stack` empty, badge 0, status bar `"[disconnected] reconnecting..."` | happy-path |
+| `AppMode::Dashboard { focused: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar `"[disconnected] reconnecting..."` | edge-case |
+| `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar `"[disconnected] reconnecting..."` | edge-case |
+| `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar `"[disconnected] reconnecting..."` | edge-case |
 | Stack has 1 `PromptModal`; TUI just sent `ClientToServer::PermissionDecision`; disconnect arrives on same tick | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
 
 ## Verification Properties
@@ -112,7 +112,7 @@ decision would be sent to the wrong daemon connection.
 | VP-TBD | After `DaemonDisconnect`, `App.overlay_stack` (`VecDeque<PromptModal>`) is empty | unit test |
 | VP-TBD | After `DaemonDisconnect`, `AppMode` is `Dashboard { focused: Sessions }` regardless of prior mode | unit test (4 prior-mode variants) |
 | VP-TBD | No `ClientToServer::PermissionDecision` is sent to IPC on disconnect | unit test (assert `ipc_tx` has no pending messages after disconnect handling) |
-| VP-TBD | Status bar renders "Daemon disconnected — reconnecting..." on disconnect | integration test |
+| VP-TBD | Status bar renders `"[disconnected] reconnecting..."` on disconnect | integration test |
 | VP-TBD | On reconnect with 0 queued prompts, overlay remains empty | integration test |
 | VP-TBD | On reconnect with N queued prompts (fresh), overlay renders N prompts | integration test |
 
@@ -215,6 +215,20 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 - Resolves F-S025-ADV3-BLOCKER-002 (partial). `VecDeque<PromptModal>` overlay stack is now `App.overlay_stack` (single source of truth). Description, Postcondition 1, Invariants 1 and 4, VP table updated to reference `App.overlay_stack` explicitly.
 - NOTE: EC-102 and canonical test vector row 1 were NOT updated in this pass — they retained stale `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` shape. Corrected in v1.0.7.
 - SE-16d monotonicity: v1.0.6 timestamp 2026-05-28T00:00:00Z > v1.0.5. PASS.
+
+## §Trace v1.0.8
+
+**F-S025-ADV11-HIGH-001 — Bracketed status-tag style canonicalized** (2026-05-28T14:00:00Z):
+- Resolves spec-impl drift: BC text used prose style `"Daemon disconnected — reconnecting..."`
+  while production app.rs:304 used bracketed style `"[disconnected] reconnecting..."`.
+- Decision: production wins (Option B). Bracketed style is consistent across all three daemon
+  status indicators in app.rs (`[disconnected]`, `[daemon: offline]`, `[dropped: N]`).
+  Prose style would have required updating all three indicators to maintain coherence.
+- Changed: Description, Postcondition 4, VP table, and all four canonical test vector rows
+  to use `"[disconnected] reconnecting..."`.
+- Binding decision recorded at `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
+- Follow-up required (architect scope): SS-tui.md line 668 still cites prose form — LOW severity.
+- SE-16d monotonicity: v1.0.8 timestamp 2026-05-28T14:00:00Z >= v1.0.7 timestamp 2026-05-28T13:00:00Z. PASS.
 
 ## §Trace v1.0.7
 
