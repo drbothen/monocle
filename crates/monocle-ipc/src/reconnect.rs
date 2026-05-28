@@ -442,11 +442,38 @@ pub async fn poll_for_new_daemon(runtime_dir: &Path) {
 
 /// Read the `(pid, port, authToken)` discriminant from the lock file.
 ///
-/// Used by [`poll_for_new_daemon`] for change detection (BC-2.05.006 PC-3 / EC-003).
-/// Returns `None` if the lock file is absent or malformed.
+/// Used by [`poll_for_new_daemon`] and the [`reconnect`] loop for change detection
+/// (BC-2.05.006 PC-3 / EC-003). Returns `None` if the lock file is absent or malformed.
+///
+/// # Diagnostic visibility
+///
+/// Silent under normal conditions (lock file absent = daemon not running = expected).
+/// Emits `TRACE` on `read_to_string` error or `serde_json::from_str` failure so operators
+/// can diagnose persistent malformed lock files without log-volume burden. Use
+/// `RUST_LOG=monocle_ipc=trace` to enable.
 async fn read_lock_discriminant(lock_path: &Path) -> Option<(u64, u64, String)> {
-    let contents = tokio::fs::read_to_string(lock_path).await.ok()?;
-    let json: serde_json::Value = serde_json::from_str(&contents).ok()?;
+    let contents = match tokio::fs::read_to_string(lock_path).await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::trace!(
+                lock_path = %lock_path.display(),
+                error = %e,
+                "read_lock_discriminant: failed to read lock file (normal if daemon not running)"
+            );
+            return None;
+        }
+    };
+    let json: serde_json::Value = match serde_json::from_str(&contents) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::trace!(
+                lock_path = %lock_path.display(),
+                error = %e,
+                "read_lock_discriminant: lock file JSON parse error (malformed or partially written)"
+            );
+            return None;
+        }
+    };
     let pid = json.get("pid").and_then(|v| v.as_u64())?;
     let port = json.get("port").and_then(|v| v.as_u64()).unwrap_or(0);
     let auth_token = json
