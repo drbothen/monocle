@@ -270,15 +270,15 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         // F-S025-ADV2-HIGH-003: The modal is NOT stored in AppMode::Overlay anymore.
         // The caller (App-level handler) must push the modal to `App::overlay_stack`
         // BEFORE calling transition(). transition() here only records the prior focus.
-        (AppMode::Dashboard { focused }, Action::PushOverlay { .. }) => AppMode::Overlay {
-            prior: focused,
-        },
+        (AppMode::Dashboard { focused }, Action::PushOverlay { .. }) => {
+            AppMode::Overlay { prior: focused }
+        }
 
         // --- Overlay push from Filtering ---
         // Same as Dashboard push: record prior focus, stack mutation is App-level.
-        (AppMode::Filtering { prior, .. }, Action::PushOverlay { .. }) => AppMode::Overlay {
-            prior,
-        },
+        (AppMode::Filtering { prior, .. }, Action::PushOverlay { .. }) => {
+            AppMode::Overlay { prior }
+        }
 
         // --- Overlay push from existing Overlay (identity mode change — prior preserved) ---
         //

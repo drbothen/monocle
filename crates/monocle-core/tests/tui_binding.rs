@@ -11,11 +11,9 @@
 #![allow(clippy::panic)]
 
 use monocle_core::tui::binding::{BindingLayers, BindingSource, KeyCode, KeyEvent, KeyModifiers};
-use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
+use monocle_core::tui::state::{AppMode, FocusSnapshot};
 
 use std::panic::AssertUnwindSafe;
-use std::time::Instant;
-use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -69,18 +67,6 @@ fn filtering_mode() -> AppMode {
         panel: monocle_core::tui::state::PanelId::Sessions,
         query: String::new(),
         prior: FocusSnapshot::Sessions,
-    }
-}
-
-fn make_test_modal() -> PromptModal {
-    PromptModal {
-        prompt_id: Uuid::new_v4(),
-        session_id: "test-session".to_string(),
-        tool_name: "Bash".to_string(),
-        tool_payload: ToolPayload::Bash {
-            command: "echo test".to_string(),
-        },
-        received_at: Instant::now(),
     }
 }
 

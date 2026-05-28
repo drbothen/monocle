@@ -155,7 +155,10 @@ mod uptime_tests {
     fn test_bc_2_06_005_uptime_ec086_100h() {
         let start = Utc::now() - chrono::Duration::seconds(100 * 3600);
         let result = format_uptime(Some(start));
-        assert_eq!(result, "100:00:00", "100h must format as 100:00:00 (EC-086)");
+        assert_eq!(
+            result, "100:00:00",
+            "100h must format as 100:00:00 (EC-086)"
+        );
     }
 
     /// None → "—" sentinel.

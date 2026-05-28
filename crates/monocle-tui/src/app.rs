@@ -625,16 +625,14 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             apply_permission_prompt_queued(&mut app.overlay_stack, payload);
             // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
             // mutate overlay_stack. Enter Overlay mode if not already in it.
-            if !app.overlay_stack.is_empty() {
-                if !matches!(app.mode, AppMode::Overlay { .. }) {
-                    let prior = match &app.mode {
-                        AppMode::Dashboard { focused } => focused.clone(),
-                        AppMode::Filtering { prior, .. } => prior.clone(),
-                        AppMode::Fullscreen { prior, .. } => prior.clone(),
-                        AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
-                    };
-                    app.mode = AppMode::Overlay { prior };
-                }
+            if !app.overlay_stack.is_empty() && !matches!(app.mode, AppMode::Overlay { .. }) {
+                let prior = match &app.mode {
+                    AppMode::Dashboard { focused } => focused.clone(),
+                    AppMode::Filtering { prior, .. } => prior.clone(),
+                    AppMode::Fullscreen { prior, .. } => prior.clone(),
+                    AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
+                };
+                app.mode = AppMode::Overlay { prior };
             }
         }
         ServerToClient::PermissionPromptResolved { prompt_id } => {

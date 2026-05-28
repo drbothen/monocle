@@ -387,7 +387,9 @@ fn test_BC_2_06_001_ac005_pop_overlay_always_collapses_to_dashboard() {
                 "PopOverlay must restore prior FocusSnapshot (App-level decides re-entry)"
             );
         }
-        _ => panic!("PopOverlay must always return Dashboard from transition() (F-S025-ADV2-HIGH-003)"),
+        _ => panic!(
+            "PopOverlay must always return Dashboard from transition() (F-S025-ADV2-HIGH-003)"
+        ),
     }
 }
 
@@ -617,7 +619,9 @@ fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { prior: returned_prior } => {
+        AppMode::Overlay {
+            prior: returned_prior,
+        } => {
             assert_eq!(
                 returned_prior, prior,
                 "Esc in Overlay must NOT change prior (identity transition)"
@@ -857,7 +861,9 @@ fn test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { prior: returned_prior } => {
+        AppMode::Overlay {
+            prior: returned_prior,
+        } => {
             assert_eq!(
                 returned_prior, prior,
                 "OverlayCycleNext must NOT change prior (BC-2.06.002 PC-3)"
