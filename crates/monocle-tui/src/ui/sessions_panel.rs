@@ -28,7 +28,7 @@
 //! The status bar at the bottom of the panel shows `"[dropped: N]"` in yellow
 //! when `app.drop_counter > 0`; nothing when it is zero.
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use monocle_core::engine::{EnrichedSession, SessionStatus};
 use ratatui::{
     buffer::Buffer,
@@ -92,7 +92,10 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
     }
 }
 
-/// Format uptime from an optional `started_at` timestamp.
+/// Format uptime given an explicit `now` instant — the clock-injected core.
+///
+/// Accepts `now: DateTime<Utc>` so callers can supply a deterministic value for
+/// testing. Production code calls `format_uptime` (below) which passes `Utc::now()`.
 ///
 /// Returns `"—"` (U+2014 EM DASH) when `started_at` is `None` (BC-2.06.005 Invariant 3).
 /// Returns `"—"` when the elapsed duration is negative (clock skew guard).
@@ -108,11 +111,14 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
 /// - `started_at = now - 3h47m` → `"03:47:00"`
 /// - `started_at = now - 100h` → `"100:00:00"` (EC-086)
 /// - `started_at = None` → `"—"`
-pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> String {
+pub fn format_uptime_at(
+    started_at: Option<chrono::DateTime<chrono::Utc>>,
+    now: DateTime<Utc>,
+) -> String {
     match started_at {
         None => "\u{2014}".to_string(), // U+2014 EM DASH
         Some(start) => {
-            let elapsed = Utc::now().signed_duration_since(start);
+            let elapsed = now.signed_duration_since(start);
             let total_secs = elapsed.num_seconds();
             if total_secs < 0 {
                 // Clock skew: started_at is in the future — render sentinel.
@@ -135,6 +141,14 @@ pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> Strin
             }
         }
     }
+}
+
+/// Format uptime from an optional `started_at` timestamp (live wall-clock variant).
+///
+/// Delegates to `format_uptime_at` with `Utc::now()`. Use `format_uptime_at`
+/// directly when deterministic output is required (e.g., in tests).
+pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> String {
+    format_uptime_at(started_at, Utc::now())
 }
 
 #[cfg(test)]
@@ -260,6 +274,30 @@ fn format_status(status: &SessionStatus) -> &'static str {
     }
 }
 
+/// Format a single session row as the canonical BC-2.06.005 v1.0.5 column string.
+///
+/// Accepts an explicit `now` timestamp so callers can supply a deterministic
+/// value for testing (clock injection). Production callers pass `Utc::now()`.
+///
+/// Column order: `session_id icon project status tokens cost uptime`
+/// Separator: single SPACE.
+/// Canonical test vector: `"sess-001 ● monocle Active 437k — 03:47:00"`.
+///
+/// Extracted from the `StatefulWidget::render` loop body so that the exact
+/// row format can be verified via unit test with deterministic time (F-S025-ADV6-MED-001).
+pub fn format_session_row(s: &EnrichedSession, now: DateTime<Utc>) -> String {
+    let icon = harness_icon(&s.harness_type);
+    let project = session_project(s);
+    let status = format_status(&s.status);
+    let tokens = format_token_count(s.token_count);
+    let cost = format_cost(s.cost_usd);
+    let uptime = format_uptime_at(s.started_at, now);
+    format!(
+        "{} {icon} {} {} {} {} {}",
+        s.session_id, project, status, tokens, cost, uptime
+    )
+}
+
 impl StatefulWidget for SessionsPanel<'_> {
     type State = SessionsPanelState;
 
@@ -287,27 +325,17 @@ impl StatefulWidget for SessionsPanel<'_> {
             .block(Block::default().borders(Borders::NONE));
             Widget::render(empty, list_area, buf);
         } else {
+            // Capture `now` once per render call so all rows in a single frame
+            // share a consistent timestamp (avoids sub-second drift across rows).
+            let now = Utc::now();
             let items: Vec<ListItem> = self
                 .app
                 .sessions
                 .iter()
                 .map(|s| {
-                    let icon = harness_icon(&s.harness_type);
-                    let project = session_project(s);
-                    let status = format_status(&s.status);
-                    // Wire real data from EnrichedSession fields (F-S025-ADV1-BLOCKER-003).
-                    // Phase 1 daemon emits None/0 defaults; formatters render "—" per
-                    // BC-2.06.005 Invariant 3.
-                    let tokens = format_token_count(s.token_count);
-                    let cost = format_cost(s.cost_usd);
-                    let uptime = format_uptime(s.started_at);
-                    // BC-2.06.005 v1.0.5 canonical column order:
-                    // session_id icon project status tokens cost uptime
-                    // Separator: SPACE (not ` | `). Test vector: `sess-001 ● monocle Active 437k — 03:47:00`.
-                    let row = format!(
-                        "{} {icon} {} {} {} {} {}",
-                        s.session_id, project, status, tokens, cost, uptime
-                    );
+                    // format_session_row encapsulates BC-2.06.005 v1.0.5 canonical
+                    // column order + separator. Pass `now` for deterministic testing.
+                    let row = format_session_row(s, now);
                     ListItem::new(row)
                 })
                 .collect();
