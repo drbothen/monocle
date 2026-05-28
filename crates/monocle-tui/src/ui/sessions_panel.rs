@@ -89,27 +89,102 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
 /// Format uptime from an optional `started_at` timestamp.
 ///
 /// Returns `"—"` (U+2014 EM DASH) when `started_at` is `None` (BC-2.06.005 Invariant 3).
-/// Returns a human-readable elapsed duration string when `started_at` is `Some`.
+/// Returns `"—"` when the elapsed duration is negative (clock skew guard).
 ///
-/// Duration display:
-/// - < 60 seconds: `"Ns"` (e.g., `"42s"`)
-/// - < 3600 seconds: `"Nm"` (e.g., `"5m"`)
-/// - >= 3600 seconds: `"Nh"` (e.g., `"2h"`)
+/// Duration display follows BC-2.06.005 PC-2 canonical format `HH:MM:SS`:
+/// - Normal: two-digit hours, two-digit minutes, two-digit seconds (e.g., `"03:47:00"`).
+/// - ≥ 100 hours (EC-086): natural extension without zero-padding hours (e.g., `"100:00:00"`).
+/// - ≥ 1000 hours: capped at `"999:59:59"` to avoid unbounded column width.
+/// - Negative elapsed (clock skew): `"—"` sentinel.
+///
+/// # Test vectors (BC-2.06.005 line 127)
+///
+/// - `started_at = now - 3h47m` → `"03:47:00"`
+/// - `started_at = now - 100h` → `"100:00:00"` (EC-086)
+/// - `started_at = None` → `"—"`
 pub fn format_uptime(started_at: Option<chrono::DateTime<chrono::Utc>>) -> String {
     match started_at {
         None => "\u{2014}".to_string(), // U+2014 EM DASH
         Some(start) => {
-            let now = Utc::now();
-            let elapsed = now.signed_duration_since(start);
-            let secs = elapsed.num_seconds().max(0) as u64;
-            if secs < 60 {
-                format!("{secs}s")
-            } else if secs < 3600 {
-                format!("{}m", secs / 60)
+            let elapsed = Utc::now().signed_duration_since(start);
+            let total_secs = elapsed.num_seconds();
+            if total_secs < 0 {
+                // Clock skew: started_at is in the future — render sentinel.
+                return "\u{2014}".to_string();
+            }
+            let total_secs = total_secs as u64;
+            let hours = total_secs / 3600;
+            let minutes = (total_secs % 3600) / 60;
+            let seconds = total_secs % 60;
+            // Cap at 999:59:59 to prevent unbounded column width.
+            if hours >= 1000 {
+                return "999:59:59".to_string();
+            }
+            if hours >= 100 {
+                // EC-086: ≥ 100 hours — no zero-padding on hours column.
+                format!("{hours}:{minutes:02}:{seconds:02}")
             } else {
-                format!("{}h", secs / 3600)
+                // Normal case: two-digit zero-padded hours.
+                format!("{hours:02}:{minutes:02}:{seconds:02}")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod uptime_tests {
+    use super::format_uptime;
+    use chrono::Utc;
+
+    /// BC-2.06.005 PC-2 canonical test vector: 3h47m → "03:47:00".
+    #[test]
+    fn test_bc_2_06_005_uptime_canonical_3h47m() {
+        let start = Utc::now() - chrono::Duration::seconds(3 * 3600 + 47 * 60);
+        let result = format_uptime(Some(start));
+        assert_eq!(result, "03:47:00", "3h47m must format as 03:47:00");
+    }
+
+    /// EC-086: ≥ 100 hours extension format.
+    #[test]
+    fn test_bc_2_06_005_uptime_ec086_100h() {
+        let start = Utc::now() - chrono::Duration::seconds(100 * 3600);
+        let result = format_uptime(Some(start));
+        assert_eq!(result, "100:00:00", "100h must format as 100:00:00 (EC-086)");
+    }
+
+    /// None → "—" sentinel.
+    #[test]
+    fn test_bc_2_06_005_uptime_none_renders_em_dash() {
+        let result = format_uptime(None);
+        assert_eq!(result, "—", "None must render as em dash");
+    }
+
+    /// 1h2m3s → "01:02:03".
+    #[test]
+    fn test_bc_2_06_005_uptime_1h2m3s() {
+        let start = Utc::now() - chrono::Duration::seconds(3600 + 2 * 60 + 3);
+        let result = format_uptime(Some(start));
+        assert_eq!(result, "01:02:03");
+    }
+
+    /// 59 seconds → "00:00:59".
+    #[test]
+    fn test_bc_2_06_005_uptime_59s() {
+        let start = Utc::now() - chrono::Duration::seconds(59);
+        let result = format_uptime(Some(start));
+        assert_eq!(result, "00:00:59");
+    }
+
+    /// 0 seconds → "00:00:00".
+    #[test]
+    fn test_bc_2_06_005_uptime_0s() {
+        let start = Utc::now();
+        let result = format_uptime(Some(start));
+        // Allow "00:00:00" or "00:00:01" due to sub-second timing jitter.
+        assert!(
+            result == "00:00:00" || result == "00:00:01",
+            "0s must format as 00:00:00 (or 00:00:01 for timing jitter), got {result}"
+        );
     }
 }
 
