@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -29,58 +29,62 @@ removal_reason: null
 ## Description
 
 When the permission overlay is active (`AppMode::Overlay`) and the user presses `[↑]` or
-`[↓]`, `Action::OverlayCycleNext` is dispatched. The `transition()` function rotates the
-`VecDeque<PromptModal>`: the front `PromptModal` is moved to the back of the deque,
+`[↓]`, `Action::OverlayCycleNext` is dispatched. The `transition()` function returns
+`AppMode` unchanged (since `Overlay { prior }` has no stack field to rotate). The actual
+rotation is performed by the `App`-level handler: it rotates `App.overlay_stack:
+VecDeque<PromptModal>` — the front `PromptModal` is moved to the back of the deque,
 exposing the next queued prompt as the new front item. The overlay re-renders to show the
 new front prompt. This allows the user to inspect all queued permission prompts before
 deciding, without discarding any.
 
 ## Preconditions
 
-1. `AppMode` is `Overlay { stack, prior }` with `stack.len() >= 2`.
+1. `AppMode` is `Overlay { prior }` and `App.overlay_stack.len() >= 2`.
 2. The keybinding dispatcher (`Dispatcher`) has `[↑]` / `[↓]` mapped to
    `Action::OverlayCycleNext` in the `PerContext` binding table for `AppMode::Overlay`.
-3. The current front of `stack` (`stack.front()`) is the `PromptModal` currently rendered
-   in the overlay header and body.
+3. The current front of `App.overlay_stack` (`App.overlay_stack.front()`) is the `PromptModal`
+   currently rendered in the overlay header and body.
 
 ## Postconditions
 
-1. **`pop_front` + `push_back` rotation:** `transition(Overlay { stack, prior }, OverlayCycleNext)`
-   pops the front item from `stack` and pushes it to the back. The previous second item
-   is now the front.
-2. **New front item rendered:** After the transition, the overlay renders the new
-   `stack.front()` as the active prompt — showing its `tool_name`, `tool_payload`, and
+1. **`pop_front` + `push_back` rotation on `App.overlay_stack`:** The `App`-level handler
+   for `Action::OverlayCycleNext` pops the front item from `App.overlay_stack` and pushes
+   it to the back. The previous second item is now the front. `AppMode` is not changed by
+   this operation (since `Overlay { prior }` carries no stack field).
+2. **New front item rendered:** After the rotation, the overlay renders the new
+   `App.overlay_stack.front()` as the active prompt — showing its `tool_name`, `tool_payload`, and
    `session_id`.
-3. **Stack length preserved:** `stack.len()` is unchanged after rotation. No `PromptModal`
-   is created or destroyed by the rotate action.
-4. **Single-item stack no-op:** When `stack.len() == 1`, rotating pop_front + push_back
-   returns the same single item to the front. The rendered overlay is visually unchanged.
-   No error or warning is produced.
+3. **Stack length preserved:** `App.overlay_stack.len()` is unchanged after rotation. No
+   `PromptModal` is created or destroyed by the rotate action.
+4. **Single-item stack no-op:** When `App.overlay_stack.len() == 1`, rotating pop_front +
+   push_back returns the same single item to the front. The rendered overlay is visually
+   unchanged. No error or warning is produced.
 5. **Badge counter unchanged:** The overlay badge counter in the status bar (showing number
    of queued prompts) does NOT change on rotation — rotation is not a decision.
-6. **`prior` focus preserved:** The `prior: FocusSnapshot` field in `AppMode::Overlay` is
-   unchanged by the rotation. Focus will still restore correctly when the overlay closes.
+6. **`prior` focus preserved:** The `prior: FocusSnapshot` field in `AppMode::Overlay { prior }`
+   is unchanged by the rotation. Focus will still restore correctly when the overlay closes.
 
 ## Invariants
 
-1. Rotation never creates an `Overlay` variant with an empty `stack`. The `transition()`
-   function's rotate arm executes `pop_front` + `push_back` as an atomic pair; if `stack`
-   was non-empty before, it is non-empty after.
+1. Rotation never makes `App.overlay_stack` empty. The `pop_front` + `push_back` pair
+   executes as an atomic App-level operation; if `App.overlay_stack` was non-empty before,
+   it is non-empty after.
 2. The `VecDeque` ordering after rotation satisfies: if the original stack was
    `[P1, P2, P3]`, after one rotation it is `[P2, P3, P1]`. After a second rotation it is
    `[P3, P1, P2]`. After N rotations on a stack of N items it returns to `[P1, P2, P3]`.
 3. No IPC message is sent to the daemon on rotation. The rotation is a local TUI state
    change only. The daemon's pending-prompt registry (`overlay_stack` in IPC) is not modified.
 4. The `OverlayCycleNext` action has no defined behavior outside `AppMode::Overlay`. In
-   any other mode, `transition()` returns the original mode unchanged (identity transition
-   per BC-2.06.001 Postcondition 2).
+   any other mode, the App-level handler performs no `App.overlay_stack` mutation and
+   `transition()` returns the original mode unchanged (identity transition per BC-2.06.001
+   Postcondition 2).
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-065 | `stack.len() == 1` when `OverlayCycleNext` is dispatched | `pop_front` returns the single item; `push_back` returns it to front; rendered output is unchanged; no error |
-| EC-066 | `stack.len() == 0` — impossible in valid state; `Overlay` variant cannot hold empty stack | `transition()` should never receive an `Overlay` with empty stack; if somehow reached (test-only), `pop_front` returns `None`; no panic; `push_back` never called; stack remains empty; `transition()` collapses to `Dashboard { focused: prior }` per empty-stack invariant in BC-2.06.001 |
+| EC-065 | `App.overlay_stack.len() == 1` when `OverlayCycleNext` is dispatched | `pop_front` returns the single item; `push_back` returns it to front; rendered output is unchanged; no error |
+| EC-066 | `App.overlay_stack.len() == 0` when `AppMode` is `Overlay` — impossible in valid state | `Overlay` mode with empty `App.overlay_stack` is unreachable (BC-2.06.001). If reached in testing, `pop_front` returns `None`; no panic; rotation is a no-op; the App-level handler should collapse `AppMode` to `Dashboard { focused: prior }` per the empty-stack invariant |
 | EC-067 | `OverlayCycleNext` dispatched while a `PermissionPromptQueued` IPC message is being processed | The IPC push and the key dispatch are both handled in the single-threaded event loop; they are strictly ordered; no concurrent mutation; the rotation sees either the pre-push or post-push stack |
 | EC-068 | User holds `[↓]` key down (auto-repeat generates rapid `OverlayCycleNext` events) | Each event independently rotates the stack by one step; at 60fps tick rate with auto-repeat, the cycle proceeds step-by-step; no skipped prompts |
 
@@ -88,18 +92,18 @@ deciding, without discarding any.
 
 | Input (mode, action) | Expected Output | Category |
 |----------------------|----------------|----------|
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `OverlayCycleNext` | `Overlay { stack: [P2, P1], prior: Sessions }` — P2 is now front | happy-path |
-| `Overlay { stack: [P1, P2, P3], prior: Sessions }`, `OverlayCycleNext` × 3 | `Overlay { stack: [P1, P2, P3], prior: Sessions }` — full rotation returns to original order | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }`, `OverlayCycleNext` | `Overlay { stack: [P1], prior: Sessions }` — single-item no-op | edge-case |
-| `Dashboard { focused: Sessions }`, `OverlayCycleNext` | `Dashboard { focused: Sessions }` — identity transition; action ignored outside Overlay | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]), `OverlayCycleNext` | `Overlay { prior: Sessions }` (App.overlay_stack = [P2, P1]) — P2 is now front | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2, P3]), `OverlayCycleNext` × 3 | `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2, P3]) — full rotation returns to original order | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `OverlayCycleNext` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) — single-item no-op | edge-case |
+| `Dashboard { focused: Sessions }`, `OverlayCycleNext` | `Dashboard { focused: Sessions }` — no `App.overlay_stack` mutation; action ignored outside Overlay | edge-case |
 
 ## Verification Properties
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | `OverlayCycleNext` never reduces `stack.len()` | Kani proof harness |
+| VP-TBD | `OverlayCycleNext` never changes `App.overlay_stack.len()` | property test (proptest) |
 | VP-TBD | After N rotations on a stack of N items, order returns to original | property test (proptest) |
-| VP-TBD | `prior` field is identical before and after rotation | Kani proof harness |
+| VP-TBD | `AppMode::Overlay::prior` field is identical before and after rotation | unit test |
 
 ## Traceability
 
@@ -172,3 +176,16 @@ S-TBD — Implement overlay stack rotation via OverlayCycleNext action in transi
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed; rotation moves to App level** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. Non-mechanical rewrite required: rotation is now an App-level effectful operation on `App.overlay_stack`, not a `transition()` arm operating on an `Overlay::stack` field.
+- Description: `transition()` returns `AppMode` unchanged for `OverlayCycleNext`; actual rotation is performed by `App`-level handler on `App.overlay_stack: VecDeque<PromptModal>`.
+- Preconditions: `Overlay { stack, prior }` → `Overlay { prior }` and `App.overlay_stack.len() >= 2`.
+- Postconditions 1-6: all `stack.len()` / `stack.front()` references → `App.overlay_stack`; "transition() function" → "App-level handler"; AppMode not modified.
+- Invariants 1, 4: reframed with `App.overlay_stack`; `transition()` role clarified.
+- Edge Cases: `stack.len()` → `App.overlay_stack.len()`.
+- Test vectors: `Overlay { stack: [...] }` shapes → `Overlay { prior: ... }` (App.overlay_stack noted).
+- VP table: Kani proof harness for stack-length invariant replaced with proptest (App-level effectful operations cannot be exhaustively proved via Kani on pure functions).
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-28T00:00:00Z > v1.0.4. PASS.

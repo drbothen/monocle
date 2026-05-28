@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.19"
+version: "1.24"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -139,9 +139,9 @@ traces_to: prd.md
 | BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | P0 | active | ss-06/BC-2.06.008.md | — |
 | BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | P0 | active | ss-06/BC-2.06.009.md | — |
 | BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | P1 | active | ss-06/BC-2.06.010.md | — |
-| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | P0 | active | ss-06/BC-2.06.011.md | — |
-| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | P0 | active | ss-06/BC-2.06.012.md | — |
-| BC-2.06.013 | Permission Overlay: Reject Keybinding | P0 | active | ss-06/BC-2.06.013.md | — |
+| BC-2.06.011 | Permission Overlay: Accept-Once Keybinding (`y`/`Enter`) | P0 | active | ss-06/BC-2.06.011.md | — |
+| BC-2.06.012 | Permission Overlay: Accept-Always Keybinding (`A`) | P0 | active | ss-06/BC-2.06.012.md | — |
+| BC-2.06.013 | Permission Overlay: Reject Keybinding (`n`/`r`) | P0 | active | ss-06/BC-2.06.013.md | — |
 | BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | P0 | active | ss-06/BC-2.06.014.md | — |
 | BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | P2 | active | ss-06/BC-2.06.015.md | — |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | P0 | active | ss-06/BC-2.06.016.md | — |
@@ -152,6 +152,7 @@ traces_to: prd.md
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 | active | ss-06/BC-2.06.021.md | — |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 | active | ss-06/BC-2.06.022.md | — |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 | active | ss-06/BC-2.06.023.md | — |
+| BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | P1 | active | ss-06/BC-2.06.024.md | — |
 
 ---
 
@@ -237,10 +238,10 @@ traces_to: prd.md
 | SS-03 Engine Module | 4 | 4 | 0 |
 | SS-04 Daemon Wiring | 12 | 12 | 0 |
 | SS-05 IPC | 8 | 8 | 0 |
-| SS-06 TUI | 23 | 23 | 0 |
+| SS-06 TUI | 24 | 24 | 0 |
 | SS-07 Config | 6 | 6 | 0 |
 | SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
-| **Total** | **112** | **112** | **0** |
+| **Total** | **113** | **113** | **0** |
 
 ---
 
@@ -747,3 +748,129 @@ SE-16d monotonicity PASS: 2026-05-26T00:00:00Z timestamp is within the same burs
 
 BC-INDEX version: 1.18 → 1.19. No BC ID retirements or removals. All BC H1 titles unchanged.
 SE-16d monotonicity PASS: 2026-05-26T00:00:00Z timestamp is within the same burst as v1.18. PASS.
+
+## §Trace v1.20
+
+**Adversarial BC anchoring resolution — BC-2.06.024 created; S-027/S-028 anchoring decisions documented** (2026-05-27T00:30:00Z):
+
+**Question 1 — S-027 ACs mis-anchored to BC-2.06.017:**
+- BC-2.06.024 "Permission Overlay: ToolPayload Body Rendering by Variant" created at `ss-06/BC-2.06.024.md` (P1 active).
+- Decision: option (b) — new BC rather than extending BC-2.06.010. Rationale: BC-2.06.010's scope is precisely "Diff Preview via `similar 3`" for `ToolPayload::Edit`; its postconditions cover diff computation, color coding, and height cap — not label-display rendering. Extending BC-2.06.010 would violate H1 title authority (bc_h1_is_title_source_of_truth) and mix two independent rendering concerns. BC-2.06.017's postconditions are timing/latency contracts (TUI render budget ≤100ms; no artificial decision delay; daemon timeout enforcement) — entirely unrelated to how Bash/Read/Generic payloads render their body content.
+- BC-2.06.024 specifies: PC-1 (Bash body: `command: <cmd>`), PC-2 (Read body: `path: <path>`), PC-3 (Generic body: `tool: <name>` + `input: <excerpt truncated at 256 chars>`), PC-4 (Edit dispatches to BC-2.06.010 — NOT handled by this BC).
+- SS-06 BC count: 23 → 24. Summary table: SS-06 23 → 24. Grand total: 112 → 113.
+- BC-2.06.024 H1 title is authoritative per bc_h1_is_title_source_of_truth.
+
+**Question 2 — S-028 references undefined `ServerToClient::SessionEvents` IPC variant:**
+- Decision: option (a) — no new IPC variant needed. The existing `HookEventReceived` streaming + `InitialState.ring_tail` is sufficient for the Event Ribbon per-session history.
+- Rationale: SS-ipc.md §Connection Lifecycle is explicit — `InitialState` delivers `ring_tail: Vec<HookEvent>` on connect with ALL events (not session-scoped); `HookEventReceived` streams live events carrying `session_id: String`. The TUI (BC-2.06.018 Invariant 3) already stores the full session_id in `HookEventRow::session_id` for future detail views. Client-side filtering by `session_id` in the Sessions panel view is the correct pattern: it requires no new IPC variant, no new daemon-side indexing, and is consistent with BC-2.05.004 which documents that `HookEventReceived` carries `session_id` and explicitly states "There is no filtering at the IPC layer; the TUI may filter for display." Adding `ServerToClient::SessionEvents` would be a premature architectural addition that conflicts with the established push model. No spec changes are needed for this decision.
+- No BC files modified for Question 2.
+
+**Stories affected by BC changes:** S-027. Story-writer must:
+- Remove S-027 AC-003, AC-004, AC-006 traces from BC-2.06.017 and anchor them to BC-2.06.024 instead.
+- Remove the S-028 `ServerToClient::SessionEvents` reference and replace with `HookEventReceived + client-side session_id filter` pattern.
+- Under bc_array_changes_propagate_to_body_and_acs policy: update S-027 frontmatter `bcs:` array to include BC-2.06.024; update AC tables in story body accordingly.
+
+**VP citations changed:** None — BC-2.06.024 uses VP-TBD placeholders; architect propagation not required at this time.
+
+BC-INDEX titles: BC-2.06.024 H1 "Permission Overlay: ToolPayload Body Rendering by Variant" is authoritative. All other BC H1 headings unchanged. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-27T00:30:00Z > prior 2026-05-27T00:00:00Z (v1.19). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.21
+
+**ADJ-ADV2-001 HIGH — Adversarial Pass 2 adjudication: three decisions for S-026 / Permission Overlay BCs** (2026-05-27T08:00:00Z):
+
+**Decision 1 — Keybinding canonical set: mnemonic wins over numeric.**
+- Conflict: BC-2.06.011/012/013 used `1`/`2`/`3`; S-026 AC-003/004/005 and S-027 AC-001 footer used `y`/`Enter`/`A`/`n`/`r`.
+- Resolution: `y`/`Enter` (Accept-Once), `A` (Accept-Always), `n`/`r` (Reject) are canonical.
+- Rationale: (a) lazygit-philosophy verb/mnemonic keybindings, (b) `y`/`n` is universal TUI confirmation convention, (c) S-026/S-027 are more recent artifacts (2026-05-27) reflecting deliberate UX design, (d) `A` for AcceptAlways is unambiguous and distinct from single-accept. The binding layer is `SearchPrompt` (highest priority) per S-026 AC-009, not `PerContext` as previously specified in the BCs.
+- BC changes: BC-2.06.011 v1.0.5 → v1.1.0, BC-2.06.012 v1.0.5 → v1.1.0, BC-2.06.013 v1.0.5 → v1.1.0.
+- BC-INDEX titles updated: 011 now includes `(`y`/`Enter`)`, 012 now includes `(`A`)`, 013 now includes `(`n`/`r`)`.
+- Architect follow-up required: SS-tui.md §Overlay Stack Lifecycle Step 3 says `[1]/[2]/[3]` — must be updated to `[y]/[A]/[n/r]`. Keybinding Dispatcher comment at line ~397 also says `[1]/[2]/[3]` — must be updated. This is an architectural source correction, not product-owner scope. Route to architect.
+
+**Decision 2 — Pop semantics: wait-for-PermissionPromptResolved (production-grade).**
+- Conflict: BC-2.06.011/012/013 PC-2 specified immediate `stack.pop_front()` after IPC send; S-026 AC-003/004/005 specified wait for `ServerToClient::PermissionPromptResolved`; BC-2.06.023 (authoritative removal mechanism) specifies `retain()`-based removal on `PermissionPromptResolved`.
+- Resolution: Wait-for-resolved. The modal is NOT removed until `ServerToClient::PermissionPromptResolved { prompt_id }` arrives from the daemon. The `retain()` path in BC-2.06.023 is the single removal mechanism.
+- Rationale: (a) immediate pop creates a state gap — TUI thinks prompt is done, daemon has not confirmed; (b) if IPC send fails (channel drop), immediate pop silently loses the decision with no user feedback; with wait-for-resolved, the modal stays visible and the user can retry; (c) BC-2.06.023 already defines the authoritative removal path; adding a second removal path in 011/012/013 creates duplication and a race condition.
+- BC changes: All three BCs have Postconditions completely rewritten, Invariants updated (Invariant 5 added to each — "TUI MUST NOT call retain()/pop_front() upon sending"), Edge Cases updated, Test Vectors updated to two-step round-trip format.
+
+**Decision 3 — BC-2.06.009 (Stack Rotation) coverage gap: add rotation ACs to S-026.**
+- Problem: BC-2.06.009 is listed in S-026's `behavioral_contracts` array but has zero actual AC coverage in S-026. S-026 ACs 003/004/005 claim to trace to BC-2.06.009 postconditions but describe Accept/Reject behavior (which belongs to 011/012/013), not rotation.
+- Resolution: Story-writer adds rotation ACs to S-026. No new story needed; rotation is core overlay state machine behavior that belongs in S-026's scope alongside push/pop and decision dispatch. S-026 is at 13 pts; adding 2 rotation ACs (rotate-next and single-item no-op) does not change the point estimate materially.
+- No BC file changes for this decision — BC-2.06.009 is correct as written. The gap is purely in S-026 AC coverage.
+
+**Stories affected by BC changes:** S-026.
+Story-writer must propagate under bc_array_changes_propagate_to_body_and_acs policy:
+1. Update S-026 frontmatter `bcs:` input versions: BC-2.06.011 to v1.1.0, BC-2.06.012 to v1.1.0, BC-2.06.013 to v1.1.0.
+2. Update S-026 AC-003/004/005 key references from `y`/`A`/`n`/`r` (already correct) to confirm binding layer is `SearchPrompt` (not `PerContext`) — the ACs already use the mnemonic keys so minimal change needed.
+3. Remove the incorrect claim that AC-003/004/005 trace to BC-2.06.009 postconditions — they trace to BC-2.06.011, BC-2.06.012, BC-2.06.013 respectively.
+4. Add rotation ACs to S-026: `[↑↓]` cycles the VecDeque (BC-2.06.009 PC-1); single-item stack rotation is a visual no-op (BC-2.06.009 EC-065).
+
+**VP citations changed:** None — no VP ID assignments changed. All VP-TBD placeholders unchanged.
+
+BC-INDEX titles updated: BC-2.06.011, BC-2.06.012, BC-2.06.013 H1 titles now authoritative with key suffix. No BC retirements or removals.
+SE-16d monotonicity PASS: 2026-05-27T08:00:00Z > prior 2026-05-27T00:30:00Z (v1.20). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.22
+
+**ADJ-ADV2-001 propagation — BC-2.06.003 keybinding + layer fix** (2026-05-27T09:00:00Z):
+
+BC-2.06.003 ("Action Dispatch: 5-Level Binding Precedence") was not updated during the v1.21 burst
+that applied ADJ-ADV2-001 to BC-2.06.011/012/013. This trace records the propagation fix.
+
+- BC-2.06.003 v1.0.4 → v1.1.0: Postcondition 3 rewritten to use `SearchPrompt` layer (not
+  `PerContext`) with mnemonic keybindings `y`/`Enter` (AcceptOnce), `A` (AcceptAlways), `n`/`r`
+  (Reject) instead of numeric `1`/`2`/`3`. EC-070 and EC-071 updated accordingly. Test vectors
+  updated (5 rows replacing 2 old rows). VP first row updated. Cross-Ref table cell and Related
+  BCs bullets updated to reflect new key names.
+
+BC-INDEX title for BC-2.06.003 is unchanged (title "Action Dispatch: 5-Level Binding Precedence"
+remains accurate — the BC describes the dispatch mechanism, not a specific keybinding). No BC
+retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-27T09:00:00Z > prior 2026-05-27T08:00:00Z (v1.21). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.23
+
+**Stale keybinding references corrected in BC-2.06.014 and BC-2.06.017** (2026-05-27T10:00:00Z):
+
+BC-2.06.014 v1.0.4 → v1.0.5:
+- EC-093: `[3]` → `[n/r]`; "sends Reject + pops the front item" → "sends Reject IPC; modal remains until `PermissionPromptResolved` arrives from daemon" (wait-for-resolved semantics per BC-2.06.023).
+- Related BCs and Traceability Cross-Ref: "Reject (key `3`) pops and sends deny" → "Reject (keys `[n/r]`) sends deny IPC and waits for `PermissionPromptResolved`".
+
+BC-2.06.017 v1.5.0 → v1.6.0:
+- Postcondition 2: `[1]`, `[2]`, `[3]` → `[y]/[Enter]`, `[A]`, `[n]/[r]`.
+- EC-105: `[1]` → `[y]`.
+- Test vector "Decision within budget": `[1]` → `[y]`.
+- Test vector "IPC send channel full": `[1]` → `[y]`.
+
+BC-INDEX H1 titles for BC-2.06.014 and BC-2.06.017 are unchanged — the title changes were in body content only, not H1 headings.
+
+SE-16d monotonicity PASS: 2026-05-27T10:00:00Z > prior 2026-05-27T09:00:00Z (v1.22). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.24
+
+**Architect Pass 2 HIGH-003 propagation — SS-06 cross-BC sweep: `AppMode::Overlay { stack }` field removed** (2026-05-28T00:00:00Z):
+
+Resolves F-S025-ADV3-BLOCKER-002. `AppMode::Overlay { stack: VecDeque<PromptModal>, prior }` shape removed by architect decision (commit `76ce1af`). New canonical shape: `AppMode::Overlay { prior: FocusSnapshot }`. The `VecDeque<PromptModal>` overlay stack lives exclusively in `App::overlay_stack` (monocle-tui) as the single source of truth. 16 BCs swept.
+
+Version bumps:
+- BC-2.06.001 v1.0.3 → v1.0.4: AppMode enum definition, PC-3 empty-stack collapse (App-level), Invariant 4 push path, EC-060/EC-062, test vectors, VP.
+- BC-2.06.002 v1.0.3 → v1.0.4: PC-2/PC-3 `App.overlay_stack` reframing, EC-065, test vectors.
+- BC-2.06.004 v1.1.0 → v1.2.0 (non-mechanical): PC-2 critical rewrite — two-step populate `App.overlay_stack` via `payload_to_modal()` then transition to `Overlay { prior: FocusSnapshot::Sessions }`. Postconditions 3-4, Invariant 2, test vector updated.
+- BC-2.06.008 v1.0.4 → v1.1.0 (non-mechanical): description rewrite — push goes to `App.overlay_stack` first, then AppMode transition. All postconditions, invariants, EC-100-104, test vectors rewritten for two-step App-level push semantics.
+- BC-2.06.009 v1.0.4 → v1.1.0 (non-mechanical): description rewrite — `transition()` is identity for `OverlayCycleNext`; rotation is App-level effectful on `App.overlay_stack`. All postconditions, invariants, EC-065/066, test vectors, VP (Kani → proptest) updated.
+- BC-2.06.010 v1.0.4 → v1.0.5: Precondition 1 `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.front()`.
+- BC-2.06.011 v1.1.0 → v1.2.0: Preconditions, postconditions (all `stack.*` → `App.overlay_stack.*`), invariants, EC-077/078, test vectors updated.
+- BC-2.06.012 v1.1.0 → v1.2.0: Symmetric with BC-2.06.011.
+- BC-2.06.013 v1.1.0 → v1.2.0: Symmetric with BC-2.06.011.
+- BC-2.06.014 v1.0.5 → v1.0.6: Description, PC-1/PC-4, Invariants 1+2, test vectors. PC-4 rebuild path explicitly uses `payload_to_modal()` + `Overlay { prior }`.
+- BC-2.06.015 v1.0.3 → v1.0.4: Description, PC-1/PC-2/PC-6, test vectors. Secondary fix: PC-6 stale `[1]/[2]/[3]` → `[y]/[A]/[n/r]`.
+- BC-2.06.016 v1.0.5 → v1.0.6: Description, PC-1, Invariants 1+4, VP updated.
+- BC-2.06.020 v1.0.3 → v1.0.4: Breadcrumb derivation table `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.len()`. PC-2, EC-125, test vectors updated.
+- BC-2.06.022 v1.5.0 → v1.6.0 (non-mechanical): Summary PC-3/Invariant 3 keystroke references `2`/`1` → `A`/`y`. Invariant 5 rewritten for App-level retain()-based collapse. EC-134/135/136/138 updated. Test vectors KS-001/002/003 updated. VP Anchors updated. Architecture Module: `VecDeque pop-and-collapse` → explicit `App.overlay_stack retain()` wording.
+- BC-2.06.023 v1.3.0 → v1.4.0: PC-2 `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack` emptiness check. EC-006 stale keystroke `1` → `y`.
+- BC-2.06.024 v1.0.0 → v1.0.1: Preconditions 1+2 `Overlay { stack, prior }` / `stack.front()` → `Overlay { prior }` / `App.overlay_stack.front()`.
+
+BC titles: unchanged. No BC retirements or removals.
+
+SE-16d monotonicity PASS: 2026-05-28T00:00:00Z > prior 2026-05-27T10:00:00Z (v1.23). ARITHMETICALLY TRUE: PASS.

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T18:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -29,12 +29,12 @@ removal_reason: null
 ## Description
 
 When the TUI receives a daemon disconnect signal (IPC channel closed, corresponding to
-BC-2.05.007 at the IPC layer), the TUI immediately clears the entire
-`VecDeque<PromptModal>` overlay stack and transitions `AppMode` to
+BC-2.05.007 at the IPC layer), the TUI immediately clears `App.overlay_stack: VecDeque<PromptModal>`
+(the single source of truth for the modal stack) and transitions `AppMode` to
 `Dashboard { focused: FocusSnapshot::Sessions }`. The status bar renders
 "Daemon disconnected — reconnecting..." until reconnection. This is the SOQ-3 enforcement
-at the TUI layer: orphaned prompts from a disconnected daemon must never persist in the
-stack because the old daemon's stalled HTTP responses will time out, and any future
+at the TUI layer: orphaned prompts from a disconnected daemon must never persist in
+`App.overlay_stack` because the old daemon's stalled HTTP responses will time out, and any future
 decision would be sent to the wrong daemon connection.
 
 ## Preconditions
@@ -50,8 +50,8 @@ decision would be sent to the wrong daemon connection.
 
 ## Postconditions
 
-1. **Overlay stack cleared:** The `VecDeque<PromptModal>` within the `App` struct is
-   cleared (`.clear()` called). `stack.len() == 0` after handling.
+1. **Overlay stack cleared:** `App.overlay_stack: VecDeque<PromptModal>` is cleared
+   (`.clear()` called). `App.overlay_stack.len() == 0` after handling.
 2. **AppMode transitions to Dashboard:** After clearing, `AppMode` is set to
    `Dashboard { focused: FocusSnapshot::Sessions }` regardless of what mode was active
    before the disconnect (Overlay, Fullscreen, Filtering, or Dashboard).
@@ -70,16 +70,17 @@ decision would be sent to the wrong daemon connection.
 ## Invariants
 
 1. After a daemon disconnect event, no `PromptModal` from the previous daemon session
-   remains in the `VecDeque`. This is a safety invariant: old prompts against a
+   remains in `App.overlay_stack`. This is a safety invariant: old prompts against a
    disconnected daemon MUST NOT be auto-decided against a new daemon connection.
 2. The `AppMode` after disconnect is always `Dashboard { focused: FocusSnapshot::Sessions }`.
    There is no exception for other prior modes.
 3. This invariant is the TUI-side complement of BC-2.05.007 (IPC-side: "Overlay Stack
    Cleared on Daemon Disconnect"). BC-2.05.007 specifies the IPC layer's obligation to
    signal the disconnect; this BC specifies the TUI layer's obligation to handle it.
-4. On daemon reconnect, the TUI does NOT restore the old overlay stack from local memory.
+4. On daemon reconnect, the TUI does NOT restore `App.overlay_stack` from local memory.
    It receives a fresh `overlay_stack` in the daemon's initial state push (BC-2.05.002);
-   only the daemon's authoritative state is used to rebuild the overlay.
+   only the daemon's authoritative state is used to rebuild `App.overlay_stack` via
+   `payload_to_modal()`.
 
 ## Edge Cases
 
@@ -108,7 +109,7 @@ decision would be sent to the wrong daemon connection.
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | After `DaemonDisconnect`, `VecDeque<PromptModal>` is empty | unit test |
+| VP-TBD | After `DaemonDisconnect`, `App.overlay_stack` (`VecDeque<PromptModal>`) is empty | unit test |
 | VP-TBD | After `DaemonDisconnect`, `AppMode` is `Dashboard { focused: Sessions }` regardless of prior mode | unit test (4 prior-mode variants) |
 | VP-TBD | No `ClientToServer::PermissionDecision` is sent to IPC on disconnect | unit test (assert `ipc_tx` has no pending messages after disconnect handling) |
 | VP-TBD | Status bar renders "Daemon disconnected — reconnecting..." on disconnect | integration test |
@@ -207,3 +208,9 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
+
+## §Trace v1.0.6
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. `VecDeque<PromptModal>` overlay stack is now `App.overlay_stack` (single source of truth). Description, Postcondition 1, Invariants 1 and 4, VP table updated to reference `App.overlay_stack` explicitly.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-28T00:00:00Z > v1.0.5. PASS.

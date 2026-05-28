@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.6.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T18:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -29,8 +29,8 @@ removal_reason: null
 ## Description
 
 The monocle product's primary user promise: a developer with two Claude Code sessions
-stalled on permission prompts can unblock both sessions with 4 keystrokes (`Ctrl-\`, `2`,
-`1`, `Ctrl-\`) without leaving their editor, switching tmux windows, or typing in any
+stalled on permission prompts can unblock both sessions with 4 keystrokes (`Ctrl-\`, `A`,
+`y`, `Ctrl-\`) without leaving their editor, switching tmux windows, or typing in any
 terminal. This is the end-to-end integration contract that validates that all upstream
 components (daemon hook ingestion, IPC transport, TUI overlay stack, keybinding dispatch,
 decision send path) compose correctly to satisfy the product's core value proposition.
@@ -64,33 +64,33 @@ preconditions, postconditions, and daemon actions.
 | tmux behavior | `display-popup -E monocle` spawns a new `monocle` process |
 | TUI startup | `monocle` starts, reads lock file, connects to UDS at `<runtime_dir>/monocle.sock` |
 | Daemon initial state push | Daemon sends `ServerToClient::InitialState { overlay_stack: [P1, P2], sessions: [...], ring_tail: [...], drop_counter: 0 }` |
-| TUI AppMode | Transitions to `AppMode::Overlay { stack: [P1, P2], prior: FocusSnapshot::Sessions }` because `overlay_stack` is non-empty |
-| Screen render | Overlay renders P1 (front of stack) with its `ToolPayload`; peek shows P2 header; status bar breadcrumb shows `Dashboard > Overlay [2 prompts]`; hint shows `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` |
+| TUI AppMode | Populates `App.overlay_stack` from `overlay_stack` via `payload_to_modal()`; transitions to `AppMode::Overlay { prior: FocusSnapshot::Sessions }` because `overlay_stack` is non-empty |
+| Screen render | Overlay renders P1 (front of `App.overlay_stack`) with its `ToolPayload`; peek shows P2 header; status bar breadcrumb shows `Dashboard > Overlay [2 prompts]`; hint shows `y: accept-once  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace` |
 | Latency | TUI overlay is on screen within 100ms of receiving `InitialState` (Success Criterion per BC-2.06.017) |
 | Editor focus | Editor is NOT disturbed. tmux popup floats over the editor; the editor process is not sent any signal |
 
-### Step 2: `2` (Keystroke 2) — Accept-always P1; P2 becomes front
+### Step 2: `A` (Keystroke 2) — Accept-always P1; wait for daemon resolution; P2 becomes front
 
 | Aspect | Specification |
 |--------|---------------|
-| Action | User presses `2` in the TUI overlay |
-| Keybinding resolution | `PerContext` table for `AppMode::Overlay` maps `2` → `Action::PermissionAcceptAlways` |
-| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P1.prompt_id, decision: PermissionDecision::AcceptAlways }` to daemon via `ipc_tx` (non-blocking) |
-| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P1; sends `{"decision":"always"}` HTTP response to P1's stalled Claude Code session; P1's Claude Code process unblocks and resumes |
+| Action | User presses `A` in the TUI overlay |
+| Keybinding resolution | `SearchPrompt` table for `AppMode::Overlay` maps `A` → `Action::PermissionAcceptAlways` |
+| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P1.prompt_id, decision: PermissionDecision::AcceptAlways }` to daemon via `ipc_tx` (non-blocking); `App.overlay_stack` is NOT modified at this point |
+| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P1; sends `{"decision":"always"}` HTTP response to P1's stalled Claude Code session; P1's Claude Code process unblocks and resumes; daemon broadcasts `PermissionPromptResolved { prompt_id: P1.prompt_id }` |
+| TUI removal | On receiving `PermissionPromptResolved { prompt_id: P1.prompt_id }`, TUI calls `App.overlay_stack.retain(|m| m.prompt_id != P1.prompt_id)`; P1 removed; `App.overlay_stack = [P2]`; `AppMode` stays `Overlay { prior: Sessions }` |
 | Pattern recording | Daemon records the `PermissionDecision::AcceptAlways` pattern for future auto-accept (per BC-2.06.012) |
-| TUI AppMode transition | `transition(Overlay { stack: [P1, P2], prior: Sessions }, PermissionAcceptAlways)` → `Overlay { stack: [P2], prior: Sessions }` (P1 popped from front, P2 now front) |
 | Screen render | Overlay re-renders with P2 as the active prompt; badge shows `[1 prompt]`; breadcrumb shows `Dashboard > Overlay [1 prompt]` |
 | Claude Code session P1 | Unblocked. Resumes execution. Developer does NOT need to be aware of this. |
 
-### Step 3: `1` (Keystroke 3) — Accept-once P2; overlay closes
+### Step 3: `y` (Keystroke 3) — Accept-once P2; wait for daemon resolution; overlay closes
 
 | Aspect | Specification |
 |--------|---------------|
-| Action | User presses `1` in the TUI overlay |
-| Keybinding resolution | `PerContext` table for `AppMode::Overlay` maps `1` → `Action::PermissionAcceptOnce` |
-| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P2.prompt_id, decision: PermissionDecision::Accept }` to daemon |
-| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P2; sends `{"decision":"accept"}` HTTP response to P2's stalled Claude Code session; P2's Claude Code process unblocks |
-| TUI AppMode transition | `transition(Overlay { stack: [P2], prior: Sessions }, PermissionAcceptOnce)` → `Dashboard { focused: Sessions }` (P2 popped; stack empty; collapses to Dashboard per BC-2.06.001 invariant) |
+| Action | User presses `y` in the TUI overlay |
+| Keybinding resolution | `SearchPrompt` table for `AppMode::Overlay` maps `y` → `Action::PermissionAcceptOnce` |
+| Decision send | TUI sends `ClientToServer::PermissionDecision { prompt_id: P2.prompt_id, decision: PermissionDecision::Accept }` to daemon; `App.overlay_stack` is NOT modified at this point |
+| Daemon action | Daemon receives `ClientToServer::PermissionDecision` for P2; sends `{"decision":"accept"}` HTTP response to P2's stalled Claude Code session; P2's Claude Code process unblocks; daemon broadcasts `PermissionPromptResolved { prompt_id: P2.prompt_id }` |
+| TUI removal | On receiving `PermissionPromptResolved { prompt_id: P2.prompt_id }`, TUI calls `App.overlay_stack.retain(|m| m.prompt_id != P2.prompt_id)`; P2 removed; `App.overlay_stack` is empty; `AppMode` collapses to `Dashboard { focused: Sessions }` per BC-2.06.001 empty-stack invariant |
 | Screen render | Dashboard renders. Sessions panel shows. Status bar shows `Dashboard > Sessions`. Overlay is gone. |
 | Claude Code session P2 | Unblocked. Resumes execution. |
 
@@ -109,7 +109,7 @@ preconditions, postconditions, and daemon actions.
 After completing all 4 steps:
 1. Both Claude Code sessions (P1 and P2) are unblocked and running.
 2. The developer's editor focus is restored exactly as it was before Step 1.
-3. Total keystrokes: 4 (`Ctrl-\`, `2`, `1`, `Ctrl-\`). This satisfies the ≤6 keystroke
+3. Total keystrokes: 4 (`Ctrl-\`, `A`, `y`, `Ctrl-\`). This satisfies the ≤6 keystroke
    Success Criterion.
 4. No tmux window switch occurred. No terminal pane was manually selected.
 5. The entire flow completes within the 300ms PreToolUse timeout budget (Steps 2 and 3
@@ -125,24 +125,25 @@ After completing all 4 steps:
    switches during the flow. This is the "without leaving the editor" guarantee.
 3. **Keystrokes are counted as user-initiated input.** `Ctrl-\` counts as 1 keystroke
    even though it is a tmux chord. The total count must not exceed 6 (Success Criterion).
-   In the canonical flow: `Ctrl-\` + `2` + `1` + `Ctrl-\` = 4 keystrokes.
+   In the canonical flow: `Ctrl-\` + `A` + `y` + `Ctrl-\` = 4 keystrokes.
 4. **Both Claude Code sessions are unblocked.** After the flow, both P1 and P2 have
    received their HTTP decision responses. Neither session is still waiting.
 5. **The AppMode empty-stack collapse is the mechanism for the automatic return to
-   Dashboard.** Step 3 pops the last `PromptModal`, the `transition()` function collapses
-   `Overlay { stack: [], prior }` → `Dashboard { focused: Sessions }` atomically. The
-   user does NOT need to press `Esc` to leave the overlay — the overlay disappears when
-   all decisions are made.
+   Dashboard.** Step 3's `PermissionPromptResolved` message triggers `App.overlay_stack.retain()`
+   that empties the stack; the App-level handler then transitions `AppMode` from
+   `Overlay { prior: Sessions }` → `Dashboard { focused: Sessions }` per BC-2.06.001
+   empty-stack invariant. The user does NOT need to press `Esc` to leave the overlay —
+   the overlay disappears when all decisions are made.
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-134 | A third Claude Code session queues a new prompt (P3) between keystrokes 2 and 3 | P3 is pushed to the back of the `VecDeque` after P2. After keystroke 3 resolves P2, `stack = [P3]` — overlay remains open showing P3. The flow requires a 5th keystroke to resolve P3. Total: 5 keystrokes ≤ 6. Still within Success Criterion. |
-| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `2` | Daemon sends fail-open for P1; pushes `PermissionPromptResolved { prompt_id: P1.prompt_id }` to TUI (canonical type per SS-ipc.md v1.1.0); TUI removes P1 from stack; overlay shows P2 only. User still needs to decide P2. P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
-| EC-136 | User presses `2` for P1 at exactly 299ms (near-timeout) | Race between user decision and daemon timeout. If daemon sends fail-open before decision arrives: duplicate resolution — daemon MUST handle idempotently (log warning, ignore duplicate). If user decision arrives first: normal flow. Either outcome is acceptable. |
+| EC-134 | A third Claude Code session queues a new prompt (P3) between keystrokes 2 (`A`) and 3 (`y`) | P3 is pushed to the back of `App.overlay_stack` after P2. After keystroke 3 (`y`) resolves P2, `App.overlay_stack = [P3]` — overlay remains open showing P3. The flow requires a 5th keystroke (`y` or `n/r`) to resolve P3. Total: 5 keystrokes ≤ 6. Still within Success Criterion. |
+| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `A` | Daemon sends fail-open for P1; broadcasts `PermissionPromptResolved { prompt_id: P1.prompt_id }` to TUI (canonical type per SS-ipc.md v1.1.0); TUI calls `App.overlay_stack.retain()` removing P1; overlay shows P2 only. User still needs to decide P2 (`y` or `n/r`). P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
+| EC-136 | User presses `A` for P1 at exactly 299ms (near-timeout) | Race between user decision and daemon timeout. If daemon sends fail-open before decision arrives: duplicate resolution — daemon MUST handle idempotently (log warning, ignore duplicate). If user decision arrives first: normal flow. Either outcome is acceptable. |
 | EC-137 | 6 Claude Code sessions are all stalled simultaneously | Daemon's `overlay_stack` holds 6 entries. Overlay stack shows 6. User needs up to 6 keystrokes for the overlay decisions (1 per session) + 2 for open/close = 8 total. This exceeds the ≤6 success criterion for >4 concurrent stalled sessions. The ≤6 criterion is defined for the 2-session (dual) case. |
-| EC-138 | User dismisses the popup (`Ctrl-\`) before resolving all prompts (between steps 2 and 3) | P2 remains in daemon's pending-prompt registry (`overlay_stack`). On next `Ctrl-\`, new TUI process opens overlay with P2 at front. Total keystrokes across two openings: `Ctrl-\`, `2`, `Ctrl-\`, `Ctrl-\`, `1`, `Ctrl-\` = 6. Still ≤6 Success Criterion if this is counted. |
+| EC-138 | User dismisses the popup (`Ctrl-\`) before resolving all prompts (between steps 2 and 3) | P2 remains in daemon's pending-prompt registry (`overlay_stack`). On next `Ctrl-\`, new TUI process opens overlay with P2 at front. Total keystrokes across two openings: `Ctrl-\`, `A`, `Ctrl-\`, `Ctrl-\`, `y`, `Ctrl-\` = 6. Still ≤6 Success Criterion if this is counted. |
 | EC-139 | `monocle` daemon is not running when user presses `Ctrl-\` | Daemon auto-starts (per BC-2.04.001 MONOCLE_NO_AUTOSTART not set). TUI connects after auto-start. Overlay shows queued prompts from the new daemon session. First `Ctrl-\` is the startup keystroke. Adds ~1s latency for daemon start; not a blocker for the killer scenario correctness. |
 
 ## Canonical Test Vectors
@@ -152,9 +153,9 @@ the component BCs. The E2E test vector is:
 
 | Test ID | Setup | Keystroke Sequence | Expected Final State |
 |---------|-------|-------------------|---------------------|
-| KS-001 | Daemon has P1 + P2 queued; TUI not running | `[connect]`, `2`, `1`, `[disconnect]` | P1 resolved Always; P2 resolved Once; both Claude Code sessions unblocked; AppMode Dashboard; 4 user keystrokes |
-| KS-002 | Same setup; P3 arrives during flow | `[connect]`, `2`, `1`, `1`, `[disconnect]` | All 3 resolved; 5 keystrokes ≤ 6 |
-| KS-003 | Daemon has 1 queued prompt (single session stalled) | `[connect]`, `1`, `[disconnect]` | P1 resolved Once; 3 keystrokes ≤ 6 |
+| KS-001 | Daemon has P1 + P2 queued; TUI not running | `[connect]`, `A`, `y`, `[disconnect]` | P1 resolved AcceptAlways; P2 resolved Accept; both Claude Code sessions unblocked; AppMode Dashboard; 4 user keystrokes |
+| KS-002 | Same setup; P3 arrives during flow | `[connect]`, `A`, `y`, `y`, `[disconnect]` | All 3 resolved; 5 keystrokes ≤ 6 |
+| KS-003 | Daemon has 1 queued prompt (single session stalled) | `[connect]`, `y`, `[disconnect]` | P1 resolved Accept; 3 keystrokes ≤ 6 |
 
 ## Verification Properties
 
@@ -172,7 +173,7 @@ the component BCs. The E2E test vector is:
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC is the E2E validation contract for CAP-006 in its entirety: it exercises AppMode state machine, keybinding dispatch, permission overlay stack, and Ctrl-\ popup integration in a single end-to-end scenario that is the product's core value proposition |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon MUST be written to the JSONL ring — both P1 and P2 `PreToolUse` events were written to the ring when the daemon received them; this BC verifies the decision path after ring write); DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: decisions are sent via IPC HTTP response; no harness files are modified by the TUI) |
-| Architecture Module | monocle-tui (overlay rendering, keybinding dispatch, IPC decision send); monocle-core (AppMode transition function, VecDeque pop-and-collapse); monocle-ipc (ClientToServer::PermissionDecision delivery); monocle-runtime (daemon HTTP response hold and release) per ARCH-INDEX SS-06 |
+| Architecture Module | monocle-tui (overlay rendering, keybinding dispatch, IPC decision send, App.overlay_stack retain()-based removal, AppMode empty-stack collapse); monocle-core (AppMode transition function); monocle-ipc (ClientToServer::PermissionDecision delivery, ServerToClient::PermissionPromptResolved receipt); monocle-runtime (daemon HTTP response hold and release) per ARCH-INDEX SS-06 |
 | Architecture Source | SS-tui.md v1.5.0 §Killer Scenario Flow (complete step-by-step table including AppMode transitions, daemon actions, and Claude Code unblock verification); §Permission Overlay §Overlay Stack Lifecycle steps 3 and 2 (decision send and rotate) |
 | Cross-Ref | BC-2.06.008 (overlay push on PermissionPromptQueued — Step 1 precondition); BC-2.06.012 (Accept-Always — Step 2); BC-2.06.011 (Accept-Once — Step 3); BC-2.06.001 (AppMode empty-stack collapse — Step 3 automatic Dashboard return); BC-2.06.017 (hook timeout budget — overall timing constraint); BC-2.05.002 (initial state push — Step 1 mechanism for receiving queued prompts) |
 | Test File | `monocle-tui/tests/killer_scenario.rs` |
@@ -202,7 +203,7 @@ S-TBD — Implement and verify killer scenario: E2E integration test proving ≤
 
 ## VP Anchors
 
-- VP-TBD — E2E integration test: `[connect]` + `2` + `1` + `[disconnect]`; both mock HTTP responses delivered; total keystrokes = 4
+- VP-TBD — E2E integration test: `[connect]` + `A` + `y` + `[disconnect]`; both mock HTTP responses delivered; total keystrokes = 4
 
 ## §Trace v1.2.0
 
@@ -245,6 +246,22 @@ SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per final bulk pin update.
 - Note: The §Trace v1.4.0 fix already corrected the Step 1 IPC push field name (overlay_stack). This pass fixes the remaining body prose uses of the stale DaemonState field name.
 - SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.
+
+## §Trace v1.6.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed; keybinding references updated to canonical `A`/`y`** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. This is a non-mechanical sweep: the overlay stack moved from `AppMode::Overlay.stack` to `App.overlay_stack` (App-level source of truth), which changes how empty-stack collapse works (App-level retain() → AppMode transition, not transition() returning `Dashboard` directly).
+- Summary Postcondition 3: `Ctrl-\`, `2`, `1`, `Ctrl-\` → `Ctrl-\`, `A`, `y`, `Ctrl-\`.
+- Invariant 3: canonical keystroke sequence updated to `Ctrl-\` + `A` + `y` + `Ctrl-\`.
+- Invariant 5: rewritten — collapse is now App-level (`App.overlay_stack.retain()` empties stack → App handler transitions AppMode to Dashboard), not a `transition()` return. Removes stale `Overlay { stack: [], prior }` shape reference.
+- EC-134: `VecDeque` → `App.overlay_stack`; `2`/`1` keystroke numbers → `A`/`y`.
+- EC-135: `2` → `A`; `stack` → `App.overlay_stack.retain()`.
+- EC-136: `2` → `A`.
+- EC-138: `2`, `1` → `A`, `y`.
+- Test vectors KS-001/KS-002/KS-003: `2`/`1` → `A`/`y`; decision labels updated to `AcceptAlways`/`Accept` for precision.
+- VP Anchors: `2` + `1` → `A` + `y`.
+- Architecture Module: `VecDeque pop-and-collapse` → explicit `App.overlay_stack retain()-based removal, AppMode empty-stack collapse` wording.
+- SE-16d monotonicity: v1.6.0 timestamp 2026-05-28T00:00:00Z > v1.5.0. PASS.
 
 ## §Trace v1.1.0
 

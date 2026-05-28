@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T12:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -54,18 +54,20 @@ the durable state store.
 1. **First `Ctrl-\` spawns the TUI:** The popup appears over the user's active tmux pane.
    The TUI process starts, connects to the daemon UDS, receives the initial state push, and
    renders the current `AppMode` within 16ms of the first frame tick.
-2. **AppMode on reconnect is derived from daemon state:** If the daemon's initial state push contains a non-empty `overlay_stack`, the new TUI process transitions to
-   `AppMode::Overlay { stack: <VecDeque<PromptModal> built from overlay_stack>, prior: FocusSnapshot::Sessions }` before
-   rendering the first frame. If `overlay_stack` is empty, it starts in
-   `AppMode::Dashboard { focused: FocusSnapshot::Sessions }`.
+2. **AppMode on reconnect is derived from daemon state:** If the daemon's initial state push contains a non-empty `overlay_stack`, the new TUI process:
+   (a) Populates `App.overlay_stack` by calling `payload_to_modal()` on each entry in the daemon's `overlay_stack: Vec<PermissionPromptPayload>`.
+   (b) Transitions to `AppMode::Overlay { prior: FocusSnapshot::Sessions }` before rendering the first frame.
+   The modal stack is populated into `App.overlay_stack` — not into the `AppMode::Overlay` variant, which carries only `{ prior: FocusSnapshot }`.
+   If `overlay_stack` is empty, the TUI starts in `AppMode::Dashboard { focused: FocusSnapshot::Sessions }` with `App.overlay_stack` also empty.
 3. **Second `Ctrl-\` hides the popup without dropping queued prompts:** The TUI process
    exits. The daemon retains the pending-prompt registry (`overlay_stack`) intact — the
    daemon's registry is never cleared by TUI process exit, regardless of how the process
    exits. When the next TUI connects, it receives `InitialState { overlay_stack }` with all
-   still-pending prompts and rebuilds `VecDeque<PromptModal>` via `payload_to_modal()`.
+   still-pending prompts and rebuilds `App.overlay_stack: VecDeque<PromptModal>` via `payload_to_modal()`.
 4. **Third `Ctrl-\` shows the popup again with the same overlay stack:** The new TUI
-   process receives the still-queued prompts from the daemon's initial state push and
-   renders `AppMode::Overlay` with the same stack as before the hide.
+   process receives the still-queued prompts from the daemon's initial state push,
+   populates `App.overlay_stack` via `payload_to_modal()`, and renders `AppMode::Overlay { prior: FocusSnapshot::Sessions }`
+   with the same prompts as before the hide.
 5. **Session list is current after reconnect:** The daemon's initial state push always
    contains the current `Vec<EnrichedSession>`. If sessions changed while the popup was
    hidden, the new TUI renders the updated list on first frame.
@@ -82,11 +84,12 @@ the durable state store.
 2. The daemon's pending-prompt registry persists across TUI client connect/disconnect cycles.
    When the TUI process exits (`Ctrl-\` hide), the daemon retains all pending prompts. When a
    new TUI connects (`Ctrl-\` show), the daemon pushes `InitialState { overlay_stack }` with
-   the current prompts, and the TUI rebuilds its `VecDeque<PromptModal>` via
-   `payload_to_modal()`. No `ClientDisconnect` IPC message is required or sent; the daemon
+   the current prompts, and the TUI rebuilds its `App.overlay_stack: VecDeque<PromptModal>` via
+   `payload_to_modal()`, then transitions `AppMode` to `Overlay { prior: FocusSnapshot::Sessions }`.
+   No `ClientDisconnect` IPC message is required or sent; the daemon
    does not distinguish "intentional hide" from "process exit" at the IPC level — the pending-
    prompt registry is always retained. BC-2.06.016 (daemon-disconnect overlay clear) applies
-   only to the TUI-side overlay stack on loss of the UDS connection, not to the daemon's
+   only to the TUI-side `App.overlay_stack` on loss of the UDS connection, not to the daemon's
    registry.
 3. The popup geometry (80% width, 80% height of the current tmux window) is determined by
    the user's `tmux.conf`. monocle does not hardcode or control the popup dimensions.
@@ -107,7 +110,7 @@ the durable state store.
 | Scenario | Daemon `overlay_stack` at hide | Expected AppMode on reconnect | Category |
 |----------|-------------------------------|------------------------------|----------|
 | Hide with no queued prompts; reconnect | `[]` (empty) | `Dashboard { focused: Sessions }` | happy-path |
-| Hide with 2 queued prompts; reconnect | `[P1, P2]` | `Overlay { stack: [P1, P2], prior: Sessions }` | happy-path |
+| Hide with 2 queued prompts; reconnect | `[P1, P2]` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2], populated via `payload_to_modal()`) | happy-path |
 | Hide in Filtering mode; reconnect | `[]` | `Dashboard { focused: Sessions }` (Filtering lost, not daemon state) | edge-case |
 | Daemon restarts between hide and reconnect | `[]` (new daemon) | `Dashboard { focused: Sessions }` (fresh daemon state) | edge-case |
 
@@ -201,6 +204,17 @@ S-TBD — Implement TUI exit and reconnect lifecycle; verify popup state preserv
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per final bulk pin update.
 - The TUI-side `VecDeque<PromptModal>` references (Postcondition 2 and BC-2.06.001 Overlay type) are RETAINED — the TUI stores `VecDeque<PromptModal>` locally; only the IPC/daemon field name was wrong.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.2.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. `AppMode::Overlay` now carries only `{ prior: FocusSnapshot }`. The modal stack is populated into `App.overlay_stack: VecDeque<PromptModal>` (single source of truth), not into the `Overlay` variant.
+- Postcondition 2 (critical — S-025 anchor): rewrote "transitions to `AppMode::Overlay { stack: <VecDeque<PromptModal> built from overlay_stack>, prior: FocusSnapshot::Sessions }`" to the two-step process: (a) populate `App.overlay_stack` via `payload_to_modal()`; (b) transition `AppMode` to `Overlay { prior: FocusSnapshot::Sessions }`. Modal stack is explicitly noted as being in `App.overlay_stack`, not in the variant.
+- Postcondition 3: "rebuilds `VecDeque<PromptModal>`" → "rebuilds `App.overlay_stack: VecDeque<PromptModal>`".
+- Postcondition 4: "renders `AppMode::Overlay` with the same stack" → "populates `App.overlay_stack` and renders `AppMode::Overlay { prior: FocusSnapshot::Sessions }`".
+- Invariant 2: same `VecDeque<PromptModal>` reference updated to `App.overlay_stack`; added mention of `AppMode` transition to `Overlay { prior }`.
+- Test vector: `Overlay { stack: [P1, P2], prior: Sessions }` → `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]).
+- SE-16d monotonicity: v1.2.0 timestamp 2026-05-28T00:00:00Z > v1.1.0. PASS.
 
 ## §Trace v1.1.0
 

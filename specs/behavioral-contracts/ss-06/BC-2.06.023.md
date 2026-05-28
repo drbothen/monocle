@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
 input-hash: "[live-state]"
@@ -54,8 +54,8 @@ matches the received `prompt_id`, that `PromptModal` is removed from the `VecDeq
 The removal preserves the relative order of all remaining entries in the `VecDeque`.
 
 **PC-2 — Stack empties after removal: AppMode collapses to Dashboard.**
-If, after the removal in PC-1, the `VecDeque` becomes empty AND `AppMode` is currently
-`Overlay { stack, prior }`, the `AppMode` MUST transition to
+If, after the removal in PC-1, `App.overlay_stack` becomes empty AND `AppMode` is currently
+`Overlay { prior }`, the `AppMode` MUST transition to
 `Dashboard { focused: prior.sessions_or_default() }` per the BC-2.06.001 empty-stack
 collapse invariant. This transition is identical to the collapse triggered by the last
 user decision keystroke — the mechanism is reused, not duplicated.
@@ -105,7 +105,7 @@ The breadcrumb and prompt count badge update to reflect the new stack size.
 | EC-003 | `PermissionPromptResolved` arrives while `AppMode` is `Dashboard` (not `Overlay`) | The VecDeque is empty (Dashboard implies no overlay). PC-3 applies: no matching `prompt_id`. No-op. AppMode remains Dashboard |
 | EC-004 | `PermissionPromptResolved` arrives for P2 (second in stack) while P1 is at the front | P2 is removed from the VecDeque interior. P1 remains at the front. Overlay re-renders with P1 still active; badge reflects reduced stack count |
 | EC-005 | User resolves P1 at the exact moment the daemon sends `PermissionPromptResolved { P1 }` (race) | User decision path already removed P1 from the VecDeque. `PermissionPromptResolved` arrives and finds no match (PC-3): no-op. No double-removal. No panic. This is the standard multi-source resolution race and is handled idempotently |
-| EC-006 | `PermissionPromptResolved` causes the last prompt to be removed from a 1-element VecDeque | PC-1: P1 removed; VecDeque now empty. PC-2: AppMode collapses from `Overlay` to `Dashboard`. Overlay is gone from screen. Identical behavior to user pressing `1` on the last prompt |
+| EC-006 | `PermissionPromptResolved` causes the last prompt to be removed from a 1-element VecDeque | PC-1: P1 removed; VecDeque now empty. PC-2: AppMode collapses from `Overlay { prior }` to `Dashboard`. Overlay is gone from screen. Identical behavior to user pressing `y` (accept-once) on the last prompt |
 
 ## Canonical Test Vectors
 
@@ -213,6 +213,13 @@ VP-TBD — VecDeque removal and AppMode collapse integration tests (filled after
 - Architecture Source: `SS-tui.md v1.1.0` → `SS-tui.md v1.3.0` per F-P1D4-005 bulk update.
 - Architecture Source: `SS-ipc.md v1.1.0` → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
 - SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.4.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack, prior }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. PC-2: `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack` as the emptiness check. The VecDeque is `App.overlay_stack` (App-level single source of truth), not a field of the `AppMode::Overlay` variant. Note: the remaining `VecDeque<PromptModal>` references in this BC correctly refer to `App.overlay_stack` as a data structure — they are not the stale variant shape.
+- EC-006: stale keystroke `1` → `y` (accept-once canonical keybinding per ADJ-ADV2-001).
+- SE-16d monotonicity: v1.4.0 timestamp 2026-05-28T00:00:00Z > v1.3.0. PASS.
 
 ## §Trace v1.3.0
 

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T18:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -52,15 +52,15 @@ even in Fullscreen and Overlay modes.
    |---------|------------------|
    | `Dashboard { focused: Sessions }` | `Dashboard > Sessions` |
    | `Dashboard { focused: EventRibbon }` | `Dashboard > Events` |
-   | `Overlay { stack, prior }` where `stack.len() == 1` | `Dashboard > Overlay [1 prompt]` |
-   | `Overlay { stack, prior }` where `stack.len() == N (N > 1)` | `Dashboard > Overlay [N prompts]` |
+   | `Overlay { prior }` where `App.overlay_stack.len() == 1` | `Dashboard > Overlay [1 prompt]` |
+   | `Overlay { prior }` where `App.overlay_stack.len() == N (N > 1)` | `Dashboard > Overlay [N prompts]` |
    | `Fullscreen { panel: Sessions, .. }` | `Dashboard > Sessions > Fullscreen` |
    | `Fullscreen { panel: EventRibbon, .. }` | `Dashboard > Events > Fullscreen` |
    | `Filtering { panel: Sessions, .. }` | `Dashboard > Sessions > Filter` |
    | `Filtering { panel: EventRibbon, .. }` | `Dashboard > Events > Filter` |
 
-2. **Grammatical plurality:** When `stack.len() == 1`, render `[1 prompt]` (singular).
-   When `stack.len() > 1`, render `[N prompts]` (plural). This distinction is load-bearing:
+2. **Grammatical plurality:** When `App.overlay_stack.len() == 1`, render `[1 prompt]` (singular).
+   When `App.overlay_stack.len() > 1`, render `[N prompts]` (plural). This distinction is load-bearing:
    it communicates to the user exactly how many decisions are queued.
 
 3. **Always rendered:** The breadcrumb renders on every `draw()` tick regardless of
@@ -89,7 +89,7 @@ even in Fullscreen and Overlay modes.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-125 | `Overlay` mode with 0 prompts in stack (should be unreachable per BC-2.06.001 empty-stack collapse) | If reached in testing, renders `Dashboard > Overlay [0 prompts]` — no panic; the impossible state is displayed faithfully |
+| EC-125 | `Overlay` mode with `App.overlay_stack.len() == 0` (unreachable per BC-2.06.001 empty-stack invariant) | If reached in testing, renders `Dashboard > Overlay [0 prompts]` — no panic; the impossible state is displayed faithfully |
 | EC-126 | Terminal resize reduces width to <34 columns | Breadcrumb is truncated at the right edge; no line wrap; no panic; truncation is the lesser evil compared to wrap breaking column layout |
 | EC-127 | Very large overlay stack: 99 prompts | Renders `Dashboard > Overlay [99 prompts]`; fits in 80 columns |
 | EC-128 | AppMode transitions mid-frame (race between draw and IPC message handling) | The draw loop drains IPC messages before drawing; breadcrumb reflects the `AppMode` after IPC drain; no partial-state render |
@@ -100,8 +100,8 @@ even in Fullscreen and Overlay modes.
 |---------|-------------------|----------|
 | `Dashboard { focused: Sessions }` | `Dashboard > Sessions` | happy-path |
 | `Dashboard { focused: EventRibbon }` | `Dashboard > Events` | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }` | `Dashboard > Overlay [1 prompt]` | happy-path |
-| `Overlay { stack: [P1, P2, P3], prior: Sessions }` | `Dashboard > Overlay [3 prompts]` | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) | `Dashboard > Overlay [1 prompt]` | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2, P3]) | `Dashboard > Overlay [3 prompts]` | happy-path |
 | `Fullscreen { panel: Sessions, prior: Sessions }` | `Dashboard > Sessions > Fullscreen` | happy-path |
 | `Filtering { panel: Sessions, query: "foo", prior: Sessions }` | `Dashboard > Sessions > Filter` | happy-path |
 
@@ -177,3 +177,9 @@ S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singula
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. Breadcrumb derivation table: `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.len()` as the prompt count source. Postcondition 2, EC-125, and test vectors updated.
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.

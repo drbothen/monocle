@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -37,14 +37,15 @@ overlay footer area:
 ```
 
 No navigation occurs. No file is opened. No IPC message is sent to the daemon. The
-`AppMode` remains `Overlay { stack, prior }` unchanged. The keybinding is registered in
+`AppMode` remains `Overlay { prior }` unchanged and `App.overlay_stack` is not modified.
+The keybinding is registered in
 the `Builtin` table and appears in the keybinding hint line so it is discoverable in
 Phase 1. This stub reserves the `[t]` binding for Phase 2 (the Static plane), preventing
 future keybinding conflicts when the full trace-to-source behavior is implemented.
 
 ## Preconditions
 
-1. `AppMode` is `Overlay { stack, prior }` with `stack.len() >= 1`.
+1. `AppMode` is `Overlay { prior }` and `App.overlay_stack.len() >= 1`.
 2. The `Builtin` binding table for `AppMode::Overlay` maps key `t` to
    `Action::PermissionTraceToSource`.
 3. The `Action::PermissionTraceToSource` variant is defined in `monocle-core/src/action.rs`
@@ -59,9 +60,9 @@ future keybinding conflicts when the full trace-to-source behavior is implemente
    `[t] Trace to source — Phase 2 feature (Static plane)`
    The text is rendered in the default terminal color (no special styling required in
    Phase 1).
-2. **No AppMode transition:** `transition(Overlay { stack, prior }, PermissionTraceToSource)`
-   returns `Overlay { stack, prior }` unchanged. This is the identity transition for this
-   action.
+2. **No AppMode transition:** `transition(Overlay { prior }, PermissionTraceToSource)`
+   returns `Overlay { prior }` unchanged. `App.overlay_stack` is not modified. This is
+   the identity transition for this action.
 3. **No IPC message sent:** The TUI does NOT send any IPC message to the daemon when `[t]`
    is pressed. The placeholder message is a local render-state change only.
 4. **No navigation:** No file viewer, no editor, no subprocess is launched. The TUI
@@ -72,8 +73,8 @@ future keybinding conflicts when the full trace-to-source behavior is implemente
    `t` and some indication of the Phase 2 scope.
 6. **Placeholder persists until next render with different state:** The placeholder message
    renders as long as `AppMode::Overlay` is active and the overlay is being drawn. It does
-   not auto-dismiss. The user can dismiss the overlay by making a decision (`[1]`, `[2]`,
-   `[3]`) or hiding the popup (`Ctrl-\`).
+   not auto-dismiss. The user can dismiss the overlay by making a decision (`[y]`, `[A]`,
+   `[n/r]`) or hiding the popup (`Ctrl-\`).
 7. **`Action::PermissionTraceToSource` defined in `monocle-core` regardless of Phase:**
    The variant exists in `action.rs` in Phase 1 so that `[t]` can be bound without
    dead-code warnings or missing-match-arm compiler errors in `monocle-tui`. The
@@ -106,9 +107,9 @@ future keybinding conflicts when the full trace-to-source behavior is implemente
 
 | Input (mode, action) | Expected Output | Category |
 |----------------------|----------------|----------|
-| `Overlay { stack: [P1], prior: Sessions }`, `PermissionTraceToSource` | `Overlay { stack: [P1], prior: Sessions }` (unchanged) + overlay footer renders `[t] Trace to source — Phase 2 feature (Static plane)` | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `PermissionTraceToSource` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1], unchanged) + overlay footer renders `[t] Trace to source — Phase 2 feature (Static plane)` | happy-path |
 | `Dashboard { focused: Sessions }`, `PermissionTraceToSource` | `Dashboard { focused: Sessions }` (identity; not bound in Dashboard) | edge-case |
-| `Overlay { stack: [P1], prior: Sessions }`, `PermissionTraceToSource` × 3 | `Overlay { stack: [P1], prior: Sessions }` (still unchanged after multiple presses) | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `PermissionTraceToSource` × 3 | `Overlay { prior: Sessions }` (App.overlay_stack = [P1], still unchanged after multiple presses) | edge-case |
 
 ## Verification Properties
 
@@ -181,3 +182,9 @@ S-TBD — Implement `[t]` trace-to-source stub: register Builtin binding, render
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. `Overlay { stack, prior }` → `Overlay { prior }` in description, Precondition 1, Postcondition 2. `App.overlay_stack` noted as unmodified by `[t]` press. Decision keybindings in Postcondition 6 updated from `[1]/[2]/[3]` to `[y]/[A]/[n/r]` (per ADJ-ADV2-001).
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.

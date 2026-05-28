@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -39,8 +39,8 @@ rendered in the default terminal color. For all other `ToolPayload` variants (`B
 
 ## Preconditions
 
-1. `AppMode` is `Overlay { stack, prior }` with at least one `PromptModal` in `stack`.
-2. The front `PromptModal` (`stack.front()`) has `tool_payload == ToolPayload::Edit { old_content, new_content, path }` where both `old_content` and `new_content` are non-empty strings.
+1. `AppMode` is `Overlay { prior }` and `App.overlay_stack` is non-empty with at least one `PromptModal`.
+2. The front `PromptModal` (`App.overlay_stack.front()`) has `tool_payload == ToolPayload::Edit { old_content, new_content, path }` where both `old_content` and `new_content` are non-empty strings.
 3. The `similar` crate (version 3.x) is a dependency of `monocle-tui` (NOT of `monocle-core`).
 4. The overlay layout has sufficient height to render at least the header (2 rows), hint
    line (1 row), and at least 1 diff line. The diff area height is capped to
@@ -193,3 +193,10 @@ S-TBD — Implement diff preview for Edit ToolPayload using similar 3.x in overl
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. Cosmetic precondition update only: `AppMode` is `Overlay { prior }` (not `Overlay { stack, prior }`); `App.overlay_stack.front()` replaces `stack.front()`.
+- No postcondition or test vector changes required: this BC's scope is diff rendering logic, which is independent of where the VecDeque lives.
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-28T00:00:00Z > v1.0.4. PASS.

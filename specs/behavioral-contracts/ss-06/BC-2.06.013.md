@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: [F-P1D2-010, F-P1D7-001]
+modified: [F-P1D2-010, F-P1D7-001, ADJ-ADV2-001]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -24,64 +24,78 @@ removed: null
 removal_reason: null
 ---
 
-# Behavioral Contract BC-2.06.013: Permission Overlay: Reject Keybinding
+# Behavioral Contract BC-2.06.013: Permission Overlay: Reject Keybinding (`n`/`r`)
 
 ## Description
 
-In `AppMode::Overlay`, pressing `3` (bound to `Action::PermissionReject` in the `PerContext`
-binding table) sends a deny decision to the daemon and pops the front `PromptModal` from
-the `VecDeque` stack. The TUI sends `ClientToServer::PermissionDecision { prompt_id, decision: PermissionDecision::Reject }` to the daemon via `App::ipc_tx`. The daemon forwards `{"decision": "deny"}` to the stalled Claude Code HTTP response; Claude Code receives the deny and does not execute the tool. The TUI-side stack management and mode transition behavior are identical to Accept-Once (BC-2.06.011) and Accept-Always (BC-2.06.012), except the decision value is `Reject`.
+In `AppMode::Overlay`, pressing `n` or `r` (both bound to `Action::PermissionReject` in
+the `SearchPrompt` binding layer) sends a deny decision to the daemon via
+`ClientToServer::PermissionDecision { prompt_id, decision: PermissionDecision::Reject }`
+over `App::ipc_tx`. The TUI does NOT immediately pop the `PromptModal`; it waits for
+`ServerToClient::PermissionPromptResolved { prompt_id }` before removing the modal (per
+BC-2.06.023). The daemon forwards `{"decision": "deny"}` to the stalled Claude Code HTTP
+response; Claude Code receives the deny and does not execute the tool, then the daemon
+broadcasts `PermissionPromptResolved`. The TUI-side wait-for-resolved and stack removal
+behavior is identical to Accept-Once (BC-2.06.011) and Accept-Always (BC-2.06.012),
+except the decision value is `Reject`.
 
 ## Preconditions
 
-1. `AppMode` is `Overlay { stack, prior }` with `stack.len() >= 1`.
-2. The `PerContext` binding table for `AppMode::Overlay` maps key `3` to
-   `Action::PermissionReject`.
-3. `stack.front()` is the `PromptModal` whose `prompt_id` will be sent in the
+1. `AppMode` is `Overlay { prior }` and `App.overlay_stack.len() >= 1`.
+2. The `SearchPrompt` binding layer (highest priority) maps keys `n` and `r` to
+   `Action::PermissionReject` when `AppMode` is `Overlay`. These bindings are active
+   only in Overlay mode and override any Global or PerContext bindings for these keys.
+3. `App.overlay_stack.front()` is the `PromptModal` whose `prompt_id` will be sent in the
    `ClientToServer::PermissionDecision`.
 4. The IPC send channel (`App::ipc_tx`) has capacity for at least one additional message.
 
 ## Postconditions
 
-1. **IPC send enqueued:** `ClientToServer::PermissionDecision { prompt_id: stack.front().prompt_id, decision: PermissionDecision::Reject }` is enqueued on `App::ipc_tx` before the state transition. This is non-blocking.
-2. **Front `PromptModal` popped:** `transition(Overlay { stack, prior }, PermissionReject)` calls `stack.pop_front()`, removing the front item.
-3. **Stack-empty collapse:** If `stack.is_empty()` after the pop, the transition returns `AppMode::Dashboard { focused: prior }`.
-4. **Stack-non-empty continuation:** If `stack.len() >= 1` after the pop, the transition returns `AppMode::Overlay { stack, prior }` with the new front item rendered.
-5. **Badge counter decrements:** The overlay badge counter decrements by 1.
-6. **`prior` focus preserved:** The `prior: FocusSnapshot` is unchanged during the transition and is correctly restored if the stack empties.
-7. **Deny is not the same as `[Esc]` hide:** `[3]` (Reject) POPS the `PromptModal` and sends a decision to the daemon. `[Esc]` (BC-2.06.014) does NOT pop and does NOT send a decision. This distinction is CRITICAL: `[Esc]` must never be confused with reject by the implementation.
+1. **IPC send enqueued:** `ClientToServer::PermissionDecision { prompt_id: App.overlay_stack.front().prompt_id, decision: PermissionDecision::Reject }` is enqueued on `App::ipc_tx`. This is non-blocking.
+2. **Modal NOT immediately popped:** The TUI does NOT call `App.overlay_stack.pop_front()` or `App.overlay_stack.retain()` upon sending the decision. The `PromptModal` remains in `App.overlay_stack` until `ServerToClient::PermissionPromptResolved { prompt_id }` is received.
+3. **PermissionPromptResolved triggers removal:** When `ServerToClient::PermissionPromptResolved { prompt_id }` is received, the TUI calls `App.overlay_stack.retain(|m| m.prompt_id != prompt_id)` to remove the modal (per BC-2.06.023).
+4. **Stack-empty collapse after removal:** If `App.overlay_stack.is_empty()` after the `retain()` call and `AppMode` is `Overlay`, the TUI collapses to `AppMode::Dashboard { focused: prior }`.
+5. **Stack-non-empty continuation after removal:** If `App.overlay_stack.len() >= 1` after the `retain()` call, `AppMode` remains `Overlay { prior }` with the new front item rendered.
+6. **Badge counter decrements on removal:** The overlay badge counter decrements by 1 when the `retain()` removes the modal from `App.overlay_stack`.
+7. **`prior` focus preserved:** The `prior: FocusSnapshot` is unchanged throughout.
+8. **Deny is not the same as `Esc` hide:** `n`/`r` (Reject) enqueues a deny decision and waits for `PermissionPromptResolved` to remove the modal. `Esc` (BC-2.06.014) does NOT send any IPC message and does NOT remove the modal. This distinction is CRITICAL: `Esc` must never be confused with reject by the implementation.
 
 ## Invariants
 
 1. `PermissionDecision::Reject` carries the same `prompt_id` as `PermissionDecision::Accept` and
-   `PermissionDecision::AcceptAlways`. The TUI-side stack management is identical for all three
-   decision types.
-2. The `[3]` binding is active ONLY in `AppMode::Overlay` (PerContext table). Pressing `3`
-   in `AppMode::Dashboard` or `AppMode::Filtering` has no effect.
+   `PermissionDecision::AcceptAlways`. The TUI-side wait-for-resolved and stack removal logic
+   is identical for all three decision types (BC-2.06.023 handles all three).
+2. The `n` and `r` bindings are active ONLY in `AppMode::Overlay`, registered in the
+   `SearchPrompt` (highest-priority) layer. In `AppMode::Dashboard` or `AppMode::Filtering`,
+   `n` and `r` match no overlay binding.
 3. The IPC send channel is bounded. If full, the message is dropped and the drop counter
-   increments (BC-2.04.011). The state transition still occurs.
+   increments (BC-2.04.011). The modal remains visible (no pop) — correct recovery UX.
 4. Deny semantics (whether Claude Code retries the tool, aborts the task, or surfaces the
    rejection to the user) are governed by Claude Code's behavior, not by monocle. The
    monocle TUI sends `{"decision": "deny"}` and is done.
+5. The TUI MUST NOT call `App.overlay_stack.retain()` or `App.overlay_stack.pop_front()`
+   upon sending the decision. Modal removal from `App.overlay_stack` is triggered
+   exclusively by `ServerToClient::PermissionPromptResolved` (BC-2.06.023).
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-087 | Stack has exactly 1 item when `[3]` is pressed | Pop leaves stack empty; `AppMode` transitions to `Dashboard { focused: prior }`; IPC `PermissionDecision::Reject` enqueued |
-| EC-088 | Stack has 4 items when `[3]` is pressed | Pop leaves 3 items; `AppMode` stays `Overlay`; overlay renders next front item; badge decrements |
-| EC-089 | IPC send channel is full when Reject is enqueued | Message dropped; drop counter increments; state transition still occurs; user may not see Claude Code response; the hook will eventually time out at the daemon with fail-open semantics (BC-HOOK-001) |
-| EC-090 | `[3]` pressed in `AppMode::Dashboard` | No binding match; identity transition; keypress silently discarded |
-| EC-091 | User presses `[Esc]` intending to hide but `[3]` was the key sent (e.g., terminal mapping issue) | `[3]` sends Reject + pops; `[Esc]` only hides; these are distinct keys — terminal-mapping issues are out of scope for this BC |
+| EC-087 | `App.overlay_stack` has exactly 1 item when `n` pressed; `PermissionPromptResolved` arrives | IPC `PermissionDecision::Reject` enqueued; modal stays in `App.overlay_stack` until `PermissionPromptResolved`; `retain()` removes it; `App.overlay_stack` empties; `AppMode` collapses to `Dashboard { focused: prior }` |
+| EC-088 | `App.overlay_stack` has 4 items when `r` pressed; `PermissionPromptResolved` arrives for front item | IPC decision enqueued; modal stays in `App.overlay_stack`; on resolved: `retain()` removes front item; 3 items remain; `AppMode` stays `Overlay { prior }`; badge decrements |
+| EC-089 | IPC send channel is full when Reject is enqueued | Message dropped; drop counter increments; modal remains visible (no pop); hook will eventually time out at daemon with fail-open semantics (BC-HOOK-001); user sees the persistent modal and can retry `n`/`r` |
+| EC-090 | `n` or `r` pressed in `AppMode::Dashboard` | No `SearchPrompt`-layer overlay binding active; no IPC decision sent; no overlay effect |
+| EC-091 | User presses `Esc` intending to hide — `n`/`r` is a distinct key | `n`/`r` sends Reject and waits for `PermissionPromptResolved`; `Esc` only hides (no IPC, no removal); these are distinct keys — terminal-mapping issues are out of scope for this BC |
 
 ## Canonical Test Vectors
 
-| Input (mode, action) | Expected Output | Category |
-|----------------------|----------------|----------|
-| `Overlay { stack: [P1], prior: Sessions }`, `PermissionReject` | `Dashboard { focused: Sessions }` + `PermissionDecision { prompt_id: P1.id, decision: PermissionDecision::Reject }` enqueued | happy-path |
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `PermissionReject` | `Overlay { stack: [P2], prior: Sessions }` + `PermissionDecision { prompt_id: P1.id, decision: PermissionDecision::Reject }` enqueued | happy-path |
-| `Dashboard { focused: Sessions }`, `PermissionReject` | `Dashboard { focused: Sessions }` (identity; no IPC send) | edge-case |
-| `Overlay { stack: [P1], prior: Sessions }`, `Escape` | `Overlay { stack: [P1], prior: Sessions }` (Esc does NOT pop; must be distinguished from Reject) | edge-case |
+| Input | Action / Event | Expected Output | Category |
+|-------|---------------|----------------|----------|
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) | key `n` → `PermissionReject` | `PermissionDecision { prompt_id: P1.id, decision: Reject }` enqueued; `AppMode` stays `Overlay { prior: Sessions }`; App.overlay_stack unchanged (no pop yet) | happy-path step 1 |
+| After step 1 above: receive `PermissionPromptResolved { prompt_id: P1.id }` | daemon broadcast | `App.overlay_stack` is empty; `AppMode` collapses to `Dashboard { focused: Sessions }` | happy-path step 2 |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]) | key `r`; then receive `PermissionPromptResolved { prompt_id: P1.id }` | After decision: App.overlay_stack stays [P1, P2]; after resolved: App.overlay_stack = [P2]; `AppMode` stays `Overlay { prior: Sessions }` | happy-path |
+| `Dashboard { focused: Sessions }` | key `n` | No overlay binding active; no IPC send; mode unchanged | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) | key `Esc` | `AppMode` stays `Overlay { prior: Sessions }`; App.overlay_stack unchanged — Esc does NOT send IPC, does NOT remove modal | edge-case (Esc-vs-Reject distinction) |
 
 ## Verification Properties
 
@@ -107,17 +121,18 @@ the `VecDeque` stack. The TUI sends `ClientToServer::PermissionDecision { prompt
 
 ## Related BCs
 
-- [BC-2.06.001] — depends on: Reject is one arm of the `transition()` pure function
-- [BC-2.06.011] — composes with: Accept-Once (key `1`) is the sibling with accept semantics
-- [BC-2.06.012] — composes with: Accept-Always (key `2`) is the sibling with always-accept semantics
-- [BC-2.06.014] — CRITICAL DISTINCTION: Esc (BC-2.06.014) hides without popping; Reject pops and sends deny; these must never be conflated in implementation
-- [BC-2.06.008] — depends on: the stack being popped was created by the push behavior in BC-2.06.008
+- [BC-2.06.001] — depends on: empty-stack collapse after `retain()` reuses BC-2.06.001 invariant
+- [BC-2.06.011] — composes with: Accept-Once (keys `y`/`Enter`) is the sibling with accept semantics
+- [BC-2.06.012] — composes with: Accept-Always (key `A`) is the sibling with always-accept semantics
+- [BC-2.06.014] — CRITICAL DISTINCTION: Esc (BC-2.06.014) hides without sending IPC or removing modal; Reject sends deny and waits for `PermissionPromptResolved`; these must never be conflated in implementation
+- [BC-2.06.008] — depends on: the stack being modified was created by the push behavior in BC-2.06.008
+- [BC-2.06.023] — depends on: `PermissionPromptResolved` handling (BC-2.06.023) is the removal trigger; the two BCs implement the decision-then-resolve round-trip together
 
 ## Architecture Anchors
 
 - `architecture/SS-tui.md#permission-overlay` — overlay stack lifecycle step 3 (Decide, Reject arm)
 - `architecture/SS-tui.md#appmode-state-machine` — transition function PermissionReject arm
-- `architecture/SS-tui.md#status-bar` — keybinding hint line: `3: reject`
+- `architecture/SS-tui.md#status-bar` — keybinding hint line: `[n/r] Reject`
 
 ## Story Anchor
 
@@ -176,3 +191,28 @@ S-TBD — Implement Reject keybinding for permission overlay with IPC deny send 
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
+
+## §Trace v1.2.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. Symmetric with BC-2.06.011 v1.2.0 and BC-2.06.012 v1.2.0 sweeps. All stack references updated to `App.overlay_stack`; `Overlay { stack, prior }` → `Overlay { prior }` throughout.
+- SE-16d monotonicity: v1.2.0 timestamp 2026-05-28T00:00:00Z > v1.1.0. PASS.
+
+## §Trace v1.1.0
+
+**ADJ-ADV2-001 HIGH — Two adjudication decisions applied (keybinding canonical set + pop semantics)** (2026-05-27T00:00:00Z):
+
+**Decision 1 — Keybinding: `3` → `n`/`r` (mnemonic set wins):**
+- Symmetric with BC-2.06.011 v1.1.0. The `n` (no) and `r` (reject) keybindings are canonical
+  per S-026 AC-005 and S-027 AC-001 footer `"[n/r] Reject"`. Updated: H1 title, Description,
+  Precondition 2, Invariant 2, Edge Cases, Test Vectors, Related BCs, Architecture Anchors
+  (status bar hint updated from `3: reject` to `[n/r] Reject`).
+  Binding layer changed from `PerContext` to `SearchPrompt` (highest priority).
+
+**Decision 2 — Pop semantics: immediate pop → wait-for-PermissionPromptResolved:**
+- Symmetric with BC-2.06.011 v1.1.0. Postconditions completely rewritten. Invariant 5 added.
+  Edge Cases updated. Test Vectors updated.
+- The Esc-vs-Reject distinction (Postcondition 8, EC-091) remains CRITICAL and is now framed
+  in terms of wait-for-resolved: Esc sends no IPC and does no retain(); Reject sends deny IPC
+  and waits for PermissionPromptResolved before retain(). The distinction is sharper than before.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-27T00:00:00Z > v1.0.5. PASS.

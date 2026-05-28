@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T12:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -41,8 +41,10 @@ with no I/O, no ratatui dependency, and no runtime panics.
 1. The `monocle-core` crate compiles with `#[forbid(unsafe_code)]` in all SS-06 modules.
 2. The `AppMode` enum is defined in `monocle-core/src/app_mode.rs` with exactly four
    variants: `Dashboard { focused: FocusSnapshot }`, `Filtering { panel: PanelId, query: String, prior: FocusSnapshot }`,
-   `Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }`,
+   `Overlay { prior: FocusSnapshot }`,
    `Fullscreen { panel: PanelId, prior: FocusSnapshot }`.
+   The modal stack (`VecDeque<PromptModal>`) lives exclusively in `App::overlay_stack`
+   in `monocle-tui` — it is NOT a field of the `Overlay` variant.
 3. The `fn transition(mode: AppMode, action: Action) -> AppMode` function is defined in
    `monocle-core/src/transitions.rs` and is the only code path permitted to produce a new
    `AppMode` value in response to user `Action`s.
@@ -60,10 +62,11 @@ with no I/O, no ratatui dependency, and no runtime panics.
    `AppMode` for every possible `(AppMode, Action)` pair. It never panics, never returns
    `Option`, and never touches I/O. All unrecognized `(mode, action)` pairs return the
    original `mode` unchanged (identity transition).
-3. **`Overlay` variant never holds an empty `VecDeque`:** The transition function collapses
-   `Overlay { stack: empty, prior }` → `Dashboard { focused: prior }` atomically. After
-   any call to `transition`, if the returned `AppMode` is `Overlay`, its `stack` field
-   contains at least one `PromptModal`.
+3. **`Overlay` mode is only valid when `App.overlay_stack` is non-empty:** The TUI
+   collapses `AppMode` from `Overlay { prior }` → `Dashboard { focused: prior }` whenever
+   `App.overlay_stack` becomes empty (after a prompt removal). This collapse is performed
+   by the `App`-level handler after a UUID-based stack removal, not by the `transition()`
+   function. After any such collapse, `AppMode` is `Dashboard` iff `App.overlay_stack.is_empty()`.
 4. **No `Arc<Mutex>` in transition path:** Kani proof harnesses (or equivalent property
    tests) can enumerate all reachable `(mode, action)` pairs without needing to acquire
    any lock.
@@ -86,17 +89,18 @@ with no I/O, no ratatui dependency, and no runtime panics.
    produces the same output `AppMode`. No hidden global state influences the result.
 4. The `monocle-tui` crate calls `transition()` for every user-initiated action; it never
    mutates `app.mode` directly (i.e., no `app.mode = AppMode::Dashboard { ... }` outside
-   the `transition()` call site). The only exception is the `PermissionPromptQueued` IPC
-   push path, which calls `push_prompt()` directly on the `VecDeque` and then wraps in
-   `Overlay { stack, prior }` — documented in BC-2.06.008.
+   the `transition()` call site). The `PermissionPromptQueued` IPC push path is the
+   documented exception: it calls `push_prompt()` directly on `App.overlay_stack` and
+   then transitions `app.mode` to `AppMode::Overlay { prior: <current_focus> }` when
+   entering overlay from `Dashboard`/`Filtering`/`Fullscreen` — documented in BC-2.06.008.
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-060 | `transition()` called with an `(Overlay, action)` pair where the resulting stack would be empty | Transition returns `Dashboard { focused: prior }`, not `Overlay { stack: vec![], prior }` — empty overlay state is impossible |
+| EC-060 | `App.overlay_stack` becomes empty after a prompt removal while `AppMode` is `Overlay` | TUI collapses `AppMode` to `Dashboard { focused: prior }` (App-level effectful step, not via `transition()`). `Overlay { prior }` with an empty `App.overlay_stack` is an unreachable steady state |
 | EC-061 | `transition()` called with an `(mode, action)` pair where no arm matches (e.g., `Dashboard` + `PermissionAcceptOnce`) | Identity transition: returns the original `mode` unchanged; no panic, no error log |
-| EC-062 | `monocle-core` compiled in a build environment where `VecDeque` is not in scope | Compile error (expected); `VecDeque` is `std::collections::VecDeque` and is always available in `std` |
+| EC-062 | `monocle-tui` compiled in a build environment where `VecDeque` is not in scope | Compile error (expected); `VecDeque` is `std::collections::VecDeque` and is always available in `std`. Note: `VecDeque` is in `monocle-tui` (`App::overlay_stack`), not in `monocle-core` — the `Overlay` variant in `monocle-core` carries only `prior: FocusSnapshot` |
 | EC-063 | Match site in `monocle-tui` does not handle a new `AppMode` variant added in a future Phase 2 | Compile error (expected); `#[non_exhaustive]` on `AppMode` is NOT set because `AppMode` is not in the non-exhaustive list per constraint 6 (only `PanelId`, `FocusSnapshot`, `BindingSource`, `Action` are `#[non_exhaustive]`); `AppMode` variants require explicit handling |
 | EC-064 | `transition()` called in a multithreaded context without synchronization | Safe: `transition()` takes ownership of `AppMode` (move semantics); Rust ownership prevents concurrent mutation without explicit wrapping |
 
@@ -108,16 +112,16 @@ with no I/O, no ratatui dependency, and no runtime panics.
 | `Filtering { panel: Sessions, query: "foo", prior: Sessions }`, `Action::Escape` | `Dashboard { focused: Sessions }` | happy-path |
 | `Dashboard { focused: Sessions }`, `Action::Enter` | `Fullscreen { panel: Sessions, prior: Sessions }` | happy-path |
 | `Fullscreen { panel: Sessions, prior: Sessions }`, `Action::Escape` | `Dashboard { focused: Sessions }` | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }`, `Action::PermissionAcceptOnce` | `Dashboard { focused: Sessions }` (stack collapses to empty → Dashboard) | edge-case |
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `Action::PermissionReject` | `Overlay { stack: [P2], prior: Sessions }` | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }`, `Action::Escape` | `Overlay { stack: [P1], prior: Sessions }` (Esc is no-op on stack in Overlay) | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `Action::PermissionAcceptOnce` | IPC decision enqueued; `AppMode` stays `Overlay { prior: Sessions }` until daemon sends `PermissionPromptResolved`; then App.overlay_stack empties and `AppMode` collapses to `Dashboard { focused: Sessions }` | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]), `Action::PermissionReject` | IPC decision enqueued; `AppMode` stays `Overlay { prior: Sessions }` until `PermissionPromptResolved`; then App.overlay_stack = [P2] | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `Action::Escape` | `Overlay { prior: Sessions }` — Esc is a no-op; `transition()` returns mode unchanged; App.overlay_stack unmodified | edge-case |
 | `Dashboard { focused: Sessions }`, `Action::PermissionAcceptOnce` | `Dashboard { focused: Sessions }` (identity: no match arm) | edge-case |
 
 ## Verification Properties
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | `transition()` never returns `Overlay { stack: empty }` for any input | Kani proof harness (enumerate all `(AppMode, Action)` combinations) |
+| VP-TBD | `transition()` never returns `Overlay` when called from a non-Overlay state without an `App.overlay_stack` push occurring first (enforced architecturally) | Kani proof harness (enumerate all `(AppMode, Action)` combinations) |
 | VP-TBD | `transition()` never panics for any well-typed input | Kani proof harness |
 | VP-TBD | `FocusSnapshot` captured in `prior` is always preserved through nested transitions | Kani proof harness |
 | VP-TBD | `monocle-core` SS-06 modules have zero tokio/ratatui/crossterm imports | CI `cargo check` on `monocle-core` without those crates in `Cargo.toml` |
@@ -188,3 +192,16 @@ S-TBD — Implement AppMode enum, Action enum, FocusSnapshot, PanelId, PromptMod
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. `AppMode::Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }` shape is replaced by `AppMode::Overlay { prior: FocusSnapshot }`. The `VecDeque<PromptModal>` modal stack now lives exclusively in `App::overlay_stack` in `monocle-tui` — single source of truth per architect Pass 2 decision (commit `76ce1af`).
+- Precondition 2: `Overlay` variant field list updated; added note that `VecDeque<PromptModal>` is in `App::overlay_stack`, not in the `Overlay` variant.
+- Postcondition 3: empty-stack collapse reframed as an App-level effectful operation (not `transition()` return value) triggered after UUID-based `retain()` removes the last prompt from `App.overlay_stack`.
+- Invariant 4: push path description updated — push goes to `App.overlay_stack`; mode transition to `Overlay { prior }` is a separate step.
+- EC-060: reframed as App-level collapse when `App.overlay_stack` empties, not a `transition()` return.
+- EC-062: VecDeque is `monocle-tui`-only (not `monocle-core`); `Overlay` variant in `monocle-core` carries only `prior`.
+- Test vectors: all `Overlay { stack: [P1], prior: ... }` shapes updated to `Overlay { prior: ... }` with `App.overlay_stack` noted as the stack source.
+- VP updated: phrasing adapted to reflect that the empty-Overlay invariant is now enforced architecturally by the App-level collapse, not by `transition()`.
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.

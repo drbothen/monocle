@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -29,9 +29,10 @@ removal_reason: null
 ## Description
 
 In `AppMode::Overlay`, pressing `[Esc]` (bound to `Action::Escape` in the `PerContext`
-binding table for `Overlay`) is a no-op on the `VecDeque<PromptModal>` stack. The
-`transition()` function returns the current mode unchanged: `(Overlay { stack, prior },
-Escape)` → `Overlay { stack, prior }` (identity). The overlay is hidden when the user
+binding table for `Overlay`) is a no-op on both `AppMode` and `App.overlay_stack`. The
+`transition()` function returns the current mode unchanged: `(Overlay { prior }, Escape)`
+→ `Overlay { prior }` (identity). No mutation to `App.overlay_stack` occurs. The overlay
+is hidden when the user
 presses `Ctrl-\` at the tmux level, which spawns a new `monocle` process on the next open.
 Prompts remain queued in the daemon's pending-prompt registry (`overlay_stack`). On the next `Ctrl-\`,
 the new TUI process receives the full current overlay stack in the initial state push
@@ -41,17 +42,17 @@ being answered or dropped.
 
 ## Preconditions
 
-1. `AppMode` is `Overlay { stack, prior }` with `stack.len() >= 1`.
+1. `AppMode` is `Overlay { prior }` and `App.overlay_stack.len() >= 1`.
 2. The `PerContext` binding table for `AppMode::Overlay` maps `[Esc]` to `Action::Escape`.
 3. The daemon's pending-prompt registry (`overlay_stack` in the IPC `InitialState` push) holds the same prompts as the TUI's local
-   `stack` (they are synchronized; the daemon is the durable store per BC-2.04 / SS-tui.md
+   `App.overlay_stack` (they are synchronized; the daemon is the durable store per BC-2.04 / SS-tui.md
    §Ctrl-\ Integration).
 
 ## Postconditions
 
-1. **No stack modification:** `transition(Overlay { stack, prior }, Escape)` returns
-   `Overlay { stack, prior }` verbatim. `stack.len()` is unchanged. No `PromptModal` is
-   popped, pushed, or modified.
+1. **No stack modification:** `transition(Overlay { prior }, Escape)` returns
+   `Overlay { prior }` verbatim. `App.overlay_stack` is not touched; `App.overlay_stack.len()` is
+   unchanged. No `PromptModal` is popped, pushed, or modified.
 2. **No IPC message sent:** The TUI does NOT send any `ClientToServer::PermissionDecision`, `ClearOverlay`,
    or other IPC message to the daemon on `[Esc]`. The daemon's pending-prompt registry (`overlay_stack`) is
    unchanged.
@@ -62,8 +63,9 @@ being answered or dropped.
 4. **Prompts survive hide/show via daemon ownership:** The daemon holds the pending-prompt registry (`overlay_stack` in IPC).
    When the user opens `Ctrl-\` again, `tmux display-popup`
    spawns a NEW `monocle` process. The new TUI process receives the current
-   `overlay_stack` in the daemon's initial state push (BC-2.05.002) and transitions to
-   `AppMode::Overlay { stack: <VecDeque<PromptModal> built from overlay_stack>, prior: FocusSnapshot::Sessions }`.
+   `overlay_stack` in the daemon's initial state push (BC-2.05.002), populates
+   `App.overlay_stack` via `payload_to_modal()`, and transitions to
+   `AppMode::Overlay { prior: FocusSnapshot::Sessions }`.
 5. **Overlay badge preserved on next show:** The next TUI instance receives the same
    number of queued prompts from the daemon. The badge counter in the status bar reflects
    the current `stack.len()` on render, which matches the daemon's queue.
@@ -76,12 +78,12 @@ being answered or dropped.
 
 ## Invariants
 
-1. `[Esc]` in `AppMode::Overlay` is strictly a no-op: zero stack changes, zero IPC sends,
+1. `[Esc]` in `AppMode::Overlay` is strictly a no-op: zero `App.overlay_stack` changes, zero IPC sends,
    zero mode transitions. This is enforced by the `transition()` identity arm:
    `(mode @ AppMode::Overlay { .. }, Action::Escape) => mode`.
 2. This invariant is the SOQ-3 complement. SOQ-3 states that overlay prompts must survive
    the `Ctrl-\` hide/show cycle. The mechanism is: (a) daemon owns `overlay_stack` (IPC); (b)
-   `[Esc]` sends no decision; (c) each new TUI process loads the queue from the daemon.
+   `[Esc]` sends no decision and does not touch `App.overlay_stack`; (c) each new TUI process loads the queue from the daemon.
 3. `[Esc]` in `AppMode::Filtering` has DIFFERENT behavior: it clears the filter and
    returns to `Dashboard { focused: prior }` (per BC-2.06.006). The `[Esc]` no-op behavior
    is specific to `AppMode::Overlay`.
@@ -93,7 +95,7 @@ being answered or dropped.
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-092 | User presses `[Esc]` multiple times in `AppMode::Overlay` | Each press is a no-op; stack unchanged; no error; no visual change in the overlay (except the hint line may flash if there is a keypress indicator) |
-| EC-093 | User presses `[Esc]` then immediately presses `[3]` (Reject) | `[Esc]` is a no-op; `[3]` sends Reject + pops the front item; correct behavior |
+| EC-093 | User presses `[Esc]` then immediately presses `[n/r]` (Reject) | `[Esc]` is a no-op; `[n/r]` sends Reject IPC; modal remains until `PermissionPromptResolved` arrives from daemon; correct behavior |
 | EC-094 | New `PermissionPromptQueued` IPC message arrives while the user is in `Overlay` AppMode (process still alive, not hidden) | The new `PromptModal` is pushed to the back of `stack`; if already `Overlay`, the existing `prior` is preserved; overlay badge increments; no `[Esc]` involvement |
 | EC-095 | User hides popup (`Ctrl-\`) then daemon disconnects while popup is hidden | On next `Ctrl-\`, new TUI process connects to daemon; if daemon is down, TUI renders "Daemon disconnected — reconnecting..." (BC-2.06.016 path); no overlay shown because there is no daemon to push queued prompts |
 | EC-096 | `stack.len() == 0` when `[Esc]` is dispatched (impossible in valid state) | `transition()` identity arm returns `Overlay { stack: empty, prior }` — but the empty-stack collapse (BC-2.06.001) guarantees this state cannot be reached via normal decision paths; if it occurs in testing, the no-op arm returns the impossible state unchanged |
@@ -102,9 +104,9 @@ being answered or dropped.
 
 | Input (mode, action) | Expected Output | Category |
 |----------------------|----------------|----------|
-| `Overlay { stack: [P1], prior: Sessions }`, `Escape` | `Overlay { stack: [P1], prior: Sessions }` — no change | happy-path |
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `Escape` | `Overlay { stack: [P1, P2], prior: Sessions }` — no change | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }`, `Escape` × 5 | `Overlay { stack: [P1], prior: Sessions }` — still no change | edge-case |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `Escape` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) — no change | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]), `Escape` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]) — no change | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]), `Escape` × 5 | `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) — still no change | edge-case |
 | `Filtering { panel: Sessions, query: "foo", prior: Sessions }`, `Escape` | `Dashboard { focused: Sessions }` — Esc clears filter (different behavior than Overlay Esc) | edge-case |
 | `Fullscreen { panel: Sessions, prior: Sessions }`, `Escape` | `Dashboard { focused: Sessions }` — Esc exits fullscreen (different behavior than Overlay Esc) | edge-case |
 
@@ -112,7 +114,7 @@ being answered or dropped.
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | `Action::Escape` in `AppMode::Overlay` never modifies `stack` | Kani proof harness |
+| VP-TBD | `Action::Escape` in `AppMode::Overlay` never modifies `App.overlay_stack` | unit test (assert `App.overlay_stack.len()` unchanged after Esc) |
 | VP-TBD | `Action::Escape` in `AppMode::Overlay` never sends IPC message | unit test (assert `ipc_tx` empty after Esc in Overlay) |
 | VP-TBD | Overlay stack is preserved across TUI process restart (daemon-ownership mechanism) | integration test (spawn TUI, open overlay, kill TUI process, spawn new TUI, assert overlay stack received from daemon) |
 
@@ -125,7 +127,7 @@ being answered or dropped.
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: `[Esc]` sends no IPC message and writes no files) |
 | Architecture Module | monocle-core (transition() Overlay+Escape identity arm); monocle-tui (daemon-ownership of pending-prompt registry via IPC initial state push `overlay_stack`) per ARCH-INDEX SS-06 |
 | Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine §Transition Function Contract (Overlay+Escape no-op arm and SOQ-3 comment); §Permission Overlay §Overlay Stack Lifecycle step 4 (Hide); §Ctrl-\ Integration §State Preservation Across Hide/Show |
-| Cross-Ref | BC-2.06.013 (Reject — CRITICAL DISTINCTION: `[3]` pops and sends deny; `[Esc]` does neither), BC-2.05.002 (TUI initial state push — mechanism by which overlay survives TUI process restart), BC-2.06.001 (pure transition function — Esc identity arm), BC-2.06.016 (overlay cleared on daemon disconnect — different from hide) |
+| Cross-Ref | BC-2.06.013 (Reject — CRITICAL DISTINCTION: `[n/r]` sends deny IPC and waits for `PermissionPromptResolved`; `[Esc]` does neither), BC-2.05.002 (TUI initial state push — mechanism by which overlay survives TUI process restart), BC-2.06.001 (pure transition function — Esc identity arm), BC-2.06.016 (overlay cleared on daemon disconnect — different from hide) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_014_esc_in_overlay_is_noop` |
 | Stories | S-TBD (filled by story-writer) |
@@ -133,7 +135,7 @@ being answered or dropped.
 ## Related BCs
 
 - [BC-2.06.001] — depends on: `[Esc]` no-op is the identity arm in the `transition()` pure function defined in BC-2.06.001
-- [BC-2.06.013] — CRITICAL DISTINCTION: Reject (key `3`) pops and sends deny; `[Esc]` is a no-op; these must never be conflated
+- [BC-2.06.013] — CRITICAL DISTINCTION: Reject (keys `[n/r]`) sends deny IPC and waits for `PermissionPromptResolved`; `[Esc]` is a no-op; these must never be conflated
 - [BC-2.05.002] — depends on: TUI initial state push is the mechanism by which queued prompts survive the `Ctrl-\` hide/show cycle
 - [BC-2.06.016] — composes with: daemon disconnect clears the overlay (different from hide); the `[Esc]` no-op applies only when the daemon is still connected
 
@@ -186,6 +188,23 @@ S-TBD — Implement Esc no-op behavior in Overlay mode and verify overlay surviv
   The prohibition list explicitly named the IPC message type; updated to canonical name
   per SS-ipc.md §Client-to-Server Messages.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.5
+
+**Stale keybinding + pop-semantics fix in EC-093 and cross-references** (2026-05-27T00:00:00Z):
+- EC-093: `[3]` → `[n/r]` (Reject keybinding updated per BC-2.06.013 v1.1.0).
+- EC-093: "sends Reject + pops the front item" → "sends Reject IPC; modal remains until `PermissionPromptResolved` arrives from daemon" (per BC-2.06.023 wait-for-resolved semantics).
+- Related BCs entry for BC-2.06.013: "Reject (key `3`) pops and sends deny" → "Reject (keys `[n/r]`) sends deny IPC and waits for `PermissionPromptResolved`".
+- Traceability Cross-Ref: same correction applied to the BC-2.06.013 parenthetical.
+- SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
+
+## §Trace v1.0.6
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. Description: `(Overlay { stack, prior }, Escape)` → `(Overlay { prior }, Escape)` identity; `App.overlay_stack` explicitly noted as unmodified. Preconditions, Postconditions, Invariants, and test vectors updated throughout.
+- Postcondition 4: rebuild path now explicitly states populate `App.overlay_stack` via `payload_to_modal()` then transition to `Overlay { prior: FocusSnapshot::Sessions }`.
+- VP: "never modifies `stack`" → "never modifies `App.overlay_stack`".
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-28T00:00:00Z > v1.0.5. PASS.
 
 ## §Trace v1.0.4
 

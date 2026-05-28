@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T12:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -29,11 +29,13 @@ removal_reason: null
 ## Description
 
 When the TUI receives a `PermissionPromptQueued` IPC message from the daemon, it constructs
-a `PromptModal` from the message payload and pushes it to the back of the
-`VecDeque<PromptModal>` in the current overlay stack. If `AppMode` is `Dashboard` or
-`Filtering`, the TUI transitions to `AppMode::Overlay { stack: [new_prompt], prior: <current_focus> }`.
-If `AppMode` is already `Overlay`, the new `PromptModal` is appended to the existing stack's
-`VecDeque` without changing the `prior` focus. This is the entry point for the permission
+a `PromptModal` from the message payload and pushes it to the back of `App.overlay_stack:
+VecDeque<PromptModal>` — the single source of truth for the modal stack. If `AppMode` is
+`Dashboard` or `Filtering`, the TUI then transitions `AppMode` to
+`AppMode::Overlay { prior: <current_focus> }`. If `AppMode` is already `Overlay`, the
+`PromptModal` is appended to `App.overlay_stack` without changing the `AppMode::Overlay::prior`
+field. Note: the modal stack lives in `App.overlay_stack` exclusively; the `Overlay` variant
+carries only `{ prior: FocusSnapshot }`. This is the entry point for the permission
 overlay system and the TUI-side counterpart of BC-2.05.005.
 
 ## Preconditions
@@ -61,21 +63,23 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
    - `tool_payload` constructed from message payload fields (Edit fields → `ToolPayload::Edit`,
      Bash command → `ToolPayload::Bash`, Read path → `ToolPayload::Read`, other → `ToolPayload::Generic`).
    - `received_at: Instant::now()` (set at message-handling time, not IPC receive time).
-2. **Push to back of VecDeque:** The `PromptModal` is pushed to the back of the overlay
-   stack via `VecDeque::push_back`. The front of the queue is always the next prompt to be
-   displayed and decided upon.
+2. **Push to back of `App.overlay_stack`:** The `PromptModal` is pushed to the back of
+   `App.overlay_stack` via `VecDeque::push_back`. The front of the queue is always the next
+   prompt to be displayed and decided upon.
 3. **Transition from `Dashboard` or `Filtering`:** If `AppMode` at message receipt is
-   `Dashboard { focused }` or `Filtering { prior, .. }`, the TUI transitions to:
-   `AppMode::Overlay { stack: VecDeque::from([new_prompt]), prior: <focused_or_prior> }`.
+   `Dashboard { focused }` or `Filtering { prior, .. }`, the TUI:
+   (a) Pushes the new `PromptModal` to `App.overlay_stack`.
+   (b) Transitions `AppMode` to `AppMode::Overlay { prior: <focused_or_prior> }`.
    In the `Filtering` case, `prior` is taken from the `Filtering::prior` field (the
    `FocusSnapshot` captured before filter mode was entered).
-4. **Extend existing `Overlay` stack:** If `AppMode` at message receipt is already
-   `Overlay { mut stack, prior }`, the new `PromptModal` is pushed to the back of `stack`.
-   The `prior` field is NOT changed — the original focus context (from when the overlay was
-   first opened) is preserved through the entire overlay lifetime.
+   The `Overlay` variant carries only `{ prior }` — the stack contents live in `App.overlay_stack`.
+4. **Extend existing `App.overlay_stack`:** If `AppMode` at message receipt is already
+   `Overlay { prior }`, the new `PromptModal` is pushed to the back of `App.overlay_stack`.
+   The `AppMode::Overlay::prior` field is NOT changed — the original focus context (from
+   when the overlay was first entered) is preserved through the entire overlay lifetime.
 5. **Overlay badge counter increments:** After each push, the status bar overlay badge
-   counter (count of items in `stack`) is updated. On the next draw tick, the status bar
-   renders `[N prompts]` in the breadcrumb (e.g., "Dashboard > Overlay [2 prompts]").
+   counter (count of items in `App.overlay_stack`) is updated. On the next draw tick, the
+   status bar renders `[N prompts]` in the breadcrumb (e.g., "Dashboard > Overlay [2 prompts]").
 6. **Rendering on next tick:** The push path does not call `draw()` directly. The updated
    `AppMode` is in place before the next draw tick (≤16ms), which renders the overlay with
    the new front prompt.
@@ -86,20 +90,22 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
 
 ## Invariants
 
-1. **`VecDeque` is never empty in `Overlay` state:** This invariant is guaranteed by
-   BC-2.06.001 Postcondition 3. The push path always adds at least one item to the VecDeque
-   when constructing `AppMode::Overlay`. The transition path pops the front on decision and
-   collapses to `Dashboard` if the result is empty — so a zero-item `Overlay` is unreachable.
-2. **`prior` is set once per Overlay lifetime:** The `prior: FocusSnapshot` field is
-   captured when the `Overlay` variant is first constructed (Postcondition 3). It is not
-   updated by subsequent pushes (Postcondition 4). This ensures `Escape` from `Overlay`
-   or the final decision always restores to the panel that had focus before the first
-   prompt arrived.
+1. **`App.overlay_stack` is never empty while `AppMode` is `Overlay`:** The push path always
+   adds at least one item to `App.overlay_stack` when transitioning to `AppMode::Overlay`.
+   The App-level `retain()`-based removal collapses `AppMode` to `Dashboard` when
+   `App.overlay_stack` empties — so `Overlay` with an empty `App.overlay_stack` is
+   unreachable in steady state (per BC-2.06.001 Postcondition 3 as updated).
+2. **`prior` is set once per Overlay lifetime:** The `prior: FocusSnapshot` in
+   `AppMode::Overlay { prior }` is captured when the `Overlay` variant is first constructed
+   (Postcondition 3). It is not updated by subsequent pushes (Postcondition 4). This ensures
+   `Escape` from `Overlay` or the final decision always restores to the panel that had focus
+   before the first prompt arrived.
 3. **`Fullscreen` mode handling:** If `AppMode` is `Fullscreen` when `PermissionPromptQueued`
-   arrives, the TUI pushes the prompt and transitions to `AppMode::Overlay { stack: [new_prompt], prior: Fullscreen::prior }`.
-   The Fullscreen view is abandoned in favor of the permission overlay. The `prior` field
-   carries the `FocusSnapshot` from the Fullscreen's `prior` (which in turn came from the
-   Dashboard focus before Fullscreen was entered), ensuring focus is restored correctly.
+   arrives, the TUI pushes the prompt to `App.overlay_stack` and transitions to
+   `AppMode::Overlay { prior: Fullscreen::prior }`. The Fullscreen view is abandoned in favor
+   of the permission overlay. The `prior` field carries the `FocusSnapshot` from the
+   Fullscreen's `prior` (which in turn came from the Dashboard focus before Fullscreen was
+   entered), ensuring focus is restored correctly.
 4. **`PromptModal::received_at` is set at TUI handling time, not at IPC wire time.** This
    means `received_at` measures the time from daemon send to TUI consumption. It is used for
    display purposes (queue age) and is not used for hook timeout decisions (the daemon
@@ -109,30 +115,30 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-100 | Two `PermissionPromptQueued` messages arrive in the same draw tick drain phase | Both are processed sequentially in the drain loop; both prompts are pushed to the VecDeque; `AppMode::Overlay { stack: [P1, P2], .. }` after the drain; next draw renders overlay with P1 in front |
-| EC-101 | `PermissionPromptQueued` arrives when `AppMode` is `Overlay` with 5 items already | Sixth item pushed to back; `AppMode::Overlay { stack: [P1..P6], prior }` — no upper bound on VecDeque size (bounded by system memory, not by the TUI logic) |
-| EC-102 | `PermissionPromptQueued` arrives when `AppMode` is `Fullscreen` | Fullscreen abandoned; transitions to `Overlay { stack: [new_prompt], prior: Fullscreen::prior }` (see Invariant 3) |
+| EC-100 | Two `PermissionPromptQueued` messages arrive in the same draw tick drain phase | Both are processed sequentially in the drain loop; both prompts pushed to `App.overlay_stack`; `AppMode::Overlay { prior }` (App.overlay_stack = [P1, P2]) after the drain; next draw renders overlay with P1 in front |
+| EC-101 | `PermissionPromptQueued` arrives when `AppMode` is `Overlay` with 5 items already | Sixth item pushed to back of `App.overlay_stack`; `AppMode::Overlay { prior }` unchanged; App.overlay_stack now has 6 entries — no upper bound on VecDeque size |
+| EC-102 | `PermissionPromptQueued` arrives when `AppMode` is `Fullscreen` | Fullscreen abandoned; new_prompt pushed to `App.overlay_stack`; `AppMode` transitions to `Overlay { prior: Fullscreen::prior }` (see Invariant 3) |
 | EC-103 | `PermissionPromptQueued` deserialization fails (malformed IPC message) | TUI logs error via `tracing::error!` and discards the message; no `PromptModal` is pushed; `AppMode` unchanged |
-| EC-104 | `PermissionPromptQueued` arrives during Filtering mode | `Overlay { stack: [new_prompt], prior: Filtering::prior }` — Filtering is abandoned; the FocusSnapshot from before filter mode was entered is used as `prior` |
+| EC-104 | `PermissionPromptQueued` arrives during Filtering mode | new_prompt pushed to `App.overlay_stack`; Filtering abandoned; `AppMode` transitions to `Overlay { prior: Filtering::prior }` — the FocusSnapshot from before filter mode was entered is used as `prior` |
 | EC-105 | `PermissionPromptQueued` arrives after daemon disconnect clear (BC-2.06.016) has cleared the stack | This is impossible during normal operation: after disconnect, the IPC channel is closed and no new messages arrive. A reconnection triggers a fresh initial state push, not individual `PermissionPromptQueued` messages for old prompts |
 
 ## Canonical Test Vectors
 
 | Initial AppMode | IPC Message | Expected AppMode | Category |
 |-----------------|-------------|-----------------|----------|
-| `Dashboard { focused: Sessions }` | `PermissionPromptQueued { prompt_id: P1, tool: Edit, .. }` | `Overlay { stack: [P1], prior: Sessions }` | happy-path |
-| `Overlay { stack: [P1], prior: Sessions }` | `PermissionPromptQueued { prompt_id: P2, tool: Bash, .. }` | `Overlay { stack: [P1, P2], prior: Sessions }` (prior unchanged) | happy-path |
-| `Filtering { panel: Sessions, query: "foo", prior: Sessions }` | `PermissionPromptQueued { prompt_id: P1, .. }` | `Overlay { stack: [P1], prior: Sessions }` | edge-case |
-| `Fullscreen { panel: Sessions, prior: Sessions }` | `PermissionPromptQueued { prompt_id: P1, .. }` | `Overlay { stack: [P1], prior: Sessions }` | edge-case |
-| `Overlay { stack: [P1, P2], prior: EventRibbon }` | `PermissionPromptQueued { prompt_id: P3, .. }` | `Overlay { stack: [P1, P2, P3], prior: EventRibbon }` (prior still EventRibbon) | edge-case |
+| `Dashboard { focused: Sessions }` | `PermissionPromptQueued { prompt_id: P1, tool: Edit, .. }` | App.overlay_stack = [P1]; `AppMode` → `Overlay { prior: Sessions }` | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1]) | `PermissionPromptQueued { prompt_id: P2, tool: Bash, .. }` | App.overlay_stack = [P1, P2]; `AppMode` stays `Overlay { prior: Sessions }` (prior unchanged) | happy-path |
+| `Filtering { panel: Sessions, query: "foo", prior: Sessions }` | `PermissionPromptQueued { prompt_id: P1, .. }` | App.overlay_stack = [P1]; `AppMode` → `Overlay { prior: Sessions }` | edge-case |
+| `Fullscreen { panel: Sessions, prior: Sessions }` | `PermissionPromptQueued { prompt_id: P1, .. }` | App.overlay_stack = [P1]; `AppMode` → `Overlay { prior: Sessions }` | edge-case |
+| `Overlay { prior: EventRibbon }` (App.overlay_stack = [P1, P2]) | `PermissionPromptQueued { prompt_id: P3, .. }` | App.overlay_stack = [P1, P2, P3]; `AppMode` stays `Overlay { prior: EventRibbon }` (prior still EventRibbon) | edge-case |
 
 ## Verification Properties
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | Push from `Dashboard` produces `Overlay { stack: [P1], prior: <captured focus> }` | Integration test (mock IPC channel) |
-| VP-TBD | Push from `Overlay` extends existing stack without changing `prior` | Integration test (mock IPC channel) |
-| VP-TBD | Push from `Fullscreen` transitions to Overlay with Fullscreen's prior | Integration test (mock IPC channel) |
+| VP-TBD | Push from `Dashboard` populates `App.overlay_stack = [P1]` and transitions `AppMode` to `Overlay { prior: <captured focus> }` | Integration test (mock IPC channel) |
+| VP-TBD | Push from `Overlay` extends `App.overlay_stack` without changing `AppMode::Overlay::prior` | Integration test (mock IPC channel) |
+| VP-TBD | Push from `Fullscreen` transitions to `Overlay { prior: Fullscreen::prior }` | Integration test (mock IPC channel) |
 | VP-TBD | Malformed IPC message causes error log and no panic | Unit test (error injection) |
 | VP-TBD | Two simultaneous pushes in one drain cycle produce stack of 2 | Integration test |
 
@@ -218,3 +224,16 @@ S-TBD — Implement App::handle_ipc_message() for PermissionPromptQueued; VecDeq
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.0
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. This BC is the primary push-path entry point; non-mechanical rewrite required.
+- Description: push now goes to `App.overlay_stack: VecDeque<PromptModal>` (single source of truth); `AppMode::Overlay` variant carries only `{ prior: FocusSnapshot }`. The two-step sequence (push to stack, then update AppMode) is explicit.
+- Postconditions 2-4: all references to `stack` inside `Overlay { stack, prior }` replaced with `App.overlay_stack`. Postconditions 3-4 now describe the two-step App-level operation (push then AppMode update) rather than constructing `Overlay { stack: VecDeque::from([...]) }`.
+- Invariants 1-3: reframed with `App.overlay_stack` as the container; `AppMode::Overlay { prior }` as the mode signal.
+- EC-100, 101, 102, 104: all `Overlay { stack: [...] }` shapes replaced.
+- Test vectors: all shapes updated.
+- VP table: push assertions updated to reference `App.overlay_stack`.
+- Note: `transition()` is NOT called for the push path — this BC's operation is an App-level effectful mutation (`App.overlay_stack.push_back` + `app.mode = Overlay { prior }`). This has always been the case (Invariant 4 of BC-2.06.001); the architect decision makes it structurally enforced.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-28T00:00:00Z > v1.0.4. PASS.

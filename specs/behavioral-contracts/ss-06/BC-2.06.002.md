@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T12:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "[pending]"
@@ -56,15 +56,17 @@ where modal-close from Sessions loses the Sessions context.
    is called, the returned `AppMode` is `Dashboard { focused: prior }` where `prior` is
    exactly the `FocusSnapshot` captured when `Fullscreen` was entered. The `panel`
    argument is not used to derive `focused`.
-2. **Overlay close restores prior focus (stack emptied):** When a decision action
-   (`PermissionAcceptOnce`, `PermissionAcceptAlways`, `PermissionReject`) is applied to
-   an `Overlay` state whose `stack` becomes empty, the returned `AppMode` is
-   `Dashboard { focused: prior }` where `prior` is the `FocusSnapshot` captured when the
-   overlay was first opened (not when the final item was popped).
+2. **Overlay close restores prior focus (stack emptied):** When `App.overlay_stack`
+   becomes empty after a prompt removal (triggered by `PermissionAcceptOnce`,
+   `PermissionAcceptAlways`, `PermissionReject`, or a daemon-initiated `PermissionPromptResolved`),
+   the TUI collapses `AppMode` to `Dashboard { focused: prior }` where `prior` is the
+   `FocusSnapshot` captured in the `Overlay { prior }` variant when the overlay was first
+   entered (not when the final item was removed).
 3. **Overlay `prior` is not mutated by stack rotation:** `Action::OverlayCycleNext` rotates
-   the `VecDeque` (front → back) but does NOT change the `prior: FocusSnapshot` field.
-   After any number of `OverlayCycleNext` actions, the `prior` field remains identical to
-   the value it held when the `Overlay` variant was first constructed.
+   `App.overlay_stack` (front → back) but does NOT change the `prior: FocusSnapshot` field
+   of `AppMode::Overlay`. After any number of `OverlayCycleNext` actions, the `prior` field
+   in `AppMode::Overlay { prior }` remains identical to the value it held when the `Overlay`
+   variant was first constructed.
 4. **Filtering close restores prior focus:** When `transition(AppMode::Filtering { prior, .. }, Action::Escape)`
    or `transition(AppMode::Filtering { prior, .. }, Action::FilterClear)` is called, the
    returned `AppMode` is `Dashboard { focused: prior }`.
@@ -88,7 +90,7 @@ where modal-close from Sessions loses the Sessions context.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-065 | User opens Overlay (Sessions focused), then cycles stack 3 times, then decides | `Dashboard { focused: Sessions }` — `prior` is unchanged by stack cycling |
+| EC-065 | User opens Overlay (Sessions focused), then cycles `App.overlay_stack` 3 times via `OverlayCycleNext`, then decides | `Dashboard { focused: Sessions }` — `prior` in `AppMode::Overlay { prior }` is unchanged by stack cycling |
 | EC-066 | User opens Fullscreen from EventRibbon panel | `Fullscreen { panel: EventRibbon, prior: EventRibbon }` entered; `Escape` returns `Dashboard { focused: EventRibbon }` |
 | EC-067 | User opens Filtering, types "foo", clears with `FilterClear` | `Dashboard { focused: <prior at filter-open> }` — focus is the panel that was focused before `/` was pressed |
 | EC-068 | User presses `Escape` in `Dashboard` mode | Identity transition: `Dashboard { focused: <current> }` — no focus change |
@@ -100,16 +102,16 @@ where modal-close from Sessions loses the Sessions context.
 |----------------------|--------------------------|----------|
 | `Fullscreen { panel: Sessions, prior: Sessions }`, `Escape` | `Dashboard { focused: Sessions }` | happy-path |
 | `Fullscreen { panel: EventRibbon, prior: EventRibbon }`, `Escape` | `Dashboard { focused: EventRibbon }` | happy-path |
-| `Overlay { stack: [P1], prior: EventRibbon }`, `PermissionAcceptOnce` | `Dashboard { focused: EventRibbon }` | happy-path |
-| `Overlay { stack: [P1, P2], prior: Sessions }`, `OverlayCycleNext` then `PermissionReject` | `Overlay { stack: [P1], prior: Sessions }` (prior unchanged by cycle) | edge-case |
+| `Overlay { prior: EventRibbon }` (App.overlay_stack = [P1]), `PermissionAcceptOnce` | `Dashboard { focused: EventRibbon }` after `PermissionPromptResolved` empties `App.overlay_stack` | happy-path |
+| `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]), `OverlayCycleNext` then `PermissionReject` | `Overlay { prior: Sessions }` (App.overlay_stack = [P1] after resolution; prior unchanged by cycle) | edge-case |
 | `Filtering { panel: Sessions, query: "foo", prior: EventRibbon }`, `Escape` | `Dashboard { focused: EventRibbon }` | edge-case |
 
 ## Verification Properties
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | For all `(Overlay, decision-action)` inputs where stack empties, output is `Dashboard { focused: prior }` | Kani proof harness |
-| VP-TBD | For all `(Overlay, OverlayCycleNext)` inputs, output `prior` equals input `prior` | Kani proof harness |
+| VP-TBD | When `App.overlay_stack` empties after prompt removal while `AppMode` is `Overlay`, `AppMode` collapses to `Dashboard { focused: prior }` | Integration test (inject `PermissionPromptResolved` for last prompt; assert AppMode = Dashboard) |
+| VP-TBD | For all `(Overlay, OverlayCycleNext)` inputs, `AppMode::Overlay::prior` equals input `prior` (rotation does not mutate `prior`) | Kani proof harness |
 | VP-TBD | `FocusSnapshot::cycle()` is total and never panics | Unit test |
 
 ## Traceability
@@ -177,3 +179,14 @@ S-TBD — Implement FocusSnapshot enum with cycle() and to_panel_id() methods; v
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
+- Resolves F-S025-ADV3-BLOCKER-002. `App.overlay_stack: VecDeque<PromptModal>` is now the single source of truth for the modal stack. `AppMode::Overlay` carries only `{ prior: FocusSnapshot }`.
+- Postcondition 2: "stack becomes empty" reframed as `App.overlay_stack` emptying after `retain()` removal; "returned AppMode" → "TUI collapses AppMode"; collapse is App-level, not a `transition()` return.
+- Postcondition 3: rotation operates on `App.overlay_stack`, not on `AppMode::Overlay::stack`; `prior` field references now explicitly cite `AppMode::Overlay { prior }`.
+- EC-065: "cycles stack" → "cycles `App.overlay_stack`"; `prior` reference updated.
+- Test vectors: `Overlay { stack: [P1], prior: ... }` → `Overlay { prior: ... }` (App.overlay_stack noted).
+- VP table: collapse VP updated to integration test rather than Kani (the collapse is App-level effectful).
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.
