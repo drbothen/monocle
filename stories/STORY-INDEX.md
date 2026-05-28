@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.3"
+version: "5.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -71,7 +71,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | done | S-023 |
 | S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | done | — |
 | S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028 |
-| S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | not_started | S-023, S-025, S-026, S-029 |
+| S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | done | S-023, S-025, S-026, S-029 |
 | S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | not_started | S-026 |
 | S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | not_started | S-027, S-028, S-031 |
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | not_started | S-027, S-029 |
@@ -450,6 +450,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.4
+
+**Wave 6: S-022 flipped not_started → done** (2026-05-28):
+- S-022 Story Registry row: `not_started` → `done`. PR #27 merged at develop @ c7540539.
+- BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 22 production-invoking integration tests across 4 test files. 15 adversarial passes (3 consecutive NITPICK_ONLY convergence). 8 implementer rounds + 2 architect interventions (Pass 2 Option B ring_tail Vec<HookEventRecord>; Pass 6 Option D at-least-once delivery + TUI prompt_id idempotency in S-025/S-026). 30+ findings closed.
+- Wave 6: 1/4 done (8/34 pts). Unblocks S-023 + S-025 (parallel after S-022), S-026 (after S-023 + S-022).
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.28→v1.29 (done 24→25, not_started 8→7, points_complete 143→151); STATE.md v6.28→v6.29.
+- STORY-INDEX version bumped v5.3→v5.4.
 
 ## §Trace v5.3
 

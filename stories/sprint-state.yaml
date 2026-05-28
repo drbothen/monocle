@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.28"
+version: "1.29"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -332,12 +332,12 @@ stories:
     epic: EPIC-05
     wave: 6
     points: 8
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 6. BCs: BC-2.05.002, BC-2.05.005. Client connect + InitialState + PermissionPromptQueued. Depends on S-021, S-018."
+    completed_at: "2026-05-28"
+    pr_url: "https://github.com/drbothen/monocle/pull/27"
+    notes: "Wave 6 serial-first prerequisite. PR #27 merged at develop @ c7540539. BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs implemented. 15 adversarial passes (3 consecutive NITPICK_ONLY convergence). 8 implementer rounds + 2 architect interventions (Pass 2 Option B ring_tail Vec<HookEventRecord>; Pass 6 Option D at-least-once delivery + TUI prompt_id idempotency in S-025/S-026). 30+ findings closed. 22 production-invoking integration tests across 4 test files. Per-AC demo evidence in docs/demo-evidence/S-022/."
 
   - id: S-023
     title: "TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 8
+  not_started: 7
   in_progress: 0
   review: 0
-  done: 24
+  done: 25
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 143
+  points_complete: 151
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.29 updates (2026-05-28):
+  # - S-022 flipped not_started → done (PR #27 merged c7540539; BC-2.05.002+005 satisfied; 22 tests; adv 15 passes 3 NITPICK_ONLY convergence; 8 implementer rounds + 2 architect interventions)
+  # - done: 24 → 25; not_started: 8 → 7; points_complete: 143 → 151
+  # - Wave 6: 1/4 done (8/34 pts). Unblocks S-023 + S-025 (parallel), S-026 (after S-023).
   # v1.28 updates (2026-05-27):
   # - S-018 flipped not_started → done (PR #26 merged 654e281; BC-2.04.007+008+009+011 satisfied; 46 tests; adv 10→4→4; 3/3 convergence)
   # - S-019 flipped not_started → done (PR #25 merged 11540fc; BC-2.04.002+003 satisfied; 25 tests; adv 7→2→1; 3/3 convergence)

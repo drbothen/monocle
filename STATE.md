@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.28"
+version: "6.29"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T12:30:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-022 CONVERGED at Pass 15 (3 consecutive NITPICK_ONLY). Advance to demo-recorder + pr-manager."
+current_step: "Wave 6 in progress. S-022 DONE (D-184). S-023, S-025 ready (parallel after S-022). S-026 after S-023."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183)."
-awaiting: "S-022 delivery (TUI Client Connect + Initial State + Permission Msg Types)."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184)."
+awaiting: "S-023 + S-025 parallel delivery."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -211,33 +211,30 @@ next_session_resume_protocol: |
          S-021 (PR#23, acaacb9, 49 tests) — new monocle-ipc crate.
 
   DEVELOP BRANCH STATE:
-    4. develop @ 1ce7838. Verify: git log --oneline -5 develop
-    5. 753 tests total. clippy clean. fmt clean.
+    4. develop @ c7540539 (S-022 merged via PR #27). Verify: git log --oneline -5 develop
+    5. 753+ tests total. clippy clean. fmt clean.
     6. Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
        monocle (binary), monocle-config, monocle-ipc, xtask.
 
   ARTIFACT VERSIONS:
-    7. STORY-INDEX v5.2. sprint-state v1.28. BC-INDEX v1.23 (113 BCs).
+    7. STORY-INDEX v5.4. sprint-state v1.29. BC-INDEX v1.23 (113 BCs).
        SS-tui v1.7.0. ARCH-INDEX v1.0.16. PRD v1.27.2.
 
-  NEXT ACTION — WAVE 6 IN PROGRESS (D-183 AUTHORIZED):
-    8. Wave 6: 4 stories, 34 pts total. AUTHORIZED (D-183). S-022 SERIAL FIRST.
-       S-022 (8 pts, EPIC-05) — TUI Connect + Initial State + Permission Prompt — IN PROGRESS.
-         Depends on: S-021 (done), S-018 (done).
-         Blocks: S-023, S-025, S-026.
-         Target: monocle-ipc. BCs: BC-2.05.002, BC-2.05.005.
-       S-023 (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — after S-022.
-         Depends on: S-022, S-019 (done).
+  NEXT ACTION — WAVE 6 IN PROGRESS (D-183 AUTHORIZED, S-022 DONE D-184):
+    8. Wave 6: 4 stories, 34 pts total. 1/4 done (S-022, 8 pts).
+       S-022 (8 pts, EPIC-05) — DONE. PR #27 @ c7540539. Unblocks S-023 + S-025.
+       S-023 (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — READY.
+         Depends on: S-022 (done), S-019 (done).
          Target: monocle-ipc. BCs: BC-2.05.006, BC-2.05.007.
-       S-025 (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — after S-022.
-         Depends on: S-022, S-024 (done), S-030 (done).
+       S-025 (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — READY.
+         Depends on: S-022 (done), S-024 (done), S-030 (done).
          Target: monocle-tui. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007.
        S-026 (13 pts, EPIC-06) — Permission Overlay Core — after S-022 and S-023.
-         Depends on: S-022, S-023, S-024 (done).
+         Depends on: S-022 (done), S-023, S-024 (done).
          Target: monocle-tui. BCs: BC-2.06.008-014, 016, 023, 024.
 
-       EXECUTION ORDER: S-022 serial first → (S-023 ∥ S-025) → S-026.
-       Dispatch S-022 via deliver-story skill immediately.
+       EXECUTION ORDER: (S-023 ∥ S-025) in parallel → S-026.
+       Dispatch S-023 and S-025 in parallel via deliver-story skill.
 
   NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix unless specifically tasked):
     9. ADV-W5GATE-HIGH-001: DaemonState wiring integration story (route to story-writer).
@@ -272,7 +269,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 5 GATE PASSED (D-182) | 2026-05-27 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. 24/33 stories done (143/195 pts). Wave 6 ready. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 1/4 done (D-184) | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 1/4 done (S-022, 8 pts). 25/33 stories done (151/195 pts). S-023 + S-025 parallel next. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -285,7 +282,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 1ce7838. 753 tests, 0 failures. 24/33 stories done, 143/195 pts (73%). Wave 5 gate PASSED (D-182). Wave 6 ready: S-022, S-023, S-025, S-026 (4 stories, 34 pts).
+develop @ 1ce7838. 753 tests, 0 failures. 25/33 stories done, 151/195 pts (77%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539). S-023 + S-025 parallel next.
 
 ## Blocking Issues
 
@@ -306,13 +303,14 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-181 | Wave 5 COMPLETE — 5/5 stories done, 753 tests, 24/33 stories (143/195 pts). monocle-ipc crate added. | 2026-05-27 | orchestrator |
 | D-182 | Wave 5 gate PASSED (753 tests, 0 failures, clippy/fmt clean). DTU SKIP. ADV PASS (0 CRIT, 0 HIGH blocking; 2 HIGH obs tracked). Demo PASS (5/5). Holdout PASS (mean 0.94, min 0.80). develop @ 1ce7838. Wave 6 unblocked. | 2026-05-27 | orchestrator |
 | D-183 | Wave 6 AUTHORIZED — 4 stories (S-022, S-023, S-025, S-026), 34 pts. Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026. All dependencies satisfied. Human approval: "Approve as documented" (2026-05-27). | 2026-05-27 | orchestrator |
+| D-184 | S-022 DELIVERED — PR #27 @ c7540539. BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (convergence at Pass 15). 8 implementer rounds + 2 architect interventions. BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Option B). SS-ipc v1.8.0 (at-least-once delivery per Option D). 22 integration tests. New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord. | 2026-05-28 | orchestrator |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v5.2** (33 stories, 195 pts). **sprint-state v1.28** (24/33 done, 143/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.7.0**. **STORY-INDEX v5.4** (33 stories, 195 pts). **sprint-state v1.29** (25/33 done, 151/195 pts). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -325,6 +323,19 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.29 (S-022 DELIVERED — Wave 6 first delivery, D-184)
+
+**S-022 DELIVERED** (2026-05-28): PR #27 merged at develop @ c7540539. D-184.
+- BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (3 consecutive NITPICK_ONLY convergence at Pass 15). 8 implementer rounds + 2 architect interventions. 30+ findings closed. 22 production-invoking integration tests across 4 test files.
+- BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Pass 2 Option B). SS-ipc v1.8.0 (at-least-once delivery per Pass 6 Option D). TUI prompt_id idempotency anchored in S-025/S-026.
+- New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord.
+- Unblocks: S-023 (TUI Reconnect), S-025 (TUI Skeleton), S-026 (Permission Overlay Core).
+- F-S022-ADV15-LOW-001: story AC-002 ring_tail doc drift deferred to story-writer post-merge (blocking=false, future anchor: story v1.3). Durable task register entry unchanged.
+- sprint-state v1.28→v1.29: done 24→25, not_started 8→7, points_complete 143→151.
+- STORY-INDEX v5.3→v5.4: S-022 row flipped not_started→done. §Trace v5.4 appended.
+- Frontmatter: version 6.28→6.29, phase remains phase-3-wave-6-IN-PROGRESS, awaiting → S-023 + S-025 parallel delivery.
+STATE v6.28 → v6.29.
 
 ## §Trace v6.28 (S-022 CONVERGED — PASS 15, 3 CONSECUTIVE NITPICK_ONLY)
 
