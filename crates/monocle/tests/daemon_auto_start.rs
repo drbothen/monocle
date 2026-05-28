@@ -54,11 +54,9 @@ fn write_lock_file(dir: &TempDir, pid: i32, port: u16, token: &str) {
         "started_at": "2026-05-27T00:00:00.000Z"
     });
     let path = dir.path().join("monocle.lock");
-    std::fs::write(
-        &path,
-        serde_json::to_string_pretty(&content).expect("json serialize"),
-    )
-    .expect("write lock file");
+    #[rustfmt::skip]
+    std::fs::write(&path, serde_json::to_string_pretty(&content).expect("json serialize")) // nosemgrep: monocle-no-naked-fs-write
+        .expect("write lock file");
 }
 
 /// Return the PID of the current process — guaranteed to be alive.
@@ -474,7 +472,7 @@ async fn test_BC_2_04_002_uds_pid_liveness_check_before_connect() {
     let sock_path = runtime_dir.path().join("monocle.sock");
     // Create a dummy file at the socket path (not a real socket; the liveness check
     // must happen before any UDS connection attempt, so the socket never gets connected).
-    std::fs::write(&sock_path, b"").expect("create dummy socket file");
+    std::fs::write(&sock_path, b"").expect("create dummy socket file"); // nosemgrep: monocle-no-naked-fs-write
 
     let result = temp_env::async_with_vars(
         [
