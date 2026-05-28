@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.29"
+version: "6.30"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-28T10:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "Wave 6 in progress. S-022 DONE (D-184). S-023, S-025 ready (parallel after S-022). S-026 after S-023."
+current_step: "Wave 6 in progress. S-022 DONE (D-184). HUMAN AUTHORIZED parallel S-023 + S-025 delivery (2026-05-28). Neither started yet — orchestrator should dispatch both via per-story-delivery in parallel."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184)."
-awaiting: "S-023 + S-025 parallel delivery."
+awaiting: "S-023 (5pts) + S-025 (8pts) parallel delivery. After both merge: S-026 (13pts)."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -193,15 +193,17 @@ durable_task_register:
     - "Sibling-sweep gaps in 3-place status tracking (sprint-state/STORY-INDEX/story-frontmatter)"
     - "clippy --all-targets vs --workspace scope gap (test code violations invisible in lib-only mode)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 5 GATE PASSED, WAVE 6 READY:
+  COLD-START RESUME GUIDE — WAVE 6 IN PROGRESS (S-022 DONE, S-023+S-025 AUTHORIZED):
 
   SESSION CONTEXT:
     This is a greenfield-with-reference-ingest Rust TUI project (monocle).
     The orchestrator (vsdd-factory:orchestrator) coordinates all work.
     Read CLAUDE.md at the repo root for project principles and conventions.
+    The production-grade-default principle in CLAUDE.md overrides all agent
+    prompt defaults; read it before dispatching any specialist agent.
 
   PIPELINE STATE:
-    1. Phase 1 (Spec Crystallization): DONE — 113 BCs, 7 subsystems, 5 ADRs.
+    1. Phase 1 (Spec Crystallization): DONE — 113 BCs, 7 subsystems, 5 ADRs, 15-pass adversarial CONVERGED.
     2. Phase 2 (Story Decomposition): DONE (D-173) — 33 stories, 195 pts, 24 holdout scenarios.
     3. Phase 3 (TDD Implementation): IN PROGRESS.
        - Waves 1-4: DONE (19 stories, 101 pts, gates D-164/D-166/D-167/D-175).
@@ -209,35 +211,57 @@ next_session_resume_protocol: |
          S-017 (PR#22, 06432cf, 29 tests), S-018 (PR#26, 654e281, 46 tests),
          S-019 (PR#25, 11540fc, 25 tests), S-020 (PR#24, f69d53a, 24 tests),
          S-021 (PR#23, acaacb9, 49 tests) — new monocle-ipc crate.
+       - Wave 6: 1/4 DONE. S-022 (8 pts) merged PR #27 @ c7540539 (2026-05-28).
 
   DEVELOP BRANCH STATE:
-    4. develop @ c7540539 (S-022 merged via PR #27). Verify: git log --oneline -5 develop
-    5. 753+ tests total. clippy clean. fmt clean.
-    6. Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
-       monocle (binary), monocle-config, monocle-ipc, xtask.
+    4. develop @ c7540539 (S-022 merged via PR #27, 2026-05-28T08:15:32Z).
+       Verify with: git log --oneline -3 develop
+    5. 753+ tests total. clippy clean. fmt clean (S-022 added 22 integration tests).
+    6. Workspace crates (8): monocle-core, monocle-runtime, monocle-proto,
+       monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+       NOTE: HookEventRecord relocated to monocle-ipc::types during S-022 (architect
+       Option B). monocle-runtime now imports monocle-ipc for shared HookEventRecord.
 
-  ARTIFACT VERSIONS:
-    7. STORY-INDEX v5.4. sprint-state v1.29. BC-INDEX v1.23 (113 BCs).
-       SS-tui v1.7.0. ARCH-INDEX v1.0.16. PRD v1.27.2.
+  ARTIFACT VERSIONS (verify with grep ^version: in each file):
+    7. STORY-INDEX v5.4. sprint-state v1.29 (25/33 done, 151/195 pts, 77%).
+       BC-INDEX v1.23 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
+       SS-ipc v1.8.0 (at-least-once delivery semantics). SS-tui v1.7.0.
+       SS-daemon-wiring v1.3.0. SS-config v1.3.0. SS-engine-module v1.1.22.
+       SS-conventions v1.31.0 (ADR-0006 non_exhaustive discipline codified).
+       BC-2.05.002 v1.0.5 (Invariant 4 added — TUI prompt_id idempotency for
+         at-least-once delivery; ring_tail type Vec<HookEventRecord>).
+       ADR-0006 ADDED: non_exhaustive structs with public constructors (ratifies
+         monocle-core new() pattern; all public structs follow this discipline).
+       S-025 v1.3, S-026 v1.3: BC-2.05.002 Invariant 4 anchored per architect
+         Option D directive.
 
-  NEXT ACTION — WAVE 6 IN PROGRESS (D-183 AUTHORIZED, S-022 DONE D-184):
-    8. Wave 6: 4 stories, 34 pts total. 1/4 done (S-022, 8 pts).
-       S-022 (8 pts, EPIC-05) — DONE. PR #27 @ c7540539. Unblocks S-023 + S-025.
-       S-023 (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — READY.
-         Depends on: S-022 (done), S-019 (done).
-         Target: monocle-ipc. BCs: BC-2.05.006, BC-2.05.007.
-       S-025 (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — READY.
-         Depends on: S-022 (done), S-024 (done), S-030 (done).
-         Target: monocle-tui. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007.
-       S-026 (13 pts, EPIC-06) — Permission Overlay Core — after S-022 and S-023.
-         Depends on: S-022 (done), S-023, S-024 (done).
-         Target: monocle-tui. BCs: BC-2.06.008-014, 016, 023, 024.
-
-       EXECUTION ORDER: (S-023 ∥ S-025) in parallel → S-026.
-       Dispatch S-023 and S-025 in parallel via deliver-story skill.
+  NEXT ACTION — WAVE 6 PARALLEL DELIVERY AUTHORIZED:
+    8. S-023 (5 pts, EPIC-05) — Daemon Reconnect (SOQ-3) — DISPATCH NOW.
+         Depends on: S-022 (DONE), S-019 (DONE). All satisfied.
+         Target crate: monocle-ipc (reconnect logic in IPC layer).
+         BCs: BC-2.05.006 (reconnect on socket disconnect), BC-2.05.007 (SOQ-3
+           backpressure / queue drain on reconnect).
+         Use: /vsdd-factory:deliver-story with story S-023.
+       S-025 (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — DISPATCH NOW.
+         Depends on: S-022 (DONE), S-024 (DONE), S-030 (DONE). All satisfied.
+         Target crate: new monocle-tui crate (create in this story).
+         BCs: BC-2.06.004 (TUI skeleton), BC-2.06.005 (sessions panel),
+           BC-2.06.007 (focus management) + BC-2.05.002 Invariant 4 for
+           idempotent VecDeque population of TUI session list from IPC ring_tail.
+         Use: /vsdd-factory:deliver-story with story S-025.
+       EXECUTION: Dispatch S-023 and S-025 IN PARALLEL (different crates,
+         no shared code path, no ordering constraint). HUMAN AUTHORIZATION
+         GRANTED 2026-05-28: "Yes — parallel S-023 + S-025". Do NOT re-confirm
+         with human; proceed directly to parallel deliver-story dispatch.
+       AFTER S-023 + S-025 BOTH MERGED:
+         S-026 (13 pts, EPIC-06) — Permission Overlay Core.
+         Depends on: S-022 (DONE), S-023, S-024 (DONE). S-023 is the only
+         remaining blocker.
 
   NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix unless specifically tasked):
-    9. ADV-W5GATE-HIGH-001: DaemonState wiring integration story (route to story-writer).
+    9. F-S022-ADV15-LOW-001: story S-022 AC-002 ring_tail type doc drift
+         (story-writer post-merge: bump story to v1.3, correct AC-002 to Vec<HookEventRecord>).
+       ADV-W5GATE-HIGH-001: DaemonState wiring integration story (route to story-writer).
        ADV-W5GATE-HIGH-002: Duplicate S-009 handler cleanup (route to implementer).
        ADV-W5GATE-MED-001: UDS socket spurious WARN on rebind.
        ADV-W5GATE-MED-003: HookEvent serde constructors (route to architect + implementer).
@@ -246,10 +270,22 @@ next_session_resume_protocol: |
        HS-EXP-009-hint: Exit 70 missing stderr remediation hint.
        See full list in durable_task_register above.
 
+  LESSON LEARNED FROM S-022 CYCLE (encode for adversary future passes):
+    10. Premature 'clean' verdicts: Pass 5 and Pass 7 both claimed NITPICK_ONLY
+        but were invalidated by Pass 6 and Pass 8 deeper inspection. Root cause:
+        the adversary did not verify that deferrals from prior passes had actually
+        propagated into downstream story CONTENT (not just story-NAME references).
+        Always sample test bodies for assertion presence + production-invocation,
+        not just for compile correctness. Watch for the vacuous-mirror-test pattern:
+        test duplicates a production guard in test scope and asserts on its own
+        copy (always passes, never tests the production function). 3 consecutive
+        NITPICK_ONLY passes required for convergence; do not declare convergence
+        until that threshold is met.
+
   FACTORY INFRASTRUCTURE:
-    10. .factory/ mounted at factory-artifacts branch (orphan worktree).
-    11. Run factory-worktree-health via devops-engineer FIRST on session start.
-    12. Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
+    11. .factory/ mounted at factory-artifacts branch (orphan worktree).
+    12. Run factory-worktree-health via devops-engineer FIRST on session start.
+    13. Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
         NEVER use --no-verify. NEVER add Co-Authored-By: Claude.
 dtu_required: true
 dtu_assessment: 2026-05-12
@@ -304,6 +340,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-182 | Wave 5 gate PASSED (753 tests, 0 failures, clippy/fmt clean). DTU SKIP. ADV PASS (0 CRIT, 0 HIGH blocking; 2 HIGH obs tracked). Demo PASS (5/5). Holdout PASS (mean 0.94, min 0.80). develop @ 1ce7838. Wave 6 unblocked. | 2026-05-27 | orchestrator |
 | D-183 | Wave 6 AUTHORIZED — 4 stories (S-022, S-023, S-025, S-026), 34 pts. Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026. All dependencies satisfied. Human approval: "Approve as documented" (2026-05-27). | 2026-05-27 | orchestrator |
 | D-184 | S-022 DELIVERED — PR #27 @ c7540539. BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (convergence at Pass 15). 8 implementer rounds + 2 architect interventions. BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Option B). SS-ipc v1.8.0 (at-least-once delivery per Option D). 22 integration tests. New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord. | 2026-05-28 | orchestrator |
+| D-185 | Wave 6 parallel S-023 + S-025 AUTHORIZED. Human approval "Yes — parallel S-023 + S-025" (2026-05-28). Both dependencies satisfied; different crates (monocle-ipc reconnect logic vs new monocle-tui binary); independent. After both merge → S-026. | 2026-05-28 | orchestrator |
 
 ## Key Tech Stack
 
@@ -323,6 +360,16 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.30 (DURABLE PAUSE CHECKPOINT — S-022 merged, Wave 6 1/4 done, S-023+S-025 parallel authorized)
+
+**DURABLE PAUSE CHECKPOINT** (2026-05-28): Wave 6 1/4 done. S-022 merged at c7540539. Human authorized parallel S-023 + S-025. D-185.
+- next_session_resume_protocol fully rewritten for zero-context fresh-session resume (see above).
+- ADR-0006 (non_exhaustive constructors) + SS-conventions v1.31.0 added this cycle.
+- BC-2.05.002 v1.0.5 Invariant 4 anchored in S-025 v1.3 + S-026 v1.3.
+- S-022 lesson encoded in resume protocol: vacuous-mirror-test pattern, 3-consecutive NITPICK_ONLY threshold, deferral propagation verification.
+- Frontmatter: version 6.29→6.30, awaiting → S-023 + S-025 parallel delivery.
+STATE v6.29 → v6.30.
 
 ## §Trace v6.29 (S-022 DELIVERED — Wave 6 first delivery, D-184)
 
