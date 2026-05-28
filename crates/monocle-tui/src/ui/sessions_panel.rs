@@ -57,6 +57,24 @@ pub const SESSIONS_EMPTY_LINE_1: &str = "No sessions detected";
 pub const SESSIONS_EMPTY_LINE_2: &str = "Start Claude Code in any terminal to see it here.";
 
 // ---------------------------------------------------------------------------
+// Overflow sentinels — column-width caps (BC-2.06.005 EC-086 pattern)
+// ---------------------------------------------------------------------------
+
+/// Token count overflow cap displayed when count ≥ 1_000_000_000 (1B tokens).
+///
+/// Prevents unbounded column-width growth. Single source of truth for both
+/// the production `format_token_count` path and the two overflow test assertions
+/// (F-S025-ADV9-LOW-002). Any change requires BC-2.06.005 version bump.
+pub const TOKEN_COUNT_OVERFLOW_CAP: &str = "999M+";
+
+/// Uptime overflow cap displayed when elapsed hours ≥ 1000 (over 41 days).
+///
+/// Prevents unbounded column-width growth, symmetric with TOKEN_COUNT_OVERFLOW_CAP.
+/// Single source of truth for the production `format_uptime_with_now` path.
+/// Any change requires BC-2.06.005 version bump.
+pub const UPTIME_OVERFLOW_CAP: &str = "999:59:59";
+
+// ---------------------------------------------------------------------------
 // Token and cost formatters (BC-2.06.005 PC-2, Invariant 2 + 3)
 // ---------------------------------------------------------------------------
 
@@ -85,9 +103,9 @@ pub fn format_token_count(count: u64) -> String {
         let k = count / 1_000;
         format!("{k}k")
     } else if count >= 1_000_000_000 {
-        // F-S025-ADV9-LOW-002: cap at "999M+" to prevent unbounded column width.
-        // EC-086 pattern extended to token counts: same cap discipline as uptime 999:59:59.
-        "999M+".to_string()
+        // F-S025-ADV9-LOW-002: cap at TOKEN_COUNT_OVERFLOW_CAP to prevent unbounded column width.
+        // EC-086 pattern extended to token counts: same cap discipline as UPTIME_OVERFLOW_CAP.
+        TOKEN_COUNT_OVERFLOW_CAP.to_string()
     } else {
         // >= 1_000_000 and < 1_000_000_000: render as N.NM (one decimal place per BC-2.06.005)
         let m_int = count / 1_000_000;
@@ -119,8 +137,7 @@ pub fn format_cost(cost_usd: Option<f64>) -> String {
         // NaN, ±infinity, and any negative value (including -0.0) are invalid.
         // is_sign_negative() covers both cost < 0.0 and -0.0 in IEEE 754;
         // the explicit `cost < 0.0` term was a redundant strict subset.
-        Some(cost) if cost.is_nan() || cost.is_infinite() || cost.is_sign_negative() =>
-        {
+        Some(cost) if cost.is_nan() || cost.is_infinite() || cost.is_sign_negative() => {
             "\u{2014}".to_string()
         }
         Some(cost) => format!("${cost:.2}"),
@@ -165,9 +182,9 @@ pub fn format_uptime_at(
             let hours = total_secs / 3600;
             let minutes = (total_secs % 3600) / 60;
             let seconds = total_secs % 60;
-            // Cap at 999:59:59 to prevent unbounded column width.
+            // Cap at UPTIME_OVERFLOW_CAP to prevent unbounded column width.
             if hours >= 1000 {
-                return "999:59:59".to_string();
+                return UPTIME_OVERFLOW_CAP.to_string();
             }
             if hours >= 100 {
                 // EC-086: ≥ 100 hours — no zero-padding on hours column.
@@ -265,18 +282,18 @@ mod format_cost_tests {
 
 #[cfg(test)]
 mod format_token_count_cap_tests {
-    use super::format_token_count;
+    use super::{format_token_count, TOKEN_COUNT_OVERFLOW_CAP};
 
-    /// F-S025-ADV9-LOW-002: 1_000_000_000 (1B) must cap to "999M+".
+    /// F-S025-ADV9-LOW-002: 1_000_000_000 (1B) must cap to TOKEN_COUNT_OVERFLOW_CAP.
     #[test]
     fn test_format_token_count_billion_caps_at_999m_plus() {
-        assert_eq!(format_token_count(1_000_000_000), "999M+");
+        assert_eq!(format_token_count(1_000_000_000), TOKEN_COUNT_OVERFLOW_CAP);
     }
 
-    /// F-S025-ADV9-LOW-002: u64::MAX must cap to "999M+".
+    /// F-S025-ADV9-LOW-002: u64::MAX must cap to TOKEN_COUNT_OVERFLOW_CAP.
     #[test]
     fn test_format_token_count_u64_max_caps_at_999m_plus() {
-        assert_eq!(format_token_count(u64::MAX), "999M+");
+        assert_eq!(format_token_count(u64::MAX), TOKEN_COUNT_OVERFLOW_CAP);
     }
 }
 

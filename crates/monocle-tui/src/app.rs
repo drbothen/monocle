@@ -88,6 +88,13 @@ pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
 /// this const is the single authoritative source for both.
 pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 
+/// Base status-bar label rendered in the title area when the drop counter is zero.
+///
+/// This is the root token from which `format_drop_counter` derives the drop-counter
+/// label `"[dropped: N] monocle"` (BC-2.06.007 PC-7). Both the plain and drop-counter
+/// render paths share this root to prevent silent drift if the product name changes.
+pub const MONOCLE_STATUS_LABEL: &str = "monocle";
+
 /// Format the status-bar drop-counter label shown when `app.drop_counter > 0`.
 ///
 /// Single source of truth for the `"[dropped: N] monocle"` pattern (BC-2.06.007).
@@ -101,7 +108,7 @@ pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 /// assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
 /// ```
 pub fn format_drop_counter(n: u64) -> String {
-    format!("[dropped: {n}] monocle")
+    format!("[dropped: {n}] {MONOCLE_STATUS_LABEL}")
 }
 
 // ---------------------------------------------------------------------------
@@ -663,7 +670,7 @@ pub async fn run() -> Result<()> {
                         "reconnect not yet available (pending S-023 merge); \
                                     entering offline mode"
                     );
-                    app.status_message = Some("[daemon: offline]".to_string());
+                    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
                     break;
                 }
                 Err(TryRecvError::Empty) => {
@@ -920,7 +927,7 @@ pub fn render_frame(
         )])
     } else {
         Line::from(Span::styled(
-            "monocle",
+            MONOCLE_STATUS_LABEL,
             Style::default().fg(Color::DarkGray),
         ))
     };
