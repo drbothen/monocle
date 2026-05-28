@@ -447,9 +447,27 @@ pub async fn connect_with_events(
                 }
                 Ok(_) => {
                     // Successful message — forward to recv_message() callers.
-                    if msg_tx.send(result).await.is_err() {
-                        // Transport was dropped; stop the background task.
-                        break;
+                    // Use try_send (non-blocking) for consistency with the Disconnected path
+                    // and to avoid pinning the reader indefinitely if the consumer stops draining.
+                    // A Full channel means the consumer is lagging; drop the message and log
+                    // at WARN to surface backpressure. The channel capacity (8) is sized to
+                    // absorb short rendering bursts; sustained Full indicates a real problem.
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader: msg channel full on business message — \
+                                 consumer lagging; message dropped (backpressure)"
+                            );
+                            // Continue: do not break; the consumer may catch up next poll.
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            // Consumer (transport) dropped — stop the background task.
+                            tracing::debug!(
+                                "background reader: msg receiver closed — consumer gone"
+                            );
+                            break;
+                        }
                     }
                 }
             }
@@ -606,9 +624,22 @@ pub(crate) async fn connect_with_events_from_stream(
                     }
                 }
                 Ok(_) => {
-                    if msg_tx.send(result).await.is_err() {
-                        // Transport was dropped; stop the background task.
-                        break;
+                    // Use try_send for consistency with connect_with_events Ok path.
+                    // See the connect_with_events background reader for rationale.
+                    match msg_tx.try_send(result) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            tracing::warn!(
+                                "background reader (reconnect): msg channel full on business message — \
+                                 consumer lagging; message dropped (backpressure)"
+                            );
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            tracing::debug!(
+                                "background reader (reconnect): msg receiver closed — consumer gone"
+                            );
+                            break;
+                        }
                     }
                 }
             }
