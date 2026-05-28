@@ -18,5 +18,7 @@ pub mod ui;
 
 // Re-exports for integration tests and downstream consumers.
 pub use app::apply_permission_prompt_queued;
+pub use app::payload_to_modal;
 pub use app::resolve_runtime_dir;
 pub use app::App;
+pub use app::EVENT_RING_CAPACITY;

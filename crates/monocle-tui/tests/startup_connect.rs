@@ -554,3 +554,101 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV1-HIGH-002 — App.event_ring seeded from ring_tail (BC-2.05.002 PC-5)
+// ---------------------------------------------------------------------------
+
+/// Architect decision HIGH-002: on_initial_state with N ring_tail records leaves
+/// app.event_ring.len() == N (when N <= EVENT_RING_CAPACITY).
+///
+/// This is the core seed-from-daemon assertion: ring_tail must NOT be discarded.
+#[test]
+fn test_f_s025_adv1_high002_event_ring_seeded_from_ring_tail() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build 3 distinct HookEventRecord entries.
+    let records: Vec<HookEventRecord> = (0..3)
+        .map(|i| {
+            HookEventRecord::new(
+                format!("sess-{i}"),
+                i as i64 * 1_000_000,
+                100 + i as u32,
+                "SessionStart".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    assert_eq!(
+        app.event_ring.len(),
+        3,
+        "HIGH-002: event_ring must contain all 3 ring_tail records"
+    );
+    // Verify the ring_tail records were NOT dropped from drop_counter (only IPC drops go there).
+    assert_eq!(
+        app.drop_counter, 0,
+        "HIGH-002: ring eviction must NOT increment drop_counter"
+    );
+    // Verify capacity constant matches daemon ring size (BC-2.04.012 PC-1).
+    assert_eq!(
+        EVENT_RING_CAPACITY,
+        4096,
+        "HIGH-002: EVENT_RING_CAPACITY must equal daemon RAM_RING_CAPACITY"
+    );
+}
+
+/// Architect decision HIGH-002: when ring_tail.len() > EVENT_RING_CAPACITY, the oldest
+/// entries are evicted FIFO and app.event_ring.len() == EVENT_RING_CAPACITY.
+///
+/// Also verifies that drop_counter is NOT incremented on ring overflow.
+#[test]
+fn test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build EVENT_RING_CAPACITY + 1 records — this will trigger one eviction.
+    let n = EVENT_RING_CAPACITY + 1;
+    let records: Vec<HookEventRecord> = (0..n)
+        .map(|i| {
+            HookEventRecord::new(
+                "sess-overflow".to_string(),
+                i as i64,
+                1234,
+                "PreToolUse".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    // The oldest record is timestamp_micros=0 (index 0).
+    // After eviction, the ring should hold records 1..=EVENT_RING_CAPACITY.
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    assert_eq!(
+        app.event_ring.len(),
+        EVENT_RING_CAPACITY,
+        "HIGH-002: event_ring.len() must == EVENT_RING_CAPACITY after overflow"
+    );
+
+    // The oldest record (timestamp 0) must have been evicted.
+    let oldest_timestamp = app.event_ring.front().map(|r| r.timestamp_micros);
+    assert_eq!(
+        oldest_timestamp,
+        Some(1),
+        "HIGH-002: FIFO eviction must have dropped the record with timestamp 0 (oldest)"
+    );
+
+    // drop_counter must NOT be incremented on ring eviction.
+    assert_eq!(
+        app.drop_counter, 0,
+        "HIGH-002: ring eviction must NOT increment drop_counter"
+    );
+}

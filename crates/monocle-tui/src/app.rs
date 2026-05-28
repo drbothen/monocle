@@ -40,6 +40,22 @@ pub enum TransportEvent {
 }
 
 // ---------------------------------------------------------------------------
+// App constants
+// ---------------------------------------------------------------------------
+
+/// Capacity of the in-process event ring buffer (matching the daemon's RAM ring).
+///
+/// Mirrors `monocle_runtime::ring::RAM_RING_CAPACITY` (4096) per BC-2.04.012 PC-1.
+/// The TUI-side ring must not exceed the daemon-side ring size — there is no value
+/// in holding more events than the daemon can produce. Overflow eviction is FIFO;
+/// evicted entries are NOT counted in `App::drop_counter` (that counter tracks IPC
+/// channel packet drops, not ring evictions).
+///
+/// Do NOT import `monocle_runtime::ring::RAM_RING_CAPACITY` directly — that would
+/// create a monocle-tui → monocle-runtime dependency not in the current dep graph.
+pub const EVENT_RING_CAPACITY: usize = 4096;
+
+// ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 
@@ -69,6 +85,14 @@ pub struct App {
     /// Set by transport event handlers; cleared when normal operation resumes.
     /// `None` means no notification; `Some(msg)` is rendered in the status bar.
     pub status_message: Option<String>,
+    /// Recent hook events from the daemon RAM ring, seeded from `InitialState::ring_tail`
+    /// and extended by subsequent push messages (S-027).
+    ///
+    /// Bounded to [`EVENT_RING_CAPACITY`] entries — same as the daemon's RAM ring
+    /// (BC-2.04.012 PC-1, `ring.rs::RAM_RING_CAPACITY = 4096`). Oldest entries are
+    /// evicted on overflow; evicted entries are NOT counted in `App::drop_counter`
+    /// (that counter tracks IPC channel packet drops, not ring evictions).
+    pub event_ring: VecDeque<HookEventRecord>,
 }
 
 impl App {
@@ -85,6 +109,7 @@ impl App {
             drop_counter: 0,
             overlay_stack: VecDeque::new(),
             status_message: None,
+            event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
         }
     }
 }
@@ -193,19 +218,36 @@ pub fn apply_permission_prompt_queued(
 
 /// Handle `ServerToClient::InitialState` on first connection (AC-008, BC-2.06.004 PC-2).
 ///
-/// Populates `app.sessions`, `app.drop_counter`, and `app.overlay_stack` from
-/// the daemon's initial state push. Each entry in `overlay_stack` is inserted
-/// via `apply_permission_prompt_queued` to enforce prompt_id idempotency.
-/// If the resulting overlay_stack is non-empty, transitions to `AppMode::Overlay`.
+/// Populates `app.sessions`, `app.drop_counter`, `app.overlay_stack`, and
+/// `app.event_ring` from the daemon's initial state push.
+///
+/// `ring_tail` is drained into `app.event_ring` (bounded to `EVENT_RING_CAPACITY`;
+/// oldest entries are evicted FIFO on overflow — eviction does NOT increment
+/// `app.drop_counter` per architect decision F-S025-ADV1-HIGH-002).
+///
+/// Each entry in `overlay_stack` is inserted via `apply_permission_prompt_queued`
+/// to enforce prompt_id idempotency. If the resulting overlay_stack is non-empty,
+/// transitions to `AppMode::Overlay`.
 pub fn on_initial_state(
     app: &mut App,
     sessions: Vec<EnrichedSession>,
-    _ring_tail: Vec<HookEventRecord>,
+    ring_tail: Vec<HookEventRecord>,
     overlay_stack: Vec<PermissionPromptPayload>,
     drop_counter: u64,
 ) {
     app.sessions = sessions;
     app.drop_counter = drop_counter;
+
+    // Seed the event ring from the daemon's ring snapshot.
+    // Bounded to EVENT_RING_CAPACITY; ring_tail from daemon is already bounded
+    // to RAM_RING_CAPACITY (4096) so overflow is not expected, but enforced defensively.
+    app.event_ring.clear();
+    for record in ring_tail {
+        if app.event_ring.len() == EVENT_RING_CAPACITY {
+            app.event_ring.pop_front(); // FIFO eviction; does NOT increment drop_counter
+        }
+        app.event_ring.push_back(record);
+    }
 
     for payload in overlay_stack {
         apply_permission_prompt_queued(&mut app.overlay_stack, payload);
