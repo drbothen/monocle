@@ -644,3 +644,114 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
         "MED-002: panel_area must be 80 wide (full terminal), not 60%"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV5-BLOCKER-001 — BC-2.06.005 v1.0.5 canonical column order
+// ---------------------------------------------------------------------------
+//
+// The BC-2.06.005 v1.0.5 canonical test vector is:
+//   `sess-001 ● monocle Active 437k — 03:47:00`
+// Column order:  session_id | icon | project | status | tokens | cost | uptime
+// Separator:     SPACE (not ` | `)
+//
+// The format-string bug renders icon FIRST: `● sess-001 | monocle | ...`
+// These tests encode the canonical order and separator. They are RED GATE
+// until the format-string is fixed.
+
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: canonical test vector exact match.
+///
+/// Constructs an `EnrichedSession` matching the BC vector:
+///   session_id=`sess-001`, harness_type=`claude-code` (→ `●`),
+///   project_name=`monocle`, status=Active, token_count=437_000,
+///   cost_usd=None (→ `—`), started_at=now-3h47m (→ `03:47:00`).
+///
+/// The rendered row must contain the EXACT string `sess-001 ● monocle Active 437k — 03:47:00`.
+/// This test FAILS before the format-string fix and PASSES after.
+#[test]
+fn test_bc_2_06_005_canonical_row_verbatim_match() {
+    use chrono::Utc;
+
+    let started_at = Utc::now()
+        - chrono::Duration::hours(3)
+        - chrono::Duration::minutes(47)
+        - chrono::Duration::seconds(0);
+
+    let session = monocle_core::engine::EnrichedSession::new(
+        "sess-001".to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        monocle_core::engine::SessionStatus::Active,
+        None,
+        Some("monocle".to_string()), // project_name
+        Some(started_at),            // started_at
+        437_000,                     // token_count → "437k"
+        None,                        // cost_usd → "—"
+    );
+
+    let app = app_with_sessions(vec![session]);
+    let rendered = render_sessions_panel(&app, 0);
+
+    // Column order: session_id SPACE icon SPACE project SPACE status SPACE tokens SPACE cost SPACE uptime
+    assert!(
+        rendered.contains("sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:0"),
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: rendered row must match \
+         canonical vector `sess-001 ● monocle Active 437k — 03:47:0x`; got:\n{}",
+        rendered
+    );
+    // Also assert session_id appears before icon (belt-and-suspenders).
+    let id_pos = rendered.find("sess-001").expect("session_id must appear");
+    let icon_pos = rendered.find('\u{25CF}').expect("icon must appear");
+    assert!(
+        id_pos < icon_pos,
+        "F-S025-ADV5-BLOCKER-001: session_id must appear before icon in rendered row"
+    );
+}
+
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id appears BEFORE icon.
+///
+/// `rendered.find("sess-001") < rendered.find('●')`.
+/// Fails before the format-string fix; passes after.
+#[test]
+fn test_bc_2_06_005_column_order_session_id_first() {
+    let app = app_with_sessions(vec![session("sess-001")]);
+    let rendered = render_sessions_panel(&app, 0);
+
+    let id_pos = rendered
+        .find("sess-001")
+        .expect("session_id must appear in rendered output");
+    let icon_pos = rendered
+        .find('\u{25CF}')
+        .expect("icon ● must appear in rendered output");
+
+    assert!(
+        id_pos < icon_pos,
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id must appear BEFORE icon; \
+         session_id at {id_pos}, icon at {icon_pos} in:\n{}",
+        rendered
+    );
+}
+
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: separator between columns is
+/// SPACE (not ` | `).
+///
+/// The canonical BC vector uses space-separated columns, NOT pipe-separated.
+/// Fails before the format-string fix (which uses ` | `); passes after.
+#[test]
+fn test_bc_2_06_005_separator_is_space_not_pipe() {
+    let app = app_with_sessions(vec![session("sess-001")]);
+    let rendered = render_sessions_panel(&app, 0);
+
+    assert!(
+        !rendered.contains(" | "),
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: separator must be SPACE not ' | '; \
+         got:\n{}",
+        rendered
+    );
+    assert!(
+        rendered.contains("sess-001 \u{25CF}"),
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id and icon must be \
+         space-separated; expected 'sess-001 ●' in:\n{}",
+        rendered
+    );
+}

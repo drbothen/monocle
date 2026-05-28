@@ -909,3 +909,88 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
         "AC-007: '[dropped: 5] monocle' must be rendered with Yellow foreground in the status bar"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV5-PASS5-INJECTION5 — event_ring FIFO eviction order
+// ---------------------------------------------------------------------------
+
+/// BC-2.05.002 / F-S025-ADV5-PASS5-INJECTION5: event_ring FIFO eviction evicts
+/// the OLDEST entry (insertion order), NOT the newest, when the ring overflows.
+///
+/// This test is a focused complement to `test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction`.
+/// That test exercises overflow on initial seeding with EVENT_RING_CAPACITY+1 records.
+/// This test exercises the same FIFO semantic but asserts on a smaller ring segment
+/// to prove "oldest removed, newest kept" unambiguously at the item level.
+///
+/// Protocol: seed EVENT_RING_CAPACITY items (filling the ring), then add 3 more via
+/// a second call to on_initial_state (clearing and re-filling, effectively replacing).
+/// Instead, directly test the eviction behaviour by seeding capacity+3 items and
+/// verifying the 3 OLDEST (timestamps 0, 1, 2) are gone and the 3 NEWEST are present.
+#[test]
+fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build EVENT_RING_CAPACITY + 3 records with sequential timestamps 0..N+3.
+    let n = EVENT_RING_CAPACITY + 3;
+    let records: Vec<HookEventRecord> = (0..n as i64)
+        .map(|i| {
+            HookEventRecord::new(
+                "sess-fifo".to_string(),
+                i,       // timestamp_micros = i (ascending = insertion order)
+                9999,
+                "PreToolUse".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    // Ring must be capped at EVENT_RING_CAPACITY.
+    assert_eq!(
+        app.event_ring.len(),
+        EVENT_RING_CAPACITY,
+        "FIFO eviction: ring must be capped at EVENT_RING_CAPACITY"
+    );
+
+    // The 3 OLDEST records (timestamps 0, 1, 2) must have been evicted.
+    let timestamps: Vec<i64> = app.event_ring.iter().map(|r| r.timestamp_micros).collect();
+
+    assert!(
+        !timestamps.contains(&0),
+        "FIFO eviction: oldest record (timestamp=0) must have been evicted; ring starts at: {:?}",
+        timestamps.first()
+    );
+    assert!(
+        !timestamps.contains(&1),
+        "FIFO eviction: record with timestamp=1 must have been evicted"
+    );
+    assert!(
+        !timestamps.contains(&2),
+        "FIFO eviction: record with timestamp=2 must have been evicted"
+    );
+
+    // The 3 NEWEST records (timestamps N-3, N-2, N-1) must be PRESENT.
+    let last_timestamp = (n as i64) - 1;
+    assert!(
+        timestamps.contains(&last_timestamp),
+        "FIFO eviction: newest record (timestamp={last_timestamp}) must be present in ring"
+    );
+    assert!(
+        timestamps.contains(&(last_timestamp - 1)),
+        "FIFO eviction: second-newest record must be present in ring"
+    );
+    assert!(
+        timestamps.contains(&(last_timestamp - 2)),
+        "FIFO eviction: third-newest record must be present in ring"
+    );
+
+    // drop_counter must NOT be incremented on ring eviction (ring overflow != IPC drop).
+    assert_eq!(
+        app.drop_counter, 0,
+        "FIFO eviction: ring overflow must NOT increment drop_counter"
+    );
+}
