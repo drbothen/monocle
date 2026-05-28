@@ -24,7 +24,7 @@ use std::sync::Arc;
 use tokio::net::UnixListener;
 
 use monocle_ipc::error::IpcError;
-use monocle_ipc::framing::{write_framed, MAX_MESSAGE_BYTES};
+use monocle_ipc::framing::{write_framed, write_framed_bytes, MAX_MESSAGE_BYTES};
 use monocle_ipc::server::{register_subscriber, remove_subscriber, SubscriberList};
 
 /// Per-client outbound channel capacity — matches `monocle_ipc::server::CLIENT_CHANNEL_CAPACITY`.
@@ -206,20 +206,20 @@ pub async fn send_initial_state(
 ) -> Result<(), IpcError> {
     let msg = snapshot_initial_state(state);
 
-    // 256 KiB guard (BC-2.05.002 PC-4, AC-004).
-    // Serialize first to measure size; if within limit, write_framed serializes again.
-    // Double-serialize is acceptable: this path is called once per client connect, not
-    // in a hot loop.
-    let serialized = serde_json::to_vec(&msg)?;
-    if serialized.len() > MAX_MESSAGE_BYTES {
+    // Serialize once (F-ADV2-MED-004): use the payload for both the 256 KiB guard check
+    // and the framed write. The previous double-serialize pattern (serialize → size check →
+    // write_framed serializes again) wasted CPU and risked byte-count divergence.
+    // BC-2.05.002 PC-4, AC-004: ERROR log must include the byte count.
+    let payload = serde_json::to_vec(&msg)?;
+    if payload.len() > MAX_MESSAGE_BYTES {
         tracing::error!(
             "InitialState for client exceeds 256 KiB limit ({} bytes)",
-            serialized.len()
+            payload.len()
         );
         return Err(IpcError::MessageTooLarge);
     }
 
-    write_framed(writer, &msg).await
+    write_framed_bytes(writer, &payload).await
 }
 
 /// Broadcast a `ServerToClient` message to all connected TUI clients.

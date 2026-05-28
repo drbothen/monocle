@@ -172,7 +172,6 @@ impl UdsTransport {
             );
         }
     }
-
 }
 
 /// Connect a TUI client to the daemon's Unix domain socket (S-022, BC-2.05.002 precondition 3).

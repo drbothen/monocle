@@ -1339,10 +1339,9 @@ async fn test_S022_tui_attached_flips_on_connect_and_disconnect() {
     };
 
     // Read the InitialState message to ensure the server has processed the connect.
-    let _: monocle_ipc::types::ServerToClient =
-        monocle_ipc::framing::read_framed(&mut stream)
-            .await
-            .expect("must receive InitialState");
+    let _: monocle_ipc::types::ServerToClient = monocle_ipc::framing::read_framed(&mut stream)
+        .await
+        .expect("must receive InitialState");
 
     // After connect + InitialState send, tui_attached_count must be >= 1.
     // Allow a brief scheduling window.
