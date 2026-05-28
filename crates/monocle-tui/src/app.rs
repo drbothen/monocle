@@ -327,7 +327,7 @@ pub fn resolve_runtime_dir() -> Result<PathBuf> {
 /// - `TransportEvent::Disconnected` → transitions to reconnect mode (AC-003).
 ///   Does NOT exit.
 pub async fn run() -> Result<()> {
-    use crossterm::event::{self, Event, KeyCode, KeyEvent};
+    use crossterm::event::{self, Event};
     use ratatui::{backend::CrosstermBackend, Terminal};
     use std::io;
     use std::time::Duration;
@@ -419,6 +419,10 @@ pub async fn run() -> Result<()> {
     // Render state for the Sessions panel (selection tracking).
     let mut sessions_state = crate::ui::sessions_panel::SessionsPanelState::default();
 
+    // Build the builtin binding layers once for the session (AC-006, BLOCKER-002).
+    // Future: merge user-custom and per-context layers from config.
+    let binding_layers = build_builtin_binding_layers();
+
     // Main event loop.
     let tick_rate = Duration::from_millis(16); // ~60fps
 
@@ -458,16 +462,59 @@ pub async fn run() -> Result<()> {
             );
         })?;
 
-        // Poll for input events.
+        // Poll for input events (BLOCKER-002: full binding dispatch via resolve_binding).
         if event::poll(tick_rate)? {
-            if let Event::Key(KeyEvent {
-                code: KeyCode::Char('q') | KeyCode::Esc,
-                ..
-            }) = event::read()?
-            {
-                // AC-001: clean exit from Dashboard mode.
-                if matches!(app.mode, AppMode::Dashboard { .. }) {
-                    break;
+            if let Event::Key(ct_key) = event::read()? {
+                // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
+                let core_key = crossterm_key_to_core(&ct_key);
+
+                // Resolve the binding through the 5-level precedence chain.
+                let resolved = monocle_core::tui::binding::resolve_binding(
+                    &core_key,
+                    &app.mode,
+                    &binding_layers,
+                );
+
+                match resolved {
+                    Some((monocle_core::tui::state::Action::Noop, _)) | None => {
+                        // No binding or explicit no-op — do nothing.
+                    }
+                    Some((monocle_core::tui::state::Action::SelectNext, _)) => {
+                        // Move selection down in the current panel list.
+                        let len = app.sessions.len();
+                        if len > 0 {
+                            let next = sessions_state
+                                .list_state
+                                .selected()
+                                .map(|i| (i + 1).min(len - 1))
+                                .unwrap_or(0);
+                            sessions_state.list_state.select(Some(next));
+                        }
+                    }
+                    Some((monocle_core::tui::state::Action::SelectPrev, _)) => {
+                        // Move selection up in the current panel list.
+                        if app.sessions.len() > 0 {
+                            let prev = sessions_state
+                                .list_state
+                                .selected()
+                                .map(|i| i.saturating_sub(1))
+                                .unwrap_or(0);
+                            sessions_state.list_state.select(Some(prev));
+                        }
+                    }
+                    Some((action, _)) => {
+                        // All other actions: drive the AppMode state machine.
+                        use monocle_core::tui::state::transition;
+                        // Check for clean exit: q or Esc from Dashboard.
+                        let is_quit = matches!(
+                            (&app.mode, &action),
+                            (AppMode::Dashboard { .. }, monocle_core::tui::state::Action::Esc)
+                        );
+                        app.mode = transition(app.mode.clone(), action);
+                        if is_quit {
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -540,4 +587,110 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         }
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Key conversion helpers (BLOCKER-002: full binding dispatch)
+// ---------------------------------------------------------------------------
+
+/// Build the builtin `BindingLayers` for Phase 1.
+///
+/// Registers the minimum set of bindings required for AC-006:
+/// - Esc / q (Dashboard) → exit (resolved as `Action::Esc`)
+/// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
+/// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
+/// - j / ↓ → `Action::SelectNext` (move selection down)
+/// - k / ↑ → `Action::SelectPrev` (move selection up)
+///
+/// Future waves add user-custom and per-context layers; for now only builtin
+/// and global layers are populated.
+pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLayers {
+    use monocle_core::tui::binding::{BindingLayers, KeyCode, KeyEvent, KeyModifiers};
+    use monocle_core::tui::state::{Action, PanelId};
+
+    let no_mod = KeyModifiers::default();
+
+    let mut layers = BindingLayers::empty();
+
+    // Global bindings (active in all modes).
+    // Tab → MoveFocus
+    layers.global.insert(
+        KeyEvent { code: KeyCode::Tab, modifiers: no_mod.clone() },
+        Action::MoveFocus,
+    );
+
+    // Builtin bindings (lowest precedence; hard-coded fallbacks).
+    // Esc → Esc (handled by transition; Dashboard+Esc is the quit path)
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Esc, modifiers: no_mod.clone() },
+        Action::Esc,
+    );
+    // q (no modifiers) → Esc (same as physical Esc for Dashboard quit)
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Char('q'), modifiers: no_mod.clone() },
+        Action::Esc,
+    );
+    // Enter → EnterFullscreen { Sessions }
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Enter, modifiers: no_mod.clone() },
+        Action::EnterFullscreen { panel: PanelId::Sessions },
+    );
+    // j → SelectNext
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Char('j'), modifiers: no_mod.clone() },
+        Action::SelectNext,
+    );
+    // ↓ → SelectNext
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Down, modifiers: no_mod.clone() },
+        Action::SelectNext,
+    );
+    // k → SelectPrev
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Char('k'), modifiers: no_mod.clone() },
+        Action::SelectPrev,
+    );
+    // ↑ → SelectPrev
+    layers.builtin.insert(
+        KeyEvent { code: KeyCode::Up, modifiers: no_mod.clone() },
+        Action::SelectPrev,
+    );
+
+    layers
+}
+
+/// Convert a `crossterm::event::KeyEvent` to a `monocle_core::tui::binding::KeyEvent`.
+///
+/// Translates crossterm-specific key codes and modifiers into the pure-core
+/// key event type used by `resolve_binding`. Called in the event loop before
+/// dispatching to `resolve_binding`.
+pub fn crossterm_key_to_core(
+    ct: &crossterm::event::KeyEvent,
+) -> monocle_core::tui::binding::KeyEvent {
+    use crossterm::event::{KeyCode as CtCode, KeyModifiers as CtMod};
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let code = match ct.code {
+        CtCode::Char(c) => KeyCode::Char(c),
+        CtCode::Enter => KeyCode::Enter,
+        CtCode::Esc => KeyCode::Esc,
+        CtCode::Up => KeyCode::Up,
+        CtCode::Down => KeyCode::Down,
+        CtCode::Left => KeyCode::Left,
+        CtCode::Right => KeyCode::Right,
+        CtCode::Tab => KeyCode::Tab,
+        CtCode::Backspace => KeyCode::Backspace,
+        // Any other crossterm key code maps to Noop via no binding match.
+        // We emit Char('\0') as a safe unmappable sentinel that won't match
+        // any registered binding.
+        _ => KeyCode::Char('\0'),
+    };
+
+    let modifiers = KeyModifiers {
+        shift: ct.modifiers.contains(CtMod::SHIFT),
+        ctrl: ct.modifiers.contains(CtMod::CONTROL),
+        alt: ct.modifiers.contains(CtMod::ALT),
+    };
+
+    KeyEvent { code, modifiers }
 }

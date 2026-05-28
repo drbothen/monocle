@@ -13,6 +13,10 @@ use uuid::Uuid;
 ///
 /// Intentionally NOT `#[non_exhaustive]` (AC-013): the binary crate must
 /// exhaustively match all modes so new modes require explicit handling.
+///
+/// `Clone` is derived so that the event loop can call `transition(app.mode.clone(), action)`
+/// — `transition` takes ownership of the mode, so cloning avoids moving out of `App`.
+#[derive(Clone)]
 pub enum AppMode {
     /// Normal dashboard view with a focused panel.
     Dashboard {
@@ -195,6 +199,14 @@ pub enum Action {
     PermissionAcceptAlways,
     /// Reject the top-most permission prompt.
     PermissionReject,
+    /// Move selection to the next row in the currently focused panel list.
+    ///
+    /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
+    SelectNext,
+    /// Move selection to the previous row in the currently focused panel list.
+    ///
+    /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
+    SelectPrev,
     /// No-op; used by the key resolver when no binding matches.
     Noop,
 }
