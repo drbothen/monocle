@@ -31,11 +31,33 @@ use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
 use tokio::net::UnixListener;
+use tokio::sync::mpsc;
 
 use crate::error::IpcError;
+use crate::events::TransportEvent;
 use crate::framing::write_framed;
 use crate::transport::Transport;
 use crate::types::{ClientToServer, ServerToClient};
+
+// ---------------------------------------------------------------------------
+// Event channel type aliases (S-023)
+// ---------------------------------------------------------------------------
+
+/// Sender half of the bounded `TransportEvent` channel (S-023, BC-2.05.007).
+///
+/// `UdsClientTransport` holds this sender and emits `TransportEvent::Disconnected`
+/// synchronously on the read path when a connection-loss error is detected.
+/// Channel capacity is 1: a single `Disconnected` event is sufficient per connection
+/// lifetime; the TUI event loop drains it before the next reconnect.
+#[allow(dead_code)]
+pub(crate) type EventSender = mpsc::Sender<TransportEvent>;
+
+/// Receiver half of the bounded `TransportEvent` channel (S-023, BC-2.05.007).
+///
+/// Returned by [`UdsClientTransport::events`]. The TUI event loop selects on this
+/// receiver alongside crossterm input events. Receiving `TransportEvent::Disconnected`
+/// triggers the SOQ-3 overlay-clear handler before the reconnect loop begins.
+pub type EventReceiver = mpsc::Receiver<TransportEvent>;
 
 /// Platform-specific maximum UDS socket path length in bytes.
 ///
@@ -176,6 +198,33 @@ pub async fn connect(runtime_dir: &Path) -> Result<UdsClientTransport, IpcError>
     Ok(UdsClientTransport::new(stream))
 }
 
+/// Connect a TUI client to the daemon's Unix domain socket, returning an event channel
+/// alongside the transport (S-023, BC-2.05.007).
+///
+/// This is the S-023 replacement for [`connect`] on the TUI event-loop path. It creates
+/// a bounded `mpsc::channel(1)`, passes the sender to `UdsClientTransport::with_event_channel`,
+/// and returns the receiver so the TUI event loop can select on `TransportEvent::Disconnected`.
+///
+/// # Steps
+///
+/// 1. Create `(event_tx, event_rx) = mpsc::channel(1)`.
+/// 2. Compute `sock_path = runtime_dir.join("monocle.sock")`.
+/// 3. Call `tokio::net::UnixStream::connect(&sock_path)`.
+/// 4. Wrap in `UdsClientTransport::with_event_channel(stream, event_tx)`.
+/// 5. Return `(transport, event_rx)`.
+///
+/// # Errors
+///
+/// Returns [`IpcError::IoError`] if the connect syscall fails.
+pub async fn connect_with_events(
+    runtime_dir: &Path,
+) -> Result<(UdsClientTransport, EventReceiver), IpcError> {
+    todo!(
+        "S-023: connect to {:?}/monocle.sock and return (UdsClientTransport, EventReceiver)",
+        runtime_dir
+    )
+}
+
 /// Read a single framed `ClientToServer` message from a raw `UnixStream` read half.
 ///
 /// This is a low-level helper for callers that hold an `OwnedReadHalf` directly
@@ -201,18 +250,106 @@ pub async fn read_framed_from_stream(
 /// and implements the [`Transport`] trait for per-message send/recv operations.
 ///
 /// `UdsClientTransport` is the type injected into TUI-side logic (S-022).
+///
+/// # S-023 additions
+///
+/// In S-023 this struct gains an `event_tx` field (bounded `mpsc::Sender<TransportEvent>`)
+/// so it can emit `TransportEvent::Disconnected` on the read path before returning a
+/// connection-loss error to the caller. The TUI side retrieves the [`EventReceiver`] via
+/// [`UdsClientTransport::events`] immediately after construction and selects on it in the
+/// event loop.
 pub struct UdsClientTransport {
     /// Split read half of the accepted UnixStream.
     reader: tokio::net::unix::OwnedReadHalf,
     /// Split write half of the accepted UnixStream.
     writer: tokio::net::unix::OwnedWriteHalf,
+    /// Sender half of the `TransportEvent` channel (S-023, BC-2.05.007).
+    ///
+    /// `recv_message` emits `TransportEvent::Disconnected` via this sender before
+    /// returning a connection-loss error. Capacity 1: exactly one Disconnected event
+    /// per connection lifetime.
+    #[allow(dead_code)]
+    event_tx: EventSender,
 }
 
 impl UdsClientTransport {
     /// Wrap an accepted `UnixStream` into a `UdsClientTransport`.
+    ///
+    /// This constructor is retained from S-022 for callers that do not need the
+    /// S-023 event channel (e.g., tests that only exercise send/recv). It creates
+    /// an internal event channel whose receiver is immediately dropped, making
+    /// `TransportEvent::Disconnected` emissions non-blocking (the channel has capacity
+    /// 1 and sends are fire-and-forget on a disconnected channel).
     pub fn new(stream: tokio::net::UnixStream) -> Self {
         let (reader, writer) = stream.into_split();
-        Self { reader, writer }
+        // Capacity 1: one Disconnected event per connection lifetime.
+        let (event_tx, _event_rx) = mpsc::channel(1);
+        Self {
+            reader,
+            writer,
+            event_tx,
+        }
+    }
+
+    /// Construct a `UdsClientTransport` with an externally owned event channel (S-023).
+    ///
+    /// The TUI event loop calls this constructor (instead of `new`) so it can hold the
+    /// [`EventReceiver`] and select on `TransportEvent::Disconnected` to trigger SOQ-3
+    /// (BC-2.05.007).
+    ///
+    /// # Arguments
+    ///
+    /// - `stream`: the connected `UnixStream`.
+    /// - `event_tx`: the sender half of a `mpsc::channel(1)` created by the caller.
+    ///   The caller retains the receiver via [`UdsClientTransport::events`]... wait,
+    ///   `events()` is not the right pattern here. Instead, the caller creates the channel
+    ///   pair, passes `event_tx` here, and retains `event_rx` itself. See [`connect_with_events`].
+    pub fn with_event_channel(stream: tokio::net::UnixStream, event_tx: EventSender) -> Self {
+        let (reader, writer) = stream.into_split();
+        Self {
+            reader,
+            writer,
+            event_tx,
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // S-023 stubs: disconnect-path detection helpers
+    // -----------------------------------------------------------------------
+
+    /// Classify an I/O error as a connection-loss error that triggers SOQ-3 emission.
+    ///
+    /// Returns `true` if `err` is one of the three connection-loss error kinds defined
+    /// by BC-2.05.007 Precondition 2: `UnexpectedEof`, `BrokenPipe`, `ConnectionReset`.
+    ///
+    /// Used by `recv_message` to decide whether to emit `TransportEvent::Disconnected`
+    /// before returning the error to the caller.
+    ///
+    /// # Graceful disconnect exclusion (AC-006)
+    ///
+    /// TUI-initiated graceful disconnect is NOT classified as a connection-loss error.
+    /// The TUI's normal exit path calls `std::process::exit` (or drops the transport)
+    /// without sending any IPC message; the OS closes the socket. From the daemon's
+    /// perspective this may look like an EOF, but the `UdsClientTransport` on the TUI
+    /// side calls [`Self::graceful_disconnect`] instead of letting the error surface.
+    #[allow(dead_code)]
+    fn is_connection_loss_error(err: &std::io::Error) -> bool {
+        todo!("S-023: classify {:?} as connection-loss error for SOQ-3 emission", err.kind())
+    }
+
+    /// Mark this transport as undergoing a TUI-initiated graceful disconnect.
+    ///
+    /// Called by the TUI before the process exits normally (user quit). Prevents
+    /// `recv_message` from emitting `TransportEvent::Disconnected` for the subsequent
+    /// EOF/BrokenPipe that results from the TUI closing its end of the socket.
+    ///
+    /// # AC-006 (BC-2.05.007 PC-6)
+    ///
+    /// SOQ-3 MUST NOT fire on TUI-initiated graceful disconnect. This method sets an
+    /// internal flag checked by `recv_message`'s disconnect-detection path.
+    #[allow(dead_code)]
+    pub fn graceful_disconnect(&mut self) {
+        todo!("S-023: set internal graceful-disconnect flag to suppress TransportEvent::Disconnected")
     }
 }
 

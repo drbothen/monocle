@@ -22,7 +22,11 @@
 //! `ShmTransport` will live in a separate `monocle-ipc-shm` crate.
 
 pub mod error;
+/// Transport-level events (S-023, BC-2.05.007): `TransportEvent::Disconnected` for SOQ-3.
+pub mod events;
 pub mod framing;
+/// Reconnection loop with exponential backoff (S-023, BC-2.05.006).
+pub mod reconnect;
 /// Server-side connection accept loop and per-client task spawner (S-022, BC-2.05.002).
 pub mod server;
 pub mod transport;
