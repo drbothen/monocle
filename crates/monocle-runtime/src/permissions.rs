@@ -232,3 +232,181 @@ impl Default for PendingDecisionRegistry {
 /// the per-client IPC task, and the timeout handler share a single registry instance
 /// without cloning the struct itself.
 pub type SharedPendingDecisionRegistry = Arc<PendingDecisionRegistry>;
+
+#[cfg(test)]
+// Allow BC-based test naming: test_BC_S_SS_NNN_xxx — uppercase BC identifier is intentional.
+#[allow(non_snake_case)]
+mod tests {
+    use super::*;
+
+    fn make_inputs(tag: &str) -> PromptPayloadInputs {
+        PromptPayloadInputs {
+            session_id: format!("session-{tag}"),
+            tool_name: "Edit".to_string(),
+            tool_input: serde_json::json!({"tag": tag}),
+            old_content: None,
+            new_content: None,
+        }
+    }
+
+    /// test_BC_2_05_005_register_prompt_returns_uuid_and_stores_entry:
+    /// register_prompt assigns a fresh UUID, inserts the entry, and
+    /// snapshot_payloads returns a payload whose prompt_id matches the returned UUID.
+    /// Traces to BC-2.05.005 postcondition PC-1.
+    #[test]
+    fn test_BC_2_05_005_register_prompt_returns_uuid_and_stores_entry() {
+        let registry = PendingDecisionRegistry::new();
+        let (tx, _rx) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+
+        let (prompt_id, returned_payload) = registry.register_prompt(make_inputs("reg"), tx);
+
+        // The returned payload must carry the same prompt_id the registry assigned.
+        assert_eq!(
+            returned_payload.prompt_id, prompt_id,
+            "returned payload prompt_id must match the assigned UUID"
+        );
+
+        // snapshot_payloads must include exactly one entry matching prompt_id.
+        let payloads = registry.snapshot_payloads();
+        assert_eq!(
+            payloads.len(),
+            1,
+            "registry must contain exactly one entry after register"
+        );
+        assert_eq!(
+            payloads[0].prompt_id, prompt_id,
+            "snapshot payload prompt_id must match"
+        );
+    }
+
+    /// test_BC_2_05_005_resolve_prompt_returns_some_and_removes_entry:
+    /// The first resolve_prompt call for a registered id returns Some(payload) and
+    /// removes the entry. A second call for the same id returns None (silently discarded).
+    /// Traces to BC-2.05.005 postcondition PC-3 / invariant 2.
+    #[test]
+    fn test_BC_2_05_005_resolve_prompt_returns_some_and_removes_entry() {
+        let registry = PendingDecisionRegistry::new();
+        let (tx, _rx) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+
+        let (prompt_id, _payload) = registry.register_prompt(make_inputs("resolve"), tx);
+
+        // First resolution: must return Some and remove the entry.
+        let result = registry.resolve_prompt(prompt_id, PermissionDecisionKind::Allow);
+        assert!(
+            result.is_some(),
+            "first resolve_prompt must return Some(payload)"
+        );
+        assert_eq!(
+            result
+                .expect("resolve_prompt returned None after is_some check")
+                .prompt_id,
+            prompt_id,
+            "resolved payload prompt_id must match"
+        );
+
+        // Entry must be gone from the snapshot.
+        let payloads = registry.snapshot_payloads();
+        assert!(
+            payloads.is_empty(),
+            "registry must be empty after first resolution"
+        );
+
+        // Second resolution attempt: must return None (at-most-one invariant).
+        let second = registry.resolve_prompt(prompt_id, PermissionDecisionKind::Deny);
+        assert!(
+            second.is_none(),
+            "second resolve_prompt for same prompt_id must return None"
+        );
+    }
+
+    /// test_BC_2_05_005_remove_timed_out_prompt_removes_entry:
+    /// remove_timed_out_prompt returns Some(payload) and removes the entry from the
+    /// registry. snapshot_payloads is empty after the call.
+    /// Traces to BC-2.05.005 postcondition PC-4.
+    #[test]
+    fn test_BC_2_05_005_remove_timed_out_prompt_removes_entry() {
+        let registry = PendingDecisionRegistry::new();
+        let (tx, _rx) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+
+        let (prompt_id, _payload) = registry.register_prompt(make_inputs("timeout"), tx);
+
+        // remove_timed_out_prompt must return Some and remove the entry.
+        let result = registry.remove_timed_out_prompt(prompt_id);
+        assert!(
+            result.is_some(),
+            "remove_timed_out_prompt must return Some(payload) for a registered prompt"
+        );
+        assert_eq!(
+            result
+                .expect("remove_timed_out_prompt returned None after is_some check")
+                .prompt_id,
+            prompt_id,
+            "removed payload prompt_id must match"
+        );
+
+        // Registry must be empty after removal.
+        let payloads = registry.snapshot_payloads();
+        assert!(
+            payloads.is_empty(),
+            "registry must be empty after remove_timed_out_prompt"
+        );
+    }
+
+    /// test_BC_2_05_005_remove_timed_out_prompt_idempotent:
+    /// Calling remove_timed_out_prompt twice for the same prompt_id is a no-op on the
+    /// second call: returns None without panicking.
+    /// Traces to BC-2.05.005 postcondition PC-4 (if already resolved, no-op / None).
+    #[test]
+    fn test_BC_2_05_005_remove_timed_out_prompt_idempotent() {
+        let registry = PendingDecisionRegistry::new();
+        let (tx, _rx) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+
+        let (prompt_id, _payload) = registry.register_prompt(make_inputs("idem"), tx);
+
+        // First removal succeeds.
+        let first = registry.remove_timed_out_prompt(prompt_id);
+        assert!(
+            first.is_some(),
+            "first remove_timed_out_prompt must return Some"
+        );
+
+        // Second removal on same id: must return None and must NOT panic.
+        let second = registry.remove_timed_out_prompt(prompt_id);
+        assert!(
+            second.is_none(),
+            "second remove_timed_out_prompt for same prompt_id must return None"
+        );
+    }
+
+    /// test_BC_2_05_005_snapshot_payloads_cloning:
+    /// snapshot_payloads returns independent clones — mutating the returned Vec does
+    /// not affect the registry state.
+    /// Traces to BC-2.05.005 / overlay_stack snapshot contract (AC-015 EC-003).
+    #[test]
+    fn test_BC_2_05_005_snapshot_payloads_cloning() {
+        let registry = PendingDecisionRegistry::new();
+        let (tx1, _rx1) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+        let (tx2, _rx2) = tokio::sync::oneshot::channel::<PermissionDecisionKind>();
+
+        let (id1, _) = registry.register_prompt(make_inputs("snap1"), tx1);
+        let (id2, _) = registry.register_prompt(make_inputs("snap2"), tx2);
+
+        // Capture snapshot, then clear the returned Vec.
+        let mut snapshot = registry.snapshot_payloads();
+        assert_eq!(snapshot.len(), 2, "snapshot must contain both entries");
+
+        // Mutate the snapshot clone.
+        snapshot.clear();
+
+        // Registry must be unaffected — snapshot_payloads still returns both entries.
+        let still_there = registry.snapshot_payloads();
+        assert_eq!(
+            still_there.len(),
+            2,
+            "registry must be unaffected by clearing the snapshot Vec"
+        );
+        let ids: Vec<Uuid> = still_there.iter().map(|p| p.prompt_id).collect();
+        assert!(ids.contains(&id1), "id1 must still be in registry");
+        assert!(ids.contains(&id2), "id2 must still be in registry");
+    }
+}
