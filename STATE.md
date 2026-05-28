@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.25"
+version: "6.26"
 status: active
 producer: state-manager
-timestamp: 2026-05-27T22:00:00Z
-phase: phase-3-wave-5-GATE-PASSED
-current_step: "Wave 5 gate PASSED (D-182). Wave 6 ready. Awaiting Wave 6 authorization."
+timestamp: 2026-05-27T22:30:00Z
+phase: phase-3-wave-6-IN-PROGRESS
+current_step: "Wave 6 authorized (D-183). S-022 in progress (serial-first). S-023 + S-025 parallel after S-022. S-026 last."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history."
-awaiting: "Wave 6 authorization. S-022 through S-026 (4 stories, 34 pts)."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183)."
+awaiting: "S-022 delivery (TUI Client Connect + Initial State + Permission Msg Types)."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -215,9 +215,9 @@ next_session_resume_protocol: |
     7. STORY-INDEX v5.2. sprint-state v1.28. BC-INDEX v1.23 (113 BCs).
        SS-tui v1.7.0. ARCH-INDEX v1.0.16. PRD v1.27.2.
 
-  NEXT ACTION — WAVE 6 AUTHORIZATION:
-    8. Wave 6: 4 stories, 34 pts total.
-       S-022 (8 pts, EPIC-05) — TUI Connect + Initial State + Permission Prompt — SERIAL FIRST.
+  NEXT ACTION — WAVE 6 IN PROGRESS (D-183 AUTHORIZED):
+    8. Wave 6: 4 stories, 34 pts total. AUTHORIZED (D-183). S-022 SERIAL FIRST.
+       S-022 (8 pts, EPIC-05) — TUI Connect + Initial State + Permission Prompt — IN PROGRESS.
          Depends on: S-021 (done), S-018 (done).
          Blocks: S-023, S-025, S-026.
          Target: monocle-ipc. BCs: BC-2.05.002, BC-2.05.005.
@@ -231,8 +231,8 @@ next_session_resume_protocol: |
          Depends on: S-022, S-023, S-024 (done).
          Target: monocle-tui. BCs: BC-2.06.008-014, 016, 023, 024.
 
-       EXECUTION ORDER: S-022 serial first, then S-023 + S-025 parallel, then S-026.
-       Authorize: confirm "Wave 6 approved" to begin.
+       EXECUTION ORDER: S-022 serial first → (S-023 ∥ S-025) → S-026.
+       Dispatch S-022 via deliver-story skill immediately.
 
   NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix unless specifically tasked):
     9. ADV-W5GATE-HIGH-001: DaemonState wiring integration story (route to story-writer).
@@ -300,6 +300,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-180 | S-021 DELIVERED — PR #23 @ acaacb9, 49 tests, adv 9→4→4. BC-2.05.001/003/004/008 satisfied. New monocle-ipc crate. | 2026-05-27 | orchestrator |
 | D-181 | Wave 5 COMPLETE — 5/5 stories done, 753 tests, 24/33 stories (143/195 pts). monocle-ipc crate added. | 2026-05-27 | orchestrator |
 | D-182 | Wave 5 gate PASSED (753 tests, 0 failures, clippy/fmt clean). DTU SKIP. ADV PASS (0 CRIT, 0 HIGH blocking; 2 HIGH obs tracked). Demo PASS (5/5). Holdout PASS (mean 0.94, min 0.80). develop @ 1ce7838. Wave 6 unblocked. | 2026-05-27 | orchestrator |
+| D-183 | Wave 6 AUTHORIZED — 4 stories (S-022, S-023, S-025, S-026), 34 pts. Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026. All dependencies satisfied. Human approval: "Approve as documented" (2026-05-27). | 2026-05-27 | orchestrator |
 
 ## Key Tech Stack
 
@@ -319,6 +320,15 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.26 (WAVE 6 AUTHORIZED — S-022 IN PROGRESS)
+
+**WAVE 6 AUTHORIZED** (2026-05-27): D-183. Human approval: "Approve as documented."
+- 4 stories, 34 pts: S-022 (8 pts, serial-first), S-023 (5 pts), S-025 (8 pts), S-026 (13 pts).
+- Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026.
+- All dependencies satisfied. phase → phase-3-wave-6-IN-PROGRESS.
+- Frontmatter: version 6.25→6.26, awaiting → S-022 delivery.
+STATE v6.25 → v6.26.
 
 ## §Trace v6.25 (WAVE 6 COUNT CORRECTION — DURABILITY HARDENING)
 
