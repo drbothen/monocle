@@ -74,6 +74,20 @@ pub const EVENT_RING_CAPACITY: usize = 4096;
 pub const DAEMON_NOT_RUNNING_ERROR: &str =
     "Daemon not running. Start it with: monocle daemon start";
 
+/// Status bar text shown when the IPC transport disconnects and the TUI enters
+/// the reconnect wait state (BC-2.06.004 + BC-2.05.007 on_transport_event path).
+///
+/// Single source of truth — both the production `on_transport_event()` path and
+/// any integration test referencing this state must use this const.
+pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
+
+/// Status bar text shown when the daemon is unreachable after reconnect attempts
+/// exhaust (offline-mode fallback, pending S-023 reconnect story).
+///
+/// Duplicated inline at both protocol-violation and reader-disconnect call sites;
+/// this const is the single authoritative source for both.
+pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
+
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
@@ -301,7 +315,7 @@ pub fn on_transport_event(app: &mut App, event: TransportEvent) {
             app.mode = AppMode::Dashboard {
                 focused: FocusSnapshot::Sessions,
             };
-            app.status_message = Some("[disconnected] reconnecting...".to_string());
+            app.status_message = Some(DAEMON_DISCONNECT_STATUS.to_string());
             tracing::warn!("IPC transport disconnected; entering reconnect state");
         }
     }
@@ -617,7 +631,7 @@ pub async fn run() -> Result<()> {
                             "reconnect not yet available (pending S-023 merge); \
                                         entering offline mode"
                         );
-                        app.status_message = Some("[daemon: offline]".to_string());
+                        app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
                         break;
                     }
                 }
