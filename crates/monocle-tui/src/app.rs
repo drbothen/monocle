@@ -583,26 +583,44 @@ pub async fn run() -> Result<()> {
                         // No binding or explicit no-op — do nothing.
                     }
                     Some((monocle_core::tui::state::Action::SelectNext, _)) => {
-                        // Move selection down in the current panel list.
-                        let len = app.sessions.len();
-                        if len > 0 {
-                            let next = sessions_state
-                                .list_state
-                                .selected()
-                                .map(|i| (i + 1).min(len - 1))
-                                .unwrap_or(0);
-                            sessions_state.list_state.select(Some(next));
+                        // AC-006: SelectNext is confined to Dashboard { focused: Sessions }.
+                        // In Overlay or Fullscreen mode, the keypress is dropped — no
+                        // cursor mutation behind the overlay or in other modes.
+                        if matches!(
+                            app.mode,
+                            AppMode::Dashboard {
+                                focused: FocusSnapshot::Sessions
+                            }
+                        ) {
+                            let len = app.sessions.len();
+                            if len > 0 {
+                                let next = sessions_state
+                                    .list_state
+                                    .selected()
+                                    .map(|i| (i + 1).min(len - 1))
+                                    .unwrap_or(0);
+                                sessions_state.list_state.select(Some(next));
+                            }
                         }
                     }
                     Some((monocle_core::tui::state::Action::SelectPrev, _)) => {
-                        // Move selection up in the current panel list.
-                        if !app.sessions.is_empty() {
-                            let prev = sessions_state
-                                .list_state
-                                .selected()
-                                .map(|i| i.saturating_sub(1))
-                                .unwrap_or(0);
-                            sessions_state.list_state.select(Some(prev));
+                        // AC-006: SelectPrev is confined to Dashboard { focused: Sessions }.
+                        // In Overlay or Fullscreen mode, the keypress is dropped — no
+                        // cursor mutation behind the overlay or in other modes.
+                        if matches!(
+                            app.mode,
+                            AppMode::Dashboard {
+                                focused: FocusSnapshot::Sessions
+                            }
+                        ) {
+                            if !app.sessions.is_empty() {
+                                let prev = sessions_state
+                                    .list_state
+                                    .selected()
+                                    .map(|i| i.saturating_sub(1))
+                                    .unwrap_or(0);
+                                sessions_state.list_state.select(Some(prev));
+                            }
                         }
                     }
                     Some((action, _)) => {

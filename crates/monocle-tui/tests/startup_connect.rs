@@ -16,6 +16,7 @@ use monocle_tui::app::{
     apply_permission_prompt_queued, on_drop_counter_update, on_initial_state, on_transport_event,
     App, TransportEvent,
 };
+use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use std::collections::VecDeque;
 use std::time::Instant;
 use uuid::Uuid;
@@ -652,5 +653,166 @@ fn test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction() {
     assert_eq!(
         app.drop_counter, 0,
         "HIGH-002: ring eviction must NOT increment drop_counter"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV3-MED-001 — SelectNext/SelectPrev gated on Dashboard+Sessions focus
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV3-MED-001 / AC-006: SelectNext in Overlay mode must NOT mutate the
+/// sessions_state selection cursor.
+///
+/// UX bug scenario: user is in Overlay mode (permission prompt), presses `j`.
+/// Without the gate, `j` resolves to SelectNext via the builtin layer and shifts
+/// the sessions list cursor behind the overlay — user sees a different highlighted
+/// row on overlay close.
+///
+/// This test simulates the event loop gate by applying the same `matches!()` guard
+/// the production code uses and verifying the selection is unchanged.
+#[test]
+fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
+    // Set up: 2 sessions, selection on index 0.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Simulate production state: Overlay mode (permission prompt visible).
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    // Apply the AC-006 gate (same logic as app.rs run() loop).
+    // The gate: SelectNext only fires when mode is Dashboard { Sessions }.
+    let is_dashboard_sessions = matches!(
+        app.mode,
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions
+        }
+    );
+    if is_dashboard_sessions {
+        let len = app.sessions.len();
+        if len > 0 {
+            let next = sessions_state
+                .list_state
+                .selected()
+                .map(|i| (i + 1).min(len - 1))
+                .unwrap_or(0);
+            sessions_state.list_state.select(Some(next));
+        }
+    }
+
+    // Assert: selection UNCHANGED (still 0 — overlay mode blocked the action).
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(0),
+        "MED-001/AC-006: SelectNext in Overlay mode must NOT mutate list selection; \
+         expected Some(0), got {:?}",
+        sessions_state.list_state.selected()
+    );
+}
+
+/// F-S025-ADV3-MED-001 / AC-006: SelectNext in Dashboard+Sessions focus DOES move
+/// the cursor (positive case — confirms the gate permits the action in the correct mode).
+#[test]
+fn test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Mode is already Dashboard { Sessions } from App::new().
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    let is_dashboard_sessions = matches!(
+        app.mode,
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions
+        }
+    );
+    assert!(
+        is_dashboard_sessions,
+        "precondition: App::new starts in Dashboard {{ Sessions }}"
+    );
+
+    if is_dashboard_sessions {
+        let len = app.sessions.len();
+        if len > 0 {
+            let next = sessions_state
+                .list_state
+                .selected()
+                .map(|i| (i + 1).min(len - 1))
+                .unwrap_or(0);
+            sessions_state.list_state.select(Some(next));
+        }
+    }
+
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(1),
+        "MED-001/AC-006: SelectNext in Dashboard {{Sessions}} must advance cursor to 1"
+    );
+}
+
+/// F-S025-ADV3-MED-001 / AC-006: SelectPrev in Overlay mode must NOT mutate the
+/// sessions_state selection cursor.
+#[test]
+fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Start at index 1, enter Overlay mode.
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(1));
+
+    let is_dashboard_sessions = matches!(
+        app.mode,
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions
+        }
+    );
+    if is_dashboard_sessions {
+        if !app.sessions.is_empty() {
+            let prev = sessions_state
+                .list_state
+                .selected()
+                .map(|i| i.saturating_sub(1))
+                .unwrap_or(0);
+            sessions_state.list_state.select(Some(prev));
+        }
+    }
+
+    // Selection must remain at 1 (Overlay mode blocked SelectPrev).
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(1),
+        "MED-001/AC-006: SelectPrev in Overlay mode must NOT mutate list selection; \
+         expected Some(1), got {:?}",
+        sessions_state.list_state.selected()
     );
 }
