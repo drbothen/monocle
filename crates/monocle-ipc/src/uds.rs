@@ -40,6 +40,8 @@
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::net::UnixListener;
@@ -96,8 +98,21 @@ enum ReadStrategy {
     /// 1. On success: forwards the message via `msg_tx`.
     /// 2. On connection loss: emits `TransportEvent::Disconnected` via `event_tx`
     ///    BEFORE forwarding the error via `msg_tx` (ordering invariant BC-2.05.007 Invariant 1).
+    ///
+    /// `graceful` is set to `true` by [`UdsClientTransport::graceful_disconnect`] BEFORE
+    /// the stream is dropped. The background reader checks this flag before emitting
+    /// `TransportEvent::Disconnected` on EOF/connection-loss — if set, the Disconnected
+    /// event is suppressed (BC-2.05.007 PC-6 / AC-006).
+    ///
+    /// Sequencing guarantee: `graceful_disconnect()` stores `true` with `Release` ordering,
+    /// then the caller drops the transport (closing the write half). The background reader
+    /// loads with `Acquire` ordering before emitting. Because the store happens-before the
+    /// EOF that the reader observes, the reader always sees `graceful = true` when
+    /// the disconnect originates from the TUI side.
     Buffered {
         msg_rx: mpsc::Receiver<Result<ClientToServer, IpcError>>,
+        /// Shared graceful-disconnect flag. Set by `graceful_disconnect()` before stream drop.
+        graceful: Arc<AtomicBool>,
     },
 }
 
@@ -277,6 +292,10 @@ pub async fn connect_with_events(
     let (event_tx, event_rx) = mpsc::channel::<TransportEvent>(1);
     // Message channel capacity 8: small buffer for push messages during render cycles.
     let (msg_tx, msg_rx) = mpsc::channel::<Result<ClientToServer, IpcError>>(8);
+    // Graceful-disconnect flag: shared between transport and background reader.
+    // False initially; set to true by graceful_disconnect() before stream is dropped.
+    let graceful = Arc::new(AtomicBool::new(false));
+    let graceful_reader = Arc::clone(&graceful);
 
     let sock_path = runtime_dir.join("monocle.sock");
     let stream = tokio::net::UnixStream::connect(&sock_path)
@@ -291,9 +310,12 @@ pub async fn connect_with_events(
     // Spawn the background reader task.
     // The task owns the read half and drives connection-loss detection autonomously.
     // When a connection-loss error is detected:
-    //   1. Emit TransportEvent::Disconnected via event_tx (SOQ-3 signal — BC-2.05.007 PC-1).
-    //   2. Forward the error via msg_tx (so recv_message() callers get the error too).
-    //   3. Exit the loop (connection is gone; no further reads possible).
+    //   1. Check graceful_reader flag (Acquire) — if true, suppress Disconnected emission
+    //      (BC-2.05.007 PC-6 / AC-006: SOQ-3 must NOT fire on TUI-initiated graceful exit).
+    //   2. If not graceful: emit TransportEvent::Disconnected via event_tx (SOQ-3 signal
+    //      — BC-2.05.007 PC-1).
+    //   3. Forward the error via msg_tx (so recv_message() callers get the error too).
+    //   4. Exit the loop (connection is gone; no further reads possible).
     //
     // Channel send discipline (F-S023-ADV1-HIGH-002):
     // Use try_send + match rather than `let _ = .send().await` to distinguish:
@@ -306,7 +328,17 @@ pub async fn connect_with_events(
                 crate::framing::read_framed(&mut reader).await;
             match &result {
                 Err(IpcError::Disconnected) => {
-                    // Clean EOF — daemon shut down or crashed.
+                    // Clean EOF — daemon shut down or TUI-initiated graceful close.
+                    // Check graceful flag (Acquire) BEFORE emitting SOQ-3 signal.
+                    // graceful_disconnect() stores true (Release) then drops the write half,
+                    // causing this EOF. The Release-Acquire pair guarantees visibility.
+                    if graceful_reader.load(Ordering::Acquire) {
+                        tracing::debug!(
+                            "background reader: EOF on socket (graceful TUI exit) — \
+                             suppressing Disconnected (BC-2.05.007 PC-6 / AC-006)"
+                        );
+                        break;
+                    }
                     tracing::debug!("background reader: EOF on socket — emitting Disconnected");
                     // Emit SOQ-3 signal first (ordering invariant BC-2.05.007 Invariant 1).
                     match event_tx.try_send(TransportEvent::Disconnected) {
@@ -346,7 +378,16 @@ pub async fn connect_with_events(
                 Err(IpcError::IoError(io_err))
                     if UdsClientTransport::is_connection_loss_error_static(io_err) =>
                 {
-                    // BrokenPipe or ConnectionReset — unexpected connection loss.
+                    // BrokenPipe or ConnectionReset — check graceful flag first.
+                    if graceful_reader.load(Ordering::Acquire) {
+                        tracing::debug!(
+                            "background reader: connection loss ({:?}) (graceful TUI exit) — \
+                             suppressing Disconnected (BC-2.05.007 PC-6 / AC-006)",
+                            io_err.kind()
+                        );
+                        break;
+                    }
+                    // Unexpected connection loss.
                     tracing::debug!(
                         "background reader: connection loss ({:?}) — emitting Disconnected",
                         io_err.kind()
@@ -418,7 +459,7 @@ pub async fn connect_with_events(
 
     let transport = UdsClientTransport {
         writer,
-        read_strategy: ReadStrategy::Buffered { msg_rx },
+        read_strategy: ReadStrategy::Buffered { msg_rx, graceful },
     };
     Ok((transport, event_rx))
 }
@@ -445,6 +486,9 @@ pub(crate) async fn connect_with_events_from_stream(
     let (event_tx, event_rx) = mpsc::channel::<TransportEvent>(1);
     // Message channel capacity 8: small buffer for push messages during render cycles.
     let (msg_tx, msg_rx) = mpsc::channel::<Result<ClientToServer, IpcError>>(8);
+    // Graceful-disconnect flag (same semantics as connect_with_events).
+    let graceful = Arc::new(AtomicBool::new(false));
+    let graceful_reader = Arc::clone(&graceful);
 
     let (mut reader, writer) = stream.into_split();
 
@@ -455,6 +499,14 @@ pub(crate) async fn connect_with_events_from_stream(
                 crate::framing::read_framed(&mut reader).await;
             match &result {
                 Err(IpcError::Disconnected) => {
+                    // Check graceful flag before emitting SOQ-3 (BC-2.05.007 PC-6 / AC-006).
+                    if graceful_reader.load(Ordering::Acquire) {
+                        tracing::debug!(
+                            "background reader (reconnect): EOF (graceful TUI exit) — \
+                             suppressing Disconnected"
+                        );
+                        break;
+                    }
                     tracing::debug!(
                         "background reader (reconnect): EOF on socket — emitting Disconnected"
                     );
@@ -493,6 +545,15 @@ pub(crate) async fn connect_with_events_from_stream(
                 Err(IpcError::IoError(io_err))
                     if UdsClientTransport::is_connection_loss_error_static(io_err) =>
                 {
+                    // Check graceful flag before emitting SOQ-3 (BC-2.05.007 PC-6 / AC-006).
+                    if graceful_reader.load(Ordering::Acquire) {
+                        tracing::debug!(
+                            "background reader (reconnect): connection loss ({:?}) (graceful TUI exit) — \
+                             suppressing Disconnected",
+                            io_err.kind()
+                        );
+                        break;
+                    }
                     tracing::debug!(
                         "background reader (reconnect): connection loss ({:?}) — emitting Disconnected",
                         io_err.kind()
@@ -557,7 +618,7 @@ pub(crate) async fn connect_with_events_from_stream(
 
     let transport = UdsClientTransport {
         writer,
-        read_strategy: ReadStrategy::Buffered { msg_rx },
+        read_strategy: ReadStrategy::Buffered { msg_rx, graceful },
     };
     (transport, event_rx)
 }
@@ -661,21 +722,32 @@ impl UdsClientTransport {
 
     /// Mark this transport as undergoing a TUI-initiated graceful disconnect.
     ///
-    /// Called by the TUI before the process exits normally (user quit). Prevents
-    /// `recv_message()` from emitting `TransportEvent::Disconnected` for the subsequent
-    /// EOF/BrokenPipe that results from the TUI closing its end of the socket.
+    /// Called by the TUI before the process exits normally (user quit). Suppresses
+    /// `TransportEvent::Disconnected` for the subsequent EOF/BrokenPipe that results
+    /// from the TUI closing its end of the socket (BC-2.05.007 PC-6 / AC-006).
     ///
-    /// Only effective on the `Direct` read strategy (the `new()` / `with_event_channel()`
-    /// path). For `connect_with_events()` transports, the background reader task handles
-    /// connection loss — calling `graceful_disconnect()` is still correct but has no effect
-    /// on the already-spawned background task.
+    /// # Behaviour by read strategy
+    ///
+    /// - **`Direct`** (created by `new()`): sets the `graceful` bool synchronously.
+    ///   `recv_message()` checks the flag before emitting `Disconnected`.
+    /// - **`Buffered`** (created by `connect_with_events()` / `connect_with_events_from_stream()`):
+    ///   sets `graceful = true` with `Release` ordering on the shared `Arc<AtomicBool>`.
+    ///   The background reader loads with `Acquire` ordering before emitting `Disconnected`.
+    ///   The caller MUST call `graceful_disconnect()` BEFORE dropping the transport
+    ///   (closing the write half). The Release-Acquire pair guarantees the background reader
+    ///   sees the flag before observing the resulting EOF.
     ///
     /// # AC-006 (BC-2.05.007 PC-6)
     ///
     /// SOQ-3 MUST NOT fire on TUI-initiated graceful disconnect.
     pub fn graceful_disconnect(&mut self) {
-        if let ReadStrategy::Direct { graceful, .. } = &mut self.read_strategy {
-            *graceful = true;
+        match &mut self.read_strategy {
+            ReadStrategy::Direct { graceful, .. } => {
+                *graceful = true;
+            }
+            ReadStrategy::Buffered { graceful, .. } => {
+                graceful.store(true, Ordering::Release);
+            }
         }
     }
 
@@ -747,7 +819,7 @@ impl Transport for UdsClientTransport {
                 }
                 result
             }
-            ReadStrategy::Buffered { msg_rx } => {
+            ReadStrategy::Buffered { msg_rx, .. } => {
                 // Background task has already emitted the event before placing the
                 // error in the channel — ordering invariant is preserved.
                 msg_rx.recv().await.unwrap_or(Err(IpcError::Disconnected))
