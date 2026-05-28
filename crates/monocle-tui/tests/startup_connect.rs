@@ -938,7 +938,7 @@ fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
         .map(|i| {
             HookEventRecord::new(
                 "sess-fifo".to_string(),
-                i,       // timestamp_micros = i (ascending = insertion order)
+                i, // timestamp_micros = i (ascending = insertion order)
                 9999,
                 "PreToolUse".to_string(),
                 None,

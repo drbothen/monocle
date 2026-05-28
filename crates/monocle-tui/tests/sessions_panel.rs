@@ -700,8 +700,13 @@ fn test_bc_2_06_005_canonical_row_verbatim_match() {
         rendered
     );
     // Also assert session_id appears before icon (belt-and-suspenders).
-    let id_pos = rendered.find("sess-001").expect("session_id must appear");
-    let icon_pos = rendered.find('\u{25CF}').expect("icon must appear");
+    // Use unwrap_or_else (not .expect) to avoid clippy::expect_used on Option.
+    let id_pos = rendered
+        .find("sess-001")
+        .unwrap_or_else(|| panic!("session_id must appear in rendered output; got:\n{rendered}"));
+    let icon_pos = rendered
+        .find('\u{25CF}')
+        .unwrap_or_else(|| panic!("icon must appear in rendered output; got:\n{rendered}"));
     assert!(
         id_pos < icon_pos,
         "F-S025-ADV5-BLOCKER-001: session_id must appear before icon in rendered row"
@@ -717,12 +722,13 @@ fn test_bc_2_06_005_column_order_session_id_first() {
     let app = app_with_sessions(vec![session("sess-001")]);
     let rendered = render_sessions_panel(&app, 0);
 
+    // Use unwrap_or_else (not .expect) to avoid clippy::expect_used on Option.
     let id_pos = rendered
         .find("sess-001")
-        .expect("session_id must appear in rendered output");
+        .unwrap_or_else(|| panic!("session_id must appear in rendered output; got:\n{rendered}"));
     let icon_pos = rendered
         .find('\u{25CF}')
-        .expect("icon ● must appear in rendered output");
+        .unwrap_or_else(|| panic!("icon must appear in rendered output; got:\n{rendered}"));
 
     assert!(
         id_pos < icon_pos,
