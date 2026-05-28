@@ -46,6 +46,7 @@ fn monocle_repo_root() -> PathBuf {
 /// HS-W3-003 positive: detect(monocle_repo_root) must return Some(...)
 /// because monocle has .factory/STATE.md with document_type: pipeline-state.
 #[test]
+#[ignore = "requires .factory/STATE.md (factory-artifacts worktree); run locally only"]
 fn test_HS_W3_003_detect_monocle_own_factory() {
     let repo_root = monocle_repo_root();
 

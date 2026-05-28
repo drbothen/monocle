@@ -296,11 +296,9 @@ async fn test_BC_2_04_003_invariant_suppression_is_total() {
         "contract_version": "monocle-lock-v1",
         "started_at": "2026-05-27T00:00:00.000Z"
     });
-    std::fs::write(
-        runtime_dir.path().join("monocle.lock"),
-        serde_json::to_string_pretty(&content).expect("json"),
-    )
-    .expect("write lock");
+    #[rustfmt::skip]
+    std::fs::write(runtime_dir.path().join("monocle.lock"), serde_json::to_string_pretty(&content).expect("json")) // nosemgrep: monocle-no-naked-fs-write
+        .expect("write lock");
 
     let result = temp_env::async_with_vars(
         [

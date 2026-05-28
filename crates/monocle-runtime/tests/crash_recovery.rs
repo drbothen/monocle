@@ -84,7 +84,7 @@ fn test_BC_2_01_006_read_valid_checkpoint() {
         "last_app_mode": "Running",
         "shutdown_utc": "2026-05-26T09:00:00.000Z"
     }"#;
-    fs::write(&path, json).expect("manual write");
+    fs::write(&path, json).expect("manual write"); // nosemgrep: monocle-no-naked-fs-write
 
     let result = read_recovery_checkpoint(&path);
 
@@ -143,7 +143,7 @@ fn test_BC_2_01_006_read_malformed_json_returns_none() {
 
     // Truncated JSON — missing the closing brace.
     let malformed = r#"{"pid":1,"shutdown_reason":"graceful","last_app_mode":"Running""#;
-    fs::write(&path, malformed).expect("manual write of malformed JSON");
+    fs::write(&path, malformed).expect("manual write of malformed JSON"); // nosemgrep: monocle-no-naked-fs-write
 
     let result = read_recovery_checkpoint(&path);
 
@@ -533,7 +533,7 @@ fn test_BC_2_01_006_read_returns_malformed_for_invalid_fields() {
 
     // Structurally valid JSON with pid == 0, which violates INV-1.
     let json = r#"{"pid":0,"shutdown_reason":"graceful","last_app_mode":"Running","shutdown_utc":"2026-05-26T10:00:00.000Z"}"#;
-    fs::write(&path, json).expect("manual write");
+    fs::write(&path, json).expect("manual write"); // nosemgrep: monocle-no-naked-fs-write
 
     let result = read_recovery_checkpoint(&path);
 

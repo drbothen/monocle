@@ -69,7 +69,7 @@ async fn test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind() {
     let sock_path = runtime_dir.join("monocle.sock");
 
     // Plant a stale socket file.
-    std::fs::write(&sock_path, b"stale").expect("write stale socket");
+    std::fs::write(&sock_path, b"stale").expect("write stale socket"); // nosemgrep: monocle-no-naked-fs-write
     assert!(sock_path.exists(), "stale socket must exist before bind");
 
     // Bind should remove the stale file and create a real socket.

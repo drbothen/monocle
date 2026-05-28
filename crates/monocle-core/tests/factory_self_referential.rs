@@ -217,6 +217,7 @@ async fn test_BC_FACTORY_002_vsdd_adapter_subscribe_empty() {
 ///
 /// Traces to: BC-2.02.005 PC-1; BC-2.02.005 PC-2; AC-005; AC-006; VP-015.
 #[test]
+#[ignore = "requires .factory/STATE.md (factory-artifacts worktree); run locally only"]
 fn test_BC_FACTORY_002_vsdd_adapter_self_referential_detection() {
     let repo_root = monocle_repo_root();
 
@@ -877,6 +878,7 @@ fn test_BC_FACTORY_002_matches_returns_false_for_non_factory_dir() {
 ///
 /// Traces to: BC-2.02.005 PC-1; VP-015; matches() postcondition.
 #[test]
+#[ignore = "requires .factory/STATE.md (factory-artifacts worktree); run locally only"]
 fn test_BC_FACTORY_002_matches_self_referential() {
     let repo_root = monocle_repo_root();
 
@@ -913,6 +915,7 @@ fn test_BC_FACTORY_002_matches_self_referential() {
 ///
 /// Traces to: BC-2.02.005 PC-4; AC-008; VP-015.
 #[test]
+#[ignore = "requires .factory/STATE.md (factory-artifacts worktree); run locally only"]
 fn test_BC_FACTORY_002_vsdd_adapter_read_state_on_real_state_md() {
     let repo_root = monocle_repo_root();
 

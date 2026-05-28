@@ -1,0 +1,149 @@
+
+running 12 tests
+test types::tests::truncate_ascii_at_boundary ... ok
+test types::tests::truncate_empty ... ok
+test types::tests::truncate_exact_boundary_returned ... ok
+test types::tests::truncate_multibyte_snaps_back ... ok
+test types::tests::truncate_result_always_valid_utf8 ... ok
+test types::tests::truncate_short_string_unchanged ... ok
+test types::tests::truncate_three_byte_char_snaps_back ... ok
+test uds::tests::test_BC_2_05_007_unit_is_connection_loss_broken_pipe ... ok
+test uds::tests::test_BC_2_05_007_unit_is_connection_loss_connection_reset ... ok
+test uds::tests::test_BC_2_05_007_unit_is_connection_loss_false_for_permission_denied ... ok
+test uds::tests::test_BC_2_05_007_unit_is_connection_loss_false_for_would_block ... ok
+test uds::tests::test_BC_2_05_007_unit_is_connection_loss_unexpected_eof ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test ac_006_no_gap_window_between_snapshot_and_streaming ... ok
+test ac_002_initial_state_is_first_message ... ok
+test ac_005_push_only_no_polling ... ok
+test ac_003_four_byte_le_framing ... ok
+test ac_001_per_client_tokio_task_spawned ... ok
+test ac_013_empty_initial_state ... ok
+test test_BC_2_05_002_ring_tail_non_empty_passes_through ... ok
+test ac_004_initial_state_too_large_closes_connection ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 5 tests
+test test_BC_2_05_004_payload_excerpt_512_byte_body_truncated_to_256 ... ok
+test test_BC_2_05_004_payload_excerpt_empty_body_produces_empty_excerpt ... ok
+test test_BC_2_05_004_payload_excerpt_short_body_full_excerpt ... ok
+test test_BC_2_05_004_payload_excerpt_multibyte_boundary_truncation ... ok
+test test_BC_2_05_004_payload_excerpt_always_valid_utf8_property ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test test_BC_2_05_003_framing_empty_object_roundtrip ... ok
+test test_BC_2_05_003_framing_le_byte_order ... ok
+test test_BC_2_05_003_framing_read_returns_disconnected_on_eof ... ok
+test test_BC_2_05_003_framing_length_prefix_encodes_correctly ... ok
+test test_BC_2_05_003_framing_roundtrip_preserves_value ... ok
+test test_BC_2_05_003_framing_multiple_messages_sequential ... ok
+test test_BC_2_05_003_framing_read_rejects_declared_length_exceeding_256_kib ... ok
+test test_BC_2_05_003_framing_rejects_payload_exceeding_256_kib ... ok
+test test_BC_2_05_003_framing_accepts_payload_exactly_at_256_kib ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 14 tests
+test test_BC_2_05_003_server_to_client_permission_prompt_resolved_serde_roundtrip ... ok
+test test_BC_2_05_004_hook_type_non_exhaustive_wildcard_arm_compiles ... ok
+test test_BC_2_05_003_server_to_client_session_list_update_serde_roundtrip ... ok
+test test_BC_2_05_003_permission_prompt_payload_none_content_fields ... ok
+test test_BC_2_05_004_server_to_client_drop_counter_update_serde_roundtrip ... ok
+test test_BC_2_05_004_hook_type_all_variants_serde_roundtrip ... ok
+test test_BC_2_05_003_server_to_client_wire_has_type_tag ... ok
+test test_BC_2_05_003_permission_prompt_payload_with_content_fields ... ok
+test test_BC_2_05_003_server_to_client_permission_prompt_queued_serde_roundtrip ... ok
+test test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip ... ok
+test test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip ... ok
+test test_BC_2_05_004_server_to_client_hook_event_received_serde_roundtrip ... ok
+test test_BC_2_05_008_client_to_server_wire_has_type_tag ... ok
+test test_server_to_client_initial_state_serde_roundtrip ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test ac_008_prompt_id_stable_across_queued_and_resolved ... ok
+test ac_015_no_clients_connected_for_queued ... ok
+test ac_007_permission_prompt_queued_broadcast_on_decision_required ... ok
+test ac_012_resolved_requires_prior_queued ... ok
+test ac_010_timeout_broadcasts_resolved_and_removes_registry ... ok
+test ac_009_permission_decision_routes_to_oneshot ... ok
+test ac_009b_permission_decision_unknown_prompt_id_silently_discarded ... ok
+test ac_011_at_most_one_resolution_via_oneshot ... ok
+test ac_014_dual_resolution_race ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+
+running 24 tests
+test test_BC_2_05_006_backoff_attempt_1_is_250ms ... ok
+test test_BC_2_05_006_backoff_attempt_2_is_500ms ... ok
+test test_BC_2_05_006_backoff_attempt_3_is_1000ms ... ok
+test test_BC_2_05_006_backoff_attempt_4_plus_capped_at_2000ms ... ok
+test test_BC_2_05_006_backoff_full_schedule_matches_spec ... ok
+test test_BC_2_05_006_constants_backoff_cap_is_2000ms ... ok
+test test_BC_2_05_006_constants_backoff_initial_is_250ms ... ok
+test test_BC_2_05_006_constants_offline_poll_is_5s ... ok
+test test_BC_2_05_006_constants_reconnect_window_is_5s ... ok
+test test_BC_2_05_006_ac_007_status_bar_reconnecting_after_soq3 ... ok
+test test_BC_2_05_006_high_001_connect_timeout_within_reconnect_window ... ok
+test test_BC_2_05_006_ec_005_offline_mode_when_lock_file_absent ... ok
+test test_BC_2_05_006_pc_5_reconnect_timeout_after_5_second_window ... ok
+test test_BC_2_05_006_ec_002_offline_mode_no_crash_on_permanent_daemon_down ... ok
+test test_BC_2_05_006_pc_3_new_daemon_discovered_via_lock_file ... ok
+test test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconnect ... ok
+test test_BC_2_05_006_pc_7_app_mode_dashboard_after_reconnect_no_pending_prompts ... ok
+test test_BC_2_05_006_pc_6_initial_state_rebuild_on_reconnect ... ok
+test test_BC_2_05_006_pc_7_app_mode_overlay_after_reconnect_with_pending_prompts ... ok
+test test_BC_2_05_006_pc_8_status_bar_reverts_after_reconnect ... ok
+test test_BC_2_05_006_ec_003_reconnect_same_socket_path_new_pid ... ok
+test test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage ... ok
+test test_BC_2_05_006_invariant_1_soq3_before_reconnect_loop ... ok
+test test_BC_2_05_006_pc_3_lock_file_reread_after_failed_attempt ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.77s
+
+
+running 11 tests
+test test_BC_2_05_007_invariant_2_zero_ghost_approval_window ... ok
+test test_BC_2_05_007_pc_4_app_mode_transitions_to_dashboard_after_clear ... ok
+test test_BC_2_05_007_pc_6_disconnected_on_premature_close_via_shutdown ... ok
+test test_BC_2_05_007_pc_2_overlay_cleared_on_disconnect ... ok
+test test_BC_2_05_007_pc_6_disconnected_on_abrupt_server_drop ... ok
+test test_BC_2_05_007_pc_1_disconnected_emitted_before_reconnect_loop ... ok
+test test_BC_2_05_007_pc_6_no_disconnect_event_on_graceful_tui_exit ... ok
+test test_BC_2_05_007_invariant_3_idempotent_clear_empty_deque ... ok
+test test_BC_2_05_007_pc_3_clear_synchronous_before_reconnect ... ok
+test test_BC_2_05_007_pc_6_disconnected_on_unexpected_eof ... ok
+test test_BC_2_05_007_invariant_1_soq3_ordering_unconditional ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 7 tests
+test test_BC_2_05_008_forbid_unsafe_code_attribute_present ... ok
+test test_BC_2_05_001_uds_bind_socket_path_construction_uses_path_join ... ok
+test test_BC_2_05_001_uds_bind_creates_socket_with_mode_0o600 ... ok
+test test_BC_2_05_001_uds_bind_cleanup_removes_socket_on_shutdown ... ok
+test test_BC_2_05_001_uds_bind_returns_error_on_path_too_long ... ok
+test test_BC_2_05_001_uds_bind_removes_stale_socket_before_rebind ... ok
+test test_BC_2_05_008_uds_only_constraint_no_forbidden_files_in_src ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
