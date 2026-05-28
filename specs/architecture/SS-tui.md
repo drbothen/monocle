@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "tui"
 subsystem: SS-06
-version: "1.6.0"
+version: "1.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
-timestamp: 2026-05-26T12:30:00Z
+timestamp: 2026-05-28T00:00:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
@@ -90,10 +90,13 @@ pub enum AppMode {
     Filtering { panel: PanelId, query: String, prior: FocusSnapshot },
 
     /// Modal overlay stack is open (permission prompts).
-    /// VecDeque<PromptModal> fixes lazygit's single-popup drop-on-concurrent:
-    /// new prompts push_back; OverlayCycleNext rotates front to back;
-    /// decision pops front; Esc hides without popping.
-    Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot },
+    /// The modal stack itself lives in `App.overlay_stack: VecDeque<PromptModal>` —
+    /// the single source of truth for queued prompts (see §Rendering Architecture §App Struct).
+    /// `AppMode::Overlay` carries only `prior` so that focus can be restored on dismiss.
+    /// new prompts push_back to App.overlay_stack; OverlayCycleNext rotates front to back;
+    /// decision sends IPC and awaits PermissionPromptResolved (IPC-driven remove);
+    /// Esc hides without popping.
+    Overlay { prior: FocusSnapshot },
 
     /// Full-screen view of a single panel (Enter key from Dashboard).
     Fullscreen { panel: PanelId, prior: FocusSnapshot },
@@ -203,22 +206,20 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         // This transition handles overlay navigation and exit only.
 
         // Overlay: cycle stack
-        (AppMode::Overlay { mut stack, prior }, Action::OverlayCycleNext) => {
-            if let Some(front) = stack.pop_front() { stack.push_back(front); }
-            AppMode::Overlay { stack, prior }
-        },
+        // App.overlay_stack is the single source of truth for the modal VecDeque;
+        // transition() receives the AppMode only (no stack field). The TUI's
+        // handle_action() rotates App.overlay_stack directly before or after
+        // calling transition() for the mode change (mode is unchanged for CycleNext).
+        (mode @ AppMode::Overlay { .. }, Action::OverlayCycleNext) => mode,
 
-        // Overlay: decision (accept-once, accept-always, reject) — pops front
-        (AppMode::Overlay { mut stack, prior }, Action::PermissionAcceptOnce)
-        | (AppMode::Overlay { mut stack, prior }, Action::PermissionAcceptAlways)
-        | (AppMode::Overlay { mut stack, prior }, Action::PermissionReject) => {
-            stack.pop_front();
-            if stack.is_empty() {
-                AppMode::Dashboard { focused: prior }
-            } else {
-                AppMode::Overlay { stack, prior }
-            }
-        },
+        // Overlay: decision (accept-once, accept-always, reject) — does NOT pop front.
+        // The TUI sends ClientToServer::PermissionDecision and then waits for
+        // ServerToClient::PermissionPromptResolved { prompt_id } from the daemon.
+        // The prompt is removed via handle_ipc_message() / retain() (BC-2.06.023).
+        // transition() leaves the stack unchanged; the AppMode stays in Overlay.
+        (mode @ AppMode::Overlay { .. }, Action::PermissionAcceptOnce)
+        | (mode @ AppMode::Overlay { .. }, Action::PermissionAcceptAlways)
+        | (mode @ AppMode::Overlay { .. }, Action::PermissionReject) => mode,
 
         // Overlay: Esc hides without popping (SOQ-3 complement — prompts stay queued)
         (mode @ AppMode::Overlay { .. }, Action::Escape) => mode,
@@ -233,9 +234,11 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
 
 1. `FocusSnapshot` is always captured when entering `Overlay` or `Fullscreen`.
    Focus is always restored on exit. There is no code path that loses focus context.
-2. An empty `VecDeque` in `Overlay` state cannot exist after a decision: the transition
-   function collapses `Overlay { stack: empty, prior }` → `Dashboard { focused: prior }`
-   atomically.
+2. An empty `App.overlay_stack` in `Overlay` state cannot exist after IPC-initiated removal:
+   `handle_ipc_message()` collapses `AppMode::Overlay { prior }` →
+   `Dashboard { focused: prior }` after `retain()` empties `App.overlay_stack` (BC-2.06.023).
+   Decision actions (`PermissionAcceptOnce`, `PermissionAcceptAlways`, `PermissionReject`)
+   do NOT pop the stack in `transition()` — removal is always IPC-driven.
 3. `Escape` from `Overlay` is a no-op on the stack (SOQ-3 support): prompts survive
    the `Ctrl-\` hide/show cycle because `Escape` does not pop any `PromptModal`.
 
@@ -254,9 +257,9 @@ directly, outside `transition()`:
 fn handle_ipc_message(&mut self, msg: ServerToClient) {
     match msg {
         ServerToClient::PermissionPromptResolved { prompt_id } => {
-            if let AppMode::Overlay { ref mut stack, ref prior } = self.mode {
-                stack.retain(|m| m.prompt_id != prompt_id);
-                if stack.is_empty() {
+            if let AppMode::Overlay { ref prior } = self.mode {
+                self.overlay_stack.retain(|m| m.prompt_id != prompt_id);
+                if self.overlay_stack.is_empty() {
                     self.mode = AppMode::Dashboard { focused: prior.clone() };
                 }
             }
@@ -394,8 +397,8 @@ impl Dispatcher {
 ```
 
 The `per_context` table is rebuilt whenever `AppMode` changes. This allows the
-`Overlay` mode to expose `[1]/[2]/[3]` for accept/reject without those bindings
-being active in `Dashboard` mode.
+`Overlay` mode to expose `y`/`Enter`/`A`/`n`/`r` for accept/reject without those
+bindings being active in `Dashboard` mode.
 
 ---
 
@@ -468,7 +471,7 @@ drop counter). It is never hidden, even in Fullscreen or Overlay modes.
 
 **Breadcrumb:** Derived from `AppMode`:
 - `Dashboard { focused: Sessions }` → `Dashboard > Sessions`
-- `Overlay { stack, .. }` (2 items) → `Dashboard > Overlay [2 prompts]`
+- `AppMode::Overlay { .. }` (App.overlay_stack len = 2) → `Dashboard > Overlay [2 prompts]`
 - `Fullscreen { panel: Sessions, .. }` → `Dashboard > Sessions > Fullscreen`
 - `Filtering { panel: Sessions, .. }` → `Dashboard > Sessions > Filter`
 
@@ -480,7 +483,7 @@ across daemon lifetime.
 **Keybinding hint line:** Renders a context-sensitive one-line summary of available
 actions for the current `AppMode`. Examples:
 - `Dashboard`: `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit`
-- `Overlay`: `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide`
+- `Overlay`: `y/Enter: accept-once  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide`
 - `Filtering`: `(type to filter)  Esc: cancel`
 - `Fullscreen`: `Esc: back  /: filter  q: quit`
 
@@ -627,23 +630,28 @@ The overlay stack lifecycle in `monocle-tui`:
    - Constructs a `PromptModal` from the message payload.
    - Pushes it to the back of the `VecDeque<PromptModal>`.
    - If the current `AppMode` is `Dashboard` or `Filtering`, transitions to
-     `AppMode::Overlay { stack, prior: current_focus }`.
-   - If `AppMode` is already `Overlay`, extends the existing stack's `VecDeque`
-     (the `prior` focus is preserved from when the overlay was first opened).
+     `AppMode::Overlay { prior: current_focus }` and pushes the new `PromptModal`
+     onto `App.overlay_stack`.
+   - If `AppMode` is already `Overlay`, pushes onto `App.overlay_stack` directly
+     (the `prior` focus in the existing `AppMode::Overlay` is preserved from
+     when the overlay was first opened).
    - Increments the overlay badge counter in the status bar.
 
 2. **Rotate (`[↑↓]`):** `Action::OverlayCycleNext` is passed to `transition()`,
    which rotates the `VecDeque`: front item moves to back, exposing the next prompt.
 
-3. **Decide (`[1]`, `[2]`, `[3]`):** The TUI:
-   - Identifies the decision type from the action (`PermissionAcceptOnce`,
-     `PermissionAcceptAlways`, `PermissionReject`).
+3. **Decide (`y`/`Enter`, `A`, `n`/`r`):** The TUI:
+   - Identifies the decision type from the action (`PermissionAcceptOnce` via `y` or
+     `Enter`; `PermissionAcceptAlways` via `A`; `PermissionReject` via `n` or `r`).
    - Reads the `prompt_id` from the current front `PromptModal`.
    - Sends `ClientToServer::PermissionDecision { prompt_id, decision }` to the daemon
      via the IPC send channel. This is non-blocking: the TUI enqueues the message
      and continues.
-   - Passes the action to `transition()` which pops the front `PromptModal` and
-     collapses to `Dashboard` if the stack becomes empty.
+   - Does NOT pop the `PromptModal` from the stack. The overlay remains open showing
+     the same prompt. Removal happens when the daemon sends
+     `ServerToClient::PermissionPromptResolved { prompt_id }`, which triggers
+     `handle_ipc_message()` → `stack.retain(|m| m.prompt_id != prompt_id)` →
+     collapse to `Dashboard` if the stack becomes empty (BC-2.06.023).
 
 4. **Hide (`[Esc]`):** `Action::Escape` in `Overlay` mode is a no-op on the stack
    per the transition function. The `Ctrl-\` popup is hidden by the user's tmux
@@ -802,9 +810,9 @@ prompts without leaving the editor (Success Criterion: ≤6 keystrokes).
 
 | Step | User action | AppMode before | AppMode after | Daemon action |
 |------|-------------|---------------|--------------|---------------|
-| 1 | `Ctrl-\` | (TUI not running) | `Overlay { stack: [P1, P2], prior: Sessions }` | Sends initial state push: 2 queued prompts |
-| 2 | `2` (Accept-always) | `Overlay { stack: [P1, P2], prior: Sessions }` | `Overlay { stack: [P2], prior: Sessions }` | Sends `{"decision":"always"}` to P1's stalled HTTP response; P1's Claude Code session unblocks |
-| 3 | `1` (Accept-once) | `Overlay { stack: [P2], prior: Sessions }` | `Dashboard { focused: Sessions }` | Sends `{"decision":"accept"}` to P2's stalled HTTP response; P2's Claude Code session unblocks |
+| 1 | `Ctrl-\` | (TUI not running) | `Overlay { prior: Sessions }` / App.overlay_stack: [P1, P2] | Sends initial state push: 2 queued prompts |
+| 2 | `A` (Accept-always) | `Overlay { prior: Sessions }` / App.overlay_stack: [P1, P2] | `Overlay { prior: Sessions }` / App.overlay_stack: [P2] (after `PermissionPromptResolved` for P1 received) | Sends `{"decision":"always"}` to P1's stalled HTTP response; P1 unblocks; sends `PermissionPromptResolved { prompt_id: P1 }` to TUI |
+| 3 | `y` (Accept-once) | `Overlay { prior: Sessions }` / App.overlay_stack: [P2] | `Dashboard { focused: Sessions }` (after `PermissionPromptResolved` for P2 received) | Sends `{"decision":"accept"}` to P2's stalled HTTP response; P2 unblocks; sends `PermissionPromptResolved { prompt_id: P2 }` to TUI |
 | 4 | `Ctrl-\` | `Dashboard { focused: Sessions }` | (TUI exits) | No action |
 
 Total: 4 keystrokes. No tmux window switches. No editor focus lost. Both Claude Code
@@ -822,6 +830,13 @@ sessions continue without operator awareness of which session stalled.
 pub struct App {
     /// Current AppMode — single source of truth for which panels are rendered.
     pub mode: AppMode,
+
+    /// Permission prompt queue — single source of truth for the modal stack.
+    /// `AppMode::Overlay` carries only `prior: FocusSnapshot`; the prompts
+    /// themselves live here. This decouples stack mutation (push/retain) from
+    /// AppMode transitions so `transition()` remains a pure (AppMode, Action) → AppMode
+    /// function with no access to prompt data.
+    pub overlay_stack: VecDeque<PromptModal>,
 
     /// Session list from last IPC SessionListUpdate message.
     pub sessions: Vec<EnrichedSession>,
@@ -934,11 +949,12 @@ fn draw(frame: &mut Frame, app: &App) {
             draw_dashboard(frame, main_area, app, /* show filter input */);
             draw_filter_overlay(frame, main_area, panel, query);
         },
-        AppMode::Overlay { stack, .. } => {
+        AppMode::Overlay { .. } => {
+            // App.overlay_stack is the single source of truth for queued modals.
             draw_dashboard(frame, main_area, app, /* dimmed */);
-            draw_permission_overlay(frame, main_area, stack.front().unwrap(), stack.len());
-            if stack.len() > 1 {
-                draw_permission_overlay_peek(frame, main_area, &stack[1]);
+            draw_permission_overlay(frame, main_area, app.overlay_stack.front().unwrap(), app.overlay_stack.len());
+            if app.overlay_stack.len() > 1 {
+                draw_permission_overlay_peek(frame, main_area, &app.overlay_stack[1]);
             }
         },
         AppMode::Fullscreen { panel, .. } => {
@@ -984,7 +1000,9 @@ primary verification target for SS-06. It is a pure, total function over a finit
 domain; all reachable `(mode, action)` pairs can be enumerated. Kani proof harnesses
 can verify:
 
-- No `Overlay` variant is ever returned with an empty `stack`.
+- `AppMode::Overlay` is only produced when entering from `Dashboard` or `Filtering`
+  (i.e., when `App.overlay_stack` is known non-empty at the call site — `transition()`
+  itself does not inspect the stack; the invariant is enforced by the push path).
 - `FocusSnapshot` carried in `prior` is always preserved through nested transitions.
 - `Filtering` → `Dashboard` always restores the correct `FocusSnapshot`.
 
@@ -1083,6 +1101,72 @@ SS-06 types. Violations are blocking in any PR review:
    for all diagnostic output.
 
 ---
+
+## §Trace v1.8.0
+
+**AppMode::Overlay shape sweep — F-S025-ADV4-BLOCKER-001** (2026-05-28):
+
+Closes the BC sweep propagation loop. The BC sweep at commit `6d4fbb3` updated all
+SS-06 BCs to the new `AppMode::Overlay { prior: FocusSnapshot }` shape (with
+`App.overlay_stack: VecDeque<PromptModal>` as the single source of truth). SS-tui.md
+is the architecture source cited by all 23 SS-06 BCs; it was missed by the BC sweep.
+An implementer reading this document as their primary authority would have produced
+the old shape and conflicted with the already-updated BCs.
+
+Changes in this version:
+
+- **Line 97 (enum definition):** `Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }` →
+  `Overlay { prior: FocusSnapshot }`. Added prose explaining that `App.overlay_stack`
+  is the single source of truth for the modal stack.
+- **Lines 207-209 (transition OverlayCycleNext arm):** Removed `mut stack` field
+  destructuring; the arm now passes `mode` through unchanged. Added comment explaining
+  that `handle_action()` rotates `App.overlay_stack` directly.
+- **Line 235 (Key Invariant 2):** Updated prose to reference `App.overlay_stack` and
+  `AppMode::Overlay { prior }` without a `stack` field.
+- **Line 257 (handle_ipc_message):** `AppMode::Overlay { ref mut stack, ref prior }` →
+  `AppMode::Overlay { ref prior }`; all `stack.*` references updated to `self.overlay_stack.*`.
+- **Line 471 (breadcrumb example):** `Overlay { stack, .. }` → `AppMode::Overlay { .. }`
+  with `App.overlay_stack len` annotation.
+- **Line 630 (overlay push description):** Rewritten to reference `App.overlay_stack`
+  as push target for both the first-enter and already-in-Overlay paths.
+- **Lines 808-810 (killer scenario table):** AppMode-before/after columns updated to
+  `Overlay { prior: Sessions }` with separate `App.overlay_stack` annotation.
+- **Line 940 (draw function Overlay arm):** `AppMode::Overlay { stack, .. }` →
+  `AppMode::Overlay { .. }`; `stack.*` references updated to `app.overlay_stack.*`.
+- **App struct:** Added `overlay_stack: VecDeque<PromptModal>` field with explanatory
+  doc comment establishing it as the single source of truth.
+- **Formal verification section:** Updated to remove the stale "no Overlay with empty
+  stack" property (no longer a transition() invariant since the stack lives outside
+  AppMode); replaced with the correct invariant scoped to the push path.
+
+SS-ipc.md checked and confirmed clean — the §TUI IPC Read Loop Pattern section
+(added at commit `27c1ff0`) references `overlay_stack: Vec<PermissionPromptPayload>`
+(IPC wire field on daemon side) only; no `Overlay { stack }` shape references found.
+
+## §Trace v1.7.0
+
+**Keybinding canonicalization: mnemonic set replaces numeric set; IPC-driven pop semantics** (2026-05-27):
+- **Keybindings updated** to match BC-2.06.011 / BC-2.06.012 / BC-2.06.013 v1.1.0:
+  - `Accept-Once`: `y` or `Enter` (was `[1]`)
+  - `Accept-Always`: `A` (was `[2]`)
+  - `Reject`: `n` or `r` (was `[3]`)
+  - `Esc`: No-op (unchanged)
+  - Affected locations: §Dispatcher Logic comment, §Status Bar keybinding hint line,
+    §Overlay Stack Lifecycle Step 3, §Killer Scenario table.
+- **Pop semantics corrected** to match BC-2.06.011/012/013 v1.1.0 and BC-2.06.023:
+  - `transition()` decision arms (`PermissionAcceptOnce`, `PermissionAcceptAlways`,
+    `PermissionReject`) no longer pop the front `PromptModal`. Decision actions leave
+    the `AppMode::Overlay` stack unchanged; the TUI sends
+    `ClientToServer::PermissionDecision` and waits for the daemon's
+    `ServerToClient::PermissionPromptResolved { prompt_id }` response.
+  - Prompt removal continues to be handled by `handle_ipc_message()` via
+    `stack.retain(|m| m.prompt_id != prompt_id)` (BC-2.06.023 path, unchanged).
+  - Key Invariant 2 rewritten: collapse from `Overlay` to `Dashboard` on empty stack
+    is triggered only by the IPC path, never by decision `Action` dispatch.
+  - §Overlay Stack Lifecycle Step 3 rewritten to reflect the IPC-round-trip removal
+    model.
+  - §Killer Scenario table updated: AppMode-after column reflects that mode transition
+    happens on `PermissionPromptResolved` receipt, not on keypress.
 
 ## §Trace v1.6.0
 
