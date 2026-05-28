@@ -597,7 +597,7 @@ pub async fn daemon_start_sequence(
         sock_file_path,
         last_hook_ts: std::sync::RwLock::new(crate::state::LastHookTimestamps::default()),
         ring: Some(ring),
-        tui_attached: std::sync::atomic::AtomicBool::new(false),
+        tui_attached_count: std::sync::atomic::AtomicUsize::new(0),
         force_exit: std::sync::atomic::AtomicBool::new(false),
         daemon_lock: std::sync::Mutex::new(Some(daemon_lock)),
         shutdown_tx,

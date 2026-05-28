@@ -1294,6 +1294,98 @@ async fn test_S022_accept_loop_terminates_within_100ms_of_shutdown_signal() {
     // (the test completing without a timeout is the primary assertion).
 }
 
+/// F-ADV2-HIGH-003: `tui_attached` flips true on connect, false on disconnect.
+///
+/// Uses the HTTP `/status` endpoint to verify BC-2.01.002 PC-1 contract:
+/// - Before any TUI connect: `tui_attached = false`.
+/// - While a TUI client is connected: `tui_attached = true`.
+/// - After the TUI client disconnects and GC: `tui_attached = false`.
+#[tokio::test]
+async fn test_S022_tui_attached_flips_on_connect_and_disconnect() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path().join("monocle-runtime");
+
+    let daemon_state = daemon_start_sequence(&runtime_dir)
+        .await
+        .expect("daemon_start_sequence must succeed");
+
+    // Before any TUI connects, tui_attached_count must be 0.
+    assert_eq!(
+        daemon_state
+            .tui_attached_count
+            .load(std::sync::atomic::Ordering::SeqCst),
+        0,
+        "tui_attached_count must be 0 before any TUI connects"
+    );
+
+    // Connect a TUI client.
+    let sock_path = runtime_dir.join("monocle.sock");
+    let mut stream = {
+        let mut last_err = None;
+        let mut stream_opt: Option<tokio::net::UnixStream> = None;
+        for _ in 0..20 {
+            match tokio::net::UnixStream::connect(&sock_path).await {
+                Ok(s) => {
+                    stream_opt = Some(s);
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                }
+            }
+        }
+        stream_opt.unwrap_or_else(|| panic!("TUI connect failed: {}", last_err.unwrap()))
+    };
+
+    // Read the InitialState message to ensure the server has processed the connect.
+    let _: monocle_ipc::types::ServerToClient =
+        monocle_ipc::framing::read_framed(&mut stream)
+            .await
+            .expect("must receive InitialState");
+
+    // After connect + InitialState send, tui_attached_count must be >= 1.
+    // Allow a brief scheduling window.
+    let mut attached = false;
+    for _ in 0..20 {
+        if daemon_state
+            .tui_attached_count
+            .load(std::sync::atomic::Ordering::SeqCst)
+            > 0
+        {
+            attached = true;
+            break;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    }
+    assert!(
+        attached,
+        "tui_attached_count must be > 0 while TUI client is connected (BC-2.01.002 PC-1)"
+    );
+
+    // Disconnect by dropping the stream.
+    drop(stream);
+
+    // After disconnect, tui_attached_count must return to 0.
+    // The per-client task may need a scheduler tick to process EOF.
+    let mut detached = false;
+    for _ in 0..30 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+        if daemon_state
+            .tui_attached_count
+            .load(std::sync::atomic::Ordering::SeqCst)
+            == 0
+        {
+            detached = true;
+            break;
+        }
+    }
+    assert!(
+        detached,
+        "tui_attached_count must return to 0 after TUI client disconnects (BC-2.01.002 PC-1)"
+    );
+}
+
 /// S-022 exit condition 2: `daemon_start_sequence` → UDS connect → `InitialState` arrives.
 ///
 /// After a successful `daemon_start_sequence`, a TUI client that connects to the

@@ -18,6 +18,7 @@
 //!   route them to the pending-decision registry (BC-2.05.005 postcondition PC-3).
 //! - Remove clients from the subscriber list on clean EOF or send error (AC-001).
 
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use tokio::net::UnixListener;
@@ -114,12 +115,17 @@ async fn spawn_client_task(
     // Any event published after registration is queued in this channel, not lost.
     register_subscriber(&subscribers, tx.clone()).await;
 
+    // Increment TUI attachment count now that the client is registered.
+    // BC-2.01.002 PC-1: tui_attached reports true when count > 0.
+    state.tui_attached_count.fetch_add(1, Ordering::SeqCst);
+
     // Step 3 + 4: Take snapshot and send InitialState as the first message.
     match send_initial_state(&mut write_half, &state).await {
         Ok(()) => {}
         Err(e) => {
             tracing::error!("failed to send InitialState to client: {e}");
             remove_subscriber(&subscribers, &tx).await;
+            state.tui_attached_count.fetch_sub(1, Ordering::SeqCst);
             return;
         }
     }
@@ -173,8 +179,10 @@ async fn spawn_client_task(
         }
     }
 
-    // Step 6: Remove client from fan-out subscriber list on disconnect.
+    // Step 6: Remove client from fan-out subscriber list on disconnect;
+    // decrement TUI attachment count (BC-2.01.002 PC-1 — F-ADV2-HIGH-003).
     remove_subscriber(&subscribers, &tx).await;
+    state.tui_attached_count.fetch_sub(1, Ordering::SeqCst);
 }
 
 /// Send the `InitialState` snapshot message to a newly connected TUI client.

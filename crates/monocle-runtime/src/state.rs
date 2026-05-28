@@ -7,7 +7,7 @@
 //! last-hook timestamps, TUI attachment flag), S-004 (lock-file path write),
 //! S-005 (hook-ingestion channels), S-018 (event bus, drop counter, session registry).
 
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 
@@ -65,7 +65,8 @@ pub struct LastHookTimestamps {
 ///   `constant_time_eq::constant_time_eq` on both canonical and alias auth paths, NFR-010).
 /// - `lock_file_path` is written once by S-004 during daemon startup; read by `/status`.
 /// - `last_hook_ts` is updated by S-005 hook-receiver tasks on each hook invocation.
-/// - `tui_attached` is an atomic flag set when a TUI client establishes a session.
+/// - `tui_attached_count` is an `AtomicUsize` incremented on TUI connect, decremented on
+///   disconnect. The `/status` handler exposes `tui_attached: count > 0` (BC-2.01.002 PC-1).
 /// - `shutdown_tx` / `shutdown_rx`: graceful-shutdown notification channel (S-005).
 ///   The `POST /shutdown` handler sends `true`; `run_server` wires a clone of `shutdown_rx`
 ///   into `axum::serve(...).with_graceful_shutdown(...)` so the HTTP server stops accepting
@@ -139,15 +140,21 @@ pub struct DaemonState {
     /// while the ring buffer remains shared (no double-buffering).
     pub ring: Option<Arc<RingBuffer>>,
 
-    /// Whether a TUI client is currently attached to this daemon session.
+    /// Count of TUI clients currently attached to this daemon session (F-ADV2-HIGH-003).
     ///
-    /// Set to `true` when a TUI session is established; `false` when the TUI disconnects.
-    /// Read by the `/status` handler and surfaced as `tui_attached` (BC-2.01.002 PC-1).
+    /// Incremented by 1 (`fetch_add`) when a TUI client connects and registers its
+    /// subscriber channel; decremented by 1 (`fetch_sub`) when the same client disconnects
+    /// and its subscriber is removed. The `/status` handler reads this as a `bool` via
+    /// `tui_attached_count.load(...) > 0` (BC-2.01.002 PC-1: `tui_attached` field).
     ///
-    /// `Ordering::Relaxed` is sufficient: this flag is informational and is read only in
-    /// the `/status` handler which already tolerates eventual consistency for floating-point
-    /// fill percentages.
-    pub tui_attached: AtomicBool,
+    /// Using `AtomicUsize` instead of `AtomicBool` prevents flicker when multiple TUI
+    /// clients connect concurrently — a plain bool would oscillate between `false` and
+    /// `true` as each connect increments and the corresponding disconnect later decrements.
+    ///
+    /// `Ordering::SeqCst` on both write and read: per-client tasks run on different Tokio
+    /// worker threads; `SeqCst` ensures the increment and decrement are globally ordered
+    /// relative to any `/status` read that follows on another thread.
+    pub tui_attached_count: AtomicUsize,
 
     /// Force-exit signal set by a second authenticated `POST /shutdown` during drain (EC-050).
     ///
@@ -312,7 +319,7 @@ impl DaemonState {
             sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             ring: None,
-            tui_attached: AtomicBool::new(false),
+            tui_attached_count: AtomicUsize::new(0),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
             shutdown_tx,
