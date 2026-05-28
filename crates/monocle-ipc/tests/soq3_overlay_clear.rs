@@ -379,14 +379,20 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_unexpected_eof() {
     );
 }
 
-/// BC-2.05.007 PC-6 / AC-001: `TransportEvent::Disconnected` is emitted when
-/// `read_framed` encounters `BrokenPipe`.
+/// BC-2.05.007 PC-6 / AC-001: `TransportEvent::Disconnected` is emitted when the remote
+/// end shuts down its write half and the client reader sees EOF (SHUT_WR path).
+///
+/// What this test actually exercises: server calls `Shutdown::Write`, which causes the
+/// client reader to see an EOF/UnexpectedEof (not a kernel-level BrokenPipe). The
+/// `BrokenPipe` error kind occurs when a WRITER sends to a socket whose peer has already
+/// closed its read end — that path is verified by the unit test
+/// `test_BC_2_05_007_unit_is_connection_loss_broken_pipe` in `src/uds.rs`.
 ///
 /// Test strategy: bind a real UDS listener, connect via `connect_with_events`,
-/// close the server write-end (causes BrokenPipe on next client read), call
-/// `recv_message`, verify event channel delivers `TransportEvent::Disconnected`.
+/// close the server write-end (Shutdown::Write), call `recv_message`, verify event
+/// channel delivers `TransportEvent::Disconnected`.
 #[tokio::test]
-async fn test_BC_2_05_007_pc_6_disconnected_on_broken_pipe() {
+async fn test_BC_2_05_007_pc_6_disconnected_on_premature_close_via_shutdown() {
     use monocle_ipc::uds::connect_with_events;
     use tempfile::tempdir;
     use tokio::net::UnixListener;
@@ -400,13 +406,13 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_broken_pipe() {
         .await
         .expect("connect_with_events");
 
-    // Accept + immediately shut down server write half to force BrokenPipe.
+    // Accept + immediately shut down server write half.
+    // From the client reader's perspective this yields EOF (UnexpectedEof),
+    // which the production framing layer maps to IpcError::Disconnected.
     let (server_stream, _) = listener.accept().await.expect("accept");
-    // Into a standard UnixStream to call shutdown.
     let server_stream = server_stream.into_std().expect("into_std");
-    use std::os::unix::net::UnixStream as StdUnixStream;
-    // SHUT_WR on the server side causes the client read to return BrokenPipe.
     use std::net::Shutdown;
+    use std::os::unix::net::UnixStream as StdUnixStream;
     let _ = StdUnixStream::shutdown(&server_stream, Shutdown::Write);
     drop(server_stream);
 
@@ -415,23 +421,28 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_broken_pipe() {
 
     let evt = event_rx
         .try_recv()
-        .expect("TransportEvent::Disconnected must be in channel after BrokenPipe");
+        .expect("TransportEvent::Disconnected must be in channel after Shutdown::Write EOF");
     assert_eq!(
         evt,
         TransportEvent::Disconnected,
-        "BC-2.05.007 PC-6: TransportEvent::Disconnected must be emitted on BrokenPipe"
+        "BC-2.05.007 PC-6: TransportEvent::Disconnected must be emitted on premature server \
+         close via Shutdown::Write (EOF path)"
     );
 }
 
-/// BC-2.05.007 PC-6 / AC-001: `TransportEvent::Disconnected` is emitted when
-/// `read_framed` encounters `ConnectionReset`.
+/// BC-2.05.007 PC-6 / AC-001: `TransportEvent::Disconnected` is emitted when the server
+/// abruptly drops the connected stream (kernel produces EOF on the client reader).
 ///
-/// Test strategy: simulate `ConnectionReset` by constructing the error kind directly
-/// and feeding it through the `is_connection_loss_error` classification path.
-/// Since `is_connection_loss_error` is private, we exercise the full transport path:
-/// bind listener, connect, abruptly close server stream with SO_LINGER=0 (RST), recv_message.
+/// What this test actually exercises: abrupt server drop yields EOF on the client side
+/// (the OS delivers an EOF, not a ConnectionReset, for UDS streams dropped without RST).
+/// The `ConnectionReset` error kind occurs at the TCP/IP layer or via explicit RST signaling.
+/// For UDS, `ConnectionReset` coverage is verified by the unit test
+/// `test_BC_2_05_007_unit_is_connection_loss_connection_reset` in `src/uds.rs`.
+///
+/// Test strategy: bind listener, connect, abruptly drop server stream — the client reader
+/// sees EOF. Verify event channel delivers `TransportEvent::Disconnected`.
 #[tokio::test]
-async fn test_BC_2_05_007_pc_6_disconnected_on_connection_reset() {
+async fn test_BC_2_05_007_pc_6_disconnected_on_abrupt_server_drop() {
     use monocle_ipc::uds::connect_with_events;
     use tempfile::tempdir;
     use tokio::net::UnixListener;
@@ -445,13 +456,10 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_connection_reset() {
         .await
         .expect("connect_with_events");
 
-    // Accept the connection; server drops stream abruptly (simulates ConnectionReset).
+    // Accept the connection; server drops stream abruptly.
+    // On Linux/macOS, dropping a connected UDS stream without a write causes the client
+    // reader to see EOF (UnexpectedEof → IpcError::Disconnected via the framing layer).
     let (server_stream, _) = listener.accept().await.expect("accept");
-    // Force RST by setting SO_LINGER with l_onoff=1, l_linger=0 before drop.
-    // On Linux/macOS, dropping a connected UDS stream without reading/writing causes
-    // the other end to see either EOF or ConnectionReset depending on the OS.
-    // For the test we drop immediately — the framing will see at minimum UnexpectedEof.
-    // ConnectionReset variant coverage is verified by the classify-error unit path.
     drop(server_stream);
 
     use monocle_ipc::transport::Transport;
@@ -459,11 +467,12 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_connection_reset() {
 
     let evt = event_rx
         .try_recv()
-        .expect("TransportEvent::Disconnected must be in channel after connection drop");
+        .expect("TransportEvent::Disconnected must be in channel after abrupt server drop");
     assert_eq!(
         evt,
         TransportEvent::Disconnected,
-        "BC-2.05.007 PC-6: TransportEvent::Disconnected must be emitted on ConnectionReset"
+        "BC-2.05.007 PC-6: TransportEvent::Disconnected must be emitted on abrupt server drop \
+         (EOF path)"
     );
 }
 

@@ -769,3 +769,87 @@ fn test_BC_2_05_008_uds_client_transport_implements_transport() {
     fn assert_transport<T: Transport>() {}
     assert_transport::<UdsClientTransport>();
 }
+
+// ---------------------------------------------------------------------------
+// Unit tests for is_connection_loss_error_static (F-S023-ADV1-MED-001)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::UdsClientTransport;
+
+    /// F-S023-ADV1-MED-001 / BC-2.05.007 PC-6: `is_connection_loss_error_static` returns
+    /// `true` for `ErrorKind::BrokenPipe`.
+    ///
+    /// `BrokenPipe` occurs when a WRITER sends data after the peer has closed its read end.
+    /// Integration tests cannot reliably produce `BrokenPipe` on the UDS read path (the
+    /// kernel gives EOF / `UnexpectedEof` instead). This unit test directly constructs the
+    /// error and verifies the classifier, giving production proof of the BrokenPipe arm.
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_BC_2_05_007_unit_is_connection_loss_broken_pipe() {
+        let err = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken pipe");
+        assert!(
+            UdsClientTransport::is_connection_loss_error_static(&err),
+            "BC-2.05.007 PC-6: BrokenPipe must classify as a connection-loss error"
+        );
+    }
+
+    /// F-S023-ADV1-MED-001 / BC-2.05.007 PC-6: `is_connection_loss_error_static` returns
+    /// `true` for `ErrorKind::ConnectionReset`.
+    ///
+    /// `ConnectionReset` occurs when the peer sends a RST segment (TCP) or closes its end
+    /// of a connected socket with SO_LINGER=0. UDS drops rarely produce this on macOS/Linux
+    /// (they produce EOF instead), so integration-test coverage is unreliable. This unit test
+    /// directly constructs the error and verifies the classifier.
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_BC_2_05_007_unit_is_connection_loss_connection_reset() {
+        let err = std::io::Error::new(std::io::ErrorKind::ConnectionReset, "connection reset");
+        assert!(
+            UdsClientTransport::is_connection_loss_error_static(&err),
+            "BC-2.05.007 PC-6: ConnectionReset must classify as a connection-loss error"
+        );
+    }
+
+    /// F-S023-ADV1-MED-001 / BC-2.05.007 PC-6: `is_connection_loss_error_static` returns
+    /// `true` for `ErrorKind::UnexpectedEof`.
+    ///
+    /// This arm is typically converted to `IpcError::Disconnected` by the framing layer
+    /// before reaching the classifier. The defensive arm is validated here as belt-and-suspenders.
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_BC_2_05_007_unit_is_connection_loss_unexpected_eof() {
+        let err = std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "unexpected eof");
+        assert!(
+            UdsClientTransport::is_connection_loss_error_static(&err),
+            "BC-2.05.007 PC-6: UnexpectedEof must classify as a connection-loss error"
+        );
+    }
+
+    /// F-S023-ADV1-MED-001 / BC-2.05.007 PC-6: `is_connection_loss_error_static` returns
+    /// `false` for `ErrorKind::PermissionDenied` — non-connection-loss errors must not
+    /// trigger SOQ-3.
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_BC_2_05_007_unit_is_connection_loss_false_for_permission_denied() {
+        let err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "permission denied");
+        assert!(
+            !UdsClientTransport::is_connection_loss_error_static(&err),
+            "BC-2.05.007 PC-6: PermissionDenied must NOT classify as a connection-loss error"
+        );
+    }
+
+    /// F-S023-ADV1-MED-001 / BC-2.05.007 PC-6: `is_connection_loss_error_static` returns
+    /// `false` for `ErrorKind::WouldBlock` — non-connection-loss errors must not
+    /// trigger SOQ-3.
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_BC_2_05_007_unit_is_connection_loss_false_for_would_block() {
+        let err = std::io::Error::new(std::io::ErrorKind::WouldBlock, "would block");
+        assert!(
+            !UdsClientTransport::is_connection_loss_error_static(&err),
+            "BC-2.05.007 PC-6: WouldBlock must NOT classify as a connection-loss error"
+        );
+    }
+}
