@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -50,8 +50,12 @@ delivered as incremental push messages (no polling required).
 2. The daemon sends exactly one `ServerToClient::InitialState` message immediately upon
    connection, before any other message. The message contains:
    - `sessions: Vec<EnrichedSession>` — the full current session roster (may be empty).
-   - `ring_tail: Vec<HookEvent>` — the last N events from the RAM ring (N defined by daemon
-     configuration; may be empty if no events have been received yet).
+   - `ring_tail: Vec<HookEventRecord>` — the last N events from the RAM ring (N defined by
+     daemon configuration; may be empty if no events have been received yet).
+     `HookEventRecord` is the canonical ring storage type (BC-2.04.012 PC-1); the TUI
+     renders event ribbon display from its `hook_type`, `session_id`, `timestamp_micros`,
+     and `tool_name` fields. Using the ring's native storage type avoids lossless-vs-lossy
+     reconstruction ambiguity (see ADR-0006 and architect decision F-S022-ADV2-HIGH-002).
    - `overlay_stack: Vec<PermissionPromptPayload>` — any currently queued permission prompts
      awaiting decision (may be empty).
    - `drop_counter: u64` — the current value of the daemon's drop counter.
@@ -118,7 +122,7 @@ delivered as incremental push messages (no polling required).
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the connection handshake and initial-state push that is the entry point for all TUI-to-daemon transport |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon must be written to the JSONL ring before acknowledgement — the ring_tail in InitialState reflects events already durably written, satisfying DI-001 ordering); DI-002 (lock file must be present before connections accepted — Precondition 2 requires TUI to read the lock file before connecting, enforcing DI-002) |
 | Architecture Module | monocle-ipc (UdsTransport, framing, ServerToClient::InitialState) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.4.0 §Framing Protocol; SS-ipc.md v1.4.0 §Connection Lifecycle §Phase 1 Connect |
+| Architecture Source | SS-ipc.md v1.7.0 §Framing Protocol; SS-ipc.md v1.7.0 §Connection Lifecycle §Phase 1 Connect |
 | Cross-Ref | BC-2.05.001 (UDS socket that this BC connects to); BC-2.05.003..005 (subsequent push message types); BC-2.05.006 (reconnection on disconnect) |
 | Test File | `monocle-ipc/tests/connection_handshake.rs` |
 | Test Name | `test_BC_2_05_002_initial_state_push_on_connect` |
@@ -168,6 +172,24 @@ VP-TBD — Connection handshake and InitialState push verification properties (f
 **F-P1D4-004 LOW — Architecture Source pin updated from v1.1.0 to v1.3.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-ipc.md v1.1.0` (2 occurrences) → `SS-ipc.md v1.3.0` per F-P1D4-004 bulk update.
 - SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.4
+
+**F-S022-ADV2-HIGH-002 HIGH — ring_tail type corrected to Vec<HookEventRecord>** (2026-05-27T00:00:00Z):
+- Postcondition 2: `ring_tail: Vec<HookEvent>` → `ring_tail: Vec<HookEventRecord>`.
+- Rationale: The RAM ring stores `HookEventRecord` (BC-2.04.012 PC-1). Reconstructing
+  `HookEvent` variants from records requires fabricating fields absent from the record
+  (cwd, transcript_path, prompt, stop_reason, notification_type, message), producing
+  silently incorrect data. The correct fix is to match the IPC type to the ring's
+  native storage type. The TUI event ribbon (S-025) renders from `HookEventRecord`
+  fields (`hook_type`, `session_id`, `timestamp_micros`, `tool_name`) — sufficient for
+  display. Full event detail (S-025+ future) queries JSONL directly, also `HookEventRecord`.
+  Adding large optional fields to `HookEventRecord` to enable lossless reconstruction
+  would violate the ring's bounded storage contract (4096 entries, potentially 256 KiB
+  prompt/message per entry = unbounded RAM ring). See ADR-0006 and architect decision
+  document `cycles/cycle-001/S-022/adversarial/architect-decisions-pass-2.md`.
+- Architecture Source pin updated: `SS-ipc.md v1.6.0` → `SS-ipc.md v1.7.0`.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
 
 ## §Trace v1.0.3
 

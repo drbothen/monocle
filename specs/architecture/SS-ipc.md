@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.6.0"
+version: "1.7.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -167,7 +167,11 @@ pub enum ServerToClient {
     /// newly connected TUI client so it can render without waiting for incremental updates.
     InitialState {
         sessions: Vec<EnrichedSession>,
-        ring_tail: Vec<HookEvent>,
+        /// Last N events from the RAM ring in `HookEventRecord` format (BC-2.04.012 PC-1).
+        /// The TUI renders event ribbon display from `hook_type`, `session_id`,
+        /// `timestamp_micros`, and `tool_name` fields. Using the ring's native storage type
+        /// avoids lossless-vs-lossy reconstruction ambiguity; see ADR-0006.
+        ring_tail: Vec<HookEventRecord>,
         overlay_stack: Vec<PermissionPromptPayload>,
         drop_counter: u64,
     },
@@ -271,6 +275,9 @@ pub enum PermissionDecision {
 ### Supporting Types
 
 `EnrichedSession`, `HookEvent`, and `HookType` are defined in `monocle-core` (SS-03).
+`HookEventRecord` is defined in `monocle-runtime::ring` (SS-01). The `monocle-ipc` crate
+depends on `monocle-runtime` for `HookEventRecord` in the `InitialState` message; this is
+the only `monocle-runtime` dependency in `monocle-ipc`.
 
 ```rust
 /// Shared payload for permission prompt data, used in both `InitialState.overlay_stack`
@@ -344,7 +351,8 @@ signal only.
 3. Daemon accepts the connection; spawns a dedicated Tokio task for the client session.
 4. Daemon immediately sends `ServerToClient::InitialState` containing:
    - The full current `Vec<EnrichedSession>` roster.
-   - The last N events from the RAM ring (ring tail) as `Vec<HookEvent>`.
+   - The last N events from the RAM ring as `Vec<HookEventRecord>` (ring's native storage
+     type per BC-2.04.012 PC-1; avoids lossless-vs-lossy reconstruction; see ADR-0006).
    - Any currently queued `Vec<PermissionPromptPayload>` entries awaiting decision.
    - The current drop counter value.
 5. TUI renders its initial state from the `InitialState` message. No subsequent poll is
@@ -572,6 +580,7 @@ index; the authoritative contract text is in the BC files.
 ```
 monocle-ipc
   ├── depends on monocle-core (EnrichedSession, HookEvent, HookType — SS-03)
+  ├── depends on monocle-runtime (HookEventRecord — SS-01; required for InitialState.ring_tail)
   ├── depends on tokio (tokio::net::UnixStream, UnixListener, AsyncRead, AsyncWrite)
   ├── depends on serde + serde_json (message serialization)
   └── depends on uuid (prompt_id generation, serde feature)
@@ -583,9 +592,18 @@ monocle-runtime (SS-04, daemon side)
   └── depends on monocle-ipc (UdsTransport server-side, message types)
 ```
 
-`monocle-ipc` has no dependency on `monocle-runtime` or `monocle-tui`. It is a pure
-transport library. The daemon and TUI both depend on it as consumers. This ensures that the
-`Transport` trait and message types remain decoupled from either side's implementation logic.
+`monocle-ipc` depends on `monocle-runtime` for `HookEventRecord` only (the `InitialState.ring_tail`
+field type). This is a narrow, read-only dependency on the ring's storage record type.
+The daemon and TUI both depend on `monocle-ipc` as consumers. The `Transport` trait and
+message types remain decoupled from ring I/O logic — `HookEventRecord` is a pure data type
+(no I/O, no async traits).
+
+Note: This introduces a `monocle-ipc → monocle-runtime` edge. The ring is in `monocle-runtime`
+because it was introduced with the daemon lifecycle (SS-01). If this dependency direction is
+undesirable for Phase 4 (e.g., TUI-only binaries importing `monocle-ipc` would transitively
+pull in `monocle-runtime`), `HookEventRecord` can be moved to `monocle-core` in a future
+refactor. That move is not needed in Phase 1 since the TUI binary (`monocle-tui`) already
+depends on `monocle-runtime` for other types.
 
 ---
 
@@ -642,6 +660,27 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.7.0
+
+**F-S022-ADV2-HIGH-002 HIGH — ring_tail type corrected to Vec<HookEventRecord>** (2026-05-27):
+- **F-S022-ADV2-HIGH-002** [HIGH] ring_tail fidelity violation — `InitialState.ring_tail`
+  was typed `Vec<HookEvent>` but the RAM ring stores `Vec<HookEventRecord>`. Converting
+  from `HookEventRecord` to `HookEvent` requires reconstructing variant-specific fields
+  (cwd, transcript_path, prompt, stop_reason, notification_type, message) that are absent
+  from the record struct. S-022 Round 2 silently fabricated empty strings for missing fields
+  with no WARN — a silent data fidelity loss.
+  - Resolution: `ring_tail` type changed to `Vec<HookEventRecord>` in `ServerToClient::InitialState`.
+  - Added inline doc comment explaining the type choice.
+  - Updated §Connection Lifecycle §Phase 1 Connect step 4.
+  - Updated §Dependency Graph: added `monocle-ipc → monocle-runtime` edge for `HookEventRecord`.
+  - Added note in §Dependency Graph explaining the narrow dependency and potential Phase 4 refactor.
+  - Rationale: ring stores `HookEventRecord` per BC-2.04.012 PC-1; TUI event ribbon (S-025)
+    renders from `hook_type`, `session_id`, `timestamp_micros`, `tool_name` — sufficient from
+    `HookEventRecord`. Lossless pass-through preferred over lossy reconstruction.
+    Option A (extend HookEventRecord with large fields) rejected: 4096-entry RAM ring with
+    256 KiB prompt/message = unbounded RAM ring, violating BC-2.04.012 PC-1 bounded contract.
+  - See ADR-0006 and `cycles/cycle-001/S-022/adversarial/architect-decisions-pass-2.md`.
 
 ## §Trace v1.6.0
 

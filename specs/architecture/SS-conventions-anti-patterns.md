@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.30.2"
+version: "1.31.0"
 status: complete
 producer: architect
 phase: phase-3
@@ -44,6 +44,41 @@ and are explicitly forbidden in monocle's codebase:
 - **Package-level mutable globals for theme/config**: No `static mut` or `once_cell::Lazy<Mutex<Theme>>` at package level. Use `Arc<RwLock<Theme>>` threaded through the application context. Globals for visual state cause race conditions in multi-thread renders and make theme hot-reload impossible.
 
 - **Single-popup overlay field**: No `Option<PromptModal>` field for the permission overlay. Use `VecDeque<PromptModal>` to support concurrent prompts without silent drop. The single-Option pattern causes the second concurrent prompt to replace the first with no acknowledgment.
+
+## Non-Exhaustive Structs with Public Constructors
+
+`#[non_exhaustive]` on a `pub struct` prevents external crate consumers from constructing
+the struct via struct-literal syntax. For internal workspace crates, `pub fn new(...)`
+positional constructors are an acceptable alternative when three criteria are met:
+
+1. **Internal workspace scope:** Not published to crates.io; not consumed outside this workspace.
+2. **External protocol anchor:** Models an external wire protocol where field additions require
+   coordinated, intentional changes (Claude Code version bump + monocle BC revision + story).
+3. **All required fields present as positional parameters.** No `Default` substitution.
+
+The 5 hook event inner structs (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`,
+`NotificationEvent`, `StopEvent`) and `HookEventRecord` meet all three criteria (see ADR-0006).
+
+### Breaking-change discipline for new() on non_exhaustive structs
+
+Adding a new **required field** to a `#[non_exhaustive]` struct with `pub fn new(...)` is a
+**breaking change**. When this occurs:
+
+- Add the field as a new positional parameter to `new()`.
+- Update ALL call sites in the SAME PR. Use `cargo check --workspace` to surface every gap.
+- Add a §Trace entry in the owning architecture spec documenting the new field, its source,
+  and the rationale.
+- Add a BC revision if the field addition changes wire behavior.
+
+Adding a new **optional field** (`Option<T>`) is NOT a breaking change — initialize to `None`
+in the constructor body.
+
+Code review MUST reject a `new()` constructor addition that:
+- Is missing from the Cross-Crate Constructor Audit Table in `SS-engine-module.md`.
+- Is applied to a struct that may be published externally in Phase 4 without a new ADR.
+- Has positional parameters that omit any required field.
+
+See ADR-0006 for full rationale and the authoritative struct table.
 
 ## Test-Time Enforcement
 
@@ -2427,6 +2462,13 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - SE-22 v2 sibling-sweep: scanned PRD, ARCH-INDEX, L2-INDEX, BC-INDEX, VP-INDEX, all 17 story files for `--all-features --workspace licenses` or `command: check` + `arguments:.*licenses`. ZERO citations of the malformed YAML form found outside this file. Cascade write-backs: NONE required.
 - SE-16d PASS: 2026-05-20T22:00:00Z > chain high-water 2026-05-20T21:00:00Z (v1.30.0). ARITHMETICALLY TRUE.
 - Source: adversary finding MED-1 from `.factory/plans/adversary-pass-PR2-pre-merge.md`.
+
+**§Trace v1.31.0** (2026-05-27T00:00:00Z) — ADR-0006 ratification: §Non-Exhaustive Structs with Public Constructors section added:
+- NORMATIVE (F-S022-ADV2-MED-003 HIGH — architect adjudication): Added §Non-Exhaustive Structs with Public Constructors section documenting the three criteria under which `pub fn new(...)` positional constructors are permitted on `#[non_exhaustive]` structs, and the breaking-change discipline for adding required fields.
+- Triggered by adversarial Pass 2 finding F-S022-ADV2-MED-003 which routed to architect via durable task register item ADV-W5GATE-MED-003.
+- Ratifies the 5 hook event inner struct constructors (`SessionStartEvent`, `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`, `StopEvent`) and `HookEventRecord` constructor as meeting all three criteria (internal workspace, external protocol anchor, all required fields).
+- See ADR-0006 for full rationale and authoritative struct table.
+- SE-16d PASS: 2026-05-27T00:00:00Z > chain high-water 2026-05-20T23:00:00Z (v1.30.2). ARITHMETICALLY TRUE.
 
 **§Trace v1.30.2** (2026-05-20T23:00:00Z) — §clippy.toml disallowed_methods extended with `std::println` + `std::eprintln`. Closes process-gap surfaced by adversary Round 2 on PR #2 (S-001 post-merge fix):
 - NORMATIVE (CR-009 process-gap): Added `{ path = "std::println", reason = "..." }` and `{ path = "std::eprintln", reason = "..." }` to the `disallowed_methods` list in the §Clippy `disallowed_methods` Configuration section. The §Convention Checklist banned `println!`/`eprintln!` in production code in prose, but the clippy.toml enforcement block omitted these entries — making the prose rule unenforced at CI. This converts the prose-only rule into a hard CI lint.
