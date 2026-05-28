@@ -392,10 +392,17 @@ pub async fn run() -> Result<()> {
             on_initial_state(&mut app, sessions, ring_tail, overlay_stack, drop_counter);
         }
         Ok(other) => {
-            tracing::warn!(
-                "expected InitialState as first message, got unexpected variant; ignoring"
+            // BC-2.05.002 Invariant 1: the first message from the daemon MUST be
+            // InitialState. Any other message variant signals a protocol violation —
+            // silent continuation is forbidden (F-S025-ADV1-MED-001).
+            tracing::error!(
+                unexpected_message = ?other,
+                "BC-2.05.002 Inv 1 violation: first message was not InitialState; \
+                 closing connection"
             );
-            drop(other);
+            return Err(anyhow::anyhow!(
+                "protocol violation: first message not InitialState (BC-2.05.002 Invariant 1)"
+            ));
         }
         Err(e) => {
             tracing::warn!(error = %e, "failed to receive InitialState; continuing with empty state");
@@ -441,7 +448,12 @@ pub async fn run() -> Result<()> {
         .await
         {
             Ok(Ok(msg)) => {
-                handle_server_message(&mut app, msg);
+                if let Err(e) = handle_server_message(&mut app, msg) {
+                    // Protocol violation (e.g., duplicate InitialState) — close connection.
+                    tracing::error!(error = %e, "fatal protocol error; closing IPC connection");
+                    on_transport_event(&mut app, TransportEvent::Disconnected);
+                    break;
+                }
             }
             Ok(Err(e)) => {
                 // Connection lost — treat as Disconnected.
@@ -458,15 +470,24 @@ pub async fn run() -> Result<()> {
 }
 
 /// Dispatch an incoming `ServerToClient` message to the appropriate handler.
-fn handle_server_message(app: &mut App, msg: ServerToClient) {
+///
+/// Returns `Ok(())` on successful dispatch, or `Err` if the message represents
+/// a fatal protocol violation (e.g., duplicate `InitialState`). The event loop
+/// treats an `Err` return as a connection-close signal.
+fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
     match msg {
-        ServerToClient::InitialState {
-            sessions,
-            ring_tail,
-            overlay_stack,
-            drop_counter,
-        } => {
-            on_initial_state(app, sessions, ring_tail, overlay_stack, drop_counter);
+        ServerToClient::InitialState { .. } => {
+            // BC-2.05.002 Invariant 1: a second InitialState on an already-initialized
+            // connection signals daemon-side state machine corruption or a protocol
+            // violation. Silent continuation would cause TUI state to diverge from
+            // daemon reality. Log an error and close the connection.
+            tracing::error!(
+                "BC-2.05.002 Inv 1 violation: duplicate InitialState received; \
+                 closing IPC connection to prevent state divergence"
+            );
+            return Err(anyhow::anyhow!(
+                "protocol violation: duplicate InitialState (BC-2.05.002 Invariant 1)"
+            ));
         }
         ServerToClient::SessionListUpdate { sessions } => {
             app.sessions = sessions;
@@ -485,4 +506,5 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) {
             tracing::trace!("HookEventReceived: event ribbon update deferred to S-027");
         }
     }
+    Ok(())
 }
