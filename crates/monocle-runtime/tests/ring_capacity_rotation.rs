@@ -638,9 +638,7 @@ async fn test_BC_2_04_012_byte_count_reflects_written_bytes() {
         "on-disk file must be non-empty after flush task writes"
     );
 
-    let reported = *byte_count_handle
-        .lock()
-        .expect("byte_count mutex poisoned");
+    let reported = *byte_count_handle.lock().expect("byte_count mutex poisoned");
     assert_eq!(
         reported, on_disk,
         "current_byte_count() must equal on-disk file size after flush task drains (invariant 4); \
@@ -695,9 +693,7 @@ async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
 
     // After rotation, current_byte_count() must equal the on-disk active file size
     // (invariant 4: byte_count reset to 0 then updated for each post-rotation write).
-    let reported = *byte_count_handle
-        .lock()
-        .expect("byte_count mutex poisoned");
+    let reported = *byte_count_handle.lock().expect("byte_count mutex poisoned");
     assert_eq!(
         reported, active_size,
         "current_byte_count() after rotation must equal on-disk active file size (invariant 4); \
@@ -981,8 +977,8 @@ async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
 
     // Extract session_id from the first valid JSONL line in a file.
     let session_id_in = |file_path: &std::path::Path| -> String {
-        let contents =
-            std::fs::read_to_string(file_path).unwrap_or_else(|e| panic!("read {file_path:?}: {e}"));
+        let contents = std::fs::read_to_string(file_path)
+            .unwrap_or_else(|e| panic!("read {file_path:?}: {e}"));
         let first_line = contents
             .lines()
             .next()

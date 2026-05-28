@@ -1,0 +1,30 @@
+{
+  "pr_number": 17,
+  "reviews": [
+    {
+      "timestamp": "2026-05-26T00:00:00Z",
+      "commit_sha": "c7e3e2f",
+      "verdict": "APPROVE",
+      "findings": [
+        {
+          "severity": "suggestion",
+          "category": "test-coverage",
+          "agent": "pr-test-analyzer",
+          "title": "metadata() success-path has no standalone test",
+          "file": "crates/monocle-runtime/tests/engine_module_home_unresolvable.rs",
+          "line": "1",
+          "hash": ""
+        },
+        {
+          "severity": "suggestion",
+          "category": "platform-behavior",
+          "agent": "code-reviewer",
+          "title": "home_env_available() macOS branch checks only HOME",
+          "file": "crates/monocle-runtime/src/engine/claude_code.rs",
+          "line": "186",
+          "hash": ""
+        }
+      ]
+    }
+  ]
+}

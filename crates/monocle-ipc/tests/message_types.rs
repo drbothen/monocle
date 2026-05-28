@@ -92,18 +92,29 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
             overlay_stack,
             drop_counter,
         } => {
-            assert_eq!(sessions.len(), 1, "sessions must have 1 entry after roundtrip");
+            assert_eq!(
+                sessions.len(),
+                1,
+                "sessions must have 1 entry after roundtrip"
+            );
             assert_eq!(
                 sessions[0].session_id, "session-init-001",
                 "session_id must survive roundtrip"
             );
-            assert_eq!(ring_tail.len(), 1, "ring_tail must have 1 entry after roundtrip");
+            assert_eq!(
+                ring_tail.len(),
+                1,
+                "ring_tail must have 1 entry after roundtrip"
+            );
             assert_eq!(
                 overlay_stack.len(),
                 1,
                 "overlay_stack must have 1 entry after roundtrip"
             );
-            assert_eq!(overlay_stack[0].prompt_id, prompt_id, "prompt_id must survive roundtrip");
+            assert_eq!(
+                overlay_stack[0].prompt_id, prompt_id,
+                "prompt_id must survive roundtrip"
+            );
             assert_eq!(drop_counter, 42, "drop_counter must survive roundtrip");
         }
         other => panic!("expected InitialState, got {other:?}"),

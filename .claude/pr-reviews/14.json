@@ -1,0 +1,39 @@
+{
+  "pr_number": 14,
+  "reviews": [
+    {
+      "timestamp": "2026-05-26T00:00:00Z",
+      "commit_sha": "28ba342df46ac8a0839c816a7cab42dd557d1125",
+      "verdict": "CHANGES_REQUESTED",
+      "findings": [
+        {
+          "severity": "important",
+          "category": "dependency-manifest-violation",
+          "agent": "code-reviewer",
+          "title": "regex-lite promoted to production dependency — violates SS-deps-pin-manifest.md normative classification",
+          "file": "crates/monocle-runtime/Cargo.toml",
+          "line": "37",
+          "hash": "regex-lite = \"0.1\" under [dependencies]"
+        },
+        {
+          "severity": "suggestion",
+          "category": "documentation-accuracy",
+          "agent": "comment-analyzer",
+          "title": "Test names in PR description and evidence-report.md don't match actual test function names",
+          "file": "docs/demo-evidence/S-007/evidence-report.md",
+          "line": "0",
+          "hash": ""
+        },
+        {
+          "severity": "suggestion",
+          "category": "type-design",
+          "agent": "type-design-analyzer",
+          "title": "CheckpointReadResult missing #[non_exhaustive] — inconsistency with S-011 policy",
+          "file": "crates/monocle-runtime/src/types.rs",
+          "line": "70",
+          "hash": "pub enum CheckpointReadResult"
+        }
+      ]
+    }
+  ]
+}

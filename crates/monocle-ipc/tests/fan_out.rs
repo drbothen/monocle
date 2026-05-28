@@ -161,9 +161,7 @@ async fn test_BC_2_05_003_broadcast_session_list_update_sends_to_all_clients() {
         monocle_core::engine::SessionStatus::Active,
         None,
     );
-    transport
-        .broadcast_session_list_update(vec![session])
-        .await;
+    transport.broadcast_session_list_update(vec![session]).await;
 
     // Both subscribers must receive the SessionListUpdate with the correct session.
     let msg1 = rx1
@@ -176,7 +174,11 @@ async fn test_BC_2_05_003_broadcast_session_list_update_sends_to_all_clients() {
     for msg in [msg1, msg2] {
         match msg {
             ServerToClient::SessionListUpdate { sessions } => {
-                assert_eq!(sessions.len(), 1, "sessions list must contain exactly 1 entry");
+                assert_eq!(
+                    sessions.len(),
+                    1,
+                    "sessions list must contain exactly 1 entry"
+                );
                 assert_eq!(
                     sessions[0].session_id, "session-fanout-001",
                     "session_id must match what was broadcast"
@@ -274,7 +276,11 @@ async fn test_BC_2_05_004_broadcast_hook_event_received_sends_to_all_clients() {
                 latency_ms,
                 ..
             } => {
-                assert_eq!(hook_type, HookType::PreToolUse, "hook_type must be PreToolUse");
+                assert_eq!(
+                    hook_type,
+                    HookType::PreToolUse,
+                    "hook_type must be PreToolUse"
+                );
                 assert_eq!(session_id, "abc", "session_id must match");
                 assert_eq!(latency_ms, 5, "latency_ms must match");
             }
@@ -302,7 +308,9 @@ async fn test_BC_2_05_004_broadcast_hook_event_received_latency_ms_propagated() 
         .broadcast_hook_event_received(HookType::Stop, "session-x".to_string(), body, 99)
         .await;
 
-    let msg = rx.try_recv().expect("subscriber must receive the broadcast");
+    let msg = rx
+        .try_recv()
+        .expect("subscriber must receive the broadcast");
     match msg {
         ServerToClient::HookEventReceived { latency_ms, .. } => {
             assert_eq!(latency_ms, 99, "latency_ms must be propagated verbatim");
@@ -358,7 +366,11 @@ async fn test_BC_2_05_004_slow_client_removed_from_subscriber_list() {
 
     transport.add_subscriber(slow_tx).await;
     transport.add_subscriber(healthy_tx).await;
-    assert_eq!(transport.subscriber_count().await, 2, "should start with 2 subscribers");
+    assert_eq!(
+        transport.subscriber_count().await,
+        2,
+        "should start with 2 subscribers"
+    );
 
     let body = b"{}";
     transport

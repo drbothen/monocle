@@ -1,0 +1,65 @@
+{
+  "pr_number": 19,
+  "reviews": [
+    {
+      "timestamp": "2026-05-27T18:00:00Z",
+      "commit_sha": "b5c05cc0c98e994b13ea7c2ef05b65c939816d5c",
+      "verdict": "CHANGES_REQUESTED",
+      "findings": [
+        {
+          "severity": "important",
+          "category": "spec-fidelity",
+          "agent": "code-reviewer",
+          "title": "Wrong ProjectDirs::from organization argument",
+          "file": "crates/monocle-runtime/src/lifecycle.rs",
+          "line": "98",
+          "hash": "directories::ProjectDirs::from(\"\", \"monocle\", \"monocle\")"
+        },
+        {
+          "severity": "important",
+          "category": "convention-violation",
+          "agent": "code-reviewer",
+          "title": "Direct std::process::exit() bypasses exit_with() convention",
+          "file": "crates/monocle-runtime/src/main.rs",
+          "line": "63,69,81",
+          "hash": "std::process::exit(1)"
+        },
+        {
+          "severity": "important",
+          "category": "spec-fidelity",
+          "agent": "code-reviewer",
+          "title": "Level 2 INFO log missing from resolve_runtime_dir()",
+          "file": "crates/monocle-runtime/src/lifecycle.rs",
+          "line": "102-103",
+          "hash": "if let Some(rd) = proj.runtime_dir() { Ok(rd.to_path_buf()) }"
+        },
+        {
+          "severity": "suggestion",
+          "category": "spec-compliance",
+          "agent": "code-reviewer",
+          "title": "Level 3 log format doesn't match spec literal",
+          "file": "crates/monocle-runtime/src/lifecycle.rs",
+          "line": "105-108",
+          "hash": "tracing::info!(platform = std::env::consts::OS, \"runtime_dir fallback to data_local_dir\")"
+        },
+        {
+          "severity": "suggestion",
+          "category": "documentation",
+          "agent": "comment-analyzer",
+          "title": "Stale doc comments reference non-existent ProjectDirs::new()",
+          "file": "crates/monocle-runtime/src/lifecycle.rs",
+          "line": "9,12,39,45",
+          "hash": "ProjectDirs::new(\"monocle\", \"monocle\", \"monocle\")"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-05-27T18:30:00Z",
+      "commit_sha": "13e1667",
+      "verdict": "APPROVE",
+      "findings": [],
+      "merge_commit": "87ac91fc7d416a14d02817fa9de72df26a3895ce",
+      "status": "MERGED"
+    }
+  ]
+}

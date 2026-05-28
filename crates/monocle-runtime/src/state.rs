@@ -244,7 +244,6 @@ pub struct DaemonState {
     // hook_delay_ms: when Some(ms), hook handlers sleep for ms milliseconds
     //   inside the 300ms timeout budget, reliably triggering the timeout path.
     // -------------------------------------------------------------------------
-
     /// Engine decision override for integration tests.
     ///
     /// `None` — use the real `ClaudeCodeModule::on_hook()` (production default).
