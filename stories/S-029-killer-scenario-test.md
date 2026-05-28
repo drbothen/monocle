@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-029
 epic_id: EPIC-06
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 5
 wave: 7
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.06.022]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.022.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.022.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.06.022 (killer scenario: permission prompt E2E round-trip)"
@@ -178,3 +178,10 @@ Files to modify: None (test-only story; no production code changes)
 
 No new public API. This is a pure test story. No other stories depend on this one.
 It is the final validation gate for EPIC-06 permission overlay functionality.
+
+## §Trace v1.1
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- BC-2.06.022 inputs pin updated: v1.0.0 → v1.6.0.
+- No body edits required — BC-2.06.022 content changes do not affect the story's AC text.
+- SE-16d monotonicity: v1.1 timestamp 2026-05-28 >= v1.0 timestamp 2026-05-27. PASS.

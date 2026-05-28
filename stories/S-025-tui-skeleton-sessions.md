@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.4"
+version: "1.5"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.06.004, BC-2.06.005, BC-2.06.007, BC-2.05.002]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
@@ -102,7 +102,8 @@ in `overlay_stack` so that idempotent-on-`prompt_id` semantics are enforced: if 
 is already present in the VecDeque (e.g., from a streaming `PermissionPromptQueued` that
 arrived before `InitialState`), the duplicate MUST be silently discarded. If the overlay
 stack is non-empty after population, the TUI immediately transitions to
-`Overlay { stack: loaded_stack, prior: default_focus }` before rendering the first frame.
+`Overlay { prior: default_focus }` before rendering the first frame.
+(The modal stack is carried in `App.overlay_stack`, not in the `Overlay` variant, per BC-2.06.004 v1.2.0 PC-2.)
 (BC-2.05.002 Invariant 4: the IPC layer provides at-least-once delivery for
 `PermissionPromptQueued` across the snapshot window; consumer idempotency on `prompt_id` is
 the correct resolution.)
@@ -231,6 +232,15 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.5
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- BC-2.06.004 inputs pin updated: v1.1.0 → v1.2.0.
+- AC-008 body updated: `Overlay { stack: loaded_stack, prior: default_focus }` → `Overlay { prior: default_focus }` with
+  explicit note that the modal stack lives in `App.overlay_stack`, not the `Overlay` variant (BC-2.06.004 v1.2.0 PC-2
+  arch-pass-2 HIGH-003 propagation — `AppMode::Overlay` carries only `{ prior: FocusSnapshot }`).
+- SE-16d monotonicity: v1.5 timestamp 2026-05-28 >= v1.4 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.4
 

@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-024
 epic_id: EPIC-06
-version: "1.0"
+version: "1.3"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 8
 wave: 4
@@ -20,12 +20,12 @@ behavioral_contracts: [BC-2.06.001, BC-2.06.002, BC-2.06.003]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.001.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.002.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.001.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.002.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.003.md, version: "1.0.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.06.001 (AppMode state machine), BC-2.06.002 (5-level binding dispatch), BC-2.06.003 (transition() pure function)"
+traces_to: "Implements BC-2.06.001 (AppMode state machine), BC-2.06.002 (FocusSnapshot: focus restored after overlay/fullscreen close), BC-2.06.003 (Action dispatch: 5-level binding precedence + transition() pure function)"
 ---
 
 # S-024: TUI Core Types — AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch
@@ -47,10 +47,18 @@ correct, tested state machine with no I/O dependencies.
 - `Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot }`
 - `Fullscreen { panel: PanelId, prior: FocusSnapshot }`
 
-### AC-002 (traces to BC-2.06.001 postcondition PC-2 — FocusSnapshot)
-`FocusSnapshot` is `#[non_exhaustive]` with fields `panel: PanelId` and
-`row: Option<usize>`. `PanelId` is `#[non_exhaustive]` with variants
-`Sessions`, `EventRibbon`, `StaticExplorer`, `WorkflowPanel`, `HarnessPanel`.
+### AC-002 (traces to BC-2.06.002 precondition 1 — FocusSnapshot enum definition)
+`FocusSnapshot` is a `#[non_exhaustive]` enum with at least two variants: `Sessions` and
+`EventRibbon`. Phase 2+ panels (`Customizations`, `Workflow`, `Preview`) extend this enum
+without breaking existing match arms (enforced by `#[non_exhaustive]`). `FocusSnapshot`
+derives `Clone`, `PartialEq`, `Eq`, and `Debug`. `PanelId` is a separate `#[non_exhaustive]`
+enum with variants `Sessions`, `EventRibbon`, `StaticExplorer`, `WorkflowPanel`, `HarnessPanel`.
+
+`FocusSnapshot` also implements:
+- `FocusSnapshot::cycle()` — pure method advancing focus to next panel in round-robin order;
+  single-panel cycle is idempotent (returns same variant).
+- `FocusSnapshot::to_panel_id()` — pure method converting a `FocusSnapshot` variant to the
+  corresponding `PanelId`.
 
 ### AC-003 (traces to BC-2.06.001 postcondition PC-3 — PromptModal fields)
 `PromptModal` has fields: `prompt_id: Uuid`, `session_id: String`, `tool_name: String`,
@@ -97,21 +105,24 @@ If `mode` is `Overlay { stack, prior }`, pushes `modal` to back of stack.
 if stack becomes empty returns `Dashboard { focused: prior }`; otherwise returns
 `Overlay { stack: remaining, prior }`.
 
-### AC-010 (traces to BC-2.06.002 postcondition PC-1 — BindingSource enum)
+### AC-010 (traces to BC-2.06.003 precondition 1 — BindingSource enum)
 `BindingSource` is `#[non_exhaustive]` with variants:
 `SearchPrompt`, `UserCustomCommand`, `PerContext`, `Global`, `Builtin`.
 Priority order is `SearchPrompt > UserCustomCommand > PerContext > Global > Builtin`.
 
-### AC-011 (traces to BC-2.06.002 postcondition PC-2 — resolve_binding function)
+### AC-011 (traces to BC-2.06.003 postcondition PC-4 — resolve_binding None on no match)
 `resolve_binding(key: KeyEvent, mode: &AppMode, layers: &BindingLayers) -> Option<(Action, BindingSource)>`
 returns the highest-priority binding for `key` in current mode, with its source.
-Returns `None` if no binding is registered at any level for this key+mode combination.
+Returns `None` if no binding is registered at any level for this key+mode combination
+(BC-2.06.003 PC-4: no-match returns `None`; keypress is discarded with no error).
 
-### AC-012 (traces to BC-2.06.002 postcondition PC-3 — SearchPrompt overrides all)
-When `mode` is `Filtering { .. }`, `SearchPrompt` layer bindings override all other
-layers for any key. If `SearchPrompt` has a binding for a key, `resolve_binding`
-returns that binding with `BindingSource::SearchPrompt` regardless of lower-layer
-registrations.
+### AC-012 (traces to BC-2.06.003 postcondition PC-2 — SearchPrompt captures printable keys)
+When `mode` is `Filtering { .. }`, the `search_prompt` table contains bindings for all
+printable characters (mapped to `Action::FilterType(char)`) and for `Escape` (mapped to
+`Action::Escape`). `resolve_binding` checks the `SearchPrompt` layer first when in
+`Filtering` mode — any printable key returns `BindingSource::SearchPrompt` regardless
+of lower-layer registrations. Non-printable modifier keys (e.g., `Ctrl-P`) are not in
+`search_prompt` and fall through to `global` or `builtin` layers (BC-2.06.003 EC-075).
 
 ### AC-013 (traces to BC-2.06.001 invariant INV-1 — AppMode exhaustive)
 `AppMode` is NOT `#[non_exhaustive]`. Match arms over `AppMode` must be exhaustive
@@ -145,7 +156,8 @@ No panic, no `unreachable!()`, no `todo!()` in the final implementation.
 ## Tasks
 
 - [ ] Create `monocle-core/src/tui/mod.rs` — re-export `state`, `binding` modules
-- [ ] Create `monocle-core/src/tui/state.rs` — define `AppMode`, `FocusSnapshot`, `PanelId`, `PromptModal`, `ToolPayload`, `Action`; implement `transition()`
+- [ ] Create `monocle-core/src/tui/state.rs` — define `AppMode`, `FocusSnapshot` (enum), `PanelId`, `PromptModal`, `ToolPayload`, `Action`; implement `transition()`
+- [ ] Implement `FocusSnapshot::cycle()` (round-robin; single-panel idempotent) and `FocusSnapshot::to_panel_id()` (converts variant to corresponding PanelId)
 - [ ] Add `#[non_exhaustive]` to `FocusSnapshot`, `PanelId`, `BindingSource`, `Action`; ensure `AppMode` is NOT `#[non_exhaustive]`
 - [ ] Implement `transition()` covering all `(AppMode, Action)` branches: StartFilter, CommitFilter, CancelFilter, EnterFullscreen, ExitFullscreen, PushOverlay, PopOverlay, Esc, MoveFocus, and fallthrough identity
 - [ ] Enforce empty-stack collapse invariant inside `transition()` — at every code path that could produce `Overlay { stack: empty, .. }`, collapse to `Dashboard { focused: prior }`
@@ -170,6 +182,7 @@ module is a new addition; wire it into `monocle-core/src/lib.rs` as `pub mod tui
 From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-patterns.md`:
 - `AppMode` MUST NOT be `#[non_exhaustive]` — exhaustive match is the compile-time
   safety mechanism for this enum
+- `FocusSnapshot` is an enum (NOT a struct) — `#[non_exhaustive]` enum with variants `Sessions`, `EventRibbon` (Phase 1); Phase 2 adds more variants without breaking existing match arms
 - `FocusSnapshot`, `PanelId`, `BindingSource`, `Action` MUST be `#[non_exhaustive]`
 - `transition()` lives in `monocle-core` (pure) — never `monocle-tui` (effectful)
 - Empty-stack collapse enforced INSIDE `transition()`, not at call sites
@@ -218,7 +231,8 @@ Public API produced by this story for downstream consumption:
 ```rust
 // monocle-core::tui::state
 pub enum AppMode { /* 4 variants, NOT #[non_exhaustive] */ }
-#[non_exhaustive] pub struct FocusSnapshot { pub panel: PanelId, pub row: Option<usize> }
+#[non_exhaustive] pub enum FocusSnapshot { Sessions, EventRibbon /* Phase 2+: Customizations, Workflow, Preview */ }
+impl FocusSnapshot { pub fn cycle(&self) -> FocusSnapshot; pub fn to_panel_id(&self) -> PanelId; }
 #[non_exhaustive] pub enum PanelId { Sessions, EventRibbon, StaticExplorer, WorkflowPanel, HarnessPanel }
 pub struct PromptModal { pub prompt_id: Uuid, pub session_id: String, pub tool_name: String, pub tool_payload: ToolPayload, pub received_at: std::time::Instant }
 pub enum ToolPayload { Edit { old_content: String, new_content: String, path: PathBuf }, Bash { command: String }, Read { path: PathBuf }, Generic { tool_name: String, tool_input: serde_json::Value } }
@@ -232,3 +246,13 @@ pub fn resolve_binding(key: KeyEvent, mode: &AppMode, layers: &BindingLayers) ->
 ```
 
 S-025, S-026, S-031 all depend on these types being available in monocle-core.
+
+## §Trace v1.3
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- BC-2.06.001 inputs pin updated: v1.0.0 → v1.0.4.
+- BC-2.06.002 inputs pin updated: v1.0.0 → v1.0.4.
+- No body edits required — BC-2.06.001 and BC-2.06.002 changes (v1.0.0→v1.0.4) were
+  cosmetic IPC field name cleanups and architecture source pin updates; they do not alter
+  the AppMode/FocusSnapshot type definitions or transition() semantics specified here.
+- SE-16d monotonicity: v1.3 timestamp 2026-05-28 >= v1.2 timestamp 2026-05-27. PASS.

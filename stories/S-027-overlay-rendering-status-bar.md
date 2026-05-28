@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.0"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 8
 wave: 7
@@ -16,19 +16,19 @@ depends_on: [S-026, S-025]
 blocks: [S-029]
 target_module: monocle-tui
 subsystems: [SS-06]
-behavioral_contracts: [BC-2.06.010, BC-2.06.015, BC-2.06.017, BC-2.06.019, BC-2.06.020, BC-2.06.021]
+behavioral_contracts: [BC-2.06.010, BC-2.06.015, BC-2.06.019, BC-2.06.020, BC-2.06.021, BC-2.06.024]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.017.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (diff preview), BC-2.06.017 (ToolPayload render), BC-2.06.019..021 (status bar)"
+traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
 ---
 
 # S-027: Overlay Rendering + Diff Preview + Status Bar
@@ -43,7 +43,7 @@ have all the information I need to make permission decisions at a glance.
 ## Acceptance Criteria
 
 ### AC-001 (traces to BC-2.06.010 postcondition PC-1 — overlay widget layout)
-When `AppMode::Overlay { stack, .. }` is active, `monocle-tui` renders a centered modal
+When `AppMode::Overlay { .. }` is active (and `App.overlay_stack` is non-empty), `monocle-tui` renders a centered modal
 over a dimmed background. The modal displays:
 - Header: `"Permission Request"` with the `session_id` and `tool_name`
 - Body: tool-specific content (see AC-003 through AC-006)
@@ -56,12 +56,12 @@ The content behind the overlay modal is rendered with a `Modifier::DIM` style ap
 to all non-modal cells. The sessions panel and event ribbon remain visible but dimmed
 to indicate they are inactive.
 
-### AC-003 (traces to BC-2.06.017 postcondition PC-1 — Bash tool display)
+### AC-003 (traces to BC-2.06.024 postcondition PC-1 — Bash tool display)
 For `ToolPayload::Bash { command }`: the modal body renders the command in a bordered
 `Block` with title `"Command"`. If the command exceeds the modal height minus 6 rows,
 it is truncated with `"... (truncated)"` at the end.
 
-### AC-004 (traces to BC-2.06.017 postcondition PC-2 — Read tool display)
+### AC-004 (traces to BC-2.06.024 postcondition PC-2 — Read tool display)
 For `ToolPayload::Read { path }`: the modal body renders the path in a single-line
 `Block` with title `"File"`. No truncation is needed.
 
@@ -74,7 +74,7 @@ The diff is rendered line-by-line with:
 - Context lines in default color
 The path is shown in the modal header: `"Edit: <path>"`.
 
-### AC-006 (traces to BC-2.06.017 postcondition PC-3 — Generic tool display)
+### AC-006 (traces to BC-2.06.024 postcondition PC-3 — Generic tool display)
 For `ToolPayload::Generic { tool_name, tool_input }`: the modal body renders
 `serde_json::to_string_pretty(tool_input)` in a `Block` titled `"Tool Input"`.
 If the JSON exceeds the modal height minus 6 rows, scroll hints are shown:
@@ -117,10 +117,10 @@ CPU-bound operations on strings — they do not block the async runtime. No
 | This story spec | ~2,200 |
 | BC-2.06.010.md | ~900 |
 | BC-2.06.015.md | ~800 |
-| BC-2.06.017.md | ~900 |
 | BC-2.06.019.md | ~700 |
 | BC-2.06.020.md | ~700 |
 | BC-2.06.021.md | ~700 |
+| BC-2.06.024.md | ~900 |
 | S-026 (overlay core — App state) | ~700 |
 | S-025 (TUI skeleton — layout) | ~500 |
 | similar crate API | ~300 |
@@ -206,3 +206,15 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.2
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- BC-2.06.010 inputs pin updated: v1.0.0 → v1.0.5.
+- BC-2.06.015 inputs pin updated: v1.0.0 → v1.0.4.
+- BC-2.06.020 inputs pin updated: v1.0.0 → v1.0.4.
+- BC-2.06.024 inputs pin updated: v1.0.0 → v1.0.1.
+- AC-001 body updated: `AppMode::Overlay { stack, .. }` → `AppMode::Overlay { .. }` (with
+  `App.overlay_stack` note) — `AppMode::Overlay` carries only `{ prior: FocusSnapshot }` per
+  BC-2.06.004 v1.2.0 PC-2; the modal stack is read from `App.overlay_stack`.
+- SE-16d monotonicity: v1.2 timestamp 2026-05-28 >= v1.1 timestamp 2026-05-27. PASS.

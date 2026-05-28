@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.4"
+version: "5.5"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.5
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- 5 stories updated with inputs pin bumps and body corrections for BC-2.06.004 v1.2.0 shape change.
+- S-024 v1.2 → v1.3: BC-2.06.001 v1.0.0→v1.0.4, BC-2.06.002 v1.0.0→v1.0.4 (cosmetic IPC field name sweep).
+- S-025 v1.4 → v1.5: BC-2.06.004 v1.1.0→v1.2.0; AC-008 body fixed — `Overlay { stack: loaded_stack, prior }` → `Overlay { prior }` (AppMode::Overlay no longer carries stack field).
+- S-026 v1.3 → v1.4: 9 BC pins updated (BC-2.06.008/009/011/012/013/014/016/023/024); AC-001 and Downstream Contract body fixed for same Overlay variant shape change.
+- S-027 v1.1 → v1.2: BC-2.06.010/015/020/024 pins updated; AC-001 body fixed — `Overlay { stack, .. }` → `Overlay { .. }` with App.overlay_stack note.
+- S-029 v1.0 → v1.1: BC-2.06.022 v1.0.0→v1.6.0 (no body changes required).
+- STORY-INDEX version bumped v5.4→v5.5.
 
 ## §Trace v5.4
 

@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.3"
+version: "1.4"
 status: not_started
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T00:00:00Z
 phase: 2
 points: 13
 wave: 6
@@ -20,15 +20,15 @@ behavioral_contracts: [BC-2.06.008, BC-2.06.009, BC-2.06.011, BC-2.06.012, BC-2.
 verification_properties: []
 estimated_days: 5
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.008.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.009.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.011.md, version: "1.1.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.012.md, version: "1.1.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.1.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.008.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.009.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.011.md, version: "1.2.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.012.md, version: "1.2.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.2.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.4.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
@@ -57,9 +57,10 @@ is received, the TUI MUST use the `apply_permission_prompt_queued(overlay, paylo
   and call `app.overlay_stack.push_back(modal)`.
 
 After a successful (non-duplicate) push, the TUI transitions to
-`Overlay { stack: app.overlay_stack.clone(), prior: current_focus }` via `transition()`
-if not already in Overlay mode. If already in Overlay mode, the stack grows in place
-(the IPC push is NOT routed through `transition()`).
+`Overlay { prior: current_focus }` via `transition()`
+if not already in Overlay mode. (The modal stack is carried in `App.overlay_stack`, not
+in the `Overlay` variant — per BC-2.06.004 v1.2.0 PC-2.) If already in Overlay mode,
+the stack grows in place (the IPC push is NOT routed through `transition()`).
 
 Precondition (BC-2.05.002 Invariant 4): The IPC layer provides at-least-once delivery for
 `PermissionPromptQueued` across the connection snapshot window. A `prompt_id` already
@@ -300,12 +301,31 @@ Public behavior produced by this story for downstream consumption:
 
 The `App` struct (from S-025) gains these guaranteed behaviors:
 - `overlay_stack` (VecDeque<PromptModal>) correctly tracks the daemon's overlay state
-- `mode` is always `Overlay { .. }` when `overlay_stack` is non-empty; never `Overlay { stack: empty, .. }`
+- `mode` is always `Overlay { .. }` when `overlay_stack` is non-empty; never `Overlay { .. }` with `App.overlay_stack` empty
 - Decision keys dispatch correct `ClientToServer::PermissionDecision` IPC messages
 - Disconnect clears overlay; reconnect restores it from `InitialState`
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.4
+
+**F-S025-ADV3-BLOCKER-002 — SS-06 BC version pins propagated from PO sweep (commit 6d4fbb3)** (2026-05-28):
+- BC-2.06.008 inputs pin updated: v1.0.0 → v1.1.0.
+- BC-2.06.009 inputs pin updated: v1.0.0 → v1.1.0.
+- BC-2.06.011 inputs pin updated: v1.1.0 → v1.2.0.
+- BC-2.06.012 inputs pin updated: v1.1.0 → v1.2.0.
+- BC-2.06.013 inputs pin updated: v1.1.0 → v1.2.0.
+- BC-2.06.014 inputs pin updated: v1.0.0 → v1.0.6.
+- BC-2.06.016 inputs pin updated: v1.0.0 → v1.0.6.
+- BC-2.06.023 inputs pin updated: v1.0.0 → v1.4.0.
+- BC-2.06.024 inputs pin updated: v1.0.0 → v1.0.1.
+- AC-001 body updated: `Overlay { stack: app.overlay_stack.clone(), prior: current_focus }` →
+  `Overlay { prior: current_focus }` with explicit note that the modal stack lives in
+  `App.overlay_stack` not the `Overlay` variant (BC-2.06.004 v1.2.0 PC-2 propagation).
+- Downstream Consumer Contract: `Overlay { stack: empty, .. }` → `Overlay { .. }` with
+  `App.overlay_stack` empty (same shape correction).
+- SE-16d monotonicity: v1.4 timestamp 2026-05-28 >= v1.3 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.3
 
