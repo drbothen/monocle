@@ -363,19 +363,41 @@ async fn test_BC_2_04_003_tui_renders_offline_in_suppressed_mode() {
 /// BC-2.04.003 PC-1: the env var is read before any lock file check, PID liveness
 /// check, or daemon subprocess creation. AC-001.
 ///
-/// We verify "checked first" by providing an invalid/unresolvable runtime dir AND
-/// setting `MONOCLE_NO_AUTOSTART=1`. The result must be `OfflineMode` (not exit 70).
-/// If the implementation tried to call `resolve_runtime_dir()` before checking the
-/// env var, it would exit 70 (BC-2.04.002 PC-1) — but with suppression active, the
-/// process must never reach `resolve_runtime_dir()`.
+/// Ordering verification strategy:
+///
+/// `check_no_autostart()` is a pure env-var read with no side effects. We verify the
+/// structural ordering property by calling it directly and confirming it returns `true`
+/// when `MONOCLE_NO_AUTOSTART=1`, then verifying that `auto_start_daemon()` returns
+/// `OfflineMode` immediately — before reaching `resolve_runtime_dir()`.
+///
+/// The filesystem-ordering property is verified by setting `MONOCLE_RUNTIME_DIR` to an
+/// unresolvable path. If the implementation called `resolve_runtime_dir()` BEFORE
+/// `check_no_autostart()`, it would call `std::process::exit(70)` and the test process
+/// would terminate with a non-zero exit code rather than returning `OfflineMode`.
+/// The test completing normally with `OfflineMode` is the proof that no filesystem
+/// access occurred before the env-var check.
 #[tokio::test]
 async fn test_BC_2_04_003_check_first_before_filesystem() {
-    // Intentionally invalid runtime dir path (non-existent root-level path that cannot
-    // be created). This ensures that if resolve_runtime_dir() is called first, it fails.
-    // With MONOCLE_NO_AUTOSTART=1, resolve_runtime_dir() must NEVER be called.
+    // Structural property: check_no_autostart() returns true with MONOCLE_NO_AUTOSTART=1.
+    let suppressed = temp_env::with_vars(
+        [("MONOCLE_NO_AUTOSTART", Some("1"))],
+        check_no_autostart,
+    );
+    assert!(
+        suppressed,
+        "BC-2.04.003 PC-1 (AC-001): check_no_autostart() must return true when \
+         MONOCLE_NO_AUTOSTART=1"
+    );
+
+    // Ordering property: auto_start_daemon() returns OfflineMode without any filesystem
+    // access when MONOCLE_NO_AUTOSTART=1, even with an unresolvable runtime dir.
+    //
+    // An unresolvable path is set for MONOCLE_RUNTIME_DIR so that if resolve_runtime_dir()
+    // is invoked BEFORE check_no_autostart(), it would call std::process::exit(70) and
+    // terminate the test process. The test completing normally with OfflineMode proves
+    // the ordering: suppression check happens FIRST, filesystem is never touched.
     let result = temp_env::async_with_vars(
         [
-            // Use an unresolvable path — would cause exit 70 if reached.
             (
                 "MONOCLE_RUNTIME_DIR",
                 Some("/no_such_dir_monocle_s019_test/runtime"),
@@ -390,8 +412,8 @@ async fn test_BC_2_04_003_check_first_before_filesystem() {
         result,
         AutoStartResult::OfflineMode,
         "BC-2.04.003 PC-1 (AC-001): MONOCLE_NO_AUTOSTART must be checked FIRST — before \
-         resolve_runtime_dir(). With an invalid runtime dir and MONOCLE_NO_AUTOSTART=1, \
-         the result must be OfflineMode (not a panic or exit 70)."
+         resolve_runtime_dir(). Returning OfflineMode here proves no filesystem access \
+         occurred (a pre-check filesystem call would have called process::exit(70))."
     );
 }
 

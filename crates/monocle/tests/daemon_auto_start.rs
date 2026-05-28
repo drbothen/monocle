@@ -377,6 +377,11 @@ async fn test_BC_2_04_002_max_wait_is_10_seconds() {
 /// and covered by test_BC_2_04_002_double_timeout_offline_mode (both windows timeout) and
 /// test_BC_2_04_002_happy_path_no_lock_starts_daemon (first window succeeds). The exact
 /// first-timeout-then-retry-succeeds path requires a binary stub deferred to a future story.
+///
+/// To un-ignore: create a `tests/bin/delayed_lock_daemon.rs` test binary that writes a
+/// valid lock file after sleeping for `MONOCLE_AUTO_START_TIMEOUT_SECS` seconds, then
+/// wire it in via `MONOCLE_DAEMON_BIN`. Remove `#[ignore]` once that binary exists and
+/// replace the `panic!()` body below with assertions on the `Connected` result.
 #[tokio::test]
 #[ignore = "needs controlled daemon stub that writes lock after exactly one timeout window (EC-2.04.002-04)"]
 async fn test_BC_2_04_002_first_timeout_then_retry_succeeds() {

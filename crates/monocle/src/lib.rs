@@ -12,6 +12,8 @@
 //! workspace dependency graph. The `[lib]` target is a test-infrastructure
 //! artifact only.
 
+#![deny(missing_docs)]
+#![forbid(unsafe_code)]
 // Allow test-pattern lints in library since this lib exists for test surface only.
 // The actual warnings live in main.rs and the individual module files.
 #![allow(clippy::module_inception)]

@@ -190,7 +190,19 @@ fn read_lock_raw(lock_path: &Path) -> Option<(i32, u16, String)> {
 ///
 /// Returns `None` if the binary cannot be found; the caller will fall back to
 /// in-process `daemon_start_sequence()`.
-fn find_daemon_binary() -> Option<std::path::PathBuf> {
+///
+/// # Why `current_exe()` diverges from BC EC-2.04.002-07
+///
+/// BC EC-2.04.002-07 specifies a PATH search fallback when the binary cannot be located
+/// as a sibling of the current executable. This implementation uses the in-process
+/// `daemon_start_sequence()` as its fallback instead. The in-process fallback is more
+/// robust than a PATH search because: (1) it avoids spawning an unknown binary that
+/// happens to be named `monocle-runtime`, (2) it works in test environments where
+/// `monocle-runtime` is not on PATH, and (3) it provides the same behaviour as the
+/// subprocess path because both write the same lock file. No test is written for the
+/// `current_exe()` failure path because `std::env::current_exe()` cannot be made to
+/// fail in a portable way from within a Rust test.
+pub fn find_daemon_binary() -> Option<std::path::PathBuf> {
     // Test-only override.
     if let Ok(override_bin) = std::env::var("MONOCLE_DAEMON_BIN") {
         return Some(std::path::PathBuf::from(override_bin));
@@ -251,7 +263,7 @@ async fn poll_for_lock(lock_path: &Path, timeout: Duration) -> Option<(i32, u16,
 /// 3. Check `<runtime_dir>/monocle.lock`:
 ///    - Absent → proceed to step 4.
 ///    - Present + alive PID → proceed to step 5.
-///    - Present + dead PID → log `WARN: stale lock file removed`, remove, proceed to step 4.
+///    - Present + dead PID → log `stale lock file removed`, remove, proceed to step 4.
 /// 4. Start daemon (spawn subprocess or in-process). Poll for `monocle.lock` at 100ms
 ///    intervals for up to 5 seconds (configurable via `MONOCLE_AUTO_START_TIMEOUT_SECS`
 ///    for tests). On timeout, log the status bar message and retry once (another window).
@@ -276,6 +288,16 @@ pub async fn auto_start_daemon() -> AutoStartResult {
     }
 
     // Step 2: Resolve runtime directory — exit 70 on failure (BC-2.04.002 PC-1).
+    //
+    // Why std::process::exit(70) here instead of returning an error:
+    // BC-2.04.002 PC-1 mandates that runtime-dir resolution failure terminates the process
+    // with exit code 70 (EX_UNAVAILABLE) BEFORE any TUI output is rendered. Returning an
+    // error from this function would require the caller (main()) to translate it to exit 70,
+    // which risks the TUI partially rendering before the exit is propagated. The exit call
+    // here enforces the "no TUI output before verdict" invariant (BC-2.04.002 INV-1).
+    // This is the ONLY std::process::exit call outside of monocle-runtime/lifecycle.rs in
+    // the codebase; all other error paths return normally. The subprocess integration test
+    // (test_BC_2_04_002_resolve_failure_exits_70) validates this via assert_cmd.
     let runtime_dir = match monocle_runtime::lifecycle::resolve_runtime_dir() {
         Ok(dir) => dir,
         Err(e) => {
@@ -300,7 +322,7 @@ pub async fn auto_start_daemon() -> AutoStartResult {
         // PC-3: dead PID → stale lock file. Log WARN, remove, proceed to step 4.
         tracing::warn!(
             path = %lock_path.display(),
-            "WARN: stale lock file removed"
+            "stale lock file removed"
         );
         if let Err(e) = std::fs::remove_file(&lock_path) {
             tracing::error!(path = %lock_path.display(), error = %e, "failed to remove stale lock file");
