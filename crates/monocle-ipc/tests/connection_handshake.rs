@@ -39,16 +39,72 @@ async fn ac_001_per_client_tokio_task_spawned() {
     let dir = tempfile::tempdir().expect("tempdir for ac_001");
     let runtime_dir = dir.path().to_path_buf();
 
-    let (_subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
+    let (subscribers, _state) = common::spawn_test_daemon(&runtime_dir).await;
 
-    // 1. Connect a TUI client.
-    // 2. Assert subscribers.lock().await.len() == 1 (one per-client task spawned).
-    // 3. Drop the client stream (simulate EOF).
-    // 4. Allow the per-client task to detect EOF.
-    // 5. Assert subscribers.lock().await.len() == 0 (client removed on EOF).
+    // Step 1: Connect a TUI client.
+    let mut client = common::connect_test_client(&runtime_dir).await;
+
+    // Step 2: Wait until the daemon's per-client task registers the subscriber.
+    // There is a scheduling race: connect_test_client returns as soon as the OS-level
+    // accept() handshake completes, but the per-client task runs asynchronously and may
+    // not have reached register_subscriber yet. Poll until len == 1 or 2-second deadline.
+    let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(2);
+    loop {
+        {
+            let subs = subscribers.lock().await;
+            if subs.len() == 1 {
+                break;
+            }
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "ac_001: subscriber not registered within 2 s after connect"
+        );
+        tokio::task::yield_now().await;
+    }
+
+    // Step 3: Consume the InitialState message before dropping the client.
     //
-    // The per-client task polls for EOF via the recv loop;
-    // subscriber removal is driven by `remove_subscriber` called on send error or EOF.
+    // This is REQUIRED to ensure send_initial_state has completed before we close the
+    // socket. Without this, a race exists: if drop(client) races with send_initial_state,
+    // the write fails with broken-pipe, triggering the send_initial_state ERROR path which
+    // also calls remove_subscriber — making the mutation invisible. Consuming InitialState
+    // guarantees the normal-exit path (not error-path) is the only route to removal,
+    // so the mutation test correctly verifies AC-001.
+    let _ = common::recv_one(&mut client).await; // consume InitialState
+
+    // Step 4: Drop the client stream (close the UnixStream — simulates TUI EOF).
+    // With InitialState already consumed, send_initial_state has completed. The per-client
+    // task is now in the select! loop. Dropping the client causes the inbound read branch
+    // to get IpcError::Disconnected, breaking the loop and calling remove_subscriber (AC-001).
+    drop(client);
+
+    // Step 5: Wait for the daemon's per-client task to detect EOF and call remove_subscriber.
+    // Poll until len == 0 or 2-second deadline.
+    let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(2);
+    loop {
+        {
+            let subs = subscribers.lock().await;
+            if subs.is_empty() {
+                break;
+            }
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "ac_001: subscriber not removed within 2 s after client EOF"
+        );
+        tokio::task::yield_now().await;
+    }
+
+    // Step 6 (final assertion): subscribers list is empty after EOF cleanup.
+    // This verifies BC-2.05.002 PC-1 / AC-001: remove_subscriber is called on client EOF,
+    // not on any error path. The recv_one in Step 3 ensures we're on the happy path.
+    let subs = subscribers.lock().await;
+    assert!(
+        subs.is_empty(),
+        "ac_001: subscribers must be empty after client EOF; got {} entries",
+        subs.len()
+    );
 }
 
 // ---------------------------------------------------------------------------
