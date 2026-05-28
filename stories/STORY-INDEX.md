@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.2"
+version: "5.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -137,7 +137,7 @@ traces_to: ".factory/specs/prd.md v1.26.15"
 | BC-2.04.011 | Bounded Event Bus with Drop Counter | S-018 | AC-011..AC-013 | YES |
 | BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | S-020 | AC-001..AC-005 | YES |
 | BC-2.05.001 | UDS Server Bind at `runtimeDir/monocle.sock` | S-021 | AC-001..AC-003 | YES |
-| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022 | AC-001..AC-005 | YES |
+| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022, S-025, S-026 | S-022: AC-001..AC-005; S-025: AC-008 (Invariant 4 idempotency); S-026: AC-001 (Invariant 4 idempotency) | YES |
 | BC-2.05.003 | IPC Message Types: SessionListUpdate | S-021 | AC-004..AC-006 | YES |
 | BC-2.05.004 | IPC Message Types: HookEventReceived | S-021 | AC-007..AC-009 | YES |
 | BC-2.05.005 | IPC Message Types: PermissionPromptQueued | S-022 | AC-006..AC-008 | YES |
@@ -450,6 +450,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.3
+
+**F-S022-ADV8-HIGH-001 — BC-2.05.002 Invariant 4 propagated into S-025 and S-026** (2026-05-28):
+- BC Coverage Table: BC-2.05.002 row updated — covering stories expanded from S-022 to S-022, S-025, S-026.
+  S-025 AC-008 and S-026 AC-001 now explicitly cite BC-2.05.002 Invariant 4 (prompt_id idempotency).
+- S-025 bumped v1.2 → v1.3; S-026 bumped v1.2 → v1.3.
+- No story Registry table changes (no status/points/wave/blocks changes).
+- SE-16d monotonicity: v5.3 timestamp 2026-05-28 >= v5.2 timestamp 2026-05-27. PASS.
 
 ## §Trace v5.2
 

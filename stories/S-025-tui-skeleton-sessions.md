@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.0"
+version: "1.3"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -16,16 +16,17 @@ depends_on: [S-024, S-022, S-030]
 blocks: [S-027, S-028, S-031]
 target_module: monocle-tui
 subsystems: [SS-06]
-behavioral_contracts: [BC-2.06.004, BC-2.06.005, BC-2.06.007]
+behavioral_contracts: [BC-2.06.004, BC-2.06.005, BC-2.06.007, BC-2.05.002]
 verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.06.004 (TUI connect/disconnect lifecycle), BC-2.06.005 (Sessions panel rendering), BC-2.06.007 (Ctrl-\\ popup launch)"
+traces_to: "Implements BC-2.06.004 (Ctrl-\\ popup: appears and dismisses without state loss), BC-2.06.005 (Sessions panel rendering), BC-2.06.007 (Sessions panel: Enter transitions to fullscreen), BC-2.05.002 Invariant 4 (apply_permission_prompt_queued idempotency helper)"
 ---
 
 # S-025: TUI Binary Skeleton, Ctrl-\ Popup, Sessions Panel
@@ -70,11 +71,11 @@ modal before the TUI proceeds with defaults.
 ### AC-005 (traces to BC-2.06.005 postcondition PC-1 — Sessions panel renders session list)
 The Sessions panel renders a scrollable list of active sessions. Each row shows:
 `<session_id> | <harness_type> | <status> | <uptime>`. The list is sourced from
-`ServerToClient::SessionState` IPC messages. If no sessions are active, the panel
+`ServerToClient::SessionListUpdate` IPC messages. If no sessions are active, the panel
 renders: `"No active sessions"`.
 
 ### AC-006 (traces to BC-2.06.005 postcondition PC-2 — Sessions panel keyboard navigation)
-In `Dashboard { focused: FocusSnapshot { panel: PanelId::Sessions, .. } }` mode:
+In `Dashboard { focused: FocusSnapshot::Sessions }` mode:
 - `j` / `↓` moves selection down one row
 - `k` / `↑` moves selection up one row
 - `Enter` enters `Fullscreen { panel: PanelId::Sessions, prior: current_focus }`
@@ -83,15 +84,22 @@ These key actions are dispatched via `resolve_binding()` from S-024 using the `G
 binding layer.
 
 ### AC-007 (traces to BC-2.06.005 postcondition PC-3 — Sessions panel drop counter)
-The Sessions panel status bar shows the drop counter from `ServerToClient::DropCounterUpdate { count: u64 }`.
-When `count > 0`, the status bar renders: `"[dropped: N]"` in yellow. When `count == 0`,
+The Sessions panel status bar shows the drop counter from `ServerToClient::DropCounterUpdate { drop_counter: u64 }`.
+When `drop_counter > 0`, the status bar renders: `"[dropped: N]"` in yellow. When `drop_counter == 0`,
 no drop indicator is shown.
 
-### AC-008 (traces to BC-2.06.004 postcondition PC-4 — daemon overlay_stack sync on connect)
-On initial IPC connection, the daemon sends `ServerToClient::FullState { overlay_stack, sessions, .. }`.
-The TUI initializes its local `VecDeque<PromptModal>` from `overlay_stack`. If the
-overlay stack is non-empty, the TUI immediately transitions to
+### AC-008 (traces to BC-2.06.004 postcondition PC-4 — daemon overlay_stack sync on connect; also traces to BC-2.05.002 Invariant 4 — idempotent insert)
+On initial IPC connection, the daemon sends `ServerToClient::InitialState { overlay_stack, sessions, .. }`.
+The TUI initializes its local `VecDeque<PromptModal>` from `overlay_stack`. Population MUST
+use the `apply_permission_prompt_queued(overlay, payload)` helper (see Tasks) for each entry
+in `overlay_stack` so that idempotent-on-`prompt_id` semantics are enforced: if a `prompt_id`
+is already present in the VecDeque (e.g., from a streaming `PermissionPromptQueued` that
+arrived before `InitialState`), the duplicate MUST be silently discarded. If the overlay
+stack is non-empty after population, the TUI immediately transitions to
 `Overlay { stack: loaded_stack, prior: default_focus }` before rendering the first frame.
+(BC-2.05.002 Invariant 4: the IPC layer provides at-least-once delivery for
+`PermissionPromptQueued` across the snapshot window; consumer idempotency on `prompt_id` is
+the correct resolution.)
 
 ### AC-009 (traces to BC-2.06.007 postcondition PC-2 — alternate screen cleanup on exit)
 When the TUI exits (any exit path: `q`, `Esc`, IPC error, SIGTERM), it MUST restore the
@@ -112,12 +120,13 @@ v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected
 | BC-2.06.004.md | ~1,100 |
 | BC-2.06.005.md | ~900 |
 | BC-2.06.007.md | ~800 |
+| BC-2.05.002.md (Invariant 4) | ~300 |
 | S-024 (AppMode, transition) | ~800 |
 | S-022 (UDS IPC types) | ~600 |
 | S-030 (MonocleConfig) | ~500 |
 | ratatui layout patterns | ~400 |
 | Test files | ~1,000 |
-| **Total estimate** | **~8,100** |
+| **Total estimate** | **~8,400** |
 
 ## Tasks
 
@@ -127,8 +136,9 @@ v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected
 - [ ] Implement terminal setup in `main.rs`: `enable_raw_mode()`, `EnterAlternateScreen`, panic hook for terminal restore
 - [ ] Implement terminal teardown: `disable_raw_mode()`, `LeaveAlternateScreen` — called on all exit paths
 - [ ] Implement UDS connection attempt in `app.rs`: connect to `<runtime_dir>/monocle.sock`, display error panel on failure
-- [ ] Implement `ServerToClient::FullState` handler: initialize `overlay_stack` from `full_state.overlay_stack`, transition to `Overlay` if non-empty
-- [ ] Implement `ServerToClient::DropCounterUpdate { count }` handler: update `app.drop_counter`
+- [ ] Implement idempotent `apply_permission_prompt_queued(overlay: &mut VecDeque<PromptModal>, payload: PermissionPromptPayload)` helper: checks `overlay.iter().any(|m| m.prompt_id == payload.prompt_id)` before `push_back`; if already present, logs at TRACE level and returns without inserting (BC-2.05.002 Invariant 4). This helper is used for BOTH `InitialState` population and streaming `PermissionPromptQueued` handling (S-026 reuses it).
+- [ ] Implement `ServerToClient::InitialState` handler: initialize `overlay_stack` from `initial_state.overlay_stack` via `apply_permission_prompt_queued` (idempotent), transition to `Overlay` if non-empty
+- [ ] Implement `ServerToClient::DropCounterUpdate { drop_counter }` handler: update `app.drop_counter`
 - [ ] Implement `TransportEvent::Disconnected` handler: clear overlay, transition to `Dashboard`, show reconnect notice in status bar
 - [ ] Implement `MonocleConfig::load()` call on startup with error display modal
 - [ ] Create `monocle-tui/src/ui/sessions_panel.rs` — render Sessions panel with scrollable list, keyboard nav (j/k/Enter/Tab), drop counter in status bar
@@ -140,9 +150,10 @@ v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected
 ## Previous Story Intelligence
 
 S-022 (UDS server + IPC types): `ServerToClient`, `ClientToServer` canonical type names
-(NOT `IpcServerMessage`/`IpcClientMessage`). `ServerToClient::DropCounterUpdate { count: u64 }`
-is the drop counter variant. `TransportEvent::Disconnected` is the disconnect signal.
-`ClientToServer::ClientDisconnect` does NOT exist.
+(NOT `IpcServerMessage`/`IpcClientMessage`). `ServerToClient::DropCounterUpdate { drop_counter: u64 }`
+is the drop counter variant. `ServerToClient::InitialState` is the full state push on connect.
+`ServerToClient::SessionListUpdate` is the session list update variant (NOT `SessionState`).
+`TransportEvent::Disconnected` is the disconnect signal. `ClientToServer::ClientDisconnect` does NOT exist.
 
 S-024 (TUI core types): `AppMode`, `transition()`, `resolve_binding()`, `FocusSnapshot`,
 `PanelId`, `PromptModal`, `Action`, `BindingSource`, `BindingLayers` are all available
@@ -160,7 +171,7 @@ From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-pattern
 - `overlay_stack` is the IPC field name; local TUI copy is `VecDeque<PromptModal>`
 - `ServerToClient` / `ClientToServer` canonical type names — no IpcServerMessage/IpcClientMessage aliases
 - Panic hook MUST restore terminal before unwinding — no raw-mode leakage
-- `DropCounterUpdate { count: u64 }` — not `StateUpdate`, not any other variant name
+- `DropCounterUpdate { drop_counter: u64 }` — not `DropCounterUpdate { count }`, not `StateUpdate`, not any other variant name
 - ratatui `StatefulWidget` pattern for scrollable lists; `ListState` for selection tracking
 
 **Forbidden Dependencies:**
@@ -214,3 +225,21 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.3
+
+**F-S022-ADV8-HIGH-001 — BC-2.05.002 Invariant 4 dedup directive propagated** (2026-05-28):
+- Finding: Pass 6 architect's Option D decision (dedup-on-insert for `PermissionPromptQueued`)
+  was named at the story level in architect-decisions-pass-6.md §Implementer Directive but was
+  never propagated into S-025 story content. CLAUDE.md Principle 3 violation — the deferral
+  was functionally orphaned.
+- Fix: BC-2.05.002 added to `behavioral_contracts` frontmatter and `inputs` list (v1.0.5).
+- Fix: AC-008 updated with idempotent-insert precondition and explicit BC-2.05.002 Invariant 4
+  citation. Population of `VecDeque<PromptModal>` from `InitialState.overlay_stack` MUST use
+  `apply_permission_prompt_queued` helper to enforce idempotency on `prompt_id`.
+- Fix: Tasks section updated — `apply_permission_prompt_queued` helper task added as the
+  canonical idempotent-insert implementation to be used by both S-025 (InitialState population)
+  and S-026 (streaming PermissionPromptQueued handling).
+- Token Budget: BC-2.05.002.md row added (~300 tokens); total updated ~8,100 → ~8,400.
+- `traces_to` frontmatter updated to include BC-2.05.002 Invariant 4.
+- SE-16d monotonicity: v1.3 timestamp 2026-05-28 >= v1.2 timestamp 2026-05-27. PASS.
