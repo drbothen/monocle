@@ -1,0 +1,20 @@
+AC-002 — InitialState is the first and only message on connect
+BC-2.05.002 postcondition PC-2
+
+TEST: monocle-ipc::connection_handshake::ac_002_initial_state_is_first_message
+
+INVOCATION:
+  cargo test -p monocle-ipc --test connection_handshake ac_002_initial_state_is_first_message -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_002_initial_state_is_first_message ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+WHAT THIS DEMONSTRATES:
+  Immediately after connecting, the test client reads exactly one ServerToClient message
+  using common::recv_one(). The test asserts via pattern matching that this first message
+  is ServerToClient::InitialState (not DropCounterUpdate, PermissionPromptQueued, or any
+  other variant). The struct fields (sessions, ring_tail, overlay_stack, drop_counter) are
+  all present, confirming the full 4-field payload is delivered on the first write.

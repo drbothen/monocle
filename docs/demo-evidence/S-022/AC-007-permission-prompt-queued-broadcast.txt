@@ -1,0 +1,31 @@
+AC-007 — PermissionPromptQueued broadcast on decision_required:true
+BC-2.05.005 postcondition PC-1
+
+TEST: monocle-ipc::permission_prompt::ac_007_permission_prompt_queued_broadcast_on_decision_required
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_007_permission_prompt_queued_broadcast_on_decision_required -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_007_permission_prompt_queued_broadcast_on_decision_required ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+SUPPLEMENTARY — production hook handler end-to-end path:
+TEST: monocle-runtime::hook_defer_race::test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout
+
+  cargo test -p monocle-runtime --test hook_defer_race test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout -- --nocapture
+
+  running 1 test
+  test test_F_S022_ADV12_MED_001_timeout_arm_broadcasts_once_on_normal_timeout ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.30s
+
+WHAT THIS DEMONSTRATES:
+  A subscriber is attached to the daemon's SubscriberList, then a PermissionPromptQueued
+  message is broadcast (with all required fields: prompt_id, session_id, tool_name,
+  tool_input, old_content, new_content). The subscriber receives the message and the test
+  asserts all field values are correct. The supplementary test confirms the full production
+  path: post_hook_pre_tool_use with HookDecision::Defer broadcasts exactly 1
+  PermissionPromptQueued via the axum handler stack before the timeout fires.

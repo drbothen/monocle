@@ -1,0 +1,21 @@
+AC-011 — At-most-one resolution via oneshot channel
+BC-2.05.005 invariant 2
+
+TEST: monocle-ipc::permission_prompt::ac_011_at_most_one_resolution_via_oneshot
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_011_at_most_one_resolution_via_oneshot -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_011_at_most_one_resolution_via_oneshot ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.05s
+
+WHAT THIS DEMONSTRATES:
+  Two TUI clients connect, consume their respective InitialState messages, then concurrently
+  send PermissionDecision for the same prompt_id (client1: Allow, client2: Deny) via
+  tokio::join!. An observer subscriber receives exactly 1 PermissionPromptResolved within
+  150ms (the first decision resolved the oneshot and broadcast). A second try_recv on
+  the observer times out (100ms), confirming the second PermissionDecision was silently
+  discarded after the oneshot was consumed — the oneshot::channel enforces at-most-one.

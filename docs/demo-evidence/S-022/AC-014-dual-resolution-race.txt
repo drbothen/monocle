@@ -1,0 +1,23 @@
+AC-014 — Dual-resolution race: first wins; second silently discarded; Resolved broadcast once
+BC-2.05.005 edge case EC-001
+
+TEST: monocle-ipc::permission_prompt::ac_014_dual_resolution_race
+
+INVOCATION:
+  cargo test -p monocle-ipc --test permission_prompt ac_014_dual_resolution_race -- --nocapture
+
+CAPTURED OUTPUT:
+  running 1 test
+  test ac_014_dual_resolution_race ... ok
+
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.05s
+
+WHAT THIS DEMONSTRATES:
+  Two fully independent TUI client connections are spawned concurrently via tokio::join!.
+  Each client connects, consumes InitialState (required before daemon reads from client),
+  then sends PermissionDecision for the same prompt_id. The observer subscriber asserts
+  exactly 1 PermissionPromptResolved arrives within 500ms (the first decision won the
+  race). A second recv times out after 100ms, confirming no duplicate Resolved was
+  broadcast. This is the production-grade multi-client scenario: the oneshot::channel
+  and PendingDecisionRegistry together enforce at-most-one resolution even under
+  concurrent pressure.
