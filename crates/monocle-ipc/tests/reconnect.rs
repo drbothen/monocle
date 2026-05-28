@@ -3,8 +3,7 @@
     dead_code,
     clippy::expect_used,
     clippy::unwrap_used,
-    clippy::disallowed_methods,
-    clippy::unnecessary_cast
+    clippy::disallowed_methods
 )]
 //! Reconnect backoff, lock-file re-read, offline mode, and state rebuild tests
 //! (S-023, BC-2.05.006).
@@ -880,9 +879,10 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
         let _ = std::fs::remove_file(&sock_path);
         let listener = UnixListener::bind(&sock_path).expect("bind cycle socket");
 
+        let port: u16 = u16::try_from(9000u64 + cycle).expect("test cycle fits u16");
         let lock = serde_json::json!({
             "pid": 4000 + cycle,
-            "port": 9000 + cycle as u16,
+            "port": port,
             "authToken": format!("token-cycle-{cycle}"),
             "socketPath": sock_path.to_string_lossy()
         });
