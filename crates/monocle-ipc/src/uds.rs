@@ -1,11 +1,14 @@
-//! `UdsTransport` — Unix domain socket implementation of the `Transport` trait.
+//! `UdsTransport` — Unix domain socket lifecycle manager (BC-2.05.001).
 //!
-//! Phase 1 sole implementor of [`crate::transport::Transport`]. Handles:
-//! - Socket bind at `<runtime_dir>/monocle.sock` with mode 0o600 (BC-2.05.001 PC-1/PC-2).
+//! Owns the UDS socket path lifecycle for the daemon:
+//! - Path length validation against `UDS_PATH_LIMIT_BYTES` (BC-2.05.001 EC-002).
 //! - Stale socket removal before bind (BC-2.05.001 PC-3).
-//! - UDS path length validation (BC-2.05.001 EC-002).
-//! - Fan-out subscriber list (`Vec<Sender<ServerToClient>>`).
-//! - Slow client disconnect (BC-2.05.004 EC-005).
+//! - Socket bind at `<runtime_dir>/monocle.sock` with mode 0o600 (BC-2.05.001 PC-1/PC-2).
+//! - Socket file cleanup on shutdown via `UdsTransport::cleanup` (BC-2.05.001 PC-4).
+//!
+//! The `UnixListener` is returned from [`UdsTransport::bind`] and passed to
+//! `monocle_runtime::ipc_server::run_accept_loop`, which owns the per-client task spawner.
+//! Fan-out subscriber management lives entirely in `monocle_runtime::ipc_server`.
 //!
 //! # Fan-out broadcast (F-ADV2-MED-002)
 //!
@@ -25,11 +28,9 @@
 
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::net::UnixListener;
-use tokio::sync::mpsc;
 
 use crate::error::IpcError;
 use crate::framing::write_framed;
@@ -43,34 +44,25 @@ use crate::types::{ClientToServer, ServerToClient};
 /// BC-2.05.001 EC-002 references this limit.
 pub const UDS_PATH_LIMIT_BYTES: usize = 104;
 
-/// A single TUI client connection handle on the server side.
+/// Unix domain socket path lifecycle manager for the monocle daemon (BC-2.05.001).
 ///
-/// Each connected TUI client has a `Sender<ServerToClient>` in the fan-out list.
-/// When the sender returns an error (full buffer / dropped receiver), the client
-/// is removed from the list (AC-017, BC-2.05.004 EC-005).
-type ClientSender = mpsc::Sender<ServerToClient>;
-
-/// Unix domain socket transport for daemon-to-TUI IPC (Phase 1).
+/// Created by [`UdsTransport::bind`]; stored on [`monocle_runtime::state::DaemonState`]
+/// so that cleanup on shutdown calls [`UdsTransport::cleanup`] to remove the socket file.
+/// The `UnixListener` is returned separately from `bind` and passed to
+/// `monocle_runtime::ipc_server::run_accept_loop`, which owns the accept loop.
 ///
-/// Binds a `UnixListener` at `<runtime_dir>/monocle.sock` and manages a fan-out
-/// subscriber list of connected TUI clients.
+/// # Responsibilities
 ///
-/// # Construction
+/// - Path length validation (BC-2.05.001 EC-002).
+/// - Stale socket removal (BC-2.05.001 PC-3 / EC-001).
+/// - Socket permissions (BC-2.05.001 PC-2: mode 0o600).
+/// - Socket cleanup on daemon shutdown (BC-2.05.001 PC-4).
 ///
-/// Use [`UdsTransport::bind`] to create a bound socket. The bound `UnixListener`
-/// is transferred to `monocle_runtime::ipc_server::run_accept_loop` (S-022) which
-/// owns the per-client task spawner. The returned `UdsTransport` manages the socket path.
-///
-/// # Fan-out
-///
-/// Fan-out broadcasts go through `monocle_runtime::ipc_server::broadcast_to_subscribers`.
-/// `UdsTransport` no longer exposes broadcast methods; see module-level doc for rationale.
+/// Fan-out subscriber management and the accept loop live in `monocle_runtime::ipc_server`.
 #[derive(Debug)]
 pub struct UdsTransport {
     /// Absolute path to the bound socket file.
     sock_path: PathBuf,
-    /// Fan-out subscriber list — one sender per connected TUI client.
-    subscribers: Arc<tokio::sync::Mutex<Vec<ClientSender>>>,
 }
 
 impl UdsTransport {
@@ -134,24 +126,8 @@ impl UdsTransport {
         let permissions = std::fs::Permissions::from_mode(0o600);
         std::fs::set_permissions(&sock_path, permissions)?;
 
-        let transport = Self {
-            sock_path,
-            subscribers: Arc::new(tokio::sync::Mutex::new(Vec::new())),
-        };
+        let transport = Self { sock_path };
         Ok((transport, listener))
-    }
-
-    /// Add a subscriber sender to the fan-out list (test helper and accept-loop wiring).
-    ///
-    /// Production callers: `monocle_runtime::ipc_server::register_subscriber`.
-    /// Test callers: fan_out integration tests that inject senders directly.
-    pub async fn add_subscriber(&self, sender: ClientSender) {
-        self.subscribers.lock().await.push(sender);
-    }
-
-    /// Return the number of currently registered subscribers (test helper).
-    pub async fn subscriber_count(&self) -> usize {
-        self.subscribers.lock().await.len()
     }
 
     /// Return the absolute path of the bound socket file.

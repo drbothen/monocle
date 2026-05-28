@@ -347,7 +347,10 @@ struct StartSequenceLockContent {
 ///
 /// Returns `Ok(Arc<DaemonState>)` on success. The returned `DaemonState` is fully
 /// wired: it holds the ring buffer, event bus, session registry, pending-decisions
-/// registry, auth token, daemon lock, and the spawned UDS accept loop join handle.
+/// registry, auth token, daemon lock, and the `UdsTransport` path-lifecycle manager.
+/// The UDS accept loop is spawned as a background Tokio task; it terminates via the
+/// shutdown watch channel (`DaemonState.shutdown_rx`) when `DaemonLock::release` fires
+/// (or equivalently when the shutdown handler sends `true` on `shutdown_tx`).
 ///
 /// # SOQ-2 Commit-Point Invariant
 ///
@@ -502,71 +505,42 @@ pub async fn daemon_start_sequence(
         return Err(e);
     }
 
-    // Step 10: Remove stale UDS socket, bind tokio UnixListener (mode 0o600),
-    // build DaemonState with all wired components, and spawn run_accept_loop.
+    // Step 10: Bind the UDS socket via UdsTransport::bind (BC-2.05.001).
     //
-    // The tokio UnixListener is retained for the accept loop — it is NOT dropped after bind.
-    // The socket file remains on disk as required by BC-2.04.001 PC-13.
-    let uds_listener = {
-        let sock_path = runtime_dir.join("monocle.sock");
-        if sock_path.exists() {
-            if let Err(e) = std::fs::remove_file(&sock_path) {
-                tracing::warn!(
-                    path = %sock_path.display(),
-                    error = %e,
-                    "daemon_start_sequence: failed to remove stale socket (step 10)"
-                );
-                // INV-6: post-step-8 failure — remove lock file before returning.
-                if let Err(cleanup_err) = daemon_lock.release() {
-                    tracing::error!(
-                        error = %cleanup_err,
-                        "daemon_start_sequence: lock file cleanup failed after step 10 \
-                         (stale socket removal) failure"
-                    );
-                }
-                return Err(DaemonStartError::UdsBindFailure(e));
-            }
-        }
-
-        match tokio::net::UnixListener::bind(&sock_path) {
-            Ok(uds) => {
-                // Set mode 0o600 — owner-only access (BC-2.05.001 PC-2).
-                if let Err(e) =
-                    std::fs::set_permissions(&sock_path, std::fs::Permissions::from_mode(0o600))
-                {
-                    tracing::error!(
-                        path = %sock_path.display(),
-                        error = %e,
-                        "daemon_start_sequence: failed to set socket permissions (step 10)"
-                    );
-                    // INV-6: remove lock file before returning.
-                    if let Err(cleanup_err) = daemon_lock.release() {
-                        tracing::error!(
-                            error = %cleanup_err,
-                            "daemon_start_sequence: lock file cleanup failed after step 10 \
-                             (socket permission) failure"
-                        );
-                    }
-                    return Err(DaemonStartError::UdsBindFailure(e));
-                }
-                uds
-            }
-            Err(e) => {
+    // UdsTransport::bind performs all required pre-bind steps:
+    //   (a) BC-2.05.001 EC-002: path length check — returns IpcError::PathTooLong if exceeded.
+    //   (b) BC-2.05.001 PC-3 / EC-001: stale socket removal with WARN log.
+    //   (c) BC-2.05.001 PC-1: tokio UnixListener::bind.
+    //   (d) BC-2.05.001 PC-2: chmod 0o600 on the socket file.
+    //
+    // The returned `uds_transport` is stored on DaemonState for cleanup on shutdown.
+    // The returned `uds_listener` is passed to run_accept_loop.
+    let (uds_transport, uds_listener) = match monocle_ipc::uds::UdsTransport::bind(runtime_dir).await {
+        Ok(pair) => pair,
+        Err(monocle_ipc::error::IpcError::PathTooLong { length, limit }) => {
+            // INV-6: post-step-8 failure — remove lock file before returning.
+            if let Err(cleanup_err) = daemon_lock.release() {
                 tracing::error!(
-                    path = %sock_path.display(),
-                    error = %e,
-                    "daemon_start_sequence: UDS bind failed (step 10)"
+                    error = %cleanup_err,
+                    "daemon_start_sequence: lock file cleanup failed after step 10 \
+                     (path-too-long) failure"
                 );
-                // INV-6: remove lock file before returning.
-                if let Err(cleanup_err) = daemon_lock.release() {
-                    tracing::error!(
-                        error = %cleanup_err,
-                        "daemon_start_sequence: lock file cleanup failed after step 10 \
-                         (UDS bind) failure"
-                    );
-                }
-                return Err(DaemonStartError::UdsBindFailure(e));
             }
+            return Err(DaemonStartError::UdsPathTooLong { length, limit });
+        }
+        Err(e) => {
+            // INV-6: post-step-8 failure — remove lock file before returning.
+            if let Err(cleanup_err) = daemon_lock.release() {
+                tracing::error!(
+                    error = %cleanup_err,
+                    "daemon_start_sequence: lock file cleanup failed after step 10 \
+                     (UDS bind) failure"
+                );
+            }
+            return Err(DaemonStartError::UdsBindFailure(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("UDS bind error: {e}"),
+            )));
         }
     };
 
@@ -607,6 +581,7 @@ pub async fn daemon_start_sequence(
         session_registry: Some(Arc::new(crate::hooks::SessionRegistry::new())),
         pending_decisions: Some(Arc::new(crate::permissions::PendingDecisionRegistry::new())),
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
+        uds_transport: Some(uds_transport),
         hook_decision_override: None,
         hook_delay_ms: None,
     });

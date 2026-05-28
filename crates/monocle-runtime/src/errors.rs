@@ -72,6 +72,19 @@ pub enum DaemonStartError {
     #[error("failed to write hooks-settings.json: {0}")]
     HooksSettingsWriteFailure(std::io::Error),
 
+    /// Unix domain socket path exceeds the OS-imposed path length limit (S-022, BC-2.05.001 EC-002).
+    ///
+    /// The computed `<runtime_dir>/monocle.sock` path exceeds `UDS_PATH_LIMIT_BYTES` (104 bytes).
+    /// Returned by `daemon_start_sequence` step 10 when `UdsTransport::bind` detects the
+    /// path-length violation before attempting any filesystem operation.
+    #[error("UDS socket path too long: {length} bytes, limit {limit}")]
+    UdsPathTooLong {
+        /// Actual byte length of the computed path.
+        length: usize,
+        /// Platform-specific maximum UDS path length in bytes.
+        limit: usize,
+    },
+
     /// Unix domain socket bind failed (S-017, BC-2.04.001 step 10).
     ///
     /// Wraps the underlying `std::io::Error` from `UnixListener::bind`.

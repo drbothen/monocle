@@ -263,6 +263,18 @@ pub struct DaemonState {
     /// Arc-wrapped to share the same list across axum handler tasks and the accept loop.
     pub ipc_subscribers: Option<monocle_ipc::server::SubscriberList>,
 
+    /// UDS transport lifecycle manager (S-022, BC-2.05.001).
+    ///
+    /// `None` — UDS socket not yet bound (daemon startup or test stub without IPC).
+    /// `Some(transport)` — bound and active. `transport.cleanup()` removes the socket file
+    ///   on graceful shutdown (BC-2.05.001 PC-4).
+    ///
+    /// This field ensures the UDS path-length check (BC-2.05.001 EC-002) is enforced
+    /// before any socket is bound: `UdsTransport::bind` validates the path and returns
+    /// `IpcError::PathTooLong` if the limit is exceeded, which `daemon_start_sequence`
+    /// maps to `DaemonStartError::UdsPathTooLong`.
+    pub uds_transport: Option<monocle_ipc::uds::UdsTransport>,
+
     // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
@@ -329,6 +341,7 @@ impl DaemonState {
             session_registry: None,
             pending_decisions: None,
             ipc_subscribers: None,
+            uds_transport: None,
             hook_decision_override: None,
             hook_delay_ms: None,
         }
