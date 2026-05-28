@@ -782,7 +782,11 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
         0,
         "BC-2.05.006 Invariant 2: overlay must be empty after SOQ-3 (stale prompt cleared)"
     );
-    assert_eq!(mode, AppMode::Dashboard, "mode must be Dashboard after SOQ-3");
+    assert_eq!(
+        mode,
+        AppMode::Dashboard,
+        "mode must be Dashboard after SOQ-3"
+    );
 
     // --- Step 3: Call production reconnect() with a real bound socket ---
     let listener = UnixListener::bind(&sock_path).expect("bind");
@@ -802,10 +806,9 @@ async fn test_BC_2_05_006_invariant_2_no_stale_permission_decision_after_reconne
 
     let mut backoff = BackoffState::new();
     // Consume the production return — this is the key change from the vacuous version.
-    let (_transport, mut event_rx) =
-        monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
-            .await
-            .expect("BC-2.05.006 Invariant 2: reconnect() must succeed with daemon up");
+    let (_transport, mut event_rx) = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
+        .await
+        .expect("BC-2.05.006 Invariant 2: reconnect() must succeed with daemon up");
 
     // --- Step 4: Simulate InitialState re-delivery with ONLY the fresh prompt ---
     // (The stale prompt was cleared by SOQ-3 and must NOT reappear.)
@@ -896,12 +899,11 @@ async fn test_BC_2_05_006_ec_004_daemon_crash_loop_4_restarts_no_state_leakage()
 
         // --- Call production reconnect() — consumes the real return value ---
         let mut backoff = BackoffState::new();
-        let (transport, mut event_rx) =
-            monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
-                .await
-                .unwrap_or_else(|e| {
-                    panic!("BC-2.05.006 EC-004: cycle {cycle}: reconnect() must succeed, got: {e}")
-                });
+        let (transport, mut event_rx) = monocle_ipc::reconnect::reconnect(dir.path(), &mut backoff)
+            .await
+            .unwrap_or_else(|e| {
+                panic!("BC-2.05.006 EC-004: cycle {cycle}: reconnect() must succeed, got: {e}")
+            });
 
         // Drop the transport to close the write half, triggering EOF on the server side.
         // The background reader will detect the resulting EOF and emit Disconnected.
