@@ -509,14 +509,12 @@ pub async fn run() -> Result<()> {
                     Some((action, _)) => {
                         // All other actions: drive the AppMode state machine.
                         use monocle_core::tui::state::transition;
-                        // Check for clean exit: q or Esc from Dashboard.
-                        let is_quit = matches!(
-                            (&app.mode, &action),
-                            (
-                                AppMode::Dashboard { .. },
-                                monocle_core::tui::state::Action::Esc
-                            )
-                        );
+                        // Check for clean exit: Action::Quit (bound to `q` in Dashboard
+                        // via per-context layer — F-S025-ADV2-HIGH-002 / MED-004 fix).
+                        // `q` in Filtering mode is intercepted by SearchPrompt as FilterType,
+                        // so it never reaches this arm in non-Dashboard modes.
+                        let is_quit =
+                            matches!(&action, monocle_core::tui::state::Action::Quit);
                         app.mode = transition(app.mode.clone(), action);
                         if is_quit {
                             break;
@@ -603,16 +601,21 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
 /// Build the builtin `BindingLayers` for Phase 1.
 ///
 /// Registers the minimum set of bindings required for AC-006:
-/// - Esc / q (Dashboard) → exit (resolved as `Action::Esc`)
+/// - `q` (Dashboard only, per-context) → `Action::Quit` — exits only from Dashboard.
+///   Typing `q` in Filtering mode inserts the character (SearchPrompt layer intercepts
+///   it first). This fixes F-S025-ADV2-HIGH-002 / MED-004: `q` must not quit from
+///   non-Dashboard modes where it is a valid input character.
+/// - Esc (builtin) → `Action::Esc` — context-sensitive: Dashboard=identity, Overlay=no-op,
+///   Filtering=cancel (wired in transition()). Not used as a quit path.
 /// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
 /// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
 /// - j / ↓ → `Action::SelectNext` (move selection down)
 /// - k / ↑ → `Action::SelectPrev` (move selection up)
 ///
-/// Future waves add user-custom and per-context layers; for now only builtin
-/// and global layers are populated.
+/// Future waves add user-custom and per-context layers; for now only builtin,
+/// global, and per-context layers are populated.
 pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLayers {
-    use monocle_core::tui::binding::{BindingLayers, KeyCode, KeyEvent, KeyModifiers};
+    use monocle_core::tui::binding::{AppModeTag, BindingLayers, KeyCode, KeyEvent, KeyModifiers};
     use monocle_core::tui::state::{Action, PanelId};
 
     let no_mod = KeyModifiers::default();
@@ -624,25 +627,17 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.global.insert(
         KeyEvent {
             code: KeyCode::Tab,
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::MoveFocus,
     );
 
     // Builtin bindings (lowest precedence; hard-coded fallbacks).
-    // Esc → Esc (handled by transition; Dashboard+Esc is the quit path)
+    // Esc → Esc (handled by transition; context-sensitive but NOT the quit path)
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Esc,
-            modifiers: no_mod.clone(),
-        },
-        Action::Esc,
-    );
-    // q (no modifiers) → Esc (same as physical Esc for Dashboard quit)
-    layers.builtin.insert(
-        KeyEvent {
-            code: KeyCode::Char('q'),
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::Esc,
     );
@@ -650,7 +645,7 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Enter,
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::EnterFullscreen {
             panel: PanelId::Sessions,
@@ -660,7 +655,7 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Char('j'),
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::SelectNext,
     );
@@ -668,7 +663,7 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Down,
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::SelectNext,
     );
@@ -676,7 +671,7 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Char('k'),
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::SelectPrev,
     );
@@ -684,9 +679,27 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     layers.builtin.insert(
         KeyEvent {
             code: KeyCode::Up,
-            modifiers: no_mod.clone(),
+            modifiers: no_mod,
         },
         Action::SelectPrev,
+    );
+
+    // Per-context bindings (mode-scoped, higher precedence than global/builtin).
+    //
+    // F-S025-ADV2-HIGH-002: `q` → Action::Quit ONLY in Dashboard mode.
+    // In Filtering mode, `q` is intercepted by the SearchPrompt layer as
+    // Action::FilterType('q') before this layer is consulted. In Overlay mode,
+    // `q` is not a permission decision key and would fall through to no binding —
+    // correct behaviour (Overlay decisions are y/A/n/r only).
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('q'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::Quit,
     );
 
     layers

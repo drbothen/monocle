@@ -147,7 +147,12 @@ pub enum KeyCode {
 ///
 /// A simple struct of booleans — no bitflags dependency required in the pure
 /// core. The binary crate converts from crossterm's bitflags representation.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+///
+/// `Copy` is derived because `KeyModifiers` is a small value type (3 bools);
+/// `HashMap` lookups produce cloned values, and binding construction code calls
+/// `KeyModifiers::default()` repeatedly — `Copy` eliminates these `.clone()` calls
+/// (F-S025-ADV2-MED-001).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct KeyModifiers {
     /// The Shift key was held.
     pub shift: bool,
@@ -311,6 +316,9 @@ fn clone_action(action: &Action) -> Action {
         Action::PermissionAcceptOnce => Action::PermissionAcceptOnce,
         Action::PermissionAcceptAlways => Action::PermissionAcceptAlways,
         Action::PermissionReject => Action::PermissionReject,
+        Action::SelectNext => Action::SelectNext,
+        Action::SelectPrev => Action::SelectPrev,
+        Action::Quit => Action::Quit,
         Action::Noop => Action::Noop,
         // Non-exhaustive guard: new Action variants added in future waves are treated
         // as Noop until the binding resolver is updated to handle them explicitly.

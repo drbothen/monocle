@@ -207,6 +207,13 @@ pub enum Action {
     ///
     /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
     SelectPrev,
+    /// Request clean exit from the TUI.
+    ///
+    /// Only registered in Dashboard mode (via the per-context binding layer) so that
+    /// typing `q` in Filtering mode inserts the character rather than quitting.
+    /// Introduced in F-S025-ADV2-HIGH-002 to replace the overloaded `Action::Esc`
+    /// quit-path that broke Filtering-mode filter entry (MED-004 resolution).
+    Quit,
     /// No-op; used by the key resolver when no binding matches.
     Noop,
 }
