@@ -355,10 +355,11 @@ pub fn resolve_runtime_dir() -> Result<PathBuf> {
 /// # Reconnect
 ///
 /// On reconnect, the caller calls `reader_handle.abort()` to ensure the old task is
-/// cleaned up, then calls `spawn_ipc_reader(new_reader, ipc_tx.clone())` with the new
-/// transport reader. The channel receiver (`ipc_rx`) is reused across reconnections —
-/// the same channel is provisioned once; new `ipc_tx` clones are derived from the
-/// channel's `Sender` end, which remains valid across task restarts.
+/// cleaned up, then re-creates the channel with a fresh `(ipc_tx2, ipc_rx2)` pair
+/// (F-S025-ADV3-MED-003). Because `ipc_tx` is passed by MOVE (not clone), the channel
+/// closes naturally when the reader exits — `ipc_rx.try_recv()` returns
+/// `TryRecvError::Disconnected` instead of `TryRecvError::Empty` forever.
+/// Channel re-creation on reconnect has negligible allocation cost.
 pub fn spawn_ipc_reader<R>(
     mut reader: R,
     tx: tokio::sync::mpsc::Sender<Result<ServerToClient, IpcError>>,
@@ -506,8 +507,18 @@ pub async fn run() -> Result<()> {
     //
     // Drop policy: BLOCK (tx.send().await). Silent drop on full would violate at-least-once
     // delivery for PermissionPromptQueued (BC-2.05.002 Invariant 4).
+    //
+    // Sender ownership (F-S025-ADV3-MED-003): `ipc_tx` is passed by move (not clone) to
+    // `spawn_ipc_reader`. The reader task holds the ONLY sender; when it exits (disconnect or
+    // error), the channel closes and `ipc_rx.try_recv()` returns `TryRecvError::Disconnected`.
+    // This makes the disconnect arm in the drain loop reachable on natural reader exit.
+    //
+    // Reconnect channel (F-S025-ADV3-MED-003): on reconnect (S-023 merge), the channel is
+    // re-created with a fresh `(ipc_tx2, ipc_rx2)` pair and `ipc_rx` is shadowed. This is
+    // simpler than retaining a long-lived sender clone — there is no performance cost to
+    // channel re-creation (it allocates a small fixed-size ring).
     let (ipc_tx, mut ipc_rx) = tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-    let reader_handle = spawn_ipc_reader(transport, ipc_tx.clone());
+    let reader_handle = spawn_ipc_reader(transport, ipc_tx); // ipc_tx MOVED here — no clone retained
 
     // Set up the ratatui terminal.
     let backend = CrosstermBackend::new(io::stdout());
@@ -736,7 +747,12 @@ pub async fn run() -> Result<()> {
                         //   1. Replace this block with:
                         //      match monocle_ipc::reconnect::reconnect_with_backoff(&sock_path).await {
                         //          Ok((new_transport, _)) => {
-                        //              reader_handle = spawn_ipc_reader(new_transport, ipc_tx.clone());
+                        //              // Re-create the channel (F-S025-ADV3-MED-003):
+                        //              // ipc_tx was moved to the old reader task; re-creation
+                        //              // is necessary and has negligible allocation cost.
+                        //              let (ipc_tx2, ipc_rx2) = tokio::sync::mpsc::channel(64);
+                        //              ipc_rx = ipc_rx2;
+                        //              reader_handle = spawn_ipc_reader(new_transport, ipc_tx2);
                         //              app.status_message = None; // reconnected
                         //          }
                         //          Err(IpcError::ReconnectTimeout) => {
@@ -765,7 +781,7 @@ pub async fn run() -> Result<()> {
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     reader_handle.abort();
 
-                    // TODO(S-023-merge): same reconnect call site as above.
+                    // TODO(S-023-merge): same reconnect call site as above (channel re-creation).
                     // See the detailed comment in the protocol-violation arm above.
                     tracing::warn!(
                         "reconnect not yet available (pending S-023 merge); \
