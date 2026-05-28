@@ -298,25 +298,36 @@ fn test_bc_2_06_005_pc2_cost_formatter_0_83_renders_dollar_0_83() {
 }
 
 // ---------------------------------------------------------------------------
-// AC-007 — Drop counter display in status bar (BC-2.06.005 PC-3)
+// AC-007 — Drop counter display in page-level status bar (BC-2.06.005 PC-3)
 // ---------------------------------------------------------------------------
+//
+// F-S025-ADV2-MED-002: The drop counter renders ONLY in the page-level status
+// bar (built in `app.rs` render loop). It was removed from the sessions panel's
+// internal status row to eliminate the duplicate. AC-007 says "status bar" —
+// one location only.
+//
+// The page-level status bar is rendered by `app.rs::run()` via `terminal.draw()`,
+// not by `SessionsPanel`. Tests here verify the sessions panel does NOT render
+// the drop counter (it's not the panel's responsibility).
 
-/// BC-2.06.005 PC-3 / AC-007: sessions panel status bar shows "[dropped: N]"
-/// when drop_counter > 0.
+/// BC-2.06.005 PC-3 / AC-007: sessions panel does NOT render the drop counter;
+/// that is the page-level status bar's responsibility (F-S025-ADV2-MED-002).
 #[test]
-fn test_bc_2_06_005_pc3_ac007_drop_counter_shown_when_nonzero() {
+fn test_bc_2_06_005_pc3_ac007_sessions_panel_does_not_render_drop_counter() {
     let mut app = App::new(MonocleConfig::default());
     app.drop_counter = 5;
     let rendered = render_sessions_panel(&app, 5);
+    // The sessions panel must NOT render the drop counter — it moved to page-level.
     assert!(
-        rendered.contains("[dropped: 5]"),
-        "AC-007: '[dropped: 5]' must appear in the status bar when drop_counter=5; got:\n{}",
+        !rendered.contains("[dropped:"),
+        "AC-007 / MED-002: '[dropped:]' must NOT appear in the sessions PANEL \
+         (only in page-level status bar); got:\n{}",
         rendered
     );
 }
 
-/// BC-2.06.005 PC-3 / AC-007: sessions panel status bar shows NO drop indicator
-/// when drop_counter == 0.
+/// BC-2.06.005 PC-3 / AC-007: sessions panel status row does not render drop indicator
+/// when drop_counter == 0 either.
 #[test]
 fn test_bc_2_06_005_pc3_ac007_drop_counter_hidden_when_zero() {
     let app = App::new(MonocleConfig::default());

@@ -307,16 +307,9 @@ impl StatefulWidget for SessionsPanel<'_> {
             StatefulWidget::render(list, list_area, buf, &mut state.list_state);
         }
 
-        // --- Render drop counter status bar (AC-007, BC-2.06.005 PC-3) ---
-        let status_text = if self.app.drop_counter > 0 {
-            Line::from(vec![Span::styled(
-                format!("[dropped: {}]", self.app.drop_counter),
-                Style::default().fg(Color::Yellow),
-            )])
-        } else {
-            Line::from("")
-        };
-
-        Widget::render(Paragraph::new(status_text), status_bar_area, buf);
+        // Drop counter is rendered ONLY in the page-level status bar (app.rs render loop),
+        // not here. AC-007 says "status bar" — the page-level bar is the single location.
+        // F-S025-ADV2-MED-002: removed duplicate drop-counter from panel-internal status row.
+        let _ = status_bar_area; // area reserved for future panel-level indicators (e.g., filter hint)
     }
 }
