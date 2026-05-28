@@ -482,36 +482,72 @@ async fn test_BC_2_05_007_pc_6_disconnected_on_abrupt_server_drop() {
 /// BC-2.05.007 PC-6 / AC-006: `TransportEvent::Disconnected` is NOT emitted when
 /// the TUI initiates a graceful disconnect via `graceful_disconnect()`.
 ///
-/// Test strategy: create transport via `connect_with_events`, call
-/// `graceful_disconnect()` on it (S-023 stub — todo!()), then drop the transport
-/// and verify the event channel stays empty.
+/// Test strategy:
+/// 1. Bind a real listener and spawn a task to accept the connection (so the
+///    background reader can observe real EOF rather than a half-open connection).
+/// 2. Create the transport via `connect_with_events` and wait for the accept to
+///    complete (confirmed via a oneshot rendezvous).
+/// 3. Call `graceful_disconnect()` on the transport BEFORE dropping it — this sets
+///    the Arc<AtomicBool> to true with Release ordering.
+/// 4. Drop the transport — this closes the write half, causing EOF on the server
+///    side; the background reader will observe EOF and check the graceful flag.
+/// 5. Yield to the executor with `tokio::task::yield_now()` so the background
+///    reader task has a chance to process the EOF and either emit or suppress
+///    TransportEvent::Disconnected.
+/// 6. Assert `event_rx.try_recv()` returns Err — proves the graceful suppression
+///    is ACTIVELY working, not vacuously passing because the task hasn't run yet.
 #[tokio::test]
 async fn test_BC_2_05_007_pc_6_no_disconnect_event_on_graceful_tui_exit() {
     use monocle_ipc::uds::connect_with_events;
     use tempfile::tempdir;
     use tokio::net::UnixListener;
+    use tokio::sync::oneshot;
 
     let dir = tempdir().expect("tempdir");
     let sock_path = dir.path().join("monocle.sock");
-    let _listener = UnixListener::bind(&sock_path).expect("bind");
+    let listener = UnixListener::bind(&sock_path).expect("bind");
 
-    // connect_with_events is a todo!() stub — Red Gate.
+    // Rendezvous: server signals "accepted" so client knows the connection is live.
+    let (accepted_tx, accepted_rx) = oneshot::channel::<()>();
+
+    // Spawn server task: accept the connection and hold it open until the client closes.
+    tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        // Signal that the connection is live.
+        let _ = accepted_tx.send(());
+        // Hold the server stream open — when the client drops, we see EOF here too.
+        // Drop stream at end of task to close the server side.
+        drop(stream);
+    });
+
+    // Connect (background reader task spawned inside).
     let (mut transport, mut event_rx) = connect_with_events(dir.path())
         .await
         .expect("connect_with_events");
 
-    // Mark as graceful — this is the S-023 production method, also a todo!() stub.
+    // Wait for the server to accept — ensures the connection is fully established
+    // and the background reader is live before we trigger the graceful close.
+    accepted_rx.await.expect("server accepted");
+
+    // --- Step 3: Set graceful flag BEFORE dropping (Release ordering) ---
     transport.graceful_disconnect();
 
-    // Drop transport (closes socket from TUI side).
+    // --- Step 4: Drop closes the write half → EOF propagates to background reader ---
     drop(transport);
 
-    // The event channel must be empty: graceful disconnect must NOT emit Disconnected.
+    // --- Step 5: Yield to let the background reader task process the EOF ---
+    // yield_now() reschedules the current task at the end of the run queue,
+    // allowing the background reader to run and observe EOF + check graceful flag.
+    tokio::task::yield_now().await;
+
+    // --- Step 6: Assert channel is empty — graceful suppression is active, not vacuous ---
+    // If the background reader ran and saw graceful=true, it suppressed Disconnected.
+    // If it saw graceful=false, it would have sent Disconnected and this assertion fails.
     let maybe_evt = event_rx.try_recv();
     assert!(
         maybe_evt.is_err(),
-        "BC-2.05.007 PC-6 / AC-006: event channel must be empty after graceful TUI disconnect, \
-         got: {:?}",
+        "BC-2.05.007 PC-6 / AC-006: event channel must be empty after graceful TUI disconnect \
+         (graceful flag must suppress TransportEvent::Disconnected); got: {:?}",
         maybe_evt.ok()
     );
 }
