@@ -1157,7 +1157,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
     'outer_disconnect: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == &target_bytes[0].to_string() {
+            if cell.symbol() == target_bytes[0].to_string() {
                 let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
@@ -1251,7 +1251,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
     'outer_offline: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == &target_bytes[0].to_string() {
+            if cell.symbol() == target_bytes[0].to_string() {
                 let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
@@ -1361,7 +1361,7 @@ fn test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_b
     'outer_prec: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == &target_bytes[0].to_string() {
+            if cell.symbol() == target_bytes[0].to_string() {
                 let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
@@ -1471,7 +1471,7 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
     'outer_baseline: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == &target_bytes[0].to_string() {
+            if cell.symbol() == target_bytes[0].to_string() {
                 let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
