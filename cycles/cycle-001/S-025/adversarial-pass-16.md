@@ -123,3 +123,25 @@ Changes:
 - All other 20 structs confirmed correctly listed (no further sweep gaps)
 
 This closes Pass 16 multi-round F-S025-ADV16-MED-001 for the FULL accumulated debt (4 audit-table rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState).
+
+### Round 7 — Path B closure (architect commit f3533ce on factory-artifacts + devops-engineer commit bfcba19 on feature/S-025-tui-skeleton-sessions) — RUSTSEC-2026-0009 mitigation via Phase 1 MSRV bump
+
+After rounds 1-6 closed all 4 audit-table gaps (App, EventBusHookEvent, EngineModuleRegistry, BackoffState), PR #28 CI cargo-deny job surfaced RUSTSEC-2026-0009: "Denial of Service via Stack Exhaustion" in `time` crate < 0.3.47 (RFC 2822 parser). Time is transitive via ratatui→ratatui-widgets→time (optional, calendar feature).
+
+Human decision (orchestrator AskUserQuestion): Path B selected over Path A (deny.toml ignore) and Path C (defer to Phase 3 MSRV 1.92). Rationale: root-cause removal preferred when MSRV bump cost is acceptable. Time 0.3.47 requires Rust 1.88.
+
+Changes (architect f3533ce on factory-artifacts):
+- SS-deps-pin-manifest.md v1.1.22 → v1.2.0 (minor bump — MSRV interface change): Phase 1 MSRV 1.86 → 1.88; ratatui Cargo.toml Note updated; which Cargo.toml Note updated; MSRV Policy section rewritten; MSRV Constraints table updated; §Trace v1.2.0 documents Path B + SE-16b/SE-16d monotonicity PASS
+- Propagation: prd.md v1.27.2→v1.27.3, nfr-catalog v1.7→v1.8, product-brief v1.4.30→v1.4.31, ADR-0001 (Phase 3 sentence "1.86→1.92" → "1.88→1.92"), RUSTSEC-2026-0009 risk-acceptance doc (status: accepted→resolved)
+
+Changes (devops-engineer bfcba19 on feature/S-025-tui-skeleton-sessions):
+- rust-toolchain.toml: channel 1.86 → 1.88
+- CI AC-004 check updated in 4 locations: .github/workflows/ci.yml (lines 49/267/345 + grep assertion), .github/workflows/audit.yml, .github/workflows/dtu-fidelity.yml, monocle-runtime/tests/workspace_structure.rs (renamed: ac_004_workspace_cargo_pins_rust_version_1_88)
+- Cargo.lock: time 0.3.37→0.3.47, deranged 0.3.11→0.5.8, num-conv 0.1.0→0.2.2, time-core 0.1.2→0.1.8
+- deny.toml: RUSTSEC-2026-0009 ignore entry REMOVED (clean ignore=[])
+- Cargo.toml: ratatui defense-in-depth feature trim KEPT with updated comment (no longer for RUSTSEC mitigation; now for compile-time/binary-size)
+- 1.88 new clippy lint fixes: io_other_error (4 sites: lifecycle.rs, lock.rs); uninlined_format_args (production fixed; test sites allowed at workspace lints with rationale)
+
+CI on bfcba19: ALL 9 JOBS SUCCESS (Preflight, DTU, Semgrep audit-table completeness, audit-table-drift, Build+Test x3, cargo deny, cargo audit).
+
+This closes Pass 16 multi-round F-S025-ADV16-MED-001 in its FULL accumulated scope (7 rounds, 4 audit-table rows + CI script false-green + vendored sync + clippy --all-targets + RUSTSEC-2026-0009 + MSRV 1.86→1.88).
