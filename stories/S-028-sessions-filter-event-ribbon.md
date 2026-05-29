@@ -144,6 +144,7 @@ messages (BC-2.05.004); filtering is purely client-side per BC-2.05.004 invarian
 
 ## Previous Story Intelligence
 
+<!-- structural-claim-historical: Vec<SessionState> → Vec<EnrichedSession> drift deferred per ADR-0008 §Cross-story propagation (BC-5.39.002 PC2); story-writer wave-gate sweep obligation -->
 S-025 (TUI skeleton): `App.sessions: Vec<SessionState>` is the unfiltered session list.
 The Sessions panel uses ratatui `ListState` for scroll/selection tracking. The `Filtering`
 mode query field is in `AppMode::Filtering { query, .. }` — extract it from `App.mode`

@@ -1,0 +1,610 @@
+# .factory/specs/version-pin-registry.yaml
+# Source of truth for canonical current version per versioned artifact.
+#
+# REGISTRY UPDATE OBLIGATION (ADR-0007 §Version-Pin Registry):
+#   State-manager MUST update this registry in the SAME commit as any document version bump.
+#   Registry and document are atomic (Single-Commit Burst Protocol applies).
+#
+# FORMAT:
+#   <artifact-id>:
+#     path: <path relative to .factory/ root for spec docs, or relative to workspace root for code>
+#     current_version: "<semver or semantic version>"
+#     last_bump_commit: "<full SHA>"
+#     last_bump_date: "<ISO-8601 date>"
+#
+# HOW TO ADD A NEW ENTRY:
+#   1. Add a block using the artifact's canonical ID (filename without .md for docs).
+#   2. Set path relative to .factory/ for spec docs, or workspace root for code files.
+#   3. Set current_version to the `version:` field from the document's YAML frontmatter.
+#   4. Set last_bump_commit and last_bump_date to the factory-artifacts commit that introduced
+#      the current version. Use `git -C .factory log --format="%H %as" -- <path> | head -1`.
+#
+# HOW TO UPDATE ON VERSION BUMP:
+#   When state-manager bumps a document's version:
+#     1. Update current_version to the new version string.
+#     2. Update last_bump_commit to the current commit SHA (use $(git rev-parse HEAD) in script).
+#     3. Update last_bump_date to today's date.
+#   This update MUST be in the same commit as the document version bump.
+#
+# ARTIFACT IDs:
+#   SS-* docs: use the filename without .md (e.g., "SS-tui" for SS-tui.md)
+#   BC files: use "BC-N.NN.NNN" format matching the file basename without .md
+#   ADR files: use "ADR-NNNN" format
+#   Other docs: use the filename without .md
+#
+# CI LINT:
+#   scripts/check_version_pins.py reads this registry to verify active version-pin literals.
+#   An active version-pin literal is one NOT classified as a historical anchor per
+#   ADR-0007 §Historical Anchor Classification:
+#     - NOT inside a ## §Trace section
+#     - NOT annotated with # version-pin-historical or <!-- version-pin-historical -->
+#     - NOT containing a time qualifier ("at time of", "at S-NNN authoring time", etc.)
+#
+# EXEMPT PATHS (not scanned by CI lint):
+#   .factory/cycles/     — closed adversarial cycle records; sealed at closure
+#   target/              — cargo build output
+#   .git/                — git internals
+#   node_modules/        — not applicable
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Architecture Subsystem Spec documents (SS-*)
+# ───────────────────────────────────────────────────────────────────────────────
+
+SS-config:
+  path: specs/architecture/SS-config.md
+  current_version: "1.3.0"
+  last_bump_commit: "58500b8397b0"
+  last_bump_date: "2026-05-27"
+
+SS-conventions-anti-patterns:
+  path: specs/architecture/SS-conventions-anti-patterns.md
+  current_version: "1.32.3"
+  last_bump_commit: "12170b457ebea8f775e782d309552b2acb1b3edb"
+  last_bump_date: "2026-05-29"
+
+SS-core-types-and-abi:
+  path: specs/architecture/SS-core-types-and-abi.md
+  current_version: "1.2.13"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+SS-daemon-lifecycle:
+  path: specs/architecture/SS-daemon-lifecycle.md
+  current_version: "1.0.33"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+SS-daemon-wiring:
+  path: specs/architecture/SS-daemon-wiring.md
+  current_version: "1.3.0"
+  last_bump_commit: "58500b8397b0"
+  last_bump_date: "2026-05-27"
+
+SS-deps-pin-manifest:
+  path: specs/architecture/SS-deps-pin-manifest.md
+  current_version: "1.2.0"
+  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
+  last_bump_date: "2026-05-28"
+
+SS-engine-module:
+  path: specs/architecture/SS-engine-module.md
+  current_version: "1.1.26"
+  last_bump_commit: "ee9742bbcbde"
+  last_bump_date: "2026-05-28"
+
+SS-forward-compatibility:
+  path: specs/architecture/SS-forward-compatibility.md
+  current_version: "1.2.19"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+SS-ipc:
+  path: specs/architecture/SS-ipc.md
+  current_version: "1.9.0"
+  last_bump_commit: "d55a0e1daa8e3673fe74a28af686870c1cd8b57b"
+  last_bump_date: "2026-05-28"
+
+SS-permissions-phase1:
+  path: specs/architecture/SS-permissions-phase1.md
+  current_version: "1.5.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+SS-tui:
+  path: specs/architecture/SS-tui.md
+  current_version: "1.8.2"
+  last_bump_commit: "740465d313d5a76210c6e9f550d13daaf7b4fdff"
+  last_bump_date: "2026-05-28"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# ADR files
+# ───────────────────────────────────────────────────────────────────────────────
+
+ADR-0007-version-pin-citation-discipline:
+  path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
+  current_version: "1.0.2"
+  last_bump_commit: "e8d1088"
+  last_bump_date: "2026-05-29"
+
+ADR-0008-structural-claim-discipline:
+  path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
+  current_version: "1.0.1"
+  last_bump_commit: "12170b457ebea8f775e782d309552b2acb1b3edb"
+  last_bump_date: "2026-05-29"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Index / meta documents
+# ───────────────────────────────────────────────────────────────────────────────
+
+ARCH-INDEX:
+  path: specs/architecture/ARCH-INDEX.md
+  current_version: "1.0.18"
+  last_bump_commit: "cb681589d651e85310097bbd7f458551c206eebe"
+  last_bump_date: "2026-05-29"
+
+BC-INDEX:
+  path: specs/behavioral-contracts/BC-INDEX.md
+  current_version: "1.32"
+  last_bump_commit: "4c6b4f500601c85bd7c612df1faaf5d2e1eeb982"
+  last_bump_date: "2026-05-29"
+
+STORY-INDEX:
+  path: stories/STORY-INDEX.md
+  current_version: "5.16"
+  last_bump_commit: "344366d9412ff2bbcb665c72b7eb89cc1c125b16"
+  last_bump_date: "2026-05-29"
+
+dtu-assessment:
+  path: specs/dtu-assessment.md
+  current_version: "1.7.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+prd:
+  path: specs/prd.md
+  current_version: "1.27.3"
+  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
+  last_bump_date: "2026-05-28"
+
+product-brief:
+  path: specs/product-brief.md
+  current_version: "1.4.31"
+  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
+  last_bump_date: "2026-05-28"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Behavioral Contract files (BC-N.NN.NNN)
+# Populated with all currently-versioned BCs from .factory/specs/behavioral-contracts/.
+# ───────────────────────────────────────────────────────────────────────────────
+
+BC-2.01.001:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.001.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.002:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.002.md
+  current_version: "1.0.6"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.003:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.003.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.004:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.004.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.005:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.005.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.006:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.006.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.007:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.007.md
+  current_version: "1.0.6"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.008:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.008.md
+  current_version: "1.0.7"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.009:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.009.md
+  current_version: "1.0.7"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.01.010:
+  path: specs/behavioral-contracts/ss-01/BC-2.01.010.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.001:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.001.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.002:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.002.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.003:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.003.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.004:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.004.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.005:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.005.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.006:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.006.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.007:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.007.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.02.008:
+  path: specs/behavioral-contracts/ss-02/BC-2.02.008.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.03.001:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.001.md
+  current_version: "1.0.7"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.03.002:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.002.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.03.003:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.003.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.03.004:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.004.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.001:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.001.md
+  current_version: "1.6.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.002:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.002.md
+  current_version: "1.5.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.003:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.003.md
+  current_version: "1.5.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.004:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.004.md
+  current_version: "1.5.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.005:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.005.md
+  current_version: "1.5.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.006:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.006.md
+  current_version: "1.6.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.007:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.007.md
+  current_version: "1.5.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.008:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.008.md
+  current_version: "1.2.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.009:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.009.md
+  current_version: "1.2.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.010:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.010.md
+  current_version: "1.3.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.011:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.011.md
+  current_version: "1.4.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.04.012:
+  path: specs/behavioral-contracts/ss-04/BC-2.04.012.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.001:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.001.md
+  current_version: "1.3.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.002:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.002.md
+  current_version: "1.0.6"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.003:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.003.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.004:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.004.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.005:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.005.md
+  current_version: "1.7.0"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.006:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.006.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.007:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.007.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.05.008:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.001:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.001.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.002:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.002.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.003:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.003.md
+  current_version: "1.1.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.004:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.004.md
+  current_version: "1.2.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.005:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.005.md
+  current_version: "1.0.6"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.006:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.006.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.007:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.007.md
+  current_version: "1.0.4"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.008:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.008.md
+  current_version: "1.1.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.009:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.009.md
+  current_version: "1.1.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.010:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.010.md
+  current_version: "1.0.6"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.011:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.011.md
+  current_version: "1.2.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.012:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.012.md
+  current_version: "1.2.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.013:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.013.md
+  current_version: "1.2.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.014:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.014.md
+  current_version: "1.0.8"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.015:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.015.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.016:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.016.md
+  current_version: "1.0.9"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.017:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.017.md
+  current_version: "1.6.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.018:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.018.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.019:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.019.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.020:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.020.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.021:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.021.md
+  current_version: "1.0.5"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.022:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.022.md
+  current_version: "1.6.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.023:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.023.md
+  current_version: "1.4.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.06.024:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.024.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.001:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.001.md
+  current_version: "1.1.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.002:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.002.md
+  current_version: "1.0.3"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.003:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.003.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.004:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.004.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.005:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.005.md
+  current_version: "1.3.1"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+BC-2.07.006:
+  path: specs/behavioral-contracts/ss-07/BC-2.07.006.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
