@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.1"
+version: "1.32.2"
 status: complete
 producer: architect
 phase: phase-3
-timestamp: 2026-05-29T10:00:00Z
+timestamp: 2026-05-29T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "0351fc8"
 traces_to: architecture/ARCH-INDEX.md
@@ -1670,7 +1670,120 @@ PG-5 remains operative for legacy active pointers in the corpus until migrated;
 PG-5 current-pointer classification (Form 1) becomes obsolete for new artifacts
 post-D-204 (new artifacts do not carry active pointers).
 
+## §Structural-Claim Discipline (ADR-0008)
+
+Added in v1.32.2 (D-206 structural-spec drift tripwire closure, ADR-0008).
+
+Addresses the structural-claim sub-species of the broader authoring-time documentation
+drift META-pattern. Full decision rationale in
+`adr/ADR-0008-structural-claim-discipline.md`. This section is the operative convention;
+the ADR is the decision record.
+
+**Related:** §Citation Discipline (ADR-0007) governs version-pin literal citations
+(`vN.M.P` form). This section governs structural claims (type names, column counts,
+variant lists). Both apply simultaneously.
+
+### Structural Claim Definition
+
+A **structural claim** is any artifact-body statement that asserts the shape, type, or
+count of a code-level entity, where the canonical source of truth is a compiled Rust type,
+a BC postcondition, or an architecture spec struct declaration. Structural claims appear as:
+
+- **Type-identifier claims:** `sessions: Vec<EnrichedSession>` in story Tasks checklists
+  or Downstream Consumer Contract code blocks
+- **Table-shape claims:** Markdown tables in code doc-comments that enumerate column names
+  corresponding to BC postcondition column lists
+- **Count claims:** Prose asserting "N postconditions", "N columns", "N hook endpoints"
+
+### Canonical Source Registry
+
+| Structural claim type | Canonical source | Lookup |
+|-----------------------|-----------------|--------|
+| `App` struct field types | SS-tui.md §App struct (lines 831-864) | Read field declarations; compare cited type |
+| Sessions panel column list | BC-2.06.005 §Postconditions PC-2 | Read PC-2 column table; count columns |
+| `AppMode` variants | `monocle-core::tui::AppMode` enum | Read enum definition; compare variant list |
+| `Action` variants | `monocle-core::tui::Action` enum | Read enum definition; compare variant list |
+| Hook endpoint count | BC-HOOK-007 §Postconditions PC-1 | Read endpoint enumeration; count |
+
+When authoring a structural claim about any entity in this table, read the canonical source
+FIRST. Do not infer the type, column list, or count from memory or from prior artifacts.
+
+### Permitted and Forbidden Structural-Claim Forms
+
+**Permitted — structurally correct (matches canonical source):**
+```rust
+pub sessions: Vec<EnrichedSession>   // matches SS-tui.md §App struct line 845
+```
+```markdown
+//! | Session ID | Project | Status | Tokens | Cost | Uptime | Drop |  ← 7 columns per BC-2.06.005 PC-2
+```
+
+**Forbidden — structurally stale:**
+```rust
+pub sessions: Vec<SessionState>      // WRONG: canonical type is EnrichedSession
+```
+```markdown
+//! | Icon | Project | Status | Tokens | Cost | Uptime |  ← 6 columns; canonical PC-2 has 7
+```
+
+### Historical Anchor Classification for Structural Claims
+
+A structural claim is a historical anchor (frozen, exempt from CI check) when it
+meets at least ONE of:
+
+1. It appears inside a `## §Trace` section.
+2. It is annotated with `<!-- structural-claim-historical -->` on the same line or
+   the adjacent line.
+3. It contains a time qualifier establishing this as a record of past state:
+   "at S-NNN authoring time", "as of vN.M.P", or equivalent unambiguous temporal anchor.
+
+### CI Enforcement Gate (POL-12-structural-claim)
+
+`monocle-structural-claim-check` — devops-engineer Phase 3 deliverable (dispatched at D-206).
+
+**Scope:** `.factory/stories/*.md` Tasks checklists + Downstream Consumer Contract code
+blocks; `.factory/specs/behavioral-contracts/**/*.md` postcondition prose;
+`crates/**/*.rs` module-level doc-comment tables.
+
+**Exempt:** `.factory/cycles/` (closed records); `## §Trace` sections; lines annotated
+with `<!-- structural-claim-historical -->`.
+
+**CI step ordering:** After `cargo test`, before `cargo deny check`. Separate CI step
+from POL-11 `monocle-version-pin-freshness` — both must pass independently.
+
+**Implementation notes for devops-engineer:**
+
+Phase 1 (immediate): Scan `.factory/stories/*.md` for type identifiers in Tasks
+checklists and Consumer Contract code blocks. Grep pattern:
+```
+grep -n 'Vec<\|VecDeque<\|Option<' .factory/stories/*.md | grep -v '§Trace\|historical'
+```
+For each match involving an `App` struct field, extract the type argument and compare
+against SS-tui.md §App struct canonical declarations. Fail with:
+`structural-claim mismatch: <file>:<line> cites App.<field> as <cited-type> but canonical SS-tui.md §App struct declares <canonical-type>`.
+
+Phase 2 (Phase 5 scope): Module-level doc-comment table shape extraction from
+`crates/**/*.rs`. Pattern: `grep -n '//! |' crates/**/*.rs | grep -E '\|.*\|.*\|'`.
+Compare column count against the BC cited in the same doc-comment block.
+
 ## §Trace
+
+v1.32.2 changes (D-206 ADR-0008 structural-claim discipline — structural-spec drift tripwire closure):
+
+- NORMATIVE (ADR-0008 ratification — Task #9 m.6 tripwire fired at Pass 27): §Structural-Claim
+  Discipline section added above. Codifies POL-12-structural-claim as complement to ADR-0007
+  POL-11-version-pin. Both address authoring-time documentation drift species; POL-11 governs
+  literal `vN.M.P` pins, POL-12 governs type-identifier and table-shape claims.
+- NORMATIVE: Canonical source registry added for App struct field types, sessions panel column
+  list, AppMode/Action variant lists, hook endpoint count.
+- NORMATIVE: Historical anchor classification for structural claims codified (at-least-one-of
+  §Trace / structural-claim-historical annotation / time qualifier — mirrors ADR-0007 form).
+- NORMATIVE: POL-12 CI enforcement gate specification added for devops-engineer Phase 3 delivery.
+- NORMATIVE: Frontmatter version bumped v1.32.1 → v1.32.2 (patch: new discipline section, no
+  changes to existing rules). Timestamp updated to 2026-05-29T12:00:00Z.
+- INFORMATIONAL: §Citation Discipline (ADR-0007) is unchanged. §Structural-Claim Discipline
+  (ADR-0008) is additive; both sections apply simultaneously.
+- SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T10:00:00Z (monotonic).
 
 v1.32.1 changes (Pass 26 F-S025-ADV26-HIGH-001 + LOW-001 — ADR-0007 internal-consistency correction):
 

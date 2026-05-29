@@ -8,10 +8,10 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.1"
+version: "1.0.2"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
-timestamp: 2026-05-29T08:00:00Z
+timestamp: 2026-05-29T12:00:00Z
 inputs:
   [
     product-brief.md,
@@ -90,6 +90,14 @@ Based on the 7-instance record, version-pin citations appear in:
 - Verification property files (`.factory/specs/verification-properties/`) — body citations
 - ADR files — §References and §Source sections (also carry historical-anchor citations)
 - SS architecture section files — §Trace body cross-references
+
+**Note — related sub-species (ADR-0008):** Pass 26 and Pass 27 adversarial reviews surfaced
+a structurally distinct sub-species at the same species root: structural claims (type names
+such as `Vec<SessionState>`, table column counts, enum variant lists) that drift as canonical
+Rust types and BC postconditions evolve. This sub-species is NOT covered by POL-11-version-pin
+(no `vN.M.P` literal present; detection requires type-name extraction and canonical-source
+comparison). ADR-0008 governs structural-claim discipline and defines POL-12. Both ADRs
+apply simultaneously; see ADR-0008 §Relationship to ADR-0007.
 
 ## Decision
 
@@ -365,6 +373,19 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.2
+
+**D-206 ADR-0008 cross-reference addition — structural-spec drift tripwire closure** (2026-05-29T12:00:00Z):
+
+- NORMATIVE (sweep-wider L-W6-S025-007): §Scope "Note — related sub-species (ADR-0008)" paragraph
+  added. Documents the structural-claim sub-species surfaced at Pass 26 (module-doc column table)
+  and Pass 27 (story-body type name), explains why POL-11 does not cover it (no `vN.M.P` literal),
+  and forward-references ADR-0008 + POL-12. No decision change to ADR-0007 scope or POL-11.
+  ADR-0007 §Decision, §Rationale, §Consequences, and §Implementation Plan are unchanged.
+- Version bump: ADR-0007 v1.0.1 → v1.0.2 (patch: informational scope-navigation note; no
+  operative rule change).
+- SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T10:00:00Z (monotonic).
 
 ## §Trace v1.0.1
 

@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.17"
+version: "1.0.18"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-29T08:00:00Z
+timestamp: 2026-05-29T12:00:00Z
 phase: phase-1-expansion
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
@@ -107,6 +107,7 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 | ADR-0005 | Auth Header Dual-Accept — Canonical `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization` Compatibility Alias | accepted | adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md |
 | ADR-0006 | Non-Exhaustive Structs with Public Positional Constructors | accepted | adr/ADR-0006-non-exhaustive-structs-with-public-constructors.md |
 | ADR-0007 | Version-Pin Citation Discipline — Semantic Anchors + CI Registry Enforcement | accepted | adr/ADR-0007-version-pin-citation-discipline.md |
+| ADR-0008 | Structural-Claim Discipline — Canonical Shape Anchors + POL-12 Detection | accepted | adr/ADR-0008-structural-claim-discipline.md |
 
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
@@ -120,6 +121,12 @@ ADR-0007 resolves the 7-instance META-pattern version-pin staleness species (esc
 passes 9/16/18/22/23/24/25); selects Option C-Refined (hybrid: semantic anchors for new
 artifacts + CI registry gate for all, opportunistic legacy migration). Dispatches
 devops-engineer POL-11-version-pin hook, story-writer and product-owner template updates.
+ADR-0008 resolves the structural-claim sub-species of the same authoring-time documentation
+drift root (Task #9 m.6 tripwire; Passes 26/27 — module-doc column table + story-body
+type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-check`). Governs
+type identifiers, table column counts, variant lists — a categorically distinct detection
+mechanism from ADR-0007's literal `vN.M.P` regex. Dispatches devops-engineer POL-12 CI script
+and story-writer structural-claim sweep for in-flight Wave 6 stories.
 
 ## §Trace v1.0.2
 
@@ -519,6 +526,19 @@ devops-engineer POL-11-version-pin hook, story-writer and product-owner template
   → `stack.retain()`. Key Invariant 2 rewritten to reflect this.
 - version: 1.0.15 → 1.0.16; timestamp: 2026-05-26T03:00:00Z → 2026-05-27T00:00:00Z.
 - SE-16d PASS: 2026-05-27T00:00:00Z > chain high-water 2026-05-26T03:00:00Z (monotonic).
+
+## §Trace v1.0.18
+
+**ADR-0008 ADR Registry registration — D-206 structural-spec drift tripwire closure** (2026-05-29T12:00:00Z):
+- NORMATIVE: ADR-0008 row added to ADR Registry. Title: `Structural-Claim Discipline —
+  Canonical Shape Anchors + POL-12 Detection`. File:
+  `adr/ADR-0008-structural-claim-discipline.md`. Status: accepted.
+- NORMATIVE: ADR Registry **Note** paragraph updated to add ADR-0008 notes (passes 26/27
+  structural-spec drift tripwire, Task #9 m.6, POL-12 dispatch).
+- NORMATIVE: version: 1.0.17 → 1.0.18; timestamp: 2026-05-29T08:00:00Z → 2026-05-29T12:00:00Z.
+- INFORMATIONAL: ADR-0008 ratifies a distinct sub-species of the ADR-0007 META-pattern root.
+  ADR-0007 is unchanged at v1.0.1. Both ADRs now apply; see ADR-0008 §Relationship to ADR-0007.
+- SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T08:00:00Z (monotonic).
 
 ## §Trace v1.0.17
 
