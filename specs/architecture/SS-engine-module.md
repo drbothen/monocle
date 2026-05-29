@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.23"
+version: "1.1.24"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -1184,6 +1184,8 @@ the Rust source is listed between the HTML delimiters below. See SS-conventions-
 | `BlockingIssue` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (blocking_issues Vec is always empty). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 table parser populates `Vec<BlockingIssue>` — that is the first cross-crate construction site. |
 | `ConvergenceMetrics` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (convergence is always None). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 §Session Resume Checkpoint parser populates `Option<ConvergenceMetrics>` — that is the first cross-crate construction site. |
 | `App` | `monocle-tui` | SS-tui.md | struct-literal (cross-crate): `monocle-tui/tests/startup_connect.rs` (17+ call sites: lines 96, 188, 231, 275, 295, 310, 329, 351, 380, 403, 557, 637, 680, 743, 793, 841, 902, 1001 and others); `monocle-tui/tests/sessions_panel.rs` (6 call sites: lines 52, 61, 136, 408, 424, 501) — each `[[test]]` binary links monocle-tui as external; E0639 applies | Yes (`new(config: MonocleConfig) -> Self`, v1.1.23) | Top-level TUI state aggregator constructed once per binary entry point (main.rs + each integration test binary). Fields: `mode`, `config`, `sessions`, `drop_counter`, `overlay_stack`, `status_message`, `event_ring`. `#[non_exhaustive]` provides forward-compat for S-026 (overlay state additions), S-027 (event ring rendering fields), and S-028 (filter state) without breaking the constructor call sites. Sweep: `TransportEvent` (app.rs:44) is an `enum` — exempt per §Cross-Crate Constructor Audit introductory note (lines 1153-1154). No other `#[non_exhaustive] pub struct` present in monocle-tui src as of v1.1.23 sweep. |
+| `EventBusHookEvent` | `monocle-runtime` | SS-engine-module.md (§S-017 types) | struct-literal (cross-crate): `monocle-runtime/tests/event_bus.rs:51` (1 call site); `monocle-runtime/tests/hook_routing_pre_tool_use.rs:103` (1 call site); `monocle-runtime/tests/hook_routing_notification.rs:144` (1 call site); `monocle-runtime/tests/daemon_start_sequence.rs:731` (1 call site) — each `[[test]]` binary links monocle-runtime as external; E0639 applies. Intra-crate production construction sites in `src/hooks/pre_tool_use.rs:349`, `src/hooks/notification.rs:186`, `src/hooks/stop_session_prompt.rs:313/427/572` also call `EventBusHookEvent::new`. | Yes (`new(payload: HookEvent, received_at: String) -> Self`, unknown — pre-existing per Pass 16 sweep) | Internal routing wrapper: pairs the deserialized hook payload with reception timestamp for event-bus transit (BC-2.04.001 step 5). `#[non_exhaustive]` allows Phase 2+ routing metadata fields (e.g., priority, origin daemon ID for federation) to be added without breaking the integration test construction sites. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) field evolution tied to intentional protocol expansions (Phase 4 federation, not organic refactoring), (3) both required fields present as positional parameters. Earlier-wave struct hidden by check_audit_table.py false-green since commit 184f7d4; surfaced by devops-engineer fix at 390d04d. |
+| `EngineModuleRegistry` | `monocle-runtime` | SS-engine-module.md (§S-017 types) | struct-literal (cross-crate): `monocle-runtime/tests/daemon_start_sequence.rs:951` (1 call site: `EngineModuleRegistry::new()`) — `[[test]]` binary links monocle-runtime as external; E0639 applies. Intra-crate production construction site in `src/lifecycle.rs:467` (`crate::types::EngineModuleRegistry::new()`). | Yes (`new() -> Self`, unknown — pre-existing per Pass 16 sweep) | Tracks which Phase 1 engine modules have been registered during daemon start sequence (BC-2.04.001 step 6). Also implements `Default` (delegates to `new()`), providing `EngineModuleRegistry::default()` as an alias. `#[non_exhaustive]` allows Phase 3 WASM plugin registry fields to be added when the plugin SDK ships without breaking the daemon_start_sequence test that calls `new()`. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) field evolution tied to intentional Phase 3 plugin SDK expansion, (3) zero-value booleans are semantically meaningful defaults (both modules start unregistered). Earlier-wave struct hidden by check_audit_table.py false-green since commit 184f7d4; surfaced by devops-engineer fix at 390d04d. |
 <!-- END: Cross-Crate Constructor Audit Table -->
 
 **Serde-deserialize-only enforcement note:** The `Deserialize` derive on each HookEvent inner
@@ -1772,3 +1774,35 @@ Cross-references:
   investigation routed to devops-engineer in parallel — outcome will be documented in a subsequent
   §Trace entry if a rule scope update is required.
 - SE-16d PASS: 2026-05-28T00:00:00Z > chain high-water 2026-05-26T14:00:00Z (monotonic).
+
+**§Trace v1.1.24** (2026-05-28T01:00:00Z) — F-S025-ADV16-MED-001 round-2 [process-gap] closure: added `EventBusHookEvent` and `EngineModuleRegistry` rows discovered via devops-engineer CI rule investigation:
+
+- NORMATIVE (F-S025-ADV16-MED-001 round-2 MED): Added `EventBusHookEvent` and `EngineModuleRegistry`
+  rows to §Cross-Crate Constructor Audit Table. Both structs are defined in
+  `monocle-runtime/src/types.rs` (introduced in S-017, Wave 4) with `#[non_exhaustive]` and
+  `pub fn new(...)` constructors. Both are constructed cross-crate from integration test binaries
+  that link `monocle-runtime` as an external crate — E0639 applies at those call sites.
+- NORMATIVE (process-gap root cause): Both structs were present since Wave 4 (S-017 delivery) but
+  hidden by a false-green in `scripts/check_audit_table.py` since commit 184f7d4. The script's
+  `parse_semgrep_json()` read struct names from `metavars.$NAME.abstract_content`, but semgrep OSS
+  1.156.0 (CI version) does not populate metavars for `pattern-either` rules. Result: the script
+  silently returned an empty struct set → "0 production structs declared — PASS" regardless of
+  how many `#[non_exhaustive]` structs existed. Devops-engineer fix at commit 390d04d added a
+  message-field regex fallback and a safety assertion, which correctly failed with 2 of 3 missing
+  rows (App already added in v1.1.23 in the same PR cycle).
+- NORMATIVE (completeness sweep — v1.1.24 scope): Wide grep `non_exhaustive` across all workspace
+  crates confirms exactly 3 `#[non_exhaustive] pub struct` instances existed during the
+  S-025 PR cycle: `App` (monocle-tui, added v1.1.23), `EventBusHookEvent` (monocle-runtime, added
+  this entry), `EngineModuleRegistry` (monocle-runtime, added this entry). The grep also surfaced
+  `HookEventRecord` in `monocle-ipc/src/types.rs` — this struct exists in the audit table already
+  (row with `monocle-runtime` origin pre-relocation), so the table is not missing a row; however
+  the crate column for `HookEventRecord` is stale (shows `monocle-runtime`; correct is
+  `monocle-ipc` post S-022 relocation). This stale-crate correction is a separate finding — not a
+  missing row — and is outside the scope of this burst. Routing: architect or consistency-validator
+  in a future story.
+- NORMATIVE: Total `#[non_exhaustive] pub struct` count in workspace: `App`, `EventBusHookEvent`,
+  `EngineModuleRegistry`, and the 5 HookEvent inner structs + `EngineMetadata`, `ProcessSnapshot`,
+  `EnrichedSession`, `HookResponse`, `SpawnArgs`, `SessionHandle`, `EngineVersion`,
+  `HookEventRecord`, `FactoryDetection`, `FactoryState`, `BlockingIssue`, `ConvergenceMetrics` =
+  19 rows total now in the audit table (17 pre-S-025 + App + EventBusHookEvent + EngineModuleRegistry).
+- SE-16d PASS: 2026-05-28T01:00:00Z > chain high-water 2026-05-28T00:00:00Z (monotonic).

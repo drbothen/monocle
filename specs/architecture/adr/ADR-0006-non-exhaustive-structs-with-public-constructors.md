@@ -2,9 +2,9 @@
 document_type: architectural-decision-record
 adr_id: "ADR-0006"
 status: accepted
-version: "1.1"
+version: "1.2"
 producer: vsdd-factory:architect
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-28T01:00:00Z
 traces_to: architecture/SS-conventions-anti-patterns.md
 decision_date: 2026-05-27
 ---
@@ -153,3 +153,26 @@ extension discipline confirmed for monocle-tui (S-025 EPIC-06 addition):
   investigation routed to devops-engineer in parallel — outcome will be documented here if the
   rule scope requires update to include monocle-tui crate paths.
 - SE-16d PASS: 2026-05-28T00:00:00Z > prior high-water (initial ratification, 2026-05-27T00:00:00Z).
+
+**§Trace v1.2** (2026-05-28T01:00:00Z) — Round 2: confirmed 3 total missing audit rows (App, EventBusHookEvent, EngineModuleRegistry); devops-engineer CI fix closes false-green; this commit closes the content gap:
+
+- NORMATIVE: `EventBusHookEvent` and `EngineModuleRegistry` rows added to §Cross-Crate
+  Constructor Audit Table in `SS-engine-module.md` (v1.1.23 → v1.1.24). Both structs are
+  defined in `monocle-runtime/src/types.rs` with `#[non_exhaustive]` and `pub fn new(...)`
+  constructors; all three ADR-0006 criteria satisfied for each (internal workspace scope,
+  field evolution tied to intentional protocol/plugin expansions, all required fields as
+  positional parameters).
+- NORMATIVE (end-to-end ADR-0006 compliance restored in S-025 scope): The script false-green at
+  commit 184f7d4 hid 2 earlier-wave gaps (`EventBusHookEvent` and `EngineModuleRegistry`, both
+  introduced S-017 / Wave 4). The devops-engineer fix at commit 390d04d closes the enforcement
+  false-green. This commit closes the content gap. Together: end-to-end ADR-0006 compliance
+  is restored for the S-025 PR cycle.
+- NORMATIVE (§Structs Covered extension): `EventBusHookEvent` and `EngineModuleRegistry`
+  are not added to the §Structs Covered table above because that table documents the structs
+  covered at time of ADR ratification (S-022 cycle). The audit table in SS-engine-module.md
+  is the authoritative running enumeration; §Structs Covered is the historical ratification
+  snapshot. These two structs were pre-existing at ratification (introduced S-017 / Wave 4),
+  and their absence from §Structs Covered was a ratification scope gap, not an ADR decision.
+  Future audits should treat SS-engine-module.md §Cross-Crate Constructor Audit Table as the
+  canonical list, not §Structs Covered.
+- SE-16d PASS: 2026-05-28T01:00:00Z > chain high-water 2026-05-28T00:00:00Z (monotonic).
