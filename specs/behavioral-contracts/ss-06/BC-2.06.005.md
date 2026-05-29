@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -67,7 +67,7 @@ main area in Dashboard layout.
    rendered in the Sessions Panel. Rows are rendered in the order received from the daemon
    (most recently started session last, unless the daemon orders differently — ordering is
    daemon-determined and the TUI renders it as-is).
-2. **Column layout** (per SS-tui.md v1.6.0 §Sessions Panel):
+2. **Column layout** (per SS-tui.md v1.8.2 §Sessions Panel):
    - Session ID column: renders `EnrichedSession::session_id` as a short identifier
      (e.g., `sess-001`). This column is required for operator clarity when multiple
      sessions share the same project name or harness type, and for debuggability when
@@ -156,7 +156,7 @@ main area in Dashboard layout.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "sessions panel" component of CAP-006: the primary panel the user sees when managing multiple Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — the Sessions Panel is read-only: it renders IPC-pushed data and performs no writes) |
 | Architecture Module | monocle-tui (draw_dashboard(), draw_sessions_panel()) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.6.0 §Panel Architecture §Sessions Panel (column layout table, empty state, filter mode, fullscreen) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Sessions Panel (column layout table, empty state, filter mode, fullscreen) |
 | Cross-Ref | BC-2.05.003 (SessionListUpdate IPC message — the source of `app.sessions`), BC-2.06.006 (filter mode for Sessions Panel), BC-2.06.007 (Enter → Fullscreen) |
 | Test File | `monocle-tui/tests/sessions_panel.rs` |
 | Test Name | `test_BC_2_06_005_sessions_panel_renders_from_ipc_state` |
@@ -228,8 +228,9 @@ S-TBD — Implement Sessions Panel renderer with 7-column layout, empty state, t
   `started_at: Option<chrono::DateTime<chrono::Utc>>`, `token_count`, `cost_usd`.
   Added notes explaining `phase_tag` exclusion and that `uptime` is computed from
   `started_at` at render time.
-- Fix — Description: "phase tag" column renamed to "status" column (the sixth column
-  is Status, not Phase Tag, per SS-tui.md v1.6.0 §Sessions Panel).
+- Fix — Description: "phase tag" column renamed to "status" column. The panel has seven
+  columns (Session ID, Icon, Project, Status, Tokens, Cost, Uptime) per SS-tui.md v1.8.2
+  §Sessions Panel; Status is the fourth column, not the sixth (the sixth is Cost).
 - Fix — Postcondition 2: Column layout table corrected. Icon column now derives from
   `harness_type` (not `EngineMetadata`). Phase column replaced by Status column
   (`EnrichedSession::status`). Project column now shows `"—"` for `None`.
@@ -246,6 +247,15 @@ S-TBD — Implement Sessions Panel renderer with 7-column layout, empty state, t
 - Source-of-truth reads: SS-engine-module.md (EnrichedSession struct lines 311–368);
   SS-tui.md v1.6.0 §Sessions Panel column layout table (lines 415–420).
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.6
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh + §Trace v1.0.4 internal contradiction fix** (2026-05-29T00:00:00Z):
+- Architecture Source (Traceability table): `SS-tui.md v1.6.0` → `SS-tui.md v1.8.2` (active pointer was stale by 2 minor versions).
+- Postcondition 2 inline citation: `per SS-tui.md v1.6.0 §Sessions Panel` → `per SS-tui.md v1.8.2 §Sessions Panel`.
+- §Trace v1.0.4 prose fix: "the sixth column is Status, not Phase Tag, per SS-tui.md v1.6.0 §Sessions Panel" → corrected to seven-column reality ("Status is the fourth column" per the 7-column layout Session ID/Icon/Project/Status/Tokens/Cost/Uptime). The original §Trace v1.0.4 prose incorrectly called Status the "sixth" column because it was written against the 6-column layout (before Session ID was added in v1.0.5). The BC body (Description, PC-2) correctly reflects 7 columns since v1.0.5. The §Trace v1.0.4 historical prose was internally inconsistent with the current body — this fix makes the §Trace prose accurate.
+- No substantive BC body (Postconditions, Invariants, Edge Cases) changes: the 7-column layout and column content are already correct in v1.0.5.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-29T00:00:00Z > v1.0.5 timestamp 2026-05-28T12:00:00Z. PASS.
 
 ## §Trace v1.0.5
 

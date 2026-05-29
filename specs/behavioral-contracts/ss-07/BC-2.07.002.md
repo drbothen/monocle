@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -141,7 +141,7 @@ readers.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC defines the data schema that is the carrier for harness profile management and config persistence |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Config Schema v1 |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.1.0 §Config Schema v1 |
+| Architecture Source | SS-config.md v1.3.0 §Config Schema v1 |
 | Cross-Ref | BC-2.07.001 (write_config serializes this schema atomically); BC-2.07.003 (parse failure path); BC-2.07.004 (project_profiles field consumed by profile picker); BC-2.07.006 (ccr_path field consumed by CCR detection) |
 | Brief Features | F-53 (config.json schema), F-54 (harness profile schema), F-55 (ccr_path field), F-56 (binding_overrides stub) |
 | Test File | `monocle-config/tests/schema_v1.rs` |
@@ -176,6 +176,13 @@ VP-TBD — config schema v1 unit tests (filled after VP creation)
 - Brief features traced: F-53, F-54, F-55, F-56.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
 
+
+## §Trace v1.0.3
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-config.md v1.1.0` → `SS-config.md v1.3.0` (active pointer was stale by 2 minor versions).
+- No substantive BC body prose propagation required: §Config Schema v1 struct definition, field types, and serde annotations are unchanged in v1.2.0 and v1.3.0. The v1.2.0 change corrected the `binding_overrides` serde default function (already propagated to EC-080 in this BC's v1.0.2). The v1.3.0 change affected §Missing or Corrupted Config Handling (BC-2.07.003 scope).
+- SE-16d monotonicity: v1.0.3 timestamp 2026-05-29T00:00:00Z > v1.0.2. PASS.
 
 ## §Trace v1.0.2
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -152,7 +152,7 @@ owns the read/write contract for the persistence step.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the Ctrl-P override that is the user-initiated profile management action, including the persistence contract that makes profile changes durable |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Profile Picker Logic §Ctrl-P Override |
 | Architecture Module | monocle-tui (picker rendering, AppMode transition); monocle-config (write_config persistence) per ARCH-INDEX Subsystem Registry SS-06 and SS-07 |
-| Architecture Source | SS-config.md v1.1.0 §Profile Picker Logic §Ctrl-P Override (BC-2.07.005) |
+| Architecture Source | SS-config.md v1.3.0 §Profile Picker Logic §Ctrl-P Override (BC-2.07.005) |
 | Cross-Ref | BC-2.07.001 (write_config atomic write used by persistence step); BC-2.07.002 (project_profiles field schema); BC-2.07.004 (sticky read that consumes the profile ID written here); BC-2.06.003 (Action dispatch 5-level precedence that routes Ctrl-P to ProfilePicker) |
 | Brief Features | F-57 (profile picker Ctrl-P override and persistence) |
 | Test File | `monocle-tui/tests/profile_picker_overlay.rs` |
@@ -178,6 +178,13 @@ S-TBD — Implement profile picker: sticky-per-project and Ctrl-P override (fill
 ## VP Anchors
 
 VP-TBD — profile picker overlay integration tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-config.md v1.1.0` → `SS-config.md v1.3.0` (active pointer was stale by 2 minor versions).
+- No substantive BC body prose propagation required: §Profile Picker Logic §Ctrl-P Override algorithm is unchanged in v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.3.1 timestamp 2026-05-29T00:00:00Z > v1.3.0 timestamp 2026-05-26T14:00:00Z. PASS.
 
 ## §Trace v1.3.0
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -130,7 +130,7 @@ the durable state store.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "Ctrl-\ popup integration" component of CAP-006 and is the primary contract for the product's core UX promise: "one Ctrl-\ popup without leaving your editor" |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — the TUI is a client; it reads from the daemon and sends `ClientToServer::PermissionDecision` messages, but never writes to Claude Code files directly) |
 | Architecture Module | monocle-tui (run_app event loop, exit path); monocle-ipc (initial state push delivering `overlay_stack`; daemon retains registry across TUI process exit/restart) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Ctrl-\ Integration; §State Preservation Across Hide/Show |
+| Architecture Source | SS-tui.md v1.8.2 §Ctrl-\ Integration; §State Preservation Across Hide/Show |
 | Cross-Ref | BC-2.05.002 (daemon initial state push — precondition for Postcondition 3 here), BC-2.06.008 (overlay push from IPC, which is the mechanism by which `overlay_stack` becomes AppMode::Overlay), BC-2.06.016 (daemon-disconnect overlay clear — the contrast to the graceful hide/show cycle) |
 | Test File | `monocle-tui/tests/popup_lifecycle.rs` |
 | Test Name | `test_BC_2_06_004_ctrl_backslash_state_preserved_across_hide_show` |
@@ -215,6 +215,13 @@ S-TBD — Implement TUI exit and reconnect lifecycle; verify popup state preserv
 - Invariant 2: same `VecDeque<PromptModal>` reference updated to `App.overlay_stack`; added mention of `AppMode` transition to `Overlay { prior }`.
 - Test vector: `Overlay { stack: [P1, P2], prior: Sessions }` → `Overlay { prior: Sessions }` (App.overlay_stack = [P1, P2]).
 - SE-16d monotonicity: v1.2.0 timestamp 2026-05-28T00:00:00Z > v1.1.0. PASS.
+
+## §Trace v1.2.1
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` (active pointer was stale by 3 minor versions).
+- No substantive BC body prose propagation required: the AppMode::Overlay shape change (v1.8.0) is already incorporated in this BC's v1.2.0 §Trace. State preservation semantics in §Ctrl-\ Integration and §State Preservation Across Hide/Show sections are unchanged in v1.8.1 and v1.8.2.
+- SE-16d monotonicity: v1.2.1 timestamp 2026-05-29T00:00:00Z > v1.2.0 timestamp 2026-05-28T00:00:00Z. PASS.
 
 ## §Trace v1.1.0
 

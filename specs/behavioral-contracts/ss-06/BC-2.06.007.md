@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -116,7 +116,7 @@ current phase tag. Pressing `Escape` returns to `Dashboard { focused: FocusSnaps
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the fullscreen transition for the "sessions panel" component of CAP-006, enabling the session detail view that is referenced in the Phase 1 delivery contract |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — Fullscreen view is read-only: it renders data received via IPC; no writes) |
 | Architecture Module | monocle-tui (draw_fullscreen(), transition() enter arm) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Sessions Panel (Fullscreen paragraph); §Rendering Architecture (draw_fullscreen() call in AppMode::Fullscreen match arm) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Sessions Panel (Fullscreen paragraph); §Rendering Architecture (draw_fullscreen() call in AppMode::Fullscreen match arm) |
 | Cross-Ref | BC-2.06.001 (Fullscreen AppMode variant and Enter transition arm), BC-2.06.002 (FocusSnapshot restored on Escape from Fullscreen) |
 | Test File | `monocle-tui/tests/sessions_fullscreen.rs` |
 | Test Name | `test_BC_2_06_007_sessions_enter_transitions_to_fullscreen` |
@@ -175,3 +175,10 @@ S-TBD — Implement Sessions Panel fullscreen view with session detail (token hi
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` (active pointer was stale by 3 minor versions).
+- No substantive BC body prose propagation required: §Sessions Panel Fullscreen paragraph and §Rendering Architecture draw_fullscreen() specification are unchanged across v1.5.0→v1.8.2. The AppMode::Overlay shape change (v1.8.0) and daemon-status rendering change (v1.8.2) do not affect this BC's scope (fullscreen entry/exit/rendering).
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-29T00:00:00Z > v1.0.3. PASS.

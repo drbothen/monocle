@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -145,7 +145,7 @@ monocle only needs to locate the binary.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the CCR detection algorithm that is the named CCR detection component of CAP-007 |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §CCR Detection |
 | Architecture Module | monocle-config (detect_ccr function) per ARCH-INDEX Subsystem Registry SS-07; monocle-tui (status bar rendering of CCR detection result) |
-| Architecture Source | SS-config.md v1.1.0 §CCR Detection (BC-2.07.006) |
+| Architecture Source | SS-config.md v1.3.0 §CCR Detection (BC-2.07.006) |
 | Cross-Ref | BC-2.07.002 (ccr_path field in config schema); BC-2.07.003 (config load path that provides config to detect_ccr); product-brief.md §D-010 (CCR as integrate-external dependency: detect on PATH, no CCR API changes) |
 | Brief Features | F-55 (ccr_path field in config; detection surfaced in TUI status bar) |
 | Test File | `monocle-config/tests/ccr_detection.rs` |
@@ -182,6 +182,13 @@ VP-TBD — CCR detection integration tests (filled after VP creation)
 - Brief feature traced: F-55.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
 
+
+## §Trace v1.0.2
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-config.md v1.1.0` → `SS-config.md v1.3.0` (active pointer was stale by 2 minor versions).
+- No substantive BC body prose propagation required: §CCR Detection algorithm (two-step: config path → PATH fallback) is unchanged in v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.0.2 timestamp 2026-05-29T00:00:00Z > v1.0.1. PASS.
 
 ## §Trace v1.0.1
 

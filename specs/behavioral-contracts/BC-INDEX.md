@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.27"
+version: "1.28"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-29T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -928,3 +928,30 @@ BC-2.06.016 v1.0.7 → v1.0.8 (PO Option B decision — commit 4563bfa):
 BC-INDEX titles unchanged: BC-2.06.016 H1 "Permission Overlay: Cleared on Daemon Disconnect" is stable. No BC retirements or removals.
 
 SE-16d monotonicity PASS: 2026-05-28T00:00:00Z >= 2026-05-28T14:00:00Z (v1.26). PASS (same-day).
+
+## §Trace v1.28
+
+**F-S025-ADV23-MED-001 Category 8 sweep — Architecture Source pin refresh: 10 BCs across ss-06 + ss-07** (2026-05-29T00:00:00Z):
+
+Pass 23 MED-001 closure + comprehensive sibling-BC sweep (orchestrator process-gap absorption). All 10 known stale Category A active Architecture Source pointers refreshed to current canonical versions.
+
+ss-06 (3 BCs; SS-tui.md v1.5.0/v1.6.0 → v1.8.2):
+- BC-2.06.004 v1.2.0 → v1.2.1: Architecture Source SS-tui.md v1.5.0 → v1.8.2. No body prose propagation needed (AppMode shape change already in v1.2.0).
+- BC-2.06.005 v1.0.5 → v1.0.6: Architecture Source SS-tui.md v1.6.0 → v1.8.2 (Traceability + PC-2 inline citation). §Trace v1.0.4 prose corrected: "sixth column is Status" → accurate 7-column description (Status is fourth; the §Trace v1.0.4 historical prose was written against the 6-column layout and was internally inconsistent with the v1.0.5 body).
+- BC-2.06.007 v1.0.3 → v1.0.4: Architecture Source SS-tui.md v1.5.0 → v1.8.2. No body prose propagation needed (fullscreen content semantics unchanged across v1.5.0→v1.8.2).
+
+ss-07 (7 BCs; SS-config.md v1.1.0 → v1.3.0):
+- BC-2.07.001 v1.1.0 → v1.1.1: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (§Atomic Write Contract unchanged in v1.2.0–v1.3.0).
+- BC-2.07.002 v1.0.2 → v1.0.3: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (§Config Schema v1 struct unchanged; v1.2.0 serde-default fix already in EC-080 of this BC).
+- BC-2.07.003 v1.0.1 → v1.0.2: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (BC body already correctly specifies both ConfigError variants that SS-config.md v1.3.0 clarified).
+- BC-2.07.004 v1.0.1 → v1.0.2: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (§Profile Picker Logic unchanged in v1.2.0–v1.3.0).
+- BC-2.07.005 v1.3.0 → v1.3.1: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (§Ctrl-P Override unchanged).
+- BC-2.07.006 v1.0.1 → v1.0.2: Architecture Source SS-config.md v1.1.0 → v1.3.0. No body propagation (§CCR Detection algorithm unchanged).
+
+BC-INDEX H1 titles: unchanged for all 10 BCs. No BC retirements or removals.
+
+Sweep-wider results: Exhaustive grep identified 26 additional stale Category A sites in ss-03 (4 BCs citing SS-engine-module v1.1.20 → need v1.1.26), ss-04 (12 BCs + 1 ss-05 overlap citing SS-daemon-wiring v1.2.0 → need v1.3.0), ss-05 (8 BCs citing SS-ipc v1.4.0/v1.7.0 → need v1.9.0; 1 BC citing SS-deps-pin-manifest v1.1.17 → need v1.2.0), and ss-dtu (1 BC citing SS-conventions-anti-patterns v1.29.5 → need v1.31.1). These exceed the 15-additional-site threshold per orchestrator stop-rule. Fix of these 26 additional sites is deferred and surfaces as scope expansion (ADV23-SCOPE-001) for orchestrator authorization before next burst.
+
+[process-gap] CODIFY-001 Category 8 (ADV23-PROC-001): Architecture Source pins in BC files must be swept against canonical doc frontmatter versions whenever an architecture doc is bumped. This is a distinct codification from ADV22-PROC-001 (bare-filename discipline) and D-198.2 (worktree code). Candidate for CI enforcement rule: parse "Architecture Source | SS-*.md vX.Y.Z" cells in BC bodies and fail if cited version < canonical frontmatter version.
+
+SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > 2026-05-28T00:00:00Z (v1.27). ARITHMETICALLY TRUE: PASS.
