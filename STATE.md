@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.32"
+version: "6.33"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T22:00:00Z
+timestamp: 2026-05-28T23:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 11 fix round COMPLETE (4563bfa, 740465d, 983d30a, 1aba802, fd6c81a). Counter 0/3. Pass 12 adversary pending dispatch. S-026 still BLOCKED on S-025 merge."
+current_step: "S-025 Pass 12 CRITICAL — F-S025-ADV12-CRITICAL-001 (status_message dead state; vacuous-mirror class L-W6-S025-002 recurrence). Counter RESET to 0/3. Fix-round pending: test-writer (render-output TDD red gate) then implementer (render_frame fix). F-S025-CI-001 fix landed (07e207b). Pass 13 after fix-round."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 11 fix round complete; Pass 12 awaiting)."
-awaiting: "S-025 convergence (counter 0/3; need 3 consecutive NITPICK_ONLY). After S-025 merges: S-026 (13pts) dispatch."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 12 CRITICAL — fix-round in progress; counter reset 0/3). D-188: Pass 12 outcome + F-S025-CI-001 fix."
+awaiting: "S-025 fix-round: test-writer render-output TDD red gate + implementer render_frame fix → Pass 13. After S-025 convergence: S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -240,11 +240,12 @@ durable_task_register:
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — S-025 PASS 11 COMPLETE / PASS 12 PENDING (STATE v6.32):
+  COLD-START RESUME GUIDE — S-025 PASS 12 CRITICAL / FIX-ROUND PENDING (STATE v6.33):
 
   SESSION CONTEXT:
     monocle Wave 6: S-022 (D-184) + S-023 (D-186) merged. S-025 in flight —
-    11 adversarial passes deep, counter 0/3. S-026 blocked on S-025 merge.
+    12 adversarial passes deep, counter 0/3 (RESET after Pass 12 CRITICAL).
+    S-026 blocked on S-025 merge.
     Read CLAUDE.md at the repo root for project principles before dispatching any agent.
     The production-grade-default principle in CLAUDE.md overrides all agent prompt defaults.
 
@@ -252,30 +253,46 @@ next_session_resume_protocol: |
     develop @ 7a52041 (S-023 merge, PR #29, 2026-05-28T19:31:07Z).
     26/33 stories done (156/195 pts, 80%). 852+ tests. clippy clean. fmt clean.
     S-025 PR #28 draft. Local worktree at .worktrees/S-025/.
-    S-025 HEAD: 1aba802 (test-writer assertion sweep) or later —
+    S-025 HEAD: 07e207b (F-S025-CI-001 fix — stale workspace_structure test) or later —
       verify: gh pr view 28 --json statusCheckRollup,headRefOid
 
-  PASS 11 FIX ROUND (ALL COMPLETE — 5 commits):
-    4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8 (production bracketed style wins;
-              rationale at .factory/cycles/cycle-001/S-025/text-style-adjudication.md)
-    740465d — Architect: SS-tui v1.8.1→v1.8.2 (line 668 prose→bracketed propagated;
-              input-hash 958ae3b→31b6e71)
-    983d30a — Implementer: 6 pub const extractions (DAEMON_DISCONNECT_STATUS,
-              DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP,
-              UPTIME_OVERFLOW_CAP) + format_drop_counter(n) helper; LOW-001 redundant
-              cost<0.0 guard removed
-    1aba802 — Test-writer: 5 literal→const/helper substitutions in startup_connect.rs
-    fd6c81a — Story-writer: S-026 v1.6→v1.7 (BC-2.06.016 v1.0.8 pin); BC-INDEX
-              v1.26→v1.27; STORY-INDEX v5.8→v5.9; dependency-graph v1.7→v1.8
+  PASS 12 OUTCOME (CRITICAL — FIX-ROUND REQUIRED):
+    F-S025-ADV12-CRITICAL-001: App.status_message is write-only state.
+      render_frame (app.rs:922-933) constructs status_line only from drop_counter.
+      ZERO production reads of status_message — only test reads.
+      Violated: AC-003, BC-2.06.016 PC-4, BC-2.06.004 PC-2.
+      Counter RESET to 0/3.
+    F-S025-CI-001 fix: 07e207b — stale Phase 1 workspace_structure test dropped tui clause.
 
-  ARTIFACT VERSIONS (post-Pass-11 fix round):
+  FIX-ROUND REQUIRED (dispatch before Pass 13):
+    STEP 1 — test-writer (TDD red gate FIRST):
+      Write render-output tests using TestBackend in startup_connect.rs:
+        - render after on_transport_event(Disconnected) → assert buffer contains DAEMON_DISCONNECT_STATUS
+        - render after DAEMON_OFFLINE_STATUS arm → assert buffer contains DAEMON_OFFLINE_STATUS
+      Tests MUST FAIL before implementer fix (red gate enforcement).
+    STEP 2 — implementer (render_frame fix):
+      Update render_frame in monocle-tui/src/app.rs lines 922-933:
+        let status_line = if let Some(msg) = app.status_message.as_deref() {
+            Line::from(Span::styled(msg, Style::default().fg(Color::Yellow)))
+        } else if app.drop_counter > 0 { ... } else { MONOCLE_STATUS_LABEL };
+      Precedence: status_message wins over drop_counter (BC-2.06.016 PC-4 hard render contract).
+      No architect adjudication required.
+    THEN dispatch Pass 13 adversary.
+
+  PASS 11 FIX ROUND (ALL COMPLETE — 5 commits — pre-Pass-12):
+    4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8 (bracketed style wins)
+    740465d — Architect: SS-tui v1.8.1→v1.8.2 (line 668 bracketed; input-hash 31b6e71)
+    983d30a — Implementer: 6 pub const extractions + format_drop_counter helper
+    1aba802 — Test-writer: 5 literal→const/helper assertion substitutions
+    fd6c81a — Story-writer: S-026 v1.7 BC-2.06.016 v1.0.8 pin; BC-INDEX v1.27; STORY-INDEX v5.9
+
+  ARTIFACT VERSIONS (post-Pass-11 fix round; unchanged by Pass 12 state burst):
     STORY-INDEX v5.9. sprint-state v1.30 (26/33 done, 156/195 pts).
     BC-INDEX v1.27 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
     SS-tui v1.8.2. SS-ipc v1.8.0. SS-conventions v1.31.0. SS-engine-module v1.1.22.
     BC-2.06.016 v1.0.8. S-025 v1.6. S-026 v1.7.
-    NOTE: verify SS-tui pin in S-025 v1.6 frontmatter is v1.8.2 (NOT v1.8.1).
 
-  S-025 ADVERSARIAL PASS TRAJECTORY (11 passes; counter 0/3):
+  S-025 ADVERSARIAL PASS TRAJECTORY (12 passes; counter 0/3):
     Pass 1: BLOCKER — 5 BLOCKERs (render path empty, keyboard dispatch, hardcoded dash,
              EnrichedSession fields, ring_tail dropped, duplicate InitialState)
     Pass 2: BLOCKER — CRITICAL read_framed cancellation-unsafe + BLOCKER HH:MM:SS uptime.
@@ -291,23 +308,16 @@ next_session_resume_protocol: |
     Pass 10: MED — Pass 9 sweep was vacuous-mirror (TestBackend local copy, not production)
               + PC-6 selected-row highlight untested. Counter reset to 0/3.
     Pass 11: HIGH — sibling-extraction gap + BC-2.06.016 PC-4 spec drift on disconnect text.
-             Fix round complete (see commits above). Counter remains 0/3.
+             Fix round complete (5 commits). Counter remains 0/3.
+    Pass 12: CRITICAL — status_message dead state; same class as Pass 10 vacuous-mirror;
+             render_frame never reads status_message. Counter reset to 0/3.
 
-  NEXT ACTION — DISPATCH S-025 PASS 12 ADVERSARY:
-    Use Agent tool, subagent_type: vsdd-factory:adversary.
-    Background dispatch. Prompt must include:
-      - Counter 0/3; need 3 consecutive NITPICK_ONLY for convergence
-      - Pass 11 fix-round commits to verify: 4563bfa, 740465d, 983d30a, 1aba802, fd6c81a
-      - Full Pass 1-11 trajectory (see above)
-      - Maximum-skepticism mode
-      - Premature-clean signal warning: Pass 8 clean→Pass 9 NEW class. Pass 12 must look harder.
-      - Verify all 6 pub const extractions present in production code
-      - Verify S-025 v1.6 frontmatter SS-tui pin is v1.8.2 (NOT v1.8.1)
-      - Verify S-026 v1.7 frontmatter BC-2.06.016 pin is v1.0.8
-      - Run: cargo test/clippy/fmt on the .worktrees/S-025/ worktree
-      - Check PR #28 CI: gh pr view 28 --json statusCheckRollup
-      - If clean: counter → 1/3, dispatch Pass 13 immediately.
-      - If findings: route to fix → retry Pass 12.
+  NEXT ACTION — DISPATCH FIX-ROUND (test-writer + implementer), THEN PASS 13:
+    1. test-writer: red-gate render-output tests (DAEMON_DISCONNECT_STATUS + DAEMON_OFFLINE_STATUS)
+    2. implementer: update render_frame to consume status_message with correct precedence
+    3. Verify tests pass (green gate)
+    4. Dispatch Pass 13 adversary (counter 0/3; need 3 consecutive NITPICK_ONLY)
+    5. Pass 13 prompt: apply L-W6-S025-002 rigorously to ALL state fields consumed by render paths.
 
   AFTER S-025 CONVERGENCE (3/3 NITPICK_ONLY):
     1. Rebase S-025 onto develop @ 7a52041 (S-023 changes).
@@ -316,21 +326,23 @@ next_session_resume_protocol: |
        monocle_ipc::reconnect::reconnect_with_backoff imports (instructions inline).
     3. Dispatch demo-recorder for 10 ACs (per-AC evidence).
     4. Dispatch pr-manager for 9-step PR lifecycle (PR #28 draft → review → merge).
-    5. Dispatch state-manager for D-187 closure + STATE.md v6.33.
+    5. Dispatch state-manager for D-187 closure + STATE.md version bump.
     6. S-026 (13 pts, EPIC-06) unblocked — dispatch immediately.
 
-  CRITICAL FILES FOR PASS 12 ADVERSARY (read in order):
+  CRITICAL FILES FOR PASS 13 ADVERSARY (read in order):
     1. .factory/STATE.md (this file — pass trajectory + fix history)
-    2. .factory/cycles/cycle-001/S-025/architect-decisions-pass-1.md
-    3. .factory/cycles/cycle-001/S-025/architect-decisions-pass-2.md
-    4. .factory/cycles/cycle-001/S-025/text-style-adjudication.md (PO Option B)
-    5. .factory/cycles/cycle-001/S-025/red-gate-log.md
-    6. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6; verify SS-tui pin v1.8.2)
-    7. CLAUDE.md (project principles — production-grade default)
+    2. .factory/cycles/cycle-001/S-025/adversarial-pass-12.md (Pass 12 report)
+    3. .factory/cycles/cycle-001/S-025/architect-decisions-pass-1.md
+    4. .factory/cycles/cycle-001/S-025/architect-decisions-pass-2.md
+    5. .factory/cycles/cycle-001/S-025/text-style-adjudication.md (PO Option B)
+    6. .factory/cycles/cycle-001/S-025/red-gate-log.md
+    7. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6)
+    8. CLAUDE.md (project principles — production-grade default)
 
   NON-BLOCKING FOLLOW-UPS (do NOT fix unless explicitly tasked):
     See durable_task_register in this file for full list.
     S-025-specific: S-025-TODO-S023-MERGE, S-025-MAKE-MODAL-DEAD-CODE.
+    Pass 12 new (non-blocking): F-S025-ADV12-LOW-002 (BC-2.06.016 §Trace stale note).
     S-022/S-023 carry-overs: ADV-W5GATE-HIGH-001, ADV-W5GATE-HIGH-002,
     ADV-W5GATE-MED-001, ADV-W5GATE-MED-003, ADV-W4GATE-MED-002, HS-EXP-009-hint.
     Process: PROC-SEMGREP-DECOUPLE, PROC-GATE-SKIPPED-LOUD, PROC-COMPUTE-INPUT-HASH-YAML,
@@ -341,6 +353,7 @@ next_session_resume_protocol: |
       story frontmatter + story body language + input-hashes — all five.
     L-W6-S025-002: Sweep-audit must trace assertion to EXACT production code path.
       Substring on TestBackend-local buffer is NOT production-rendered.
+      state-mutation test (app.status_message.as_deref() == Some(...)) is NOT render-test.
     L-W6-S025-003: pub const extraction eliminates vacuous-mirror class structurally.
       Re-export from lib.rs for external test crates.
     L-W6-S025-004: Premature-clean signal at counter-advance moments is confirmed.
@@ -374,7 +387,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 11 → counter 0/3 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 11 fix round complete (counter 0/3). S-026 blocked on S-025. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 12 CRITICAL → fix-round pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 12 CRITICAL (status_message dead state; counter reset 0/3). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C (Pass 12). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -411,6 +424,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-184 | S-022 DELIVERED — PR #27 @ c7540539. BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (convergence at Pass 15). 8 implementer rounds + 2 architect interventions. BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Option B). SS-ipc v1.8.0 (at-least-once delivery per Option D). 22 integration tests. New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord. | 2026-05-28 | orchestrator |
 | D-185 | Wave 6 parallel S-023 + S-025 AUTHORIZED. Human approval "Yes — parallel S-023 + S-025" (2026-05-28). Both dependencies satisfied; different crates (monocle-ipc reconnect logic vs new monocle-tui binary); independent. After both merge → S-026. | 2026-05-28 | orchestrator |
 | D-186 | S-023 DELIVERED — PR #29 @ 7a52041 (2026-05-28T19:31:07Z). BC-2.05.006 (reconnect backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 overlay clear on disconnect) satisfied. 15 ACs. 5 adversarial passes (3 consecutive NITPICK_ONLY convergence). 99 tests in monocle-ipc. 9/9 CI gates pass. F-ADV6-HIGH-001 production-grade. ADV-W4GATE-MED-001 + F-S022-ADV15-LOW-001 closed in-cycle. | 2026-05-28 | orchestrator |
+| D-188 | S-025 Pass 12 CRITICAL — F-S025-ADV12-CRITICAL-001: App.status_message is write-only state; render_frame never consumes it; disconnect/offline status text never reaches rendered buffer. Same vacuous-mirror class (L-W6-S025-002) as Pass 10, different field. Counter RESET to 0/3. F-S025-CI-001 fix also landed (07e207b — stale Phase 1 workspace_structure test, dropped tui clause). Next: test-writer TDD red gate + implementer render_frame fix → Pass 13. | 2026-05-28 | state-manager |
 
 ## Key Tech Stack
 
@@ -431,63 +445,34 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.32 (D-187 PENDING CHECKPOINT — S-025 Pass 11 fixes complete; Pass 12 awaiting)
+## §Trace v6.33 (D-188 — S-025 Pass 12 CRITICAL; counter reset; F-S025-CI-001 fix)
 
-**S-025 PASS 11 FIX ROUND COMPLETE** (2026-05-28): 11 adversarial passes; counter 0/3.
+**S-025 PASS 12 RESULT: CRITICAL** (2026-05-28): 12 adversarial passes; counter RESET to 0/3.
 
-Pass 11 finding class: sibling-extraction gap + BC-2.06.016 PC-4 spec-impl drift on disconnect status text (production uses bracketed style; BC prose did not).
+Pass 12 finding class: `App.status_message` is write-only state — `render_frame` never reads it. Disconnect/offline status text is unrenderable. Same vacuous-mirror class (L-W6-S025-002) as Pass 10, different field. Per spec: AC-003, BC-2.06.016 PC-4, BC-2.06.004 PC-2 all require rendered status bar text on disconnect. User sees "monocle" (DarkGray) regardless of connection state with zero drops.
 
-**Pass 11 fix-round commits (all landed in S-025 worktree):**
-- 4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8. Bracketed style wins per cross-doc consistency with [daemon: offline] and [dropped: N] patterns. Architect-decision record: `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
-- 740465d — Architect: SS-tui v1.8.1→v1.8.2. Line 668 prose→bracketed propagated. Input-hash 958ae3b→31b6e71.
-- 983d30a — Implementer: 6 pub const extractions (DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP, UPTIME_OVERFLOW_CAP) + format_drop_counter(n) helper. LOW-001 redundant cost<0.0 guard removed (subset of is_sign_negative()).
-- 1aba802 — Test-writer: 5 literal→const/helper assertion substitutions in startup_connect.rs.
-- fd6c81a — Story-writer: S-026 v1.6→v1.7 (BC-2.06.016 v1.0.8 pin); BC-INDEX v1.26→v1.27; STORY-INDEX v5.8→v5.9; dependency-graph v1.7→v1.8.
+**F-S025-CI-001 fix landed (07e207b):** Stale Phase 1 workspace_structure test had a hard-coded member list; dropped `monocle-tui` clause causing CI failure. Test-writer fix at 07e207b. Verified by Pass 12 adversary.
 
-**Durable task register additions:** S-025-TODO-S023-MERGE, S-025-MAKE-MODAL-DEAD-CODE. PROC-COMPUTE-INPUT-HASH-YAML detail updated (recurring class).
-**Artifact versions updated:** BC-INDEX v1.26→v1.27, STORY-INDEX v5.8→v5.9, SS-tui v1.8.1→v1.8.2, BC-2.06.016 v1.0.7→v1.0.8, S-026 v1.6→v1.7.
-**7 new lessons codified:** L-W6-S025-001 through L-W6-S025-007 in cycles/cycle-001/lessons.md.
-**next_session_resume_protocol rewritten end-to-end** for S-025 Pass 12 zero-context restart.
-STATE v6.31 → v6.32.
+**Pass 12 findings:**
+- F-S025-ADV12-CRITICAL-001: status_message dead state — render_frame ignores field (CRITICAL, routes to test-writer + implementer)
+- F-S025-ADV12-MED-001: commit ID verification limitation in read-only profile (MED, state-manager informational)
+- F-S025-ADV12-LOW-001: story frontmatter pins BCs not SS-XX (LOW, story-writer adjudication)
+- F-S025-ADV12-LOW-002: BC-2.06.016 §Trace stale "Follow-up required" note (LOW, product-owner polish)
 
-## §Trace v6.31 (D-186 — S-023 DELIVERED, Wave 6 2/4 done)
+**Counter: RESET to 0/3** — CRITICAL finding triggers at-or-above-HIGH reset rule.
 
-**S-023 DELIVERED** (2026-05-28): PR #29 squash-merged at develop @ 7a52041 (2026-05-28T19:31:07Z). D-186.
-- BC-2.05.006 (reconnect backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 overlay clear on disconnect) fully satisfied. 15 ACs. 5 adversarial passes (Pass 1-2 HIGH-PRIORITY: 3 HIGH + 4 MED + 3 LOW each; Passes 3-5 NITPICK_ONLY; 3/3 CONVERGED). 99 tests in monocle-ipc. 9/9 CI gates pass.
-- F-ADV6-HIGH-001 (S-022 carry-over: slow-disconnect signal channel) closed in-scope via commit 9bddd7b. Production-grade per Pass 5 adversary.
-- ADV-W4GATE-MED-001 (PATH isolation in detect_ccr) closed: temp_env::with_vars in commit 295dc1b (orchestrator-authorized scope expansion).
-- F-S022-ADV15-LOW-001 (ring_tail type doc drift) closed: story v1.2→v1.3 in commit 545b634.
-- IMPL-EnrichedSession-fields: closed (pending S-025 merge) via commit 9b84ef3 in S-025 branch.
-- 5 process discoveries logged; 4 new durable task entries (PROC-SEMGREP-DECOUPLE, PROC-GATE-SKIPPED-LOUD, PROC-COMPUTE-INPUT-HASH-YAML, PROC-BRANCH-PROTECTION-CONTEXTS).
-- 5 new lessons codified in cycles/cycle-001/lessons.md.
-- sprint-state v1.29→v1.30: done 25→26, not_started 7→6, points_complete 151→156.
-- STORY-INDEX v5.6→v5.7: S-023 row flipped not_started→done.
-- Frontmatter: version 6.30→6.31, current_step + awaiting updated for S-025 pass 5 in flight.
-STATE v6.30 → v6.31.
+**Next action:** TDD red-gate fix-round: test-writer (render-output tests for disconnect state) → implementer (render_frame consumes status_message) → Pass 13.
 
-## §Trace v6.30 (DURABLE PAUSE CHECKPOINT — S-022 merged, Wave 6 1/4 done, S-023+S-025 parallel authorized)
+**Proposed render_frame fix (implementer scope):** status_message wins over drop_counter per BC-2.06.016 PC-4 hard render contract:
+```rust
+let status_line = if let Some(msg) = app.status_message.as_deref() {
+    Line::from(Span::styled(msg, Style::default().fg(Color::Yellow)))
+} else if app.drop_counter > 0 { ... } else { MONOCLE_STATUS_LABEL };
+```
 
-**DURABLE PAUSE CHECKPOINT** (2026-05-28): Wave 6 1/4 done. S-022 merged at c7540539. Human authorized parallel S-023 + S-025. D-185.
-- next_session_resume_protocol fully rewritten for zero-context fresh-session resume (see above).
-- ADR-0006 (non_exhaustive constructors) + SS-conventions v1.31.0 added this cycle.
-- BC-2.05.002 v1.0.5 Invariant 4 anchored in S-025 v1.3 + S-026 v1.3.
-- S-022 lesson encoded in resume protocol: vacuous-mirror-test pattern, 3-consecutive NITPICK_ONLY threshold, deferral propagation verification.
-- Frontmatter: version 6.29→6.30, awaiting → S-023 + S-025 parallel delivery.
-STATE v6.29 → v6.30.
+**Artifact unchanged this burst** — no spec, story, or BC edits; state tracking only.
+STATE v6.32 → v6.33. Full Pass 12 report: `cycles/cycle-001/S-025/adversarial-pass-12.md`.
 
-## §Trace v6.29 (S-022 DELIVERED — Wave 6 first delivery, D-184)
+§Trace v6.29 through v6.32 archived to `cycles/cycle-001/burst-log.md` (D-188 compaction).
 
-**S-022 DELIVERED** (2026-05-28): PR #27 merged at develop @ c7540539. D-184.
-- BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (3 consecutive NITPICK_ONLY convergence at Pass 15). 8 implementer rounds + 2 architect interventions. 30+ findings closed. 22 production-invoking integration tests across 4 test files.
-- BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Pass 2 Option B). SS-ipc v1.8.0 (at-least-once delivery per Pass 6 Option D). TUI prompt_id idempotency anchored in S-025/S-026.
-- New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord.
-- Unblocks: S-023 (TUI Reconnect), S-025 (TUI Skeleton), S-026 (Permission Overlay Core).
-- F-S022-ADV15-LOW-001: story AC-002 ring_tail doc drift deferred to story-writer post-merge (blocking=false, future anchor: story v1.3). Durable task register entry unchanged.
-- sprint-state v1.28→v1.29: done 24→25, not_started 8→7, points_complete 143→151.
-- STORY-INDEX v5.3→v5.4: S-022 row flipped not_started→done. §Trace v5.4 appended.
-- Frontmatter: version 6.28→6.29, phase remains phase-3-wave-6-IN-PROGRESS, awaiting → S-023 + S-025 parallel delivery.
-STATE v6.28 → v6.29.
-
-§Trace v6.27-v6.28 (S-022 Pass 13 NITPICK_ONLY + S-022 Pass 15 CONVERGED) archived to `cycles/cycle-001/burst-log.md`.
-
-§Trace v6.22 through v6.26 (Wave 4+5 gates, Wave 6 authorization, Wave 5 complete, count correction) archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.22 through v6.28 archived to `cycles/cycle-001/burst-log.md`.

@@ -2339,3 +2339,68 @@ S-023 ran in parallel with S-025 (TUI Skeleton) per D-185 human authorization. B
 | pr-reviewer | Final fresh-eyes diff review | APPROVED |
 | devops-engineer | CI verification (9/9 gates GREEN) | develop @ 7a52041 |
 | state-manager | D-186 state update: STATE.md v6.30→v6.31 + sprint-state v1.30 + STORY-INDEX v5.7 + burst-log + lessons | this commit |
+
+---
+
+## Archived §Trace sections (STATE.md compaction — D-188 burst)
+
+The following §Trace sections were archived from STATE.md to keep it under 500 lines.
+
+### §Trace v6.32 (D-187 PENDING CHECKPOINT — S-025 Pass 11 fixes complete; Pass 12 awaiting)
+
+**S-025 PASS 11 FIX ROUND COMPLETE** (2026-05-28): 11 adversarial passes; counter 0/3.
+
+Pass 11 finding class: sibling-extraction gap + BC-2.06.016 PC-4 spec-impl drift on disconnect status text (production uses bracketed style; BC prose did not).
+
+**Pass 11 fix-round commits (all landed in S-025 worktree):**
+- 4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8. Bracketed style wins per cross-doc consistency with [daemon: offline] and [dropped: N] patterns. Architect-decision record: `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
+- 740465d — Architect: SS-tui v1.8.1→v1.8.2. Line 668 prose→bracketed propagated. Input-hash 958ae3b→31b6e71.
+- 983d30a — Implementer: 6 pub const extractions (DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP, UPTIME_OVERFLOW_CAP) + format_drop_counter(n) helper. LOW-001 redundant cost<0.0 guard removed (subset of is_sign_negative()).
+- 1aba802 — Test-writer: 5 literal→const/helper assertion substitutions in startup_connect.rs.
+- fd6c81a — Story-writer: S-026 v1.6→v1.7 (BC-2.06.016 v1.0.8 pin); BC-INDEX v1.26→v1.27; STORY-INDEX v5.8→v5.9; dependency-graph v1.7→v1.8.
+
+**Durable task register additions:** S-025-TODO-S023-MERGE, S-025-MAKE-MODAL-DEAD-CODE. PROC-COMPUTE-INPUT-HASH-YAML detail updated (recurring class).
+**Artifact versions updated:** BC-INDEX v1.26→v1.27, STORY-INDEX v5.8→v5.9, SS-tui v1.8.1→v1.8.2, BC-2.06.016 v1.0.7→v1.0.8, S-026 v1.6→v1.7.
+**7 new lessons codified:** L-W6-S025-001 through L-W6-S025-007 in cycles/cycle-001/lessons.md.
+**next_session_resume_protocol rewritten end-to-end** for S-025 Pass 12 zero-context restart.
+STATE v6.31 → v6.32.
+
+### §Trace v6.31 (D-186 — S-023 DELIVERED, Wave 6 2/4 done)
+
+**S-023 DELIVERED** (2026-05-28): PR #29 squash-merged at develop @ 7a52041 (2026-05-28T19:31:07Z). D-186.
+- BC-2.05.006 (reconnect backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 overlay clear on disconnect) fully satisfied. 15 ACs. 5 adversarial passes (Pass 1-2 HIGH-PRIORITY: 3 HIGH + 4 MED + 3 LOW each; Passes 3-5 NITPICK_ONLY; 3/3 CONVERGED). 99 tests in monocle-ipc. 9/9 CI gates pass.
+- F-ADV6-HIGH-001 (S-022 carry-over: slow-disconnect signal channel) closed in-scope via commit 9bddd7b. Production-grade per Pass 5 adversary.
+- ADV-W4GATE-MED-001 (PATH isolation in detect_ccr) closed: temp_env::with_vars in commit 295dc1b (orchestrator-authorized scope expansion).
+- F-S022-ADV15-LOW-001 (ring_tail type doc drift) closed: story v1.2→v1.3 in commit 545b634.
+- IMPL-EnrichedSession-fields: closed (pending S-025 merge) via commit 9b84ef3 in S-025 branch.
+- 5 process discoveries logged; 4 new durable task entries (PROC-SEMGREP-DECOUPLE, PROC-GATE-SKIPPED-LOUD, PROC-COMPUTE-INPUT-HASH-YAML, PROC-BRANCH-PROTECTION-CONTEXTS).
+- 5 new lessons codified in cycles/cycle-001/lessons.md.
+- sprint-state v1.29→v1.30: done 25→26, not_started 7→6, points_complete 151→156.
+- STORY-INDEX v5.6→v5.7: S-023 row flipped not_started→done.
+- Frontmatter: version 6.30→6.31, current_step + awaiting updated for S-025 pass 5 in flight.
+STATE v6.30 → v6.31.
+
+### §Trace v6.30 (DURABLE PAUSE CHECKPOINT — S-022 merged, Wave 6 1/4 done, S-023+S-025 parallel authorized)
+
+**DURABLE PAUSE CHECKPOINT** (2026-05-28): Wave 6 1/4 done. S-022 merged at c7540539. Human authorized parallel S-023 + S-025. D-185.
+- next_session_resume_protocol fully rewritten for zero-context fresh-session resume (see above).
+- ADR-0006 (non_exhaustive constructors) + SS-conventions v1.31.0 added this cycle.
+- BC-2.05.002 v1.0.5 Invariant 4 anchored in S-025 v1.3 + S-026 v1.3.
+- S-022 lesson encoded in resume protocol: vacuous-mirror-test pattern, 3-consecutive NITPICK_ONLY threshold, deferral propagation verification.
+- Frontmatter: version 6.29→6.30, awaiting → S-023 + S-025 parallel delivery.
+STATE v6.29 → v6.30.
+
+### §Trace v6.29 (S-022 DELIVERED — Wave 6 first delivery, D-184)
+
+**S-022 DELIVERED** (2026-05-28): PR #27 merged at develop @ c7540539. D-184.
+- BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (3 consecutive NITPICK_ONLY convergence at Pass 15). 8 implementer rounds + 2 architect interventions. 30+ findings closed. 22 production-invoking integration tests across 4 test files.
+- BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Pass 2 Option B). SS-ipc v1.8.0 (at-least-once delivery per Pass 6 Option D). TUI prompt_id idempotency anchored in S-025/S-026.
+- New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord.
+- Unblocks: S-023 (TUI Reconnect), S-025 (TUI Skeleton), S-026 (Permission Overlay Core).
+- F-S022-ADV15-LOW-001: story AC-002 ring_tail doc drift deferred to story-writer post-merge (blocking=false, future anchor: story v1.3).
+- sprint-state v1.28→v1.29: done 24→25, not_started 8→7, points_complete 143→151.
+- STORY-INDEX v5.3→v5.4: S-022 row flipped not_started→done. §Trace v5.4 appended.
+- Frontmatter: version 6.28→6.29, phase remains phase-3-wave-6-IN-PROGRESS.
+STATE v6.28 → v6.29.
+
+§Trace v6.27-v6.28 (S-022 Pass 13 NITPICK_ONLY + S-022 Pass 15 CONVERGED) archived to this burst-log in a prior compaction.
