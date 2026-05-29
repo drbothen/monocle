@@ -16,7 +16,7 @@ name = "monocle-tui"
 path = "src/main.rs"
 
 [dependencies]
-# TUI / terminal rendering — effectful boundary (SS-tui-core.md)
+# TUI / terminal rendering — effectful boundary (SS-tui.md)
 ratatui = { workspace = true }
 crossterm = { workspace = true }
 

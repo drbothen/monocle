@@ -4,7 +4,7 @@
 //! `monocle_tui::app::App` and `monocle_tui::apply_permission_prompt_queued`
 //! without duplicating the `[[bin]]` build unit.
 //!
-//! # Architecture boundary (SS-tui-core.md)
+//! # Architecture boundary (SS-tui.md)
 //!
 //! `monocle-tui` is the effectful boundary: ratatui, crossterm, tokio, and all
 //! terminal I/O live here. `monocle-core` (pure) is a dependency of this crate —
