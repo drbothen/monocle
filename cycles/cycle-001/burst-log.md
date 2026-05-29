@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "be68f60"
+input-hash: "47b85fe"
 traces_to: STATE.md
 ---
 
@@ -2404,3 +2404,43 @@ STATE v6.29 → v6.30.
 STATE v6.28 → v6.29.
 
 §Trace v6.27-v6.28 (S-022 Pass 13 NITPICK_ONLY + S-022 Pass 15 CONVERGED) archived to this burst-log in a prior compaction.
+
+### §Trace v6.42 (D-197 — Pass 18 MED-001 RESET counter 1/3 → 0/3; devops fix-round dispatched in parallel; Path B propagation cascade extends to worktree implementation layer)
+
+**S-025 PASS 18 MED** (2026-05-29, D-197): Fresh-context adversary attacked Angle S (workspace-level invariants) and surfaced Path B propagation cascade tail-gap at the implementation-worktree layer. 17 occurrences across 10 files still pin SS-deps-pin-manifest v1.1.19 as documented source-of-truth. Counter RESETS 1/3 → 0/3. Devops fix-round dispatched in parallel (mechanical text replacement). Pass 19 at post-fix HEAD.
+
+**D-197 outcome:** Pass 18 verified all spec-layer fixes from D-196 (BC-2.03.001 v1.0.6 correct, zero non-§Trace MSRV 1.86 hits in .factory/). Angles O/P/Q/R/T all PASS. Angle S FAIL: F-S025-ADV18-MED-001 surfaces the same Path B propagation defect class (stale version pointer) one architectural layer deeper — at implementation-worktree policy-pointer comments. F-S025-ADV16-CODIFY-001 extended with 6th sweep target. Recurrence pattern confirmed (Pass 8→9, Pass 15→16, Pass 17→18): prior-pass NITPICK_ONLY-CLEAN → next-pass new-class finding via different architectural layer. 6 total resets: Passes 8, 9, 10, 12, 16, 18.
+
+**Phase 3 trajectory shorthand:** 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18).
+
+**Convergence forecast:** 3/3 at Pass 21 if Passes 19+20+21 all clean (3 consecutive from this reset). WARN: L-W6-S025-004 (premature-clean signal) applies. Maximum skepticism at every counter-advance moment.
+
+**Artifact versions bumped this burst (D-197):** STATE v6.41→v6.42. Pass 18 report persisted: `cycles/cycle-001/S-025/adversarial-pass-18.md`. No spec version bumps (devops fix is doc-pointer replacement only; SS-deps-pin-manifest stays at v1.2.0).
+Full Pass 18 report: `cycles/cycle-001/S-025/adversarial-pass-18.md`.
+STATE v6.41 → v6.42.
+
+### §Trace v6.43 (D-197.1 — MED-001 CLOSED at devops 9fcfd49; ADV16-CODIFY-001 6-category enumeration finalized)
+
+**MED-001 CONFIRMATION** (2026-05-29, D-197.1): Devops commit 9fcfd49 on `feature/S-025-tui-skeleton-sessions` lands 18 replacements across 11 files. Pass 18 originally reported 17 occurrences in 10 files — devops wider sweep (which included `src/**/*.rs` beyond the `.toml/.yml` scope of Passes 16+17) surfaced one additional hit: `crates/monocle-runtime/src/types.rs:48` carrying `v1.1.20` (a different stale version, v1.1.20 not v1.1.19). Local cargo build/test/clippy/fmt clean. CI queued at time of push. F-S025-ADV18-MED-001: CLOSED. Counter remains 0/3; Pass 19 adversary pending CI green on 9fcfd49.
+
+**ADV16-CODIFY-001 finalized (at this point):** 6-category version-pointer-sweep target enumeration concrete and captured in durable_task_register. Categories: (1) .factory/ .md, (2) root Cargo.toml + deny.toml, (3) member crate Cargo.toml files, (4) .github/workflows/**.yml, (5) .github/dependabot.yml, (6) src/**/*.rs production code. Pattern codified per S-7.02.
+
+**Artifact versions bumped (D-197.1):** STATE v6.42→v6.43. No spec version bumps (devops fix is doc-pointer replacement only; SS-deps-pin-manifest stays at v1.2.0).
+STATE v6.42 → v6.43.
+
+### §Trace v6.44 (D-198 — Pass 19 MED-001 + orchestrator preemptive comprehensive sweep dispatched; ADV16-CODIFY-001 generalized to all concurrent doc bumps)
+
+**S-025 PASS 19 MED** (2026-05-29, D-198): Fresh-context adversary reviewed HEAD 9fcfd49 as convergence-attempt #3, pass 1. All verifications from Pass 18 closure confirmed clean. Angle U (build-system + tooling layer) surfaces F-S025-ADV19-MED-001: clippy.toml:2 and deny.toml:1 still cite SS-conventions-anti-patterns.md v1.30.2 (canonical: v1.31.0, bumped S-022 cycle for ADR-0006 ratification + §Non-Exhaustive Structs section). Counter HOLDS at 0/3 (already at floor; no reset required).
+
+**Pattern escalation:** Convergence-attempt #3 failed to advance past 0/3, matching the pattern of attempts #1 (Pass 8→9), #2 (Pass 15→16), and the inter-attempt reset at Pass 17→18. Four consecutive convergence attempts have now stalled at the 0/3 floor. The common structural cause: each adversary pass catches one sibling-doc tail-gap from the S-022 cycle concurrent version bumps — the sweep was scoped to only the last finding's doc-name rather than ALL concurrently-bumped docs.
+
+**Orchestrator preemptive comprehensive sweep:** To preempt further per-sibling-doc cycles, orchestrator dispatched devops with a comprehensive sweep of ALL 7 canonical docs simultaneously. SS-engine-module (canonical v1.1.26; 5 sites potentially stale at v1.1.20) and SS-ipc (canonical v1.9.0; 1 site potentially stale at v1.4.0) require active-vs-historical adjudication before replacement. Devops comprehensive sweep commit SHA: PENDING — follow-up burst (D-198.1) records it.
+
+**ADV16-CODIFY-001 GENERALIZED (D-198):** The 6th sweep-category language is broadened from "SS-deps-pin-manifest specifically" to "ANY canonical policy/spec doc concurrently being bumped." This is the structural fix to the per-sibling-doc discovery pattern.
+
+**Phase 3 trajectory shorthand:** 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19).
+
+**Convergence forecast:** Pass 20 is the first pass of attempt #4 (post-comprehensive-sweep HEAD). If Passes 20+21+22 all NITPICK_ONLY-CLEAN: 3/3 achieved. Maximum skepticism given 4× pattern of premature-clean signal (L-W6-S025-004).
+
+**Artifact versions bumped this burst (D-198):** STATE v6.43→v6.44. Pass 19 report persisted: `cycles/cycle-001/S-025/adversarial-pass-19.md`. No spec version bumps (devops comprehensive sweep is doc-pointer replacement only; no SS doc content changes required).
+STATE v6.43 → v6.44.
