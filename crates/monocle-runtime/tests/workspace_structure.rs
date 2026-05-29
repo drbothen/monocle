@@ -148,9 +148,10 @@ fn ac_004_ci_yml_has_lint_toolchain_step() {
 }
 
 // ---------------------------------------------------------------------------
-// AC-005: workspace members = exactly [monocle-core, monocle-runtime, monocle-proto].
-// monocle-auth is NOT a workspace member (per Decision 3).
-// monocle-tui is NOT a Phase 1 workspace member.
+// AC-005: workspace members include [monocle-core, monocle-runtime, monocle-proto]
+// (Phase 1 crates). monocle-auth is NOT a workspace member (Decision 3).
+// monocle-tui is added as an EPIC-06 workspace member by S-025 (Wave 6); its
+// presence is expected and correct from S-025 onward.
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -167,17 +168,15 @@ fn ac_005_workspace_declares_exactly_three_phase1_members() {
 }
 
 #[test]
-fn ac_005_workspace_does_not_declare_monocle_auth_or_tui() {
+fn ac_005_workspace_does_not_declare_monocle_auth() {
     let ws = read_workspace_cargo_toml();
-    // Forbidden Phase 1 members per AC-005 / Decision 3.
+    // monocle-auth must NEVER become a workspace member (Decision 3:
+    // generate_session_token() lives in monocle-runtime::auth, not a new crate).
+    // NOTE: monocle-tui is a valid EPIC-06 workspace member (added by S-025); it
+    // is intentionally NOT asserted absent here. See F-S025-CI-001.
     assert!(
         !ws.contains("\"monocle-auth\"") && !ws.contains("crates/monocle-auth"),
         "monocle-auth must NOT be a workspace member (Decision 3); got:\n{}",
-        ws
-    );
-    assert!(
-        !ws.contains("\"monocle-tui\"") && !ws.contains("crates/monocle-tui"),
-        "monocle-tui must NOT be a Phase 1 workspace member; got:\n{}",
         ws
     );
 }
