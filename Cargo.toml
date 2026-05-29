@@ -22,9 +22,9 @@ authors = ["monocle contributors"]
 
 # Workspace-level dependency declarations per Cargo 2021+ pattern.
 # Member crates inherit via `{ workspace = true }`.
-# Pin policy source of truth: .factory/specs/architecture/SS-deps-pin-manifest.md v1.1.19
+# Pin policy source of truth: .factory/specs/architecture/SS-deps-pin-manifest.md v1.2.0
 [workspace.dependencies]
-# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.1.19 §Patch-Pinning Policy) ---
+# --- EXACT-pinned security-sensitive crates (9 total per SS-deps-pin-manifest v1.2.0 §Patch-Pinning Policy) ---
 tokio = { version = "=1.52.0", features = ["full"] }
 axum = "=0.8.9"
 serde_json = "=1.0.149"
@@ -46,7 +46,7 @@ ratatui = { version = "0.30", default-features = false, features = ["crossterm",
 crossterm = "0.29"
 
 # --- Caret-pinned direct workspace deps ---
-bytes = "1.11" # Direct pin overrides prost-transitive RUSTSEC-2026-0007; floor = 1.11 per SS-deps-pin-manifest v1.1.19 Option B (fix-from = 1.11.1)
+bytes = "1.11" # Direct pin overrides prost-transitive RUSTSEC-2026-0007; floor = 1.11 per SS-deps-pin-manifest v1.2.0 Option B (fix-from = 1.11.1)
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
 thiserror = "2"
@@ -76,7 +76,7 @@ prost-build = "=0.14.1"
 # monocle-runtime/Cargo.toml [dev-dependencies] only; it is a test-only crate for that
 # crate alone. Workspace-level declaration would make it available to all member crates,
 # violating the least-privilege principle for dev dependencies.
-# See SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies.
+# See SS-deps-pin-manifest.md v1.2.0 §Dev Dependencies.
 syn = { version = "2", features = ["full"] }
 # quote: required by monocle-core AST audit tests (VP-019); proc-macro token-stream
 # construction for syn 2 round-trip assertions in engine_module_surface.rs.

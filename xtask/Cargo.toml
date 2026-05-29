@@ -34,7 +34,7 @@ serde_json = { workspace = true }
 # approach per S-DTU-001 task spec (library calls preferred; avoids todo!() binary).
 monocle-test-harness = { path = "../crates/monocle-test-harness" }
 # tokio: async runtime needed to drive build_router + mock daemon helpers.
-# EXACT pin per SS-deps-pin-manifest.md v1.1.19 §Patch-Pinning Policy.
+# EXACT pin per SS-deps-pin-manifest.md v1.2.0 §Patch-Pinning Policy.
 tokio = { workspace = true }
 # axum + http-body-util + tower: required to drive in-process oneshot requests.
 axum = { workspace = true }
