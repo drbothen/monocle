@@ -920,7 +920,27 @@ pub fn render_frame(
     };
 
     // Build the status line (shared between Dashboard and Fullscreen).
-    let status_line = if app.drop_counter > 0 {
+    //
+    // Precedence rationale (BC-2.06.016 PC-4 / BC-2.06.004 PC-2):
+    //
+    // 1. status_message (highest priority): When the daemon is disconnected or
+    //    offline, the spec unconditionally requires the status bar to render the
+    //    message text until the condition clears.  This takes precedence over the
+    //    drop_counter because the drop_counter is stable while disconnected (no
+    //    new events arrive) and becomes visible again once status_message is
+    //    cleared on successful reconnect.
+    //
+    //    Color: Yellow — matches the existing drop_counter warning color.  Not
+    //    Red (disconnect is recoverable; Red over-signals terminal severity).
+    //    Not DarkGray (reserved for the "running normally" baseline indicator).
+    //
+    // 2. drop_counter > 0: Operational warning — some events were dropped due to
+    //    backpressure.  Yellow matches the existing convention from AC-007.
+    //
+    // 3. Default: "monocle" label in dark-gray — the running-normally baseline.
+    let status_line = if let Some(msg) = app.status_message.as_deref() {
+        Line::from(Span::styled(msg, Style::default().fg(Color::Yellow)))
+    } else if app.drop_counter > 0 {
         Line::from(vec![Span::styled(
             format_drop_counter(app.drop_counter),
             Style::default().fg(Color::Yellow),
