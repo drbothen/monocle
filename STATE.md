@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.31"
+version: "6.32"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T10:00:00Z
+timestamp: 2026-05-28T22:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "Wave 6 in progress. S-022 DONE (D-184). S-023 DONE (D-186, PR #29 @ 7a52041). S-025 adversarial pass 5 in flight (Pass 4 found 2 BLOCKERs; novelty-spike pattern). S-026 still BLOCKED on S-025 merge."
+current_step: "S-025 Pass 11 fix round COMPLETE (4563bfa, 740465d, 983d30a, 1aba802, fd6c81a). Counter 0/3. Pass 12 adversary pending dispatch. S-026 still BLOCKED on S-025 merge."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186)."
-awaiting: "S-025 (8pts) convergence + merge. After S-025 merges: S-026 (13pts) dispatch."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 11 fix round complete; Pass 12 awaiting)."
+awaiting: "S-025 convergence (counter 0/3; need 3 consecutive NITPICK_ONLY). After S-025 merges: S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -198,7 +198,17 @@ durable_task_register:
     - id: "PROC-COMPUTE-INPUT-HASH-YAML"
       subject: "bin/compute-input-hash does NOT handle YAML-object-style inputs (path/version pairs)"
       status: pending
-      detail: "compute-input-hash parser treats YAML-object inputs as plain string values rather than structured path/version pairs. Discovered during S-023 cycle; fixed manually. Tooling gap remains — route to devops-engineer or dx-engineer for proper parser fix. Target: maintenance."
+      detail: "compute-input-hash parser treats YAML-object inputs as plain string values rather than structured path/version pairs. Discovered during S-023 cycle; fixed manually. Tooling gap remains — route to devops-engineer or dx-engineer for proper parser fix. Recurring class — occurred again during S-025 cycle. Target: Wave 7+ maintenance."
+      blocking: false
+    - id: "S-025-TODO-S023-MERGE"
+      subject: "Replace 2 TODO(S-023-merge) markers after S-025 rebase onto develop"
+      status: pending
+      detail: "app.rs has TODO(S-023-merge) at lines 586-615 and 630. After S-025 is rebased onto develop (which includes S-023), replace with real monocle_ipc::events::TransportEvent + monocle_ipc::reconnect::reconnect_with_backoff imports. Instructions inline in the TODO blocks. Mechanical substitution — implementer task post-rebase."
+      blocking: false
+    - id: "S-025-MAKE-MODAL-DEAD-CODE"
+      subject: "Dead make_modal test helpers — defer to S-026 dispatch"
+      status: pending
+      detail: "Pass 8 LOW finding: make_modal test helpers in monocle-tui are dead code now that permission overlay is deferred to S-026. Defer cleanup to S-026 dispatch when the overlay is implemented and the helpers become live. Confirmed LOW/non-blocking by Pass 8 adversary."
       blocking: false
     - id: "PROC-BRANCH-PROTECTION-CONTEXTS"
       subject: "Branch protection on develop has empty required-status-check contexts"
@@ -222,83 +232,130 @@ durable_task_register:
     - "Architect-decision binding propagation to spec bodies requires dedicated orchestrator dispatches — the BC sweep can be incomplete if the architecture SOURCE document (SS-tui) is missed"
     - "Pass 4 S-025 adversary found 2 BLOCKERs missed by Passes 1-3; novelty-spike pattern confirms multi-pass convergence rigor and the 3-consecutive-NITPICK_ONLY threshold"
     - "bin/compute-input-hash does NOT handle YAML-object-style inputs (path/version pairs) — fixed manually but tooling gap remains (PROC-COMPUTE-INPUT-HASH-YAML)"
+    - "S-025 adversarial cycle (11 passes): architect-decision propagation requires DEDICATED dispatches sweeping ALL artifacts — BC bodies, SS docs, story frontmatter pins, story body language, input-hashes. Missing any one creates Pass N+M findings (L-W6-S025-001)"
+    - "S-025 Pass 9 sweep was vacuous-mirror: assertion on TestBackend-local canonical_msg, NOT production-rendered path. Sweep-audit must trace assertion to EXACT production code path (L-W6-S025-002)"
+    - "pub const extraction is the production-grade default for canonical strings shared by production + tests — eliminates vacuous-mirror class structurally (L-W6-S025-003)"
+    - "Multi-pass convergence: premature-clean signal at counter-advance moments confirmed (Pass 8 clean → Pass 9 NEW class). 3-consecutive-NITPICK_ONLY rule exists precisely to catch class-sibling regressions (L-W6-S025-004)"
+    - "IEEE 754: -0.0 == 0.0 so cost < 0.0 does not catch negative zero; is_sign_negative() required. NaN check must come FIRST in guard chains (L-W6-S025-005)"
+    - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
+    - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — WAVE 6 IN PROGRESS (S-022+S-023 DONE, S-025 PASS 5 IN FLIGHT):
+  COLD-START RESUME GUIDE — S-025 PASS 11 COMPLETE / PASS 12 PENDING (STATE v6.32):
 
   SESSION CONTEXT:
-    This is a greenfield-with-reference-ingest Rust TUI project (monocle).
-    The orchestrator (vsdd-factory:orchestrator) coordinates all work.
-    Read CLAUDE.md at the repo root for project principles and conventions.
-    The production-grade-default principle in CLAUDE.md overrides all agent
-    prompt defaults; read it before dispatching any specialist agent.
+    monocle Wave 6: S-022 (D-184) + S-023 (D-186) merged. S-025 in flight —
+    11 adversarial passes deep, counter 0/3. S-026 blocked on S-025 merge.
+    Read CLAUDE.md at the repo root for project principles before dispatching any agent.
+    The production-grade-default principle in CLAUDE.md overrides all agent prompt defaults.
 
   PIPELINE STATE:
-    1. Phase 1 (Spec Crystallization): DONE — 113 BCs, 7 subsystems, 5 ADRs, 15-pass adversarial CONVERGED.
-    2. Phase 2 (Story Decomposition): DONE (D-173) — 33 stories, 195 pts, 24 holdout scenarios.
-    3. Phase 3 (TDD Implementation): IN PROGRESS.
-       - Waves 1-4: DONE (19 stories, 101 pts, gates D-164/D-166/D-167/D-175).
-       - Wave 5: GATE PASSED (D-182): 753 tests, develop @ 1ce7838.
-       - Wave 6: 2/4 DONE.
-         S-022 (8 pts) merged PR #27 @ c7540539 (2026-05-28T08:15:32Z). D-184.
-         S-023 (5 pts) merged PR #29 @ 7a52041 (2026-05-28T19:31:07Z). D-186.
-         S-025 adversarial pass 5 in flight (Pass 4 found 2 BLOCKERs).
+    develop @ 7a52041 (S-023 merge, PR #29, 2026-05-28T19:31:07Z).
+    26/33 stories done (156/195 pts, 80%). 852+ tests. clippy clean. fmt clean.
+    S-025 PR #28 draft. Local worktree at .worktrees/S-025/.
+    S-025 HEAD: 1aba802 (test-writer assertion sweep) or later —
+      verify: gh pr view 28 --json statusCheckRollup,headRefOid
 
-  DEVELOP BRANCH STATE:
-    4. develop @ 7a52041 (S-023 merged via PR #29, 2026-05-28T19:31:07Z).
-       Verify with: git log --oneline -3 develop
-    5. 852+ tests total. clippy clean. fmt clean.
-       S-022 added 22 integration tests. S-023 added 99 monocle-ipc tests.
-    6. Workspace crates (8): monocle-core, monocle-runtime, monocle-proto,
-       monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
-       NOTE: HookEventRecord in monocle-ipc::types (architect Option B, S-022).
+  PASS 11 FIX ROUND (ALL COMPLETE — 5 commits):
+    4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8 (production bracketed style wins;
+              rationale at .factory/cycles/cycle-001/S-025/text-style-adjudication.md)
+    740465d — Architect: SS-tui v1.8.1→v1.8.2 (line 668 prose→bracketed propagated;
+              input-hash 958ae3b→31b6e71)
+    983d30a — Implementer: 6 pub const extractions (DAEMON_DISCONNECT_STATUS,
+              DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP,
+              UPTIME_OVERFLOW_CAP) + format_drop_counter(n) helper; LOW-001 redundant
+              cost<0.0 guard removed
+    1aba802 — Test-writer: 5 literal→const/helper substitutions in startup_connect.rs
+    fd6c81a — Story-writer: S-026 v1.6→v1.7 (BC-2.06.016 v1.0.8 pin); BC-INDEX
+              v1.26→v1.27; STORY-INDEX v5.8→v5.9; dependency-graph v1.7→v1.8
 
-  ARTIFACT VERSIONS (verify with grep ^version: in each file):
-    7. STORY-INDEX v5.7. sprint-state v1.30 (26/33 done, 156/195 pts, 80%).
-       BC-INDEX v1.23 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
-       SS-ipc v1.8.0 (at-least-once delivery semantics). SS-tui v1.8.0.
-       SS-daemon-wiring v1.3.0. SS-config v1.3.0. SS-engine-module v1.1.22.
-       SS-conventions v1.31.0 (ADR-0006 non_exhaustive discipline codified).
-       BC-2.05.002 v1.0.5 (Invariant 4 — TUI prompt_id idempotency).
-       ADR-0006: non_exhaustive structs with public constructors.
-       S-025 v1.6, S-026 v1.5: latest story versions post-adversarial sweep.
+  ARTIFACT VERSIONS (post-Pass-11 fix round):
+    STORY-INDEX v5.9. sprint-state v1.30 (26/33 done, 156/195 pts).
+    BC-INDEX v1.27 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
+    SS-tui v1.8.2. SS-ipc v1.8.0. SS-conventions v1.31.0. SS-engine-module v1.1.22.
+    BC-2.06.016 v1.0.8. S-025 v1.6. S-026 v1.7.
+    NOTE: verify SS-tui pin in S-025 v1.6 frontmatter is v1.8.2 (NOT v1.8.1).
 
-  NEXT ACTION — S-025 PASS 5 ADVERSARY IN FLIGHT:
-    8. S-025 pass 5 adversary was dispatched (Pass 4 found 2 BLOCKERs: BC-2.06.005
-         pin stale v1.0.0 → v1.0.5 + AC-005 6-column → 7-column with session_id).
-         If Pass 5 is NITPICK_ONLY: that is 1/3 CLEAN — need 2 more clean passes.
-         If Pass 5 finds findings: fix then continue.
-         After 3 consecutive NITPICK_ONLY: proceed to demo-recorder + pr-manager.
-       Use: /vsdd-factory:deliver-story to resume the S-025 adversarial cycle.
-       AFTER S-025 MERGES:
-         S-026 (13 pts, EPIC-06) — Permission Overlay Core — DISPATCH NOW.
-         Depends on: S-022 (DONE), S-023 (DONE), S-024 (DONE). All satisfied.
-         BCs: BC-2.06.008..009, BC-2.06.011..014, BC-2.06.016, BC-2.06.023/024.
+  S-025 ADVERSARIAL PASS TRAJECTORY (11 passes; counter 0/3):
+    Pass 1: BLOCKER — 5 BLOCKERs (render path empty, keyboard dispatch, hardcoded dash,
+             EnrichedSession fields, ring_tail dropped, duplicate InitialState)
+    Pass 2: BLOCKER — CRITICAL read_framed cancellation-unsafe + BLOCKER HH:MM:SS uptime.
+             Architect Option B: dedicated reader task + mpsc(64).
+    Pass 3: BLOCKER — SS-ipc not bumped; BC-2.06.004 PC-2 stale Overlay shape.
+    Pass 4: BLOCKER — SS-tui §Sessions Panel 6 vs 7 columns + BC-2.06.005 column drift.
+    Pass 5: BLOCKER — SS-tui column table missed in Pass 4 + BC-2.06.005 PC-2 drift +
+             S-024 stale shape + SS-tui input-hash + BC-2.06.014 EC-096 missed.
+    Pass 6: HIGH — test-name-vs-assertion drift (_verbatim_match used truncated substring).
+    Pass 7: MED — Pass 6 class recurrence in _j_key_moves_selection_down + uptime doc.
+    Pass 8: NITPICK_ONLY — 1/3 CLEAN (first clean pass).
+    Pass 9: MED — float edge cases (NaN/inf in format_cost) + AC-003 canonical text untested.
+    Pass 10: MED — Pass 9 sweep was vacuous-mirror (TestBackend local copy, not production)
+              + PC-6 selected-row highlight untested. Counter reset to 0/3.
+    Pass 11: HIGH — sibling-extraction gap + BC-2.06.016 PC-4 spec drift on disconnect text.
+             Fix round complete (see commits above). Counter remains 0/3.
 
-  NON-BLOCKING FOLLOW-UPS (durable task register — do NOT fix unless specifically tasked):
-    9. ADV-W5GATE-HIGH-001: DaemonState wiring integration story (route to story-writer).
-       ADV-W5GATE-HIGH-002: Duplicate S-009 handler cleanup (route to implementer).
-       ADV-W5GATE-MED-001: UDS socket spurious WARN on rebind.
-       ADV-W5GATE-MED-003: HookEvent serde constructors (route to architect + implementer).
-       ADV-W4GATE-MED-002: Dead tracing subscriber in CLI binary.
-       HS-EXP-009-hint: Exit 70 missing stderr remediation hint.
-       PROC-SEMGREP-DECOUPLE: Semgrep CI decouple (devops-engineer, Wave 7+).
-       PROC-GATE-SKIPPED-LOUD: Loud GATE_SKIPPED indicator (devops-engineer, Wave 7+).
-       PROC-COMPUTE-INPUT-HASH-YAML: compute-input-hash YAML-object parser gap.
-       PROC-BRANCH-PROTECTION-CONTEXTS: develop branch protection empty contexts (human admin).
-       See full list in durable_task_register above.
+  NEXT ACTION — DISPATCH S-025 PASS 12 ADVERSARY:
+    Use Agent tool, subagent_type: vsdd-factory:adversary.
+    Background dispatch. Prompt must include:
+      - Counter 0/3; need 3 consecutive NITPICK_ONLY for convergence
+      - Pass 11 fix-round commits to verify: 4563bfa, 740465d, 983d30a, 1aba802, fd6c81a
+      - Full Pass 1-11 trajectory (see above)
+      - Maximum-skepticism mode
+      - Premature-clean signal warning: Pass 8 clean→Pass 9 NEW class. Pass 12 must look harder.
+      - Verify all 6 pub const extractions present in production code
+      - Verify S-025 v1.6 frontmatter SS-tui pin is v1.8.2 (NOT v1.8.1)
+      - Verify S-026 v1.7 frontmatter BC-2.06.016 pin is v1.0.8
+      - Run: cargo test/clippy/fmt on the .worktrees/S-025/ worktree
+      - Check PR #28 CI: gh pr view 28 --json statusCheckRollup
+      - If clean: counter → 1/3, dispatch Pass 13 immediately.
+      - If findings: route to fix → retry Pass 12.
 
-  LESSONS FROM S-023 CYCLE (encode for adversary future passes):
-    10. Architect decisions that bump BCs/SS require dedicated parallel orchestrator
-        dispatches; the implementer is NOT responsible for spec propagation.
-        Multi-pass adversarial convergence with novelty-spike per pass (Pass 4 found
-        2 BLOCKERs missed by Passes 1-3) confirms the 3-consecutive-NITPICK_ONLY rule.
-        See full lessons in cycles/cycle-001/lessons.md (5 new entries added D-186).
+  AFTER S-025 CONVERGENCE (3/3 NITPICK_ONLY):
+    1. Rebase S-025 onto develop @ 7a52041 (S-023 changes).
+    2. Resolve TODO(S-023-merge) markers at app.rs:586-615 and app.rs:630:
+       replace with monocle_ipc::events::TransportEvent +
+       monocle_ipc::reconnect::reconnect_with_backoff imports (instructions inline).
+    3. Dispatch demo-recorder for 10 ACs (per-AC evidence).
+    4. Dispatch pr-manager for 9-step PR lifecycle (PR #28 draft → review → merge).
+    5. Dispatch state-manager for D-187 closure + STATE.md v6.33.
+    6. S-026 (13 pts, EPIC-06) unblocked — dispatch immediately.
+
+  CRITICAL FILES FOR PASS 12 ADVERSARY (read in order):
+    1. .factory/STATE.md (this file — pass trajectory + fix history)
+    2. .factory/cycles/cycle-001/S-025/architect-decisions-pass-1.md
+    3. .factory/cycles/cycle-001/S-025/architect-decisions-pass-2.md
+    4. .factory/cycles/cycle-001/S-025/text-style-adjudication.md (PO Option B)
+    5. .factory/cycles/cycle-001/S-025/red-gate-log.md
+    6. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6; verify SS-tui pin v1.8.2)
+    7. CLAUDE.md (project principles — production-grade default)
+
+  NON-BLOCKING FOLLOW-UPS (do NOT fix unless explicitly tasked):
+    See durable_task_register in this file for full list.
+    S-025-specific: S-025-TODO-S023-MERGE, S-025-MAKE-MODAL-DEAD-CODE.
+    S-022/S-023 carry-overs: ADV-W5GATE-HIGH-001, ADV-W5GATE-HIGH-002,
+    ADV-W5GATE-MED-001, ADV-W5GATE-MED-003, ADV-W4GATE-MED-002, HS-EXP-009-hint.
+    Process: PROC-SEMGREP-DECOUPLE, PROC-GATE-SKIPPED-LOUD, PROC-COMPUTE-INPUT-HASH-YAML,
+    PROC-BRANCH-PROTECTION-CONTEXTS.
+
+  S-025 CYCLE LESSONS (encode for adversary; see lessons.md L-W6-S025-001..007):
+    L-W6-S025-001: Architect-decision propagation sweeps must cover BC bodies + SS docs +
+      story frontmatter + story body language + input-hashes — all five.
+    L-W6-S025-002: Sweep-audit must trace assertion to EXACT production code path.
+      Substring on TestBackend-local buffer is NOT production-rendered.
+    L-W6-S025-003: pub const extraction eliminates vacuous-mirror class structurally.
+      Re-export from lib.rs for external test crates.
+    L-W6-S025-004: Premature-clean signal at counter-advance moments is confirmed.
+      Pass 8 clean → Pass 9 new class. Apply maximum skepticism at every counter-advance.
+    L-W6-S025-005: IEEE 754: is_sign_negative() for negative-zero; NaN check first.
+    L-W6-S025-006: SS docs (architecture sources) are required propagation targets alongside
+      BC bodies. Pass 5 missed SS-tui — same root cause as L-W6-S025-001.
+    L-W6-S025-007: Sweep wider than the finding. Principle 4 (fix in scope) implies
+      catching ALL class siblings, not only the flagged instance.
 
   FACTORY INFRASTRUCTURE:
-    11. .factory/ mounted at factory-artifacts branch (orphan worktree).
-    12. Run factory-worktree-health via devops-engineer FIRST on session start.
-    13. Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
-        NEVER use --no-verify. NEVER add Co-Authored-By: Claude.
+    .factory/ mounted at factory-artifacts branch (orphan worktree @ .factory/).
+    Run factory-worktree-health via devops-engineer FIRST on session start.
+    Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
+    NEVER use --no-verify. NEVER add Co-Authored-By: Claude.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: pending
@@ -317,7 +374,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done (D-186) | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 in flight (Pass 5), S-026 blocked on S-025. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 11 → counter 0/3 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 11 fix round complete (counter 0/3). S-026 blocked on S-025. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -330,7 +387,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 in flight (Pass 5), S-026 blocked on S-025.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 11 fix round complete (counter 0/3; Pass 12 adversary pending). S-026 blocked on S-025.
 
 ## Blocking Issues
 
@@ -360,7 +417,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.23** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.0**. **STORY-INDEX v5.7** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **STORY-INDEX v5.9** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -373,6 +430,25 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
+
+## §Trace v6.32 (D-187 PENDING CHECKPOINT — S-025 Pass 11 fixes complete; Pass 12 awaiting)
+
+**S-025 PASS 11 FIX ROUND COMPLETE** (2026-05-28): 11 adversarial passes; counter 0/3.
+
+Pass 11 finding class: sibling-extraction gap + BC-2.06.016 PC-4 spec-impl drift on disconnect status text (production uses bracketed style; BC prose did not).
+
+**Pass 11 fix-round commits (all landed in S-025 worktree):**
+- 4563bfa — PO Option B: BC-2.06.016 v1.0.7→v1.0.8. Bracketed style wins per cross-doc consistency with [daemon: offline] and [dropped: N] patterns. Architect-decision record: `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
+- 740465d — Architect: SS-tui v1.8.1→v1.8.2. Line 668 prose→bracketed propagated. Input-hash 958ae3b→31b6e71.
+- 983d30a — Implementer: 6 pub const extractions (DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP, UPTIME_OVERFLOW_CAP) + format_drop_counter(n) helper. LOW-001 redundant cost<0.0 guard removed (subset of is_sign_negative()).
+- 1aba802 — Test-writer: 5 literal→const/helper assertion substitutions in startup_connect.rs.
+- fd6c81a — Story-writer: S-026 v1.6→v1.7 (BC-2.06.016 v1.0.8 pin); BC-INDEX v1.26→v1.27; STORY-INDEX v5.8→v5.9; dependency-graph v1.7→v1.8.
+
+**Durable task register additions:** S-025-TODO-S023-MERGE, S-025-MAKE-MODAL-DEAD-CODE. PROC-COMPUTE-INPUT-HASH-YAML detail updated (recurring class).
+**Artifact versions updated:** BC-INDEX v1.26→v1.27, STORY-INDEX v5.8→v5.9, SS-tui v1.8.1→v1.8.2, BC-2.06.016 v1.0.7→v1.0.8, S-026 v1.6→v1.7.
+**7 new lessons codified:** L-W6-S025-001 through L-W6-S025-007 in cycles/cycle-001/lessons.md.
+**next_session_resume_protocol rewritten end-to-end** for S-025 Pass 12 zero-context restart.
+STATE v6.31 → v6.32.
 
 ## §Trace v6.31 (D-186 — S-023 DELIVERED, Wave 6 2/4 done)
 
@@ -412,63 +488,6 @@ STATE v6.29 → v6.30.
 - Frontmatter: version 6.28→6.29, phase remains phase-3-wave-6-IN-PROGRESS, awaiting → S-023 + S-025 parallel delivery.
 STATE v6.28 → v6.29.
 
-## §Trace v6.28 (S-022 CONVERGED — PASS 15, 3 CONSECUTIVE NITPICK_ONLY)
+§Trace v6.27-v6.28 (S-022 Pass 13 NITPICK_ONLY + S-022 Pass 15 CONVERGED) archived to `cycles/cycle-001/burst-log.md`.
 
-**S-022 CONVERGED at Pass 15** (2026-05-28): 15 adversary passes, 3 consecutive NITPICK_ONLY (Passes 13/14/15). converged=TRUE in adversary-convergence-state.json.
-- Pass 15: 0 BLOCKER/HIGH/MED. 1 LOW doc-drift finding (F-S022-ADV15-LOW-001) routed to story-writer post-merge. Does not block convergence.
-- F-S022-ADV15-LOW-001: story AC-002 ring_tail Vec<HookEvent> vs canonical BC-2.05.002 Vec<HookEventRecord>. BC wins per CLAUDE.md precedence. Story v1.2→v1.3 post-merge.
-- Production code enterprise-grade. Tests provide production-invoking coverage of all BC postconditions + edge cases.
-- Next: demo-recorder + pr-manager.
-- Frontmatter: version 6.27 → 6.28, current_step updated.
-STATE v6.27 → v6.28.
-
-## §Trace v6.27 (S-022 PASS 13 — NITPICK_ONLY, 1/3 CLEAN)
-
-**S-022 Adversarial Pass 13 PERSISTED** (2026-05-28): NITPICK_ONLY — 0 findings.
-- Pass 12 F-S022-ADV12-MED-001 RESOLVED (commit 7dacab7): 3 integration tests in hook_defer_race.rs invoke production handler stack.
-- Documented architectural limitation (no async yield between timeout-Err and guard) adjudicated as legitimate acceptance per CLAUDE.md Principle 1.
-- passes_clean_consecutive: 0 → 1. last_classification: MEDIUM_PRESENT → NITPICK_ONLY. Earliest convergence: Pass 15.
-- Frontmatter: version 6.26 → 6.27, current_step updated.
-STATE v6.26 → v6.27.
-
-## §Trace v6.26 (WAVE 6 AUTHORIZED — S-022 IN PROGRESS)
-
-**WAVE 6 AUTHORIZED** (2026-05-27): D-183. Human approval: "Approve as documented."
-- 4 stories, 34 pts: S-022 (8 pts, serial-first), S-023 (5 pts), S-025 (8 pts), S-026 (13 pts).
-- Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026.
-- All dependencies satisfied. phase → phase-3-wave-6-IN-PROGRESS.
-- Frontmatter: version 6.25→6.26, awaiting → S-022 delivery.
-STATE v6.25 → v6.26.
-
-## §Trace v6.25 (WAVE 6 COUNT CORRECTION — DURABILITY HARDENING)
-
-**WAVE 6 COUNT CORRECTED** (2026-05-27): Documentation-only fix. Wave 6 has 4 stories (S-022, S-023, S-025, S-026; 34 pts), not 6 stories (52 pts). S-027 is Wave 7, not Wave 6. Updated: frontmatter `awaiting`, `next_session_resume_protocol` NEXT ACTION block (expanded to concrete per-story dependencies + BCs + execution order), Phase Progress row footer, §Trace v6.24 footer line. No story data changed — correction of a count propagation error introduced at v6.24.
-STATE v6.24 → v6.25.
-
-## §Trace v6.24 (WAVE 5 GATE PASSED — WAVE 6 READY)
-
-**WAVE 5 GATE PASSED** (2026-05-27): D-182. All 6 gates passed.
-- Gate 1 test-suite PASS: 753 tests, 0 failures, 2 pre-existing flaky, clippy clean, fmt clean.
-- Gate 2 DTU SKIP: no DTU modules in Wave 5 (monocle-ipc uses interprocess, not hook DTU).
-- Gate 3 adversarial PASS: 0 CRIT, 0 HIGH blocking. 2 HIGH architectural observations tracked as ADV-W5GATE-HIGH-001 (DaemonState wiring — integration story) + ADV-W5GATE-HIGH-002 (duplicate S-009 handler — cleanup).
-- Gate 4 demo-evidence PASS: 5/5 stories, all ACs verified by integration tests.
-- Gate 5 holdout PASS: mean 0.94, min 0.80. HS-EXP-001 1.0, HS-EXP-002 0.95, HS-EXP-007 1.0, HS-EXP-009 0.80.
-- Gate 6 state-update PASS.
-- develop @ 1ce7838. 24/33 stories done (143/195 pts, 73%). Wave 6 unblocked: S-022, S-023, S-025, S-026 (4 stories, 34 pts).
-- Durable task register: +4 items (ADV-W5GATE-HIGH-001, ADV-W5GATE-HIGH-002, ADV-W5GATE-MED-001, ADV-W5GATE-MED-003).
-- Frontmatter: version 6.23→6.24, phase → phase-3-wave-5-GATE-PASSED, awaiting → Wave 6 authorization.
-STATE v6.23 → v6.24.
-
-## §Trace v6.23 (WAVE 5 COMPLETE — ALL 5 STORIES DONE)
-
-**WAVE 5 COMPLETE** (2026-05-27): D-181. All 5 Wave 5 stories delivered.
-- S-018 (PR #26, 654e281, 46 tests, adv 10→4→4): Hook Endpoint Routing + Bounded Event Bus. BC-2.04.007/008/009/011 satisfied.
-- S-019 (PR #25, 11540fc, 25 tests, adv 7→2→1): Daemon Auto-Start + MONOCLE_NO_AUTOSTART. BC-2.04.002/003 satisfied.
-- S-020 (PR #24, f69d53a, 24 tests, adv 12→8→0): JSONL Ring Capacity and Rotation. BC-2.04.012 satisfied. Fix: 5a3eaf4 (ring.rs merge conflict).
-- S-021 (PR #23, acaacb9, 49 tests, adv 9→4→4): UDS Server + IPC Transport + Core Message Types. BC-2.05.001/003/004/008 satisfied. New monocle-ipc crate.
-- Total Wave 5: 34 pts, ~193 new tests. Cumulative: ~780 tests. 24/33 stories done (143/195 pts).
-- Frontmatter: version 6.22→6.23, phase → phase-3-wave-5-COMPLETE, awaiting → Wave 5 gate.
-- sprint-state v1.27→v1.28 (done 20→24, not_started 12→8, points_complete 109→143). STORY-INDEX v5.1→v5.2.
-STATE v6.22 → v6.23.
-
-§Trace v6.16 through v6.22 (Wave 4 delivery + Wave 5 individual story deliveries) archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.22 through v6.26 (Wave 4+5 gates, Wave 6 authorization, Wave 5 complete, count correction) archived to `cycles/cycle-001/burst-log.md`.

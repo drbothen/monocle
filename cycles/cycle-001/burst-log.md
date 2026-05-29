@@ -2268,6 +2268,36 @@ STATE v6.10 → v6.11. SE-23 PASS: SM touched only STATE.md and cycle files.
 
 ---
 
+## Burst W6-S025-P11 (2026-05-28) — S-025 Pass 11 Fix Round Complete (D-187 PENDING)
+
+**Type:** adversarial fix round — S-025 TUI Skeleton + Sessions Panel, Pass 11 of N
+**Agents dispatched:** product-owner (PO Option B), architect (SS-tui patch), implementer (6 const extractions + helper), test-writer (assertion sweep), story-writer (pin propagation)
+**Files touched:** .factory/specs/behavioral-contracts/BC-2.06.016.md, .factory/specs/architecture/SS-tui.md, monocle-tui/src/ (6 pub const + helper), .worktrees/S-025/monocle-tui/tests/startup_connect.rs, .factory/stories/S-026-permission-overlay-core.md, .factory/specs/behavioral-contracts/BC-INDEX.md, .factory/stories/STORY-INDEX.md, .factory/stories/dependency-graph.md
+**Versions bumped:** BC-2.06.016 v1.0.7→v1.0.8; SS-tui v1.8.1→v1.8.2 (input-hash 958ae3b→31b6e71); BC-INDEX v1.26→v1.27; STORY-INDEX v5.8→v5.9; S-026 v1.6→v1.7; dependency-graph v1.7→v1.8
+**Develop:** 7a52041 (unchanged — S-025 still in PR #28 draft)
+
+### Summary
+
+S-025 Pass 11 (HIGH-PRIORITY) found sibling-extraction gap class + BC-2.06.016 PC-4 spec-impl drift on disconnect status text. Five-commit fix round executed serially.
+
+**Pass 11 finding class 1: BC-2.06.016 PC-4 spec-impl drift.** BC-2.06.016 PC-4 prose specified "Daemon Disconnected" style; production code emits `[daemon: disconnected]` bracketed style. PO Option B decision (commit 4563bfa): production bracketed style wins per cross-doc consistency with `[daemon: offline]` and `[dropped: N]` existing patterns. BC v1.0.7→v1.0.8. Architect-decision record written to `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
+
+**Pass 11 finding class 2: sibling-extraction gap.** Pass 11 flagged 3 pub const extraction targets; implementer sweep found 3 additional class siblings (6 total). 6 pub const extracted: DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL, TOKEN_COUNT_OVERFLOW_CAP, UPTIME_OVERFLOW_CAP. format_drop_counter(n) helper extracted. LOW-001 redundant `cost < 0.0` guard removed (subset of `is_sign_negative()`). Test-writer performed assertion sweep: 5 literal→const/helper substitutions in startup_connect.rs.
+
+**Adversarial pass trajectory (11 passes; counter 0/3):**
+Pass 1: BLOCKER (5) → Pass 2: BLOCKER (1 CRIT + 1 BLOCKER, architect Option B reader task) → Pass 3: BLOCKER (2) → Pass 4: BLOCKER (2, SS-tui 6→7 columns) → Pass 5: BLOCKER (1 + 3 HIGH) → Pass 6: HIGH (test-name drift class) → Pass 7: MED (Pass 6 class sibling) → Pass 8: NITPICK_ONLY (1/3 CLEAN) → Pass 9: MED (NaN/inf + canonical text untested; counter reset 0/3) → Pass 10: MED (vacuous-mirror sweep + PC-6 highlight) → Pass 11: HIGH (sibling-extraction + BC-2.06.016 PC-4 drift).
+
+**Next action:** Dispatch Pass 12 adversary from zero context. Counter 0/3; need 3 consecutive NITPICK_ONLY.
+
+| Agent | Task | Commit |
+|-------|------|--------|
+| product-owner | PO Option B: BC-2.06.016 v1.0.7→v1.0.8 (bracketed style) | 4563bfa |
+| architect | SS-tui v1.8.1→v1.8.2 (line 668 propagated; input-hash updated) | 740465d |
+| implementer | 6 pub const extractions + format_drop_counter helper + LOW-001 removal | 983d30a |
+| test-writer | 5 literal→const/helper substitutions in startup_connect.rs | 1aba802 |
+| story-writer | S-026 v1.6→v1.7 pin; BC-INDEX v1.26→v1.27; STORY-INDEX v5.8→v5.9; dep-graph v1.7→v1.8 | fd6c81a |
+| state-manager | D-187 PENDING checkpoint: STATE.md v6.31→v6.32, burst-log, lessons (7 new L-W6-S025-*) | this commit |
+
 ## Burst W6-S023 (2026-05-28) — Wave 6 S-023 Delivery Cycle (D-186)
 
 **Type:** story delivery burst — Wave 6 parallel (S-023 alongside S-025)

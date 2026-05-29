@@ -1822,3 +1822,89 @@ Until the hook is implemented, the SM closure burst MUST include an explicit SE-
 **Pattern:** S-023 CI first run triggered a cascade failure that surfaced ADV-W4GATE-MED-001 (PATH env mutation in detect_ccr tests, tracked since Wave 4). The implementer surfaced the finding to the orchestrator rather than silently deferring. Orchestrator invoked CLAUDE.md Principle 4 ("AI-built defects are the AI's responsibility to fix") and authorized in-scope scope expansion: commit 295dc1b migrated the detect_ccr tests to temp_env::with_vars. This cleared a Wave-4 durable task register item without requiring a separate fix PR.
 
 **Rule:** When a story's CI run cascades into a pre-existing durable task register item that can be fixed in 1-2 commits, the correct default is orchestrator-authorized in-scope expansion (CLAUDE.md Principle 4). The implementer surfaces the finding + proposed fix; orchestrator authorizes or defers based on scope risk. This is preferable to accumulating fix PRs for mechanical test-isolation fixes. The tech-debt-register must be updated atomically in the same state burst as the fix.
+
+---
+
+## Wave 6 S-025 Cycle Lessons (D-187 PENDING / 2026-05-28)
+
+### L-W6-S025-001: Architect-decision propagation requires dedicated dispatches covering ALL five artifact classes
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** S-025 adversarial passes 1-11 recurring class: architect decisions on BC shapes and SS-* versions not propagated to all downstream artifacts
+
+**Pattern:** When an architect makes a decision that changes a BC or SS-* document, the complete propagation surface is: (1) BC body text, (2) SS-* architecture source documents, (3) story frontmatter pins (inputs: version fields), (4) story body language (AC prose, BC references), (5) input-hashes for affected SS-* documents. Missing any ONE of these five artifact classes creates a finding in a later adversarial pass. Passes 3, 4, 5 in the S-025 cycle each found a distinct class of propagation miss: Pass 3 missed SS-ipc; Pass 4 missed BC-2.06.005 pin in story; Pass 5 missed SS-tui architecture source document. Pass 11 found that BC-2.06.016 PC-4 prose had not been propagated to match the bracketed production style.
+
+**Rule:** When the orchestrator dispatches an architect-decision propagation burst, the dispatch prompt MUST enumerate ALL five classes explicitly with grep targets. A BC-only sweep is incomplete. An SS-only sweep is incomplete. A story-pin-only sweep is incomplete. All five classes must appear in the dispatch checklist.
+
+---
+
+### L-W6-S025-002: Sweep-audit must trace assertion to the EXACT production code path
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** S-025 adversarial passes 9-10: Pass 9 found NaN/inf and canonical text untested; Pass 10 found Pass 9 sweep was vacuous-mirror (assertion on TestBackend local canonical_msg, not production-rendered path)
+
+**Pattern:** A sweep that examines whether a canonical string is tested may conclude "PASS" when the test asserts against a TestBackend-rendered local copy, not against the value produced by the actual production code path. This is the vacuous-mirror-test pattern generalized: the test passes because the test itself produced the expected value in test scope, not because the production path produces it. Pass 9 adversary correctly identified that AC-003 canonical text was untested; Pass 10 adversary correctly identified that the Pass 9 "fix" was itself a vacuous-mirror sweep.
+
+**Rule:** Every sweep that validates "this canonical string is tested" must trace the assertion to the EXACT production function or constant that will be called at runtime. If the test constructs the expected value locally (via a local variable, TestBackend render, or test-scope helper), and that value is not the same object as the production-path value, the test is vacuous. The production-grade assertion is: `assert_eq!(production_function_output, CANONICAL_CONST)` where CANONICAL_CONST is the same const used by production code.
+
+---
+
+### L-W6-S025-003: pub const extraction is the production-grade default for canonical strings shared by production and tests
+
+**Date:** 2026-05-28
+**Severity:** codification
+**Origin:** S-025 Pass 11 fix round: implementer extracted 6 pub const + 1 format_drop_counter(n) helper to eliminate the vacuous-mirror class structurally
+
+**Pattern:** When production code and test code must agree on a canonical string value (status text, label, overflow cap, etc.), the correct pattern is: (1) declare the string as a `pub const` in production code, (2) import the same `pub const` in tests. This eliminates the vacuous-mirror failure mode at the structural level — if the production code changes the string, the test immediately breaks. The pattern also eliminates the sibling-extraction gap finding class: once a const exists for one usage site, all usage sites in the codebase can import it.
+
+**Rule:** Any canonical string that appears in both production code and test assertions MUST be extracted to a `pub const`. Re-export from `lib.rs` so that external test crates and integration test files can import without path gymnastics. Add this as a pre-commit checklist item: "Does any test assert a literal string that also appears in production code? Extract to pub const."
+
+---
+
+### L-W6-S025-004: Multi-pass convergence: premature-clean signal at counter-advance moments is a structural property
+
+**Date:** 2026-05-28
+**Severity:** process codification
+**Origin:** S-025 adversarial pass 8 = 1/3 CLEAN, then Pass 9 found NEW class (NaN/inf + canonical text untested); counter reset to 0/3
+
+**Pattern:** In a multi-pass adversarial convergence cycle, the FIRST clean pass (counter 1/3) is the moment of maximum risk for premature declaration of convergence. The first clean pass confirms only that the finding class from the PREVIOUS passes was closed. It does not confirm that no new class will appear. The S-025 cycle demonstrated: Pass 8 was NITPICK_ONLY (confirmed Passes 1-7 finding classes were closed); Pass 9 immediately found two NEW classes (float edge cases, canonical text coverage). The 3-consecutive-NITPICK_ONLY rule exists precisely to catch this: a single clean pass is insufficient evidence of structural convergence.
+
+**Rule:** At every counter-advance moment (Pass N advancing counter from K to K+1 with K < 3), the adversary dispatch prompt MUST include: "MAXIMUM SKEPTICISM MODE: counter is now K/3. S-022 and S-025 cycle history shows premature-clean signals at counter-advance moments. Look harder, not softer. Rotate to unexplored lens axes." Counter resets to 0/3 immediately on any non-NITPICK_ONLY pass.
+
+---
+
+### L-W6-S025-005: IEEE 754 subtleties for f64-typed BC-format fields
+
+**Date:** 2026-05-28
+**Severity:** codification
+**Origin:** S-025 adversarial pass 9: NaN/inf edge cases in format_cost; Pass 11 LOW-001 removal of redundant cost < 0.0 guard
+
+**Pattern:** f64-typed BC fields require explicit IEEE 754 edge-case handling: (a) NaN: `value.is_nan()` must be checked FIRST in guard chains because NaN comparisons return false for all `<`, `>`, `==`, `<=`, `>=` operators — NaN < 0.0 is false; (b) infinity: `value.is_infinite()` returns true for both positive and negative infinity; (c) negative zero: `-0.0 == 0.0` evaluates to true in Rust, so `cost < 0.0` does NOT catch negative zero — `is_sign_negative()` is the correct check. A guard chain `if cost < 0.0 { cap } else if cost.is_sign_negative() { ... }` is redundant because `is_sign_negative()` subsumes `< 0.0` (negative-finite values are covered by both). The correct minimal guard chain is: `is_nan()` → `is_infinite()` → `is_sign_negative()` in that order.
+
+**Rule:** Any BC that specifies format or display behavior for an f64-typed field MUST enumerate NaN, positive infinity, negative infinity, and negative zero as edge cases in the AC or EC section. The corresponding test MUST assert the correct output for each of these four values using `f64::NAN`, `f64::INFINITY`, `f64::NEG_INFINITY`, and `-0.0_f64`. Guard chains in production code MUST check `is_nan()` first.
+
+---
+
+### L-W6-S025-006: SS-* architecture source documents are required propagation targets alongside BC bodies
+
+**Date:** 2026-05-28
+**Severity:** process-gap
+**Origin:** S-025 adversarial pass 5: SS-tui v1.8.0 had BC-2.06.005 column count still at 6; architect-decision propagation sweep had covered BCs but missed SS-tui architecture source
+
+**Pattern:** BC documents derive from SS-* architecture source documents. When an architect decision changes the canonical shape defined in an SS-* document, the propagation surface includes the SS-* document body (not just the BC files). If the orchestrator dispatches only the PO for BC propagation and the story-writer for pin propagation, the SS-* architecture source document retains the stale shape. The adversary correctly catches this as a BLOCKER because the SS-* document is the normative architecture reference; a story implementer reading it will implement the wrong shape.
+
+**Rule:** L-W6-S025-001 enumerates SS-* as artifact class (2). This lesson provides the specific operational trigger: when an architect decision changes a shape (column count, struct fields, enum variants), the architect is responsible for propagating to SS-* documents in the SAME burst as the decision, not as a follow-up. If the decision and the SS-* propagation are separated across bursts, the window between bursts creates a stale-spec risk.
+
+---
+
+### L-W6-S025-007: Production-grade sweep audits must expand beyond the flagged targets
+
+**Date:** 2026-05-28
+**Severity:** codification (CLAUDE.md Principle 4 extension)
+**Origin:** S-025 Pass 11 implementer found 3 additional pub const class siblings beyond the 3 flagged by Pass 11; S-025 Pass 7 test-writer found 2 additional drift instances beyond the 1 flagged
+
+**Pattern:** When an adversarial pass flags N instances of a finding class, the production-grade fix is to find and fix ALL instances of that class in the codebase — not just the N flagged instances. This is a direct implication of CLAUDE.md Principle 4 ("AI-built defects are the AI's responsibility to fix in scope"). The adversary's N flagged instances are a floor, not a ceiling. A sweep that addresses only the flagged N instances is a partial fix that will produce a sibling-extraction finding in the next pass.
+
+**Rule:** When an implementer or test-writer fixes a class of finding (e.g., literal-string-in-test, missing-pub-const, stale-doc-comment), the fix workflow MUST: (1) apply the fix to all N flagged instances, (2) grep the ENTIRE codebase for the same pattern signature, (3) apply the fix to all grep hits not already addressed. Report the total hits found vs flagged count in the commit message (e.g., "Fixed 6 instances: 3 flagged by adversary + 3 additional found by sweep"). A fix that reports 3-of-3 when grep would have found 6-of-6 is incomplete.
