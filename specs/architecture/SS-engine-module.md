@@ -4,7 +4,7 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.24"
+version: "1.1.25"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -1173,7 +1173,7 @@ the Rust source is listed between the HTML delimiters below. See SS-conventions-
 | `SpawnArgs` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (tests compile as separate `[[test]]` binaries) | Yes (`new(project_root)` + `.with_worktree()` + `.with_env_override()`, v1.1.8) | Builder for optional fields |
 | `SessionHandle` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (separate `[[test]]` binaries) | Yes (`new(pid, session_id, hook_base_url)`, v1.1.8) | All 3 fields required |
 | `EngineVersion` | `monocle-runtime` | SS-engine-module.md | struct-literal (cross-crate): `monocle-runtime/tests/` (separate `[[test]]` binaries) | Yes (`new(version, binary_path)`, v1.1.8) | All 2 fields required |
-| `HookEventRecord` | `monocle-runtime` | SS-daemon-lifecycle.md | struct-literal (cross-crate): `monocle-runtime/tests/jsonl_ring.rs` (separate `[[test]]` binary) | Yes (`new(session_id, timestamp_micros, pid, hook_type, tool_name, tool_input)`, v1.0.5); `RING_FORMAT_VERSION: u32 = 1` const | `format_version` always `RING_FORMAT_VERSION`; Phase 2 field evolution requires `#[non_exhaustive]` to avoid SemVer-major break |
+| `HookEventRecord` | `monocle-ipc` | SS-daemon-lifecycle.md | struct-literal (cross-crate): `monocle-runtime/tests/jsonl_ring.rs` (separate `[[test]]` binary) | Yes (`new(session_id, timestamp_micros, pid, hook_type, tool_name, tool_input)`, v1.0.5); `RING_FORMAT_VERSION: u32 = 1` const | `format_version` always `RING_FORMAT_VERSION`; Phase 2 field evolution requires `#[non_exhaustive]` to avoid SemVer-major break |
 | `SessionStartEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only: axum handlers call `serde_json::from_slice::<HookEvent>(&body)`; serde's `Deserialize` impl constructs internally within `monocle-core` — E0639 does not apply | No constructor required | Forward-compat: `#[non_exhaustive]` allows Phase 2+ field additions without breaking `Deserialize` impls in downstream crates. Enforce: if `Deserialize` is ever removed, re-audit. |
 | `UserPromptSubmitEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
 | `PreToolUseEvent` | `monocle-core` | SS-core-types-and-abi.md | serde-deserialize-only (same as `SessionStartEvent`) | No constructor required | See `SessionStartEvent` note |
@@ -1804,5 +1804,19 @@ Cross-references:
   `EngineModuleRegistry`, and the 5 HookEvent inner structs + `EngineMetadata`, `ProcessSnapshot`,
   `EnrichedSession`, `HookResponse`, `SpawnArgs`, `SessionHandle`, `EngineVersion`,
   `HookEventRecord`, `FactoryDetection`, `FactoryState`, `BlockingIssue`, `ConvergenceMetrics` =
-  19 rows total now in the audit table (17 pre-S-025 + App + EventBusHookEvent + EngineModuleRegistry).
+  20 rows total now in the audit table (17 pre-S-025 + App + EventBusHookEvent + EngineModuleRegistry).
 - SE-16d PASS: 2026-05-28T01:00:00Z > chain high-water 2026-05-28T00:00:00Z (monotonic).
+
+**§Trace v1.1.25** (2026-05-28T02:00:00Z) — F-S025-ADV16-MED-001 round-3 HookEventRecord stale-crate correction (monocle-runtime → monocle-ipc post S-022 relocation):
+
+- NORMATIVE (stale-crate correction): `HookEventRecord` "Defining crate" column corrected from
+  `monocle-runtime` to `monocle-ipc`. The struct was relocated to `monocle-ipc::types` during S-022
+  (merged c754053, 2026-05-28T08:15:32Z) as part of the at-least-once delivery refactor. The audit
+  table row was not updated at that time. Confirmed via grep: `pub struct HookEventRecord` is at
+  `crates/monocle-ipc/src/types.rs:53`; no `pub struct HookEventRecord` exists in monocle-runtime
+  sources. This correction applies to both the canonical table in this file and the vendored copy at
+  `scripts/audit-table.md` in the S-025 worktree branch (updated atomically in the same S-025 PR).
+- NORMATIVE (vendored copy sync): `scripts/audit-table.md` on branch `feature/S-025-tui-skeleton-sessions`
+  updated to add the 3 new rows (App, EventBusHookEvent, EngineModuleRegistry) from v1.1.23/v1.1.24
+  and to apply this HookEventRecord crate-column correction. Row count in vendored copy: 20.
+- SE-16d PASS: 2026-05-28T02:00:00Z > chain high-water 2026-05-28T01:00:00Z (monotonic).
