@@ -124,7 +124,7 @@ pub fn format_drop_counter(n: u64) -> String {
 pub struct App {
     /// Current TUI state machine mode.
     pub mode: AppMode,
-    /// Loaded monocle configuration (MonocleConfig::load on startup).
+    /// Loaded monocle configuration (loaded via load_config() at startup).
     pub config: MonocleConfig,
     /// Live session list sourced from `ServerToClient::SessionListUpdate`.
     pub sessions: Vec<EnrichedSession>,

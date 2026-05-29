@@ -661,10 +661,10 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
 }
 
 // ---------------------------------------------------------------------------
-// F-S025-ADV5-BLOCKER-001 — BC-2.06.005 v1.0.5 canonical column order
+// F-S025-ADV5-BLOCKER-001 — BC-2.06.005 v1.0.6 canonical column order
 // ---------------------------------------------------------------------------
 //
-// The BC-2.06.005 v1.0.5 canonical test vector is:
+// The BC-2.06.005 v1.0.6 canonical test vector is:
 //   `sess-001 ● monocle Active 437k — 03:47:00`
 // Column order:  session_id | icon | project | status | tokens | cost | uptime
 // Separator:     SPACE (not ` | `)
@@ -673,7 +673,7 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
 // These tests encode the canonical order and separator. They are RED GATE
 // until the format-string is fixed.
 
-/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: canonical row — jitter-tolerant integration.
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.6: canonical row — jitter-tolerant integration.
 ///
 /// Renders against a live wall clock (`started_at = Utc::now() - 3h47m`) so uptime
 /// seconds may increment between the `started_at` assignment and the render call.
@@ -711,7 +711,7 @@ fn test_bc_2_06_005_canonical_row_jitter_tolerant_integration() {
     let prefix = "sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:";
     assert!(
         rendered.contains(prefix),
-        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: rendered row must contain \
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.6: rendered row must contain \
          'sess-001 ● monocle Active 437k — 03:47:'; got:\n{rendered}"
     );
     // Find and extract the two-digit seconds after the prefix.
@@ -742,13 +742,13 @@ fn test_bc_2_06_005_canonical_row_jitter_tolerant_integration() {
     );
 }
 
-/// F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.5: verbatim match against canonical BC vector
+/// F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.6: verbatim match against canonical BC vector
 /// using deterministic mocked time — ZERO jitter tolerance.
 ///
 /// Uses `format_session_row(s, now)` directly with a pinned `now` timestamp so that
 /// `format_uptime_at` produces exactly `"03:47:00"` — byte-for-byte, no substring tolerance.
 ///
-/// Canonical BC vector (BC-2.06.005 v1.0.5 test vector table):
+/// Canonical BC vector (BC-2.06.005 v1.0.6 test vector table):
 ///   `sess-001 ● monocle Active 437k — 03:47:00`
 ///
 /// This is the authoritative verbatim assertion. Any change to the column format,
@@ -777,11 +777,11 @@ fn test_bc_2_06_005_canonical_row_verbatim_with_mocked_time() {
     // Call format_session_row with the same pinned `now` — no wall-clock drift.
     let row = format_session_row(&session, now);
 
-    // Verbatim assertion: EXACT canonical BC-2.06.005 v1.0.5 test vector.
+    // Verbatim assertion: EXACT canonical BC-2.06.005 v1.0.6 test vector.
     // No substring tolerance. No jitter tolerance. Byte-for-byte equality.
     assert_eq!(
         row, "sess-001 \u{25CF} monocle Active 437k \u{2014} 03:47:00",
-        "F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.5: format_session_row must produce \
+        "F-S025-ADV6-MED-001 / BC-2.06.005 v1.0.6: format_session_row must produce \
          the exact canonical vector; got: {row:?}"
     );
 
@@ -789,11 +789,11 @@ fn test_bc_2_06_005_canonical_row_verbatim_with_mocked_time() {
     let uptime = format_uptime_at(Some(started_at), now);
     assert_eq!(
         uptime, "03:47:00",
-        "BC-2.06.005 v1.0.5: format_uptime_at(3h47m, now) must return exactly '03:47:00'"
+        "BC-2.06.005 v1.0.6: format_uptime_at(3h47m, now) must return exactly '03:47:00'"
     );
 }
 
-/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id appears BEFORE icon.
+/// F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.6: session_id appears BEFORE icon.
 ///
 /// `rendered.find("sess-001") < rendered.find('●')`.
 /// Fails before the format-string fix; passes after.
@@ -812,12 +812,12 @@ fn test_bc_2_06_005_column_order_session_id_first() {
 
     assert!(
         id_pos < icon_pos,
-        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id must appear BEFORE icon; \
+        "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.6: session_id must appear BEFORE icon; \
          session_id at {id_pos}, icon at {icon_pos} in:\n{rendered}"
     );
 }
 
-/// F-S025-ADV6-LOW-001 / BC-2.06.005 v1.0.5: every inter-column boundary uses
+/// F-S025-ADV6-LOW-001 / BC-2.06.005 v1.0.6: every inter-column boundary uses
 /// single-space separation, verified at each of the 6 boundaries.
 ///
 /// Explicitly asserts each boundary pair in canonical order:
