@@ -107,3 +107,19 @@ Pass 16 deliberately rotated to Angle H because:
 Angles A-G produced no new findings — consistent with Pass 15 maturity. The Angle H finding is the canonical example of fresh-context cognitive diversity value: novel attack vectors uncover real architectural-invariant gaps that 15 prior passes missed because they were not searching this perimeter.
 
 Recurrence count: 2 (F-R30-1 + F-S025-ADV16-MED-001). One more triggers mandatory S-7.02 codification.
+
+### Round 6 — Architect round 4 (commit ee9742b on factory-artifacts + commit 8929e24 on feature/S-025-tui-skeleton-sessions) — Exhaustive sweep closure
+
+After rounds 1-5 closure, PR #28 CI Step 3 semgrep job still failed with:
+> Audit table gap: following structs carry #[non_exhaustive] but are absent from the Cross-Crate Constructor Audit Table: `BackoffState`.
+
+Root cause: prior rounds swept only the S-025 worktree (branched before S-023 merged). CI's pull_request merge ref combines S-025 + develop, exposing develop-introduced gaps (BackoffState in monocle-ipc::reconnect from S-023).
+
+Architect dispatch with exhaustive `git ls-tree origin/develop` + per-file `git show` produced the authoritative count of 21 `#[non_exhaustive] pub struct` in the merge state. Exactly 1 gap: BackoffState.
+
+Changes:
+- SS-engine-module v1.1.25 → v1.1.26 (BackoffState row added; §Trace v1.1.26 documents exhaustive sweep methodology)
+- vendored scripts/audit-table.md synced (delimited block byte-identical to canonical)
+- All other 20 structs confirmed correctly listed (no further sweep gaps)
+
+This closes Pass 16 multi-round F-S025-ADV16-MED-001 for the FULL accumulated debt (4 audit-table rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState).

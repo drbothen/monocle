@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.37"
+version: "6.38"
 status: active
 producer: state-manager
 timestamp: 2026-05-29T01:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 16 MED (ADR-0006 audit-table compliance gap + false-green CI script + 4 op_ref violations + vendored copy drift). 5-round multi-specialist fix sequence complete. Counter RESET 1/3 → 0/3 (MED-severity resets per Pass-9/10 precedent). Pass 17 pending at HEAD 76690aa."
+current_step: "S-025 Pass 16 MED (ADR-0006 audit-table compliance gap + false-green CI script + 4 op_ref violations + vendored copy drift + BackoffState gap). 6-round multi-specialist fix sequence complete. Counter RESET 1/3 → 0/3 (MED-severity resets per Pass-9/10 precedent). Pass 17 pending CI green on 8929e24."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 12 CRITICAL — fix-round complete; Pass 13 LOW; Pass 14 NIT; Pass 15 CLEAN; Pass 16 MED — 5-round fix complete; counter reset 0/3). D-188: Pass 12 outcome + F-S025-CI-001 fix. D-189: Pass 13 LOW; counter holds 0/3; fix round dispatched; NIT-003/NIT-004 deferred. D-190: Pass 14 NITPICK_ONLY (1 NIT — DarkGray baseline coverage); counter holds 0/3; fix round dispatched. D-191: Pass 15 NITPICK_ONLY-CLEAN (zero findings); counter advances 0/3 → 1/3; pattern decay confirmed. D-192: Pass 16 MED (ADR-0006 audit-table + false-green CI script + op_ref + vendored copy; 5-round fix; counter RESET 0/3)."
-awaiting: "CI green on 76690aa, then Pass 17 adversary dispatch — counter 0/3 → 1/3 on clean. After S-025 convergence (3/3): S-026 (13pts) dispatch."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 12 CRITICAL — fix-round complete; Pass 13 LOW; Pass 14 NIT; Pass 15 CLEAN; Pass 16 MED — 6-round fix complete; counter reset 0/3). D-188: Pass 12 outcome + F-S025-CI-001 fix. D-189: Pass 13 LOW; counter holds 0/3; fix round dispatched; NIT-003/NIT-004 deferred. D-190: Pass 14 NITPICK_ONLY (1 NIT — DarkGray baseline coverage); counter holds 0/3; fix round dispatched. D-191: Pass 15 NITPICK_ONLY-CLEAN (zero findings); counter advances 0/3 → 1/3; pattern decay confirmed. D-192: Pass 16 MED (ADR-0006 audit-table + false-green CI script + op_ref + vendored copy; 5-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap (develop-introduced gap missed by worktree-only sweep; exhaustive sweep closure; SS-engine-module v1.1.25→v1.1.26; F-R30-1 recurrence count 3/3 — codification threshold CROSSED)."
+awaiting: "CI green on 8929e24, then Pass 17 adversary dispatch — counter 0/3 → 1/3 on clean. After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -235,6 +235,11 @@ durable_task_register:
       status: pending
       detail: "Pass 16 round 5 (architect): scripts/audit-table.md is a vendored copy of the audit table from SS-engine-module.md. When the canonical table changes, the vendored copy must be synced atomically in the same PR. The HookEventRecord crate-column drift (monocle-runtime → monocle-ipc, post-S-022 relocation) persisted unnoticed across 16 passes because the vendored copy was not included in propagation sweeps. Codification target: include in pre-commit hook or PR template checklist. Recurrence count: 1."
       blocking: false
+    - id: "F-S025-ADV16-CODIFY-001"
+      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep discipline."
+      status: pending
+      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation. Route orchestrator Task #9 batch to story-writer + CLAUDE.md documentation update."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -260,11 +265,11 @@ durable_task_register:
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — S-025 PASS 16 MED CLOSED / PASS 17 PENDING (STATE v6.37):
+  COLD-START RESUME GUIDE — S-025 PASS 16 MED CLOSED (6-ROUND) / PASS 17 PENDING (STATE v6.38):
 
   SESSION CONTEXT:
     monocle Wave 6: S-022 (D-184) + S-023 (D-186) merged. S-025 in flight —
-    16 adversarial passes deep, counter RESET to 0/3 (Pass 16 MED; D-192).
+    16 adversarial passes deep, counter RESET to 0/3 (Pass 16 MED; D-192/D-193).
     S-026 blocked on S-025 merge.
     Read CLAUDE.md at the repo root for project principles before dispatching any agent.
     The production-grade-default principle in CLAUDE.md overrides all agent prompt defaults.
@@ -273,9 +278,10 @@ next_session_resume_protocol: |
     develop @ 7a52041 (S-023 merge, PR #29, 2026-05-28T19:31:07Z).
     26/33 stories done (156/195 pts, 80%). 852+ tests. clippy clean. fmt clean.
     S-025 PR #28 draft. Local worktree at .worktrees/S-025/.
-    S-025 HEAD after Pass 16 fix rounds: 76690aa (round 5 — audit-table.md sync +
-      HookEventRecord crate-column correction) — verify: gh pr view 28 --json statusCheckRollup,headRefOid
+    S-025 HEAD after Pass 16 fix rounds: 8929e24 (round 6 — BackoffState row added;
+      exhaustive sweep closure) — verify: gh pr view 28 --json statusCheckRollup,headRefOid
     WARN: counter is FULLY RESET (0/3). Pass 16 was MED. Full 3-consecutive-clean rebuild required.
+    WARN: Pass 17 dispatch is PENDING CI green verification on 8929e24.
 
   PASS 16 OUTCOME (MED — COUNTER RESET 1/3 → 0/3):
     Pass 15 was NITPICK_ONLY-CLEAN (counter had advanced to 1/3).
@@ -283,13 +289,16 @@ next_session_resume_protocol: |
       Audit Table in SS-engine-module.md. Same class as F-R30-1 (ADR-0006 original motivation).
     Plus [process-gap]: CI false-green in scripts/check_audit_table.py (semgrep OSS 1.156.0
       does not populate metavars for pattern-either rules) — hid 2 additional missing rows.
-    Multi-round fix sequence (5 rounds, 5 commits):
+    Multi-round fix sequence (6 rounds, 6 commits):
       R1 architect: SS-engine-module v1.1.22→v1.1.23 (App row added), ADR-0006 v1.0→v1.1
       R2 devops-engineer: scripts/check_audit_table.py false-green fixed (regex fallback + assertion)
       R3 architect: SS-engine-module v1.1.23→v1.1.24 (EventBusHookEvent + EngineModuleRegistry added), ADR-0006 v1.1→v1.2
       R4 test-writer: 4 clippy op_ref violations in startup_connect.rs fixed (--all-targets gap)
       R5 architect: scripts/audit-table.md vendored copy synced, SS-engine-module v1.1.24→v1.1.25 (HookEventRecord crate-column monocle-runtime→monocle-ipc corrected), ADR-0006 v1.2 (no bump)
-    All 5 dimensions closed. Counter RESET to 0/3.
+      R6 architect: SS-engine-module v1.1.25→v1.1.26 (BackoffState row — S-023/develop-introduced gap); exhaustive sweep via git ls-tree origin/develop (21 total non_exhaustive pub struct, 1 gap); vendored scripts/audit-table.md synced byte-identical; D-193
+    All 6 dimensions closed. Counter RESET to 0/3.
+    F-R30-1 CODIFICATION THRESHOLD CROSSED: recurrence count now 4/3. F-S025-ADV16-CODIFY-001
+      anchored to Task #9. Orchestrator must dispatch story-writer + CLAUDE.md update in post-merge batch.
 
   CONVERGENCE FORECAST:
     Need 3 consecutive NITPICK_ONLY-CLEAN passes from 0/3.
@@ -300,10 +309,10 @@ next_session_resume_protocol: |
     WARN: Pass 16 was a MED reset; L-W6-S025-004 (premature-clean signal) still applies.
     Apply MAXIMUM skepticism at every counter-advance moment.
 
-  ARTIFACT VERSIONS (updated by Pass 16 multi-round fix):
+  ARTIFACT VERSIONS (updated by Pass 16 multi-round fix including round 6):
     STORY-INDEX v5.9. sprint-state v1.30 (26/33 done, 156/195 pts).
     BC-INDEX v1.27 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
-    SS-tui v1.8.2. SS-ipc v1.8.0. SS-conventions v1.31.0. SS-engine-module v1.1.25.
+    SS-tui v1.8.2. SS-ipc v1.8.0. SS-conventions v1.31.0. SS-engine-module v1.1.26.
     ADR-0006 v1.2. BC-2.06.016 v1.0.8. S-025 v1.6. S-026 v1.7.
 
   S-025 ADVERSARIAL PASS TRAJECTORY (16 passes; counter 0/3):
@@ -333,16 +342,17 @@ next_session_resume_protocol: |
     Pass 15: NITPICK_ONLY-CLEAN — ZERO findings. Counter ADVANCES 0/3 → 1/3 (D-191).
              Pattern decay confirmed. All 3 color branches × render+color = complete.
     Pass 16: MED — [process-gap] ADR-0006 audit-table compliance gap (App + EventBusHookEvent
-             + EngineModuleRegistry missing) + false-green CI script + 4 op_ref violations
-             + vendored copy drift. 5-round multi-specialist fix sequence. Counter RESET
-             1/3 → 0/3 (D-192). HEAD: 76690aa.
+             + EngineModuleRegistry + BackoffState missing) + false-green CI script + 4 op_ref
+             violations + vendored copy drift. 6-round multi-specialist fix sequence. Counter
+             RESET 1/3 → 0/3 (D-192/D-193). HEAD: 8929e24. F-R30-1 threshold CROSSED (4/3).
 
   NEXT ACTION — VERIFY CI THEN DISPATCH PASS 17:
-    1. Verify CI green on 76690aa: gh pr view 28 --json statusCheckRollup,headRefOid
-    2. Dispatch Pass 17 adversary at HEAD 76690aa.
+    1. Verify CI green on 8929e24: gh pr view 28 --json statusCheckRollup,headRefOid
+    2. Dispatch Pass 17 adversary at HEAD 8929e24.
     3. Pass 17 prompt: apply L-W6-S025-001..007 in full; re-derive cold; counter at 0/3;
-       WARN: Pass 16 MED reset; Recurrence Watch: F-R30-1 class now at count 2/3.
-       Angle H (ADR-0006) is now a known high-value attack vector — verify Round 5 fix complete.
+       WARN: Pass 16 MED reset (6-round); Recurrence Watch: F-R30-1 class now at count 4/3
+       (threshold CROSSED). Angle H (ADR-0006) is a known high-value attack vector — verify
+       exhaustive sweep via git ls-tree confirmed all 21 structs, BackoffState now closed.
     4. If Pass 17 CLEAN → counter 1/3. Dispatch Pass 18.
     5. If Pass 17 finds anything → route to fix → counter RESETS again.
 
@@ -377,6 +387,8 @@ next_session_resume_protocol: |
       F-S025-ADV13-NIT-004 (BC-2.06.004 EC-079 non-production string).
     Pass 16 new (process-gaps): F-S025-ADV16-PROC-001 (--all-targets clippy discipline),
       F-S025-ADV16-PROC-002 (vendored copy sync in same PR).
+    Pass 16 D-193 (codification THRESHOLD CROSSED): F-S025-ADV16-CODIFY-001 (F-R30-1 count 4/3;
+      S-7.02 codification required; anchored to Task #9 post-merge batch).
     S-022/S-023 carry-overs: ADV-W5GATE-HIGH-001, ADV-W5GATE-HIGH-002,
     ADV-W5GATE-MED-001, ADV-W5GATE-MED-003, ADV-W4GATE-MED-002, HS-EXP-009-hint.
     Process: PROC-SEMGREP-DECOUPLE, PROC-GATE-SKIPPED-LOUD, PROC-COMPUTE-INPUT-HASH-YAML,
@@ -399,9 +411,11 @@ next_session_resume_protocol: |
       catching ALL class siblings, not only the flagged instance.
 
   RECURRENCE WATCH:
-    F-R30-1 class (ADR-0006 audit-table completeness): count 2/3.
-    One more recurrence triggers mandatory S-7.02 codification.
-    Pass 17 adversary MUST include Angle H (audit-table) in search.
+    F-R30-1 class (ADR-0006 audit-table completeness): count 4/3 — THRESHOLD CROSSED.
+    S-7.02 codification is NOW REQUIRED. F-S025-ADV16-CODIFY-001 anchored to Task #9.
+    Orchestrator MUST dispatch story-writer + CLAUDE.md documentation update in post-merge batch.
+    Pass 17 adversary MUST include Angle H (audit-table) in search — exhaustive sweep
+    via git ls-tree methodology documented in SS-engine-module v1.1.26 §Trace.
 
   FACTORY INFRASTRUCTURE:
     .factory/ mounted at factory-artifacts branch (orphan worktree @ .factory/).
@@ -426,7 +440,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 16 MED closed; counter RESET 0/3 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 16 MED (ADR-0006 audit-table; 5-round fix; counter RESET 0/3). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 16 MED closed (6-round); counter RESET 0/3 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 16 MED (ADR-0006 audit-table; 6-round fix incl BackoffState; counter RESET 0/3; F-R30-1 threshold CROSSED). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -439,7 +453,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 16 MED closed (5-round fix; counter RESET 0/3; HEAD 76690aa); Pass 17 pending. S-026 blocked on S-025.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 16 MED closed (6-round fix incl BackoffState; counter RESET 0/3; HEAD 8929e24); Pass 17 pending CI green on 8929e24. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3).
 
 ## Blocking Issues
 
@@ -474,7 +488,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT).
-28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.25**. **ADR-0006 v1.2**. **STORY-INDEX v5.9** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.1.17**. **PRD v1.27.2**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **ADR-0006 v1.2**. **STORY-INDEX v5.9** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). MSRV: Rust 1.86 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -488,32 +502,26 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.37 (D-192 — Pass 16 MED multi-round closure; 5 commits; counter RESET 0/3; process-gaps logged)
+## §Trace v6.38 (D-193 — Pass 16 round 6 BackoffState closure; 6-round fix sequence complete; F-R30-1 codification threshold CROSSED 4/3)
 
 **S-025 PASS 16 RESULT: MED** (2026-05-28): 16 adversarial passes; counter RESET 1/3 → 0/3.
 
-**Pass 16 finding (F-S025-ADV16-MED-001):** monocle-tui::App struct is `#[non_exhaustive]` with cross-crate `pub fn new()` constructor but was MISSING from the Cross-Crate Constructor Audit Table in SS-engine-module.md. Same class as F-R30-1 (ADR-0006 original motivation). Recurrence count now 2/3 for S-7.02 codification trigger.
+**Pass 16 6-round fix sequence closure (D-193, round 6):** After rounds 1-5 closed App + EventBusHookEvent + EngineModuleRegistry + CI false-green + op_ref + vendored copy, CI Step 3 semgrep on PR #28 still failed: `BackoffState` absent from audit table. Root cause: prior rounds swept S-025 worktree only (branched before S-023 merged). CI's pull_request merge ref combines S-025 + develop, exposing develop-introduced struct (BackoffState in monocle-ipc::reconnect from S-023). Architect exhaustive sweep via `git ls-tree origin/develop` + per-file grep confirmed 21 total `#[non_exhaustive] pub struct` in merge state; exactly 1 gap (BackoffState). Changes: SS-engine-module v1.1.25→v1.1.26 (BackoffState row + §Trace v1.1.26 exhaustive methodology); vendored scripts/audit-table.md synced byte-identical (ee9742b factory-artifacts + 8929e24 S-025 branch).
 
-**[process-gap] CI false-green:** scripts/check_audit_table.py read struct names from `metavars.$NAME.abstract_content` which semgrep OSS 1.156.0 does not populate for `pattern-either` rules. Script emitting "0 production structs declared — PASS" since commit 184f7d4. Hid 2 additional missing rows: EventBusHookEvent + EngineModuleRegistry.
+**F-R30-1 CODIFICATION THRESHOLD CROSSED:** Recurrence count now 4/3 (4 audit-table rows total across Pass 16: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification is REQUIRED. F-S025-ADV16-CODIFY-001 anchored to Task #9. Discipline to codify: "When a new crate is added or merged from a separate branch, architect MUST run exhaustive `git ls-tree <merge-base>..HEAD` + per-file `#[non_exhaustive] pub struct` sweep before declaring audit-table sync complete."
 
-**Multi-round fix sequence (5 rounds, 5 commits):**
-- R1 architect (98e8102 factory-artifacts): SS-engine-module v1.1.22→v1.1.23 (App row), ADR-0006 v1.0→v1.1
-- R2 devops-engineer (390d04d S-025 branch): check_audit_table.py regex fallback + safety assertion; surfaced 2 more missing rows
-- R3 architect (b504026 factory-artifacts): SS-engine-module v1.1.23→v1.1.24 (EventBusHookEvent + EngineModuleRegistry rows), ADR-0006 v1.1→v1.2
-- R4 test-writer (47b9ba9 S-025 branch): 4 clippy op_ref violations fixed (--all-targets gap; lines 1160, 1254, 1364, 1474)
-- R5 architect (76690aa S-025 + fd00508 factory-artifacts): scripts/audit-table.md vendored copy synced; SS-engine-module v1.1.24→v1.1.25; HookEventRecord crate-column monocle-runtime→monocle-ipc corrected
+**All 6 dimensions closed.** Counter RESET to 0/3. Full 3-consecutive-clean rebuild required. Pass 17 PENDING CI green on 8929e24.
 
-**All 5 dimensions closed.** Counter RESET to 0/3. Full 3-consecutive-clean rebuild required.
+**Trajectory:** Pass 16: MED ([process-gap] ADR-0006 audit-table compliance gap + false-green script + 4 op_ref violations + vendored copy drift + BackoffState develop-introduced gap; 6-round fix sequence; counter resets 1/3 → 0/3).
 
-**Trajectory:** Pass 16: MED ([process-gap] ADR-0006 audit-table compliance gap + false-green script + 4 op_ref violations + vendored copy drift; 5-round fix sequence closed all 5 dimensions; counter resets 1/3 → 0/3).
+**Phase 3 trajectory shorthand:** 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16).
 
-**Phase 3 trajectory shorthand updated:** 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16).
+**Convergence forecast:** 3/3 at Pass 19 if Passes 17 + 18 + 19 all clean. WARN: Pass 16 was a MED reset (6-round); full counter rebuild required.
 
-**Convergence forecast:** 3/3 at Pass 19 if Passes 17 + 18 + 19 all clean. WARN: Pass 16 was a MED reset; full counter rebuild required.
+**Artifact versions bumped this burst:** SS-engine-module v1.1.25→v1.1.26. State tracking only for STATE.md.
+STATE v6.37 → v6.38. Full Pass 16 report (including round 6): `cycles/cycle-001/S-025/adversarial-pass-16.md`.
 
-**Artifact versions bumped this burst:** SS-engine-module v1.1.22→v1.1.25; ADR-0006 v1.0→v1.2. State tracking only for STATE.md.
-STATE v6.36 → v6.37. Full Pass 16 report: `cycles/cycle-001/S-025/adversarial-pass-16.md`.
-
+§Trace v6.37 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.36 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.35 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.34 archived to `cycles/cycle-001/burst-log.md`.
