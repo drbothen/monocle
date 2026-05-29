@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-015
 epic_id: EPIC-03
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -21,7 +21,7 @@ verification_properties: [VP-020, VP-021, VP-022]
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.002.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.003.md, version: "1.0.3"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.004.md, version: "1.0.4"}
@@ -141,7 +141,7 @@ accidentally returns `Deny` or `Defer` during Phase 1. (Per-variant semantics ar
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,400 |
-| BC-2.03.001.md (1.0.5) | ~700 |
+| BC-2.03.001.md (1.0.6) | ~700 |
 | BC-2.03.002.md (1.0.4) | ~700 |
 | BC-2.03.003.md (1.0.3) | ~600 |
 | BC-2.03.004.md (1.0.4) | ~700 |
@@ -269,3 +269,4 @@ Files to modify:
 | 1.0 | 2026-05-19 | vsdd-factory:story-writer | Initial story decomposition (Phase 2) |
 | 1.1–1.5 | 2026-05-19 | vsdd-factory:story-writer | Iterative adversarial convergence (r01..r13) |
 | 1.6 | 2026-05-20 | vsdd-factory:story-writer | Phase 3.B Batch 5: XDG_HOME (not a real env var) replaced with HOMEDRIVE per BC-2.03.003 Invariant 3 in AC-005, AC-006, Tasks; detect() pseudocode ? operator (won't compile) replaced with canonical and_then/map/unwrap_or pattern; inherited supporting-type surface enumerated (DeferUntil dropped, SessionStatus 5 variants, HookResponse 3 fields); AC-010 per-variant dispatch clarification; AC-011 added (defensive per-variant regression guard); traces_to fragment anchors added; SS-engine-module canonical impl anchor added to Architecture Compliance Rules; VP-022 line reference added to AC-007 |
+| 1.7 | 2026-05-29 | vsdd-factory:story-writer | Path B Wave 6 MSRV propagation: BC-2.03.001 input pin v1.0.5 → v1.0.6 (PO commit 5006528); Token Budget table BC version cell updated; no MSRV 1.86 body references found in S-015 (sweep confirmed clean). Per bc_array_changes_propagate_to_body_and_acs policy (F-S025-ADV17-LOW-001 closure). |

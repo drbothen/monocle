@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-014
 epic_id: EPIC-03
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -21,7 +21,7 @@ verification_properties: [VP-019]
 estimated_days: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-02/BC-2.02.003.md, version: "1.0.2"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/verification-properties/vp-019-engine-module-trait.md, version: "1.0.13"}
@@ -95,7 +95,7 @@ The trait has no sealed bound. AST audit confirms. Downstream crates may impleme
 
 ### AC-007 (traces to BC-2.03.001 invariant 3 — async_trait macro required)
 `#[async_trait::async_trait]` macro is applied to the trait declaration. Rustdoc on the trait
-explains why: native `async fn` in traits does not provide ergonomic dyn-compatibility on MSRV 1.86.
+explains why: native `async fn` in traits does not provide ergonomic dyn-compatibility on MSRV 1.88.
 Executable oracle: a `grep`-based test in `engine_module_surface.rs` asserts that the canonical
 BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits does not provide"` OR
 `"async_trait"`) appears in the rustdoc comment on the `EngineModule` trait declaration in
@@ -106,7 +106,7 @@ BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits d
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~800 |
-| BC-2.03.001.md v1.0.5 | ~700 |
+| BC-2.03.001.md v1.0.6 | ~700 |
 | BC-2.02.003.md v1.0.2 | ~350 |
 | BC-2.03.004.md v1.0.4 (JC-2 PostToolUse parity) | ~300 |
 | VP-019 file | ~500 |
@@ -177,7 +177,7 @@ in S-011, not S-010. S-010 only declares `Phase1Permission` and `ClaudeCodeTool`
 ## Architecture Compliance Rules
 
 From `architecture/SS-engine-module.md` v1.1.20 §EngineModule Trait Signature:
-- `#[async_trait]` is REQUIRED — native `async fn` in traits is NOT dyn-compatible on MSRV 1.86
+- `#[async_trait]` is REQUIRED — native `async fn` in traits is NOT dyn-compatible on MSRV 1.88
 - Trait MUST be OPEN — NO sealed bound (Phase 3 WASM extensibility)
 - `EnrichedSession::last_event_micros: Option<i64>` — `0i64` is NOT a sentinel
 - `metadata()` and `enrich()` MUST NOT substitute default home path — fail fast with `HomeUnresolvable`
@@ -228,6 +228,13 @@ S-015 implementer must NOT use struct-literal construction for `HookResponse` (E
 `#[non_exhaustive]`; only `HookResponse::new(...)` + builder methods are legal from outside `monocle-core`).
 
 ## §Trace
+
+**v1.5 — Path B Wave 6 MSRV propagation** (2026-05-29):
+- BC-2.03.001 input pin bumped v1.0.5 → v1.0.6 (PO commit 5006528 — MSRV 1.86 → 1.88 in BC body).
+- Token Budget table: `BC-2.03.001.md v1.0.5` → `v1.0.6`.
+- AC-007 (line 98): `MSRV 1.86` → `MSRV 1.88` (present-tense project MSRV claim in rustdoc rationale; not language-history reference).
+- Architecture Compliance Rules (line 180): `MSRV 1.86` → `MSRV 1.88` (same reason).
+- Per `bc_array_changes_propagate_to_body_and_acs` policy (F-S025-ADV17-LOW-001 closure).
 
 **v1.4 — Phase 3.B Batch 3: arch-touching story remediation** (2026-05-20):
 - F-D-01: `SessionStatus` variants corrected 3→5 (`Active, Idle, WaitingOnPermission, Stopping, Stopped`)

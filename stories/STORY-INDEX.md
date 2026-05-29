@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.9"
+version: "5.10"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-05-29T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.10
+
+**F-S025-ADV17-LOW-001 — BC-2.03.001 v1.0.6 propagation to S-014 + S-015** (2026-05-29):
+- S-014 v1.4 → v1.5: BC-2.03.001 input pin v1.0.5 → v1.0.6; Token Budget table cell updated; AC-007 + Architecture Compliance Rules body text `MSRV 1.86` → `MSRV 1.88` (present-tense project MSRV claims).
+- S-015 v1.6 → v1.7: BC-2.03.001 input pin v1.0.5 → v1.0.6; Token Budget table cell updated; no body MSRV 1.86 references found (sweep confirmed clean).
+- Sweep-wider: S-001, S-003, holdout-scenarios.md have `MSRV 1.86` body references but do NOT pin BC-2.03.001 — they are on the SS-deps-pin-manifest.md propagation chain (architect/PO domain, separate sweep).
+- Sweep-wider: dependency-graph.md references BC-2.03.001 v1.0.5 only in §Trace narrative (historical record — preserved, not updated).
+- Per bc_array_changes_propagate_to_body_and_acs policy. PO source commit: 5006528.
+- STORY-INDEX version bumped v5.9 → v5.10.
 
 ## §Trace v5.9
 
