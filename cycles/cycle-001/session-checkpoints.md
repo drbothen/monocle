@@ -7,7 +7,7 @@ producer: state-manager
 timestamp: 2026-05-13T04:30:00Z
 cycle: cycle-001
 inputs: [STATE.md]
-input-hash: "be68f60"
+input-hash: "47b85fe"
 traces_to: STATE.md
 ---
 
@@ -328,5 +328,19 @@ Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE
 - **D-047 strict:** 0 findings of any severity for 3 consecutive adversary+consistency passes
 - **Current counter:** 0/3 (R121 FAIL — 1 HIGH; R20A fix dispatched; counter advance requires R122 CLEAN)
 - **Convergence trajectory:** R113→0 (CLEAN 1/3), R114→0, R115→1 (fixed 34ee6ee), R116→4 (FAIL, all 4 closed R15), R117→4 (FAIL, all 4+GAP-R56-002 closed R16), R118→10 (FAIL all SE-22 class, all 10 closed R17 chain), R119→3 (FAIL: all 3 closed R18 chain; SE-23 codified), R120→4 (FAIL: all 4+GAP-R59-003 closed R19 chain; SE-22 v2 first-cycle PROVEN), R121→1 (FAIL — 1 HIGH reverse-cascade; SE-22 v3 candidate HELD). Full trajectory: 30→6→4→0→0→1→4→4→10→3, R18→all-3-closed, R120→4 (FAIL), R19→all-5-closed (chain COMPLETE 2026-05-19; SE-22 v2 first-cycle proven across 5 applications; 0 SM-routing violations), R121→1 (FAIL — clear asymptotic narrowing; SE-22 v3 candidate HELD per D-114 1st occurrence).
+
+---
+
+## Checkpoint v6.39 (archived from STATE.md on 2026-05-29 when v6.40 replaced it)
+
+**S-025 PASS 16 MED CLOSED (7-ROUND, PATH B) / PASS 17 READY. STATE v6.39.**
+
+- develop @ 7a52041 (S-023 merge). 26/33 done (156/195 pts, 80%). 852+ tests.
+- S-025 HEAD: bfcba19 (Round 7: Path B RUSTSEC-2026-0009 + MSRV 1.86→1.88). CI all 9 green.
+- Counter: FULLY RESET (0/3). Pass 16 was MED (7-round fix; F-R30-1 threshold CROSSED 4/3).
+- Pass 16 trajectory: R1 App row, R2 false-green fix, R3 2 more rows, R4 op_ref, R5 vendored copy, R6 BackoffState, R7 Path B MSRV 1.88.
+- Artifact versions (v6.39): SS-deps-pin-manifest v1.2.0. PRD v1.27.3. SS-engine-module v1.1.26. ADR-0006 v1.2.
+- S-025 adversarial trajectory (16 passes): 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16).
+- Next action (at v6.39): Dispatch Pass 17 adversary at bfcba19.
 
 ---

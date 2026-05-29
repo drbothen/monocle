@@ -111,3 +111,37 @@ Extracted from STATE.md v6.01 on 2026-05-26.
 | D-154 | **Round 20 R121 closure COMPLETE — 3-burst chain; SE-22 v2 6th application; SE-23 5th consecutive; MILESTONE TEST queued (2026-05-19T04:00:00Z; R20C).** F-R121-1 HIGH (PRD traces_to VP-INDEX stale v1.14→v1.15 reverse-cascade) closed across 3 bursts: R20-pre (116363a) — R121 FAIL 1 HIGH persisted, STATE v5.83, R20 dispatched; R20A (68863bd) — PRD v1.26.14→v1.26.15 single-line reverse-cascade fix (SE-22 v2 6th+ application; SE-23 constraint respected by PO); R20B (0ae5be5) — VP-INDEX v1.15→v1.16 + 22 VPs PRD pin cascade v1.26.14→v1.26.15 (SE-22 v2 consumer-ledger; SE-17f recursive PASS; 23-file commit). R20C (this commit) — STATE v5.84 closure. SE-23 5th consecutive application PROVEN (SM touched ONLY STATE.md; zero spec artifact modifications). SE-16d R20 chain 4-row PASS: STATE v5.83 `02:50:00Z` → PRD v1.26.15 `03:00:00Z` → VP-INDEX v1.16 + 22 VPs `03:30:00Z` → STATE v5.84 `04:00:00Z`. All strict-greater UTC ISO-8601 Z form. Counter holds 0/3. Next: R122 + cons R61 — MILESTONE TEST (both CLEAN → 0/3 → 1/3). | 2026-05-19 | state-manager (R20C closure; Round 20 chain bookkeeping) |
 
 User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apache-2.0 dual; Q-permission-enum Option A; Q-DTU-Phase-1 dtu-claude-code-hooks-v1; Q-15-1 sealing removed; Q-16-5 FactoryAdapter divergence intentional; Q-16-6 FactoryState Option types. D-048..D-052 in `cycles/cycle-001/burst-log.md`. All binding.
+
+## Decisions (D-155 through D-187) — Archived from STATE.md v6.40 on 2026-05-29
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-155 | Phase 1 gate PASSED-WITH-RESIDUAL (D-155). Spec crystallization complete. 22 BCs. | 2026-05-14 | orchestrator |
+| D-159 | Phase 2 gate PASSED-WITH-RESIDUAL (D-159). 17 stories, 86 pts. | 2026-05-14 | orchestrator |
+| D-164 | Wave 1 gate PASSED (D-164). | 2026-05-25 | orchestrator |
+| D-166 | Wave 2 gate PASSED (D-166). | 2026-05-26 | orchestrator |
+| D-167 | Wave 3 gate PASSED (D-167). | 2026-05-26 | orchestrator |
+| D-168 | PRD expansion 22→70 BCs (D-168). | 2026-05-27 | orchestrator |
+| D-169 | Phase 1d CONVERGED (15 passes, trajectory 15→0; D-169). | 2026-05-27 | orchestrator |
+| D-170 | Phase 1d expansion human gate APPROVED (D-170). | 2026-05-27 | human |
+| D-171 | Phase 2 expansion: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (D-171). | 2026-05-27 | orchestrator |
+| D-172 | Phase 2 adversarial story review CONVERGED (4 passes, trajectory 18→11→9→4; D-172). | 2026-05-27 | orchestrator |
+| D-173 | Phase 2 expansion human gate APPROVED (D-173). Total: 33 stories, 195 pts. | 2026-05-27 | human |
+| D-175 | Wave 4 gate PASSED (634 tests, 0 failures, clippy/fmt clean). DTU SKIP. ADV PASS (0 CRIT/HIGH). Demo PASS (3/3). Holdout PASS (mean 0.90). develop @ b8a4ab7. | 2026-05-27 | orchestrator |
+| D-176 | S-017 DELIVERED — PR #22 @ 06432cf, 29 tests, adv 13→5→0. BC-2.04.001/010 satisfied. | 2026-05-27 | orchestrator |
+| D-177 | S-018 DELIVERED — PR #26 @ 654e281, 46 tests, adv 10→4→4. BC-2.04.007/008/009/011 satisfied. | 2026-05-27 | orchestrator |
+| D-178 | S-019 DELIVERED — PR #25 @ 11540fc, 25 tests, adv 7→2→1. BC-2.04.002/003 satisfied. | 2026-05-27 | orchestrator |
+| D-179 | S-020 DELIVERED — PR #24 @ f69d53a, 24 tests, adv 12→8→0. BC-2.04.012 satisfied. Fix: 5a3eaf4. | 2026-05-27 | orchestrator |
+| D-180 | S-021 DELIVERED — PR #23 @ acaacb9, 49 tests, adv 9→4→4. BC-2.05.001/003/004/008 satisfied. New monocle-ipc crate. | 2026-05-27 | orchestrator |
+| D-181 | Wave 5 COMPLETE — 5/5 stories done, 753 tests, 24/33 stories (143/195 pts). monocle-ipc crate added. | 2026-05-27 | orchestrator |
+| D-182 | Wave 5 gate PASSED (753 tests, 0 failures, clippy/fmt clean). DTU SKIP. ADV PASS (0 CRIT, 0 HIGH blocking; 2 HIGH obs tracked). Demo PASS (5/5). Holdout PASS (mean 0.94, min 0.80). develop @ 1ce7838. Wave 6 unblocked. | 2026-05-27 | orchestrator |
+| D-183 | Wave 6 AUTHORIZED — 4 stories (S-022, S-023, S-025, S-026), 34 pts. Execution order: S-022 serial-first → (S-023 ∥ S-025) → S-026. All dependencies satisfied. Human approval: "Approve as documented" (2026-05-27). | 2026-05-27 | orchestrator |
+| D-184 | S-022 DELIVERED — PR #27 @ c7540539. BC-2.05.002 + BC-2.05.005 fully satisfied. 15 ACs. 15 adversarial passes (convergence at Pass 15). 8 implementer rounds + 2 architect interventions. BC-2.05.002 v1.0.5 (ring_tail Vec<HookEventRecord> per Option B). SS-ipc v1.8.0 (at-least-once delivery per Option D). 22 integration tests. New crate dependency: monocle-runtime now uses monocle-ipc for shared HookEventRecord. | 2026-05-28 | orchestrator |
+| D-185 | Wave 6 parallel S-023 + S-025 AUTHORIZED. Human approval "Yes — parallel S-023 + S-025" (2026-05-28). Both dependencies satisfied; different crates (monocle-ipc reconnect logic vs new monocle-tui binary); independent. After both merge → S-026. | 2026-05-28 | orchestrator |
+| D-186 | S-023 DELIVERED — PR #29 @ 7a52041 (2026-05-28T19:31:07Z). BC-2.05.006 (reconnect backoff + lock re-read + offline mode) + BC-2.05.007 (SOQ-3 overlay clear on disconnect) satisfied. 15 ACs. 5 adversarial passes (3 consecutive NITPICK_ONLY convergence). 99 tests in monocle-ipc. 9/9 CI gates pass. F-ADV6-HIGH-001 production-grade. ADV-W4GATE-MED-001 + F-S022-ADV15-LOW-001 closed in-cycle. | 2026-05-28 | orchestrator |
+| D-187 | S-025 in flight. Adversarial cycle begun. | 2026-05-28 | orchestrator |
+| D-188 | S-025 Pass 12 CRITICAL — App.status_message is write-only state; render_frame never consumes it; disconnect/offline status text never reaches rendered buffer. Same vacuous-mirror class (L-W6-S025-002) as Pass 10, different field. Counter RESET to 0/3. F-S025-CI-001 fix also landed (07e207b). | 2026-05-28 | state-manager |
+| D-189 | S-025 Pass 13 LOW — 2 LOW findings + 4 NITPICK. Pass 12 CRITICAL fix verified. Counter HOLDS 0/3. NIT-003+NIT-004 deferred Task #9. Fix round dispatched. | 2026-05-28 | state-manager |
+| D-190 | S-025 Pass 14 NITPICK_ONLY — DarkGray baseline branch missing render+color test. Counter HOLDS 0/3. Fix dispatched. | 2026-05-28 | state-manager |
+| D-191 | S-025 Pass 15 NITPICK_ONLY-CLEAN — zero findings. Counter ADVANCES 0/3 → 1/3. Pattern decay confirmed. | 2026-05-28 | state-manager |
+| D-192 | S-025 Pass 16 MED — ADR-0006 audit-table compliance gap (App + EventBusHookEvent + EngineModuleRegistry + BackoffState) + false-green CI script + 4 op_ref violations + vendored copy drift. 5-round fix sequence. SS-engine-module v1.1.22→v1.1.25. ADR-0006 v1.0→v1.2. Counter RESET 1/3 → 0/3. | 2026-05-28 | state-manager |
