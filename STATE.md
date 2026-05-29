@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.35"
+version: "6.36"
 status: active
 producer: state-manager
-timestamp: 2026-05-28T23:59:00Z
+timestamp: 2026-05-29T00:30:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 14 NITPICK_ONLY — F-S025-ADV14-NIT-001 (DarkGray baseline status-line branch has no render+color assertion; 3rd branch gap after Pass 13 NIT-002 closed Yellow branches). Counter HOLDS 0/3 per Pass-12 dispatch protocol (route to fix on any findings). Fix round dispatched: test-writer (add DarkGray baseline render+color assertion test). Pass 15 after fix."
+current_step: "S-025 Pass 15 NITPICK_ONLY-CLEAN — zero findings at any severity. Counter ADVANCES 0/3 → 1/3. Pattern decay confirmed: Pass 12 CRITICAL → Pass 13 LOW → Pass 14 NIT → Pass 15 CLEAN. Pass 16 pending (counter 1/3 → 2/3 on clean; need 3 consecutive NITPICK_ONLY for convergence)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 12 CRITICAL — fix-round complete; Pass 13 LOW; Pass 14 NIT). D-188: Pass 12 outcome + F-S025-CI-001 fix. D-189: Pass 13 LOW; counter holds 0/3; fix round dispatched; NIT-003/NIT-004 deferred. D-190: Pass 14 NITPICK_ONLY (1 NIT — DarkGray baseline coverage); counter holds 0/3; fix round dispatched."
-awaiting: "S-025 fix-round: test-writer (add DarkGray baseline render+color assertion test — F-S025-ADV14-NIT-001) → Pass 15. After S-025 convergence: S-026 (13pts) dispatch."
+traces_to: "Phase 1 GATE-PASS-WITH-RESIDUAL (D-155). Phase 2 GATE-PASS-WITH-RESIDUAL (D-159). Phase 3 Wave 1 DONE (D-164), Wave 2 GATE-PASSED (D-166), Wave 3 GATE-PASSED (D-167), Wave 4 GATE-PASSED (D-175), Wave 5 GATE-PASSED (D-182). Phase 1d CONVERGED (D-169, D-170). Phase 2 expansion adversarial CONVERGED (D-172). See cycles/cycle-001/ for full convergence history. Wave 6 AUTHORIZED (D-183). S-022 DELIVERED (D-184). S-023 DELIVERED (D-186). S-025 D-187 PENDING (Pass 12 CRITICAL — fix-round complete; Pass 13 LOW; Pass 14 NIT; Pass 15 CLEAN). D-188: Pass 12 outcome + F-S025-CI-001 fix. D-189: Pass 13 LOW; counter holds 0/3; fix round dispatched; NIT-003/NIT-004 deferred. D-190: Pass 14 NITPICK_ONLY (1 NIT — DarkGray baseline coverage); counter holds 0/3; fix round dispatched. D-191: Pass 15 NITPICK_ONLY-CLEAN (zero findings); counter advances 0/3 → 1/3; pattern decay confirmed."
+awaiting: "Pass 16 adversary (background) — counter 1/3 → 2/3 on clean. After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -250,11 +250,11 @@ durable_task_register:
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  COLD-START RESUME GUIDE — S-025 PASS 14 NITPICK_ONLY / FIX-ROUND IN PROGRESS (STATE v6.35):
+  COLD-START RESUME GUIDE — S-025 PASS 15 NITPICK_ONLY-CLEAN / PASS 16 PENDING (STATE v6.36):
 
   SESSION CONTEXT:
     monocle Wave 6: S-022 (D-184) + S-023 (D-186) merged. S-025 in flight —
-    14 adversarial passes deep, counter 0/3 (HOLDS after Pass 14 NITPICK_ONLY).
+    15 adversarial passes deep, counter 1/3 (ADVANCED after Pass 15 CLEAN).
     S-026 blocked on S-025 merge.
     Read CLAUDE.md at the repo root for project principles before dispatching any agent.
     The production-grade-default principle in CLAUDE.md overrides all agent prompt defaults.
@@ -263,44 +263,34 @@ next_session_resume_protocol: |
     develop @ 7a52041 (S-023 merge, PR #29, 2026-05-28T19:31:07Z).
     26/33 stories done (156/195 pts, 80%). 852+ tests. clippy clean. fmt clean.
     S-025 PR #28 draft. Local worktree at .worktrees/S-025/.
-    S-025 HEAD: c8204df (Pass 13 fix-round: rename + Color::Yellow tests + 4 re-exports) or later —
+    S-025 HEAD: 2073c89 (Pass 14 fix-round: DarkGray baseline color test) —
       verify: gh pr view 28 --json statusCheckRollup,headRefOid
 
-  PASS 14 OUTCOME (NITPICK_ONLY — FIX-ROUND DISPATCHED):
-    Pass 13 fix-round VERIFIED CORRECT:
-      workspace_structure.rs:162 renamed to ac_005_workspace_declares_three_phase1_core_members (LOW-001).
-      startup_connect.rs:1099+1193 now assert Color::Yellow (NIT-002).
-      startup_connect.rs:1291 new precedence test: message wins + Color::Yellow (NIT-001).
-      lib.rs:33-36 re-exports 4 ui consts (SESSIONS_EMPTY_LINE_1/2, TOKEN_COUNT_OVERFLOW_CAP, UPTIME_OVERFLOW_CAP); 15 total re-exports (LOW-002).
-    1 NITPICK finding:
-      F-S025-ADV14-NIT-001: render_frame DarkGray baseline status-line branch has no render+color test.
-        status_message=None AND drop_counter=0 path renders MONOCLE_STATUS_LABEL with Color::DarkGray.
-        2 of 3 branches have color assertions; 3rd (DarkGray baseline) missing.
-        Bug-injection risk: Color::DarkGray → Color::Red undetectable by current tests.
-        Routing: test-writer (add test_bc_2_06_007_pc7_render_frame_renders_monocle_label_with_dark_gray_when_baseline).
-    Counter HOLDS 0/3 per Pass-12 dispatch protocol ("clean" = zero findings; 1 NIT not clean).
+  PASS 15 OUTCOME (NITPICK_ONLY-CLEAN — COUNTER ADVANCED 0/3 → 1/3):
+    Pass 14 fix-round VERIFIED CORRECT:
+      test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline
+      at startup_connect.rs:1413-1493: renders via production render_frame,
+      asserts MONOCLE_STATUS_LABEL + Color::DarkGray. Class-wide symmetry complete.
+    Zero findings at any severity (BLOCKER/CRITICAL/HIGH/MED/LOW/NIT — all zero).
+    Pattern decay confirmed: Pass 12 CRITICAL → Pass 13 LOW → Pass 14 NIT → Pass 15 CLEAN.
+    Counter ADVANCES 0/3 → 1/3.
 
-  FIX-ROUND IN PROGRESS (dispatch before Pass 15):
-    STEP 1 — test-writer:
-      Add test_bc_2_06_007_pc7_render_frame_renders_monocle_label_with_dark_gray_when_baseline
-      mirroring NIT-002 pattern:
-        - status_message = None, drop_counter = 0
-        - render via TestBackend(80, 6)
-        - assert status row contains MONOCLE_STATUS_LABEL with cell.style().fg == Some(Color::DarkGray)
-    THEN dispatch Pass 15 adversary (expected clean → counter 1/3).
+  CONVERGENCE FORECAST:
+    Need 3 consecutive NITPICK_ONLY-CLEAN passes.
+    Pass 15: CLEAN (1/3) — first clean.
+    Pass 16: dispatch now → counter 1/3 → 2/3 on clean.
+    Pass 17: dispatch → counter 2/3 → 3/3 on clean → CONVERGED.
+    Forecast: 3/3 at Pass 17 if Passes 16 + 17 also clean.
+    Note: L-W6-S025-004 (premature-clean signal) still applies — maximum skepticism
+    at every counter-advance moment regardless of pattern decay signal.
 
-  PASS 12 FIX ROUND (ALL COMPLETE — 3 commits — pre-Pass-13):
-    4a59074 — Implementer: render_frame status_message precedence fix (Color::Yellow, if-let)
-    c48ae11 — Test-writer: TDD red-gate render-output tests (DAEMON_DISCONNECT_STATUS + DAEMON_OFFLINE_STATUS)
-    7b74fd3 — State-manager: STATE.md v6.32→v6.33 (D-188 burst)
-
-  ARTIFACT VERSIONS (unchanged by Pass 13 state burst):
+  ARTIFACT VERSIONS (unchanged by Pass 15 state burst):
     STORY-INDEX v5.9. sprint-state v1.30 (26/33 done, 156/195 pts).
     BC-INDEX v1.27 (113 BCs). ARCH-INDEX v1.0.16. PRD v1.27.2.
     SS-tui v1.8.2. SS-ipc v1.8.0. SS-conventions v1.31.0. SS-engine-module v1.1.22.
     BC-2.06.016 v1.0.8. S-025 v1.6. S-026 v1.7.
 
-  S-025 ADVERSARIAL PASS TRAJECTORY (14 passes; counter 0/3):
+  S-025 ADVERSARIAL PASS TRAJECTORY (15 passes; counter 1/3):
     Pass 1: BLOCKER — 5 BLOCKERs (render path empty, keyboard dispatch, hardcoded dash,
              EnrichedSession fields, ring_tail dropped, duplicate InitialState)
     Pass 2: BLOCKER — CRITICAL read_framed cancellation-unsafe + BLOCKER HH:MM:SS uptime.
@@ -311,7 +301,7 @@ next_session_resume_protocol: |
              S-024 stale shape + SS-tui input-hash + BC-2.06.014 EC-096 missed.
     Pass 6: HIGH — test-name-vs-assertion drift (_verbatim_match used truncated substring).
     Pass 7: MED — Pass 6 class recurrence in _j_key_moves_selection_down + uptime doc.
-    Pass 8: NITPICK_ONLY — 1/3 CLEAN (first clean pass).
+    Pass 8: NITPICK_ONLY — 1/3 CLEAN (first clean pass; L-W6-S025-004 false-clean precedent).
     Pass 9: MED — float edge cases (NaN/inf in format_cost) + AC-003 canonical text untested.
     Pass 10: MED — Pass 9 sweep was vacuous-mirror (TestBackend local copy, not production)
               + PC-6 selected-row highlight untested. Counter reset to 0/3.
@@ -324,15 +314,17 @@ next_session_resume_protocol: |
     Pass 14: NITPICK_ONLY — 1 NIT (F-S025-ADV14-NIT-001: DarkGray baseline status-line branch
              missing render+color assertion; 3rd-branch symmetry gap). Counter holds 0/3
              per Pass-12 dispatch protocol (any findings = route to fix).
+    Pass 15: NITPICK_ONLY-CLEAN — ZERO findings. Counter ADVANCES 0/3 → 1/3 (D-191).
+             Pattern decay confirmed. All 3 color branches × render+color = complete.
 
-  NEXT ACTION — DISPATCH FIX-ROUND (test-writer), THEN PASS 15:
-    1. test-writer: add test_bc_2_06_007_pc7_render_frame_renders_monocle_label_with_dark_gray_when_baseline
-       (status_message=None, drop_counter=0, TestBackend(80,6), assert Color::DarkGray on status row)
-    2. Verify tests pass (green gate)
-    3. Dispatch Pass 15 adversary (counter 0/3; expected clean → 1/3; need 3 consecutive NITPICK_ONLY)
-    4. Pass 15 prompt: apply L-W6-S025-002 to ALL render fields; confirm DarkGray branch now covered.
+  NEXT ACTION — DISPATCH PASS 16:
+    1. Dispatch Pass 16 adversary.
+    2. Pass 16 prompt: apply L-W6-S025-001..007 in full; re-derive cold; counter at 1/3
+       (premature-clean risk per L-W6-S025-004 — apply maximum skepticism).
+    3. If Pass 16 CLEAN → counter 2/3. Dispatch Pass 17.
+    4. If Pass 16 finds anything → route to fix → counter RESETS.
 
-  AFTER S-025 CONVERGENCE (3/3 NITPICK_ONLY):
+  AFTER S-025 CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     1. Rebase S-025 onto develop @ 7a52041 (S-023 changes).
     2. Resolve TODO(S-023-merge) markers at app.rs:586-615 and app.rs:630:
        replace with monocle_ipc::events::TransportEvent +
@@ -342,17 +334,18 @@ next_session_resume_protocol: |
     5. Dispatch state-manager for D-187 closure + STATE.md version bump.
     6. S-026 (13 pts, EPIC-06) unblocked — dispatch immediately.
 
-  CRITICAL FILES FOR PASS 15 ADVERSARY (read in order):
+  CRITICAL FILES FOR PASS 16 ADVERSARY (read in order):
     1. .factory/STATE.md (this file — pass trajectory + fix history)
-    2. .factory/cycles/cycle-001/S-025/adversarial-pass-14.md (Pass 14 report — current)
-    3. .factory/cycles/cycle-001/S-025/adversarial-pass-13.md (Pass 13 report)
-    4. .factory/cycles/cycle-001/S-025/adversarial-pass-12.md (Pass 12 report)
-    5. .factory/cycles/cycle-001/S-025/architect-decisions-pass-1.md
-    6. .factory/cycles/cycle-001/S-025/architect-decisions-pass-2.md
-    7. .factory/cycles/cycle-001/S-025/text-style-adjudication.md (PO Option B)
-    8. .factory/cycles/cycle-001/S-025/red-gate-log.md
-    9. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6)
-    10. CLAUDE.md (project principles — production-grade default)
+    2. .factory/cycles/cycle-001/S-025/adversarial-pass-15.md (Pass 15 report — current)
+    3. .factory/cycles/cycle-001/S-025/adversarial-pass-14.md (Pass 14 report)
+    4. .factory/cycles/cycle-001/S-025/adversarial-pass-13.md (Pass 13 report)
+    5. .factory/cycles/cycle-001/S-025/adversarial-pass-12.md (Pass 12 report)
+    6. .factory/cycles/cycle-001/S-025/architect-decisions-pass-1.md
+    7. .factory/cycles/cycle-001/S-025/architect-decisions-pass-2.md
+    8. .factory/cycles/cycle-001/S-025/text-style-adjudication.md (PO Option B)
+    9. .factory/cycles/cycle-001/S-025/red-gate-log.md
+    10. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6)
+    11. CLAUDE.md (project principles — production-grade default)
 
   NON-BLOCKING FOLLOW-UPS (do NOT fix unless explicitly tasked):
     See durable_task_register in this file for full list.
@@ -403,7 +396,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 14 NITPICK_ONLY → fix-round in progress | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 14 NITPICK_ONLY (1 NIT; counter holds 0/3). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 15 CLEAN; counter 1/3 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 15 CLEAN (0 findings; counter 1/3). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -416,7 +409,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 14 NITPICK_ONLY (counter 0/3; fix round in progress; Pass 15 pending). S-026 blocked on S-025.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 15 NITPICK_ONLY-CLEAN (counter 1/3; Pass 16 pending). S-026 blocked on S-025.
 
 ## Blocking Issues
 
@@ -443,6 +436,7 @@ D-047 through D-174 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-188 | S-025 Pass 12 CRITICAL — F-S025-ADV12-CRITICAL-001: App.status_message is write-only state; render_frame never consumes it; disconnect/offline status text never reaches rendered buffer. Same vacuous-mirror class (L-W6-S025-002) as Pass 10, different field. Counter RESET to 0/3. F-S025-CI-001 fix also landed (07e207b — stale Phase 1 workspace_structure test, dropped tui clause). Next: test-writer TDD red gate + implementer render_frame fix → Pass 13. | 2026-05-28 | state-manager |
 | D-189 | S-025 Pass 13 LOW — 2 LOW findings (F-S025-ADV13-LOW-001: stale Phase-1 test name foot-gun; F-S025-ADV13-LOW-002: 4 pub consts not re-exported, L-W6-S025-003 asymmetry) + 4 NITPICK. Pass 12 CRITICAL fix verified correctly implemented (idiomatic if-let, Color::Yellow, both render branches). Counter HOLDS 0/3 per production-grade rubric (LOW != NITPICK_ONLY). NIT-003 + NIT-004 deferred to Task #9 post-merge PO sweep. Fix round dispatched: test-writer (rename + precedence + color tests) + implementer (re-export). | 2026-05-28 | state-manager |
 | D-190 | S-025 Pass 14 NITPICK_ONLY — F-S025-ADV14-NIT-001: render_frame DarkGray baseline status-line branch (status_message=None AND drop_counter=0) has no render+color assertion test; 3rd-branch symmetry gap visible only after Pass 13 NIT-002 closed Yellow branches. Counter HOLDS 0/3 per Pass-12 dispatch protocol (route to fix on any findings). Fix round dispatched: test-writer (add baseline DarkGray test). Pass 15 pending. | 2026-05-28 | state-manager |
+| D-191 | S-025 Pass 15 NITPICK_ONLY-CLEAN — zero findings at any severity. Pass 14 NIT-001 fix verified: test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline at startup_connect.rs:1413-1493 renders via production render_frame, asserts Color::DarkGray; class-wide symmetry complete (3 branches × render+color). Counter ADVANCES 0/3 → 1/3. Pattern decay confirmed: Pass 12 CRITICAL → 13 LOW → 14 NIT → 15 CLEAN. Pass 16 dispatched (counter 1/3 → 2/3 on clean; need 3 consecutive for convergence). | 2026-05-28 | state-manager |
 
 ## Key Tech Stack
 
@@ -463,24 +457,26 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.35 (D-190 — Pass 14 NITPICK_ONLY; 1 NIT; counter holds 0/3; fix round dispatched)
+## §Trace v6.36 (D-191 — Pass 15 NITPICK_ONLY-CLEAN; zero findings; counter advances 0/3 → 1/3; pattern decay confirmed)
 
-**S-025 PASS 14 RESULT: NITPICK_ONLY** (2026-05-28): 14 adversarial passes; counter HOLDS 0/3.
+**S-025 PASS 15 RESULT: NITPICK_ONLY-CLEAN** (2026-05-28): 15 adversarial passes; counter ADVANCES 0/3 → 1/3.
 
-Pass 13 fix-round verified landed: workspace_structure.rs:162 renamed to `ac_005_workspace_declares_three_phase1_core_members`; startup_connect.rs:1099+1193 now assert Color::Yellow; new precedence test at startup_connect.rs:1291 asserts message wins + Color::Yellow when both branches active; lib.rs:33-36 re-exports 4 ui consts (15 total re-exports). Pass 12 + 11 fixes preserved.
+Pass 14 fix landing verified: `test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline` at startup_connect.rs:1413-1493 renders via production render_frame into TestBackend(80,6); asserts `MONOCLE_STATUS_LABEL` present AND `cell.style().fg == Some(Color::DarkGray)`. Preconditions: `app.status_message.is_none()` AND `app.drop_counter == 0`. Class-wide symmetry complete: 3 branches × render+color = 5 tests total.
 
-**Pass 14 findings:**
-- F-S025-ADV14-NIT-001: render_frame DarkGray baseline status-line branch (status_message=None AND drop_counter=0) has no render+color assertion test. Same class-symmetry pattern as Pass 13 NIT-002 (which closed Yellow branches). Third branch gap was invisible until NIT-002 fix made it apparent. Routes to test-writer (add baseline DarkGray render+color test). Bug-injection risk: Color::DarkGray → Color::Red undetectable by current tests.
+**Pass 15 findings: ZERO** — no findings at any severity (BLOCKER/CRITICAL/HIGH/MED/LOW/NIT all zero).
 
-**Counter: HOLDS 0/3** — Pass-12 dispatch protocol: "clean" means zero findings; 1 NIT finding is not clean. Conservative path: dispatch fix → Pass 15.
+**Pattern decay confirmed:** Pass 12 CRITICAL → Pass 13 LOW → Pass 14 NIT → Pass 15 CLEAN. After Pass 14 NIT-001 closure, no analogous class remains in S-025 scope. Natural convergence trajectory.
 
-**Trajectory append:** Pass 14: NITPICK_ONLY (1 NIT class-symmetry: DarkGray baseline coverage; counter holds 0/3 per Pass-12 dispatch-protocol "route to fix on findings"); fix round in progress.
+**Counter: ADVANCES 0/3 → 1/3** — "clean" = zero findings. Unambiguous NITPICK_ONLY-CLEAN per S-022 lesson convergence threshold. Pass 16 dispatched (counter 1/3 → 2/3 on clean).
 
-**Next action:** fix-round: test-writer (add test_bc_2_06_007_pc7_render_frame_renders_monocle_label_with_dark_gray_when_baseline) → Pass 15.
+**Trajectory append:** Pass 15: NITPICK_ONLY-CLEAN (0 findings; counter advances 0/3 → 1/3; pattern decay confirmed Pass-12 CRITICAL → 13 LOW → 14 NIT → 15 CLEAN).
+
+**Convergence forecast:** 3/3 at Pass 17 if Passes 16 + 17 also clean. L-W6-S025-004 still applies — maximum skepticism at every counter-advance moment.
 
 **Artifact unchanged this burst** — no spec, story, or BC edits; state tracking only.
-STATE v6.34 → v6.35. Full Pass 14 report: `cycles/cycle-001/S-025/adversarial-pass-14.md`.
+STATE v6.35 → v6.36. Full Pass 15 report: `cycles/cycle-001/S-025/adversarial-pass-15.md`.
 
+§Trace v6.35 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.34 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.29 through v6.32 archived to `cycles/cycle-001/burst-log.md` (D-188 compaction).
 §Trace v6.22 through v6.28 archived to `cycles/cycle-001/burst-log.md`.
