@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.10"
+version: "5.11"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-29T00:00:00Z
@@ -450,6 +450,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.11
+
+**F-S025-ADV17-LOW-001 Path B tail — SS-deps-pin-manifest v1.2.0 MSRV 1.86→1.88 propagation to S-001 + S-003 + holdout-scenarios** (2026-05-29):
+- S-001 v1.8 → v1.9: SS-deps-pin-manifest.md input pin v1.1.19 → v1.2.0; traces_to manifest version updated; 11 active-body MSRV 1.86 → 1.88 sites updated (narrative, AC-002 ×3, AC-004 ×3, AC-006 header, Architecture Compliance Rules, Tasks ×2, File Structure ×2); lint-toolchain grep pattern updated "1.86" → "1.88".
+- S-003 v1.7 → v1.8: §Previous Story Intelligence MSRV 1.86 → 1.88 (1 site); no SS-deps-pin-manifest input pin.
+- holdout-scenarios.md v1.4 → v1.5: HS-W1-002 scenario updated (title + `cargo +1.88` + failure version 1.87); 4 active-content sites.
+- STORY-INDEX version bumped v5.10 → v5.11.
 
 ## §Trace v5.10
 

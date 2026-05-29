@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-001
 epic_id: EPIC-01
-version: "1.8"
+version: "1.9"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T00:00:00Z
@@ -33,13 +33,13 @@ estimated_days: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.19"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.30.2"}
   - {path: .factory/specs/architecture/SS-daemon-lifecycle.md, version: "1.0.33"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.1.19 EXACT-pin policy."
+traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.2.0 EXACT-pin policy."
 ---
 
 # S-001: Cargo Workspace Init + CI/DevOps Setup
@@ -47,7 +47,7 @@ traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time 
 ## Narrative
 
 As a developer on the monocle project, I want the Rust workspace initialized with all
-crates, toolchain pinned to MSRV 1.86, and a CI matrix covering macOS + Linux
+crates, toolchain pinned to MSRV 1.88, and a CI matrix covering macOS + Linux
 (darwin/linux × amd64/arm64), so that every subsequent story can compile, test, and
 deliver in a reproducible environment.
 
@@ -59,11 +59,11 @@ Linux (linux/amd64 and linux/arm64) without errors or warnings under `cargo clip
 This establishes the workspace that all subsequent stories (S-002 through S-015) compile within.
 
 ### AC-002 (NFR-007 validation gate — devops CI artifact, not VP)
-`rust-toolchain.toml` at the workspace root pins `channel = "1.86"`. `cargo check`
-with this toolchain verifies MSRV 1.86 is satisfied. Full contents:
+`rust-toolchain.toml` at the workspace root pins `channel = "1.88"`. `cargo check`
+with this toolchain verifies MSRV 1.88 is satisfied. Full contents:
 ```toml
 [toolchain]
-channel = "1.86"
+channel = "1.88"
 components = ["clippy", "rustfmt"]
 profile = "minimal"
 ```
@@ -86,12 +86,12 @@ native), `ubuntu-24.04` (x86_64), `ubuntu-24.04-arm` (Linux ARM64 native GitHub-
 runner, GA 2025-05).
 
 ### AC-004 (NFR-007 enforcement)
-`Cargo.toml` workspace `rust-version = "1.86"` field is set. CI includes a
+`Cargo.toml` workspace `rust-version = "1.88"` field is set. CI includes a
 `lint-toolchain` step:
 ```bash
-test -f rust-toolchain.toml && grep -Eq '^channel = "1\.86"$' rust-toolchain.toml
+test -f rust-toolchain.toml && grep -Eq '^channel = "1\.88"$' rust-toolchain.toml
 ```
-CI fails if `rust-toolchain.toml` is absent or if toolchain pin does not match "1.86".
+CI fails if `rust-toolchain.toml` is absent or if toolchain pin does not match "1.88".
 
 ### AC-005 (workspace structure invariant — correct Phase 1 crate member list; Orchestrator Decision 3)
 The workspace declares exactly these 3 crates as Phase 1 members: `monocle-core`,
@@ -103,7 +103,7 @@ appears in NO architectural source-of-truth; SS-deps-pin-manifest.md already dec
 one-function helper. `monocle-tui` is NOT declared as a Phase 1 workspace member per
 product-brief.md Phase 1 scope.
 
-### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.1.19)
+### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.2.0)
 `Cargo.toml` workspace `[workspace.dependencies]` table uses the Cargo 2021+ recommended
 pattern: workspace-level declarations, member crates inherit via `{ workspace = true }`.
 The following EXACT-pinned security-sensitive crates (per Patch-Pinning Policy, 9 crates)
@@ -112,7 +112,7 @@ are declared in workspace `[workspace.dependencies]`:
 - `axum = "=0.8.9"` (EXACT)
 - `serde_json = "=1.0.149"` (EXACT)
 - `rand = "=0.8.6"` (EXACT)
-- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md v1.1.19 L33-74)
+- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md v1.2.0 L33-74)
 - `bytes = "1.11"` (caret; direct workspace pin overrides prost-transitive; closes RUSTSEC-2026-0007 per SS-deps-pin-manifest.md §RUSTSEC Audit Context)
 - `wasmtime = "=44.0.1"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 3 plugin SDK boundary)
 - `russh = "=0.60.2"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 4 federation boundary)
@@ -120,10 +120,10 @@ are declared in workspace `[workspace.dependencies]`:
 
 NOTE: `rmcp` is OMITTED from Phase 1 workspace entirely per OQ-09 (Phase 4 only).
 
-All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md v1.1.19 L33-74 (Phase 1 Pin Manifest table).
+All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md v1.2.0 L33-74 (Phase 1 Pin Manifest table).
 `temp-env = { version = "^0.3", features = ["async_closure"] }` MUST be declared in
 `monocle-runtime/Cargo.toml` `[dev-dependencies]` (NOT workspace dependencies; it is a
-test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.1.19 L33-74.
+test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.2.0 L33-74.
 
 ### AC-007 (cargo audit CI gate)
 `.github/workflows/audit.yml` exists with `cron: '0 0 * * 0'` (weekly) running
@@ -135,7 +135,7 @@ test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.1.19 L33-74.
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,100 |
-| SS-deps-pin-manifest.md v1.1.19 (full) | ~9,976 |
+| SS-deps-pin-manifest.md v1.2.0 (full) | ~9,976 |
 | SS-daemon-lifecycle.md v1.0.33 (workspace scope section) | ~2,000 |
 | SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 |
 | Cargo.toml template + toolchain files | ~500 |
@@ -149,16 +149,16 @@ Well within 20% of 200k context window. No split required.
 - [ ] Create `Cargo.toml` workspace manifest using `[workspace.dependencies]` pattern (Cargo 2021+);
   member crates inherit via `{ workspace = true }` in their individual `[dependencies]`
   (monocle-auth is NOT a separate crate; Decision 3: `generate_session_token()` lives in `monocle-runtime::auth` module)
-- [ ] Set `rust-version = "1.86"` in workspace `Cargo.toml`
+- [ ] Set `rust-version = "1.88"` in workspace `Cargo.toml`
 - [ ] Create `rust-toolchain.toml` with contents:
   ```toml
   [toolchain]
-  channel = "1.86"
+  channel = "1.88"
   components = ["clippy", "rustfmt"]
   profile = "minimal"
   ```
 - [ ] Declare all 9 EXACT-pin security-sensitive crates in workspace `[workspace.dependencies]`
-  per SS-deps-pin-manifest.md v1.1.19 L33-74 (Phase 1 Pin Manifest table)
+  per SS-deps-pin-manifest.md v1.2.0 L33-74 (Phase 1 Pin Manifest table)
 - [ ] Declare `wasmtime = "=44.0.1"` and `russh = "=0.60.2"` in workspace `[workspace.dependencies]`
   but do NOT add them to any Phase 1 member crate's `[dependencies]`; they are workspace-declared
   for Phase 3 (wasmtime plugin SDK) and Phase 4 (russh federation) availability
@@ -167,7 +167,7 @@ Well within 20% of 200k context window. No split required.
 - [ ] Add `prost-build = "=0.14.1"` as `[build-dependencies]` in `monocle-proto/Cargo.toml`
 - [ ] Create `.github/workflows/ci.yml` with explicit `include:` matrix (not Cartesian product):
   macos-14/aarch64-apple-darwin, ubuntu-24.04/x86_64-unknown-linux-gnu, ubuntu-24.04-arm/aarch64-unknown-linux-gnu
-- [ ] Add `lint-toolchain` CI step: `test -f rust-toolchain.toml && grep -Eq '^channel = "1\.86"$' rust-toolchain.toml`
+- [ ] Add `lint-toolchain` CI step: `test -f rust-toolchain.toml && grep -Eq '^channel = "1\.88"$' rust-toolchain.toml`
 - [ ] Add `cargo clippy --workspace -- -D warnings` and `cargo fmt --check` to CI
 - [ ] Create `.github/workflows/audit.yml` with weekly cron (`0 0 * * 0`), `cargo install cargo-audit --locked`, `cargo audit --deny warnings`
 - [ ] Note: Native runners only — no `.cargo/config.toml` cross-linker block required for Phase 1
@@ -200,11 +200,11 @@ N/A — first story in monocle Phase 2. No predecessor stories in this epic.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-deps-pin-manifest.md` v1.1.19 L33-74 (Phase 1 Pin Manifest table):
+From `architecture/SS-deps-pin-manifest.md` v1.2.0 L33-74 (Phase 1 Pin Manifest table):
 - EXACT pin for 9 security-sensitive crates: `tokio`, `axum`, `serde_json`, `rand`, `prost`, `russh`, `rmcp`, `reqwest`, `wasmtime`
 - All EXACT pins must use full SemVer triplet form (`=x.y.z`, not `=x.y`)
 - Caret pin for all other Phase 1 crates
-- MSRV: Rust 1.86 (ratatui 0.30 floor)
+- MSRV: Rust 1.88 (ratatui 0.30 floor)
 - `wasmtime 44` and `russh 0.60.2` declared in workspace `[workspace.dependencies]` but NOT activated in Phase 1 member crates
 - `rmcp 1.6` OMITTED from Phase 1 workspace entirely (Phase 4 scope)
 - `bytes = "1.11"` must be direct workspace dep to override prost-transitive RUSTSEC-2026-0007
@@ -258,8 +258,8 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Module Layout:
 ## File Structure Requirements
 
 Files to create:
-- `/Cargo.toml` — workspace manifest with `[workspace]`, `[workspace.dependencies]`, `rust-version = "1.86"`
-- `/rust-toolchain.toml` — `[toolchain] channel = "1.86" / components = ["clippy", "rustfmt"] / profile = "minimal"`
+- `/Cargo.toml` — workspace manifest with `[workspace]`, `[workspace.dependencies]`, `rust-version = "1.88"`
+- `/rust-toolchain.toml` — `[toolchain] channel = "1.88" / components = ["clippy", "rustfmt"] / profile = "minimal"`
 - `/.github/workflows/ci.yml` — CI matrix workflow with explicit `include:` blocks
 - `/.github/workflows/audit.yml` — weekly `cargo audit --deny warnings` scheduled workflow
 - `/monocle-core/Cargo.toml` — crate manifest (workspace = true pattern)
@@ -283,6 +283,8 @@ Files to create:
 - `/monocle-proto/build.rs` — no-op stub: `fn main() {}`
 
 ## §Trace
+
+**v1.9** (2026-05-29) — Path B Wave 6 MSRV propagation tail: SS-deps-pin-manifest.md v1.1.19 → v1.2.0 input pin bump; all active body MSRV 1.86 → 1.88 propagation (11 sites: narrative, AC-002 ×3, AC-004 ×3, AC-006 header, Architecture Compliance Rules, Tasks ×2, File Structure ×2; lint-toolchain grep pattern updated to "1.88"). inputs.SS-deps-pin-manifest bumped v1.1.19 → v1.2.0. traces_to manifest version updated to v1.2.0. All §Trace 1.86 entries preserved as historical records. Closes consumer-story cascade started at architect f3533ce.
 
 **v1.8** (2026-05-20) — main.rs body spec updated to no-op stub form. Removed `println!("monocle-runtime stub")` per SS-conventions-anti-patterns.md v1.30.2 §Convention Checklist L503 ban (now enforced by clippy.toml disallowed_methods extension). Added `#![forbid(unsafe_code)]` + `#![deny(missing_docs)]` crate lints per HIGH-2 sibling-sweep gap. inputs.SS-conventions-anti-patterns bumped v1.29.5 → v1.30.2. Source: PR #2 commit b7ed1e2 + .factory/plans/adversary-pass-PR2-round-3.md HIGH-1.
 

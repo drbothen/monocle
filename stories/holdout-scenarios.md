@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: ops
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -43,14 +43,14 @@ monocle daemon. The clone reads the daemon's lock file and sends a POST to
 **Expected:** HTTP 200 response. WARN log line containing "compatibility alias".
 **NOT in any story AC:** Story ACs test individual headers; this tests the clone-to-daemon end-to-end path.
 
-### HS-W1-002: Workspace Compiles on MSRV 1.86 Exactly
+### HS-W1-002: Workspace Compiles on MSRV 1.88 Exactly
 
 **Wave:** 1
 **Source:** NFR-007; SS-deps-pin-manifest.md §MSRV Policy
-**Scenario:** Evaluator runs `cargo +1.86 build --workspace`. Must succeed without errors.
-Then evaluator runs `cargo +1.85 build --workspace`. Must fail (MSRV violation).
-**Expected:** 1.86 succeeds; 1.85 fails with MSRV error.
-**NOT in any story AC:** Story AC-002 only checks that toolchain.toml pins 1.86, not that 1.85 is rejected.
+**Scenario:** Evaluator runs `cargo +1.88 build --workspace`. Must succeed without errors.
+Then evaluator runs `cargo +1.87 build --workspace`. Must fail (MSRV violation).
+**Expected:** 1.88 succeeds; 1.87 fails with MSRV error.
+**NOT in any story AC:** Story AC-002 only checks that toolchain.toml pins 1.88, not that 1.87 is rejected.
 
 ---
 
@@ -259,6 +259,12 @@ evaluated until Wave 3.
 **Phase 2 r10 closure** (2026-05-19):
 - F-PHASE2-R10-02 (MEDIUM) / GAP-PHASE2-R10-3: STORY-INDEX pin updated v1.5 → v1.7 per SE-22 v2 consumer-ledger sweep (STORY-INDEX bumped v1.5→v1.6 in r09 burst; then v1.6→v1.7 in this r10 burst for Decision 11 S-001.blocks correction). holdout-scenarios.md carries forward to current STORY-INDEX version as required by SE-22 v2 forward consumer-ledger discipline.
 - Frontmatter bumped to v1.3.
+
+## §Trace v1.5
+
+**Path B Wave 6 MSRV propagation tail** (2026-05-29):
+- HS-W1-002 scenario updated: title "MSRV 1.86 Exactly" → "MSRV 1.88 Exactly"; `cargo +1.86` → `cargo +1.88`; failure version 1.85 → 1.87 (N-1 from new floor); AC-002 cross-reference updated to pin "1.88". 4 active-content sites updated.
+- version bumped 1.4 → 1.5. Closes consumer-story cascade started at architect f3533ce.
 
 ## §Trace v1.4
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-003
 epic_id: EPIC-01
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -153,7 +153,7 @@ S-003 exposes it in the response — joint coverage. VP-011 verifies the equalit
 ## Previous Story Intelligence
 
 S-002 (Wave 2): Unauthenticated router established with `GET /healthz`. The monocle-runtime
-workspace crate, `monocle-runtime/src/lib.rs` stub, clippy/audit/CI baseline, and MSRV 1.86
+workspace crate, `monocle-runtime/src/lib.rs` stub, clippy/audit/CI baseline, and MSRV 1.88
 are all inherited from S-001 (Wave 1) via S-002.
 This story adds the authenticated router with auth middleware.
 The auth middleware is shared with hook endpoints (S-009 will depend on it).
@@ -214,6 +214,13 @@ Files to modify:
 - §Previous Story Intelligence expanded: S-001 monocle-runtime crate + lib.rs stub + CI/MSRV
   baseline inheritance explicitly noted.
 - version bumped 1.4 → 1.5.
+
+## §Trace v1.8
+
+**Path B Wave 6 MSRV propagation tail** (2026-05-29):
+- §Previous Story Intelligence: MSRV 1.86 → 1.88 body text propagation (1 site: line "MSRV 1.86 are all inherited from S-001").
+- No input-pin change required (SS-deps-pin-manifest not in S-003 inputs list).
+- version bumped 1.7 → 1.8. Closes consumer-story cascade started at architect f3533ce.
 
 ## §Trace v1.7
 
