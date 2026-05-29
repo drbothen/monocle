@@ -1098,7 +1098,7 @@ fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
 #[test]
 fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() {
     use monocle_tui::ui::sessions_panel::SessionsPanelState;
-    use ratatui::{backend::TestBackend, Terminal};
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
 
     // Drive the app into the Disconnected state using the production event handler.
     let mut app = App::new(MonocleConfig::default());
@@ -1148,6 +1148,33 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
         DAEMON_DISCONNECT_STATUS,
         status_rows.trim()
     );
+
+    // F-S025-ADV13-NIT-002: verify the status_message span is styled Yellow.
+    // app.rs:942 applies Color::Yellow to status_message — match the drop_counter
+    // sibling test (lines 951-978) which already asserts Yellow on its span.
+    let target_bytes: Vec<char> = DAEMON_DISCONNECT_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_disconnect: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == &target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_disconnect;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 / AC-003: DAEMON_DISCONNECT_STATUS ({:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)",
+        DAEMON_DISCONNECT_STATUS
+    );
 }
 
 /// BC-2.06.016 PC-4 (offline path): when `app.status_message` is
@@ -1166,7 +1193,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
 fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after_reconnect_exhausted(
 ) {
     use monocle_tui::ui::sessions_panel::SessionsPanelState;
-    use ratatui::{backend::TestBackend, Terminal};
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
 
     // Build app and directly set the offline status.  This is Option C per the
     // dispatch brief: the public `status_message` field (app.rs:143 `pub`) is
@@ -1214,5 +1241,141 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
          got status rows: {:?}",
         DAEMON_OFFLINE_STATUS,
         status_rows.trim()
+    );
+
+    // F-S025-ADV13-NIT-002: verify the status_message span is styled Yellow.
+    // app.rs:942 applies Color::Yellow to status_message — symmetric with the
+    // drop_counter sibling test (lines 951-978) which asserts Yellow on its span.
+    let target_bytes: Vec<char> = DAEMON_OFFLINE_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_offline: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == &target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_offline;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 (offline): DAEMON_OFFLINE_STATUS ({:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)",
+        DAEMON_OFFLINE_STATUS
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV13-NIT-001 — status_message takes precedence over drop_counter
+// when BOTH are active simultaneously.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.016 PC-4 / BC-2.06.004 PC-2 / AC-003 (precedence path):
+/// When `app.status_message` is `Some(...)` AND `app.drop_counter > 0`
+/// simultaneously, `render_frame` must render the `status_message` text —
+/// NOT the drop-counter string.
+///
+/// app.rs:941-953 encodes this as: `if let Some(msg) = app.status_message.as_deref()`
+/// checked BEFORE `else if app.drop_counter > 0`.  A regression that reversed the
+/// if/else order would NOT be caught by the two existing tests (each exercises only
+/// one branch at a time).
+///
+/// F-S025-ADV13-NIT-001: adds the missing simultaneous-both-active coverage.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_both_active() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app where BOTH status_message and drop_counter are active.
+    // 1. Trigger on_transport_event(Disconnected) — sets status_message.
+    // 2. Also set drop_counter to 5 directly via the public field.
+    //    (app.drop_counter is `pub` per app.rs:132 — no encapsulation violated.)
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Trigger the Disconnected path — sets status_message = Some(DAEMON_DISCONNECT_STATUS).
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    // Also set drop_counter to a nonzero value to activate the competing branch.
+    app.drop_counter = 5;
+
+    // Precondition guards — both branches must be active before we test precedence.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "precondition: status_message must be DAEMON_DISCONNECT_STATUS"
+    );
+    assert_eq!(app.drop_counter, 5, "precondition: drop_counter must be 5");
+
+    // Render via TestBackend (80 × 6).
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert: the status_message text is rendered (message wins).
+    // Uses re-exported const per L-W6-S025-003.
+    assert!(
+        status_rows.contains(DAEMON_DISCONNECT_STATUS),
+        "BC-2.06.016 PC-4 precedence: status bar must render DAEMON_DISCONNECT_STATUS \
+         ({:?}) when both status_message and drop_counter are active; \
+         got status rows: {:?}",
+        DAEMON_DISCONNECT_STATUS,
+        status_rows.trim()
+    );
+
+    // Assert: the drop-counter string is NOT rendered (it must lose to status_message).
+    // If the if/else order were reversed, this assertion would catch the regression.
+    assert!(
+        !status_rows.contains(&format_drop_counter(5)),
+        "BC-2.06.016 PC-4 precedence: status bar must NOT render drop-counter ({:?}) \
+         when status_message is also active — status_message takes precedence; \
+         got status rows: {:?}",
+        format_drop_counter(5),
+        status_rows.trim()
+    );
+
+    // Also verify the status_message span is styled Yellow (not default color).
+    // Symmetric with the drop_counter sibling test (lines 951-978) and the
+    // F-S025-ADV13-NIT-002 assertions on the individual status_message tests.
+    let target_bytes: Vec<char> = DAEMON_DISCONNECT_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_prec: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == &target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_prec;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 precedence: DAEMON_DISCONNECT_STATUS must be rendered \
+         with Yellow foreground when both branches are active (app.rs:942)"
     );
 }

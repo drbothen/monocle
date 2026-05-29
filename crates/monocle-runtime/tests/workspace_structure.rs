@@ -155,7 +155,11 @@ fn ac_004_ci_yml_has_lint_toolchain_step() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn ac_005_workspace_declares_exactly_three_phase1_members() {
+// Renamed per F-S025-ADV13-LOW-001 — function asserts PRESENCE of the 3 Phase-1
+// core crates (monocle-core, monocle-runtime, monocle-proto), not "exactly 3 workspace
+// members".  The workspace has 9 members as of Wave 6; the old name "exactly_three"
+// was misleading and could prompt a future maintainer to add a false absence assertion.
+fn ac_005_workspace_declares_three_phase1_core_members() {
     let ws = read_workspace_cargo_toml();
     for member in ["monocle-core", "monocle-runtime", "monocle-proto"] {
         assert!(
