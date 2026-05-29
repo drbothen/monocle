@@ -5,7 +5,7 @@
 //!
 //! **Red Gate discipline:** All tests in this file MUST FAIL before the implementing
 //! engineer brings `engine.rs` and `hook_events.rs` to production-grade per
-//! SS-engine-module.md v1.1.20.
+//! SS-engine-module.md v1.1.20 (TDD red-gate authoring baseline; current canonical is v1.1.26).
 //!
 //! Probe mapping (from VP-019 §Probe Matrix):
 //! - 19.a — method count == 5; names match `{id, metadata, detect, enrich, on_hook}`
