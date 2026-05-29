@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.14"
+version: "5.15"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-29T08:00:00Z
@@ -450,6 +450,18 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.15
+
+**F-S025-ADV27-MED-001 S-025-scope-only type-name drift fix (structural-spec drift instance #2, META-9th)** (2026-05-29):
+- S-025 v1.9 → v1.10: 2 body-site type-name corrections.
+  - Line 144 (Tasks list): `Vec<SessionState>` → `Vec<EnrichedSession>` — App.sessions field type
+  - Line 228 (Downstream Consumer Contract code block): `pub sessions: Vec<SessionState>,` → `pub sessions: Vec<EnrichedSession>,`
+- Canonical type per SS-tui.md:845 + production app.rs:130. `SessionState` is runtime-internal enum (monocle-runtime::hooks), NOT App.sessions type.
+- Sweep-wider: line 164 "(NOT `SessionState`)" PRESERVED — refers to `SessionListUpdate` variant naming, not App.sessions type.
+- Cross-story propagation: S-028 lines 63 + 147 same type-name drift confirmed deferred to wave-gate per BC-5.39.002 PC2 cross-story deferral. NOT fixed in this commit per Three-Perimeter Scope Contract.
+- Architect strategic dispatch (ADR-0007 §Scope OR ADR-0008 structural-claim discipline) running in parallel.
+- STORY-INDEX bumped v5.14 → v5.15.
 
 ## §Trace v5.14
 

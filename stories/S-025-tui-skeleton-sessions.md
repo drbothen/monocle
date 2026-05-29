@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.9"
+version: "1.10"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -141,7 +141,7 @@ v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected
 
 - [ ] Create `monocle-tui/` binary crate: `Cargo.toml`, `src/main.rs`, `src/app.rs`, `src/ui/mod.rs`
 - [ ] Add `monocle-tui` to workspace `Cargo.toml` members
-- [ ] Implement `App` struct in `app.rs` with fields: `mode: AppMode`, `config: MonocleConfig`, `sessions: Vec<SessionState>`, `drop_counter: u64`, `overlay_stack: VecDeque<PromptModal>` (local TUI copy)
+- [ ] Implement `App` struct in `app.rs` with fields: `mode: AppMode`, `config: MonocleConfig`, `sessions: Vec<EnrichedSession>`, `drop_counter: u64`, `overlay_stack: VecDeque<PromptModal>` (local TUI copy)
 - [ ] Implement terminal setup in `main.rs`: `enable_raw_mode()`, `EnterAlternateScreen`, panic hook for terminal restore
 - [ ] Implement terminal teardown: `disable_raw_mode()`, `LeaveAlternateScreen` — called on all exit paths
 - [ ] Implement UDS connection attempt in `app.rs`: connect to `<runtime_dir>/monocle.sock`, display error panel on failure
@@ -225,7 +225,7 @@ Public API produced by this story for downstream consumption:
 pub struct App {
     pub mode: AppMode,
     pub config: MonocleConfig,
-    pub sessions: Vec<SessionState>,
+    pub sessions: Vec<EnrichedSession>,
     pub drop_counter: u64,
     pub overlay_stack: VecDeque<PromptModal>,
 }
@@ -234,6 +234,29 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.10
+
+**F-S025-ADV27-MED-001 S-025-scope-only type-name drift fix (structural-spec drift instance #2, META-9th)** (2026-05-29):
+
+Type-name drift correction in 2 body sites:
+- Tasks list line 144: `Vec<SessionState>` → `Vec<EnrichedSession>` per SS-tui.md:845 canonical
+- Downstream Consumer Contract line 228: `pub sessions: Vec<SessionState>,` → `pub sessions: Vec<EnrichedSession>,`
+
+Canonical type is `EnrichedSession` (monocle-core::engine::EnrichedSession per SS-engine-module §EnrichedSession). `SessionState` is a runtime-internal enum in monocle-runtime/src/hooks/mod.rs used by HookSessionRegistry — NOT the data type in App.sessions.
+
+Production code at app.rs:130 already correctly uses `Vec<EnrichedSession>` — drift was in story body documentation only.
+
+Sweep-wider result: 3 hits total:
+- Line 144 (Tasks): FIXED — active claim
+- Line 164 (Previous Story Intelligence): PRESERVED — "(NOT `SessionState`)" disclaimer refers to `SessionListUpdate` variant naming, not App.sessions type
+- Line 228 (Downstream Consumer Contract): FIXED — active claim
+
+Cross-story propagation: S-028 lines 63 + 147 carry same type-name drift; deferred to wave-gate per BC-5.39.002 PC2 cross-story deferral category.
+
+Architect strategic dispatch (ADR-0007 §Scope extension OR ADR-0008 for structural-claim discipline) running in parallel per TRIPWIRE FIRED at 2/3 threshold (D-205 m.6 OBS-001 armament).
+
+SE-16d monotonicity: v1.10 timestamp 2026-05-29 >= v1.9 timestamp 2026-05-29. PASS (same-day).
 
 ## §Trace v1.9
 
