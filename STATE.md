@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.40"
+version: "6.41"
 status: active
 producer: state-manager
-timestamp: 2026-05-29T02:00:00Z
+timestamp: 2026-05-29T03:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV gap; F-S025-ADV17-LOW-001 CLOSED by PO commit 5006528 v1.0.6). Counter 0/3 → 1/3 CONFIRMED. Pass 18 READY TO DISPATCH at HEAD bfcba19."
+current_step: "S-025 Pass 17 LOW-001 FULLY CLOSED (Path B propagation tail: 2 cascade rounds c7ae560+e2944d3; story-writer S-014/S-015/S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Counter 1/3 CONFIRMED. Pass 18 READY at bfcba19."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD."
-awaiting: "Pass 18 adversary at HEAD bfcba19 — counter 1/3 CONFIRMED (PO BC-2.03.001 v1.0.6 fix @ 5006528; F-S025-ADV17-LOW-001 CLOSED). After S-025 convergence (3/3): S-026 (13pts) dispatch."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready."
+awaiting: "Pass 18 adversary at HEAD bfcba19 — counter 1/3 CONFIRMED (Path B propagation tail FULLY CLOSED: 2 cascade rounds c7ae560+e2944d3; F-S025-ADV17-LOW-001 CLOSED across all consumers). Target 1/3 → 2/3. After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -236,9 +236,9 @@ durable_task_register:
       detail: "Pass 16 round 5 (architect): scripts/audit-table.md is a vendored copy of the audit table from SS-engine-module.md. When the canonical table changes, the vendored copy must be synced atomically in the same PR. The HookEventRecord crate-column drift (monocle-runtime → monocle-ipc, post-S-022 relocation) persisted unnoticed across 16 passes because the vendored copy was not included in propagation sweeps. Codification target: include in pre-commit hook or PR template checklist. Recurrence count: 1."
       blocking: false
     - id: "F-S025-ADV16-CODIFY-001"
-      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep discipline."
+      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep + MSRV-bump playbook discipline (extended D-196)."
       status: pending
-      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation. Route orchestrator Task #9 batch to story-writer + CLAUDE.md documentation update."
+      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' EXTENDED (D-196) per PO + story-writer process-gap observation: MSRV-bump playbook scope must include ALL layers — architecture/ (SS docs, ADRs, risk-acceptance), behavioral-contracts/ (BC bodies), stories/ inputs[] pins AND body content, planning artifacts (holdout-scenarios.md HS-* scenarios). Verification sweep command: grep -rn \"MSRV X.YY\\|Rust X.YY stable\\|channel = \\\"X.YY\\\"\\|rust-version = \\\"X.YY\\\"\" .factory/ | grep -v \"§Trace\". Success criterion: zero non-§Trace hits remaining. Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation. Route orchestrator Task #9 batch to story-writer + CLAUDE.md documentation update."
       blocking: false
     - id: "F-S025-PATH-B-CLAUDE-MD"
       subject: "CLAUDE.md line 18 cites MSRV 1.86; Path B bumped Phase 1 MSRV to 1.88 — human action required"
@@ -246,9 +246,9 @@ durable_task_register:
       detail: "CLAUDE.md line 18 reads: 'MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor). Phase 3 = Rust 1.92 (wasmtime 44 requirement).' Architect Path B work (D-194) bumped Phase 1 MSRV to 1.88 (time 0.3.47 floor per RUSTSEC-2026-0009 mitigation). CLAUDE.md is human-maintained (outside agent write scope). Human action: update line 18 to: 'MSRV: Phase 1 = Rust 1.88 (time 0.3.47 floor per RUSTSEC-2026-0009 mitigation; original ratatui 0.30 floor was 1.86). Phase 3 = Rust 1.92 (wasmtime 44 requirement).' Anchored to next human review; non-blocking for S-025."
       blocking: false
     - id: "F-S025-ADV17-LOW-001"
-      subject: "BC-2.03.001 stale 'MSRV 1.86 stable Rust' reference — CLOSED"
+      subject: "BC-2.03.001 stale 'MSRV 1.86 stable Rust' reference — FULLY CLOSED (D-196)"
       status: closed
-      detail: "CLOSED: PO commit 5006528 (BC-2.03.001 v1.0.6) replaced 'MSRV 1.86 stable Rust' → 'MSRV 1.88 stable Rust' at lines 35+61 + §Trace added. Counter advance 0/3 → 1/3 CONFIRMED. Pass 18 dispatch ready at bfcba19."
+      detail: "FULLY CLOSED (D-196): PO commit 5006528 (BC-2.03.001 v1.0.6) replaced lines 35+61. Story-writer cascade round 1 (c7ae560): S-014 v1.5 + S-015 v1.7 + STORY-INDEX v5.10. Story-writer cascade round 2 (e2944d3): S-001 v1.9 + S-003 v1.8 + holdout-scenarios v1.5 + STORY-INDEX v5.11. Final grep confirms ZERO non-§Trace 'MSRV 1.86' hits across all .factory/ artifacts. Counter 1/3 CONFIRMED. Pass 18 ready at bfcba19."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -275,37 +275,41 @@ durable_task_register:
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  S-025 PASS 17 DONE (D-195) — PASS 18 PENDING PO FIX — STATE v6.40
+  S-025 PASS 17 LOW-001 FULLY CLOSED (D-196) — PASS 18 READY — STATE v6.41
 
   STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 HEAD bfcba19 (CI all 9 green).
-  COUNTER: 1/3 HOLDING (Pass 17 NITPICK_ONLY-CLEAN; 1 LOW dispatched to PO in parallel).
+  COUNTER: 1/3 CONFIRMED (Path B propagation tail FULLY CLOSED: c7ae560+e2944d3; zero non-§Trace MSRV 1.86 hits).
   TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17).
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
   IMMEDIATE NEXT ACTIONS:
-    1. PO LOW-001 fix CONFIRMED: commit 5006528 (BC-2.03.001 v1.0.6). Counter 1/3 CONFIRMED.
-    2. Dispatch Pass 18 adversary at bfcba19 (unchanged — PO touched specs only).
-       Focus: verify BC-2.03.001 v1.0.6 fix correct + full re-sweep all 17 prior axes.
-    4. If Pass 18 CLEAN → counter 2/3. Dispatch Pass 19.
+    1. Path B propagation tail FULLY CLOSED (D-196). Counter 1/3 CONFIRMED.
+    2. Dispatch Pass 18 adversary at bfcba19 (S-025 branch unchanged; factory-artifacts work touches specs only).
+       Focus: verify BC-2.03.001 v1.0.6 + all consumer propagation correct + full re-sweep all 17 prior axes.
+    3. If Pass 18 CLEAN → counter 2/3. Dispatch Pass 19.
+    4. Convergence forecast: 3/3 at Pass 19 if Passes 18 + 19 clean.
 
-  PASS 17 LOW FINDING (F-S025-ADV17-LOW-001):
-    BC-2.03.001 lines 35+61: "MSRV 1.86 stable Rust" — stale after Path B bump.
-    Architect sweep (D-194) updated 6 artifacts; missed this BC. PO fix: 2 lines + version bump.
-    Full report: cycles/cycle-001/S-025/adversarial-pass-17.md.
+  PATH B PROPAGATION CLOSURE (D-196 — ALL CLOSED):
+    F-S025-ADV17-LOW-001 FULLY CLOSED across all consumers:
+    - PO: BC-2.03.001 v1.0.6 (5006528) — lines 35+61
+    - story-writer round 1 (c7ae560): S-014 v1.5 + S-015 v1.7 + STORY-INDEX v5.10
+    - story-writer round 2 (e2944d3): S-001 v1.9 + S-003 v1.8 + holdout-scenarios v1.5 + STORY-INDEX v5.11
+    Final state: ZERO non-§Trace "MSRV 1.86" hits across .factory/.
 
   CRITICAL FILES FOR PASS 18 ADVERSARY (read in order):
-    1. .factory/STATE.md (v6.40); 2. adversarial-pass-17.md; 3. adversarial-pass-16.md;
+    1. .factory/STATE.md (v6.41); 2. adversarial-pass-17.md; 3. adversarial-pass-16.md;
     4. adversarial-pass-15.md; 5. adversarial-pass-14.md; 6. adversarial-pass-12.md;
     7. architect-decisions-pass-1.md; 8. architect-decisions-pass-2.md;
     9. text-style-adjudication.md; 10. red-gate-log.md;
     11. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6);
-    12. .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md (verify fix);
+    12. .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md (verify v1.0.6 fix);
     13. CLAUDE.md (project principles — production-grade default).
     All files at: .factory/cycles/cycle-001/S-025/
 
-  ARTIFACT VERSIONS (Pass 17; BC-2.03.001 placeholder):
+  ARTIFACT VERSIONS (D-196 / Pass 18 entry point):
     BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
-    SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7. BC-2.03.001 v1.0.6 (PO LOW-001 fix CONFIRMED; 5006528).
+    SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7. BC-2.03.001 v1.0.6.
+    S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7. holdout-scenarios v1.5. STORY-INDEX v5.11.
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
@@ -318,6 +322,7 @@ next_session_resume_protocol: |
     L-003: pub const extraction eliminates vacuous-mirror class structurally.
     L-004: Premature-clean signal confirmed (Pass 15 clean → Pass 16 MED). Max skepticism.
     L-007: Sweep wider than the finding — catch ALL class siblings.
+    L-NEW (D-196): Complete MSRV-bump playbook must sweep architecture/ + behavioral-contracts/ + stories/ inputs+body + planning artifacts. Architect layer alone is insufficient.
 
   FACTORY: .factory/ on factory-artifacts. Run factory-worktree-health first. NEVER --no-verify.
 dtu_required: true
@@ -338,7 +343,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 17 NITPICK_ONLY-CLEAN; counter 1/3 CONFIRMED; Pass 18 READY | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 CLOSED at v1.0.6 by PO; counter 1/3 CONFIRMED). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 17 LOW-001 FULLY CLOSED; counter 1/3 CONFIRMED; Pass 18 READY | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 17 LOW-001 FULLY CLOSED (D-196: 2 cascade rounds c7ae560+e2944d3; zero MSRV 1.86 hits; counter 1/3 CONFIRMED). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -351,7 +356,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 CLOSED v1.0.6; counter 1/3 CONFIRMED; HEAD bfcba19; CI all 9 green; D-195). Pass 18 READY. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3).
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 17 LOW-001 FULLY CLOSED (D-196: 2 cascade rounds c7ae560+e2944d3; counter 1/3 CONFIRMED; HEAD bfcba19; CI all 9 green). Pass 18 READY. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3).
 
 ## Blocking Issues
 
@@ -375,7 +380,7 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **ADR-0006 v1.2**. **STORY-INDEX v5.9** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **ADR-0006 v1.2**. **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.11** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -389,21 +394,20 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.40 (D-195 — Pass 17 NITPICK_ONLY-CLEAN; 1 LOW BC-2.03.001 MSRV gap; counter 0/3 → 1/3 HOLDING; PO fix-round dispatched)
+## §Trace v6.41 (D-196 — Path B propagation tail FULLY CLOSED; Pass 17 LOW-001 closed across all consumers; 2 cascade rounds; counter 1/3 CONFIRMED; Pass 18 ready)
 
-**S-025 PASS 17 RESULT: NITPICK_ONLY-CLEAN** (2026-05-29): 17 adversarial passes; counter advances 0/3 → 1/3 (HOLDING pending LOW-001 fix-round landing).
+**S-025 PASS 17 LOW-001 FULLY CLOSED** (2026-05-29, D-196): Path B MSRV propagation tail closed across entire consumer cascade. Counter 1/3 CONFIRMED. Pass 18 ready at HEAD bfcba19.
 
-**Pass 17 outcome (D-195):** Dispatched against HEAD bfcba19 (Path B: MSRV 1.88, time 0.3.47). Comprehensive verification of all 7 Pass 16 fix rounds PASSED. Angles I-N exercised with zero defects. One LOW finding: F-S025-ADV17-LOW-001 — BC-2.03.001 lines 35+61 say "MSRV 1.86 stable Rust"; architect MSRV propagation sweep (D-194) updated 6 artifacts but missed this BC. Semantic distinction: SS-conventions "Rust 1.86+" (language history, correct on 1.88) vs BC-2.03.001 "MSRV 1.86 stable" (project MSRV claim, stale). PO fix CONFIRMED: commit 5006528 (BC-2.03.001 v1.0.6; F-S025-ADV17-LOW-001 CLOSED). Zero CRITICAL/HIGH/MED. Counter advances 0/3 → 1/3 CONFIRMED. Pass 18 ready at bfcba19.
-
-**Trajectory:** Pass 17: NITPICK_ONLY-CLEAN (1 LOW: BC-2.03.001 MSRV 1.86 reference; architect sweep gap; fix-round dispatched in parallel; counter advances 0/3 → 1/3 HOLDING pending fix-round landing).
+**D-196 outcome:** After PO BC-2.03.001 v1.0.6 closure (5006528), story-writer dispatched two cascade rounds. Cascade round 1 (c7ae560): S-014 v1.4→v1.5 (BC-2.03.001 pin bump + AC-007/Architecture Compliance Rules MSRV update), S-015 v1.6→v1.7 (pin bump only), STORY-INDEX v5.9→v5.10. Cascade round 2 (e2944d3): S-001 v1.8→v1.9 (inputs[SS-deps-pin-manifest] 1.1.19→1.2.0 + 11 body sites), S-003 v1.7→v1.8 (1 §Previous Story Intelligence site), holdout-scenarios v1.4→v1.5 (HS-W1-002 title+cargo+failure version+AC-ref), STORY-INDEX v5.10→v5.11. Final grep: ZERO non-§Trace "MSRV 1.86" hits across .factory/. F-S025-ADV17-LOW-001 FULLY CLOSED. F-S025-ADV16-CODIFY-001 extended with MSRV-bump playbook scope (architecture/ + behavioral-contracts/ + stories/ inputs+body + planning artifacts).
 
 **Phase 3 trajectory shorthand:** 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17).
 
 **Convergence forecast:** 3/3 at Pass 19 if Passes 18 + 19 also clean. WARN: L-W6-S025-004 (premature-clean signal) applies. Maximum skepticism at every counter-advance moment.
 
-**Artifact versions bumped this burst (D-195):** STATE v6.39→v6.40. No spec bumps this burst (BC-2.03.001 bump owned by product-owner).
-Full Pass 17 report: `cycles/cycle-001/S-025/adversarial-pass-17.md`.
+**Artifact versions bumped this burst (D-196):** STATE v6.40→v6.41. BC-2.03.001 v1.0.6 (PO, 5006528). S-014 v1.5, S-015 v1.7, S-001 v1.9, S-003 v1.8, holdout-scenarios v1.5, STORY-INDEX v5.11 (all story-writer, c7ae560+e2944d3).
+Full Pass 17 report + LOW-001 closure section: `cycles/cycle-001/S-025/adversarial-pass-17.md`.
 
+§Trace v6.40 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.39 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.38 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.37 archived to `cycles/cycle-001/burst-log.md`.

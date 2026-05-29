@@ -92,3 +92,36 @@ ADVANCES 0/3 → 1/3 per consistent rubric: zero CRITICAL/HIGH/MED. LOW finding 
 Pass 17 attacked 6 new angles (I-N) targeting the 7-round Pass 16 closure pattern + re-verification of all prior Pass 1-16 surfaces. Architect's MSRV sweep proved comprehensive across 6 spec artifacts with one stale reference missed (BC-2.03.001) that fresh-context cognitive diversity surfaced. The finding is grounded in specific file:line evidence + textual comparison with architect's other propagation targets ("Rust 1.86+" vs "MSRV 1.86 stable" semantic distinction).
 
 No CRITICAL/HIGH/MED defects detected. Convergence trajectory advances 0/3 → 1/3.
+
+## LOW-001 Fix-Round Closure (Path B Propagation Tail — 2 cascade rounds, c7ae560 + e2944d3)
+
+After PO BC-2.03.001 v1.0.5 → v1.0.6 closure (5006528), story-writer dispatched two cascade rounds:
+
+### Cascade Round 1 (commit c7ae560 on factory-artifacts) — BC-2.03.001 consumer propagation
+Per bc_array_changes_propagate_to_body_and_acs policy:
+- S-014 v1.4 → v1.5: BC-2.03.001 pin 1.0.5→1.0.6; AC-007 line 98 + Architecture Compliance Rules line 180 "MSRV 1.86"→"MSRV 1.88"
+- S-015 v1.6 → v1.7: BC-2.03.001 pin only (body clean)
+- STORY-INDEX v5.9 → v5.10
+
+Sweep-wider surfaced 2nd cascade: S-001, S-003, holdout-scenarios.md cite "MSRV 1.86" via SS-deps-pin-manifest (NOT BC-2.03.001).
+
+### Cascade Round 2 (commit e2944d3 on factory-artifacts) — SS-deps-pin-manifest consumer propagation
+Authorized scope expansion per CLAUDE.md Principle 4:
+- S-001 v1.8 → v1.9: inputs[SS-deps-pin-manifest] 1.1.19→1.2.0; 11 active-body MSRV propagation sites; 6 v-string updates
+- S-003 v1.7 → v1.8: 1 §Previous Story Intelligence site
+- holdout-scenarios.md v1.4 → v1.5: HS-W1-002 (title + cargo +1.86→1.88 + failure version + AC cross-ref)
+- STORY-INDEX v5.10 → v5.11
+
+### Final State
+ZERO "MSRV 1.86" non-§Trace references remain across .factory/. Path B propagation cascade FULLY closed.
+
+**F-S025-ADV17-LOW-001 status: CLOSED** (full consumer cascade complete across BC-2.03.001 body, SS-deps-pin-manifest consumers, story inputs[] pins, story body content, and planning artifacts).
+
+### Process-Gap Observation (extends F-S025-ADV16-CODIFY-001)
+Architect f3533ce sweep was architecture-layer-only (SS docs + risk-acceptance). Complete MSRV-bump playbook requires sweep across:
+- architecture/ (SS docs, ADRs, risk-acceptance) — covered by architect
+- behavioral-contracts/ (BC bodies) — missed by architect, covered by PO
+- stories/ inputs[] pins — missed by architect + PO, covered by story-writer
+- stories/ body content — missed by architect + PO, covered by story-writer
+- planning artifacts (holdout-scenarios.md HS-* scenarios) — historically check; preserve §Trace
+Codify in F-S025-ADV16-CODIFY-001 extension (Task #9 post-merge batch).
