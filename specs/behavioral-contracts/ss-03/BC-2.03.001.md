@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:10:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "e505f6b"
+input-hash: "4d1cdab"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -32,7 +32,7 @@ removal_reason: null
 exactly five methods using `#[async_trait::async_trait]` for dyn-compatibility with Phase 3
 WASM plugins, no sealed bound, and `Send + Sync + 'static` supertraits only. The `async_trait`
 macro is required because native `async fn` in traits does not yet provide ergonomic
-dyn-compatibility on MSRV 1.86 stable Rust. `metadata()` and `enrich()` must fail fast with
+dyn-compatibility on MSRV 1.88 stable Rust. `metadata()` and `enrich()` must fail fast with
 `HomeUnresolvable` rather than silently substituting fallback paths.
 
 ## Preconditions
@@ -58,7 +58,7 @@ dyn-compatibility on MSRV 1.86 stable Rust. `metadata()` and `enrich()` must fai
 
 1. `EngineModule` is an OPEN trait — third-party WASM plugins implement it in Phase 3.
 2. `HookEvent` type is defined in `monocle-core/src/hook_events.rs` (SS-core-types-and-abi.md §Non-Exhaustive Inner Structs). `EngineModule` references it; does not re-declare.
-3. The `#[async_trait]` macro is required because the `EngineModule` trait must be dyn-compatible (Phase 3 loads adapters as `Box<dyn EngineModule>`) and propagate `Send + Sync + 'static` to returned futures. Native `async fn` in traits (stable since Rust 1.75) does NOT yet provide both properties ergonomically on MSRV 1.86 stable. The macro desugars `async fn` to return `Pin<Box<dyn Future<Output = ...> + Send + 'async_trait>>`, providing both dyn-compatibility and Send-on-return. The heap allocation per call is acceptable for the millisecond hook event cadence.
+3. The `#[async_trait]` macro is required because the `EngineModule` trait must be dyn-compatible (Phase 3 loads adapters as `Box<dyn EngineModule>`) and propagate `Send + Sync + 'static` to returned futures. Native `async fn` in traits (stable since Rust 1.75) does NOT yet provide both properties ergonomically on MSRV 1.88 stable. The macro desugars `async fn` to return `Pin<Box<dyn Future<Output = ...> + Send + 'async_trait>>`, providing both dyn-compatibility and Send-on-return. The heap allocation per call is acceptable for the millisecond hook event cadence.
 
 ## Edge Cases
 
@@ -154,3 +154,16 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
 - Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
 - SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
 - SE-16d monotonicity PASS: 2026-05-19T12:10:00Z > prior 2026-05-19T00:00:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.6
+
+**F-S025-ADV17-LOW-001 closure — Path B Wave 6 MSRV propagation completion** (2026-05-29T00:00:00Z):
+- Pass 17 adversary finding F-S025-ADV17-LOW-001: BC-2.03.001 lines 35 + 61 still referenced "MSRV 1.86 stable" after the Phase 1 MSRV bump from 1.86 → 1.88 (SS-deps-pin-manifest v1.2.0). The architect's 6-artifact propagation sweep (commit f3533ce) updated SS-deps-pin-manifest, prd, nfr-catalog, product-brief, ADR-0001, and the RUSTSEC risk-acceptance doc, but missed BC-2.03.001.
+- Fix (Option A — matches architect's propagation pattern): Updated "MSRV 1.86" → "MSRV 1.88" at both occurrences.
+  - Line 35 (Description): `"dyn-compatibility on MSRV 1.86 stable Rust"` → `"dyn-compatibility on MSRV 1.88 stable Rust"`
+  - Line 61 (Invariant 3): `"on MSRV 1.86 stable"` → `"on MSRV 1.88 stable"`
+- Architectural claim unchanged: the statement that native async fn in traits does not yet provide ergonomic dyn-compatibility is MSRV-independent and remains accurate on 1.88. Only the project-MSRV qualifier is updated.
+- Wider sweep result: no other BCs in ss-03/ or elsewhere under `.factory/specs/behavioral-contracts/` contained "MSRV 1.86" — BC-2.03.001 was the sole remaining artifact.
+- Story propagation: S-014 (v1.4) and S-015 (v1.6) both pin BC-2.03.001 at `"1.0.5"` in inputs frontmatter. Story-writer must bump those pins to `"1.0.6"` under `bc_array_changes_propagate_to_body_and_acs` policy. S-014 AC-007 body (line 98) and implementer-notes (line 180) also contain "MSRV 1.86" — story-writer must propagate those body references per the same policy.
+- SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
+- SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-19T12:10:00Z (v1.0.5). ARITHMETICALLY TRUE: PASS.
