@@ -1,4 +1,4 @@
-# Policy source of truth: SS-deps-pin-manifest.md v1.2.0 + SS-conventions-anti-patterns.md v1.30.2
+# Policy source of truth: SS-deps-pin-manifest.md v1.2.0 + SS-conventions-anti-patterns.md v1.31.0
 [graph]
 # Pinned to CI matrix targets per S-001 AC-003; update when CI matrix changes.
 targets = [

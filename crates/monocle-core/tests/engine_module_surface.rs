@@ -1194,7 +1194,7 @@ fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_enums() {
 
 /// Exercises AC-001 (F-014-P2-H01): `metadata` must be a sync method (asyncness.is_none()).
 ///
-/// Per SS-engine-module.md v1.1.20, `metadata()` performs no I/O and must be synchronous.
+/// Per SS-engine-module.md v1.1.26, `metadata()` performs no I/O and must be synchronous.
 /// This is the missing async-ness assertion parallel to the existing `id` and `detect` probes.
 #[test]
 fn test_BC_2_03_001_ac001_metadata_method_is_sync() {
@@ -1220,7 +1220,7 @@ fn test_BC_2_03_001_ac001_metadata_method_is_sync() {
 
 /// Exercises AC-001 (F-014-P2-H01): `enrich` must be an async method (asyncness.is_some()).
 ///
-/// Per SS-engine-module.md v1.1.20, `enrich()` performs engine-specific I/O and must be
+/// Per SS-engine-module.md v1.1.26, `enrich()` performs engine-specific I/O and must be
 /// declared async. This is the missing async-ness assertion parallel to the existing
 /// `on_hook` probe.
 #[test]
