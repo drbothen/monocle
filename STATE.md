@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.50"
+version: "6.51"
 status: active
 producer: state-manager
 timestamp: 2026-05-29T06:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 23 MED (D-202) — F-S025-ADV23-MED-001: spec-body Architecture Source pins stale (3 ss-06 BCs vs SS-tui v1.8.2; 7 ss-07 BCs vs SS-config v1.3.0 — 10 known sites). META-pattern 5th instance. CODIFY-001 Category 8 spec-body sweep extension. Comprehensive PO Category 8 sweep dispatched. Counter HOLDS 0/3."
+current_step: "S-025 Pass 23 REMEDIATED (D-202.1+D-202.2) — F-S025-ADV23-MED-001 CLOSED. PO 3-burst cascade (1ad2852 + cc1ea7d + 4c6b4f5): 57+ BCs across 7 canonical-doc refreshes. BC-INDEX v1.27→v1.32. Category 8 FULLY BOUNDED. META-pattern 5th instance BOUNDED. Counter HOLDS 0/3. Pass 24 dispatching (convergence-attempt #6)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21. D-200: Pass 21 NITPICK_ONLY-CLEAN; counter ADVANCES 0/3 → 1/3; 5-stall pattern ENDED; species BOUNDED. D-201: Pass 22 MED — F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites: 2 worktree + 7 EPIC-06 story files); META-GAP in D-198.2 (bare-filename refs not covered); CODIFY-001 7th sweep category added; ADV22-PROC-001 added (CI-enforced bare-filename anchor resolution); counter RESETS 1/3 → 0/3; 4th 1/3→2/3 failure (DIFFERENT class); implementer + story-writer parallel dispatched. D-201.1: MED-001 CLOSED at e5ebc43 + 0cea089; BONUS SS-forward-compat.md catch → SS-conventions v1.31.1; STORY-INDEX v5.12; CI 9/9 green; Pass 23 dispatched. D-202: Pass 23 MED — F-S025-ADV23-MED-001: spec-body Architecture Source pins stale in 3 ss-06 BCs (SS-tui v1.5.0/v1.6.0 vs canonical v1.8.2) + 7 ss-07 sibling cascade (SS-config v1.1.0 vs canonical v1.3.0); 10 known sites; META-pattern 5th instance (escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → spec-body); CODIFY-001 Category 8 spec-body Architecture Source pin sweep extension; ADV23-PROC-001 added (CI-enforced BC pin freshness); counter HOLDS 0/3; 5th 1/3→2/3 failure; comprehensive PO Category 8 sweep dispatched."
-awaiting: "PO comprehensive Category 8 BC sweep (F-S025-ADV23-MED-001 remediation); then Pass 24 adversary at post-fix HEAD — convergence-attempt #6 retry; target counter 0/3 → 1/3; META-pattern watch: 6th new-class defect or CLEAN?"
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21. D-200: Pass 21 NITPICK_ONLY-CLEAN; counter ADVANCES 0/3 → 1/3; 5-stall pattern ENDED; species BOUNDED. D-201: Pass 22 MED — F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites: 2 worktree + 7 EPIC-06 story files); META-GAP in D-198.2 (bare-filename refs not covered); CODIFY-001 7th sweep category added; ADV22-PROC-001 added (CI-enforced bare-filename anchor resolution); counter RESETS 1/3 → 0/3; 4th 1/3→2/3 failure (DIFFERENT class); implementer + story-writer parallel dispatched. D-201.1: MED-001 CLOSED at e5ebc43 + 0cea089; BONUS SS-forward-compat.md catch → SS-conventions v1.31.1; STORY-INDEX v5.12; CI 9/9 green; Pass 23 dispatched. D-202: Pass 23 MED — F-S025-ADV23-MED-001: spec-body Architecture Source pins stale in 3 ss-06 BCs (SS-tui v1.5.0/v1.6.0 vs canonical v1.8.2) + 7 ss-07 sibling cascade (SS-config v1.1.0 vs canonical v1.3.0); 10 known sites; META-pattern 5th instance (escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → spec-body); CODIFY-001 Category 8 spec-body Architecture Source pin sweep extension; ADV23-PROC-001 added (CI-enforced BC pin freshness); counter HOLDS 0/3; 5th 1/3→2/3 failure; comprehensive PO Category 8 sweep dispatched. D-202.1: F-S025-ADV23-MED-001 CLOSED — PO 3-burst cascade: 1ad2852 (10 BCs: ss-06 + ss-07 initial; ADV23-SCOPE-001 surfaced 26 more) + cc1ea7d (26 BCs: ss-03/04/05/dtu expansion; ADV23-SCOPE-002 surfaced 9 more ss-06) + 4c6b4f5 (21 ss-06 BCs; all 24 ss-06 BCs now cite SS-tui v1.8.2). 57+ BCs total. 7 canonical-doc refreshes: SS-tui v1.8.2 (24 ss-06), SS-config v1.3.0 (7 ss-07), SS-engine-module v1.1.26 (4 ss-03), SS-daemon-wiring v1.3.0 (13 ss-04+05), SS-ipc v1.9.0 (8 ss-05), SS-deps-pin-manifest v1.2.0 (1 ss-05), SS-conventions v1.31.1 (1 ss-dtu). BC-INDEX v1.27→v1.32. Category 8 FULLY BOUNDED. NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite. Orchestrator iterative scope-expansion strategy (ADV23-SCOPE-001/-002/-N) validated at scale. D-202.2: STATE v6.50→v6.51. Pass 24 dispatching."
+awaiting: "Pass 24 adversary (background, dispatching) — convergence attempt #6 first pass; META-pattern 5th instance BOUNDED via D-202.1; new attack angles must rotate from Category 1-8 scopes; expected next-deeper layer (if META-pattern continues) candidates: spec-spec ADR supersession, BC-to-BC dependencies, story-graph traceability"
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -247,8 +247,8 @@ durable_task_register:
       blocking: false
     - id: "F-S025-ADV23-MED-001"
       subject: "Spec-body Architecture Source pins stale — 3 ss-06 BCs + 7 ss-07 cascade (10 known sites)"
-      status: pending
-      detail: "Pass 23 (D-202): BC-2.06.004 line 133 cites SS-tui.md v1.5.0; BC-2.06.005 lines 70/159/232 cite v1.6.0; BC-2.06.007 line 119 cites v1.5.0 (canonical: SS-tui.md v1.8.2). BC-2.06.005:232 'sixth column is Status' contradicts BC's own line 34 '7 columns' (v1.8.1 added Session ID). 7 ss-07 BCs cite SS-config.md v1.1.0 (canonical v1.3.0). Comprehensive PO Category 8 sweep dispatched. Routing: product-owner. Bump affected BCs + propagate substantive content changes. Update BC-INDEX. PO commit SHA: PENDING."
+      status: closed
+      detail: "CLOSED (D-202.1): PO 3-burst cascade 1ad2852 + cc1ea7d + 4c6b4f5. 57+ BCs remediated across all subsystems (ss-03/04/05/06/07/dtu). 7 canonical-doc refreshes. BC-INDEX v1.27→v1.32. All 24 ss-06 BCs now cite SS-tui v1.8.2. NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite. Category 8 FULLY BOUNDED. Orchestrator iterative scope-expansion strategy (ADV23-SCOPE-001/-002/-N until final-verification sweep ZERO) proven at scale."
       blocking: false
     - id: "F-S025-ADV23-PROC-001"
       subject: "[process-gap] CI-enforced BC Architecture Source pin freshness check (spec-body layer)"
@@ -323,38 +323,28 @@ durable_task_register:
     - "Test file doc comment spec version citations need explicit disambiguation anchor (F-D-NN tag, §section, or parenthetical) — bare version numbers in test files are indistinguishable from Category A active-pointers during automated sweep (ADV20-PROC-001)"
     - "META-PATTERN (D-201 → D-202 CONFIRMED 5th instance): S-025 convergence has failed 5× at the 1/3→2/3 transition. Each failure is a DIFFERENT class ONE LAYER DEEPER in the stack: Pass 9 = vacuous-mirror (test assertion layer); Pass 16 = audit-table/op_ref (struct-metadata layer); Pass 18 = version-pointer propagation (implementation-worktree layer); Pass 22 = bare-filename anchor resolution (spec-filename layer); Pass 23 = spec-body Architecture Source pins (BC-body → arch-doc citation layer). This is not recurrence within a bounded species — it is a genuine escalation ladder where each sweep improvement reveals the next blind spot. Three-sweep protocol now required: (1) D-198.2 canonical-anchored versioned sweep (worktree code); (2) D-201 bare-filename existence-check sweep; (3) D-202 spec-body Architecture Source pin sweep (behavioral-contracts/ + stories/ .md files). Whether Pass 24 reveals yet another deeper layer (e.g., spec-spec ADR supersession chains, BC-to-BC dependencies, story-graph traceability) is the empirical question."
 next_session_resume_protocol: |
-  S-025 PASS 23 MED (D-202) — COUNTER 0/3 — PO CATEGORY 8 SWEEP DISPATCHED — STATE v6.50
+  S-025 PASS 23 REMEDIATED (D-202.1+D-202.2) — COUNTER 0/3 — PASS 24 DISPATCHING — STATE v6.51
 
   STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 branch HEAD e5ebc43 on feature/S-025-tui-skeleton-sessions.
-  COUNTER: 0/3 (holds — Pass 23 MED; 5th 1/3→2/3 failure). PO comprehensive Category 8 sweep dispatched. Pass 24 at post-fix HEAD.
-  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23).
-  TOTAL RESETS: 7 (Passes 8, 9, 10, 12, 16, 18, 22). CONVERGENCE-ATTEMPT #6 ACTIVE (MED at Pass 23 reset attempt).
+  COUNTER: 0/3 (holds — remediation complete; Pass 24 is convergence-attempt #6 first pass).
+  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→Pass24.
+  TOTAL RESETS: 7 (Passes 8, 9, 10, 12, 16, 18, 22). CONVERGENCE-ATTEMPT #6 ACTIVE (Pass 24 dispatching).
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
-  PASS 23 OUTCOME (D-202):
-    VERDICT: MED — F-S025-ADV23-MED-001: Spec-body Architecture Source pins stale.
-    EVIDENCE: BC-2.06.004 line 133 (SS-tui v1.5.0 vs canonical v1.8.2); BC-2.06.005 lines 70/159/232 (v1.6.0 vs v1.8.2;
-      line 232 internal contradiction: "sixth column" vs BC's own line 34 "7 columns"); BC-2.06.007 line 119 (v1.5.0 vs v1.8.2).
-      7 ss-07 BCs cite SS-config v1.1.0 (canonical v1.3.0). 10 known sites total.
-    SUBSTANTIVE DRIFT: SS-tui v1.8.1 added Session ID column (6→7); v1.8.0 changed AppMode::Overlay shape.
-    ROUTING: product-owner (comprehensive Category 8 sweep). PO commit SHA: PENDING.
-    META-PATTERN 5TH INSTANCE CONFIRMED: Escalation ladder now 5 instances:
-      Pass 9: vacuous-mirror (test-assertion layer)
-      Pass 16: ADR-0006 compliance (struct-metadata layer)
-      Pass 18: version-pointer propagation (implementation-worktree layer)
-      Pass 22: bare-filename anchor resolution (spec-filename layer)
-      Pass 23: spec-body Architecture Source pins (BC-body → arch-doc citation layer)
-    CODIFY-001 EXTENDED with 8th sweep category (spec-body Architecture Source pin audit).
-    ADV23-PROC-001 ADDED: CI-enforced BC Architecture Source pin freshness check.
-    CODIFY-001 CATEGORIES 1-7 SWEEP PASS (worktree code): zero Category A stale + zero broken bare-filename refs.
+  PASS 23 REMEDIATION COMPLETE (D-202.1):
+    F-S025-ADV23-MED-001: CLOSED.
+    PO 3-BURST CASCADE: 1ad2852 (10 BCs initial) + cc1ea7d (26 BCs ADV23-SCOPE-001) + 4c6b4f5 (21 ss-06 BCs ADV23-SCOPE-002).
+    57+ BCs total. 7 canonical-doc refreshes. BC-INDEX v1.27→v1.32.
+    NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite.
+    Category 8 FULLY BOUNDED. META-pattern 5th instance BOUNDED.
+    PROVEN PROTOCOL: Iterative scope-expansion (ADV23-SCOPE-001/-002/-N until ZERO) for comprehensive cascade closure.
 
   IMMEDIATE NEXT ACTIONS:
-    1. AWAIT PO comprehensive Category 8 sweep result. Target: all 10 known sites + exhaustive sweep.
-       Capture PO commit SHA in follow-up state-manager burst (close F-S025-ADV23-MED-001).
-    2. After PO fix lands: dispatch Pass 24 adversary at post-fix HEAD. Target 0/3 → 1/3.
-    3. META-pattern watch: Pass 24 reveals yet ANOTHER deeper layer? (spec-spec ADR supersession chains,
-       BC-to-BC dependencies, story-graph traceability). Each instance is bounded after Category N is added.
-    4. Convergence forecast: 3/3 at Pass 26 if Passes 24+25+26 all NITPICK_ONLY-CLEAN.
+    1. Pass 24 adversary at post-fix HEAD (factory-artifacts @ latest after this burst).
+       Target: 0/3 → 1/3. Attack angles must rotate from Categories 1-8 (all fully bounded).
+    2. META-pattern watch: Pass 24 reveals yet ANOTHER deeper layer?
+       Candidates: spec-spec ADR supersession, BC-to-BC dependencies, story-graph traceability.
+    3. Convergence forecast: 3/3 at Pass 26 if Passes 24+25+26 all NITPICK_ONLY-CLEAN.
 
   CRITICAL FILES FOR PASS 24 ADVERSARY (read in order):
     1. .factory/STATE.md (v6.50 post-fix); 2. adversarial-pass-23.md; 3. adversarial-pass-22.md;
@@ -385,27 +375,47 @@ next_session_resume_protocol: |
         - §Trace entries documenting old→new migrations
         - /plans/ historical audit reports
         - spec body placeholder examples (e.g., "SS-foo.md")
-      Proven catch (0cea089): SS-conventions-anti-patterns.md:1043 cited SS-forward-compat.md (non-existent);
-        canonical is SS-forward-compatibility.md. BONUS fix → SS-conventions v1.31.1.
+
+      Category 8 Proven Protocol (D-202.1 PO bursts 1ad2852 + cc1ea7d + 4c6b4f5):
+
+      Sweep command for orchestrator pre-flight:
+        for ss in ss-01 ss-02 ss-03 ss-04 ss-05 ss-06 ss-07 ss-dtu; do
+            grep -rn -E "Architecture Source.*SS-[a-z-]+\.md v[0-9]+\.[0-9]+" \
+              .factory/specs/behavioral-contracts/${ss}/ 2>/dev/null | \
+              grep -v "§Trace\|BEFORE:\|AFTER:\|per F-\|per GAP-"
+        done
+
+      For each hit, classify Category A (active pointer) vs Category B (historical narrative).
+      For Category A: extract cited version, look up canonical from frontmatter, bump if stale.
+      If §Section content materially changed → substantive prose propagation required.
+
+      Lesson from D-202.1: most SS-doc bumps have ALREADY been propagated to BC bodies in
+      prior cycle bursts before Category 8 sweep runs. Substantive prose propagations are
+      rare (1 in 57 BCs = 1.7%). Plain pin refresh is the dominant case.
+
+      Lesson from D-202.1 (orchestrator scope expansion): sweep-wider surfaces ADDITIONAL
+      sites mid-burst. Authorize iterative scope expansion (ADV23-SCOPE-001 / -002 / -N)
+      until final-verification sweep returns ZERO Category A stale pins.
 
   RECURRENCE WATCH:
     Path-B-propagation defect species: BOUNDED (Pass 21 D-198.2 validated; no recurrence at Passes 22-23).
     Bare-filename-anchor species: BOUNDED (Pass 22 D-201 fix; no recurrence at Pass 23).
-    Spec-body Architecture Source pin species (new): FIRST INSTANCE at Pass 23. PO sweep dispatched.
-    1/3→2/3 transition failure count: 5 (Pass 9, 16, 18, 22, 23 — all MED, all different classes).
+    Spec-body Architecture Source pin species: BOUNDED via D-202.1 (5 instances confirmed, 5th BOUNDED via comprehensive PO sweep 1ad2852+cc1ea7d+4c6b4f5).
+    1/3→2/3 transition failure count: 5 (Pass 9, 16, 18, 22, 23 — all MED, all different classes). Pass 24 is convergence-attempt #6.
     META-PATTERN: Each 1/3 transition fires a NEW-class defect ONE LAYER DEEPER in the stack.
       Escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → spec-body.
+      Codification status: Category 1-8 sweep protocol PROVEN. PROVEN protocol for comprehensive cascade closure: iterative scope-expansion (ADV23-SCOPE-001/-002/-N) until final-verification sweep ZERO.
       Three-sweep protocol now required: D-198.2 (versioned code) + D-201 (bare-filename) + D-202 (spec-body).
       This pattern itself is now codified — see process_discoveries (last entry).
 
-  ARTIFACT VERSIONS (D-202 / Pass 24 entry point — post-Pass-23, pre-PO-fix):
-    BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
-    SS-conventions-anti-patterns v1.31.1. SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.7. S-026 v1.8.
+  ARTIFACT VERSIONS (D-202.2 / Pass 24 entry point — post-PO-cascade):
+    BC-INDEX v1.32 (113 BCs; all ss-03/04/05/06/07/dtu BCs at current Architecture Source canonical per D-202.1). PRD v1.27.3.
+    SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0. SS-daemon-wiring v1.3.0. SS-ipc v1.9.0.
+    SS-conventions-anti-patterns v1.31.1. SS-tui v1.8.2. SS-config v1.3.0. ADR-0006 v1.2. S-025 v1.7. S-026 v1.8.
     BC-2.03.001 v1.0.6. S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7.
     S-024 v1.5. S-027 v1.4. S-028 v1.3. S-029 v1.2. S-031 v1.1.
     holdout-scenarios v1.5. STORY-INDEX v5.12.
-    Worktree: implementer e5ebc43 (feature/S-025-tui-skeleton-sessions). Factory-artifacts: story-writer 0cea089. CI 9/9 green.
-    PO Category 8 sweep PENDING — BC-2.06.004/BC-2.06.005/BC-2.06.007 + 7 ss-07 BCs will bump after PO commit.
+    Worktree: implementer e5ebc43 (feature/S-025-tui-skeleton-sessions). Factory-artifacts: PO 4c6b4f5 (latest Category 8 closure). CI 9/9 green at e5ebc43.
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
@@ -445,7 +455,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 23 MED (D-202); counter 0/3; PO Category 8 sweep dispatched | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 22 MED CLOSED: e5ebc43 + 0cea089 + SS-conventions v1.31.1 (D-201.1). Pass 23 MED: F-S025-ADV23-MED-001 spec-body Architecture Source pins (10 sites); META-pattern 5th instance; PO sweep dispatched. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→M(23). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 23 REMEDIATED (D-202.1); counter 0/3; Pass 24 dispatching | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 23 MED CLOSED: PO 3-burst 1ad2852+cc1ea7d+4c6b4f5 (57+ BCs, BC-INDEX v1.27→v1.32, Category 8 BOUNDED) (D-202.1). Pass 24 dispatching (convergence-attempt #6). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→Pass24. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -458,7 +468,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 23 MED (D-202): F-S025-ADV23-MED-001 spec-body Architecture Source pin staleness (10 sites); META-pattern 5th instance; PO Category 8 sweep dispatched. Counter 0/3. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18, 22 = 7 total.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 23 REMEDIATED (D-202.1): F-S025-ADV23-MED-001 CLOSED — PO 3-burst (1ad2852+cc1ea7d+4c6b4f5), 57+ BCs, BC-INDEX v1.27→v1.32, Category 8 BOUNDED. Counter 0/3. Pass 24 dispatching. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18, 22 = 7 total.
 
 ## Blocking Issues
 
@@ -484,13 +494,15 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-200 | S-025 Pass 21 NITPICK_ONLY-CLEAN — counter ADVANCES 0/3 → 1/3 (FIRST CLEAN after 5 consecutive convergence-attempt stalls). Tripwire NOT fired. Canonical-anchored sweep (D-198.2) independently re-executed: zero Category A stale active pointers across all 8 canonical docs; 9 Category B historical anchors preserved correctly. Path-B-propagation defect species BOUNDED. 5-stall pattern ENDED. Pass 22 dispatch under standard adversarial cadence; target 1/3 → 2/3. Convergence forecast: 3/3 at Pass 23 if Passes 22+23 both NITPICK_ONLY-CLEAN. | 2026-05-29 | state-manager |
 | D-201 | S-025 Pass 22 MED — F-S025-ADV22-MED-001: SS-tui-core.md cited in 2 worktree files (lib.rs:7 + Cargo.toml:19) + 7 EPIC-06 story files (S-024 through S-031 range) but document DOES NOT EXIST (canonical: SS-tui.md v1.8.2). META-GAP in D-198.2 canonical-anchored sweep: protocol audits versioned SS-X.md vY.Z patterns only; bare-filename references that don't resolve are invisible. Counter RESETS 1/3 → 0/3 per MED rule. 4th consecutive 1/3→2/3 transition failure — DIFFERENT class than Path-B-propagation species (bounded by D-198.2). CODIFY-001 extended with 7th sweep category (bare-filename architecture anchor resolution audit). ADV22-PROC-001 added (CI-enforced anchor resolution check via build.rs or semgrep). META-pattern codified: each 1/3 transition surfaces NEW-class defect one layer deeper. Implementer (2-site worktree) + story-writer (7-site factory-artifacts) dispatched in parallel. Pass 23 pending post-fix HEAD. | 2026-05-29 | state-manager |
 | D-202 | S-025 Pass 23 MED — F-S025-ADV23-MED-001: spec-body Architecture Source pins stale in 3 ss-06 BCs (BC-2.06.004/BC-2.06.005/BC-2.06.007 cite SS-tui.md v1.5.0/v1.6.0 vs canonical v1.8.2; BC-2.06.005:232 internal contradiction "sixth column" vs own line 34 "7 columns") + 7 ss-07 BCs cascade (SS-config v1.1.0 vs canonical v1.3.0). 10 known sites. META-pattern 5th instance confirmed — escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → spec-body. CODIFY-001 extended with 8th sweep category (spec-body Architecture Source pin audit; sweep: behavioral-contracts/ + stories/ .md files). ADV23-PROC-001 added (CI-enforced BC Architecture Source pin freshness check). Counter HOLDS 0/3 (5th 1/3→2/3 failure). Comprehensive PO Category 8 sweep dispatched. Pass 24 at post-fix HEAD. | 2026-05-29 | state-manager |
+| D-202.1 | F-S025-ADV23-MED-001 CLOSED — PO 3-burst cascade: 1ad2852 (10 BCs: ss-06+ss-07 initial authorized; sweep-wider surfaced ADV23-SCOPE-001 with 26 more) + cc1ea7d (26 BCs: ss-03/04/05/dtu expansion; sweep-wider surfaced ADV23-SCOPE-002 with 9 more ss-06) + 4c6b4f5 (21 ss-06 BCs; all 24 ss-06 BCs cite SS-tui v1.8.2; 3 exceeded the 9-known-site count due to mid-burst discovery). 57+ BCs total. 7 canonical-doc refreshes: SS-tui v1.8.2 (24 ss-06), SS-config v1.3.0 (7 ss-07), SS-engine-module v1.1.26 (4 ss-03), SS-daemon-wiring v1.3.0 (13 ss-04+05), SS-ipc v1.9.0 (8 ss-05), SS-deps-pin-manifest v1.2.0 (1 ss-05), SS-conventions v1.31.1 (1 ss-dtu). BC-INDEX v1.27→v1.32 (5 minor bumps, 3 §Trace entries for iterative discovery). NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite. Category 8 FULLY BOUNDED. Orchestrator iterative scope-expansion (ADV23-SCOPE-001/-002/-N until final-verification ZERO) PROVEN as correct protocol for comprehensive cascade closure. META-pattern 5th instance BOUNDED. | 2026-05-29 | state-manager |
+| D-202.2 | STATE v6.50→v6.51 (this burst). CODIFY-001 Category 8 Proven Protocol added to §Trace. RECURRENCE WATCH updated: 5th instance BOUNDED. Pass 24 dispatching (convergence-attempt #6 first pass). | 2026-05-29 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions-anti-patterns v1.31.1**. **ADR-0006 v1.2**. **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.12** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **S-024 v1.5**. **S-025 v1.7**. **S-026 v1.8**. **S-027 v1.4**. **S-028 v1.3**. **S-029 v1.2**. **S-031 v1.1**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.32** (72 numbered BCs + 41 DTU BCs = 113 total; all ss-03/04/05/06/07/dtu BCs at current Architecture Source canonical per D-202.1). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions-anti-patterns v1.31.1**. **ADR-0006 v1.2**. **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.12** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **S-024 v1.5**. **S-025 v1.7**. **S-026 v1.8**. **S-027 v1.4**. **S-028 v1.3**. **S-029 v1.2**. **S-031 v1.1**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -504,17 +516,21 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.50 (D-202 — Pass 23 MED-001; META-pattern 5th instance; CODIFY-001 Category 8 spec-body sweep extension; comprehensive PO Category 8 sweep dispatched)
+## §Trace v6.51 (D-202.1+D-202.2 — F-S025-ADV23-MED-001 CLOSED; Category 8 cascade closure 57+ BCs; META-5th instance BOUNDED; Pass 24 dispatching)
 
-**Pass 23 MED** (2026-05-29, D-202): F-S025-ADV23-MED-001. Spec-body Architecture Source pins stale in 3 ss-06 BCs (BC-2.06.004:133 SS-tui v1.5.0, BC-2.06.005:70/159/232 v1.6.0, BC-2.06.007:119 v1.5.0 — canonical v1.8.2) + 7 ss-07 BCs cascade (SS-config v1.1.0 vs canonical v1.3.0). 10 known sites. Substantive drift: SS-tui v1.8.1 added Session ID column (6→7); v1.8.0 changed AppMode::Overlay shape. BC-2.06.005:232 "sixth column" contradicts BC's own line 34 "7 columns." Comprehensive PO Category 8 sweep dispatched. Counter HOLDS 0/3. 5th 1/3→2/3 transition failure.
+**Pass 23 Category 8 cascade closure (2026-05-29, D-202.1):** F-S025-ADV23-MED-001 CLOSED via PO 3-burst cascade. Burst 1 (1ad2852): 10 BCs authorized (3 ss-06: BC-2.06.004/BC-2.06.005/BC-2.06.007 + 7 ss-07: BC-2.07.001..007; BC-2.06.005 §Trace v1.0.4 rewritten for 6→7 column prose accuracy); sweep-wider surfaced 26 additional sites → ADV23-SCOPE-001. Burst 2 (cc1ea7d): 26 BCs (ss-03: 4 BCs + SS-engine-module v1.1.20→v1.1.26; ss-04: 12 BCs + SS-daemon-wiring v1.2.0→v1.3.0; ss-05: 8 BCs + SS-ipc v1.4.0→v1.9.0 + SS-deps-pin-manifest v1.1.17→v1.2.0; ss-dtu: BC-HOOK-039 + SS-conventions v1.29.5→v1.31.1); sweep-wider surfaced 9 more ss-06 → ADV23-SCOPE-002. Burst 3 (4c6b4f5): 21 ss-06 BCs (24 total; 3 exceeded 9-known due to mid-burst discovery; all 24 ss-06 BCs cite SS-tui v1.8.2; BC-INDEX v1.29→v1.32 with 3 §Trace entries). 57+ BCs total. 7 canonical-doc refreshes. BC-INDEX v1.27→v1.32.
 
-**META-pattern 5th instance confirmed (D-202):** Escalation ladder: (1) Pass 9 = vacuous-mirror test-assertion; (2) Pass 16 = ADR-0006 struct-metadata; (3) Pass 18 = version-pointer impl-worktree; (4) Pass 22 = bare-filename spec-filename; (5) Pass 23 = spec-body Architecture Source pins. Each layer was invisible to prior sweep protocol. CODIFY-001 extended with 8th category.
+**Key finding (D-202.1):** NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite. All 3 SS-tui v1.8.x changes (Overlay shape, 7th column, disconnect bracketed-tag style) had ALREADY been propagated in prior per-BC §Trace entries. Substantive prose propagation rate: 1/57 BCs = 1.7%. Plain pin refresh is the dominant case.
 
-**CODIFY-001 8th sweep category (D-202):** Spec-body Architecture Source pin audit. Sweep: `grep -rn -E 'SS-[a-z-]+\.md v[0-9]+\.[0-9]+' .factory/specs/behavioral-contracts/ .factory/stories/ 2>/dev/null | grep -v '§Trace\|BEFORE:\|AFTER:\|per F-\|per GAP-\|cycles/'`. Per-hit: extract cited version vs canonical from frontmatter; Category A (FIX) if mismatch + no historical anchor. ADV23-PROC-001 added as CI codification candidate.
+**META-pattern 5th instance BOUNDED (D-202.1):** Orchestrator process-gap absorption strategy validated at scale — 3 sequential PO bursts with iterative scope expansion (ADV23-SCOPE-001/-002/-N) until final-verification sweep ZERO. This is the proven template for future deep-layer cascades.
 
-**CODIFY-001 Categories 1-7 PASS (Pass 23 independent verification):** Zero Category A stale versioned pointers in worktree code. Zero broken bare-filename refs. Pass 22 fixes preserved at e5ebc43.
+**CODIFY-001 Category 8 PROVEN PROTOCOL added (D-202.2):** Sweep command + Category A/B classification + iterative scope-expansion authority documented in 8-CATEGORY SWEEP block above.
 
-**Artifact versions bumped (D-202):** STATE v6.49→v6.50.
+**RECURRENCE WATCH update (D-202.2):** 5 instances confirmed, 5th instance BOUNDED via D-202.1. 1/3→2/3 transition failure count: 5 (Passes 9, 16, 18, 22, 23). Pass 24 is convergence-attempt #6 first pass.
+
+**Artifact versions bumped (D-202.2):** STATE v6.50→v6.51. BC-INDEX v1.27→v1.32 captured.
+
+§Trace v6.50 archived to `cycles/cycle-001/burst-log.md`.
 
 §Trace v6.49 archived to `cycles/cycle-001/burst-log.md`.
 
