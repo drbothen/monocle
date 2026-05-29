@@ -18,7 +18,9 @@ use monocle_tui::app::{
     TransportEvent,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
-use monocle_tui::{format_drop_counter, DAEMON_DISCONNECT_STATUS, MONOCLE_STATUS_LABEL};
+use monocle_tui::{
+    format_drop_counter, DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL,
+};
 use std::collections::VecDeque;
 use std::time::Instant;
 use uuid::Uuid;
@@ -1058,5 +1060,159 @@ fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
     assert_eq!(
         app.drop_counter, 0,
         "FIFO eviction: ring overflow must NOT increment drop_counter"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV12-CRITICAL-001 — render-output tests for status_message rendering
+//
+// Red-gate tests added to expose the write-only bug in render_frame:
+// `app.status_message` is set correctly by on_transport_event but render_frame
+// builds `status_line` from `drop_counter` only (app.rs lines 923-933).
+// The status_message text therefore never reaches the rendered buffer.
+//
+// Both tests MUST FAIL until the implementer fixes render_frame to read
+// app.status_message and render it to the status bar area.
+//
+// Contract anchors:
+//   - BC-2.06.016 PC-4 (status bar renders "[disconnected] reconnecting..."
+//     until IPC reconnect sequence completes)
+//   - BC-2.06.004 PC-2 (AC-003: on Disconnected, renders status bar notification)
+//   - S-025 story v1.6 AC-003 verbatim
+//
+// These are ADDITIVE to the state-mutation tests at lines 219 and 254.
+// Those tests correctly verify on_transport_event sets the field.
+// These new tests verify render_frame surfaces the field in the buffer.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.016 PC-4 / BC-2.06.004 PC-2 / AC-003 (render path):
+/// After `on_transport_event(Disconnected)`, `render_frame` must render
+/// `DAEMON_DISCONNECT_STATUS` verbatim into the status-bar area of the buffer.
+///
+/// This is a render-output test distinct from the state-mutation tests at
+/// lines 219 and 254. Those tests assert `app.status_message == Some(...)`.
+/// This test asserts the rendered *buffer* (what the user sees) contains the
+/// text.  The bug: render_frame's status_line builder (app.rs:923-933) reads
+/// `drop_counter` but never reads `status_message`, so the text is silently
+/// dropped.  RED GATE: this test must fail until render_frame is fixed.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, Terminal};
+
+    // Drive the app into the Disconnected state using the production event handler.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // on_transport_event sets app.status_message = Some(DAEMON_DISCONNECT_STATUS)
+    // and transitions the mode. This is the production trigger path.
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    // Precondition guard — verifies the state-mutation path is working.
+    // If this fails the trigger path is broken; if only the render assertion
+    // below fails the render path is the bug (which is what Pass 12 found).
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "precondition: on_transport_event must set status_message to DAEMON_DISCONNECT_STATUS"
+    );
+
+    // Render via TestBackend (80 × 6).
+    // build_dashboard_layout: rows 0-3 main area, rows 4-5 status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Extract the rendered buffer (NOT the app field — this is the render-output test).
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert the rendered buffer contains DAEMON_DISCONNECT_STATUS verbatim.
+    // Uses the re-exported const — not an inline string — per L-W6-S025-003
+    // (no literal duplication; const is the single source of truth).
+    assert!(
+        status_rows.contains(DAEMON_DISCONNECT_STATUS),
+        "BC-2.06.016 PC-4 / AC-003 render-output: status bar buffer must contain \
+         DAEMON_DISCONNECT_STATUS ({:?}) after on_transport_event(Disconnected); \
+         got status rows: {:?}",
+        DAEMON_DISCONNECT_STATUS,
+        status_rows.trim()
+    );
+}
+
+/// BC-2.06.016 PC-4 (offline path): when `app.status_message` is
+/// `Some(DAEMON_OFFLINE_STATUS)`, `render_frame` must render that text verbatim
+/// into the status-bar area of the buffer.
+///
+/// Uses Option C from the dispatch brief: directly set `app.status_message`
+/// before rendering.  This isolates the render-path test from the trigger path
+/// (the trigger-path test above covers the on_transport_event → field mutation
+/// contract).  The BC contract is: regardless of what set status_message, when
+/// it is Some the render path must display it.
+///
+/// RED GATE: this test must fail until render_frame is fixed to read
+/// app.status_message and include it in the status bar output.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after_reconnect_exhausted(
+) {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, Terminal};
+
+    // Build app and directly set the offline status.  This is Option C per the
+    // dispatch brief: the public `status_message` field (app.rs:143 `pub`) is
+    // accessible from tests without a special accessor.  No encapsulation is
+    // violated — the field is `pub` by design ("every field is `pub` so that
+    // downstream stories can read it without ceremony", app.rs:120-121).
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Set the offline status directly — isolates the render-path test from
+    // the trigger path (S-023 reconnect-exhaust code path).
+    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+
+    // Precondition guard.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_OFFLINE_STATUS),
+        "precondition: status_message must be DAEMON_OFFLINE_STATUS before render"
+    );
+
+    // Render via TestBackend (80 × 6).
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Extract the rendered buffer (NOT the app field).
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert the rendered buffer contains DAEMON_OFFLINE_STATUS verbatim.
+    assert!(
+        status_rows.contains(DAEMON_OFFLINE_STATUS),
+        "BC-2.06.016 PC-4 (offline) render-output: status bar buffer must contain \
+         DAEMON_OFFLINE_STATUS ({:?}) when app.status_message is set; \
+         got status rows: {:?}",
+        DAEMON_OFFLINE_STATUS,
+        status_rows.trim()
     );
 }
