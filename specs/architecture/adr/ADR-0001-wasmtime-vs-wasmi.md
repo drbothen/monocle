@@ -12,7 +12,7 @@ producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md]
-input-hash: "ebefb70"
+input-hash: "e32d6cc"
 traces_to: "factory-artifacts ee09833 (brief v1.1); consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---
@@ -60,7 +60,7 @@ future fallback if binary-size pressure becomes a release constraint.
 
 ### Negative / Trade-offs
 
-- Phase 3 MSRV bumps from 1.86 to 1.92 due to wasmtime requirements
+- Phase 3 MSRV bumps from 1.88 to 1.92 due to wasmtime requirements (Phase 1 MSRV bumped 1.86→1.88 in Wave 6 per RUSTSEC-2026-0009 Path B; see SS-deps-pin-manifest.md §Trace v1.2.0)
 - Binary size increases ~12MB; acceptable for desktop developer tool
 - Brings wasmtime RUSTSEC advisory surface (pre-44 majors carry multiple CVEs — pin to 44)
 

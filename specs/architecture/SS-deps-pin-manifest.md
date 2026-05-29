@@ -3,13 +3,13 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.1.22"
+version: "1.2.0"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-26T12:30:00Z
+timestamp: 2026-05-28T12:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
-input-hash: "f6b5847"
+input-hash: "a9a195a"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -30,7 +30,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 
 | Crate | Version | Role | Cargo.toml Note |
 |-------|---------|------|-----------------|
-| ratatui | 0.30 | TUI framework | MSRV floor for Phase 1 (1.86); caret pin |
+| ratatui | 0.30 | TUI framework | Phase 1 MSRV (1.88 after RUSTSEC-2026-0009 Path B bump); caret pin |
 | crossterm | 0.29 | Terminal backend for ratatui | caret pin |
 | tokio | 1.52 | Async runtime (full feature set) | EXACT pin (see Patch-Pinning Policy); historical advisories on older minors; 1.52 remediated |
 | axum | 0.8 | HTTP server for hook ingestion | EXACT pin; pin as `=0.8.9` in Cargo.toml |
@@ -62,7 +62,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
 | serde | 1 | Serialize/Deserialize derive macros for `HookEventRecord` in `monocle-runtime::ring` (`#[derive(serde::Serialize, serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain) and multiple core types in `monocle-core` (HookEvent, EnrichedSession, SessionStatus, EngineMetadata, ProcessSnapshot, HookResponse, HookType per SS-core-types-and-abi.md and SS-engine-module.md) | caret pin; feature `derive` required — declare as `serde = { version = "1", features = ["derive"] }` in workspace `[dependencies]`; bare `serde` is a separate crate from `serde_json` and `serde_yaml_ng`; the `derive` feature activates the `Serialize`/`Deserialize` proc-macro; `serde 1.x` is the current stable series (no RUSTSEC advisories on 1.x line); not on untrusted-input deserialization path (that is `serde_json`'s role); F-R76-1 closure |
 | chrono | 0.4 | UTC timestamp formatting for ISO 8601 fields: `startTimeUtc` in lock file (BC-DAEMON-005 / BC-LOCK-001), `last_hook_ts` in `/status` response (BC-DAEMON-002 / EC-044), and `shutdown_utc` in crash-recovery checkpoint (BC-DAEMON-006); `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` mandated as the uniform format string per SS-daemon-lifecycle.md §Trace v1.0.14 F-R72-1 rationale (cross-field uniformity, mandatory millisecond precision). Also used in `monocle-core` for `EnrichedSession::started_at: Option<chrono::DateTime<chrono::Utc>>` (Phase 1 TUI session uptime field, BC-2.06.005; SS-engine-module.md §Trace v1.1.21). | caret pin; declare as `chrono = { version = "0.4", features = ["serde"] }` in workspace `[dependencies]` — the `serde` feature is required so `chrono::DateTime<Utc>` derives `Serialize + Deserialize` for IPC wire transport of `EnrichedSession::started_at`; `std::time::SystemTime` lacks ISO 8601 formatting — manual formatting without chrono requires a custom formatter over duration-since-epoch arithmetic that re-introduces the very precision inconsistency F-R72-1 was authored to prevent; `chrono 0.4` is the current stable series (no RUSTSEC advisories on 0.4.x line); not on untrusted-input deserialization path; dep graph edges: `runtime → chrono` (Extension 7), `core → chrono` (F-P13-001 closure); Extension 7 comprehensive audit discovery |
-| which | 7 | PATH search for CCR binary detection in `monocle-config::detect_ccr()` (BC-2.07.006, SS-config.md §CCR Detection); called as `which::which("ccr")` to locate the Claude Code Router binary when `ccr_path` is not set in `config.json`; no-op if binary absent (returns `None`) | caret pin (`^7`); `which 7.x` is the current stable series as of 2026-05 (crates.io verified); MSRV 1.70 — well within Phase 1 floor of Rust 1.86; used in `monocle-config` only, not on untrusted-input deserialization path; F-P1D-008 closure (missing from manifest, found in adversarial review Pass 1) |
+| which | 7 | PATH search for CCR binary detection in `monocle-config::detect_ccr()` (BC-2.07.006, SS-config.md §CCR Detection); called as `which::which("ccr")` to locate the Claude Code Router binary when `ccr_path` is not set in `config.json`; no-op if binary absent (returns `None`) | caret pin (`^7`); `which 7.x` is the current stable series as of 2026-05 (crates.io verified); MSRV 1.70 — well within Phase 1 floor of Rust 1.88; used in `monocle-config` only, not on untrusted-input deserialization path; F-P1D-008 closure (missing from manifest, found in adversarial review Pass 1) |
 
 ## Dev Dependencies
 
@@ -100,11 +100,11 @@ These crates do NOT appear in the production binary.
 
 ## MSRV Policy
 
-**Single workspace MSRV.** Phase 1 ships at Rust 1.86 (ratatui 0.30 floor). Phase 3 ships at Rust 1.92 (wasmtime 44 floor) via an explicit MINOR release with a workspace-wide `rust-version` bump in `Cargo.toml`.
+**Single workspace MSRV.** Phase 1 ships at Rust 1.88 (RUSTSEC-2026-0009 mitigation — `time 0.3.47` requires Rust 1.88; Path B selected over deny.toml ignore because root-cause removal is preferred over a documented exception when the MSRV bump cost is acceptable). The original Phase 1 floor was 1.86 (ratatui 0.30 requirement); bumped to 1.88 in Wave 6 via §Trace v1.2.0 after human Path B selection. Phase 3 ships at Rust 1.92 (wasmtime 44 floor) via an explicit MINOR release with a workspace-wide `rust-version` bump in `Cargo.toml`.
 
 Rationale: a dual-MSRV strategy would require either splitting Cargo.lock across two workspaces or maintaining a feature-flag matrix that fragments CI runs. Single-MSRV with explicit bumps at phase boundaries keeps the CI matrix simple (one toolchain per phase), avoids Cargo.lock splitting, and aligns with the mainstream Rust toolchain trajectory — by Phase 3 ship date, 1.92 will be at minimum 6 months stable. Each MSRV bump is documented in CHANGELOG with a `breaking-change` marker for downstream consumers.
 
-The workspace `Cargo.toml` `rust-version` field is set to `"1.86"` for Phase 1. The Phase 3 bump to `"1.92"` is documented as an ADR entry at that phase boundary.
+The workspace `Cargo.toml` `rust-version` field is set to `"1.88"` for Phase 1 (bumped from `"1.86"` in Wave 6 per §Trace v1.2.0). The Phase 3 bump to `"1.92"` is documented as an ADR entry at that phase boundary.
 
 ## Patch-Pinning Policy
 
@@ -262,8 +262,10 @@ pinned versions block merge until either:
 
 | Phase | MSRV | Binding Factor |
 |-------|------|---------------|
-| Phase 1 | Rust 1.86 | ratatui 0.30 floor |
+| Phase 1 | Rust 1.88 | RUSTSEC-2026-0009 mitigation — `time 0.3.47` (transitive via ratatui→ratatui-widgets→time, calendar feature); Path B selected in Wave 6 |
 | Phase 3 | Rust 1.92 | wasmtime 44 requirement |
+
+Note: original Phase 1 MSRV was 1.86 (ratatui 0.30 floor). Bumped to 1.88 in Wave 6 (§Trace v1.2.0) per RUSTSEC-2026-0009 Path B resolution. ratatui 0.30 compiles under 1.88 (1.88 ≥ 1.86); no ratatui version change required.
 
 See MSRV Policy above for the single-workspace bump strategy at the Phase 3 boundary.
 
@@ -868,3 +870,54 @@ v1.1.6 changes (round-22 fix F-R22-3):
   SS-engine-module.md §Trace to label the sibling change in that document; dep-manifest version
   numbering is independent).
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-26T12:30:00Z >= chain high-water 2026-05-25T00:00:00Z. PASS.
+
+**§Trace v1.2.0** (2026-05-28T12:00:00Z) — RUSTSEC-2026-0009 Path B: Phase 1 MSRV bump 1.86 → 1.88:
+
+- NORMATIVE (L-W6-S025-007 — MSRV bump): Phase 1 MSRV updated from Rust 1.86 to Rust 1.88 across
+  four sites in this document:
+  1. Phase 1 Pin Manifest — `ratatui` row Cargo.toml Note: `MSRV floor for Phase 1 (1.86)` →
+     `Phase 1 MSRV (1.88 after RUSTSEC-2026-0009 Path B bump)`.
+  2. `which` row Cargo.toml Note: `well within Phase 1 floor of Rust 1.86` →
+     `well within Phase 1 floor of Rust 1.88`.
+  3. MSRV Policy section: Phase 1 sentence rewritten; `rust-version` field updated from `"1.86"` to
+     `"1.88"`; Path B rationale added.
+  4. MSRV Constraints table: Phase 1 row updated; binding-factor updated from
+     `ratatui 0.30 floor` to `RUSTSEC-2026-0009 mitigation — time 0.3.47 (transitive via
+     ratatui→ratatui-widgets→time, calendar feature); Path B selected in Wave 6`; note paragraph
+     added clarifying that ratatui 0.30 compiles under 1.88 (no ratatui version change required).
+
+- NORMATIVE: version bump 1.1.22 → 1.2.0. Minor bump (not patch) because MSRV is an interface-level
+  constraint — consumers (CI, devops-engineer, test-writer) must update `rust-toolchain.toml` and
+  workflow toolchain pins to 1.88. This is a breaking change for any consumer locked to 1.86.
+
+- Path B rationale (human decision 2026-05-28):
+  `time 0.3.47` (patched version for RUSTSEC-2026-0009 / CVE-2026-25727 — RFC 2822 stack exhaustion
+  DoS, CVSS 6.8 MEDIUM) requires Rust 1.88. The `time` crate appears as a transitive dependency via
+  `ratatui→ratatui-widgets→time` with the `calendar` feature. Path A (deny.toml ignore entry) was
+  previously accepted in RA-001 (risk-acceptance/RUSTSEC-2026-0009-time-rfc2822-dos.md, filed by
+  devops-engineer during S-025 pre-work). Path B was selected by the human over Path A because
+  root-cause removal (applying the patched `time 0.3.47` by satisfying its MSRV requirement) is
+  architecturally preferred over a documented exception when the MSRV bump cost is acceptable. The
+  intermediate 1.88 bump carries no regressions: ratatui 0.30 compiles under 1.88, all workspace
+  crate MSRV floors are ≤1.86, and Phase 3 MSRV target (1.92) is unchanged.
+
+- Downstream changes triggered by this bump (devops-engineer scope — NOT this document's scope):
+  1. `rust-toolchain.toml`: `channel = "1.86"` → `channel = "1.88"`.
+  2. `Cargo.toml` workspace `rust-version`: `"1.86"` → `"1.88"`.
+  3. CI AC-004 check: assert `channel = "1.88"` (currently asserts `"1.86"`).
+  4. `deny.toml` ignore entry for RUSTSEC-2026-0009: remove once `time ≥ 0.3.47` resolves in
+     Cargo.lock at 1.88 toolchain.
+  5. RA-001 (`risk-acceptance/RUSTSEC-2026-0009-time-rfc2822-dos.md`): update status from `accepted`
+     to `resolved`; update `project_msrv` from `"1.86"` to `"1.88"`.
+
+- Sibling spec documents requiring MSRV update (architect scope, same burst):
+  1. `prd-supplements/nfr-catalog.md`: NFR-007 description + NFR-to-Module Mapping row.
+  2. `product-brief.md`: §Tech Stack MSRV line + §OQ-Closures OQ-11 row.
+  3. `prd.md`: NFR-007 inline mention.
+  4. `adr/ADR-0001-wasmtime-vs-wasmi.md`: trade-off bullet "Phase 3 MSRV bumps from 1.86 to 1.92".
+  5. `risk-acceptance/RUSTSEC-2026-0009-time-rfc2822-dos.md`: status + project_msrv fields.
+  CLAUDE.md §"MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor)" is a human-maintained file outside
+  architect write scope; flagged for human update.
+
+- SE-16b monotonicity check PASS: v1.1.22 → v1.2.0 is a monotonic increment.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-05-28T12:00:00Z >= chain high-water 2026-05-26T12:30:00Z. PASS.

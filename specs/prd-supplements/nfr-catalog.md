@@ -1,13 +1,13 @@
 ---
 document_type: prd-supplement-nfr-catalog
 level: L3
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-18T07:00:00Z
+timestamp: 2026-05-28T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "98a82da"
+input-hash: "05f6313"
 traces_to: prd.md
 ---
 
@@ -27,7 +27,7 @@ traces_to: prd.md
 | NFR-004 | Security | Auth token entropy source | 32 bytes from `rand::rngs::OsRng` (not `thread_rng`) | Code review + unit test asserting `OsRng` usage; source-grep per VP-008 §Pre-conditions (`rand::rngs::OsRng is the entropy source (not thread_rng)`) and Mechanical property item 1 (lock file authToken matches `^[0-9a-f]{64}$`) | P0 | N/A |
 | NFR-005 | Security | Hook body size limit (all POST endpoints) | 256 KiB (262,144 bytes); HTTP 413 on excess | Integration test: send 262,145-byte body, assert 413 response per VP-003 §Post-condition 1 (`POST 262,145-byte body to any of the 5 hook endpoints with valid auth → HTTP 413 with exact body {"error":"payload_too_large","limit_bytes":262144}`) | P0 | N/A |
 | NFR-006 | Throughput | Bounded event bus with visible drop counter | No unbounded channel; drop counter renders in status bar; 1000 events/sec sustained without queue overflow | Integration test at 1000 events/sec asserting drop counter assertion | P0 | N/A |
-| NFR-007 | Build | MSRV | Rust 1.86 (ratatui 0.30 floor) | `rust-toolchain.toml` pin verified by `cargo check`; CI fails if toolchain pin is absent or incorrect; Phase 1 devops deliverable per product-brief.md line 162–163 | P0 | N/A |
+| NFR-007 | Build | MSRV | Rust 1.88 (RUSTSEC-2026-0009 Path B — time 0.3.47 floor; original Phase 1 floor was 1.86 per ratatui 0.30) | `rust-toolchain.toml` pin verified by `cargo check`; CI fails if toolchain pin is absent or incorrect; Phase 1 devops deliverable per product-brief.md line 162–163; bumped 1.86→1.88 in Wave 6 per SS-deps-pin-manifest.md §Trace v1.2.0 | P0 | N/A |
 | NFR-008 | Build | Platform targets | macOS + Linux (darwin/linux × amd64/arm64) | GitHub Actions CI matrix with `[darwin, linux] × [amd64, arm64]` matrix; Phase 1 devops deliverable per product-brief.md line 162–163 | P0 | N/A |
 | NFR-009 | Security | Lock file permissions | `0o600` (owner-only read/write) | Integration test: `stat` lock file after daemon start; assert mode is `0600` per VP-005 Post-condition 1 (lock-file `0o600` mode assertion) | P0 | N/A |
 | NFR-010 | Correctness | Constant-time auth comparison on ALL auth paths (canonical + alias) | `constant_time_eq::constant_time_eq` used for token comparison on both canonical (`X-Monocle-Authorization`) and alias (`X-Claude-Code-Ide-Authorization`) paths per ADR-0005 + BC-2.01.009 INV-7 | Code review; source-grep per VP-008 §Post-condition 5 (`constant_time_eq` source-grep against `monocle-runtime/src/auth.rs` ensuring no `==` on hex secret string appears outside `constant_time_eq`) AND VP-009 §"alias-path constant-time comparison" probe (alias path verifies constant_time_eq is also used on `X-Claude-Code-Ide-Authorization` token; FV 5D expanding VP-009 in this same burst) | P0 | N/A |
@@ -55,7 +55,7 @@ traces_to: prd.md
 | NFR-004 | `monocle-runtime` (auth.rs) | `rand::rngs::OsRng` import required; `thread_rng` is statically forbidden |
 | NFR-005 | `monocle-runtime` (axum router layer) | `DefaultBodyLimit::max(256 * 1024)` applied on authenticated router only |
 | NFR-006 | `monocle-runtime` (event bus); TUI status bar | `mpsc::channel(N)` with bounded N; drop counter surfaced in status bar widget |
-| NFR-007 | All workspace crates | `rust-toolchain.toml` pins Rust 1.86; ratatui 0.30 is MSRV floor reason |
+| NFR-007 | All workspace crates | `rust-toolchain.toml` pins Rust 1.88; time 0.3.47 (RUSTSEC-2026-0009 Path B) is current MSRV floor reason; original floor was 1.86 (ratatui 0.30) |
 | NFR-008 | CI workflow | GitHub Actions matrix: `[darwin, linux] × [amd64, arm64]` |
 | NFR-009 | `monocle-runtime` (daemon start sequence) | Lock file created with `0o600` via `OpenOptions::mode(0o600)` |
 | NFR-010 | `monocle-runtime` (auth.rs) | `constant_time_eq` crate pinned; no string `==` on secrets |
@@ -277,7 +277,7 @@ NFR-002 Validation Method: "...gene-source BC-HOOK-022 timeout ceiling (gene-sou
 
 **NFR-006 (throughput 1000 events/sec):** The bounded-channel DESIGN is a Phase 1 deliverable (product-brief.md §Success Criteria "Drop counter active" row). The sustained load VALIDATION test is appropriately a Phase 3 integration test. Prior anchor `§Out of Scope` was wrong — the brief §Out of Scope does not cover throughput load tests. Corrected to distinguish design (Phase 1) from validation test (Phase 3 integration).
 
-**NFR-007 (MSRV Rust 1.86):** RESCOPED to Phase 1. Product-brief.md line 162–163 ("macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub Actions; MSRV Rust 1.86") places CI/MSRV squarely in Phase 1. The previous Phase 6 deferral contradicted the brief. The `rust-toolchain.toml` pin is a Phase 1 devops deliverable. No VP file needed — validation is via CI toolchain config.
+**NFR-007 (MSRV Rust 1.88):** RESCOPED to Phase 1. Product-brief.md line 162–163 ("macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub Actions; MSRV Rust 1.86") places CI/MSRV squarely in Phase 1. The previous Phase 6 deferral contradicted the brief. The `rust-toolchain.toml` pin is a Phase 1 devops deliverable. No VP file needed — validation is via CI toolchain config. NOTE: original MSRV was 1.86 (ratatui 0.30 floor per product-brief.md line 162); bumped to 1.88 in Wave 6 (SS-deps-pin-manifest.md §Trace v1.2.0) to resolve RUSTSEC-2026-0009 via Path B (time 0.3.47 requires 1.88). The product-brief.md line 162 historical text retains "1.86" as a historical record of the original OQ-11 resolution; the canonical current MSRV is 1.88 per SS-deps-pin-manifest.md §MSRV Policy.
 
 **NFR-008 (platform targets darwin/linux × amd64/arm64):** RESCOPED to Phase 1. Same rationale as NFR-007 — brief line 162 is unambiguous. The GitHub Actions CI matrix is a Phase 1 devops deliverable. No VP file needed — validation is via CI matrix config.
 

@@ -1,13 +1,13 @@
 ---
 document_type: prd
 level: L3
-version: "1.27.2"
+version: "1.27.3"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-26T00:00:00Z
+timestamp: 2026-05-28T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "2c62e24"
+input-hash: "2909bb4"
 traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.17; 70 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-07 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15"
 project: monocle
 supplements:
@@ -232,7 +232,7 @@ Phase 1 interface surfaces: HTTP API (5 hook POST endpoints + `/healthz` + `/sta
 > **Supplement:** Full NFR catalog is in `prd-supplements/nfr-catalog.md`.
 > Primary consumers: architect, performance-engineer, formal-verifier.
 
-Phase 1 defines 12 NFRs covering performance (NFR-001/002/003 latency, NFR-006 throughput), security (NFR-004 auth entropy, NFR-005 body limit, NFR-009 lock file 0o600, NFR-010 constant-time comparison, NFR-012 runtime_dir 0o700), build (NFR-007 MSRV Rust 1.86, NFR-008 macOS+Linux matrix), and forward-compat (NFR-011 DTU fidelity ≥0.95). See `prd-supplements/nfr-catalog.md` for the complete catalog including validation methods and VP probe citations.
+Phase 1 defines 12 NFRs covering performance (NFR-001/002/003 latency, NFR-006 throughput), security (NFR-004 auth entropy, NFR-005 body limit, NFR-009 lock file 0o600, NFR-010 constant-time comparison, NFR-012 runtime_dir 0o700), build (NFR-007 MSRV Rust 1.88, NFR-008 macOS+Linux matrix), and forward-compat (NFR-011 DTU fidelity ≥0.95). See `prd-supplements/nfr-catalog.md` for the complete catalog including validation methods and VP probe citations. Note: NFR-007 MSRV was originally 1.86 (ratatui 0.30 floor); bumped to 1.88 in Wave 6 per RUSTSEC-2026-0009 Path B resolution (SS-deps-pin-manifest.md §Trace v1.2.0).
 
 ---
 

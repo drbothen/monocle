@@ -1,13 +1,13 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.30"
+version: "1.4.31"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
-timestamp: 2026-05-19T00:30:00Z
+timestamp: 2026-05-28T12:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, planning/oq-research.md]
-input-hash: "d5ab8a4"
+input-hash: "1afe9de"
 traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
 project: monocle
 supplements:
@@ -165,7 +165,7 @@ accommodate without breaking Phase 1 ABI.
   Dispatcher no-op until Phase 3 (SOQ-4); `VsddFactoryAdapter` statically bundled
   in v1 — WASM plugin SDK ships Phase 3, not v1 (OQ-03)
 - macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
-  Actions; MSRV Rust 1.86 (ratatui floor, OQ-11)
+  Actions; MSRV Rust 1.88 (RUSTSEC-2026-0009 Path B — time 0.3.47 floor; original OQ-11 value was 1.86 ratatui floor, bumped Wave 6)
 - DTU Phase 1 clone: `dtu-claude-code-hooks-v1` synthesized clone of Claude Code hook protocol surface for testing fidelity and regression detection. Per `.factory/specs/dtu-assessment.md` §"Phase 1 Clone Build Effort" (architect-specced this burst). Fidelity target: ≥0.95 against fixture corpus.
 - **Forward-compatibility contracts (locked pre-Phase-1 per human authorization):**
   - **monocle-core ABI:** Export `MONOCLE_ABI_VERSION: u32 = 1` const; expose via `/status` endpoint. Phase 3 plugin SDK uses this to refuse incompatible Phase 1 daemons. See `SS-core-types-and-abi.md` §ABI Version Constant.
@@ -319,7 +319,7 @@ These constraints are derived from the orchestrator's accepted defaults on
 | monocle-ipc: UDS-only in v1; shared-memory ring deferred to Phase 4 transport variant | OQ-08 |
 | rmcp MCP bridge: OMITTED in v1; Phase 4 ships real impl (no stub in v1) | OQ-09 |
 | Daemon lock file: `directories::ProjectDirs::runtime_dir()` w/ state_dir → data_dir → `~/.monocle` fallback | OQ-10 |
-| MSRV target: Phase 1 = Rust 1.86 (ratatui floor); Phase 3 bumps to 1.92 (wasmtime) | OQ-11 |
+| MSRV target: Phase 1 = Rust 1.88 (RUSTSEC-2026-0009 Path B; original 1.86 ratatui floor bumped Wave 6); Phase 3 bumps to 1.92 (wasmtime) | OQ-11 |
 | Lock-file schema: `contract_version: u32` field from day one (zellij pattern) | SOQ-1 |
 | Token rotation invariant: bind socket + lock-file write + token THEN hooks-settings reads token | SOQ-2 |
 | Overlay survival: clear on daemon disconnect (Claude Code subprocesses time-out delayed responses) | SOQ-3 |
