@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.53"
+version: "6.54"
 status: active
 producer: state-manager
 timestamp: 2026-05-29T09:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 25 MED+LOW (D-204) — META-pattern 7TH instance; TRIPWIRE FIRED. 3-agent closure: architect ADR-0007 (5e79f6a) + implementer 0813d4f + story-writer f529a02. CODIFY-001 SUNSET. Counter HOLDS 0/3. Pass 26 pending at post-fix HEAD."
+current_step: "S-025 Pass 26 MED (D-205) — META-pattern 8TH instance (new species: structural-spec drift, module-doc column table). 2-agent closure: architect e8d1088 (ADR-0007 v1.0.0→v1.0.1 Option B; HIGH+LOW ADR-0007 self-consistency) + implementer 2d1188f (column table 6→7). Scope-extension question DEFERRED Task #9 m.6 with TRIPWIRE. Counter HOLDS 0/3. Pass 27 pending at post-fix HEAD."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21. D-200: Pass 21 NITPICK_ONLY-CLEAN; counter ADVANCES 0/3 → 1/3; 5-stall pattern ENDED; species BOUNDED. D-201: Pass 22 MED — F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites: 2 worktree + 7 EPIC-06 story files); META-GAP in D-198.2 (bare-filename refs not covered); CODIFY-001 7th sweep category added; ADV22-PROC-001 added (CI-enforced bare-filename anchor resolution); counter RESETS 1/3 → 0/3; 4th 1/3→2/3 failure (DIFFERENT class); implementer + story-writer parallel dispatched. D-201.1: MED-001 CLOSED at e5ebc43 + 0cea089; BONUS SS-forward-compat.md catch → SS-conventions v1.31.1; STORY-INDEX v5.12; CI 9/9 green; Pass 23 dispatched. D-202: Pass 23 MED — F-S025-ADV23-MED-001: spec-body Architecture Source pins stale in 3 ss-06 BCs (SS-tui v1.5.0/v1.6.0 vs canonical v1.8.2) + 7 ss-07 sibling cascade (SS-config v1.1.0 vs canonical v1.3.0); 10 known sites; META-pattern 5th instance (escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → spec-body); CODIFY-001 Category 8 spec-body Architecture Source pin sweep extension; ADV23-PROC-001 added (CI-enforced BC pin freshness); counter HOLDS 0/3; 5th 1/3→2/3 failure; comprehensive PO Category 8 sweep dispatched. D-202.1: F-S025-ADV23-MED-001 CLOSED — PO 3-burst cascade: 1ad2852 (10 BCs: ss-06 + ss-07 initial; ADV23-SCOPE-001 surfaced 26 more) + cc1ea7d (26 BCs: ss-03/04/05/dtu expansion; ADV23-SCOPE-002 surfaced 9 more ss-06) + 4c6b4f5 (21 ss-06 BCs; all 24 ss-06 BCs now cite SS-tui v1.8.2). 57+ BCs total. 7 canonical-doc refreshes: SS-tui v1.8.2 (24 ss-06), SS-config v1.3.0 (7 ss-07), SS-engine-module v1.1.26 (4 ss-03), SS-daemon-wiring v1.3.0 (13 ss-04+05), SS-ipc v1.9.0 (8 ss-05), SS-deps-pin-manifest v1.2.0 (1 ss-05), SS-conventions v1.31.1 (1 ss-dtu). BC-INDEX v1.27→v1.32. Category 8 FULLY BOUNDED. NO substantive prose propagations needed beyond BC-2.06.005 §Trace v1.0.4 6→7 column rewrite. Orchestrator iterative scope-expansion strategy (ADV23-SCOPE-001/-002/-N) validated at scale. D-202.2: STATE v6.50→v6.51. Pass 24 dispatching. D-203: Pass 24 2 MED (F-S025-ADV24-MED-001 + F-S025-ADV24-MED-002) — META-pattern 6th instance at sibling-artifact-directory layer (story inputs[] + VP-body). CODIFY-001 extended with Categories 9/10/11. ADV24-PROC-001 added (POL-11 candidate). In-scope story-writer fix dispatched (S-025 v1.7→v1.8). Cross-story + VP deferred per BC-5.39.002 PC2. Architect-escalation tripwire ARMED for Pass 25. STATE v6.51→v6.52. D-204: Pass 25 MED+LOW + TRIPWIRE FIRED — F-S025-ADV25-MED-001: worktree code/test BC-version pin staleness (13 sites; META-pattern 7TH instance) + F-S025-ADV25-LOW-001: app.rs:127 ghost-method MonocleConfig::load doc-comment. THREE-AGENT closure: architect ADR-0007 5e79f6a (Option C-Refined hybrid; semantic-anchors + POL-11 CI gate + version-pin-registry.yaml) + implementer 0813d4f (14 worktree pin refreshes + ghost-method fix) + story-writer f529a02 (S-025:108 body pin + v1.8→v1.9 + STORY-INDEX v5.13→v5.14). CODIFY-001 SUNSET — ADR-0007 supersedes per-pass category enumeration with structural root-cause fix. Counter HOLDS 0/3. STATE v6.52→v6.53."
-awaiting: "Pass 26 adversary at post-fix HEAD (post-0813d4f worktree + post-f529a02 story spec); target counter 0/3 → 1/3 (8th convergence attempt). ADR-0007 implementation tracked in Task #9 (m.1-m.5): devops pre-commit hook + CI step, state-manager version-pin-registry.yaml seed, story-writer template update, PO BC template update, story-writer CODIFY-001 sunset doc."
+awaiting: "CI green verification on 2d1188f; then Pass 27 adversary at post-fix HEAD (2d1188f worktree + e8d1088 factory-artifacts); target counter 0/3 → 1/3 (9th convergence attempt). ADR-0007 implementation tracked in Task #9 (m.1-m.5): devops pre-commit hook + CI step, state-manager version-pin-registry.yaml seed, story-writer template update, PO BC template update, story-writer CODIFY-001 sunset doc. Task #9 m.6 ADDED: structural-spec drift scope-extension TRIPWIRE (2 more instances → architect ADR-0007 extension or ADR-0008)."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -280,6 +280,26 @@ durable_task_register:
       status: closed
       detail: "CLOSED (D-204) via implementer 0813d4f. F-S025-ADV3-HIGH-001 propagation gap. Fixed to use load_config() (canonical free-function pattern per F-S025-ADV3 §Trace v1.4)."
       blocking: false
+    - id: "F-S025-ADV26-HIGH-001"
+      subject: "ADR-0007 §Historical Anchor Classification vs SS-conventions §Historical Anchor Classification logic mismatch (ALL-of vs at-least-ONE-of)"
+      status: closed
+      detail: "CLOSED (D-205) via architect e8d1088 Option B. ADR-0007 lines 157-166 required ALL-of (contextual marker AND version-monotonicity); SS-conventions lines 1617-1630 required at-least-ONE-of. Architect adopted Option B (at-least-one-of). ADR-0007 v1.0.0→v1.0.1 with §Trace v1.0.1; SS-conventions v1.32.0→v1.32.1 (body already correct). Rationale: monotonicity requires git-log lookups (impl complexity); contextual-marker already discriminating; ADR examples implied Option B."
+      blocking: false
+    - id: "F-S025-ADV26-MED-001"
+      subject: "META-pattern 8th instance — sessions_panel.rs module-doc column table 6-column vs canonical 7-column (structural-spec drift, new layer)"
+      status: closed
+      detail: "CLOSED (D-205) via implementer 2d1188f. sessions_panel.rs:7-16 module doc table listed 6 columns (Icon, Project, Status, Tokens, Cost, Uptime); BC-2.06.005 PC-2 v1.0.6 mandates 7 columns starting with Session ID. Function doc (line 411), code (line 432), tests (sessions_panel.rs:669) all correctly use 7 columns — module doc was lone outlier. Sweep-wider clean across ui/mod.rs + lib.rs + app.rs. META-pattern 8th instance at NEW LAYER (module-doc structural-spec table) not covered by ADR-0007 POL-11. Scope-extension DEFERRED to Task #9 m.6 with TRIPWIRE."
+      blocking: false
+    - id: "F-S025-ADV26-LOW-001"
+      subject: "ADR-0007 POL-11 dispatch extension list missing .yaml (also §Scope of Affected Artifact Types line 86)"
+      status: closed
+      detail: "CLOSED (D-205) via architect e8d1088. ADR-0007 line 347 POL-11 dispatch enumerated .md/.rs/.toml/.yml but §CI gate scope (lines 143-146) included .yaml and version-pin-registry.yaml itself is .yaml. Architect added .yaml to extension list at line 347 and also fixed internal inconsistency at line 86 (§Scope of Affected Artifact Types also missing .yaml)."
+      blocking: false
+    - id: "F-S025-ADV26-OBS-001"
+      subject: "[scope-extension TRIPWIRE] META-pattern 8th instance at structural-spec drift layer not covered by ADR-0007 POL-11 — anchored Task #9 m.6"
+      status: pending
+      detail: "META-pattern 8th instance (Pass 26 MED-001) at structural-spec drift layer (module-doc column table). ADR-0007 POL-11 enforces literal version-pin freshness; structural-table shape drift is a different mechanism not covered. Scope-extension DEFERRED per S-7.02 3-instance codification rule (1 structural-spec drift instance found — need 2 more to confirm META-pattern recurrence). Anchored to Task #9 m.6. TRIPWIRE: if Pass 27/28/29 finds another structural-spec drift instance, immediately dispatch architect for ADR-0007 scope extension or ADR-0008. Current count: 1/3 structural-spec drift instances."
+      blocking: false
     - id: "ADV22-PROC-001"
       subject: "[process-gap] CI-enforced bare-filename architecture anchor resolution check (build.rs or semgrep)"
       status: superseded
@@ -368,47 +388,44 @@ durable_task_register:
     - "Test file doc comment spec version citations need explicit disambiguation anchor (F-D-NN tag, §section, or parenthetical) — bare version numbers in test files are indistinguishable from Category A active-pointers during automated sweep (ADV20-PROC-001)"
     - "META-PATTERN (D-201 → D-202 → D-203 → D-204 CONFIRMED 7th instance; STRATEGIC RESOLUTION ADOPTED): S-025 convergence failed 7× at the 1/3→2/3 transition. Each failure was a DIFFERENT class ONE LAYER DEEPER: Pass 9 = vacuous-mirror (test assertion layer); Pass 16 = audit-table/op_ref (struct-metadata layer); Pass 18 = version-pointer propagation (implementation-worktree layer); Pass 22 = bare-filename anchor resolution (spec-filename layer); Pass 23 = spec-body Architecture Source pins (BC-body → arch-doc citation layer); Pass 24 = story-frontmatter inputs[] + VP-body Architecture Source pins (sibling-artifact-directory); Pass 25 = worktree code/test BC-version pins + story body prose BC-version pin (code-citation BC-version layer). SPECIES ROOT IDENTIFIED: versioned pointers in artifact bodies to versioned source-of-truth documents. ADR-0007 adopted (5e79f6a): Option C-Refined hybrid — semantic anchors for new artifacts + POL-11 CI gate for legacy corpus + opportunistic migration. CODIFY-001 SUNSET — superseded by ADR-0007. The escalation-ladder pattern itself is now documented as a known failure mode for any project with dense cross-artifact version-pin citations."
     - "THREE-AGENT TRIPWIRE STRATEGY (D-204 — PROVEN TEMPLATE): When architect-escalation tripwire fires, dispatch THREE PARALLEL tracks: (1) architect — strategic evaluation of root cause + ADR authorship; (2) implementer — tactical in-scope fix of current finding; (3) story-writer — tactical in-scope fix of story/spec affected artifacts. This produces coordinated multi-artifact resolution in a single dispatch round without multi-session cycling. Produces: 1 ADR + 2 tactical commits + 1 STATE update = complete closure. Template-worthy for future tripwire events. First verified instance: D-204 (Pass 25; 7th META-pattern; 3-agent + ADR in 1 round)."
+    - "ADR SCOPE-BOUNDARY OBSERVATION (D-205 — Pass 26): Strategic ADRs correctly bound their TARGET SPECIES but do not guarantee coverage of all facets of the broader META-pattern root. ADR-0007 POL-11 is a correct and complete fix for literal-version-pin drift (instances 18, 23, 24, 25). The 8th META-pattern instance (module-doc structural-spec TABLE column staleness) is OUTSIDE ADR-0007 scope — same species root (authoring-time documentation drifts as canonical evolves) but different mechanism (structural-table shape vs literal pin). Apply S-7.02 3-instance codification rule before scope-extending a strategic ADR: 1 structural-spec drift instance is NOT sufficient justification for ADR modification; need 2 more instances to confirm recurrence. Orchestrator should maintain TRIPWIRE (not standing intervention) until recurrence count crosses threshold. This prevents premature scope-creep of ADRs while preserving detection capability. Template-worthy for all future strategic-ADR scope-boundary encounters."
 next_session_resume_protocol: |
-  S-025 PASS 25 MED+LOW (D-204) — TRIPWIRE FIRED — ADR-0007 ADOPTED — 3-AGENT CLOSURE — COUNTER 0/3 — PASS 26 PENDING — STATE v6.53
+  S-025 PASS 26 MED (D-205) — META 8TH INSTANCE (NEW SPECIES: structural-spec drift) — 2-AGENT CLOSURE — COUNTER 0/3 — PASS 27 PENDING — STATE v6.54
 
-  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 worktree HEAD: post-0813d4f on feature/S-025-tui-skeleton-sessions.
-  COUNTER: 0/3 (holds — 1 MED + 1 LOW; META-pattern 7th instance TRIPWIRE FIRED; tactical + strategic closures landed).
-  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007.
-  TOTAL RESETS: 7 (Passes 8, 9, 10, 12, 16, 18, 22). CONVERGENCE-ATTEMPT #8 — Pass 26 pending.
+  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 worktree HEAD: post-2d1188f on feature/S-025-tui-skeleton-sessions.
+  COUNTER: 0/3 (holds — 1 HIGH + 1 MED + 1 LOW at Pass 26; all 3 closed in 2-agent fix round; counter does NOT advance until Pass 27 dispatches at post-fix HEAD).
+  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007→M(26).
+  TOTAL RESETS: 8 (Passes 9, 16, 18, 22, 23, 24, 25, 26). CONVERGENCE-ATTEMPT #9 — Pass 27 pending.
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
-  PASS 25 OUTCOME (D-204):
-    F-S025-ADV25-MED-001: Worktree code/test BC-version pin staleness (13 sites: sessions_panel.rs + tests/ citing BC-2.06.005 v1.0.5 vs canonical v1.0.6) + story body S-025:108 (BC-2.06.004 v1.2.0 vs canonical v1.2.1). META-pattern 7th instance. TRIPWIRE FIRED.
-    F-S025-ADV25-LOW-001: app.rs:127 ghost-method MonocleConfig::load doc-comment (F-S025-ADV3-HIGH-001 propagation gap).
-    THREE-AGENT CLOSURE:
-      - Architect: ADR-0007 5e79f6a — Option C-Refined hybrid (semantic anchors + POL-11 CI gate + version-pin-registry.yaml + opportunistic migration).
-      - Implementer: 0813d4f — 14 worktree pin refreshes + ghost-method doc-comment fix.
-      - Story-writer: f529a02 — S-025:108 body pin + v1.8→v1.9 + §Trace v1.9; STORY-INDEX v5.13→v5.14.
-    CODIFY-001 SUNSET: ADR-0007 supersedes per-pass category enumeration. Categories 1-13 now CI-gated via POL-11 (devops dispatch pending, Task #9 m.1).
-    ADR-0007 IMPLEMENTATION PLAN (Task #9):
-      m.1 devops: monocle-version-pin-freshness pre-commit hook + CI step + version-pin-registry.yaml seed.
-      m.2 story-writer: Update story template (remove version literals from inputs[] examples).
-      m.3 product-owner: Update BC template (remove v<version> from Architecture Source).
-      m.4 story-writer: CODIFY-001 sunset documentation; mark Categories 8-13 as CI-gated.
-      m.5 state-manager: Seed version-pin-registry.yaml with 11 SS docs + BC-INDEX.
+  PASS 26 OUTCOME (D-205):
+    F-S025-ADV26-HIGH-001: ADR-0007 §Historical Anchor Classification (ALL-of) vs SS-conventions §Citation Discipline (at-least-ONE-of) internal inconsistency. CLOSED via architect e8d1088 Option B (at-least-one-of contextual marker adopted). ADR-0007 v1.0.0→v1.0.1 + §Trace v1.0.1; SS-conventions v1.32.0→v1.32.1 (body unchanged — already correct).
+    F-S025-ADV26-MED-001: sessions_panel.rs:7-16 module-doc column table 6-column (stale) vs canonical BC-2.06.005 PC-2 v1.0.6 7-column. META-pattern 8th instance at NEW LAYER (structural-spec drift, not literal-pin drift — outside ADR-0007 POL-11 coverage). CLOSED via implementer 2d1188f (Session ID added as first column). Sweep-wider clean.
+    F-S025-ADV26-LOW-001: ADR-0007 POL-11 dispatch extension list missing .yaml (also §Scope line 86 missing .yaml). CLOSED via architect e8d1088 (both sites fixed).
+    2-AGENT CLOSURE (not 3-agent — no story-spec changes needed):
+      - Architect: e8d1088 — Option B adjudication for HIGH-001 + LOW-001; ADR-0007 v1.0.0→v1.0.1; SS-conventions v1.32.0→v1.32.1.
+      - Implementer: 2d1188f — column table 6→7; sweep-wider clean.
+    STRATEGIC SCOPE-EXTENSION: DEFERRED per S-7.02 3-instance rule. Anchored Task #9 m.6 with TRIPWIRE (2 more structural-spec drift instances trigger architect dispatch for ADR-0007 extension or ADR-0008).
 
   IMMEDIATE NEXT ACTIONS:
-    1. Pass 26 adversary at post-fix HEAD (post-0813d4f worktree + post-f529a02 story spec). Target: 0/3 → 1/3.
-       Attack angles: rotate fully from META-pattern version-pin species (ADR-0007 structural coverage pending; CI gate not yet active).
-       If 8th META-pattern instance found: ADR-0007 is already adopted — tactical fix + report back. No new tripwire needed.
-    2. If Pass 26 NITPICK_ONLY-CLEAN: counter 0/3→1/3. Convergence forecast: 3/3 at Pass 28 if Passes 26+27+28 all clean.
-    3. After S-025 convergence 3/3: rebase → develop; resolve TODO(S-023-merge); demo-recorder; PR #28; S-026 dispatch.
-    4. Task #9 m.1-m.5 (ADR-0007 implementation): dispatch in parallel with Pass 26 or immediately post-convergence.
+    1. Verify CI green on 2d1188f (worktree).
+    2. Pass 27 adversary at post-fix HEAD (2d1188f worktree + e8d1088 factory-artifacts). Target: 0/3 → 1/3 (9th convergence attempt).
+       ADR-0007 strategic coverage confirmed for literal-pin species. Attack structural + behavioral layers.
+       If another structural-spec drift instance found: TRIPWIRE fires (Task #9 m.6); dispatch architect for ADR-0007 scope extension or ADR-0008.
+    3. If Pass 27 NITPICK_ONLY-CLEAN: counter 0/3→1/3. Convergence forecast: 3/3 at Pass 29 if Passes 27+28+29 all clean.
+    4. After S-025 convergence 3/3: rebase → develop; resolve TODO(S-023-merge); demo-recorder; PR #28; S-026 dispatch.
+    5. Task #9 m.1-m.5 (ADR-0007 implementation): dispatch in parallel with Pass 27 or immediately post-convergence.
 
-  CRITICAL FILES FOR PASS 26 ADVERSARY (read in order):
-    1. .factory/STATE.md (v6.53); 2. adversarial-pass-25.md; 3. adversarial-pass-24.md;
-    4. adversarial-pass-23.md; 5. adversarial-pass-22.md; 6. adversarial-pass-21.md;
-    7. adversarial-pass-20.md; 8. adversarial-pass-18.md; 9. adversarial-pass-16.md;
-    10. adversarial-pass-15.md; 11. adversarial-pass-12.md; 12. architect-decisions-pass-1.md;
-    13. architect-decisions-pass-2.md; 14. text-style-adjudication.md; 15. red-gate-log.md;
-    16. .factory/stories/S-025-tui-skeleton-sessions.md (v1.9 post-fix);
-    17. .factory/specs/architecture/adr/ADR-0007.md (new — semantic-anchor discipline);
-    18. CLAUDE.md (project principles — production-grade default).
+  CRITICAL FILES FOR PASS 27 ADVERSARY (read in order):
+    1. .factory/STATE.md (v6.54); 2. adversarial-pass-26.md; 3. adversarial-pass-25.md;
+    4. adversarial-pass-24.md; 5. adversarial-pass-23.md; 6. adversarial-pass-22.md;
+    7. adversarial-pass-21.md; 8. adversarial-pass-20.md; 9. adversarial-pass-18.md;
+    10. adversarial-pass-16.md; 11. adversarial-pass-15.md; 12. adversarial-pass-12.md;
+    13. architect-decisions-pass-1.md; 14. architect-decisions-pass-2.md;
+    15. text-style-adjudication.md; 16. red-gate-log.md;
+    17. .factory/stories/S-025-tui-skeleton-sessions.md (v1.9 post-fix);
+    18. .factory/specs/architecture/adr/ADR-0007.md (v1.0.1 — Option B aligned);
+    19. CLAUDE.md (project principles — production-grade default).
     All cycle files at: .factory/cycles/cycle-001/S-025/
 
   ADV16-CODIFY-001 SUNSET (D-204) — superseded by ADR-0007. Categories 1-13 CI-gated via POL-11 once Task #9 m.1 lands.
@@ -478,31 +495,32 @@ next_session_resume_protocol: |
       SS-deps-pin-manifest citations stale. Deferred to wave-gate (Task #9 anchored).
 
   RECURRENCE WATCH:
-    Path-B-propagation defect species: BOUNDED (Pass 21 D-198.2 validated; no recurrence at Passes 22-25).
-    Bare-filename-anchor species: BOUNDED (Pass 22 D-201 fix; no recurrence at Passes 23-25).
-    Spec-body Architecture Source pin species (behavioral-contracts/): BOUNDED via D-202.1 (no recurrence at Passes 24-25).
+    Path-B-propagation defect species: BOUNDED (Pass 21 D-198.2 validated; no recurrence at Passes 22-26).
+    Bare-filename-anchor species: BOUNDED (Pass 22 D-201 fix; no recurrence at Passes 23-26).
+    Spec-body Architecture Source pin species (behavioral-contracts/): BOUNDED via D-202.1 (no recurrence at Passes 24-26).
     Story-frontmatter inputs[] pin species: S-025 IN-SCOPE CLOSED (925c667 story-writer). Cross-story S-026/27/28/31 + done-story body prose deferred Task #9.
     VP-body Architecture Source pin species: DEFERRED to phase-5 (Pass 24 MED-002; 14 VPs / 45 occurrences; POL-11 Task #9 m.1 will gate).
     Worktree code/test BC-version pin species: CLOSED via 0813d4f (Pass 25 MED-001 14 sites). STRUCTURAL FIX: ADR-0007 POL-11 CI gate will prevent recurrence once Task #9 m.1 lands.
-    1/3→2/3 transition failure count: 7 (Passes 9, 16, 18, 22, 23, 24, 25 — all MED, all different classes). STRATEGIC RESOLUTION ADOPTED at Pass 25 — ADR-0007.
-    META-PATTERN: STRATEGIC RESOLUTION ADOPTED (D-204).
-      7 instances confirmed. Species root: versioned pointers in artifact bodies to versioned source-of-truth documents.
-      Escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → BC-body → sibling-artifact-directory → code-citation BC-version pin (worktree + story-body).
-      TRIPWIRE FIRED at Pass 25: architect dispatch successful. ADR-0007 Option C-Refined adopted.
+    Structural-spec drift species (NEW — Pass 26 MED-001): 1 instance (module-doc column table). NOT YET a META-pattern (requires 3). TRIPWIRE active at Task #9 m.6 (2 more → architect ADR-0007 scope extension or ADR-0008).
+    1/3→2/3 transition failure count: 8 (Passes 9, 16, 18, 22, 23, 24, 25, 26 — all MED, all different classes). STRATEGIC RESOLUTION ADOPTED at Pass 25 — ADR-0007 (literal-pin species). Pass 26 confirms ADR-0007 correct for target species; scope boundary observed at structural-spec drift layer.
+    META-PATTERN: 8 instances confirmed. STRATEGIC RESOLUTION adopted (D-204) for literal-pin target species.
+      8 instances confirmed. Species root: authoring-time documentation drifts as canonical evolves.
+      Escalation ladder: test-assertion → struct-metadata → impl-worktree → spec-filename → BC-body → sibling-artifact-directory → code-citation BC-version pin → module-doc structural-spec TABLE.
+      ADR-0007 strategic intervention: VALIDATED for literal-pin target species (instances 18, 23, 24, 25). MEDIUM-confident for structural-spec drift species — 1 instance found (Pass 26); needs 2 more to confirm META-pattern emergence.
       CODIFY-001 SUNSET: ADR-0007 supersedes per-pass enumeration with structural fix.
-      Whether Pass 26 finds 8th instance is empirical test of ADR-0007 pre-implementation effectiveness. CI gate not yet active (devops dispatch Task #9 m.1 pending).
+      ADR-0007 v1.0.1 (e8d1088) — internal consistency aligned (Option B at-least-one-of; .yaml extension added).
       Full sweep protocol (D-198.2 + D-201 + D-202 + D-203): PRESERVED for Task #9 m.1 CI implementation reference.
 
-  ARTIFACT VERSIONS (D-204 / Pass 25 closure — post-3-agent):
+  ARTIFACT VERSIONS (D-205 / Pass 26 closure — post-2-agent):
     BC-INDEX v1.32 (113 BCs; all ss-03/04/05/06/07/dtu BCs at current Architecture Source canonical per D-202.1). PRD v1.27.3.
     SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0. SS-daemon-wiring v1.3.0. SS-ipc v1.9.0.
-    SS-conventions-anti-patterns v1.32.0 (NEW — ADR-0007 semantic-anchor discipline codified). SS-tui v1.8.2. SS-config v1.3.0.
-    ADR-0006 v1.2. ADR-0007 v1.0 (NEW — Option C-Refined hybrid; 5e79f6a). ARCH-INDEX v1.0.17 (NEW — ADR-0007 row added; ADR-0006 row corrected).
-    S-025 v1.9 (NEW — body pin + §Trace v1.9; f529a02). S-026 v1.8.
+    SS-conventions-anti-patterns v1.32.1 (UPDATED — body unchanged; §Trace v1.32.1 added per ADR-0007 v1.0.1 e8d1088 alignment). SS-tui v1.8.2. SS-config v1.3.0.
+    ADR-0006 v1.2. ADR-0007 v1.0.1 (UPDATED — Option B at-least-one-of Historical Anchor Classification; .yaml extension added; e8d1088). ARCH-INDEX v1.0.17.
+    S-025 v1.9. S-026 v1.8.
     BC-2.03.001 v1.0.6. S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7.
     S-024 v1.5. S-027 v1.4. S-028 v1.3. S-029 v1.2. S-031 v1.1.
-    holdout-scenarios v1.5. STORY-INDEX v5.14 (NEW — f529a02).
-    Worktree: post-0813d4f (14 pin refreshes + ghost-method fix; feature/S-025-tui-skeleton-sessions). Factory-artifacts: f529a02 (story-writer S-025 v1.9 + STORY-INDEX v5.14). CI 9/9 green at e5ebc43 (pre-0813d4f base; 0813d4f pending CI).
+    holdout-scenarios v1.5. STORY-INDEX v5.14.
+    Worktree: post-2d1188f (column table 6→7 + sweep-wider clean; feature/S-025-tui-skeleton-sessions). Factory-artifacts: e8d1088 (ADR-0007 v1.0.1 + SS-conventions v1.32.1). CI pending on 2d1188f.
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
@@ -542,7 +560,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 25 MED+LOW (D-204); counter 0/3; 3-agent closure + ADR-0007; Pass 26 pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 25 MED+LOW: META-pattern 7th instance TRIPWIRE FIRED; ADR-0007 adopted; 3-agent closure (architect 5e79f6a + implementer 0813d4f + story-writer f529a02); CODIFY-001 SUNSET. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 26 MED (D-205); counter 0/3; 2-agent closure (architect e8d1088 + implementer 2d1188f); META 8th instance; Pass 27 pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 26 MED: META-pattern 8th instance (structural-spec drift, new species); ADR-0007 v1.0.1 (Option B + .yaml fix); 2-agent closure; scope-extension DEFERRED Task #9 m.6 with TRIPWIRE. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007→M(26). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -555,7 +573,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 25 MED+LOW (D-204): META-pattern 7th instance TRIPWIRE FIRED. 3-agent closure (ADR-0007 + implementer 0813d4f + story-writer f529a02). CODIFY-001 SUNSET. Counter 0/3. Pass 26 pending. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18, 22 = 7 total. ADR-0007 strategic resolution adopted.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 26 MED (D-205): META-pattern 8th instance (structural-spec drift — module-doc column table). 2-agent closure (architect e8d1088 ADR-0007 v1.0.1 + implementer 2d1188f). Scope-extension DEFERRED Task #9 m.6 TRIPWIRE. Counter 0/3. Pass 27 pending. S-026 blocked on S-025. Resets: Passes 9, 16, 18, 22, 23, 24, 25, 26 = 8 total. ADR-0007 strategic resolution adopted (literal-pin species confirmed).
 
 ## Blocking Issues
 
@@ -585,13 +603,14 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-202.2 | STATE v6.50→v6.51 (this burst). CODIFY-001 Category 8 Proven Protocol added to §Trace. RECURRENCE WATCH updated: 5th instance BOUNDED. Pass 24 dispatching (convergence-attempt #6 first pass). | 2026-05-29 | state-manager |
 | D-203 | S-025 Pass 24 2 MED — F-S025-ADV24-MED-001: story inputs[] stale (5 S-025-scope pins + cross-story cascade S-026/27/28/31 + done-story body prose S-014..S-023); F-S025-ADV24-MED-002: VP-body SS-deps-pin-manifest v1.1.17 stale (14 VPs, 45 occurrences). META-pattern 6th instance at sibling-artifact-directory layer. CODIFY-001 Categories 9/10/11 added. ADV24-PROC-001 added (POL-11 candidate). Counter HOLDS 0/3 (6th 1/3→2/3 failure). In-scope story-writer fix dispatched (S-025 v1.7→v1.8 → 925c667). Cross-story + VP deferred per BC-5.39.002 PC2 (Task #9 anchored). Architect-escalation tripwire ARMED for Pass 25. STATE v6.51→v6.52. | 2026-05-29 | state-manager |
 | D-204 | S-025 Pass 25 MED+LOW + TRIPWIRE FIRED — F-S025-ADV25-MED-001: worktree code/test BC-version pin staleness (13 sites; BC-2.06.005 v1.0.5 vs canonical v1.0.6) + story body S-025:108 (BC-2.06.004 v1.2.0 vs canonical v1.2.1). META-pattern 7TH instance. F-S025-ADV25-LOW-001: app.rs:127 ghost-method MonocleConfig::load doc-comment. THREE-AGENT CLOSURE: architect ADR-0007 5e79f6a (Option C-Refined hybrid: semantic anchors + POL-11 CI gate + version-pin-registry.yaml + opportunistic migration) + implementer 0813d4f (14 worktree pin refreshes + ghost-method fix) + story-writer f529a02 (S-025:108 body pin; v1.8→v1.9; §Trace v1.9; STORY-INDEX v5.13→v5.14). CODIFY-001 SUNSET — ADR-0007 supersedes per-pass category enumeration. ADR-0007 implementation tracked in Task #9 (m.1-m.5). SS-conventions v1.31.1→v1.32.0. ARCH-INDEX v1.0.16→v1.0.17. Counter HOLDS 0/3 (7th 1/3→2/3 failure). STATE v6.52→v6.53. | 2026-05-29 | state-manager |
+| D-205 | S-025 Pass 26 MED — F-S025-ADV26-HIGH-001: ADR-0007 §Historical Anchor Classification (ALL-of) vs SS-conventions §Citation Discipline (at-least-ONE-of) internal mismatch. F-S025-ADV26-MED-001: sessions_panel.rs:7-16 module-doc column table 6-column vs canonical BC-2.06.005 PC-2 v1.0.6 7-column; META-pattern 8TH instance (NEW LAYER: structural-spec drift; distinct from literal-pin drift; outside ADR-0007 POL-11 coverage). F-S025-ADV26-LOW-001: ADR-0007 POL-11 dispatch + §Scope line 86 missing .yaml extension. 2-AGENT CLOSURE: architect e8d1088 (Option B at-least-one-of adoption; ADR-0007 v1.0.0→v1.0.1; SS-conventions v1.32.0→v1.32.1) + implementer 2d1188f (column table 6→7; sweep-wider clean). Scope-extension question DEFERRED per S-7.02 3-instance rule; anchored Task #9 m.6 with TRIPWIRE (2 more structural-spec drift instances trigger architect dispatch). Counter HOLDS 0/3 (8th 1/3→2/3 failure). ADR-0007 strategic intervention VALIDATED for literal-pin species; scope boundary confirmed. STATE v6.53→v6.54. | 2026-05-29 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.32** (72 numbered BCs + 41 DTU BCs = 113 total; all ss-03/04/05/06/07/dtu BCs at current Architecture Source canonical per D-202.1). **ARCH-INDEX v1.0.17** (7 subsystems; ADR-0007 row added). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions-anti-patterns v1.32.0** (semantic-anchor discipline per ADR-0007). **ADR-0006 v1.2**. **ADR-0007 v1.0** (NEW — Option C-Refined hybrid; version-pin registry + POL-11 CI gate + semantic anchors). **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.14** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **S-024 v1.5**. **S-025 v1.9**. **S-026 v1.8**. **S-027 v1.4**. **S-028 v1.3**. **S-029 v1.2**. **S-031 v1.1**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 40 codified disciplines (SE-1..SE-23 + SE-40 candidate + ADR-0007 semantic-anchor discipline). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.32** (72 numbered BCs + 41 DTU BCs = 113 total; all ss-03/04/05/06/07/dtu BCs at current Architecture Source canonical per D-202.1). **ARCH-INDEX v1.0.17** (7 subsystems; ADR-0007 row added). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions-anti-patterns v1.32.1** (UPDATED — §Trace v1.32.1 added per ADR-0007 v1.0.1 alignment; body unchanged). **ADR-0006 v1.2**. **ADR-0007 v1.0.1** (UPDATED — Option B at-least-one-of Historical Anchor Classification; .yaml extension added to POL-11 dispatch + §Scope line 86; e8d1088). **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.14** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **S-024 v1.5**. **S-025 v1.9**. **S-026 v1.8**. **S-027 v1.4**. **S-028 v1.3**. **S-029 v1.2**. **S-031 v1.1**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 41 codified disciplines (SE-1..SE-23 + SE-40 candidate + ADR-0007 semantic-anchor discipline + ADR scope-boundary observation D-205). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -605,19 +624,17 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.53 (D-204 — Pass 25 MED+LOW; META-7th instance TRIPWIRE FIRED; ADR-0007 strategic resolution; 3-agent closure; CODIFY-001 SUNSET; SS-conventions v1.32.0; ARCH-INDEX v1.0.17; S-025 v1.9; STORY-INDEX v5.14)
+## §Trace v6.54 (D-205 — Pass 26 HIGH+MED+LOW; META-8th instance new species (structural-spec drift); 2-agent closure; architect e8d1088 ADR-0007 v1.0.1 Option B + implementer 2d1188f; scope-extension DEFERRED Task #9 m.6 TRIPWIRE; SS-conventions v1.32.1)
 
-**Pass 25 MED+LOW findings (2026-05-29, D-204):** F-S025-ADV25-MED-001 (worktree code/test BC-version pin staleness; 13 sites citing BC-2.06.005 v1.0.5 vs canonical v1.0.6 + story body S-025:108 BC-2.06.004 v1.2.0 vs v1.2.1; META-pattern 7th instance) + F-S025-ADV25-LOW-001 (app.rs:127 ghost-method MonocleConfig::load doc-comment; F-S025-ADV3-HIGH-001 propagation gap). TRIPWIRE FIRED → architect dispatch → ADR-0007 strategic resolution adopted.
+**Pass 26 MED findings (2026-05-29, D-205):** F-S025-ADV26-HIGH-001 (ADR-0007 §Historical Anchor Classification ALL-of vs SS-conventions at-least-ONE-of; internal mismatch in same-burst D-204 output) + F-S025-ADV26-MED-001 (sessions_panel.rs:7-16 module-doc column table 6-column vs canonical BC-2.06.005 PC-2 v1.0.6 7-column; META-pattern 8th instance at NEW LAYER — structural-spec drift, not literal-pin drift; outside ADR-0007 POL-11 scope) + F-S025-ADV26-LOW-001 (ADR-0007 POL-11 dispatch + §Scope line 86 missing .yaml extension). All 3 CLOSED in 2-agent fix round.
 
-**THREE-AGENT CLOSURE (D-204):** Architect 5e79f6a (ADR-0007 Option C-Refined; semantic anchors + POL-11 CI gate + version-pin-registry.yaml; SS-conventions v1.31.1→v1.32.0; ARCH-INDEX v1.0.16→v1.0.17) + implementer 0813d4f (14 worktree pin refreshes + ghost-method doc-comment fix) + story-writer f529a02 (S-025:108 body pin; v1.8→v1.9; §Trace v1.9; STORY-INDEX v5.13→v5.14). All three dispatched in parallel per three-track tripwire strategy template (D-204).
+**2-AGENT CLOSURE (D-205):** Architect e8d1088 (ADR-0007 v1.0.0→v1.0.1; Option B at-least-one-of adopted; .yaml extension added to POL-11 dispatch + §Scope; SS-conventions v1.32.0→v1.32.1) + implementer 2d1188f (sessions_panel.rs module-doc column table 6→7 columns; sweep-wider clean across ui/mod.rs + lib.rs + app.rs). No story-spec changes needed (no story-writer in this round).
 
-**ADR-0007 strategic resolution (D-204):** Option C-Refined hybrid — semantic anchors (no version literal in new artifact bodies; BC-ID + registry only) + POL-11 CI gate (monocle-version-pin-freshness pre-commit hook + CI step verifies pin freshness against version-pin-registry.yaml) + opportunistic migration (no big-bang; Phase 5/7 targets for remaining ~350-550 legacy pointers). Architect rationale: 7 instances in 25 passes empirically rules out quarterly-sweep acceptance (Option D); per-bump propagation burden not trivially bounded (D-202.1 57+ BCs); big-bang migration risky (Option B). Hybrid correctly layers prevention + detection + manageable migration.
+**ADR-0007 conformance result (D-205):** ADR-0007 strategic intervention VALIDATED for its target species (literal version-pin staleness; instances 18, 23, 24, 25 bounded). Same-burst internal consistency defects caught by fresh-context adversary (HIGH-001 + LOW-001) and closed in-burst. ADR-0007 scope boundary confirmed: POL-11 does not cover structural-spec drift (column counts, table shapes). Strategic scope-extension DEFERRED per S-7.02 3-instance codification rule. Task #9 m.6 TRIPWIRE armed: 2 more structural-spec drift instances trigger architect dispatch for ADR-0007 extension or ADR-0008.
 
-**CODIFY-001 SUNSET (D-204):** ADR-0007 supersedes per-pass category enumeration (1→13 categories across passes). All Categories 1-13 will be CI-gated via POL-11 once Task #9 m.1 lands (devops dispatch pending). CODIFY-001 historical record preserved in §Trace v6.52 process_discoveries.
+**Artifact versions bumped (D-205):** STATE v6.53→v6.54. ADR-0007 v1.0.0→v1.0.1 (e8d1088). SS-conventions-anti-patterns v1.32.0→v1.32.1 (e8d1088). Counter HOLDS 0/3. Trajectory appended: →M(26).
 
-**Artifact versions bumped (D-204):** STATE v6.52→v6.53. ADR-0007 v1.0 (NEW). SS-conventions-anti-patterns v1.31.1→v1.32.0. ARCH-INDEX v1.0.16→v1.0.17. S-025 v1.8→v1.9. STORY-INDEX v5.13→v5.14.
-
-§Trace v6.52 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.53 archived to `cycles/cycle-001/burst-log.md`.
 
 §Trace v6.51 archived to `cycles/cycle-001/burst-log.md`.
 
