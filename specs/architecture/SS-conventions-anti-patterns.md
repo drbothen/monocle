@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.2"
+version: "1.32.3"
 status: complete
 producer: architect
 phase: phase-3
@@ -1697,9 +1697,11 @@ a BC postcondition, or an architecture spec struct declaration. Structural claim
 
 ### Canonical Source Registry
 
+> **Self-application:** This §Canonical Source Registry table is itself subject to POL-12. Stale entries (citing the wrong line range, deprecated section anchors, or removed canonical sources) will be detected by POL-12 against the cited canonical document's actual content. The architect dispatch in ADR-0008 §Implementation Plan row 4 ("When a new canonical source is added or moved, update this registry") explicitly includes registry-maintenance as a POL-12 closure dependency.
+
 | Structural claim type | Canonical source | Lookup |
 |-----------------------|-----------------|--------|
-| `App` struct field types | SS-tui.md §App struct (lines 831-864) | Read field declarations; compare cited type |
+| `App` struct field types | SS-tui.md §App struct (lines 833-864) | Read field declarations; compare cited type |
 | Sessions panel column list | BC-2.06.005 §Postconditions PC-2 | Read PC-2 column table; count columns |
 | `AppMode` variants | `monocle-core::tui::AppMode` enum | Read enum definition; compare variant list |
 | `Action` variants | `monocle-core::tui::Action` enum | Read enum definition; compare variant list |
@@ -1767,6 +1769,12 @@ Phase 2 (Phase 5 scope): Module-level doc-comment table shape extraction from
 Compare column count against the BC cited in the same doc-comment block.
 
 ## §Trace
+
+v1.32.3 changes (Pass 28 F-S025-ADV28-MED-002 propagation closure — ADR-0008 §Canonical Source Registry off-by-2 correction):
+
+- NORMATIVE: §Structural-Claim Discipline §Canonical Source Registry `App` struct field types row line range corrected: `(lines 831-864)` → `(lines 833-864)`. Matches ADR-0008 v1.0.1 correction. Lines 831-832 of SS-tui.md are the code-block fence and filename comment; struct body begins at line 833.
+- NORMATIVE: Explicit self-application policy note added above §Canonical Source Registry table: the registry is itself subject to POL-12 (stale entries detected by POL-12 against cited canonical document content). Mirrors the same note added to ADR-0008 v1.0.1.
+- SE-16d PASS: 2026-05-29 — same calendar day as v1.32.2; sequential same-burst correction.
 
 v1.32.2 changes (D-206 ADR-0008 structural-claim discipline — structural-spec drift tripwire closure):
 

@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.0"
+version: "1.0.1"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -209,9 +209,11 @@ the canonical column list in the BC's PC-N postconditon body.
 
 **Canonical source registry (structural claims):**
 
+> **Self-application:** This §Canonical Source Registry table is itself subject to POL-12. Stale entries (citing the wrong line range, deprecated section anchors, or removed canonical sources) will be detected by POL-12 against the cited canonical document's actual content. The architect dispatch in §Implementation Plan row 4 ("When a new canonical type is added to `App` struct in a future story, add it to the canonical source registry table") explicitly includes registry-maintenance as a POL-12 closure dependency.
+
 | Structural claim type | Canonical source | Lookup method |
 |-----------------------|-----------------|---------------|
-| `App` struct field types | `SS-tui.md §App struct` (lines 831-864) | Read field declarations; compare cited type |
+| `App` struct field types | `SS-tui.md §App struct` (lines 833-864) | Read field declarations; compare cited type |
 | Sessions panel column list | `BC-2.06.005 §Postconditions PC-2` | Read PC-2 column table; count columns |
 | `AppMode` variants | `monocle-core::tui::AppMode` enum | Read enum definition; compare variant list |
 | `Action` variants | `monocle-core::tui::Action` enum | Read enum definition; compare variant list |
@@ -340,6 +342,16 @@ S-028 lines 63 + 147 carry the same `Vec<SessionState>` drift (surfaced at Pass 
 as cross-story propagation). Per BC-5.39.002 PC2, cross-story structural-claim fixes
 are deferred to wave-gate sweep (not blocking S-025 convergence). Story-writer is
 dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
+
+## §Trace v1.0.1
+
+**Pass 28 F-S025-ADV28-MED-002 closure — same-burst self-inconsistency correction** (2026-05-29):
+
+- NORMATIVE: §Canonical Source Registry `App` struct field types row line range corrected: `(lines 831-864)` → `(lines 833-864)`. Lines 831-832 of SS-tui.md are the code-block fence (` ```rust`) and the filename comment (`// monocle-tui/src/app.rs`) — not struct content. `pub struct App {` begins at line 833; closing `}` is at line 864. Off-by-2 at start.
+- NORMATIVE: Same defect propagated to SS-conventions-anti-patterns.md v1.32.2:1702 — corrected to `(lines 833-864)` in that file's §Structural-Claim Discipline §Canonical Source Registry (becomes v1.32.3).
+- NORMATIVE: Explicit self-application policy added to §Canonical Source Registry: the registry table is itself subject to POL-12 (stale entries — wrong line range, deprecated anchors, removed canonical sources — are detected by POL-12 against cited canonical document content). This was implicit via §Exempt list exclusion; now explicit.
+- SE-16d PASS: 2026-05-29 > chain high-water 2026-05-29T12:00:00Z — same calendar day, sequential pass.
+- DEFECT CLASS: Same-burst self-inconsistency (authored structural claim citing lines 831-864 but canonical document has struct body at 833-864). Third instance of newly-authored ADR same-burst internal-consistency defect caught by fresh-context adversarial review (ADR-0006 indirect path, ADR-0007 Pass 26 HIGH-001, ADR-0008 Pass 28 MED-002).
 
 ## §Trace v1.0.0
 
