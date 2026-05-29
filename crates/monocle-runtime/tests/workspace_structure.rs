@@ -28,7 +28,7 @@ fn workspace_root() -> PathBuf {
             }
         }
         if !cur.pop() {
-            panic!("workspace root not found from {:?}", start);
+            panic!("workspace root not found from {start:?}");
         }
     }
 }
@@ -45,7 +45,8 @@ fn read_workspace_cargo_toml() -> String {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// AC-002: rust-toolchain.toml pins channel = "1.86" with the canonical content.
+// AC-002: rust-toolchain.toml pins channel = "1.88" with the canonical content.
+// Bumped from 1.86 → 1.88 by RUSTSEC-2026-0009 Path B resolution (time 0.3.47 requires 1.88).
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -55,24 +56,20 @@ fn ac_002_rust_toolchain_file_exists_and_pins_msrv() {
     let contents =
         fs::read_to_string(&path).expect("rust-toolchain.toml must exist at workspace root");
     assert!(
-        contents.contains("channel = \"1.86\""),
-        "rust-toolchain.toml must pin channel = \"1.86\"; got:\n{}",
-        contents
+        contents.contains("channel = \"1.88\""),
+        "rust-toolchain.toml must pin channel = \"1.88\"; got:\n{contents}"
     );
     assert!(
         contents.contains("components"),
-        "rust-toolchain.toml must declare components array; got:\n{}",
-        contents
+        "rust-toolchain.toml must declare components array; got:\n{contents}"
     );
     assert!(
         contents.contains("\"clippy\"") && contents.contains("\"rustfmt\""),
-        "rust-toolchain.toml must include clippy and rustfmt components; got:\n{}",
-        contents
+        "rust-toolchain.toml must include clippy and rustfmt components; got:\n{contents}"
     );
     assert!(
         contents.contains("profile = \"minimal\""),
-        "rust-toolchain.toml must use profile = \"minimal\"; got:\n{}",
-        contents
+        "rust-toolchain.toml must use profile = \"minimal\"; got:\n{contents}"
     );
 }
 
@@ -90,15 +87,12 @@ fn ac_003_ci_yml_exists_and_uses_explicit_include_matrix() {
 
     assert!(
         contents.contains("include:"),
-        "ci.yml must use explicit `include:` matrix (not Cartesian product); got:\n{}",
-        contents
+        "ci.yml must use explicit `include:` matrix (not Cartesian product); got:\n{contents}"
     );
     for runner in ["macos-14", "ubuntu-24.04", "ubuntu-24.04-arm"] {
         assert!(
             contents.contains(runner),
-            "ci.yml must reference runner {}; got:\n{}",
-            runner,
-            contents
+            "ci.yml must reference runner {runner}; got:\n{contents}"
         );
     }
     for target in [
@@ -108,25 +102,23 @@ fn ac_003_ci_yml_exists_and_uses_explicit_include_matrix() {
     ] {
         assert!(
             contents.contains(target),
-            "ci.yml must reference target {}; got:\n{}",
-            target,
-            contents
+            "ci.yml must reference target {target}; got:\n{contents}"
         );
     }
 }
 
 // ---------------------------------------------------------------------------
-// AC-004: workspace Cargo.toml has rust-version = "1.86" and CI has
+// AC-004: workspace Cargo.toml has rust-version = "1.88" and CI has
 // lint-toolchain step.
+// Bumped from 1.86 → 1.88 by RUSTSEC-2026-0009 Path B resolution (time 0.3.47 requires 1.88).
 // ---------------------------------------------------------------------------
 
 #[test]
-fn ac_004_workspace_cargo_pins_rust_version_1_86() {
+fn ac_004_workspace_cargo_pins_rust_version_1_88() {
     let ws = read_workspace_cargo_toml();
     assert!(
-        ws.contains("rust-version = \"1.86\""),
-        "workspace Cargo.toml must set rust-version = \"1.86\"; got:\n{}",
-        ws
+        ws.contains("rust-version = \"1.88\""),
+        "workspace Cargo.toml must set rust-version = \"1.88\"; got:\n{ws}"
     );
 }
 
@@ -137,13 +129,11 @@ fn ac_004_ci_yml_has_lint_toolchain_step() {
         .expect("ci.yml must exist");
     assert!(
         contents.contains("lint-toolchain") || contents.contains("rust-toolchain.toml"),
-        "ci.yml must include a lint-toolchain step that verifies rust-toolchain.toml channel pin; got:\n{}",
-        contents
+        "ci.yml must include a lint-toolchain step that verifies rust-toolchain.toml channel pin; got:\n{contents}"
     );
     assert!(
-        contents.contains("1\\.86") || contents.contains("1.86"),
-        "ci.yml lint-toolchain step must assert channel matches 1.86; got:\n{}",
-        contents
+        contents.contains("1\\.88") || contents.contains("1.88"),
+        "ci.yml lint-toolchain step must assert channel matches 1.88; got:\n{contents}"
     );
 }
 
@@ -164,9 +154,7 @@ fn ac_005_workspace_declares_three_phase1_core_members() {
     for member in ["monocle-core", "monocle-runtime", "monocle-proto"] {
         assert!(
             ws.contains(member),
-            "workspace Cargo.toml must list `{}` as a member; got:\n{}",
-            member,
-            ws
+            "workspace Cargo.toml must list `{member}` as a member; got:\n{ws}"
         );
     }
 }
@@ -180,8 +168,7 @@ fn ac_005_workspace_does_not_declare_monocle_auth() {
     // is intentionally NOT asserted absent here. See F-S025-CI-001.
     assert!(
         !ws.contains("\"monocle-auth\"") && !ws.contains("crates/monocle-auth"),
-        "monocle-auth must NOT be a workspace member (Decision 3); got:\n{}",
-        ws
+        "monocle-auth must NOT be a workspace member (Decision 3); got:\n{ws}"
     );
 }
 
@@ -207,9 +194,7 @@ fn ac_006_workspace_declares_exact_pinned_security_crates() {
     for pin in exact_pins {
         assert!(
             ws.contains(pin),
-            "workspace [workspace.dependencies] must declare `{}`; got:\n{}",
-            pin,
-            ws
+            "workspace [workspace.dependencies] must declare `{pin}`; got:\n{ws}"
         );
     }
 }
@@ -219,8 +204,7 @@ fn ac_006_workspace_declares_bytes_direct_pin() {
     let ws = read_workspace_cargo_toml();
     assert!(
         ws.contains("bytes = \"1.11\""),
-        "workspace [workspace.dependencies] must declare `bytes = \"1.11\"` to close RUSTSEC-2026-0007 (fix-from = 1.11.1 per SS-deps-pin-manifest v1.1.19 Option B); got:\n{}",
-        ws
+        "workspace [workspace.dependencies] must declare `bytes = \"1.11\"` to close RUSTSEC-2026-0007 (fix-from = 1.11.1 per SS-deps-pin-manifest v1.1.19 Option B); got:\n{ws}"
     );
 }
 
@@ -229,8 +213,7 @@ fn ac_006_workspace_omits_rmcp_in_phase_1() {
     let ws = read_workspace_cargo_toml();
     assert!(
         !ws.contains("rmcp ="),
-        "rmcp must be OMITTED from Phase 1 workspace (OQ-09 -- Phase 4 scope only); got:\n{}",
-        ws
+        "rmcp must be OMITTED from Phase 1 workspace (OQ-09 -- Phase 4 scope only); got:\n{ws}"
     );
 }
 
@@ -239,8 +222,7 @@ fn ac_006_workspace_uses_workspace_dependencies_pattern() {
     let ws = read_workspace_cargo_toml();
     assert!(
         ws.contains("[workspace.dependencies]"),
-        "workspace Cargo.toml must use the Cargo 2021+ [workspace.dependencies] pattern; got:\n{}",
-        ws
+        "workspace Cargo.toml must use the Cargo 2021+ [workspace.dependencies] pattern; got:\n{ws}"
     );
 }
 
@@ -257,23 +239,19 @@ fn ac_007_audit_yml_exists_with_weekly_cron() {
 
     assert!(
         contents.contains("cron: '0 0 * * 0'") || contents.contains("cron: \"0 0 * * 0\""),
-        "audit.yml must schedule weekly cron '0 0 * * 0'; got:\n{}",
-        contents
+        "audit.yml must schedule weekly cron '0 0 * * 0'; got:\n{contents}"
     );
     assert!(
         contents.contains("cargo audit"),
-        "audit.yml must invoke cargo audit; got:\n{}",
-        contents
+        "audit.yml must invoke cargo audit; got:\n{contents}"
     );
     assert!(
         contents.contains("--deny warnings"),
-        "audit.yml must use cargo audit --deny warnings; got:\n{}",
-        contents
+        "audit.yml must use cargo audit --deny warnings; got:\n{contents}"
     );
     assert!(
         contents.contains("cargo install cargo-audit") && contents.contains("--locked"),
-        "audit.yml must install cargo-audit via `cargo install cargo-audit --locked`; got:\n{}",
-        contents
+        "audit.yml must install cargo-audit via `cargo install cargo-audit --locked`; got:\n{contents}"
     );
 }
 
@@ -289,11 +267,9 @@ fn monocle_core_declares_phase1_modules() {
         .expect("monocle-core/src/lib.rs must exist");
     for module in ["engine", "hook_events", "factory", "abi"] {
         assert!(
-            lib.contains(&format!("pub mod {}", module))
-                || lib.contains(&format!("pub mod {} ", module)),
-            "monocle-core/src/lib.rs must declare `pub mod {}`; got:\n{}",
-            module,
-            lib
+            lib.contains(&format!("pub mod {module}"))
+                || lib.contains(&format!("pub mod {module} ")),
+            "monocle-core/src/lib.rs must declare `pub mod {module}`; got:\n{lib}"
         );
     }
 }
@@ -323,7 +299,6 @@ fn monocle_runtime_has_main_rs_stub() {
         .expect("monocle-runtime/src/main.rs must exist");
     assert!(
         main_rs.contains("fn main()"),
-        "monocle-runtime/src/main.rs must define fn main(); got:\n{}",
-        main_rs
+        "monocle-runtime/src/main.rs must define fn main(); got:\n{main_rs}"
     );
 }

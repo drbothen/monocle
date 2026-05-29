@@ -214,18 +214,13 @@ fn test_BC_2_02_006_oneof_event_field_numbers_are_10_through_14() {
             .iter()
             .find(|f| f.name.as_deref() == Some(expected_name))
             .unwrap_or_else(|| {
-                panic!(
-                    "HookEnvelope descriptor must have a field named '{}'",
-                    expected_name
-                )
+                panic!("HookEnvelope descriptor must have a field named '{expected_name}'")
             });
 
         assert_eq!(
             field.number,
             Some(*expected_number),
-            "oneof event field '{}' must be at field number {}. Got: {:?}.",
-            expected_name,
-            expected_number,
+            "oneof event field '{expected_name}' must be at field number {expected_number}. Got: {:?}.",
             field.number
         );
     }
@@ -285,12 +280,10 @@ fn test_BC_2_02_006_wire_tag_0x08_encodes_field_1_varint() {
 
     assert_eq!(
         field_number, 1,
-        "Field number decoded from first tag byte must be 1. Got: {}",
-        field_number
+        "Field number decoded from first tag byte must be 1. Got: {field_number}"
     );
     assert_eq!(
         wire_type, 0,
-        "Wire type decoded from first tag byte must be 0 (Varint). Got: {}",
-        wire_type
+        "Wire type decoded from first tag byte must be 0 (Varint). Got: {wire_type}"
     );
 }

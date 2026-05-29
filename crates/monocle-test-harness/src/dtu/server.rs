@@ -165,10 +165,7 @@ fn hook_node_command(path: &str, timeout_ms: u32) -> String {
     // to the default port. This matches the gene-source pattern of reading env vars
     // at hook invocation time (not hardcoding the port at hooks-settings.json generation).
     format!(
-        r#"node -e "const b=require('fs').readFileSync('/dev/stdin');const h=require('http');const port=parseInt(process.env.MONOCLE_DTU_PORT||'{default_port}',10);const opts={{hostname:'127.0.0.1',port:port,path:'{path}',method:'POST',timeout:{timeout},headers:{{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)}}}};const req=h.request(opts,()=>{{}});req.write(b);req.end()""#,
-        default_port = DTU_DEFAULT_PORT,
-        path = path,
-        timeout = timeout_ms,
+        r#"node -e "const b=require('fs').readFileSync('/dev/stdin');const h=require('http');const port=parseInt(process.env.MONOCLE_DTU_PORT||'{DTU_DEFAULT_PORT}',10);const opts={{hostname:'127.0.0.1',port:port,path:'{path}',method:'POST',timeout:{timeout_ms},headers:{{'Content-Type':'application/json','Content-Length':Buffer.byteLength(b)}}}};const req=h.request(opts,()=>{{}});req.write(b);req.end()""#,
     )
 }
 

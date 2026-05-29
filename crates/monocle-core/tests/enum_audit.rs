@@ -483,9 +483,8 @@ fn test_BC_2_02_003_fixture_missing_non_exhaustive_detected() {
         "VP-013 Probe 13.b FAILED: the AST audit did NOT detect `BadEnum` \
          (a pub enum without #[non_exhaustive]) in the synthetic fixture. \
          The audit failure-detection path is broken. \
-         Violations found: {:?}. \
+         Violations found: {violations:?}. \
          Traces to: AC-003; VP-013 Probe 13.b.",
-        violations,
     );
 }
 

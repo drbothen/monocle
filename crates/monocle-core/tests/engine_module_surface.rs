@@ -115,14 +115,12 @@ fn test_BC_2_03_001_vp019_19a_exactly_5_methods_with_canonical_names() {
     assert_eq!(
         method_names.len(),
         5,
-        "EngineModule must have exactly 5 methods; found {}: {:?}",
+        "EngineModule must have exactly 5 methods; found {}: {method_names:?}",
         method_names.len(),
-        method_names
     );
     assert_eq!(
         method_names, expected,
-        "EngineModule method names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected, method_names
+        "EngineModule method names do not match canonical set.\nExpected: {expected:?}\nFound:    {method_names:?}",
     );
 }
 
@@ -581,14 +579,12 @@ fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
         variant_names.len(),
         5,
         "SessionStatus must have exactly 5 variants (SS-engine-module.md v1.1.20 F-D-01). \
-         Found {}: {:?}",
+         Found {}: {variant_names:?}",
         variant_names.len(),
-        variant_names
     );
     assert_eq!(
         variant_names, expected,
-        "SessionStatus variant names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected, variant_names
+        "SessionStatus variant names do not match canonical set.\nExpected: {expected:?}\nFound:    {variant_names:?}",
     );
 }
 
@@ -626,8 +622,7 @@ fn test_BC_2_03_001_ac003_hook_response_has_canonical_3_fields() {
         assert!(
             field_names.contains(req),
             "HookResponse must have field `{req}` (SS-engine-module.md v1.1.20 F-D-02). \
-             Found fields: {:?}",
-            field_names
+             Found fields: {field_names:?}",
         );
     }
 
@@ -635,9 +630,8 @@ fn test_BC_2_03_001_ac003_hook_response_has_canonical_3_fields() {
         field_names.len(),
         3,
         "HookResponse must have exactly 3 fields: decision, redirect_url, diagnostic. \
-         Found {}: {:?}",
+         Found {}: {field_names:?}",
         field_names.len(),
-        field_names
     );
 }
 
@@ -739,8 +733,7 @@ fn test_BC_2_03_001_ac003_hook_decision_has_3_canonical_variants() {
     assert_eq!(
         variant_names, expected,
         "HookDecision variants must be exactly {{Allow, Block, Defer}} (AC-003). \
-         Found: {:?}",
-        variant_names
+         Found: {variant_names:?}",
     );
 }
 
@@ -869,14 +862,12 @@ fn test_BC_2_03_001_ac003b_hook_event_has_5_phase1_variants_no_post_tool_use() {
         variant_names.len(),
         5,
         "HookEvent must have exactly 5 Phase 1 variants (JC-2, BC-2.03.004 invariant 1). \
-         Found {}: {:?}",
+         Found {}: {variant_names:?}",
         variant_names.len(),
-        variant_names
     );
     assert_eq!(
         variant_names, expected,
-        "HookEvent variants do not match canonical Phase 1 set.\nExpected: {:?}\nFound:    {:?}",
-        expected, variant_names
+        "HookEvent variants do not match canonical Phase 1 set.\nExpected: {expected:?}\nFound:    {variant_names:?}",
     );
 
     assert!(

@@ -137,13 +137,11 @@ fn test_bc_2_06_005_pc3_ac005_renders_empty_state_when_no_sessions() {
     let rendered = render_sessions_panel(&app, 0);
     assert!(
         rendered.contains(SESSIONS_EMPTY_LINE_1),
-        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_1; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_1; got:\n{rendered}"
     );
     assert!(
         rendered.contains(SESSIONS_EMPTY_LINE_2),
-        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_2; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-3: rendered output must contain SESSIONS_EMPTY_LINE_2; got:\n{rendered}"
     );
 }
 
@@ -156,8 +154,7 @@ fn test_bc_2_06_005_pc1_ac005_renders_one_row_per_session() {
     // The session_id must appear in the rendered output.
     assert!(
         rendered.contains("sess-001"),
-        "BC-2.06.005 PC-1: rendered output must contain session_id 'sess-001'; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-1: rendered output must contain session_id 'sess-001'; got:\n{rendered}"
     );
 }
 
@@ -172,18 +169,15 @@ fn test_bc_2_06_005_pc1_ac005_renders_three_rows_for_three_sessions() {
     let rendered = render_sessions_panel(&app, 0);
     assert!(
         rendered.contains("sess-a"),
-        "BC-2.06.005 PC-1: row for sess-a must be present; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-1: row for sess-a must be present; got:\n{rendered}"
     );
     assert!(
         rendered.contains("sess-b"),
-        "BC-2.06.005 PC-1: row for sess-b must be present; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-1: row for sess-b must be present; got:\n{rendered}"
     );
     assert!(
         rendered.contains("sess-c"),
-        "BC-2.06.005 PC-1: row for sess-c must be present; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-1: row for sess-c must be present; got:\n{rendered}"
     );
 }
 
@@ -202,8 +196,7 @@ fn test_bc_2_06_005_pc2_inv3_cost_column_renders_em_dash_when_none() {
     // Cost column must show "—" for None cost_usd.
     assert!(
         rendered.contains('—'),
-        "BC-2.06.005 PC-2 Invariant 3: '—' must appear for None cost_usd; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-2 Invariant 3: '—' must appear for None cost_usd; got:\n{rendered}"
     );
 }
 
@@ -221,8 +214,7 @@ fn test_bc_2_06_005_pc2_inv3_em_dash_present_when_project_name_none() {
     let rendered = render_sessions_panel(&app, 0);
     assert!(
         rendered.contains('—'),
-        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when project_name is None; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when project_name is None; got:\n{rendered}"
     );
 }
 
@@ -240,8 +232,7 @@ fn test_bc_2_06_005_pc2_inv3_em_dash_present_when_started_at_none() {
     // At least one "—" must appear when started_at is None.
     assert!(
         rendered.contains('—'),
-        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when started_at is None; got:\n{}",
-        rendered
+        "BC-2.06.005 PC-2 Invariant 3: '—' must appear when started_at is None; got:\n{rendered}"
     );
 }
 
@@ -412,8 +403,7 @@ fn test_bc_2_06_005_pc3_ac007_sessions_panel_does_not_render_drop_counter() {
     assert!(
         !rendered.contains("[dropped:"),
         "AC-007 / MED-002: '[dropped:]' must NOT appear in the sessions PANEL \
-         (only in page-level status bar); got:\n{}",
-        rendered
+         (only in page-level status bar); got:\n{rendered}"
     );
 }
 
@@ -425,8 +415,7 @@ fn test_bc_2_06_005_pc3_ac007_drop_counter_hidden_when_zero() {
     let rendered = render_sessions_panel(&app, 0);
     assert!(
         !rendered.contains("[dropped:"),
-        "AC-007: '[dropped:]' must NOT appear when drop_counter=0; got:\n{}",
-        rendered
+        "AC-007: '[dropped:]' must NOT appear when drop_counter=0; got:\n{rendered}"
     );
 }
 
@@ -512,8 +501,7 @@ fn test_bc_2_06_007_pc7_fullscreen_renderer_no_panic_empty_sessions() {
     // Empty sessions: renderer shows SESSIONS_EMPTY_LINE_1 (single source of truth).
     assert!(
         rendered.contains(SESSIONS_EMPTY_LINE_1),
-        "BC-2.06.007 PC-7: empty-session render must not panic and must show empty-state msg; got:\n{}",
-        rendered
+        "BC-2.06.007 PC-7: empty-session render must not panic and must show empty-state msg; got:\n{rendered}"
     );
 }
 
@@ -663,8 +651,7 @@ fn test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions() {
 
     assert!(
         rendered.contains("sess-full"),
-        "MED-002/BC-2.06.007 PC-7: Sessions panel in fullscreen area must render session 'sess-full'; got:\n{}",
-        rendered
+        "MED-002/BC-2.06.007 PC-7: Sessions panel in fullscreen area must render session 'sess-full'; got:\n{rendered}"
     );
     // Verify the panel_area is full-width (80 columns — not 60% / 48 columns).
     assert_eq!(
@@ -725,8 +712,7 @@ fn test_bc_2_06_005_canonical_row_jitter_tolerant_integration() {
     assert!(
         rendered.contains(prefix),
         "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: rendered row must contain \
-         'sess-001 ● monocle Active 437k — 03:47:'; got:\n{}",
-        rendered
+         'sess-001 ● monocle Active 437k — 03:47:'; got:\n{rendered}"
     );
     // Find and extract the two-digit seconds after the prefix.
     if let Some(start_idx) = rendered.find(prefix) {
@@ -734,16 +720,13 @@ fn test_bc_2_06_005_canonical_row_jitter_tolerant_integration() {
         let secs_str = &rest[..2]; // exactly two digits
         let secs: u32 = secs_str.parse().unwrap_or_else(|_| {
             panic!(
-                "BC-2.06.005: uptime seconds must be two-digit numeric, got {:?} in:\n{}",
-                secs_str, rendered
+                "BC-2.06.005: uptime seconds must be two-digit numeric, got {secs_str:?} in:\n{rendered}"
             )
         });
         assert!(
             secs < 5,
             "BC-2.06.005 jitter-tolerant integration: seconds must be 00–04 \
-             (5-second window), got {:02} in:\n{}",
-            secs,
-            rendered
+             (5-second window), got {secs:02} in:\n{rendered}"
         );
     }
     // Belt-and-suspenders: session_id before icon.
@@ -830,8 +813,7 @@ fn test_bc_2_06_005_column_order_session_id_first() {
     assert!(
         id_pos < icon_pos,
         "F-S025-ADV5-BLOCKER-001 / BC-2.06.005 v1.0.5: session_id must appear BEFORE icon; \
-         session_id at {id_pos}, icon at {icon_pos} in:\n{}",
-        rendered
+         session_id at {id_pos}, icon at {icon_pos} in:\n{rendered}"
     );
 }
 
@@ -990,7 +972,6 @@ fn test_bc_2_06_005_uptime_clock_skew_renders_em_dash() {
     assert_eq!(
         result, "\u{2014}",
         "BC-2.06.005: clock skew (started_at > now) must render em-dash sentinel '—'; \
-         got {:?}",
-        result
+         got {result:?}"
     );
 }

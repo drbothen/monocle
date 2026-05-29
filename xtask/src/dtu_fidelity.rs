@@ -393,9 +393,8 @@ pub async fn run(args: DtuFidelityArgs) -> Result<()> {
 
     if !corpus_root.exists() {
         anyhow::bail!(
-            "fixture corpus not found at {:?} — \
-             ensure tests/fixtures/dtu/claude-code-hook-2x/ exists",
-            corpus_root
+            "fixture corpus not found at {corpus_root:?} — \
+             ensure tests/fixtures/dtu/claude-code-hook-2x/ exists"
         );
     }
 

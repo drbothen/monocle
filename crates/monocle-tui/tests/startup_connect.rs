@@ -1171,9 +1171,8 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
     }
     assert!(
         found_yellow,
-        "BC-2.06.016 PC-4 / AC-003: DAEMON_DISCONNECT_STATUS ({:?}) must be rendered \
-         with Yellow foreground in the status bar (app.rs:942)",
-        DAEMON_DISCONNECT_STATUS
+        "BC-2.06.016 PC-4 / AC-003: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)"
     );
 }
 
@@ -1265,9 +1264,8 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
     }
     assert!(
         found_yellow,
-        "BC-2.06.016 PC-4 (offline): DAEMON_OFFLINE_STATUS ({:?}) must be rendered \
-         with Yellow foreground in the status bar (app.rs:942)",
-        DAEMON_OFFLINE_STATUS
+        "BC-2.06.016 PC-4 (offline): DAEMON_OFFLINE_STATUS ({DAEMON_OFFLINE_STATUS:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)"
     );
 }
 
@@ -1485,9 +1483,8 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
     }
     assert!(
         found_dark_gray,
-        "AC-007 baseline: MONOCLE_STATUS_LABEL ({:?}) must be rendered with \
+        "AC-007 baseline: MONOCLE_STATUS_LABEL ({MONOCLE_STATUS_LABEL:?}) must be rendered with \
          DarkGray foreground in the status bar (app.rs:951) when status_message=None \
-         and drop_counter=0",
-        MONOCLE_STATUS_LABEL
+         and drop_counter=0"
     );
 }

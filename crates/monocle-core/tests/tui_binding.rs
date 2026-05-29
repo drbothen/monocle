@@ -502,7 +502,7 @@ fn test_BC_2_06_003_key_event_derives() {
     let a = char_key('a');
     let b = a.clone();
     assert_eq!(a, b);
-    let _ = format!("{:?}", a);
+    let _ = format!("{a:?}");
 
     // Hash: can be used as HashMap key
     let mut map = std::collections::HashMap::new();

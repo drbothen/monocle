@@ -181,7 +181,7 @@ fn cmd_daemon_start() -> i32 {
     // - Live PID in lock file → report conflict and exit 1.
     if lock_path.exists() {
         if let Some(pid) = read_lock_pid_if_live(&lock_path) {
-            eprintln!("error: daemon already running (pid={})", pid);
+            eprintln!("error: daemon already running (pid={pid})");
             return EXIT_CONFLICT;
         }
         // Stale or malformed — remove it so the daemon subprocess can write fresh lock.
@@ -194,7 +194,7 @@ fn cmd_daemon_start() -> i32 {
         Ok(p) => p,
         Err(e) => {
             tracing::error!(error = %e, "failed to locate monocle-runtime binary");
-            eprintln!("error: could not locate daemon binary: {}", e);
+            eprintln!("error: could not locate daemon binary: {e}");
             return EXIT_INTERNAL_ERROR;
         }
     };
@@ -214,7 +214,7 @@ fn cmd_daemon_start() -> i32 {
         Ok(c) => c,
         Err(e) => {
             tracing::error!(error = %e, "failed to spawn daemon subprocess");
-            eprintln!("error: could not spawn daemon: {}", e);
+            eprintln!("error: could not spawn daemon: {e}");
             return EXIT_INTERNAL_ERROR;
         }
     };
@@ -349,7 +349,7 @@ fn cmd_daemon_stop() -> i32 {
     // BC-2.04.005 INV-1: NEVER send SIGKILL. SIGTERM only.
     if let Err(e) = nix::sys::signal::kill(nix_pid, nix::sys::signal::Signal::SIGTERM) {
         tracing::error!(pid = pid, error = %e, "failed to send SIGTERM to daemon");
-        eprintln!("error: failed to signal daemon (pid={}): {}", pid, e);
+        eprintln!("error: failed to signal daemon (pid={pid}): {e}");
         return EXIT_CONFLICT;
     }
 

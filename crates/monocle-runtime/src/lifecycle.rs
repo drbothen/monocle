@@ -538,8 +538,7 @@ pub async fn daemon_start_sequence(
                          (UDS bind) failure"
                     );
                 }
-                return Err(DaemonStartError::UdsBindFailure(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                return Err(DaemonStartError::UdsBindFailure(std::io::Error::other(
                     format!("UDS bind error: {e}"),
                 )));
             }
@@ -686,10 +685,9 @@ pub fn write_hooks_settings(
         .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
 
     serde_json::to_writer_pretty(&mut tmp, &settings).map_err(|e| {
-        DaemonStartError::HooksSettingsWriteFailure(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("JSON serialize failed: {e}"),
-        ))
+        DaemonStartError::HooksSettingsWriteFailure(std::io::Error::other(format!(
+            "JSON serialize failed: {e}"
+        )))
     })?;
 
     tmp.flush()
@@ -789,12 +787,8 @@ pub fn write_lock_file(
 
     // Serialize and persist atomically via tempfile.
     let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
-    serde_json::to_writer_pretty(&mut tmp, &content).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("JSON serialize lock file failed: {e}"),
-        )
-    })?;
+    serde_json::to_writer_pretty(&mut tmp, &content)
+        .map_err(|e| std::io::Error::other(format!("JSON serialize lock file failed: {e}")))?;
     tmp.flush()?;
     tmp.persist(&lock_path).map_err(|e| e.error)?;
 

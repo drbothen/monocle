@@ -429,10 +429,7 @@ pub fn format_session_row(s: &EnrichedSession, now: DateTime<Utc>) -> String {
     } else {
         &s.session_id
     };
-    format!(
-        "{id} {icon} {} {} {} {} {}",
-        project, status, tokens, cost, uptime
-    )
+    format!("{id} {icon} {project} {status} {tokens} {cost} {uptime}")
 }
 
 impl StatefulWidget for SessionsPanel<'_> {

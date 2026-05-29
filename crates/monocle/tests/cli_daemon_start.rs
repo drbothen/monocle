@@ -199,8 +199,7 @@ fn test_ac_006_start_already_running_stderr_format() {
         .assert()
         .code(1) // WILL FAIL: todo!() produces 101
         .stderr(predicate::str::contains(format!(
-            "error: daemon already running (pid={})",
-            current_pid
+            "error: daemon already running (pid={current_pid})"
         ))); // WILL FAIL: todo!() panic message does not contain this string
 }
 

@@ -170,8 +170,7 @@ impl DaemonLock {
         // kernel PID namespace fits within i32::MAX (Linux: 4_194_304; macOS: 99_999).
         // If the conversion fails, we cannot write a valid lock file — treat as I/O error.
         let pid_i32 = i32::try_from(std::process::id()).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
+            std::io::Error::other(
                 "current process PID does not fit in i32 (unexpected on supported platforms)",
             )
         })?;
@@ -187,12 +186,8 @@ impl DaemonLock {
         };
 
         // --- Steps 7-8: Serialize to JSON and persist atomically ---
-        let json_bytes = serde_json::to_string_pretty(&content).map_err(|e| {
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("JSON serialize failed: {e}"),
-            )
-        })?;
+        let json_bytes = serde_json::to_string_pretty(&content)
+            .map_err(|e| std::io::Error::other(format!("JSON serialize failed: {e}")))?;
 
         let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)?;
         tmp.write_all(json_bytes.as_bytes())?;

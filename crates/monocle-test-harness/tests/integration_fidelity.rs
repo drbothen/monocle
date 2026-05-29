@@ -336,8 +336,7 @@ async fn test_BC_HOOK_007_fidelity_notification_non_permission_dropped() {
     assert!(
         clone_output.is_none(),
         "BC-HOOK-034: clone must NOT forward assistant_message notifications to daemon; \
-         but daemon received: {:?}",
-        clone_output
+         but daemon received: {clone_output:?}"
     );
 }
 

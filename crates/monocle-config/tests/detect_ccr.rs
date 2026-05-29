@@ -121,8 +121,7 @@ fn test_BC_2_07_006_ccr_path_some_file_exists_returns_some() {
         result,
         Some(fake_ccr.clone()),
         "detect_ccr() must return Some(configured_path) when ccr_path points to an \
-        existing file (BC-2.07.006 PC-1c / EC-116); got: {:?}",
-        result
+        existing file (BC-2.07.006 PC-1c / EC-116); got: {result:?}"
     );
 }
 
@@ -167,8 +166,7 @@ fn test_BC_2_07_006_ccr_path_some_file_missing_falls_through() {
     assert_eq!(
         result, None,
         "detect_ccr() must return None when ccr_path points to a missing file \
-        AND ccr is not on PATH (BC-2.07.006 PC-1d / EC-117); got: {:?}",
-        result
+        AND ccr is not on PATH (BC-2.07.006 PC-1d / EC-117); got: {result:?}"
     );
 }
 
@@ -209,8 +207,7 @@ fn test_BC_2_07_006_ccr_path_some_is_directory_falls_through() {
     assert_eq!(
         result, None,
         "detect_ccr() must return None when ccr_path points to a directory \
-        AND ccr is not on PATH (BC-2.07.006 EC-118); got: {:?}",
-        result
+        AND ccr is not on PATH (BC-2.07.006 EC-118); got: {result:?}"
     );
 }
 
@@ -247,8 +244,7 @@ fn test_BC_2_07_006_ccr_path_some_empty_string_falls_through() {
     assert_eq!(
         result, None,
         "detect_ccr() must return None when ccr_path is empty string \
-        AND ccr is not on PATH (BC-2.07.006 EC-119); got: {:?}",
-        result
+        AND ccr is not on PATH (BC-2.07.006 EC-119); got: {result:?}"
     );
 }
 

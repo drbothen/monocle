@@ -383,11 +383,9 @@ fn test_ac_012_stop_timeout_daemon_still_alive_no_sigkill() {
     );
     assert!(
         liveness_result.is_ok(),
-        "daemon process (PID {}) must still be alive after `daemon stop` timeout (exit 2) — \
+        "daemon process (PID {stubborn_pid}) must still be alive after `daemon stop` timeout (exit 2) — \
         SIGKILL was not sent per BC-2.04.005 INV-1 / AC-013; \
-        kill(pid, 0) returned: {:?}",
-        stubborn_pid,
-        liveness_result
+        kill(pid, 0) returned: {liveness_result:?}"
     );
 
     // Test cleanup: send SIGKILL manually (NOT what the stop command does).

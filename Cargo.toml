@@ -15,7 +15,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.86"
+rust-version = "1.88"
 license = "Apache-2.0"
 repository = "https://github.com/drbothen/monocle"
 authors = ["monocle contributors"]
@@ -36,7 +36,13 @@ russh = "=0.60.2"
 # rmcp omitted from Phase 1 workspace per OQ-09 resolution (Phase 4 scope)
 
 # --- TUI / terminal crates (workspace-level so monocle-tui can inherit) ---
-ratatui = "0.30"
+# ratatui: default-features disabled to exclude `widget-calendar` (which drags in the `time`
+# crate). The calendar widget is not used by monocle-tui. Keeping default-features = false
+# reduces compile time and binary size (defense-in-depth). Not a RUSTSEC mitigation — as of
+# MSRV bump to 1.88 (Path B), time 0.3.47 is resolved and RUSTSEC-2026-0009 is closed.
+# Explicit feature set matches ratatui `default` minus `all-widgets`:
+# crossterm backend, underline-color, ratatui-macros, layout-cache.
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "underline-color", "macros", "layout-cache"] }
 crossterm = "0.29"
 
 # --- Caret-pinned direct workspace deps ---
@@ -86,6 +92,12 @@ unwrap_used = "warn"
 expect_used = "warn"
 todo = "warn"
 dbg_macro = "deny"
+# uninlined_format_args: allowed at workspace level because this lint changed from
+# `allow` (default pre-1.88) to `warn` (default 1.88+) and the style correction is
+# purely cosmetic (no correctness impact). The workspace-wide style migration from
+# `format!("... {}", var)` to `format!("... {var}")` will be addressed in a
+# dedicated cleanup pass to keep this MSRV bump commit reviewable.
+uninlined_format_args = "allow"
 
 [profile.release]
 opt-level = 3

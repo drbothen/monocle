@@ -158,10 +158,7 @@ async fn main() -> Result<()> {
         Ok(s) if s.is_empty() => monocle_test_harness::dtu::server::DTU_DEFAULT_PORT,
         Ok(s) => {
             let parsed: u16 = s.parse::<u16>().with_context(|| {
-                format!(
-                    "MONOCLE_DTU_LISTEN_PORT={:?} is not a valid u16 port (expected 1-65535)",
-                    s
-                )
+                format!("MONOCLE_DTU_LISTEN_PORT={s:?} is not a valid u16 port (expected 1-65535)")
             })?;
             if parsed == 0 {
                 anyhow::bail!(
