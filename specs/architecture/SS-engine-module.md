@@ -4,11 +4,11 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.25"
+version: "1.1.26"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
-timestamp: 2026-05-26T14:00:00Z
+timestamp: 2026-05-28T10:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
 input-hash: "3734014"
 traces_to: architecture/ARCH-INDEX.md
@@ -1186,6 +1186,7 @@ the Rust source is listed between the HTML delimiters below. See SS-conventions-
 | `App` | `monocle-tui` | SS-tui.md | struct-literal (cross-crate): `monocle-tui/tests/startup_connect.rs` (17+ call sites: lines 96, 188, 231, 275, 295, 310, 329, 351, 380, 403, 557, 637, 680, 743, 793, 841, 902, 1001 and others); `monocle-tui/tests/sessions_panel.rs` (6 call sites: lines 52, 61, 136, 408, 424, 501) — each `[[test]]` binary links monocle-tui as external; E0639 applies | Yes (`new(config: MonocleConfig) -> Self`, v1.1.23) | Top-level TUI state aggregator constructed once per binary entry point (main.rs + each integration test binary). Fields: `mode`, `config`, `sessions`, `drop_counter`, `overlay_stack`, `status_message`, `event_ring`. `#[non_exhaustive]` provides forward-compat for S-026 (overlay state additions), S-027 (event ring rendering fields), and S-028 (filter state) without breaking the constructor call sites. Sweep: `TransportEvent` (app.rs:44) is an `enum` — exempt per §Cross-Crate Constructor Audit introductory note (lines 1153-1154). No other `#[non_exhaustive] pub struct` present in monocle-tui src as of v1.1.23 sweep. |
 | `EventBusHookEvent` | `monocle-runtime` | SS-engine-module.md (§S-017 types) | struct-literal (cross-crate): `monocle-runtime/tests/event_bus.rs:51` (1 call site); `monocle-runtime/tests/hook_routing_pre_tool_use.rs:103` (1 call site); `monocle-runtime/tests/hook_routing_notification.rs:144` (1 call site); `monocle-runtime/tests/daemon_start_sequence.rs:731` (1 call site) — each `[[test]]` binary links monocle-runtime as external; E0639 applies. Intra-crate production construction sites in `src/hooks/pre_tool_use.rs:349`, `src/hooks/notification.rs:186`, `src/hooks/stop_session_prompt.rs:313/427/572` also call `EventBusHookEvent::new`. | Yes (`new(payload: HookEvent, received_at: String) -> Self`, unknown — pre-existing per Pass 16 sweep) | Internal routing wrapper: pairs the deserialized hook payload with reception timestamp for event-bus transit (BC-2.04.001 step 5). `#[non_exhaustive]` allows Phase 2+ routing metadata fields (e.g., priority, origin daemon ID for federation) to be added without breaking the integration test construction sites. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) field evolution tied to intentional protocol expansions (Phase 4 federation, not organic refactoring), (3) both required fields present as positional parameters. Earlier-wave struct hidden by check_audit_table.py false-green since commit 184f7d4; surfaced by devops-engineer fix at 390d04d. |
 | `EngineModuleRegistry` | `monocle-runtime` | SS-engine-module.md (§S-017 types) | struct-literal (cross-crate): `monocle-runtime/tests/daemon_start_sequence.rs:951` (1 call site: `EngineModuleRegistry::new()`) — `[[test]]` binary links monocle-runtime as external; E0639 applies. Intra-crate production construction site in `src/lifecycle.rs:467` (`crate::types::EngineModuleRegistry::new()`). | Yes (`new() -> Self`, unknown — pre-existing per Pass 16 sweep) | Tracks which Phase 1 engine modules have been registered during daemon start sequence (BC-2.04.001 step 6). Also implements `Default` (delegates to `new()`), providing `EngineModuleRegistry::default()` as an alias. `#[non_exhaustive]` allows Phase 3 WASM plugin registry fields to be added when the plugin SDK ships without breaking the daemon_start_sequence test that calls `new()`. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) field evolution tied to intentional Phase 3 plugin SDK expansion, (3) zero-value booleans are semantically meaningful defaults (both modules start unregistered). Earlier-wave struct hidden by check_audit_table.py false-green since commit 184f7d4; surfaced by devops-engineer fix at 390d04d. |
+| `BackoffState` | `monocle-ipc` | SS-ipc.md (§BC-2.05.006 reconnect loop) | struct-literal (cross-crate): `monocle-ipc/tests/reconnect.rs` (19+ call sites: lines 109, 121, 134, 149, 184, 227, 296, 345, 375, 417, 445, 512, 582, 654, 716, 788, 882, 992, 1104 and others); `monocle-ipc/tests/soq3_overlay_clear.rs` (2 call sites: lines 326, 713) — each `[[test]]` binary links monocle-ipc as external; E0639 applies | Yes (`new() -> Self`, v1.1.26); also implements `Default` (delegates to `new()`) | Per-reconnect-session mutable backoff state (BC-2.05.006 PC-4). Tracks `attempt` counter and `lock_read_failures` for telemetry escalation. `BackoffState::new()` resets backoff to 250ms — called at the start of each reconnect session and again when the TUI re-enters the reconnect loop after detecting a new lock file (BC-2.05.006 PC-5). `#[non_exhaustive]` required per ADR-0006 to prevent out-of-crate struct literal construction; allows future field additions (e.g., session-level telemetry, jitter seed) without breaking the 21+ test call sites. Introduced in S-023 (Wave 6), merged to develop at 7a52041. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) field evolution tied to intentional telemetry expansion, (3) both fields (`attempt`, `lock_read_failures`) have correct zero-value defaults as positional-init in `new()`. |
 <!-- END: Cross-Crate Constructor Audit Table -->
 
 **Serde-deserialize-only enforcement note:** The `Deserialize` derive on each HookEvent inner
@@ -1820,3 +1821,39 @@ Cross-references:
   updated to add the 3 new rows (App, EventBusHookEvent, EngineModuleRegistry) from v1.1.23/v1.1.24
   and to apply this HookEventRecord crate-column correction. Row count in vendored copy: 20.
 - SE-16d PASS: 2026-05-28T02:00:00Z > chain high-water 2026-05-28T01:00:00Z (monotonic).
+
+**§Trace v1.1.26** (2026-05-28T10:00:00Z) — F-S025-ADV16-MED-001 round-4 exhaustive sweep: `BackoffState` added (S-023 post-merge gap):
+
+- NORMATIVE (F-S025-ADV16-MED-001 round-4 MED): Added `BackoffState` row to §Cross-Crate
+  Constructor Audit Table. `BackoffState` is defined at `crates/monocle-ipc/src/reconnect.rs:99`
+  with `#[non_exhaustive]` and `pub fn new() -> Self` at line 115 (also implements `Default`
+  delegating to `new()`). It is constructed cross-crate from 19+ call sites in
+  `monocle-ipc/tests/reconnect.rs` and 2 call sites in `monocle-ipc/tests/soq3_overlay_clear.rs`.
+  Each `[[test]]` binary links monocle-ipc as an external crate — E0639 applies. Introduced in
+  S-023 (Wave 6), merged to develop at 7a52041 (2026-05-28).
+- NORMATIVE (root cause): `BackoffState` was absent from the audit table because all prior rounds
+  of F-S025-ADV16-MED-001 (rounds 1–3: v1.1.23, v1.1.24, v1.1.25) swept only the S-025 worktree
+  source files, which do not include S-023 code (S-023 was merged to develop in parallel). The
+  CI semgrep job sees the PR merge-ref (S-025 + develop post-S-023), which includes
+  `monocle-ipc/src/reconnect.rs`. This round swept develop @ 7a52041 via `git ls-tree` +
+  per-file `git show` — 124 Rust source files examined, all `#[non_exhaustive]` occurrences
+  classified as `pub struct` or `pub enum`. `BackoffState` is the sole gap.
+- NORMATIVE (exhaustive sweep results — develop @ 7a52041 + S-025 worktree merged state):
+  All `#[non_exhaustive] pub struct` instances: `EngineMetadata`, `ProcessSnapshot`,
+  `EnrichedSession`, `HookResponse` (monocle-core/src/engine.rs); `SessionStartEvent`,
+  `UserPromptSubmitEvent`, `PreToolUseEvent`, `NotificationEvent`, `StopEvent`
+  (monocle-core/src/hook_events.rs); `HookEventRecord` (monocle-ipc/src/types.rs);
+  `BackoffState` (monocle-ipc/src/reconnect.rs — THIS ENTRY); `EventBusHookEvent`,
+  `EngineModuleRegistry` (monocle-runtime/src/types.rs); `SpawnArgs`, `SessionHandle`,
+  `EngineVersion` (monocle-runtime/src/engine/claude_code.rs); `FactoryDetection`,
+  `FactoryState`, `BlockingIssue`, `ConvergenceMetrics` (monocle-core — factory scope);
+  `App` (monocle-tui/src/app.rs — S-025 only). Total: 21 rows. All `#[non_exhaustive]`
+  on enums (HookType, HookEvent, SessionStatus, HookDecision, EngineMetadataError,
+  BlockingSeverity, FactoryReadError, FactorySubscribeError, AllowPattern, DenyPattern,
+  DenyReason, BindingSource, AppModeTag, KeyCode, FocusSnapshot, PanelId, ToolPayload,
+  Action, CheckpointReadResult, ShutdownReason, RingError, SpawnError, PreflightError,
+  TransportEvent) are exempt per audit table introductory note and ADR-0004.
+- NORMATIVE (vendored copy sync): `scripts/audit-table.md` on branch
+  `feature/S-025-tui-skeleton-sessions` updated in the same commit to add the `BackoffState`
+  row. Row count in vendored copy: 21.
+- SE-16d PASS: 2026-05-28T10:00:00Z > chain high-water 2026-05-28T02:00:00Z (monotonic).
