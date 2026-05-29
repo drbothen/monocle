@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.42"
+version: "6.43"
 status: active
 producer: state-manager
-timestamp: 2026-05-29T03:00:00Z
+timestamp: 2026-05-29T04:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 18 MED-001 RESET counter 1/3 → 0/3 (Path B propagation cascade tail-gap: 17 occurrences in 10 implementation-worktree files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). Pass 19 pending post-fix HEAD."
+current_step: "S-025 Pass 18 MED-001 CLOSED (D-197.1) — devops 9fcfd49: 18 replacements across 11 files (wider sweep found additional types.rs:48 v1.1.20). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. Pass 19 adversary pending CI green."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD."
-awaiting: "Devops MED-001 fix-round (17 occurrences in 10 worktree files: SS-deps-pin-manifest v1.1.19 → v1.2.0 doc-pointer replacement); then Pass 19 adversary at post-fix HEAD. After S-025 convergence (3/3): S-026 (13pts) dispatch."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued."
+awaiting: "CI green verification on 9fcfd49; then Pass 19 adversary (counter 0/3 → 1/3 on clean). After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -236,9 +236,9 @@ durable_task_register:
       detail: "Pass 16 round 5 (architect): scripts/audit-table.md is a vendored copy of the audit table from SS-engine-module.md. When the canonical table changes, the vendored copy must be synced atomically in the same PR. The HookEventRecord crate-column drift (monocle-runtime → monocle-ipc, post-S-022 relocation) persisted unnoticed across 16 passes because the vendored copy was not included in propagation sweeps. Codification target: include in pre-commit hook or PR template checklist. Recurrence count: 1."
       blocking: false
     - id: "F-S025-ADV16-CODIFY-001"
-      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep + MSRV-bump playbook discipline (extended D-196, D-197)."
+      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep + MSRV-bump playbook discipline (extended D-196, D-197, FINALIZED D-197.1)."
       status: pending
-      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' EXTENDED (D-196) per PO + story-writer process-gap observation: MSRV-bump playbook scope must include ALL layers — architecture/ (SS docs, ADRs, risk-acceptance), behavioral-contracts/ (BC bodies), stories/ inputs[] pins AND body content, planning artifacts (holdout-scenarios.md HS-* scenarios). Verification sweep command: grep -rn \"MSRV X.YY\\|Rust X.YY stable\\|channel = \\\"X.YY\\\"\\|rust-version = \\\"X.YY\\\"\" .factory/ | grep -v \"§Trace\". Success criterion: zero non-§Trace hits remaining. EXTENDED (D-197) per Pass 18 Angle S gap: 6th sweep target = implementation-worktree policy-pointer comments (Cargo.toml policy headers including 'Pin policy source of truth: SS-deps-pin-manifest.md vX.Y.Z' style comments, deny.toml/dependabot.yml/audit.yml/CI workflow policy comments citing policy doc version, test panic messages baking policy doc version into runtime strings). Sweep command for this layer: grep -rn 'SS-deps-pin-manifest.*v[0-9]' .worktrees/ --include='*.toml' --include='*.yml' --include='*.rs' | grep -v '§Trace'. Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation. Route orchestrator Task #9 batch to story-writer + CLAUDE.md documentation update."
+      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' EXTENDED (D-196) per PO + story-writer process-gap observation: MSRV-bump playbook scope must include ALL layers — architecture/ (SS docs, ADRs, risk-acceptance), behavioral-contracts/ (BC bodies), stories/ inputs[] pins AND body content, planning artifacts (holdout-scenarios.md HS-* scenarios). Verification sweep command: grep -rn \"MSRV X.YY\\|Rust X.YY stable\\|channel = \\\"X.YY\\\"\\|rust-version = \\\"X.YY\\\"\" .factory/ | grep -v \"§Trace\". Success criterion: zero non-§Trace hits remaining. FINALIZED (D-197.1) — MSRV-bump playbook + version-pointer-sweep playbook 6-category target enumeration (codified from F-S025-ADV18-MED-001 closure 9fcfd49): (1) .factory/ spec artifacts (.md files) [architect f3533ce sweep covered this]; (2) Root Cargo.toml + deny.toml [devops 9fcfd49 sweep target]; (3) Member crate Cargo.toml files (under crates/ and xtask/) [devops 9fcfd49 sweep target]; (4) .github/workflows/**.yml files [devops 9fcfd49 sweep target]; (5) .github/dependabot.yml [devops 9fcfd49 sweep target]; (6) src/**/*.rs production code (comments, panic messages, doc strings) [devops 9fcfd49 wider-sweep gap discovery — crates/monocle-runtime/src/types.rs:48 carried v1.1.20, hidden from Passes 16+17 because they searched .toml/.yml only]. Canonical sweep command: grep -rn 'SS-deps-pin-manifest.*v[0-9]\\|MSRV [0-9]\\.[0-9]' .factory/ .worktrees/ --include='*.toml' --include='*.yml' --include='*.rs' --include='*.md' | grep -v '§Trace\\|cycles/'. Verification: zero non-§Trace hits remaining. Recurrence count: F-R30-1 = 4/3 (audit-table) + F-S025-ADV17-LOW-001 = 1/3 (MSRV-bump scope) + F-S025-ADV18-MED-001 = 1/3 (version-pointer-sweep impl-layer). Pattern codified. Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation."
       blocking: false
     - id: "F-S025-PATH-B-CLAUDE-MD"
       subject: "CLAUDE.md line 18 cites MSRV 1.86; Path B bumped Phase 1 MSRV to 1.88 — human action required"
@@ -251,9 +251,9 @@ durable_task_register:
       detail: "FULLY CLOSED (D-196): PO commit 5006528 (BC-2.03.001 v1.0.6) replaced lines 35+61. Story-writer cascade round 1 (c7ae560): S-014 v1.5 + S-015 v1.7 + STORY-INDEX v5.10. Story-writer cascade round 2 (e2944d3): S-001 v1.9 + S-003 v1.8 + holdout-scenarios v1.5 + STORY-INDEX v5.11. Final grep confirms ZERO non-§Trace 'MSRV 1.86' hits across all .factory/ artifacts. Counter 1/3 CONFIRMED. Pass 18 ready at bfcba19."
       blocking: false
     - id: "F-S025-ADV18-MED-001"
-      subject: "Path B propagation cascade tail-gap: SS-deps-pin-manifest v1.1.19 doc-pointers in 10 implementation-worktree files (17 occurrences)"
-      status: pending
-      detail: "Pass 18 (D-197) RESET counter 1/3 → 0/3. Cargo.toml (4), deny.toml (1), .github/dependabot.yml (3), .github/workflows/audit.yml (1), xtask/Cargo.toml (1), crates/monocle-test-harness/Cargo.toml (3), crates/monocle/Cargo.toml (1), crates/monocle-proto/Cargo.toml (1), crates/monocle-runtime/Cargo.toml (1), crates/monocle-runtime/tests/workspace_structure.rs (1). Routing: devops-engineer. Fix: mechanical text replacement SS-deps-pin-manifest v1.1.19 → v1.2.0. Highest sub-case: workspace_structure.rs:207 bakes stale version into runtime panic message. Internal Cargo.toml inconsistency: line 18 rust-version=1.88 (Path B applied) vs line 25 cites v1.1.19 (pre-Path B). CLOSE after devops commit lands and CI green."
+      subject: "Path B propagation cascade tail-gap: SS-deps-pin-manifest v1.1.19 doc-pointers in implementation-worktree files"
+      status: closed
+      detail: "CLOSED (D-197.1) at devops commit 9fcfd49 on feature/S-025-tui-skeleton-sessions. Pre-fix count: 17 occurrences (Pass 18 reported) + 1 additional (crates/monocle-runtime/src/types.rs:48 v1.1.20, found by devops wider sweep — hidden from Passes 16+17 which searched .toml/.yml only, not production .rs). Total replacements: 18 across 11 files. Local: cargo build/test/clippy/fmt clean. CI: queued/running at time of push. Counter 0/3; Pass 19 pending CI green."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -280,42 +280,43 @@ durable_task_register:
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
 next_session_resume_protocol: |
-  S-025 PASS 18 MED (D-197) — COUNTER RESET 1/3 → 0/3 — DEVOPS FIX-ROUND IN PARALLEL — STATE v6.42
+  S-025 PASS 18 MED-001 CLOSED (D-197.1) — DEVOPS 9fcfd49 — COUNTER 0/3 — PASS 19 PENDING CI GREEN — STATE v6.43
 
-  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 HEAD bfcba19 (CI all 9 green).
-  COUNTER: 0/3 (RESET by Pass 18 MED-001: Path B propagation cascade tail-gap in implementation-worktree layer).
+  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 HEAD 9fcfd49 (CI queued).
+  COUNTER: 0/3 (RESET by Pass 18 MED-001; MED-001 now CLOSED at 9fcfd49; awaiting Pass 19).
   TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18).
   TOTAL RESETS: 6 (Passes 8, 9, 10, 12, 16, 18).
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
-  PASS 18 OUTCOME (D-197):
-    F-S025-ADV18-MED-001: 17 occurrences across 10 files still pin SS-deps-pin-manifest v1.1.19.
-    Files: Cargo.toml (4), deny.toml (1), .github/dependabot.yml (3), .github/workflows/audit.yml (1),
-           xtask/Cargo.toml (1), crates/monocle-test-harness/Cargo.toml (3), crates/monocle/Cargo.toml (1),
-           crates/monocle-proto/Cargo.toml (1), crates/monocle-runtime/Cargo.toml (1),
-           crates/monocle-runtime/tests/workspace_structure.rs:207 (1, panic message).
-    Routing: devops-engineer. Fix: mechanical text replacement v1.1.19 → v1.2.0.
-    ADV16-CODIFY-001 extended: 6th sweep target = implementation-worktree policy-pointer comments.
-    Devops commit SHA: PENDING (state-manager second-burst will confirm after devops push lands).
+  MED-001 CLOSURE (D-197.1):
+    Devops commit 9fcfd49 on feature/S-025-tui-skeleton-sessions.
+    Pass 18 reported 17 occurrences in 10 files. Devops wider sweep found 1 additional:
+      crates/monocle-runtime/src/types.rs:48 carried v1.1.20 (Passes 16+17 searched .toml/.yml only).
+    Total replacements: 18 across 11 files (NOT 17/10 as Pass 18 reported).
+    Local: cargo build/test/clippy/fmt clean. CI: queued/running at time of push.
+    F-S025-ADV18-MED-001: status → CLOSED.
+
+  ADV16-CODIFY-001 6-CATEGORY ENUMERATION (finalized D-197.1):
+    1. .factory/ spec artifacts (.md files) [architect f3533ce sweep]
+    2. Root Cargo.toml + deny.toml [devops 9fcfd49]
+    3. Member crate Cargo.toml files (crates/ and xtask/) [devops 9fcfd49]
+    4. .github/workflows/**.yml files [devops 9fcfd49]
+    5. .github/dependabot.yml [devops 9fcfd49]
+    6. src/**/*.rs production code (comments, panic messages, doc strings) [devops 9fcfd49 wider-sweep]
+    Canonical sweep: grep -rn 'SS-deps-pin-manifest.*v[0-9]\|MSRV [0-9]\.[0-9]' .factory/ .worktrees/
+      --include='*.toml' --include='*.yml' --include='*.rs' --include='*.md' | grep -v '§Trace\|cycles/'
 
   IMMEDIATE NEXT ACTIONS:
-    1. Confirm devops MED-001 fix-round status:
-       git log origin/feature/S-025-tui-skeleton-sessions --oneline -3
-       (if new commit beyond bfcba19 is present, that is the post-fix HEAD for Pass 19)
-    2. If devops fix NOT yet pushed: wait for devops, then verify CI green before dispatching Pass 19.
-    3. If devops fix IS pushed and CI green: dispatch Pass 19 adversary at post-fix HEAD.
-       Focus: verify all 17 MED-001 occurrences fixed, full re-sweep angles O-T, expand Angle S to
-       include workspace_structure.rs panic message text + any other policy-pointer comments.
-    4. If Pass 19 CLEAN → counter 1/3. Dispatch Pass 20.
-    5. Convergence forecast: 3/3 at Pass 21 if Passes 19+20+21 all NITPICK_ONLY-CLEAN.
-
-  COORDINATION WITH DEVOPS-ENGINEER:
-    Branch: feature/S-025-tui-skeleton-sessions. Last confirmed SHA: bfcba19.
-    After devops push: state-manager second-burst to confirm MED-001 CLOSED + record actual devops SHA.
-    Verify: grep -rn 'SS-deps-pin-manifest.*v1\.1\.19' .worktrees/S-025 --include='*.toml' --include='*.yml' --include='*.rs' | grep -v '§Trace' should return ZERO.
+    1. Verify CI green on 9fcfd49:
+       gh run list --branch feature/S-025-tui-skeleton-sessions --limit 3
+    2. If CI green: dispatch Pass 19 adversary at 9fcfd49.
+       Focus: verify ALL 18 replacements clean (zero v1.1.19 OR v1.1.20 remaining), full re-sweep
+       Angles O-T, Angle S now confirmed covers .rs production code layer.
+    3. If Pass 19 CLEAN → counter 1/3. Dispatch Pass 20.
+    4. Convergence forecast: 3/3 at Pass 21 if Passes 19+20+21 all NITPICK_ONLY-CLEAN.
 
   CRITICAL FILES FOR PASS 19 ADVERSARY (read in order):
-    1. .factory/STATE.md (v6.42); 2. adversarial-pass-18.md; 3. adversarial-pass-17.md;
+    1. .factory/STATE.md (v6.43); 2. adversarial-pass-18.md; 3. adversarial-pass-17.md;
     4. adversarial-pass-16.md; 5. adversarial-pass-15.md; 6. adversarial-pass-12.md;
     7. architect-decisions-pass-1.md; 8. architect-decisions-pass-2.md;
     9. text-style-adjudication.md; 10. red-gate-log.md;
@@ -324,25 +325,26 @@ next_session_resume_protocol: |
     13. CLAUDE.md (project principles — production-grade default).
     All files at: .factory/cycles/cycle-001/S-025/
 
-  ARTIFACT VERSIONS (D-197 / Pass 19 entry point):
+  ARTIFACT VERSIONS (D-197.1 / Pass 19 entry point):
     BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
     SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7. BC-2.03.001 v1.0.6.
     S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7. holdout-scenarios v1.5. STORY-INDEX v5.11.
-    (No version bumps this burst — devops fix is doc-pointer only; SS-deps-pin-manifest stays v1.2.0.)
+    (No spec version bumps this burst — devops fix is doc-pointer replacement only.)
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
     PR-manager (PR #28 draft → merge). State-manager D-187 closure. Dispatch S-026 (13 pts).
-    Task #9 post-merge: F-S025-ADV16-CODIFY-001 (story-writer + CLAUDE.md incl. 6th sweep target), NIT-003/004 (PO).
+    Task #9 post-merge: F-S025-ADV16-CODIFY-001 (story-writer + CLAUDE.md incl. 6-category sweep), NIT-003/004 (PO).
 
   KEY LESSONS (full details: cycles/cycle-001/lessons.md L-W6-S025-001..007):
-    L-001: Propagation sweeps = BC bodies + SS docs + story fm + body + input-hashes (all 5) + [NEW] worktree policy-pointer comments (6th layer, D-197).
+    L-001: Propagation sweeps = BC bodies + SS docs + story fm + body + input-hashes + worktree policy-pointer comments (6th layer).
     L-002: Assertion must trace to EXACT production code path (not TestBackend-local copy).
     L-003: pub const extraction eliminates vacuous-mirror class structurally.
     L-004: Premature-clean signal confirmed AGAIN (Pass 17 clean → Pass 18 MED). Max skepticism always.
     L-007: Sweep wider than the finding — catch ALL class siblings at EVERY architectural layer.
     L-NEW (D-196): Complete MSRV-bump playbook: architecture/ + behavioral-contracts/ + stories/ inputs+body + planning artifacts.
-    L-NEW (D-197): MSRV-bump playbook 6th layer: implementation-worktree policy-pointer comments (Cargo.toml headers, CI yml comments, test panic messages).
+    L-NEW (D-197): MSRV-bump playbook 6th layer: implementation-worktree policy-pointer comments (Cargo.toml headers, CI yml, test panic messages).
+    L-NEW (D-197.1): Devops wider sweep finds .rs production-code layer hits that spec-layer sweeps miss (.toml/.yml only). 6-category enumeration is now canonical.
 
   FACTORY: .factory/ on factory-artifacts. Run factory-worktree-health first. NEVER --no-verify.
 dtu_required: true
@@ -363,7 +365,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 18 MED-001 RESET counter 0/3; devops fix-round in parallel; Pass 19 pending post-fix HEAD | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 18 MED (D-197): F-S025-ADV18-MED-001 Path B propagation cascade tail-gap in worktree implementation layer (17 occurrences, 10 files, SS-deps-pin-manifest v1.1.19 doc-pointers). Counter RESET 1/3 → 0/3. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 MED-001 CLOSED (devops 9fcfd49); counter 0/3; Pass 19 pending CI green | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 18 MED-001 CLOSED (D-197.1): devops 9fcfd49 — 18 replacements/11 files (wider sweep found types.rs:48 v1.1.20 additional). Counter 0/3; Pass 19 pending CI green. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -376,7 +378,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 18 MED (D-197): F-S025-ADV18-MED-001 counter RESET 1/3 → 0/3 (Path B propagation cascade tail-gap: 17 occurrences across 10 worktree files pin SS-deps-pin-manifest v1.1.19; devops fix-round in parallel; HEAD bfcba19). Pass 19 pending post-fix HEAD. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3). Resets: Pass 8, 9, 10, 12, 16, 18 = 6 total.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 MED-001 CLOSED (D-197.1): devops 9fcfd49 — 18 replacements/11 files (wider sweep found types.rs:48 v1.1.20 additional vs Pass 18 report of 17/10). ADV16-CODIFY-001 6-category enumeration finalized. Counter 0/3; Pass 19 pending CI green. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3). Resets: Pass 8, 9, 10, 12, 16, 18 = 6 total.
 
 ## Blocking Issues
 
@@ -395,6 +397,7 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-192 | S-025 Pass 16 MED — ADR-0006 audit-table gap (App+EvBus+EMR+BackoffState) + false-green CI + 4 op_ref + vendored copy. 5-round fix. SS-engine-module v1.1.22→v1.1.25. Counter RESET 1/3 → 0/3. | 2026-05-28 | state-manager |
 | D-195 | S-025 Pass 17 NITPICK_ONLY-CLEAN — 1 LOW (BC-2.03.001 MSRV 1.86 stale ref; PO fix landed 5006528 as BC-2.03.001 v1.0.6). Zero CRITICAL/HIGH/MED. Counter 0/3 → 1/3 CONFIRMED. Pass 18 ready at bfcba19. | 2026-05-29 | state-manager |
 | D-197 | S-025 Pass 18 MED — F-S025-ADV18-MED-001: Path B propagation cascade tail-gap in implementation-worktree layer (17 occurrences across 10 files still pin SS-deps-pin-manifest v1.1.19). Counter RESET 1/3 → 0/3. ADV16-CODIFY-001 extended with 6th sweep target (implementation-worktree policy-pointer comments). Devops fix-round dispatched in parallel. Pass 19 pending post-fix HEAD. | 2026-05-29 | state-manager |
+| D-197.1 | MED-001 CLOSED at devops 9fcfd49 (feature/S-025-tui-skeleton-sessions). Total: 18 replacements/11 files (NOT 17/10 — wider sweep found types.rs:48 v1.1.20 additional). Local cargo clean. CI queued. ADV16-CODIFY-001 6-category enumeration finalized. Counter 0/3; Pass 19 pending CI green. | 2026-05-29 | state-manager |
 
 ## Key Tech Stack
 
@@ -415,6 +418,16 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
+## §Trace v6.43 (D-197.1 — MED-001 CLOSED at devops 9fcfd49; ADV16-CODIFY-001 6-category enumeration finalized)
+
+**MED-001 CONFIRMATION** (2026-05-29, D-197.1): Devops commit 9fcfd49 on `feature/S-025-tui-skeleton-sessions` lands 18 replacements across 11 files. Pass 18 originally reported 17 occurrences in 10 files — devops wider sweep (which included `src/**/*.rs` beyond the `.toml/.yml` scope of Passes 16+17) surfaced one additional hit: `crates/monocle-runtime/src/types.rs:48` carrying `v1.1.20` (a different stale version, v1.1.20 not v1.1.19). Local cargo build/test/clippy/fmt clean. CI queued at time of push. F-S025-ADV18-MED-001: CLOSED. Counter remains 0/3; Pass 19 adversary pending CI green on 9fcfd49.
+
+**ADV16-CODIFY-001 finalized:** 6-category version-pointer-sweep target enumeration is now concrete and captured in durable_task_register. Categories: (1) .factory/ .md, (2) root Cargo.toml + deny.toml, (3) member crate Cargo.toml files, (4) .github/workflows/**.yml, (5) .github/dependabot.yml, (6) src/**/*.rs production code. The canonical sweep command covers all 6. Pattern codified per S-7.02. Recurrence count: 4/3 (audit-table F-R30-1) + 1/3 (MSRV-bump scope F-S025-ADV17-LOW-001) + 1/3 (version-pointer-sweep impl-layer F-S025-ADV18-MED-001) = codification threshold crossed and executed.
+
+**Key gap surfaced by devops:** Passes 16+17 searched `.toml` and `.yml` only — `.rs` production code (comments, panic strings, doc strings) was absent from sweep scope. This is the root cause of `types.rs:48` escaping 3 adversarial passes and devops discovering it only via a wider-scope grep. The 6th category closes this gap permanently.
+
+**Artifact versions bumped this burst (D-197.1):** STATE v6.42→v6.43. No spec version bumps (devops fix is doc-pointer replacement only; SS-deps-pin-manifest stays at v1.2.0).
+
 ## §Trace v6.42 (D-197 — Pass 18 MED-001 RESET counter 1/3 → 0/3; devops fix-round dispatched in parallel; Path B propagation cascade extends to worktree implementation layer)
 
 **S-025 PASS 18 MED** (2026-05-29, D-197): Fresh-context adversary attacked Angle S (workspace-level invariants) and surfaced Path B propagation cascade tail-gap at the implementation-worktree layer. 17 occurrences across 10 files still pin SS-deps-pin-manifest v1.1.19 as documented source-of-truth. Counter RESETS 1/3 → 0/3. Devops fix-round dispatched in parallel (mechanical text replacement). Pass 19 at post-fix HEAD.
@@ -428,9 +441,7 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 **Artifact versions bumped this burst (D-197):** STATE v6.41→v6.42. Pass 18 report persisted: `cycles/cycle-001/S-025/adversarial-pass-18.md`. No spec version bumps (devops fix is doc-pointer replacement only; SS-deps-pin-manifest stays at v1.2.0).
 Full Pass 18 report: `cycles/cycle-001/S-025/adversarial-pass-18.md`.
 
-**Devops coordination (D-197):** MED-001 fix-round (17 occurrences in 10 worktree files) assigned to devops-engineer running in parallel on `feature/S-025-tui-skeleton-sessions`. Latest confirmed SHA before this state-manager burst: bfcba19. Devops commit SHA: PENDING (not yet pushed at time of this state-manager commit). State-manager second-burst will confirm MED-001 CLOSED + actual devops commit SHA after their push lands.
-
-§Trace v6.41 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.42 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.40 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.39 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.38 archived to `cycles/cycle-001/burst-log.md`.
