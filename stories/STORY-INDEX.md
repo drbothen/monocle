@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.11"
+version: "5.12"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-29T00:00:00Z
+timestamp: 2026-05-29T08:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -450,6 +450,20 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.12
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (7 EPIC-06 story files)** (2026-05-29):
+- Systematic story-writing burst defect: all 7 EPIC-06 story Architecture Compliance Rules headers cited `SS-tui-core.md` (non-existent). Canonical anchor is `SS-tui.md v1.8.2` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- S-024 v1.4 → v1.5: `SS-tui-core.md` → `SS-tui.md` (line 183). §Trace v1.5 added.
+- S-025 v1.6 → v1.7: `SS-tui-core.md` → `SS-tui.md` (line 176). §Trace v1.7 added.
+- S-026 v1.7 → v1.8: `SS-tui-core.md` → `SS-tui.md` (line 257). §Trace v1.8 added.
+- S-027 v1.3 → v1.4: `SS-tui-core.md` → `SS-tui.md` (line 167). §Trace v1.4 added.
+- S-028 v1.2 → v1.3: `SS-tui-core.md` → `SS-tui.md` (line 166). §Trace v1.3 added (first trace entry).
+- S-029 v1.1 → v1.2: `SS-tui-core.md` → `SS-tui.md` (line 143). §Trace v1.2 added.
+- S-031 v1.0 → v1.1: `SS-tui-core.md` → `SS-tui.md` (line 150). §Trace v1.1 added (first trace entry).
+- Sweep-wider also fixed: SS-conventions-anti-patterns.md v1.31.0 → v1.31.1 (line 1043: `SS-forward-compat.md` → `SS-forward-compatibility.md`; active spec reference in §Attestation rule body). Plans/cycles not modified — historical narrative preserved per task protocol.
+- STORY-INDEX bumped v5.11 → v5.12.
 
 ## §Trace v5.11
 

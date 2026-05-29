@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-031
 epic_id: EPIC-07
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -147,7 +147,7 @@ the existing struct without breaking its consumers.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-config.md` and `architecture/SS-tui-core.md`:
+From `architecture/SS-config.md` and `architecture/SS-tui.md`:
 - Profile picker is `Option<ProfilePickerState>` in `App` — NOT an `AppMode` variant,
   NOT `AppMode::Overlay`, NOT `AppMode::Fullscreen`
 - All config writes via `monocle-config::MonocleConfig::save()` (which uses `tempfile::persist`)
@@ -189,3 +189,10 @@ Files to modify:
 
 No new public API produced by this story. The profile picker is an internal TUI feature.
 This is a leaf story — nothing depends on it in the current phase.
+
+## §Trace v1.1
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 150)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-config.md` and `architecture/SS-tui-core.md` → `architecture/SS-config.md` and `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.1 timestamp 2026-05-29 >= v1.0 timestamp 2026-05-27. PASS.

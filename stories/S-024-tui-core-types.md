@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-024
 epic_id: EPIC-06
-version: "1.4"
+version: "1.5"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T16:00:00Z
@@ -180,7 +180,7 @@ module is a new addition; wire it into `monocle-core/src/lib.rs` as `pub mod tui
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-patterns.md`:
+From `architecture/SS-tui.md` and `architecture/SS-conventions-anti-patterns.md`:
 - `AppMode` MUST NOT be `#[non_exhaustive]` — exhaustive match is the compile-time
   safety mechanism for this enum
 - `FocusSnapshot` is an enum (NOT a struct) — `#[non_exhaustive]` enum with variants `Sessions`, `EventRibbon` (Phase 1); Phase 2 adds more variants without breaking existing match arms
@@ -247,6 +247,13 @@ pub fn resolve_binding(key: KeyEvent, mode: &AppMode, layers: &BindingLayers) ->
 ```
 
 S-025, S-026, S-031 all depend on these types being available in monocle-core.
+
+## §Trace v1.5
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 183)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.5 timestamp 2026-05-29 >= v1.4 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.4
 

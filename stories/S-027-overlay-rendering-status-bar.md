@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.3"
+version: "1.4"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -164,7 +164,7 @@ that yields `Change` items. Each `Change` has a `tag()` method returning
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md`:
+From `architecture/SS-tui.md`:
 - `similar` lives in `monocle-tui` ONLY — never `monocle-core` (purity boundary)
 - Status bar is NOT dimmed by overlay background — it remains full-brightness at all times
 - Render loop tick rate: 100ms (for timer updates)
@@ -206,6 +206,13 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.4
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 167)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.4 timestamp 2026-05-29 >= v1.3 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.3
 

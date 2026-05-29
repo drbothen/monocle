@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.6"
+version: "1.7"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -173,7 +173,7 @@ S-030 (config foundation): `MonocleConfig::load()`, `config_path()`, `detect_ccr
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-patterns.md`:
+From `architecture/SS-tui.md` and `architecture/SS-conventions-anti-patterns.md`:
 - `monocle-tui` is the effectful boundary — ratatui, crossterm, nucleo, similar live HERE
 - `monocle-core` (pure) is a dependency of `monocle-tui` (effectful) — not the reverse
 - `TransportEvent::Disconnected` is the ONLY disconnect signal — no `ClientDisconnect` IPC message
@@ -234,6 +234,13 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.7
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 176)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.7 timestamp 2026-05-29 >= v1.6 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.6
 

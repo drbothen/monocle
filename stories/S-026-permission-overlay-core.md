@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.7"
+version: "1.8"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -254,7 +254,7 @@ These are complementary: S-026 clears, S-023 restores on reconnect.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md`:
+From `architecture/SS-tui.md`:
 - IPC push path (`PermissionPromptQueued`) is NOT routed through `transition()` —
   push directly to `app.overlay_stack`, then update AppMode
 - UUID removal via `retain()` is NOT through `transition()` — direct mutation + collapse check
@@ -307,6 +307,13 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.8
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 257)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.8 timestamp 2026-05-29 >= v1.7 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.7
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-028
 epic_id: EPIC-06
-version: "1.2"
+version: "1.3"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -163,7 +163,7 @@ Use `Pattern::score(haystack, &mut matcher)` for repeated scoring.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-patterns.md`:
+From `architecture/SS-tui.md` and `architecture/SS-conventions-anti-patterns.md`:
 - `nucleo::Matcher` is shared — held in `App` as a field, NOT created per keystroke
 - Fuzzy filtering uses `nucleo 0.5` exclusively — no custom string matching
 - `Filtering` mode's `query` field in `AppMode::Filtering` is the authoritative query source
@@ -205,3 +205,10 @@ Files to modify:
 No new public API produced by this story. The filter and event ribbon features are
 internal to `monocle-tui`. No stories block on this one; it is a leaf story in the
 dependency graph.
+
+## §Trace v1.3
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 166)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.3 timestamp 2026-05-29 >= v1.2 timestamp 2026-05-27. PASS.

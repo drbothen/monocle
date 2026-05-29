@@ -3,13 +3,13 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.31.0"
+version: "1.31.1"
 status: complete
 producer: architect
 phase: phase-3
 timestamp: 2026-05-20T23:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
-input-hash: "0d0dfe8"
+input-hash: "0351fc8"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -1040,7 +1040,7 @@ Both directions run in every cascade sweep.
 Added in v1.14 (round-47, F-R46-2 root-cause closure).
 
 **Rule:** Every BC ID, VP ID, or other VSDD artifact ID referenced in a spec document MUST be
-attested — verifiable in at least one of: (a) the pre-staged BC table in SS-forward-compat.md
+attested — verifiable in at least one of: (a) the pre-staged BC table in SS-forward-compatibility.md
 §Cross-Phase Decisions, (b) the gene-source canonical BC set cited by name with document
 provenance, or (c) a BC-INDEX.md or VP-INDEX.md row.
 
@@ -2512,3 +2512,10 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - F-R110-18 LOW RESOLVED: BC-INDEX §Conventions defines EC namespace, test name, and anchor parenthetical conventions that are relevant to all BC authoring. These conventions were not cross-listed in SS-conventions-anti-patterns (the canonical conventions doc). Added §BC-INDEX Conventions section with EC Namespace Convention (F-R109-17), Test Name Convention (F-R109-21), and Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16) as cross-references to the BC-INDEX §Conventions canonical source.
 - NORMATIVE: version bump 1.29.2 → 1.29.3 records addition of §BC-INDEX Conventions section; no existing content changed.
 - SE-16d PASS: 2026-05-18T06:00:00Z > prior version timestamp (v1.29.2). ARITHMETICALLY TRUE.
+
+**§Trace v1.31.1** (2026-05-29T00:00:00Z) — F-S025-ADV22-MED-001 sweep-wider: SS-forward-compat.md → SS-forward-compatibility.md (line 1043):
+- F-S025-ADV22-MED-001 MED RESOLVED (sweep-wider pass): SS-conventions-anti-patterns.md line 1043 cited `SS-forward-compat.md` (abbreviated, non-existent filename). Canonical file is `SS-forward-compatibility.md`. Active spec reference — fixed per CLAUDE.md Principle 4.
+- 1 site in active spec body updated: `SS-forward-compat.md §Cross-Phase Decisions` → `SS-forward-compatibility.md §Cross-Phase Decisions`.
+- Historical §Trace entries referencing `SS-forward-compat` preserved as historical narrative (not updated).
+- NORMATIVE: version bump 1.31.0 → 1.31.1.
+- SE-16d PASS: 2026-05-29T00:00:00Z > 2026-05-18T11:00:00Z (prior §Trace v1.31.0 timestamp). PASS.

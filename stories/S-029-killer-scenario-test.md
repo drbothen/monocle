@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-029
 epic_id: EPIC-06
-version: "1.1"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -140,7 +140,7 @@ without going through the full hook routing path.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-tui-core.md` and `architecture/SS-conventions-anti-patterns.md`:
+From `architecture/SS-tui.md` and `architecture/SS-conventions-anti-patterns.md`:
 - Tests use `ratatui::backend::TestBackend` for headless rendering — no real terminal
 - `MockDaemon` uses real UDS sockets (via `tempfile::TempDir`) — not in-memory mocks
 - `ClientToServer::ClientDisconnect` does NOT exist — `MockDaemon` must not expect it
@@ -178,6 +178,13 @@ Files to modify: None (test-only story; no production code changes)
 
 No new public API. This is a pure test story. No other stories depend on this one.
 It is the final validation gate for EPIC-06 permission overlay functionality.
+
+## §Trace v1.2
+
+**F-S025-ADV22-MED-001 sibling propagation — SS-tui-core.md → SS-tui.md (line 143)** (2026-05-29):
+- Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
+- Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
+- SE-16d monotonicity: v1.2 timestamp 2026-05-29 >= v1.1 timestamp 2026-05-28. PASS.
 
 ## §Trace v1.1
 
