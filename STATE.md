@@ -7,12 +7,12 @@ status: active
 producer: state-manager
 timestamp: 2026-05-29T02:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW: BC-2.03.001 MSRV 1.86 ref; architect sweep gap). Counter advances 0/3 → 1/3 (HOLDING pending LOW-001 fix-round landing). Product-owner LOW-001 fix dispatched in parallel. Pass 18 dispatch at post-fix HEAD."
+current_step: "S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV gap; F-S025-ADV17-LOW-001 CLOSED by PO commit 5006528 v1.0.6). Counter 0/3 → 1/3 CONFIRMED. Pass 18 READY TO DISPATCH at HEAD bfcba19."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD."
-awaiting: "Product-owner BC-2.03.001 LOW-001 fix on factory-artifacts (BC-2.03.001 v?.?.? — PO choosing version; placeholder); then Pass 18 adversary at post-fix HEAD. After S-025 convergence (3/3): S-026 (13pts) dispatch."
+awaiting: "Pass 18 adversary at HEAD bfcba19 — counter 1/3 CONFIRMED (PO BC-2.03.001 v1.0.6 fix @ 5006528; F-S025-ADV17-LOW-001 CLOSED). After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -246,9 +246,9 @@ durable_task_register:
       detail: "CLAUDE.md line 18 reads: 'MSRV: Phase 1 = Rust 1.86 (ratatui 0.30 floor). Phase 3 = Rust 1.92 (wasmtime 44 requirement).' Architect Path B work (D-194) bumped Phase 1 MSRV to 1.88 (time 0.3.47 floor per RUSTSEC-2026-0009 mitigation). CLAUDE.md is human-maintained (outside agent write scope). Human action: update line 18 to: 'MSRV: Phase 1 = Rust 1.88 (time 0.3.47 floor per RUSTSEC-2026-0009 mitigation; original ratatui 0.30 floor was 1.86). Phase 3 = Rust 1.92 (wasmtime 44 requirement).' Anchored to next human review; non-blocking for S-025."
       blocking: false
     - id: "F-S025-ADV17-LOW-001"
-      subject: "BC-2.03.001 stale 'MSRV 1.86 stable Rust' reference — product-owner 2-line fix"
-      status: pending
-      detail: "Pass 17 (D-195): BC-2.03.001 lines 35 + 61 say 'MSRV 1.86 stable Rust' — stale project-MSRV claim after Path B bumped Phase 1 MSRV to 1.88. Architect MSRV sweep (D-194) updated 6 artifacts but missed this BC. Fix: replace 'MSRV 1.86 stable' → 'MSRV 1.88 stable' at lines 35 + 61 + BC version bump + §Trace. Routing: product-owner. BC-2.03.001 version to be assigned by PO (placeholder v?.?.?). Counter advance holds pending fix-round landing; Pass 18 at post-fix HEAD. Non-blocking for S-025 overall."
+      subject: "BC-2.03.001 stale 'MSRV 1.86 stable Rust' reference — CLOSED"
+      status: closed
+      detail: "CLOSED: PO commit 5006528 (BC-2.03.001 v1.0.6) replaced 'MSRV 1.86 stable Rust' → 'MSRV 1.88 stable Rust' at lines 35+61 + §Trace added. Counter advance 0/3 → 1/3 CONFIRMED. Pass 18 dispatch ready at bfcba19."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -283,9 +283,9 @@ next_session_resume_protocol: |
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
   IMMEDIATE NEXT ACTIONS:
-    1. CHECK: git -C .factory log origin/factory-artifacts --oneline -3 for PO BC-2.03.001 fix commit.
-    2. Once landed: pull/rebase factory-artifacts; confirm BC-2.03.001 final version; update v?.?.? placeholder in STATE.md awaiting + D-195.
-    3. Dispatch Pass 18 adversary at bfcba19 (unchanged — PO touched specs only). Focus: verify BC-2.03.001 fix + full re-sweep all 17 prior axes.
+    1. PO LOW-001 fix CONFIRMED: commit 5006528 (BC-2.03.001 v1.0.6). Counter 1/3 CONFIRMED.
+    2. Dispatch Pass 18 adversary at bfcba19 (unchanged — PO touched specs only).
+       Focus: verify BC-2.03.001 v1.0.6 fix correct + full re-sweep all 17 prior axes.
     4. If Pass 18 CLEAN → counter 2/3. Dispatch Pass 19.
 
   PASS 17 LOW FINDING (F-S025-ADV17-LOW-001):
@@ -305,7 +305,7 @@ next_session_resume_protocol: |
 
   ARTIFACT VERSIONS (Pass 17; BC-2.03.001 placeholder):
     BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
-    SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7. BC-2.03.001 v?.?.? (pending PO fix).
+    SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7. BC-2.03.001 v1.0.6 (PO LOW-001 fix CONFIRMED; 5006528).
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
@@ -338,7 +338,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001); counter 0/3 → 1/3 HOLDING; LOW fix-round in flight | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW: BC-2.03.001 MSRV 1.86 stale ref; PO fix-round in parallel; counter 0/3 → 1/3 HOLDING). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 17 NITPICK_ONLY-CLEAN; counter 1/3 CONFIRMED; Pass 18 READY | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 CLOSED at v1.0.6 by PO; counter 1/3 CONFIRMED). S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -351,7 +351,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW: BC-2.03.001 MSRV 1.86 stale ref; counter 0/3 → 1/3 HOLDING; PO fix-round in parallel; HEAD bfcba19; CI all 9 green; D-195). S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3).
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 CLOSED v1.0.6; counter 1/3 CONFIRMED; HEAD bfcba19; CI all 9 green; D-195). Pass 18 READY. S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3).
 
 ## Blocking Issues
 
@@ -368,7 +368,7 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-190 | S-025 Pass 14 NITPICK_ONLY — DarkGray baseline branch missing render+color test. Counter holds 0/3. Fix dispatched. | 2026-05-28 | state-manager |
 | D-191 | S-025 Pass 15 NITPICK_ONLY-CLEAN — zero findings. Counter ADVANCES 0/3 → 1/3. Pattern decay confirmed. | 2026-05-28 | state-manager |
 | D-192 | S-025 Pass 16 MED — ADR-0006 audit-table gap (App+EvBus+EMR+BackoffState) + false-green CI + 4 op_ref + vendored copy. 5-round fix. SS-engine-module v1.1.22→v1.1.25. Counter RESET 1/3 → 0/3. | 2026-05-28 | state-manager |
-| D-195 | S-025 Pass 17 NITPICK_ONLY-CLEAN — 1 LOW (BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched in parallel). Zero CRITICAL/HIGH/MED. Counter 0/3 → 1/3 HOLDING. BC-2.03.001 v?.?.? (PO placeholder). Pass 18 at post-fix HEAD. | 2026-05-29 | state-manager |
+| D-195 | S-025 Pass 17 NITPICK_ONLY-CLEAN — 1 LOW (BC-2.03.001 MSRV 1.86 stale ref; PO fix landed 5006528 as BC-2.03.001 v1.0.6). Zero CRITICAL/HIGH/MED. Counter 0/3 → 1/3 CONFIRMED. Pass 18 ready at bfcba19. | 2026-05-29 | state-manager |
 
 ## Key Tech Stack
 
@@ -393,7 +393,7 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 
 **S-025 PASS 17 RESULT: NITPICK_ONLY-CLEAN** (2026-05-29): 17 adversarial passes; counter advances 0/3 → 1/3 (HOLDING pending LOW-001 fix-round landing).
 
-**Pass 17 outcome (D-195):** Dispatched against HEAD bfcba19 (Path B: MSRV 1.88, time 0.3.47). Comprehensive verification of all 7 Pass 16 fix rounds PASSED. Angles I-N exercised with zero defects. One LOW finding: F-S025-ADV17-LOW-001 — BC-2.03.001 lines 35+61 say "MSRV 1.86 stable Rust"; architect MSRV propagation sweep (D-194) updated 6 artifacts but missed this BC. Semantic distinction: SS-conventions "Rust 1.86+" (language history, correct on 1.88) vs BC-2.03.001 "MSRV 1.86 stable" (project MSRV claim, stale). Fix: 2-line update + BC version bump. Routed to product-owner in parallel. BC-2.03.001 v?.?.? (placeholder — fill after PO commit lands on factory-artifacts). Zero CRITICAL/HIGH/MED. Counter advances 0/3 → 1/3 HOLDING. Pass 18 dispatch at post-PO-fix HEAD.
+**Pass 17 outcome (D-195):** Dispatched against HEAD bfcba19 (Path B: MSRV 1.88, time 0.3.47). Comprehensive verification of all 7 Pass 16 fix rounds PASSED. Angles I-N exercised with zero defects. One LOW finding: F-S025-ADV17-LOW-001 — BC-2.03.001 lines 35+61 say "MSRV 1.86 stable Rust"; architect MSRV propagation sweep (D-194) updated 6 artifacts but missed this BC. Semantic distinction: SS-conventions "Rust 1.86+" (language history, correct on 1.88) vs BC-2.03.001 "MSRV 1.86 stable" (project MSRV claim, stale). PO fix CONFIRMED: commit 5006528 (BC-2.03.001 v1.0.6; F-S025-ADV17-LOW-001 CLOSED). Zero CRITICAL/HIGH/MED. Counter advances 0/3 → 1/3 CONFIRMED. Pass 18 ready at bfcba19.
 
 **Trajectory:** Pass 17: NITPICK_ONLY-CLEAN (1 LOW: BC-2.03.001 MSRV 1.86 reference; architect sweep gap; fix-round dispatched in parallel; counter advances 0/3 → 1/3 HOLDING pending fix-round landing).
 
