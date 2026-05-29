@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.10"
+version: "1.11"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -141,7 +141,7 @@ v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected
 
 - [ ] Create `monocle-tui/` binary crate: `Cargo.toml`, `src/main.rs`, `src/app.rs`, `src/ui/mod.rs`
 - [ ] Add `monocle-tui` to workspace `Cargo.toml` members
-- [ ] Implement `App` struct in `app.rs` with fields: `mode: AppMode`, `config: MonocleConfig`, `sessions: Vec<EnrichedSession>`, `drop_counter: u64`, `overlay_stack: VecDeque<PromptModal>` (local TUI copy)
+- [ ] Implement `App` struct in `app.rs` with S-025-introduced fields: `mode: AppMode`, `config: MonocleConfig`, `sessions: Vec<EnrichedSession>`, `drop_counter: u64`, `overlay_stack: VecDeque<PromptModal>` (local TUI copy) — existing/future fields per SS-tui.md §App struct + app.rs
 - [ ] Implement terminal setup in `main.rs`: `enable_raw_mode()`, `EnterAlternateScreen`, panic hook for terminal restore
 - [ ] Implement terminal teardown: `disable_raw_mode()`, `LeaveAlternateScreen` — called on all exit paths
 - [ ] Implement UDS connection attempt in `app.rs`: connect to `<runtime_dir>/monocle.sock`, display error panel on failure
@@ -220,8 +220,14 @@ Files to modify:
 
 Public API produced by this story for downstream consumption:
 
+<!-- structural-claim-historical: S-025-introductory subset; full canonical App struct per SS-tui.md §App struct (current line range per ADR-0008 §Canonical Source Registry). Production code at app.rs adds S-022/S-023/S-025 fields beyond this subset. Phase-5 architectural-alignment will reconcile SS-tui.md ↔ production. -->
 ```rust
-// monocle-tui::app
+// monocle-tui::app — S-025-introduced fields (illustrative subset)
+// Canonical full App struct: SS-tui.md §App struct (9 fields: mode, overlay_stack, sessions,
+// events, drop_counter, dispatcher, matcher, ipc_tx, ipc_rx).
+// Production app.rs:124-152 (7 fields) includes additional S-022/S-023/S-025 fields.
+// This block shows only the fields S-025 introduces; it is NOT a structural claim for the
+// complete App type. See ADR-0008 §Historical Anchor Classification.
 pub struct App {
     pub mode: AppMode,
     pub config: MonocleConfig,
@@ -234,6 +240,22 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.11
+
+**F-S025-ADV28-MED-001 S-025-scope-only §Downstream Consumer Contract historical-anchor annotation (structural-claim sub-species #3 — block-shape, META-10th)** (2026-05-29):
+
+§Downstream Consumer Contract code block (lines 225-231 at v1.10) annotated as S-025-introductory subset with `<!-- structural-claim-historical -->` marker per ADR-0008 §Historical Anchor Classification.
+
+Rationale: the 5-field block diverges from canonical SS-tui.md §App struct (9 fields: mode, overlay_stack, sessions, events, drop_counter, dispatcher, matcher, ipc_tx, ipc_rx) AND production app.rs:124-152 (7 fields). Three-way divergence is a system-level architectural-alignment question — deferred to phase-5 per scope boundary. Option (b) chosen per Pass 28 adversary recommendation: historical-anchor annotation preserves documentary value, avoids architectural scope expansion, and demonstrates ADR-0008 §Historical Anchor Classification marker pattern in actual use.
+
+Tasks list (line 144) clarified as S-025-introduced subset: appended "(existing/future fields per SS-tui.md §App struct + app.rs)" to task description so implementer understands the list is S-025-scope-only, not the complete App struct enumeration.
+
+Cross-story propagation: S-028:63 (`ServerToClient::SessionState` IPC variant drift) + S-028:147 (`Vec<SessionState>`) remain deferred per BC-5.39.002 PC2 cross-story deferral category.
+
+Architect strategic dispatch closed ADR-0008 §Canonical Source Registry line-range correction (831-864 → 833-864) in parallel. Devops-engineer dispatched for POL-11 + POL-12 implementation per elevated priority (would have caught this closure-completeness gap at commit time).
+
+SE-16d monotonicity: v1.11 timestamp 2026-05-29 >= v1.10 timestamp 2026-05-29. PASS (same-day).
 
 ## §Trace v1.10
 

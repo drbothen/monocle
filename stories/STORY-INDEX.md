@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.15"
+version: "5.16"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-29T08:00:00Z
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.16
+
+**F-S025-ADV28-MED-001 S-025-scope-only §Downstream Consumer Contract historical-anchor annotation (structural-claim sub-species #3 — block-shape, META-10th)** (2026-05-29):
+- S-025 v1.10 → v1.11: §Downstream Consumer Contract code block annotated with `<!-- structural-claim-historical -->` marker per ADR-0008 §Historical Anchor Classification.
+- Three-way divergence (story 5 fields vs canonical SS-tui.md 9 fields vs production app.rs 7 fields) is system-level architectural-alignment — deferred to phase-5 per scope boundary.
+- Option (b) per Pass 28 adversary recommendation: historical-anchor annotation preserves documentary value, avoids architectural scope expansion, demonstrates ADR-0008 marker in use.
+- Tasks list (line 144) clarified as S-025-introduced subset (appended existing/future-fields note).
+- S-025 v1.11 pin updated in corpus; cross-story S-028 deferral unchanged.
+- SE-16d monotonicity: v5.16 timestamp 2026-05-29 >= v5.15 timestamp 2026-05-29. PASS (same-day).
 
 ## §Trace v5.15
 
