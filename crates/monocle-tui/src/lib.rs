@@ -28,3 +28,9 @@ pub use app::DAEMON_NOT_RUNNING_ERROR;
 pub use app::DAEMON_OFFLINE_STATUS;
 pub use app::EVENT_RING_CAPACITY;
 pub use app::MONOCLE_STATUS_LABEL;
+// Re-export pub consts from ui/sessions_panel.rs for external test crates
+// (L-W6-S025-003 discipline: pub const extraction must be accessible at crate root)
+pub use ui::sessions_panel::SESSIONS_EMPTY_LINE_1;
+pub use ui::sessions_panel::SESSIONS_EMPTY_LINE_2;
+pub use ui::sessions_panel::TOKEN_COUNT_OVERFLOW_CAP;
+pub use ui::sessions_panel::UPTIME_OVERFLOW_CAP;
