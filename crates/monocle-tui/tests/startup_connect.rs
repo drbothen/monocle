@@ -1379,3 +1379,115 @@ fn test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_b
          with Yellow foreground when both branches are active (app.rs:942)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV14-NIT-001 — DarkGray baseline branch (status_line branch 3)
+// ---------------------------------------------------------------------------
+
+/// AC-007 (baseline path): when `app.status_message` is `None` AND
+/// `app.drop_counter == 0`, `render_frame` must render `MONOCLE_STATUS_LABEL`
+/// with `Color::DarkGray` in the page-level status bar.
+///
+/// app.rs:949-952 is the default branch of the 3-way `status_line` builder:
+///
+/// ```text
+/// } else {
+///     Line::from(Span::styled(
+///         MONOCLE_STATUS_LABEL,
+///         Style::default().fg(Color::DarkGray),
+///     ))
+/// }
+/// ```
+///
+/// A bug-injection that changes `Color::DarkGray` to any other color would
+/// pass all prior tests (branches 1 and 2 assert Yellow; no test asserted
+/// DarkGray on branch 3).  This test closes that coverage gap.
+///
+/// F-S025-ADV14-NIT-001: adds DarkGray color assertion for the baseline branch.
+/// Symmetric with:
+/// - `test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero`
+///   (branch 2, Yellow)
+/// - `test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_both_active`
+///   (branch 1, Yellow with precedence)
+#[test]
+fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app with default state: status_message=None, drop_counter=0.
+    // on_initial_state transitions App into the Connected state so render_frame
+    // exercises the normal rendering path (not an early-return uninitialized path).
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Preconditions: both competing branches must be inactive.
+    assert!(
+        app.status_message.is_none(),
+        "precondition: status_message must be None for baseline branch"
+    );
+    assert_eq!(
+        app.drop_counter, 0,
+        "precondition: drop_counter must be 0 for baseline branch"
+    );
+
+    // Render into a TestBackend (80 columns × 6 rows — matches sibling tests).
+    // Layout: build_dashboard_layout splits into main area + 2-row status bar.
+    // Rows 0-3 are main area, rows 4-5 are status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+
+    // Collect full text content of the last two rows (status bar area).
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert 1: MONOCLE_STATUS_LABEL text is present.
+    // Uses re-exported const — not an inline literal — per L-W6-S025-003.
+    assert!(
+        status_rows.contains(MONOCLE_STATUS_LABEL),
+        "AC-007 baseline: status bar must contain MONOCLE_STATUS_LABEL ({:?}) \
+         when status_message=None and drop_counter=0; \
+         got status rows: {:?}",
+        MONOCLE_STATUS_LABEL,
+        status_rows.trim()
+    );
+
+    // Assert 2: the MONOCLE_STATUS_LABEL span is styled DarkGray (app.rs:949-952).
+    // Scan the bottom two rows for the first character of MONOCLE_STATUS_LABEL;
+    // verify the span starts with DarkGray foreground.
+    let target_bytes: Vec<char> = MONOCLE_STATUS_LABEL.chars().collect();
+    let mut found_dark_gray = false;
+    'outer_baseline: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == &target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::DarkGray) {
+                    found_dark_gray = true;
+                    break 'outer_baseline;
+                }
+            }
+        }
+    }
+    assert!(
+        found_dark_gray,
+        "AC-007 baseline: MONOCLE_STATUS_LABEL ({:?}) must be rendered with \
+         DarkGray foreground in the status bar (app.rs:951) when status_message=None \
+         and drop_counter=0",
+        MONOCLE_STATUS_LABEL
+    );
+}
