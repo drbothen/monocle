@@ -6,14 +6,15 @@
 //!
 //! # Column layout (BC-2.06.005 PC-2)
 //!
-//! | Column  | Source field                         |
-//! |---------|--------------------------------------|
-//! | Icon    | `harness_type` → `char`              |
-//! | Project | `project_name` (`None` → `"—"`)       |
-//! | Status  | `SessionStatus` display string        |
-//! | Tokens  | `token_count` human-readable          |
-//! | Cost    | `cost_usd` (`None` → `"—"`)           |
-//! | Uptime  | `now - started_at` (`None` → `"—"`)  |
+//! | Column     | Source field                         |
+//! |------------|--------------------------------------|
+//! | Session ID | `EnrichedSession::session_id`        |
+//! | Icon       | `harness_type` → `char`              |
+//! | Project    | `project_name` (`None` → `"—"`)       |
+//! | Status     | `SessionStatus` display string        |
+//! | Tokens     | `token_count` human-readable          |
+//! | Cost       | `cost_usd` (`None` → `"—"`)           |
+//! | Uptime     | `now - started_at` (`None` → `"—"`)  |
 //!
 //! # Empty state (BC-2.06.005 PC-3)
 //!
