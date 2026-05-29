@@ -2,6 +2,7 @@
 document_type: architectural-decision-record
 adr_id: "ADR-0006"
 status: accepted
+version: "1.1"
 producer: vsdd-factory:architect
 timestamp: 2026-05-27T00:00:00Z
 traces_to: architecture/SS-conventions-anti-patterns.md
@@ -131,3 +132,24 @@ enforces this at CI time. When a new `new()` constructor is added to any
 - SS-engine-module.md §Cross-Crate Constructor Audit Table — enforcement mechanism
 - BC-2.03.001 — `HookEvent` definition invariants
 - BC-2.04.012 PC-1 — RAM ring type (`HookEventRecord`)
+
+---
+
+## §Trace v1.1
+
+**§Trace v1.1** (2026-05-28T00:00:00Z) — F-S025-ADV16-MED-001 Pass 16 closure: audit-table
+extension discipline confirmed for monocle-tui (S-025 EPIC-06 addition):
+
+- NORMATIVE: `App` struct added to §Cross-Crate Constructor Audit Table in `SS-engine-module.md`
+  (v1.1.22 → v1.1.23). `App` at `crates/monocle-tui/src/app.rs:123` is `#[non_exhaustive]` with
+  `pub fn new(config: MonocleConfig) -> Self`. Constructed cross-crate from 17+ sites in
+  `monocle-tui/tests/startup_connect.rs` and 6 sites in `monocle-tui/tests/sessions_panel.rs`.
+  All three ADR-0006 criteria satisfied: internal workspace scope, field evolution tied to
+  intentional downstream stories (S-026, S-027, S-028), all required fields initialized in body.
+- NORMATIVE: Completeness sweep of `crates/monocle-tui/src/` confirmed `App` is the only
+  `#[non_exhaustive] pub struct` in monocle-tui. `TransportEvent` (app.rs:44) is an enum —
+  explicitly exempt per §Cross-Crate Constructor Audit introductory note in SS-engine-module.md.
+- INFORMATIONAL: CI semgrep rule `monocle-non-exhaustive-struct-audit-completeness` coverage
+  investigation routed to devops-engineer in parallel — outcome will be documented here if the
+  rule scope requires update to include monocle-tui crate paths.
+- SE-16d PASS: 2026-05-28T00:00:00Z > prior high-water (initial ratification, 2026-05-27T00:00:00Z).

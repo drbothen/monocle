@@ -4,13 +4,13 @@ level: L3
 section: "engine-module"
 slug: "engine-module-trait-stability"
 subsystem: SS-03
-version: "1.1.22"
+version: "1.1.23"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-26T14:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, SS-core-types-and-abi.md]
-input-hash: "78b5fd2"
+input-hash: "3734014"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -1183,6 +1183,7 @@ the Rust source is listed between the HTML delimiters below. See SS-conventions-
 | `FactoryState` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): `VsddFactoryAdapter::read_state()` constructs via struct literal WITHIN `monocle-core::factory` — E0639 does not apply. Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | `blocking_issues` and `convergence` are Phase 1 stubs (empty Vec / None) constructed inline. Phase 2 adds body parsing in `monocle-workflow` — that is a cross-crate construction site requiring a constructor. |
 | `BlockingIssue` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (blocking_issues Vec is always empty). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 table parser populates `Vec<BlockingIssue>` — that is the first cross-crate construction site. |
 | `ConvergenceMetrics` | `monocle-core` | SS-core-types-and-abi.md | intra-crate only (Phase 1): not constructed in Phase 1 (convergence is always None). Phase 2 body-parser in `monocle-workflow` will construct cross-crate. | No constructor yet — add before Phase 2 `monocle-workflow` body-parser implementation | Phase 2 §Session Resume Checkpoint parser populates `Option<ConvergenceMetrics>` — that is the first cross-crate construction site. |
+| `App` | `monocle-tui` | SS-tui.md | struct-literal (cross-crate): `monocle-tui/tests/startup_connect.rs` (17+ call sites: lines 96, 188, 231, 275, 295, 310, 329, 351, 380, 403, 557, 637, 680, 743, 793, 841, 902, 1001 and others); `monocle-tui/tests/sessions_panel.rs` (6 call sites: lines 52, 61, 136, 408, 424, 501) — each `[[test]]` binary links monocle-tui as external; E0639 applies | Yes (`new(config: MonocleConfig) -> Self`, v1.1.23) | Top-level TUI state aggregator constructed once per binary entry point (main.rs + each integration test binary). Fields: `mode`, `config`, `sessions`, `drop_counter`, `overlay_stack`, `status_message`, `event_ring`. `#[non_exhaustive]` provides forward-compat for S-026 (overlay state additions), S-027 (event ring rendering fields), and S-028 (filter state) without breaking the constructor call sites. Sweep: `TransportEvent` (app.rs:44) is an `enum` — exempt per §Cross-Crate Constructor Audit introductory note (lines 1153-1154). No other `#[non_exhaustive] pub struct` present in monocle-tui src as of v1.1.23 sweep. |
 <!-- END: Cross-Crate Constructor Audit Table -->
 
 **Serde-deserialize-only enforcement note:** The `Deserialize` derive on each HookEvent inner
@@ -1747,3 +1748,27 @@ Cross-references:
   story that introduces IPC serialization of metadata payloads.
 
 - SE-16d PASS: 2026-05-26T14:00:00Z > chain high-water 2026-05-26T12:00:00Z (monotonic).
+
+**§Trace v1.1.23** (2026-05-28T00:00:00Z) — F-S025-ADV16-MED-001 closure: monocle-tui::App added to Cross-Crate Constructor Audit Table:
+
+- NORMATIVE (F-S025-ADV16-MED-001 MED): Added `App` struct row to §Cross-Crate Constructor Audit
+  Table. `App` is defined at `crates/monocle-tui/src/app.rs:123` with `#[non_exhaustive]` and
+  `pub fn new(config: MonocleConfig) -> Self` at line 158. It is constructed cross-crate from 17+
+  call sites in `monocle-tui/tests/startup_connect.rs` and 6 call sites in
+  `monocle-tui/tests/sessions_panel.rs`. Each `[[test]]` binary links monocle-tui as an external
+  crate — E0639 applies. ADR-0006 criteria satisfied: (1) internal workspace scope, (2) `App`
+  is the top-level TUI state aggregator whose field set evolves with new stories (S-026 overlay
+  state, S-027 event ring rendering, S-028 sessions filter) — not an organic refactoring target,
+  (3) all required fields present as constructor initialization in the body. `#[non_exhaustive]`
+  forward-compat rationale: prevents breakage at the 20+ test call sites when new optional fields
+  are added to `App` in downstream stories.
+- NORMATIVE (completeness sweep): `TransportEvent` (app.rs:44) is an `enum` — exempt per audit
+  table introductory note (this doc lines 1153-1154) and ADR-0004/BC-2.02.003 match-pattern
+  completeness governance. No other `#[non_exhaustive] pub struct` exists in monocle-tui src at
+  the time of this sweep. Sweep scope: `grep -rn non_exhaustive crates/monocle-tui/src/` — three
+  hits: TransportEvent (enum, exempt), App struct (now listed), and a comment at
+  `ui/sessions_panel.rs:401` (not a type annotation).
+- INFORMATIONAL: CI semgrep rule `monocle-non-exhaustive-struct-audit-completeness` coverage
+  investigation routed to devops-engineer in parallel — outcome will be documented in a subsequent
+  §Trace entry if a rule scope update is required.
+- SE-16d PASS: 2026-05-28T00:00:00Z > chain high-water 2026-05-26T14:00:00Z (monotonic).
