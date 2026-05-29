@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.13"
+version: "5.14"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-29T08:00:00Z
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.14
+
+**F-S025-ADV25-MED-001 S-025-scope-only body-prose BC-version pin refresh (META-7th in-scope tactical)** (2026-05-29):
+- S-025 v1.8 → v1.9: 1 body-prose BC-version pin citation refreshed to canonical post-D-202.1.
+  - Line 108 (AC-008): BC-2.06.004 v1.2.0 → v1.2.1 (modal stack postcondition claim).
+- Sweep-wider: no other Category A active citations found; other BC version-pin occurrences
+  in S-025 body are in §Trace narrative blocks (historical records).
+- Plain version-pin refresh per Pass 25 §Trace audit; no substantive prose changes.
+- STORY-INDEX bumped v5.13 → v5.14.
 
 ## §Trace v5.13
 

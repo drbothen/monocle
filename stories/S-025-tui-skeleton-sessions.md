@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.8"
+version: "1.9"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -105,7 +105,7 @@ is already present in the VecDeque (e.g., from a streaming `PermissionPromptQueu
 arrived before `InitialState`), the duplicate MUST be silently discarded. If the overlay
 stack is non-empty after population, the TUI immediately transitions to
 `Overlay { prior: default_focus }` before rendering the first frame.
-(The modal stack is carried in `App.overlay_stack`, not in the `Overlay` variant, per BC-2.06.004 v1.2.0 PC-2.)
+(The modal stack is carried in `App.overlay_stack`, not in the `Overlay` variant, per BC-2.06.004 v1.2.1 PC-2.)
 (BC-2.05.002 Invariant 4: the IPC layer provides at-least-once delivery for
 `PermissionPromptQueued` across the snapshot window; consumer idempotency on `prompt_id` is
 the correct resolution.)
@@ -234,6 +234,23 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.9
+
+**F-S025-ADV25-MED-001 S-025-scope-only body-prose BC-version pin refresh (Pass 25, META-7th in-scope tactical)** (2026-05-29):
+- Path B Category 13 closure: refreshed 1 body-prose BC-version pin citation to canonical post-D-202.1.
+- Line 108 (AC-008): BC-2.06.004 v1.2.0 → v1.2.1 (modal stack postcondition claim).
+- Sweep-wider result: all other BC version-pin occurrences in body prose are in §Trace narrative
+  blocks (historical change records) — no additional Category A active citations found.
+- Plain version-pin refresh per Pass 25 §Trace audit; no substantive prose changes;
+  semantic claim (modal stack in `App.overlay_stack`, not in `Overlay` variant) unchanged.
+  S-025 implementation at e5ebc43 unaffected.
+- Implementer fixing worktree code/test BC-version pin citations at 13 sites in parallel.
+- Architect evaluating strategic resolution (POL-11 / semantic-anchor / CODIFY-001 sunset)
+  via parallel dispatch.
+- Cross-story body-prose cascade (S-014..S-023 done + S-026..S-031 not-started) deferred to
+  wave-gate per BC-5.39.002 PC2 `cross-story` deferral category (Task #9).
+- SE-16d monotonicity: v1.9 timestamp 2026-05-29 >= v1.8 timestamp 2026-05-29. PASS (same-day).
 
 ## §Trace v1.8
 
