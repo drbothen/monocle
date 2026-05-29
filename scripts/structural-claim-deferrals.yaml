@@ -1,0 +1,44 @@
+# scripts/structural-claim-deferrals.yaml
+#
+# Explicit, human-authorized deferrals for POL-12 structural-claim findings.
+#
+# USAGE: Each entry records a known stale structural claim that is deferred to
+# a specific future story/wave for correction. POL-12 treats these entries as
+# authorized-deferral exemptions (equivalent to structural-claim-historical).
+#
+# AUTHORIZATION REQUIREMENT (ADR-0008 §Migration + CLAUDE.md Principle 3):
+#   Entries MUST have:
+#   - Explicit reference to the ADR/decision that authorized the deferral
+#   - A concrete future story/wave anchor (not "later" or "Phase X")
+#   - A human-traceable justification
+#
+# EXPIRY POLICY:
+#   When the target story merges, remove its entry from this file in the same PR.
+#   State-manager verifies at wave-gate sweep.
+#
+# FORMAT:
+#   deferrals:
+#     - file: <path relative to factory root>
+#       line_pattern: <substring pattern to match the deferred line>
+#       field: <App struct field name>
+#       cited_type: <stale type in the file>
+#       canonical_type: <correct canonical type>
+#       authorized_by: <ADR or decision reference>
+#       fix_target: <story ID or wave that will fix this>
+#       justification: <why this is deferred, not fixed inline>
+
+deferrals:
+  - file: stories/S-028-sessions-filter-event-ribbon.md
+    line_pattern: "App.sessions: Vec<SessionState>"
+    field: sessions
+    cited_type: "Vec<SessionState>"
+    canonical_type: "Vec<EnrichedSession>"
+    authorized_by: "ADR-0008 §Cross-story propagation + BC-5.39.002 PC2"
+    fix_target: "S-028 wave-gate sweep (post-S-025 merge)"
+    justification: >
+      S-028 carries cross-story structural drift from pre-EnrichedSession era.
+      Per ADR-0008 §Cross-story propagation: "Per BC-5.39.002 PC2, cross-story
+      structural-claim fixes are deferred to wave-gate sweep (not blocking S-025
+      convergence). Story-writer is dispatched to fix S-028 in the next wave-gate
+      sweep post-S-025 merge." This deferral does NOT apply to new claims authored
+      post-D-206; it is limited to this specific pre-existing cross-story instance.

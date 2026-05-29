@@ -29,16 +29,16 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   - **S-025** (8 pts, EPIC-06) — TUI Skeleton + Sessions Panel — **AUTHORIZED PARALLEL** (human approved 2026-05-28). Depends on S-022 (done), S-024 (done), S-030 (done). Target: new monocle-tui crate.
   - **S-026** (13 pts, EPIC-06) — Permission Overlay Core — BLOCKED on S-023. After S-023 + S-025 both merge.
   - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
-- **Spec updates from S-022 cycle:**
-  - BC-2.05.002 v1.0.5 (Invariant 4 added — TUI prompt_id idempotency for at-least-once delivery; ring_tail type now `Vec<HookEventRecord>` per architect Option B).
-  - SS-ipc v1.8.0 (at-least-once delivery semantics documented per architect Option D).
+- **Spec updates from S-022 cycle** (at S-022 authoring time):
+  - BC-2.05.002 v1.0.5 at S-022 authoring time (Invariant 4 added — TUI prompt_id idempotency for at-least-once delivery; ring_tail type now `Vec<HookEventRecord>` per architect Option B).
+  - SS-ipc v1.8.0 at S-022 authoring time (at-least-once delivery semantics documented per architect Option D).
   - ADR-0006 ADDED: non_exhaustive structs with public constructors (ratifies monocle-core new() pattern).
-  - SS-conventions v1.31.0 (ADR-0006 discipline codified). S-025 v1.3 + S-026 v1.3 (BC-2.05.002 Invariant 4 anchored).
+  - SS-conventions v1.31.0 at S-022 authoring time (ADR-0006 discipline codified). S-025 v1.3 + S-026 v1.3 (BC-2.05.002 Invariant 4 anchored).
   - **HookEventRecord relocated to monocle-ipc::types** (monocle-runtime now imports monocle-ipc for shared type).
 - **Totals:** 33 stories (195 pts), **25 done (151 pts, 77%)**, 7 not_started (52 pts). sprint-state v1.29. BC-INDEX v1.23 (113 BCs). STORY-INDEX v5.4.
 - **develop @ c754053** (latest). **753+ tests total**, clippy clean, fmt clean.
 - **8 workspace crates**: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
-- **Artifact versions:** PRD v1.27.2, SS-daemon-wiring v1.3.0, SS-ipc v1.8.0, SS-tui v1.7.0, SS-config v1.3.0, SS-engine-module v1.1.22, SS-conventions v1.31.0, ARCH-INDEX v1.0.16.
+- **Artifact versions at last checkpoint (2026-05-28T08:15:32Z):** PRD v1.27.2, SS-daemon-wiring v1.3.0, SS-ipc v1.8.0, SS-tui v1.7.0, SS-config v1.3.0, SS-engine-module v1.1.22, SS-conventions v1.31.0, ARCH-INDEX v1.0.16. <!-- version-pin-historical: state snapshot at S-022 merge time; not navigation pointers -->
 - Outstanding non-blocking follow-ups (durable task register — DO NOT fix unless specifically tasked):
   - **F-S022-ADV15-LOW-001**: story S-022 AC-002 ring_tail type doc polish (story-writer post-merge, future anchor: story v1.3).
   - **ADV-W5GATE-HIGH-001**: daemon_start_sequence() DaemonState wiring (integration story needed).

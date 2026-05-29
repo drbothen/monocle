@@ -17,7 +17,7 @@ use monocle_core::hook_events::HookType;
 
 // ---------------------------------------------------------------------------
 // Supporting types for inherent methods (BC-2.03.004)
-// SS-engine-module.md v1.1.20 §Struct-level inherent operations (lines 740-902)
+// SS-engine-module.md §Struct-level inherent operations
 // ---------------------------------------------------------------------------
 
 /// Arguments for spawning a new Claude Code session.
@@ -217,8 +217,8 @@ fn home_env_available() -> bool {
 /// Claude Code engine module.
 ///
 /// Implements `EngineModule` for the Claude Code harness. This is the Phase 1
-/// canonical reference implementation described in SS-engine-module.md v1.1.20
-/// §Phase 1 Implementation: ClaudeCodeModule (lines 545-657).
+/// canonical reference implementation described in SS-engine-module.md
+/// §Phase 1 Implementation: ClaudeCodeModule.
 ///
 /// # Detection strategy
 ///

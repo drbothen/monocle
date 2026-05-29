@@ -1,6 +1,5 @@
 # Clippy configuration for the monocle workspace.
-# Source: .factory/specs/architecture/SS-conventions-anti-patterns.md v1.31.0
-#         §Clippy disallowed_methods Configuration.
+# Source: .factory/specs/architecture/SS-conventions-anti-patterns.md §Clippy disallowed_methods Configuration.
 #
 # Cargo.toml [workspace.lints.clippy] sets the lint LEVEL (deny). This file
 # defines WHICH methods trigger that lint.
