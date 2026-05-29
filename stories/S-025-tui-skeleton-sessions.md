@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.7"
+version: "1.8"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -20,11 +20,11 @@ behavioral_contracts: [BC-2.06.004, BC-2.06.005, BC-2.06.007, BC-2.05.002]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.6"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "1666756"
 traces_to: "Implements BC-2.06.004 (Ctrl-\\ popup: appears and dismisses without state loss), BC-2.06.005 (Sessions panel rendering), BC-2.06.007 (Sessions panel: Enter transitions to fullscreen), BC-2.05.002 Invariant 4 (apply_permission_prompt_queued idempotency helper)"
 ---
@@ -234,6 +234,23 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.8
+
+**F-S025-ADV24-MED-001 S-025-scope-only inputs[] pin refresh post-D-202.1 BC cascade** (2026-05-29):
+- Path B Category 9 closure (Pass 24 MED-001 in-scope, META-6th instance):
+  Refreshed 5 inputs[] pins to canonical-current versions post-D-202.1 BC cascade.
+- BC-2.06.004 v1.2.0 → v1.2.1
+- BC-2.06.005 v1.0.5 → v1.0.6
+- BC-2.06.007 v1.0.0 → v1.0.4
+- BC-2.05.002 v1.0.5 → v1.0.6
+- SS-deps-pin-manifest v1.1.17 → v1.2.0
+- All bumps verified plain version-pin refresh per Pass 24 §Trace audit; no substantive prose
+  changes; S-025 implementation at e5ebc43 remains semantically valid (CI 9/9 SUCCESS).
+- Cross-story cascade (sibling stories S-026, S-027, S-028, S-031 + S-014..S-023 body prose)
+  deferred to wave-gate per BC-5.39.002 PC2 `cross-story` deferral category (Task #9).
+- VP file cascade (14 VPs, 45 occurrences) deferred to phase-5 per `system-level` deferral (Task #9).
+- SE-16d monotonicity: v1.8 timestamp 2026-05-29 >= v1.7 timestamp 2026-05-29. PASS (same-day).
 
 ## §Trace v1.7
 

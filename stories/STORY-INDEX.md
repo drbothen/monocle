@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.12"
+version: "5.13"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-29T08:00:00Z
@@ -450,6 +450,22 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.13
+
+**F-S025-ADV24-MED-001 S-025-scope-only inputs[] pin refresh (META-6th in-scope)** (2026-05-29):
+- S-025 v1.7 → v1.8: 5 inputs[] pins refreshed to canonical post-D-202.1 BC cascade.
+  - BC-2.06.004 v1.2.0 → v1.2.1
+  - BC-2.06.005 v1.0.5 → v1.0.6
+  - BC-2.06.007 v1.0.0 → v1.0.4
+  - BC-2.05.002 v1.0.5 → v1.0.6
+  - SS-deps-pin-manifest v1.1.17 → v1.2.0
+- All bumps verified plain version-pin refresh per Pass 24 §Trace audit; no substantive prose
+  changes; S-025 implementation at e5ebc43 remains semantically valid (CI 9/9 SUCCESS).
+- Cross-story cascade (S-026/S-027/S-028/S-031 inputs[] + S-014..S-023 body prose) deferred
+  to wave-gate per BC-5.39.002 PC2 `cross-story` deferral category (Task #9).
+- VP file cascade (14 VPs, 45 occurrences) deferred to phase-5 `system-level` deferral (Task #9).
+- STORY-INDEX bumped v5.12 → v5.13.
 
 ## §Trace v5.12
 
