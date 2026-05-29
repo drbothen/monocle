@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.48"
+version: "6.49"
 status: active
 producer: state-manager
 timestamp: 2026-05-29T06:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 22 MED (D-201) — F-S025-ADV22-MED-001: SS-tui-core.md cited in 2 worktree files + 7 EPIC-06 story files but document DOES NOT EXIST (canonical: SS-tui.md v1.8.2). META-GAP in D-198.2 canonical-anchored sweep (audits versioned refs only; bare-filename refs slip through). Counter RESETS 1/3 → 0/3. 4th 1/3→2/3 transition failure but DIFFERENT class than Path-B species. Implementer + story-writer fix-round dispatched in parallel. Pass 23 pending post-fix HEAD."
+current_step: "S-025 Pass 22 MED REMEDIATED (D-201.1) — F-S025-ADV22-MED-001 CLOSED: implementer e5ebc43 (lib.rs:7 + Cargo.toml:19) + story-writer 0cea089 (7 EPIC-06 stories + STORY-INDEX v5.12 + BONUS SS-forward-compat.md anchor → SS-conventions v1.31.1). CI 9/9 green on e5ebc43. Pass 23 adversary dispatched. Counter 0/3; convergence-attempt #6. META-PATTERN watch: does next-layer class surface?"
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21. D-200: Pass 21 NITPICK_ONLY-CLEAN; counter ADVANCES 0/3 → 1/3; 5-stall pattern ENDED; species BOUNDED. D-201: Pass 22 MED — F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites: 2 worktree + 7 EPIC-06 story files); META-GAP in D-198.2 (bare-filename refs not covered); CODIFY-001 7th sweep category added; ADV22-PROC-001 added (CI-enforced bare-filename anchor resolution); counter RESETS 1/3 → 0/3; 4th 1/3→2/3 failure (DIFFERENT class); implementer + story-writer parallel dispatched."
-awaiting: "Implementer 2-site code fix (SS-tui-core.md → SS-tui.md in lib.rs:7 + Cargo.toml:19) + story-writer 7-site sibling sweep (EPIC-06 story files on factory-artifacts); follow-up confirmation burst with both commit SHAs; then Pass 23 adversary at post-fix HEAD."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21. D-200: Pass 21 NITPICK_ONLY-CLEAN; counter ADVANCES 0/3 → 1/3; 5-stall pattern ENDED; species BOUNDED. D-201: Pass 22 MED — F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites: 2 worktree + 7 EPIC-06 story files); META-GAP in D-198.2 (bare-filename refs not covered); CODIFY-001 7th sweep category added; ADV22-PROC-001 added (CI-enforced bare-filename anchor resolution); counter RESETS 1/3 → 0/3; 4th 1/3→2/3 failure (DIFFERENT class); implementer + story-writer parallel dispatched. D-201.1: MED-001 CLOSED at e5ebc43 + 0cea089; BONUS SS-forward-compat.md catch → SS-conventions v1.31.1; STORY-INDEX v5.12; CI 9/9 green; Pass 23 dispatched."
+awaiting: "Pass 23 adversary (background, dispatched) — convergence attempt #6 first pass; target counter 0/3 → 1/3; META-pattern watch: does another deeper-layer class surface?"
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -242,8 +242,8 @@ durable_task_register:
       blocking: false
     - id: "F-S025-ADV22-MED-001"
       subject: "SS-tui-core.md broken anchor in 2 worktree files + 7 EPIC-06 story files (canonical: SS-tui.md)"
-      status: pending
-      detail: "Pass 22 MED: crates/monocle-tui/src/lib.rs:7 + crates/monocle-tui/Cargo.toml:19 cite 'SS-tui-core.md' which does not exist. Canonical is SS-tui.md v1.8.2. 7 sibling story files on factory-artifacts also cite SS-tui-core.md (S-024/S-025/S-026/S-027/S-028/S-029/S-031). CLOSED after implementer 2-site fix + story-writer 7-site sweep both land (follow-up confirmation burst). Routing: implementer (worktree) + story-writer (factory-artifacts)."
+      status: closed
+      detail: "CLOSED (D-201.1): implementer e5ebc43 (feature/S-025-tui-skeleton-sessions) — lib.rs:7 + Cargo.toml:19 fixed; sweep verified all 9 unique SS-*.md references in code; only SS-tui-core.md was broken. Story-writer 0cea089 (factory-artifacts) — 7 EPIC-06 story files (S-024 v1.5, S-025 v1.7, S-026 v1.8, S-027 v1.4, S-028 v1.3, S-029 v1.2, S-031 v1.1) + STORY-INDEX v5.12. BONUS: story-writer sweep-wider caught SS-forward-compat.md (non-existent) at SS-conventions-anti-patterns.md:1043 — fixed in-scope per CLAUDE.md Principle 4; SS-conventions v1.31.0 → v1.31.1. CI 9/9 green on e5ebc43 (Preflight, DTU, Semgrep, audit-table-drift, 3x Build+Test, cargo deny, cargo audit). Final-verification grep: zero active-content broken SS-tui-core.md references."
       blocking: false
     - id: "F-S025-ADV22-PROC-001"
       subject: "[process-gap] CI-enforced bare-filename architecture anchor resolution check (build.rs or semgrep)"
@@ -313,36 +313,36 @@ durable_task_register:
     - "Test file doc comment spec version citations need explicit disambiguation anchor (F-D-NN tag, §section, or parenthetical) — bare version numbers in test files are indistinguishable from Category A active-pointers during automated sweep (ADV20-PROC-001)"
     - "META-PATTERN (D-201): S-025 convergence has failed 4× at the 1/3→2/3 transition. Each failure is a DIFFERENT class ONE LAYER DEEPER in the stack: Pass 9 = vacuous-mirror (test assertion layer); Pass 16 = audit-table/op_ref (struct-metadata layer); Pass 18 = version-pointer propagation (implementation-worktree layer); Pass 22 = bare-filename anchor resolution (spec-filename layer). This is not recurrence within a bounded species — it is a genuine escalation ladder where each sweep improvement reveals the next blind spot. Two-sweep protocol now required: (1) D-198.2 canonical-anchored versioned sweep; (2) D-201 bare-filename existence-check sweep. Anticipate that Pass 23 may reveal a new class if the two-sweep protocol still has a blind spot."
 next_session_resume_protocol: |
-  S-025 PASS 22 MED (D-201) — COUNTER 0/3 RESET — FIX-ROUND IN PARALLEL — STATE v6.48
+  S-025 PASS 22 MED REMEDIATED (D-201.1) — COUNTER 0/3 — PASS 23 DISPATCHED — STATE v6.49
 
-  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 branch HEAD ef7f4c62 on feature/S-025-tui-skeleton-sessions.
-  COUNTER: 0/3 RESET (4th 1/3→2/3 transition failure — DIFFERENT class than Path-B species).
-  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22).
-  TOTAL RESETS: 7 (Passes 8, 9, 10, 12, 16, 18, 22). CONVERGENCE-ATTEMPT #6 PENDING post-fix.
+  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 branch HEAD e5ebc43 on feature/S-025-tui-skeleton-sessions.
+  COUNTER: 0/3 (reset at Pass 22 MED; REMEDIATED via e5ebc43 + 0cea089). Pass 23 in flight.
+  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED.
+  TOTAL RESETS: 7 (Passes 8, 9, 10, 12, 16, 18, 22). CONVERGENCE-ATTEMPT #6 ACTIVE.
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
-  PASS 22 OUTCOME (D-201):
+  PASS 22 OUTCOME (D-201) — REMEDIATED (D-201.1):
     VERDICT: MED — F-S025-ADV22-MED-001: SS-tui-core.md cited in 9 files but document does not exist.
-    COUNTER RESETS: 1/3 → 0/3 per MED rule.
-    PATH-B-PROPAGATION SPECIES: BOUNDED (no recurrence). Tripwire NOT FIRED in literal sense (different class).
+    REMEDIATION: COMPLETE. implementer e5ebc43 (2 worktree sites) + story-writer 0cea089 (7 story sites + BONUS).
+    BONUS CATCH (0cea089): SS-conventions-anti-patterns.md:1043 cited SS-forward-compat.md (non-existent);
+      canonical is SS-forward-compatibility.md. Story-writer fixed in-scope per CLAUDE.md Principle 4 sweep-wider.
+      SS-conventions v1.31.0 → v1.31.1.
+    CI: 9/9 green on e5ebc43 (Preflight, DTU, Semgrep, audit-table-drift, 3x Build+Test, cargo deny, cargo audit).
+    COUNTER: 1/3 → 0/3 (MED reset) → holding 0/3. Pass 23 dispatched at post-fix HEAD e5ebc43.
+    PATH-B-PROPAGATION SPECIES: BOUNDED (no recurrence). Tripwire NOT FIRED (different class).
     DEFECT CLASS: "Bare-filename architecture anchor resolution" — META-GAP in D-198.2 canonical-anchored sweep.
-      D-198.2 audits SS-X.md vY.Z patterns. Bare-filename SS-tui-core.md (no version) passes invisible.
-    4TH 1/3→2/3 TRANSITION FAILURE: Pattern is "each 1/3 transition surfaces NEW-class defect ONE LAYER DEEPER."
+    4TH 1/3→2/3 TRANSITION FAILURE: Pattern = "each 1/3 transition surfaces NEW-class defect ONE LAYER DEEPER."
       Pass 9: vacuous-mirror (test layer). Pass 16: audit-table+op_ref (struct-metadata layer).
       Pass 18: version-pointer propagation (implementation-worktree layer). Pass 22: bare-filename resolution (spec-filename layer).
-    META-PATTERN CODIFIED: See process_discoveries (last entry). This is a genuine escalation ladder,
-      not recurrence within a bounded species. Each layer is deeper in the stack than the prior.
-    CODIFY-001 EXTENDED with 7th sweep category (D-201 / TD-S025-PASS22-PROC-001).
+    META-PATTERN CODIFIED: Genuine escalation ladder, not recurrence within a bounded species.
+    CODIFY-001 EXTENDED with 7th sweep category + PROVEN canonical sweep command (story-writer 0cea089).
     ADV22-PROC-001 ADDED: CI-enforced bare-filename anchor resolution check.
 
   IMMEDIATE NEXT ACTIONS:
-    1. CONFIRM implementer commit SHA (parallel — 2 sites: lib.rs:7 + Cargo.toml:19, SS-tui-core.md → SS-tui.md).
-    2. CONFIRM story-writer commit SHA (parallel — 7 EPIC-06 story files on factory-artifacts, SS-tui-core.md → SS-tui.md).
-    3. BOTH commits must land; state-manager confirmation burst updates STATE to v6.49 with commit SHAs.
-    4. After confirmation: Dispatch Pass 23 adversary at POST-FIX HEAD.
-       Focus: all Pass 1-22 axes + NEW angle ββ (bare-filename anchor resolution audit).
+    1. AWAIT Pass 23 adversary result. Focus: all Pass 1-22 axes + NEW angle (bare-filename anchor resolution).
        Target: NITPICK_ONLY-CLEAN → counter 0/3 → 1/3.
-    5. Convergence forecast: 3/3 at Pass 25 if Passes 23+24+25 all NITPICK_ONLY-CLEAN.
+    2. META-pattern watch: does a 5th new-class find surface? Anticipate if two-sweep protocol still has blind spots.
+    3. Convergence forecast: 3/3 at Pass 25 if Passes 23+24+25 all NITPICK_ONLY-CLEAN.
 
   CRITICAL FILES FOR PASS 23 ADVERSARY (read in order):
     1. .factory/STATE.md (v6.49 post-fix); 2. adversarial-pass-22.md; 3. adversarial-pass-21.md;
@@ -350,21 +350,29 @@ next_session_resume_protocol: |
     7. adversarial-pass-16.md; 8. adversarial-pass-15.md; 9. adversarial-pass-12.md;
     10. architect-decisions-pass-1.md; 11. architect-decisions-pass-2.md;
     12. text-style-adjudication.md; 13. red-gate-log.md;
-    14. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6);
+    14. .factory/stories/S-025-tui-skeleton-sessions.md (v1.7);
     15. .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md (verify v1.0.6 correct);
     16. CLAUDE.md (project principles — production-grade default).
     All cycle files at: .factory/cycles/cycle-001/S-025/
 
-  ADV16-CODIFY-001 7-CATEGORY SWEEP (D-198.2 + D-201):
+  ADV16-CODIFY-001 7-CATEGORY SWEEP (D-198.2 + D-201 + D-201.1 PROVEN):
     CATEGORY 1-6 (CANONICAL-ANCHORED): grep versioned SS-X.md vY.Z hits; extract cited_version vs canonical.
       grep -rn -E "(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief|dtu-assessment)\.md( +|\s+v|v)[0-9]+\.[0-9]+(\.[0-9]+)?" \
         --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' \
         . | grep -v "\.factory/\|target/\|node_modules/\|\.git/\|cycles/"
-    CATEGORY 7 (BARE-FILENAME RESOLUTION — D-201): grep ALL SS-*.md / ADR-NNNN-*.md bare refs; verify each resolves.
-      grep -rh -oE "SS-[a-z-]+\.md|ADR-[0-9]+-[a-z-]+\.md" \
-        --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' --include='*.md' \
-        . 2>/dev/null | grep -v "/cycles/" | sort -u
-      For each: verify file exists at .factory/specs/architecture/<name>.md (or adr/<name>.md).
+    CATEGORY 7 (BARE-FILENAME RESOLUTION — D-201, PROVEN D-201.1): grep ALL SS-*.md / ADR-NNNN-*.md / BC-N.NN.NNN.md bare refs; verify each resolves.
+      Proven sweep command (story-writer 0cea089 burst):
+        grep -rh -oE "SS-[a-z-]+\.md|ADR-[0-9]+-[a-z-]+\.md|BC-[0-9]+\.[0-9]+\.[0-9]+\.md" \
+          .factory/ 2>/dev/null | sort -u
+      For each reference, verify file exists at canonical location.
+      Distinguish active references (FIX) from historical narrative (PRESERVE).
+      Historical narrative includes:
+        - /cycles/ directory (cycle reports, decisions-archive)
+        - §Trace entries documenting old→new migrations
+        - /plans/ historical audit reports
+        - spec body placeholder examples (e.g., "SS-foo.md")
+      Proven catch (0cea089): SS-conventions-anti-patterns.md:1043 cited SS-forward-compat.md (non-existent);
+        canonical is SS-forward-compatibility.md. BONUS fix → SS-conventions v1.31.1.
 
   RECURRENCE WATCH:
     Path-B-propagation defect species: BOUNDED (Pass 21 D-198.2 validated; no recurrence at Pass 22).
@@ -373,12 +381,13 @@ next_session_resume_protocol: |
     META-PATTERN: Each 1/3 transition fires a NEW-class defect ONE LAYER DEEPER in the stack.
       This pattern itself is now codified — see process_discoveries (last entry).
 
-  ARTIFACT VERSIONS (D-201 / Pass 23 entry point — post-fix):
+  ARTIFACT VERSIONS (D-201.1 / Pass 23 entry point — post-fix, confirmed):
     BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
-    SS-conventions-anti-patterns v1.31.0. SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7.
+    SS-conventions-anti-patterns v1.31.1. SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.7. S-026 v1.8.
     BC-2.03.001 v1.0.6. S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7.
-    holdout-scenarios v1.5. STORY-INDEX v5.11.
-    Post-fix HEAD: PENDING implementer + story-writer commit SHAs (confirmation burst).
+    S-024 v1.5. S-027 v1.4. S-028 v1.3. S-029 v1.2. S-031 v1.1.
+    holdout-scenarios v1.5. STORY-INDEX v5.12.
+    Post-fix: implementer e5ebc43 (feature/S-025-tui-skeleton-sessions) + story-writer 0cea089 (factory-artifacts). CI 9/9 green.
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
@@ -416,7 +425,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 22 MED (D-201); counter RESET 0/3; implementer+story-writer fix dispatched; Pass 23 pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 22 MED at ef7f4c62. Counter RESETS 1/3 → 0/3 (4th 1/3→2/3 failure; DIFFERENT class than Path-B species). META-GAP in D-198.2 bare-filename anchor resolution. CODIFY-001 7th category added. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22). Convergence-attempt #6 pending post-fix. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 22 REMEDIATED (D-201.1); counter 0/3; Pass 23 dispatched | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 MED-001 CLOSED: e5ebc43 (2 worktree sites) + 0cea089 (7 stories + BONUS SS-forward-compat.md → SS-conventions v1.31.1). CI 9/9 green. Pass 23 dispatched; convergence-attempt #6. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -429,7 +438,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 22 MED (D-201): counter RESETS 1/3 → 0/3. F-S025-ADV22-MED-001 SS-tui-core.md broken anchor (9 sites). META-GAP in D-198.2. CODIFY-001 7th category. Implementer + story-writer parallel fix dispatched. Pass 23 pending post-fix. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18, 22 = 7 total.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 22 REMEDIATED (D-201.1): F-S025-ADV22-MED-001 CLOSED at e5ebc43 + 0cea089. BONUS: SS-conventions v1.31.1. CI 9/9 green. Pass 23 dispatched; convergence-attempt #6; counter 0/3. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18, 22 = 7 total.
 
 ## Blocking Issues
 
@@ -460,7 +469,7 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **ADR-0006 v1.2**. **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.11** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.27** (72 numbered BCs + 41 DTU BCs = 113 total). **ARCH-INDEX v1.0.16** (7 subsystems). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions-anti-patterns v1.31.1**. **ADR-0006 v1.2**. **BC-2.03.001 v1.0.6**. **STORY-INDEX v5.12** (33 stories, 195 pts). **sprint-state v1.30** (26/33 done, 156/195 pts, 80%). **S-001 v1.9**. **S-003 v1.8**. **S-014 v1.5**. **S-015 v1.7**. **S-024 v1.5**. **S-025 v1.7**. **S-026 v1.8**. **S-027 v1.4**. **S-028 v1.3**. **S-029 v1.2**. **S-031 v1.1**. **holdout-scenarios v1.5**. MSRV: Rust 1.88 (Phase 1-2, time 0.3.47 floor per RUSTSEC-2026-0009; original ratatui floor was 1.86); Rust 1.92 (Phase 3, wasmtime 44). 39 codified disciplines (SE-1..SE-23 + SE-40 candidate). Workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -474,21 +483,21 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.48 (D-201 — Pass 22 MED-001 broken anchor SS-tui-core.md; 4th 1/3 reset different class; META-GAP CODIFY-001 7th category; counter 1/3 → 0/3; implementer+story-writer dispatched)
+## §Trace v6.49 (D-201.1 — MED-001 CLOSED; e5ebc43 + 0cea089; BONUS SS-forward-compat.md catch; SS-conventions v1.31.1; CI 9/9; Pass 23 dispatched)
 
-**Pass 22 MED** (2026-05-29, D-201): F-S025-ADV22-MED-001 — SS-tui-core.md cited in crates/monocle-tui/src/lib.rs:7 + crates/monocle-tui/Cargo.toml:19 (in-scope) and 7 EPIC-06 story files (out-of-scope sibling drift) but the document does not exist. Canonical is SS-tui.md v1.8.2. META-GAP in D-198.2: canonical-anchored sweep audits versioned `SS-X.md vY.Z` patterns only; bare-filename references (no version token) are invisible to the sweep. 4th consecutive 1/3 → 2/3 transition failure — DIFFERENT class than Path-B-propagation species (which is bounded). Counter RESETS 1/3 → 0/3.
+**Pass 22 MED REMEDIATED** (2026-05-29, D-201.1): F-S025-ADV22-MED-001 CLOSED. Implementer e5ebc43 (feature/S-025-tui-skeleton-sessions): lib.rs:7 + Cargo.toml:19 fixed; sweep verified all 9 unique SS-*.md references in code — only SS-tui-core.md was broken. Story-writer 0cea089 (factory-artifacts): 7 EPIC-06 story files updated (S-024 v1.4→v1.5, S-025 v1.6→v1.7, S-026 v1.7→v1.8, S-027 v1.3→v1.4, S-028 v1.2→v1.3, S-029 v1.1→v1.2, S-031 v1.0→v1.1) + STORY-INDEX v5.11→v5.12.
 
-**META-PATTERN codified:** 4 consecutive 1/3 reset events, each a new class one layer deeper: Pass 9 (test-assertion), Pass 16 (struct-metadata), Pass 18 (impl-worktree version-pointer), Pass 22 (spec-filename existence). Not recurrence — escalation ladder revealing sweep protocol blind spots.
+**BONUS sweep-wider catch (0cea089, CLAUDE.md Principle 4):** Story-writer sweep found SS-conventions-anti-patterns.md:1043 citing `SS-forward-compat.md` (non-existent; canonical is `SS-forward-compatibility.md`). Fixed in-scope. SS-conventions-anti-patterns v1.31.0→v1.31.1. This is architect-domain work done by story-writer per CLAUDE.md Principle 4 (fix in scope, don't defer) + sweep-wider-than-finding discipline (L-W6-S025-007).
 
-**CODIFY-001 7th sweep category (D-201):** Bare-filename architecture anchor resolution audit. Two-sweep protocol now required: (1) D-198.2 versioned canonical-anchored sweep; (2) D-201 bare-filename existence-check sweep.
+**CODIFY-001 7th sweep category PROVEN (D-201.1):** Canonical sweep command validated by story-writer 0cea089: `grep -rh -oE "SS-[a-z-]+\.md|ADR-[0-9]+-[a-z-]+\.md|BC-[0-9]+\.[0-9]+\.[0-9]+\.md" .factory/ 2>/dev/null | sort -u`. Scope: .factory/ (broader than worktree-only); catches spec-body and story-file bare-filename refs that the worktree-only grep misses. Historical-narrative exclusion (cycles/, §Trace, plans/) applied post-grep by human judgment.
 
-**ADV22-PROC-001 added:** CI-enforced bare-filename anchor resolution check (build.rs or semgrep). Anchored to Task #9.
+**CI green:** 9/9 SUCCESS on e5ebc43 (Preflight, DTU, Semgrep, audit-table-drift, 3x Build+Test, cargo deny, cargo audit).
 
-**Path-B-propagation species:** BOUNDED (no recurrence at Pass 22). Tripwire NOT FIRED in literal sense (different defect class).
+**Pass 23 dispatched.** Convergence-attempt #6; counter 0/3. META-pattern watch: 5th new-class defect one layer deeper? Two-sweep protocol (D-198.2 versioned + D-201 bare-filename) now operationally proven.
 
-**Artifact versions bumped this burst (D-201):** STATE v6.47→v6.48. No spec version bumps pending fix-round completion (implementer + story-writer commits PENDING).
+**Artifact versions bumped (D-201.1):** STATE v6.48→v6.49. SS-conventions-anti-patterns v1.31.0→v1.31.1. STORY-INDEX v5.11→v5.12. Stories: S-024 v1.5, S-025 v1.7, S-026 v1.8, S-027 v1.4, S-028 v1.3, S-029 v1.2, S-031 v1.1.
 
-§Trace v6.47 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.48 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.42 through v6.44 archived to `cycles/cycle-001/burst-log.md` (D-198.1 compaction).
 §Trace v6.40 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.39 archived to `cycles/cycle-001/burst-log.md`.
