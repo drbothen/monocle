@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.45"
+version: "6.46"
 status: active
 producer: state-manager
 timestamp: 2026-05-29T05:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 19 MED CLOSED (D-198.1) — Devops 0aba808: 5 active-pointer bumps (2 SS-conventions-anti-patterns + 3 SS-engine-module wider-sweep catches); 8+ historical anchors preserved; 4 other docs clean. CI 8/10 green at snapshot. F-S025-ADV19-MED-001 CLOSED. Counter HOLDS 0/3; Pass 20 pending CI green (10/10)."
+current_step: "S-025 Pass 20 MED + LOW CLOSED (D-199) — Devops ef7f4c62: engine.rs:143 v1.1.22→v1.1.26 (MED-001); 72 citations swept; 9 Category B preserved. Test-writer dc229db: engine_module_surface.rs:6-8 Option B anchor (LOW-001). CODIFY-001 D-198.2: canonical-anchored sweep protocol. 5th convergence stall; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; Pass 21 pending."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3)."
-awaiting: "CI green verification on 0aba808 (10/10); then Pass 20 adversary (convergence attempt #4 first clean pass; target counter 0/3 → 1/3). After S-025 convergence (3/3): S-026 (13pts) dispatch."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188: Pass 12 CRITICAL fix + F-S025-CI-001. D-189: Pass 13 LOW; fix dispatched. D-190: Pass 14 NIT; fix dispatched. D-191: Pass 15 CLEAN; counter 0/3→1/3. D-192: Pass 16 MED (7-round fix; counter RESET 0/3). D-193: Pass 16 round 6 BackoffState gap; F-R30-1 threshold CROSSED. D-194: Pass 16 round 7 Path B RUSTSEC-2026-0009 MSRV 1.86→1.88; CI all 9 green bfcba19. D-195: Pass 17 NITPICK_ONLY-CLEAN (1 LOW BC-2.03.001 MSRV 1.86 stale ref; PO fix dispatched); counter 0/3→1/3 HOLDING; Pass 18 at post-fix HEAD. D-196: Pass 17 LOW-001 FULLY CLOSED — Path B propagation tail 2 cascade rounds (c7ae560 story-writer: S-014/S-015/STORY-INDEX v5.10; e2944d3 story-writer: S-001/S-003/holdout-scenarios/STORY-INDEX v5.11). Zero MSRV 1.86 non-§Trace hits. Counter 1/3 CONFIRMED. Pass 18 ready. D-197: Pass 18 MED-001 RESET counter 1/3 → 0/3 — Path B propagation cascade extends to worktree implementation layer (17 occurrences in 10 files still pin SS-deps-pin-manifest v1.1.19; devops fix-round dispatched in parallel). ADV16-CODIFY-001 extended with 6th sweep target. Pass 19 pending post-fix HEAD. D-197.1: MED-001 CLOSED at devops 9fcfd49 (18 replacements/11 files; wider sweep found types.rs:48 v1.1.20 additional). ADV16-CODIFY-001 6-category enumeration finalized. CI queued. D-198: Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns v1.30.2 stale active pointers in clippy.toml + deny.toml. Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module/SS-ipc active-vs-historical adjudication). ADV16-CODIFY-001 generalized from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at floor (4 consecutive attempts failed to advance past 0/3). D-199: S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified. ADV20-PROC-001 added (Test File Documentation Standards). 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62; architect-escalation tripwire armed for Pass 21."
+awaiting: "CI green verification on ef7f4c62 (10/10 SUCCESS); then Pass 21 adversary (counter 0/3 → 1/3 target; architect-escalation tripwire armed if same-family finding). After S-025 convergence (3/3): S-026 (13pts) dispatch."
 durable_task_register:
   outstanding:
     - id: "F-S022-ADV15-LOW-001"
@@ -236,9 +236,14 @@ durable_task_register:
       detail: "Pass 16 round 5 (architect): scripts/audit-table.md is a vendored copy of the audit table from SS-engine-module.md. When the canonical table changes, the vendored copy must be synced atomically in the same PR. The HookEventRecord crate-column drift (monocle-runtime → monocle-ipc, post-S-022 relocation) persisted unnoticed across 16 passes because the vendored copy was not included in propagation sweeps. Codification target: include in pre-commit hook or PR template checklist. Recurrence count: 1."
       blocking: false
     - id: "F-S025-ADV16-CODIFY-001"
-      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep + MSRV-bump playbook discipline (extended D-196, D-197, FINALIZED D-197.1, GENERALIZED D-198, REFINED D-198.1)."
+      subject: "[S-7.02 codification trigger] F-R30-1 recurrence count crossed 3 (now 4). Codify audit-table sweep + MSRV-bump playbook discipline (extended D-196, D-197, FINALIZED D-197.1, GENERALIZED D-198, REFINED D-198.1, CANONICAL-ANCHORED D-198.2)."
       status: pending
-      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' EXTENDED (D-196) per PO + story-writer process-gap observation: MSRV-bump playbook scope must include ALL layers — architecture/ (SS docs, ADRs, risk-acceptance), behavioral-contracts/ (BC bodies), stories/ inputs[] pins AND body content, planning artifacts (holdout-scenarios.md HS-* scenarios). Verification sweep command: grep -rn \"MSRV X.YY\\|Rust X.YY stable\\|channel = \\\"X.YY\\\"\\|rust-version = \\\"X.YY\\\"\" .factory/ | grep -v \"§Trace\". Success criterion: zero non-§Trace hits remaining. FINALIZED (D-197.1) — MSRV-bump playbook + version-pointer-sweep playbook 6-category target enumeration (codified from F-S025-ADV18-MED-001 closure 9fcfd49): (1) .factory/ spec artifacts (.md files) [architect f3533ce sweep covered this]; (2) Root Cargo.toml + deny.toml [devops 9fcfd49 sweep target]; (3) Member crate Cargo.toml files (under crates/ and xtask/) [devops 9fcfd49 sweep target]; (4) .github/workflows/**.yml files [devops 9fcfd49 sweep target]; (5) .github/dependabot.yml [devops 9fcfd49 sweep target]; (6) src/**/*.rs production code (comments, panic messages, doc strings) [devops 9fcfd49 wider-sweep gap discovery — crates/monocle-runtime/src/types.rs:48 carried v1.1.20, hidden from Passes 16+17 because they searched .toml/.yml only]. GENERALIZED (D-198) — F-S025-ADV19-MED-001 (SS-conventions-anti-patterns v1.30.2 in clippy.toml+deny.toml) proves the 6-category sweep was doc-name-specific (SS-deps-pin-manifest only). REFINED (D-198.1) — devops 0aba808 adjudication-protocol-driven sweep is the concrete codification template. After ANY canonical policy/spec doc minor-or-patch version bump (SS-deps-pin-manifest, SS-conventions-anti-patterns, SS-engine-module, SS-ipc, SS-tui, SS-config, SS-daemon-wiring, ARCH-INDEX, PRD, etc.), sweep ALL implementation-worktree files for active-pointer citations matching the doc-name pattern. Canonical sweep command: grep -rn -E '(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief)\\.md.*v[0-9]+\\.[0-9]+' --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' --include='*.md' . | grep -v '\\.factory/\\|target/\\|node_modules/\\|\\.git/\\|cycles/'. For each hit, classify: CATEGORY A — ACTIVE POINTER (FIX, bump to canonical): 'Source: <Doc>.md v<X>'; 'Policy source of truth: <Doc>.md v<X>'; 'Pin policy source of truth: <Doc>.md v<X>'; 'See <Doc>.md v<X> §<section>' (implies look at current spec); 'Per <Doc>.md v<X>, <current-behavior-claim>' (no F-D-NN tag, no line anchor); 'conformance to <Doc>.md v<X>'; module-doc citations as implementation source; bare top-of-file version cites without §section or line anchor. CATEGORY B — HISTORICAL ANCHOR (PRESERVE): 'per <Doc>.md v<X> §<section> (F-D-NN)' — F-D-NN finding tag; 'per <Doc>.md v<X> §<section> (lines NNN-NNN)' — explicit line anchor; 'first specified in <Doc>.md v<X>'; '<Doc>.md v<X> §Trace'; 'introduced in v<X>' / 'as of v<X>' — when-anchored. CATEGORY EDGE (judgment call): Citations with §section anchor but no F-D-NN tag — verify §section content unchanged between cited version and canonical. If unchanged → Category B. If wording refined → Category A. If semantics changed → CRITICAL flag. Verification: zero non-historical-anchor stale pointers. Template commit: devops 0aba808 commit body documents per-site adjudication for all 5 active-pointer sites + 8+ historical-anchor preservations. Recurrence count: F-R30-1 = 4/3 (audit-table) + F-S025-ADV17-LOW-001 = 1/3 (MSRV-bump scope) + F-S025-ADV18-MED-001 = 1/3 (version-pointer-sweep impl-layer) + F-S025-ADV19-MED-001 = 1/3 (sibling-doc generalization). Pattern codified. Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation."
+      detail: "Pass 16 round 6 (D-193): F-R30-1 recurrence count crossed threshold (4 rows total: App + EventBusHookEvent + EngineModuleRegistry + BackoffState). S-7.02 codification REQUIRED. Codify in CLAUDE.md or VSDD.md: 'When a new crate is added or merged from a separate branch, the architect MUST run git ls-tree <merge-base>..HEAD + per-file #[non_exhaustive] pub struct sweep before declaring audit-table sync complete.' EXTENDED (D-196) per PO + story-writer process-gap observation: MSRV-bump playbook scope must include ALL layers — architecture/ (SS docs, ADRs, risk-acceptance), behavioral-contracts/ (BC bodies), stories/ inputs[] pins AND body content, planning artifacts (holdout-scenarios.md HS-* scenarios). Verification sweep command: grep -rn \"MSRV X.YY\\|Rust X.YY stable\\|channel = \\\"X.YY\\\"\\|rust-version = \\\"X.YY\\\"\" .factory/ | grep -v \"§Trace\". Success criterion: zero non-§Trace hits remaining. FINALIZED (D-197.1) — MSRV-bump playbook + version-pointer-sweep playbook 6-category target enumeration (codified from F-S025-ADV18-MED-001 closure 9fcfd49): (1) .factory/ spec artifacts (.md files) [architect f3533ce sweep covered this]; (2) Root Cargo.toml + deny.toml [devops 9fcfd49 sweep target]; (3) Member crate Cargo.toml files (under crates/ and xtask/) [devops 9fcfd49 sweep target]; (4) .github/workflows/**.yml files [devops 9fcfd49 sweep target]; (5) .github/dependabot.yml [devops 9fcfd49 sweep target]; (6) src/**/*.rs production code (comments, panic messages, doc strings) [devops 9fcfd49 wider-sweep gap discovery — crates/monocle-runtime/src/types.rs:48 carried v1.1.20, hidden from Passes 16+17 because they searched .toml/.yml only]. GENERALIZED (D-198) — F-S025-ADV19-MED-001 (SS-conventions-anti-patterns v1.30.2 in clippy.toml+deny.toml) proves the 6-category sweep was doc-name-specific (SS-deps-pin-manifest only). REFINED (D-198.1) — devops 0aba808 adjudication-protocol-driven sweep is the concrete codification template. After ANY canonical policy/spec doc minor-or-patch version bump (SS-deps-pin-manifest, SS-conventions-anti-patterns, SS-engine-module, SS-ipc, SS-tui, SS-config, SS-daemon-wiring, ARCH-INDEX, PRD, etc.), sweep ALL implementation-worktree files for active-pointer citations matching the doc-name pattern. Canonical sweep command: grep -rn -E '(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief)\\.md.*v[0-9]+\\.[0-9]+' --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' --include='*.md' . | grep -v '\\.factory/\\|target/\\|node_modules/\\|\\.git/\\|cycles/'. For each hit, classify: CATEGORY A — ACTIVE POINTER (FIX, bump to canonical): 'Source: <Doc>.md v<X>'; 'Policy source of truth: <Doc>.md v<X>'; 'Pin policy source of truth: <Doc>.md v<X>'; 'See <Doc>.md v<X> §<section>' (implies look at current spec); 'Per <Doc>.md v<X>, <current-behavior-claim>' (no F-D-NN tag, no line anchor); 'conformance to <Doc>.md v<X>'; module-doc citations as implementation source; bare top-of-file version cites without §section or line anchor. CATEGORY B — HISTORICAL ANCHOR (PRESERVE): 'per <Doc>.md v<X> §<section> (F-D-NN)' — F-D-NN finding tag; 'per <Doc>.md v<X> §<section> (lines NNN-NNN)' — explicit line anchor; 'first specified in <Doc>.md v<X>'; '<Doc>.md v<X> §Trace'; 'introduced in v<X>' / 'as of v<X>' — when-anchored. CATEGORY EDGE (judgment call): Citations with §section anchor but no F-D-NN tag — verify §section content unchanged between cited version and canonical. If unchanged → Category B. If wording refined → Category A. If semantics changed → CRITICAL flag. Verification: zero non-historical-anchor stale pointers. Template commit: devops 0aba808 commit body documents per-site adjudication for all 5 active-pointer sites + 8+ historical-anchor preservations. Recurrence count: F-R30-1 = 4/3 (audit-table) + F-S025-ADV17-LOW-001 = 1/3 (MSRV-bump scope) + F-S025-ADV18-MED-001 = 1/3 (version-pointer-sweep impl-layer) + F-S025-ADV19-MED-001 = 1/3 (sibling-doc generalization) + F-S025-ADV20-MED-001 = 1/3 (sibling-version orphaned-intermediate). CANONICAL-ANCHORED (D-198.2) — F-S025-ADV20-MED-001 (engine.rs:143 v1.1.22 orphaned-intermediate between Pass 19 floor v1.1.20 and canonical v1.1.26) proves D-198.1 stale-literal sweep was insufficient. Sweep regex must be CANONICAL-ANCHORED: extract cited_version from each hit, compare against canonical from .factory/specs/architecture/<Doc>.md frontmatter. Any cited_version != canonical_version is Category A regardless of how many intermediate versions exist. Canonical-anchored sweep command (D-198.2): grep -rn -E '(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief|dtu-assessment)\\.md( +|\\s+v|v)[0-9]+\\.[0-9]+(\\.[0-9]+)?' --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' . | grep -v '\\.factory/\\|target/\\|node_modules/\\|\\.git/\\|cycles/'. For each hit: extract cited_version; look up canonical_version from frontmatter; if cited_version != canonical_version AND no F-D-NN/line-anchor/§Trace → Category A (fix). This supersedes D-198.1 stale-literal approach for ALL future sweep dispatches. Template commit: devops ef7f4c62 (72 citation hits; 9 Category B preserved; 62 canonical-match; 1 Category A bump). Pattern codified. Anchored to Task #9 post-merge sweep, batched with story-writer for follow-up story creation."
+      blocking: false
+    - id: "F-S025-ADV20-PROC-001"
+      subject: "[process-gap] SS-conventions 'Test File Documentation Standards' rule — spec version citations in test files need disambiguation anchor"
+      status: pending
+      detail: "Pass 20 test-writer Option B adjudication surfaces a codification gap: spec version citations in test/production file doc comments must carry one of (1) F-D-NN fix tag, (2) §section anchor, (3) parenthetical '(TDD red-gate authoring baseline; current canonical is vX.Y.Z)' or equivalent disambiguation. Bare version numbers without anchors are flagged as Category B smell during canonical-anchored sweep. Engine_module_surface.rs:6-8 was the concrete instance (v1.1.20 bare → Option B anchor added in dc229db). Routing: architect (SS-conventions-anti-patterns update). Anchored to Task #9 SS-conventions update post-S-025 merge."
       blocking: false
     - id: "F-S025-PATH-B-CLAUDE-MD"
       subject: "CLAUDE.md line 18 cites MSRV 1.86; Path B bumped Phase 1 MSRV to 1.88 — human action required"
@@ -259,6 +264,16 @@ durable_task_register:
       subject: "Path B sibling-doc tail-gap: SS-conventions-anti-patterns.md v1.30.2 stale active pointers (clippy.toml + deny.toml)"
       status: closed
       detail: "CLOSED (D-198.1) at devops commit 0aba808 on feature/S-025-tui-skeleton-sessions. 5 total active-pointer bumps: clippy.toml:2 (SS-conventions-anti-patterns v1.30.2→v1.31.0), deny.toml:1 (SS-conventions-anti-patterns v1.30.2→v1.31.0) — Pass 19 MED-001 targets; engine.rs:4 (SS-engine-module v1.1.20→v1.1.26), engine_module_surface.rs:1197 (SS-engine-module v1.1.20→v1.1.26), engine_module_surface.rs:1223 (SS-engine-module v1.1.20→v1.1.26) — devops adjudication-protocol-driven wider-sweep catches (Pass 19 adversary missed). 8+ Category B historical anchors preserved with per-site rationale documented in 0aba808 commit message. 4 other canonical docs verified clean (SS-deps-pin-manifest v1.2.0, SS-daemon-lifecycle v1.0.33, SS-core-types-and-abi v1.2.13, SS-forward-compatibility v1.2.19). CI: 8/10 SUCCESS at snapshot (Preflight, DTU, Semgrep, audit-table-drift, 2/3 Build+Test); macOS Build+Test + cargo deny + cargo audit pending."
+      blocking: false
+    - id: "F-S025-ADV20-MED-001"
+      subject: "engine.rs:143 SS-engine-module v1.1.22 stale active pointer (orphaned intermediate version)"
+      status: closed
+      detail: "CLOSED (D-199) at devops commit ef7f4c62 on feature/S-025-tui-skeleton-sessions. engine.rs:143 cited 'SS-engine-module.md v1.1.22' — bare active pointer (no F-D-NN, §-anchor, line-anchor); orphaned intermediate version between Pass 19's targeted floor (v1.1.20) and canonical ceiling (v1.1.26). 1 Category A bump applied: engine.rs:143 v1.1.22→v1.1.26. Canonical-anchored sweep: 72 total citation hits across all worktree .rs/.toml/.yml/.md files; 9 Category B preserved; 62 canonical-match; 8 canonical docs verified (SS-engine-module v1.1.26, SS-ipc v1.9.0, SS-daemon-lifecycle v1.0.33, SS-core-types-and-abi v1.2.13, SS-deps-pin-manifest v1.2.0, SS-forward-compatibility v1.2.19, SS-conventions-anti-patterns v1.31.0, dtu-assessment v1.7.5). Convergence-stall species RESOLVED: sweep now catches ALL Doc.md vX.Y.Z cites in one pass. CI pending 10/10."
+      blocking: false
+    - id: "F-S025-ADV20-LOW-001"
+      subject: "engine_module_surface.rs:6-8 Red-Gate v1.1.20 bare citation (pending-intent disambiguation)"
+      status: closed
+      detail: "CLOSED (D-199) at test-writer commit dc229db on feature/S-025-tui-skeleton-sessions. Option B adjudication: engine_module_surface.rs:6-8 disambiguated with parenthetical anchor 'per SS-engine-module.md v1.1.20 (TDD red-gate authoring baseline; current canonical is v1.1.26)'. Justified via comparison: engine.rs:4 + lines 1197/1223 at v1.1.26 (current pointers); lines 548/581/594/624 at v1.1.20 with F-D-NN anchors; bare v1.1.20 at line 8 was the lone outlier. Process-gap recommendation surfaced as ADV20-PROC-001."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -284,82 +299,94 @@ durable_task_register:
     - "IEEE 754: -0.0 == 0.0 so cost < 0.0 does not catch negative zero; is_sign_negative() required. NaN check must come FIRST in guard chains (L-W6-S025-005)"
     - "Architect-decision propagation missed SS-tui in Pass 5 because routing assigned SS to architect but SS-tui was overlooked during BC sweep; SS docs are ALSO propagation targets (L-W6-S025-006)"
     - "Production-grade sweep should expand BEYOND the flagged targets — Pass 11 implementer found 3 additional class siblings; Pass 7 found 2 additional. CLAUDE.md Principle 4 (fix in scope) implies sweep-wider-than-the-finding (L-W6-S025-007)"
+    - "Stale-literal-anchored sweep is insufficient for version citation staleness — orphaned intermediate versions (between targeted floor and canonical ceiling) are invisible to regex targeting known stale literals. CANONICAL-ANCHORED sweep required: extract cited_version per hit, compare vs frontmatter canonical (D-198.2). 5 consecutive convergence stalls in same species before structural resolution."
+    - "Test file doc comment spec version citations need explicit disambiguation anchor (F-D-NN tag, §section, or parenthetical) — bare version numbers in test files are indistinguishable from Category A active-pointers during automated sweep (ADV20-PROC-001)"
 next_session_resume_protocol: |
-  S-025 PASS 19 MED CLOSED (D-198.1 @ 0aba808) — COUNTER 0/3 — PASS 20 PENDING CI 10/10 — STATE v6.45
+  S-025 PASS 20 MED+LOW CLOSED (D-199) — COUNTER 0/3 — PASS 21 PENDING CI 10/10 on ef7f4c62 — STATE v6.46
 
-  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 HEAD 0aba808 (feature/S-025-tui-skeleton-sessions).
-  COUNTER: 0/3 (HOLDS — MED-001 closed; counter was already at floor; no reset; Pass 20 pending CI 10/10 green).
-  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19).
+  STATE: develop @ 7a52041. 26/33 done (156/195 pts). 852+ tests. S-025 branch HEAD ef7f4c62 (devops) + dc229db (test-writer) on feature/S-025-tui-skeleton-sessions.
+  COUNTER: 0/3 (HOLDS — 5th consecutive convergence-attempt stall in same species; architect-escalation tripwire armed).
+  TRAJECTORY: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20).
   TOTAL RESETS: 6 (Passes 8, 9, 10, 12, 16, 18). CONVERGENCE-ATTEMPT #4 IN PROGRESS.
   MSRV: Phase 1 = 1.88 (time 0.3.47 floor). Phase 3 = 1.92. CLAUDE.md line 18 needs human update (F-S025-PATH-B-CLAUDE-MD).
 
-  PASS 19 MED-001 RESOLUTION (D-198.1):
-    FIX COMMIT: devops 0aba808 on feature/S-025-tui-skeleton-sessions.
-    5 ACTIVE-POINTER BUMPS:
-      (1) clippy.toml:2 — SS-conventions-anti-patterns v1.30.2 → v1.31.0 (Pass 19 MED-001 target)
-      (2) deny.toml:1 — SS-conventions-anti-patterns v1.30.2 → v1.31.0 (Pass 19 MED-001 target)
-      (3) engine.rs:4 — SS-engine-module v1.1.20 → v1.1.26 (devops wider-sweep catch; Pass 19 adversary missed)
-      (4) engine_module_surface.rs:1197 — SS-engine-module v1.1.20 → v1.1.26 (devops wider-sweep catch)
-      (5) engine_module_surface.rs:1223 — SS-engine-module v1.1.20 → v1.1.26 (devops wider-sweep catch)
-    8+ CATEGORY B HISTORICAL ANCHORS PRESERVED (per 0aba808 commit body adjudication).
-    4 OTHER DOCS VERIFIED CLEAN: SS-deps-pin-manifest v1.2.0, SS-daemon-lifecycle v1.0.33,
-      SS-core-types-and-abi v1.2.13, SS-forward-compatibility v1.2.19.
-    CI: 8/10 SUCCESS at snapshot (Preflight, DTU, Semgrep, audit-table-drift, 2/3 Build+Test).
-      Pending: macOS Build+Test, cargo deny, cargo audit.
-    F-S025-ADV19-MED-001: CLOSED.
+  PASS 20 MED-001 RESOLUTION (D-199):
+    FIX COMMIT: devops ef7f4c62 on feature/S-025-tui-skeleton-sessions.
+    1 CATEGORY A BUMP: engine.rs:143 — SS-engine-module v1.1.22 → v1.1.26 (orphaned intermediate version).
+    72 TOTAL CITATIONS SWEPT (canonical-anchored): 9 Category B preserved; 62 canonical-match; 1 Category A fixed.
+    8 CANONICAL DOCS VERIFIED: SS-engine-module v1.1.26 (9 cites, 1 bumped, 8 preserved), SS-ipc v1.9.0,
+      SS-daemon-lifecycle v1.0.33, SS-core-types-and-abi v1.2.13, SS-deps-pin-manifest v1.2.0,
+      SS-forward-compatibility v1.2.19, SS-conventions-anti-patterns v1.31.0, dtu-assessment v1.7.5.
+    CI: Preflight in_progress at last check; DTU SUCCESS (full 10/10 pending).
+    F-S025-ADV20-MED-001: CLOSED.
+
+  PASS 20 LOW-001 RESOLUTION (D-199):
+    FIX COMMIT: test-writer dc229db on feature/S-025-tui-skeleton-sessions.
+    Option B: engine_module_surface.rs:6-8 → parenthetical anchor added:
+      "per SS-engine-module.md v1.1.20 (TDD red-gate authoring baseline; current canonical is v1.1.26)"
+    F-S025-ADV20-LOW-001: CLOSED.
+
+  CONVERGENCE-STALL SPECIES RESOLVED (D-198.2):
+    Root cause: Pass 19 stale-literal-anchored sweep missed orphaned intermediate versions.
+    Fix: CANONICAL-ANCHORED sweep — extract cited_version per hit, compare vs frontmatter canonical.
+    Any cited_version != canonical_version + no F-D-NN/line-anchor/§Trace → Category A (fix).
+    Template: devops ef7f4c62 sweep (72 hits; D-198.2 canonical-anchored protocol).
 
   IMMEDIATE NEXT ACTIONS:
-    1. Confirm CI 10/10 green on 0aba808.
-    2. Dispatch Pass 20 adversary at HEAD 0aba808.
-       Focus: verify ALL 5 active-pointer bumps clean; verify 8+ historical anchors undisturbed;
-       full Pass 1-19 re-verification; all previously-closed findings remain closed.
-    3. If Pass 20 CLEAN → counter 1/3. Dispatch Pass 21.
-    4. Convergence forecast: 3/3 at Pass 22 if Passes 20+21+22 all NITPICK_ONLY-CLEAN.
-    5. Maximum skepticism at every counter-advance moment (L-W6-S025-004: premature-clean confirmed 4×).
+    1. Confirm CI 10/10 green on ef7f4c62 (chain HEAD includes both fixes: test-writer dc229db + devops ef7f4c62).
+    2. Dispatch Pass 21 adversary at HEAD ef7f4c62.
+       Focus: verify engine.rs:143 at v1.1.26; verify engine_module_surface.rs:6-8 anchor present;
+       full canonical-anchored sweep verification; all Pass 1-20 re-verification.
+    3. ARCHITECT-ESCALATION TRIPWIRE: If Pass 21 surfaces ANY worktree active-pointer staleness on
+       any canonical doc → escalate to architect to evaluate replacing version-in-comment discipline
+       with version-pin lookup-table.
+    4. If Pass 21 NITPICK_ONLY-CLEAN → counter 0/3 → 1/3.
+    5. Convergence forecast: 3/3 at Pass 23 if Passes 21+22+23 all NITPICK_ONLY-CLEAN.
+    6. Maximum skepticism (L-W6-S025-004: premature-clean confirmed 5×).
 
-  CRITICAL FILES FOR PASS 20 ADVERSARY (read in order):
-    1. .factory/STATE.md (v6.45); 2. adversarial-pass-19.md; 3. adversarial-pass-18.md;
-    4. adversarial-pass-17.md; 5. adversarial-pass-16.md; 6. adversarial-pass-15.md;
-    7. adversarial-pass-12.md; 8. architect-decisions-pass-1.md; 9. architect-decisions-pass-2.md;
-    10. text-style-adjudication.md; 11. red-gate-log.md;
-    12. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6);
-    13. .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md (verify v1.0.6 correct);
-    14. CLAUDE.md (project principles — production-grade default).
+  CRITICAL FILES FOR PASS 21 ADVERSARY (read in order):
+    1. .factory/STATE.md (v6.46); 2. adversarial-pass-20.md; 3. adversarial-pass-19.md;
+    4. adversarial-pass-18.md; 5. adversarial-pass-17.md; 6. adversarial-pass-16.md;
+    7. adversarial-pass-15.md; 8. adversarial-pass-12.md; 9. architect-decisions-pass-1.md;
+    10. architect-decisions-pass-2.md; 11. text-style-adjudication.md; 12. red-gate-log.md;
+    13. .factory/stories/S-025-tui-skeleton-sessions.md (v1.6);
+    14. .factory/specs/behavioral-contracts/ss-03/BC-2.03.001.md (verify v1.0.6 correct);
+    15. CLAUDE.md (project principles — production-grade default).
     All cycle files at: .factory/cycles/cycle-001/S-025/
 
-  ADV16-CODIFY-001 REFINED (D-198.1):
-    Protocol: Category A / Category B / Category Edge per-site adjudication on every canonical doc bump.
-    Template commit: devops 0aba808 commit body (5 active-pointer sites + 8+ historical-anchor sites documented).
-    Canonical sweep command:
-      grep -rn -E "(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief)\.md.*v[0-9]+\.[0-9]+" \
-        --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' --include='*.md' \
+  ADV16-CODIFY-001 CANONICAL-ANCHORED (D-198.2):
+    Sweep command:
+      grep -rn -E "(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief|dtu-assessment)\.md( +|\s+v|v)[0-9]+\.[0-9]+(\.[0-9]+)?" \
+        --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' \
         . | grep -v "\.factory/\|target/\|node_modules/\|\.git/\|cycles/"
-    Category A (fix): Source:, Policy source of truth:, Pin policy source of truth:, bare See/Per without F-D-NN tag.
-    Category B (preserve): F-D-NN finding tag, explicit line anchor, §Trace citation, when-anchored (introduced in, as of).
-    Category Edge: §section anchor, no F-D-NN → verify §section content unchanged. If unchanged → B; if changed → A; if semantics changed → CRITICAL.
+    For each hit: extract cited_version; look up canonical_version from .factory/specs/architecture/<Doc>.md frontmatter.
+    If cited_version != canonical_version AND no F-D-NN/line-anchor/§Trace → Category A (fix).
+    Template commit: devops ef7f4c62 (72 hits; 9 Category B; 62 canonical; 1 Category A).
 
-  ARTIFACT VERSIONS (D-198.1 / Pass 20 entry point):
+  ARTIFACT VERSIONS (D-199 / Pass 21 entry point):
     BC-INDEX v1.27 (113 BCs). PRD v1.27.3. SS-engine-module v1.1.26. SS-deps-pin-manifest v1.2.0.
     SS-conventions-anti-patterns v1.31.0. SS-tui v1.8.2. ADR-0006 v1.2. S-025 v1.6. S-026 v1.7.
     BC-2.03.001 v1.0.6. S-001 v1.9. S-003 v1.8. S-014 v1.5. S-015 v1.7.
     holdout-scenarios v1.5. STORY-INDEX v5.11.
-    (No spec version bumps — devops 0aba808 is active-pointer replacement only.)
+    (No spec version bumps — ef7f4c62 + dc229db are active-pointer + anchor-disambiguation only.)
 
   AFTER CONVERGENCE (3/3 NITPICK_ONLY-CLEAN):
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630. Demo-recorder (10 ACs).
     PR-manager (PR #28 draft → merge). State-manager D-187 closure. Dispatch S-026 (13 pts).
-    Task #9 post-merge: F-S025-ADV16-CODIFY-001 (story-writer + CLAUDE.md incl. refined protocol), NIT-003/004 (PO).
+    Task #9 post-merge: F-S025-ADV16-CODIFY-001 (story-writer + CLAUDE.md incl. D-198.2 protocol),
+      ADV20-PROC-001 (architect SS-conventions update), NIT-003/004 (PO).
 
   KEY LESSONS:
     L-001: Propagation sweeps = BC bodies + SS docs + story fm + body + input-hashes + worktree policy-pointer comments.
     L-002: Assertion must trace to EXACT production code path (not TestBackend-local copy).
     L-003: pub const extraction eliminates vacuous-mirror class structurally.
-    L-004: Premature-clean signal confirmed AGAIN (Pass 17→18→19 cycle). Max skepticism always.
+    L-004: Premature-clean signal confirmed AGAIN (Passes 17→18→19→20 cycle). Max skepticism always.
     L-007: Sweep wider than the finding — catch ALL class siblings at EVERY architectural layer.
-    L-NEW (D-198.1): Devops adjudication-protocol-driven sweep catches Category A sites that adversary misses
-      (3 additional SS-engine-module sites at passes 19 scope). Process-gap preemptively absorbed — what would
-      have been Pass 20 MED-002 was caught by devops before Pass 20 ran. The orchestrator's comprehensive
-      sweep dispatch (D-198) succeeded: zero additional doc-pointer findings expected at Pass 20.
+    L-NEW (D-198.1): Devops adjudication-protocol-driven sweep catches Category A sites that adversary misses.
+    L-NEW (D-198.2): Stale-literal-anchored sweep is insufficient — CANONICAL-ANCHORED sweep required.
+      Orphaned intermediate versions (e.g., v1.1.22 between floor v1.1.20 and canonical v1.1.26) are invisible
+      to stale-literal regex but caught by extracting cited_version and comparing vs frontmatter canonical.
+      5 stalls in same species → species now structurally resolved.
 
   FACTORY: .factory/ on factory-artifacts. Run factory-worktree-health first. NEVER --no-verify.
 dtu_required: true
@@ -380,7 +407,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-170: re-entry for 48 new BCs. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios (HS-EXP-001..010) produced. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4 (0 CRIT/HIGH at Pass 4). D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). STORY-INDEX v4.7. |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 19 MED CLOSED (D-198.1 @ 0aba808); counter 0/3; Pass 20 pending CI 10/10 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 19 MED-001 CLOSED at devops 0aba808 (5 active-pointer bumps; 8+ historical anchors preserved). Counter HOLDS 0/3. Pass 20 pending CI 10/10 green. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19). Convergence-attempt #4 in progress. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 20 MED+LOW CLOSED (D-199); counter 0/3; Pass 21 pending CI 10/10 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests, all 6 gates). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests, 0 failures, clippy clean, fmt clean. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 20 MED+LOW CLOSED at devops ef7f4c62 + test-writer dc229db. Counter HOLDS 0/3 (5 consecutive stalls). Pass 21 pending CI 10/10 green on ef7f4c62. S-026 blocked on S-025. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20). Convergence-attempt #4 in progress; architect-escalation tripwire armed. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -393,7 +420,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 19 MED-001 CLOSED (D-198.1) at devops 0aba808: 5 active-pointer bumps (2 SS-conventions + 3 SS-engine-module wider-sweep catches); 8+ historical anchors preserved; CI 8/10 green at snapshot. Counter HOLDS 0/3. Pass 20 pending CI 10/10. ADV16-CODIFY-001 REFINED (D-198.1): per-site Category A/B/Edge adjudication protocol codified (template: 0aba808 commit body). S-026 blocked on S-025. F-R30-1 codification threshold CROSSED (4/3). Resets: Pass 8, 9, 10, 12, 16, 18 = 6 total. Convergence-attempt #4 initiated.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 20 MED+LOW CLOSED (D-199): devops ef7f4c62 (engine.rs:143 v1.1.22→v1.1.26; 72 citations swept canonical-anchored; 9 Category B preserved) + test-writer dc229db (engine_module_surface.rs:6-8 Option B anchor). Counter HOLDS 0/3 (5 consecutive convergence-attempt stalls). CI pending 10/10 on ef7f4c62. Pass 21 pending; architect-escalation tripwire armed. CODIFY-001 D-198.2: canonical-anchored sweep protocol codified. ADV20-PROC-001: Test File Documentation Standards rule added. S-026 blocked on S-025. Resets: Pass 8, 9, 10, 12, 16, 18 = 6 total.
 
 ## Blocking Issues
 
@@ -415,6 +442,7 @@ D-047 through D-187 archived at: `cycles/cycle-001/decisions-archive.md`
 | D-197.1 | MED-001 CLOSED at devops 9fcfd49 (feature/S-025-tui-skeleton-sessions). Total: 18 replacements/11 files (NOT 17/10 — wider sweep found types.rs:48 v1.1.20 additional). Local cargo clean. CI queued. ADV16-CODIFY-001 6-category enumeration finalized. Counter 0/3; Pass 19 pending CI green. | 2026-05-29 | state-manager |
 | D-198 | S-025 Pass 19 MED — F-S025-ADV19-MED-001: SS-conventions-anti-patterns.md v1.30.2 stale active pointers in clippy.toml:2 + deny.toml:1 (canonical v1.31.0). Counter HOLDS 0/3. Orchestrator preemptive comprehensive sweep dispatched (devops — all 7 canonical docs + SS-engine-module v1.1.20/SS-ipc v1.4.0 active-vs-historical adjudication). ADV16-CODIFY-001 GENERALIZED: 6th playbook category broadened from SS-deps-pin-manifest-specific to ALL concurrent doc bumps. Convergence-attempt #3 stalled at 0/3 floor (4 consecutive attempts). Devops comprehensive sweep SHA: PENDING follow-up burst (D-198.1). | 2026-05-29 | state-manager |
 | D-198.1 | MED-001 CLOSED at devops 0aba808 (feature/S-025-tui-skeleton-sessions). 5 total active-pointer bumps: (1) clippy.toml:2 SS-conventions v1.30.2→v1.31.0; (2) deny.toml:1 SS-conventions v1.30.2→v1.31.0 — Pass 19 MED-001 targets; (3) engine.rs:4 SS-engine-module v1.1.20→v1.1.26; (4) engine_module_surface.rs:1197 SS-engine-module v1.1.20→v1.1.26; (5) engine_module_surface.rs:1223 SS-engine-module v1.1.20→v1.1.26 — devops wider-sweep catches (Pass 19 adversary missed). 8+ Category B historical anchors preserved (F-D-NN tagged + line-anchored + when-anchored sites). 4 other canonical docs verified clean (SS-deps-pin-manifest v1.2.0, SS-daemon-lifecycle v1.0.33, SS-core-types-and-abi v1.2.13, SS-forward-compatibility v1.2.19). CI: 8/10 SUCCESS at snapshot time; macOS Build+Test + cargo deny + cargo audit pending. F-S025-ADV19-MED-001: CLOSED. ADV16-CODIFY-001 REFINED with per-site adjudication protocol (Category A/B/Edge taxonomy) — template: 0aba808 commit body. Counter HOLDS 0/3; Pass 20 pending CI 10/10 green. | 2026-05-29 | state-manager |
+| D-199 | S-025 Pass 20 MED-001 + LOW-001 CLOSED — devops ef7f4c62: engine.rs:143 v1.1.22→v1.1.26 (1 Category A bump; 72 citations canonical-anchored swept; 9 Category B preserved; 8 canonical docs verified). Test-writer dc229db: engine_module_surface.rs:6-8 Option B anchor (TDD red-gate authoring baseline parenthetical). CODIFY-001 D-198.2 canonical-anchored sweep protocol codified (supersedes D-198.1 stale-literal approach; extract cited_version, compare vs frontmatter canonical). ADV20-PROC-001 added: SS-conventions Test File Documentation Standards rule. 5 consecutive convergence-attempt stalls; counter HOLDS 0/3. CI pending 10/10 on ef7f4c62. Architect-escalation tripwire armed for Pass 21. | 2026-05-29 | state-manager |
 
 ## Key Tech Stack
 
@@ -435,26 +463,23 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Prior session checkpoints (through v5.88) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `.factory/plans/adversary-pass-*.md` |
 
-## §Trace v6.45 (D-198.1 — MED-001 CLOSED at devops 0aba808; 5 active-pointer bumps; 3 wider-sweep catches; ADV16-CODIFY-001 adjudication protocol refined)
+## §Trace v6.46 (D-199 — Pass 20 MED-001 + LOW-001 CLOSED; CODIFY-001 D-198.2 canonical-anchored protocol; ADV20-PROC-001 added; 5 consecutive stalls; counter 0/3; architect-escalation tripwire armed)
 
-**MED-001 CLOSED** (2026-05-29, D-198.1): Devops commit 0aba808 on `feature/S-025-tui-skeleton-sessions` completes the orchestrator-dispatched comprehensive sweep (D-198). F-S025-ADV19-MED-001 is CLOSED.
+**Pass 20 MED-001 CLOSED** (2026-05-29, D-199): Devops commit ef7f4c62 on `feature/S-025-tui-skeleton-sessions`. engine.rs:143 cited SS-engine-module v1.1.22 — orphaned intermediate version between Pass 19's targeted floor (v1.1.20) and canonical ceiling (v1.1.26). 1 Category A bump applied. Canonical-anchored sweep across 72 total citation hits confirmed clean: 9 Category B preserved, 62 canonical-match, 8 canonical docs verified. F-S025-ADV20-MED-001: CLOSED.
 
-**5 total active-pointer bumps (NOT the 2 Pass 19 adversary flagged):** clippy.toml:2 and deny.toml:1 (SS-conventions-anti-patterns v1.30.2→v1.31.0, Pass 19 MED-001 targets). Plus 3 additional Category A sites devops's adjudication-protocol-driven wider sweep caught that Pass 19 adversary missed: engine.rs:4, engine_module_surface.rs:1197, and engine_module_surface.rs:1223 — all carrying SS-engine-module v1.1.20 instead of canonical v1.1.26. These were active-pointer sites ("Policy source of truth: SS-engine-module.md v1.1.20" pattern), not historical anchors, and required bumping to v1.1.26.
+**Pass 20 LOW-001 CLOSED** (2026-05-29, D-199): Test-writer commit dc229db. engine_module_surface.rs:6-8 Option B adjudication: bare "v1.1.20" citation disambiguated with parenthetical "(TDD red-gate authoring baseline; current canonical is v1.1.26)". Justified: all other active pointers in same file at v1.1.26; all other v1.1.20 cites carry F-D-NN tags. Bare v1.1.20 at line 8 was lone outlier. F-S025-ADV20-LOW-001: CLOSED.
 
-**8+ Category B historical anchors preserved correctly:** engine_module_surface.rs:8 (Red Gate historical instruction), claude_code.rs:20+220 (line-number anchored), engine.rs:143 (when-anchored to v1.1.22 — version that introduced display fields), framing.rs:3 (SS-ipc.md v1.4.0 §Framing Protocol — semantically unchanged v1.4.0→v1.9.0, Category B preserved), plus all F-D-NN tagged finding-fix citations. Per-site rationale documented in 0aba808 commit message body.
+**CODIFY-001 D-198.2 — canonical-anchored sweep protocol (supersedes D-198.1 stale-literal approach):** Root cause of 5 consecutive convergence-attempt stalls: Pass 19 sweep enumerated known stale literals (v1.1.20, v1.4.0, v1.30.2) but missed orphaned intermediates. Fix: per-hit extract cited_version, compare vs .factory/specs/architecture/<Doc>.md frontmatter canonical_version. Any cited_version != canonical_version + no F-D-NN/line-anchor/§Trace → Category A (fix). Template commit: devops ef7f4c62. Convergence-stall species structurally resolved.
 
-**4 other canonical docs verified clean:** SS-deps-pin-manifest v1.2.0, SS-daemon-lifecycle v1.0.33, SS-core-types-and-abi v1.2.13, SS-forward-compatibility v1.2.19 — no active-pointer stale citations found.
+**ADV20-PROC-001 added:** Test File Documentation Standards process-gap codified. Spec version citations in test/production doc comments must carry F-D-NN tag OR §section anchor OR parenthetical disambiguation. Bare version numbers without anchors are flagged as Category B smell. Routing: architect (SS-conventions-anti-patterns update). Anchored to Task #9.
 
-**CI status at snapshot:** 8/10 SUCCESS (Preflight, DTU, Semgrep, audit-table-drift, 2/3 Build+Test). macOS Build+Test, cargo deny, cargo audit pending at time of state burst.
+**Counter:** HOLDS 0/3 — 5th consecutive convergence-attempt stall. Counter floor logic: MED finding at convergence-attempt-start holds floor (does not reset from higher position). Architect-escalation tripwire armed: if Pass 21 surfaces any worktree active-pointer staleness on any canonical doc, escalate to architect to evaluate replacing version-in-comment discipline with version-pin lookup-table.
 
-**Process-gap observation (orchestrator absorption success):** Pass 19 adversary caught 2 sites. Devops's protocol-driven comprehensive sweep caught 3 additional. This preempts what would have been Pass 20 MED-002 (SS-engine-module v1.1.20 stale active-pointers). Convergence-attempt #4 enters with a cleaner slate than attempt #3.
+**CI on ef7f4c62:** Preflight in_progress; DTU SUCCESS. Full 10/10 pending verification before Pass 21 dispatch.
 
-**ADV16-CODIFY-001 REFINED (D-198.1):** The per-site Category A/B/Edge adjudication taxonomy is now the concrete codification template, with 0aba808 commit body as the reference implementation. Added to durable_task_register with full protocol language including canonical sweep command, category definitions, and edge-case handling.
+**Artifact versions bumped this burst (D-199):** STATE v6.45→v6.46. No spec version bumps (ef7f4c62 + dc229db are active-pointer replacement + anchor-disambiguation only; no SS doc content changes).
 
-**Counter:** HOLDS 0/3. Pass 19 MED-001 was already at floor — closure moves counter to "clean head waiting for adversary" not to 1/3. Pass 20 is the first pass of convergence-attempt #4; counter advances to 1/3 only if Pass 20 is NITPICK_ONLY-CLEAN.
-
-**Artifact versions bumped this burst (D-198.1):** STATE v6.44→v6.45. No spec version bumps (devops 0aba808 is active-pointer replacement only; no SS doc content changes).
-
+§Trace v6.45 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.42 through v6.44 archived to `cycles/cycle-001/burst-log.md` (D-198.1 compaction).
 §Trace v6.40 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.39 archived to `cycles/cycle-001/burst-log.md`.
