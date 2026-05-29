@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.0"
+version: "1.0.1"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T08:00:00Z
@@ -83,7 +83,7 @@ adversarial review — which is retrospective, runs late in the cycle, and has d
 
 Based on the 7-instance record, version-pin citations appear in:
 
-- Worktree code files (`.rs`, `.toml`, `.yml`) — inline comments citing SS-NNN.md vX.Y.Z
+- Worktree code files (`.rs`, `.toml`, `.yml`, `.yaml`) — inline comments citing SS-NNN.md vX.Y.Z
 - Story files (`.factory/stories/`) — `inputs[]` frontmatter + body prose citations
 - Behavioral contract files (`.factory/specs/behavioral-contracts/`) — Architecture Source
   sections citing SS docs and BC sibling references
@@ -155,18 +155,17 @@ The CI gate is exempt from:
 ### Historical Anchor Classification
 
 A citation is a historical anchor (frozen, exempt from CI staleness check) when it
-meets ALL of the following:
+meets at least ONE of the following:
 
-1. It appears inside a `§Trace` section, OR it is annotated with
-   `# version-pin-historical` (Rust/TOML/YAML) or `<!-- version-pin-historical -->`
-   (Markdown), OR it contains a time qualifier ("at S-NNN authoring time",
-   "at time of ratification", "at T-NNN dispatch time").
-2. The citing artifact's version is lower than or equal to the cited document's version
-   at the time of the §Trace or annotation entry (i.e., the pin is historically
-   accurate, not a fabrication).
+1. It appears inside a `§Trace` section.
+2. It is annotated with `# version-pin-historical` (Rust/TOML/YAML) or
+   `<!-- version-pin-historical -->` (Markdown) on the same line.
+3. It contains a time qualifier: "at time of", "at S-NNN authoring time",
+   "at T-NNN dispatch time", "at spec authoring time", "at time of ratification",
+   "at initial authoring", or equivalent unambiguous temporal anchor.
 
-If a citation does not meet these criteria, it is classified as an active pointer and
-subject to the CI freshness check.
+If a citation does not meet any criterion above, it is classified as an active pointer
+and subject to the CI freshness check.
 
 ### Version-Pin Registry
 
@@ -344,7 +343,7 @@ formal classification (vs implicit exemption), and the opportunistic migration s
 
 | Priority | Dispatch | Instructions |
 |----------|----------|-------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook. Reads `.factory/specs/version-pin-registry.yaml`. For each `.md`, `.rs`, `.toml`, `.yml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match: historical if inside `§Trace` block or on a line containing a time qualifier or `version-pin-historical` annotation; active otherwise. For each active match, looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook. Reads `.factory/specs/version-pin-registry.yaml`. For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. For each active match, looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
 | 2 (HIGH) | state-manager | Seed `.factory/specs/version-pin-registry.yaml` with all 11 SS docs from ARCH-INDEX Document Map + BC-INDEX current version. Each entry: artifact ID, path, current_version (from frontmatter), last_bump_commit (from git log), last_bump_date. |
 | 3 (HIGH) | story-writer | Update story template (`.factory/templates/` or equivalent): remove version literals from `inputs:` example. Add note: "cite artifact by ID only; no version literals in body prose — see ADR-0007". Update STORY-INDEX template if it carries version examples. |
 | 4 (MEDIUM) | product-owner | Update BC template: Architecture Source section — remove `v<version>` from example form. Add note citing ADR-0007. |
@@ -367,7 +366,32 @@ A tooling script (devops-engineer deliverable alongside the CI hook) should prod
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
 
-## §Trace v1.0.0
+## §Trace v1.0.1
+
+**Pass 26 internal-consistency correction — F-S025-ADV26-HIGH-001 + LOW-001** (2026-05-29):
+
+- NORMATIVE (F-S025-ADV26-HIGH-001 closure): §Historical Anchor Classification rewritten
+  to remove version-monotonicity criterion. Adjudication: Option B selected — at-least-one-of
+  contextual marker (§Trace / `version-pin-historical` / time qualifier) is the sole criterion.
+  Rationale: (1) version-monotonicity requires git-log lookup for cited doc's historical version
+  at §Trace timestamp — disproportionate hook complexity; (2) contextual-marker criterion
+  already provides the discriminating signal; (3) ADR-0007 §Decision body's own canonical
+  example (lines 121-125) relies solely on a time qualifier, not monotonicity — the §Historical
+  Anchor Classification block was internally inconsistent with the §Decision examples in
+  the same burst. SS-conventions §Historical Anchor Classification (v1.32.0 at Pass 25
+  authoring time) had the correct formulation; this correction aligns ADR-0007 with it.
+- NORMATIVE (F-S025-ADV26-LOW-001 closure): §Implementation Plan POL-11 dispatch (Priority 1
+  row) adds `.yaml` to extension list. Previously enumerated `.md`, `.rs`, `.toml`, `.yml`
+  but omitted `.yaml`, while §CI gate scope (lines 143-146 at Pass 25 authoring time) and
+  the registry path itself (`.factory/specs/version-pin-registry.yaml`) both use `.yaml`.
+  Mechanical omission corrected.
+- NORMATIVE: POL-11 dispatch historical-anchor classification description updated to match
+  the at-least-one-of formulation adopted above.
+- NORMATIVE: SS-conventions-anti-patterns.md v1.32.0 → v1.32.1 (§Historical Anchor
+  Classification §Trace entry added; §Historical Anchor Classification body already correct
+  — no body change required).
+- Version bump: ADR-0007 v1.0.0 → v1.0.1 (patch: internal-consistency correction, no
+  discipline change to the operative rule).
 
 **ADR-0007 initial ratification — D-204 architect-escalation tripwire closure** (2026-05-29T08:00:00Z):
 

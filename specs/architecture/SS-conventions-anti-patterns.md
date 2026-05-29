@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.0"
+version: "1.32.1"
 status: complete
 producer: architect
 phase: phase-3
-timestamp: 2026-05-29T08:00:00Z
+timestamp: 2026-05-29T10:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "0351fc8"
 traces_to: architecture/ARCH-INDEX.md
@@ -1671,6 +1671,16 @@ PG-5 current-pointer classification (Form 1) becomes obsolete for new artifacts
 post-D-204 (new artifacts do not carry active pointers).
 
 ## §Trace
+
+v1.32.1 changes (Pass 26 F-S025-ADV26-HIGH-001 + LOW-001 — ADR-0007 internal-consistency correction):
+
+- NORMATIVE (cross-reference only): §Historical Anchor Classification body in this document
+  was already correct (at-least-one-of formulation, lines 1617-1630 at v1.32.0 authoring time).
+  ADR-0007 §Historical Anchor Classification has been corrected to match — see ADR-0007 v1.0.1
+  §Trace entry for adjudication rationale (Option B selected). The two documents now agree.
+- INFORMATIONAL: §Historical Anchor Classification body unchanged. No rule text modified in
+  this file. Version bump to v1.32.1 records the alignment closure.
+- SE-16d PASS: 2026-05-29T10:00:00Z.
 
 v1.32.0 changes (D-204 ADR-0007 version-pin citation discipline):
 
