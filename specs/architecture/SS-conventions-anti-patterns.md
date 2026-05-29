@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.31.1"
+version: "1.32.0"
 status: complete
 producer: architect
 phase: phase-3
-timestamp: 2026-05-20T23:00:00Z
+timestamp: 2026-05-29T08:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md]
 input-hash: "0351fc8"
 traces_to: architecture/ARCH-INDEX.md
@@ -1572,7 +1572,129 @@ When a BC Traceability `Architecture Source` cell or a VP Traceability `Architec
 
 **Cross-reference:** Originating authoritative copy in `behavioral-contracts/BC-INDEX.md §Conventions` (BC-INDEX v1.10+). This subsection is the architecture-side restatement for developers authoring BCs, VPs, and architecture citations. Originating finding: F-R117-3 (R117 adversary pass, R16C BC-INDEX dispatch closure). META-discipline parent: SE-17e (sibling-propagation); SE-22 (sibling-sweep META, fourth cycle).
 
+## §Citation Discipline (ADR-0007)
+
+Added in v1.32.0 (D-204 architect-escalation tripwire closure, ADR-0007).
+
+Resolves the 7-instance META-pattern version-pin staleness species. Full decision rationale
+in `adr/ADR-0007-version-pin-citation-discipline.md`. This section is the operative convention;
+the ADR is the decision record.
+
+### Citation Forms — Permitted and Forbidden
+
+When citing a versioned artifact in any spec, story, BC, VP, ADR, or code file that is NOT
+in `.factory/cycles/` (closed cycle records):
+
+**Form 1 — Version-free (PREFERRED for new artifacts):**
+```
+BC-2.06.005 §Postconditions
+SS-deps-pin-manifest.md §Phase-1-Pins
+SS-tui.md §AppMode-State-Machine
+ADR-0006
+```
+No version literal. The citation resolves to whatever the canonical current version is.
+Section-anchor form `§Name` is encouraged for navigability but not required.
+
+**Form 2 — Historical anchor (PERMITTED where provenance matters):**
+```
+at time of S-025 authoring, SS-deps-pin-manifest.md v1.2.0
+BC-2.06.005 v1.0.5 at S-025 inputs[] declaration time (2026-05-27)
+implemented against SS-tui.md v1.8.2 at S-025 spec time
+```
+Version literal IS present but qualified with a time anchor. This form is frozen at
+authoring and MUST NOT be updated as the cited document evolves. It is a provenance record.
+
+**Forbidden (active version-pin literal):**
+```
+SS-deps-pin-manifest.md v1.2.0          ← no time qualifier
+BC-2.06.005 v1.0.5                      ← no time qualifier
+inputs: [SS-tui.md v1.8.2]              ← frontmatter active pointer
+see SS-engine-module.md v1.1.26 §...    ← active pointer
+```
+Active version-pin literals in artifact bodies introduce drift pressure: the citation
+becomes stale on the next version bump of the cited document.
+
+### Historical Anchor Classification
+
+A citation is a historical anchor (frozen, exempt from the CI freshness check) when it
+meets at least ONE of:
+
+1. It appears inside a `## §Trace` section.
+2. It is annotated with `# version-pin-historical` (Rust/TOML/YAML) or
+   `<!-- version-pin-historical -->` (Markdown) on the same line.
+3. It contains a time qualifier: "at time of", "at S-NNN authoring time",
+   "at T-NNN dispatch time", "at spec authoring time", "at time of ratification",
+   "at initial authoring", or equivalent unambiguous temporal anchor.
+
+A citation that does NOT meet any criterion above is classified as an active pointer
+subject to the CI freshness check.
+
+**Carve-out — `.factory/cycles/` directory:** Closed adversarial cycle records are
+exempt from the freshness check. They are sealed at closure; their version citations
+are historical by directory convention.
+
+### Version-Pin Registry
+
+`.factory/specs/version-pin-registry.yaml` is the machine-readable source of truth
+for canonical current versions. The CI lint reads this registry to verify active pointers.
+
+**State-manager obligation:** When committing any document version bump to factory-artifacts,
+state-manager MUST update the registry in the SAME commit. The registry and the bumped
+document version are atomic (Single-Commit Burst Protocol applies).
+
+**DevOps obligation:** The `monocle-version-pin-freshness` pre-commit hook and CI step
+verify that every active version-pin literal in staged files matches the registry
+`current_version` for the cited artifact ID. Implementation: devops-engineer Phase 3
+deliverable (dispatched at D-204).
+
+### Migration — Legacy Active Pointers
+
+Existing artifacts containing active version-pin literals are NOT migrated all-at-once.
+Migration is opportunistic: when any artifact is touched for another reason, convert any
+active version-pin literals in that artifact's non-§Trace body to Form 1 (version-free)
+in the same edit. This is a per-touch obligation from D-204 onward.
+
+Full corpus migration target: Phase 5 (formal hardening) for VPs; Phase 7 (convergence)
+for remaining BCs and stories. The CI gate catches remaining active pointers immediately
+even before migration completes.
+
+### Relationship to PG-5
+
+PG-5 (§Historical-Anchor Framing Convention) governs main-body prose version citations.
+§Citation Discipline (this section) supersedes PG-5 for the forward-going citation
+authoring rule: all new artifacts use Form 1 (version-free) by default, reducing PG-5's
+classification obligation to legacy corpus sweep only. PG-5 Form 2 (historical anchor)
+is preserved and aligned with the historical-anchor classification in this section.
+
+PG-5 remains operative for legacy active pointers in the corpus until migrated;
+PG-5 current-pointer classification (Form 1) becomes obsolete for new artifacts
+post-D-204 (new artifacts do not carry active pointers).
+
 ## §Trace
+
+v1.32.0 changes (D-204 ADR-0007 version-pin citation discipline):
+
+- NORMATIVE (ADR-0007 ratification — architect-escalation tripwire fired at Pass 25):
+  §Citation Discipline section added above (see §Citation Discipline). Codifies
+  Option C-Refined (hybrid semantic anchors + CI registry enforcement). Operationalizes
+  ADR-0007 decision as the citation convention rule binding all monocle spec artifacts.
+- NORMATIVE: Frontmatter version bumped v1.31.1 → v1.32.0 (minor version: discipline change).
+  Timestamp updated to 2026-05-29T08:00:00Z.
+- INFORMATIONAL: §Citation Discipline does NOT migrate existing active version-pin literals
+  in this file or any sibling (legacy corpus). Migration is opportunistic per ADR-0007
+  §Migration plan. The §Architecture Source Pin-Symmetry Convention §Canonical SS version
+  table in this file still carries legacy active pointers (SS-conventions v1.30.2 and
+  SS-deps-pin-manifest v1.1.17) — these are in-scope for opportunistic migration when that
+  table is next touched for other reasons.
+- SE-16d PASS: 2026-05-29T08:00:00Z — first entry in this §Trace chain for D-204 burst;
+  no prior chain entry to compare.
+- PG-5 self-check on newly added §Citation Discipline prose: zero active-pointer citations
+  introduced (the new section describes the citation rules but does not itself cite versioned
+  artifacts with active-pointer form). PASS.
+- PG-3 directional qualifier self-check: §Citation Discipline uses "above" zero times and
+  "below" zero times. PASS (no directional qualifiers introduced).
+
+v1.31.1 changes (S-022 cycle ADR-0006 BONUS SS-forward-compat.md fix):
 
 v1.28 changes (round-60.1 F-R60-1 + F-R60-corpus-sweep META rule codified):
 

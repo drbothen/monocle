@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.16"
+version: "1.0.17"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-26T03:00:00Z
+timestamp: 2026-05-29T08:00:00Z
 phase: phase-1-expansion
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
@@ -105,6 +105,8 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 | ADR-0003 | MIT OR Apache-2.0 Dual-License Selection | accepted | adr/ADR-0003-license-selection.md |
 | ADR-0004 | Exhaustive Enums — `Phase1Permission` and `ClaudeCodeTool` | accepted | adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md |
 | ADR-0005 | Auth Header Dual-Accept — Canonical `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization` Compatibility Alias | accepted | adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md |
+| ADR-0006 | Non-Exhaustive Structs with Public Positional Constructors | accepted | adr/ADR-0006-non-exhaustive-structs-with-public-constructors.md |
+| ADR-0007 | Version-Pin Citation Discipline — Semantic Anchors + CI Registry Enforcement | accepted | adr/ADR-0007-version-pin-citation-discipline.md |
 
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
@@ -112,6 +114,12 @@ for 6+ months by Phase 2 start, the architect must re-evaluate alternatives.
 ADR-0005 resolves the auth header interop gap between monocle's canonical header and real
 Claude Code's hardcoded `X-Claude-Code-Ide-Authorization` (BC-HOOK-016); dual-accept at the
 router-level auth middleware.
+ADR-0006 ratifies `pub fn new(...)` constructors on `#[non_exhaustive]` structs for internal
+workspace crates anchored to external wire protocols (Phase 1 scope; S-022 cycle).
+ADR-0007 resolves the 7-instance META-pattern version-pin staleness species (escalation ladder
+passes 9/16/18/22/23/24/25); selects Option C-Refined (hybrid: semantic anchors for new
+artifacts + CI registry gate for all, opportunistic legacy migration). Dispatches
+devops-engineer POL-11-version-pin hook, story-writer and product-owner template updates.
 
 ## §Trace v1.0.2
 
@@ -511,3 +519,20 @@ router-level auth middleware.
   → `stack.retain()`. Key Invariant 2 rewritten to reflect this.
 - version: 1.0.15 → 1.0.16; timestamp: 2026-05-26T03:00:00Z → 2026-05-27T00:00:00Z.
 - SE-16d PASS: 2026-05-27T00:00:00Z > chain high-water 2026-05-26T03:00:00Z (monotonic).
+
+## §Trace v1.0.17
+
+**ADR-0006 + ADR-0007 ADR Registry registration — D-204 architect-escalation tripwire closure** (2026-05-29T08:00:00Z):
+- NORMATIVE: ADR-0006 row added to ADR Registry (was previously absent; introduced S-022 cycle
+  but not registered in ARCH-INDEX). Title: `Non-Exhaustive Structs with Public Positional
+  Constructors`. File: `adr/ADR-0006-non-exhaustive-structs-with-public-constructors.md`.
+  Status: accepted. Registration is architectural bookkeeping; no content change to the ADR.
+- NORMATIVE: ADR-0007 row added to ADR Registry. Title: `Version-Pin Citation Discipline —
+  Semantic Anchors + CI Registry Enforcement`. File:
+  `adr/ADR-0007-version-pin-citation-discipline.md`. Status: accepted.
+- NORMATIVE: ADR Registry **Note** paragraph updated to add ADR-0006 and ADR-0007 notes.
+- NORMATIVE: version: 1.0.16 → 1.0.17; timestamp: 2026-05-27T00:00:00Z → 2026-05-29T08:00:00Z.
+- INFORMATIONAL: ADR-0006 omission from prior registry was a registration gap — the ADR was
+  authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
+  the ARCH-INDEX table row was never added. This entry closes the gap.
+- SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
