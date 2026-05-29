@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.28"
+version: "1.29"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-29T00:00:00Z
@@ -955,3 +955,52 @@ Sweep-wider results: Exhaustive grep identified 26 additional stale Category A s
 [process-gap] CODIFY-001 Category 8 (ADV23-PROC-001): Architecture Source pins in BC files must be swept against canonical doc frontmatter versions whenever an architecture doc is bumped. This is a distinct codification from ADV22-PROC-001 (bare-filename discipline) and D-198.2 (worktree code). Candidate for CI enforcement rule: parse "Architecture Source | SS-*.md vX.Y.Z" cells in BC bodies and fail if cited version < canonical frontmatter version.
 
 SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > 2026-05-28T00:00:00Z (v1.27). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.29
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: 26 additional BC Architecture Source pin refreshes** (2026-05-29T00:00:00Z):
+
+Continues from 1ad2852 (10 BCs in ss-06 + ss-07). Orchestrator-authorized per CLAUDE.md Principle 4 — single comprehensive sweep bounds the cascade. All 26 are plain version-pin refreshes; no substantive content propagation required per prior §Trace analysis.
+
+ss-03 (4 BCs; SS-engine-module v1.1.20 → v1.1.26):
+- BC-2.03.001 v1.0.6 → v1.0.7: Architecture Source SS-engine-module.md v1.1.20 → v1.1.26. §EngineModule Trait Signature section anchor unchanged.
+- BC-2.03.002 v1.0.4 → v1.0.5: Architecture Source SS-engine-module.md v1.1.20 → v1.1.26. §Phase 1 Implementation: ClaudeCodeModule section anchor unchanged.
+- BC-2.03.003 v1.0.3 → v1.0.4: Architecture Source SS-engine-module.md v1.1.20 → v1.1.26. §Behavioral Contracts BC-ENGINE-002-ERR section anchor unchanged.
+- BC-2.03.004 v1.0.4 → v1.0.5: Architecture Source SS-engine-module.md v1.1.20 → v1.1.26. §Struct-level inherent operations section anchor unchanged.
+
+ss-04 (12 BCs; SS-daemon-wiring v1.2.0 → v1.3.0):
+- BC-2.04.001 v1.5.0 → v1.6.0: §Daemon Start Sequence (BC-2.04.001) anchor unchanged.
+- BC-2.04.002 v1.4.0 → v1.5.0: §Daemon Auto-Start Logic §Auto-Start Decision Sequence anchor unchanged.
+- BC-2.04.003 v1.4.0 → v1.5.0: §MONOCLE_NO_AUTOSTART Check anchor unchanged.
+- BC-2.04.004 v1.4.0 → v1.5.0: §CLI Interface §Subcommand: monocle daemon start anchor unchanged.
+- BC-2.04.005 v1.4.0 → v1.5.0: §CLI Interface §Subcommand: monocle daemon stop anchor unchanged.
+- BC-2.04.006 v1.5.0 → v1.6.0: §Daemon Start Sequence Step 1 anchor unchanged. SS-daemon-lifecycle.md v1.0.33 cross-ref preserved.
+- BC-2.04.007 v1.4.0 → v1.5.0: §Hook Endpoint Routing anchor unchanged.
+- BC-2.04.008 v1.1.0 → v1.2.0: §Hook Endpoint Routing anchor unchanged.
+- BC-2.04.009 v1.1.0 → v1.2.0: §Hook Endpoint Routing anchor unchanged.
+- BC-2.04.010 v1.2.0 → v1.3.0: §Hook Tmpfile Generation anchor unchanged.
+- BC-2.04.011 v1.3.0 → v1.4.0: §Bounded Event Bus anchor unchanged.
+- BC-2.04.012 v1.0.2 → v1.0.3: §Daemon Start Sequence (Step 4) anchor unchanged. SS-daemon-lifecycle.md v1.0.33 cross-ref preserved.
+
+ss-05 (8 BCs; mixed SS-ipc + SS-daemon-wiring + SS-deps-pin-manifest + SS-conventions refreshes):
+- BC-2.05.001 v1.2.0 → v1.3.0: SS-ipc.md v1.4.0 → v1.9.0 + SS-daemon-wiring.md v1.2.0 → v1.3.0 (dual refresh).
+- BC-2.05.002 v1.0.5 → v1.0.6: SS-ipc.md v1.7.0 → v1.9.0 (2 occurrences).
+- BC-2.05.003 v1.0.3 → v1.0.4: SS-ipc.md v1.4.0 → v1.9.0 (2 occurrences).
+- BC-2.05.004 v1.0.3 → v1.0.4: SS-ipc.md v1.4.0 → v1.9.0 (2 occurrences).
+- BC-2.05.005 v1.6.0 → v1.7.0: SS-ipc.md v1.4.0 → v1.9.0 (3 occurrences).
+- BC-2.05.006 v1.0.3 → v1.0.4: SS-ipc.md v1.4.0 → v1.9.0 (2 occurrences).
+- BC-2.05.007 v1.0.3 → v1.0.4: SS-ipc.md v1.4.0 → v1.9.0 (2 occurrences).
+- BC-2.05.008 v1.0.3 → v1.0.4: SS-ipc.md v1.4.0 → v1.9.0 + SS-deps-pin-manifest.md v1.1.17 → v1.2.0 + SS-conventions-anti-patterns.md v1.29.5 → v1.31.1 (three-pin refresh; Cross-Ref row also updated).
+
+ss-dtu (1 BC; SS-conventions-anti-patterns v1.29.5 → v1.31.1):
+- BC-HOOK-039 v1.0.0 → v1.0.1: Architecture Source SS-conventions-anti-patterns.md v1.29.5 → v1.31.1.
+
+Canonical-doc refresh summary: SS-engine-module v1.1.20→v1.1.26; SS-daemon-wiring v1.2.0→v1.3.0; SS-ipc v1.4.0/v1.7.0→v1.9.0; SS-deps-pin-manifest v1.1.17→v1.2.0; SS-conventions-anti-patterns v1.29.5→v1.31.1. Five canonical docs updated across this burst.
+
+Cumulative Category 8 closure (1ad2852 + this commit): 36 BCs across 6 canonical-doc refreshes (ss-06: SS-tui-core→SS-tui.md; ss-07: SS-config.md; ss-03: SS-engine-module.md; ss-04: SS-daemon-wiring.md; ss-05: SS-ipc.md + SS-deps-pin-manifest.md + SS-conventions-anti-patterns.md; ss-dtu: SS-conventions-anti-patterns.md).
+
+BC-INDEX H1 titles: unchanged for all 27 BCs in this burst. No BC retirements or removals.
+
+META-pattern CODIFY-001 Category 8 closure: ADV23-SCOPE-001 bounds spec-body Architecture Source pin freshness across all subsystems. CI enforcement candidate: parse "Architecture Source | SS-*.md vX.Y.Z" cells in BC bodies, fail if cited version < canonical frontmatter version.
+
+SE-16d monotonicity PASS: 2026-05-29T00:00:00Z >= 2026-05-29T00:00:00Z (v1.28). SAME TIMESTAMP: same burst, monotonicity satisfied by version increment.

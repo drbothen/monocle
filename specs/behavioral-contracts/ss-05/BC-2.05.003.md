@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -109,7 +109,7 @@ the standard 4-byte LE length-prefix protocol (BC-2.05.002).
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the session list push that is the primary mechanism for the TUI to display live session state |
 | L2 Domain Invariants | DI-006 (EngineModule detect() must not perform I/O — session detection happens in EngineModule::detect() per BC-2.03.002; this BC governs how the detection result is broadcast to TUI clients, not the detection itself; DI-006 holds at the detection boundary) |
 | Architecture Module | monocle-ipc (ServerToClient::SessionListUpdate, fan-out broadcaster) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.4.0 §Message Types §Server-to-Client Messages; SS-ipc.md v1.4.0 §Connection Lifecycle §Phase 2 Streaming Updates |
+| Architecture Source | SS-ipc.md v1.9.0 §Message Types §Server-to-Client Messages; SS-ipc.md v1.9.0 §Connection Lifecycle §Phase 2 Streaming Updates |
 | Cross-Ref | BC-2.05.002 (InitialState contains the initial session list; this BC governs incremental updates); BC-2.02.003 (non-exhaustive enum policy applies to EnrichedSession) |
 | Test File | `monocle-ipc/tests/session_list_update.rs` |
 | Test Name | `test_BC_2_05_003_session_list_update_broadcast` |
@@ -162,3 +162,10 @@ VP-TBD — SessionListUpdate broadcast verification properties (filled after VP 
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-ipc.md v1.3.0` (2 occurrences) → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-ipc.md v1.4.0 → v1.9.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-ipc.md v1.4.0 §Message Types §Server-to-Client Messages` → `SS-ipc.md v1.9.0 §Message Types §Server-to-Client Messages`; `SS-ipc.md v1.4.0 §Connection Lifecycle §Phase 2 Streaming Updates` → `SS-ipc.md v1.9.0 §Connection Lifecycle §Phase 2 Streaming Updates`.
+- Plain version-pin refresh. No substantive content propagation required — §Message Types and §Connection Lifecycle §Phase 2 Streaming Updates section headings and content anchors are unchanged between v1.4.0 and v1.9.0.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

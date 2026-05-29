@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.6.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -204,7 +204,7 @@ PC-26. The foreground caller exits with code 0 and no stdout output upon detecti
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC specifies the full 13-step daemon startup sequence enforcing SOQ-2; the "binary composition root" names the daemon binary crate that owns this start sequence, and the sequence wires together CLI surface, daemon auto-start, bounded event bus, and hook tmpfile generation in exact order |
 | L2 Domain Invariants | DI-002 (lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — PC-15 through PC-17 enforce lock file creation before step 12 starts HTTP serving); DI-003 (auth token MUST be written to lock file after port is bound — PC-4/PC-5 bind port, PC-13/PC-14 generate token, PC-15 writes both to lock file in that order; SOQ-2 invariant formalizes this) |
 | Architecture Module | `monocle` binary crate + `monocle-runtime` per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.001) |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence (BC-2.04.001) |
 | Cross-Ref | BC-2.01.005 (lock file atomic lifecycle — step 2 delegates to this BC); BC-2.01.008 (auth token wire format — PC-13 and PC-15 must conform); BC-2.01.010 (lock file JSON schema — PC-15 and PC-17 must conform); BC-2.04.006 (runtime_dir resolution — step 1 delegates to this BC); BC-2.04.010 (hooks-settings.json schema — step 9 delegates to this BC) |
 | Test File | `monocle/tests/daemon_start_sequence.rs` |
 | Test Name | `test_BC_2_04_001_daemon_start_sequence_soq2` |
@@ -294,3 +294,10 @@ SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
   the SS-01 sense). SS-04 subsystem BCs trace to CAP-004 per ARCH-INDEX §Capability
   Traceability table.
 - SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0 origin. PASS.
+
+## §Trace v1.6.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.001)` → `SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence (BC-2.04.001)`.
+- Plain version-pin refresh. No substantive content propagation required — §Daemon Start Sequence section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.6.0 timestamp >= v1.5.0. PASS.

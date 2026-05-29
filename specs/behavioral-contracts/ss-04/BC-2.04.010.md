@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:03:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -211,7 +211,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — "hook tmpfile generation" is named explicitly as a CAP-004 responsibility; this BC is the direct operationalization of that named responsibility, specifying the atomic write, mode, schema, SOQ-2 ordering, and removal contract for `hooks-settings.json` |
 | L2 Domain Invariants | DI-002 (the lock file MUST be present and contain a valid token before any hook endpoint accepts connections — this BC's SOQ-2 ordering invariant ensures hooks-settings.json embeds a token that is already in the lock file; Claude Code cannot reach hook endpoints with a token that hasn't been committed to the lock file); DI-003 (auth token MUST be written to lock file after port is bound — PC-4 enforces that hooks-settings.json is written after the lock file, which was written after port bind, preserving DI-003 as a transitivity guarantee) |
 | Architecture Module | monocle-runtime (`write_hooks_settings()` function) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Tmpfile Generation |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Hook Tmpfile Generation |
 | Cross-Ref | BC-2.01.005 (lock file lifecycle — SOQ-2 upstream step); BC-2.01.008 (auth token wire format — token embedded in command strings); BC-2.04.001 (daemon start sequence — step 9 calls this contract) |
 | Test File | `monocle-runtime/tests/hooks_settings_generation.rs` |
 | Test Name | `test_BC_2_04_010_hooks_settings_generation` |
@@ -273,3 +273,10 @@ S-TBD — Implement hooks-settings.json generation with atomic write, mode 0o600
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.3.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Hook Tmpfile Generation` → `SS-daemon-wiring.md v1.3.0 §Hook Tmpfile Generation`.
+- Plain version-pin refresh. No substantive content propagation required — §Hook Tmpfile Generation section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.

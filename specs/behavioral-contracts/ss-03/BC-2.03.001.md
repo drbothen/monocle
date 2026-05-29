@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:10:00Z
@@ -90,7 +90,7 @@ dyn-compatibility on MSRV 1.88 stable Rust. `metadata()` and `enrich()` must fai
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the EngineModule trait, which is the explicit engine abstraction over AI coding harnesses named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — Postcondition 6 mandates that detect() has no I/O and no shared state mutation; EngineModule implementations must follow this constraint to ensure DI-006) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.20 §EngineModule Trait Signature |
+| Architecture Source | SS-engine-module.md v1.1.26 §EngineModule Trait Signature |
 | Vision | §EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-ENGINE-001 |
@@ -167,3 +167,10 @@ S-TBD — Implement EngineModule trait in monocle-core (filled by story-writer)
 - Story propagation: S-014 (v1.4) and S-015 (v1.6) both pin BC-2.03.001 at `"1.0.5"` in inputs frontmatter. Story-writer must bump those pins to `"1.0.6"` under `bc_array_changes_propagate_to_body_and_acs` policy. S-014 AC-007 body (line 98) and implementer-notes (line 180) also contain "MSRV 1.86" — story-writer must propagate those body references per the same policy.
 - SE-17c-d body-scope grep: 0 stale BC IDs in non-historical body prose. 0 stale VP IDs.
 - SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-19T12:10:00Z (v1.0.5). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.7
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-engine-module.md v1.1.20 → v1.1.26 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-engine-module.md v1.1.20 §EngineModule Trait Signature` → `SS-engine-module.md v1.1.26 §EngineModule Trait Signature`.
+- Plain version-pin refresh per prior §Trace analysis. No substantive content propagation required — §EngineModule Trait Signature section heading and content anchors are unchanged between v1.1.20 and v1.1.26.
+- SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-29T00:00:00Z (v1.0.6). SAME TIMESTAMP: same burst, monotonicity satisfied by version increment.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:03:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -143,7 +143,7 @@ PC-8. Exit codes for `monocle daemon start`:
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — `monocle daemon start` is the primary CLI subcommand through which operators launch the daemon; "CLI surface" and "daemon auto-start" are both named CAP-004 responsibilities; this BC specifies the complete `daemon start` CLI contract including exit codes, foreground polling, detachment, and error messaging |
 | L2 Domain Invariants | DI-002 (lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — PC-3 enforces this by making the foreground caller wait for the lock file before declaring success; hook endpoints are guaranteed present once the lock file appears, per BC-2.04.001 step 12 occurring after step 8) |
 | Architecture Module | `monocle` binary crate per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §CLI Interface §Subcommand: `monocle daemon start` |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §CLI Interface §Subcommand: `monocle daemon start` |
 | Cross-Ref | BC-2.04.001 (daemon start sequence — the subprocess executes this); BC-2.01.005 (PID liveness check — PC-1 delegates to this); BC-2.04.006 (runtime_dir resolution — used for lock file polling path) |
 | Test File | `monocle/tests/cli_daemon_start.rs` |
 | Test Name | `test_BC_2_04_004_daemon_start_subcommand` |
@@ -211,3 +211,10 @@ VP-TBD — `monocle daemon start` CLI integration tests (filled after VP creatio
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.5.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §CLI Interface §Subcommand: monocle daemon start` → `SS-daemon-wiring.md v1.3.0 §CLI Interface §Subcommand: monocle daemon start`.
+- Plain version-pin refresh. No substantive content propagation required — §Subcommand: monocle daemon start section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.

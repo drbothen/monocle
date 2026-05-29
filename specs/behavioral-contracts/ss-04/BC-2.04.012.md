@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:05:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/SS-daemon-lifecycle.md, architecture/ARCH-INDEX.md]
-input-hash: "d0de914"
+input-hash: "bbcd796"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -169,7 +169,7 @@ existing active file is opened.
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — the JSONL ring is constructed at daemon start step 4 and wired into `DaemonState` as part of the composition-root start sequence (BC-2.04.001 PC-4); the ring's capacity and rotation policy are composition-root concerns because the ring is initialized in the SS-04 start sequence before any other subsystem runs; CAP-004 is the correct anchor as the composition root that owns the ring initialization contract |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — PC-4 defines the async-jsonl flush mode; best-effort queue-full behavior (RingError::WriteFull) represents the I/O-layer failure exception to DI-001; in normal non-overload paths, every event enters the write queue and is written to disk); DI-004 (all public wire types MUST carry a version discriminant as their first field — PC-5 states format_version is always the first field in every JSONL record, operationalizing DI-004 for the ring storage format) |
 | Architecture Module | monocle-runtime (RingBuffer, flush task) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (Step 4) and SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence (Step 4) and SS-daemon-lifecycle.md v1.0.33 §JSONL Ring Buffer |
 | Cross-Ref | BC-2.01.007 (JSONL ring format_version — specifies the record schema that this BC's rotation policy persists); BC-2.04.001 (daemon start sequence step 4 — constructs the RingBuffer with this capacity and rotation policy) |
 | Test File | `monocle-runtime/tests/ring_capacity_rotation.rs` |
 | Test Name | `test_BC_2_04_012_ring_capacity_and_rotation` |
@@ -222,3 +222,10 @@ S-TBD — Implement JSONL ring capacity (4096 RAM entries, 100MB × 5 rotation) 
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update. Note: `SS-daemon-lifecycle.md v1.0.33` pin was already correct and is unchanged.
 - SE-16d monotonicity: v1.0.2 timestamp >= v1.0.1. PASS.
+
+## §Trace v1.0.3
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (Step 4)` → `SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence (Step 4)`. The SS-daemon-lifecycle.md v1.0.33 cross-reference is unchanged.
+- Plain version-pin refresh. No substantive content propagation required — §Daemon Start Sequence section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.

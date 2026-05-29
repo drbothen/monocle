@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:02:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -116,7 +116,7 @@ PC-8. No error messages, no warnings, and no exit codes other than 0 are produce
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — `MONOCLE_NO_AUTOSTART` is a CLI surface concern that gates the daemon auto-start path; "CLI surface" and "daemon auto-start" are both named CAP-004 responsibilities; this BC specifies the env-var escape hatch that modifies auto-start behavior for CI and power users |
 | L2 Domain Invariants | DI-002 (lock file must be present before hook endpoints accept connections — this BC deliberately allows TUI to start without verifying DI-002, which is correct: when `MONOCLE_NO_AUTOSTART` is set, the daemon may be externally managed and TUI is offline-only; the DI-002 invariant governs daemon-side behavior, not TUI-offline behavior) |
 | Architecture Module | `monocle` binary crate + `monocle-runtime` per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic §MONOCLE_NO_AUTOSTART Check (BC-2.04.003) |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Daemon Auto-Start Logic §MONOCLE_NO_AUTOSTART Check (BC-2.04.003) |
 | Cross-Ref | BC-2.04.002 (daemon auto-start — this BC is the precondition gate that prevents BC-2.04.002 from executing); BC-2.04.004 (daemon start subcommand — unaffected by this env var); BC-2.04.005 (daemon stop subcommand — unaffected) |
 | Test File | `monocle/tests/no_autostart_env.rs` |
 | Test Name | `test_BC_2_04_003_no_autostart_suppresses_daemon` |
@@ -180,3 +180,10 @@ VP-TBD — MONOCLE_NO_AUTOSTART integration tests (filled after VP creation)
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.5.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic §MONOCLE_NO_AUTOSTART Check (BC-2.04.003)` → `SS-daemon-wiring.md v1.3.0 §Daemon Auto-Start Logic §MONOCLE_NO_AUTOSTART Check (BC-2.04.003)`.
+- Plain version-pin refresh. No substantive content propagation required — §MONOCLE_NO_AUTOSTART Check section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.

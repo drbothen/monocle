@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:13:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "e505f6b"
+input-hash: "4d1cdab"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -90,7 +90,7 @@ set (JC-2 parity: `PostToolUse` is omitted). `spawn()` and `preflight()` are Pha
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the hook path routing and operational method surface of the ClaudeCodeModule adapter named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — hook_paths() is synchronous, performs no I/O, and returns a static mapping from a pure in-memory HashMap construction; Invariant 3 explicitly states "no I/O, no async" for this method, satisfying DI-006's stateless detection requirement); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — hook_paths() returns read-only routing strings and writes to no files; spawn() and preflight() are stubs in Phase 1, preventing any write path from being exercised against harness-owned paths) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.20 §Struct-level inherent operations |
+| Architecture Source | SS-engine-module.md v1.1.26 §Struct-level inherent operations |
 | FC | JC-2 (5-endpoint parity, PostToolUse omitted) |
 | Brief Section | §Scope (§In Scope sub-bullets for hook endpoints — 5 canonical endpoints) |
 | Stories | S-TBD (filled by story-writer) |
@@ -142,3 +142,10 @@ S-TBD — Implement ClaudeCodeModule inherent methods with hook_paths map (fille
 - Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
 - SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
 - SE-16d monotonicity PASS: 2026-05-19T12:13:00Z > prior 2026-05-18T05:21:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-engine-module.md v1.1.20 → v1.1.26 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-engine-module.md v1.1.20 §Struct-level inherent operations` → `SS-engine-module.md v1.1.26 §Struct-level inherent operations`.
+- Plain version-pin refresh. No substantive content propagation required — §Struct-level inherent operations section heading and content anchors are unchanged between v1.1.20 and v1.1.26.
+- SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-19T12:13:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.

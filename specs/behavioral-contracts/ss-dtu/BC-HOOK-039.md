@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -88,7 +88,7 @@ hooks-settings.json writes, consistent with monocle's global atomic-write policy
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — atomic hooks-settings.json writes are a daemon lifecycle correctness property; torn reads result in session launches without hook event ingestion |
 | L2 Domain Invariants | DI-001 (tee invariant — a torn read that causes hooks-settings.json to be empty prevents hook injection, so no hook events reach the daemon; this violates the spirit of DI-001 for that session) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-039; SS-conventions-anti-patterns.md v1.29.5 (atomic write policy) |
+| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-039; SS-conventions-anti-patterns.md v1.31.1 (atomic write policy) |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:71 (`os.WriteFile` — non-atomic) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-039 (gene-source: deep-hooks-r2 §3 BC-HOOK-039; P3 finding) |
@@ -119,3 +119,10 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Monocle improvement: use `tempfile::persist` per SS-conventions-anti-patterns.md atomic-write policy.
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+
+## §Trace v1.0.1
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-conventions-anti-patterns.md v1.29.5 → v1.31.1 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-conventions-anti-patterns.md v1.29.5 (atomic write policy)` → `SS-conventions-anti-patterns.md v1.31.1 (atomic write policy)`.
+- Plain version-pin refresh. No substantive content propagation required — the atomic-write policy (tempfile::persist) is unchanged between v1.29.5 and v1.31.1.
+- SE-16d monotonicity: v1.0.1 timestamp >= v1.0.0. PASS.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.6.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:05:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -165,7 +165,7 @@ PC-14. After a valid path is returned by the resolution function, the caller (BC
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — runtime directory resolution is a foundational concern of the binary composition root: all daemon files (lock, socket, JSONL ring, hooks-settings) live under the resolved `runtime_dir`, and this 4-level fallback chain is part of the composition root wiring that determines where all SS-04-managed files are stored |
 | L2 Domain Invariants | DI-002 (lock file must be present at a known path before hook endpoints accept connections — this BC defines how that path is determined; without a correct runtime_dir resolution, the lock file cannot be created at a predictable location); DI-003 (token written to lock file after port bound — this BC is a prerequisite for DI-003 enforcement since the lock file path must be known before either operation) |
 | Architecture Module | `monocle-runtime` per ARCH-INDEX Subsystem Registry SS-04 (`resolve_runtime_dir()` function is classified as "Pure core (impure-adjacent)" per SS-daemon-wiring.md §Module Purity Classification) |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence Step 1; SS-daemon-lifecycle.md v1.0.33 §Start Sequence step 1 (cross-referenced) |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence Step 1; SS-daemon-lifecycle.md v1.0.33 §Start Sequence step 1 (cross-referenced) |
 | Cross-Ref | BC-2.01.005 (Postcondition 2 and Precondition 2 specify this same resolution chain; BC-2.04.006 is the normative specification; BC-2.01.005 delegates to it); BC-2.04.001 step 1 (calls this resolution function); BC-2.04.002 PC-1 (calls this function); BC-2.04.004 (uses lock file path derived from runtime_dir) |
 | Test File | `monocle-runtime/tests/runtime_dir_resolution.rs` |
 | Test Name | `test_BC_2_04_006_runtime_dir_fallback_chain` |
@@ -245,3 +245,10 @@ VP-TBD — Runtime directory resolution unit tests with env mocking (filled afte
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - Architecture Source: `SS-daemon-lifecycle.md §Start Sequence step 1` → `SS-daemon-lifecycle.md v1.0.33 §Start Sequence step 1` — version pin was missing (F-P1D4-006 HIGH finding); pin added.
 - SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.6.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence Step 1` → `SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence Step 1`. The SS-daemon-lifecycle.md v1.0.33 cross-reference is unchanged (that doc has not been bumped in scope).
+- Plain version-pin refresh. No substantive content propagation required — §Daemon Start Sequence Step 1 section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.6.0 timestamp >= v1.5.0. PASS.

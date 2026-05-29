@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:02:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -171,7 +171,7 @@ All three handlers return HTTP 200 with a JSON response body. Response body sema
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC defines the wiring of the Stop, SessionStart, and PromptSubmit hook endpoints (three of the five hook types) through the composition root's routing layer to EngineModule, event bus, and ring, which are core composition-root responsibilities of CAP-004 |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring — PC-6 implements ring append; best-effort only for I/O failures); DI-005 (auth token prefix enforcement — upstream auth middleware, Precondition 3) |
 | Architecture Module | monocle-runtime (hook handlers, axum router) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing |
 | Cross-Ref | BC-2.01.003 (body size limit — upstream); BC-2.01.009 (auth — upstream); BC-2.03.001 (EngineModule trait); BC-2.04.007 (PreToolUse routing — sibling, same 300ms budget); BC-2.04.008 (Notification routing — sibling, 2000ms budget); BC-2.04.011 (event bus) |
 | Test File | `monocle-runtime/tests/hook_routing_stop_session_prompt.rs` |
 | Test Name | `test_BC_2_04_009_stop_session_prompt_routing` |
@@ -274,3 +274,10 @@ S-TBD — Implement Stop/SessionStart/PromptSubmit hook routing handlers with 30
 - Root cause: BC-2.04.007 was corrected to FAIL-OPEN in Pass 2 (F-P1D2-001) but this BC's Related BCs bullet
   still described BC-2.04.007 as "fail-closed" — a stale propagation gap.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.2.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing` → `SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing`.
+- Plain version-pin refresh. No substantive content propagation required — §Hook Endpoint Routing section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.

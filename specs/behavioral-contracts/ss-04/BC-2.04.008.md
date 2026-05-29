@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:01:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -163,7 +163,7 @@ notification filtering is internal-only).
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC defines the wiring of the Notification hook endpoint (one of the 5 hook types) from HTTP ingress through EngineModule dispatch to event bus and ring, which is the composition-root routing responsibility assigned to SS-04/CAP-004 |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — PC-6 implements ring append; best-effort caveat applies only to I/O-layer failures); DI-005 (auth token prefix enforcement — upstream auth middleware, Precondition 3) |
 | Architecture Module | monocle-runtime (hook handlers, axum router) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing |
 | Cross-Ref | BC-2.01.003 (body size limit — upstream); BC-2.01.009 (auth — upstream); BC-2.03.001 (EngineModule trait); BC-2.04.007 (PreToolUse routing — sibling, 300ms budget); BC-2.04.011 (event bus) |
 | Test File | `monocle-runtime/tests/hook_routing_notification.rs` |
 | Test Name | `test_BC_2_04_008_notification_routing` |
@@ -239,3 +239,10 @@ S-TBD — Implement Notification hook routing handler with 2000ms timeout (fille
 - Root cause: off-by-one between step numbers and PC numbers in BC-2.04.001; each step covers
   multiple PCs, so step N ≠ PC-N.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.2.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing` → `SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing`.
+- Plain version-pin refresh. No substantive content propagation required — §Hook Endpoint Routing section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.

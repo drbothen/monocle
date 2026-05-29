@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:04:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -142,7 +142,7 @@ PC-8. Exit codes for `monocle daemon stop`:
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — `monocle daemon stop` is a CLI subcommand that is the operator-facing stop path; "CLI surface" is named explicitly as a CAP-004 responsibility; this BC specifies the complete `daemon stop` CLI contract including SIGTERM semantics, 15-second poll, and exit codes |
 | L2 Domain Invariants | DI-002 (lock file must be present before hook endpoints accept connections — this BC reads the lock file to find the PID; after successful stop, the daemon is no longer running, so DI-002 is transitively enforced by the clean shutdown removing the lock file per BC-2.01.004) |
 | Architecture Module | `monocle` binary crate per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §CLI Interface §Subcommand: `monocle daemon stop` |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §CLI Interface §Subcommand: `monocle daemon stop` |
 | Cross-Ref | BC-2.01.004 (graceful shutdown — the daemon's 10-second drain is what the 15-second poll window accommodates); BC-2.01.005 (lock file PID field — PC-1 reads the PID from the lock file per this contract); BC-2.04.006 (runtime_dir resolution) |
 | Test File | `monocle/tests/cli_daemon_stop.rs` |
 | Test Name | `test_BC_2_04_005_daemon_stop_subcommand` |
@@ -208,3 +208,10 @@ VP-TBD — `monocle daemon stop` CLI integration tests (filled after VP creation
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.5.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §CLI Interface §Subcommand: monocle daemon stop` → `SS-daemon-wiring.md v1.3.0 §CLI Interface §Subcommand: monocle daemon stop`.
+- Plain version-pin refresh. No substantive content propagation required — §Subcommand: monocle daemon stop section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.

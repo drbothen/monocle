@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:01:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -132,7 +132,7 @@ PC-6. The TUI renders its main content only after PC-5 succeeds or after offline
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — "daemon auto-start" is named explicitly as a CAP-004 responsibility; this BC specifies the auto-start decision sequence that is the primary user-facing entry point for the daemon auto-start path |
 | L2 Domain Invariants | DI-002 (lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — PC-5 enforces this by requiring a liveness check and lock-file presence before UDS connection) |
 | Architecture Module | `monocle` binary crate per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic §Auto-Start Decision Sequence (BC-2.04.002) |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Daemon Auto-Start Logic §Auto-Start Decision Sequence (BC-2.04.002) |
 | Cross-Ref | BC-2.04.001 (daemon start sequence — PC-4 triggers this); BC-2.04.003 (MONOCLE_NO_AUTOSTART — precondition gate for this BC); BC-2.04.006 (runtime_dir resolution — PC-1 delegates to this); BC-2.01.005 (lock file PID liveness check pattern used in PC-3) |
 | Test File | `monocle/tests/daemon_auto_start.rs` |
 | Test Name | `test_BC_2_04_002_daemon_auto_start_on_tui_launch` |
@@ -196,3 +196,10 @@ VP-TBD — Daemon auto-start integration tests (filled after VP creation)
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.3.0 timestamp >= v1.2.0. PASS.
+
+## §Trace v1.5.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic §Auto-Start Decision Sequence (BC-2.04.002)` → `SS-daemon-wiring.md v1.3.0 §Daemon Auto-Start Logic §Auto-Start Decision Sequence (BC-2.04.002)`.
+- Plain version-pin refresh. No substantive content propagation required — §Daemon Auto-Start Logic section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.

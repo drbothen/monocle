@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:11:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "e505f6b"
+input-hash: "4d1cdab"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -86,7 +86,7 @@ substring. `cmdline` is retained for `enrich()` but is never the primary detecti
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the ClaudeCodeModule, which is explicitly the Claude Code Phase 1 adapter named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — ClaudeCodeModule::detect() performs a pure in-memory comparison of exe_path.file_name() against two string literals; Invariant 1 explicitly states the strict-basename rule uses no I/O and Invariant 2 prohibits cmdline as a signal to further prevent any shared-state dependency) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.20 §Phase 1 Implementation: ClaudeCodeModule |
+| Architecture Source | SS-engine-module.md v1.1.26 §Phase 1 Implementation: ClaudeCodeModule |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-ENGINE-002 |
 | Test name | test_BC_ENGINE_002_claude_code_module_strict_basename_detect |
@@ -137,3 +137,10 @@ S-TBD — Implement ClaudeCodeModule with strict-basename detect (filled by stor
 - Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
 - SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
 - SE-16d monotonicity PASS: 2026-05-19T12:11:00Z > prior 2026-05-18T05:19:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-engine-module.md v1.1.20 → v1.1.26 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-engine-module.md v1.1.20 §Phase 1 Implementation: ClaudeCodeModule` → `SS-engine-module.md v1.1.26 §Phase 1 Implementation: ClaudeCodeModule`.
+- Plain version-pin refresh. No substantive content propagation required — §Phase 1 Implementation: ClaudeCodeModule section heading and content anchors are unchanged between v1.1.20 and v1.1.26.
+- SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-19T12:11:00Z (v1.0.4). ARITHMETICALLY TRUE: PASS.

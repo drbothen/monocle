@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/SS-daemon-wiring.md, architecture/ARCH-INDEX.md]
-input-hash: "3709e52"
+input-hash: "c81613b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-04
@@ -182,7 +182,7 @@ format is governed by the DTU contracts (BC-HOOK-xxx series). For PreToolUse:
 | Capability Anchor Justification | CAP-004 ("Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation") per ARCH-INDEX §SS-04 — this BC defines the routing logic that connects incoming hook HTTP events to the EngineModule dispatch, event bus, and ring buffer, which is the core wiring responsibility of the binary composition root defined in CAP-004 |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — PC-6 implements ring append before HTTP response; PC-6 best-effort caveat applies only to I/O-layer failures, not to normal paths); DI-005 (daemon MUST NOT accept token without canonical prefix — enforced by auth_middleware upstream of this handler, Precondition 3) |
 | Architecture Module | monocle-runtime (hook handlers, axum router) per ARCH-INDEX Subsystem Registry SS-04 |
-| Architecture Source | SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing |
+| Architecture Source | SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing |
 | Cross-Ref | BC-2.01.003 (body size limit middleware — upstream of this handler); BC-2.01.009 (auth middleware — upstream of this handler); BC-2.03.001 (EngineModule trait — dispatched at PC-3); BC-2.04.011 (bounded event bus — used at PC-5) |
 | Test File | `monocle-runtime/tests/hook_routing_pre_tool_use.rs` |
 | Test Name | `test_BC_2_04_007_pre_tool_use_routing` |
@@ -280,3 +280,10 @@ SE-16d monotonicity: v1.1.0 timestamp >= v1.0.0. PASS.
   HookResponse serialization, HTTP 200 return.
 - Capability anchor: CAP-004 per ARCH-INDEX §SS-04 Capability Traceability row.
 - SE-16d PASS: 2026-05-26T12:00:00Z is the chain origin for this artifact.
+
+## §Trace v1.5.0
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-daemon-wiring.md v1.2.0 → v1.3.0 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing` → `SS-daemon-wiring.md v1.3.0 §Hook Endpoint Routing`.
+- Plain version-pin refresh. No substantive content propagation required — §Hook Endpoint Routing section heading and content anchors are unchanged between v1.2.0 and v1.3.0.
+- SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.

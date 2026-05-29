@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -132,8 +132,8 @@ of shared-memory crates), and a semgrep check in CI (detecting direct `libc::mma
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC constrains the transport implementation to UDS-only, which defines the Phase 1 boundary of the internal transport capability and provides the `Transport` trait abstraction point for Phase 4 |
 | L2 Domain Invariants | DI-007 (monocle must not write to harness-owned files — shared-memory primitives could theoretically be used to violate this; the prohibition on shared-memory in monocle-ipc upholds DI-007's spirit at the transport layer) |
 | Architecture Module | monocle-ipc (Transport trait, UdsTransport, `#![forbid(unsafe_code)]`) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.4.0 §Transport Layer §Transport Trait; SS-ipc.md v1.4.0 §Phase 1 Transport Constraint |
-| Cross-Ref | SS-deps-pin-manifest.md v1.1.17 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.29.5 §Forbidden Patterns (shared-memory primitives) |
+| Architecture Source | SS-ipc.md v1.9.0 §Transport Layer §Transport Trait; SS-ipc.md v1.9.0 §Phase 1 Transport Constraint |
+| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.31.1 §Forbidden Patterns (shared-memory primitives) |
 | Test File | CI enforcement (cargo deny, semgrep, rustc compile gate) — not an integration test |
 | Test Name | `test_BC_2_05_008_uds_only_constraint` (static analysis CI job) |
 | Stories | S-TBD (filled by story-writer) |
@@ -188,3 +188,12 @@ VP-TBD — UDS-only constraint static analysis verification (filled after VP cre
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-ipc.md v1.3.0` (2 occurrences) → `SS-ipc.md v1.4.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: three-pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-ipc.md v1.4.0 §Transport Layer §Transport Trait` → `SS-ipc.md v1.9.0 §Transport Layer §Transport Trait`; `SS-ipc.md v1.4.0 §Phase 1 Transport Constraint` → `SS-ipc.md v1.9.0 §Phase 1 Transport Constraint`.
+- Cross-Ref row: `SS-deps-pin-manifest.md v1.1.17 §cargo-deny rules` → `SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules`. Plain pin refresh — cargo-deny shared-memory deny list content unchanged.
+- Cross-Ref row: `SS-conventions-anti-patterns.md v1.29.5 §Forbidden Patterns` → `SS-conventions-anti-patterns.md v1.31.1 §Forbidden Patterns`. Plain pin refresh — §Forbidden Patterns shared-memory primitives entry unchanged.
+- All three refreshes are plain version-pin refreshes; no substantive content propagation required.
+- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.

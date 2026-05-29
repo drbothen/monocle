@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-19T12:12:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "e505f6b"
+input-hash: "4d1cdab"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -83,7 +83,7 @@ harnesses).
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the no-silent-fallback error behavior of the ClaudeCodeModule adapter component of CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — metadata() and enrich() are non-detect methods, but DI-006's no-I/O and no-state-mutation constraints on the EngineModule interface require that error paths also be stateless: HomeUnresolvable fails fast without side effects, no retry state, no mutable shared variables); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — HomeUnresolvable prevents incorrect path substitution that could cause metadata() or enrich() to write to an unintended location; by failing fast with a diagnostic, no file write is attempted with a potentially wrong path) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.20 §Behavioral Contracts BC-ENGINE-002-ERR |
+| Architecture Source | SS-engine-module.md v1.1.26 §Behavioral Contracts BC-ENGINE-002-ERR |
 | CLAUDE.md SOUL | SOUL #4 (no silent fallback for unresolvable platform home directory) |
 | Dev Dependency | `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime` `[dev-dependencies]` |
 | Stories | S-TBD (filled by story-writer) |
@@ -135,3 +135,10 @@ S-TBD — Implement HomeUnresolvable error path with temp-env test isolation (fi
 - Pointer-only update. No behavioral content change. No new PCs/INVs/ECs.
 - SE-17c-d body-scope grep: 0 stale BC IDs. 0 stale VP IDs. No other stale version pins found.
 - SE-16d monotonicity PASS: 2026-05-19T12:12:00Z > prior 2026-05-18T05:20:00Z (v1.0.2). ARITHMETICALLY TRUE: PASS.
+
+## §Trace v1.0.4
+
+**ADV23-SCOPE-001 — Path B Category 8 scope expansion: SS-engine-module.md v1.1.20 → v1.1.26 Architecture Source pin refresh** (2026-05-29T00:00:00Z):
+- Architecture Source row: `SS-engine-module.md v1.1.20 §Behavioral Contracts BC-ENGINE-002-ERR` → `SS-engine-module.md v1.1.26 §Behavioral Contracts BC-ENGINE-002-ERR`.
+- Plain version-pin refresh. No substantive content propagation required — §Behavioral Contracts section structure unchanged between v1.1.20 and v1.1.26.
+- SE-16d monotonicity PASS: 2026-05-29T00:00:00Z > prior 2026-05-19T12:12:00Z (v1.0.3). ARITHMETICALLY TRUE: PASS.
