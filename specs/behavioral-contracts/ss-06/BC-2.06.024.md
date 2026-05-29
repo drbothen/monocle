@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -163,7 +163,7 @@ match &modal.tool_payload {
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability SS-06 — this BC specifies the visual rendering of the "permission overlay stack" for the three non-Edit ToolPayload variants (Bash command display, Read path display, Generic JSON excerpt display), which is the user-visible content of the overlay for the majority of Claude Code tool calls |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: overlay body rendering is a pure read-only computation producing ratatui `Line` values; no file writes occur) |
 | Architecture Module | monocle-tui (overlay.rs — render_bash_body, render_read_body, render_generic_body functions) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.6.0 §Permission Overlay §IPC Payload to PromptModal Conversion (ToolPayload variant selection); SS-tui.md v1.6.0 §Permission Overlay §Diff Preview (Edit is a separate path — this BC covers the non-Edit branches) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §IPC Payload to PromptModal Conversion (ToolPayload variant selection); SS-tui.md v1.8.2 §Permission Overlay §Diff Preview (Edit is a separate path — this BC covers the non-Edit branches) |
 | Cross-Ref | BC-2.06.010 (Edit diff rendering — the fourth ToolPayload variant; this BC explicitly excludes it); BC-2.06.001 (purity boundary — similar is monocle-tui only, not used in Bash/Read/Generic rendering); BC-2.06.008 (PromptModal arrives via this push path); BC-2.06.011/012/013 (decision keys active regardless of which ToolPayload variant is displayed) |
 | Test File | `monocle-tui/tests/overlay_payload_rendering.rs` |
 | Test Name | `test_BC_2_06_024_tool_payload_body_rendering_by_variant` |
@@ -197,6 +197,17 @@ S-027 — Overlay Rendering + Diff Preview + Status Bar (this BC covers the Bash
 **Architect Pass 2 HIGH-003 propagation — `Overlay { stack, prior }` shape removed** (2026-05-28T00:00:00Z):
 - Resolves F-S025-ADV3-BLOCKER-002. Precondition 1: `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.len() >= 1`. Precondition 2: `stack.front()` → `App.overlay_stack.front()`. The overlay stack is exclusively in `App.overlay_stack`; `AppMode::Overlay` no longer carries a `stack` field.
 - SE-16d monotonicity: v1.0.1 timestamp 2026-05-28T00:00:00Z > v1.0.0. PASS.
+
+## §Trace v1.0.2
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.6.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: both `SS-tui.md v1.6.0` occurrences → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.1 above.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers ToolPayload rendering (Bash/Read/Generic variants); no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+  - v1.6.0 → v1.8.2 delta: v1.7.0 added keybinding canonicalization; v1.8.0 removed Overlay stack field (propagated in v1.0.1). The `payload_to_modal()` conversion sketch and `§Diff Preview` sections cited by this BC are unchanged in v1.7.0 and v1.8.x.
+- SE-16d monotonicity: v1.0.2 timestamp 2026-05-29T00:00:00Z > v1.0.1. PASS.
 
 ## §Trace v1.0.0
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -113,7 +113,7 @@ deciding, without discarding any.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the stack rotation behavior that is the core navigation mechanic of the "permission overlay stack" component of CAP-006, enabling users to inspect all queued prompts before deciding |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: rotation sends no IPC message and performs no file I/O) |
 | Architecture Module | monocle-core (transition() rotate arm); monocle-tui (draw loop re-renders front item after transition) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine §Transition Function Contract (OverlayCycleNext arm); §Permission Overlay §Overlay Stack Lifecycle step 2 |
+| Architecture Source | SS-tui.md v1.8.2 §AppMode State Machine §Transition Function Contract (OverlayCycleNext arm); §Permission Overlay §Overlay Stack Lifecycle step 2 |
 | Cross-Ref | BC-2.06.001 (pure transition function — this BC's rotation is one of its arms), BC-2.06.008 (overlay push — creates the stack this BC rotates), BC-2.06.011 (Accept-Once — pops front after decision) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_009_overlay_cycle_rotates_stack` |
@@ -176,6 +176,16 @@ S-TBD — Implement overlay stack rotation via OverlayCycleNext action in transi
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.1.0 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers overlay stack rotation only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.1.1 timestamp 2026-05-29T00:00:00Z > v1.1.0. PASS.
 
 ## §Trace v1.1.0
 

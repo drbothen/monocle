@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.0"
+version: "1.6.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -157,7 +157,7 @@ user acts.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the timing contract for the "permission overlay stack" decision path, directly operationalizing the hook ingestion timeout budget Success Criterion |
 | L2 Domain Invariants | DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — this BC's timing constraints are compatible: the daemon writes to the ring before opening the hold, not after the decision returns); DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: decision is sent via IPC only) |
 | Architecture Module | monocle-tui (overlay render timing, IPC send on decision); monocle-runtime (daemon hold + timeout enforcement) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Hook Timeout Budget (BC-2.06.017); §Permission Overlay §Overlay Stack Lifecycle steps 2–3 (decision send path); §Rendering Architecture §Draw Loop (16ms tick, ~60fps) |
+| Architecture Source | SS-tui.md v1.8.2 §Hook Timeout Budget (BC-2.06.017); §Permission Overlay §Overlay Stack Lifecycle steps 2–3 (decision send path); §Rendering Architecture §Draw Loop (16ms tick, ~60fps) |
 | Cross-Ref | BC-HOOK-022 (gene-source canonical timeout ceilings: 300ms/2000ms); BC-HOOK-001 (PreToolUse fail-open on timeout); BC-2.06.008 (overlay push on PermissionPromptQueued); BC-2.06.011 (Accept-Once decision send path); BC-2.06.012 (Accept-Always decision send path); BC-2.06.013 (Reject decision send path); BC-2.06.018 (Notification events appear in ribbon, not overlay) |
 | Test File | `monocle-tui/tests/hook_timeout_budget.rs` |
 | Test Name | `test_BC_2_06_017_permission_response_within_timeout_budget` |
@@ -227,6 +227,16 @@ S-TBD — Verify hook timeout budget compliance: render latency test, decision d
 - Test vector "Decision within budget": "`[1]` at T=50ms" → "`[y]` at T=50ms".
 - Test vector "IPC send channel full": "`[1]`" → "`[y]`".
 - SE-16d monotonicity: v1.6.0 timestamp >= v1.5.0. PASS.
+
+## §Trace v1.6.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): this BC references `AppMode::Overlay` by mode name only; no `Overlay { stack }` variant shape in scope.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers hook timeout budget; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.6.1 timestamp 2026-05-29T00:00:00Z > v1.6.0. PASS.
 
 ## §Trace v1.5.0
 

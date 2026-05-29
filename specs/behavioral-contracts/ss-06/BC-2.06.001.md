@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -134,7 +134,7 @@ with no I/O, no ratatui dependency, and no runtime panics.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC defines the AppMode enum and pure transition function that are the foundation of the TUI state machine, directly operationalizing the "AppMode state machine" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — enforced here by the purity boundary: `transition()` is a pure function with no file I/O, and `monocle-core` has no I/O crate dependencies) |
 | Architecture Module | monocle-core (AppMode, Action, FocusSnapshot, transition() — pure types); monocle-tui (App struct, draw loop, dispatcher) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine; §Purity Boundary; §Constraints |
+| Architecture Source | SS-tui.md v1.8.2 §AppMode State Machine; §Purity Boundary; §Constraints |
 | Cross-Ref | BC-2.06.002 (FocusSnapshot restore, depends on this), BC-2.06.003 (5-level dispatch, depends on this), BC-2.06.008 (overlay push, depends on this) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_001_appmode_compile_time_mutual_exclusion` |
@@ -205,3 +205,13 @@ S-TBD — Implement AppMode enum, Action enum, FocusSnapshot, PanelId, PromptMod
 - Test vectors: all `Overlay { stack: [P1], prior: ... }` shapes updated to `Overlay { prior: ... }` with `App.overlay_stack` noted as the stack source.
 - VP updated: phrasing adapted to reflect that the empty-Overlay invariant is now enforced architecturally by the App-level collapse, not by `transition()`.
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.4 above (`Overlay { stack: VecDeque<PromptModal>, prior }` → `Overlay { prior: FocusSnapshot }` with `App::overlay_stack` as single source of truth).
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers AppMode enum + transition(); no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (pure state machine).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -135,7 +135,7 @@ events/sec"`).
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the status bar drop counter rendering, which is the TUI-visible component of the "no unbounded channel" Success Criterion directly within the CAP-006 TUI scope |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: status bar rendering is read-only display, no file writes); DI-001 (JSONL ring write before acknowledgement — not directly constrained by this BC; the drop counter reflects channel drops, not ring write failures) |
 | Architecture Module | monocle-tui (status bar renderer, `App::drop_counter: u64`); monocle-ipc (IPC `ServerToClient::DropCounterUpdate` message type) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Status Bar (drop counter subsection: "receives drop_counter: u64... renders as `drops: N` when N > 0; renders nothing when N == 0") |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Status Bar (drop counter subsection: "receives drop_counter: u64... renders as `drops: N` when N > 0; renders nothing when N == 0") |
 | Cross-Ref | BC-2.04.011 (bounded event bus + daemon-side drop counter — this BC renders what BC-2.04.011 produces); BC-2.06.020 (breadcrumb — shares the same status bar row as the drop counter) |
 | Test File | `monocle-tui/tests/status_bar.rs` |
 | Test Name | `test_BC_2_06_019_drop_counter_renders_under_load` |
@@ -205,3 +205,13 @@ S-TBD — Implement status bar drop counter: hide when 0, render `drops: N` in y
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): this BC has no `Overlay { stack }` references; it covers status bar drop counter only.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers status bar; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (drop counter behavior is independent of disconnect style).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

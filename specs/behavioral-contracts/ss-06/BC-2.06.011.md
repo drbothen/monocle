@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -122,7 +122,7 @@ TUI removes the matching modal via `retain()`. If the stack becomes empty after 
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the Accept-Once decision path within the "permission overlay stack" component of CAP-006, which is the primary user action for resolving a queued permission prompt |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: Accept-Once sends an IPC decision message to the daemon; it does not write any file directly) |
 | Architecture Module | monocle-core (transition() PermissionAcceptOnce arm); monocle-tui (App::handle_action enqueues IPC message; App::ipc_tx send channel) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionAcceptOnce arm) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionAcceptOnce arm) |
 | Cross-Ref | BC-2.06.001 (pure transition function — Accept-Once is one of its arms), BC-2.06.008 (overlay push — creates the stack this BC pops), BC-2.05.005 (PermissionPromptQueued IPC — upstream source of prompt_id), BC-2.04.011 (bounded event bus — governs IPC send channel drop behavior) |
 | Test File | `monocle-tui/tests/overlay_decisions.rs` |
 | Test Name | `test_BC_2_06_011_accept_once_pops_front_and_sends_ipc` |
@@ -242,3 +242,13 @@ S-TBD — Implement Accept-Once keybinding for permission overlay with IPC decis
   Edge Cases updated, Test Vectors updated.
 - Cross-reference to BC-2.06.023 added to Related BCs.
 - SE-16d monotonicity: v1.1.0 timestamp 2026-05-27T00:00:00Z > v1.0.5. PASS.
+
+## §Trace v1.2.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.2.0 above.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Accept-Once keybinding; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.2.1 timestamp 2026-05-29T00:00:00Z > v1.2.0. PASS.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.0"
+version: "1.6.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -174,7 +174,7 @@ the component BCs. The E2E test vector is:
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC is the E2E validation contract for CAP-006 in its entirety: it exercises AppMode state machine, keybinding dispatch, permission overlay stack, and Ctrl-\ popup integration in a single end-to-end scenario that is the product's core value proposition |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon MUST be written to the JSONL ring — both P1 and P2 `PreToolUse` events were written to the ring when the daemon received them; this BC verifies the decision path after ring write); DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: decisions are sent via IPC HTTP response; no harness files are modified by the TUI) |
 | Architecture Module | monocle-tui (overlay rendering, keybinding dispatch, IPC decision send, App.overlay_stack retain()-based removal, AppMode empty-stack collapse); monocle-core (AppMode transition function); monocle-ipc (ClientToServer::PermissionDecision delivery, ServerToClient::PermissionPromptResolved receipt); monocle-runtime (daemon HTTP response hold and release) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Killer Scenario Flow (complete step-by-step table including AppMode transitions, daemon actions, and Claude Code unblock verification); §Permission Overlay §Overlay Stack Lifecycle steps 3 and 2 (decision send and rotate) |
+| Architecture Source | SS-tui.md v1.8.2 §Killer Scenario Flow (complete step-by-step table including AppMode transitions, daemon actions, and Claude Code unblock verification); §Permission Overlay §Overlay Stack Lifecycle steps 3 and 2 (decision send and rotate) |
 | Cross-Ref | BC-2.06.008 (overlay push on PermissionPromptQueued — Step 1 precondition); BC-2.06.012 (Accept-Always — Step 2); BC-2.06.011 (Accept-Once — Step 3); BC-2.06.001 (AppMode empty-stack collapse — Step 3 automatic Dashboard return); BC-2.06.017 (hook timeout budget — overall timing constraint); BC-2.05.002 (initial state push — Step 1 mechanism for receiving queued prompts) |
 | Test File | `monocle-tui/tests/killer_scenario.rs` |
 | Test Name | `test_BC_2_06_022_killer_scenario_dual_permission_resolve` |
@@ -246,6 +246,16 @@ SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per final bulk pin update.
 - Note: The §Trace v1.4.0 fix already corrected the Step 1 IPC push field name (overlay_stack). This pass fixes the remaining body prose uses of the stale DaemonState field name.
 - SE-16d monotonicity: v1.5.0 timestamp >= v1.4.0. PASS.
+
+## §Trace v1.6.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.6.0 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers the end-to-end killer scenario; the scenario table references `App.overlay_stack` and IPC types but not the Sessions Panel column layout.
+  - v1.8.2 (disconnect bracketed-tag style): the killer scenario does not involve a daemon disconnect; no disconnect rendering referenced in this BC's body.
+- SE-16d monotonicity: v1.6.1 timestamp 2026-05-29T00:00:00Z > v1.6.0. PASS.
 
 ## §Trace v1.6.0
 

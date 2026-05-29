@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -128,7 +128,7 @@ documentation to know what keys are available in the current mode.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the keybinding hint line which is the discoverable surface for the "keybinding dispatch" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: hint line is read-only display derived from in-memory AppMode) |
 | Architecture Module | monocle-tui (status bar renderer `draw_status_bar()`, hint line derivation from `AppMode`); monocle-core (`AppMode`, `Dispatcher::builtin` binding table) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Status Bar (keybinding hint line subsection with all 4 AppMode hint examples) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Status Bar (keybinding hint line subsection with all 4 AppMode hint examples) |
 | Cross-Ref | BC-2.06.001 (AppMode state machine — hint is derived from it); BC-2.06.003 (5-level binding precedence — hint shows Builtin level only); BC-2.06.020 (breadcrumb — shares the status bar, occupies the upper row); BC-2.06.014 (Esc in Overlay — hint says `Esc: hide` to match the no-op behavior); BC-2.06.015 (`[t]` trace stub — hint shows `t: trace` as a discoverable stub) |
 | Test File | `monocle-tui/tests/status_bar.rs` |
 | Test Name | `test_BC_2_06_021_keybinding_hint_line` |
@@ -205,3 +205,13 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
   all other references use `Overlay` without stack fields (hint line content is
   mode-agnostic w.r.t. stack shape).
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T13:00:00Z > v1.0.3 timestamp 2026-05-26T00:00:00Z. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.4 above (test vector row 3 Overlay shape updated; hint line content is mode-agnostic w.r.t. stack shape).
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers keybinding hint line; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (hint line shows mode-specific keybindings, not daemon connection status).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

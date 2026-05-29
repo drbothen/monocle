@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -122,7 +122,7 @@ where modal-close from Sessions loses the Sessions context.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the FocusSnapshot capture/restore mechanism that is part of the AppMode state machine component of CAP-006, preventing the gap identified in the NikiforovAll reference implementation |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — orthogonally reinforced here: the `FocusSnapshot` design ensures the TUI panel focus is tracked via pure value types, not shared mutable state) |
 | Architecture Module | monocle-core (FocusSnapshot enum, cycle(), to_panel_id()) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine (FocusSnapshot definition, transition function arms for Filtering/Fullscreen/Overlay exit) |
+| Architecture Source | SS-tui.md v1.8.2 §AppMode State Machine (FocusSnapshot definition, transition function arms for Filtering/Fullscreen/Overlay exit) |
 | Cross-Ref | BC-2.06.001 (transition function definition that enforces this contract), BC-2.06.016 (daemon-disconnect focus reset — the one documented exception to pure prior restoration) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_002_focus_snapshot_restored_after_modal_close` |
@@ -179,6 +179,16 @@ S-TBD — Implement FocusSnapshot enum with cycle() and to_panel_id() methods; v
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.4 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC references §AppMode State Machine only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): this BC references FocusSnapshot/transition() arms; no disconnect rendering in scope.
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.
 
 ## §Trace v1.0.4
 

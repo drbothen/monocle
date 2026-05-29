@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T18:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -145,7 +145,7 @@ and the daemon-side bounded event bus (BC-2.04.011).
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC directly specifies the "event ribbon" component of CAP-006, the rolling hook event log that is one of the product's three Phase 1 panels |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon MUST be written to the JSONL ring — the TUI Event Ribbon is a render view derived from IPC pushes, not from the ring directly; DI-001 is enforced by the daemon before the IPC push, not by this TUI BC); DI-007 (monocle MUST NOT write to files owned by a harness — satisfied: ribbon is read-only rendering) |
 | Architecture Module | monocle-tui (Event Ribbon panel renderer, `VecDeque<HookEventRow>`, scroll state); monocle-core (PanelId::EventRibbon, FocusSnapshot::EventRibbon) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Event Ribbon Panel (column layout, scroll, `PENDING` status, panel height cap, newest-first ordering) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Event Ribbon Panel (column layout, scroll, `PENDING` status, panel height cap, newest-first ordering) |
 | Cross-Ref | BC-2.01.007 (JSONL ring buffer — daemon-side storage; DISTINCT from this TUI render state); BC-2.04.011 (bounded event bus — daemon-side drop counter; TUI ribbon is downstream of this); BC-2.05.004 (IPC HookEventReceived — the IPC message type this BC processes); BC-2.06.019 (drop counter in status bar — shows daemon-side drops visible alongside ribbon); BC-2.06.017 (Notification hooks: appear in ribbon but never defer) |
 | Test File | `monocle-tui/tests/event_ribbon_panel.rs` |
 | Test Name | `test_BC_2_06_018_event_ribbon_rolling_log` |
@@ -214,3 +214,13 @@ S-TBD — Implement Event Ribbon panel: column layout, newest-first prepend, bou
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): this BC has no `Overlay { stack }` references; it covers Event Ribbon rendering only.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Event Ribbon panel; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.29"
+version: "1.32"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-29T00:00:00Z
+timestamp: 2026-05-29T03:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -1003,4 +1003,83 @@ BC-INDEX H1 titles: unchanged for all 27 BCs in this burst. No BC retirements or
 
 META-pattern CODIFY-001 Category 8 closure: ADV23-SCOPE-001 bounds spec-body Architecture Source pin freshness across all subsystems. CI enforcement candidate: parse "Architecture Source | SS-*.md vX.Y.Z" cells in BC bodies, fail if cited version < canonical frontmatter version.
 
+## §Trace v1.30
+
+**ADV23-SCOPE-002 — 9 ss-06 BCs SS-tui.md v1.5.0 → v1.8.2 pin refresh** (2026-05-29T01:00:00Z):
+
+Continues from cc1ea7d (26 BCs in ADV23-SCOPE-001). Orchestrator-authorized per CLAUDE.md Principle 4 — third and final burst bounds the SS-tui.md category cascade. Final-verification sweep on cc1ea7d discovered 9 remaining ss-06 BCs still pinned to SS-tui.md v1.5.0.
+
+All 9 are Category A plain version-pin refreshes (SS-tui.md v1.5.0 → v1.8.2). Per-BC substantive-change analysis (three SS-tui.md version increments checked):
+- v1.8.0 (Overlay shape change): already propagated in earlier BC-specific §Trace entries (F-S025-ADV3-BLOCKER-002 sweep).
+- v1.8.1 (Sessions Panel 6→7 columns): only BC-2.06.005 (already updated in 1ad2852 burst) referenced the column table; none of these 9 BCs reference §Sessions Panel column layout.
+- v1.8.2 (disconnect bracketed-tag style `"[disconnected] reconnecting..."`): BC-2.06.016 led this change (§Trace v1.0.8 at commit 4563bfa); SS-tui.md §Trace v1.8.2 followed. BC-2.06.016 body is already canonical; no prose propagation needed.
+
+ss-06 (9 BCs; SS-tui.md v1.5.0 → v1.8.2) — all plain version-pin refreshes:
+- BC-2.06.002 v1.0.4 → v1.0.5: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.006 v1.0.3 → v1.0.4: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.008 v1.1.0 → v1.1.1: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.009 v1.1.0 → v1.1.1: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.012 v1.2.0 → v1.2.1: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.016 v1.0.8 → v1.0.9: Architecture Source SS-tui.md v1.5.0 → v1.8.2. Substantive `"[disconnected] reconnecting..."` content already canonical per §Trace v1.0.8; pin bump only.
+- BC-2.06.018 v1.0.4 → v1.0.5: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.019 v1.0.4 → v1.0.5: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.022 v1.6.0 → v1.6.1: Architecture Source SS-tui.md v1.5.0 → v1.8.2.
+
+Substantive content propagations: NONE (all 9 are plain version-pin refreshes).
+
+Cumulative Category 8 closure (1ad2852 + cc1ea7d + this commit): **45 BCs across 7 canonical-doc refreshes** (SS-tui.md, SS-engine-module.md, SS-daemon-wiring.md, SS-ipc.md, SS-deps-pin-manifest.md, SS-conventions-anti-patterns.md, SS-config.md). Species BOUNDED per exhaustive final-verification sweep.
+
+BC-INDEX H1 titles: unchanged for all 9 BCs in this burst. No BC retirements or removals.
+
+SE-16d monotonicity: v1.30 timestamp 2026-05-29T01:00:00Z > v1.29 timestamp 2026-05-29T00:00:00Z. PASS.
+
+## §Trace v1.31
+
+**ADV23-SCOPE-002 EXTENDED — Exhaustive final-sweep closed 9 additional ss-06 SS-tui.md stale pins** (2026-05-29T02:00:00Z):
+
+Post-commit sweep within ADV23-SCOPE-002 burst revealed 9 additional ss-06 BCs still pinned to SS-tui.md v1.5.0 or v1.6.0. These were missed in the original 9-BC authorization scope because they had been updated in separate, targeted bursts (AppMode shape sweep, keybinding canonicalization) that did not include a full version pin bump. All are Category A plain version-pin refreshes.
+
+Exhaustive sweep finding and CODIFY-001 Category 8 interpretation: the Architecture Source row pattern is systemic across ALL ss-06 BCs — every BC that cites an architecture source must be swept when that document is updated. The CI enforcement candidate (parse all "Architecture Source | SS-*.md vX.Y.Z" cells) would have caught all 18 sites in one pass.
+
+ss-06 additional 9 BCs (SS-tui.md stale; all plain pin refreshes):
+- BC-2.06.003 v1.1.0 → v1.1.1: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.010 v1.0.5 → v1.0.6: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.011 v1.2.0 → v1.2.1: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.013 v1.2.0 → v1.2.1: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.014 v1.0.7 → v1.0.8: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.017 v1.6.0 → v1.6.1: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.020 v1.0.4 → v1.0.5: SS-tui.md v1.5.0 → v1.8.2.
+- BC-2.06.023 v1.4.0 → v1.4.1: SS-tui.md v1.5.0 → v1.8.2 AND SS-ipc.md v1.4.0 → v1.9.0 (dual refresh).
+- BC-2.06.024 v1.0.1 → v1.0.2: SS-tui.md v1.6.0 → v1.8.2.
+
+Substantive content propagations for these 9: NONE. All three SS-tui.md v1.5.0→v1.8.2 content changes (Overlay shape, Sessions Panel columns, disconnect tag style) were either already propagated in prior BC-specific §Trace entries or not in scope for these BCs.
+
+Cumulative Category 8 closure (1ad2852 + cc1ea7d + ADV23-SCOPE-002 authorized 9 + ADV23-SCOPE-002 extended 9): **54 BCs across 7 canonical-doc refreshes** (SS-tui.md, SS-engine-module.md, SS-daemon-wiring.md, SS-ipc.md, SS-deps-pin-manifest.md, SS-conventions-anti-patterns.md, SS-config.md). All ss-06 BCs citing SS-tui.md now at v1.8.2. Category 8 cascade for SS-tui.md: FULLY BOUNDED.
+
+BC-INDEX H1 titles: unchanged for all 9 BCs in this burst. No BC retirements or removals.
+
+SE-16d monotonicity: v1.31 timestamp 2026-05-29T02:00:00Z > v1.30 timestamp 2026-05-29T01:00:00Z. PASS.
+
 SE-16d monotonicity PASS: 2026-05-29T00:00:00Z >= 2026-05-29T00:00:00Z (v1.28). SAME TIMESTAMP: same burst, monotonicity satisfied by version increment.
+
+## §Trace v1.32
+
+**ADV23-SCOPE-002 FINAL — 3 remaining ss-06 BCs found in post-context-resume verification sweep** (2026-05-29T03:00:00Z):
+
+After context compaction, a verification sweep of all ss-06 active Architecture Source pins revealed 3 BCs that were missed in the §Trace v1.30/v1.31 bursts. All had been updated in prior targeted bursts (AppMode shape sweep in §Trace v1.0.4 of each) but never received the plain SS-tui.md v1.5.0 → v1.8.2 pin bump.
+
+ss-06 final 3 BCs (SS-tui.md stale; all plain pin refreshes):
+- BC-2.06.001 v1.0.4 → v1.0.5: SS-tui.md v1.5.0 → v1.8.2. AppMode state machine; Overlay shape already propagated in §Trace v1.0.4.
+- BC-2.06.015 v1.0.4 → v1.0.5: SS-tui.md v1.5.0 → v1.8.2. Trace-to-source stub; Overlay shape already propagated in §Trace v1.0.4.
+- BC-2.06.021 v1.0.4 → v1.0.5: SS-tui.md v1.5.0 → v1.8.2. Keybinding hint line; test vector Overlay shape already propagated in §Trace v1.0.4.
+
+Substantive content propagations: NONE. All three SS-tui.md v1.5.0→v1.8.2 content changes checked per-BC:
+- BC-2.06.001: Overlay shape propagated in v1.0.4; Sessions panel not in scope; disconnect not in scope.
+- BC-2.06.015: Overlay shape propagated in v1.0.4; Sessions panel not in scope; disconnect not in scope (stub renders placeholder footer only).
+- BC-2.06.021: Overlay test-vector shape propagated in v1.0.4; Sessions panel not in scope; disconnect not in scope (hint line shows keybindings, not daemon status).
+
+Post-fix verification: all 24 ss-06 BCs now cite SS-tui.md v1.8.2 as active Architecture Source. Category 8 cascade for SS-tui.md: FULLY BOUNDED — 57 total BC pin refreshes across this cascade (prior 54 + these 3).
+
+BC-INDEX H1 titles: unchanged for all 3 BCs in this burst. No BC retirements or removals.
+
+SE-16d monotonicity: v1.32 timestamp 2026-05-29T03:00:00Z > v1.31 timestamp 2026-05-29T02:00:00Z. PASS.

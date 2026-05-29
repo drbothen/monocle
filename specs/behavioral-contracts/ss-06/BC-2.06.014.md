@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T14:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -126,7 +126,7 @@ being answered or dropped.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the `[Esc]` hide-without-decision behavior that is the SOQ-3 complement for the "permission overlay stack" and "Ctrl-\ popup integration" components of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: `[Esc]` sends no IPC message and writes no files) |
 | Architecture Module | monocle-core (transition() Overlay+Escape identity arm); monocle-tui (daemon-ownership of pending-prompt registry via IPC initial state push `overlay_stack`) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §AppMode State Machine §Transition Function Contract (Overlay+Escape no-op arm and SOQ-3 comment); §Permission Overlay §Overlay Stack Lifecycle step 4 (Hide); §Ctrl-\ Integration §State Preservation Across Hide/Show |
+| Architecture Source | SS-tui.md v1.8.2 §AppMode State Machine §Transition Function Contract (Overlay+Escape no-op arm and SOQ-3 comment); §Permission Overlay §Overlay Stack Lifecycle step 4 (Hide); §Ctrl-\ Integration §State Preservation Across Hide/Show |
 | Cross-Ref | BC-2.06.013 (Reject — CRITICAL DISTINCTION: `[n/r]` sends deny IPC and waits for `PermissionPromptResolved`; `[Esc]` does neither), BC-2.05.002 (TUI initial state push — mechanism by which overlay survives TUI process restart), BC-2.06.001 (pure transition function — Esc identity arm), BC-2.06.016 (overlay cleared on daemon disconnect — different from hide) |
 | Test File | `monocle-core/tests/app_mode_transitions.rs` |
 | Test Name | `test_BC_2_06_014_esc_in_overlay_is_noop` |
@@ -228,3 +228,13 @@ S-TBD — Implement Esc no-op behavior in Overlay mode and verify overlay surviv
 - The TUI-side `VecDeque<PromptModal>` references throughout Postconditions/Invariants are RETAINED — the TUI
   local stack type is `VecDeque<PromptModal>`; only the IPC/daemon naming was wrong.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.8
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.6/v1.0.7 above.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Esc hide behavior; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): this BC is about Esc-hides-without-clearing, which is the CONTRAST to BC-2.06.016's disconnect behavior; no disconnect rendering text in scope.
+- SE-16d monotonicity: v1.0.8 timestamp 2026-05-29T00:00:00Z > v1.0.7. PASS.

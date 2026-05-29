@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -121,7 +121,7 @@ even in Fullscreen and Overlay modes.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the status bar breadcrumb which is the primary orientation aid for the "AppMode state machine" component of CAP-006 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — satisfied: breadcrumb is read-only display derived from in-memory AppMode) |
 | Architecture Module | monocle-tui (status bar renderer `draw_status_bar()`, breadcrumb derivation from `AppMode`); monocle-core (`AppMode` enum) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Status Bar (breadcrumb subsection with all 4 AppMode derivation examples) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Status Bar (breadcrumb subsection with all 4 AppMode derivation examples) |
 | Cross-Ref | BC-2.06.001 (AppMode state machine — breadcrumb is derived from it); BC-2.06.019 (drop counter — shares the same status bar row); BC-2.06.021 (keybinding hint — occupies the second status bar row) |
 | Test File | `monocle-tui/tests/status_bar.rs` |
 | Test Name | `test_BC_2_06_020_breadcrumb_derivation` |
@@ -183,3 +183,13 @@ S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singula
 **Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
 - Resolves F-S025-ADV3-BLOCKER-002. Breadcrumb derivation table: `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.len()` as the prompt count source. Postcondition 2, EC-125, and test vectors updated.
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.4 above (`Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack.len()`).
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers breadcrumb rendering; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (breadcrumb shows current AppMode, not daemon-disconnect text).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

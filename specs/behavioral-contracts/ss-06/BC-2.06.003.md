@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -141,7 +141,7 @@ AppMode)`, the `Dispatcher::resolve()` call always produces the same `Option<Bin
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "keybinding dispatch" component of CAP-006: the 5-level precedence system is the mechanism by which user customizations interact safely with builtin bindings and AppMode-specific context bindings |
 | L2 Domain Invariants | DI-006 (EngineModule statelessness — orthogonally supported: `Dispatcher::resolve()` is stateless beyond the pre-populated tables; no global mutable state is read during resolution) |
 | Architecture Module | monocle-core (BindingSource, Binding enums); monocle-tui (Dispatcher, per_context rebuild) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Action Enum and 5-Level Binding Precedence (Dispatcher Logic sketch, BindingSource enum) |
+| Architecture Source | SS-tui.md v1.8.2 §Action Enum and 5-Level Binding Precedence (Dispatcher Logic sketch, BindingSource enum) |
 | Cross-Ref | BC-2.06.001 (Action enum definition), BC-2.06.004 (Ctrl-\ binding is external to dispatcher — in tmux, not monocle), BC-2.06.011 (accept-once `[y]`/`[Enter]` bindings are in SearchPrompt layer per this dispatch contract), BC-2.06.012 (accept-always `[A]` binding — SearchPrompt layer), BC-2.06.013 (reject `[n]`/`[r]` bindings — SearchPrompt layer) |
 | Test File | `monocle-tui/tests/keybinding_dispatcher.rs` |
 | Test Name | `test_BC_2_06_003_five_level_binding_precedence` |
@@ -241,3 +241,13 @@ notes referencing `[1]/[2]/[3]`.
 Architecture Anchors, Story Anchor, VP Anchors, Traceability rows other than Cross-Ref.
 
 SE-16d monotonicity: v1.1.0 timestamp 2026-05-27T09:00:00Z > v1.0.4 (2026-05-26T00:00:00Z). PASS.
+
+## §Trace v1.1.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): this BC's §Overlay mode keybindings reference `AppMode::Overlay` only by mode name; no `Overlay { stack }` variant shape in scope.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers keybinding dispatch; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.1.1 timestamp 2026-05-29T00:00:00Z > v1.1.0. PASS.

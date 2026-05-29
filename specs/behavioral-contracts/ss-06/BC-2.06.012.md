@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -112,7 +112,7 @@ stack management behavior are identical.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the Accept-Always decision path within the "permission overlay stack" component of CAP-006, enabling the user to grant persistent per-tool permission to avoid repeated prompts |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: Accept-Always sends an IPC decision message; pattern recording is daemon-side; TUI writes no files) |
 | Architecture Module | monocle-core (transition() PermissionAcceptAlways arm); monocle-tui (App::handle_action enqueues IPC message) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionAcceptAlways arm) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionAcceptAlways arm) |
 | Cross-Ref | BC-2.06.011 (Accept-Once — sibling with identical TUI behavior, different decision value), BC-2.06.013 (Reject — sibling decision), BC-2.06.001 (pure transition function), BC-2.06.008 (overlay push), BC-2.04.011 (bounded event bus drop counter) |
 | Test File | `monocle-tui/tests/overlay_decisions.rs` |
 | Test Name | `test_BC_2_06_012_accept_always_pops_front_and_sends_ipc` |
@@ -189,6 +189,16 @@ S-TBD — Implement Accept-Always keybinding for permission overlay with IPC dec
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
+
+## §Trace v1.2.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.2.0 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Accept-Always decision keybinding only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.2.1 timestamp 2026-05-29T00:00:00Z > v1.2.0. PASS.
 
 ## §Trace v1.2.0
 

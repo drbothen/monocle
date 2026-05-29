@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -127,7 +127,7 @@ future keybinding conflicts when the full trace-to-source behavior is implemente
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the `[t]` trace-to-source stub within the "permission overlay stack" component of CAP-006; the stub reserves the keybinding for Phase 2 Static plane integration while ensuring the binding is discoverable in Phase 1 via the hint line |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: the stub sends no IPC message and writes no files; it is a pure render-state change) |
 | Architecture Module | monocle-core (Action::PermissionTraceToSource variant — reserved); monocle-tui (overlay renderer stub arm for PermissionTraceToSource) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Trace-to-Source Stub; §Action Enum (PermissionTraceToSource variant with `// Phase 1: stub` comment); §Status Bar §Keybinding hint line (Overlay mode includes `t: trace`) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Trace-to-Source Stub; §Action Enum (PermissionTraceToSource variant with `// Phase 1: stub` comment); §Status Bar §Keybinding hint line (Overlay mode includes `t: trace`) |
 | Cross-Ref | BC-2.06.001 (pure transition function — PermissionTraceToSource identity arm), BC-2.06.003 (5-level binding precedence — Builtin level for `[t]`) |
 | Test File | `monocle-tui/tests/overlay_stub.rs` |
 | Test Name | `test_BC_2_06_015_trace_to_source_stub_renders_placeholder` |
@@ -188,3 +188,13 @@ S-TBD — Implement `[t]` trace-to-source stub: register Builtin binding, render
 **Architect Pass 2 HIGH-003 propagation — `Overlay { stack: ... }` shape removed** (2026-05-28T00:00:00Z):
 - Resolves F-S025-ADV3-BLOCKER-002. `Overlay { stack, prior }` → `Overlay { prior }` in description, Precondition 1, Postcondition 2. `App.overlay_stack` noted as unmodified by `[t]` press. Decision keybindings in Postcondition 6 updated from `[1]/[2]/[3]` to `[y]/[A]/[n/r]` (per ADJ-ADV2-001).
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T00:00:00Z > v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.4 above (`Overlay { stack, prior }` → `Overlay { prior }`; `App.overlay_stack` noted as unmodified by `[t]` press).
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers trace-to-source stub; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (stub renders placeholder footer).
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.

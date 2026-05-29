@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -128,7 +128,7 @@ rendered in the default terminal color. For all other `ToolPayload` variants (`B
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the diff preview feature within the "permission overlay stack" component of CAP-006, which is the product's primary competitive differentiator over lazygit's single-popup and NikiforovAll's Option<Panel> patterns |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: diff rendering is a pure read-only computation producing ratatui `Line` values; no file writes occur) |
 | Architecture Module | monocle-tui (overlay.rs render_diff function; `similar 3.x` dependency) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Diff Preview; §Dependency Graph (`similar 3.x`); §Purity Boundary (similar::TextDiff in monocle-tui only) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Diff Preview; §Dependency Graph (`similar 3.x`); §Purity Boundary (similar::TextDiff in monocle-tui only) |
 | Cross-Ref | BC-2.06.008 (overlay push — PromptModal carrying ToolPayload::Edit arrives via this path), BC-2.06.001 (purity boundary — similar is monocle-tui only), BC-2.01.003 (256 KiB body limit bounds diff input size) |
 | Test File | `monocle-tui/tests/overlay_diff_preview.rs` |
 | Test Name | `test_BC_2_06_010_diff_preview_color_coding` |
@@ -200,3 +200,13 @@ S-TBD — Implement diff preview for Edit ToolPayload using similar 3.x in overl
 - Resolves F-S025-ADV3-BLOCKER-002. Cosmetic precondition update only: `AppMode` is `Overlay { prior }` (not `Overlay { stack, prior }`); `App.overlay_stack.front()` replaces `stack.front()`.
 - No postcondition or test vector changes required: this BC's scope is diff rendering logic, which is independent of where the VecDeque lives.
 - SE-16d monotonicity: v1.0.5 timestamp 2026-05-28T00:00:00Z > v1.0.4. PASS.
+
+## §Trace v1.0.6
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.5 above.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers diff preview rendering only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-29T00:00:00Z > v1.0.5. PASS.

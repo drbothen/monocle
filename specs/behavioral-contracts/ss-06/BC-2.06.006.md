@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -124,7 +124,7 @@ matcher on every keystroke. Only `EnrichedSession` entries whose `project_name` 
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the filter feature of the "sessions panel" component of CAP-006, enabling telescope-style session discovery for users managing many concurrent sessions |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — filter operates purely on in-memory `app.sessions` with no disk access) |
 | Architecture Module | monocle-tui (draw_filter_overlay(), nucleo Matcher usage, SearchPrompt keybinding table) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Panel Architecture §Sessions Panel (Filter mode paragraph); §Dependency Graph (nucleo 0.5) |
+| Architecture Source | SS-tui.md v1.8.2 §Panel Architecture §Sessions Panel (Filter mode paragraph); §Dependency Graph (nucleo 0.5) |
 | Cross-Ref | BC-2.06.001 (Filtering AppMode variant and transition function), BC-2.06.003 (SearchPrompt dispatch level captures printable keys during Filtering), BC-2.06.002 (Esc restores FocusSnapshot) |
 | Test File | `monocle-tui/tests/sessions_filter.rs` |
 | Test Name | `test_BC_2_06_006_sessions_filter_nucleo_fuzzy_match` |
@@ -181,3 +181,13 @@ S-TBD — Implement Sessions Panel filter mode with nucleo 0.5 matcher; match hi
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.0.4
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): this BC has no `Overlay { stack }` references; it covers the Filtering mode only.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC references the Sessions Panel filter mode paragraph only, not the column layout table.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.0.4 timestamp 2026-05-29T00:00:00Z > v1.0.3. PASS.

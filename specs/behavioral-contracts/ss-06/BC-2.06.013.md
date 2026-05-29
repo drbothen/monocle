@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -113,7 +113,7 @@ except the decision value is `Reject`.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the Reject (deny) decision path within the "permission overlay stack" component of CAP-006, which is the user's mechanism to prevent a Claude Code tool from executing |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: Reject sends an IPC decision message; the TUI writes no files) |
 | Architecture Module | monocle-core (transition() PermissionReject arm); monocle-tui (App::handle_action enqueues IPC message) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionReject arm) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle step 3 (Decide); §AppMode State Machine §Transition Function Contract (PermissionReject arm) |
 | Cross-Ref | BC-2.06.011 (Accept-Once — sibling), BC-2.06.012 (Accept-Always — sibling), BC-2.06.014 (Esc Hide — CRITICAL distinction: Esc does NOT pop), BC-2.06.001 (pure transition function), BC-2.04.011 (bounded event bus) |
 | Test File | `monocle-tui/tests/overlay_decisions.rs` |
 | Test Name | `test_BC_2_06_013_reject_pops_front_and_sends_deny_ipc` |
@@ -216,3 +216,13 @@ S-TBD — Implement Reject keybinding for permission overlay with IPC deny send 
   in terms of wait-for-resolved: Esc sends no IPC and does no retain(); Reject sends deny IPC
   and waits for PermissionPromptResolved before retain(). The distinction is sharper than before.
 - SE-16d monotonicity: v1.1.0 timestamp 2026-05-27T00:00:00Z > v1.0.5. PASS.
+
+## §Trace v1.2.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.2.0 above.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Reject keybinding; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.2.1 timestamp 2026-05-29T00:00:00Z > v1.2.0. PASS.

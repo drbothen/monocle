@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.4.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
-input-hash: "dea6916"
+input-hash: "6d921ba"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -136,7 +136,7 @@ The breadcrumb and prompt count badge update to reflect the new stack size.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §SS-06 — this BC specifies "permission overlay stack" behavior (VecDeque stack management) and the "AppMode state machine" empty-stack collapse, both of which are named explicitly as CAP-006 responsibilities; `PermissionPromptResolved` handling is the daemon-initiated complement to the user-initiated resolution path already covered by BC-2.06.011/012/013 |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — this BC does not write any files; it only updates in-memory TUI state); DI-001 (every hook event received MUST be written to the JSONL ring — the `PermissionPromptResolved` IPC message is not a hook event; it is a daemon-to-TUI state synchronization message; DI-001 is not applicable here) |
 | Architecture Module | monocle-tui (VecDeque state update, AppMode transition) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle; SS-ipc.md v1.4.0 §ServerToClient::PermissionPromptResolved (lines 288-289 debounce; message type definition) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle; SS-ipc.md v1.9.0 §ServerToClient::PermissionPromptResolved (lines 288-289 debounce; message type definition) |
 | Cross-Ref | BC-2.05.005 (daemon broadcasts PermissionPromptResolved — the IPC message this BC handles at the TUI layer); BC-2.06.001 (AppMode state machine empty-stack collapse — PC-2 reuses this invariant); BC-2.06.008 (overlay push on PermissionPromptQueued — this BC is the inverse: removal on resolution); BC-2.06.016 (disconnect clear — SOQ-3 is the other removal mechanism; EC-002 of this BC handles the post-reconnect no-op case) |
 | Test File | `monocle-tui/tests/permission_overlay_resolved.rs` |
 | Test Name | `test_BC_2_06_023_tui_removes_resolved_prompt_on_permission_prompt_resolved` |
@@ -220,6 +220,19 @@ VP-TBD — VecDeque removal and AppMode collapse integration tests (filled after
 - Resolves F-S025-ADV3-BLOCKER-002. PC-2: `Overlay { stack, prior }` → `Overlay { prior }` with `App.overlay_stack` as the emptiness check. The VecDeque is `App.overlay_stack` (App-level single source of truth), not a field of the `AppMode::Overlay` variant. Note: the remaining `VecDeque<PromptModal>` references in this BC correctly refer to `App.overlay_stack` as a data structure — they are not the stale variant shape.
 - EC-006: stale keystroke `1` → `y` (accept-once canonical keybinding per ADJ-ADV2-001).
 - SE-16d monotonicity: v1.4.0 timestamp 2026-05-28T00:00:00Z > v1.3.0. PASS.
+
+## §Trace v1.4.1
+
+**ADV23-SCOPE-002 — Architecture Source dual pin updated: SS-tui.md v1.5.0 → v1.8.2 + SS-ipc.md v1.4.0 → v1.9.0** (2026-05-29T00:00:00Z):
+- Architecture Source row updated with two pin bumps:
+  - `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+  - `SS-ipc.md v1.4.0` → `SS-ipc.md v1.9.0` per the same ADV23-SCOPE-001 sweep (ss-05 refreshes in cc1ea7d).
+- Classification: Category A plain version-pin refresh for both citations. No substantive content changes required:
+  - SS-tui.md v1.8.0 (Overlay shape): already propagated in §Trace v1.4.0 above.
+  - SS-tui.md v1.8.1 (Sessions Panel 6→7 columns): this BC covers IPC-driven prompt removal; no Sessions Panel column table in scope.
+  - SS-tui.md v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+  - SS-ipc.md v1.9.0: the `PermissionPromptResolved` message type definition and debounce behavior are unchanged between v1.4.0 and v1.9.0; only other features added. §Section anchor unchanged.
+- SE-16d monotonicity: v1.4.1 timestamp 2026-05-29T00:00:00Z > v1.4.0. PASS.
 
 ## §Trace v1.3.0
 

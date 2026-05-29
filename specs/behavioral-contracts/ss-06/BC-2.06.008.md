@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -150,7 +150,7 @@ overlay system and the TUI-side counterpart of BC-2.05.005.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "permission overlay stack" component of CAP-006: the VecDeque push on PermissionPromptQueued is the entry point for the permission overlay system and the product's primary competitive differentiator (D-2 in the PRD: simultaneous multi-session permission handling without prompt drop) |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness — overlay push path performs no file writes; it only modifies in-memory `app.mode` and logs via tracing) |
 | Architecture Module | monocle-tui (App::handle_ipc_message(), draw loop IPC drain phase) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle (Push section, step 1); §PromptModal Type; §Rendering Architecture (draw loop drain phase) |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle (Push section, step 1); §PromptModal Type; §Rendering Architecture (draw loop drain phase) |
 | Cross-Ref | BC-2.05.005 (PermissionPromptQueued IPC message — the daemon-side precondition for this BC), BC-2.06.001 (Overlay AppMode variant and VecDeque non-empty invariant), BC-2.06.009 (stack rotation, the next operation after push), BC-2.06.011..013 (decision actions that pop from the stack pushed here) |
 | Test File | `monocle-tui/tests/permission_overlay_push.rs` |
 | Test Name | `test_BC_2_06_008_overlay_vecdeque_push_on_permission_prompt_queued` |
@@ -224,6 +224,16 @@ S-TBD — Implement App::handle_ipc_message() for PermissionPromptQueued; VecDeq
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.1.1
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.1.0 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers Permission Overlay push only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
+- SE-16d monotonicity: v1.1.1 timestamp 2026-05-29T00:00:00Z > v1.1.0. PASS.
 
 ## §Trace v1.1.0
 

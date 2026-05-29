@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.8"
+version: "1.0.9"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "6e22061"
+input-hash: "ee4d690"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -124,7 +124,7 @@ decision would be sent to the wrong daemon connection.
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability Traceability — this BC specifies the "permission overlay stack" clear behavior on daemon disconnect, which is a direct component of the CAP-006 "permission overlay stack" scope |
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: disconnect handling clears local state only, no file writes occur); DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — enforced upstream in daemon; TUI disconnect does not affect JSONL integrity) |
 | Architecture Module | monocle-tui (App::handle_ipc_message disconnect arm); monocle-core (AppMode state, VecDeque<PromptModal>) per ARCH-INDEX SS-06 |
-| Architecture Source | SS-tui.md v1.5.0 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
+| Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
 | Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh overlay_stack); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear) |
 | Test File | `monocle-tui/tests/overlay_disconnect.rs` |
 | Test Name | `test_BC_2_06_016_overlay_cleared_on_daemon_disconnect` |
@@ -215,6 +215,16 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 - Resolves F-S025-ADV3-BLOCKER-002 (partial). `VecDeque<PromptModal>` overlay stack is now `App.overlay_stack` (single source of truth). Description, Postcondition 1, Invariants 1 and 4, VP table updated to reference `App.overlay_stack` explicitly.
 - NOTE: EC-102 and canonical test vector row 1 were NOT updated in this pass — they retained stale `AppMode::Overlay { stack: [P1, P2], prior: Sessions }` shape. Corrected in v1.0.7.
 - SE-16d monotonicity: v1.0.6 timestamp 2026-05-28T00:00:00Z > v1.0.5. PASS.
+
+## §Trace v1.0.9
+
+**ADV23-SCOPE-002 — Architecture Source pin updated: SS-tui.md v1.5.0 → v1.8.2** (2026-05-29T00:00:00Z):
+- Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` per F-S025-ADV23-MED-001 Category 8 cascade closure.
+- Classification: Category A plain version-pin refresh. No substantive content changes required:
+  - v1.8.0 (Overlay shape): already propagated in §Trace v1.0.6 below.
+  - v1.8.1 (Sessions Panel 6→7 columns): this BC covers daemon-disconnect handling only; no Sessions Panel column table in scope.
+  - v1.8.2 (disconnect bracketed-tag style `"[disconnected] reconnecting..."`): the substantive prose change was already applied to this BC in §Trace v1.0.8 below (BC-2.06.016 led the propagation; SS-tui.md §Trace v1.8.2 followed). BC body is already consistent with the canonical bracketed-tag style; no further prose change needed.
+- SE-16d monotonicity: v1.0.9 timestamp 2026-05-29T00:00:00Z > v1.0.8. PASS.
 
 ## §Trace v1.0.8
 
