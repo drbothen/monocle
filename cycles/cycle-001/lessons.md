@@ -1950,3 +1950,29 @@ In the S-025 cycle: POL-11 deployed at Pass 28 (f0926fe). Pass 28 adversary ran 
 2. An explicit SAFE DEFAULT for all non-enumerated artifacts (here: HISTORICAL).
 3. The procedure for adding to the closed set (here: ADR-0007 amendment with human approval).
 Without a closed rule, each new document class triggers a new boundary dispute. The safe-default + closed-set pattern eliminates the long tail structurally.
+
+---
+
+### L-W6-S025-011: Hardcoded detector vocabularies re-trigger the META-pattern per artifact-class; make detection REGISTRY-DRIVEN [codified]
+
+**Date:** 2026-05-30
+**Severity:** codified (architectural — closed in scope D-210, Pass 31 remediation)
+**Origin:** S-025 adversarial Pass 31 F-S025-ADV31-MED-001: POL-11 Pattern-A regex matched only artifacts with SS-/BC-/ADR- prefixes. Artifacts with no recognized prefix (dtu-assessment.md, ARCH-INDEX.md, STORY-INDEX.md, EVAL-INDEX.md, product-brief.md, etc.) produced false-greens — their stale citations were invisible to the detector. This was the 13th META-pattern instance; first vocabulary-blind-spot sub-species. ROOT FIX: registry-driven Pattern-A — the detector now reads version-pin-registry.yaml and matches ANY artifact ID present in the registry, eliminating the prefix hard-coding entirely.
+
+**Pattern:** A detector that hard-codes artifact-class prefixes (e.g., only `SS-.*\.md`, `BC-.*\.md`, `ADR-.*\.md`) will produce a false-green for any artifact whose prefix is not in the hard-coded list. Each time a new artifact class enters the corpus (dtu-assessment, story files, VP files, EVAL-INDEX, product-brief, etc.), the detector silently fails to enforce against it. The hard-coded list will always lag behind the actual artifact-class population. The vocabulary-blind-spot is structurally guaranteed for any novel artifact class. Making detection DATA-DRIVEN (keyed off the registry that is authoritative for what artifacts exist) eliminates the vocabulary blind-spot permanently: any artifact registered in version-pin-registry.yaml is automatically detected regardless of naming convention.
+
+**Rule:** CI enforcement gates that detect references to versioned artifacts MUST derive the set of artifact IDs to detect from the canonical registry (e.g., `version-pin-registry.yaml`), NOT from a hard-coded prefix list or enumeration in the detector script. When a new artifact is added to the registry, detection coverage automatically extends to that artifact — no detector update required. Hard-coded prefix lists are permanently forbidden as the primary detection mechanism. They may be used only as a performance optimization (pre-filter before registry lookup), never as the sole gating condition.
+
+---
+
+### L-W6-S025-012: Improving a gate's coverage surfaces the full pre-existing debt at once — budget for the cascade; version-free (Option 2) is the permanent no-re-stale fix for navigation pointers [codified]
+
+**Date:** 2026-05-30
+**Severity:** codified (process — closed in scope D-210, Pass 31 remediation)
+**Origin:** S-025 Pass 31 remediation: registry-driven Pattern-A was deployed and immediately surfaced 207 project-wide stale citations that the prefix-filtered detector had never seen. Post-exemption (3 living-state files: sprint-state.yaml, tech-debt-register.md, CLAUDE.md): 164 findings. story-writer fixed 154 .factory findings; implementer fixed 10 feature-branch findings. For 41 BC-HOOK navigation pointers (e.g., `BC-HOOK-039 v1.0.3` inline citation), Option 2 (version-free bare name) was applied — eliminating the possibility of the pointer going stale on future BC-HOOK bumps.
+
+**Pattern (cascade budget):** When a CI enforcement gate is made more comprehensive — by extending its detection scope, adding new patterns, or switching from prefix-filtered to registry-driven — it will surface ALL pre-existing violations that were previously invisible. The surfaced count can be large (here: 207 active stale citations across 538 files). This is not a regression in content quality; it is correct gate behavior. The remediation cycle must be resourced appropriately: budget for the full cascade, not just the newly-detected count. Declaring "the gate is now fixed" without completing the cascade leaves the corpus in a known-unclean state and guarantees a finding in the immediately following adversarial pass.
+
+**Pattern (Option 2 — permanent fix for navigation pointers):** Navigation pointers are references whose sole purpose is to identify an artifact (e.g., "see BC-HOOK-039 for the full rule"). These pointers do not make a versioned claim — they are not asserting the artifact is at a specific version. Encoding a version number in a navigation pointer (e.g., "BC-HOOK-039 v1.0.3") creates a stale pointer on every future bump of BC-HOOK-039. Option 2 (version-free: "see BC-HOOK-039") is correct for navigation pointers and is permanently no-re-stale. Option 1 (version bump cascade) is correct for versioned claims (e.g., a §Trace entry that records "fixed in BC-HOOK-039 v1.0.3 at commit X" — this is a historical anchor and should remain version-pinned).
+
+**Rule:** When a gate's coverage is expanded (new patterns, wider scope, registry-driven), plan for the full cascade before deploying. After deploying the expanded gate: (1) run it against the full corpus immediately, (2) triage all findings by option: Option 2 (version-free) for navigation pointers, Option 3 (historical-anchor) for §Trace/historical records, Option 1 (bump) for active live claims, (3) fix ALL findings to fixpoint before declaring the remediation cycle closed. A partial fix (only the directly-flagged files) will produce a CI failure on the next run and a finding in the next adversarial pass.

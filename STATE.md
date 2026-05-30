@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.58"
+version: "6.59"
 status: active
 producer: state-manager
-timestamp: 2026-05-30T00:00:00Z
+timestamp: 2026-05-30T12:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 30 MED+HIGH REMEDIATED (D-209). 3 findings CLOSED: F-S025-ADV30-MED-001 (POL-11 YAML inputs[] blind-spot — Pattern B + ADR-0007 v1.0.6 closed-rule), F-S025-ADV30-HIGH-001 (ADR-0008 §Trace escape + ADR-0007 header mismatch — architect 82737b7), F-S025-ADV30-LOW-001 (unescaped pipe — escaped). Counter HOLDS 0/3. ADR self-consistency tripwire ARMED (SS-conventions v1.32.4). ADR-HOOK-001 Wave 7 anchor registered. Pass 31 pending CI green on feature branch (03be285+)."
+current_step: "S-025 Pass 31 MED REMEDIATED (D-210). F-S025-ADV31-MED-001 CLOSED: registry-driven Pattern-A (ADR-0007 v1.0.8; devops d6441d3) + living-state exemptions (ADR-0007 v1.0.8 EXEMPT set extended; devops 39b2d7b) + story-writer 60cedfc 154-finding cascade. Combined POL-11: 266 active, 0 stale, 3715 historical, 538 files. Counter HOLDS 0/3 (13th META — vocabulary blind-spot). Pass 32 pending CI green on feature f33c020+."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending."
-awaiting: "CI green on PR #28 feature branch after factory-artifacts push (03be285+). Then Pass 31 adversary. Target: counter 0/3 → 1/3. POL-11: 264 active, 0 findings, 541 files (Pattern B live in e38c9d0). Task #9 remaining: m.3 (story-writer template), m.4 (PO BC template), m.5 (CODIFY-001 sunset doc), m.8 (S-028 cross-story wave-gate), m.9 NOW CODIFIED in SS-conventions v1.32.4 + ADR-HOOK-001 registered."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending."
+awaiting: "Pass 32 adversary (fresh context, information asymmetry). CI green on feature branch f33c020+ after factory-artifacts push (60cedfc+). POL-11: 266 active, 0 stale, 3715 historical, 538 files. Target: counter 0/3 → 1/3. Task #9 remaining: m.3 (story-writer template), m.4 (PO BC template), m.5 (CODIFY-001 sunset doc), m.8 (S-028 cross-story wave-gate), m.9 CODIFIED in SS-conventions v1.32.4 + ADR-HOOK-001 registered."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -265,9 +265,12 @@ durable_task_register:
     - "Full historical process_discoveries (L-001..L-NEW series) archived to cycles/cycle-001/burst-log.md at D-207 compaction."
     - "INPUTS[] CLASSIFICATION CLOSED-RULE (D-209): ADR-0007 v1.0.6 ratified ACTIVE = {*-INDEX.md, prd.md}; default HISTORICAL. Long-tail META recurrence eliminated by closed enumeration + safe default. L-W6-S025-010 codified."
     - "FALSE-GREEN DETECTOR COVERAGE (D-209): Green CI proves gate ran, not that it detects all input forms. Pattern B added for YAML inputs[] form. L-W6-S025-009 codified."
+    - "REGISTRY-DRIVEN DETECTION (D-210): Hardcoded detector vocabularies (SS-/BC-/ADR- prefix list) re-trigger META-pattern per artifact-class. Pattern-A now registry-driven (data-driven from version-pin-registry.yaml). Surfaced 207 project-wide stale citations at scale. L-W6-S025-011 codified."
+    - "CASCADE BUDGET (D-210): Improving a gate's coverage surfaces full pre-existing debt at once — 207 found, 164 post-exemption, 154 .factory fixed. Version-free (Option 2) is permanent no-re-stale fix for navigation pointers. L-W6-S025-012 codified."
+    - "META-GATE-COMPLETENESS ESCALATION (D-210): 3rd consecutive session pass (29/30/31) where gate COMPLETENESS (not S-025 content) yielded the defect. S-025 CONTENT is verified converged. The adversary is now probing the enforcer layer, not the story. This is strategic signal for Pass 32."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.58 (D-209) — 2026-05-30T00:00:00Z
+  ZERO-CONTEXT RESUME CHECKPOINT v6.59 (D-210) — 2026-05-30T12:00:00Z
   ============================================================================
 
   YOUR FIRST 5 COMMANDS (RUN IN ORDER):
@@ -275,50 +278,55 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.58, durable_task_register, RECURRENCE WATCH.
+  2. Read this STATE.md fully — especially §Trace v6.59, durable_task_register, RECURRENCE WATCH.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
            prompt="cd /Users/jmagady/Dev/monocle && run factory-worktree-health skill on this project")
 
-  4. Verify CI on PR #28 (feature/S-025-tui-skeleton-sessions, latest commit after factory-artifacts push):
+  4. Verify CI on PR #28 (feature/S-025-tui-skeleton-sessions, latest commit f33c020+):
        gh -R drbothen/monocle pr view 28 --json statusCheckRollup,headRefOid
-     Required: all jobs SUCCESS including pol-lint. pol-lint now: Pattern A + Pattern B; 541 normative files.
+     Required: all jobs SUCCESS including pol-lint. pol-lint now: Pattern A (registry-driven) + Pattern B;
+     538 normative files; 266 active; 0 stale.
      If CI not yet run: gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
 
   5. Based on CI result, execute NEXT ACTION below.
 
-  PIPELINE STATE (as of 2026-05-30T00:00:00Z):
+  PIPELINE STATE (as of 2026-05-30T12:00:00Z):
 
   Story: S-025 TUI Skeleton + Sessions Panel (EPIC-06, Wave 6, 8 pts)
   PR: #28 (https://github.com/drbothen/monocle/pull/28) — draft
-  S-025 branch: feature/S-025-tui-skeleton-sessions (Pattern B detection live @ e38c9d0)
-  factory-artifacts: @ D-209 burst SHA (run: git -C .factory log -1 --format='%h %s')
+  S-025 branch: feature/S-025-tui-skeleton-sessions (registry-driven Pattern-A live @ f33c020+)
+  factory-artifacts: @ D-210 burst SHA (run: git -C .factory log -1 --format='%h %s')
   Worktree path: /Users/jmagady/Dev/monocle/.worktrees/S-025/
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   CYCLE-001 SUMMARY (1 paragraph):
-  S-025 has been through 30 adversarial passes. Counter at 0/3. Pass 30 had 3 findings (2 MED,
-  1 HIGH): POL-11 YAML inputs[] blind-spot (false-green — 12th META instance), ADR-0008 §Trace
-  escape into normative list + ADR-0007 header mismatch, and unescaped pipe in ADR-0007. All 3
-  CLOSED in D-209: devops Pattern B detection (e38c9d0), architect ADR-0007 v1.0.6 closed-rule
-  (inputs[] HISTORICAL by default; ACTIVE = {*-INDEX.md, prd.md}), ADR-0008 v1.0.4, SS-conventions
-  v1.32.4 ADR Authoring Discipline armed. ARCH-INDEX v1.0.20. ADR-HOOK-001 registered (Wave 7).
-  Pass 31 pending CI green. POL-11 FIXPOINT: 264 active, 0 findings, 541 files.
+  S-025 has been through 31 adversarial passes. Counter at 0/3. Pass 31 had 1 finding (MED):
+  POL-11 Pattern-A vocabulary blind-spot (only SS-/BC-/ADR- prefix recognized; dtu-assessment +
+  index-doc IDs invisible — 13th META instance). ROOT FIX: registry-driven Pattern-A (ADR-0007 v1.0.8;
+  recognizes ANY registry artifact ID via longest-match). Surfaced 207 project-wide stale citations;
+  3 living-state files exempted; 154 .factory findings fixed; 9 code doc-comments fixed.
+  Combined POL-11: 266 active, 0 stale, 3715 historical, 538 files. Pass 32 pending CI green.
+
+  STRATEGIC WATCH: Passes 29/30/31 = 3 consecutive gate-COMPLETENESS defects (not S-025 content).
+  S-025 content verified converged. Pass 32 adversary should probe gate coverage from new angle.
+  If Pass 32 also finds an enforcer-layer gap → 4th consecutive → escalate to comprehensive
+  enforcer review before counter advance.
 
   NEXT ACTION (decision tree):
 
-  (A) CI all green (all jobs SUCCESS incl. pol-lint with Pattern B):
-    Dispatch Pass 31 adversary (fresh context, information asymmetry):
-    - Read passes 22-30 for attack-angle exhaustion map
-    - Rotate to unexplored lens axes (passes 22-30 angles exhausted)
+  (A) CI all green (all jobs SUCCESS incl. pol-lint with registry-driven Pattern-A):
+    Dispatch Pass 32 adversary (fresh context, information asymmetry):
+    - Read passes 22-31 for attack-angle exhaustion map
+    - Rotate to unexplored lens axes — gate-completeness exhausted (29/30/31 all enforcer-layer)
     - Counter target 0/3 → 1/3
-    - MAXIMUM SKEPTICISM MODE: 10 consecutive 1/3→2/3 failures; counter advance is high-risk moment
+    - MAXIMUM SKEPTICISM MODE: 12 consecutive 1/3→2/3 failures; counter advance is high-risk moment
     Mandatory adversary briefing files (read in order before dispatching):
-      .factory/STATE.md (v6.58); adversarial-pass-22..pass-30.md; architect-decisions-pass-1.md;
+      .factory/STATE.md (v6.59); adversarial-pass-22..pass-31.md; architect-decisions-pass-1.md;
       architect-decisions-pass-2.md; text-style-adjudication.md; red-gate-log.md;
       .factory/stories/S-025-tui-skeleton-sessions.md (v1.12);
-      .factory/specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md (v1.0.6);
+      .factory/specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md (v1.0.8);
       .factory/specs/architecture/adr/ADR-0008-structural-claim-discipline.md (v1.0.4);
       CLAUDE.md (project principles).
       All cycle files: .factory/cycles/cycle-001/S-025/
@@ -326,55 +334,58 @@ next_session_resume_protocol: |
   (B) CI fails on pol-lint job:
     Read failure: gh -R drbothen/monocle run view <run-id> --log-failed
     Dispatch devops-engineer or appropriate fix agent for the specific finding.
-    Re-verify CI before Pass 31.
+    Re-verify CI before Pass 32.
 
   (C) CI fails on other job (regression):
-    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 31.
+    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 32.
 
   (D) CI has not queued/run yet:
     Trigger: gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
     If GitHub Actions stuck, surface to human.
 
-  KEY COMMITS (Pass 30 round closures):
-    Architect 82737b7 (factory-artifacts): ADR-0008 v1.0.4 + ADR-0007 reconciliation + SS-conventions v1.32.4
-    Story-writer 86abc8c (factory-artifacts): STORY-INDEX v5.19 SHA backfill
-    Architect 5aece68 (factory-artifacts): ADR-0007 v1.0.6 inputs[] closed-rule
-    Story-writer 03be285 (factory-artifacts): STORY-INDEX v5.20 + EVAL-INDEX v1.5 + BC pins + ARCH-INDEX v1.0.20
-    Devops e38c9d0 (S-025 branch): Pattern B detection for YAML inputs[] form
-    State-manager D-209 SHA: run git -C .factory log -1 --format='%H'
+  KEY COMMITS (Pass 31 round closures):
+    Architect 491f49d (factory-artifacts): ADR-0007 v1.0.7 Pattern-A registry-driven spec
+    Architect 0998927 (factory-artifacts): ADR-0007 v1.0.8 EXEMPT set + NORMATIVE adjudications
+    Story-writer 60cedfc (factory-artifacts): 154 .factory findings → fixpoint; full cascade
+    Devops d6441d3 (S-025 branch): registry-driven Pattern-A implementation
+    Devops 39b2d7b (S-025 branch): exemptions + 6 fixtures; 27/27 pass; 164 post-exemption
+    Implementer bfa1d90+f33c020 (S-025 branch): 9 code doc-comments + monocle-proto cascade
+    State-manager D-210 SHA: run git -C .factory log -1 --format='%H'
 
-  ARTIFACT VERSIONS (D-209 canonical state):
+  ARTIFACT VERSIONS (D-210 canonical state):
     SS-tui v1.8.2 | SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
-    SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.4 (UPDATED)
+    SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.5 (UPDATED)
     SS-daemon-wiring v1.3.0 | SS-daemon-lifecycle v1.0.33
-    SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.19
+    SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.20 (UPDATED)
     SS-permissions-phase1 v1.5.2
-    ARCH-INDEX v1.0.20 (UPDATED) | ADR-0007 v1.0.6 (UPDATED) | ADR-0008 v1.0.4 (UPDATED)
-    S-025 v1.12 | STORY-INDEX v5.20 (UPDATED) | EVAL-INDEX v1.5 (UPDATED)
-    BC-INDEX v1.32 (113 BCs) | BC-2.05.008 v1.0.6 (UPDATED) | BC-HOOK-039 v1.0.3 (UPDATED)
+    ARCH-INDEX v1.0.23 (UPDATED) | ADR-0007 v1.0.8 (UPDATED) | ADR-0008 v1.0.4
+    S-025 v1.12 | STORY-INDEX v5.21 (UPDATED) | EVAL-INDEX v1.6 (UPDATED) | VP-INDEX v1.17 (UPDATED)
+    BC-INDEX v1.32 (113 BCs) | BC-2.05.008 v1.0.7 (UPDATED) | BC-HOOK-039 v1.0.5 (UPDATED)
+    BC-HOOK-001..041 v1.0.1 (UPDATED) | product-brief v1.4.33 (UPDATED)
     PRD v1.27.4 | rust-toolchain 1.88 | time 0.3.47 | bytes 1.11.1
 
-  META-PATTERN ESCALATION LADDER (12 instances):
+  META-PATTERN ESCALATION LADDER (13 instances):
     Pass 9 vacuous-mirror (test-assertion) | distinct species
     Pass 16 ADR-0006 audit-table (struct-metadata) | distinct species
-    Pass 18 impl-code worktree pointers (literal-pin) | ADR-0007/POL-11 LIVE e38c9d0
+    Pass 18 impl-code worktree pointers (literal-pin) | ADR-0007/POL-11 LIVE
     Pass 22 spec-filename broken anchor (filename-resolution) | distinct species
-    Pass 23 BC-body→arch-doc pins (literal-pin) | ADR-0007/POL-11 LIVE e38c9d0
-    Pass 24 sibling-artifact (story inputs[] + VP, literal-pin) | ADR-0007/POL-11 LIVE e38c9d0
-    Pass 25 code-citation BC-version pins (literal-pin) | ADR-0007/POL-11 LIVE e38c9d0
-    Pass 26 module-doc structural-spec table (structural-claim #1) | ADR-0008/POL-12 LIVE e38c9d0
-    Pass 27 story-body type-name (structural-claim #2) | ADR-0008/POL-12 LIVE e38c9d0
-    Pass 28 story-body §Downstream Consumer Contract struct-shape (structural-claim #3) | ADR-0008/POL-12 LIVE e38c9d0
-    Pass 29 [process-gap] POL-11 scope bug (enforcer scanning ZERO files) | CLOSED adaf9d2+72e065b
-    Pass 30 [process-gap] POL-11 YAML inputs[] blind-spot (enforcement-gap sub-species) | CLOSED e38c9d0+5aece68
+    Pass 23 BC-body→arch-doc pins (literal-pin) | ADR-0007/POL-11 LIVE
+    Pass 24 sibling-artifact (story inputs[] + VP, literal-pin) | ADR-0007/POL-11 LIVE
+    Pass 25 code-citation BC-version pins (literal-pin) | ADR-0007/POL-11 LIVE
+    Pass 26 module-doc structural-spec table (structural-claim #1) | ADR-0008/POL-12 LIVE
+    Pass 27 story-body type-name (structural-claim #2) | ADR-0008/POL-12 LIVE
+    Pass 28 story-body §Downstream Consumer Contract struct-shape (structural-claim #3) | ADR-0008/POL-12 LIVE
+    Pass 29 [process-gap] POL-11 scope bug (enforcer scanning ZERO files) | CLOSED
+    Pass 30 [process-gap] POL-11 YAML inputs[] blind-spot (enforcement-gap sub-species) | CLOSED
+    Pass 31 [process-gap] POL-11 Pattern-A vocabulary blind-spot (vocabulary-blind sub-species) | CLOSED ADR-0007 v1.0.8
 
   RECURRENCE WATCH:
-    META-pattern: 12 instances; 12th was enforcement-gap sub-species (L-W6-S025-009 + L-W6-S025-010 codified)
-    1/3→2/3 transition failure count: 11 consecutive (Passes 9,16,18,22,23,24,25,26,27,28,29); Pass 30 was MED+HIGH
-    Pattern-of-Patterns: 3 ADR same-burst defects fired Pass 30 HIGH — CODIFIED (SS-conventions v1.32.4). ADR-HOOK-001 Wave 7.
-    POL-11+POL-12 LIVE: Pattern A+B; 541 normative files; 264 active; 0 findings
+    META-pattern: 13 instances; 13th was vocabulary-blind-spot sub-species (L-W6-S025-011 codified)
+    1/3→2/3 transition failure count: 12 consecutive (Passes 9,16,18,22,23,24,25,26,27,28,29,30,31)
+    GATE-COMPLETENESS STREAK: 3 consecutive (Passes 29/30/31) — strategic signal for Pass 32
+    POL-11+POL-12 LIVE: Pattern A (registry-driven) + Pattern B; 538 normative files; 266 active; 0 stale
 
-  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 31:
+  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 32:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
     cli_daemon_stop flaky failures (environmental)
     .lazyclaude submodule warning (CI hygiene)
@@ -391,7 +402,7 @@ next_session_resume_protocol: |
     Rebase S-025 → develop. Resolve TODO(S-023-merge) at app.rs:586-615+630.
     Demo-recorder (10 ACs). PR-manager (PR #28 draft → merge). State-manager D-187 closure.
     Task #9 batch: story-writer template (m.3), PO BC template (m.4), CODIFY-001 sunset doc (m.5),
-      S-028 cross-story sweep (m.8). Task #9 m.9 NOW CODIFIED (SS-conventions v1.32.4) + ADR-HOOK-001 Wave 7.
+      S-028 cross-story sweep (m.8). Task #9 m.9 CODIFIED (SS-conventions v1.32.4) + ADR-HOOK-001 Wave 7.
     Dispatch S-026 (13 pts, EPIC-06, blocked on S-023+S-025 both merged).
 
   FACTORY INFRASTRUCTURE:
@@ -417,7 +428,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 30 (D-209); counter 0/3; ADR-0007 v1.0.6 closed-rule; Pass 31 pending CI | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 30: MED+HIGH (POL-11 YAML blind-spot + ADR-0008 §Trace escape + ADR-0007 header mismatch). All CLOSED. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 31 (D-210); counter 0/3; ADR-0007 v1.0.8 registry-driven; Pass 32 pending CI | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 31: MED (POL-11 Pattern-A vocabulary blind-spot — 13th META). CLOSED. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→R→M(23)→R→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap→M(31)+vocab-blind. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -430,7 +441,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 30 (D-209): MED+HIGH REMEDIATED. ADR-0007 v1.0.6 (inputs[] closed-rule), ADR-0008 v1.0.4, SS-conventions v1.32.4, ARCH-INDEX v1.0.20. POL-11: Pattern A+B live; 541 normative files; 264 active; 0 findings. Counter 0/3. Pass 31 pending CI green.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 31 (D-210): MED REMEDIATED. ADR-0007 v1.0.8 (registry-driven Pattern-A), SS-conventions v1.32.5, SS-forward-compatibility v1.2.20, ARCH-INDEX v1.0.23. Combined POL-11: 266 active, 0 stale, 3715 historical, 538 files. Counter 0/3. Pass 32 pending CI green on feature f33c020+.
 
 ## Blocking Issues
 
@@ -453,13 +464,14 @@ D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and ear
 | D-207 | S-025 Pass 28 3-TRACK + DEVOPS CRITICAL ELEVATION — 2 MED findings (F-S025-ADV28-MED-001: §Downstream Consumer Contract struct-shape META 10th + structural-claim #3; F-S025-ADV28-MED-002: ADR-0008 §Canonical Source Registry off-by-2 self-application). BIGGEST SINGLE BURST in cycle-001. Architect 12170b4 (ADR-0008 v1.0.1 + SS-conventions v1.32.3) + story-writer 344366d (S-025 v1.11 + STORY-INDEX v5.16) + devops f0926fe (POL-11+POL-12 LIVE in CI; 13 residual stale pins inline-fixed) + devops 5ea8ef3 (version-pin-registry.yaml 91 entries; S-028 annotation) + state-manager D-207. Counter HOLDS 0/3 (10th 1/3→2/3 failure). POL-11 self-test empirically caught 13 stale pins that 28 prior passes missed — enforcement >> codification vindicated. Pass 29 pending CI green on f0926fe. STATE v6.55→v6.56. | 2026-05-30 | state-manager |
 | D-208 | S-025 Pass 29 cycle — POL-11 CI scope bug FIXED + corpus sweep + ADR-0007 amendment + cascade-clean. Pass 29 MED: F-S025-ADV29-MED-001 (2 stale BC-2.06.004 v1.1.0 pins in AC-003/AC-010) + [process-gap] POL-11 scope bug (collect_files hardcoded .factory instead of --factory-root value, scanning ZERO files). Counter HOLDS 0/3. F-S025-ADV29-MED-001 CLOSED via story-writer 3688c7b+2c751c8 (S-025 v1.12; 18 stories + specs/BCs/VPs/ADRs/prd/brief bumped per ADR-0007). [process-gap] CLOSED: devops aa0a5d6 (POL-11 scope fix) + adaf9d2 (normative-only exclusions: plans/, planning/, code-delivery/, STATE.md) + architect ADR-0007 v1.0.4 72e065b (§Enforcement Scan Scope ratified; ARCH-INDEX v1.0.19). Corpus sweep 0d190a5 (story-writer normative cascade). Human approved scoping to normative artifacts. POL-11 now scanning 541 files, 0 findings. CI-run on feature branch adaf9d2 + registry 43c8687 = POL-11 PASS. Counter HOLDS 0/3 (Pass 29 was MED). [process-gap]: first POL-11 enforcement in CI found scope bug in POL-11 itself — 11th META instance; enforcement-must-actually-scan codified as L-W6-S025-008. Pass 30 pending after factory-artifacts push + CI green on adaf9d2. STATE v6.56→v6.57. PRD v1.27.4. ADR-0007 v1.0.4. ADR-0008 v1.0.3. ARCH-INDEX v1.0.19. STORY-INDEX v5.18. S-025 v1.12. | 2026-05-30 | state-manager |
 | D-209 | S-025 Pass 30 MED+HIGH remediation cycle CLOSED — all 3 findings CLOSED; counter HOLDS 0/3 (Pass 30 was MED+HIGH). F-S025-ADV30-MED-001: POL-11 BLIND to YAML inputs[] form (false-green false-positive — 12th META instance, enforcement-gap variant) → CLOSED: devops Pattern B detection (feature branch e38c9d0); architect ADR-0007 v1.0.6 (inputs[] historical-provenance closed-rule: ACTIVE = closed set {*-INDEX.md + prd.md}; everything else HISTORICAL by default); story-writer STORY-INDEX v5.20 + EVAL-INDEX v1.5 (inputs[] refreshed to canonical); BC-2.05.008 v1.0.6 + BC-HOOK-039 v1.0.3 (inline pointers). F-S025-ADV30-HIGH-001: ADR-0008 §Trace v1.0.2 escaped into normative list + ADR-0007 header/label mismatch → CLOSED: architect ADR-0008 v1.0.4 + ADR-0007 §Trace chain reconciled (82737b7). F-S025-ADV30-LOW-001: ADR-0007:422 unescaped pipe → CLOSED (escaped). TRIPWIRE: architect armed ADR self-consistency discipline (SS-conventions v1.32.4 §ADR Authoring Discipline). ADR pre-commit mechanical hook story created as durable_task_register entry ADR-HOOK-001 (Wave 7 anchor). Human approved Option A (historical provenance) for inputs[] classification. ARCH-INDEX v1.0.20. Pass 31 pending CI green on feature branch (03be285+). STATE v6.57→v6.58. | 2026-05-30 | state-manager |
+| D-210 | S-025 Pass 31 MED remediation cycle CLOSED — F-S025-ADV31-MED-001 CLOSED; counter HOLDS 0/3 (Pass 31 was MED). 13th META instance: POL-11 Pattern-A vocabulary blind-spot (only recognized SS-/BC-/ADR- prefixes; dtu-assessment + index-doc citations produced false-greens). ROOT FIX: registry-driven Pattern-A — ADR-0007 v1.0.7 (architect 491f49d; Pattern-A recognizes ANY registry artifact ID via longest-match guards). devops d6441d3 (feature): registry-driven implementation. Registry-driven scan surfaced 207 project-wide stale citations. ADR-0007 v1.0.8 (architect 0998927): EXEMPT set extended with 3 living-state files (sprint-state.yaml, tech-debt-register.md, CLAUDE.md); dependency-graph-expansion.md + holdout-scenarios.md adjudicated NORMATIVE. devops 39b2d7b (feature): exemptions + 6 fixtures (27/27 pass) → 164 post-exemption findings. story-writer 60cedfc (factory): 154 .factory spec/story findings remediated to fixpoint (Option 2 version-free for 41 BC-HOOK navigation pointers; Option 3 historical-anchor for vp-* §Trace round-logs; Option 1 bump for live traces_to). implementer bfa1d90+f33c020 (feature): 9 code doc-comments + 1 cascade (monocle-proto SS-forward-compat) fixed. Combined POL-11: 266 active, 0 stale, 3715 historical, 538 files. STRATEGIC: 3rd consecutive session (Passes 29/30/31) where gate COMPLETENESS (not S-025 content) yielded finding — S-025 content verified converged. Pass 32 pending CI green on feature f33c020+. STATE v6.58→v6.59. ARTIFACT BUMPS: ADR-0007 v1.0.8, ARCH-INDEX v1.0.23, SS-conventions v1.32.5, SS-forward-compatibility v1.2.20, STORY-INDEX v5.21, VP-INDEX v1.17, EVAL-INDEX v1.6, product-brief v1.4.33, prd-expansion-scope v1.2, dependency-graph-expansion v1.9, holdout-scenarios v1.6, S-DTU-001 v1.5, S-014 v1.7, S-010 v1.3, S-013 v1.3, BC-2.05.008 v1.0.7, BC-HOOK-039 v1.0.5, BC-HOOK-001..041 v1.0.1, all 22 vp-*.md +1 patch. | 2026-05-30 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.20** (UPDATED D-209). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.4** (UPDATED D-209). **ADR-0007 v1.0.6** (UPDATED D-209). **ADR-0008 v1.0.4** (UPDATED D-209). **S-025 v1.12**. **STORY-INDEX v5.20** (UPDATED D-209). **EVAL-INDEX v1.5** (UPDATED D-209). **BC-2.05.008 v1.0.6** (UPDATED D-209). **BC-HOOK-039 v1.0.3** (UPDATED D-209). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 46 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.23** (UPDATED D-210). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.4**. **S-025 v1.12**. **STORY-INDEX v5.21** (UPDATED D-210). **EVAL-INDEX v1.6** (UPDATED D-210). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.33** (UPDATED D-210). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 48 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -474,30 +486,22 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.58 (D-209 — Pass 30 MED+HIGH REMEDIATED; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending CI)
+## §Trace v6.59 (D-210 — Pass 31 MED REMEDIATED; ADR-0007 v1.0.8 registry-driven; 207 project-wide stale → 0 stale; Pass 32 pending CI)
 
-**Pass 30 findings (2026-05-30, D-209) — all CLOSED:**
-F-S025-ADV30-MED-001: POL-11 BLIND to YAML inputs[] form (false-green). CLOSED via devops Pattern B detection (feature branch e38c9d0) + architect ADR-0007 v1.0.6 (inputs[] historical-provenance closed-rule: ACTIVE = {*-INDEX.md, prd.md}; default HISTORICAL) + story-writer STORY-INDEX v5.20 + EVAL-INDEX v1.5 inputs[] refresh + BC-2.05.008 v1.0.6 + BC-HOOK-039 v1.0.3. 12th META instance — enforcement-gap sub-species of literal-pin species. ADR-HOOK-001 durable task registered (Wave 7 anchor: ADR self-consistency mechanical hook, ~3pts, devops).
-F-S025-ADV30-HIGH-001: ADR-0008 §Trace v1.0.2 escaped into normative amendment list + ADR-0007 header/label mismatch. CLOSED via architect 82737b7 (ADR-0008 v1.0.4; ADR-0007 §Trace chain reconciled).
-F-S025-ADV30-LOW-001: ADR-0007:422 unescaped pipe in backtick table-cell regex. CLOSED (escaped) as part of architect 82737b7+5aece68 burst.
-TRIPWIRE: architect armed ADR self-consistency discipline in SS-conventions v1.32.4 §ADR Authoring Discipline (82737b7). Human approved Option A historical provenance for inputs[] classification.
+**Pass 31 finding (2026-05-30, D-210) — CLOSED:**
+F-S025-ADV31-MED-001: POL-11 Pattern-A vocabulary blind-spot — only recognized SS-/BC-/ADR- prefixed IDs; dtu-assessment + index-doc citations (no recognized prefix) produced false-greens. 13th META instance; first vocabulary-blind-spot sub-species. ROOT FIX: registry-driven Pattern-A matcher (recognizes ANY registry artifact ID via longest-match guards). Surfaced 207 project-wide stale citations.
+CLOSED via: architect ADR-0007 v1.0.7 (491f49d; registry-driven Pattern-A spec) + ADR-0007 v1.0.8 (0998927; EXEMPT set extended: sprint-state.yaml, tech-debt-register.md, CLAUDE.md; dependency-graph-expansion.md + holdout-scenarios.md adjudicated NORMATIVE) + devops d6441d3 (registry-driven feature impl) + devops 39b2d7b (exemptions + 6 fixtures; 27/27 pass → 164 post-exemption findings) + story-writer 60cedfc (154 .factory findings → fixpoint: Option 2 version-free for 41 BC-HOOK navigation pointers; Option 3 historical-anchor for vp-* §Trace logs; Option 1 bump for live traces_to; full index cascade) + implementer bfa1d90+f33c020 (9 code doc-comments + monocle-proto SS-forward-compat cascade).
 
-**D-209 CYCLE CLOSURE:**
-Architect 82737b7 — ADR-0008 v1.0.4 (§Trace escape fixed) + ADR-0007 header/label reconciliation + SS-conventions v1.32.4 (§ADR Authoring Discipline armed).
-Story-writer 86abc8c — STORY-INDEX v5.19 SHA backfill (1e39ed2 registry).
-Architect 5aece68 — ADR-0007 v1.0.6 inputs[] closed-rule ratification (ACTIVE = {*-INDEX.md, prd.md}).
-Story-writer 03be285 — STORY-INDEX v5.20 + EVAL-INDEX v1.5 inputs[] refresh; BC-2.05.008 v1.0.6 + BC-HOOK-039 v1.0.3 inline pointers; ARCH-INDEX v1.0.20. POL-11 FIXPOINT: 264 active, 0 findings, 541 files.
+**STRATEGIC META-OBSERVATION (D-210):**
+Passes 29/30/31 = 3 consecutive sessions where gate COMPLETENESS (not S-025 content) was the defect source. Pass 29: scope bug (0 files scanned). Pass 30: YAML blind-spot (form coverage). Pass 31: vocabulary blind-spot (prefix-list vs registry). S-025 CONTENT is verified converged across all 3 passes. The adversary is systematically probing the enforcer layer. Pass 32 should probe a new axis — if it again finds an enforcer-layer gap, this is the 4th consecutive and requires strategic escalation (enforcer comprehensive review before counter advance).
 
-**Artifact versions bumped (D-209):** STATE v6.57→v6.58. ADR-0007 v1.0.4→v1.0.6 (5aece68). ADR-0008 v1.0.3→v1.0.4 (82737b7). SS-conventions v1.32.3→v1.32.4 (82737b7). ARCH-INDEX v1.0.19→v1.0.20 (03be285). STORY-INDEX v5.18→v5.20 (86abc8c+03be285). EVAL-INDEX v1.4→v1.5 (03be285). BC-2.05.008 v1.0.5→v1.0.6 (03be285). BC-HOOK-039 v1.0.2→v1.0.3 (03be285). Counter HOLDS 0/3 (Pass 30 was MED+HIGH). Trajectory appended: →MH(30)+enforcement-gap. Pass 31 pending CI green on feature branch.
+**D-210 CYCLE CLOSURE:**
+Architect 491f49d — ADR-0007 v1.0.7 (Pattern-A registry-driven spec).
+Architect 0998927 — ADR-0007 v1.0.8 (EXEMPT set extended + NORMATIVE adjudications).
+Story-writer 60cedfc — 154 .factory findings remediated; STORY-INDEX v5.21; ARCH-INDEX v1.0.23; SS-conventions v1.32.5; SS-forward-compatibility v1.2.20; VP-INDEX v1.17; EVAL-INDEX v1.6; product-brief v1.4.33; BC-HOOK-001..041 v1.0.1; BC-2.05.008 v1.0.7; BC-HOOK-039 v1.0.5; all 22 vp-*.md +1 patch; S-014 v1.7; S-010 v1.3; S-013 v1.3; S-DTU-001 v1.5; prd-expansion-scope v1.2; dependency-graph-expansion v1.9; holdout-scenarios v1.6.
+State-manager (this commit) — D-210 closure; lessons L-W6-S025-011/012; STATE v6.58→v6.59.
+Combined POL-11 FIXPOINT: 266 active, 0 stale, 3715 historical, 538 files.
 
-§Trace v6.57 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.56 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.55 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.54 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.53 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.51 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.50 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.49 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.48 archived to `cycles/cycle-001/burst-log.md`.
-§Trace v6.42 through v6.44 archived to `cycles/cycle-001/burst-log.md` (D-198.1 compaction).
-§Trace v6.40 and earlier archived to `cycles/cycle-001/burst-log.md`.
+**Artifact versions bumped (D-210):** ADR-0007 v1.0.6→v1.0.8. ARCH-INDEX v1.0.20→v1.0.23. SS-conventions v1.32.4→v1.32.5. SS-forward-compatibility v1.2.19→v1.2.20. STORY-INDEX v5.20→v5.21. VP-INDEX v1.16→v1.17. EVAL-INDEX v1.5→v1.6. product-brief v1.4.30→v1.4.33. prd-expansion-scope →v1.2. dependency-graph-expansion →v1.9. holdout-scenarios →v1.6. S-DTU-001 →v1.5. S-014 →v1.7. S-010 →v1.3. S-013 →v1.3. BC-2.05.008 v1.0.6→v1.0.7. BC-HOOK-039 v1.0.3→v1.0.5. BC-HOOK-001..041 →v1.0.1. all 22 vp-*.md +1 patch. Counter HOLDS 0/3 (Pass 31 was MED). Trajectory appended: →M(31)+vocab-blind.
+
+§Trace v6.40 through v6.58 archived to `cycles/cycle-001/burst-log.md`.
