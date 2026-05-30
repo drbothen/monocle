@@ -123,13 +123,13 @@ SS-tui:
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
   current_version: "1.0.3"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 ADR-0008-structural-claim-discipline:
   path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
   current_version: "1.0.2"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -151,25 +151,25 @@ BC-INDEX:
 STORY-INDEX:
   path: stories/STORY-INDEX.md
   current_version: "5.18"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 dtu-assessment:
   path: specs/dtu-assessment.md
   current_version: "1.7.6"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 prd:
   path: specs/prd.md
   current_version: "1.27.4"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 product-brief:
   path: specs/product-brief.md
   current_version: "1.4.32"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -426,7 +426,7 @@ BC-2.05.007:
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
   current_version: "1.0.5"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 BC-2.06.001:
@@ -558,7 +558,7 @@ BC-2.06.021:
 BC-2.06.022:
   path: specs/behavioral-contracts/ss-06/BC-2.06.022.md
   current_version: "1.6.2"
-  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_commit: "dd82c05"
   last_bump_date: "2026-05-30"
 
 BC-2.06.023:
