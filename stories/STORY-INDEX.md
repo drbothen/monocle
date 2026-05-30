@@ -1,26 +1,26 @@
 ---
 document_type: story-index
 level: L4
-version: "5.18"
+version: "5.19"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T00:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.27"}
+  - {path: .factory/specs/prd.md, version: "1.27.4"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.19"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.6"}
-  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
-  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.8"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.6"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.9.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
-traces_to: ".factory/specs/prd.md v1.26.15"
+traces_to: ".factory/specs/prd.md v1.27.4"
 ---
 
 # Story Index: monocle Phase 2

@@ -156,8 +156,32 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.18"
-  last_bump_commit: "dd82c05"
+  current_version: "5.19"
+  last_bump_commit: "[set at this commit]"
+  last_bump_date: "2026-05-30"
+
+VP-INDEX:
+  path: specs/verification-properties/VP-INDEX.md
+  current_version: "1.16"
+  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
+  last_bump_date: "2026-05-28"
+
+L2-INDEX:
+  path: specs/domain-spec/L2-INDEX.md
+  current_version: "1.0.11"
+  last_bump_commit: "6b85e06ca32af89a206c5c2324c342310a612a2e"
+  last_bump_date: "2026-05-18"
+
+nfr-catalog:
+  path: specs/prd-supplements/nfr-catalog.md
+  current_version: "1.8"
+  last_bump_commit: "b0ba8367f8da86815bb99bdbe2f3833c40747cc1"
+  last_bump_date: "2026-05-30"
+
+error-taxonomy:
+  path: specs/prd-supplements/error-taxonomy.md
+  current_version: "1.6"
+  last_bump_commit: "b0ba8367f8da86815bb99bdbe2f3833c40747cc1"
   last_bump_date: "2026-05-30"
 
 dtu-assessment:
