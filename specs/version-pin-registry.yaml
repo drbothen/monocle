@@ -128,8 +128,8 @@ ADR-0005:
 
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
-  current_version: "1.0.7"
-  last_bump_commit: "[set at ADV31-MED-001 registry-driven amendment burst]"
+  current_version: "1.0.8"
+  last_bump_commit: "[set at LIVING-STATE exempt set extension burst]"
   last_bump_date: "2026-05-30"
 
 ADR-0008-structural-claim-discipline:
@@ -144,8 +144,8 @@ ADR-0008-structural-claim-discipline:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.21"
-  last_bump_commit: "[set at ADV31-MED-001 registry-driven amendment burst]"
+  current_version: "1.0.22"
+  last_bump_commit: "[set at LIVING-STATE exempt set extension burst]"
   last_bump_date: "2026-05-30"
 
 BC-INDEX:

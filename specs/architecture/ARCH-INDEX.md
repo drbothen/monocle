@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.21"
+version: "1.0.22"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -141,6 +141,17 @@ citations to be invisible to Pass 31 detection. Matcher uses longest-match sort 
 ID length) for prefix-disambiguation and word-boundary after version token. Together with
 v1.0.6's closed-rule: complete enforcement surface (which docs are ACTIVE + which IDs are
 detectable both fully specified with no open vocabulary tails).
+v1.0.8 extends the EXEMPT set in §Enforcement Scan Scope with three new living-state file
+entries, parallel to the STATE.md exemption: `factory_root/stories/sprint-state.yaml`
+(continuously-rewritten sprint dashboard, every story transition), `factory_root/tech-debt-register.md`
+(living human-directed debt register, historical chronicle not normative spec), and
+`repo_root/CLAUDE.md` (living project instructions with continuously-rewritten Pipeline
+State section). All three produce version-race CI false positives for zero correctness
+value under pin-freshness enforcement. The EXEMPT set remains CLOSED and enumerated —
+adding a file requires a further ADR amendment. Adjudication: dependency-graph-expansion.md
+and holdout-scenarios.md are NORMATIVE (not exempt); their stale citations are legitimate
+POL-11 targets handled by story-writer opportunistically. Devops dispatch updated with
+exact-path exclusion specs including repo-root CLAUDE.md mechanism.
 ADR-0008 resolves the structural-claim sub-species of the same authoring-time documentation
 drift root (Task #9 m.6 tripwire; Passes 26/27 — module-doc column table + story-body
 type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-check`). Governs
@@ -559,6 +570,24 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
 - INFORMATIONAL: ADR-0008 ratifies a distinct sub-species of the ADR-0007 META-pattern root.
   ADR-0007 is unchanged at v1.0.1. Both ADRs now apply; see ADR-0008 §Relationship to ADR-0007.
 - SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T08:00:00Z (monotonic).
+
+## §Trace v1.0.22
+
+**ADR-0007 v1.0.8 — LIVING-STATE exempt set extension** (2026-05-30):
+
+- NORMATIVE: ADR-0007 Note in ADR Registry updated with v1.0.8 summary. EXEMPT set
+  extended with three new living-state files: `stories/sprint-state.yaml` (continuously-
+  rewritten sprint dashboard), `tech-debt-register.md` (living human-directed debt
+  register), and `repo_root/CLAUDE.md` (living project instructions). All three apply
+  the STATE.md rationale (continuous rewriting, transient version refs, version-race
+  false positives). EXEMPT set remains CLOSED. Adjudication: dependency-graph-expansion.md
+  and holdout-scenarios.md are NORMATIVE (not exempt). Devops dispatch updated with
+  exact-path exclusion specs for the three new exempt files, including CLAUDE.md
+  repo-root resolution mechanism.
+- NORMATIVE: version-pin-registry.yaml: ADR-0007 → v1.0.8; ARCH-INDEX → v1.0.22.
+- NORMATIVE: ARCH-INDEX version 1.0.21 → 1.0.22.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch;
+  v1.0.21 and v1.0.22 are distinct bursts on the same calendar day).
 
 ## §Trace v1.0.21
 

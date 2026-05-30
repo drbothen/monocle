@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.7"
+version: "1.0.8"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -165,7 +165,9 @@ document classes, both defined in §Enforcement Scan Scope. Summary:
 - NORMATIVE (scanned): `factory_root/stories/`, `factory_root/specs/` (all subdirs),
   `crates/`, `.github/`, `scripts/` (excl. `scripts/tests/`), root `*.toml/*.yml/*.yaml/*.md`
 - EXEMPT (not scanned): `factory_root/cycles/`, `factory_root/plans/`,
-  `factory_root/planning/`, `factory_root/code-delivery/`, `factory_root/STATE.md`
+  `factory_root/planning/`, `factory_root/code-delivery/`, `factory_root/STATE.md`,
+  `factory_root/stories/sprint-state.yaml`, `factory_root/tech-debt-register.md`,
+  `repo_root/CLAUDE.md`
 
 The CI gate is additionally exempt from the following within any scanned file:
 - `§Trace` sections (historical provenance records)
@@ -272,6 +274,9 @@ continuously-rewritten living-state dashboards is semantically wrong.
 | `factory_root/planning/` | Historical planning session files. Same rationale as `plans/`. |
 | `factory_root/code-delivery/` | At-merge PR descriptions and code-delivery records. These are sealed at merge time; the version citations they carry correctly describe the state at delivery. |
 | `factory_root/STATE.md` | Living dashboard and log: STATE.md is rewritten by state-manager every burst. It is not a normative spec artifact — nothing traces TO it, it traces FROM it. Keeping STATE.md in scope creates version-race CI fragility: burst edits that bump a spec doc mid-session naturally leave STATE.md with a momentarily stale reference until the burst completes. The §Trace/decisions bulk of STATE.md is already exempt via the §Trace-section criterion; only transient current-state snapshot lines would fire, producing false positives with no remediation path. |
+| `factory_root/stories/sprint-state.yaml` | Continuously-rewritten living sprint state: every story status transition rewrites this file. The version references it carries are transient snapshots of what was current at the last state-manager burst — they go stale by design as the next burst lands. Structurally identical to STATE.md: nothing normative traces TO it; it traces FROM the story corpus. Pin-freshness enforcement here produces version-race false positives with no remediation path because the file's version refs will always lag one burst behind the canonical source. |
+| `factory_root/tech-debt-register.md` | Living debt register: continuously appended by human direction (per CANONICAL PRINCIPLE rule 3). Its entries record the spec versions current at the time of each human-directed deferral; those historical version refs correctly document what was current at deferral time. Unlike normative specs, the register's purpose is chronicle-keeping, not behavioral specification — nothing contracts against its version refs. Pin-freshness enforcement would require the human to re-annotate every historical entry each time a cited spec bumps, producing pure noise with no correctness value. |
+| `repo_root/CLAUDE.md` | Living project instructions / "Current Pipeline State" checkpoint: the §Current Pipeline State section is rewritten every burst to reflect the latest wave progress, merged commits, and active story counts. Its version references (story counts, spec versions, wave numbers) are transient current-state snapshots that go stale by design on the next burst. Rationale is parallel to STATE.md — continuous rewriting creates a structural version-race that makes pin-freshness enforcement semantically wrong. Note: CLAUDE.md resides at the workspace repo root (not inside `factory_root/`), so it is reached by the root-level `*.md` scan path; the implementation must apply an exact-path exclusion for `CLAUDE.md` at the workspace root to prevent it from being scanned under that path. |
 
 **Existing line-level exemptions within scanned files** (unchanged from §Decision):
 
@@ -288,6 +293,13 @@ artifacts, and subjecting them to pin-freshness enforcement is semantically inco
 `STATE.md` adds a further fragility argument: continuous rewriting creates a
 structural version-race that cycles/, plans/, planning/, and code-delivery/ do not
 have (those are append-only or sealed).
+
+The v1.0.8 exemptions for `sprint-state.yaml`, `tech-debt-register.md`, and
+`CLAUDE.md` apply the STATE.md rationale verbatim: all three are continuously-rewritten
+living-state files whose version references are transient snapshots rather than normative
+pins, and keeping them in scope produces version-race false positives with no remediation
+path and zero correctness value. The EXEMPT set is CLOSED and enumerated — adding a
+file requires an explicit ADR amendment (bump ADR-0007, add a §Trace entry).
 
 ### Implementation obligation
 
@@ -573,6 +585,23 @@ formal classification (vs implicit exemption), and the opportunistic migration s
    explicitly forbidden. `version-pin-registry.yaml` ADR-0007 entry bumped to v1.0.7.
    ARCH-INDEX.md Note for ADR-0007 updated with v1.0.7 summary.
 
+### Immediate (LIVING-STATE exempt set extension — v1.0.7 → v1.0.8)
+
+9. Update `ADR-0007` v1.0.7 → v1.0.8: §Enforcement Scan Scope EXEMPT table extended
+   with three new living-state file entries: `factory_root/stories/sprint-state.yaml`,
+   `factory_root/tech-debt-register.md`, and `repo_root/CLAUDE.md`. Each entry carries
+   an independent rationale parallel to STATE.md (continuously-rewritten; version refs
+   are transient snapshots; pin-freshness creates version-race CI fragility for zero
+   correctness value). §Decision summary EXEMPT list updated to include all three new
+   entries. §Enforcement Scan Scope §Relationship to cycles/ precedent paragraph
+   extended documenting v1.0.8 additions and re-stating the CLOSED-SET constraint.
+   `version-pin-registry.yaml` ADR-0007 entry bumped to v1.0.8. ARCH-INDEX.md Note
+   for ADR-0007 updated with v1.0.8 summary. Devops §Next session dispatches Priority 1
+   updated with exact-path exclusion specs for the three new exempt files.
+   Adjudication recorded: dependency-graph-expansion.md and holdout-scenarios.md are
+   NORMATIVE planning artifacts (NOT exempt) — their stale citations are legitimate
+   POL-11 targets; story-writer anchors them opportunistically per per-touch obligation.
+
 **ADR Self-Consistency Checklist (pre-commit discipline — codified D-ADV30):**
 
 The §Trace-escaping-into-normative-content defect has appeared 4 times (ADR-0006 indirect
@@ -607,7 +636,7 @@ serves as the durable reference.
 
 | Priority | Dispatch | Instructions |
 |----------|----------|-------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form (REGISTRY-DRIVEN):** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff: (1) Load all artifact IDs from the registry keys. (2) Sort IDs by descending length (longest-first) to guarantee longest-match precedence — `SS-conventions-anti-patterns` must be tried before `SS-conventions`; `BC-INDEX` before `BC-` — preventing partial-prefix false negatives. (3) For each ID (in sorted order), scan each line for the pattern `<id>(\.md)?\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` (illustrative — `SS-tui\.md\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` or `dtu-assessment\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b`). The word boundary `\b` after the version token prevents collision with longer version strings. Once an ID matches a position on a line, do NOT also try shorter IDs against that same position. This is a registry-key-driven matcher: the vocabulary of detectable artifact IDs is ALL keys present in the registry at script runtime; adding a new registry entry automatically extends detection with no script change. A hardcoded prefix alternation is explicitly forbidden — any pattern of the form `(SS-[a-z-]+\|BC-[0-9.]+\|...)` in the script is a defect against this ADR. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply the closed-rule classification per §inputs[] Provenance Classification: (a) if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; (b) if the containing file's basename matches `*-INDEX\.md` regex OR equals `prd.md` → classify ACTIVE → check version against registry; (c) all other files → classify HISTORICAL → skip. The three branches are exhaustive and CLOSED — no file falls through to "unclassified." The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form (REGISTRY-DRIVEN):** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff: (1) Load all artifact IDs from the registry keys. (2) Sort IDs by descending length (longest-first) to guarantee longest-match precedence — `SS-conventions-anti-patterns` must be tried before `SS-conventions`; `BC-INDEX` before `BC-` — preventing partial-prefix false negatives. (3) For each ID (in sorted order), scan each line for the pattern `<id>(\.md)?\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` (illustrative — `SS-tui\.md\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` or `dtu-assessment\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b`). The word boundary `\b` after the version token prevents collision with longer version strings. Once an ID matches a position on a line, do NOT also try shorter IDs against that same position. This is a registry-key-driven matcher: the vocabulary of detectable artifact IDs is ALL keys present in the registry at script runtime; adding a new registry entry automatically extends detection with no script change. A hardcoded prefix alternation is explicitly forbidden — any pattern of the form `(SS-[a-z-]+\|BC-[0-9.]+\|...)` in the script is a defect against this ADR. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply the closed-rule classification per §inputs[] Provenance Classification: (a) if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; (b) if the containing file's basename matches `*-INDEX\.md` regex OR equals `prd.md` → classify ACTIVE → check version against registry; (c) all other files → classify HISTORICAL → skip. The three branches are exhaustive and CLOSED — no file falls through to "unclassified." The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. **EXEMPT path exclusions (v1.0.8 addition):** The `collect_files()` function MUST apply the following exact-path exclusions BEFORE any pattern matching, in addition to the directory-level exemptions (`cycles/`, `plans/`, `planning/`, `code-delivery/`): (a) `<factory_root>/stories/sprint-state.yaml` — exact file path match; exclude this single file (not the entire `stories/` directory, which is NORMATIVE); (b) `<factory_root>/tech-debt-register.md` — exact file path match; (c) `<repo_root>/CLAUDE.md` — exact file match at the workspace repository root (this is the file that would otherwise be captured by the root-level `*.md` glob scan; it is NOT inside `factory_root/` and must be excluded by comparing the resolved absolute path to `<repo_root>/CLAUDE.md`). The implementation must resolve `factory_root` and `repo_root` at script startup (factory_root = the `.factory` worktree root; repo_root = the workspace repository root where `Cargo.toml` lives). The three exact-path exclusions are applied before any glob expansion or pattern matching — a file that matches an exact-path exclusion is silently skipped and produces no findings. |
 | 2 (HIGH) | state-manager | Seed `.factory/specs/version-pin-registry.yaml` with all 11 SS docs from ARCH-INDEX Document Map + BC-INDEX current version. Each entry: artifact ID, path, current_version (from frontmatter), last_bump_commit (from git log), last_bump_date. |
 | 3 (HIGH) | story-writer | Update story template (`.factory/templates/` or equivalent): remove version literals from `inputs:` example. Add note: "cite artifact by ID only; no version literals in body prose — see ADR-0007". Update STORY-INDEX template if it carries version examples. |
 | 4 (MEDIUM) | product-owner | Update BC template: Architecture Source section — remove `v<version>` from example form. Add note citing ADR-0007. |
@@ -629,6 +658,54 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.8
+
+**LIVING-STATE exempt set extension — sprint-state.yaml, tech-debt-register.md, CLAUDE.md** (2026-05-30):
+
+- NORMATIVE: §Enforcement Scan Scope EXEMPT table extended with three new rows. All
+  three are continuously-rewritten living-state files; the STATE.md rationale applies
+  verbatim to each:
+  - `factory_root/stories/sprint-state.yaml` — continuously-rewritten living sprint
+    state (every story status transition rewrites this file); version refs are transient
+    snapshots, not normative pins; structurally identical to STATE.md as a trace-FROM
+    file, not a trace-TO target.
+  - `factory_root/tech-debt-register.md` — living debt register (human-directed per
+    CANONICAL PRINCIPLE rule 3); entries chronicle deferral-time spec versions as
+    historical record; nothing contracts against its version refs; freshness enforcement
+    would require re-annotating every entry on each downstream spec bump (pure noise).
+  - `repo_root/CLAUDE.md` — living project instructions with continuously-rewritten
+    "Current Pipeline State" section; version refs go stale every burst by design;
+    resides at workspace repo root (not inside factory_root), so the devops
+    implementation must apply an exact-path exclusion for `<repo_root>/CLAUDE.md`
+    distinct from the factory_root/STATE.md directory mechanism.
+- NORMATIVE: §Decision EXEMPT summary list updated to include all three new entries.
+- NORMATIVE: §Enforcement Scan Scope §Relationship to cycles/ precedent paragraph
+  extended with a v1.0.8 block re-stating the CLOSED-SET constraint (adding a file
+  to the EXEMPT set requires an explicit ADR amendment).
+- NORMATIVE: §Implementation Plan "LIVING-STATE exempt set extension" subsection added
+  (item 9) documenting this burst's deliverables including the adjudication of
+  dependency-graph-expansion.md and holdout-scenarios.md.
+- NORMATIVE: §Next session dispatches Priority 1 devops dispatch extended with
+  EXEMPT path exclusions specification: exact-path exclusions for all three files
+  (sprint-state.yaml by factory_root-relative path; tech-debt-register.md by
+  factory_root-relative path; CLAUDE.md by repo_root-absolute path resolved at
+  script startup). Implementation must resolve both roots at startup. Exact-path
+  exclusions applied before glob expansion.
+- ADJUDICATION (normative, for record): `factory_root/stories/dependency-graph-expansion.md`
+  and `factory_root/stories/holdout-scenarios.md` are NORMATIVE planning artifacts,
+  NOT exempt. Rationale: these are structured spec-class documents that carry normative
+  planning decisions (dependency ordering, holdout evaluation criteria) that other
+  artifacts trace TO. They are authored once and revised deliberately (not continuously
+  rewritten on each burst). Their stale citations are legitimate POL-11 targets;
+  story-writer anchors them opportunistically per the per-touch obligation. They are
+  NOT in the same class as STATE.md (continuously rewritten, traces FROM others) — the
+  "my lean: normative planning artifacts" assessment in the human-authored task
+  instructions is confirmed.
+- NORMATIVE: Version bump 1.0.7 → 1.0.8. version-pin-registry.yaml ADR-0007 entry
+  updated. ARCH-INDEX.md Note for ADR-0007 updated.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch;
+  v1.0.7 and v1.0.8 are distinct bursts on the same calendar day).
 
 ## §Trace v1.0.7
 
