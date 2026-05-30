@@ -19,7 +19,7 @@
 //!
 //! Field numbers 1–99 are immutable across Phase 1 minor versions. Any change to
 //! these field numbers is a BREAKING change requiring a `schema_version` bump and an ADR.
-//! See `SS-forward-compatibility.md v1.2.19 §FC-05` for the full immutability contract.
+//! See `SS-forward-compatibility.md §FC-05` for the full immutability contract.
 //!
 //! # E-PROTO-001 — Phase 4 schema_version dispatch rule
 //!
