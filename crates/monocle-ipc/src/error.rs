@@ -63,4 +63,19 @@ pub enum IpcError {
     /// extension per the production-grade default.
     #[error("UDS bind failed: {0}")]
     BindFailure(std::io::Error),
+
+    /// The 5-second reconnect window was exhausted without a successful connection.
+    ///
+    /// Returned by [`crate::reconnect::reconnect`] when no connection to the daemon
+    /// could be established within [`crate::reconnect::RECONNECT_WINDOW_SECS`] seconds
+    /// of the initial disconnect detection (BC-2.05.006 PC-5).
+    ///
+    /// On receipt the TUI MUST:
+    /// 1. Render `[daemon: offline]` in the status bar.
+    /// 2. Enter passive observe-only mode (no IPC push messages received).
+    /// 3. Poll `<runtime_dir>/monocle.lock` every
+    ///    [`crate::reconnect::OFFLINE_POLL_INTERVAL_SECS`] seconds.
+    /// 4. Re-enter the reconnect loop when a new lock file is detected.
+    #[error("daemon reconnect timed out after 5 seconds — entering offline mode")]
+    ReconnectTimeout,
 }

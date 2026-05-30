@@ -26,3 +26,6 @@ tempfile = { workspace = true }
 # Test-only; NOT in workspace.dependencies (least-privilege: only this crate uses it for log capture).
 # no-env-filter feature: integration tests are a separate crate from the implementation.
 tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
+# temp-env: safe PATH isolation for detect_ccr tests. NOT in workspace.dependencies per
+# SS-deps-pin-manifest.md §Dev Dependencies least-privilege rule. Version matches monocle-runtime.
+temp-env = "0.3"

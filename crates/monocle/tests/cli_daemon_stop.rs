@@ -56,21 +56,37 @@ fn stop_cmd(runtime_dir: &std::path::Path) -> Command {
 }
 
 /// Spawn the `test-stubborn-daemon` binary as a surrogate "daemon" process that ignores
-/// SIGTERM. Returns the `Child` handle.
+/// SIGTERM. Waits for the ready signal before returning to eliminate the SIGTERM race
+/// window between `spawn()` and SIG_IGN installation.
 ///
 /// This binary is the preferred surrogate for stop-timeout tests because:
 /// - It installs SIG_IGN for SIGTERM atomically on startup (no race window).
+/// - It signals readiness by writing `b'R'` to stdout AFTER installing SIG_IGN.
 /// - It has NO child processes (eliminates orphan process accumulation between tests).
 /// - It exits cleanly on SIGKILL (test cleanup).
 ///
-/// The `spawn()` call here returns a `std::process::Child` — separate from
-/// `assert_cmd::Command`, which wraps the child differently. We use `std::process::Child`
-/// directly so we can call `.id()`, `.kill()`, and `.wait()` on it.
+/// Returns the `Child` handle. stdout is consumed (piped and drained for the ready byte).
 fn spawn_stubborn_daemon() -> std::process::Child {
+    use std::io::Read as _;
     let bin_path = assert_cmd::cargo::cargo_bin("test-stubborn-daemon");
-    std::process::Command::new(bin_path)
+    let mut child = std::process::Command::new(bin_path)
+        .stdout(std::process::Stdio::piped())
         .spawn()
-        .expect("spawn test-stubborn-daemon")
+        .expect("spawn test-stubborn-daemon");
+
+    // Read the single ready byte. This blocks until the child has installed SIG_IGN,
+    // eliminating the race window where SIGTERM could kill the process before it ignores it.
+    let mut stdout = child.stdout.take().expect("stdout must be piped");
+    let mut ready = [0u8; 1];
+    stdout
+        .read_exact(&mut ready)
+        .expect("read ready byte from test-stubborn-daemon");
+    assert_eq!(
+        ready[0], b'R',
+        "expected 'R' ready signal from test-stubborn-daemon"
+    );
+
+    child
 }
 
 /// Write a lock file fixture to `dir/monocle.lock` with the given PID and port.

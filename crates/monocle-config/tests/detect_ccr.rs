@@ -1,8 +1,8 @@
 //! Integration tests for BC-2.07.006: CCR Detection via `ccr_path` config field.
 //!
-//! All tests use filesystem fixtures via `tempfile::TempDir`. PATH manipulation
-//! (for `which::which("ccr")` fallback) is done via `std::env::set_var` with
-//! care to avoid test pollution.
+//! All tests use filesystem fixtures via `tempfile::TempDir`. PATH isolation
+//! (for `which::which("ccr")` fallback) is done via `temp_env::with_vars` so
+//! parallel tests do not corrupt each other's environment.
 //!
 //! # Coverage Map
 //!
@@ -63,19 +63,13 @@ fn make_fake_executable(dir: &std::path::Path, name: &str) -> std::path::PathBuf
 fn test_BC_2_07_006_ccr_path_none_ccr_not_on_path_returns_none() {
     let tmp = tempdir().expect("create temp dir");
 
-    // Use a PATH that contains only our empty temp dir — no ccr binary there.
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    // SAFETY: test-only, single-threaded — but tests run in parallel with other
-    // tests. We set PATH to an empty/nonexistent location so which::which("ccr") fails.
-    // Restore after test.
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
     let config = MonocleConfig::default(); // ccr_path: None
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-
-    // Restore PATH before any assertions (cleanup happens even if test panics).
-    std::env::set_var("PATH", &old_path);
+    // Use temp_env to safely scope PATH to the empty temp dir for this test only.
+    // No ccr binary is present in tmp, so which::which("ccr") must fail.
+    let result = temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)))
+    });
 
     let result = result.unwrap_or_else(|_| {
         panic!(
@@ -148,12 +142,9 @@ fn test_BC_2_07_006_ccr_path_some_file_missing_falls_through() {
     };
 
     // Set PATH to empty so ccr is not found via PATH either.
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-
-    std::env::set_var("PATH", &old_path);
+    let result = temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)))
+    });
 
     let result = result.unwrap_or_else(|_| {
         panic!(
@@ -186,12 +177,9 @@ fn test_BC_2_07_006_ccr_path_some_is_directory_falls_through() {
         ..Default::default()
     };
 
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-
-    std::env::set_var("PATH", &old_path);
+    let result = temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)))
+    });
 
     let result = result.unwrap_or_else(|_| {
         panic!(
@@ -201,9 +189,6 @@ fn test_BC_2_07_006_ccr_path_some_is_directory_falls_through() {
     });
 
     // A directory fails is_file() → falls through → PATH has no ccr → None.
-    // (Result may be Some if ccr happens to be on PATH in the test environment,
-    // but we've isolated PATH so it should be None.)
-    // The critical invariant is no panic; None is the expected result with empty PATH.
     assert_eq!(
         result, None,
         "detect_ccr() must return None when ccr_path points to a directory \
@@ -227,12 +212,9 @@ fn test_BC_2_07_006_ccr_path_some_empty_string_falls_through() {
         ..Default::default()
     };
 
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-
-    std::env::set_var("PATH", &old_path);
+    let result = temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)))
+    });
 
     let result = result.unwrap_or_else(|_| {
         panic!(
@@ -278,22 +260,20 @@ fn test_BC_2_07_006_detect_ccr_never_returns_err() {
         },
     ];
 
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
-    for (i, config) in configs.iter().enumerate() {
-        let config_clone = config.clone();
-        let result = std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config_clone)));
-        assert!(
-            result.is_ok(),
-            "detect_ccr() must not panic for config case {i} \
-            (BC-2.07.006 INV-1 / INV-2 / story AC-008)"
-        );
-        // The inner result is Option<PathBuf> — both Some and None are acceptable.
-        // If the result is Some/None, the invariant is satisfied (no Err, no panic).
-    }
-
-    std::env::set_var("PATH", &old_path);
+    temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        for (i, config) in configs.iter().enumerate() {
+            let config_clone = config.clone();
+            let result =
+                std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config_clone)));
+            assert!(
+                result.is_ok(),
+                "detect_ccr() must not panic for config case {i} \
+                    (BC-2.07.006 INV-1 / INV-2 / story AC-008)"
+            );
+            // The inner result is Option<PathBuf> — both Some and None are acceptable.
+            // If the result is Some/None, the invariant is satisfied (no Err, no panic).
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -317,42 +297,40 @@ fn test_BC_2_07_006_detect_ccr_no_caching() {
         ..Default::default()
     };
 
-    // First call: file does not exist → falls through to PATH → PATH is empty → None.
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
+    // Both calls run under the same PATH isolation scope so there is no leak.
+    let (first, second) =
+        temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+            // First call: file does not exist → falls through to PATH → PATH is empty → None.
+            let first_result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
+            let first = first_result.unwrap_or_else(|_| {
+                panic!(
+                    "detect_ccr() panicked on first call (likely todo!()) — \
+                    Red Gate: implementation not yet written (BC-2.07.006 INV-3)"
+                )
+            });
 
-    let first_result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-    let first = first_result.unwrap_or_else(|_| {
-        std::env::set_var("PATH", &old_path);
-        panic!(
-            "detect_ccr() panicked on first call (likely todo!()) — \
-            Red Gate: implementation not yet written (BC-2.07.006 INV-3)"
-        )
-    });
+            // Now create the file.
+            make_fake_executable(tmp.path(), "ccr");
+            assert!(ccr_path.exists(), "fake ccr must exist after creation");
+
+            // Second call: file now exists → should return Some(ccr_path).
+            let second_result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
+            let second = second_result.unwrap_or_else(|_| {
+                panic!(
+                    "detect_ccr() panicked on second call (likely todo!()) — \
+                    Red Gate: implementation not yet written (BC-2.07.006 INV-3)"
+                )
+            });
+
+            (first, second)
+        });
 
     // The file is absent — first result should be None (since PATH also has no ccr).
-    // Note: if test env already has 'ccr' on PATH this test would have a different first result;
-    // but we've overridden PATH to only the temp dir, which has no ccr yet.
     assert_eq!(
         first, None,
         "First detect_ccr() call must return None when file is absent \
         (BC-2.07.006 INV-3 no-caching pre-condition)"
     );
-
-    // Now create the file.
-    make_fake_executable(tmp.path(), "ccr");
-    assert!(ccr_path.exists(), "fake ccr must exist after creation");
-
-    // Second call: file now exists → should return Some(ccr_path).
-    let second_result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-    std::env::set_var("PATH", &old_path);
-
-    let second = second_result.unwrap_or_else(|_| {
-        panic!(
-            "detect_ccr() panicked on second call (likely todo!()) — \
-            Red Gate: implementation not yet written (BC-2.07.006 INV-3)"
-        )
-    });
 
     assert_eq!(
         second,
@@ -373,8 +351,6 @@ fn test_BC_2_07_006_detect_ccr_no_caching() {
 #[test]
 fn test_BC_2_07_006_invariant_no_panic_under_any_input() {
     let tmp = tempdir().expect("create temp dir");
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
 
     let edge_cases = vec![
         MonocleConfig::default(),
@@ -396,16 +372,16 @@ fn test_BC_2_07_006_invariant_no_panic_under_any_input() {
         },
     ];
 
-    for (i, config) in edge_cases.into_iter().enumerate() {
-        let result = std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config)));
-        assert!(
-            result.is_ok(),
-            "detect_ccr() must not panic for edge case config {i} \
-            (BC-2.07.006 INV-1 / story AC-008 — never panics)"
-        );
-    }
-
-    std::env::set_var("PATH", &old_path);
+    temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        for (i, config) in edge_cases.into_iter().enumerate() {
+            let result = std::panic::catch_unwind(AssertUnwindSafe(move || detect_ccr(&config)));
+            assert!(
+                result.is_ok(),
+                "detect_ccr() must not panic for edge case config {i} \
+                    (BC-2.07.006 INV-1 / story AC-008 — never panics)"
+            );
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -422,15 +398,12 @@ fn test_BC_2_07_006_ccr_path_none_ccr_on_path_returns_some() {
     let tmp = tempdir().expect("create temp dir");
     let fake_ccr = make_fake_executable(tmp.path(), "ccr");
 
-    // Set PATH to only the temp dir containing the fake ccr.
-    let old_path = std::env::var("PATH").unwrap_or_default();
-    std::env::set_var("PATH", tmp.path().to_str().unwrap());
-
     let config = MonocleConfig::default(); // ccr_path: None
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)));
-
-    std::env::set_var("PATH", &old_path);
+    // Set PATH to only the temp dir containing the fake ccr.
+    let result = temp_env::with_vars([("PATH", Some(tmp.path().to_str().unwrap()))], || {
+        std::panic::catch_unwind(AssertUnwindSafe(|| detect_ccr(&config)))
+    });
 
     let result = result.unwrap_or_else(|_| {
         panic!(

@@ -481,7 +481,7 @@ async fn test_BC_2_04_001_stale_socket_removed_before_bind() {
 
     // Plant a stale "socket" file (just a plain file for the remove-before-bind test).
     let sock_path = runtime_dir.join("monocle.sock");
-    std::fs::write(&sock_path, b"stale-socket-placeholder").expect("plant stale socket file");
+    std::fs::write(&sock_path, b"stale-socket-placeholder").expect("plant stale socket file"); // nosemgrep: monocle-no-naked-fs-write
     assert!(sock_path.exists(), "stale socket must exist before start");
 
     daemon_start_sequence(&runtime_dir)

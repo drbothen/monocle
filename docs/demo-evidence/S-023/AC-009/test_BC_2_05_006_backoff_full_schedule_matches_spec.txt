@@ -1,0 +1,18 @@
+
+running 1 test
+test test_BC_2_05_006_backoff_full_schedule_matches_spec ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+
+running 1 test
+test test_BC_2_05_006_constants_backoff_initial_is_250ms ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+
+
+running 1 test
+test test_BC_2_05_006_constants_backoff_cap_is_2000ms ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 0.00s
+

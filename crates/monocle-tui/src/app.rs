@@ -18,6 +18,7 @@ use monocle_core::engine::EnrichedSession;
 use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
+use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
 use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload, ServerToClient};
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -25,28 +26,14 @@ use std::time::Instant;
 use tokio::io::AsyncReadExt;
 
 // ---------------------------------------------------------------------------
-// Stub types
+// TransportEvent re-export (S-023 canonical type)
 // ---------------------------------------------------------------------------
 
-// MERGE-COORDINATION (S-023 → S-025):
-// `TransportEvent` is defined here as a local stub because S-023 introduces
-// the canonical type in `monocle-ipc::events::TransportEvent`. When S-023 merges
-// to develop, S-025's merge-time conflict resolution MUST:
-//   1. Delete this local enum.
-//   2. Replace `use crate::app::TransportEvent` with `use monocle_ipc::events::TransportEvent`.
-//   3. Verify variant shape matches BC-2.05.007 (single `Disconnected` variant currently).
-// Surfaced by F-S025-ADV2-MED-003.
-
-/// Signal that the IPC transport has changed connection state.
-///
-/// Local stub — see MERGE-COORDINATION block above. Aligns with the canonical
-/// `monocle-ipc::events::TransportEvent` type being defined in S-023.
-#[non_exhaustive]
-#[derive(Debug, Clone)]
-pub enum TransportEvent {
-    /// The UDS connection was lost (daemon exited or socket closed).
-    Disconnected,
-}
+// `TransportEvent` is defined in `monocle-ipc::events` (S-023, BC-2.05.007).
+// Re-exported here so that integration tests (which import from `monocle_tui::app`)
+// continue to work without import changes. The local stub that existed before
+// S-023 merged has been removed per MERGE-COORDINATION (F-S025-ADV2-MED-003).
+pub use monocle_ipc::events::TransportEvent;
 
 // ---------------------------------------------------------------------------
 // App constants
@@ -82,7 +69,7 @@ pub const DAEMON_NOT_RUNNING_ERROR: &str =
 pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
 
 /// Status bar text shown when the daemon is unreachable after reconnect attempts
-/// exhaust (offline-mode fallback, pending S-023 reconnect story).
+/// exhaust (offline-mode fallback — BC-2.05.006 PC-5 / `reconnect_to_daemon` timeout path).
 ///
 /// Duplicated inline at both protocol-violation and reader-disconnect call sites;
 /// this const is the single authoritative source for both.
@@ -341,6 +328,12 @@ pub fn on_transport_event(app: &mut App, event: TransportEvent) {
             app.status_message = Some(DAEMON_DISCONNECT_STATUS.to_string());
             tracing::warn!("IPC transport disconnected; entering reconnect state");
         }
+        // TransportEvent is #[non_exhaustive] (monocle-ipc::events) — future variants
+        // (e.g., Reconnecting, Reconnected) will be added as S-025+ extends the protocol.
+        // The default arm ensures forward compatibility without requiring a BC revision.
+        _ => {
+            tracing::debug!(event = ?event, "on_transport_event: unhandled variant (future extension)");
+        }
     }
 }
 
@@ -438,6 +431,105 @@ where
             }
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Reconnect helper (S-023 integration — BC-2.05.006)
+// ---------------------------------------------------------------------------
+
+/// Attempt to reconnect to the daemon UDS socket with exponential backoff.
+///
+/// Called by the event loop after `on_transport_event(Disconnected)` runs (SOQ-3 clear
+/// completes before this function is invoked — BC-2.05.007 Invariant 1).
+///
+/// # Reconnect strategy (BC-2.05.006 PC-3, PC-4, PC-5)
+///
+/// Uses `monocle_ipc::reconnect::BackoffState` for the backoff schedule (250ms → 2000ms
+/// cap). The raw `tokio::net::UnixStream::connect` is used directly so the caller's
+/// `spawn_ipc_reader` (which reads `ServerToClient` frames) can own the socket. The
+/// `monocle_ipc::reconnect::reconnect()` function is NOT used here because it returns
+/// `UdsClientTransport`, which reads `ClientToServer` frames — the wrong direction for
+/// the TUI's `spawn_ipc_reader` task.
+///
+/// # Returns
+///
+/// - `Ok(stream)` — a fresh `UnixStream` connected to the daemon. The caller MUST:
+///   1. Call `read_framed::<_, ServerToClient>` to receive the `InitialState` push.
+///   2. Spawn a new `spawn_ipc_reader` with a fresh channel.
+/// - `Err(IpcError::ReconnectTimeout)` — the 5-second window was exhausted.
+///   The caller MUST enter offline mode via `poll_for_new_daemon`.
+async fn reconnect_to_daemon(
+    sock_path: &std::path::Path,
+    backoff: &mut BackoffState,
+) -> Result<tokio::net::UnixStream, IpcError> {
+    let window = std::time::Duration::from_secs(RECONNECT_WINDOW_SECS);
+    let deadline = tokio::time::Instant::now() + window;
+    let mut attempt = 0u32;
+
+    loop {
+        // Check window before sleeping.
+        if tokio::time::Instant::now() >= deadline {
+            tracing::warn!(
+                sock_path = %sock_path.display(),
+                "reconnect_to_daemon: 5-second window exhausted — entering offline mode \
+                 (BC-2.05.006 PC-5)"
+            );
+            return Err(IpcError::ReconnectTimeout);
+        }
+
+        attempt = attempt.saturating_add(1);
+        let delay = backoff.next_delay();
+        let delay_ms = delay.as_millis();
+
+        tracing::debug!(
+            attempt,
+            sock_path = %sock_path.display(),
+            delay_ms,
+            "reconnect_to_daemon: attempt {attempt} — waiting {delay_ms}ms before connecting"
+        );
+
+        tokio::time::sleep(delay).await;
+
+        // Re-check after sleep.
+        if tokio::time::Instant::now() >= deadline {
+            tracing::warn!(
+                sock_path = %sock_path.display(),
+                "reconnect_to_daemon: window exhausted after backoff sleep — offline mode"
+            );
+            return Err(IpcError::ReconnectTimeout);
+        }
+
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let connect_result =
+            tokio::time::timeout(remaining, tokio::net::UnixStream::connect(sock_path)).await;
+
+        match connect_result {
+            Ok(Ok(stream)) => {
+                tracing::info!(
+                    attempt,
+                    sock_path = %sock_path.display(),
+                    "reconnect_to_daemon: connected on attempt {attempt}"
+                );
+                return Ok(stream);
+            }
+            Ok(Err(e)) => {
+                tracing::debug!(
+                    attempt,
+                    sock_path = %sock_path.display(),
+                    error = %e,
+                    "reconnect_to_daemon: attempt {attempt} failed — will retry"
+                );
+            }
+            Err(_elapsed) => {
+                tracing::warn!(
+                    attempt,
+                    sock_path = %sock_path.display(),
+                    "reconnect_to_daemon: connect() timed out within remaining window — offline mode"
+                );
+                return Err(IpcError::ReconnectTimeout);
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -560,12 +652,13 @@ pub async fn run() -> Result<()> {
     // error), the channel closes and `ipc_rx.try_recv()` returns `TryRecvError::Disconnected`.
     // This makes the disconnect arm in the drain loop reachable on natural reader exit.
     //
-    // Reconnect channel (F-S025-ADV3-MED-003): on reconnect (S-023 merge), the channel is
-    // re-created with a fresh `(ipc_tx2, ipc_rx2)` pair and `ipc_rx` is shadowed. This is
+    // Reconnect channel (F-S025-ADV3-MED-003): on reconnect, the channel is re-created with
+    // a fresh `(ipc_tx2, ipc_rx2)` pair and `ipc_rx` is shadowed (BC-2.05.006 PC-4). This is
     // simpler than retaining a long-lived sender clone — there is no performance cost to
     // channel re-creation (it allocates a small fixed-size ring).
     let (ipc_tx, mut ipc_rx) = tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-    let reader_handle = spawn_ipc_reader(transport, ipc_tx); // ipc_tx MOVED here — no clone retained
+    // reader_handle is `mut` to allow reassignment on reconnect (BC-2.05.006 PC-4).
+    let mut reader_handle = spawn_ipc_reader(transport, ipc_tx); // ipc_tx MOVED here — no clone retained
 
     // Set up the ratatui terminal.
     let backend = CrosstermBackend::new(io::stdout());
@@ -617,61 +710,166 @@ pub async fn run() -> Result<()> {
                     if let Err(e) = handle_server_message(&mut app, msg) {
                         // Fatal protocol violation (e.g., duplicate InitialState).
                         tracing::error!(error = %e, "fatal protocol error; closing IPC connection");
+                        // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                         on_transport_event(&mut app, TransportEvent::Disconnected);
                         reader_handle.abort();
 
-                        // TODO(S-023-merge): reconnect call site.
-                        //
-                        // Reconnect logic (exponential backoff 250ms→2s, 5s total window)
-                        // belongs to S-023's `monocle_ipc::reconnect` module. S-023 is
-                        // in parallel development and has NOT merged to develop yet.
-                        //
-                        // When S-023 merges:
-                        //   1. Replace this block with:
-                        //      match monocle_ipc::reconnect::reconnect_with_backoff(&sock_path).await {
-                        //          Ok((new_transport, _)) => {
-                        //              // Re-create the channel (F-S025-ADV3-MED-003):
-                        //              // ipc_tx was moved to the old reader task; re-creation
-                        //              // is necessary and has negligible allocation cost.
-                        //              let (ipc_tx2, ipc_rx2) = tokio::sync::mpsc::channel(64);
-                        //              ipc_rx = ipc_rx2;
-                        //              reader_handle = spawn_ipc_reader(new_transport, ipc_tx2);
-                        //              app.status_message = None; // reconnected
-                        //          }
-                        //          Err(IpcError::ReconnectTimeout) => {
-                        //              app.status_message = Some("[daemon: offline]".to_string());
-                        //          }
-                        //          Err(e) => { tracing::error!(error = %e, "reconnect failed"); }
-                        //      }
-                        //   2. Delete this TODO block.
-                        //   3. Verify variant shapes against BC-2.05.007.
-                        //
-                        // This is the ONE acceptable TODO marker in S-025 — it tracks a
-                        // merge-coordination dependency (S-023 not yet on develop), NOT a
-                        // deferred defect. The reconnect scaffolding exists; S-023 provides
-                        // the API. See F-S025-ADV2-BLOCKER-001 architect decision doc §Cross-Story.
-                        tracing::warn!(
-                            "reconnect not yet available (pending S-023 merge); \
-                                        entering offline mode"
-                        );
-                        app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                        break;
+                        // Reconnect with exponential backoff (BC-2.05.006 PC-4).
+                        let mut backoff = BackoffState::new();
+                        match reconnect_to_daemon(&sock_path, &mut backoff).await {
+                            Ok(mut new_stream) => {
+                                // Re-read InitialState from the fresh connection
+                                // (BC-2.05.006 PC-6: TUI rebuilds from new InitialState).
+                                match read_framed::<_, ServerToClient>(&mut new_stream).await {
+                                    Ok(ServerToClient::InitialState {
+                                        sessions,
+                                        ring_tail,
+                                        overlay_stack: overlay,
+                                        drop_counter,
+                                    }) => {
+                                        on_initial_state(
+                                            &mut app,
+                                            sessions,
+                                            ring_tail,
+                                            overlay,
+                                            drop_counter,
+                                        );
+                                        // BC-2.05.006 PC-8: clear reconnect status bar on success.
+                                        app.status_message = None;
+                                        tracing::info!("reconnect succeeded — TUI state rebuilt");
+                                    }
+                                    Ok(other) => {
+                                        tracing::error!(
+                                            unexpected_message = ?other,
+                                            "reconnect: first message not InitialState \
+                                             (BC-2.05.002 Inv 1) — dropping reconnected stream"
+                                        );
+                                        app.status_message =
+                                            Some(DAEMON_OFFLINE_STATUS.to_string());
+                                        break;
+                                    }
+                                    Err(e2) => {
+                                        tracing::warn!(
+                                            error = %e2,
+                                            "reconnect: failed to read InitialState from fresh \
+                                             connection — entering offline mode"
+                                        );
+                                        app.status_message =
+                                            Some(DAEMON_OFFLINE_STATUS.to_string());
+                                        break;
+                                    }
+                                }
+                                // Transfer ownership to a new reader task.
+                                // Re-create the channel (F-S025-ADV3-MED-003): ipc_tx was moved
+                                // to the old reader task; channel re-creation has negligible cost.
+                                let (ipc_tx2, ipc_rx2) = tokio::sync::mpsc::channel::<
+                                    Result<ServerToClient, IpcError>,
+                                >(64);
+                                reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
+                                ipc_rx = ipc_rx2;
+                            }
+                            Err(IpcError::ReconnectTimeout) => {
+                                tracing::warn!(
+                                    "reconnect_to_daemon: 5s window exhausted — offline mode \
+                                     (BC-2.05.006 PC-5)"
+                                );
+                                // Offline mode: poll for new daemon (BC-2.05.006 PC-5).
+                                // poll_for_new_daemon blocks until lock file changes detected.
+                                monocle_ipc::reconnect::poll_for_new_daemon(&runtime_dir).await;
+                                // New daemon detected — fresh BackoffState for next reconnect.
+                                // The event loop will re-enter the reconnect path on the next
+                                // disconnect (current status bar shows offline until then).
+                                app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                                break;
+                            }
+                            Err(e) => {
+                                tracing::error!(
+                                    error = %e,
+                                    "reconnect_to_daemon: unexpected error — offline mode"
+                                );
+                                app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                                break;
+                            }
+                        }
                     }
                 }
                 Ok(Err(e)) => {
                     // Reader task forwarded a disconnect or transport error.
                     tracing::warn!(error = %e, "IPC reader task disconnect; entering reconnect state");
+                    // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     reader_handle.abort();
 
-                    // TODO(S-023-merge): same reconnect call site as above (channel re-creation).
-                    // See the detailed comment in the protocol-violation arm above.
-                    tracing::warn!(
-                        "reconnect not yet available (pending S-023 merge); \
-                                    entering offline mode"
-                    );
-                    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                    break;
+                    // Reconnect with exponential backoff (BC-2.05.006 PC-4).
+                    let mut backoff = BackoffState::new();
+                    match reconnect_to_daemon(&sock_path, &mut backoff).await {
+                        Ok(mut new_stream) => {
+                            // Re-read InitialState from the fresh connection
+                            // (BC-2.05.006 PC-6: TUI rebuilds from new InitialState).
+                            match read_framed::<_, ServerToClient>(&mut new_stream).await {
+                                Ok(ServerToClient::InitialState {
+                                    sessions,
+                                    ring_tail,
+                                    overlay_stack: overlay,
+                                    drop_counter,
+                                }) => {
+                                    on_initial_state(
+                                        &mut app,
+                                        sessions,
+                                        ring_tail,
+                                        overlay,
+                                        drop_counter,
+                                    );
+                                    // BC-2.05.006 PC-8: clear reconnect status bar on success.
+                                    app.status_message = None;
+                                    tracing::info!("reconnect succeeded — TUI state rebuilt");
+                                }
+                                Ok(other) => {
+                                    tracing::error!(
+                                        unexpected_message = ?other,
+                                        "reconnect: first message not InitialState \
+                                         (BC-2.05.002 Inv 1) — dropping reconnected stream"
+                                    );
+                                    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                                    break;
+                                }
+                                Err(e2) => {
+                                    tracing::warn!(
+                                        error = %e2,
+                                        "reconnect: failed to read InitialState from fresh \
+                                         connection — entering offline mode"
+                                    );
+                                    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                                    break;
+                                }
+                            }
+                            // Transfer ownership to a new reader task.
+                            // Re-create the channel (F-S025-ADV3-MED-003): channel re-creation
+                            // is necessary and has negligible allocation cost.
+                            let (ipc_tx2, ipc_rx2) =
+                                tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
+                            reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
+                            ipc_rx = ipc_rx2;
+                        }
+                        Err(IpcError::ReconnectTimeout) => {
+                            tracing::warn!(
+                                "reconnect_to_daemon: 5s window exhausted — offline mode \
+                                 (BC-2.05.006 PC-5)"
+                            );
+                            // Offline mode: poll for new daemon (BC-2.05.006 PC-5).
+                            monocle_ipc::reconnect::poll_for_new_daemon(&runtime_dir).await;
+                            app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                            break;
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                error = %e,
+                                "reconnect_to_daemon: unexpected error — offline mode"
+                            );
+                            app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                            break;
+                        }
+                    }
                 }
                 Err(TryRecvError::Empty) => {
                     // No message available this tick — normal, proceed to next iteration.
