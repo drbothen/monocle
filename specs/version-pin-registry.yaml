@@ -157,7 +157,7 @@ BC-INDEX:
 STORY-INDEX:
   path: stories/STORY-INDEX.md
   current_version: "5.19"
-  last_bump_commit: "[set at this commit]"
+  last_bump_commit: "1e39ed28f6902090eab4962a18025a1b4589f0b7"
   last_bump_date: "2026-05-30"
 
 VP-INDEX:
