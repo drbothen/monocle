@@ -20,15 +20,19 @@ HISTORICAL ANCHOR EXEMPTIONS (a citation is exempt if any ONE holds):
        "at spec authoring time", "at time of ratification",
        "at initial authoring", "at S-025 authoring", "authoring time",
        "authoring baseline", "at scan time", "as of vN.M at", "dispatch time"
+  4. Multi-line split: when an artifact ID ends line N and the version vX.Y starts
+     line N+1, the pair is detected as a cross-line pin. Historical-anchor exemption
+     is checked against BOTH lines: if EITHER carries an exemption marker (annotation
+     or time qualifier), the pin is historical.
 
 SCANNED FILE TYPES: .md, .rs, .toml, .yml, .yaml
 
 EXEMPT PATHS (not scanned):
-  .factory/cycles/  — closed adversarial cycle records
-  target/           — cargo build output
-  .git/             — git internals
-  node_modules/     — not applicable
-  scripts/tests/    — test fixture directory (fixtures are intentionally wrong)
+  <factory-root>/cycles/  — closed adversarial cycle records (path relative to factory_root)
+  target/                 — cargo build output
+  .git/                   — git internals
+  node_modules/           — not applicable
+  scripts/tests/          — test fixture directory (fixtures are intentionally wrong)
 
 USAGE:
   # Run from workspace root:
@@ -44,9 +48,11 @@ USAGE:
   python3 scripts/check_version_pins.py --dry-run
 
 REGISTRY LOCATION:
-  The registry is read from .factory/specs/version-pin-registry.yaml relative
+  The registry is read from <factory-root>/specs/version-pin-registry.yaml relative
   to the workspace root. In CI the factory-artifacts branch is checked out into
   .factory-spec/ for spec access; pass --factory-root .factory-spec in that case.
+  The scan also covers the full factory-root tree (including stories/, specs/) because
+  story files carry active version-pin literals that must stay fresh.
 
 EXIT CODES:
   0 — all active version-pin literals match canonical versions (or no literals found)
@@ -87,6 +93,49 @@ _VERSION_PIN_RE = re.compile(
     re.VERBOSE,
 )
 
+# ───────────────────────────────────────────────────────────────────────────────
+# Multi-line split detection: artifact ID ends one line, version starts the next.
+#
+# Pattern PG-SPLIT: the artifact ID is at end-of-line (possibly followed by
+# punctuation/whitespace), and the version vX.Y[.Z] opens the next line (possibly
+# preceded by whitespace or punctuation). Example from S-025 AC-010:
+#   line N:   "... (removed in BC-2.06.004"
+#   line N+1: "v1.1.0 <!-- version-pin-historical: ... -->)"
+#
+# We detect this by matching an artifact-ID tail pattern on line N and a version
+# lead pattern on line N+1. The match is verified end-of-line (artifact ID must
+# appear as the last token, optionally followed by non-word chars).
+# ───────────────────────────────────────────────────────────────────────────────
+
+# Matches an artifact ID that appears near the end of a line (possibly followed
+# by non-word chars like punctuation before EOL).
+_SPLIT_LINE_ARTIFACT_RE = re.compile(
+    r"""
+    (                                          # Group 1: artifact ID
+        SS-[a-z][a-z0-9-]*(?:\.md)?            #   SS-something or SS-something.md
+      | BC-[0-9]+\.[0-9]+\.[0-9]+              #   BC-N.NN.NNN
+      | ADR-[0-9]+(?:-[a-z0-9-]+)*(?:\.md)?   #   ADR-0007 or ADR-0007-name
+    )
+    [^\S\r\n]*                                  # optional trailing whitespace (not newline)
+    [^a-zA-Z0-9\r\n]*                           # optional non-alphanumeric suffix (e.g. "(")
+    $                                           # must be at end of line
+    """,
+    re.VERBOSE | re.MULTILINE,
+)
+
+# Matches a version literal at (or near) the start of a line (possibly after
+# whitespace or leading punctuation like "(" or ")").
+_SPLIT_LINE_VERSION_RE = re.compile(
+    r"""
+    ^                                           # start of line
+    [^\S\r\n]*                                  # optional leading whitespace
+    [^a-zA-Z0-9\r\n]*                           # optional leading punctuation (e.g. ")")
+    v([0-9]+\.[0-9]+(?:\.[0-9]+)?)             # Group 1: version literal
+    \b                                          # word boundary
+    """,
+    re.VERBOSE | re.MULTILINE,
+)
+
 # Artifact ID normalisation: strip .md suffix and trailing whitespace.
 _MD_SUFFIX_RE = re.compile(r'\.md$', re.IGNORECASE)
 
@@ -118,9 +167,19 @@ _TIME_QUALIFIERS: list[str] = [
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Explicit historical-anchor annotation markers.
+#
+# ADR-0007 §Historical Anchor Classification defines two annotation forms:
+#   Rust/TOML/YAML: # version-pin-historical
+#   Markdown:       <!-- version-pin-historical -->
+#
+# In practice, the Markdown form is often written with trailing content:
+#   <!-- version-pin-historical: some reason here -->
+# We match on the OPENING prefix "<!-- version-pin-historical" rather than the
+# exact closed-comment string "<!-- version-pin-historical -->" so that both
+# the bare form and the annotated-reason form are recognized.
 # ───────────────────────────────────────────────────────────────────────────────
 _HISTORICAL_MARKER_RS = "# version-pin-historical"
-_HISTORICAL_MARKER_MD = "<!-- version-pin-historical -->"
+_HISTORICAL_MARKER_MD_PREFIX = "<!-- version-pin-historical"   # matches bare + annotated forms
 
 # ───────────────────────────────────────────────────────────────────────────────
 # §Trace section header pattern.
@@ -145,9 +204,10 @@ _EXCLUDED_DIRS = {
     "node_modules",
 }
 
-# Paths excluded by prefix (relative to workspace root, using forward-slash notation).
-_EXCLUDED_PATH_PREFIXES: list[str] = [
-    ".factory/cycles/",
+# Static paths excluded by prefix (relative to workspace root, forward-slash notation).
+# The factory-root/cycles/ exclusion is dynamic (depends on --factory-root arg) and is
+# computed in collect_files() so it tracks whatever factory root name is in use.
+_EXCLUDED_PATH_PREFIXES_STATIC: list[str] = [
     "scripts/tests/",   # test fixtures are intentionally stale — excluded from main scan
 ]
 
@@ -243,10 +303,13 @@ def _normalise_artifact_id(raw_id: str) -> str:
     return _MD_SUFFIX_RE.sub("", raw_id.strip())
 
 
-def _is_excluded_path(rel_path: str) -> bool:
+def _is_excluded_path(rel_path: str, extra_prefixes: list[str] | None = None) -> bool:
     """
     Return True if this relative path (from workspace root, forward-slash separated)
     should be excluded from scanning.
+
+    extra_prefixes: dynamic exclusion prefixes (e.g. factory-root/cycles/ where the
+      factory-root name varies by invocation). Combined with _EXCLUDED_PATH_PREFIXES_STATIC.
     """
     # Check excluded directory components
     parts = rel_path.replace("\\", "/").split("/")
@@ -254,9 +317,10 @@ def _is_excluded_path(rel_path: str) -> bool:
         if part in _EXCLUDED_DIRS:
             return True
 
-    # Check excluded path prefixes
+    # Check excluded path prefixes (static + dynamic)
     norm = rel_path.replace("\\", "/")
-    for prefix in _EXCLUDED_PATH_PREFIXES:
+    all_prefixes = _EXCLUDED_PATH_PREFIXES_STATIC + (extra_prefixes or [])
+    for prefix in all_prefixes:
         if norm.startswith(prefix):
             return True
 
@@ -275,8 +339,11 @@ def _is_historical_anchor(line: str, in_trace_section: bool) -> bool:
     if in_trace_section:
         return True
 
-    # Check explicit markers
-    if _HISTORICAL_MARKER_RS in line or _HISTORICAL_MARKER_MD in line:
+    # Check explicit markers.
+    # RS form: exact substring match (# version-pin-historical).
+    # MD form: prefix match to catch both <!-- version-pin-historical --> and
+    #   <!-- version-pin-historical: reason --> (annotated form per ADR-0007 usage).
+    if _HISTORICAL_MARKER_RS in line or _HISTORICAL_MARKER_MD_PREFIX in line:
         return True
 
     # Check time qualifiers (case-insensitive)
@@ -307,6 +374,63 @@ def _update_trace_state(line: str, in_trace: bool, trace_level: int) -> tuple[bo
     return in_trace, trace_level
 
 
+def _process_pin_match(
+    file_path: Path,
+    raw_artifact_id: str,
+    cited_version: str,
+    lineno: int,
+    line_text: str,
+    in_trace: bool,
+    registry: dict[str, str],
+    stats: ScanStats,
+    *,
+    context_line: str | None = None,
+) -> None:
+    """
+    Process a single version-pin match (same-line or cross-line).
+
+    For cross-line pins, context_line is the adjacent line that carries the
+    version or marker. Historical-anchor check covers both the primary line and
+    context_line: if EITHER is exempt, the pin is historical.
+
+    Modifies stats in-place.
+    """
+    stats.pins_found += 1
+
+    # Historical-anchor check: primary line, then context line if provided.
+    if _is_historical_anchor(line_text, in_trace):
+        stats.pins_historical += 1
+        return
+    if context_line is not None and _is_historical_anchor(context_line, False):
+        stats.pins_historical += 1
+        return
+
+    # Active pointer: verify against registry.
+    stats.pins_active += 1
+    artifact_id = _normalise_artifact_id(raw_artifact_id)
+
+    if artifact_id not in registry:
+        # Unknown artifact: record for reporting (not a CI failure,
+        # but a maintainability warning — new artifacts should be registered).
+        stats.unknown_artifacts.append(
+            (str(file_path), artifact_id, cited_version)
+        )
+        return
+
+    canonical_version = registry[artifact_id]
+    if cited_version != canonical_version:
+        stats.findings.append(
+            Finding(
+                file_path=str(file_path),
+                line_number=lineno,
+                artifact_id=artifact_id,
+                cited_version=cited_version,
+                canonical_version=canonical_version,
+                line_text=line_text.strip(),
+            )
+        )
+
+
 def scan_file(
     file_path: Path,
     registry: dict[str, str],
@@ -314,6 +438,14 @@ def scan_file(
 ) -> None:
     """
     Scan a single file for active version-pin literals and record findings.
+
+    Detects two forms:
+    - Same-line: "BC-2.06.004 v1.2.1" on one line (primary detection path).
+    - Cross-line split (PG-SPLIT): artifact ID at end of line N, version vX.Y
+      at start of line N+1. Example:
+        line N:   "... removed in BC-2.06.004"
+        line N+1: "v1.1.0 <!-- version-pin-historical: ... -->"
+      Historical-anchor exemption applies if EITHER line carries an exemption marker.
 
     Modifies stats in-place.
     """
@@ -327,58 +459,68 @@ def scan_file(
 
     stats.files_scanned += 1
     lines = text.splitlines()
+    n_lines = len(lines)
 
     in_trace = False
     trace_level = 0
 
-    for lineno, raw_line in enumerate(lines, 1):
+    # Track artifact IDs found at end of each line for cross-line detection.
+    # Maps line index → list of artifact IDs found at end of that line.
+    split_artifact_by_line: dict[int, list[str]] = {}
+
+    for idx, raw_line in enumerate(lines):
+        lineno = idx + 1
         stats.lines_checked += 1
 
         # Update §Trace tracking state
         in_trace, trace_level = _update_trace_state(raw_line, in_trace, trace_level)
 
-        # Fast-path: no version literal on this line
-        if " v" not in raw_line:
-            continue
-
-        # Find all version-pin literals on this line
-        for m in _VERSION_PIN_RE.finditer(raw_line):
-            raw_artifact_id = m.group(1)
-            cited_version = m.group(2)
-            stats.pins_found += 1
-
-            # Classify: historical anchor or active pointer?
-            if _is_historical_anchor(raw_line, in_trace):
-                stats.pins_historical += 1
-                continue
-
-            # Active pointer: verify against registry
-            stats.pins_active += 1
-            artifact_id = _normalise_artifact_id(raw_artifact_id)
-
-            if artifact_id not in registry:
-                # Unknown artifact: record for reporting (not a CI failure,
-                # but a maintainability warning — new artifacts should be registered)
-                stats.unknown_artifacts.append(
-                    (str(file_path), artifact_id, cited_version)
+        # ── Same-line detection ──────────────────────────────────────────────
+        if " v" in raw_line:
+            for m in _VERSION_PIN_RE.finditer(raw_line):
+                raw_artifact_id = m.group(1)
+                cited_version = m.group(2)
+                _process_pin_match(
+                    file_path, raw_artifact_id, cited_version, lineno, raw_line,
+                    in_trace, registry, stats,
                 )
-                continue
 
-            canonical_version = registry[artifact_id]
-            if cited_version != canonical_version:
-                stats.findings.append(
-                    Finding(
-                        file_path=str(file_path),
-                        line_number=lineno,
-                        artifact_id=artifact_id,
-                        cited_version=cited_version,
-                        canonical_version=canonical_version,
-                        line_text=raw_line.strip(),
+        # ── Cross-line detection: collect artifact IDs at end of this line ──
+        # Only check if line does NOT already contain a full same-line version
+        # literal for this artifact (avoid double-counting).
+        for am in _SPLIT_LINE_ARTIFACT_RE.finditer(raw_line):
+            artifact_at_eol = am.group(1)
+            # Only record if this artifact wasn't already matched same-line on this line.
+            already_matched = any(
+                m.group(1) == artifact_at_eol
+                for m in _VERSION_PIN_RE.finditer(raw_line)
+            )
+            if not already_matched:
+                split_artifact_by_line.setdefault(idx, []).append(artifact_at_eol)
+
+        # ── Cross-line detection: check if this line opens with a version ───
+        # that pairs with an artifact ID at the end of the previous line.
+        if idx > 0 and (idx - 1) in split_artifact_by_line:
+            vm = _SPLIT_LINE_VERSION_RE.match(raw_line)
+            if vm:
+                cited_version = vm.group(1)
+                prev_line = lines[idx - 1]
+                prev_lineno = idx  # 1-indexed: idx is lineno-1 for previous
+                for raw_artifact_id in split_artifact_by_line[idx - 1]:
+                    # Determine trace state for the previous line by replaying
+                    # up to that point would be expensive; use in_trace of
+                    # current line as conservative approximation (they are adjacent).
+                    _process_pin_match(
+                        file_path, raw_artifact_id, cited_version,
+                        prev_lineno,          # report on the line with artifact ID
+                        prev_line,            # primary line text
+                        in_trace,             # use current trace state (adjacent lines)
+                        registry, stats,
+                        context_line=raw_line,   # version line carries the marker
                     )
-                )
 
 
-def collect_files(workspace_root: Path) -> list[Path]:
+def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
     """
     Collect all scannable files from the workspace root, respecting exclusions.
 
@@ -387,11 +529,25 @@ def collect_files(workspace_root: Path) -> list[Path]:
     - workspace_root/.github/
     - workspace_root/scripts/   (excluding scripts/tests/)
     - workspace_root/*.toml, *.yml, *.yaml, *.md at root level
-    - workspace_root/.factory/  (full spec tree, excluding .factory/cycles/)
+    - factory_root/             (full spec+stories tree, excluding factory_root/cycles/)
+
+    The factory_root parameter is the resolved Path to the factory-artifacts directory.
+    Locally this is workspace_root/.factory; in CI it is workspace_root/.factory-spec
+    (because factory-artifacts is checked out there via a second actions/checkout step).
+    Passing factory_root explicitly — rather than hardcoding ".factory" — ensures that
+    story files (.factory-spec/stories/*.md) are scanned in CI, which was the PRIMARY
+    scope gap that allowed stale version-pin literals to survive CI (POL-11 scope fix,
+    ADV-29 root cause).
 
     Returns a sorted list of Path objects.
     """
     collected: list[Path] = []
+
+    # Dynamic cycles-exclusion prefix: relative to workspace root, e.g.
+    # ".factory/cycles/" locally or ".factory-spec/cycles/" in CI.
+    factory_root_name = factory_root.name  # e.g. ".factory" or ".factory-spec"
+    factory_cycles_prefix = factory_root_name + "/cycles/"
+    extra_prefixes = [factory_cycles_prefix]
 
     def _walk(base: Path, rel_prefix: str = "") -> None:
         """Recursively walk base, skipping excluded dirs."""
@@ -402,28 +558,31 @@ def collect_files(workspace_root: Path) -> list[Path]:
 
         for entry in entries:
             rel = f"{rel_prefix}{entry.name}"
-            rel_path_str = rel if not rel_prefix else rel
 
             if entry.is_dir():
                 # Check if this directory is excluded
                 rel_dir = rel + "/"
-                if _is_excluded_path(rel_dir) or entry.name in _EXCLUDED_DIRS:
+                if _is_excluded_path(rel_dir, extra_prefixes) or entry.name in _EXCLUDED_DIRS:
                     continue
                 _walk(entry, rel + "/")
             elif entry.is_file():
                 if entry.suffix.lower() in _SCAN_EXTENSIONS:
-                    if not _is_excluded_path(rel_path_str):
+                    if not _is_excluded_path(rel, extra_prefixes):
                         collected.append(entry)
 
     # Scan targeted directories rather than entire workspace root (avoid scanning
-    # fixtures, examples, etc. that aren't part of the policy surface)
+    # fixtures, examples, etc. that aren't part of the policy surface).
+    #
+    # IMPORTANT: factory_root is NOT hardcoded to workspace_root/".factory" here.
+    # In CI, factory-artifacts is checked out at workspace_root/".factory-spec"
+    # (via a second actions/checkout step). Using the resolved factory_root ensures
+    # story files are scanned regardless of the checkout path.
     scan_roots = [
         workspace_root / "crates",
         workspace_root / ".github",
         workspace_root / "scripts",
-        workspace_root / ".factory",
+        factory_root,                   # resolved factory path (local: .factory, CI: .factory-spec)
     ]
-    root_level_extensions = _SCAN_EXTENSIONS
 
     for scan_root in scan_roots:
         if scan_root.is_dir():
@@ -431,7 +590,7 @@ def collect_files(workspace_root: Path) -> list[Path]:
 
     # Root-level files (Cargo.toml, deny.toml, clippy.toml, etc.)
     for entry in sorted(workspace_root.iterdir()):
-        if entry.is_file() and entry.suffix.lower() in root_level_extensions:
+        if entry.is_file() and entry.suffix.lower() in _SCAN_EXTENSIONS:
             collected.append(entry)
 
     return sorted(set(collected))
@@ -496,10 +655,12 @@ def main() -> None:
     if args.verbose:
         print(f"Loaded registry: {len(registry)} entries from {registry_path}")
 
-    # Collect files to scan
-    files = collect_files(workspace_root)
+    # Collect files to scan.
+    # factory_root is passed explicitly so collect_files() scans the correct
+    # factory-artifacts directory (local: .factory, CI: .factory-spec).
+    files = collect_files(workspace_root, factory_root)
     if args.verbose:
-        print(f"Scanning {len(files)} files for version-pin literals...")
+        print(f"Scanning {len(files)} files for version-pin literals (factory: {factory_root})...")
 
     # Scan
     stats = ScanStats()
