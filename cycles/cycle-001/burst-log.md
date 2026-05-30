@@ -2444,3 +2444,70 @@ STATE v6.42 → v6.43.
 
 **Artifact versions bumped this burst (D-198):** STATE v6.43→v6.44. Pass 19 report persisted: `cycles/cycle-001/S-025/adversarial-pass-19.md`. No spec version bumps (devops comprehensive sweep is doc-pointer replacement only; no SS doc content changes required).
 STATE v6.43 → v6.44.
+
+---
+
+## D-207 Sweep Protocol Archive (v6.55 → v6.56 compaction)
+
+The following content was removed from STATE.md frontmatter during D-207 compaction to bring STATE.md under 500 lines. Full detail preserved here for reference.
+
+### CODIFY-001 Sweep Protocol Reference (Categories 1-11)
+
+Archived from STATE.md `next_session_resume_protocol` (was lines ~449-512 in v6.55).
+
+**Status:** SUPERSEDED by ADR-0007 (POL-11) + ADR-0008 (POL-12). These categories are now CI-gated via the scripts added in f0926fe. Preserved here for historical reference and Task #9 m.1 CI implementation context.
+
+Categories 1-6 (CANONICAL-ANCHORED): grep versioned SS-X.md vY.Z hits; extract cited_version vs canonical.
+  `grep -rn -E "(SS-[a-z-]+|ARCH-INDEX|BC-INDEX|STORY-INDEX|VP-INDEX|prd|product-brief|dtu-assessment)\.md( +|\s+v|v)[0-9]+\.[0-9]+(\.[0-9]+)?" --include='*.toml' --include='*.yml' --include='*.rs' --include='*.py' . | grep -v "\.factory/\|target/\|node_modules/\|\.git/\|cycles/"`
+
+Category 7 (BARE-FILENAME RESOLUTION — D-201):
+  `grep -rh -oE "SS-[a-z-]+\.md|ADR-[0-9]+-[a-z-]+\.md|BC-[0-9]+\.[0-9]+\.[0-9]+\.md" .factory/ 2>/dev/null | sort -u`
+
+Category 8 (SPEC-BODY ARCHITECTURE SOURCE PINS — D-202): sweep BC bodies + stories for stale arch-doc pins.
+  `grep -rn -E "SS-[a-z-]+\.md v[0-9]+\.[0-9]+" .factory/specs/behavioral-contracts/ .factory/stories/ 2>/dev/null | grep -v "§Trace\|BEFORE:\|AFTER:\|per F-\|per GAP-\|cycles/"`
+
+Category 9 (STORY inputs[] FRONTMATTER PIN FRESHNESS — D-203):
+  `grep -rn -E "SS-[a-z-]+\.md v[0-9]+\.[0-9]+|BC-[0-9]+\.[0-9]+\.[0-9]+ v[0-9]+\.[0-9]+" .factory/stories/ 2>/dev/null | grep -v "§Trace\|BEFORE:\|AFTER:\|per F-\|cycles/"`
+
+Category 10 (VP-body ARCHITECTURE SOURCE PINS — D-203): 14 VPs / 45 occurrences: SS-deps-pin-manifest.md v1.1.17 (canonical v1.2.0). Deferred phase-5.
+
+Category 11 (STORY BODY PROSE CITATIONS — D-203): S-014..S-023 done-story body prose deferred to wave-gate (Task #9 anchored).
+
+### Superseded durable_task_register entries (removed from STATE.md)
+
+The following entries were removed from STATE.md durable_task_register during D-207 compaction. They remain as authoritative record here.
+
+**Superseded (ADR-0007/ADR-0008 CI enforcement):**
+- ADV24-PROC-001: SUPERSEDED by ADR-0007 POL-11 (Task #9 m.1)
+- ADV22-PROC-001: SUPERSEDED by ADR-0007 POL-11 (Task #9 m.1)
+- ADV23-PROC-001: SUPERSEDED by ADR-0007 POL-11 (Task #9 m.1)
+- F-S025-ADV16-CODIFY-001: SUNSET (D-204) — ADR-0007 supersedes per-pass category enumeration
+- ADV25-PROC-001: NOW CLOSED via f0926fe (POL-11 implemented; devops pre-commit + CI step)
+- Task-9-m7-POL12-devops: NOW CLOSED via f0926fe (POL-12 implemented)
+
+**Fully closed entries removed from STATE.md:**
+- F-S022-ADV15-LOW-001: CLOSED (story v1.3 ring_tail type doc drift)
+- F-WAVE1-006: CLOSED-S-013-delivered
+- Wave-2-gate-dep-cleanup: CLOSED
+- ADV-W4GATE-MED-001: CLOSED (migrated to temp_env::with_vars in 295dc1b)
+- F-ADV6-HIGH-001: CLOSED (slow-disconnect signal channel, S-023 PR #29)
+- S-012-self-ref-test-fix: CLOSED-fixed-in-gate
+- F-S025-ADV22-MED-001: CLOSED (D-201.1)
+- F-S025-ADV23-MED-001: CLOSED (D-202.1)
+- F-S025-ADV25-MED-001: CLOSED (D-204)
+- F-S025-ADV25-LOW-001: CLOSED (D-204)
+- F-S025-ADV26-HIGH-001: CLOSED (D-205)
+- F-S025-ADV26-MED-001: CLOSED (D-205)
+- F-S025-ADV26-LOW-001: CLOSED (D-205)
+- F-S025-ADV26-OBS-001: CLOSED (D-206 — ADR-0008 ratified)
+- F-S025-ADV27-MED-001: CLOSED (D-206 — story-writer 30fb391)
+- F-S025-ADV17-LOW-001: CLOSED (D-196)
+- F-S025-ADV18-MED-001: CLOSED (D-197.1)
+- F-S025-ADV19-MED-001: CLOSED (D-198.1)
+- F-S025-ADV20-MED-001: CLOSED (D-199)
+- F-S025-ADV20-LOW-001: CLOSED (D-199)
+- IMPL-EnrichedSession-fields: CLOSED-pending-S-025-merge
+- ADV-P1D-pin-staleness: ESCALATED/CLOSED (D-202.1)
+
+**Full detail for all archived entries** is preserved in the active STATE.md durable_task_register or in prior §Trace entries in this burst-log.
+
