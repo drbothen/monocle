@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.18"
+version: "1.0.19"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -121,6 +121,9 @@ ADR-0007 resolves the 7-instance META-pattern version-pin staleness species (esc
 passes 9/16/18/22/23/24/25); selects Option C-Refined (hybrid: semantic anchors for new
 artifacts + CI registry gate for all, opportunistic legacy migration). Dispatches
 devops-engineer POL-11-version-pin hook, story-writer and product-owner template updates.
+v1.0.4 adds §Enforcement Scan Scope formalizing NORMATIVE vs EXEMPT document classes for
+POL-11: adds `plans/`, `planning/`, `code-delivery/`, and `STATE.md` to the exempt list
+alongside the existing `cycles/` exemption (ADV-29 scope ratification, human-approved).
 ADR-0008 resolves the structural-claim sub-species of the same authoring-time documentation
 drift root (Task #9 m.6 tripwire; Passes 26/27 — module-doc column table + story-body
 type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-check`). Governs
@@ -539,6 +542,27 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
 - INFORMATIONAL: ADR-0008 ratifies a distinct sub-species of the ADR-0007 META-pattern root.
   ADR-0007 is unchanged at v1.0.1. Both ADRs now apply; see ADR-0008 §Relationship to ADR-0007.
 - SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T08:00:00Z (monotonic).
+
+## §Trace v1.0.19
+
+**ADV-29 scope ratification — ADR-0007 v1.0.4 §Enforcement Scan Scope, ADR-0008 v1.0.3 cross-reference** (2026-05-30T01:00:00Z):
+
+- NORMATIVE: ADR-0007 bumped v1.0.3 → v1.0.4. §Enforcement Scan Scope section added,
+  formally defining NORMATIVE (scanned) vs EXEMPT (not scanned) document classes for
+  POL-11. NORMATIVE: `factory_root/stories/`, `factory_root/specs/` (all subdirs),
+  `crates/`, `.github/`, `scripts/` (excl. `scripts/tests/`), root config files.
+  EXEMPT (new additions alongside the pre-existing `cycles/` exemption):
+  `factory_root/plans/`, `factory_root/planning/`, `factory_root/code-delivery/`,
+  `factory_root/STATE.md`. Rationale: frozen historical records and living-state
+  dashboard; pin-freshness is semantically wrong for these classes. Human-approved.
+- NORMATIVE: ADR-0008 bumped v1.0.2 → v1.0.3. §CI enforcement gate scope note added
+  confirming POL-12's narrower scan (stories + BCs + crate doc-comments) does not need
+  the same exemptions as POL-11; cross-references ADR-0007 v1.0.4 §Enforcement Scan Scope.
+- NORMATIVE: ADR Registry Note for ADR-0007 updated to document v1.0.4 scope addition.
+- NORMATIVE: version-pin-registry.yaml updated: ADR-0007 → v1.0.4; ADR-0008 → v1.0.3;
+  ARCH-INDEX → v1.0.19.
+- NORMATIVE: ARCH-INDEX version 1.0.18 → 1.0.19.
+- SE-16d PASS: 2026-05-30T01:00:00Z > chain high-water 2026-05-29T12:00:00Z (monotonic).
 
 ## §Trace v1.0.17
 

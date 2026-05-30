@@ -122,14 +122,14 @@ SS-tui:
 
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
-  current_version: "1.0.3"
-  last_bump_commit: "dd82c05"
+  current_version: "1.0.4"
+  last_bump_commit: "[set at ADV-29 scope ratification commit]"
   last_bump_date: "2026-05-30"
 
 ADR-0008-structural-claim-discipline:
   path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
-  current_version: "1.0.2"
-  last_bump_commit: "dd82c05"
+  current_version: "1.0.3"
+  last_bump_commit: "[set at ADV-29 scope ratification commit]"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -138,9 +138,9 @@ ADR-0008-structural-claim-discipline:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.18"
-  last_bump_commit: "cb681589d651e85310097bbd7f458551c206eebe"
-  last_bump_date: "2026-05-29"
+  current_version: "1.0.19"
+  last_bump_commit: "[set at ADV-29 scope ratification commit]"
+  last_bump_date: "2026-05-30"
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md

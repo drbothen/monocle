@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.2"
+version: "1.0.3"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -231,6 +231,16 @@ Exempt from the CI gate:
 - `§Trace` sections — provenance records; not structural claims about current behavior
 - Lines annotated with `<!-- structural-claim-historical -->` (explicit historical-anchor)
 
+**Scope note:** POL-12's scan is narrower than POL-11's by design. POL-12 Phase 1
+targets `.factory/stories/*.md` and `.factory/specs/behavioral-contracts/**/*.md`
+specifically; it does NOT scan `plans/`, `planning/`, `code-delivery/`, or `STATE.md`.
+Those paths do not contain the story-Tasks and Consumer-Contract structural claim
+forms that POL-12 detects, so no additional exemptions are needed for those directories.
+ADR-0007 §Enforcement Scan Scope formally defines the broader POL-11 exemptions
+(including `plans/`, `planning/`, `code-delivery/`, and `STATE.md`) that were added
+in v1.0.4 to address the ADV-29 scope issue. The two policies have independent
+`collect_files()` implementations and must be kept in sync with their respective ADRs.
+
 ### Historical Anchor Classification for Structural Claims
 
 A structural claim is a historical anchor (frozen, exempt from CI check) when it
@@ -344,6 +354,22 @@ S-028 lines 63 + 147 carry the same `Vec<SessionState>` drift (surfaced at Pass 
 as cross-story propagation). Per BC-5.39.002 PC2, cross-story structural-claim fixes
 are deferred to wave-gate sweep (not blocking S-025 convergence). Story-writer is
 dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
+
+## §Trace v1.0.3
+
+**ADV-29 scope cross-reference — ADR-0007 §Enforcement Scan Scope alignment** (2026-05-30T00:00:00Z):
+
+- NORMATIVE: §CI enforcement gate scope note added. Explains that POL-12's scan is
+  narrower than POL-11's by design and does not require exemptions for `plans/`,
+  `planning/`, `code-delivery/`, or `STATE.md` because those paths do not contain
+  the story-Tasks and Consumer-Contract structural claim forms that POL-12 detects.
+  Cross-references ADR-0007 v1.0.4 §Enforcement Scan Scope (added in same burst).
+- NORMATIVE: Confirms independence of `collect_files()` implementations between POL-11
+  and POL-12 — each is governed by its own ADR and must stay synchronized with it.
+- NORMATIVE: Version bump 1.0.2 → 1.0.3 (informational cross-reference + explicit
+  scope confirmation; no operative detection-rule change).
+- SE-16d PASS: 2026-05-30T00:00:00Z > chain high-water 2026-05-30 (monotonic;
+  v1.0.2 was same-day patch with no explicit timestamp — this entry establishes chain).
 
 ## §Trace v1.0.1
 

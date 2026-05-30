@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.3"
+version: "1.0.4"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -148,17 +148,18 @@ version-pin literal in the repository matches the canonical version from the cit
 document's frontmatter. An active version-pin literal is one that is NOT in a
 historical-anchor form (see §Historical Anchor Classification below).
 
-The CI gate applies to ALL artifact directories:
-- `.factory/specs/**/*.md` (BCs, SS docs, stories, VPs, ADRs)
-- `crates/**/*.rs` (inline comments)
-- `*.toml`, `*.yml`, `*.yaml` (workspace and CI config files)
+The CI gate applies to the NORMATIVE document classes and is EXEMPT from the EXEMPT
+document classes, both defined in §Enforcement Scan Scope. Summary:
+- NORMATIVE (scanned): `factory_root/stories/`, `factory_root/specs/` (all subdirs),
+  `crates/`, `.github/`, `scripts/` (excl. `scripts/tests/`), root `*.toml/*.yml/*.yaml/*.md`
+- EXEMPT (not scanned): `factory_root/cycles/`, `factory_root/plans/`,
+  `factory_root/planning/`, `factory_root/code-delivery/`, `factory_root/STATE.md`
 
-The CI gate is exempt from:
+The CI gate is additionally exempt from the following within any scanned file:
 - `§Trace` sections (historical provenance records)
 - Lines annotated with `# version-pin-historical` or `<!-- version-pin-historical -->`
   (explicit historical-anchor annotation; see §Historical Anchor Classification)
 - `frontmatter` `version:` field itself (this IS the canonical source)
-- `.factory/cycles/` (closed adversarial cycle records; never updated after closure)
 
 ### Historical Anchor Classification
 
@@ -216,6 +217,73 @@ to factory-artifacts, state-manager MUST update `version-pin-registry.yaml` in t
 SAME commit. This is a Single-Commit Burst Protocol obligation — registry and document
 bump are atomic.
 
+## §Enforcement Scan Scope
+
+This section formally defines the boundary of what POL-11-version-pin scans and
+what it exempts. The implementation is `scripts/check_version_pins.py`
+`collect_files()`. This section is authoritative; `collect_files()` must match it
+exactly. Any deviation in the script is a defect in the script, not a scope change
+to this ADR.
+
+### NORMATIVE (POL-11 scans; pins must be fresh or historical-anchored)
+
+**Factory-artifacts tree:**
+
+| Path | Rationale |
+|------|-----------|
+| `factory_root/stories/` | Active story files carry version-pin literals in `inputs[]` frontmatter and body prose that must stay synchronized with canonical sources as documents evolve. |
+| `factory_root/specs/` — all subdirs | Normative artifact tree: includes `architecture/`, `architecture/adr/`, `behavioral-contracts/`, `verification-properties/`, `prd-supplements/`. These are living spec documents with active version-pin citations. |
+| `factory_root/specs/prd.md` | Top-level PRD is a normative artifact; includes at `specs/` path. |
+| `factory_root/specs/product-brief.md` | Product brief is a normative artifact. |
+| `factory_root/specs/dtu-assessment.md` | DTU assessment is a normative artifact. |
+| `factory_root/specs/version-pin-registry.yaml` | The registry itself (the CI lint reads this; its own entries must be fresh). |
+
+**Workspace repo tree (always scanned regardless of factory root):**
+
+| Path | Rationale |
+|------|-----------|
+| `crates/` | Inline code comments citing SS docs and BC versions must stay synchronized. |
+| `.github/` | CI workflow files may carry version references. |
+| `scripts/` (excluding `scripts/tests/`) | Build scripts may reference versioned artifacts. |
+| Root-level `*.toml`, `*.yml`, `*.yaml`, `*.md` | `Cargo.toml`, deny configs, CI root files. |
+
+### EXEMPT (NOT scanned — historical/frozen or living-state)
+
+The following document classes are excluded from POL-11 scanning. All share a
+common rationale: applying pin-freshness to frozen historical records or
+continuously-rewritten living-state dashboards is semantically wrong.
+
+| Path | Rationale |
+|------|-----------|
+| `factory_root/cycles/` | Frozen point-in-time records: closed adversarial cycle passes, consistency audit results, convergence proofs. These correctly cite the versions current at authoring; they are SEALED at closure and must never be retroactively updated. This exemption is the precedent for all other exemptions below. |
+| `factory_root/plans/` | Point-in-time planning records: adversary-pass transcripts, consistency-audit rounds, investigation reports. Semantically identical to `cycles/` — authored and sealed at the moment of the review pass; version citations correctly document what was current at that moment. The ADV-29 CI fix revealed 1,348 findings here (88% of total); investigation confirmed all are legitimate historical references in frozen records. |
+| `factory_root/planning/` | Historical planning session files. Same rationale as `plans/`. |
+| `factory_root/code-delivery/` | At-merge PR descriptions and code-delivery records. These are sealed at merge time; the version citations they carry correctly describe the state at delivery. |
+| `factory_root/STATE.md` | Living dashboard and log: STATE.md is rewritten by state-manager every burst. It is not a normative spec artifact — nothing traces TO it, it traces FROM it. Keeping STATE.md in scope creates version-race CI fragility: burst edits that bump a spec doc mid-session naturally leave STATE.md with a momentarily stale reference until the burst completes. The §Trace/decisions bulk of STATE.md is already exempt via the §Trace-section criterion; only transient current-state snapshot lines would fire, producing false positives with no remediation path. |
+
+**Existing line-level exemptions within scanned files** (unchanged from §Decision):
+
+- `§Trace` sections in any scanned file (historical provenance records)
+- Lines annotated with `# version-pin-historical` or `<!-- version-pin-historical -->` (explicit historical-anchor annotation)
+- `frontmatter version:` field itself (this IS the canonical source; not a citation)
+
+### Relationship to cycles/ precedent
+
+The `factory_root/cycles/` exemption was defined in ADR-0007 initial ratification
+(D-204). The exemptions for `plans/`, `planning/`, `code-delivery/`, and `STATE.md`
+apply the identical rationale: all are records of past state, not normative living
+artifacts, and subjecting them to pin-freshness enforcement is semantically incorrect.
+`STATE.md` adds a further fragility argument: continuous rewriting creates a
+structural version-race that cycles/, plans/, planning/, and code-delivery/ do not
+have (those are append-only or sealed).
+
+### Implementation obligation
+
+`scripts/check_version_pins.py` `collect_files()` MUST implement exactly this scope.
+The devops-engineer owns the script; when this ADR scope is amended, the script must
+be updated in the same burst. The script is the implementation; this ADR is the
+authority. They must stay synchronized.
+
 ## Rationale
 
 ### Why Option C over the alternatives
@@ -267,8 +335,8 @@ implementation.
 
 ### What is forbidden going forward (post-D-204)
 
-In any artifact NOT in `.factory/cycles/` (closed cycle records) and NOT in a `§Trace`
-section:
+In any artifact in the NORMATIVE scan scope (see §Enforcement Scan Scope) and NOT in
+a `§Trace` section:
 
 - **Forbidden:** Active version-pin literals in artifact bodies, e.g.:
   - `SS-deps-pin-manifest.md v1.2.0` (active pointer)
@@ -302,7 +370,7 @@ ARCH-INDEX.md ADR Registry gains ADR-0007 row (produced in the same burst).
 | Opportunistic | Convert active pointers in any artifact touched for other reasons | Per-touch obligation from D-204 onward |
 | Wave-gate sweeps | Each wave-gate sweep includes a Category 12 check: "did any story/BC/VP touched in this wave introduce new active pointers?" | Per-wave-gate |
 | Phase 5 (formal hardening) | Full corpus migration of remaining active pointers in VPs and BCs | Phase 5 scope |
-| Phase 7 (convergence) | Final CI gate clean-run with zero exemptions outside §Trace and `.factory/cycles/` | Phase 7 gate criterion |
+| Phase 7 (convergence) | Final CI gate clean-run with zero stale active pins in the NORMATIVE scan scope (§Enforcement Scan Scope); EXEMPT document classes remain outside scope by design | Phase 7 gate criterion |
 
 ### Implementation tasks (dispatched post-D-204)
 
@@ -373,6 +441,28 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.4
+
+**ADV-29 scope ratification — formal §Enforcement Scan Scope added** (2026-05-30T00:00:00Z):
+
+- NORMATIVE: §Enforcement Scan Scope section added between §Decision and §Rationale.
+  Formally defines the NORMATIVE vs EXEMPT document classes for POL-11 scanning.
+  NORMATIVE: `factory_root/stories/`, `factory_root/specs/` (all subdirs), and the
+  repo tree (`crates/`, `.github/`, `scripts/` excl. `scripts/tests/`, root config files).
+  EXEMPT (new — extends the existing `cycles/` exemption with the same rationale):
+  `factory_root/plans/`, `factory_root/planning/`, `factory_root/code-delivery/`,
+  and `factory_root/STATE.md`. Rationale: all four are frozen point-in-time records
+  or continuously-rewritten living-state dashboards that correctly cite versions at
+  authoring time; pin-freshness enforcement is semantically wrong for these classes.
+  ADV-29 revealed 1,348 findings in the absence of this scope definition (88% in
+  `plans/`); investigation confirmed all were legitimate historical references.
+- NORMATIVE: §Enforcement Scan Scope §Implementation obligation paragraph added:
+  devops-engineer obligation to keep `scripts/check_version_pins.py collect_files()`
+  synchronized with this ADR.
+- NORMATIVE: Version bump 1.0.3 → 1.0.4 (normative scope addition).
+- SE-16d PASS: 2026-05-30T00:00:00Z > chain high-water 2026-05-30 (monotonic; v1.0.3
+  was a same-day patch with no explicit timestamp; this entry establishes chain).
 
 ## §Trace v1.0.2
 
