@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-015
 epic_id: EPIC-03
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -121,7 +121,7 @@ fail-open per EC-031; BC-2.03.001 EC-031).
 
 Note: BC-2.03.001 invariant 2 covers the `HookEvent` type location in `hook_events.rs`
 (a separate concern). DI-006 enforcement for detect() I/O-free is specifically postcondition 6
-(added in BC-2.03.001 v1.0.4), which is the authoritative clause per BC-2.03.001 §Traceability
+(added in BC-2.03.001 v1.0.4 at S-015 authoring time), which is the authoritative clause per BC-2.03.001 §Traceability
 DI-006 mapping.
 
 **Per-variant dispatch scope note:** Phase 1 `on_hook()` returns `HookResponse::new(HookDecision::Allow)`
@@ -146,7 +146,7 @@ accidentally returns `Deny` or `Defer` during Phase 1. (Per-variant semantics ar
 | BC-2.03.003.md (1.0.3) | ~600 |
 | BC-2.03.004.md (1.0.4) | ~700 |
 | VP-020 + VP-021 + VP-022 files | ~1,200 |
-| SS-engine-module.md v1.1.20 (ClaudeCodeModule + supporting types sections) | ~2,000 |
+| SS-engine-module.md v1.1.20 (ClaudeCodeModule + supporting types sections) | ~2,000 | <!-- version-pin-historical: at S-015 authoring time -->
 | temp-env test isolation | ~300 |
 | Test files | ~1,200 |
 | **Total estimate** | **~8,800** |
@@ -160,7 +160,7 @@ Well within 20% of 200k context window. No split required.
   - `pub fn new(hook_base_url: String) -> Self`
 - [ ] Implement `EngineModule` for `ClaudeCodeModule` with `#[async_trait]`
   - `id()` returns `"claude-code"` (AC-004)
-  - `detect()`: STRICT basename match — canonical pattern (SS-engine-module.md v1.1.20 lines 604-608):
+  - `detect()`: STRICT basename match — canonical pattern (SS-engine-module.md v1.1.20 lines 604-608 at S-015 authoring time):
     ```rust
     proc.exe_path.as_ref()
         .and_then(|p| p.file_name())
@@ -203,9 +203,9 @@ S-014 (Wave 2): `EngineModule` trait defined. `EngineMetadata`, `ProcessSnapshot
 or import `DeferUntil`. `SessionStatus` has 5 variants (not 4). `HookResponse` has 3 fields (not 4;
 no `deferred_until` field).
 
-From `monocle_core::engine` (S-014 deliverable, SS-engine-module v1.1.20):
+From `monocle_core::engine` (S-014 deliverable, SS-engine-module v1.1.20 at S-015 authoring time):
 
-- `EngineModule` trait (lines 540-549 in SS-engine-module v1.1.20)
+- `EngineModule` trait (lines 540-549 in SS-engine-module v1.1.20 at S-015 authoring time)
 - `EngineMetadata` struct (lines 138-149); constructor `EngineMetadata::new()`
 - `ProcessSnapshot` struct (lines 195-224); constructor `ProcessSnapshot::new()`
 - `EnrichedSession` struct (lines 301-330); constructor `EnrichedSession::new()`
@@ -216,7 +216,7 @@ From `monocle_core::engine` (S-014 deliverable, SS-engine-module v1.1.20):
 - `EngineMetadataError` enum (variant: `HomeUnresolvable`)
 
 **TDD pre-gate stub:** S-015 implementation MUST NOT proceed until S-014 supporting types match
-SS-engine-module v1.1.20 lines 380-531 verbatim. Compile-check before S-015 RED phase begins:
+SS-engine-module v1.1.20 lines 380-531 verbatim at S-015 authoring time. Compile-check before S-015 RED phase begins:
 ```rust
 let _ = HookResponse::new(HookDecision::Allow);
 let _ = SessionStatus::Active;
@@ -225,7 +225,7 @@ Both must compile against `monocle_core::engine` re-exports before dispatch.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation: ClaudeCodeModule (canonical reference impl lines 545-657):
+From `architecture/SS-engine-module.md` v1.1.20 §Phase 1 Implementation (at S-015 authoring time): ClaudeCodeModule (canonical reference impl lines 545-657):
 - Strict basename match: ONLY `"claude"` OR `"claude.js"` — NOT `"claude-squad"`, NOT `"claudio"`, NOT partial match
 - `hook_paths()` returns `HashMap<HookType, String>` (NOT `Vec<PathBuf>`) per SS-engine-module.md §Struct-level inherent operations
 - `spawn(args: SpawnArgs) -> Result<SessionHandle, SpawnError>` — binding signature; Phase 1 body is `todo!()`
@@ -270,3 +270,7 @@ Files to modify:
 | 1.1–1.5 | 2026-05-19 | vsdd-factory:story-writer | Iterative adversarial convergence (r01..r13) |
 | 1.6 | 2026-05-20 | vsdd-factory:story-writer | Phase 3.B Batch 5: XDG_HOME (not a real env var) replaced with HOMEDRIVE per BC-2.03.003 Invariant 3 in AC-005, AC-006, Tasks; detect() pseudocode ? operator (won't compile) replaced with canonical and_then/map/unwrap_or pattern; inherited supporting-type surface enumerated (DeferUntil dropped, SessionStatus 5 variants, HookResponse 3 fields); AC-010 per-variant dispatch clarification; AC-011 added (defensive per-variant regression guard); traces_to fragment anchors added; SS-engine-module canonical impl anchor added to Architecture Compliance Rules; VP-022 line reference added to AC-007 |
 | 1.7 | 2026-05-29 | vsdd-factory:story-writer | Path B Wave 6 MSRV propagation: BC-2.03.001 input pin v1.0.5 → v1.0.6 (PO commit 5006528); Token Budget table BC version cell updated; no MSRV 1.86 body references found in S-015 (sweep confirmed clean). Per bc_array_changes_propagate_to_body_and_acs policy (F-S025-ADV17-LOW-001 closure). |
+
+## §Trace
+
+**v1.8** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

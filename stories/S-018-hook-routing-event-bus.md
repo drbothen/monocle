@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-018
 epic_id: EPIC-04
-version: "1.1"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -205,18 +205,18 @@ The middleware execution order from prior waves is IMMUTABLE:
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Hook Endpoint Routing` (at S-018 authoring time):
 - `on_hook(hook_event)` is the CORRECT call signature — 1 parameter
 - `HookDecision::Block` is a UNIT variant — reason comes from `HookResponse.diagnostic`
 - Timeout is FAIL-OPEN for PreToolUse: `{"decision": "allow", "reason": "timeout"}` per BC-HOOK-001
 - `try_send` is MANDATORY; `.send().await` is FORBIDDEN in hook handlers
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Bounded Event Bus`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Bounded Event Bus` (at S-018 authoring time):
 - Channel capacity = 4096; NOT runtime-configurable in Phase 1
 - Fan-out per-client timeout = 50ms
 - Drop counter uses `Ordering::Relaxed`
 
-From `architecture/SS-conventions-anti-patterns.md v1.29.5`:
+From `architecture/SS-conventions-anti-patterns.md v1.29.5` (at S-018 authoring time):
 - Bounded `mpsc::channel(N)` with drop counter is the canonical pattern
 - Unbounded `mpsc::unbounded_channel()` is FORBIDDEN
 
@@ -250,3 +250,7 @@ Files to create:
 Files to modify:
 - `monocle-runtime/src/server.rs` — wire 5 hook routes into `build_server()`
 - `monocle-runtime/src/lib.rs` — expose hooks and event_bus modules
+
+## §Trace
+
+**v1.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

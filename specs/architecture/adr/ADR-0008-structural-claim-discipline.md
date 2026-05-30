@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.1"
+version: "1.0.2"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -237,6 +237,8 @@ A structural claim is a historical anchor (frozen, exempt from CI check) when it
 meets at least ONE of:
 
 1. It appears inside a `## §Trace` section.
+
+**1.0.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 2. It is annotated with `<!-- structural-claim-historical -->` on the same line or
    the adjacent line.
 3. It contains a time qualifier establishing this as a record of past state:
@@ -261,7 +263,7 @@ for column lists) before authoring.
 
 ### Convention changes in SS-conventions-anti-patterns.md
 
-SS-conventions-anti-patterns.md v1.32.1 → v1.32.2 gains a new §Structural-Claim
+SS-conventions-anti-patterns.md v1.32.1 <!-- version-pin-historical: version at ADR-0008 initial ratification time --> → v1.32.2 gains a new §Structural-Claim
 Discipline section (produced in the same burst as this ADR) codifying the
 permitted/forbidden forms, historical-anchor classification, canonical source registry,
 and CI gate contract.
@@ -321,7 +323,7 @@ here contradicts the explicit tripwire condition and the production-grade defaul
 ### Immediate (this burst — D-206)
 
 1. Write ADR-0008 (this file).
-2. Update SS-conventions-anti-patterns.md v1.32.1 → v1.32.2 with §Structural-Claim
+2. Update SS-conventions-anti-patterns.md v1.32.1 <!-- version-pin-historical: version at ADR-0008 initial ratification time --> → v1.32.2 with §Structural-Claim
    Discipline section.
 3. Update ARCH-INDEX.md with ADR-0008 row in ADR Registry.
 4. Story-writer fixes S-025:144,228 `Vec<SessionState>` → `Vec<EnrichedSession>` in

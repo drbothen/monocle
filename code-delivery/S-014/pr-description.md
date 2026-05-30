@@ -213,7 +213,7 @@ These findings are known, human-directed deferrals with explicit future-story an
 
 | Finding | Deferred To | Reason |
 |---------|-------------|--------|
-| #34: BC-2.03.001 v1.0.5 PC-3 still lists `DeferUntil` in supporting types | PO (mechanical fix, Task #34) | Authority hierarchy: story v1.4 + SS-engine-module v1.1.20 win; BC is stale |
+| #34: BC-2.03.001 v1.0.5 PC-3 still lists `DeferUntil` in supporting types <!-- version-pin-historical: versions at S-014 merge time --> | PO (mechanical fix, Task #34) | Authority hierarchy: story v1.4 + SS-engine-module v1.1.20 win; BC is stale |
 | SS-engine-module.md HookDecision code blocks stale (pre-F-D-02) | Architect, S-015 prep | Non-blocking; S-015 implementer reads story v1.4, not stale code blocks |
 | `monocle-core` unused `futures`/`semver` deps | S-010 scope (pre-provisioned) | Provisioned by S-010 for S-013/S-014 consumers; clippy allowed at workspace level |
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-PHASE-3-PREP
 epic_id: EPIC-PREP
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T00:00:00Z
@@ -104,7 +104,7 @@ block any Phase 2 story or Wave 1/2/3 implementation work.
   spec-kit-mcp rc.19+ integration; that file does not currently exist).
 - **INV-005** (transitive closure with fixed-point iteration): spec-kit invariant that enforces all
   version pins are up-to-date by traversing the full dependency graph until no stale pins remain.
-- **NORMATIVE** (per SS-conventions-anti-patterns.md v1.29.5 §Pin-Symmetry policy): an annotation
+- **NORMATIVE** (per SS-conventions-anti-patterns.md v1.29.5 §Pin-Symmetry policy <!-- version-pin-historical: at S-PHASE-3-PREP authoring time -->): an annotation
   applied to changes that are binding constraints (as opposed to INFORMATIONAL which is context only).
   Stale pins on any artifact carrying a NORMATIVE annotation must be fixed before the spec is valid.
 
@@ -155,7 +155,7 @@ must hold.
 `spec_kit_bump_artifact()` cascade-tail closes any remaining PRD ↔ VP-INDEX pin staleness
 that persisted from the Phase 1 asymptote. Zero NORMATIVE stale pins remain after this sweep
 (NORMATIVE = stale pins on any artifact carrying a NORMATIVE annotation per
-SS-conventions-anti-patterns.md v1.29.5 §Pin-Symmetry policy). `spec_kit_verify_invariants`
+SS-conventions-anti-patterns.md v1.29.5 §Pin-Symmetry policy <!-- version-pin-historical: at S-PHASE-3-PREP authoring time -->). `spec_kit_verify_invariants`
 re-run is required until fixed-point: re-run until `violations: 0` holds across all artifacts.
 
 ### AC-003 (prose rule migration — POL-29 / SE-22 to schema invariants)
@@ -202,7 +202,7 @@ row per the invariant's resolution guidance.
 | tech-debt-register.md (TD-VSDD-PHASE-1 + TD-VSDD-PHASE-2 entries) | ~1,500 |
 | spec-kit-mcp tool documentation (when available) | ~TBD |
 | monocle .factory/ artifact inventory | ~500 |
-| SS-conventions-anti-patterns.md v1.29.5 (Pin-Symmetry section) | ~300 |
+| SS-conventions-anti-patterns.md v1.29.5 (Pin-Symmetry section) | ~300 | <!-- version-pin-historical: at S-PHASE-3-PREP authoring time -->
 | **Total estimate** | **~3,400 + spec-kit docs** |
 
 Well within 20% of 200k context window. No split required.
@@ -280,6 +280,8 @@ Files to install (tool, not a repo file):
 - spec-kit pre-commit hook: `vsdd-spec-kit-validator.wasm` (installed by spec-kit-mcp tooling)
 
 ## §Trace
+
+**v1.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.
 
 **v1.1** (2026-05-20) — Phase 3.B Batch 1 spec-reviewer remediation (F-A-01..F-E-03 findings from cycle-001 Stage-1 review). Refs: drbothen/vsdd-factory#150.
 - F-B-01 CLOSED: TD-VSDD-PHASE-2-ASYMPTOTIC-PROPAGATION-DRIFT added to inputs frontmatter and Background section. F-PHASE2-R13-01 and GAP-PHASE2-R13-1 named explicitly in Background.

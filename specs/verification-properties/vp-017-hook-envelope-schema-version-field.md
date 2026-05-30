@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.13"
+version: "1.0.14"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.02.007
 module: monocle-proto
@@ -76,7 +76,7 @@ still equals `1`.
 - `monocle-proto` builds cleanly.
 - The `pub use monocle::v1` re-export is present so callers can access
   `monocle_proto::v1::HookEnvelope`.
-- `prost 0.14` is the project pin (per SS-deps-pin-manifest.md v1.1.17)
+- `prost 0.14` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-017 authoring time)
   for the prost-build-generated `HookEnvelope` struct. The struct exposes
   `#[derive(prost::Message)]` to enable wire-format `encode_to_vec()` /
   `decode()` round-trips asserted in §Post-conditions 1 and 2.
@@ -85,7 +85,7 @@ still equals `1`.
   derives (which provide protobuf wire-format encode/decode) and does
   NOT derive `serde::Serialize` / `serde::Deserialize`. The
   `monocle-proto` crate declares `prost` and `bytes` only (per
-  SS-deps-pin-manifest.md v1.1.17 workspace dep graph: `proto → prost`,
+  SS-deps-pin-manifest.md v1.1.17 (at VP-017 authoring time) workspace dep graph: `proto → prost`,
   `proto → bytes`) and has no workspace edge to `serde`. The F-R76-1
   closure (architect v1.1.10 → v1.1.11) added bare `serde 1` to the
   manifest for `monocle-runtime` and `monocle-core` consumers;
@@ -222,6 +222,8 @@ fn verify_bc_2_02_007() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.14** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

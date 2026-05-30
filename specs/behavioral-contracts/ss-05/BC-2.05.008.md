@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
@@ -133,7 +133,7 @@ of shared-memory crates), and a semgrep check in CI (detecting direct `libc::mma
 | L2 Domain Invariants | DI-007 (monocle must not write to harness-owned files — shared-memory primitives could theoretically be used to violate this; the prohibition on shared-memory in monocle-ipc upholds DI-007's spirit at the transport layer) |
 | Architecture Module | monocle-ipc (Transport trait, UdsTransport, `#![forbid(unsafe_code)]`) per ARCH-INDEX Subsystem Registry SS-05 |
 | Architecture Source | SS-ipc.md v1.9.0 §Transport Layer §Transport Trait; SS-ipc.md v1.9.0 §Phase 1 Transport Constraint |
-| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.31.1 §Forbidden Patterns (shared-memory primitives) |
+| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.32.3 §Forbidden Patterns (shared-memory primitives) |
 | Test File | CI enforcement (cargo deny, semgrep, rustc compile gate) — not an integration test |
 | Test Name | `test_BC_2_05_008_uds_only_constraint` (static analysis CI job) |
 | Stories | S-TBD (filled by story-writer) |
@@ -156,6 +156,8 @@ S-TBD — Implement Transport trait with UdsTransport; configure cargo deny and 
 VP-TBD — UDS-only constraint static analysis verification (filled after VP creation)
 
 ## §Trace v1.0.0
+
+**1.0.5** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 **Initial production** (2026-05-26T04:00:00Z):
 - BC-2.05.008 authored for SS-05 IPC subsystem per `prd-expansion-scope.md §3.2` and

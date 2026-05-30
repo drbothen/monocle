@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.17"
+version: "5.18"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T00:00:00Z
@@ -12,7 +12,7 @@ inputs:
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.16"}
-  - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
+  - {path: .factory/specs/dtu-assessment.md, version: "1.7.6"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}

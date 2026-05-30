@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-021
 epic_id: EPIC-05
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -221,18 +221,18 @@ that feed into `SessionListUpdate` broadcasts. The `EnrichedSession` struct must
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.4.0 §Transport Layer §Lifecycle`:
+From `architecture/SS-ipc.md v1.4.0 §Transport Layer §Lifecycle` (at S-021 authoring time):
 - Socket path: `Path::new(runtime_dir).join("monocle.sock")` — NOT shell string interpolation
 - Stale socket removal before bind; WARN log required
 - Mode 0o600 set immediately after bind via `std::fs::set_permissions`
 - Socket removed in shutdown sequence alongside lock file
 
-From `architecture/SS-ipc.md v1.4.0 §Framing Protocol`:
+From `architecture/SS-ipc.md v1.4.0 §Framing Protocol` (at S-021 authoring time):
 - 4-byte little-endian `u32` length prefix + UTF-8 JSON payload
 - MAX_MESSAGE_BYTES = 262,144 (256 KiB)
 - No trailing newline or null terminator
 
-From `architecture/SS-ipc.md v1.4.0 §Phase 1 Transport Constraint`:
+From `architecture/SS-ipc.md v1.4.0 §Phase 1 Transport Constraint` (at S-021 authoring time):
 - `#![forbid(unsafe_code)]` is the first crate attribute in `monocle-ipc/src/lib.rs`
 - `cargo deny` deny-list: `shared_memory`, `raw-sync`, `ipc-channel`
 - semgrep patterns: `libc::mmap`, `nix::sys::mman`, `shm_open`, `mmap_rs`, `memmap2`
@@ -337,3 +337,7 @@ pub enum IpcError {
 
 S-022 (TUI connect + permission prompt) uses `UdsTransport::connect(runtime_dir)` and the
 full `ServerToClient` / `ClientToServer` type set from this story.
+
+## §Trace
+
+**v1.1** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

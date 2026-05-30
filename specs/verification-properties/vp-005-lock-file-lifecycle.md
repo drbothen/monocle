@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.16"
+version: "1.0.17"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.005
 module: monocle-runtime
@@ -62,7 +62,7 @@ with BC-2.03.003 `HomeUnresolvable` is intentional.
   lock file; mode `0o700` for runtime dir on creation; pid-liveness gate;
   clean-shutdown cleanup; `RuntimeDirUnresolvable` fail-fast → exit 1.
 - **Traces to (historical):** BC-DAEMON-005 (PRD v1.25 §BC-DAEMON-005;
-  SS-daemon-lifecycle.md v1.0.32 §Start Sequence + §Hard Shutdown;
+  SS-daemon-lifecycle.md v1.0.32 §Start Sequence + §Hard Shutdown; <!-- version-pin-historical: at VP-005 authoring time -->
   F-R70-1 closure — hybrid runtime-dir resolution chain disposition (c);
   F-R88-2 wording correction landed in PRD v1.17 commit 27e663c and
   carried forward verbatim into PRD v1.25 commit 7735c84 per C-R90-1).
@@ -95,10 +95,10 @@ paths (a)-(d) deterministically.
   `directories::ProjectDirs` API (via dependency injection or
   `temp-env`-controlled env vars) to exercise paths (a)-(d)
   deterministically.
-- `directories 6` (per SS-deps-pin-manifest.md v1.1.17) is the project pin
+- `directories 6` (per SS-deps-pin-manifest.md v1.1.17 at VP-005 authoring time) is the project pin
   for `ProjectDirs::runtime_dir()` and `ProjectDirs::data_local_dir()`.
-- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.17).
-- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.17) for
+- `tempfile 3` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-005 authoring time).
+- `nix 0.30` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-005 authoring time) for
   the pid-liveness probe; the test asserts
   `nix::sys::signal::kill(Pid::from_raw(pid), None)` per BC-2.01.005
   postcondition 3.
@@ -339,6 +339,8 @@ fn verify_bc_2_01_005() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.17** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

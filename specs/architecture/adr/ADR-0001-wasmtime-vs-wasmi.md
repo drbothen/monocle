@@ -7,12 +7,12 @@ subsystems_affected: []
 supersedes: null
 superseded_by: null
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 producer: product-owner (extracted from brief v1.1)
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md]
-input-hash: "e32d6cc"
+input-hash: "ff37ffd"
 traces_to: "factory-artifacts ee09833 (brief v1.1); consistency-audit 0f28619; validate-brief v4 38b8e8f"
 project: monocle
 ---
@@ -92,4 +92,8 @@ v1.0.2 changes (round-57.1 PG-5 ADR-class sweep):
   `product-brief.md` v1.1 without historical qualifier. Fix: "v1.1 at time of ADR
   authoring" added. Both citations are provenance records; historical framing is accurate.
   `traces_to` frontmatter (also cites brief v1.1) is exempt per PG-5 Option B carve-out
-  (frontmatter exempted in SS-conventions-anti-patterns.md v1.25).
+  (frontmatter exempted in SS-conventions-anti-patterns.md v1.25 at ADR-0001 authoring time).
+
+## §Trace
+
+**1.0.4** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.1"
+version: "1.6.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
@@ -140,7 +140,7 @@ After completing all 4 steps:
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-134 | A third Claude Code session queues a new prompt (P3) between keystrokes 2 (`A`) and 3 (`y`) | P3 is pushed to the back of `App.overlay_stack` after P2. After keystroke 3 (`y`) resolves P2, `App.overlay_stack = [P3]` — overlay remains open showing P3. The flow requires a 5th keystroke (`y` or `n/r`) to resolve P3. Total: 5 keystrokes ≤ 6. Still within Success Criterion. |
-| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `A` | Daemon sends fail-open for P1; broadcasts `PermissionPromptResolved { prompt_id: P1.prompt_id }` to TUI (canonical type per SS-ipc.md v1.1.0); TUI calls `App.overlay_stack.retain()` removing P1; overlay shows P2 only. User still needs to decide P2 (`y` or `n/r`). P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
+| EC-135 | P1's PreToolUse times out (300ms) while user is reading P1 before pressing `A` | Daemon sends fail-open for P1; broadcasts `PermissionPromptResolved { prompt_id: P1.prompt_id }` to TUI (canonical type per SS-ipc.md v1.1.0 <!-- version-pin-historical: version at EC-135 authoring time -->); TUI calls `App.overlay_stack.retain()` removing P1; overlay shows P2 only. User still needs to decide P2 (`y` or `n/r`). P1's Claude Code session resumed (via fail-open), which is acceptable per BC-2.06.017. |
 | EC-136 | User presses `A` for P1 at exactly 299ms (near-timeout) | Race between user decision and daemon timeout. If daemon sends fail-open before decision arrives: duplicate resolution — daemon MUST handle idempotently (log warning, ignore duplicate). If user decision arrives first: normal flow. Either outcome is acceptable. |
 | EC-137 | 6 Claude Code sessions are all stalled simultaneously | Daemon's `overlay_stack` holds 6 entries. Overlay stack shows 6. User needs up to 6 keystrokes for the overlay decisions (1 per session) + 2 for open/close = 8 total. This exceeds the ≤6 success criterion for >4 concurrent stalled sessions. The ≤6 criterion is defined for the 2-session (dual) case. |
 | EC-138 | User dismisses the popup (`Ctrl-\`) before resolving all prompts (between steps 2 and 3) | P2 remains in daemon's pending-prompt registry (`overlay_stack`). On next `Ctrl-\`, new TUI process opens overlay with P2 at front. Total keystrokes across two openings: `Ctrl-\`, `A`, `Ctrl-\`, `Ctrl-\`, `y`, `Ctrl-\` = 6. Still ≤6 Success Criterion if this is counted. |
@@ -206,6 +206,8 @@ S-TBD — Implement and verify killer scenario: E2E integration test proving ≤
 - VP-TBD — E2E integration test: `[connect]` + `A` + `y` + `[disconnect]`; both mock HTTP responses delivered; total keystrokes = 4
 
 ## §Trace v1.2.0
+
+**1.6.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 **F-P1D2-002 CRITICAL — Fabricated `PromptAutoResolved` replaced with `PermissionPromptResolved`** (2026-05-26T00:00:00Z):
 - EC-135: `PromptAutoResolved { P1 }` → `PermissionPromptResolved { prompt_id: P1.prompt_id }` per F-P1D2-002. The canonical `ServerToClient` variant for daemon-initiated prompt resolution is `PermissionPromptResolved` per SS-ipc.md v1.1.0. The fabricated `PromptAutoResolved` variant does not exist.

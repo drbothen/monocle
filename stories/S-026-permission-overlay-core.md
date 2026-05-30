@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.8"
+version: "1.9"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -59,7 +59,7 @@ is received, the TUI MUST use the `apply_permission_prompt_queued(overlay, paylo
 After a successful (non-duplicate) push, the TUI transitions to
 `Overlay { prior: current_focus }` via `transition()`
 if not already in Overlay mode. (The modal stack is carried in `App.overlay_stack`, not
-in the `Overlay` variant — per BC-2.06.004 v1.2.0 PC-2.) If already in Overlay mode,
+in the `Overlay` variant — per BC-2.06.004 v1.2.1 PC-2.) If already in Overlay mode,
 the stack grows in place (the IPC push is NOT routed through `transition()`).
 
 Precondition (BC-2.05.002 Invariant 4): The IPC layer provides at-least-once delivery for

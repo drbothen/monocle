@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.2"
+version: "1.0.3"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -67,7 +67,7 @@ The species has now appeared in every artifact directory touched by Phase 3 Wave
 The species arises from the interaction of two legitimate practices:
 
 1. **Citation practice:** Artifacts cite their source documents with version literals
-   (e.g., `SS-deps-pin-manifest.md v1.1.17`, `BC-2.06.005 v1.0.5`) to establish a
+   (e.g., `SS-deps-pin-manifest.md v1.1.17`, `BC-2.06.005 v1.0.5`) <!-- version-pin-historical: illustrative examples in §Species Root Anatomy --> to establish a
    conformance claim — "this artifact was verified against source X at version Y."
 
 2. **Independent version evolution:** Source documents bump their versions as other
@@ -286,7 +286,7 @@ section:
 
 ### Convention changes in SS-conventions-anti-patterns.md
 
-SS-conventions-anti-patterns.md v1.31.1 → v1.32.0 gains a new §Citation Discipline
+SS-conventions-anti-patterns.md v1.31.1 <!-- version-pin-historical: version at ADR-0007 initial ratification time --> → v1.32.0 gains a new §Citation Discipline
 section (produced in the same burst as this ADR) codifying the permitted/forbidden forms,
 historical-anchor classification, and CI gate contract.
 
@@ -375,6 +375,8 @@ the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
 
 ## §Trace v1.0.2
+
+**1.0.3** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 **D-206 ADR-0008 cross-reference addition — structural-spec drift tripwire closure** (2026-05-29T12:00:00Z):
 

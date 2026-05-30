@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.13"
+version: "1.0.14"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.02.001
 module: monocle-runtime
@@ -72,7 +72,7 @@ authenticated `GET /status` request, parses the JSON body, and asserts
 
 - Daemon running with a valid lock file.
 - Authenticated client holds the lock-file secret.
-- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md v1.1.17).
+- `axum 0.8` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-011 authoring time).
 
 ## Post-conditions
 
@@ -189,6 +189,8 @@ fn verify_bc_2_02_001() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.14** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

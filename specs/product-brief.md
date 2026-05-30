@@ -1,13 +1,13 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.31"
+version: "1.4.32"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
 timestamp: 2026-05-28T12:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, planning/oq-research.md]
-input-hash: "1afe9de"
+input-hash: "419f256"
 traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
 project: monocle
 supplements:
@@ -44,7 +44,9 @@ Per vision §Vision Statement: "One TUI lens over every Claude-class session
 you're running, every customization that shapes them, and every workflow driving
 them — across multiple harnesses and federated across hosts."
 
-## Revision History
+## §Trace — Revision History
+
+**1.4.32** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|

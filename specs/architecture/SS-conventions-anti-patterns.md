@@ -981,12 +981,12 @@ contains any citation to the bumped source document. For each match, explicitly 
 as:
 - **Historical pinpoint** (preserve): the citation records a specific version at which
   a decision was made; it is an immutable audit record. Example: a Disposition column entry
-  recording `locked in SS-daemon-lifecycle.md v1.0.6 per human authorization` remains at
+  recording `locked in SS-daemon-lifecycle.md v1.0.6 per human authorization` remains at <!-- version-pin-historical: illustrative example in §Citation Discipline -->
   v1.0.6 even after SS-daemon-lifecycle.md is bumped to v1.0.7, because v1.0.6 was the
   version at lock-in time.
 - **Current-pointer** (update): the citation asserts the current authoritative version
   of a fact or spec. Example: a Phase 1 Spec Change column entry `specified in
-  SS-daemon-lifecycle.md v1.0.6 §Drain` must be updated to match the current version.
+  SS-daemon-lifecycle.md v1.0.6 §Drain` <!-- version-pin-historical: illustrative example in §Citation Discipline --> must be updated to match the current version.
 
 **Selective within-file updates are FORBIDDEN** — either update all current-pointer
 citations in the file atomically in a single burst, or annotate why specific citations
@@ -1019,7 +1019,7 @@ scan for citations to X in sibling files and refresh them. The back-cascade dire
 is bumped, also check whether X itself cites OTHER files whose versions have since advanced — was
 not codified, producing citation-staleness within the file that receives the cascade, not just in the
 files that source it. F-R114-1 found that SS-forward-compatibility.md carried stale citations to
-`dtu-assessment.md v1.7` and `SS-core-types-and-abi.md v1.2.8` even after those files had
+`dtu-assessment.md v1.7` and `SS-core-types-and-abi.md v1.2.8` <!-- version-pin-historical: version at F-R114-1 finding time --> even after those files had
 advanced to v1.7.5 and v1.2.13 respectively.
 
 **Explicit back-cascade obligation:** When bumping file X (the cascade recipient), ALSO run:
@@ -1085,7 +1085,7 @@ in the §Trace v1.14 PG-2 entry (§Phantom-ID Convention was above §Trace, not 
 F-NEW-PG-1-direction (v1.16) fixed `below` → `above` in the §Trace v1.14 PG-1 entry
 (§Schema-Fact Citation Convention was above §Trace, not below). Both were introduced together
 in v1.14 as new §Trace entries; neither was verified against section positions at write time.
-SS-engine-module.md v1.1.12 also corrected `below` → `above` for the audit table reference
+SS-engine-module.md v1.1.12 <!-- version-pin-historical: version at fix authoring time --> also corrected `below` → `above` for the audit table reference
 (§Future audit maintenance paragraph is below the delimiter-bounded audit table block it describes).
 
 **Version-bump self-check grep (mandatory before any version bump of any document containing
@@ -1148,6 +1148,7 @@ pinpoint and MUST be replaced with the referenced section's heading name.
 
 **Note (heading-agnostic, added v1.27, round-59.1):** The recipe pattern `^## §?Trace` matches
 both `## §Trace` (canonical form, required by §Trace-Heading-Convention) and `## Trace`
+
 (legacy or drift form). This makes the defense robust even when a file's §Trace heading is
 missing the `§` prefix — the recipe still runs correctly. The §Trace-Heading-Convention (see
 §Trace-Heading-Convention below) mandates `## §Trace` as the required heading form. Belt-and-suspenders: convention requires `## §Trace`; recipe accepts both forms to prevent silent bypass.
@@ -1606,10 +1607,10 @@ authoring and MUST NOT be updated as the cited document evolves. It is a provena
 
 **Forbidden (active version-pin literal):**
 ```
-SS-deps-pin-manifest.md v1.2.0          ← no time qualifier
-BC-2.06.005 v1.0.5                      ← no time qualifier
-inputs: [SS-tui.md v1.8.2]              ← frontmatter active pointer
-see SS-engine-module.md v1.1.26 §...    ← active pointer
+SS-deps-pin-manifest.md v1.2.0          ← no time qualifier   # version-pin-historical
+BC-2.06.005 v1.0.5                      ← no time qualifier   # version-pin-historical
+inputs: [SS-tui.md v1.8.2]              ← frontmatter active pointer  # version-pin-historical
+see SS-engine-module.md v1.1.26 §...    ← active pointer  # version-pin-historical
 ```
 Active version-pin literals in artifact bodies introduce drift pressure: the citation
 becomes stale on the next version bump of the cited document.

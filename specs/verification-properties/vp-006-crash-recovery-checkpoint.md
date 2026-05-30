@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.14"
+version: "1.0.15"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.006
 module: monocle-runtime
@@ -60,7 +60,7 @@ files are deleted with WARN log and no UDS offer.
   window measured from `Instant::now()` at daemon start; malformed-file
   handling.
 - **Traces to (historical):** BC-DAEMON-006 (PRD v1.25 §BC-DAEMON-006;
-  SS-daemon-lifecycle.md v1.0.32 §Crash Recovery; F-R70-2 BC-VP alignment
+  SS-daemon-lifecycle.md v1.0.32 §Crash Recovery; <!-- version-pin-historical: at VP-006 authoring time --> F-R70-2 BC-VP alignment
   closure — millisecond-precision regex was previously tighter than the
   under-specified BC; PRD v1.6 commit 76570ac brought BC into alignment
   with VP).
@@ -88,8 +88,8 @@ controlled clock to exercise the recovery-offer state machine.
   file is written eagerly on AppMode → `ShuttingDown` (covered by the
   drain code path).
 - `tempfile 3`, `serde_json 1`, and `tokio 1` are the project pins (per
-  SS-deps-pin-manifest.md v1.1.17).
-- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.17)
+  SS-deps-pin-manifest.md v1.1.17 at VP-006 authoring time).
+- `chrono 0.4` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-006 authoring time)
   for the `shutdown_utc` ISO 8601 millisecond timestamp formatter. The
   recovery checkpoint emits `shutdown_utc` via
   `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ")` per
@@ -291,6 +291,8 @@ fn verify_bc_2_01_006() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.15** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.14"
+version: "1.0.15"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.004
 module: monocle-runtime
@@ -59,7 +59,7 @@ HTTP 401.
   (0/130/143/2/1 — Obs-R70-2 + F-R70-3 closure), auth-on-`/shutdown`
   cross-property.
 - **Traces to (historical):** BC-DAEMON-004 (PRD v1.25 §BC-DAEMON-004;
-  SS-daemon-lifecycle.md v1.0.32 §Shutdown Signal Handling, §Drain,
+  SS-daemon-lifecycle.md v1.0.32 §Shutdown Signal Handling, §Drain, <!-- version-pin-historical: at VP-004 authoring time -->
   §Hard Shutdown).
 
 ## Proof Method
@@ -95,7 +95,7 @@ asserting `elapsed < 11 seconds` for the over-budget scenario and
   synthetic signals to exercise the 130-vs-143 distinction without real
   OS-signal delivery.
 - `axum 0.8` and `tokio 1` are the project pins (per
-  SS-deps-pin-manifest.md v1.1.17); `tower` is a transitive dependency of
+  SS-deps-pin-manifest.md v1.1.17 at VP-004 authoring time); `tower` is a transitive dependency of
   `axum 0.8` (no direct workspace pin).
 
 ## Post-conditions
@@ -284,6 +284,8 @@ fn verify_bc_2_01_004() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.15** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

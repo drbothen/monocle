@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-001
 epic_id: EPIC-01
-version: "1.9"
+version: "1.10"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T00:00:00Z
@@ -137,7 +137,7 @@ test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.2.0 L33-74.
 | This story spec | ~1,100 |
 | SS-deps-pin-manifest.md v1.2.0 (full) | ~9,976 |
 | SS-daemon-lifecycle.md v1.0.33 (workspace scope section) | ~2,000 |
-| SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 |
+| SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 | <!-- version-pin-historical: at S-001 authoring time -->
 | Cargo.toml template + toolchain files | ~500 |
 | Test scaffolding | ~300 |
 | **Total estimate** | **~14,876** |
@@ -186,7 +186,7 @@ Well within 20% of 200k context window. No split required.
       // Intentional no-op stub. S-002 will wire the daemon entry point.
   }
   ```
-  Note: `println!("monocle-runtime stub")` is forbidden per SS-conventions-anti-patterns.md
+  Note: `println!("monocle-runtime stub")` is forbidden per SS-conventions-anti-patterns.md <!-- version-pin-historical: at S-001 authoring time -->
   v1.30.2 §Convention Checklist L503 ban on println! in production code paths (enforced by
   clippy.toml disallowed_methods extension). The stub is a no-op until S-002 wires daemon entry.
   `#![forbid(unsafe_code)]` and `#![deny(missing_docs)]` crate-level lints are included per
@@ -283,6 +283,8 @@ Files to create:
 - `/monocle-proto/build.rs` — no-op stub: `fn main() {}`
 
 ## §Trace
+
+**v1.10** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.
 
 **v1.9** (2026-05-29) — Path B Wave 6 MSRV propagation tail: SS-deps-pin-manifest.md v1.1.19 → v1.2.0 input pin bump; all active body MSRV 1.86 → 1.88 propagation (11 sites: narrative, AC-002 ×3, AC-004 ×3, AC-006 header, Architecture Compliance Rules, Tasks ×2, File Structure ×2; lint-toolchain grep pattern updated to "1.88"). inputs.SS-deps-pin-manifest bumped v1.1.19 → v1.2.0. traces_to manifest version updated to v1.2.0. All §Trace 1.86 entries preserved as historical records. Closes consumer-story cascade started at architect f3533ce.
 

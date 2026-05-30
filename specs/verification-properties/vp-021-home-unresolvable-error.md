@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.13"
+version: "1.0.14"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.03.003
 module: monocle-runtime
@@ -53,7 +53,7 @@ current-directory fallback, or any non-`HomeUnresolvable` error path.
   `Err(EngineMetadataError::HomeUnresolvable)` when all four home-env
   vars are unset; no relative-path / current-directory fallback
   substitution permitted; sync/async test halves share environment
-  isolation via `temp-env ^0.3` per SS-deps-pin-manifest.md v1.1.17 pin.
+  isolation via `temp-env ^0.3` per SS-deps-pin-manifest.md v1.1.17 (at VP-021 authoring time) pin.
 - **Traces to (historical):** BC-ENGINE-002-ERR (SS-engine-module.md
   §Behavioral Contracts; PRD v1.25 §BC-ENGINE-002-ERR Verification subsection).
 
@@ -68,7 +68,7 @@ current-directory fallback, or any non-`HomeUnresolvable` error path.
 
 Integration test (harness located at
 `monocle-runtime/tests/engine_module_home_unresolvable.rs` with
-`temp-env ^0.3` env-isolation per SS-deps-pin-manifest.md v1.1.17 pin;
+`temp-env ^0.3` env-isolation per SS-deps-pin-manifest.md v1.1.17 (at VP-021 authoring time) pin;
 files in `<crate>/tests/` are cargo integration tests; PRD v1.25 §7 RTM
 Test Type column labels this BC `Unit (env-isolation)` referring to
 conceptual scope, but the harness layout is cargo-integration per file
@@ -241,6 +241,8 @@ fn verify_bc_2_03_003() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.14** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

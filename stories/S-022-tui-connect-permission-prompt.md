@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-022
 epic_id: EPIC-05
-version: "1.3"
+version: "1.4"
 status: in_progress
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -212,16 +212,16 @@ broadcast `PermissionPromptQueued`. The 300ms timeout handler in S-018 must also
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.4.0 §Connection Lifecycle §Phase 1 Connect`:
+From `architecture/SS-ipc.md v1.4.0 §Connection Lifecycle §Phase 1 Connect` (at S-022 authoring time):
 - `InitialState` is the FIRST message on every new connection — no exceptions
 - Snapshot is taken at connection acceptance time; events after acceptance are incremental
 - No gap between snapshot and streaming phase (fan-out subscriber added before first event can be missed)
 
-From `architecture/SS-ipc.md v1.4.0 §Message Types §PermissionPromptPayload`:
+From `architecture/SS-ipc.md v1.4.0 §Message Types §PermissionPromptPayload` (at S-022 authoring time):
 - `PermissionPromptQueued { payload: PermissionPromptPayload }` — wrapper struct, NOT flat fields
 - `payload.old_content` and `payload.new_content` are BOTH `Option<String>` — present only for file-mutation tools
 
-From `architecture/SS-ipc.md v1.4.0 §Risk Mitigations §Multiple TUI Clients Resolving the Same Prompt`:
+From `architecture/SS-ipc.md v1.4.0 §Risk Mitigations §Multiple TUI Clients Resolving the Same Prompt` (at S-022 authoring time):
 - `oneshot::channel` per prompt enforces at-most-one resolution — not advisory, required
 - `PermissionPromptResolved` is broadcast to ALL connected clients after BOTH user resolution AND timeout
 

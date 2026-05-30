@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -88,7 +88,7 @@ hooks-settings.json writes, consistent with monocle's global atomic-write policy
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — atomic hooks-settings.json writes are a daemon lifecycle correctness property; torn reads result in session launches without hook event ingestion |
 | L2 Domain Invariants | DI-001 (tee invariant — a torn read that causes hooks-settings.json to be empty prevents hook injection, so no hook events reach the daemon; this violates the spirit of DI-001 for that session) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-039; SS-conventions-anti-patterns.md v1.31.1 (atomic write policy) |
+| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-039; SS-conventions-anti-patterns.md v1.32.3 (atomic write policy) |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:71 (`os.WriteFile` — non-atomic) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-039 (gene-source: deep-hooks-r2 §3 BC-HOOK-039; P3 finding) |
@@ -113,6 +113,8 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - VP-DTU-001 (pending Phase 4 formal verification)
 
 ## §Trace v1.0.0
+
+**1.0.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 **Phase 3 TDD — BC-HOOK-001..041 initial authorship** (2026-05-20T21:00:00Z):
 - Gene-source file:line: hooks.go:71 (`os.WriteFile` — non-atomic; P3 finding in r2 §3).

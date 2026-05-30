@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.12"
+version: "1.0.13"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.02.008
 module: monocle-proto
@@ -77,7 +77,7 @@ must hold for any future dispatcher to function.
   `dispatch_envelope` function signature, and the `DispatchError` type
   (or equivalent) are Phase 4 deliverables and will be specified by the
   Phase 4 architecture artifact.
-- **Traces to (historical):** BC-PROTO-002 (SS-core-types-and-abi.md v1.2.8
+- **Traces to (historical):** BC-PROTO-002 (SS-core-types-and-abi.md v1.2.8 <!-- version-pin-historical: at VP-018 authoring time -->
   §Prost Wire Schemas; PRD v1.25 §BC-PROTO-002 Verification subsection).
 
 ### Reframing Rationale (F-R62-7 — PG-5 Historical)
@@ -319,6 +319,8 @@ fn verify_bc_2_02_008() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.13** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

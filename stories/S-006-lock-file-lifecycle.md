@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-006
 epic_id: EPIC-01
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -184,7 +184,7 @@ lock file creation time (BC-2.01.008 PC-1). Implementation:
 
 S-001 (Wave 1): Workspace initialized. `directories 6` and `tempfile 3` pinned in workspace.
 `nix 0.30` pinned. `temp-env 0.3` pinned as dev-dependency.
-`rand = "=0.8.6"` (EXACT pin per SS-deps-pin-manifest.md v1.1.17, §rand row line 43) is the
+`rand = "=0.8.6"` (EXACT pin per SS-deps-pin-manifest.md v1.1.17 §rand row line 43 <!-- version-pin-historical: at S-006 authoring time -->) is the
 canonical version for `OsRng`. `monocle-auth` is NOT a workspace crate (Orchestrator Decision 3);
 `generate_session_token()` is implemented in `monocle-runtime/src/auth.rs` (new module). `rand 0.9` is explicitly REJECTED by the pin
 manifest: `OsRng` moved to a feature flag in 0.9, which is an ergonomic regression that

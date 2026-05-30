@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.14"
+version: "1.0.15"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.003
 module: monocle-runtime
@@ -56,7 +56,7 @@ asserted by source-grep (exactly once, on `auth_router`).
   on authenticated router only; uniform cross-route behavior across all
   authenticated routes including `/status`.
 - **Traces to (historical):** BC-DAEMON-003 (PRD v1.25 §BC-DAEMON-003;
-  SS-daemon-lifecycle.md v1.0.32 §Body Size Limit).
+  SS-daemon-lifecycle.md v1.0.32 §Body Size Limit). <!-- version-pin-historical: at VP-003 authoring time -->
 
 ## Proof Method
 
@@ -224,6 +224,8 @@ fn verify_bc_2_01_003() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.15** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

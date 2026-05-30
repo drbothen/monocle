@@ -122,15 +122,15 @@ SS-tui:
 
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
-  current_version: "1.0.2"
-  last_bump_commit: "e8d1088"
-  last_bump_date: "2026-05-29"
+  current_version: "1.0.3"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 ADR-0008-structural-claim-discipline:
   path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
-  current_version: "1.0.1"
-  last_bump_commit: "12170b457ebea8f775e782d309552b2acb1b3edb"
-  last_bump_date: "2026-05-29"
+  current_version: "1.0.2"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Index / meta documents
@@ -150,27 +150,27 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.17"
-  last_bump_commit: "3688c7b0703f76d70192fbb4542a6303747ad185"
+  current_version: "5.18"
+  last_bump_commit: "[pending-pol11-remediation]"
   last_bump_date: "2026-05-30"
 
 dtu-assessment:
   path: specs/dtu-assessment.md
-  current_version: "1.7.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.7.6"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 prd:
   path: specs/prd.md
-  current_version: "1.27.3"
-  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
-  last_bump_date: "2026-05-28"
+  current_version: "1.27.4"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "1.4.31"
-  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
-  last_bump_date: "2026-05-28"
+  current_version: "1.4.32"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Behavioral Contract files (BC-N.NN.NNN)
@@ -425,9 +425,9 @@ BC-2.05.007:
 
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.5"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 BC-2.06.001:
   path: specs/behavioral-contracts/ss-06/BC-2.06.001.md
@@ -557,9 +557,9 @@ BC-2.06.021:
 
 BC-2.06.022:
   path: specs/behavioral-contracts/ss-06/BC-2.06.022.md
-  current_version: "1.6.1"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.6.2"
+  last_bump_commit: "[pending-pol11-remediation]"
+  last_bump_date: "2026-05-30"
 
 BC-2.06.023:
   path: specs/behavioral-contracts/ss-06/BC-2.06.023.md

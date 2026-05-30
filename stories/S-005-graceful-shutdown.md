@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-005
 epic_id: EPIC-01
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -133,7 +133,7 @@ lock+sock removal invariant).
 - [ ] Hook handlers return 503 + Retry-After: 10 when AppMode is ShuttingDown
 - [ ] Define `DaemonExit` enum with `to_exit_code(&self) -> i32` returning 0/1/2/130/143 per
   POSIX convention in `monocle-runtime/src/lifecycle.rs` (BC-2.01.004 PC-8); `lifecycle::exit_with(reason: DaemonExit) -> !`
-  is the SOLE call-site for `std::process::exit` per SS-conventions-anti-patterns v1.29.5
+  is the SOLE call-site for `std::process::exit` per SS-conventions-anti-patterns v1.29.5 <!-- version-pin-historical: at S-005 authoring time -->
   ('No `std::process::exit()` in handler code')
 - [ ] Install tokio panic hook that logs structured panic info to stderr; propagates default Rust panic exit behavior (no custom exit code)
 - [ ] Integration tests `monocle-runtime/tests/graceful_shutdown.rs`:

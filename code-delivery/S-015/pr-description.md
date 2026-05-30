@@ -246,7 +246,7 @@ They do NOT block merge.
 | Finding | Deferred To | Reason |
 |---------|-------------|--------|
 | `tracing-test 0.2` not in SS-deps-pin-manifest | Architect, wave-gate | Dev-dependency only; no production risk; architect update at Wave 3 gate |
-| BC-2.03.001 PC-3 DeferUntil stale (#34) | PO (mechanical fix, Task #34) | Authority hierarchy: story v1.6 + SS-engine-module v1.1.20 win; BC is stale |
+| BC-2.03.001 PC-3 DeferUntil stale (#34) | PO (mechanical fix, Task #34) | Authority hierarchy: story v1.6 + SS-engine-module v1.1.20 <!-- version-pin-historical: version at S-015 merge time --> win; BC is stale |
 | S-014-ADV: HookDecision Deny→Block naming | Architect, S-014-ADV | Non-blocking naming clarification; no API break |
 
 ---

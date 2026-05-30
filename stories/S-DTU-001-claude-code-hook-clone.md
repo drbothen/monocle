@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-DTU-001
 epic_id: EPIC-DTU
-version: "1.3"
+version: "1.4"
 status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T21:00:00Z
@@ -194,7 +194,7 @@ From `specs/architecture/adr/ADR-0005.md` v1.0.2 (NFR-011 trace):
 | Crate/Package | Version | Usage |
 |---------------|---------|-------|
 | axum | =0.8.9 | HTTP server for clone endpoints |
-| tokio | =1.52.0 | Async runtime (canonical triplet per SS-deps-pin-manifest.md v1.1.18) |
+| tokio | =1.52.0 | Async runtime (canonical triplet per SS-deps-pin-manifest.md v1.1.18 at S-DTU-001 authoring time) |
 | serde_json | =1.0.149 | Request/response JSON |
 | reqwest | =0.13.0 | HTTP client for POSTing to daemon during fidelity tests |
 | serde | 1 (derive) | Derive macros for payload structs; `serde = { version = "1", features = ["derive"] }` |
@@ -217,6 +217,8 @@ Files NOT to create (explicitly out of scope):
 - `dtu-clones/claude-code-hooks-v1/docker-compose.yml` — Phase 4 distribution packaging only
 
 ## §Trace
+
+**v1.4** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.
 
 **v1.3** (2026-05-21) — Status flipped ready→done. PR #3 merged at cfeb1346 on develop. Closes F-WAVE1-003 residual sibling-sweep gap (sprint-state and STORY-INDEX were flipped in 69930c3 + 06c94fb but story-file frontmatter was missed).
 

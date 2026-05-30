@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.14"
+version: "1.0.15"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.008
 module: monocle-runtime
@@ -57,7 +57,7 @@ from the expected secret.
   `monocle-v1:`-prefixed wire format; `constant_time_eq` comparison
   (source-grep negative assertion on raw `==`); defense-in-depth with
   `0o700` runtime dir + `0o600` lock file.
-- **Traces to (historical):** BC-AUTH-001 (SS-daemon-lifecycle.md v1.0.32 §Start
+- **Traces to (historical):** BC-AUTH-001 (SS-daemon-lifecycle.md v1.0.32 §Start <!-- version-pin-historical: at VP-008 authoring time -->
   Sequence).
 
 ## Proof Method
@@ -83,7 +83,7 @@ panic-free behavior with `true` only for the exact expected secret.
 ## Pre-conditions
 
 - Daemon has completed start sequence and written `monocle.lock`.
-- `constant_time_eq ^0.3` is the project pin (per SS-deps-pin-manifest.md
+- `constant_time_eq ^0.3` is the project pin (per SS-deps-pin-manifest.md <!-- version-pin-historical: at VP-008 authoring time -->
   v1.1.17).
 - `rand::rngs::OsRng` is the entropy source (not `thread_rng`).
 
@@ -239,6 +239,8 @@ fn verify_bc_2_01_008() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.15** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

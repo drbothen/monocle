@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-019
 epic_id: EPIC-04
-version: "1.1"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -139,7 +139,7 @@ detail; observable behavior is that the lock file appears within 5 seconds).
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Auto-Start Logic` (at S-019 authoring time):
 - `MONOCLE_NO_AUTOSTART` check is the FIRST action in TUI mode — before any filesystem access
 - Empty string `MONOCLE_NO_AUTOSTART=""` is treated as UNSET — auto-start proceeds normally
 - `MONOCLE_NO_AUTOSTART=0` SUPPRESSES auto-start (any non-empty string suppresses, including "0")
@@ -170,3 +170,7 @@ Files to create:
 
 Files to modify:
 - `monocle/src/main.rs` — invoke `auto_start_daemon()` in the TUI launch path before TUI init
+
+## §Trace
+
+**v1.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

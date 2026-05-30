@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-017
 epic_id: EPIC-04
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -171,7 +171,7 @@ S-015: `ClaudeCodeModule::new()` is available. Register it in the engine registr
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.001)`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.001)` (at S-017 authoring time):
 - SOQ-2 ordering is ABSOLUTE: step 3 < step 8 < step 9. No reordering permitted.
 - `tempfile::persist` MANDATORY for both lock file (step 8) and hooks-settings.json (step 9)
 - `std::fs::write` is FORBIDDEN for both files
@@ -180,7 +180,7 @@ From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (BC-2.04.0
 - `DirBuilder::new().mode(0o700)` — NOT `std::fs::create_dir_all`
 - If any step > 8 fails, lock file MUST be removed before exit
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Hook Tmpfile Generation`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Hook Tmpfile Generation` (at S-017 authoring time):
 - `hooks-settings.json` schema: `PostToolUse` and `PreCompact` MUST be present with empty arrays
 - `SessionStart` must NOT appear in `hooks-settings.json`
 - Only 4 hook types have non-empty arrays (PreToolUse, Notification, Stop, UserPromptSubmit)
@@ -233,3 +233,7 @@ pub struct DaemonState {
 
 S-018 (hook routing + event bus) consumes `DaemonState` directly. S-021 (UDS server) adds
 to `DaemonState.tui_clients`. S-019 (auto-start) calls `daemon_start_sequence()` from TUI launch path.
+
+## §Trace
+
+**v1.1** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

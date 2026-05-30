@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -64,7 +64,7 @@ traces_to: "dependency-graph.md; implements wave execution schedule derived from
 - CI matrix `.github/workflows/ci.yml` passing
 - DTU clone `dtu-claude-code-hooks-v1` Docker container builds and starts
 - DTU clone responds to all 5 hook POST endpoints
-- All EXACT-pin crates match SS-deps-pin-manifest.md v1.1.17
+- All EXACT-pin crates match SS-deps-pin-manifest.md v1.1.17 <!-- version-pin-historical: Wave 1 gate criterion at Wave 1 pass time -->
 
 ---
 

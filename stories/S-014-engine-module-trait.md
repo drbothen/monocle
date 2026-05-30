@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-014
 epic_id: EPIC-03
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -111,7 +111,7 @@ BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits d
 | BC-2.03.004.md v1.0.4 (JC-2 PostToolUse parity) | ~300 |
 | VP-019 file | ~500 |
 | SS-engine-module.md (trait section, ~80 lines) | ~1,200 |
-| SS-deps-pin-manifest.md v1.1.18 (syn 2.0 dev-dep) | ~200 |
+| SS-deps-pin-manifest.md v1.1.18 (syn 2.0 dev-dep) | ~200 | <!-- version-pin-historical: at S-014 authoring time -->
 | async-trait crate documentation | ~300 |
 | Test file | ~600 |
 | **Total estimate** | **~4,950** |
@@ -143,7 +143,7 @@ BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits d
     — VERBATIM from SS-engine-module.md v1.1.20 lines 403-416 (F-D-02 fix: was deferred_until, canonical is redirect_url + diagnostic)
     Provides `pub fn new(decision: HookDecision) -> Self` constructor (returns Self with None for redirect_url and diagnostic).
     Provides builder methods: `pub fn with_diagnostic(self, impl Into<String>) -> Self` and `pub fn with_redirect(self, impl Into<String>) -> Self`
-    — VERBATIM from SS-engine-module.md v1.1.20 lines 432-439.
+    — VERBATIM from SS-engine-module.md v1.1.20 lines 432-439. <!-- version-pin-historical: at S-014 authoring time -->
   - `HookDecision` (enum, `#[non_exhaustive]`: `Allow`, `Block`, `Defer`)
   - NOTE: `DeferUntil` is DROPPED entirely — no HookResponse field uses it in the canonical schema (F-D-03 fix)
   - `EngineMetadataError` (enum, `#[non_exhaustive]`: `HomeUnresolvable`)
@@ -160,7 +160,7 @@ BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits d
   - Map: AC-006 → 19.a+19.b+19.c; AC-002 → 19.b specifically (no-Sealed); each AC maps to one VP-019 assertion
 - [ ] Add `async-trait = "0.1"` to `monocle-core/Cargo.toml`
 - [ ] Add `syn = { version = "2.0", features = ["full"] }` to `monocle-core/Cargo.toml` `[dev-dependencies]`
-  (per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest — syn 2.0 added as dev-dependency for AST audit tests)
+  (per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest <!-- version-pin-historical: at S-014 authoring time --> — syn 2.0 added as dev-dependency for AST audit tests)
 
 ## Previous Story Intelligence
 
@@ -193,7 +193,7 @@ From `architecture/SS-engine-module.md` v1.1.20 §EngineModule Trait Signature:
 | async-trait | 0.1 | `#[async_trait]` macro on trait declaration |
 | serde | 1 | Serialize/Deserialize derive on engine types |
 | thiserror | 2 | `EngineMetadataError` derive |
-| syn | 2.0 (caret) | dev-dependency — AST audit test for `#[non_exhaustive]` policy and HookResponse field set; per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest |
+| syn | 2.0 (caret) | dev-dependency — AST audit test for `#[non_exhaustive]` policy and HookResponse field set; per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest <!-- version-pin-historical: at S-014 authoring time --> |
 
 ## File Structure Requirements
 
@@ -228,6 +228,8 @@ S-015 implementer must NOT use struct-literal construction for `HookResponse` (E
 `#[non_exhaustive]`; only `HookResponse::new(...)` + builder methods are legal from outside `monocle-core`).
 
 ## §Trace
+
+**v1.6** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.
 
 **v1.5 — Path B Wave 6 MSRV propagation** (2026-05-29):
 - BC-2.03.001 input pin bumped v1.0.5 → v1.0.6 (PO commit 5006528 — MSRV 1.86 → 1.88 in BC body).

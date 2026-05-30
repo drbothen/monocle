@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-011
 epic_id: EPIC-02
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -150,7 +150,7 @@ any compiler lint — doing so bypasses the exhaustiveness guarantee that `#[non
 
 | Crate | Version | Usage (test only) |
 |-------|---------|-------|
-| syn | 2.0 (caret) | AST audit in test (dev-dependency); per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest |
+| syn | 2.0 (caret) | AST audit in test (dev-dependency); per SS-deps-pin-manifest v1.1.18 §Phase 1 Pin Manifest <!-- version-pin-historical: at S-011 authoring time --> |
 | quote | 1 | Token stream in AST audit (dev-dependency) |
 
 ## File Structure Requirements
@@ -171,6 +171,8 @@ Files to modify:
 - `monocle-core/Cargo.toml` — add `syn = { version = "2.0", features = ["full"] }` and `quote = "1"` to `[dev-dependencies]`
 
 ## §Trace
+
+**v1.3** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.
 
 **v1.2 — Phase 3.B Batch 3: arch-touching story remediation** (2026-05-20):
 - F-C-01 (HIGH): test file renamed `non_exhaustive_policy.rs` → `enum_audit.rs` throughout (BC-2.02.003

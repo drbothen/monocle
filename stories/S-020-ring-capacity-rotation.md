@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-020
 epic_id: EPIC-04
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -136,7 +136,7 @@ the start sequence. This story's rotation policy configuration is passed during 
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (Step 4)`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §Daemon Start Sequence (Step 4)` (at S-020 authoring time):
 - RAM ring N=4,096; 100 MB per-file threshold; 5 rotation files
 - Background flush task is spawned AT step 4 of start sequence
 - Ring capacity is a compile-time constant — NO runtime override in Phase 1
@@ -165,3 +165,7 @@ Files to modify:
 
 Files to create:
 - `monocle-runtime/tests/ring_capacity_rotation.rs` — capacity and rotation integration tests
+
+## §Trace
+
+**v1.1** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

@@ -1,13 +1,13 @@
 ---
 document_type: prd-supplement-test-vectors
 level: L3
-version: "1.3"
+version: "1.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-18T01:00:00Z
 phase: 1a
 inputs: [prd.md, behavioral-contracts/, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "398e7cd"
+input-hash: "c820ccd"
 traces_to: prd.md
 ---
 
@@ -71,7 +71,7 @@ traces_to: prd.md
 
 > ADR-0005: dual-accept auth. Canonical header `X-Monocle-Authorization: monocle-v1:<64-hex>` takes priority.
 > Compatibility alias `X-Claude-Code-Ide-Authorization: <raw-64-hex>` accepted with WARN deprecation log.
-> Both headers absent → `missing_auth_token`. Alias-path entries are EC-010 from BC-2.01.009 v1.0.4.
+> Both headers absent → `missing_auth_token`. Alias-path entries are EC-010 from BC-2.01.009 v1.0.4 <!-- version-pin-historical: BC version at test-vectors authoring time -->.
 
 | Input | Expected | Category |
 |-------|----------|----------|
@@ -168,6 +168,8 @@ traces_to: prd.md
 ---
 
 ## §Trace
+
+**1.4** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 ### F-R107-1 + GAP-R46-4 PO closure — 2026-05-17T23:00:00Z
 

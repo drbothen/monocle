@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.14"
+version: "1.0.15"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.007
 module: monocle-runtime
@@ -58,7 +58,7 @@ For hook types with no tool surface (`SessionStart`, `UserPromptSubmit`,
   `format_version` first; round-trip preservation of
   `format_version == 1`; absence-of-field for `None`-valued `tool_name`
   / `tool_input` (EC-001 normative `skip_serializing_if` pin).
-- **Traces to (historical):** BC-RING-001 (SS-daemon-lifecycle.md v1.0.32 §Drain).
+- **Traces to (historical):** BC-RING-001 (SS-daemon-lifecycle.md v1.0.32 §Drain). <!-- version-pin-historical: at VP-007 authoring time -->
 
 ## Proof Method
 
@@ -89,12 +89,12 @@ to attempt mutations on the `format_version: u32` value `1` and on the
   orthogonal exhaustive-enum property).
 - `serde 1` (with `derive` feature, declared as
   `serde = { version = "1", features = ["derive"] }`) is the project pin
-  (per SS-deps-pin-manifest.md v1.1.17). The `derive` feature is
+  (per SS-deps-pin-manifest.md v1.1.17 at VP-007 authoring time). The `derive` feature is
   mandatory: `HookEventRecord` carries `#[derive(serde::Serialize,
   serde::Deserialize)]` per SS-daemon-lifecycle.md §Drain, and without
   the `derive` feature the proc-macros `Serialize`/`Deserialize` do not
   compile.
-- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.17)
+- `serde_json 1` is the project pin (per SS-deps-pin-manifest.md v1.1.17 at VP-007 authoring time)
   for emission of the JSONL ring record via
   `serde_json::to_string(&record)`. `serde_json` depends on `serde` but
   the two pins are tracked independently because `serde_json` does not
@@ -110,7 +110,7 @@ to attempt mutations on the `format_version: u32` value `1` and on the
   the BTreeMap-backed `serde_json::Map`), which would silently
   invalidate the counter-example because `to_value().to_string()`
   would then preserve declaration order rather than alphabetize the
-  keys. Per SS-deps-pin-manifest.md v1.1.17 `serde_json 1` pin is
+  keys. Per SS-deps-pin-manifest.md v1.1.17 (at VP-007 authoring time) `serde_json 1` pin is
   default-features (no explicit `features = [...]` override).
 
 ## Post-conditions
@@ -276,6 +276,8 @@ fn verify_bc_2_01_007() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.15** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

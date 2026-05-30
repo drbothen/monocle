@@ -1,13 +1,13 @@
 ---
 document_type: verification-property
 level: L4
-version: "1.0.15"
+version: "1.0.16"
 status: in-development
 producer: vsdd-factory:formal-verifier
 timestamp: 2026-05-19T03:30:00Z
 phase: 1b
 inputs: [prd.md, behavioral-contracts/BC-INDEX.md, architecture/ARCH-INDEX.md]
-input-hash: "7ae5e0d"
+input-hash: "a4e3725"
 traces_to: prd.md
 source_bc: BC-2.01.009
 module: monocle-runtime
@@ -84,7 +84,7 @@ alias).
 
 ## Source Contract
 
-- **BC (primary):** BC-2.01.009 v1.0.6 — Auth Header Validation (Missing
+- **BC (primary):** BC-2.01.009 v1.0.6 <!-- version-pin-historical: at VP-009 authoring time --> — Auth Header Validation (Missing
   and Invalid Token); dual-accept semantics per ADR-0005.
 - **ADR (primary):** ADR-0005 v1.0.2 — Auth Header Dual-Accept — Canonical
   `X-Monocle-Authorization` with `X-Claude-Code-Ide-Authorization`
@@ -98,7 +98,7 @@ alias).
   `/status`, `/shutdown`); Bearer-fallback (or any unrecognized header)
   rejection as missing; retired-body absence.
 - **Traces to (historical):** BC-AUTH-002 (PRD v1.25 §BC-AUTH-002;
-  SS-daemon-lifecycle.md v1.0.32 §Start Sequence; architect adjudication
+  SS-daemon-lifecycle.md v1.0.32 §Start Sequence; <!-- version-pin-historical: at VP-009 authoring time --> architect adjudication
   commit 2db408f — disposition (c) collapsed error taxonomy; F-R62-4
   back-propagation closure landed in arch v1.0.9 commit 8bf3759; ADR-0005
   T-128m R3 dual-accept decision adopted in arch v1.0.29; F-FC-I005
@@ -444,6 +444,8 @@ fn verify_bc_2_01_009() {
 ---
 
 ## §Trace v1.0.1 — Audit R2 Residual RES-03: VP Heading Reconciliation to L4 Template
+
+**v1.0.16** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to authoring-time spec version citations. No normative content changed.
 
 **Bump:** v1.0 → v1.0.1.
 **Predecessor pin:** v1.0 (Dispatch 5a/5b commits 7326ff5 + e3824ec — VP monolith decomposition; Dispatch 7 commit 51e77cb — input-hash population).

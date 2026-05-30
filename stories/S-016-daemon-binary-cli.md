@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-016
 epic_id: EPIC-04
-version: "1.0"
+version: "1.1"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -140,7 +140,7 @@ stub in S-006. The function lives in `monocle-runtime/src/lifecycle.rs`.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-daemon-wiring.md v1.2.0 §CLI Interface`:
+From `architecture/SS-daemon-wiring.md v1.2.0 §CLI Interface` (at S-016 authoring time):
 - `ProjectDirs::from("", "", "monocle")` — NOT `ProjectDirs::new(...)` (the `new` constructor does not exist)
 - 4-level fallback chain is strict: L1 (MONOCLE_RUNTIME_DIR) → L2 (runtime_dir()) → L3 (data_local_dir()) → L4 (fail-fast)
 - Level 4 exit code is 70, not 1
@@ -148,7 +148,7 @@ From `architecture/SS-daemon-wiring.md v1.2.0 §CLI Interface`:
 - Double-fork: daemon must survive parent shell exit (setsid or nohup pattern)
 - No stdout on success for both subcommands
 
-From `architecture/SS-conventions-anti-patterns.md v1.29.5`:
+From `architecture/SS-conventions-anti-patterns.md v1.29.5` (at S-016 authoring time):
 - `nix::sys::signal::kill` for signaling — NOT raw `libc::kill`
 - Structured error types via `thiserror` for `DaemonStartError`
 
@@ -200,3 +200,7 @@ pub enum DaemonStartError {
 
 S-017 (daemon start sequence) calls `resolve_runtime_dir()` as step 1 of the 13-step start
 sequence. S-019 (auto-start) also calls `resolve_runtime_dir()` before the liveness check.
+
+## §Trace
+
+**v1.1** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at story authoring time. No normative content changed.

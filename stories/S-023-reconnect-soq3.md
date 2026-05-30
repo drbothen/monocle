@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-023
 epic_id: EPIC-05
-version: "1.1"
+version: "1.2"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -199,12 +199,12 @@ BC-2.05.006 PC-5), not 100ms.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.4.0 §SOQ-3 Overlay Clear on Disconnect`:
+From `architecture/SS-ipc.md v1.4.0 §SOQ-3 Overlay Clear on Disconnect` (at S-023 authoring time):
 - `TransportEvent::Disconnected` MUST be emitted at the `UdsTransport` level — not in TUI event handler
 - The SOQ-3 ordering (disconnect → clear → reconnect) is enforced at the transport layer, not the application layer
 - SOQ-3 must NOT fire on TUI-initiated graceful disconnect (only on unexpected connection loss)
 
-From `architecture/SS-ipc.md v1.4.0 §Reconnection Behavior`:
+From `architecture/SS-ipc.md v1.4.0 §Reconnection Behavior` (at S-023 authoring time):
 - Backoff cap: 2000ms (2 seconds) — no further increase after Attempt 4+
 - 5-second total window — not configurable in Phase 1
 - Lock file re-read after EACH failed attempt (not just on window expiry)

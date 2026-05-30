@@ -8,12 +8,12 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.4"
+version: "1.0.5"
 producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [SS-core-types-and-abi.md, SS-permissions-phase1.md, product-brief.md]
-input-hash: "172d72f"
+input-hash: "28b32ce"
 traces_to: "F-FC-C001 adversary finding; F-FC-I004 adversary finding; BC-TYPES-001 exemption mechanism; SS-permissions-phase1.md §Decision; brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract)"
 project: monocle
 ---
@@ -186,7 +186,7 @@ v1.0.3 changes (round-57.1 F-R57-1 PG-5 historical-anchor fix):
   ADR authoring §Scope (...)`. The R56.1 "comprehensive PG-5 sweep" missed the ADR class
   entirely; this burst adds the explicit ADR-N sweep to the PG-5 sweep-evidence checklist.
   Note: `traces_to` frontmatter citation remains unchanged — frontmatter is exempt per
-  PG-5 Option B carve-out (codified in SS-conventions-anti-patterns.md v1.25).
+  PG-5 Option B carve-out (codified in SS-conventions-anti-patterns.md v1.25 at ADR-0004 authoring time).
 
 v1.0.2 changes (round-53.1 F-R53-adv-5 brief §-anchor fix):
 - F-R53-adv-5 RESOLVED (LOW — adversary finding R53): `traces_to` frontmatter and
@@ -196,3 +196,7 @@ v1.0.2 changes (round-53.1 F-R53-adv-5 brief §-anchor fix):
   §-heading-existence convention, corrected to `brief §Scope (Public enum extensibility
   forward-compatibility contract)` using the parenthetical-descriptor form. Two sites
   corrected: `traces_to` frontmatter and §Source / Origin body.
+
+## §Trace
+
+**1.0.5** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.

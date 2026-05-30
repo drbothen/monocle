@@ -9,7 +9,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-28T12:00:00Z
 inputs: [research/domain-monocle-vision-synthesis.md, product-brief.md, planning/oq-research.md]
-input-hash: "a9a195a"
+input-hash: "a359e8f"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -56,7 +56,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | thiserror | 2 | Error type derivation | caret pin; 2.x major — do NOT pin to 1.x |
 | anyhow | 1 | Error propagation in binary crate | caret pin |
 | constant_time_eq | 0.3 | Timing-safe byte comparison for auth token validation per BC-AUTH-001 (SS-daemon-lifecycle.md) | caret pin (utility crate; not on untrusted-input deserialization path) |
-| nix | 0.30 | POSIX signal handling for pid-liveness check in BC-DAEMON-005 postcondition 3; `nix::sys::signal::kill(Pid::from_raw(pid), None)` used instead of raw `libc::kill(pid, 0)` to preserve type safety and avoid unsafe blocks | caret pin; NOT `libc` direct usage (bypasses type system); `nix 0.30` is the current stable release (verified 2026-05-14 against crates.io); binding crate decision per F-R71-4b (SS-daemon-lifecycle.md v1.0.13 §Trace) |
+| nix | 0.30 | POSIX signal handling for pid-liveness check in BC-DAEMON-005 postcondition 3; `nix::sys::signal::kill(Pid::from_raw(pid), None)` used instead of raw `libc::kill(pid, 0)` to preserve type safety and avoid unsafe blocks | caret pin; NOT `libc` direct usage (bypasses type system); `nix 0.30` is the current stable release (verified 2026-05-14 against crates.io); binding crate decision per F-R71-4b (SS-daemon-lifecycle.md v1.0.13 §Trace <!-- version-pin-historical: version at F-R71-4b decision time -->) |
 | futures | 0.3 | Async stream abstractions for `FactoryAdapter::subscribe -> StateChangeStream` per BC-FACTORY-001 (SS-core-types-and-abi.md) | caret pin (workspace-level async utilities) |
 | async-trait | 0.1 | Procedural macro enabling `async fn` in trait definitions; used by `EngineModule` and any other async traits in `monocle-core` | caret pin (utility macro; not on untrusted-input path; 0.1.x series is stable and widely used across the Rust ecosystem) |
 | reqwest | 0.13 | HTTP client | EXACT pin (see Patch-Pinning Policy); 0.13.x only — do NOT pin to 0.11 or 0.12 (both stale) |
