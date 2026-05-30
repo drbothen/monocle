@@ -106,22 +106,30 @@ def _resolve_fixture_target(
     Determine where to place a fixture file inside the temporary .factory/ directory.
 
     Reads the optional 'target_subpath' frontmatter field:
-      - 'plans/'         → .factory/plans/<fixture.md>
-      - 'planning/'      → .factory/planning/<fixture.md>
-      - 'code-delivery/' → .factory/code-delivery/<fixture.md>
-      - 'specs/'         → .factory/specs/<fixture.md>
+      - 'plans/'         → .factory/plans/<filename>
+      - 'planning/'      → .factory/planning/<filename>
+      - 'code-delivery/' → .factory/code-delivery/<filename>
+      - 'specs/'         → .factory/specs/<filename>
       - 'STATE.md'       → .factory/STATE.md  (replaces the file directly)
-      - (none/absent)    → .factory/stories/<fixture.md>  (default)
+      - (none/absent)    → .factory/stories/<filename>  (default)
+
+    Reads the optional 'target_filename' frontmatter field to override the
+    destination filename. This allows Pattern B fixtures to be placed with a
+    specific name (e.g., 'S-999-patternb-story.md' for story classification,
+    or 'STORY-INDEX.md' for living-index-doc classification) without renaming
+    the fixture file itself.
 
     Returns the full target Path (file path, not directory). Creates parent dirs.
     """
     target_subpath = _read_frontmatter_str(fixture_path, "target_subpath")
+    # target_filename overrides the destination filename (for Pattern B classification tests)
+    target_filename = _read_frontmatter_str(fixture_path, "target_filename") or fixture_path.name
 
     if target_subpath is None or target_subpath == "stories/":
         # Default: place in stories/ (pre-existing behaviour)
         target_dir = factory_dir / "stories"
         target_dir.mkdir(parents=True, exist_ok=True)
-        return target_dir / fixture_path.name
+        return target_dir / target_filename
 
     if target_subpath == "STATE.md":
         # Place as the STATE.md file itself
@@ -132,7 +140,7 @@ def _resolve_fixture_target(
     subdir_name = target_subpath.rstrip("/")
     target_dir = factory_dir / subdir_name
     target_dir.mkdir(parents=True, exist_ok=True)
-    return target_dir / fixture_path.name
+    return target_dir / target_filename
 
 
 def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:

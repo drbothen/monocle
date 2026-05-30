@@ -5,7 +5,7 @@ check_version_pins.py — POL-11: Version-pin literal freshness enforcement.
 Implements monocle-version-pin-freshness CI gate per ADR-0007
 §Implementation Plan and SS-conventions-anti-patterns.md §Citation Discipline.
 
-POLICY SUMMARY (ADR-0007 v1.0.2):
+POLICY SUMMARY (ADR-0007 v1.0.5):
   Every active version-pin literal in the repository must match the canonical
   current version in .factory/specs/version-pin-registry.yaml (or the cited
   document's frontmatter, as fallback). Active means NOT classified as a
@@ -24,6 +24,24 @@ HISTORICAL ANCHOR EXEMPTIONS (a citation is exempt if any ONE holds):
      line N+1, the pair is detected as a cross-line pin. Historical-anchor exemption
      is checked against BOTH lines: if EITHER carries an exemption marker (annotation
      or time qualifier), the pin is historical.
+
+PATTERN B — YAML FRONTMATTER FORM:
+  In addition to the inline prose form (Pattern A), POL-11 detects the YAML
+  structured inputs[] form used in story and index-doc frontmatter:
+    {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
+  Classification per ADR-0007 §Story inputs[] Historical Provenance:
+  - File path matches stories/S-[0-9]+-*.md (individual story files):
+      → classify HISTORICAL — logged explicitly ("[HISTORICAL] inputs[] provenance,
+        exempt") but NOT checked for staleness. Story inputs[] records are authored-
+        against provenance frozen at story authoring time.
+  - File basename is a living index document (STORY-INDEX.md, BC-INDEX.md,
+    ARCH-INDEX.md, VP-INDEX.md, prd.md, L2-INDEX.md):
+      → classify ACTIVE — checked against registry. Index documents are
+        continuously-maintained and their inputs[] is a live declaration.
+  - Any other file with YAML-form pin:
+      → classify ACTIVE (conservative default per ADR-0007 §POL-11 implementation).
+  The gate never silently ignores the YAML form — handling is always explicit
+  (HISTORICAL or ACTIVE, never unhandled).
 
 SCANNED FILE TYPES: .md, .rs, .toml, .yml, .yaml
 
@@ -146,6 +164,73 @@ _SPLIT_LINE_VERSION_RE = re.compile(
     re.VERBOSE | re.MULTILINE,
 )
 
+# ───────────────────────────────────────────────────────────────────────────────
+# Pattern B — YAML frontmatter inputs[] form.
+#
+# Matches: {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
+#          {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.1"}
+#
+# Also matches multi-line YAML block-sequence entries (each item is one line):
+#   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
+#
+# Pattern groups:
+#   Group 1: full path value (e.g., ".factory/specs/architecture/SS-tui.md")
+#   Group 2: version string (e.g., "1.8.2")
+#
+# Note: the path field value may have no leading quote; version is always quoted
+# in the actual story/index frontmatter. We allow either quoted or unquoted version
+# to be robust, but the canonical form is double-quoted.
+# ───────────────────────────────────────────────────────────────────────────────
+_YAML_INPUT_PIN_RE = re.compile(
+    r"""
+    \{                                   # opening brace of inline mapping
+    \s*path:\s*                          # "path:" key (with optional whitespace)
+    ([^\s,}]+)                           # Group 1: path value (no spaces, commas, or braces)
+    \s*,\s*                              # comma separator
+    version:\s*                          # "version:" key
+    ["']?                                # optional opening quote
+    ([0-9]+\.[0-9]+(?:\.[0-9]+)?)        # Group 2: version literal (N.N or N.N.N)
+    ["']?                                # optional closing quote
+    \s*\}                                # closing brace
+    """,
+    re.VERBOSE,
+)
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Living index document basenames (ADR-0007 §Story inputs[] Historical Provenance).
+#
+# Files whose basename matches one of these are classified as ACTIVE when they
+# contain YAML-form inputs[] pins. These are continuously-maintained index
+# documents, not frozen story records.
+# ───────────────────────────────────────────────────────────────────────────────
+_LIVING_INDEX_BASENAMES: frozenset[str] = frozenset({
+    "STORY-INDEX.md",
+    "BC-INDEX.md",
+    "ARCH-INDEX.md",
+    "VP-INDEX.md",
+    "prd.md",
+    "L2-INDEX.md",
+})
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Individual story file pattern (ADR-0007 §Story inputs[] Historical Provenance).
+#
+# Story files are in stories/ and have basename starting with "S-":
+#   - Standard stories: S-025-tui-skeleton-sessions.md (S-<digits>-<slug>)
+#   - DTU stories: S-DTU-001-claude-code-hook-clone.md (S-DTU-<NNN>-<slug>)
+#   - Prep stories: S-PHASE-3-PREP-spec-kit-mcp-integration.md (S-PHASE-...-<slug>)
+#
+# All share the pattern: in a stories/ directory with basename starting "S-".
+# The living index STORY-INDEX.md is already caught by _LIVING_INDEX_BASENAMES
+# before reaching this check (it does NOT start with "S-" followed by a hyphen
+# and alphanumeric after "S-", but is named "STORY-INDEX" not "S-...").
+#
+# Actually STORY-INDEX.md DOES start with "S" but not with "S-" at basename level:
+# "STORY-INDEX" != "S-*". The classification uses _LIVING_INDEX_BASENAMES FIRST,
+# so STORY-INDEX.md is caught there before the story-file check applies.
+# ───────────────────────────────────────────────────────────────────────────────
+_STORY_FILE_RE = re.compile(r'(?:^|/)stories/S-[^/]+\.md$')
+
 # Artifact ID normalisation: strip .md suffix and trailing whitespace.
 _MD_SUFFIX_RE = re.compile(r'\.md$', re.IGNORECASE)
 
@@ -244,6 +329,10 @@ class ScanStats:
     pins_found: int = 0
     pins_historical: int = 0
     pins_active: int = 0
+    # Pattern B counters (YAML inputs[] form)
+    yaml_pins_found: int = 0
+    yaml_pins_historical: int = 0   # individual story files (exempt by classification)
+    yaml_pins_active: int = 0        # living index docs + other files (checked)
     findings: list[Finding] = field(default_factory=list)
     unknown_artifacts: list[tuple[str, str, str]] = field(default_factory=list)  # (file, artifact_id, version)
 
@@ -365,6 +454,106 @@ def _is_historical_anchor(line: str, in_trace_section: bool) -> bool:
     return False
 
 
+def _classify_yaml_pin(file_path: Path) -> str:
+    """
+    Classify a YAML inputs[] pin per ADR-0007 §Story inputs[] Historical Provenance.
+
+    Returns one of:
+      "HISTORICAL" — individual story file (stories/S-NNN-*.md); exempt from staleness check.
+      "ACTIVE"     — living index document or other file; must be checked against registry.
+
+    The classification is based on the file path, not the pin content:
+    - Individual story files are HISTORICAL by construction (authored-against provenance).
+    - Living index documents (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX, prd, L2-INDEX) are ACTIVE.
+    - All other files with YAML-form pins are ACTIVE (conservative default per ADR-0007).
+
+    Per ADR-0007: the gate must never silently ignore the YAML form. This function
+    ensures every YAML pin is classified explicitly before any decision is made.
+    """
+    # Normalize path to forward-slash form for reliable matching
+    path_str = str(file_path).replace("\\", "/")
+
+    # Check: individual story file (stories/S-NNN-*.md) → HISTORICAL
+    if _STORY_FILE_RE.search(path_str):
+        return "HISTORICAL"
+
+    # Check: living index document by basename → ACTIVE
+    basename = file_path.name
+    if basename in _LIVING_INDEX_BASENAMES:
+        return "ACTIVE"
+
+    # Conservative default: any other file with YAML-form pin → ACTIVE
+    return "ACTIVE"
+
+
+def _process_yaml_pin(
+    file_path: Path,
+    artifact_path: str,
+    cited_version: str,
+    lineno: int,
+    line_text: str,
+    registry: dict[str, str],
+    stats: ScanStats,
+    *,
+    verbose: bool = False,
+) -> None:
+    """
+    Process a single Pattern B (YAML inputs[] form) version-pin match.
+
+    Classification per ADR-0007 §Story inputs[] Historical Provenance:
+    - HISTORICAL: logged explicitly, staleness check skipped.
+    - ACTIVE: artifact ID derived from path basename, verified against registry.
+
+    Modifies stats in-place (yaml_pins_* counters + findings/unknown_artifacts).
+    """
+    stats.yaml_pins_found += 1
+    stats.pins_found += 1
+
+    classification = _classify_yaml_pin(file_path)
+
+    if classification == "HISTORICAL":
+        # Explicit log: never silently skip — classification must be observable.
+        if verbose:
+            # Extract basename for a readable log
+            pin_basename = artifact_path.rstrip("/").split("/")[-1]
+            print(
+                f"  [HISTORICAL] {file_path}: line {lineno}: "
+                f"inputs[] provenance, exempt — {pin_basename} v{cited_version} "
+                f"(individual story file, authored-against record per ADR-0007)"
+            )
+        stats.yaml_pins_historical += 1
+        stats.pins_historical += 1
+        return
+
+    # ACTIVE: derive artifact ID from path basename, check against registry.
+    stats.yaml_pins_active += 1
+    stats.pins_active += 1
+
+    # The path field is the full relative path; the artifact ID is the basename
+    # without .md extension, normalised to the registry format.
+    pin_basename = artifact_path.rstrip("/").split("/")[-1]
+    artifact_id = _normalise_artifact_id(pin_basename)
+
+    if artifact_id not in registry:
+        stats.unknown_artifacts.append(
+            (str(file_path), artifact_id, cited_version)
+        )
+        return
+
+    canonical_version = registry[artifact_id]
+    if cited_version != canonical_version:
+        stats.findings.append(
+            Finding(
+                file_path=str(file_path),
+                line_number=lineno,
+                artifact_id=artifact_id,
+                cited_version=cited_version,
+                canonical_version=canonical_version,
+                line_text=line_text.strip(),
+            )
+        )
+
+
 def _update_trace_state(line: str, in_trace: bool, trace_level: int) -> tuple[bool, int]:
     """
     Given the current line and §Trace tracking state, return updated (in_trace, trace_level).
@@ -445,17 +634,21 @@ def scan_file(
     file_path: Path,
     registry: dict[str, str],
     stats: ScanStats,
+    *,
+    verbose: bool = False,
 ) -> None:
     """
     Scan a single file for active version-pin literals and record findings.
 
-    Detects two forms:
-    - Same-line: "BC-2.06.004 v1.2.1" on one line (primary detection path).
-    - Cross-line split (PG-SPLIT): artifact ID at end of line N, version vX.Y
-      at start of line N+1. Example:
-        line N:   "... removed in BC-2.06.004"
-        line N+1: "v1.1.0 <!-- version-pin-historical: ... -->"
-      Historical-anchor exemption applies if EITHER line carries an exemption marker.
+    Detects THREE forms:
+    - Pattern A (same-line): "BC-2.06.004 v1.2.1" on one line.
+    - Pattern A (cross-line split, PG-SPLIT): artifact ID at end of line N, version vX.Y
+      at start of line N+1. Historical-anchor exemption applies if EITHER line carries
+      an exemption marker.
+    - Pattern B (YAML inputs[] form): {path: .factory/specs/.../SS-tui.md, version: "1.8.2"}
+      in file frontmatter. Classified per ADR-0007 §Story inputs[] Historical Provenance:
+      individual story files → HISTORICAL (logged, not checked); living index docs and
+      other files → ACTIVE (checked against registry). Never silently ignored.
 
     Modifies stats in-place.
     """
@@ -528,6 +721,24 @@ def scan_file(
                         registry, stats,
                         context_line=raw_line,   # version line carries the marker
                     )
+
+        # ── Pattern B: YAML inputs[] form ───────────────────────────────────
+        # Detect {path: <artifact>, version: "<semver>"} in any line.
+        # These appear in YAML frontmatter of story and index-doc files.
+        # The regex is specific enough to avoid false positives in prose.
+        #
+        # Classification (per ADR-0007 §Story inputs[] Historical Provenance):
+        #   - Individual story files (stories/S-NNN-*.md) → HISTORICAL (logged, exempt)
+        #   - Living index docs + other files → ACTIVE (checked against registry)
+        # Never silently ignored — explicit classification is always applied.
+        if "{path:" in raw_line and "version:" in raw_line:
+            for ym in _YAML_INPUT_PIN_RE.finditer(raw_line):
+                artifact_path = ym.group(1)
+                cited_version = ym.group(2)
+                _process_yaml_pin(
+                    file_path, artifact_path, cited_version, lineno, raw_line,
+                    registry, stats, verbose=verbose,
+                )
 
 
 def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
@@ -691,7 +902,7 @@ def main() -> None:
     # Scan
     stats = ScanStats()
     for file_path in files:
-        scan_file(file_path, registry, stats)
+        scan_file(file_path, registry, stats, verbose=args.verbose)
 
     # Report unknown artifacts (maintainability warning, not CI failure)
     if stats.unknown_artifacts:
@@ -756,14 +967,17 @@ def main() -> None:
     if args.verbose:
         print(
             f"\nScan summary:\n"
-            f"  Files scanned:     {stats.files_scanned}\n"
-            f"  Files skipped:     {stats.files_skipped}\n"
-            f"  Lines checked:     {stats.lines_checked}\n"
-            f"  Pins found total:  {stats.pins_found}\n"
-            f"  Pins historical:   {stats.pins_historical}\n"
-            f"  Pins active:       {stats.pins_active}\n"
-            f"  Unknown artifacts: {len(set((a, v) for _, a, v in stats.unknown_artifacts))}\n"
-            f"  Findings (stale):  {n_findings}"
+            f"  Files scanned:         {stats.files_scanned}\n"
+            f"  Files skipped:         {stats.files_skipped}\n"
+            f"  Lines checked:         {stats.lines_checked}\n"
+            f"  Pins found total:      {stats.pins_found}\n"
+            f"  Pins historical:       {stats.pins_historical}\n"
+            f"  Pins active:           {stats.pins_active}\n"
+            f"  Pattern B (YAML) total:      {stats.yaml_pins_found}\n"
+            f"  Pattern B historical (story): {stats.yaml_pins_historical}\n"
+            f"  Pattern B active (index/other): {stats.yaml_pins_active}\n"
+            f"  Unknown artifacts:     {len(set((a, v) for _, a, v in stats.unknown_artifacts))}\n"
+            f"  Findings (stale):      {n_findings}"
         )
 
 
