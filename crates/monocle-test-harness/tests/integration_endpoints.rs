@@ -13,7 +13,7 @@
 //! - AC-001 (5 endpoints implemented)
 //! - BC-HOOK-007 (exactly five hook types)
 //! - BC-HOOK-019 (monocle canonical endpoints, not gene-source paths)
-//! - dtu-assessment.md v1.7.5 §Endpoint matrix
+//! - dtu-assessment.md §Endpoint matrix (implemented against v1.7.5 at S-DTU-001 authoring time)
 
 #[path = "common/mod.rs"]
 mod common;

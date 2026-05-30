@@ -6,7 +6,7 @@
 //! Source authority:
 //! - AC-005 (Rust binary, dtu-claude-code-hooks-v1)
 //! - AC-006 (MONOCLE_HOOK_ENDPOINT_BASE and MONOCLE_NO_AUTOSTART env vars)
-//! - dtu-assessment.md v1.7.5 §Packaging Decision §Environment Variable Overrides
+//! - dtu-assessment.md §Packaging Decision §Environment Variable Overrides (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - BC-HOOK-013 (lock file discovery), BC-HOOK-015 (token extraction)
 
 use std::net::SocketAddr;

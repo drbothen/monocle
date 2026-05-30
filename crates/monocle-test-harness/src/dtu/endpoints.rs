@@ -8,7 +8,7 @@
 //!
 //! Source authority:
 //! - AC-001 (5 endpoints)
-//! - dtu-assessment.md v1.7.5 §Endpoint matrix column "Path"
+//! - dtu-assessment.md §Endpoint matrix column "Path" (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - BC-HOOK-007 (endpoint schema)
 
 use axum::{routing::post, Router};
@@ -38,7 +38,7 @@ pub fn build_router(state: CloneState) -> Router {
 /// The 5 canonical hook POST paths as string constants.
 /// Used by fidelity tests to construct requests without hardcoding strings.
 ///
-/// Verified against dtu-assessment.md v1.7.5 §Endpoint matrix column "Path".
+/// Verified against dtu-assessment.md §Endpoint matrix column "Path".
 pub mod paths {
     /// `POST /hooks/pre-tool-use`
     pub const PRE_TOOL_USE: &str = "/hooks/pre-tool-use";

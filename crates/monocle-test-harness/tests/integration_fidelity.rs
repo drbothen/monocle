@@ -25,7 +25,7 @@
 //! Source authority:
 //! - AC-004 (≥0.95 fidelity against 25-fixture corpus)
 //! - BC-HOOK-007 (scoring function)
-//! - dtu-assessment.md v1.7.5 §DTU Fidelity Measurement Procedure
+//! - dtu-assessment.md §DTU Fidelity Measurement Procedure (implemented against v1.7.5 at S-DTU-001 authoring time)
 
 #[path = "common/mod.rs"]
 mod common;
