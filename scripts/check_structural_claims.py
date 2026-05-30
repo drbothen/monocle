@@ -26,8 +26,13 @@ HISTORICAL ANCHOR EXEMPTIONS (a claim is exempt if any ONE holds):
 SCANNED PATHS (Phase 1):
   .factory/stories/*.md        — Tasks checklists + Downstream Consumer Contract blocks
 
-EXEMPT PATHS:
+EXEMPT PATHS (shared scope with POL-11 per ADR-0008 §Canonical Source Registry; Phase 1
+  scope is stories/ only, so plans/planning/code-delivery/STATE.md are implicitly excluded):
   .factory/cycles/             — closed adversarial cycle records
+  .factory/plans/              — frozen adversary/audit records (historical, not normative)
+  .factory/planning/           — validation reports (historical, not normative)
+  .factory/code-delivery/      — at-merge PR description records (historical, not normative)
+  .factory/STATE.md            — living dashboard/log (excluded as specific file)
   scripts/tests/               — test fixture directory
 
 CANONICAL SOURCE REGISTRY (ADR-0008 §Canonical Source Registry):

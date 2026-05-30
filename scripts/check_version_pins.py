@@ -28,11 +28,21 @@ HISTORICAL ANCHOR EXEMPTIONS (a citation is exempt if any ONE holds):
 SCANNED FILE TYPES: .md, .rs, .toml, .yml, .yaml
 
 EXEMPT PATHS (not scanned):
-  <factory-root>/cycles/  — closed adversarial cycle records (path relative to factory_root)
-  target/                 — cargo build output
-  .git/                   — git internals
-  node_modules/           — not applicable
-  scripts/tests/          — test fixture directory (fixtures are intentionally wrong)
+  <factory-root>/cycles/        — closed adversarial cycle records (path relative to factory_root)
+  <factory-root>/plans/         — frozen adversary/audit records (historical, not normative)
+  <factory-root>/planning/      — validation reports (historical, not normative)
+  <factory-root>/code-delivery/ — at-merge PR description records (historical, not normative)
+  <factory-root>/STATE.md       — living dashboard/log (excluded as specific file, not a dir)
+  target/                       — cargo build output
+  .git/                         — git internals
+  node_modules/                 — not applicable
+  scripts/tests/                — test fixture directory (fixtures are intentionally wrong)
+
+NORMATIVE PATHS (scanned):
+  <factory-root>/stories/       — active story files with version-pin literals
+  <factory-root>/specs/         — all spec subdirectories (SS-*, ADR-*, BC-INDEX, etc.)
+  <factory-root>/prd.md, product-brief.md, dtu-assessment.md — top-level normative docs
+  workspace crates/, .github/, scripts/ (excl. scripts/tests/), root config files
 
 USAGE:
   # Run from workspace root:
@@ -527,9 +537,18 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
     Scans:
     - workspace_root/crates/
     - workspace_root/.github/
-    - workspace_root/scripts/   (excluding scripts/tests/)
+    - workspace_root/scripts/          (excluding scripts/tests/)
     - workspace_root/*.toml, *.yml, *.yaml, *.md at root level
-    - factory_root/             (full spec+stories tree, excluding factory_root/cycles/)
+    - factory_root/stories/            (normative: active story files)
+    - factory_root/specs/              (normative: SS-*, ADR-*, BC-INDEX, version-pin-registry)
+    - factory_root/*.md at top level   (normative: prd.md, product-brief.md, dtu-assessment.md)
+
+    Explicitly excluded from factory_root (historical/living documents, NOT normative):
+    - factory_root/cycles/        — closed adversarial cycle records (pre-existing)
+    - factory_root/plans/         — frozen adversary/audit records (POL-11 scope, ADR-0007)
+    - factory_root/planning/      — validation reports
+    - factory_root/code-delivery/ — at-merge PR description records
+    - factory_root/STATE.md       — living dashboard/log (excluded as specific file)
 
     The factory_root parameter is the resolved Path to the factory-artifacts directory.
     Locally this is workspace_root/.factory; in CI it is workspace_root/.factory-spec
@@ -543,11 +562,18 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
     """
     collected: list[Path] = []
 
-    # Dynamic cycles-exclusion prefix: relative to workspace root, e.g.
-    # ".factory/cycles/" locally or ".factory-spec/cycles/" in CI.
+    # Dynamic factory-root exclusion prefixes: relative to workspace root.
+    # Uses factory_root.name so the same logic works for both:
+    #   local: .factory/plans/, .factory/STATE.md, etc.
+    #   CI:    .factory-spec/plans/, .factory-spec/STATE.md, etc.
     factory_root_name = factory_root.name  # e.g. ".factory" or ".factory-spec"
-    factory_cycles_prefix = factory_root_name + "/cycles/"
-    extra_prefixes = [factory_cycles_prefix]
+    extra_prefixes = [
+        factory_root_name + "/cycles/",        # closed adversarial cycle records (pre-existing)
+        factory_root_name + "/plans/",         # frozen adversary/audit records
+        factory_root_name + "/planning/",      # validation reports
+        factory_root_name + "/code-delivery/", # at-merge PR description records
+        factory_root_name + "/STATE.md",       # living dashboard/log (specific file)
+    ]
 
     def _walk(base: Path, rel_prefix: str = "") -> None:
         """Recursively walk base, skipping excluded dirs."""

@@ -83,18 +83,75 @@ def _read_expected(fixture_path: Path, key: str) -> str | None:
     return None
 
 
+def _read_frontmatter_str(fixture_path: Path, key: str) -> str | None:
+    """Read a string field from a fixture file's frontmatter."""
+    try:
+        text = fixture_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(f"{key}:"):
+            value = stripped.split(":", 1)[1].strip().strip('"').strip("'")
+            return value if value else None
+    return None
+
+
+def _resolve_fixture_target(
+    fixture_path: Path,
+    factory_dir: Path,
+) -> Path:
+    """
+    Determine where to place a fixture file inside the temporary .factory/ directory.
+
+    Reads the optional 'target_subpath' frontmatter field:
+      - 'plans/'         → .factory/plans/<fixture.md>
+      - 'planning/'      → .factory/planning/<fixture.md>
+      - 'code-delivery/' → .factory/code-delivery/<fixture.md>
+      - 'specs/'         → .factory/specs/<fixture.md>
+      - 'STATE.md'       → .factory/STATE.md  (replaces the file directly)
+      - (none/absent)    → .factory/stories/<fixture.md>  (default)
+
+    Returns the full target Path (file path, not directory). Creates parent dirs.
+    """
+    target_subpath = _read_frontmatter_str(fixture_path, "target_subpath")
+
+    if target_subpath is None or target_subpath == "stories/":
+        # Default: place in stories/ (pre-existing behaviour)
+        target_dir = factory_dir / "stories"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        return target_dir / fixture_path.name
+
+    if target_subpath == "STATE.md":
+        # Place as the STATE.md file itself
+        factory_dir.mkdir(parents=True, exist_ok=True)
+        return factory_dir / "STATE.md"
+
+    # All other subpaths: strip trailing slash, create dir, place fixture inside
+    subdir_name = target_subpath.rstrip("/")
+    target_dir = factory_dir / subdir_name
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return target_dir / fixture_path.name
+
+
 def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
     """
     Run POL-11 against a single fixture file.
 
     Creates a minimal test directory containing only the fixture file so the
     scan is isolated. Returns (passed, detail_message).
+
+    Supports 'target_subpath' frontmatter field to place fixtures in exempt
+    directories (plans/, planning/, code-delivery/, STATE.md) for regression
+    testing of path-level exclusions. Default is .factory/stories/ (normative).
     """
     expected_str = _read_expected(fixture_path, "expected_pol11_result")
     if expected_str is None:
         return True, f"  SKIP {fixture_path.name} (no expected_pol11_result field)"
 
     expected_fail = (expected_str == "FAIL")
+    target_subpath = _read_frontmatter_str(fixture_path, "target_subpath") or "stories/"
 
     # Run check_version_pins.py with the fixture file as the only scan target.
     # We pass --workspace-root to a temp directory containing only the fixture,
@@ -102,10 +159,11 @@ def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
     import tempfile, shutil
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        # Copy fixture into a .factory/stories/ subdirectory (simulates scan target)
-        target_dir = tmp_path / ".factory" / "stories"
-        target_dir.mkdir(parents=True)
-        shutil.copy(fixture_path, target_dir / fixture_path.name)
+        factory_dir = tmp_path / ".factory"
+        factory_dir.mkdir(parents=True)
+
+        dest_path = _resolve_fixture_target(fixture_path, factory_dir)
+        shutil.copy(fixture_path, dest_path)
 
         result = subprocess.run(
             [
@@ -122,13 +180,15 @@ def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
 
     if actual_fail == expected_fail:
         status = "FAIL" if expected_fail else "PASS"
-        return True, f"  OK  {fixture_path.name} (expected {status}, got {status})"
+        placement = f"placed in .factory/{target_subpath}"
+        return True, f"  OK  {fixture_path.name} (expected {status}, got {status}) [{placement}]"
     else:
         expected_label = "FAIL" if expected_fail else "PASS"
         actual_label = "FAIL" if actual_fail else "PASS"
         detail = result.stderr.strip()[:200] if result.stderr else result.stdout.strip()[:200]
+        placement = f"placed in .factory/{target_subpath}"
         return False, (
-            f"  ERR {fixture_path.name}: expected {expected_label}, got {actual_label}\n"
+            f"  ERR {fixture_path.name}: expected {expected_label}, got {actual_label} [{placement}]\n"
             f"      stdout: {result.stdout.strip()[:100]}\n"
             f"      stderr: {detail}"
         )
