@@ -41,3 +41,6 @@ target
 
 # Git worktree story branches
 .worktrees/
+
+# Python bytecode cache
+scripts/__pycache__/

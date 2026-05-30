@@ -52,6 +52,9 @@ EXEMPT PATHS (not scanned):
   <factory-root>/planning/      — validation reports (historical, not normative)
   <factory-root>/code-delivery/ — at-merge PR description records (historical, not normative)
   <factory-root>/STATE.md       — living dashboard/log (excluded as specific file, not a dir)
+  <factory-root>/stories/sprint-state.yaml  — living sprint state (accumulates historical pins)
+  <factory-root>/tech-debt-register.md      — living debt register (deferred items, not normative)
+  CLAUDE.md                     — repo-root project operating instructions (living state snapshot)
   target/                       — cargo build output
   .git/                         — git internals
   node_modules/                 — not applicable
@@ -378,6 +381,15 @@ _EXCLUDED_DIRS = {
 _EXCLUDED_PATH_PREFIXES_STATIC: list[str] = [
     "scripts/tests/",   # test fixtures are intentionally stale — excluded from main scan
 ]
+
+# Static root-level file exclusions (exact basename match, no directory prefix).
+# These are living-state documents at the workspace root that accumulate historical
+# version references as a normal part of their function (not normative spec files).
+# Checked in collect_files() during the root-level file walk.
+_EXCLUDED_ROOT_FILES: frozenset[str] = frozenset({
+    "CLAUDE.md",    # repo-root project operating instructions — living state snapshot
+                    # (ADR-0007 v1.0.8 §Living-State Exemption Set; same rationale as STATE.md)
+})
 
 
 @dataclass
@@ -851,11 +863,19 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
     - factory_root/*.md at top level   (normative: prd.md, product-brief.md, dtu-assessment.md)
 
     Explicitly excluded from factory_root (historical/living documents, NOT normative):
-    - factory_root/cycles/        — closed adversarial cycle records (pre-existing)
-    - factory_root/plans/         — frozen adversary/audit records (POL-11 scope, ADR-0007)
-    - factory_root/planning/      — validation reports
-    - factory_root/code-delivery/ — at-merge PR description records
-    - factory_root/STATE.md       — living dashboard/log (excluded as specific file)
+    - factory_root/cycles/                  — closed adversarial cycle records (pre-existing)
+    - factory_root/plans/                   — frozen adversary/audit records (POL-11 scope, ADR-0007)
+    - factory_root/planning/                — validation reports
+    - factory_root/code-delivery/           — at-merge PR description records
+    - factory_root/STATE.md                 — living dashboard/log (excluded as specific file)
+    - factory_root/stories/sprint-state.yaml — living sprint state (accumulates historical pins)
+    - factory_root/tech-debt-register.md    — living debt register (deferred items, not normative)
+
+    Explicitly excluded from workspace root (living documents, NOT normative):
+    - CLAUDE.md — repo-root project operating instructions; living state snapshot that
+      accumulates historical version references (same rationale as STATE.md; ADR-0007
+      v1.0.8 §Living-State Exemption Set). Checked via _EXCLUDED_ROOT_FILES in the
+      root-level file walk (not via extra_prefixes, which is factory-root-relative).
 
     The factory_root parameter is the resolved Path to the factory-artifacts directory.
     Locally this is workspace_root/.factory; in CI it is workspace_root/.factory-spec
@@ -880,6 +900,8 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
         factory_root_name + "/planning/",      # validation reports
         factory_root_name + "/code-delivery/", # at-merge PR description records
         factory_root_name + "/STATE.md",       # living dashboard/log (specific file)
+        factory_root_name + "/stories/sprint-state.yaml",  # living sprint state
+        factory_root_name + "/tech-debt-register.md",      # living debt register
     ]
 
     def _walk(base: Path, rel_prefix: str = "") -> None:
@@ -922,9 +944,13 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
             _walk(scan_root, rel_prefix=scan_root.name + "/")
 
     # Root-level files (Cargo.toml, deny.toml, clippy.toml, etc.)
+    # Living-state files at the workspace root (CLAUDE.md) are excluded via
+    # _EXCLUDED_ROOT_FILES to prevent false-positive stale-pin findings in
+    # documents that are state snapshots rather than normative specification.
     for entry in sorted(workspace_root.iterdir()):
         if entry.is_file() and entry.suffix.lower() in _SCAN_EXTENSIONS:
-            collected.append(entry)
+            if entry.name not in _EXCLUDED_ROOT_FILES:
+                collected.append(entry)
 
     return sorted(set(collected))
 

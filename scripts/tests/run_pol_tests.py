@@ -101,17 +101,21 @@ def _read_frontmatter_str(fixture_path: Path, key: str) -> str | None:
 def _resolve_fixture_target(
     fixture_path: Path,
     factory_dir: Path,
+    workspace_root: Path | None = None,
 ) -> Path:
     """
-    Determine where to place a fixture file inside the temporary .factory/ directory.
+    Determine where to place a fixture file during testing.
 
     Reads the optional 'target_subpath' frontmatter field:
-      - 'plans/'         → .factory/plans/<filename>
-      - 'planning/'      → .factory/planning/<filename>
-      - 'code-delivery/' → .factory/code-delivery/<filename>
-      - 'specs/'         → .factory/specs/<filename>
-      - 'STATE.md'       → .factory/STATE.md  (replaces the file directly)
-      - (none/absent)    → .factory/stories/<filename>  (default)
+      - 'plans/'                 → .factory/plans/<filename>
+      - 'planning/'              → .factory/planning/<filename>
+      - 'code-delivery/'         → .factory/code-delivery/<filename>
+      - 'specs/'                 → .factory/specs/<filename>
+      - 'STATE.md'               → .factory/STATE.md  (replaces the file directly)
+      - 'tech-debt-register.md'  → .factory/tech-debt-register.md  (specific-file exemption)
+      - 'root/'                  → <workspace-root>/<filename>  (workspace-root placement,
+                                   for files like CLAUDE.md excluded via _EXCLUDED_ROOT_FILES)
+      - (none/absent)            → .factory/stories/<filename>  (default)
 
     Reads the optional 'target_filename' frontmatter field to override the
     destination filename. This allows Pattern B fixtures to be placed with a
@@ -136,6 +140,18 @@ def _resolve_fixture_target(
         factory_dir.mkdir(parents=True, exist_ok=True)
         return factory_dir / "STATE.md"
 
+    if target_subpath == "tech-debt-register.md":
+        # Place as factory-root/tech-debt-register.md (specific-file exemption at factory root)
+        factory_dir.mkdir(parents=True, exist_ok=True)
+        return factory_dir / target_filename
+
+    if target_subpath == "root/":
+        # Place at the workspace root (for files like CLAUDE.md excluded via _EXCLUDED_ROOT_FILES)
+        if workspace_root is None:
+            raise ValueError("target_subpath 'root/' requires workspace_root to be provided")
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        return workspace_root / target_filename
+
     # All other subpaths: strip trailing slash, create dir, place fixture inside
     subdir_name = target_subpath.rstrip("/")
     target_dir = factory_dir / subdir_name
@@ -151,8 +167,9 @@ def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
     scan is isolated. Returns (passed, detail_message).
 
     Supports 'target_subpath' frontmatter field to place fixtures in exempt
-    directories (plans/, planning/, code-delivery/, STATE.md) for regression
-    testing of path-level exclusions. Default is .factory/stories/ (normative).
+    directories (plans/, planning/, code-delivery/, STATE.md, tech-debt-register.md,
+    root/) for regression testing of path-level and root-file exclusions.
+    Default is .factory/stories/ (normative).
     """
     expected_str = _read_expected(fixture_path, "expected_pol11_result")
     if expected_str is None:
@@ -170,7 +187,7 @@ def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
         factory_dir = tmp_path / ".factory"
         factory_dir.mkdir(parents=True)
 
-        dest_path = _resolve_fixture_target(fixture_path, factory_dir)
+        dest_path = _resolve_fixture_target(fixture_path, factory_dir, workspace_root=tmp_path)
         shutil.copy(fixture_path, dest_path)
 
         result = subprocess.run(
@@ -186,15 +203,20 @@ def run_pol11_fixture(fixture_path: Path, registry: Path) -> tuple[bool, str]:
 
     actual_fail = (result.returncode != 0)
 
+    # Build human-readable placement label
+    if target_subpath == "root/":
+        target_filename = _read_frontmatter_str(fixture_path, "target_filename") or fixture_path.name
+        placement = f"placed at workspace root as {target_filename}"
+    else:
+        placement = f"placed in .factory/{target_subpath}"
+
     if actual_fail == expected_fail:
         status = "FAIL" if expected_fail else "PASS"
-        placement = f"placed in .factory/{target_subpath}"
         return True, f"  OK  {fixture_path.name} (expected {status}, got {status}) [{placement}]"
     else:
         expected_label = "FAIL" if expected_fail else "PASS"
         actual_label = "FAIL" if actual_fail else "PASS"
         detail = result.stderr.strip()[:200] if result.stderr else result.stdout.strip()[:200]
-        placement = f"placed in .factory/{target_subpath}"
         return False, (
             f"  ERR {fixture_path.name}: expected {expected_label}, got {actual_label} [{placement}]\n"
             f"      stdout: {result.stdout.strip()[:100]}\n"
