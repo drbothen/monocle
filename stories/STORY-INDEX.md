@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.16"
+version: "5.17"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-29T08:00:00Z
+timestamp: 2026-05-30T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.26.15"}
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.17
+
+**F-S025-ADV29-MED-001 S-025-scope-only historical-anchor annotation for stale BC-2.06.004 v1.1.0 pins (ADR-0007 §Historical Anchor Classification)** (2026-05-30):
+- S-025 v1.11 → v1.12: Two body-prose BC-version pins annotated with `<!-- version-pin-historical -->` markers per ADR-0007 §Historical Anchor Classification.
+  - AC-003 (line 62): `BC-2.06.004 v1.1.0 behavior was removed.` — bare active pin form corrected; historically true, not a navigation pointer.
+  - AC-010 (line 122): `removed in BC-2.06.004 v1.1.0` — same defect pattern, same fix.
+- Canonical current version of BC-2.06.004 is v1.2.1 per version-pin-registry.yaml. Citations are intentionally frozen historical facts (ClientDisconnect removal revision), not stale navigation pointers.
+- Sweep-wider result: no additional stale active pins found. Line 108 (`BC-2.06.004 v1.2.1`) is current-canonical and passes POL-11. All remaining BC-2.06.004 version pins are inside §Trace sections (auto-exempt).
+- SE-16d monotonicity: v5.17 timestamp 2026-05-30 >= v5.16 timestamp 2026-05-29. PASS.
 
 ## §Trace v5.16
 

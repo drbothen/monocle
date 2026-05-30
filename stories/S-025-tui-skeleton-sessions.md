@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.11"
+version: "1.12"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -59,7 +59,7 @@ When `TransportEvent::Disconnected` is received on the IPC channel, the TUI tran
 to `Dashboard` mode (discarding any Overlay state) and renders a status bar notification:
 `"[disconnected] reconnecting..."`. The TUI does NOT exit; it enters reconnect polling
 (see S-023 for reconnect logic). There is NO `ClientDisconnect` IPC message — this
-BC-2.06.004 v1.1.0 behavior was removed.
+BC-2.06.004 v1.1.0 behavior was removed. <!-- version-pin-historical: ClientDisconnect removed in v1.1.0 revision; current canonical is v1.2.1 -->
 
 ### AC-004 (traces to BC-2.06.004 postcondition PC-3 — config load on startup)
 On startup, `monocle-tui` calls `load_config(MonocleConfig::config_path()?)` (the free
@@ -119,7 +119,7 @@ also restores the terminal before unwinding.
 ### AC-010 (traces to BC-2.06.004 invariant INV-1 — no ClientDisconnect message)
 The `monocle-tui` codebase MUST NOT send or reference a `ClientToServer::ClientDisconnect`
 message. This variant does not exist in the IPC type system (removed in BC-2.06.004
-v1.1.0). Disconnection is detected exclusively via `TransportEvent::Disconnected`.
+v1.1.0 <!-- version-pin-historical: ClientDisconnect removed in v1.1.0 revision; current canonical is v1.2.1 -->). Disconnection is detected exclusively via `TransportEvent::Disconnected`.
 
 ## Token Budget Estimate
 
@@ -240,6 +240,21 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.12
+
+**F-S025-ADV29-MED-001 S-025-scope-only historical-anchor annotation for stale BC-2.06.004 v1.1.0 pins (ADR-0007 §Historical Anchor Classification)** (2026-05-30):
+
+Two body-prose BC-version pins lacked the historical-anchor marker required by ADR-0007 §Historical Anchor Classification and enforced by POL-11:
+
+- AC-003 (line 62): `BC-2.06.004 v1.1.0 behavior was removed.` — annotated with `<!-- version-pin-historical: ClientDisconnect removed in v1.1.0 revision; current canonical is v1.2.1 -->` on the same line.
+- AC-010 (lines 121-122): `removed in BC-2.06.004 v1.1.0` — annotated with `<!-- version-pin-historical: ClientDisconnect removed in v1.1.0 revision; current canonical is v1.2.1 -->` on the same line as the pin.
+
+Both citations are semantically TRUE historical facts (BC-2.06.004 §Trace confirms ClientDisconnect was removed in the v1.1.0 revision). The canonical current version is v1.2.1 per version-pin-registry.yaml:450-454. These are intentionally frozen historical records, not navigation pointers — correct classification is historical anchor. The bare pin form was the defect; the semantic content is correct.
+
+Sweep-wider result: all other version pins in S-025 body prose are either: (a) current canonical (`BC-2.06.004 v1.2.1` at line 108 — matches registry), or (b) inside §Trace sections (auto-exempt from POL-11). No additional stale active pins found.
+
+SE-16d monotonicity: v1.12 timestamp 2026-05-30 >= v1.11 timestamp 2026-05-29. PASS.
 
 ## §Trace v1.11
 

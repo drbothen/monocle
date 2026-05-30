@@ -150,9 +150,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.16"
-  last_bump_commit: "344366d9412ff2bbcb665c72b7eb89cc1c125b16"
-  last_bump_date: "2026-05-29"
+  current_version: "5.17"
+  last_bump_commit: "[set at F-S025-ADV29-MED-001 fix commit]"
+  last_bump_date: "2026-05-30"
 
 dtu-assessment:
   path: specs/dtu-assessment.md
