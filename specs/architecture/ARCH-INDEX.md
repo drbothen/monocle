@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.20"
+version: "1.0.21"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -132,6 +132,15 @@ whose basename matches `*-INDEX.md` (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX
 EVAL-INDEX, L2-INDEX) or equals `prd.md`. Active set is CLOSED — extension requires ADR
 amendment. Eliminates classification recursion for unclassified doc classes (SS-*, BC-*,
 ADR-*, dep-graph, prd-supplements); ~92 over-flagged inputs[] pins reclassified HISTORICAL.
+v1.0.7 amends Pattern A to be REGISTRY-DRIVEN: the vocabulary of detectable artifact IDs
+for prose/inline version-pin literals is derived from ALL keys in version-pin-registry.yaml
+at runtime — not from a hardcoded prefix alternation (`SS-[a-z-]+\|BC-[0-9.]+`). The
+hardcoded vocabulary omitted dtu-assessment, ADR-*, product-brief, nfr-catalog,
+error-taxonomy, and *-INDEX artifact classes, causing ~59 stale `dtu-assessment.md v1.7.5`
+citations to be invisible to Pass 31 detection. Matcher uses longest-match sort (descending
+ID length) for prefix-disambiguation and word-boundary after version token. Together with
+v1.0.6's closed-rule: complete enforcement surface (which docs are ACTIVE + which IDs are
+detectable both fully specified with no open vocabulary tails).
 ADR-0008 resolves the structural-claim sub-species of the same authoring-time documentation
 drift root (Task #9 m.6 tripwire; Passes 26/27 — module-doc column table + story-body
 type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-check`). Governs
@@ -550,6 +559,20 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
 - INFORMATIONAL: ADR-0008 ratifies a distinct sub-species of the ADR-0007 META-pattern root.
   ADR-0007 is unchanged at v1.0.1. Both ADRs now apply; see ADR-0008 §Relationship to ADR-0007.
 - SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T08:00:00Z (monotonic).
+
+## §Trace v1.0.21
+
+**ADR-0007 v1.0.7 — Pattern A registry-driven amendment (F-S025-ADV31-MED-001)** (2026-05-30):
+
+- NORMATIVE: ADR-0007 Note in ADR Registry updated with v1.0.7 summary. Pattern A amended
+  from hardcoded prefix alternation to registry-key-driven matcher. Vocabulary of detectable
+  artifact IDs = all keys in version-pin-registry.yaml at runtime. Longest-match sort
+  (descending ID length) and word-boundary requirement specified. Hardcoded alternation
+  `(SS-[a-z-]+\|BC-[0-9.]+\|...)` explicitly forbidden in devops implementation.
+- NORMATIVE: version-pin-registry.yaml: ADR-0007 → v1.0.7; ARCH-INDEX → v1.0.21.
+- NORMATIVE: ARCH-INDEX version 1.0.20 → 1.0.21.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch;
+  v1.0.20 and v1.0.21 are distinct bursts on the same calendar day).
 
 ## §Trace v1.0.20
 

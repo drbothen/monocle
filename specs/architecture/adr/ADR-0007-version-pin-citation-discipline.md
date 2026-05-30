@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.6"
+version: "1.0.7"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -147,6 +147,18 @@ A new CI lint (`monocle-version-pin-freshness`) verifies that every active
 version-pin literal in the repository matches the canonical version from the cited
 document's frontmatter. An active version-pin literal is one that is NOT in a
 historical-anchor form (see §Historical Anchor Classification below).
+
+**Pattern A — prose/inline form (NORMATIVE — registry-driven):** The CI gate detects
+inline version-pin literals of the form `<artifact-id>(\.md)?\s+v<semver>` where
+`<artifact-id>` is any key present in `version-pin-registry.yaml`. The vocabulary of
+detectable artifact IDs is derived entirely from the registry — NOT from a hardcoded
+prefix alternation. This means every artifact registered in the registry is automatically
+in scope; adding a new artifact to the registry automatically extends detection coverage
+without any script change. The devops implementation MUST load artifact IDs from the
+registry at runtime, sort them by descending length (longest-first) to ensure longest-match
+precedence when one ID is a prefix of another (e.g., `SS-conventions-anti-patterns` must
+match before `SS-conventions`; `BC-INDEX` must match before `BC-`), and apply a word
+boundary check after the version token to avoid partial-string collisions.
 
 The CI gate applies to the NORMATIVE document classes and is EXEMPT from the EXEMPT
 document classes, both defined in §Enforcement Scan Scope. Summary:
@@ -331,6 +343,50 @@ format (machine-readable for tooling) and the formal historical-anchor classific
 identified the hybrid approach; this ADR specifies it with enough precision for
 implementation.
 
+### Why Pattern A must be registry-driven (v1.0.7 amendment)
+
+The v1.0.0–v1.0.6 Pattern A implementation spec enumerated a hardcoded prefix alternation
+`(SS-[a-z-]+\.md|BC-[0-9.]+)` as the detection vocabulary. Pass 31 adversarial review
+(F-S025-ADV31-MED-001) found ~59 stale active `dtu-assessment.md v1.7.5` <!-- version-pin-historical: version found stale at Pass 31; canonical advanced to v1.7.6 --> citations in
+NORMATIVE scope. These citations were invisible to the hardcoded pattern because
+`dtu-assessment` matches neither `SS-[a-z-]+` nor `BC-[0-9.]+`. The same vocabulary gap
+would also miss `ADR-[0-9]+`, `product-brief`, `nfr-catalog`, `error-taxonomy`, and the
+`*-INDEX` documents — all of which are registered in `version-pin-registry.yaml` and can
+carry active version-pin literals.
+
+**Structural diagnosis:** A hardcoded prefix vocabulary re-triggers the META-pattern with
+each new artifact class that falls outside the current alternation:
+
+| META cycle | What escaped detection | Why |
+|------------|------------------------|-----|
+| Pass 29 | `plans/` and `STATE.md` scope | Scope boundary undefined |
+| Pass 30 | YAML `{path:, version:}` form | Pattern-A grep was prose-only; YAML form blind spot |
+| Pass 31 | `dtu-assessment.md` class | Vocabulary gap in hardcoded alternation |
+
+This is a vocabulary-tail displacement pattern: closing one prefix gap exposes the next.
+The hardcoded alternation can never be complete because new artifact classes are added
+to the registry over the project lifetime.
+
+**Solution (v1.0.7):** The Pattern A matcher is REGISTRY-DRIVEN. The vocabulary of
+detectable artifact IDs equals the set of keys in `version-pin-registry.yaml` at script
+runtime. This closes the vocabulary tail comprehensively — the same way v1.0.6 closed the
+classification tail with the default-HISTORICAL rule. Together the two invariants form a
+complete enforcement surface:
+
+- **Closed-rule (v1.0.6):** which documents' `inputs[]` entries are ACTIVE is enumerated
+  and closed; all others are HISTORICAL by default. No document class is ever "unclassified."
+- **Registry-driven vocabulary (v1.0.7):** which artifact IDs are detectable by Pattern A
+  is derived entirely from the registry; adding a new artifact to the registry automatically
+  extends detection. No vocabulary gap can persist silently.
+
+**Longest-match precedence requirement:** Because `SS-conventions` is a prefix of
+`SS-conventions-anti-patterns`, and `BC-` is a prefix of `BC-INDEX`, a naive
+linear scan would produce incorrect matches. Sorting registry IDs by descending length
+and trying them in that order guarantees that `SS-conventions-anti-patterns` is
+recognized before `SS-conventions`, and `BC-INDEX` before any bare `BC-`-prefixed ID.
+A word boundary (`\b`) after the version token prevents partial-string matches on
+longer version strings.
+
 ## Consequences
 
 ### What is forbidden going forward (post-D-204)
@@ -507,6 +563,16 @@ formal classification (vs implicit exemption), and the opportunistic migration s
    devops spec updated to match the three-branch exhaustive classification. `version-pin-registry.yaml`
    ADR-0007 entry bumped to v1.0.6. ARCH-INDEX.md Note for ADR-0007 updated.
 
+### Immediate (registry-driven Pattern A amendment — F-S025-ADV31-MED-001)
+
+8. Update `ADR-0007` v1.0.6 → v1.0.7: Pattern A spec amended from hardcoded prefix
+   alternation to registry-driven matcher. §Decision CI enforcement gate normative text
+   updated. §Rationale new subsection "Why Pattern A must be registry-driven" added.
+   §Next session dispatches Priority 1 devops dispatch updated to reflect registry-key-driven
+   matcher with longest-match sort and word-boundary requirement; hardcoded alternation
+   explicitly forbidden. `version-pin-registry.yaml` ADR-0007 entry bumped to v1.0.7.
+   ARCH-INDEX.md Note for ADR-0007 updated with v1.0.7 summary.
+
 **ADR Self-Consistency Checklist (pre-commit discipline — codified D-ADV30):**
 
 The §Trace-escaping-into-normative-content defect has appeared 4 times (ADR-0006 indirect
@@ -541,7 +607,7 @@ serves as the durable reference.
 
 | Priority | Dispatch | Instructions |
 |----------|----------|-------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form:** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md\|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply the closed-rule classification per §inputs[] Provenance Classification: (a) if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; (b) if the containing file's basename matches `*-INDEX\.md` regex OR equals `prd.md` → classify ACTIVE → check version against registry; (c) all other files → classify HISTORICAL → skip. The three branches are exhaustive and CLOSED — no file falls through to "unclassified." The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form (REGISTRY-DRIVEN):** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff: (1) Load all artifact IDs from the registry keys. (2) Sort IDs by descending length (longest-first) to guarantee longest-match precedence — `SS-conventions-anti-patterns` must be tried before `SS-conventions`; `BC-INDEX` before `BC-` — preventing partial-prefix false negatives. (3) For each ID (in sorted order), scan each line for the pattern `<id>(\.md)?\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` (illustrative — `SS-tui\.md\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b` or `dtu-assessment\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b`). The word boundary `\b` after the version token prevents collision with longer version strings. Once an ID matches a position on a line, do NOT also try shorter IDs against that same position. This is a registry-key-driven matcher: the vocabulary of detectable artifact IDs is ALL keys present in the registry at script runtime; adding a new registry entry automatically extends detection with no script change. A hardcoded prefix alternation is explicitly forbidden — any pattern of the form `(SS-[a-z-]+\|BC-[0-9.]+\|...)` in the script is a defect against this ADR. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply the closed-rule classification per §inputs[] Provenance Classification: (a) if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; (b) if the containing file's basename matches `*-INDEX\.md` regex OR equals `prd.md` → classify ACTIVE → check version against registry; (c) all other files → classify HISTORICAL → skip. The three branches are exhaustive and CLOSED — no file falls through to "unclassified." The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
 | 2 (HIGH) | state-manager | Seed `.factory/specs/version-pin-registry.yaml` with all 11 SS docs from ARCH-INDEX Document Map + BC-INDEX current version. Each entry: artifact ID, path, current_version (from frontmatter), last_bump_commit (from git log), last_bump_date. |
 | 3 (HIGH) | story-writer | Update story template (`.factory/templates/` or equivalent): remove version literals from `inputs:` example. Add note: "cite artifact by ID only; no version literals in body prose — see ADR-0007". Update STORY-INDEX template if it carries version examples. |
 | 4 (MEDIUM) | product-owner | Update BC template: Architecture Source section — remove `v<version>` from example form. Add note citing ADR-0007. |
@@ -563,6 +629,38 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.7
+
+**Pattern A registry-driven amendment — F-S025-ADV31-MED-001 root fix** (2026-05-30):
+
+- NORMATIVE (F-S025-ADV31-MED-001 closure): §Decision CI enforcement gate paragraph
+  extended with "Pattern A — prose/inline form (NORMATIVE — registry-driven)" block.
+  Specifies that the vocabulary of detectable artifact IDs is derived entirely from
+  `version-pin-registry.yaml` keys at runtime — not from a hardcoded prefix alternation.
+  Registry-key-driven matcher with longest-match sort (descending length) and word-boundary
+  requirement after version token. Closes the vocabulary-tail displacement pattern:
+  Pass 29 = scope gap, Pass 30 = YAML form gap, Pass 31 = vocabulary gap; each was a
+  structural defect at progressively deeper enforcement layers.
+- NORMATIVE: §Rationale new subsection "Why Pattern A must be registry-driven" added.
+  Documents the structural diagnosis (vocabulary-tail displacement pattern), the two
+  invariants that together form a complete enforcement surface (v1.0.6 closed-rule +
+  v1.0.7 registry-driven vocabulary), and the longest-match precedence requirement with
+  worked examples (`SS-conventions-anti-patterns` before `SS-conventions`; `BC-INDEX`
+  before bare `BC-` prefix). Meta-evidence table: Pass 29 scope gap, Pass 30 YAML form
+  gap, Pass 31 vocabulary gap.
+- NORMATIVE: §Implementation Plan "Immediate (registry-driven Pattern A amendment)"
+  subsection added with item 8 documenting this burst's deliverables.
+- NORMATIVE: §Next session dispatches Priority 1 devops dispatch updated. The hardcoded
+  regex `(SS-[a-z-]+\.md\|BC-[0-9.]+)\s+v[0-9]+...` replaced with registry-key-driven
+  matcher specification: load IDs from registry, sort by descending length, scan with
+  per-ID pattern `<id>(\.md)?\s+v[0-9]+\.[0-9]+(\.[0-9]+)?\b`. Hardcoded prefix
+  alternation explicitly forbidden in the implementation ("any pattern of the form
+  `(SS-[a-z-]+\|BC-[0-9.]+\|...)` in the script is a defect against this ADR").
+- NORMATIVE: Version bump 1.0.6 → 1.0.7. `version-pin-registry.yaml` ADR-0007 entry
+  updated. ARCH-INDEX.md Note for ADR-0007 updated.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch;
+  v1.0.6 and v1.0.7 are distinct bursts on the same calendar day).
 
 ## §Trace v1.0.6
 
