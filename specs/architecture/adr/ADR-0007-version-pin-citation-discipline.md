@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.5"
+version: "1.0.6"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -341,7 +341,7 @@ a `§Trace` section:
 - **Forbidden:** Active version-pin literals in artifact bodies, e.g.:
   - `SS-deps-pin-manifest.md v1.2.0` (active pointer in body prose — must be unversioned)
   - `BC-2.06.005 v1.0.6` (active pointer in body prose — must be unversioned)
-  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` (active pointer in INDEX doc frontmatter — see §Story inputs[] Historical Provenance below)
+  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` (active pointer in INDEX doc frontmatter — see §inputs[] Provenance Classification below)
 
 - **Permitted:** Unversioned citations, e.g.:
   - `SS-deps-pin-manifest.md §Phase-1-Pins`
@@ -350,12 +350,12 @@ a `§Trace` section:
 
 - **Permitted:** Historical-anchor form, e.g.:
   - `at time of S-025 authoring, SS-deps-pin-manifest.md v1.2.0` (time-qualified)
-  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` in an individual STORY file (historical provenance — see §Story inputs[] Historical Provenance below)
+  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` in an individual STORY file (historical provenance — see §inputs[] Provenance Classification below)
   - Anything inside a `§Trace` section
 
-### Story inputs[] Historical Provenance
+### inputs[] Provenance Classification
 
-**Decision (human-approved, 2026-05-30, F-S025-ADV30-MED-001 Option A):**
+**Decision (human-approved, 2026-05-30, F-S025-ADV30-MED-001 Option A; extended 2026-05-30, closed-rule ratification):**
 
 Individual story files' `inputs[]` frontmatter YAML pins — e.g. `{path: SS-tui.md, version: "1.8.2"}` —
 are HISTORICAL PROVENANCE records, not active pointers. They record the spec versions a story was
@@ -377,32 +377,56 @@ the story is implemented against current specs. The historical inputs[] record i
 the gate runs — the gate may produce a story revision with updated body content, but inputs[] remains
 the original authoring-time record.
 
-**Index document boundary decision:** Living index documents (STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md,
-VP-INDEX.md, prd.md) whose `inputs[]` arguably should track CURRENT canonical — because they are
-continuously-maintained indices, not frozen story records — are classified as ACTIVE POINTERS, not
-historical provenance. Rationale: (a) index documents are rewritten on every wave-gate and version bump;
-(b) their `inputs[]` is not a "what was I authored against at time T" record — it is a live declaration
-of what the index currently reflects; (c) the continuous-maintenance lifecycle makes stale inputs[] in
-an index document a real defect (the index is incorrect), not a historical artifact (the story was correct
-at its moment). Therefore:
+**Closed rule — default HISTORICAL, active set ENUMERATED and CLOSED:**
+
+`inputs[]` version pins are HISTORICAL (authored-against provenance, exempt from POL-11 staleness) BY
+DEFAULT for ALL document classes. The only documents whose `inputs[]` is classified ACTIVE are a
+CLOSED, ENUMERATED set of living traceability index documents:
+
+> **ACTIVE set (closed):** Any file whose basename matches `*-INDEX.md` (e.g. STORY-INDEX.md,
+> BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, EVAL-INDEX.md, L2-INDEX.md) PLUS `prd.md`.
+> These documents exist specifically to maintain current-state enumeration; their `inputs[]` is a
+> live declaration of what they currently reflect, not an authoring-time provenance record. A stale
+> `inputs[]` in an index document is a real defect (the index is wrong), not a frozen historical fact.
+
+Every other document class — SS-NNN architecture specs, BC-NNN/BC-HOOK-NNN behavioral contracts,
+dependency-graph.md, prd-expansion-scope.md, prd-supplements, verification-property files, ADR files,
+and any future document class not explicitly listed in the active set — is classified HISTORICAL and
+is exempt from POL-11 inputs[] staleness checks.
+
+**The active set is CLOSED.** Adding a new index document to the active set requires an explicit ADR
+amendment (bump ADR-0007, add an §Trace entry documenting the addition). Silent inclusion of a new
+document class in the active set without an ADR amendment is not permitted. This closure prevents
+the meta-pattern recurrence: under a default-ACTIVE rule, every newly encountered document class
+requires individual adjudication, which is itself the classification-recursion the project has fought
+across multiple adversarial passes. A default-HISTORICAL + closed-active-set rule means no document
+class is ever "unclassified" — the safe default applies automatically.
+
+**Rationale for the default-HISTORICAL direction:** Consistent with Option A (human-approved
+2026-05-30): `inputs[]` is honest historical provenance of what an artifact was authored against.
+Minimizing churn is correct — a document bumping its own inputs[] every time any cited spec advances
+is noise, not signal. Only the index documents, whose literal purpose is current-state reflection,
+justify ACTIVE classification.
 
 | Artifact type | inputs[] classification | POL-11 treatment |
 |---------------|------------------------|-----------------|
 | Individual story files (`stories/S-NNN-*.md`) | HISTORICAL (authored-against provenance) | EXEMPT — not scanned for staleness |
-| Living index docs (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX, prd.md) | ACTIVE POINTER | SCANNED — must match canonical current version |
+| Living index docs — basename `*-INDEX.md` or `prd.md` (closed set; see above) | ACTIVE POINTER | SCANNED — must match canonical current version |
+| All other document classes (SS-*, BC-*, ADR-*, dep-graph, prd-supplements, etc.) | HISTORICAL (authored-against provenance) | EXEMPT — not scanned for staleness |
 
 **POL-11 implementation requirement for inputs[] YAML form:**
 
 The CI gate MUST NOT be blind to the YAML `{path:, version:}` form. The gate must:
 1. Detect YAML-form pins: `{path: <artifact>, version: "<semver>"}` in any scanned file's frontmatter.
-2. Apply the active-vs-historical classification per the boundary decision above:
+2. Apply the closed-rule classification:
    - File path matches `stories/S-[0-9]+-*.md` → classify as HISTORICAL → skip staleness check.
-   - File path matches a living index document (see table above) → classify as ACTIVE → check version against registry.
+   - File basename matches `*-INDEX.md` regex OR equals `prd.md` → classify as ACTIVE → check version against registry.
+   - All other files → classify as HISTORICAL → skip staleness check.
 3. For active YAML-form pins, fail with: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`.
 
 The silent blind spot (YAML form not detected at all) is the defect to close. The handling must be
-explicit and intentional: either HISTORICAL (skip with rationale) or ACTIVE (check). Never silently
-ignored.
+explicit and intentional: HISTORICAL (skip with rationale) or ACTIVE (check). Never silently
+ignored. The classification rule is closed: no new document class is ever "unclassified."
 
 ### Convention changes in SS-conventions-anti-patterns.md
 
@@ -469,12 +493,19 @@ formal classification (vs implicit exemption), and the opportunistic migration s
 
 ### Immediate (D-ADV30 — F-S025-ADV30 remediation burst)
 
-4. Update `ADR-0007` v1.0.4 → v1.0.5 with §Story inputs[] Historical Provenance policy,
+4. Update `ADR-0007` v1.0.4 → v1.0.5 with §inputs[] Provenance Classification policy,
    §Trace v1.0.3 split, pipe-escape fix, and ADR self-consistency discipline.
 5. Update `ADR-0008` v1.0.3 → v1.0.4 with §Trace v1.0.2 restoration (mis-inserted entry
    extracted from normative numbered list and placed in correct §Trace section).
 6. Update `SS-conventions-anti-patterns.md` with §ADR Authoring Discipline section codifying
    the pre-commit ADR self-consistency checklist (see below).
+
+### Immediate (closed-rule ratification burst)
+
+7. Update `ADR-0007` v1.0.5 → v1.0.6: §inputs[] Provenance Classification closed rule
+   (default HISTORICAL, active set = `*-INDEX.md` OR `prd.md`, set is CLOSED). Pattern B
+   devops spec updated to match the three-branch exhaustive classification. `version-pin-registry.yaml`
+   ADR-0007 entry bumped to v1.0.6. ARCH-INDEX.md Note for ADR-0007 updated.
 
 **ADR Self-Consistency Checklist (pre-commit discipline — codified D-ADV30):**
 
@@ -510,7 +541,7 @@ serves as the durable reference.
 
 | Priority | Dispatch | Instructions |
 |----------|----------|-------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form:** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md\|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply active-vs-historical classification per §Story inputs[] Historical Provenance boundary decision: if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; if the containing file is a living index doc (STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, prd.md) → classify ACTIVE → check version. The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form:** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md\|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply the closed-rule classification per §inputs[] Provenance Classification: (a) if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; (b) if the containing file's basename matches `*-INDEX\.md` regex OR equals `prd.md` → classify ACTIVE → check version against registry; (c) all other files → classify HISTORICAL → skip. The three branches are exhaustive and CLOSED — no file falls through to "unclassified." The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
 | 2 (HIGH) | state-manager | Seed `.factory/specs/version-pin-registry.yaml` with all 11 SS docs from ARCH-INDEX Document Map + BC-INDEX current version. Each entry: artifact ID, path, current_version (from frontmatter), last_bump_commit (from git log), last_bump_date. |
 | 3 (HIGH) | story-writer | Update story template (`.factory/templates/` or equivalent): remove version literals from `inputs:` example. Add note: "cite artifact by ID only; no version literals in body prose — see ADR-0007". Update STORY-INDEX template if it carries version examples. |
 | 4 (MEDIUM) | product-owner | Update BC template: Architecture Source section — remove `v<version>` from example form. Add note citing ADR-0007. |
@@ -532,6 +563,35 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.6
+
+**inputs[] Provenance Classification — closed-rule ratification closing long-tail over-flagging** (2026-05-30):
+
+- NORMATIVE: §Consequences §Story inputs[] Historical Provenance (v1.0.5 name) renamed to
+  §inputs[] Provenance Classification and substantially extended. The v1.0.5 "Index document boundary decision"
+  sub-section described two artifact classes (individual stories = HISTORICAL; living index docs =
+  ACTIVE) but left ~92 `inputs[]` pins across unclassified document classes (SS-* specs, BC-*
+  contracts, BC-HOOK-* contracts, dependency-graph, prd-expansion-scope, prd-supplements, etc.)
+  subject to the v1.0.5 conservative default of ACTIVE, producing over-flagging in POL-11.
+- NORMATIVE: Closed rule codified: `inputs[]` version pins are HISTORICAL BY DEFAULT for ALL
+  document classes. The ACTIVE set is ENUMERATED and CLOSED: files whose basename matches
+  `*-INDEX.md` OR equals `prd.md`. Current members: STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md,
+  VP-INDEX.md, EVAL-INDEX.md, L2-INDEX.md, prd.md. No other document class is ACTIVE.
+- NORMATIVE: The active set is CLOSED — adding a new member requires an explicit ADR amendment.
+  This closes the classification recursion: under default-ACTIVE, every new document class
+  requires individual adjudication (the meta-pattern the project has fought across multiple
+  adversarial passes). Under default-HISTORICAL + closed-active-set, no class is ever
+  "unclassified." Consistent with Option A (human-approved 2026-05-30): inputs[] is honest
+  historical provenance; minimize churn.
+- NORMATIVE: §Next session dispatches Priority 1 Pattern B devops spec updated to match the
+  closed rule: three exhaustive branches — (a) `stories/S-[0-9]+-*.md` → HISTORICAL; (b)
+  basename matches `*-INDEX\.md` or equals `prd.md` → ACTIVE; (c) all other files → HISTORICAL.
+  No file can fall through to "unclassified."
+- NORMATIVE: §Consequences table updated with third row: "All other document classes (SS-*, BC-*,
+  ADR-*, dep-graph, prd-supplements, etc.) → HISTORICAL → EXEMPT."
+- NORMATIVE: Version bump 1.0.5 → 1.0.6.
+- SE-16d PASS: 2026-05-30 > chain high-water 2026-05-30 (sequential same-day patch).
 
 ## §Trace v1.0.5
 

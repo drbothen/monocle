@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.19"
+version: "1.0.20"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -124,6 +124,14 @@ devops-engineer POL-11-version-pin hook, story-writer and product-owner template
 v1.0.4 adds §Enforcement Scan Scope formalizing NORMATIVE vs EXEMPT document classes for
 POL-11: adds `plans/`, `planning/`, `code-delivery/`, and `STATE.md` to the exempt list
 alongside the existing `cycles/` exemption (ADV-29 scope ratification, human-approved).
+v1.0.5 adds §inputs[] Provenance Classification: individual story inputs[] = HISTORICAL
+provenance (exempt from POL-11); living index doc inputs[] = ACTIVE (scanned).
+v1.0.6 closes the classification with a default-HISTORICAL + closed-active-set rule:
+inputs[] pins are HISTORICAL by default for ALL document classes; ACTIVE only for files
+whose basename matches `*-INDEX.md` (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX,
+EVAL-INDEX, L2-INDEX) or equals `prd.md`. Active set is CLOSED — extension requires ADR
+amendment. Eliminates classification recursion for unclassified doc classes (SS-*, BC-*,
+ADR-*, dep-graph, prd-supplements); ~92 over-flagged inputs[] pins reclassified HISTORICAL.
 ADR-0008 resolves the structural-claim sub-species of the same authoring-time documentation
 drift root (Task #9 m.6 tripwire; Passes 26/27 — module-doc column table + story-body
 type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-check`). Governs
@@ -542,6 +550,18 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
 - INFORMATIONAL: ADR-0008 ratifies a distinct sub-species of the ADR-0007 META-pattern root.
   ADR-0007 is unchanged at v1.0.1. Both ADRs now apply; see ADR-0008 §Relationship to ADR-0007.
 - SE-16d PASS: 2026-05-29T12:00:00Z > chain high-water 2026-05-29T08:00:00Z (monotonic).
+
+## §Trace v1.0.20
+
+**ADR-0007 v1.0.6 — inputs[] closed-rule ratification** (2026-05-30):
+
+- NORMATIVE: ADR-0007 Note in ADR Registry updated: v1.0.5 and v1.0.6 additions documented.
+  v1.0.5: §inputs[] Provenance Classification (story inputs[] = HISTORICAL; living index doc
+  inputs[] = ACTIVE). v1.0.6: closed-rule ratification — default HISTORICAL for all doc classes;
+  ACTIVE set CLOSED to `*-INDEX.md` basename OR `prd.md`; no doc class ever "unclassified."
+- NORMATIVE: version-pin-registry.yaml: ADR-0007 → v1.0.6; ARCH-INDEX → v1.0.20.
+- NORMATIVE: ARCH-INDEX version 1.0.19 → 1.0.20.
+- SE-16d PASS: 2026-05-30 > chain high-water 2026-05-30T01:00:00Z (sequential same-day patch).
 
 ## §Trace v1.0.19
 
