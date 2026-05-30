@@ -5,7 +5,7 @@ check_version_pins.py — POL-11: Version-pin literal freshness enforcement.
 Implements monocle-version-pin-freshness CI gate per ADR-0007
 §Implementation Plan and SS-conventions-anti-patterns.md §Citation Discipline.
 
-POLICY SUMMARY (ADR-0007 v1.0.5):
+POLICY SUMMARY (ADR-0007 v1.0.6):
   Every active version-pin literal in the repository must match the canonical
   current version in .factory/specs/version-pin-registry.yaml (or the cited
   document's frontmatter, as fallback). Active means NOT classified as a
@@ -29,17 +29,18 @@ PATTERN B — YAML FRONTMATTER FORM:
   In addition to the inline prose form (Pattern A), POL-11 detects the YAML
   structured inputs[] form used in story and index-doc frontmatter:
     {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  Classification per ADR-0007 §Story inputs[] Historical Provenance:
-  - File path matches stories/S-[0-9]+-*.md (individual story files):
+  Classification per ADR-0007 §Story inputs[] Historical Provenance (v1.0.6):
+  - File basename matches the regex ^[A-Za-z0-9-]*-INDEX\.md$ (e.g. STORY-INDEX.md,
+    BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, EVAL-INDEX.md, L2-INDEX.md) OR
+    the file basename is exactly "prd.md":
+      → classify ACTIVE — checked against registry. These are continuously-maintained
+        index/top-level documents and their inputs[] is a live declaration.
+  - All other files with YAML-form pins (including SS-*.md, BC-*.md, BC-HOOK-*.md,
+    individual story files S-NNN-*.md, dependency-graph.md, wave-schedule.md,
+    holdout-scenarios.md, prd-expansion-scope.md, and any other non-INDEX/non-prd.md):
       → classify HISTORICAL — logged explicitly ("[HISTORICAL] inputs[] provenance,
-        exempt") but NOT checked for staleness. Story inputs[] records are authored-
-        against provenance frozen at story authoring time.
-  - File basename is a living index document (STORY-INDEX.md, BC-INDEX.md,
-    ARCH-INDEX.md, VP-INDEX.md, prd.md, L2-INDEX.md):
-      → classify ACTIVE — checked against registry. Index documents are
-        continuously-maintained and their inputs[] is a live declaration.
-  - Any other file with YAML-form pin:
-      → classify ACTIVE (conservative default per ADR-0007 §POL-11 implementation).
+        exempt") but NOT checked for staleness. These inputs[] records are authored-
+        against provenance frozen at document authoring time.
   The gate never silently ignores the YAML form — handling is always explicit
   (HISTORICAL or ACTIVE, never unhandled).
 
@@ -197,37 +198,33 @@ _YAML_INPUT_PIN_RE = re.compile(
 )
 
 # ───────────────────────────────────────────────────────────────────────────────
-# Living index document basenames (ADR-0007 §Story inputs[] Historical Provenance).
+# ACTIVE index document pattern (ADR-0007 §Story inputs[] Historical Provenance,
+# v1.0.6 closed-active-set rule).
 #
-# Files whose basename matches one of these are classified as ACTIVE when they
-# contain YAML-form inputs[] pins. These are continuously-maintained index
-# documents, not frozen story records.
+# A YAML inputs[] pin is classified ACTIVE iff the FILE'S BASENAME matches this
+# regex OR is exactly "prd.md". All other files are classified HISTORICAL by
+# default (no conservative-active fallback).
+#
+# The regex matches any filename of the form <word>-INDEX.md (case-sensitive):
+#   STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md,
+#   EVAL-INDEX.md, L2-INDEX.md, and any future *-INDEX.md added to the set.
 # ───────────────────────────────────────────────────────────────────────────────
-_LIVING_INDEX_BASENAMES: frozenset[str] = frozenset({
-    "STORY-INDEX.md",
-    "BC-INDEX.md",
-    "ARCH-INDEX.md",
-    "VP-INDEX.md",
-    "prd.md",
-    "L2-INDEX.md",
-})
+_ACTIVE_INDEX_BASENAME_RE = re.compile(r'^[A-Za-z0-9-]+-INDEX\.md$')
 
 # ───────────────────────────────────────────────────────────────────────────────
-# Individual story file pattern (ADR-0007 §Story inputs[] Historical Provenance).
+# Individual story file pattern (retained for explicit log labelling only).
+#
+# Under the v1.0.6 default-HISTORICAL rule, story files no longer need a special
+# branch — they fall through to the HISTORICAL default. The pattern is kept so
+# that verbose logging can label story-file pins explicitly rather than using
+# the generic "non-index spec" label.
 #
 # Story files are in stories/ and have basename starting with "S-":
 #   - Standard stories: S-025-tui-skeleton-sessions.md (S-<digits>-<slug>)
 #   - DTU stories: S-DTU-001-claude-code-hook-clone.md (S-DTU-<NNN>-<slug>)
 #   - Prep stories: S-PHASE-3-PREP-spec-kit-mcp-integration.md (S-PHASE-...-<slug>)
 #
-# All share the pattern: in a stories/ directory with basename starting "S-".
-# The living index STORY-INDEX.md is already caught by _LIVING_INDEX_BASENAMES
-# before reaching this check (it does NOT start with "S-" followed by a hyphen
-# and alphanumeric after "S-", but is named "STORY-INDEX" not "S-...").
-#
-# Actually STORY-INDEX.md DOES start with "S" but not with "S-" at basename level:
-# "STORY-INDEX" != "S-*". The classification uses _LIVING_INDEX_BASENAMES FIRST,
-# so STORY-INDEX.md is caught there before the story-file check applies.
+# STORY-INDEX.md does NOT match (it is caught by _ACTIVE_INDEX_BASENAME_RE first).
 # ───────────────────────────────────────────────────────────────────────────────
 _STORY_FILE_RE = re.compile(r'(?:^|/)stories/S-[^/]+\.md$')
 
@@ -456,34 +453,41 @@ def _is_historical_anchor(line: str, in_trace_section: bool) -> bool:
 
 def _classify_yaml_pin(file_path: Path) -> str:
     """
-    Classify a YAML inputs[] pin per ADR-0007 §Story inputs[] Historical Provenance.
+    Classify a YAML inputs[] pin per ADR-0007 §Story inputs[] Historical Provenance,
+    v1.0.6 closed-active-set rule.
 
     Returns one of:
-      "HISTORICAL" — individual story file (stories/S-NNN-*.md); exempt from staleness check.
-      "ACTIVE"     — living index document or other file; must be checked against registry.
+      "ACTIVE"     — file basename matches ^[A-Za-z0-9-]+-INDEX\\.md$ OR is "prd.md".
+                     Checked against registry; staleness is a CI failure.
+      "HISTORICAL" — all other files (default). Logged explicitly but NOT checked for
+                     staleness. Covers: SS-*.md, BC-*.md, BC-HOOK-*.md, individual story
+                     files (S-NNN-*.md), dependency-graph.md, wave-schedule.md,
+                     holdout-scenarios.md, prd-expansion-scope.md, and any future
+                     non-INDEX/non-prd.md file that carries YAML inputs[] pins.
 
-    The classification is based on the file path, not the pin content:
-    - Individual story files are HISTORICAL by construction (authored-against provenance).
-    - Living index documents (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX, prd, L2-INDEX) are ACTIVE.
-    - All other files with YAML-form pins are ACTIVE (conservative default per ADR-0007).
+    The classification is based on the file basename only (closed active set):
+    - *-INDEX.md or prd.md → ACTIVE (continuously-maintained live declarations).
+    - Everything else → HISTORICAL by default (authored-against provenance record,
+      frozen at document authoring time).
 
-    Per ADR-0007: the gate must never silently ignore the YAML form. This function
-    ensures every YAML pin is classified explicitly before any decision is made.
+    Per ADR-0007 v1.0.6: the gate must never silently ignore the YAML form. This
+    function ensures every YAML pin is classified explicitly before any decision is made.
+    Never returns an unclassified result.
     """
-    # Normalize path to forward-slash form for reliable matching
-    path_str = str(file_path).replace("\\", "/")
-
-    # Check: individual story file (stories/S-NNN-*.md) → HISTORICAL
-    if _STORY_FILE_RE.search(path_str):
-        return "HISTORICAL"
-
-    # Check: living index document by basename → ACTIVE
     basename = file_path.name
-    if basename in _LIVING_INDEX_BASENAMES:
+
+    # Check: *-INDEX.md basename (closed ACTIVE set) → ACTIVE
+    if _ACTIVE_INDEX_BASENAME_RE.match(basename):
         return "ACTIVE"
 
-    # Conservative default: any other file with YAML-form pin → ACTIVE
-    return "ACTIVE"
+    # Check: prd.md exactly → ACTIVE
+    if basename == "prd.md":
+        return "ACTIVE"
+
+    # Default: HISTORICAL (covers story files, SS-*.md, BC-*.md, BC-HOOK-*.md,
+    # dependency-graph.md, wave-schedule.md, holdout-scenarios.md, prd-expansion-scope.md,
+    # and all other non-index, non-prd.md files).
+    return "HISTORICAL"
 
 
 def _process_yaml_pin(
@@ -514,12 +518,17 @@ def _process_yaml_pin(
     if classification == "HISTORICAL":
         # Explicit log: never silently skip — classification must be observable.
         if verbose:
-            # Extract basename for a readable log
+            # Extract basename for a readable log; label by sub-type for clarity.
             pin_basename = artifact_path.rstrip("/").split("/")[-1]
+            path_str = str(file_path).replace("\\", "/")
+            if _STORY_FILE_RE.search(path_str):
+                reason = "individual story file, authored-against record per ADR-0007 v1.0.6"
+            else:
+                reason = "non-index spec file, default-HISTORICAL per ADR-0007 v1.0.6"
             print(
                 f"  [HISTORICAL] {file_path}: line {lineno}: "
                 f"inputs[] provenance, exempt — {pin_basename} v{cited_version} "
-                f"(individual story file, authored-against record per ADR-0007)"
+                f"({reason})"
             )
         stats.yaml_pins_historical += 1
         stats.pins_historical += 1
@@ -973,9 +982,9 @@ def main() -> None:
             f"  Pins found total:      {stats.pins_found}\n"
             f"  Pins historical:       {stats.pins_historical}\n"
             f"  Pins active:           {stats.pins_active}\n"
-            f"  Pattern B (YAML) total:      {stats.yaml_pins_found}\n"
-            f"  Pattern B historical (story): {stats.yaml_pins_historical}\n"
-            f"  Pattern B active (index/other): {stats.yaml_pins_active}\n"
+            f"  Pattern B (YAML) total:           {stats.yaml_pins_found}\n"
+            f"  Pattern B historical (non-index): {stats.yaml_pins_historical}\n"
+            f"  Pattern B active (*-INDEX/prd.md): {stats.yaml_pins_active}\n"
             f"  Unknown artifacts:     {len(set((a, v) for _, a, v in stats.unknown_artifacts))}\n"
             f"  Findings (stale):      {n_findings}"
         )
