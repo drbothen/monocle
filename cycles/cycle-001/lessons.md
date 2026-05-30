@@ -1908,3 +1908,17 @@ Until the hook is implemented, the SM closure burst MUST include an explicit SE-
 **Pattern:** When an adversarial pass flags N instances of a finding class, the production-grade fix is to find and fix ALL instances of that class in the codebase — not just the N flagged instances. This is a direct implication of CLAUDE.md Principle 4 ("AI-built defects are the AI's responsibility to fix in scope"). The adversary's N flagged instances are a floor, not a ceiling. A sweep that addresses only the flagged N instances is a partial fix that will produce a sibling-extraction finding in the next pass.
 
 **Rule:** When an implementer or test-writer fixes a class of finding (e.g., literal-string-in-test, missing-pub-const, stale-doc-comment), the fix workflow MUST: (1) apply the fix to all N flagged instances, (2) grep the ENTIRE codebase for the same pattern signature, (3) apply the fix to all grep hits not already addressed. Report the total hits found vs flagged count in the commit message (e.g., "Fixed 6 instances: 3 flagged by adversary + 3 additional found by sweep"). A fix that reports 3-of-3 when grep would have found 6-of-6 is incomplete.
+
+---
+
+### L-W6-S025-008: Enforcement gates must themselves be verified to actually scan the intended corpus
+
+**Date:** 2026-05-30
+**Severity:** codified (process-gap — closed in scope D-208)
+**Origin:** S-025 adversarial Pass 29 [process-gap]: POL-11 was live in CI but collect_files() was hardcoded to `.factory` instead of reading the `--factory-root` flag value, causing it to scan ZERO files on the CI runner (where factory-artifacts are checked out to `.factory-spec`). First CI run of POL-11 scanned 0 files and reported PASS vacuously.
+
+**Pattern:** When a new CI enforcement gate is deployed for the first time, its "PASS" result is ambiguous: it may pass because there are no violations, or because it is scanning an empty or wrong corpus. The devops engineer who implements a gate and the adversary who reviews the next pass must both verify the gate's scope empirically — not just that the gate runs without error. A gate that reports 0 findings after scanning 0 files is indistinguishable from a gate that legitimately finds no violations without an explicit scope-verification step.
+
+In the S-025 cycle: POL-11 deployed at Pass 28 (f0926fe). Pass 28 adversary ran with POL-11 reporting "PASS" but did not verify file count. Pass 29 adversary [process-gap] correctly flagged this. Resolution required: devops scope fix (adaf9d2), architect ADR-0007 v1.0.4 (§Enforcement Scan Scope ratified; exempt dirs listed), corpus sweep (0d190a5). This was the 11th META-pattern instance — the enforcer itself had a scope bug on first deployment.
+
+**Rule:** When a CI enforcement gate is deployed or modified, the deployment commit MUST include a dry-run output line reporting the number of files scanned (e.g., "541 files scanned, 0 findings"). The adversarial pass that follows a new gate deployment MUST verify the scanned-file count is non-zero and plausible for the corpus size. If the scanned-file count is zero or suspiciously low, this is a BLOCKER finding — not a LOW or NIT. The gate is not live until scope is empirically verified.

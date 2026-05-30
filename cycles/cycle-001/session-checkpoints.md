@@ -331,6 +331,20 @@ Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE
 
 ---
 
+## Checkpoint v6.56 (archived from STATE.md on 2026-05-30 when v6.57 replaced it)
+
+**S-025 Pass 28 3-TRACK + DEVOPS CRITICAL / PASS 29 READY. STATE v6.56.**
+
+- develop @ 7a52041 (S-023 merge). 26/33 done (156/195 pts, 80%). 852+ tests.
+- S-025 branch: feature/S-025-tui-skeleton-sessions @ f0926fe (POL-11+POL-12 LIVE).
+- Counter: 0/3. Pass 28 MED (2 findings: §Downstream Consumer Contract struct-shape + ADR-0008 off-by-2).
+- META-pattern: 10 instances. Both sub-species (literal-pin + structural-claim) bound by 2 ADRs + 2 POL CI gates.
+- POL-11 self-test caught 13 residual stale pins that 28 prior passes missed.
+- Artifact versions (v6.56): ADR-0007 v1.0.2. ADR-0008 v1.0.1. S-025 v1.11. STORY-INDEX v5.16. PRD v1.27.3. ARCH-INDEX v1.0.18.
+- Pass 29 pending CI green on f0926fe.
+
+---
+
 ## Checkpoint v6.39 (archived from STATE.md on 2026-05-29 when v6.40 replaced it)
 
 **S-025 PASS 16 MED CLOSED (7-ROUND, PATH B) / PASS 17 READY. STATE v6.39.**

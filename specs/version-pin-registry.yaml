@@ -120,6 +120,12 @@ SS-tui:
 # ADR files
 # ───────────────────────────────────────────────────────────────────────────────
 
+ADR-0005:
+  path: specs/architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md
+  current_version: "1.0.2"
+  last_bump_commit: "ca87a71"
+  last_bump_date: "2026-05-28"
+
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
   current_version: "1.0.4"

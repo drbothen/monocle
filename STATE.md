@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.56"
+version: "6.57"
 status: active
 producer: state-manager
 timestamp: 2026-05-30T00:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 28 3-TRACK + DEVOPS CRITICAL elevation (D-207). 2 MED findings closed: architect 12170b4 (ADR-0008 v1.0.1 line-range fix + self-application policy; SS-conventions v1.32.3) + story-writer 344366d (S-025 v1.11 §Downstream Consumer Contract historical-anchor; STORY-INDEX v5.16) + devops f0926fe/5ea8ef3 (POL-11+POL-12 LIVE in CI; 13 residual stale pins inline-fixed; version-pin-registry.yaml 91 entries). Counter HOLDS 0/3. Pass 29 pending CI green on f0926fe. POL-11+POL-12 FIRST TIME LIVE — Pass 29 is empirical test of enforcement effectiveness."
+current_step: "S-025 Pass 29 MED (D-208). F-S025-ADV29-MED-001 CLOSED (BC-2.06.004 pins; story-writer 3688c7b+2c751c8+0d190a5). [process-gap] POL-11 scope bug CLOSED (devops aa0a5d6+adaf9d2; architect ADR-0007 v1.0.4 72e065b; ARCH-INDEX v1.0.19 43c8687). POL-11 now: 541 files, 0 findings. Counter HOLDS 0/3 (Pass 29 was MED). Pass 30 pending CI green on feature branch adaf9d2 after this factory-artifacts push."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation (D-207); 13 residual stale pins caught by POL-11 self-test inline-fixed; ADR-0007/ADR-0008 + POL-11/POL-12 architecturally + technically complete; Pass 29 pending CI green verification on f0926fe."
-awaiting: "CI green on PR #28 HEAD f0926fe (10 jobs: 9 prior + new pol-lint). Then Pass 29 adversary at post-fix HEAD. Target: counter 0/3 → 1/3. Both META-pattern sub-species (literal-pin + structural-claim) architecturally + technically bound. POL-11+POL-12 LIVE (FIRST TIME). Task #9 remaining: m.3 (story-writer template), m.4 (PO BC template), m.5 (CODIFY-001 sunset doc), m.8 (S-028 cross-story wave-gate), m.9 NEW (architect pre-commit self-consistency check protocol)."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation; 13 residual stale pins caught by POL-11 self-test; ADR-0007/ADR-0008 + POL-11/POL-12 complete. D-208: Pass 29 MED; POL-11 scope bug fixed; corpus sweep; ADR-0007 v1.0.4; ARCH-INDEX v1.0.19; Pass 30 pending CI on adaf9d2."
+awaiting: "CI green on PR #28 feature branch adaf9d2 (all jobs including pol-lint). Then Pass 30 adversary. Target: counter 0/3 → 1/3. POL-11 scope bug fixed; 541 files scanned; 0 findings. Task #9 remaining: m.3 (story-writer template), m.4 (PO BC template), m.5 (CODIFY-001 sunset doc), m.8 (S-028 cross-story wave-gate), m.9 NEW (architect pre-commit self-consistency check protocol)."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -43,7 +43,7 @@ durable_task_register:
     - id: "#34"
       subject: "BC-2.03.001 PC-3 DeferUntil cleanup"
       status: pending
-      detail: "BC-2.03.001 v1.0.5 PC-3 still enumerates DeferUntil in supporting types. Authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.20 (no DeferUntil). PO mechanical fix."
+      detail: "BC-2.03.001 v1.0.7 PC-3 still enumerates DeferUntil in supporting types. Authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.26 (no DeferUntil). PO mechanical fix."
       blocking: false
     - id: "BC-HOOK-034-typo"
       subject: "BC-HOOK-034 typo decorated_by -> deprecated_by"
@@ -171,7 +171,7 @@ durable_task_register:
       detail: "develop branch protection rule has required-status-checks enabled but no specific check contexts configured (effectively a no-op). Requires admin escalation. Surface to human owner (Joshua Magady)."
       blocking: false
     - id: "F-S025-ADV13-NIT-003"
-      subject: "BC-2.06.016 v1.0.8 §Trace line 230 stale 'Follow-up required' note"
+      subject: "BC-2.06.016 v1.0.9 §Trace line 230 stale 'Follow-up required' note"
       status: pending
       detail: "BC-2.06.016 line 230 note about SS-tui line 668 is stale (already uses bracketed form per 740465d). Cosmetic. Routing: product-owner. Anchored to Task #9 post-merge PO sweep."
       blocking: false
@@ -213,7 +213,7 @@ durable_task_register:
     - id: "F-S025-ADV24-MED-002"
       subject: "VP-body SS-deps-pin-manifest.md v1.1.17 stale across 14 VP files (45 occurrences)"
       status: pending
-      detail: "14 VP files (vp-001..vp-021), 45 occurrences citing SS-deps-pin-manifest.md v1.1.17 (canonical v1.2.0). ROUTING: phase-5 system-level deferral. Task #9 anchored. POL-11 (f0926fe) will gate further instances."
+      detail: "14 VP files (vp-001..vp-021), 45 occurrences citing SS-deps-pin-manifest.md v1.1.17 (canonical v1.2.0). ROUTING: phase-5 system-level deferral. Task #9 anchored. POL-11 (f0926fe) will gate further instances. NOTE: POL-11 excludes VP files from freshness enforcement (normative scope only); these will be addressed at phase-5."
       blocking: false
     - id: "Task-9-m8-S028-cross-story"
       subject: "Task #9 m.8 — wave-gate sweep: S-028 lines 63+147 cross-story drift propagation (BC-5.39.002 PC2)"
@@ -260,7 +260,7 @@ durable_task_register:
     - "Full historical process_discoveries (L-001..L-NEW series) archived to cycles/cycle-001/burst-log.md at D-207 compaction."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.56 (D-207) — 2026-05-30T00:00:00Z
+  ZERO-CONTEXT RESUME CHECKPOINT v6.57 (D-208) — 2026-05-30T00:00:00Z
   ============================================================================
 
   YOUR FIRST 5 COMMANDS (RUN IN ORDER):
@@ -268,16 +268,16 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.56, durable_task_register, RECURRENCE WATCH.
+  2. Read this STATE.md fully — especially §Trace v6.57, durable_task_register, RECURRENCE WATCH.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
            prompt="cd /Users/jmagady/Dev/monocle && run factory-worktree-health skill on this project")
 
-  4. Verify CI status on PR #28 HEAD f0926fe:
+  4. Verify CI on PR #28 (feature/S-025-tui-skeleton-sessions @ adaf9d2):
        gh -R drbothen/monocle pr view 28 --json statusCheckRollup,headRefOid
-     Required: all 10 jobs SUCCESS (9 prior + new pol-lint job). If CI not yet run, trigger:
-       gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
+     Required: all jobs SUCCESS including pol-lint. pol-lint now scans 541 normative files.
+     If CI not yet run: gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
 
   5. Based on CI result, execute NEXT ACTION below.
 
@@ -285,93 +285,93 @@ next_session_resume_protocol: |
 
   Story: S-025 TUI Skeleton + Sessions Panel (EPIC-06, Wave 6, 8 pts)
   PR: #28 (https://github.com/drbothen/monocle/pull/28) — draft
-  S-025 branch: feature/S-025-tui-skeleton-sessions @ f0926fe
-  factory-artifacts: @ D-207 burst SHA (this commit — run: git -C .factory log -1 --format='%h %s')
+  S-025 branch: feature/S-025-tui-skeleton-sessions @ adaf9d2 (POL-11 normative-only scope)
+  factory-artifacts: @ D-208 burst SHA (run: git -C .factory log -1 --format='%h %s')
   Worktree path: /Users/jmagady/Dev/monocle/.worktrees/S-025/
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   CYCLE-001 SUMMARY (1 paragraph):
-  S-025 has been through 28 adversarial passes. Counter stalled at 0/3 for 10 consecutive
-  convergence-attempt-first-passes due to META-pattern recurrence (version-pin/structural-claim
-  drift). Architectural resolution via ADR-0007 (literal-pin, Pass 25) + ADR-0008
-  (structural-claim, Pass 27). Technical enforcement landed at Pass 28 via POL-11 + POL-12 CI
-  hooks (devops f0926fe). 13 residual stale pins that 28 prior adversarial passes missed were
-  caught by POL-11 self-test — empirical proof that enforcement >> codification alone.
-  Pass 29 is the FIRST pass with both ADRs + both POL CI gates LIVE.
+  S-025 has been through 29 adversarial passes. Counter at 0/3. Pass 29 had 1 MED finding
+  (BC-2.06.004 stale pins in story) and a [process-gap] (POL-11 was scanning ZERO files — scope
+  bug). Both closed in D-208: story-writer cascade (S-025 v1.12), devops POL-11 scope fix
+  (adaf9d2, 541 normative files), architect ADR-0007 v1.0.4 (§Enforcement Scan Scope ratified).
+  Corpus sweep (0d190a5) propagated through normative layer. POL-11: 0 findings on 541 files.
+  Pass 30 is the next empirical test of enforcement. This was the 11th META instance — the
+  enforcer itself had a scope bug on first deployment.
 
   NEXT ACTION (decision tree):
 
-  (A) CI all green on f0926fe (10/10 jobs SUCCESS incl. pol-lint):
-    Dispatch Pass 29 adversary (fresh context, information asymmetry):
-    - Read passes 21-28 for attack-angle exhaustion map
-    - 5 new attack angles MUST rotate from prior passes (alpha-2 through nu-2 exhausted)
-    - Counter target 0/3 → 1/3 (first advance after 10 stalls)
+  (A) CI all green on adaf9d2 (all jobs SUCCESS incl. pol-lint):
+    Dispatch Pass 30 adversary (fresh context, information asymmetry):
+    - Read passes 22-29 for attack-angle exhaustion map
+    - Rotate to unexplored lens axes (passes 22-29 angles exhausted)
+    - Counter target 0/3 → 1/3
     - 4 possible outcomes:
-      (a) CLEAN → META-pattern RESOLVED at root via 2-ADR + 2-POL architectural intervention
-      (b) NEW different-class defect → species bounded; trajectory advances with new finding
-      (c) 11th META instance in bound sub-species → POL implementation gap (codification failure)
-      (d) 4th ADR same-burst defect → Pattern-of-Patterns tripwire FIRES → dispatch
-          architect-protocol-improvement (Task #9 m.9)
+      (a) CLEAN → 11 META instances fully bound; enforcement working
+      (b) NEW different-class defect → trajectory advances
+      (c) 12th META instance in bound sub-species → POL deeper gap
+      (d) 4th ADR same-burst defect → Task #9 m.9 architect-protocol-improvement fires
     Mandatory adversary briefing files (read in order before dispatching):
-      .factory/STATE.md (v6.56); adversarial-pass-21..pass-28.md; architect-decisions-pass-1.md;
+      .factory/STATE.md (v6.57); adversarial-pass-22..pass-29.md; architect-decisions-pass-1.md;
       architect-decisions-pass-2.md; text-style-adjudication.md; red-gate-log.md;
-      .factory/stories/S-025-tui-skeleton-sessions.md (v1.11);
-      .factory/specs/architecture/adr/ADR-0007.md (v1.0.2);
-      .factory/specs/architecture/adr/ADR-0008.md (v1.0.1);
+      .factory/stories/S-025-tui-skeleton-sessions.md (v1.12);
+      .factory/specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md (v1.0.4);
+      .factory/specs/architecture/adr/ADR-0008-structural-claim-discipline.md (v1.0.3);
       CLAUDE.md (project principles).
       All cycle files: .factory/cycles/cycle-001/S-025/
 
   (B) CI fails on pol-lint job:
-    pol-lint caught a residual stale pin or structural claim devops self-test missed.
     Read failure: gh -R drbothen/monocle run view <run-id> --log-failed
     Dispatch devops-engineer or appropriate fix agent for the specific finding.
-    Re-verify CI before Pass 29.
+    Re-verify CI before Pass 30.
 
   (C) CI fails on other job (regression):
-    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 29.
+    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 30.
 
   (D) CI has not queued/run yet:
     Trigger: gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
     If GitHub Actions stuck, surface to human.
 
-  KEY COMMITS (Pass 28 round closures):
-    Architect 12170b4 (factory-artifacts): ADR-0008 v1.0.1 + SS-conventions v1.32.3 line-range fix
-    Story-writer 344366d (factory-artifacts): S-025 v1.11 + STORY-INDEX v5.16 historical-anchor
-    Devops 5ea8ef3 (factory-artifacts): version-pin-registry.yaml seed + S-028 annotation
-    Devops f0926fe (S-025 branch): POL-11+POL-12 implementation + 13 inline residual stale-pin fixes
-    State-manager D-207 SHA: run git -C .factory log -1 --format='%H' (this commit)
+  KEY COMMITS (Pass 29 round closures):
+    Story-writer 3688c7b (factory-artifacts): S-025 v1.12 BC-2.06.004 historical-anchor annotations
+    Story-writer 2c751c8 (factory-artifacts): 18-story cascade; STORY-INDEX v5.17
+    Corpus sweep 0d190a5 (factory-artifacts): normative propagation; STORY-INDEX v5.18; PRD v1.27.4
+    Architect 43c8687 (factory-artifacts): ADR-0007 v1.0.4; ADR-0008 v1.0.3; ARCH-INDEX v1.0.19
+    Devops adaf9d2 (S-025 branch): POL-11 normative-only scope; 541 files; 0 findings
+    State-manager D-208 SHA: run git -C .factory log -1 --format='%H'
 
-  ARTIFACT VERSIONS (D-207 canonical state):
+  ARTIFACT VERSIONS (D-208 canonical state):
     SS-tui v1.8.2 | SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.3
     SS-daemon-wiring v1.3.0 | SS-daemon-lifecycle v1.0.33
     SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.19
     SS-permissions-phase1 v1.5.2
-    ARCH-INDEX v1.0.18 | ADR-0007 v1.0.2 | ADR-0008 v1.0.1 (UPDATED from v1.0.0)
-    S-025 v1.11 (UPDATED) | STORY-INDEX v5.16 (UPDATED)
-    BC-INDEX v1.32 (113 BCs) | PRD v1.27.3
+    ARCH-INDEX v1.0.19 (UPDATED) | ADR-0007 v1.0.4 (UPDATED) | ADR-0008 v1.0.3 (UPDATED)
+    S-025 v1.12 (UPDATED) | STORY-INDEX v5.18 (UPDATED)
+    BC-INDEX v1.32 (113 BCs) | PRD v1.27.4 (UPDATED)
     rust-toolchain 1.88 | time 0.3.47 | bytes 1.11.1
 
-  META-PATTERN ESCALATION LADDER (10 instances — both sub-species BOUND):
+  META-PATTERN ESCALATION LADDER (11 instances):
     Pass 9 vacuous-mirror (test-assertion) | distinct species
     Pass 16 ADR-0006 audit-table (struct-metadata) | distinct species
-    Pass 18 impl-code worktree pointers (literal-pin) | ADR-0007/POL-11 LIVE f0926fe
+    Pass 18 impl-code worktree pointers (literal-pin) | ADR-0007/POL-11 LIVE adaf9d2
     Pass 22 spec-filename broken anchor (filename-resolution) | distinct species
-    Pass 23 BC-body→arch-doc pins (literal-pin) | ADR-0007/POL-11 LIVE f0926fe
-    Pass 24 sibling-artifact (story inputs[] + VP, literal-pin) | ADR-0007/POL-11 LIVE f0926fe
-    Pass 25 code-citation BC-version pins (literal-pin) | ADR-0007/POL-11 LIVE f0926fe
-    Pass 26 module-doc structural-spec table (structural-claim #1) | ADR-0008/POL-12 LIVE f0926fe
-    Pass 27 story-body type-name (structural-claim #2) | ADR-0008/POL-12 LIVE f0926fe
-    Pass 28 story-body §Downstream Consumer Contract struct-shape (structural-claim #3) | ADR-0008/POL-12 LIVE f0926fe
+    Pass 23 BC-body→arch-doc pins (literal-pin) | ADR-0007/POL-11 LIVE adaf9d2
+    Pass 24 sibling-artifact (story inputs[] + VP, literal-pin) | ADR-0007/POL-11 LIVE adaf9d2
+    Pass 25 code-citation BC-version pins (literal-pin) | ADR-0007/POL-11 LIVE adaf9d2
+    Pass 26 module-doc structural-spec table (structural-claim #1) | ADR-0008/POL-12 LIVE adaf9d2
+    Pass 27 story-body type-name (structural-claim #2) | ADR-0008/POL-12 LIVE adaf9d2
+    Pass 28 story-body §Downstream Consumer Contract struct-shape (structural-claim #3) | ADR-0008/POL-12 LIVE adaf9d2
+    Pass 29 [process-gap] POL-11 scope bug (enforcer scanning ZERO files) | CLOSED adaf9d2+72e065b
 
   RECURRENCE WATCH:
-    META-pattern: 10 instances bound; Pass 29 = EMPIRICAL TEST of enforcement effectiveness
-    1/3→2/3 transition failure count: 10 consecutive (Passes 9,16,18,22,23,24,25,26,27,28)
-    Pattern-of-Patterns: 3 ADR same-burst defects (ADR-0006/0007/0008) — TRIPWIRE ARMED for Pass 29
+    META-pattern: 11 instances; 11th was enforcer scope bug (L-W6-S025-008 codified)
+    1/3→2/3 transition failure count: 10 consecutive (Passes 9,16,18,22,23,24,25,26,27,28); Pass 29 was MED
+    Pattern-of-Patterns: 3 ADR same-burst defects (ADR-0006/0007/0008) — TRIPWIRE ARMED for Pass 30
       If 4th ADR same-burst defect found → dispatch architect-protocol-improvement (Task #9 m.9)
-    POL-11+POL-12 LIVE: FIRST TIME (f0926fe) — enforcement >> codification confirmed by 13 inline fixes
+    POL-11+POL-12 LIVE: scope corrected (adaf9d2); 541 normative files; 0 findings
 
-  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 29:
+  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 30:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
     cli_daemon_stop flaky failures (environmental)
     .lazyclaude submodule warning (CI hygiene)
@@ -414,7 +414,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 28 (D-207); counter 0/3; 3-track + devops CRITICAL; POL-11+POL-12 LIVE; Pass 29 pending CI | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 28: 10-instance META-pattern bound by 2 ADRs + 2 POL CI gates LIVE (f0926fe). Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 29 (D-208); counter 0/3; POL-11 scope fixed; Pass 30 pending CI on adaf9d2 | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 29: MED (BC-2.06.004 pins + POL-11 scope bug). Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→REMEDIATED→M(23)→REMEDIATED→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -427,13 +427,13 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 28 (D-207): META-pattern 10th instance (structural-claim #3 — §Downstream Consumer Contract struct shape); 3-track + devops CRITICAL elevation; POL-11+POL-12 LIVE (f0926fe); 13 residual stale pins caught inline. Counter 0/3. Pass 29 pending CI green on f0926fe.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 29 (D-208): MED (BC-2.06.004 pins closed + POL-11 scope bug fixed). POL-11 now: 541 normative files, 0 findings. Counter 0/3. Pass 30 pending CI green on adaf9d2.
 
 ## Blocking Issues
 
 None. All durable_task_register items non-blocking.
 
-## Decisions Log (recent — D-200 through D-207)
+## Decisions Log (recent — D-200 through D-208)
 
 D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and earlier §Trace entries.
 
@@ -448,13 +448,14 @@ D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and ear
 | D-205 | S-025 Pass 26 MED — ADR-0007 §Historical Anchor Classification mismatch (HIGH-001 CLOSED via e8d1088 Option B) + sessions_panel.rs module-doc column table 6→7 META 8th instance NEW LAYER (MED-001 CLOSED via 2d1188f). Task #9 m.6 DEFERRED with TRIPWIRE. Counter HOLDS 0/3. 8th 1/3→2/3 failure. | 2026-05-29 | state-manager |
 | D-206 | S-025 Pass 27 MED — META-pattern 9TH instance (structural-spec drift #2 story-body type-name Vec<SessionState> vs Vec<EnrichedSession>). TRIPWIRE D-205 m.6 FIRED. 3-TRACK CLOSURE: architect cb68158 (ADR-0008 v1.0.0) + story-writer 30fb391 (S-025 v1.10) + state-manager D-206. Counter HOLDS 0/3. 9th 1/3→2/3 failure. 9-instance META-pattern bound by 2 ADRs. | 2026-05-29 | state-manager |
 | D-207 | S-025 Pass 28 3-TRACK + DEVOPS CRITICAL ELEVATION — 2 MED findings (F-S025-ADV28-MED-001: §Downstream Consumer Contract struct-shape META 10th + structural-claim #3; F-S025-ADV28-MED-002: ADR-0008 §Canonical Source Registry off-by-2 self-application). BIGGEST SINGLE BURST in cycle-001. Architect 12170b4 (ADR-0008 v1.0.1 + SS-conventions v1.32.3) + story-writer 344366d (S-025 v1.11 + STORY-INDEX v5.16) + devops f0926fe (POL-11+POL-12 LIVE in CI; 13 residual stale pins inline-fixed) + devops 5ea8ef3 (version-pin-registry.yaml 91 entries; S-028 annotation) + state-manager D-207. Counter HOLDS 0/3 (10th 1/3→2/3 failure). POL-11 self-test empirically caught 13 stale pins that 28 prior passes missed — enforcement >> codification vindicated. Pass 29 pending CI green on f0926fe. STATE v6.55→v6.56. | 2026-05-30 | state-manager |
+| D-208 | S-025 Pass 29 cycle — POL-11 CI scope bug FIXED + corpus sweep + ADR-0007 amendment + cascade-clean. Pass 29 MED: F-S025-ADV29-MED-001 (2 stale BC-2.06.004 v1.1.0 pins in AC-003/AC-010) + [process-gap] POL-11 scope bug (collect_files hardcoded .factory instead of --factory-root value, scanning ZERO files). Counter HOLDS 0/3. F-S025-ADV29-MED-001 CLOSED via story-writer 3688c7b+2c751c8 (S-025 v1.12; 18 stories + specs/BCs/VPs/ADRs/prd/brief bumped per ADR-0007). [process-gap] CLOSED: devops aa0a5d6 (POL-11 scope fix) + adaf9d2 (normative-only exclusions: plans/, planning/, code-delivery/, STATE.md) + architect ADR-0007 v1.0.4 72e065b (§Enforcement Scan Scope ratified; ARCH-INDEX v1.0.19). Corpus sweep 0d190a5 (story-writer normative cascade). Human approved scoping to normative artifacts. POL-11 now scanning 541 files, 0 findings. CI-run on feature branch adaf9d2 + registry 43c8687 = POL-11 PASS. Counter HOLDS 0/3 (Pass 29 was MED). [process-gap]: first POL-11 enforcement in CI found scope bug in POL-11 itself — 11th META instance; enforcement-must-actually-scan codified as L-W6-S025-008. Pass 30 pending after factory-artifacts push + CI green on adaf9d2. STATE v6.56→v6.57. PRD v1.27.4. ADR-0007 v1.0.4. ADR-0008 v1.0.3. ARCH-INDEX v1.0.19. STORY-INDEX v5.18. S-025 v1.12. | 2026-05-30 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.3**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.18**. **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.3** (UPDATED D-207). **ADR-0007 v1.0.2**. **ADR-0008 v1.0.1** (UPDATED D-207). **S-025 v1.11** (UPDATED D-207). **STORY-INDEX v5.16** (UPDATED D-207). **version-pin-registry.yaml** NEW (91 entries, f0926fe/5ea8ef3). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 44 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4** (UPDATED D-208). **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.19** (UPDATED D-208). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.3**. **ADR-0007 v1.0.4** (UPDATED D-208). **ADR-0008 v1.0.3** (UPDATED D-208). **S-025 v1.12** (UPDATED D-208). **STORY-INDEX v5.18** (UPDATED D-208). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 44 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -465,27 +466,27 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Phase 1 convergence history (R62-R122) | `cycles/cycle-001/phase-1-convergence.md` |
 | Task queue (T-1 through T-131) | `cycles/cycle-001/completed-tasks.md` |
 | Lessons learned (all rounds) | `cycles/cycle-001/lessons.md` |
-| Prior session checkpoints (through v6.55) | `cycles/cycle-001/session-checkpoints.md` |
+| Prior session checkpoints (through v6.56) | `cycles/cycle-001/session-checkpoints.md` |
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.56 (D-207 — Pass 28 3-TRACK + DEVOPS CRITICAL; 10-instance META-pattern bound; POL-11+POL-12 LIVE; ADR-0008 v1.0.1; S-025 v1.11; 13 residual stale pins inline-fixed)
+## §Trace v6.57 (D-208 — Pass 29 MED; POL-11 scope bug fixed; corpus sweep; ADR-0007 v1.0.4; cascade-clean; Pass 30 pending)
 
-**Pass 28 findings (2026-05-30, D-207):**
-F-S025-ADV28-MED-001 (S-025 §Downstream Consumer Contract struct-shape 5-field vs canonical 9-field; META-pattern 10th instance; structural-claim #3). CLOSED via story-writer 344366d Option B historical-anchor annotation.
-F-S025-ADV28-MED-002 (ADR-0008 §Canonical Source Registry off-by-2 line range 831-864 → 833-864; self-application defect). CLOSED via architect 12170b4.
+**Pass 29 findings (2026-05-30, D-208):**
+F-S025-ADV29-MED-001 (2 stale BC-2.06.004 v1.1.0 pins in S-025 AC-003/AC-010). CLOSED via story-writer 3688c7b+2c751c8 (S-025 v1.11→v1.12 + 18 cross-story cascade + specs/BCs/VPs/ADRs/prd/brief bumped per ADR-0007).
+[process-gap] POL-11 collect_files scope bug (hardcoded .factory path, scanning ZERO files when --factory-root passed). CLOSED via devops aa0a5d6+adaf9d2 (normative-only exclusions; 541 files now scanned) + architect ADR-0007 v1.0.4 72e065b (§Enforcement Scan Scope ratified; exemption list: plans/, planning/, code-delivery/, STATE.md) + ARCH-INDEX v1.0.19 43c8687. Counter HOLDS 0/3. [process-gap] was META-pattern 11th instance — first post-enforcement-survival finding was in the enforcer itself.
 
-**3-TRACK + DEVOPS CRITICAL ELEVATION (D-207):**
-Architect 12170b4 — ADR-0008 v1.0.0→v1.0.1 (line-range 831→833 corrected; §Self-Application Policy explicit; SS-conventions v1.32.2→v1.32.3 off-by-2 propagation corrected).
-Story-writer 344366d — S-025 v1.10→v1.11 (§Downstream Consumer Contract lines 225-231 `<!-- structural-claim-historical -->`; tasks list line 144 parenthetical clarification; STORY-INDEX v5.15→v5.16).
-Devops f0926fe — POL-11+POL-12 CI implementation LIVE: scripts/check_version_pins.py (580 lines) + scripts/check_structural_claims.py (560 lines) + scripts/structural-claim-deferrals.yaml + lefthook.yml + CI pol-lint job + 13 residual stale-pin inline fixes + CLAUDE.md 4 sites historical-anchored + clippy.toml/deny.toml/framing.rs/types.rs/claude_code.rs/state.rs semantic anchors.
-Devops 5ea8ef3 — version-pin-registry.yaml NEW (91 entries; Task #9 m.2 DONE) + S-028 structural-claim-historical annotation.
-State-manager D-207 — this burst.
+**D-208 CYCLE CLOSURE:**
+Story-writer 3688c7b — S-025 v1.12 BC-2.06.004 historical-anchor annotations (AC-003/AC-010).
+Story-writer 2c751c8 — 18-story cascade per ADR-0007; STORY-INDEX v5.17.
+Corpus sweep 0d190a5 — normative-layer propagation (specs/BCs/VPs/ADRs/prd/brief bumped per ADR-0007 §Enforcement Scan Scope). STORY-INDEX v5.18. PRD v1.27.4.
+Architect ADR-0007 72e065b — v1.0.3→v1.0.4 §Enforcement Scan Scope added; exempt dirs ratified.
+Registry 43c8687 — ARCH-INDEX v1.0.19; ADR-0007 v1.0.4; ADR-0008 v1.0.3 backfilled.
+Devops adaf9d2 (feature branch) — POL-11 normative-only exclusions; 541 files; 0 findings.
 
-**KEY EMPIRICAL RESULT (D-207):** POL-11 self-test caught 13 RESIDUAL STALE PINS at f0926fe authoring time that 28 prior adversarial passes had missed. Enforcement >> codification alone. Architectural intervention (ADR-0007 + ADR-0008) was necessary but insufficient without mechanical CI enforcement. f0926fe provides the enforcement.
+**Artifact versions bumped (D-208):** STATE v6.56→v6.57. PRD v1.27.3→v1.27.4 (0d190a5). ADR-0007 v1.0.2→v1.0.4 (72e065b). ADR-0008 v1.0.1→v1.0.3 (72e065b). ARCH-INDEX v1.0.18→v1.0.19 (43c8687). STORY-INDEX v5.16→v5.18 (2c751c8+0d190a5). S-025 v1.11→v1.12 (3688c7b). Counter HOLDS 0/3. Trajectory appended: →M(29)+process-gap.
 
-**Artifact versions bumped (D-207):** STATE v6.55→v6.56. ADR-0008 v1.0.0→v1.0.1 (12170b4). SS-conventions v1.32.2→v1.32.3 (12170b4). S-025 v1.10→v1.11 (344366d). STORY-INDEX v5.15→v5.16 (344366d). version-pin-registry.yaml NEW (5ea8ef3). ADR-0007 unchanged v1.0.2. ARCH-INDEX unchanged v1.0.18. Counter HOLDS 0/3. Trajectory appended: →M(28)+POL-live.
-
+§Trace v6.56 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.55 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.54 archived to `cycles/cycle-001/burst-log.md`.
 §Trace v6.53 archived to `cycles/cycle-001/burst-log.md`.

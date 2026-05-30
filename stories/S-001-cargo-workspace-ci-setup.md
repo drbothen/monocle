@@ -275,7 +275,7 @@ Files to create:
   }
   ```
   Note: original v1.7 spec mandated `println!("monocle-runtime stub");` — removed per
-  SS-conventions v1.30.2 ban on println! in production code paths. The stub is a no-op
+  SS-conventions v1.30.2 <!-- version-pin-historical: short-name alias for SS-conventions-anti-patterns; historical at time of S-001 delivery --> ban on println! in production code paths. The stub is a no-op
   until S-002 wires daemon entry.
 - `/monocle-runtime/src/lib.rs` — stub lib root
 - `/monocle-proto/Cargo.toml` — crate manifest with `prost-build = "=0.14.1"` in `[build-dependencies]`
