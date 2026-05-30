@@ -58,8 +58,8 @@ SS-config:
 
 SS-conventions-anti-patterns:
   path: specs/architecture/SS-conventions-anti-patterns.md
-  current_version: "1.32.4"
-  last_bump_commit: "[set at D-ADV30]"
+  current_version: "1.32.5"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 SS-core-types-and-abi:
@@ -94,9 +94,9 @@ SS-engine-module:
 
 SS-forward-compatibility:
   path: specs/architecture/SS-forward-compatibility.md
-  current_version: "1.2.19"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.2.20"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
+  last_bump_date: "2026-05-30"
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
@@ -144,8 +144,8 @@ ADR-0008-structural-claim-discipline:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.22"
-  last_bump_commit: "[set at LIVING-STATE exempt set extension burst]"
+  current_version: "1.0.23"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 BC-INDEX:
@@ -156,15 +156,15 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.20"
-  last_bump_commit: "[set at POL-11 remediation burst]"
+  current_version: "5.21"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
-  current_version: "1.16"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.17"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
+  last_bump_date: "2026-05-30"
 
 L2-INDEX:
   path: specs/domain-spec/L2-INDEX.md
@@ -174,8 +174,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.5"
-  last_bump_commit: "[set at POL-11 remediation burst]"
+  current_version: "1.6"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 nfr-catalog:
@@ -204,8 +204,8 @@ prd:
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "1.4.32"
-  last_bump_commit: "dd82c05"
+  current_version: "1.4.33"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -461,8 +461,8 @@ BC-2.05.007:
 
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
-  current_version: "1.0.6"
-  last_bump_commit: "[set at POL-11 remediation burst]"
+  current_version: "1.0.7"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 BC-2.06.001:
@@ -647,6 +647,6 @@ BC-2.07.006:
 
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md
-  current_version: "1.0.3"
-  last_bump_commit: "[set at POL-11 remediation burst]"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
   last_bump_date: "2026-05-30"

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -89,7 +89,7 @@ oversight.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — the 5-hook registry is the complete hook protocol surface that the daemon ingests; this BC establishes the authoritative count and names |
 | L2 Domain Invariants | DI-001 (tee invariant — the 5-hook scope defines the complete set of events subject to the tee invariant; PostToolUse absence is an explicit scope boundary) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Endpoint Matrix; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §3 (6-vs-5 hook clarification) |
+| Architecture Source | dtu-assessment.md §Endpoint Matrix; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §3 (6-vs-5 hook clarification) |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:92-99 (`buildHooksMap()` — exactly 5 entries) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-007 (gene-source: any-context deep-hooks-r1 §3) |
@@ -119,3 +119,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Key dtu-assessment.md citation: endpoint matrix, §Clone Development Approach line 150 "5-endpoint matrix".
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-013
 epic_id: EPIC-02
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -51,7 +51,7 @@ first decoded field without parsing the full protobuf message.
 ### AC-001 (traces to BC-2.02.006 postcondition 1 — proto field number 1 = schema_version)
 In the `HookEnvelope` protobuf message definition (`monocle-proto/proto/monocle/v1/hook_envelope.proto`),
 `schema_version` is field number 1. This field number is IMMUTABLE per FC-05 (immutability invariant
-defined in `SS-forward-compatibility.md v1.2.19 §FC-05`) — any change is a BREAKING change requiring
+defined in `SS-forward-compatibility.md §FC-05`) — any change is a BREAKING change requiring
 an ADR.
 
 ### AC-002 (traces to BC-2.02.007 postcondition 1 — Rust struct schema_version field)
@@ -208,7 +208,7 @@ Phase 4 activates the wire path without any Phase 4 changes to `monocle-proto`.
 From `architecture/SS-core-types-and-abi.md` v1.2.13 §Prost Wire Schemas (FC-05 resolution) line 884:
 - Field number 1 = `schema_version` is IMMUTABLE — changing it is a BREAKING change requiring ADR
   (FC-05 immutability invariant: `schema_version: u32 = 1` is immutable across Phase 1 minor versions;
-  defined in `SS-forward-compatibility.md v1.2.19 §FC-05`)
+  defined in `SS-forward-compatibility.md §FC-05`)
 - Phase 1: prost-build generates types at compile time but NO proto encoding/decoding occurs at runtime
 - Phase 4: prost activates for cross-host federation wire format decoding of untrusted input
 
@@ -218,7 +218,7 @@ From `architecture/SS-core-types-and-abi.md` v1.2.13 §Prost Wire Schemas (FC-05
 - Fields 1000+: reserved for Phase 5+
 - Phase 4 federation MUST respect these ranges; violations require an ADR
 
-**FC-05 Immutability** (SS-forward-compatibility.md v1.2.19 §FC-05):
+**FC-05 Immutability** (SS-forward-compatibility.md §FC-05):
 - `schema_version: u32 = 1` field at proto field number 1 is immutable across Phase 1 minor versions.
   Any change to a Phase 1 field (numbers 1-99) is a BREAKING change: bump `schema_version` AND produce an ADR.
 
@@ -278,10 +278,15 @@ Files to modify:
 - F-A-01 (HIGH): `prost-build =0.14.1` added to Library table as `[build-dependencies]`.
 - F-A-02 (LOW): `bytes 1.10` precondition noted — RUSTSEC-2026-0007 neutralization.
 - F-B-01 (HIGH): Architecture Compliance Rules updated to use canonical anchor `§Prost Wire Schemas (FC-05 resolution)`.
-- F-B-02 (HIGH): FC-05 traceability added in Architecture Compliance Rules citing SS-forward-compatibility.md v1.2.19 §FC-05.
+- F-B-02 (HIGH): FC-05 traceability added in Architecture Compliance Rules citing SS-forward-compatibility.md §FC-05.
 - F-B-03 (MEDIUM): Field number reservation scheme added (lines 894-901).
 - F-C-01 (CRITICAL): AC-006 oracle rewritten from text-regex parse to prost-reflect descriptor decode.
 - F-C-02 (HIGH): AC-004 executable oracle added (grep test for E-PROTO-001 warning substring).
 - F-C-03 (MEDIUM): AC-005 negative oracle added (grep asserts only literal 1 as schema_version value).
 - F-E-02 (MEDIUM): Downstream impact statement added in Architecture Compliance Rules.
 - F-E-03 (LOW): `blocks: []` explicitly verified — no Phase 1 story consumes proto types.
+## §Trace 1.3 — POL-11 cascade remediation (2026-05-30)
+
+**Bump:** 1.2 → 1.3.
+**Scope:** AC/Architecture body (3 occurrences): `SS-forward-compatibility.md v1.2.19 §FC-05` → `SS-forward-compatibility.md §FC-05` (Option 2 version-free; cascade from SS-forward-compatibility v1.2.19 → v1.2.20 bump in same remediation burst; version-free permanently prevents re-staling).
+**SE-16d PASS:** 2026-05-30 >= prior date (cascade patch).

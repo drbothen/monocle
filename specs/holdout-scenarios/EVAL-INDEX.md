@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-30T00:00:00Z
@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
-traces_to: ".factory/stories/STORY-INDEX.md v4.7"
+traces_to: ".factory/stories/STORY-INDEX.md v5.21"
 input-hash: "[pending]"
 ---
 
@@ -142,3 +142,8 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
   (HS-EXP-003), SOQ-3 ordering (HS-EXP-004), state rebuild (HS-EXP-005), Ctrl-\\ survival
   (HS-EXP-006), config atomicity (HS-EXP-007), killer scenario (HS-EXP-008), runtime_dir
   exit code (HS-EXP-009), lifecycle overlap (HS-EXP-010).
+## §Trace v1.6 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.5 → 1.6.
+**Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -83,7 +83,7 @@ does NOT HTML-escape by default, so no special flag is needed in the Rust port.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — the hooks-settings.json encoding contract is part of the hook injection mechanism that enables Claude Code to invoke the daemon's hook endpoints |
 | L2 Domain Invariants | None directly (encoding is an implementation detail of the hook injection mechanism) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-008 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-008 |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:58-61 (`enc.SetEscapeHTML(false); enc.SetIndent("", "  ")`) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-008 (gene-source: deep-hooks-r1 §4 BC-HOOK-008) |
@@ -112,3 +112,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Rust port note: serde_json does not HTML-escape by default; no special configuration needed.
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

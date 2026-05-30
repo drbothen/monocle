@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: ops
-version: "1.5"
+version: "1.6"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T12:00:00Z
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v1.8"
+traces_to: ".factory/stories/STORY-INDEX.md v5.21"
 ---
 
 # Holdout Scenarios: monocle Phase 2
@@ -274,3 +274,8 @@ evaluated until Wave 3.
 - GAP-PHASE2-R12-4 (LOW): HS-W2-007 added for BC-2.02.006/BC-2.02.007/BC-2.02.008 (HookEnvelope). Scenario exercises proto wire forward-compatibility: Part A — unknown Phase 4 field numbers survive round-trip decode; Part B — schema_version: 0 message decoded without panic. Derived from BC-2.02.006 EC-024 + BC-2.02.008 INV-1/EC-027; not mechanically stated in S-013 ACs.
 - Wave Coverage Summary updated: Wave 2 now covers HS-W2-001, HS-W2-003, HS-W2-004, HS-W2-005, HS-W2-006, HS-W2-007; S-005 and S-013 added to Wave 2 covered stories. Total holdout scenarios: 12 → 14.
 - SE-22 v2 cascade: traces_to updated from v1.7 → v1.8 (STORY-INDEX bumped v1.7→v1.8 in this r12 burst). Frontmatter bumped to v1.4.
+## §Trace v1.6 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.5 → 1.6.
+**Scope:** `traces_to:` field: `STORY-INDEX.md v1.8` → `STORY-INDEX.md v5.21` (Option 1 per ADR-0007 §Decision; active live pointer bumped to canonical current version post-remediation-burst bumps).
+**SE-16d PASS:** 2026-05-30 >= prior date (patch; no normative behavioral change).

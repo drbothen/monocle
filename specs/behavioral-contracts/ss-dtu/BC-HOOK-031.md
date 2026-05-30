@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -81,7 +81,7 @@ always regenerated from the current hook command constants.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — the unversioned hooks-settings.json schema is a lifecycle simplification; schema evolution is handled by code updates, not embedded versioning |
 | L2 Domain Invariants | None directly (schema versioning is a forward-compatibility concern, not a domain invariant) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-031 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-031 |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:49-52 (only `"hooks"` key in top-level map; no version field) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-031 (gene-source: deep-hooks-r1 §10 BC-HOOK-031) |
@@ -109,3 +109,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Gene-source file:line: hooks.go:49-52 (only `"hooks"` key confirmed; hooks_test.go:34-42 asserts `parsed["hooks"]` only — no version assertion exists or is needed).
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

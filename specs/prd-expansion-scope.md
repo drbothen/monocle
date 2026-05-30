@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L3
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-27T00:00:00Z
@@ -13,7 +13,7 @@ inputs:
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/research/domain-monocle-vision-synthesis.md, version: "1.1.3"}
 input-hash: "[pending]"
-traces_to: "product-brief.md v1.4.30 §Phase 1 scope"
+traces_to: "product-brief.md v1.4.33 §Phase 1 scope"
 project: monocle
 ---
 
@@ -34,7 +34,7 @@ project: monocle
 
 ## Section 1: Feature Coverage Matrix
 
-The Phase 1 delivery contract is defined in `product-brief.md v1.4.30` §Phase 1 scope
+The Phase 1 delivery contract is defined in `product-brief.md v1.4.33` §Phase 1 scope
 (lines 110-176) and §Success Criteria (lines 239-252). The table below enumerates every
 discrete Phase 1 feature, cites the brief reference, maps current BC coverage, and
 classifies gap status.
@@ -473,3 +473,8 @@ The new BCs suggest the following wave ordering, following the TDD dependency ch
   explicit task instruction. The artifact-path-registry.yaml classifies `plan-doc` under
   `.factory/plans/`. If the orchestrator wants this relocated to `.factory/plans/`, use the
   `vsdd-factory:relocate-artifact` skill before creating the BC files.
+## §Trace v1.2 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.1 → 1.2.
+**Scope:** `traces_to:` and body prose: `product-brief.md v1.4.30` → `product-brief.md v1.4.33` (Option 1 bump to canonical; active live pointer requires freshness per ADR-0007 §Decision).
+**SE-16d PASS:** 2026-05-30 >= prior date (patch; no normative behavioral change).

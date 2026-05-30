@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -91,7 +91,7 @@ defensively skip non-numeric lock files.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — the NaN-handling during lock file enumeration is a defensive correctness property of the lock file discovery mechanism |
 | L2 Domain Invariants | DI-002 (lock file precondition — the isNaN defensive skip ensures that only valid port-numbered lock files are used to derive the daemon connection; malformed filenames do not produce invalid port values) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-034 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-034 |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:18-19 (`parseInt(f, 10)` + NaN comparison behavior) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-034 (gene-source: deep-hooks-r2 §2 BC-HOOK-034; P3 minor finding) |
@@ -120,3 +120,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Monocle improvement: add `if (isNaN(p)) continue;` to defensively skip non-numeric lock files.
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

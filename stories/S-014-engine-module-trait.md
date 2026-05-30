@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-014
 epic_id: EPIC-03
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -106,9 +106,9 @@ BC-2.03.001 invariant 3 rationale text (substring: `"native async fn in traits d
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~800 |
-| BC-2.03.001.md v1.0.6 | ~700 |
+| BC-2.03.001.md v1.0.7 | ~700 |
 | BC-2.02.003.md v1.0.2 | ~350 |
-| BC-2.03.004.md v1.0.4 (JC-2 PostToolUse parity) | ~300 |
+| BC-2.03.004.md v1.0.5 (JC-2 PostToolUse parity) | ~300 |
 | VP-019 file | ~500 |
 | SS-engine-module.md (trait section, ~80 lines) | ~1,200 |
 | SS-deps-pin-manifest.md v1.1.18 (syn 2.0 dev-dep) | ~200 | <!-- version-pin-historical: at S-014 authoring time -->
@@ -254,3 +254,10 @@ S-015 implementer must NOT use struct-literal construction for `HookResponse` (E
 - F-D-05: VP-019 test fixture inline assertion list added to engine_module_surface.rs task.
 - F-E-01: Previous Story Intelligence updated re async-trait pin verification + DeferUntil note.
 - F-E-02: Downstream Consumer Surface section added enumerating S-015 import set.
+## §Trace v1.7 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.6 → 1.7.
+**Scope:** Token Budget Estimate table — BC version pins bumped to canonical current (Option 1 per ADR-0007):
+- `BC-2.03.001.md v1.0.6` → `BC-2.03.001.md v1.0.7` (registry canonical).
+- `BC-2.03.004.md v1.0.4` → `BC-2.03.004.md v1.0.5` (registry canonical).
+**SE-16d PASS:** 2026-05-30 >= prior date (patch; no normative behavioral change).

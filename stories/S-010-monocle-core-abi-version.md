@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-010
 epic_id: EPIC-02
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -75,7 +75,7 @@ The file `monocle-core/tests/abi_stability.rs` contains a top-level
 ### AC-005 (traces to BC-2.02.001 postcondition 1 + postcondition 2 — const value is 1 in Phase 1; equals compiled value)
 `MONOCLE_ABI_VERSION` equals `1` in Phase 1. Any change to this value requires an ADR
 (is a breaking change per SS-core-types-and-abi.md §ABI Version Constant v1.2.13 lines 40-101;
-FC-03 per SS-forward-compatibility.md v1.2.19 §FC-03).
+FC-03 per SS-forward-compatibility.md §FC-03).
 
 ## Token Budget Estimate
 
@@ -144,10 +144,15 @@ Files to modify:
   `monocle-core (path = "../monocle-core")` consumed by monocle-runtime.
 - F-B-01 [LOW]: §-anchor appended to AC-001, AC-002, AC-005 pointing to
   SS-core-types-and-abi.md v1.2.13 lines 40-101.
-- F-B-02 [LOW]: FC-03 anchored to SS-forward-compatibility.md v1.2.19 §FC-03 in AC-005.
+- F-B-02 [LOW]: FC-03 anchored to SS-forward-compatibility.md §FC-03 in AC-005.
 - F-C-01 + F-E-01 [MED]: AC-003 sub-clause added — /status integration test harness
   reused from S-003 §AC-005; this story imports MONOCLE_ABI_VERSION in status.rs created
   by S-003. S-003 added to depends_on.
 - F-C-02 [MED]: AC-004 compile-fail mechanism reworded — file-scope `const _: ()` assertion
   specified (not inside `#[test] fn`); `cargo build --tests` fails if constant changes.
 - F-D-03 [LOW]: Tasks updated — rustdoc cross-referenced to SS-core-types-and-abi.md v1.2.13 lines 47-53.
+## §Trace 1.3 — POL-11 cascade remediation (2026-05-30)
+
+**Bump:** 1.2 → 1.3.
+**Scope:** AC-005 body: `SS-forward-compatibility.md v1.2.19 §FC-03` → `SS-forward-compatibility.md §FC-03` (Option 2 version-free; cascade from SS-forward-compatibility v1.2.19 → v1.2.20 bump in same remediation burst; version-free permanently prevents re-staling).
+**SE-16d PASS:** 2026-05-30 >= prior date (cascade patch).

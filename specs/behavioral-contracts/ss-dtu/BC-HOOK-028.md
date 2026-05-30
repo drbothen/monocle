@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -81,7 +81,7 @@ CLI flag. This has been verified by exhaustive grep of the session launcher code
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — the exclusivity of --settings as the hook injection mechanism is a lifecycle design constraint; no env-var alternative exists |
 | L2 Domain Invariants | None directly (mechanism exclusivity is an implementation invariant) |
 | Architecture Module | monocle-runtime (daemon binary, session launcher) per ARCH-INDEX Subsystem Registry SS-01 |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-028 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-028 |
 | Gene Source | any-context-lazyclaude/internal/session/manager.go:842-873 (`claudeEnv` function — exhaustive env var list; no CLAUDE_HOOKS or CLAUDE_SETTINGS*) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-028 (gene-source: deep-hooks-r1 §8 BC-HOOK-028) |
@@ -109,3 +109,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Gene-source file:line: manager.go:842-873 (`claudeEnv` — exhaustive env var injection; no `CLAUDE_HOOKS` or `CLAUDE_SETTINGS*` present).
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

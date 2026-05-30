@@ -4,7 +4,7 @@ level: L3
 section: "forward-compatibility"
 slug: "phase-2-3-4-impact-on-phase-1"
 subsystem: cross-cutting
-version: "1.2.19"
+version: "1.2.20"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -42,9 +42,9 @@ Phase 2-4 high-level objectives per brief v1.4.5 §Phase Plan Rationale (scan-ti
 The JSONL ring is a retention log for the event ribbon panel (Phase 1) and, secondarily, as trigger-trace source material for Phase 2. For Phase 2 trigger-trace to work, each JSONL record must carry:
 - The hook type (already implicit: endpoint path or event `type` field)
 - The timestamp (already required for the event ribbon latency display)
-- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md v1.7.5 §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.13 §Non-Exhaustive Inner Structs)
+- The `session_id` (present in all 5 monocle-canonical hook body schemas per dtu-assessment.md §monocle-canonical column; note: the gene-source BC-HOOK-007 matrix does NOT include session_id on PreToolUse and Notification — it is a monocle EX-2 addition verified in SS-core-types-and-abi.md v1.2.13 §Non-Exhaustive Inner Structs)
 - The `tool_name` and `tool_input` (already in `PreToolUse` and `Notification` bodies)
-- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md v1.7.5 §monocle-canonical column)
+- The `pid` (already present in all 5 monocle-canonical hook schemas per dtu-assessment.md §monocle-canonical column)
 
 No additional fields are required. The `HookArgs` struct in `monocle-core::permissions` (SS-permissions-phase1.md) already captures `tool_name`, `tool_input`, and `message`.
 
@@ -60,7 +60,7 @@ No additional fields are required. The `HookArgs` struct in `monocle-core::permi
 
 The Phase 1 daemon DOES need to produce `session_id` in hook event records (already covered under P2-1 analysis) so Phase 2 can join hook events to the session that owns the customization tree. This is already present in the Phase 1 hook schema.
 
-**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md v1.7.5 §monocle-canonical column).
+**Verdict: NO IMPACT.** Phase 1 daemon does not need any new customization-context field. The static plane reads customization files directly; the daemon's role is limited to hook event forwarding. The join key (`session_id`) is already in all 5 monocle-canonical hook schemas (dtu-assessment.md §monocle-canonical column).
 
 #### Phase 2 Summary
 
@@ -247,7 +247,7 @@ BC-LOCK-001 (now BC-2.01.010) added per F-FC-O001 (lock-file `contract_version` 
 BC-ENGINE-001/002/003 (now BC-2.03.001/002/004) added per round-14 fix burst
 (SS-engine-module.md v1.1 <!-- version-pin-historical: version at BC addition time -->; N5 BC count propagation). BC-ENGINE-002-ERR (now BC-2.03.003)
 added in SS-engine-module.md v1.1.4 <!-- version-pin-historical: version at BC addition time --> (commit 563b573); pre-staging table updated in v1.1.5
-(round-23 micro-fix burst). All old-form IDs retired per BC-INDEX.md v1.1 §Renumbering
+(round-23 micro-fix burst). All old-form IDs retired per BC-INDEX.md v1.1 §Renumbering <!-- version-pin-historical: version at T-128h dispatch time 2026-05-17T17:00:00Z (canonical at that time; advances per F-R107-8) -->
 Map (canonical at T-128h dispatch time 2026-05-17T17:00:00Z; current canonical advances
 over time per F-R107-8 historical-pin discipline).
 
@@ -632,3 +632,10 @@ v1.2.2 changes (round-39 fix F-R38-2 MEDIUM — 4th recurrence META-pattern):
 - Audit reference: `.factory/plans/template-compliance-audit-r1.md` §10 (SS-forward-compat).
 - SE-17g classification: all citations above NORMATIVE or INFORMATIONAL as labeled.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-17T11:00:00Z >= chain high-water 2026-05-17T10:30:00Z.
+## §Trace v1.2.20 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.2.19 → 1.2.20.
+**Scope (POL-11 fix — Option 2 + Option 3 per ADR-0007):**
+- Lines 45/47/63: `dtu-assessment.md v1.7.5 §monocle-canonical column` → `dtu-assessment.md §monocle-canonical column` (Option 2, version-free; navigation pointer to canonical source; permanently prevents re-staling).
+- Line 250: `BC-INDEX.md v1.1 §Renumbering` — added `<!-- version-pin-historical -->` (Option 3; version was current at T-128h dispatch time 2026-05-17T17:00:00Z; time qualifier was on the following line, making single-line checker classify it as active; annotation makes exemption explicit).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-28 (patch; no normative behavioral change).

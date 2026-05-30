@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/stories/STORY-INDEX.md, version: "4.7"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: ".factory/stories/STORY-INDEX.md v4.7"
+traces_to: ".factory/stories/STORY-INDEX.md v5.21"
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-7)
@@ -270,7 +270,7 @@ Critical path length: 8 stories, 63 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 | NFR-003 | TUI overlay render ≤100ms | S-027 (latency budget — Phase 3 integration test infrastructure) | BC-2.06.017 latency validation deferred to Phase 3 (GAP-P2-005); tool payload rendering behavior covered by BC-2.06.024 in S-027 |
 | NFR-006 | 1000 events/sec throughput | S-018 (bounded event bus drop counter) | S-018 integration test: 1000 events injected, drop counter asserted ≤N |
 
-NFR-001/002/003/006 are now covered by expansion stories. GAP-P2-001..004 are resolved by Waves 5-7 stories. The NFR deferred-to-Phase-3 classification from the original STORY-INDEX v3.0 is superseded by these assignments.
+NFR-001/002/003/006 are now covered by expansion stories. GAP-P2-001..004 are resolved by Waves 5-7 stories. The NFR deferred-to-Phase-3 classification from the original STORY-INDEX v3.0 <!-- version-pin-historical: version at original decomposition time; superseded per expansion stories --> is superseded by these assignments.
 
 ## Gap Register (Expansion)
 
@@ -344,3 +344,10 @@ Both gaps are L3 (test infrastructure design choices) with mandatory resolution 
 - 49/49 BCs traced (100%).
 - NFR-001/002/003/006 coverage now resolved by expansion stories (supersedes STORY-INDEX v3.0 GAP-P2-001..004 deferred classification).
 - 2 L3 test-infrastructure gaps registered (GAP-EXP-001, GAP-EXP-002).
+## §Trace v1.9 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.8 → 1.9.
+**Scope (POL-11 fix per ADR-0007):**
+- `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.21` (Option 1 — active live pointer; bumped to canonical current version post-remediation-burst bumps).
+- Line ~273: `original STORY-INDEX v3.0 is superseded` — added `<!-- version-pin-historical -->` (Option 3 — historical reference to original decomposition state; the v3.0 version correctly documents what was current at original authoring time).
+**SE-16d PASS:** 2026-05-30 >= prior date (patch; no normative behavioral change).

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -90,7 +90,7 @@ when monocle is down is safe; the tool execution is never blocked.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — this BC defines the fail-closed fallback for observability hooks, part of the hook event ingestion lifecycle |
 | L2 Domain Invariants | DI-001 (tee invariant — fail-closed on these hook types is the zero-ingestion boundary; no event is written when daemon is absent, which is within the tee invariant's scope) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-018 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r1.md §BC-HOOK-018 |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:35,38,41,44 (`if(!srvPort)return;`) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-002 (gene-source: any-context Pass 3) |
@@ -120,3 +120,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Gene-source file:line: hooks.go:35, 38, 41, 44 (`if(!srvPort)return;` — identical pattern for 4 hooks).
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).

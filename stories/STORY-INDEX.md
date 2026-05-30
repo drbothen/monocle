@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.20"
+version: "5.21"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T00:00:00Z
@@ -9,9 +9,9 @@ phase: 2
 inputs:
   - {path: .factory/specs/prd.md, version: "1.27.4"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
-  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.17"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.20"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.23"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.6"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.8"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.6"}
@@ -793,3 +793,10 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
 - sprint-state.yaml was correctly updated in commit 69930c3; STORY-INDEX was missed (sibling-sweep gap surfaced by wave-1 wave-gate adversary review).
 - SE-22 v2 sibling-sweep: no other artifacts carry a stale `ready` reference for S-DTU-001 (sprint-state.yaml already correct; S-DTU-001 story file status field is `done`; dep-graph and wave-schedule have no status fields; holdout-scenarios and BC-INDEX carry no story status fields).
 - STORY-INDEX version bumped v2.4→v2.5. Closes F-WAVE1-003.
+## §Trace v5.21 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 5.20 → 5.21.
+**Scope:** `inputs[]` YAML form — active INDEX document pins bumped to canonical current:
+- ARCH-INDEX: v1.0.20 → v1.0.23 (bumped in same remediation burst: Group C ARCH-INDEX POL-11 fix).
+- VP-INDEX: v1.16 → v1.17 (bumped in same remediation burst: Group B VP-INDEX POL-11 fix).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).

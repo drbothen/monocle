@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.4"
+version: "1.32.5"
 status: complete
 producer: architect
 phase: phase-3
@@ -904,7 +904,7 @@ matrix." (Ambiguous anchor; does not distinguish gene-source vs monocle-canonica
 validation pattern.)
 
 **Correct form:** "field X is present in all 5 monocle-canonical hook body schemas per
-dtu-assessment.md v1.7.5 §monocle-canonical column, verified against SS-core-types-and-abi.md
+dtu-assessment.md v1.7.5 §monocle-canonical column, verified against SS-core-types-and-abi.md <!-- version-pin-historical: illustrative example of correct citation form; version as of S-025 authoring time 2026-05-29 -->
 v1.2.13 §Non-Exhaustive Inner Structs. Re-validation grep: `grep -rn 'field X.*all.*hook' .factory/specs/`"
 
 **D-042 integration:** The D-042 workflow (primary and secondary grep patterns, documented in
@@ -1542,7 +1542,7 @@ BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_
 
 **Rationale:** Test names are stable identifiers in CI systems. The cost of renaming (CI history breakage, grep script updates, log grep pattern updates) exceeds the benefit (alignment to new BC IDs).
 
-**Enforcement:** New BCs authored after the renumbering event (BC-INDEX v1.1+) SHOULD use the new-form prefix `test_BC_2_SS_NNN_...` for new test functions. Existing tests with legacy-form names are NOT renamed.
+**Enforcement:** New BCs authored after the renumbering event (BC-INDEX v1.1+ <!-- version-pin-historical: minimum-version threshold at renumbering event 2026-05-17 -->) SHOULD use the new-form prefix `test_BC_2_SS_NNN_...` for new test functions. Existing tests with legacy-form names are NOT renamed.
 
 ### Anchor Parenthetical Non-Contradiction (PG-5, F-R110-16)
 
@@ -1571,7 +1571,7 @@ When a BC Traceability `Architecture Source` cell or a VP Traceability `Architec
 
 **Enforcement:** The adversary is instructed to flag any BC or VP Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. A pre-commit grep for `SS-[a-z-]+\.md(?!\s+v\d)` patterns within Architecture Source cell contexts provides automated detection.
 
-**Cross-reference:** Originating authoritative copy in `behavioral-contracts/BC-INDEX.md §Conventions` (BC-INDEX v1.10+). This subsection is the architecture-side restatement for developers authoring BCs, VPs, and architecture citations. Originating finding: F-R117-3 (R117 adversary pass, R16C BC-INDEX dispatch closure). META-discipline parent: SE-17e (sibling-propagation); SE-22 (sibling-sweep META, fourth cycle).
+**Cross-reference:** Originating authoritative copy in `behavioral-contracts/BC-INDEX.md §Conventions` (BC-INDEX v1.10+ <!-- version-pin-historical: minimum-version threshold at F-R117-3 origination; current BC-INDEX supersedes but this threshold remains valid -->). This subsection is the architecture-side restatement for developers authoring BCs, VPs, and architecture citations. Originating finding: F-R117-3 (R117 adversary pass, R16C BC-INDEX dispatch closure). META-discipline parent: SE-17e (sibling-propagation); SE-22 (sibling-sweep META, fourth cycle).
 
 ## §Citation Discipline (ADR-0007)
 
@@ -2847,3 +2847,11 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Historical §Trace entries referencing `SS-forward-compat` preserved as historical narrative (not updated).
 - NORMATIVE: version bump 1.31.0 → 1.31.1.
 - SE-16d PASS: 2026-05-29T00:00:00Z > 2026-05-18T11:00:00Z (prior §Trace v1.31.0 timestamp). PASS.
+## §Trace 1.32.5 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.32.4 → 1.32.5.
+**Scope (POL-11 fix — Option 3 per ADR-0007 §Historical Anchor Classification):**
+- Line ~907: `dtu-assessment.md v1.7.5 §monocle-canonical column` in "Correct form" illustrative example — added `<!-- version-pin-historical: illustrative example ... -->` annotation (example documents the correct citation form as seen at S-025 authoring time 2026-05-29; the example correctly shows a versioned form even though the discipline now PREFERS version-free; the version shown is frozen historical context for the example).
+- Line ~1545: `BC-INDEX v1.1+` in renumbering threshold — added `<!-- version-pin-historical -->` (threshold marker; not a live pointer; version was the minimum at renumbering event 2026-05-17T17:00:00Z).
+- Line ~1574: `BC-INDEX v1.10+` in §Conventions cross-reference threshold — added `<!-- version-pin-historical -->` (originating version at F-R117-3; threshold concept remains valid as BC-INDEX advances past this floor).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).

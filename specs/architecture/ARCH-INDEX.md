@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.22"
+version: "1.0.23"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -136,7 +136,7 @@ v1.0.7 amends Pattern A to be REGISTRY-DRIVEN: the vocabulary of detectable arti
 for prose/inline version-pin literals is derived from ALL keys in version-pin-registry.yaml
 at runtime — not from a hardcoded prefix alternation (`SS-[a-z-]+\|BC-[0-9.]+`). The
 hardcoded vocabulary omitted dtu-assessment, ADR-*, product-brief, nfr-catalog,
-error-taxonomy, and *-INDEX artifact classes, causing ~59 stale `dtu-assessment.md v1.7.5`
+error-taxonomy, and *-INDEX artifact classes, causing ~59 stale `dtu-assessment.md v1.7.5` <!-- version-pin-historical: version that was stale at Pass 31; cited as a historical diagnostic record -->
 citations to be invisible to Pass 31 detection. Matcher uses longest-match sort (descending
 ID length) for prefix-disambiguation and word-boundary after version token. Together with
 v1.0.6's closed-rule: complete enforcement surface (which docs are ACTIVE + which IDs are
@@ -652,3 +652,8 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.23 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.0.22 → 1.0.23.
+**Scope:** ADR-0007 Note row: added `<!-- version-pin-historical -->` to "`dtu-assessment.md v1.7.5`" reference (Option 3 per ADR-0007 §Historical Anchor Classification — this text documents what version was stale at Pass 31 as a historical diagnostic record; it is not a live navigation pointer).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative content change).

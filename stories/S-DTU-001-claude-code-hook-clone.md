@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-DTU-001
 epic_id: EPIC-DTU
-version: "1.4"
+version: "1.5"
 status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-20T21:00:00Z
@@ -57,7 +57,7 @@ Claude Code instance.
 ## Acceptance Criteria
 
 ### AC-001 (traces to dtu-assessment.md §Endpoint Matrix — 5 endpoints implemented)
-The clone implements all 5 hook endpoints per dtu-assessment.md v1.7.5 endpoint matrix:
+The clone implements all 5 hook endpoints per dtu-assessment.md §Endpoint Matrix:
 - `POST /hooks/pre-tool-use`
 - `POST /hooks/notification`
 - `POST /hooks/stop`
@@ -241,3 +241,8 @@ Files NOT to create (explicitly out of scope):
 - F-E-01 + F-E-02 CLOSED: Downstream Consumer Surface section added enumerating S-009 binary entrypoint, env vars, POST endpoints, and alias-header behavior.
 - F-D-02 + F-D-05 CLOSED: "or Python FastAPI" removed from Tasks; Token Budget updated (FastAPI alternative removed).
 - target_module updated to `crates/monocle-test-harness` (canonical path per §Packaging Decision).
+## §Trace v1.5 — POL-11 version-pin remediation (2026-05-30)
+
+**Bump:** 1.4 → 1.5.
+**Scope:** AC-001 body: `dtu-assessment.md v1.7.5 endpoint matrix` → `dtu-assessment.md §Endpoint Matrix` (Option 2 version-free per ADR-0007; navigation pointer to canonical source; permanently prevents re-staling).
+**SE-16d PASS:** 2026-05-30 >= prior date (patch; no normative behavioral change).

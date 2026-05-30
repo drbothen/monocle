@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -84,7 +84,7 @@ using `body.len()` on a `String` (which is already UTF-8 bytes) is correct.
 | Capability Anchor Justification | CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management") per capabilities.md §CAP-001 — correct Content-Length computation is required for successful HTTP body delivery to the daemon's hook ingestion endpoints |
 | L2 Domain Invariants | DI-001 (tee invariant — incorrect Content-Length causes HTTP parse failure at the daemon; the daemon cannot write the ring entry for an unparseable body) |
 | Architecture Module | crates/monocle-test-harness/src/dtu/ (DTU clone binary) per dtu-assessment.md §Packaging Decision |
-| Architecture Source | dtu-assessment.md v1.7.5 §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-036 |
+| Architecture Source | dtu-assessment.md §Clone Development Approach; semport/any-context-lazyclaude-pass-B-deep-hooks-r2.md §BC-HOOK-036 |
 | Gene Source | any-context-lazyclaude/internal/core/config/hooks.go:31 (`'Content-Length':Buffer.byteLength(body)` — UTF-8 byte length) |
 | Stories | S-DTU-001 |
 | Old ID (historical) | BC-HOOK-036 (gene-source: deep-hooks-r2 §2 BC-HOOK-036) |
@@ -113,3 +113,9 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Rust port note: `body.len()` on `String` is UTF-8 byte count — correct; `body.chars().count()` would be wrong for non-ASCII.
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.1
+
+**POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):
+- Architecture Source table row: `dtu-assessment.md v1.7.5 §...` → `dtu-assessment.md §...` (Option 2, version-free; per ADR-0007 §Decision — navigation pointer to canonical source, permanently prevents re-staling).
+- Version bump: 1.0.0 → 1.0.1.
+- SE-16d PASS: 2026-05-30 >= 2026-05-20T21:00:00Z (patch; no normative content change).
