@@ -331,6 +331,20 @@ Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE
 
 ---
 
+## Checkpoint v6.57 (archived from STATE.md on 2026-05-30 when v6.58 replaced it)
+
+**S-025 Pass 29 MED+[process-gap] CLOSED / PASS 30 READY. STATE v6.57.**
+
+- develop @ 7a52041 (S-023 merge). 26/33 done (156/195 pts, 80%). 852+ tests.
+- S-025 branch: feature/S-025-tui-skeleton-sessions @ adaf9d2 (POL-11 normative-only scope fixed).
+- Counter: 0/3. Pass 29 MED: BC-2.06.004 stale pins + POL-11 scope bug (ZERO files scanned). Both CLOSED.
+- META-pattern: 11 instances. 11th = enforcer itself had scope bug on first deployment.
+- POL-11: normative-only scope (adaf9d2); 541 files; 0 findings. ADR-0007 v1.0.4 §Enforcement Scan Scope ratified.
+- Artifact versions (v6.57): ADR-0007 v1.0.4. ADR-0008 v1.0.3. S-025 v1.12. STORY-INDEX v5.18. PRD v1.27.4. ARCH-INDEX v1.0.19.
+- Pass 30 pending CI green on adaf9d2.
+
+---
+
 ## Checkpoint v6.56 (archived from STATE.md on 2026-05-30 when v6.57 replaced it)
 
 **S-025 Pass 28 3-TRACK + DEVOPS CRITICAL / PASS 29 READY. STATE v6.56.**

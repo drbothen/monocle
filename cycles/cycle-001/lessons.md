@@ -1922,3 +1922,31 @@ Until the hook is implemented, the SM closure burst MUST include an explicit SE-
 In the S-025 cycle: POL-11 deployed at Pass 28 (f0926fe). Pass 28 adversary ran with POL-11 reporting "PASS" but did not verify file count. Pass 29 adversary [process-gap] correctly flagged this. Resolution required: devops scope fix (adaf9d2), architect ADR-0007 v1.0.4 (§Enforcement Scan Scope ratified; exempt dirs listed), corpus sweep (0d190a5). This was the 11th META-pattern instance — the enforcer itself had a scope bug on first deployment.
 
 **Rule:** When a CI enforcement gate is deployed or modified, the deployment commit MUST include a dry-run output line reporting the number of files scanned (e.g., "541 files scanned, 0 findings"). The adversarial pass that follows a new gate deployment MUST verify the scanned-file count is non-zero and plausible for the corpus size. If the scanned-file count is zero or suspiciously low, this is a BLOCKER finding — not a LOW or NIT. The gate is not live until scope is empirically verified.
+
+---
+
+### L-W6-S025-009: Green CI proves the gate ran, not that it detects the input form [codified]
+
+**Date:** 2026-05-30
+**Severity:** codified (process-gap — closed in scope D-209, Pass 30 remediation)
+**Origin:** S-025 adversarial Pass 30 F-S025-ADV30-MED-001: POL-11 was BLIND to YAML `inputs[]` form (e.g., `{path: ..., version: "1.5"}`). The `check_version_pins.py` regex was matching only prose form `EVAL-INDEX v1.5` and `EVAL-INDEX.md v1.5` but not object-style `EVAL-INDEX.md, version: "1.5"`. CI reported PASS — 264 active, 0 findings — but this was a false-green because the detector never saw the input form. devops added Pattern B detection (feature branch e38c9d0); architect ratified in ADR-0007 v1.0.6.
+
+**Pattern:** A CI gate can report 0 findings while being structurally blind to entire classes of input. L-W6-S025-008 established that a gate scanning 0 files is a BLOCKER. This lesson extends the principle: a gate scanning the correct file count but with regex patterns that do not cover all input forms can produce identical "0 findings" output. The false-green is undetectable without explicit detector-coverage verification: run the gate against a synthetic file that CONTAINS the uncovered input form and confirm a finding is raised.
+
+**Rule:** When a CI enforcement gate is deployed or modified, detector coverage MUST be verified against real input shapes — not just prose "vN.N" form, but all structural forms the detector is expected to catch (YAML object form, inline table form, frontmatter form, etc.). Add a test fixture with each input form to the gate's test suite. A coverage-miss in a structural input form is a false-green and must be classified as a BLOCKER. "CI was green" is NOT sufficient evidence that a gate covers the input shape — only explicit detector-coverage probing is.
+
+---
+
+### L-W6-S025-010: Classification policies need a CLOSED rule with a safe default [codified]
+
+**Date:** 2026-05-30
+**Severity:** codified (architectural — closed in scope D-209, Pass 30 remediation)
+**Origin:** S-025 adversarial Pass 30 F-S025-ADV30-MED-001 root-cause analysis: the long tail of META-pattern recurrences (11 instances across Passes 18-29) was enabled by an open-ended ACTIVE classification. Every time a new document class appeared (BC body, story inputs[], VP body, EVAL-INDEX inputs[]), the adversary correctly asked "is this active or historical?" and POL-11 enforcement was partial until the boundary was re-argued. Human approved Option A (historical provenance) to permanently close the set: the ACTIVE set is `{*-INDEX.md + prd.md}` by closed rule; everything else is HISTORICAL by default. ADR-0007 v1.0.6 codified this as a closed rule.
+
+**Pattern:** A policy that classifies artifacts as ACTIVE or HISTORICAL without a closed enumeration of the ACTIVE set will re-trigger the same boundary dispute for each new document class encountered. The META-pattern in S-025 (12 instances in 30 passes) was enabled by an open-ended ACTIVE boundary. Each new document class (BC body pins → story inputs[] pins → VP body pins → EVAL-INDEX inputs[] pins) required a fresh adversarial challenge, a fresh architectural ruling, and a fresh enforcement fix. An open ACTIVE rule produces O(document-class-count) recurrences. A CLOSED active rule (enumerated finite set) produces O(1) recurrences (only when the closed set itself is updated).
+
+**Rule:** Any enforcement policy that must distinguish between two classification states (ACTIVE vs HISTORICAL, normative vs informational, required vs optional) MUST specify:
+1. A CLOSED enumeration of the minority class (the stricter-enforcement class — here: ACTIVE = `{*-INDEX.md, prd.md}`).
+2. An explicit SAFE DEFAULT for all non-enumerated artifacts (here: HISTORICAL).
+3. The procedure for adding to the closed set (here: ADR-0007 amendment with human approval).
+Without a closed rule, each new document class triggers a new boundary dispute. The safe-default + closed-set pattern eliminates the long tail structurally.
