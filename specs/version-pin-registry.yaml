@@ -58,9 +58,9 @@ SS-config:
 
 SS-conventions-anti-patterns:
   path: specs/architecture/SS-conventions-anti-patterns.md
-  current_version: "1.32.3"
-  last_bump_commit: "12170b457ebea8f775e782d309552b2acb1b3edb"
-  last_bump_date: "2026-05-29"
+  current_version: "1.32.4"
+  last_bump_commit: "[set at D-ADV30]"
+  last_bump_date: "2026-05-30"
 
 SS-core-types-and-abi:
   path: specs/architecture/SS-core-types-and-abi.md
@@ -128,14 +128,14 @@ ADR-0005:
 
 ADR-0007-version-pin-citation-discipline:
   path: specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md
-  current_version: "1.0.4"
-  last_bump_commit: "72e065b"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at D-ADV30]"
   last_bump_date: "2026-05-30"
 
 ADR-0008-structural-claim-discipline:
   path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
-  current_version: "1.0.3"
-  last_bump_commit: "72e065b"
+  current_version: "1.0.4"
+  last_bump_commit: "[set at D-ADV30]"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────

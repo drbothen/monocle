@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.3"
+version: "1.32.4"
 status: complete
 producer: architect
 phase: phase-3
@@ -1769,7 +1769,81 @@ Phase 2 (Phase 5 scope): Module-level doc-comment table shape extraction from
 `crates/**/*.rs`. Pattern: `grep -n '//! |' crates/**/*.rs | grep -E '\|.*\|.*\|'`.
 Compare column count against the BC cited in the same doc-comment block.
 
+## §ADR Authoring Discipline
+
+**Codified D-ADV30 (F-S025-ADV30-HIGH-001 closure). Governs all ADR documents in `.factory/specs/architecture/adr/`.**
+
+The §Trace-escaping-into-normative-content defect has appeared 4 times across the S-025
+convergence cycle (ADR-0006 indirect path; ADR-0007 Pass 26 HIGH-001; ADR-0008 Pass 28
+MED-002; ADR-0008 Pass 30 HIGH-001). Each instance required a fresh-context adversarial
+pass to detect. The pattern: §Trace entry prose is accidentally inserted inside a normative
+section (numbered list, table, or body paragraph) during an edit that adds a new §Trace
+entry, instead of creating a new `## §Trace vN.M.P` section.
+
+### Pre-Commit ADR Self-Consistency Checklist
+
+Before committing any change to an ADR file, the author MUST verify all five points:
+
+**1. §Trace section header ↔ entry label match:**
+Every `## §Trace vN.M.P` section header must contain an entry labeled `**N.M.P**`
+or `**vN.M.P**` (or a descriptive bold title beginning a paragraph). A header of
+`## §Trace v1.0.2` with a body entry labeled `**1.0.3**` is a defect — the header
+and label must agree on the version number. Check: after any §Trace section rename
+or new-version addition, grep the section body for bold labels and verify they match
+the header.
+
+**2. No §Trace prose inside normative sections:**
+Grep the edited ADR file for bold version labels: `grep -n '^\*\*[0-9]' <file>`.
+Every match must be either (a) inside a `## §Trace` section (between that section's
+header and the next `##` header), or (b) inside a fenced code block, or (c) an
+annotated historical-anchor. If a match falls inside a numbered list, table, or
+non-§Trace body paragraph, the §Trace prose has escaped — extract it into its own
+`## §Trace vN.M.P` section before committing.
+
+**3. Table cell pipe escape in regex patterns:**
+Any regex or pattern string inside backticks that contains a `|` alternation operator
+MUST escape it as `\|`. The `validate-table-cell-count` pre-commit hook counts `|`
+characters as table structural pipes and will reject rows where the count does not match
+the header. An unescaped `|` inside a backtick-delimited pattern (e.g., in an
+Implementation Plan table cell) is a pre-commit hook violation.
+
+**4. Numbered list continuity:**
+After any ADR edit that touches a numbered list, verify the list reads 1, 2, 3, ...
+without gaps. A gap (e.g., 1 followed directly by 3) indicates either: (a) an item's
+text was removed but its number was not renumbered, or (b) a §Trace entry consumed
+a list item's position by insertion between items. Check by rendering the list mentally
+or with `grep -n '^[0-9]\+\. ' <file>`.
+
+**5. Line-level self-references verified:**
+Before citing a specific line number in the same file (e.g., "see lines 121-125"),
+re-verify those lines exist and contain the referenced content. Off-by-N defects are
+a recorded failure mode (ADR-0008 Pass 28 MED-002: off-by-2 at lines 831-864 → 833-864).
+This is especially important when the ADR references its own section content by line range.
+
+### Anti-Pattern Summary
+
+| Anti-pattern | Correct form |
+|-------------|-------------|
+| `## §Trace v1.0.2` header with `**1.0.3**` labeled body entry | Rename header to match label, or rename label to match header |
+| Bold version label `**1.0.2** (date) — ...` inserted between items 2 and 3 of a numbered list | Create a new `## §Trace v1.0.2` section; remove from numbered list |
+| Regex in table cell: `(SS-[a-z-]+\.md|BC-[0-9.]+)` | Escape alternation: `(SS-[a-z-]+\.md\|BC-[0-9.]+)` |
+| Numbered list reads 1, (blank), 3 after edit | Renumber to 1, 2, 3 after extracting the interloping content |
+| "See lines 831-864" when struct body starts at line 833 | Re-read the file to verify line range before authoring |
+
+**Related policies:** ADR-0007 §Implementation Plan "Immediate (D-ADV30)" items; ADR-0008 §Trace v1.0.4 (corrective entry for the 4th instance).
+
 ## §Trace
+
+v1.32.4 changes (D-ADV30 F-S025-ADV30 remediation — ADR authoring discipline codified):
+
+- NORMATIVE: §ADR Authoring Discipline section added. Codifies the pre-commit ADR
+  self-consistency checklist (5 checks: §Trace header↔label match; no §Trace prose in
+  normative sections; table cell pipe escape; numbered list continuity; line-level
+  self-reference verification) and an Anti-Pattern Summary table. Motivated by the
+  4th recorded instance of the §Trace-escaping-into-normative-content defect class.
+  Cross-references ADR-0007 v1.0.5 §Implementation Plan (D-ADV30 items) and
+  ADR-0008 v1.0.4 §Trace v1.0.4 (corrective entry).
+- NORMATIVE: Version bump 1.32.3 → 1.32.4.
 
 v1.32.3 changes (Pass 28 F-S025-ADV28-MED-002 propagation closure — ADR-0008 §Canonical Source Registry off-by-2 correction):
 

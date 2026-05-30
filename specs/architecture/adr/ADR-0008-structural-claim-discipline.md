@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.3"
+version: "1.0.4"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -247,8 +247,6 @@ A structural claim is a historical anchor (frozen, exempt from CI check) when it
 meets at least ONE of:
 
 1. It appears inside a `## §Trace` section.
-
-**1.0.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 2. It is annotated with `<!-- structural-claim-historical -->` on the same line or
    the adjacent line.
 3. It contains a time qualifier establishing this as a record of past state:
@@ -355,6 +353,23 @@ as cross-story propagation). Per BC-5.39.002 PC2, cross-story structural-claim f
 are deferred to wave-gate sweep (not blocking S-025 convergence). Story-writer is
 dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
 
+## §Trace v1.0.4
+
+**F-S025-ADV30-HIGH-001 internal-consistency correction — §Trace-escaping-into-normative-content** (2026-05-30):
+
+- NORMATIVE: §Historical Anchor Classification for Structural Claims numbered list (items 1/2/3)
+  restored to correct sequence. The `**1.0.2**` §Trace entry was mis-inserted between items 1 and 2
+  of the normative numbered list, corrupting the list structure and burying the §Trace prose inside
+  a normative section. The entry has been extracted from the normative list and placed in its correct
+  location as a standalone `## §Trace v1.0.2` section (between v1.0.3 and v1.0.1 in the §Trace chain).
+  The numbered list is now correctly ordered: 1, 2, 3 with no embedded §Trace prose.
+- NORMATIVE: This is the 4th recorded instance of the ADR same-burst §Trace-escaping-into-normative-
+  content defect class. The corrective discipline (pre-commit ADR self-consistency checklist) is
+  codified in ADR-0007 v1.0.5 §Implementation Plan and SS-conventions-anti-patterns.md §ADR Authoring
+  Discipline, added in the same burst (D-ADV30).
+- NORMATIVE: Version bump 1.0.3 → 1.0.4 (structural correction; no operative rule change).
+- SE-16d PASS: 2026-05-30 > chain high-water 2026-05-30T00:00:00Z — same calendar day, sequential pass.
+
 ## §Trace v1.0.3
 
 **ADV-29 scope cross-reference — ADR-0007 §Enforcement Scan Scope alignment** (2026-05-30T00:00:00Z):
@@ -370,6 +385,10 @@ dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
   scope confirmation; no operative detection-rule change).
 - SE-16d PASS: 2026-05-30T00:00:00Z > chain high-water 2026-05-30 (monotonic;
   v1.0.2 was same-day patch with no explicit timestamp — this entry establishes chain).
+
+## §Trace v1.0.2
+
+**1.0.2** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
 
 ## §Trace v1.0.1
 

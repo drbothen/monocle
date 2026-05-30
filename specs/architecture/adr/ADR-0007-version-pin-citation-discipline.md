@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.4"
+version: "1.0.5"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -339,18 +339,70 @@ In any artifact in the NORMATIVE scan scope (see §Enforcement Scan Scope) and N
 a `§Trace` section:
 
 - **Forbidden:** Active version-pin literals in artifact bodies, e.g.:
-  - `SS-deps-pin-manifest.md v1.2.0` (active pointer)
-  - `BC-2.06.005 v1.0.6` (active pointer)
-  - `inputs: [SS-tui.md v1.8.2]` (active pointer in frontmatter)
+  - `SS-deps-pin-manifest.md v1.2.0` (active pointer in body prose — must be unversioned)
+  - `BC-2.06.005 v1.0.6` (active pointer in body prose — must be unversioned)
+  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` (active pointer in INDEX doc frontmatter — see §Story inputs[] Historical Provenance below)
 
 - **Permitted:** Unversioned citations, e.g.:
   - `SS-deps-pin-manifest.md §Phase-1-Pins`
   - `BC-2.06.005 §Postconditions`
-  - `inputs: [SS-tui.md]`
+  - `inputs: [SS-tui.md]` (bare filename; no version literal)
 
 - **Permitted:** Historical-anchor form, e.g.:
   - `at time of S-025 authoring, SS-deps-pin-manifest.md v1.2.0` (time-qualified)
+  - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` in an individual STORY file (historical provenance — see §Story inputs[] Historical Provenance below)
   - Anything inside a `§Trace` section
+
+### Story inputs[] Historical Provenance
+
+**Decision (human-approved, 2026-05-30, F-S025-ADV30-MED-001 Option A):**
+
+Individual story files' `inputs[]` frontmatter YAML pins — e.g. `{path: SS-tui.md, version: "1.8.2"}` —
+are HISTORICAL PROVENANCE records, not active pointers. They record the spec versions a story was
+AUTHORED/DECOMPOSED against at a specific point in time. This is inherently historical by construction:
+a story is authored once, and its inputs[] faithfully captures what was current at that moment,
+analogous to a §Trace entry. Individual story inputs[] pins are:
+
+- **NOT stale** when the cited document's canonical version advances (the record is frozen at authoring).
+- **EXEMPT from POL-11 CI staleness check** in individual story files — the YAML `{path, version}` form
+  appearing in `.factory/stories/S-NNN-*.md` is classified HISTORICAL, not active.
+- **NOT required to be updated** when a referenced spec bumps, because the historical record is correct.
+
+**Compensating control for not-started stories:** Individual story inputs[] are historical at the time
+of story authoring but may become stale relative to the spec at implementation time. The existing
+spec-freshness gate (`vsdd-factory:remove-uncertainty` skill + Phase 3 wave dispatch) requires
+implementers to verify spec currency before implementing each story. This gate is the compensating
+control: story inputs[] records what the story was written against; the implementer gate ensures
+the story is implemented against current specs. The historical inputs[] record is not updated when
+the gate runs — the gate may produce a story revision with updated body content, but inputs[] remains
+the original authoring-time record.
+
+**Index document boundary decision:** Living index documents (STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md,
+VP-INDEX.md, prd.md) whose `inputs[]` arguably should track CURRENT canonical — because they are
+continuously-maintained indices, not frozen story records — are classified as ACTIVE POINTERS, not
+historical provenance. Rationale: (a) index documents are rewritten on every wave-gate and version bump;
+(b) their `inputs[]` is not a "what was I authored against at time T" record — it is a live declaration
+of what the index currently reflects; (c) the continuous-maintenance lifecycle makes stale inputs[] in
+an index document a real defect (the index is incorrect), not a historical artifact (the story was correct
+at its moment). Therefore:
+
+| Artifact type | inputs[] classification | POL-11 treatment |
+|---------------|------------------------|-----------------|
+| Individual story files (`stories/S-NNN-*.md`) | HISTORICAL (authored-against provenance) | EXEMPT — not scanned for staleness |
+| Living index docs (STORY-INDEX, BC-INDEX, ARCH-INDEX, VP-INDEX, prd.md) | ACTIVE POINTER | SCANNED — must match canonical current version |
+
+**POL-11 implementation requirement for inputs[] YAML form:**
+
+The CI gate MUST NOT be blind to the YAML `{path:, version:}` form. The gate must:
+1. Detect YAML-form pins: `{path: <artifact>, version: "<semver>"}` in any scanned file's frontmatter.
+2. Apply the active-vs-historical classification per the boundary decision above:
+   - File path matches `stories/S-[0-9]+-*.md` → classify as HISTORICAL → skip staleness check.
+   - File path matches a living index document (see table above) → classify as ACTIVE → check version against registry.
+3. For active YAML-form pins, fail with: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`.
+
+The silent blind spot (YAML form not detected at all) is the defect to close. The handling must be
+explicit and intentional: either HISTORICAL (skip with rationale) or ACTIVE (check). Never silently
+ignored.
 
 ### Convention changes in SS-conventions-anti-patterns.md
 
@@ -415,11 +467,50 @@ formal classification (vs implicit exemption), and the opportunistic migration s
    state-manager registry-update obligation.
 3. Update `ARCH-INDEX.md` with ADR-0007 row in ADR Registry.
 
+### Immediate (D-ADV30 — F-S025-ADV30 remediation burst)
+
+4. Update `ADR-0007` v1.0.4 → v1.0.5 with §Story inputs[] Historical Provenance policy,
+   §Trace v1.0.3 split, pipe-escape fix, and ADR self-consistency discipline.
+5. Update `ADR-0008` v1.0.3 → v1.0.4 with §Trace v1.0.2 restoration (mis-inserted entry
+   extracted from normative numbered list and placed in correct §Trace section).
+6. Update `SS-conventions-anti-patterns.md` with §ADR Authoring Discipline section codifying
+   the pre-commit ADR self-consistency checklist (see below).
+
+**ADR Self-Consistency Checklist (pre-commit discipline — codified D-ADV30):**
+
+The §Trace-escaping-into-normative-content defect has appeared 4 times (ADR-0006 indirect
+path; ADR-0007 Pass 26 HIGH-001; ADR-0008 Pass 28 MED-002; ADR-0008 Pass 30 HIGH-001).
+The pattern: §Trace entry prose is accidentally inserted inside a normative section (numbered
+list, table, or body paragraph) rather than in a dedicated `## §Trace vN.M.P` section.
+
+Before committing any ADR, the author MUST verify:
+
+1. **§Trace section header ↔ entry label match:** Every `## §Trace vN.M.P` header must
+   contain an entry labeled `**N.M.P**` or `**vN.M.P**` (or a descriptive title). No
+   `## §Trace v1.0.2` section with a `**1.0.3**` labeled entry.
+2. **No §Trace prose inside normative sections:** Grep the file for `**[0-9]\+\.[0-9]\+`
+   (bold version labels). Every match must be either (a) inside a `## §Trace` section, or
+   (b) inside a code block, or (c) an annotated historical-anchor. If a match is inside a
+   numbered list, table, or body prose, it has escaped and must be extracted.
+3. **Table cell pipe escape:** Any regex pattern inside backticks that contains a `|`
+   alternation operator must escape it as `\|` to prevent `validate-table-cell-count` from
+   counting it as a structural pipe.
+4. **Numbered list continuity:** After any ADR edit, verify numbered lists read 1, 2, 3, ...
+   without gaps. A gap (1, then 3 with no 2) indicates an insertion removed item 2's text
+   but left its number, or a §Trace entry consumed a list item's position.
+5. **Line-level self-references verified:** Before citing a specific line number in the same
+   file (e.g., "see lines 121-125"), re-verify those lines exist and contain the referenced
+   content. Off-by-N defects are a recorded failure mode (ADR-0008 Pass 28 MED-002).
+
+This checklist is added to `SS-conventions-anti-patterns.md §ADR Authoring Discipline` in
+the same burst. Architect runs it mentally before every ADR write; the conventions doc
+serves as the durable reference.
+
 ### Next session dispatches
 
 | Priority | Dispatch | Instructions |
 |----------|----------|-------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook. Reads `.factory/specs/version-pin-registry.yaml`. For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. For each active match, looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-version-pin-freshness` pre-commit hook (`scripts/check_version_pins.py`). Reads `.factory/specs/version-pin-registry.yaml`. **Pattern A — prose form:** For each `.md`, `.rs`, `.toml`, `.yml`, `.yaml` file in the staged diff, greps for patterns matching `(SS-[a-z-]+\.md\|BC-[0-9.]+)\s+v[0-9]+\.[0-9]+(\.[0-9]+)?`. Classifies each match as a historical anchor if ANY ONE of: (a) the line is inside a `§Trace` block, (b) the line contains a `version-pin-historical` annotation, or (c) the line contains a time qualifier ("at time of", "at S-NNN authoring time", "at T-NNN dispatch time", "at spec authoring time", "at time of ratification", "at initial authoring", or equivalent). Any match not meeting at least one of these criteria is classified as active. **Pattern B — YAML frontmatter form:** Additionally detect YAML-form pins `{path: <artifact>, version: "<semver>"}` in file frontmatter. Apply active-vs-historical classification per §Story inputs[] Historical Provenance boundary decision: if the containing file path matches `stories/S-[0-9]+-*.md` → classify HISTORICAL → skip; if the containing file is a living index doc (STORY-INDEX.md, BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, prd.md) → classify ACTIVE → check version. The gate must never silently skip the YAML form — handling must be explicit (HISTORICAL or ACTIVE, never unhandled). For each active match (Pattern A or B), looks up the artifact ID in the registry and compares the cited version to `current_version`. Fails with: Pattern A: `version-pin staleness: <file>:<line> cites <artifact> v<cited> but canonical is v<canonical>`. Pattern B: `version-pin staleness: <file>: inputs[].version cites <artifact> v<cited> but canonical is v<canonical>`. Add CI step after `cargo clippy` per §CI Wiring ordering. |
 | 2 (HIGH) | state-manager | Seed `.factory/specs/version-pin-registry.yaml` with all 11 SS docs from ARCH-INDEX Document Map + BC-INDEX current version. Each entry: artifact ID, path, current_version (from frontmatter), last_bump_commit (from git log), last_bump_date. |
 | 3 (HIGH) | story-writer | Update story template (`.factory/templates/` or equivalent): remove version literals from `inputs:` example. Add note: "cite artifact by ID only; no version literals in body prose — see ADR-0007". Update STORY-INDEX template if it carries version examples. |
 | 4 (MEDIUM) | product-owner | Update BC template: Architecture Source section — remove `v<version>` from example form. Add note citing ADR-0007. |
@@ -441,6 +532,38 @@ Based on D-202.1 (57+ BCs), D-203 (14 VPs / 45 occurrences), and Pass 24/25 evid
 A tooling script (devops-engineer deliverable alongside the CI hook) should produce
 the full inventory from the registry, enabling a one-pass migration if the team
 chooses to accelerate.
+
+## §Trace v1.0.5
+
+**F-S025-ADV30 remediation — inputs[] historical provenance policy + ADR self-consistency discipline** (2026-05-30):
+
+- NORMATIVE (F-S025-ADV30-MED-001 closure): §Consequences §What is forbidden amended to correctly
+  classify individual story `inputs[]` YAML pins as HISTORICAL PROVENANCE (not forbidden active pointers).
+  The v1.0.4 example `inputs: [SS-tui.md v1.8.2] (active pointer in frontmatter)` was WRONG under
+  Option A (human-approved 2026-05-30): story inputs[] are authored-against records, historically
+  frozen by construction, and NOT stale when canonical advances. The example has been corrected to
+  distinguish individual story files (HISTORICAL) from living index docs (ACTIVE).
+- NORMATIVE (F-S025-ADV30-MED-001 closure): New §Consequences sub-section §Story inputs[] Historical
+  Provenance added. Defines: (a) individual story inputs[] = historical provenance, EXEMPT from POL-11;
+  (b) living index doc inputs[] = active pointers, SCANNED; (c) compensating control (remove-uncertainty
+  gate at implementation time); (d) boundary decision rationale; (e) POL-11 YAML form detection
+  requirement — the gate must not be silent/blind to the YAML `{path:, version:}` form.
+- NORMATIVE (F-S025-ADV30-MED-001 closure): §Implementation Plan Priority 1 devops dispatch updated
+  with Pattern B (YAML frontmatter form) detection specification: detect `{path:, version:}` in
+  frontmatter, apply active-vs-historical classification per boundary decision, never silently skip.
+- NORMATIVE (F-S025-ADV30-HIGH-001 closure): §Trace v1.0.3 section created (was missing — the `**1.0.3**`
+  entry was incorrectly slotted under the v1.0.2 header, producing a header-vs-label mismatch). §Trace
+  chain now correctly reads: v1.0.5, v1.0.4, v1.0.3, v1.0.2, v1.0.1.
+- NORMATIVE (F-S025-ADV30-LOW-001 closure): §Implementation Plan Priority 1 regex corrected from
+  unescaped `|` to `\|` inside backtick regex pattern (pre-existing since v1.0.0; first detected by
+  ADV-30 comparison against ADR-0008 §Why Structural Claims Are Distinct table).
+- NORMATIVE (TASK 4 — tripwire/protocol-improvement): §Implementation Plan Immediate items extended
+  with ADR self-consistency pre-commit checklist discipline. The recurring §Trace-escaping-normative-
+  content defect class has appeared 4 times (ADR-0006 indirect, ADR-0007 Pass 26, ADR-0008 Pass 28,
+  ADR-0008 Pass 30). Discipline codified in §Implementation Plan (D-ADV30 immediate items) and
+  SS-conventions-anti-patterns.md §ADR Authoring Discipline.
+- NORMATIVE: Version bump 1.0.4 → 1.0.5.
+- SE-16d PASS: 2026-05-30 > chain high-water 2026-05-30T00:00:00Z — same calendar day, sequential pass.
 
 ## §Trace v1.0.4
 
@@ -464,9 +587,11 @@ chooses to accelerate.
 - SE-16d PASS: 2026-05-30T00:00:00Z > chain high-water 2026-05-30 (monotonic; v1.0.3
   was a same-day patch with no explicit timestamp; this entry establishes chain).
 
-## §Trace v1.0.2
+## §Trace v1.0.3
 
 **1.0.3** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
+
+## §Trace v1.0.2
 
 **D-206 ADR-0008 cross-reference addition — structural-spec drift tripwire closure** (2026-05-29T12:00:00Z):
 
