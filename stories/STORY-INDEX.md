@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.19"
+version: "5.20"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T00:00:00Z
@@ -11,7 +11,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
   - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
   - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.19"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.20"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.6"}
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.8"}
   - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.6"}
@@ -450,6 +450,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.20
+
+**POL-11 remediation: ARCH-INDEX active input pin v1.0.19 → v1.0.20** (2026-05-30):
+- STORY-INDEX is an `*-INDEX.md` doc (ACTIVE set per ADR-0007 closed rule); its `inputs[]` ARCH-INDEX pin must track canonical.
+- ARCH-INDEX.md input pin updated: `"1.0.19"` → `"1.0.20"` (Option 1 per ADR-0007 §Decision).
+- Version bumped v5.19 → v5.20.
+- SE-16d monotonicity: v5.20 timestamp 2026-05-30 >= v5.17 timestamp 2026-05-30. PASS (same-day; §Trace v5.18/v5.19 entries are absent — pre-existing gap not in scope of this remediation).
 
 ## §Trace v5.17
 

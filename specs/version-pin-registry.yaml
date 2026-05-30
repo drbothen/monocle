@@ -156,8 +156,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.19"
-  last_bump_commit: "1e39ed28f6902090eab4962a18025a1b4589f0b7"
+  current_version: "5.20"
+  last_bump_commit: "[set at POL-11 remediation burst]"
   last_bump_date: "2026-05-30"
 
 VP-INDEX:
@@ -171,6 +171,12 @@ L2-INDEX:
   current_version: "1.0.11"
   last_bump_commit: "6b85e06ca32af89a206c5c2324c342310a612a2e"
   last_bump_date: "2026-05-18"
+
+EVAL-INDEX:
+  path: specs/holdout-scenarios/EVAL-INDEX.md
+  current_version: "1.5"
+  last_bump_commit: "[set at POL-11 remediation burst]"
+  last_bump_date: "2026-05-30"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -455,8 +461,8 @@ BC-2.05.007:
 
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
-  current_version: "1.0.5"
-  last_bump_commit: "dd82c05"
+  current_version: "1.0.6"
+  last_bump_commit: "[set at POL-11 remediation burst]"
   last_bump_date: "2026-05-30"
 
 BC-2.06.001:
@@ -638,3 +644,9 @@ BC-2.07.006:
   current_version: "1.0.2"
   last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
   last_bump_date: "2026-05-28"
+
+BC-HOOK-039:
+  path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md
+  current_version: "1.0.3"
+  last_bump_commit: "[set at POL-11 remediation burst]"
+  last_bump_date: "2026-05-30"

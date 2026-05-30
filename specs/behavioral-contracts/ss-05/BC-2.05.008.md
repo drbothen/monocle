@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T04:00:00Z
+timestamp: 2026-05-30T00:00:00Z
 phase: phase-1-expansion
 inputs: [prd-expansion-scope.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
 input-hash: "334c61a"
@@ -133,7 +133,7 @@ of shared-memory crates), and a semgrep check in CI (detecting direct `libc::mma
 | L2 Domain Invariants | DI-007 (monocle must not write to harness-owned files — shared-memory primitives could theoretically be used to violate this; the prohibition on shared-memory in monocle-ipc upholds DI-007's spirit at the transport layer) |
 | Architecture Module | monocle-ipc (Transport trait, UdsTransport, `#![forbid(unsafe_code)]`) per ARCH-INDEX Subsystem Registry SS-05 |
 | Architecture Source | SS-ipc.md v1.9.0 §Transport Layer §Transport Trait; SS-ipc.md v1.9.0 §Phase 1 Transport Constraint |
-| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.32.3 §Forbidden Patterns (shared-memory primitives) |
+| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md v1.32.4 §Forbidden Patterns (shared-memory primitives) |
 | Test File | CI enforcement (cargo deny, semgrep, rustc compile gate) — not an integration test |
 | Test Name | `test_BC_2_05_008_uds_only_constraint` (static analysis CI job) |
 | Stories | S-TBD (filled by story-writer) |
@@ -199,3 +199,11 @@ VP-TBD — UDS-only constraint static analysis verification (filled after VP cre
 - Cross-Ref row: `SS-conventions-anti-patterns.md v1.29.5 §Forbidden Patterns` → `SS-conventions-anti-patterns.md v1.31.1 §Forbidden Patterns`. Plain pin refresh — §Forbidden Patterns shared-memory primitives entry unchanged.
 - All three refreshes are plain version-pin refreshes; no substantive content propagation required.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+
+## §Trace v1.0.6
+
+**POL-11 remediation: SS-conventions-anti-patterns Cross-Ref pin v1.32.3 → v1.32.4** (2026-05-30):
+- Cross-Ref row: `SS-conventions-anti-patterns.md v1.32.3 §Forbidden Patterns` → `SS-conventions-anti-patterns.md v1.32.4 §Forbidden Patterns` (Option 1 per ADR-0007 §Decision — active navigation pointer, not historical provenance).
+- SS-conventions canonical version is v1.32.4 per `version-pin-registry.yaml`.
+- Version bumped v1.0.5 → v1.0.6.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-30 >= v1.0.4 timestamp 2026-05-29. PASS.

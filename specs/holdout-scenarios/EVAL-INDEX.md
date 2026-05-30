@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.4"
+version: "1.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-30T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -18,7 +18,7 @@ inputs:
   - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.2"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.23"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
 traces_to: ".factory/stories/STORY-INDEX.md v4.7"
 input-hash: "[pending]"
 ---
@@ -95,6 +95,13 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 - **Combined total: 24 holdout scenarios**
 
 ---
+
+## §Trace v1.5
+
+**POL-11 remediation: BC-INDEX active input pin v1.23 → v1.32** (2026-05-30):
+- EVAL-INDEX is an `*-INDEX.md` doc (ACTIVE set per ADR-0007 closed rule); its `inputs[]` BC-INDEX pin must track canonical.
+- BC-INDEX.md input pin updated: `"1.23"` → `"1.32"` (Option 1 per ADR-0007 §Decision).
+- Version bumped v1.4 → v1.5.
 
 ## §Trace v1.3
 
