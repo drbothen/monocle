@@ -5,7 +5,7 @@ check_version_pins.py — POL-11: Version-pin literal freshness enforcement.
 Implements monocle-version-pin-freshness CI gate per ADR-0007
 §Implementation Plan and SS-conventions-anti-patterns.md §Citation Discipline.
 
-POLICY SUMMARY (ADR-0007 v1.0.6):
+POLICY SUMMARY (ADR-0007 v1.0.7):
   Every active version-pin literal in the repository must match the canonical
   current version in .factory/specs/version-pin-registry.yaml (or the cited
   document's frontmatter, as fallback). Active means NOT classified as a
@@ -29,7 +29,7 @@ PATTERN B — YAML FRONTMATTER FORM:
   In addition to the inline prose form (Pattern A), POL-11 detects the YAML
   structured inputs[] form used in story and index-doc frontmatter:
     {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  Classification per ADR-0007 §Story inputs[] Historical Provenance (v1.0.6):
+  Classification per ADR-0007 §Story inputs[] Historical Provenance (v1.0.7):
   - File basename matches the regex ^[A-Za-z0-9-]*-INDEX\.md$ (e.g. STORY-INDEX.md,
     BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, EVAL-INDEX.md, L2-INDEX.md) OR
     the file basename is exactly "prd.md":
@@ -100,27 +100,116 @@ from pathlib import Path
 from typing import Optional
 
 # ───────────────────────────────────────────────────────────────────────────────
-# Version-pin literal detection pattern.
+# Version-pin literal detection pattern — REGISTRY-DRIVEN (F-S025-ADV31-MED-001).
 #
-# Matches: SS-something.md v1.2.3  |  BC-2.06.005 v1.0.6  |  ADR-0007 v1.0.2
-#          ADR-0007-some-name.md v1.0.0
+# Pattern A matches ANY artifact ID present in version-pin-registry.yaml, not just
+# the hardcoded SS-/BC-/ADR- prefixes. This closes the "artifact-vocabulary blind
+# spot" that allowed dtu-assessment, product-brief, nfr-catalog, error-taxonomy,
+# prd, and all *-INDEX docs to slip through CI undetected.
 #
-# Pattern groups:
-#   Group 1: artifact ID (SS-..., BC-N.NN.NNN, ADR-NNNN or ADR-NNNN-name.md)
+# Both _VERSION_PIN_RE and _SPLIT_LINE_ARTIFACT_RE are initialised as None and
+# compiled lazily by _build_registry_patterns() after load_registry() returns.
+# scan_file() reads from these module-level names; they are always set before any
+# file scanning begins (enforced by main() call order).
+#
+# Pattern groups (after compilation):
+#   Group 1: artifact ID (any registry key, possibly with .md suffix in prose)
 #   Group 2: version literal (N.N or N.N.N)
+#
+# False-match guards:
+#   - Longest-first alternation: longer IDs are tried first, preventing a shorter
+#     prefix (e.g. "BC-INDEX" not mis-parsed as "BC-" + rest).
+#   - Negative lookbehind (?<![A-Za-z0-9_-]) before each ID: prevents short IDs
+#     like "prd" from matching inside longer words (e.g. "spread").
+#   - Required whitespace + "v" separator: "prd v1.27.4" is specific; prose like
+#     "spread v..." would only match if "d" were a registry key (it is not).
+#   - Optional .md suffix: IDs may appear as "SS-tui.md v1.8.2" or "SS-tui v1.8.2".
+#     The .md suffix is stripped during normalisation before registry lookup.
 # ───────────────────────────────────────────────────────────────────────────────
-_VERSION_PIN_RE = re.compile(
-    r"""
-    (                                          # Group 1: artifact ID
-        SS-[a-z][a-z0-9-]*(?:\.md)?            #   SS-something or SS-something.md
-      | BC-[0-9]+\.[0-9]+\.[0-9]+              #   BC-N.NN.NNN (numeric only, no .md)
-      | ADR-[0-9]+(?:-[a-z0-9-]+)*(?:\.md)?   #   ADR-0007 or ADR-0007-name or .md variant
+_VERSION_PIN_RE: re.Pattern | None = None  # compiled by _build_registry_patterns()
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Multi-line split detection — also registry-driven.
+# See full documentation in the _SPLIT_LINE_ARTIFACT_RE block below.
+# ───────────────────────────────────────────────────────────────────────────────
+# (Placeholder — also compiled by _build_registry_patterns())
+
+
+def _build_registry_patterns(registry: dict[str, str]) -> None:
+    """
+    Build and compile Pattern A regexes from registry artifact IDs.
+
+    Called once in main() immediately after load_registry() returns. Populates
+    the module-level _VERSION_PIN_RE and _SPLIT_LINE_ARTIFACT_RE variables used
+    by scan_file().
+
+    Design:
+      - Artifact IDs are sorted longest-first to ensure greedy/correct matching
+        (e.g. "ADR-0007-version-pin-citation-discipline" matches before "ADR-0007").
+      - Each ID is re.escape()-d so dots in BC IDs (BC-2.06.005) and hyphens are
+        treated literally.
+      - An optional (?:\.md)? suffix allows prose citations to include the .md extension.
+      - A negative lookbehind (?<![A-Za-z0-9_-]) before each term prevents short IDs
+        (e.g. "prd") from matching as a substring of a longer word.
+      - After the ID (before the required whitespace separator), a negative lookahead
+        (?![A-Za-z0-9_]) prevents partial-prefix matches where the actual prose word
+        continues (e.g. "prd-expansion" should NOT match artifact id "prd").
+
+    Both _VERSION_PIN_RE and _SPLIT_LINE_ARTIFACT_RE are set on the module object.
+    """
+    global _VERSION_PIN_RE, _SPLIT_LINE_ARTIFACT_RE  # noqa: PLW0603
+
+    # Sort IDs by descending length so the longest alternative is tried first.
+    # This is the correct longest-match strategy for alternation in Python re.
+    sorted_ids = sorted(registry.keys(), key=len, reverse=True)
+
+    # Build per-ID pattern fragments. Each fragment:
+    #   (?<![A-Za-z0-9_-])   — no alphanumeric/underscore/hyphen immediately before
+    #   <escaped-id>          — literal artifact ID (dots escaped in BC IDs)
+    #   (?:\.md)?             — optional .md extension for prose citations
+    #   (?![A-Za-z0-9_])     — no alphanumeric/underscore immediately after (before space)
+    # The lookahead guard uses [A-Za-z0-9_] (not hyphens) because an artifact ID
+    # followed by a hyphen should NOT match (e.g. "dtu-assessment-extra" should not
+    # match "dtu-assessment" — but this is already prevented by longest-first + the fact
+    # that the extra suffix contains no hyphen boundary before the required whitespace).
+    # More precisely: "dtu-assessment-extra v1.0" — "dtu-assessment" would match at
+    # position 0, then require [ \t]+ next, but next is "-extra" so it would fail.
+    # The negative lookahead (?![A-Za-z0-9_-]) after the .md suffix is the cleaner guard.
+    def _id_fragment(artifact_id: str) -> str:
+        escaped = re.escape(artifact_id)
+        # Negative lookbehind: not preceded by word char or hyphen
+        return rf"(?<![A-Za-z0-9_-]){escaped}(?:\.md)?(?![A-Za-z0-9_-])"
+
+    alternation = "|".join(_id_fragment(aid) for aid in sorted_ids)
+
+    # ── _VERSION_PIN_RE: same-line Pattern A ────────────────────────────────
+    # Group 1: artifact ID (with optional .md), Group 2: version literal.
+    # Note: the lookbehind/lookahead are INSIDE each alternative but must be
+    # outside the capturing group for Group 1 to capture just the ID+.md.
+    # We use a non-capturing wrapper so Group 1 still captures the full match.
+    # Restructured: each alternative already includes the lookbehind/lookahead,
+    # so the outer group just collects whichever alternative matched.
+    version_pin_pattern = rf"""
+    (                                          # Group 1: artifact ID (any registry key)
+        {alternation}
     )
     [ \t]+                                     # required whitespace separator
     v([0-9]+\.[0-9]+(?:\.[0-9]+)?)             # Group 2: version literal vN.N or vN.N.N
-    """,
-    re.VERBOSE,
-)
+    """
+    _VERSION_PIN_RE = re.compile(version_pin_pattern, re.VERBOSE)
+
+    # ── _SPLIT_LINE_ARTIFACT_RE: cross-line end-of-line artifact detection ──
+    # Same alternation, but anchored to end-of-line with trailing punctuation
+    # tolerance. Group 1 captures the artifact ID.
+    split_artifact_pattern = rf"""
+    (                                          # Group 1: artifact ID
+        {alternation}
+    )
+    [^\S\r\n]*                                  # optional trailing whitespace (not newline)
+    [^A-Za-z0-9\r\n]*                           # optional non-alphanumeric suffix (e.g. "(")
+    $                                           # must be at end of line
+    """
+    _SPLIT_LINE_ARTIFACT_RE = re.compile(split_artifact_pattern, re.VERBOSE | re.MULTILINE)
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Multi-line split detection: artifact ID ends one line, version starts the next.
@@ -131,26 +220,13 @@ _VERSION_PIN_RE = re.compile(
 #   line N:   "... (removed in BC-2.06.004"
 #   line N+1: "v1.1.0 <!-- version-pin-historical: ... -->)"
 #
-# We detect this by matching an artifact-ID tail pattern on line N and a version
-# lead pattern on line N+1. The match is verified end-of-line (artifact ID must
-# appear as the last token, optionally followed by non-word chars).
+# _SPLIT_LINE_ARTIFACT_RE is compiled lazily by _build_registry_patterns() using
+# the same registry-driven alternation as _VERSION_PIN_RE. The None placeholder
+# is replaced before any scanning begins.
 # ───────────────────────────────────────────────────────────────────────────────
 
-# Matches an artifact ID that appears near the end of a line (possibly followed
-# by non-word chars like punctuation before EOL).
-_SPLIT_LINE_ARTIFACT_RE = re.compile(
-    r"""
-    (                                          # Group 1: artifact ID
-        SS-[a-z][a-z0-9-]*(?:\.md)?            #   SS-something or SS-something.md
-      | BC-[0-9]+\.[0-9]+\.[0-9]+              #   BC-N.NN.NNN
-      | ADR-[0-9]+(?:-[a-z0-9-]+)*(?:\.md)?   #   ADR-0007 or ADR-0007-name
-    )
-    [^\S\r\n]*                                  # optional trailing whitespace (not newline)
-    [^a-zA-Z0-9\r\n]*                           # optional non-alphanumeric suffix (e.g. "(")
-    $                                           # must be at end of line
-    """,
-    re.VERBOSE | re.MULTILINE,
-)
+# Compiled by _build_registry_patterns() — do not use before main() calls it.
+_SPLIT_LINE_ARTIFACT_RE: re.Pattern | None = None  # noqa: E501
 
 # Matches a version literal at (or near) the start of a line (possibly after
 # whitespace or leading punctuation like "(" or ")").
@@ -470,7 +546,7 @@ def _classify_yaml_pin(file_path: Path) -> str:
     - Everything else → HISTORICAL by default (authored-against provenance record,
       frozen at document authoring time).
 
-    Per ADR-0007 v1.0.6: the gate must never silently ignore the YAML form. This
+    Per ADR-0007 v1.0.7: the gate must never silently ignore the YAML form. This
     function ensures every YAML pin is classified explicitly before any decision is made.
     Never returns an unclassified result.
     """
@@ -673,6 +749,17 @@ def scan_file(
     lines = text.splitlines()
     n_lines = len(lines)
 
+    # _VERSION_PIN_RE and _SPLIT_LINE_ARTIFACT_RE must be compiled before scanning.
+    # _build_registry_patterns() is called in main() before the scan loop.
+    assert _VERSION_PIN_RE is not None, (
+        "_VERSION_PIN_RE is None — _build_registry_patterns() was not called before scan_file()"
+    )
+    assert _SPLIT_LINE_ARTIFACT_RE is not None, (
+        "_SPLIT_LINE_ARTIFACT_RE is None — _build_registry_patterns() was not called before scan_file()"
+    )
+    version_pin_re = _VERSION_PIN_RE
+    split_artifact_re = _SPLIT_LINE_ARTIFACT_RE
+
     in_trace = False
     trace_level = 0
 
@@ -689,7 +776,7 @@ def scan_file(
 
         # ── Same-line detection ──────────────────────────────────────────────
         if " v" in raw_line:
-            for m in _VERSION_PIN_RE.finditer(raw_line):
+            for m in version_pin_re.finditer(raw_line):
                 raw_artifact_id = m.group(1)
                 cited_version = m.group(2)
                 _process_pin_match(
@@ -700,12 +787,12 @@ def scan_file(
         # ── Cross-line detection: collect artifact IDs at end of this line ──
         # Only check if line does NOT already contain a full same-line version
         # literal for this artifact (avoid double-counting).
-        for am in _SPLIT_LINE_ARTIFACT_RE.finditer(raw_line):
+        for am in split_artifact_re.finditer(raw_line):
             artifact_at_eol = am.group(1)
             # Only record if this artifact wasn't already matched same-line on this line.
             already_matched = any(
                 m.group(1) == artifact_at_eol
-                for m in _VERSION_PIN_RE.finditer(raw_line)
+                for m in version_pin_re.finditer(raw_line)
             )
             if not already_matched:
                 split_artifact_by_line.setdefault(idx, []).append(artifact_at_eol)
@@ -900,6 +987,16 @@ def main() -> None:
     registry = load_registry(registry_path)
     if args.verbose:
         print(f"Loaded registry: {len(registry)} entries from {registry_path}")
+
+    # Build registry-driven Pattern A regexes (F-S025-ADV31-MED-001).
+    # Must be called before scan_file() — _VERSION_PIN_RE and _SPLIT_LINE_ARTIFACT_RE
+    # are None until this function sets them.
+    _build_registry_patterns(registry)
+    if args.verbose:
+        print(
+            f"Pattern A: registry-driven matcher compiled with "
+            f"{len(registry)} artifact IDs (longest-first alternation)."
+        )
 
     # Collect files to scan.
     # factory_root is passed explicitly so collect_files() scans the correct
