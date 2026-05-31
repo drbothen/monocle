@@ -1488,3 +1488,159 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
          and drop_counter=0"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV38-MED-001 — q→Quit Dashboard exit path coverage
+//
+// The primary exit path (`q` in Dashboard → Action::Quit → is_quit →
+// KeyOutcome::Quit → event-loop break at app.rs:694-697) had zero positive
+// test coverage before Pass 38.
+//
+// Three tests:
+//   1. POSITIVE: `q` in Dashboard { Sessions } → KeyOutcome::Quit.
+//   2. NEGATIVE-A (guards F-S025-ADV2-HIGH-002): `Esc` in Dashboard →
+//      does NOT return KeyOutcome::Quit (Esc is identity in Dashboard).
+//   3. NEGATIVE-B (guards F-S025-ADV2-HIGH-002): `q` in Overlay mode →
+//      does NOT return KeyOutcome::Quit (q is only a quit key in Dashboard).
+//
+// All three dispatch through the PRODUCTION `dispatch_key_event()` path —
+// the same function called by `run()` in the event loop.
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV38-MED-001 / AC-001 (POSITIVE — primary exit path):
+/// Dispatching `q` while in `Dashboard { focused: Sessions }` must return
+/// `KeyOutcome::Quit`.
+///
+/// This exercises the full production path:
+///   KeyCode::Char('q') → resolve_binding (per-context layer, Dashboard tag)
+///   → Action::Quit → is_quit=true → KeyOutcome::Quit.
+///
+/// If this test FAILS the code has a real quit bug (not a test error).
+#[test]
+fn test_f_s025_adv38_med001_q_in_dashboard_returns_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Precondition: App::new starts in Dashboard { Sessions } — the quit-eligible mode.
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "precondition: App::new must start in Dashboard {{ focused: Sessions }} \
+         (required for q to resolve to Action::Quit)"
+    );
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_q = KeyEvent {
+        code: KeyCode::Char('q'),
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_q, &binding_layers, &mut sessions_state);
+
+    assert_eq!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001: `q` in Dashboard {{ Sessions }} must return KeyOutcome::Quit; \
+         the primary exit path (dispatch → Action::Quit → is_quit → Quit) is broken"
+    );
+}
+
+/// F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002 (NEGATIVE-A — Esc in Dashboard):
+/// Dispatching `Esc` while in `Dashboard { focused: Sessions }` must NOT return
+/// `KeyOutcome::Quit`.
+///
+/// `Esc` resolves to `Action::Esc` which is context-sensitive: in Dashboard mode
+/// `transition()` returns the same mode (identity). It is NOT the quit path.
+/// This guards the F-S025-ADV2-HIGH-002 design decision: `Esc` is not a quit key.
+#[test]
+fn test_f_s025_adv38_med001_esc_in_dashboard_does_not_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Precondition: must be in Dashboard for the test to be meaningful.
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "precondition: App::new must start in Dashboard {{ focused: Sessions }}"
+    );
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_esc = KeyEvent {
+        code: KeyCode::Esc,
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_esc, &binding_layers, &mut sessions_state);
+
+    assert_ne!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002: `Esc` in Dashboard must NOT \
+         return KeyOutcome::Quit; Esc is context-sensitive (identity in Dashboard) \
+         and is NOT the quit path"
+    );
+    // Additionally verify the mode is still Dashboard (Esc is identity in Dashboard).
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "F-S025-ADV2-HIGH-002: `Esc` in Dashboard must leave the mode unchanged \
+         (identity transition); mode must remain Dashboard {{ Sessions }}"
+    );
+}
+
+/// F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002 (NEGATIVE-B — q in Overlay):
+/// Dispatching `q` while in `Overlay` mode must NOT return `KeyOutcome::Quit`.
+///
+/// `q` is registered in the per-context layer under `AppModeTag::Dashboard` only.
+/// In Overlay mode it has no binding and falls through to `None` (no match) →
+/// `KeyOutcome::Continue`. This guards the design that `q` quits ONLY from Dashboard.
+#[test]
+fn test_f_s025_adv38_med001_q_in_overlay_does_not_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Put app into Overlay mode (simulating an active permission prompt).
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_q = KeyEvent {
+        code: KeyCode::Char('q'),
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_q, &binding_layers, &mut sessions_state);
+
+    assert_ne!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002: `q` in Overlay mode must NOT \
+         return KeyOutcome::Quit; `q` → Action::Quit is gated to Dashboard mode only \
+         (per-context layer, AppModeTag::Dashboard)"
+    );
+    // Overlay mode must be preserved — q does not transition the mode either.
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "F-S025-ADV2-HIGH-002: Overlay mode must be unchanged after `q` keypress \
+         (no binding matched — q only quits in Dashboard)"
+    );
+}

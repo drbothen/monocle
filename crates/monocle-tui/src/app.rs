@@ -543,7 +543,8 @@ async fn reconnect_to_daemon(
 ///
 /// # Exit paths
 ///
-/// - `q` or `Esc` from `Dashboard` mode → clean exit (status 0).
+/// - `q` from `Dashboard` mode → clean exit (status 0); `Esc` is context-sensitive
+///   and does NOT quit (per F-S025-ADV2-HIGH-002).
 /// - IPC connection failure → renders error panel, exits with code 1 after
 ///   any key press (AC-002).
 /// - `TransportEvent::Disconnected` → transitions to reconnect mode (AC-003).
