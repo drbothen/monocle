@@ -1657,6 +1657,7 @@ dependencies = [
  "monocle-ipc",
  "ratatui",
  "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
