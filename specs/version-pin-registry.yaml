@@ -151,7 +151,7 @@ ARCH-INDEX:
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
   current_version: "1.33"
-  last_bump_commit: "pending"
+  last_bump_commit: "47e6f9b"
   last_bump_date: "2026-05-30"
 
 STORY-INDEX:
@@ -175,7 +175,7 @@ L2-INDEX:
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
   current_version: "1.7"
-  last_bump_commit: "pending"
+  last_bump_commit: "47e6f9b"
   last_bump_date: "2026-05-30"
 
 nfr-catalog:
@@ -205,7 +205,7 @@ prd:
 product-brief:
   path: specs/product-brief.md
   current_version: "1.4.34"
-  last_bump_commit: "pending"
+  last_bump_commit: "47e6f9b"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -504,7 +504,7 @@ BC-2.06.006:
 BC-2.06.007:
   path: specs/behavioral-contracts/ss-06/BC-2.06.007.md
   current_version: "1.0.5"
-  last_bump_commit: "pending"
+  last_bump_commit: "47e6f9b"
   last_bump_date: "2026-05-30"
 
 BC-2.06.008:
