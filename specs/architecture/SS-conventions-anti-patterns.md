@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "conventions-anti-patterns"
 subsystem: cross-cutting
-version: "1.32.5"
+version: "1.32.6"
 status: complete
 producer: architect
 phase: phase-3
@@ -98,6 +98,42 @@ disallowed_methods = [
   { path = "std::eprintln", reason = "use tracing::error!() or tracing::warn!() with structured fields; eprintln! forbidden in production code per §Convention Checklist" },
 ]
 ```
+
+### Clippy `clippy.toml` Configuration
+
+The workspace root `clippy.toml` file supplements `Cargo.toml` lint levels with structured
+configuration that the `[workspace.lints.clippy]` table cannot express (such as the
+`disallowed-methods` array and test-context relaxations).
+
+#### unwrap/expect Policy
+
+**Production code (`src/`):** `unwrap_used` and `expect_used` are set to `"warn"` in
+`Cargo.toml [workspace.lints.clippy]`. With `-D warnings` in CI, these become hard errors.
+This is intentional: production code must use `?`, `if let`, or explicit `match` — never
+an implicit panic path.
+
+**Test code (`tests/`, `#[test]` functions):** `unwrap()` and `expect()` are permitted.
+A panic inside a test is the correct failure mode — it surfaces assertion failures cleanly.
+Requiring `?` or `match` in test code adds noise without correctness benefit.
+
+The relaxation is configured in `clippy.toml` at the workspace root:
+
+```toml
+# Allow unwrap()/expect() inside #[test] functions and integration-test binaries.
+# Rationale: test code SHOULD use unwrap/expect to assert program invariants —
+# a panic is the correct failure mode in a test. Production src/ code still
+# triggers unwrap_used/expect_used (controlled via Cargo.toml workspace.lints.clippy).
+# This setting scopes the relaxation to test contexts only; it has no effect on
+# non-test compilation units.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+```
+
+**Verification:** `allow-unwrap-in-tests` / `allow-expect-in-tests` suppress the
+`unwrap_used` / `expect_used` lints ONLY in test compilation units. Non-test `src/`
+functions continue to trigger `error: used 'unwrap()' on an Option value` (and the
+equivalent for `expect`). This scope boundary is enforced by clippy's lint framework
+and has been empirically verified (S-026, 2026-05-31).
 
 ### Semgrep Rules
 
@@ -2855,3 +2891,15 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - Line ~1545: `BC-INDEX v1.1+` in renumbering threshold — added `<!-- version-pin-historical -->` (threshold marker; not a live pointer; version was the minimum at renumbering event 2026-05-17T17:00:00Z).
 - Line ~1574: `BC-INDEX v1.10+` in §Conventions cross-reference threshold — added `<!-- version-pin-historical -->` (originating version at F-R117-3; threshold concept remains valid as BC-INDEX advances past this floor).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).
+
+## §Trace 1.32.6 — Clippy clippy.toml allow-unwrap/expect-in-tests policy documented (2026-05-31)
+
+**Bump:** 1.32.5 → 1.32.6.
+**Scope (S-026 CI-blocking clippy gap — architect governance):**
+- NORMATIVE: Added `### Clippy \`clippy.toml\` Configuration` subsection to §Clippy section (after `### Clippy \`disallowed_methods\` Configuration`). Documents the `allow-unwrap-in-tests = true` and `allow-expect-in-tests = true` policy, rationale, scope boundary, and empirical verification.
+- NORMATIVE: Codifies the project's already-practiced posture (develop's `startup_connect.rs` + `sessions_panel.rs` use `expect()`/`unwrap()` in `#[test]` fns) as an explicit architectural decision. This resolves the config gap where the practice existed but was undocumented and unenforced as policy.
+- NORMATIVE: `clippy.toml` at workspace root now carries `allow-unwrap-in-tests = true` + `allow-expect-in-tests = true` (committed to feature/S-026-permission-overlay-core as chore(S-026) commit 807181b; will propagate to develop on PR merge).
+- INFORMATIONAL: Root cause of S-026 CI failure — S-026's 5 new `overlay_*.rs` integration test files use `unwrap()`/`expect()` in `#[test]` fns. These triggered `unwrap_used`/`expect_used` warnings that `-D warnings` promoted to errors. The develop branch's equivalent tests passed due to build cache suppressing re-lint; a fresh CI build on S-026 exposed the gap.
+- INFORMATIONAL: Production scope confirmation — `allow-*-in-tests` flags have no effect on non-test compilation units. A bare `x.unwrap()` in a non-test `src/` function still triggers `error: used 'unwrap()' on an Option value` under `-D warnings`. Empirically verified 2026-05-31.
+- SE-22 v2 sibling-sweep: `clippy.toml`, `Cargo.toml [workspace.lints.clippy]`, and CI step `cargo clippy --workspace --all-targets -- -D warnings` are the three consumers of this policy. No other spec files cite `allow-unwrap-in-tests` or `allow-expect-in-tests`. Zero cascade write-backs required.
+- SE-16d PASS: 2026-05-31T00:00:00Z > 2026-05-30T00:00:00Z (v1.32.5). ARITHMETICALLY TRUE.
