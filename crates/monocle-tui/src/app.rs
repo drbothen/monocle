@@ -984,6 +984,48 @@ pub enum KeyOutcome {
     Continue,
 }
 
+// ---------------------------------------------------------------------------
+// Permission decision send helper (BC-2.06.011/012/013)
+// ---------------------------------------------------------------------------
+
+/// Send a `ClientToServer::PermissionDecision` for the front overlay modal.
+///
+/// Uses `try_send` (bounded, non-blocking — BC-2.04.011). If the overlay stack
+/// is empty or `ipc_tx` is not wired (pre-connection), a WARN is logged and no
+/// message is sent. The overlay stack is NOT mutated — the modal stays visible
+/// until `ServerToClient::PermissionPromptResolved` arrives (BC-2.06.023).
+///
+/// On channel-full (`TrySendError::Full`): logs WARN with drop signal. The
+/// decision is discarded; the user can re-key. This matches the project's
+/// bounded-channel policy (SS-conventions-anti-patterns.md §forbidden-patterns).
+fn send_permission_decision(app: &mut App, decision: PermissionDecisionKind) {
+    let Some(prompt_id) = app.overlay_stack.front().map(|m| m.prompt_id) else {
+        tracing::warn!(
+            "send_permission_decision: overlay_stack is empty; ignoring {:?} (BC-2.06.011/012/013)",
+            decision
+        );
+        return;
+    };
+    let Some(tx) = app.ipc_tx.as_ref() else {
+        tracing::warn!(
+            "send_permission_decision: ipc_tx is None (not connected); ignoring {:?} for \
+             prompt_id={} (BC-2.06.011/012/013)",
+            decision,
+            prompt_id
+        );
+        return;
+    };
+    let msg = ClientToServer::PermissionDecision { prompt_id, decision };
+    if let Err(e) = tx.try_send(msg) {
+        tracing::warn!(
+            "send_permission_decision: try_send failed for prompt_id={}: {} \
+             (channel full or closed — BC-2.04.011 drop policy)",
+            prompt_id,
+            e
+        );
+    }
+}
+
 /// Dispatch a single key event through the full 5-level binding chain.
 ///
 /// Extracted from `run()` so that integration tests can exercise the SAME code
@@ -1103,25 +1145,13 @@ pub fn dispatch_key_event(
                 // without the implementer writing any code. Therefore: todo!().
                 // ---------------------------------------------------------------------------
                 Action::PermissionAcceptOnce => {
-                    todo!(
-                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
-                         decision: PermissionDecisionKind::Allow }} on app.ipc_tx via try_send; \
-                         do NOT pop overlay_stack (BC-2.06.011 PC-1/2)"
-                    );
+                    send_permission_decision(app, PermissionDecisionKind::Allow);
                 }
                 Action::PermissionAcceptAlways => {
-                    todo!(
-                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
-                         decision: PermissionDecisionKind::AcceptAlways }} on app.ipc_tx via try_send; \
-                         do NOT pop overlay_stack (BC-2.06.012 PC-1/2)"
-                    );
+                    send_permission_decision(app, PermissionDecisionKind::AcceptAlways);
                 }
                 Action::PermissionReject => {
-                    todo!(
-                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
-                         decision: PermissionDecisionKind::Deny }} on app.ipc_tx via try_send; \
-                         do NOT pop overlay_stack (BC-2.06.013 PC-1/2)"
-                    );
+                    send_permission_decision(app, PermissionDecisionKind::Deny);
                 }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);
