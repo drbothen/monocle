@@ -44,11 +44,13 @@ async fn test_f_s026_adv5_crit001_ipc_tx_is_some_after_setup() {
     );
 
     // Create an in-process duplex pipe (no UDS socket required for this unit-level test).
+    // tokio::io::split gives (ReadHalf, WriteHalf) which implement AsyncRead/AsyncWrite.
     let (client_side, _server_side) = tokio::io::duplex(65536);
+    let (client_read, client_write) = tokio::io::split(client_side);
 
     // Call the production wiring function — this is what run() must call after the
     // UnixStream is obtained (initial connect + after each reconnect).
-    let (reader_handle, writer_handle) = setup_ipc_streams(&mut app, client_side);
+    let (reader_handle, writer_handle) = setup_ipc_streams(&mut app, client_read, client_write);
 
     // ASSERTION: ipc_tx must now be Some — the outbound channel is wired.
     assert!(
@@ -78,9 +80,10 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
     let mut app = App::new(MonocleConfig::default());
 
     let (client_side, server_side) = tokio::io::duplex(65536);
+    let (client_read, client_write) = tokio::io::split(client_side);
 
     // Wire the outbound channel.
-    let (reader_handle, writer_handle) = setup_ipc_streams(&mut app, client_side);
+    let (reader_handle, writer_handle) = setup_ipc_streams(&mut app, client_read, client_write);
 
     // Compose a PermissionDecision and send it via the wired ipc_tx.
     let prompt_id = Uuid::new_v4();
@@ -100,13 +103,10 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
     // so the frame arrives at server_side promptly.
     // Before the fix, no writer task exists — server_side never receives bytes.
     let deadline = Duration::from_millis(500);
-    let received: ClientToServer = tokio::time::timeout(
-        deadline,
-        async {
-            let mut reader = server_side;
-            read_framed::<_, ClientToServer>(&mut reader).await
-        },
-    )
+    let received: ClientToServer = tokio::time::timeout(deadline, async {
+        let mut reader = server_side;
+        read_framed::<_, ClientToServer>(&mut reader).await
+    })
     .await
     .expect("timed out waiting for PermissionDecision on daemon side — outbound writer not wired")
     .expect("read_framed must succeed on the server side");
@@ -146,7 +146,8 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
 
     // First connection.
     let (client1, _server1) = tokio::io::duplex(65536);
-    let (rh1, wh1) = setup_ipc_streams(&mut app, client1);
+    let (c1_read, c1_write) = tokio::io::split(client1);
+    let (rh1, wh1) = setup_ipc_streams(&mut app, c1_read, c1_write);
 
     let tx1 = app
         .ipc_tx
@@ -155,7 +156,8 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
 
     // Simulate reconnect: call setup_ipc_streams again with a fresh stream.
     let (client2, server2) = tokio::io::duplex(65536);
-    let (rh2, wh2) = setup_ipc_streams(&mut app, client2);
+    let (c2_read, c2_write) = tokio::io::split(client2);
+    let (rh2, wh2) = setup_ipc_streams(&mut app, c2_read, c2_write);
 
     let tx2 = app
         .ipc_tx
@@ -176,13 +178,10 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
         .expect("tx2 (new channel) must accept sends after reconnect");
 
     // Read from server2 — the new daemon side.
-    let received: ClientToServer = tokio::time::timeout(
-        Duration::from_millis(500),
-        async {
-            let mut reader = server2;
-            read_framed::<_, ClientToServer>(&mut reader).await
-        },
-    )
+    let received: ClientToServer = tokio::time::timeout(Duration::from_millis(500), async {
+        let mut reader = server2;
+        read_framed::<_, ClientToServer>(&mut reader).await
+    })
     .await
     .expect("timed out reading from server2 after reconnect — new writer task not wired")
     .expect("read_framed on server2 must succeed");

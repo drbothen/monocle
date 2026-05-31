@@ -556,6 +556,162 @@ where
 }
 
 // ---------------------------------------------------------------------------
+// Outbound IPC writer task (F-S026-ADV5-CRIT-001 — BC-2.06.011/012/013)
+// ---------------------------------------------------------------------------
+
+/// Capacity of the outbound `ClientToServer` command channel.
+///
+/// Lower than the inbound reader channel (64) because `ClientToServer` messages are
+/// rare user-driven keypresses, not high-frequency daemon events.  N=32 provides
+/// headroom for burst scenarios while keeping bounded-channel semantics
+/// (SS-conventions-anti-patterns.md §forbidden-patterns: no unbounded channels).
+pub const IPC_CMD_CHANNEL_CAPACITY: usize = 32;
+
+/// Spawn a dedicated outbound writer task that drains `cmd_rx` and writes each
+/// `ClientToServer` message to `writer` using 4-byte LE length-prefix framing.
+///
+/// # Channel semantics (BC-2.04.011 — bounded, non-blocking send)
+///
+/// The caller uses `try_send` (bounded, non-blocking) to enqueue commands.
+/// This task uses `recv().await` on the receiving end — blocking on the task,
+/// not on the event loop.  `try_send` from the event loop returns
+/// `TrySendError::Full` when the channel is at capacity; the caller logs WARN
+/// (surfaced in the status bar via `App::drop_counter`) and discards the message.
+///
+/// # Lifecycle
+///
+/// The task exits when:
+/// 1. `write_framed` returns any `IpcError` (daemon gone — logs WARN, task exits).
+/// 2. The channel sender side is dropped (TUI exiting or reconnect — task exits cleanly).
+///
+/// The caller retains the `JoinHandle` to call `.abort()` on clean exit or reconnect.
+///
+/// # Reconnect
+///
+/// On reconnect, the caller aborts the old writer task and calls `setup_ipc_streams`
+/// with the fresh stream, which creates a new cmd channel + writer task and assigns
+/// `app.ipc_tx = Some(new_cmd_tx)`.
+pub fn spawn_ipc_writer<W>(
+    mut writer: W,
+    mut cmd_rx: tokio::sync::mpsc::Receiver<ClientToServer>,
+) -> tokio::task::JoinHandle<()>
+where
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        while let Some(msg) = cmd_rx.recv().await {
+            if let Err(e) = monocle_ipc::framing::write_framed(&mut writer, &msg).await {
+                tracing::warn!(
+                    error = %e,
+                    "spawn_ipc_writer: write_framed failed — daemon gone; writer task exiting \
+                     (BC-2.06.011/012/013)"
+                );
+                return;
+            }
+        }
+        // cmd_rx exhausted (sender dropped → TUI exiting or reconnect): exit cleanly.
+        tracing::debug!("spawn_ipc_writer: cmd_rx closed — writer task exiting cleanly");
+    })
+}
+
+// ---------------------------------------------------------------------------
+// IPC stream setup helper (F-S026-ADV5-CRIT-001 — wires app.ipc_tx)
+// ---------------------------------------------------------------------------
+
+/// Wire the IPC connection for `app` using a fresh `UnixStream`.
+///
+/// Splits the stream into read and write halves, spawns the inbound reader task
+/// (`spawn_ipc_reader`) and the outbound writer task (`spawn_ipc_writer`), creates
+/// bounded channels for both directions, and assigns `app.ipc_tx = Some(cmd_tx)`.
+///
+/// # Why this function exists
+///
+/// Before this function, `run()` moved the whole `UnixStream` into `spawn_ipc_reader`
+/// (read-only task) and never created an outbound writer task.  `App.ipc_tx` was
+/// permanently `None`, causing every `send_permission_decision` call to WARN and
+/// silently discard the message.  This function is the production fix for
+/// F-S026-ADV5-CRIT-001.
+///
+/// # Returns
+///
+/// `(reader_handle, writer_handle)` — both `JoinHandle<()>`. The caller MUST:
+/// 1. Retain both handles.
+/// 2. Call `reader_handle.abort()` AND `writer_handle.abort()` on clean exit or
+///    reconnect to prevent task leaks.
+///
+/// # Reconnect
+///
+/// On reconnect, call this function again with the fresh stream halves.  It will:
+/// - Drop the old `cmd_tx` (the old writer task exits when its `cmd_rx` is closed).
+/// - Create a new `cmd_tx` and assign it to `app.ipc_tx`.
+///
+/// The caller is responsible for aborting the old handles before or after calling
+/// this function.  The old writer task will exit on its own when `app.ipc_tx` is
+/// replaced (the old `cmd_tx` is dropped → channel closes → writer task exits), but
+/// an explicit `.abort()` is cleaner and ensures immediate cleanup.
+///
+/// # Generics
+///
+/// `R` must implement `AsyncReadExt + Unpin + Send + 'static` (read half).
+/// `W` must implement `tokio::io::AsyncWriteExt + Unpin + Send + 'static` (write half).
+///
+/// This generic form allows tests to pass `tokio::io::DuplexStream` halves
+/// without requiring a real `UnixStream`.  Production code (in `run()`) passes
+/// `OwnedReadHalf` / `OwnedWriteHalf` from `UnixStream::into_split()`.
+pub fn setup_ipc_streams<R, W>(
+    app: &mut App,
+    read_half: R,
+    write_half: W,
+) -> (tokio::task::JoinHandle<()>, tokio::task::JoinHandle<()>)
+where
+    R: AsyncReadExt + Unpin + Send + 'static,
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    let (rh, wh, _inbound_rx) = setup_ipc_streams_with_rx(app, read_half, write_half);
+    (rh, wh)
+}
+
+/// Internal variant used by `run()`: returns the inbound receiver so the event loop
+/// can drain it via `ipc_rx.try_recv()`.
+///
+/// This function performs the authoritative wiring — `setup_ipc_streams` is a thin
+/// wrapper that discards `inbound_rx` for test convenience (when the test only needs
+/// to verify that `app.ipc_tx` is wired and messages flow through the write half).
+///
+/// Returns `(reader_handle, writer_handle, inbound_rx)`.
+fn setup_ipc_streams_with_rx<R, W>(
+    app: &mut App,
+    read_half: R,
+    write_half: W,
+) -> (
+    tokio::task::JoinHandle<()>,
+    tokio::task::JoinHandle<()>,
+    tokio::sync::mpsc::Receiver<Result<ServerToClient, IpcError>>,
+)
+where
+    R: AsyncReadExt + Unpin + Send + 'static,
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    // Inbound reader channel: ServerToClient messages from the daemon.
+    // N=64 — same as original; see spawn_ipc_reader doc comment for capacity rationale.
+    let (inbound_tx, inbound_rx) =
+        tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
+    let reader_handle = spawn_ipc_reader(read_half, inbound_tx);
+
+    // Outbound command channel: ClientToServer messages to the daemon (BC-2.06.011/012/013).
+    // N=IPC_CMD_CHANNEL_CAPACITY=32 — lower than inbound because commands are rare,
+    // user-driven keypresses, not high-frequency daemon events.
+    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel::<ClientToServer>(IPC_CMD_CHANNEL_CAPACITY);
+    let writer_handle = spawn_ipc_writer(write_half, cmd_rx);
+
+    // Wire app.ipc_tx to the new cmd channel sender.
+    // This is the production fix for F-S026-ADV5-CRIT-001: ipc_tx is now Some after wiring.
+    app.ipc_tx = Some(cmd_tx);
+
+    (reader_handle, writer_handle, inbound_rx)
+}
+
+// ---------------------------------------------------------------------------
 // Reconnect helper (S-023 integration — BC-2.05.006)
 // ---------------------------------------------------------------------------
 
@@ -757,31 +913,29 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // Transfer transport ownership to the reader task (Option B — F-S025-ADV2-BLOCKER-001).
+    // Wire the IPC connection: split the stream, spawn reader + writer tasks, set app.ipc_tx.
     //
-    // The reader task loops forever, calling read_framed to completion and forwarding
-    // completed frames (or disconnect errors) into the bounded mpsc channel.
-    // The event loop drains ipc_rx with try_recv() — never calling read_framed directly.
+    // F-S026-ADV5-CRIT-001 fix: the original code moved `transport` whole into
+    // `spawn_ipc_reader` (read-only task), leaving no writer half and no outbound channel.
+    // `app.ipc_tx` was permanently `None`, causing every `send_permission_decision` call
+    // to WARN and silently discard the message.
     //
-    // Channel capacity N=64: at 1000 events/sec (SS-conventions channel convention) and
-    // 16ms render cadence, the loop drains ~16 events/tick — well within budget. N=64
-    // provides 4× headroom against burst (64 × ~1KB ≈ 64KB max enqueued).
+    // `setup_ipc_streams_with_rx` fixes this by:
+    // 1. Receiving (read_half, write_half) from `transport.into_split()`.
+    // 2. Spawning `spawn_ipc_reader(read_half, inbound_tx)` — inbound frames.
+    // 3. Creating a bounded cmd channel (N=32) + spawning `spawn_ipc_writer(write_half, cmd_rx)`.
+    // 4. Assigning `app.ipc_tx = Some(cmd_tx)` — outbound decisions are now wired.
+    // 5. Returning the inbound receiver (`inbound_rx`) for the event loop drain loop.
     //
-    // Drop policy: BLOCK (tx.send().await). Silent drop on full would violate at-least-once
-    // delivery for PermissionPromptQueued (BC-2.05.002 Invariant 4).
+    // Channel capacity:
+    //   - Inbound (ServerToClient): N=64 — matches original; see spawn_ipc_reader doc.
+    //   - Outbound (ClientToServer): N=32 — rare user keypresses; see IPC_CMD_CHANNEL_CAPACITY.
     //
-    // Sender ownership (F-S025-ADV3-MED-003): `ipc_tx` is passed by move (not clone) to
-    // `spawn_ipc_reader`. The reader task holds the ONLY sender; when it exits (disconnect or
-    // error), the channel closes and `ipc_rx.try_recv()` returns `TryRecvError::Disconnected`.
-    // This makes the disconnect arm in the drain loop reachable on natural reader exit.
-    //
-    // Reconnect channel (F-S025-ADV3-MED-003): on reconnect, the channel is re-created with
-    // a fresh `(ipc_tx2, ipc_rx2)` pair and `ipc_rx` is shadowed (BC-2.05.006 PC-4). This is
-    // simpler than retaining a long-lived sender clone — there is no performance cost to
-    // channel re-creation (it allocates a small fixed-size ring).
-    let (ipc_tx, mut ipc_rx) = tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-    // reader_handle is `mut` to allow reassignment on reconnect (BC-2.05.006 PC-4).
-    let mut reader_handle = spawn_ipc_reader(transport, ipc_tx); // ipc_tx MOVED here — no clone retained
+    // Reconnect: on disconnect, abort both handles, split the new stream, call
+    // setup_ipc_streams_with_rx; `ipc_rx` is shadowed and `app.ipc_tx` is replaced.
+    let (transport_read, transport_write) = transport.into_split();
+    let (mut reader_handle, mut writer_handle, mut ipc_rx) =
+        setup_ipc_streams_with_rx(&mut app, transport_read, transport_write);
 
     // Set up the ratatui terminal.
     let backend = CrosstermBackend::new(io::stdout());
@@ -836,6 +990,7 @@ pub async fn run() -> Result<()> {
                         // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                         on_transport_event(&mut app, TransportEvent::Disconnected);
                         reader_handle.abort();
+                        writer_handle.abort();
 
                         // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                         let mut backoff = BackoffState::new();
@@ -882,14 +1037,14 @@ pub async fn run() -> Result<()> {
                                         break;
                                     }
                                 }
-                                // Transfer ownership to a new reader task.
-                                // Re-create the channel (F-S025-ADV3-MED-003): ipc_tx was moved
-                                // to the old reader task; channel re-creation has negligible cost.
-                                let (ipc_tx2, ipc_rx2) = tokio::sync::mpsc::channel::<
-                                    Result<ServerToClient, IpcError>,
-                                >(64);
-                                reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
-                                ipc_rx = ipc_rx2;
+                                // Wire the new stream (F-S026-ADV5-CRIT-001): split into
+                                // read/write halves, spawn both tasks, set app.ipc_tx.
+                                let (ns_read, ns_write) = new_stream.into_split();
+                                let (rh2, wh2, rx2) =
+                                    setup_ipc_streams_with_rx(&mut app, ns_read, ns_write);
+                                reader_handle = rh2;
+                                writer_handle = wh2;
+                                ipc_rx = rx2;
                             }
                             Err(IpcError::ReconnectTimeout) => {
                                 tracing::warn!(
@@ -922,6 +1077,7 @@ pub async fn run() -> Result<()> {
                     // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     reader_handle.abort();
+                    writer_handle.abort();
 
                     // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                     let mut backoff = BackoffState::new();
@@ -966,13 +1122,14 @@ pub async fn run() -> Result<()> {
                                     break;
                                 }
                             }
-                            // Transfer ownership to a new reader task.
-                            // Re-create the channel (F-S025-ADV3-MED-003): channel re-creation
-                            // is necessary and has negligible allocation cost.
-                            let (ipc_tx2, ipc_rx2) =
-                                tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-                            reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
-                            ipc_rx = ipc_rx2;
+                            // Wire the new stream (F-S026-ADV5-CRIT-001): split into
+                            // read/write halves, spawn both tasks, set app.ipc_tx.
+                            let (ns_read, ns_write) = new_stream.into_split();
+                            let (rh2, wh2, rx2) =
+                                setup_ipc_streams_with_rx(&mut app, ns_read, ns_write);
+                            reader_handle = rh2;
+                            writer_handle = wh2;
+                            ipc_rx = rx2;
                         }
                         Err(IpcError::ReconnectTimeout) => {
                             tracing::warn!(
@@ -1008,9 +1165,10 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // Clean exit: abort the reader task before returning so the tokio runtime doesn't
-    // leak the background task between test runs or on graceful shutdown.
+    // Clean exit: abort both IPC tasks before returning so the tokio runtime doesn't
+    // leak background tasks between test runs or on graceful shutdown.
     reader_handle.abort();
+    writer_handle.abort();
 
     Ok(())
 }
