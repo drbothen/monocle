@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.61"
+version: "6.62"
 status: active
 producer: state-manager
-timestamp: 2026-05-30T20:00:00Z
+timestamp: 2026-05-30T21:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 33 2×MED REMEDIATED (D-212). F-S025-ADV33-MED-001 CLOSED: POL-12 multi-line cross-line assembly detection added (pending_app_split parity with POL-11 Pattern B). F-S025-ADV33-MED-002 CLOSED: overlay_stack Path-B exclusion replaced with TYPE-AWARE IPC-homonym disambiguation. COMPANION: structural-historical marker prefix-match fix. §Form-Coverage Matrix added to BOTH gates (35/35 fixtures, 0 silent gaps). ADR-0008 v1.0.5. ARCH-INDEX v1.0.24. STORY-INDEX v5.22 (version-free inputs[] — active-index re-stale cascade PERMANENTLY KILLED per ADR-0007 Option 2). Counter HOLDS 0/3 (streak 5). 15th+16th META instances. Pass 34 pending CI."
+current_step: "S-025 Pass 34 MED REMEDIATED (D-213). F-S025-ADV34-MED-001 CLOSED: ADR-0008 §Form-Coverage Matrix mislabeled 'module-level doc-comment table' as CHECKED when it is DEFERRED to Phase 2/Phase 5 — matrix-vs-code self-consistency defect. FIX: architect 42eb74c — DEFERRED gate-treatment value added to matrix; row relabeled; invariant qualified TRUE; ADR-0008 v1.0.5→v1.0.6; ARCH-INDEX v1.0.24→v1.0.25. Adversary confirmed: empirical test CLEAN; POL-11 fixpoint; S-025 content CONVERGED. Counter HOLDS 0/3 (streak 6). 17th META instance (matrix self-consistency). Pass 35 is genuine fixpoint candidate per adversary."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending. D-211: Pass 32 MED remediated; POL-12 scope-gap closed (sibling-gate parity); POL-11 at fixpoint; counter HOLDS 0/3 (14th META); Pass 33 pending CI green on feature 92fe2f8. D-212: Pass 33 2×MED remediated; POL-12 multi-line + type-aware disambiguation; §Form-Coverage Matrix both gates (35/35); ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free; counter HOLDS 0/3 (15th+16th META); Pass 34 pending CI."
-awaiting: "Pass 34 adversary (fresh context, information asymmetry). CI green on feature branch (devops 10cdb0b). POL-11 PASS: 250 active, 0 stale, 538 files. POL-12 PASS: 10 active, 0 stale, 152 files. Both gates carry exhaustive §Form-Coverage Matrices (35/35 fixtures). STRATEGIC: GATE-COMPLETENESS STREAK = 5 (Passes 29-33). Both gates now have documented form-coverage matrices — fixpoint candidate. Pass 34 should audit whether matrices are COMPLETE (any form not in a matrix row = next corner). Task #9 remaining: m.3, m.4, m.5, m.8, m.9 CODIFIED, ADR-HOOK-001 registered."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending. D-211: Pass 32 MED remediated; POL-12 scope-gap closed (sibling-gate parity); POL-11 at fixpoint; counter HOLDS 0/3 (14th META); Pass 33 pending CI green on feature 92fe2f8. D-212: Pass 33 2×MED remediated; POL-12 multi-line + type-aware disambiguation; §Form-Coverage Matrix both gates (35/35); ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free; counter HOLDS 0/3 (15th+16th META); Pass 34 pending CI. D-213: Pass 34 MED remediated; ADR-0008 §Form-Coverage Matrix DEFERRED label fix; matrix-vs-code self-consistency CLEAN; ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; counter HOLDS 0/3 (17th META); Pass 35 pending CI."
+awaiting: "Pass 35 adversary (fresh context, information asymmetry). CI green on feature branch (devops 10cdb0b). POL-11 PASS: 250 active, 0 stale, 538 files. POL-12 PASS: 10 active, 0 stale, 152 files. Both gates carry exhaustive §Form-Coverage Matrices (35/35 fixtures). ADR-0008 v1.0.6: DEFERRED gate-treatment added; matrix-vs-code self-consistency CLEAN. STRATEGIC: GATE-COMPLETENESS STREAK = 6 (Passes 29-34). Adversary verdict: Pass 35 is the genuine fixpoint candidate — both gates at/near fixpoint; findings have decayed from 'gate scans 0 files' (P29) to 'matrix cell label' (P34). Task #9 remaining: m.3, m.4, m.5, m.8, m.9 CODIFIED, ADR-HOOK-001 registered."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -274,7 +274,7 @@ durable_task_register:
     - "VERSION-FREE INPUTS[] CASCADE-KILL (D-212): story-writer converted STORY-INDEX inputs[]/traces_to to bare-filename form (ADR-0007 Option 2). Active-index re-stale cascade PERMANENTLY ENDED — future bumps of ARCH-INDEX/STORY-INDEX/EVAL-INDEX no longer produce stale STORY-INDEX inputs[]. Also fixed 3 downstream traces_to. L-W6-S025-015 codified."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.61 (D-212) — 2026-05-30T20:00:00Z
+  ZERO-CONTEXT RESUME CHECKPOINT v6.62 (D-213) — 2026-05-30T21:00:00Z
   ============================================================================
 
   YOUR FIRST 5 COMMANDS (RUN IN ORDER):
@@ -297,81 +297,77 @@ next_session_resume_protocol: |
 
   5. Based on CI result, execute NEXT ACTION below.
 
-  PIPELINE STATE (as of 2026-05-30T20:00:00Z):
+  PIPELINE STATE (as of 2026-05-30T21:00:00Z):
 
   Story: S-025 TUI Skeleton + Sessions Panel (EPIC-06, Wave 6, 8 pts)
   PR: #28 (https://github.com/drbothen/monocle/pull/28) — draft
-  S-025 branch: feature/S-025-tui-skeleton-sessions (Pass 33 fixes live @ 10cdb0b)
-  factory-artifacts: @ D-212 burst SHA (run: git -C .factory log -1 --format='%h %s')
+  S-025 branch: feature/S-025-tui-skeleton-sessions (Pass 33 fixes live @ 10cdb0b; no P34 feature change)
+  factory-artifacts: @ D-213 burst SHA (run: git -C .factory log -1 --format='%h %s')
   Worktree path: /Users/jmagady/Dev/monocle/.worktrees/S-025/
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   CYCLE-001 SUMMARY (1 paragraph):
-  S-025 has been through 33 adversarial passes. Counter at 0/3. Pass 33 had 2 MED findings:
-  F-S025-ADV33-MED-001 (POL-12 multi-line blind-spot — pending_app_split cross-line assembly) +
-  F-S025-ADV33-MED-002 (overlay_stack Path-B exclusion over-broad — blinded App-form). Both CLOSED
-  via devops 10cdb0b: TYPE-AWARE IPC-homonym disambiguation + multi-line detection parity with POL-11.
-  §Form-Coverage Matrix added to BOTH gates (35/35 fixtures, 0 silent gaps). architect 3a83365:
-  ADR-0008 v1.0.5 (normative rules for multi-line + type-aware homonym + §Form-Coverage Matrix).
-  ARCH-INDEX v1.0.24. CASCADE: story-writer 3d2190e: STORY-INDEX v5.22 — inputs[]/traces_to converted
-  to VERSION-FREE bare-filename form (ADR-0007 Option 2), permanently killing active-index re-stale
-  cascade. Also fixed 3 downstream traces_to. VERIFIED: POL-11 PASS (250 active, 0 stale, 538 files);
-  POL-12 PASS (10 active, 0 stale, 152 files). Adversary confirmed: third gate (audit-table) SOUND;
-  both ADRs clean; S-025 content converged. 15th+16th META instances (suppression-guard false-negatives).
+  S-025 has been through 34 adversarial passes. Counter at 0/3. Pass 34 had 1 MED finding:
+  F-S025-ADV34-MED-001 (ADR-0008 §Form-Coverage Matrix mislabeled 'module-level doc-comment table' as
+  CHECKED when Phase-1 gate does not scan crates/**/*.rs — matrix-vs-code self-consistency defect,
+  17th META instance). CLOSED via architect 42eb74c: DEFERRED gate-treatment value added; row relabeled;
+  invariant qualified TRUE; ADR-0008 v1.0.5→v1.0.6; ARCH-INDEX v1.0.24→v1.0.25. No feature-branch
+  change (ADR doc only). Empirical test CLEAN (POL-11 PASS 0 stale; POL-12 PASS 0 stale). Adversary
+  confirmed: S-025 content CONVERGED; Pass 35 is genuine fixpoint candidate.
 
-  STRATEGIC WATCH: GATE-COMPLETENESS STREAK 5 consecutive (Passes 29-33). Both gates now carry
-  exhaustive §Form-Coverage Matrices (35/35 fixtures). Pass 34 should audit whether matrices are
-  COMPLETE (any form not in a matrix row = next corner). If matrices are exhaustive, Pass 34 is the
-  counter-advance candidate. MAXIMUM SKEPTICISM still applies: 13 consecutive 1/3 failures.
+  STRATEGIC WATCH: GATE-COMPLETENESS STREAK 6 consecutive (Passes 29-34). Both gates carry exhaustive
+  §Form-Coverage Matrices (35/35 fixtures). ADR-0008 v1.0.6 adds DEFERRED gate-treatment — matrix
+  internally consistent. Adversary: "Pass 35 is the genuine fixpoint candidate." MAXIMUM SKEPTICISM
+  still applies: 14 consecutive 1/3 failures.
 
   NEXT ACTION (decision tree):
 
   (A) CI all green (all jobs SUCCESS incl. pol-lint + struct-lint):
-    Dispatch Pass 34 adversary (fresh context, information asymmetry):
-    - Read passes 23-33 for attack-angle exhaustion map
-    - PRIMARY LENS: audit §Form-Coverage Matrix completeness in both POL-11 and POL-12
-      (any structural form NOT in a matrix row is the next potential corner)
+    Dispatch Pass 35 adversary (fresh context, information asymmetry):
+    - Read passes 23-34 for attack-angle exhaustion map
+    - PRIMARY LENS: genuine fixpoint audit — both gates carry exhaustive §Form-Coverage Matrices;
+      ADR-0008 v1.0.6 DEFERRED label fix; adversary declared Pass 35 "genuine fixpoint candidate"
     - SECONDARY LENS: content correctness, API contracts, integration scenarios
     - Counter target 0/3 → 1/3
-    - MAXIMUM SKEPTICISM MODE: 13 consecutive 1/3 failures
+    - MAXIMUM SKEPTICISM MODE: 14 consecutive 1/3 failures
     Mandatory adversary briefing files (read in order before dispatching):
-      .factory/STATE.md (v6.61); adversarial-pass-23..pass-33.md; architect-decisions-pass-1.md;
+      .factory/STATE.md (v6.62); adversarial-pass-23..pass-34.md; architect-decisions-pass-1.md;
       architect-decisions-pass-2.md; text-style-adjudication.md; red-gate-log.md;
       .factory/stories/S-025-tui-skeleton-sessions.md (v1.12);
       .factory/specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md (v1.0.8);
-      .factory/specs/architecture/adr/ADR-0008-structural-claim-discipline.md (v1.0.5);
+      .factory/specs/architecture/adr/ADR-0008-structural-claim-discipline.md (v1.0.6);
       CLAUDE.md (project principles).
       All cycle files: .factory/cycles/cycle-001/S-025/
 
   (B) CI fails on struct-lint job:
     Read failure: gh -R drbothen/monocle run view <run-id> --log-failed
-    Dispatch devops-engineer for POL-12 fix. Re-verify CI before Pass 34.
+    Dispatch devops-engineer for POL-12 fix. Re-verify CI before Pass 35.
 
   (C) CI fails on pol-lint job:
     Read failure: gh -R drbothen/monocle run view <run-id> --log-failed
-    Dispatch devops-engineer for POL-11 fix. Re-verify CI before Pass 34.
+    Dispatch devops-engineer for POL-11 fix. Re-verify CI before Pass 35.
 
   (D) CI fails on other job (regression):
-    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 34.
+    Diagnose; dispatch implementer for regression fix. Re-verify CI before Pass 35.
 
   (E) CI has not queued/run yet:
     Trigger: gh -R drbothen/monocle workflow run "CI" --ref feature/S-025-tui-skeleton-sessions
     If GitHub Actions stuck, surface to human.
 
-  KEY COMMITS (Pass 33 round closures):
-    Devops 10cdb0b (S-025 branch): TYPE-AWARE IPC-homonym disambiguation; multi-line detection;
-      structural-historical marker prefix-match fix; §Form-Coverage Matrix; 35/35 fixtures pass
-    Architect 3a83365 (.factory): ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; self-consistency CLEAN
-    Story-writer 3d2190e (.factory): STORY-INDEX v5.22; version-free inputs[]/traces_to; 3 downstream fixes
-    State-manager D-212 SHA: run git -C .factory log -1 --format='%H'
+  KEY COMMITS (Pass 34 round closures):
+    Architect 42eb74c (.factory): ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; DEFERRED label + qualified invariant
+    State-manager D-213 SHA: run git -C .factory log -1 --format='%H'
+    (No feature-branch change this cycle — ADR doc only)
+    Prior round: Devops 10cdb0b (S-025 branch): TYPE-AWARE IPC-homonym disambiguation; §Form-Coverage Matrix; 35/35 fixtures
+    Prior round: Story-writer 3d2190e (.factory): STORY-INDEX v5.22; version-free inputs[]/traces_to
 
-  ARTIFACT VERSIONS (D-212 canonical state):
+  ARTIFACT VERSIONS (D-213 canonical state):
     SS-tui v1.8.2 | SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.5
     SS-daemon-wiring v1.3.0 | SS-daemon-lifecycle v1.0.33
     SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.20
     SS-permissions-phase1 v1.5.2
-    ARCH-INDEX v1.0.24 | ADR-0007 v1.0.8 | ADR-0008 v1.0.5
+    ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
     S-025 v1.12 | STORY-INDEX v5.22 | EVAL-INDEX v1.6 | VP-INDEX v1.17
     BC-INDEX v1.32 (113 BCs) | BC-2.05.008 v1.0.7 | BC-HOOK-039 v1.0.5
     BC-HOOK-001..041 v1.0.1 | product-brief v1.4.33
@@ -394,16 +390,17 @@ next_session_resume_protocol: |
     Pass 32 [process-gap] POL-12 scope gap (stories/-only; missing behavioral-contracts/) | CLOSED devops 92fe2f8
     Pass 33 [process-gap] POL-12 suppression-guard false-negatives: multi-line + over-broad exclusion | CLOSED devops 10cdb0b; ADR-0008 v1.0.5
     Pass 33 [cascade] STORY-INDEX version-free inputs[] — active-index re-stale cascade PERMANENTLY KILLED | story-writer 3d2190e
+    Pass 34 [matrix-vs-code] ADR-0008 §Form-Coverage Matrix DEFERRED label — 'module-level doc-comment table' CHECKED when Phase-1 gate does NOT scan crates/**/*.rs | CLOSED architect 42eb74c; ADR-0008 v1.0.6
 
   RECURRENCE WATCH:
-    META-pattern: 16 instances; 15th+16th were suppression-guard false-negatives (L-W6-S025-014 codified)
-    1/3→2/3 transition failure count: 13 consecutive (Passes 9,16,18,22,23,24,25,26,27,28,29,30,31,32,33)
-    GATE-COMPLETENESS STREAK: 5 consecutive (Passes 29/30/31/32/33) — both gates carry §Form-Coverage Matrix (35/35 fixtures)
+    META-pattern: 17 instances; 17th was matrix-vs-code self-consistency (L-W6-S025-016 codified)
+    1/3→2/3 transition failure count: 14 consecutive (Passes 9,16,18,22,23,24,25,26,27,28,29,30,31,32,33,34)
+    GATE-COMPLETENESS STREAK: 6 consecutive (Passes 29/30/31/32/33/34) — both gates carry §Form-Coverage Matrix (35/35 fixtures); ADR-0008 v1.0.6 DEFERRED gate-treatment CLEAN
     POL-11: Pattern A (registry-driven) + Pattern B; 538 normative files; 250 active; 0 stale
     POL-12: 152 files = 38 stories + 114 BCs; 10 active; 0 stale; 35/35 fixtures
-    PASS 34 RECURRENCE WATCH: audit §Form-Coverage Matrix completeness — any unmatrixed form is the next corner
+    PASS 35 RECURRENCE WATCH: genuine fixpoint candidate per adversary; MAXIMUM SKEPTICISM still applies
 
-  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 34:
+  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 35:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
     cli_daemon_stop flaky failures (environmental)
     .lazyclaude submodule warning (CI hygiene)
@@ -447,7 +444,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 33 (D-212); counter 0/3; §Form-Coverage Matrix both gates; Pass 34 pending CI | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 33: 2×MED (15th+16th META — suppression-guard false-negatives). CLOSED. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→R→M(23)→R→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap→M(31)+vocab-blind→M(32)+sibling-gap→MM(33)+suppression-guard-FN. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 34 (D-213); counter 0/3; DEFERRED-label fix; Pass 35 pending CI | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 34: 1×MED (17th META — matrix-vs-code self-consistency). CLOSED. Counter HOLDS 0/3. Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→R→M(23)→R→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap→M(31)+vocab-blind→M(32)+sibling-gap→MM(33)+suppression-guard-FN→M(34)+matrix-DEFERRED-label. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -460,7 +457,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 33 (D-212): 2×MED REMEDIATED. TYPE-AWARE IPC-homonym disambiguation + multi-line detection (devops 10cdb0b); §Form-Coverage Matrix both gates (35/35). ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free. POL-11 PASS (250 active, 0 stale, 538 files); POL-12 PASS (10 active, 0 stale, 152 files). Counter 0/3. Pass 34 pending CI green on feature 10cdb0b.
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 34 (D-213): 1×MED REMEDIATED. ADR-0008 §Form-Coverage Matrix DEFERRED label fix (architect 42eb74c); ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; matrix-vs-code self-consistency CLEAN. POL-11 PASS (250 active, 0 stale, 538 files); POL-12 PASS (10 active, 0 stale, 152 files). Counter 0/3. Pass 35 pending CI green on feature 10cdb0b.
 
 ## Blocking Issues
 
@@ -486,13 +483,14 @@ D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and ear
 | D-210 | S-025 Pass 31 MED remediation cycle CLOSED — F-S025-ADV31-MED-001 CLOSED; counter HOLDS 0/3 (Pass 31 was MED). 13th META instance: POL-11 Pattern-A vocabulary blind-spot (only recognized SS-/BC-/ADR- prefixes; dtu-assessment + index-doc citations produced false-greens). ROOT FIX: registry-driven Pattern-A — ADR-0007 v1.0.7 (architect 491f49d; Pattern-A recognizes ANY registry artifact ID via longest-match guards). devops d6441d3 (feature): registry-driven implementation. Registry-driven scan surfaced 207 project-wide stale citations. ADR-0007 v1.0.8 (architect 0998927): EXEMPT set extended with 3 living-state files (sprint-state.yaml, tech-debt-register.md, CLAUDE.md); dependency-graph-expansion.md + holdout-scenarios.md adjudicated NORMATIVE. devops 39b2d7b (feature): exemptions + 6 fixtures (27/27 pass) → 164 post-exemption findings. story-writer 60cedfc (factory): 154 .factory spec/story findings remediated to fixpoint (Option 2 version-free for 41 BC-HOOK navigation pointers; Option 3 historical-anchor for vp-* §Trace round-logs; Option 1 bump for live traces_to). implementer bfa1d90+f33c020 (feature): 9 code doc-comments + 1 cascade (monocle-proto SS-forward-compat) fixed. Combined POL-11: 266 active, 0 stale, 3715 historical, 538 files. STRATEGIC: 3rd consecutive session (Passes 29/30/31) where gate COMPLETENESS (not S-025 content) yielded finding — S-025 content verified converged. Pass 32 pending CI green on feature f33c020+. STATE v6.58→v6.59. ARTIFACT BUMPS: ADR-0007 v1.0.8, ARCH-INDEX v1.0.23, SS-conventions v1.32.5, SS-forward-compatibility v1.2.20, STORY-INDEX v5.21, VP-INDEX v1.17, EVAL-INDEX v1.6, product-brief v1.4.33, prd-expansion-scope v1.2, dependency-graph-expansion v1.9, holdout-scenarios v1.6, S-DTU-001 v1.5, S-014 v1.7, S-010 v1.3, S-013 v1.3, BC-2.05.008 v1.0.7, BC-HOOK-039 v1.0.5, BC-HOOK-001..041 v1.0.1, all 22 vp-*.md +1 patch. | 2026-05-30 | state-manager |
 | D-211 | S-025 Pass 32 MED remediation cycle CLOSED — F-S025-ADV32-MED-001 CLOSED; counter HOLDS 0/3 (Pass 32 was MED). 14th META instance: POL-12 scope gap — check_structural_claims.py scanned only stories/ while ADR-0008 §Phase 1 mandates stories/ + behavioral-contracts/. Same gap-class as POL-11 Pass-29 scope bug (replication in sibling gate). ROOT FIX: devops 92fe2f8 (feature branch) — added collect_bc_files(); POL-12 now scans 152 files = 38 stories + 114 BCs; fixed Phase-1/2 mislabel in ci.yml + script docstring; added 3 BC regression fixtures + IPC-homonym false-positive guards; 30/30 fixtures pass. POL-12 PASS: 0 stale structural claims (13 active, 7 historical, 152 files). NO spec cascade needed (no .factory artifact content drift found). Pass 32 adversary confirmed: POL-11 at fixpoint; ADRs self-consistent (tripwire GREEN); cascade clean; S-025 content converged. GATE-COMPLETENESS STREAK: 4 consecutive (Passes 29/30/31/32). Both POL-11+POL-12 now complete — Pass 33 genuine counter advance candidate. F-S025-ADV32-MED-001 resolved as [process-gap] FIXED in scope (devops 92fe2f8); no follow-up story. L-W6-S025-013 codified. STATE v6.59→v6.60. No artifact version bumps this cycle (feature-branch script + ci.yml only). | 2026-05-30 | state-manager |
 | D-212 | S-025 Pass 33 2×MED remediation cycle CLOSED — both findings CLOSED; counter HOLDS 0/3 (Pass 33 was MED×2). 15th+16th META instances: POL-12 suppression-guard false-negatives from Pass 32 IPC-homonym guards. F-S025-ADV33-MED-001: single-line guards missed multi-line claim assembly (pending_app_split cross-line). F-S025-ADV33-MED-002: overlay_stack Path-B exclusion over-broad (blanket name-exclusion blinded App-form claims). ROOT FIX: devops 10cdb0b (feature) — TYPE-AWARE IPC-homonym disambiguation; multi-line cross-line detection (parity with POL-11 Pattern B); structural-historical marker prefix-match fix; §Form-Coverage Matrix both gates (35/35 fixtures). architect 3a83365 (.factory): ADR-0008 v1.0.5 (normative rules for multi-line + type-aware homonym + §Form-Coverage Matrix requirement; ARCH-INDEX v1.0.24; self-consistency CLEAN). story-writer 3d2190e (.factory): STORY-INDEX v5.22 — inputs[]/traces_to converted to VERSION-FREE bare-filename form (ADR-0007 Option 2); active-index re-stale cascade PERMANENTLY KILLED; 3 downstream traces_to fixed (EVAL-INDEX, dependency-graph-expansion, holdout-scenarios). VERIFIED: POL-11 PASS (250 active, 0 stale, 538 files); POL-12 PASS (10 active, 0 stale, 152 files). Adversary confirmed: third gate (audit-table) SOUND; ADRs clean; S-025 content converged. GATE-COMPLETENESS STREAK: 5 (Passes 29-33). L-W6-S025-014 + L-W6-S025-015 codified. STATE v6.60→v6.61. ARTIFACT BUMPS: ADR-0008 v1.0.5, ARCH-INDEX v1.0.24, STORY-INDEX v5.22. | 2026-05-30 | state-manager |
+| D-213 | S-025 Pass 34 MED remediation cycle CLOSED — F-S025-ADV34-MED-001 CLOSED; counter HOLDS 0/3 (Pass 34 was MED). 17th META instance: ADR-0008 §Form-Coverage Matrix mislabeled 'module-level doc-comment table' form as CHECKED when Phase-1 gate does NOT scan crates/**/*.rs — matrix-vs-code self-consistency defect making the 'no silent-blindness' invariant false. ROOT FIX: architect 42eb74c (.factory) — DEFERRED gate-treatment value added to matrix; row relabeled DEFERRED (Phase 2/Phase 5); invariant qualified TRUE (with exception noted); ADR-0008 v1.0.5→v1.0.6; ARCH-INDEX v1.0.24→v1.0.25; self-consistency CLEAN. No feature-branch change (ADR doc only). No cascade needed (STORY-INDEX version-free holds; POL-11 PASS 0 stale). Adversary confirmed: empirical test CLEAN; POL-11 fixpoint; homonym table complete; third gate sound; S-025 content CONVERGED. GATE-COMPLETENESS STREAK: 6 (Passes 29-34). Asymptote observation: findings have decayed from 'gate scans 0 files' (P29) to 'matrix cell label' (P34) — both gates at/near fixpoint. Pass 35 is genuine fixpoint candidate per adversary. L-W6-S025-016 codified (coverage matrix needs DEFERRED value). STATE v6.61→v6.62. ARTIFACT BUMPS: ADR-0008 v1.0.6, ARCH-INDEX v1.0.25. | 2026-05-30 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.24** (UPDATED D-212). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.5** (UPDATED D-212). **S-025 v1.12**. **STORY-INDEX v5.22** (UPDATED D-212). **EVAL-INDEX v1.6** (UPDATED D-210). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.33** (UPDATED D-210). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 50 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.25** (UPDATED D-213). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.6** (UPDATED D-213). **S-025 v1.12**. **STORY-INDEX v5.22** (UPDATED D-212). **EVAL-INDEX v1.6** (UPDATED D-210). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.33** (UPDATED D-210). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 51 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -507,24 +505,19 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.61 (D-212 — Pass 33 2×MED REMEDIATED; §Form-Coverage Matrix both gates; STORY-INDEX version-free cascade-kill; Pass 34 pending CI)
+## §Trace v6.62 (D-213 — Pass 34 MED REMEDIATED; ADR-0008 DEFERRED label fix; matrix-vs-code self-consistency CLEAN; Pass 35 pending CI)
 
-**Pass 33 findings (2026-05-30, D-212) — CLOSED:**
-F-S025-ADV33-MED-001: POL-12 multi-line blind-spot — IPC-homonym guards from Pass 32 were single-line matchers; pending_app_split cross-line assembly bypassed detection entirely. 15th META instance. CLOSED via devops 10cdb0b: multi-line cross-line assembly detection added (parity with POL-11 Pattern B).
-F-S025-ADV33-MED-002: overlay_stack Path-B exclusion over-broad — blanket name-exclusion blinded App-form structural claims in that field context. 16th META instance. CLOSED via devops 10cdb0b: TYPE-AWARE IPC-homonym disambiguation replaces blanket exclusion.
-COMPANION: structural-historical marker prefix-match fix (devops 10cdb0b).
-CASCADE: architect 3a83365 — ADR-0008 v1.0.5: multi-line + type-aware homonym normative rules; §Form-Coverage Matrix requirement codified; ARCH-INDEX v1.0.24; self-consistency CLEAN.
-CASCADE: story-writer 3d2190e — STORY-INDEX v5.22: inputs[]/traces_to converted to VERSION-FREE bare-filename form (ADR-0007 Option 2); active-index re-stale cascade PERMANENTLY KILLED; EVAL-INDEX + dependency-graph-expansion + holdout-scenarios traces_to fixed.
+**Pass 34 findings (2026-05-30, D-213) — CLOSED:**
+F-S025-ADV34-MED-001: ADR-0008 §Form-Coverage Matrix mislabeled 'module-level doc-comment table' form as CHECKED when Phase-1 gate does NOT scan crates/**/*.rs (deferred to Phase 2/Phase 5). Matrix-vs-code self-consistency defect — the 'no silent-blindness' invariant was false as written. 17th META instance (matrix self-consistency sub-species). CLOSED via architect 42eb74c: DEFERRED gate-treatment value added to §Form-Coverage Matrix; row relabeled DEFERRED (Phase 2/Phase 5); invariant qualified TRUE; ADR-0008 v1.0.5→v1.0.6; ARCH-INDEX v1.0.24→v1.0.25; self-consistency CLEAN.
 
-**D-212 CYCLE CLOSURE:**
-Devops 10cdb0b (feature branch) — TYPE-AWARE disambiguation; multi-line detection; §Form-Coverage Matrix; 35/35 fixtures; POL-11 PASS (250 active, 0 stale, 538 files); POL-12 PASS (10 active, 0 stale, 152 files).
-Architect 3a83365 (.factory) — ADR-0008 v1.0.5; ARCH-INDEX v1.0.24.
-Story-writer 3d2190e (.factory) — STORY-INDEX v5.22 version-free; cascade-kill.
-State-manager (this commit) — D-212 closure; lessons L-W6-S025-014 + L-W6-S025-015; STATE v6.60→v6.61.
+**D-213 CYCLE CLOSURE:**
+Architect 42eb74c (.factory) — ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; DEFERRED label + qualified invariant; self-consistency CLEAN.
+No feature-branch change (ADR doc only). No cascade (STORY-INDEX version-free holds; POL-11 PASS 0 stale per pre-burst verify).
+State-manager (this commit) — D-213 closure; lesson L-W6-S025-016; STATE v6.61→v6.62.
 
-**STRATEGIC META-OBSERVATION (D-212):**
-GATE-COMPLETENESS STREAK 5 consecutive (Passes 29/30/31/32/33). Both POL-11 and POL-12 now carry exhaustive §Form-Coverage Matrices (35/35 fixtures, 0 silent gaps). Adversary confirmed: third gate (audit-table) SOUND; ADRs self-consistent; S-025 content converged. Pass 34 RECURRENCE WATCH: audit §Form-Coverage Matrix completeness in both gates — any structural form not present in a matrix row is the next potential corner. If matrices are exhaustive, Pass 34 is the counter-advance candidate. MAXIMUM SKEPTICISM still applies: 13 consecutive 1/3 failures.
+**STRATEGIC META-OBSERVATION (D-213):**
+GATE-COMPLETENESS STREAK 6 consecutive (Passes 29-34). Findings have decayed from 'gate scans 0 files' (P29) to 'matrix cell label' (P34). Both gates at/near fixpoint. Adversary confirmed: Pass 35 is the genuine fixpoint candidate. MAXIMUM SKEPTICISM still applies: 14 consecutive 1/3 failures.
 
-Counter HOLDS 0/3 (Pass 33 was 2×MED). Trajectory appended: →MM(33)+suppression-guard-FN.
+Counter HOLDS 0/3 (Pass 34 was MED). Trajectory appended: →M(34)+matrix-DEFERRED-label.
 
 §Trace v6.40 through v6.58 archived to `cycles/cycle-001/burst-log.md`.
