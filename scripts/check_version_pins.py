@@ -5,7 +5,7 @@ check_version_pins.py — POL-11: Version-pin literal freshness enforcement.
 Implements monocle-version-pin-freshness CI gate per ADR-0007
 §Implementation Plan and SS-conventions-anti-patterns.md §Citation Discipline.
 
-POLICY SUMMARY (ADR-0007 v1.0.7):
+POLICY SUMMARY (ADR-0007 §Decision / §Historical Anchor Classification):
   Every active version-pin literal in the repository must match the canonical
   current version in .factory/specs/version-pin-registry.yaml (or the cited
   document's frontmatter, as fallback). Active means NOT classified as a
@@ -29,7 +29,7 @@ PATTERN B — YAML FRONTMATTER FORM:
   In addition to the inline prose form (Pattern A), POL-11 detects the YAML
   structured inputs[] form used in story and index-doc frontmatter:
     {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  Classification per ADR-0007 §Story inputs[] Historical Provenance (v1.0.7):
+  Classification per ADR-0007 §inputs[] Provenance Classification:
   - File basename matches the regex ^[A-Za-z0-9-]*-INDEX\.md$ (e.g. STORY-INDEX.md,
     BC-INDEX.md, ARCH-INDEX.md, VP-INDEX.md, EVAL-INDEX.md, L2-INDEX.md) OR
     the file basename is exactly "prd.md":
@@ -277,8 +277,8 @@ _YAML_INPUT_PIN_RE = re.compile(
 )
 
 # ───────────────────────────────────────────────────────────────────────────────
-# ACTIVE index document pattern (ADR-0007 §Story inputs[] Historical Provenance,
-# v1.0.6 closed-active-set rule).
+# ACTIVE index document pattern (ADR-0007 §inputs[] Provenance Classification
+# §closed-active-set rule).
 #
 # A YAML inputs[] pin is classified ACTIVE iff the FILE'S BASENAME matches this
 # regex OR is exactly "prd.md". All other files are classified HISTORICAL by
@@ -293,7 +293,7 @@ _ACTIVE_INDEX_BASENAME_RE = re.compile(r'^[A-Za-z0-9-]+-INDEX\.md$')
 # ───────────────────────────────────────────────────────────────────────────────
 # Individual story file pattern (retained for explicit log labelling only).
 #
-# Under the v1.0.6 default-HISTORICAL rule, story files no longer need a special
+# Under the ADR-0007 §inputs[] Provenance Classification default-HISTORICAL rule, story files no longer need a special
 # branch — they fall through to the HISTORICAL default. The pattern is kept so
 # that verbose logging can label story-file pins explicitly rather than using
 # the generic "non-index spec" label.
@@ -388,7 +388,7 @@ _EXCLUDED_PATH_PREFIXES_STATIC: list[str] = [
 # Checked in collect_files() during the root-level file walk.
 _EXCLUDED_ROOT_FILES: frozenset[str] = frozenset({
     "CLAUDE.md",    # repo-root project operating instructions — living state snapshot
-                    # (ADR-0007 v1.0.8 §Living-State Exemption Set; same rationale as STATE.md)
+                    # (ADR-0007 §EXEMPT — living-state; same rationale as STATE.md)
 })
 
 
@@ -541,8 +541,8 @@ def _is_historical_anchor(line: str, in_trace_section: bool) -> bool:
 
 def _classify_yaml_pin(file_path: Path) -> str:
     """
-    Classify a YAML inputs[] pin per ADR-0007 §Story inputs[] Historical Provenance,
-    v1.0.6 closed-active-set rule.
+    Classify a YAML inputs[] pin per ADR-0007 §inputs[] Provenance Classification
+    §closed-active-set rule.
 
     Returns one of:
       "ACTIVE"     — file basename matches ^[A-Za-z0-9-]+-INDEX\\.md$ OR is "prd.md".
@@ -558,7 +558,7 @@ def _classify_yaml_pin(file_path: Path) -> str:
     - Everything else → HISTORICAL by default (authored-against provenance record,
       frozen at document authoring time).
 
-    Per ADR-0007 v1.0.7: the gate must never silently ignore the YAML form. This
+    Per ADR-0007 §Decision: the gate must never silently ignore the YAML form. This
     function ensures every YAML pin is classified explicitly before any decision is made.
     Never returns an unclassified result.
     """
@@ -610,9 +610,9 @@ def _process_yaml_pin(
             pin_basename = artifact_path.rstrip("/").split("/")[-1]
             path_str = str(file_path).replace("\\", "/")
             if _STORY_FILE_RE.search(path_str):
-                reason = "individual story file, authored-against record per ADR-0007 v1.0.6"
+                reason = "individual story file, authored-against record per ADR-0007 §inputs[] Provenance Classification"
             else:
-                reason = "non-index spec file, default-HISTORICAL per ADR-0007 v1.0.6"
+                reason = "non-index spec file, default-HISTORICAL per ADR-0007 §inputs[] Provenance Classification"
             print(
                 f"  [HISTORICAL] {file_path}: line {lineno}: "
                 f"inputs[] provenance, exempt — {pin_basename} v{cited_version} "
@@ -874,7 +874,7 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
     Explicitly excluded from workspace root (living documents, NOT normative):
     - CLAUDE.md — repo-root project operating instructions; living state snapshot that
       accumulates historical version references (same rationale as STATE.md; ADR-0007
-      v1.0.8 §Living-State Exemption Set). Checked via _EXCLUDED_ROOT_FILES in the
+      §EXEMPT — living-state). Checked via _EXCLUDED_ROOT_FILES in the
       root-level file walk (not via extra_prefixes, which is factory-root-relative).
 
     The factory_root parameter is the resolved Path to the factory-artifacts directory.

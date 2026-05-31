@@ -6,7 +6,7 @@ Implements monocle-structural-claim-check CI gate per ADR-0008
 §Implementation Plan (Phase 1 scope) and SS-conventions-anti-patterns.md
 §Structural-Claim Discipline.
 
-POLICY SUMMARY (ADR-0008 v1.0.4):
+POLICY SUMMARY (ADR-0008 §Decision / §Form-Coverage Matrix):
   Every active structural claim in story Tasks checklists, Downstream Consumer
   Contract code blocks, and BC postcondition prose must match the canonical source
   of truth. Phase 1 scope (ADR-0008 §CI enforcement gate):
