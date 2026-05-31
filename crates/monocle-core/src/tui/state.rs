@@ -193,7 +193,16 @@ pub enum Action {
     },
     /// Dismiss the top-most overlay; returns to Dashboard if the stack empties.
     PopOverlay,
-    /// Context-sensitive escape: collapse filter, exit fullscreen, or pop overlay.
+    /// Context-sensitive escape key action.
+    ///
+    /// Per-mode behavior (product-owner ruling):
+    /// - `Dashboard` → identity (no-op).
+    /// - `Overlay` → explicit no-op arm in `transition()` (AC-008).
+    /// - `Fullscreen` → identity; only `Action::ExitFullscreen` exits fullscreen
+    ///   (wired by the fullscreen-view story, not S-025 skeleton).
+    /// - `Filtering` → identity; `Action::CancelFilter` cancels filtering — not Esc.
+    ///
+    /// Esc is NOT a quit path.
     Esc,
     /// Move keyboard focus to the next panel in tab order.
     MoveFocus,

@@ -1207,8 +1207,10 @@ pub fn render_frame(
 ///   Typing `q` in Filtering mode inserts the character (SearchPrompt layer intercepts
 ///   it first). This fixes F-S025-ADV2-HIGH-002 / MED-004: `q` must not quit from
 ///   non-Dashboard modes where it is a valid input character.
-/// - Esc (builtin) → `Action::Esc` — context-sensitive: Dashboard=identity, Overlay=no-op,
-///   Filtering=cancel (wired in transition()). Not used as a quit path.
+/// - Esc (builtin) → `Action::Esc` — context-sensitive: Dashboard=identity, Overlay=no-op
+///   (explicit arm in transition()), Fullscreen=identity (only `Action::ExitFullscreen` exits,
+///   wired by the fullscreen-view story), Filtering=identity (`Action::CancelFilter` cancels
+///   filtering — not Esc). Not used as a quit path.
 /// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
 /// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
 /// - j / ↓ → `Action::SelectNext` (move selection down)
