@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.12"
+version: "1.13"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -44,8 +44,10 @@ from a single overlay without interrupting my editor workflow.
 The `monocle-tui` binary, when launched as a tmux popup (via
 `tmux display-popup -E monocle tui`), initializes the terminal in alternate screen
 mode via `crossterm`, renders the full layout within 200ms of process start, and exits
-cleanly when the user presses `q` or `Esc` from `Dashboard` mode (restoring the
-terminal to normal mode before exit).
+cleanly when the user presses `q` from `Dashboard` mode (restoring the terminal to
+normal mode before exit). `Esc` is context-sensitive — it returns from
+Fullscreen/Overlay to Dashboard and does NOT quit, per the F-S025-ADV2-HIGH-002 design
+decision.
 
 ### AC-002 (traces to BC-2.06.004 postcondition PC-1 — IPC connection on startup)
 On startup, `monocle-tui` attempts to connect to the monocle daemon via UDS at the
@@ -111,10 +113,12 @@ stack is non-empty after population, the TUI immediately transitions to
 the correct resolution.)
 
 ### AC-009 (traces to BC-2.06.007 postcondition PC-2 — alternate screen cleanup on exit)
-When the TUI exits (any exit path: `q`, `Esc`, IPC error, SIGTERM), it MUST restore the
-terminal to normal mode: call `crossterm::terminal::disable_raw_mode()` and
+When the TUI exits (any exit path: `q` from Dashboard, IPC error, SIGTERM, or panic), it MUST
+restore the terminal to normal mode: call `crossterm::terminal::disable_raw_mode()` and
 `crossterm::execute!(stdout, LeaveAlternateScreen)`. A panic handler (via `std::panic::set_hook`)
-also restores the terminal before unwinding.
+also restores the terminal before unwinding. Note: `Esc` is NOT an exit path — it is
+context-sensitive (returns from Fullscreen/Overlay to Dashboard; identity in Dashboard mode)
+per the F-S025-ADV2-HIGH-002 design decision.
 
 ### AC-010 (traces to BC-2.06.004 invariant INV-1 — no ClientDisconnect message)
 The `monocle-tui` codebase MUST NOT send or reference a `ClientToServer::ClientDisconnect`
@@ -152,7 +156,7 @@ v1.1.0 <!-- version-pin-historical: ClientDisconnect removed in v1.1.0 revision;
 - [ ] Implement `MonocleConfig::load()` call on startup with error display modal
 - [ ] Create `monocle-tui/src/ui/sessions_panel.rs` — render Sessions panel with scrollable list, keyboard nav (j/k/Enter/Tab), drop counter in status bar
 - [ ] Implement `resolve_binding()` call in the main event loop using `BindingLayers` from S-024
-- [ ] Implement `q` / `Esc` from `Dashboard` mode → clean exit
+- [ ] Implement `q` from `Dashboard` mode → clean exit (`Esc` in Dashboard mode is identity — does NOT quit)
 - [ ] Integration tests `monocle-tui/tests/startup_connect.rs` — mock daemon, verify initial state sync, overlay pre-load
 - [ ] Unit tests `monocle-tui/tests/sessions_panel.rs` — render assertions for session rows, empty state, drop counter display
 
@@ -240,6 +244,31 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.13
+
+**F-S025-ADV38-HIGH-001 Esc-quit stale prose corrected (F-S025-ADV2-HIGH-002 design compliance)** (2026-05-30):
+
+AC-001, AC-009, and Tasks contained the stale claim that `Esc` quits the TUI from Dashboard mode. The
+F-S025-ADV2-HIGH-002 design decision (implemented at `crates/monocle-tui/src/app.rs:1207-1210` and
+`monocle-core/src/tui/state.rs:222-223`) removed the overloaded Esc-as-quit path: `q` is the SOLE
+Dashboard quit key; `Esc` is context-sensitive (returns from Fullscreen/Overlay to Dashboard;
+identity in Dashboard mode).
+
+Three sites corrected (sweep-complete):
+
+- **AC-001** (primary defect): "exits cleanly when the user presses `q` or `Esc` from `Dashboard` mode"
+  corrected to `q` only, with explicit Esc explanation citing F-S025-ADV2-HIGH-002.
+- **AC-009** (secondary): exit-path enumeration "any exit path: `q`, `Esc`, IPC error, SIGTERM" —
+  `Esc` removed from exit list; clarifying note added.
+- **Tasks** (tertiary): "Implement `q` / `Esc` from `Dashboard` mode → clean exit" — `Esc` removed;
+  identity-in-Dashboard note added.
+
+Scope-wider sweep: no other "Esc quits" or "q or Esc" exit claims found in the story body. BC-2.06.007
+not touched (its `Escape` clause covers fullscreen-return, not quit — correctly scoped). Code changes
+are in parallel via implementer (app.rs:546 doc-comment + quit tests).
+
+SE-16d monotonicity: v1.13 timestamp 2026-05-30 >= v1.12 timestamp 2026-05-30. PASS (same-day).
 
 ## §Trace v1.12
 

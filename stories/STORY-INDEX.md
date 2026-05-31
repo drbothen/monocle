@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.22"
+version: "5.23"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T12:00:00Z
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.23
+
+**F-S025-ADV38-HIGH-001 S-025 v1.12 → v1.13: Esc-quit stale prose corrected** (2026-05-30):
+- S-025 AC-001, AC-009, and Tasks carried the stale claim that `Esc` quits the TUI from Dashboard mode.
+  F-S025-ADV2-HIGH-002 design (monocle-tui app.rs:1207-1210, monocle-core state.rs:222-223) made `q`
+  the sole Dashboard quit key; `Esc` is context-sensitive and does NOT quit.
+- Three sites corrected: AC-001 (primary), AC-009 (exit-path list), Tasks (task description).
+- Sweep-wider result: no other stale Esc-quit claims in S-025 body. BC-2.06.007 not touched.
+- S-025 version bumped v1.12 → v1.13.
+- SE-16d monotonicity: v5.23 timestamp 2026-05-30 >= v5.22 timestamp 2026-05-30. PASS (same-day).
 
 ## §Trace v5.22
 
