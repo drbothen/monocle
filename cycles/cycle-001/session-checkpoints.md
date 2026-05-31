@@ -372,3 +372,18 @@ Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE
 - Next action (at v6.39): Dispatch Pass 17 adversary at bfcba19.
 
 ---
+
+## Checkpoint v6.66 (archived from STATE.md on 2026-05-31 when v6.67 replaced it)
+
+**S-025 PASS 38 RESET 2/3→0/3 CLOSED (D-217). STATE v6.66.**
+
+- develop @ 7a52041 (S-023 merge). 26/33 done (156/195 pts, 80%). 852+ tests.
+- S-025 HEAD: 884401e (Pass 38 content fix: app.rs:546 doc-comment + 3 q→Quit tests). 32/32 pass.
+- Counter: 0/3 (RESET after Pass 38 FIRST genuine in-perimeter S-025 content defect cluster).
+- F-S025-ADV38-HIGH-001 (stale Esc-quit claim) + F-S025-ADV38-MED-001 (zero q→Quit test coverage) — both CLOSED.
+- story-writer 8c7d693 (S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e. Both gates PASS 0/0.
+- Artifact versions (v6.66): S-025 v1.13. STORY-INDEX v5.23. BC-INDEX v1.32. product-brief v1.4.33. EVAL-INDEX v1.6.
+- S-025 adversarial trajectory (38 passes): ...→CLEAN(36)→CLEAN(37,per-story)→RESET(38,content-HM).
+- Next action (at v6.66): Dispatch Pass 39 adversary at 884401e (counter RESET 0/3).
+
+---
