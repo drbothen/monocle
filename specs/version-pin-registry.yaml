@@ -157,7 +157,7 @@ BC-INDEX:
 STORY-INDEX:
   path: stories/STORY-INDEX.md
   current_version: "5.25"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 VP-INDEX:
@@ -660,37 +660,37 @@ BC-HOOK-039:
 S-016-daemon-binary-cli:
   path: stories/S-016-daemon-binary-cli.md
   current_version: "1.1"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-017-daemon-start-sequence:
   path: stories/S-017-daemon-start-sequence.md
   current_version: "1.1"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-018-hook-routing-event-bus:
   path: stories/S-018-hook-routing-event-bus.md
   current_version: "1.2"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-019-daemon-auto-start:
   path: stories/S-019-daemon-auto-start.md
   current_version: "1.2"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-022-tui-connect-permission-prompt:
   path: stories/S-022-tui-connect-permission-prompt.md
   current_version: "1.4"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-023-reconnect-soq3:
   path: stories/S-023-reconnect-soq3.md
   current_version: "1.2"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
 
 S-025-tui-skeleton-sessions:
@@ -708,15 +708,13 @@ S-026-permission-overlay-core:
 S-029-killer-scenario-test:
   path: stories/S-029-killer-scenario-test.md
   current_version: "1.2"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
-  # NOTE: EVAL-INDEX.md cites "S-029-killer-scenario-test v1.0" — this is a stale
-  # citation (current canonical is v1.2). Durable task REGISTRY-STALE-EVAL-INDEX-S029
-  # recorded. EVAL-INDEX prose refresh deferred to wave-6-gate sweep.
+  # NOTE: EVAL-INDEX.md cites "S-029-killer-scenario-test v1.0" -- stale citation
+  # (current canonical is v1.2). Deferred to wave-6-gate sweep.
 
 S-030-config-crate-foundation:
   path: stories/S-030-config-crate-foundation.md
   current_version: "1.1"
-  last_bump_commit: "[set at S-026 delivery burst 2026-05-31]"
+  last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
-  # NOTE: EVAL-INDEX.md cites "S-030-config-crate-foundation v1.1" — matches canonical; no staleness.
