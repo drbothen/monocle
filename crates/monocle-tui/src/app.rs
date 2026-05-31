@@ -189,11 +189,16 @@ impl App {
 /// monocle-core. This is the `payload_to_modal()` function referenced in
 /// BC-2.06.004.
 ///
-/// # Mapping rules (BC-2.06.024 / AC-016)
+/// # Mapping rules (BC-2.06.024 / AC-016 v1.10)
 ///
 /// - `tool_name == "Bash"` AND `tool_input["command"]` present → `ToolPayload::Bash { command }`
 /// - `tool_name == "Bash"` AND `tool_input["command"]` absent → `ToolPayload::Generic`
-/// - `tool_name == "Edit"` or `"Write"` → `ToolPayload::Edit { old_content, new_content, path }`
+/// - `tool_name == "Edit" | "Write"` AND (`old_content.is_some() || new_content.is_some()`)
+///   AND `tool_input["path"]` present → `ToolPayload::Edit { old_content, new_content, path }`
+/// - `tool_name == "Edit" | "Write"` AND BOTH content fields `None`
+///   OR `tool_input["path"]` absent → `ToolPayload::Generic`
+///   (In Phase 1 the daemon always sends `old_content: None, new_content: None` for all
+///   deferred prompts, so ALL Phase-1 Edit/Write prompts produce `ToolPayload::Generic`.)
 /// - `tool_name == "Read"` AND `tool_input["path"]` present → `ToolPayload::Read { path }`
 /// - `tool_name == "Read"` AND `tool_input["path"]` absent → `ToolPayload::Generic`
 /// - Anything else → `ToolPayload::Generic { tool_name, tool_input }`
@@ -211,16 +216,44 @@ pub fn payload_to_modal(payload: PermissionPromptPayload) -> PromptModal {
                 },
             }
         }
-        "Edit" | "Write" => ToolPayload::Edit {
-            old_content: payload.old_content.unwrap_or_default(),
-            new_content: payload.new_content.unwrap_or_default(),
-            path: payload
+        "Edit" | "Write" => {
+            // AC-016 v1.10 (BC-2.06.024): Edit/Write → ToolPayload::Edit ONLY when
+            // at least one content field is Some AND path is present.
+            //
+            // Both-None → Generic (the Phase-1 normal path: daemon sends None/None for
+            // all deferred prompts).  An absent path → Generic (no meaningful diff to
+            // show regardless of content).  This avoids rendering a blank diff pane
+            // (BC-2.06.010) when no content is available, surfacing the raw tool_input
+            // JSON instead which at minimum contains the path field.
+            let has_content = payload.old_content.is_some() || payload.new_content.is_some();
+            let path_opt = payload
                 .tool_input
                 .get("path")
                 .and_then(|v| v.as_str())
-                .map(std::path::PathBuf::from)
-                .unwrap_or_default(),
-        },
+                .map(std::path::PathBuf::from);
+
+            if has_content {
+                if let Some(path) = path_opt {
+                    ToolPayload::Edit {
+                        old_content: payload.old_content.unwrap_or_default(),
+                        new_content: payload.new_content.unwrap_or_default(),
+                        path,
+                    }
+                } else {
+                    // Content present but no path — fall back to Generic.
+                    ToolPayload::Generic {
+                        tool_name: payload.tool_name.clone(),
+                        tool_input: payload.tool_input.clone(),
+                    }
+                }
+            } else {
+                // Both-None (Phase-1 normal path) → Generic.
+                ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                }
+            }
+        }
         "Read" => {
             // AC-016 (BC-2.06.024): fall back to Generic when "path" key is absent.
             match payload.tool_input.get("path").and_then(|v| v.as_str()) {
@@ -1152,12 +1185,6 @@ pub fn dispatch_key_event(
                 //   3. Do NOT pop or retain the overlay_stack — the modal stays visible
                 //      until `ServerToClient::PermissionPromptResolved` arrives (BC-2.06.023).
                 //   4. Mode does NOT change here — `transition()` is an identity for these.
-                //
-                // BC-5.38.005 self-check: "If I include this real implementation, will the
-                // test for this function pass trivially without any implementer work?"
-                // YES — the test expects an IPC message enqueued on ipc_tx and modal staying
-                // in the stack; a real implementation here makes all decision tests green
-                // without the implementer writing any code. Therefore: todo!().
                 // ---------------------------------------------------------------------------
                 Action::PermissionAcceptOnce => {
                     send_permission_decision(app, PermissionDecisionKind::Allow);
