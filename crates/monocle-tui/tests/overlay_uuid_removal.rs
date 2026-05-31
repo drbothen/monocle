@@ -89,7 +89,11 @@ fn test_BC_2_06_023_pc1_retain_removes_front_entry() {
 
     overlay.retain(|m| m.prompt_id != pid1);
 
-    assert_eq!(overlay.len(), 1, "BC-2.06.023 PC-1: retain() must remove the front entry");
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.06.023 PC-1: retain() must remove the front entry"
+    );
     assert_eq!(
         overlay.front().unwrap().prompt_id,
         pid2,
@@ -374,14 +378,21 @@ fn test_BC_2_06_023_architecture_compliance_transition_does_not_touch_stack() {
     use monocle_core::tui::state::transition;
 
     let prior = FocusSnapshot::Sessions;
-    let mode = AppMode::Overlay { prior: prior.clone() };
+    let mode = AppMode::Overlay {
+        prior: prior.clone(),
+    };
 
     // transition(Overlay, PopOverlay) returns Dashboard — it does NOT touch any stack.
     // This is the pure function call the collapse handler uses.
     let result = transition(mode, Action::PopOverlay);
 
     assert!(
-        matches!(result, AppMode::Dashboard { focused: FocusSnapshot::Sessions }),
+        matches!(
+            result,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
         "Architecture Compliance: transition(Overlay, PopOverlay) → Dashboard {{ prior }}; \
          stack mutation is App-level, NOT inside transition()"
     );
@@ -400,7 +411,12 @@ fn test_BC_2_06_023_transition_pop_overlay_preserves_prior_focus() {
     let result = transition(mode, Action::PopOverlay);
 
     assert!(
-        matches!(result, AppMode::Dashboard { focused: FocusSnapshot::EventRibbon }),
+        matches!(
+            result,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::EventRibbon
+            }
+        ),
         "BC-2.06.023 PC-4: collapse must restore prior FocusSnapshot — \
          EventRibbon prior preserved in Dashboard after PopOverlay"
     );

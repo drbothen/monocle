@@ -77,7 +77,11 @@ fn test_BC_2_06_016_pc1_disconnect_clears_overlay_stack() {
         matches!(app.mode, AppMode::Overlay { .. }),
         "BC-2.06.016 precondition: must be in Overlay mode with prompts"
     );
-    assert_eq!(app.overlay_stack.len(), 2, "precondition: 2 prompts in stack");
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "precondition: 2 prompts in stack"
+    );
 
     // Receive Disconnected
     on_transport_event(&mut app, TransportEvent::Disconnected);
@@ -126,7 +130,10 @@ fn test_BC_2_06_016_pc1_disconnect_is_idempotent() {
 
     // First disconnect
     on_transport_event(&mut app, TransportEvent::Disconnected);
-    assert!(app.overlay_stack.is_empty(), "first disconnect: overlay cleared");
+    assert!(
+        app.overlay_stack.is_empty(),
+        "first disconnect: overlay cleared"
+    );
 
     // Second disconnect (no overlay to clear; should not panic)
     on_transport_event(&mut app, TransportEvent::Disconnected);
@@ -182,13 +189,7 @@ fn test_BC_2_06_016_pc2_reconnect_restores_overlay_from_initial_state() {
     let pid2 = Uuid::new_v4();
 
     // First connection: enter overlay
-    on_initial_state(
-        &mut app,
-        vec![],
-        vec![],
-        vec![bash_payload(pid1)],
-        0,
-    );
+    on_initial_state(&mut app, vec![], vec![], vec![bash_payload(pid1)], 0);
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
         "precondition: in Overlay mode after first connection"
@@ -197,7 +198,10 @@ fn test_BC_2_06_016_pc2_reconnect_restores_overlay_from_initial_state() {
     // Disconnect: clears overlay
     on_transport_event(&mut app, TransportEvent::Disconnected);
     assert!(app.overlay_stack.is_empty(), "disconnect clears overlay");
-    assert!(matches!(app.mode, AppMode::Dashboard { .. }), "disconnect → Dashboard");
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "disconnect → Dashboard"
+    );
 
     // Reconnect: InitialState re-populates with [P1, P2] (P1 still pending, P2 is new)
     on_initial_state(
@@ -302,8 +306,7 @@ fn test_snapshot_window_prompt_dedup() {
     let y_count = ids.iter().filter(|&&id| id == pid_y).count();
 
     assert_eq!(
-        x_count,
-        1,
+        x_count, 1,
         "snapshot dedup: X must appear exactly once in overlay_stack"
     );
     assert_eq!(

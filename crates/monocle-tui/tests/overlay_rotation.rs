@@ -98,14 +98,12 @@ fn layers_with_overlay_cycle() -> BindingLayers {
     // Register Up → OverlayCycleNext in search_prompt (highest precedence layer).
     // The SearchPrompt layer is consulted first in Overlay mode for keys that aren't
     // captured by the hardcoded permission decision checks (y/A/n/r/Enter).
-    layers.search_prompt.insert(
-        key(KeyCode::Up),
-        Action::OverlayCycleNext,
-    );
-    layers.search_prompt.insert(
-        key(KeyCode::Down),
-        Action::OverlayCycleNext,
-    );
+    layers
+        .search_prompt
+        .insert(key(KeyCode::Up), Action::OverlayCycleNext);
+    layers
+        .search_prompt
+        .insert(key(KeyCode::Down), Action::OverlayCycleNext);
     layers
 }
 
@@ -150,11 +148,20 @@ fn test_BC_2_06_009_pc1_rotation_len_gt_1_moves_front_to_back() {
         pid1,
         "BC-2.06.009 PC-1: P1 must be at back after one rotation"
     );
-    assert_eq!(app.overlay_stack.len(), 2, "BC-2.06.009 PC-1: stack len must not change");
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "BC-2.06.009 PC-1: stack len must not change"
+    );
 
     // Mode stays Overlay — transition() is identity for OverlayCycleNext
     assert!(
-        matches!(app.mode, AppMode::Overlay { prior: FocusSnapshot::Sessions }),
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
         "BC-2.06.009 PC-1: AppMode must stay Overlay {{ prior: Sessions }} after rotation"
     );
 }
@@ -313,7 +320,12 @@ fn test_BC_2_06_009_transition_overlay_cycle_next_is_identity() {
     let mode_after = transition(mode_before, Action::OverlayCycleNext);
 
     assert!(
-        matches!(mode_after, AppMode::Overlay { prior: FocusSnapshot::EventRibbon }),
+        matches!(
+            mode_after,
+            AppMode::Overlay {
+                prior: FocusSnapshot::EventRibbon
+            }
+        ),
         "BC-2.06.009: transition(Overlay, OverlayCycleNext) must be identity — \
          EventRibbon prior preserved"
     );
@@ -338,7 +350,12 @@ fn test_ac_010_overlay_binding_isolation_j_does_not_scroll_sessions() {
     // In Overlay mode, the gate fails — sessions_state.list_state is NOT mutated.
     let initial_selected = sessions_state.list_state.selected();
 
-    dispatch_key_event(&mut app, &key(KeyCode::Char('j')), &layers, &mut sessions_state);
+    dispatch_key_event(
+        &mut app,
+        &key(KeyCode::Char('j')),
+        &layers,
+        &mut sessions_state,
+    );
 
     assert_eq!(
         sessions_state.list_state.selected(),

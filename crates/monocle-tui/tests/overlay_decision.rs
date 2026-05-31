@@ -130,11 +130,14 @@ fn test_BC_2_06_011_accept_once_y_sends_allow_ipc_modal_stays_in_stack() {
     );
 
     // IPC message must be enqueued with correct prompt_id and Allow decision
-    let msg = rx.try_recv().expect(
-        "BC-2.06.011 PC-1: ClientToServer message must be enqueued on ipc_tx after `y`",
-    );
+    let msg = rx
+        .try_recv()
+        .expect("BC-2.06.011 PC-1: ClientToServer message must be enqueued on ipc_tx after `y`");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
             assert_eq!(
                 prompt_id, pid,
                 "BC-2.06.011 PC-1: PermissionDecision prompt_id must match front modal's prompt_id"
@@ -157,14 +160,13 @@ fn test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays() {
     let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
-    let outcome = dispatch_key_event(
-        &mut app,
-        &key(KeyCode::Enter),
-        &layers,
-        &mut sessions_state,
-    );
+    let outcome = dispatch_key_event(&mut app, &key(KeyCode::Enter), &layers, &mut sessions_state);
 
-    assert_eq!(outcome, KeyOutcome::Continue, "BC-2.06.011: Enter must not quit");
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "BC-2.06.011: Enter must not quit"
+    );
 
     // Modal stays in stack
     assert_eq!(
@@ -173,11 +175,14 @@ fn test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays() {
         "BC-2.06.011 Invariant 5: modal must NOT be popped after Enter"
     );
 
-    let msg = rx.try_recv().expect(
-        "BC-2.06.011 PC-1: ClientToServer message must be enqueued on ipc_tx after Enter",
-    );
+    let msg = rx
+        .try_recv()
+        .expect("BC-2.06.011 PC-1: ClientToServer message must be enqueued on ipc_tx after Enter");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
             assert_eq!(prompt_id, pid);
             assert_eq!(
                 decision,
@@ -213,7 +218,11 @@ fn test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays() 
         &mut sessions_state,
     );
 
-    assert_eq!(outcome, KeyOutcome::Continue, "BC-2.06.012: `A` must not quit");
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "BC-2.06.012: `A` must not quit"
+    );
 
     // Modal must NOT be popped
     assert_eq!(
@@ -234,11 +243,14 @@ fn test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays() 
     );
 
     // IPC message: AcceptAlways
-    let msg = rx.try_recv().expect(
-        "BC-2.06.012 PC-1: ClientToServer message must be enqueued on ipc_tx after `A`",
-    );
+    let msg = rx
+        .try_recv()
+        .expect("BC-2.06.012 PC-1: ClientToServer message must be enqueued on ipc_tx after `A`");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
             assert_eq!(
                 prompt_id, pid,
                 "BC-2.06.012 PC-1: PermissionDecision prompt_id must match front modal"
@@ -276,7 +288,11 @@ fn test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack() {
         &mut sessions_state,
     );
 
-    assert_eq!(outcome, KeyOutcome::Continue, "BC-2.06.013: `n` must not quit");
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "BC-2.06.013: `n` must not quit"
+    );
 
     // Modal must NOT be popped
     assert_eq!(
@@ -295,12 +311,18 @@ fn test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack() {
         "BC-2.06.013 PC-1: AppMode must remain Overlay after Reject send"
     );
 
-    let msg = rx.try_recv().expect(
-        "BC-2.06.013 PC-1: ClientToServer message must be enqueued on ipc_tx after `n`",
-    );
+    let msg = rx
+        .try_recv()
+        .expect("BC-2.06.013 PC-1: ClientToServer message must be enqueued on ipc_tx after `n`");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
-            assert_eq!(prompt_id, pid, "BC-2.06.013: prompt_id must match front modal");
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
+            assert_eq!(
+                prompt_id, pid,
+                "BC-2.06.013: prompt_id must match front modal"
+            );
             assert_eq!(
                 decision,
                 PermissionDecisionKind::Deny,
@@ -327,7 +349,11 @@ fn test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack() {
         &mut sessions_state,
     );
 
-    assert_eq!(outcome, KeyOutcome::Continue, "BC-2.06.013: `r` must not quit");
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "BC-2.06.013: `r` must not quit"
+    );
 
     assert_eq!(
         app.overlay_stack.len(),
@@ -335,11 +361,14 @@ fn test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack() {
         "BC-2.06.013 Invariant 4: modal must NOT be popped after `r` Reject send"
     );
 
-    let msg = rx.try_recv().expect(
-        "BC-2.06.013 PC-1: ClientToServer message must be enqueued on ipc_tx after `r`",
-    );
+    let msg = rx
+        .try_recv()
+        .expect("BC-2.06.013 PC-1: ClientToServer message must be enqueued on ipc_tx after `r`");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
             assert_eq!(prompt_id, pid);
             assert_eq!(
                 decision,
@@ -382,11 +411,18 @@ fn test_BC_2_06_011_accept_once_uses_front_prompt_id_in_multi_stack() {
     );
 
     // Stack must stay [P1, P2] — no pop
-    assert_eq!(app.overlay_stack.len(), 2, "BC-2.06.011: stack=[P1,P2] stays unchanged");
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "BC-2.06.011: stack=[P1,P2] stays unchanged"
+    );
 
     let msg = rx.try_recv().expect("must send IPC message");
     match msg {
-        ClientToServer::PermissionDecision { prompt_id, decision } => {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
             assert_eq!(
                 prompt_id, pid1,
                 "BC-2.06.011 Invariant 1: PermissionDecision must use FRONT (P1), not P2"
@@ -417,12 +453,7 @@ fn test_BC_2_06_014_esc_in_overlay_is_identity_no_ipc_send() {
     let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
-    let outcome = dispatch_key_event(
-        &mut app,
-        &key(KeyCode::Esc),
-        &layers,
-        &mut sessions_state,
-    );
+    let outcome = dispatch_key_event(&mut app, &key(KeyCode::Esc), &layers, &mut sessions_state);
 
     assert_eq!(
         outcome,
@@ -463,7 +494,12 @@ fn test_BC_2_06_014_transition_esc_overlay_is_identity_pure_function() {
     let mode_after = transition(mode_before, Action::Esc);
 
     assert!(
-        matches!(mode_after, AppMode::Overlay { prior: FocusSnapshot::Sessions }),
+        matches!(
+            mode_after,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
         "BC-2.06.014 PC-1: transition(Overlay, Esc) must return Overlay unchanged (identity)"
     );
 }
@@ -521,7 +557,11 @@ fn test_BC_2_06_023_pc1_retain_removes_non_front_entry() {
         "BC-2.06.023 PC-1: retain() removes P2 (not front); 2 remain"
     );
     let ids: Vec<Uuid> = overlay.iter().map(|m| m.prompt_id).collect();
-    assert_eq!(ids, vec![pid1, pid3], "BC-2.06.023 PC-1: P1 and P3 remain in order");
+    assert_eq!(
+        ids,
+        vec![pid1, pid3],
+        "BC-2.06.023 PC-1: P1 and P3 remain in order"
+    );
 }
 
 // ---------------------------------------------------------------------------
