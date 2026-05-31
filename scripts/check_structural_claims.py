@@ -23,6 +23,70 @@ HISTORICAL ANCHOR EXEMPTIONS (a claim is exempt if any ONE holds):
      adjacent line).
   3. The line contains a time qualifier establishing past state:
      "at S-NNN authoring time", "at T-NNN dispatch time", "as of v", etc.
+  4. Multi-line split (cross-line Path A): when "App.<field>:" ends line N and the
+     type starts line N+1, historical-anchor exemption is checked against BOTH lines.
+     If EITHER line carries an exemption marker or time qualifier, the claim is
+     historical (analogous to POL-11 PG-SPLIT cross-line logic).
+
+FORM-COVERAGE MATRIX (all structural-claim forms — what POL-12 checks or exempts):
+
+  Form (a) — Qualified inline: "App.field: Type" on one line
+    → CHECKED by Path A (_APP_QUALIFIED_FIELD_RE).
+    → Applies to BC postcondition prose, story Tasks/Consumer Contract blocks.
+
+  Form (b) — Unqualified backtick: "`field: Type`" on one line (no "App." qualifier)
+    → CHECKED by Path B (_INLINE_FIELD_TYPE_RE + backtick/struct-context fast-path).
+    → Requires a struct-context signal ("`field:" backtick form or "app struct"/"struct app").
+    → IPC-homonym fields: type-aware disambiguation (see §IPC-Homonym Disambiguation below).
+    → IPC-ownership-marker lines: exempt (explicit "in IPC", "daemon's", etc.).
+
+  Form (c) — Multi-line split of qualified form: "App.field:\n  Type" across two lines
+    → CHECKED by cross-line Path A (pending-field buffer in scan_file()).
+    → Field line: matches _APP_QUALIFIED_SPLIT_RE (App.field: at EOL, no type following).
+    → Type line: next non-blank continuation line starts with a Rust container type.
+    → Historical-anchor: EITHER line carries exemption → claim is historical.
+    → Examples at BC-2.06.008:32-33, BC-2.06.009:34-35 (live corpus; must be visible).
+
+  Form (d) — Struct-body code blocks: ```rust\npub struct App {\n  field: Type,\n}```
+    → CHECKED by _check_code_block_line() (in_app_struct gating).
+    → Only field declarations inside an `App { }` body are checked.
+    → Non-App structs (DaemonState, ServerToClient, etc.) are not scanned.
+
+  Form (e) — Table-cell forms: markdown table cells that cite type names
+    → PHASE 2 (deferred to Phase 5 per ADR-0008 §Implementation Plan).
+    → No silent blindness: ADR-0008 explicitly defers Phase 2 to Phase 5 scope.
+
+  Form (f) — Prose enumeration: bare type references without "field:" context
+    → INTENTIONALLY EXEMPT: no field-name anchor → cannot determine canonical source.
+    → The _APP_QUALIFIED_FIELD_RE requires "App.<field>:" before type; Path B requires
+      backtick context or struct signal. Bare type names without field context are
+      not structural claims (they are implementation descriptions).
+
+§IPC-HOMONYM DISAMBIGUATION (F-S025-ADV33-MED-002):
+
+  Fields that exist in BOTH the TUI App struct AND IPC message types with DIFFERENT
+  types are "IPC homonyms". The prior implementation excluded these fields from Path B
+  entirely (_PATH_B_EXCLUDED_FIELDS), which was OVER-BROAD: it also blinded POL-12 to
+  valid App-form claims where the App-canonical type (VecDeque<PromptModal>) was cited.
+
+  Replacement: TYPE-AWARE disambiguation per field:
+  - _PATH_B_IPC_HOMONYM_TYPES: dict mapping field_name → frozenset of IPC-type prefixes.
+  - If cited_type starts with an IPC-homonym type prefix → SKIP (IPC form, not App form).
+    Log explicitly: "[IPC-HOMONYM-SKIP] ..." — never silently skip.
+  - If cited_type does NOT start with any IPC-homonym prefix → CHECK against canonical.
+    If it matches → PASS. If it mismatches → FAIL (drift detected).
+
+  Current homonym map (extends as new IPC messages are designed):
+    overlay_stack:
+      IPC types: Vec<PermissionPromptPayload>
+      App type:  VecDeque<PromptModal>
+    → "`overlay_stack: Vec<PermissionPromptPayload>`" → IPC form → SKIP
+    → "`overlay_stack: VecDeque<PromptModal>`" → App form → CHECK (must match)
+    → "`overlay_stack: Vec<PromptModal>`" → neither IPC nor App-canonical → FAIL (stale)
+
+  MAINTAINER OBLIGATION: When a new IPC message type is designed that introduces a
+  new field-name homonym with an App struct field, add the new IPC type prefix to
+  _PATH_B_IPC_HOMONYM_TYPES. This is a per-story-cycle obligation for the implementer.
 
 SCANNED PATHS (Phase 1 — ADR-0008 §CI enforcement gate):
   .factory/stories/*.md                          — Tasks checklists + Consumer Contract blocks
@@ -149,10 +213,87 @@ _APP_QUALIFIED_FIELD_RE = re.compile(
     r'[Aa]pp\.([a-z_][a-z0-9_]*)\s*:\s*([A-Za-z_<>:,0-9]+)',
 )
 
+# ───────────────────────────────────────────────────────────────────────────────
+# Cross-line Path A: "App.<field>:" at end-of-line, type on next line.
+#
+# Form (c): when "App.overlay_stack:" ends line N (no type following on that line)
+# and "VecDeque<PromptModal>" opens line N+1, the pair is a split App-qualified
+# structural claim. Both lines together constitute the full claim.
+#
+# This is the multi-line parallel to POL-11's PG-SPLIT cross-line detection.
+# Historical-anchor exemption applies if EITHER line carries an exemption marker.
+#
+# Detection:
+#   _APP_QUALIFIED_SPLIT_FIELD_RE: matches "App.<field>:" at end of line with
+#     NOTHING (or only whitespace/backtick) following the colon.
+#     The negative lookahead (?![^\S\r\n]*[A-Za-z_<]) ensures no type starts on
+#     the SAME line after the colon — otherwise same-line Path A already handles it.
+#
+#   _CONTINUATION_TYPE_RE: matches a Rust container type at or near start of the
+#     next line. Allows leading whitespace, backtick, or punctuation before the type.
+# ───────────────────────────────────────────────────────────────────────────────
+_APP_QUALIFIED_SPLIT_FIELD_RE = re.compile(
+    r"""
+    [Aa]pp\.                                # "App." qualifier
+    ([a-z_][a-z0-9_]*)                     # field name (group 1)
+    \s*:\s*                                 # colon separator
+    (?![^\S\r\n]*[A-Za-z_<`])              # negative lookahead: no type starting on this line
+    [^\S\r\n]*                              # optional trailing whitespace (not newline)
+    [`'"]?                                  # optional trailing backtick/quote before EOL
+    $                                       # end of line
+    """,
+    re.VERBOSE | re.MULTILINE,
+)
+
+# Matches a Rust container type at (or near) the start of a continuation line.
+# Allows leading whitespace, backtick, or punctuation (e.g., backtick in BC prose).
+_CONTINUATION_TYPE_RE = re.compile(
+    r"""
+    ^                                       # start of line
+    [^\S\r\n]*                              # optional leading whitespace
+    [`'"\(\[]*                              # optional leading punctuation/backtick
+    (                                       # group 1: the type expression
+        (?:Vec|VecDeque|Option)<[A-Za-z_<>:,0-9 ]+>   # common container types
+        |[A-Z][A-Za-z_0-9]*(?:::[A-Za-z_0-9]+)*<[A-Za-z_<>:,0-9 ]+>  # named generic
+        |[A-Z][A-Za-z_0-9]+                # simple named type (AppMode, u64, etc.)
+    )
+    """,
+    re.VERBOSE,
+)
+
 # Container type pattern — matches Vec<X>, VecDeque<X>, Option<X> with type arg
 _CONTAINER_TYPE_RE = re.compile(
     r'(Vec|VecDeque|Option)<([A-Za-z_<>:,0-9 ]+)>',
 )
+
+# ───────────────────────────────────────────────────────────────────────────────
+# IPC-Homonym Type Map — Path B type-aware disambiguation (F-S025-ADV33-MED-002).
+#
+# Maps field_name → tuple of IPC type prefixes that indicate this cited type
+# belongs to an IPC message type (not the TUI App struct).
+#
+# Behaviour:
+#   - If cited_type starts with any IPC prefix for the field → IPC form → SKIP.
+#     Log explicitly: "[IPC-HOMONYM-SKIP]" — never silently skip.
+#   - If cited_type does NOT start with any IPC prefix → App form → CHECK canonical.
+#     Match → PASS. Mismatch → FAIL (stale App-form claim detected).
+#
+# This replaces the prior over-broad field-name exclusion (_PATH_B_EXCLUDED_FIELDS)
+# which blinded POL-12 to valid App-form claims like `overlay_stack: VecDeque<PromptModal>`.
+#
+# MAINTAINER OBLIGATION (per-story-cycle, same as _CANONICAL_APP_FIELDS):
+#   When a new IPC message type introduces a field-name homonym with an App struct
+#   field, add the new IPC type prefix to the tuple for that field.
+# ───────────────────────────────────────────────────────────────────────────────
+_PATH_B_IPC_HOMONYM_TYPES: dict[str, tuple[str, ...]] = {
+    # overlay_stack:
+    #   App type:  VecDeque<PromptModal>        (the TUI modal stack)
+    #   IPC types: Vec<PermissionPromptPayload>  (InitialState.overlay_stack IPC field)
+    # A cited "Vec<PermissionPromptPayload>" → IPC form → suppress (false positive).
+    # A cited "VecDeque<PromptModal>" → App form → check (must match canonical).
+    # A cited "Vec<PromptModal>" → neither → check (stale — wrong container type for App).
+    "overlay_stack": ("Vec<PermissionPromptPayload>",),
+}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # §Trace section tracking (same logic as check_version_pins.py)
@@ -160,8 +301,11 @@ _CONTAINER_TYPE_RE = re.compile(
 _TRACE_HEADER_RE = re.compile(r'^#{1,6}\s+§Trace', re.IGNORECASE)
 _ANY_HEADER_RE = re.compile(r'^(#{1,6})\s+')
 
-# Structural-claim historical marker
-_STRUCTURAL_HISTORICAL_MARKER = "<!-- structural-claim-historical -->"
+# Structural-claim historical marker — prefix match to catch both:
+#   bare form:      <!-- structural-claim-historical -->
+#   annotated form: <!-- structural-claim-historical: some reason here -->
+# Using the OPENING prefix matches both (analogous to POL-11's _HISTORICAL_MARKER_MD_PREFIX).
+_STRUCTURAL_HISTORICAL_MARKER_PREFIX = "<!-- structural-claim-historical"
 
 # Time qualifiers for historical-anchor classification
 _TIME_QUALIFIERS: list[str] = [
@@ -239,7 +383,7 @@ def _is_historical_anchor(
     context_lines = [line, prev_line] + (pre_block_context or [])
 
     for ctx in context_lines:
-        if _STRUCTURAL_HISTORICAL_MARKER in ctx:
+        if _STRUCTURAL_HISTORICAL_MARKER_PREFIX in ctx:
             return True
 
     # Check time qualifiers on line itself, prev_line, and pre_block_context
@@ -260,13 +404,25 @@ def _extract_type_clean(raw_type: str) -> str:
 def scan_file(
     file_path: Path,
     stats: ScanStats,
+    *,
+    verbose: bool = False,
 ) -> None:
     """
     Scan a single story markdown file for structural claims.
 
     Phase 1 scope:
     - Rust code blocks: scan for field declarations matching App struct fields
-    - Tasks checklist lines: scan for inline "field: Type" patterns
+    - Tasks checklist lines: scan for inline "field: Type" patterns (same-line)
+    - Multi-line cross-line Path A: "App.<field>:" at EOL, type on next line (Form c)
+
+    Form (c) — multi-line split cross-line Path A (F-S025-ADV33-MED-001):
+      When "App.<field>:" appears at the end of a prose line (no type following on that
+      same line), the field name and its line are stored in `pending_app_split`. On the
+      NEXT non-blank line, if a continuation type expression is found at the line start,
+      the pair is assembled and checked as an App-qualified claim. Historical-anchor
+      exemption applies if EITHER the field-line OR the type-line carries an exemption
+      marker — same as POL-11 PG-SPLIT logic. The pending state is cleared after each
+      consumed continuation or at code-block boundaries.
     """
     try:
         text = file_path.read_text(encoding="utf-8", errors="replace")
@@ -294,6 +450,15 @@ def scan_file(
     in_app_struct = False
     app_struct_brace_depth = 0
 
+    # ── Cross-line Path A pending state (Form c — F-S025-ADV33-MED-001) ────────
+    # When "App.<field>:" appears at EOL with no type following on that line, we
+    # park the field name, line number, and raw line text here. On the NEXT line,
+    # if a continuation type is found, we assemble and check the full claim.
+    #
+    # Structure: (field_name: str, field_lineno: int, field_line: str, field_in_trace: bool)
+    # None = no pending split.
+    pending_app_split: tuple[str, int, str, bool] | None = None
+
     for lineno, raw_line in enumerate(lines, 1):
         # Update §Trace tracking (before any other processing)
         in_trace, trace_level = _update_trace_state(raw_line, in_trace, trace_level)
@@ -301,6 +466,11 @@ def scan_file(
         # Track code block boundaries
         stripped = raw_line.strip()
         if stripped.startswith("```"):
+            # Code block boundaries reset pending cross-line state: a pending
+            # "App.field:" at EOL just before a code block fence cannot pair with
+            # code block content as a prose cross-line split.
+            pending_app_split = None
+
             if not in_code_block:
                 in_code_block = True
                 code_block_lang = stripped[3:].strip().lower()
@@ -347,10 +517,88 @@ def scan_file(
             if len(intra_block_context) > _CONTEXT_WINDOW:
                 intra_block_context.pop(0)
         elif not in_code_block:
-            # Scan Tasks checklist lines and prose for inline type references
+            # ── Cross-line Path A: check if this line resolves a pending split ──
+            # A pending split means line (N-k) ended with "App.<field>:" and we
+            # are now checking line N for a continuation type expression.
+            if pending_app_split is not None:
+                field_name, field_lineno, field_line, field_in_trace = pending_app_split
+
+                # Only consume the pending split on non-blank lines.
+                # A blank line cancels the pending split (the split is not across
+                # blank lines — that would be a formatting artifact, not a split claim).
+                if stripped:
+                    pending_app_split = None  # consumed (win or lose)
+
+                    # Attempt to match a continuation type at the start of this line
+                    cm = _CONTINUATION_TYPE_RE.match(raw_line)
+                    if cm and field_name in _CANONICAL_APP_FIELDS:
+                        cited_type = _extract_type_clean(cm.group(1))
+
+                        # Only proceed if the type expression contains '<' or is a
+                        # named type (not a bare keyword like "let" or "the").
+                        # This prevents false matches on continuation prose words.
+                        if "<" in cited_type or cited_type[0].isupper():
+                            stats.claims_found += 1
+
+                            # Historical-anchor: EITHER line carries exemption.
+                            # field_in_trace is the trace state at the field line;
+                            # in_trace is the state at the type line (current).
+                            if (
+                                _is_historical_anchor(field_line, "", field_in_trace)
+                                or _is_historical_anchor(raw_line, field_line, in_trace)
+                            ):
+                                if verbose:
+                                    print(
+                                        f"  [HISTORICAL-SPLIT] {file_path}:{field_lineno}: "
+                                        f"App.{field_name}: {cited_type} (cross-line, historical)"
+                                    )
+                                stats.claims_historical += 1
+                            else:
+                                stats.claims_active += 1
+                                canonical_type = _CANONICAL_APP_FIELDS[field_name]
+                                if not _types_match(cited_type, canonical_type):
+                                    stats.findings.append(
+                                        StructuralFinding(
+                                            file_path=str(file_path),
+                                            line_number=field_lineno,
+                                            field_name=field_name,
+                                            cited_type=cited_type,
+                                            canonical_type=canonical_type,
+                                            context="tasks_inline",
+                                            line_text=(
+                                                field_line.strip()
+                                                + " [next line: " + raw_line.strip()[:60] + "]"
+                                            ),
+                                        )
+                                    )
+                        # If continuation type not parseable or not recognized, fall through
+                        # to same-line prose check below (the line may have other claims too).
+
+            # ── Same-line prose: check this line for Path A / Path B claims ────
+            # Also check for a NEW pending cross-line split on this line.
             _check_prose_line(
-                raw_line, lineno, str(file_path), in_trace, prev_line, stats
+                raw_line, lineno, str(file_path), in_trace, prev_line, stats,
+                verbose=verbose,
             )
+
+            # ── Detect new cross-line Path A split on this line ─────────────────
+            # After prose checking, look for "App.<field>:" at EOL with no type.
+            # If found, set pending state for the next line.
+            # This is ONLY attempted outside code blocks (prose lines).
+            sm = _APP_QUALIFIED_SPLIT_FIELD_RE.search(raw_line)
+            if sm:
+                candidate_field = sm.group(1)
+                if candidate_field in _CANONICAL_APP_FIELDS:
+                    # Set pending state — this line's field name pairs with the next line.
+                    # Store current trace state so the historical-anchor check on the
+                    # field line uses the correct §Trace context.
+                    pending_app_split = (candidate_field, lineno, raw_line, in_trace)
+                    if verbose:
+                        print(
+                            f"  [PENDING-SPLIT] {file_path}:{lineno}: "
+                            f"App.{candidate_field}: — awaiting type on next line"
+                        )
+
             # Maintain pre_block_context window (only updated outside code blocks)
             pre_block_context.append(raw_line)
             if len(pre_block_context) > _CONTEXT_WINDOW:
@@ -424,6 +672,8 @@ def _check_prose_line(
     in_trace: bool,
     prev_line: str,
     stats: ScanStats,
+    *,
+    verbose: bool = False,
 ) -> None:
     """
     Check a prose line (Tasks checklist, description, BC postcondition) for
@@ -435,21 +685,34 @@ def _check_prose_line(
     type to be a well-formed Rust container type (Vec<>, VecDeque<>, Option<>, or
     a named type with angle-bracket generics starting with uppercase).
 
+    FORM-COVERAGE NOTE: This function handles Forms (a) and (b) — same-line claims.
+    Form (c) — cross-line split — is handled by scan_file() pending_app_split logic,
+    not here. Forms (d)/(e)/(f) are handled by _check_code_block_line() or deferred.
+
     Two detection paths:
 
-    Path A — App-qualified form (highest confidence):
+    Path A — App-qualified same-line form (Form a, highest confidence):
       "App.field: Vec<...>" or "`App.field: Vec<...>`" (direct struct qualifier).
       Used by _APP_QUALIFIED_FIELD_RE. Only flags the field: Type that directly
       follows "App." — avoids cross-clause contamination where "App.foo" appears
       in one clause and "foo: DaemonType" appears in another clause on the same line.
+      NOTE: Path A here handles only the SAME-LINE qualified form. The cross-line
+      split form (Form c) is handled by scan_file() before calling this function.
 
-    Path B — Tasks-checklist / BC bullet form (list context):
+    Path B — Tasks-checklist / BC bullet form (Form b, list context):
       "`field: Vec<...>`" in backtick inline code on a line without an "App." qualifier
       that would make Path A more appropriate. Used for BC postcondition bullet lists
       like "- `sessions: Vec<EnrichedSession>` — the full current session roster".
       Triggered by "`field:" fast-path. Requires the type to be a well-formed Rust
       container type (must start with Vec, VecDeque, Option, or uppercase letter with
       angle-brackets) to filter IPC message value forms like `sessions: [<remaining>]`.
+
+    Path B IPC-homonym disambiguation (F-S025-ADV33-MED-002):
+      Instead of a blanket field-name exclusion, Path B applies type-aware
+      disambiguation per field using _PATH_B_IPC_HOMONYM_TYPES. If the cited type
+      starts with a known IPC-type prefix for the field, it is classified as an IPC
+      form and SKIPPED (with explicit log). If the type does NOT match any IPC prefix,
+      it is classified as an App form and CHECKED against the canonical type.
     """
     # Fast-path: must have a container type indicator
     if "<" not in line:
@@ -557,25 +820,6 @@ def _check_prose_line(
     if any(marker in line_lower for marker in _IPC_OWNERSHIP_MARKERS):
         return
 
-    # IPC-homonym exclusion (Path B only): fields whose names appear in BOTH
-    # the TUI App struct AND IPC message types with DIFFERENT types cannot be
-    # reliably classified in the backtick bullet-list form (Path B) without
-    # multi-line context. These fields are excluded from Path B detection.
-    # Path A (App.field: Type) still detects App-qualified claims for these fields.
-    #
-    # Known homonyms (App type → IPC type):
-    #   overlay_stack: VecDeque<PromptModal> (App) vs Vec<PermissionPromptPayload> (IPC/InitialState)
-    #
-    # When overlay_stack appears as "`overlay_stack: Vec<PermissionPromptPayload>`" in a
-    # BC postcondition bullet listing InitialState fields, Path B cannot determine
-    # ownership from the line alone — the IPC context is established by the surrounding
-    # paragraph. Excluding overlay_stack from Path B avoids this false positive class.
-    # If a story or BC authors an App.overlay_stack type claim, they should use the
-    # App-qualified form (Path A): "App.overlay_stack: VecDeque<PromptModal>".
-    _PATH_B_EXCLUDED_FIELDS: frozenset[str] = frozenset({
-        "overlay_stack",  # IPC homonym: Vec<PermissionPromptPayload> vs VecDeque<PromptModal>
-    })
-
     # _RUST_CONTAINER_RE: matches types that start with Vec/VecDeque/Option
     # or start with an uppercase letter followed by '<' (named generic).
     # This excludes IPC value forms like `[<remaining>]` and bare array literals.
@@ -596,14 +840,32 @@ def _check_prose_line(
         if field_name in app_qualified_fields_found:
             continue
 
-        # Skip IPC-homonym fields in Path B (unresolvable without multi-line context).
-        # Path A handles the App-qualified form for these fields.
-        if field_name in _PATH_B_EXCLUDED_FIELDS:
-            continue
-
         # Require the cited type to be a well-formed Rust container type
         if not _RUST_CONTAINER_RE.match(cited_type):
             continue
+
+        # ── IPC-homonym disambiguation (F-S025-ADV33-MED-002) ──────────────
+        # REPLACES the prior blanket _PATH_B_EXCLUDED_FIELDS field-name exclusion.
+        # For each known IPC-homonym field, we check the CITED TYPE against the
+        # known IPC-type prefixes. If the type starts with an IPC prefix → IPC form
+        # → SKIP (log explicitly). If NOT → App form → CHECK canonical.
+        # This ensures:
+        #   "`overlay_stack: Vec<PermissionPromptPayload>`" → IPC → SKIP (no false positive)
+        #   "`overlay_stack: VecDeque<PromptModal>`" → App → CHECK (drift VISIBLE)
+        #   "`overlay_stack: Vec<PromptModal>`" → neither → CHECK (stale → FAIL)
+        if field_name in _PATH_B_IPC_HOMONYM_TYPES:
+            ipc_prefixes = _PATH_B_IPC_HOMONYM_TYPES[field_name]
+            is_ipc_form = any(cited_type.startswith(pfx) for pfx in ipc_prefixes)
+            if is_ipc_form:
+                if verbose:
+                    print(
+                        f"  [IPC-HOMONYM-SKIP] {file_path}:{lineno}: "
+                        f"`{field_name}: {cited_type}` — IPC form "
+                        f"(prefix in {ipc_prefixes}); not an App struct claim"
+                    )
+                # Explicit skip. Not a silent blindspot — classification is logged.
+                continue
+            # Else: NOT an IPC form → falls through to canonical check below.
 
         stats.claims_found += 1
 
@@ -874,7 +1136,7 @@ def main() -> None:
 
     stats = ScanStats()
     for file_path in all_files:
-        scan_file(file_path, stats)
+        scan_file(file_path, stats, verbose=args.verbose)
 
     # Apply authorized deferrals
     deferrals = load_deferrals(workspace_root)
