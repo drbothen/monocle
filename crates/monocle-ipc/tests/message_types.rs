@@ -56,6 +56,10 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
         None,
         SessionStatus::Active,
         None,
+        None, // project_name
+        None, // started_at
+        0,    // token_count
+        None, // cost_usd
     );
 
     // ring_tail now uses HookEventRecord (the native RAM ring storage type) per

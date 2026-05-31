@@ -23,5 +23,5 @@ prost-build = { workspace = true }
 # Exact pin "=0.14.1" matches prost-types' own minimum prost requirement (^0.14.1) and aligns
 # with the workspace's exact prost pin "=0.14.1" — no version conflict.
 # Declared as crate-level dev-dep (not workspace) per least-privilege policy for test-only crates
-# (see SS-deps-pin-manifest.md v1.1.19 §Dev Dependencies).
+# (see SS-deps-pin-manifest.md v1.2.0 §Dev Dependencies).
 prost-types = "=0.14.1"

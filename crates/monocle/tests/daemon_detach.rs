@@ -121,12 +121,11 @@ fn test_ac_014_daemon_subprocess_survives_parent_exit() {
     // Step 3: Assert the daemon PID is still alive after the caller exited.
     assert!(
         pid_is_alive(daemon_pid),
-        "daemon process (PID {}) must still be alive after `monocle daemon start` exits \
+        "daemon process (PID {daemon_pid}) must still be alive after `monocle daemon start` exits \
         (BC-2.04.004 INV-2 / PC-5 / AC-014); \
         the daemon must be detached via double-fork or setsid so it is NOT a child of \
         the calling process. If the daemon dies immediately after the caller exits, \
-        the detachment was not properly implemented.",
-        daemon_pid
+        the detachment was not properly implemented."
     );
 
     // Cleanup: send SIGTERM to the daemon subprocess (test cleanup only).
@@ -169,9 +168,7 @@ fn test_ac_014_daemon_survives_terminal_session_end() {
     );
     assert!(
         sighup_result.is_ok(),
-        "SIGHUP delivery must succeed to a live daemon PID (PID {}); got: {:?}",
-        daemon_pid,
-        sighup_result
+        "SIGHUP delivery must succeed to a live daemon PID (PID {daemon_pid}); got: {sighup_result:?}"
     );
 
     // Step 3: Wait 200ms and verify the daemon is still alive.
@@ -180,12 +177,11 @@ fn test_ac_014_daemon_survives_terminal_session_end() {
 
     assert!(
         pid_is_alive(daemon_pid),
-        "daemon process (PID {}) must remain alive after receiving SIGHUP \
+        "daemon process (PID {daemon_pid}) must remain alive after receiving SIGHUP \
         (BC-2.04.004 INV-2 / AC-014). \
         A daemon that dies on SIGHUP is not properly detached from its terminal. \
         The implementation must call setsid() or double-fork so the daemon has no \
-        controlling terminal to receive SIGHUP from.",
-        daemon_pid
+        controlling terminal to receive SIGHUP from."
     );
 
     // Cleanup.
@@ -237,10 +233,9 @@ fn test_ac_014_daemon_not_child_of_calling_shell() {
     // Step 3: Assert the daemon's parent is NOT the test process.
     assert_ne!(
         daemon_ppid, test_process_pid,
-        "daemon process (PID {}) must NOT be a child of the calling test process (PID {}). \
+        "daemon process (PID {daemon_pid}) must NOT be a child of the calling test process (PID {test_process_pid}). \
         After double-fork or setsid detachment, the daemon must be reparented to init/systemd. \
-        Got daemon PPID = {}. BC-2.04.004 PC-5 / INV-2 / AC-014.",
-        daemon_pid, test_process_pid, daemon_ppid
+        Got daemon PPID = {daemon_ppid}. BC-2.04.004 PC-5 / INV-2 / AC-014."
     );
 
     // The daemon's PPID should be init (1) or a subreaper (small PID near 1 on systemd systems).

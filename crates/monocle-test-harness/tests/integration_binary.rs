@@ -9,7 +9,7 @@
 //! Source authority:
 //! - S-DTU-001 AC-005 (`cargo build --bin dtu-claude-code-hooks-v1`)
 //! - S-DTU-001 AC-006 (MONOCLE_HOOK_ENDPOINT_BASE, MONOCLE_NO_AUTOSTART env vars)
-//! - dtu-assessment.md v1.7.5 §Packaging Decision (lines 320-343)
+//! - dtu-assessment.md §Packaging Decision (implemented against v1.7.5 at S-DTU-001 authoring time)
 
 // BC-based test function names use BC_S_SS_NNN_ uppercase pattern per factory convention.
 // The non_snake_case lint is suppressed at file level to preserve traceability.

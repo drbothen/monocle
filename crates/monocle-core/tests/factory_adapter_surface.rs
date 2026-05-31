@@ -108,14 +108,12 @@ fn test_BC_FACTORY_001_trait_defined_open_no_sealed_bound() {
         method_names.len(),
         7,
         "FactoryAdapter must have exactly 7 methods (BC-2.02.004 PC-1); \
-         found {}: {:?}",
+         found {}: {method_names:?}",
         method_names.len(),
-        method_names
     );
     assert_eq!(
         method_names, expected,
-        "FactoryAdapter method names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected, method_names
+        "FactoryAdapter method names do not match canonical set.\nExpected: {expected:?}\nFound:    {method_names:?}",
     );
 
     // ── No `Sealed` supertrait ───────────────────────────────────────────────
@@ -266,15 +264,13 @@ fn test_BC_FACTORY_001_factory_state_exactly_7_fields() {
         field_names.len(),
         7,
         "FactoryState must have exactly 7 canonical fields (BC-2.02.004 PC-4). \
-         Found {}: {:?}",
+         Found {}: {field_names:?}",
         field_names.len(),
-        field_names
     );
 
     assert_eq!(
         field_names, expected,
-        "FactoryState field names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected, field_names
+        "FactoryState field names do not match canonical set.\nExpected: {expected:?}\nFound:    {field_names:?}",
     );
 }
 
@@ -427,15 +423,13 @@ fn test_BC_FACTORY_001_factory_detection_3_fields() {
         field_names.len(),
         3,
         "FactoryDetection must have exactly 3 fields: display_name, workspace_root, state_file. \
-         Found {}: {:?}",
+         Found {}: {field_names:?}",
         field_names.len(),
-        field_names
     );
 
     assert_eq!(
         field_names, expected,
-        "FactoryDetection field names do not match canonical set.\nExpected: {:?}\nFound:    {:?}",
-        expected, field_names
+        "FactoryDetection field names do not match canonical set.\nExpected: {expected:?}\nFound:    {field_names:?}",
     );
 }
 

@@ -174,7 +174,7 @@ async fn post_raw(
         .header("Content-Type", "application/json")
         .header(
             "X-Monocle-Authorization",
-            format!("monocle-v1:{}", TEST_TOKEN),
+            format!("monocle-v1:{TEST_TOKEN}"),
         )
         .body(Body::from(body_bytes))
         .unwrap();
@@ -351,7 +351,7 @@ async fn test_BC_2_04_008_event_published_after_decision() {
     // Verify payload variant.
     match event.payload {
         monocle_core::hook_events::HookEvent::Notification(_) => {}
-        other => panic!("expected HookEvent::Notification, got {:?}", other),
+        other => panic!("expected HookEvent::Notification, got {other:?}"),
     }
 }
 

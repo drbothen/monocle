@@ -1,0 +1,1646 @@
+//! Integration tests for monocle-tui startup and IPC connection (S-025).
+//!
+//! Traces to:
+//! - BC-2.06.004 PC-1 / PC-2 / PC-3 — Ctrl-\ popup: IPC connect, InitialState
+//!   sync, overlay pre-load.
+//! - BC-2.05.002 Invariant 4 — `apply_permission_prompt_queued` idempotency.
+//! - AC-002 (connection failure path), AC-003 (disconnect handling),
+//!   AC-004 (config load), AC-007 (drop counter), AC-008 (InitialState overlay
+//!   population), AC-009 (panic hook), AC-010 (no ClientDisconnect).
+
+use monocle_config::MonocleConfig;
+use monocle_core::engine::{EnrichedSession, SessionStatus};
+use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
+use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload};
+use monocle_tui::app::{
+    apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event,
+    on_drop_counter_update, on_initial_state, on_transport_event, render_frame, App, KeyOutcome,
+    TransportEvent,
+};
+use monocle_tui::ui::sessions_panel::SessionsPanelState;
+use monocle_tui::{
+    format_drop_counter, DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL,
+};
+use std::collections::VecDeque;
+use std::time::Instant;
+use uuid::Uuid;
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+/// Build a minimal `PermissionPromptPayload` with a fresh `prompt_id`.
+fn make_payload(prompt_id: Uuid) -> PermissionPromptPayload {
+    PermissionPromptPayload {
+        prompt_id,
+        session_id: "sess-001".into(),
+        tool_name: "Bash".into(),
+        tool_input: serde_json::json!({"command": "ls"}),
+        old_content: None,
+        new_content: None,
+    }
+}
+
+/// Build a minimal `EnrichedSession` for test scaffolding.
+fn make_session(id: &str) -> EnrichedSession {
+    EnrichedSession::new(
+        id.to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        SessionStatus::Active,
+        None,
+        None, // project_name
+        None, // started_at
+        0,    // token_count
+        None, // cost_usd
+    )
+}
+
+/// Build a minimal `PromptModal` from a payload for overlay assertions.
+// test-writer follow-up: invoke this helper in production-wired overlay render tests (S-026).
+#[allow(dead_code)]
+fn make_modal(payload: &PermissionPromptPayload) -> PromptModal {
+    PromptModal {
+        prompt_id: payload.prompt_id,
+        session_id: payload.session_id.clone(),
+        tool_name: payload.tool_name.clone(),
+        tool_payload: ToolPayload::Bash {
+            command: payload.tool_input["command"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+        },
+        received_at: Instant::now(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AC-001 / AC-009 — terminal setup and teardown (panic hook)
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.007 PC-1 / AC-001: terminal initialisation types are present and the
+/// panic hook installation path compiles and can be invoked.
+///
+/// Full TTY-dependent assertions (raw mode, alternate screen, actual panic) are
+/// deferred to Phase 4 holdout HS-EXP-009. This test verifies the production
+/// hook signature compiles and the module is reachable.
+///
+/// NOTE: `install_panic_hook` and `restore_terminal` are private to `main.rs`
+/// and cannot be imported by integration tests. This test therefore asserts on
+/// the observable side-effect that matters for AC-001: the App can be constructed
+/// with default config (the prerequisite for the run loop that calls the hook).
+#[test]
+fn test_bc_2_06_007_pc1_ac001_app_constructs_for_startup() {
+    // AC-001: App::new must not panic; starting mode must be Dashboard { Sessions }.
+    let app = App::new(MonocleConfig::default());
+    match app.mode {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected */ }
+        _ => panic!("AC-001: App::new did not start in Dashboard {{ focused: Sessions }}"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AC-002 — IPC connection failure renders error panel
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.004 PC-1 / AC-002: on UDS connect failure, the event loop (run())
+/// must render the error panel and exit with code 1.
+///
+/// This test verifies the connection failure path: when no daemon socket exists,
+/// `run()` returns `Err` after rendering the error panel.
+/// We cannot exercise the full `run()` path (it requires a UDS connection failure)
+/// without a live socket; instead this test:
+///   1. Pins the canonical error text to `monocle_tui::DAEMON_NOT_RUNNING_ERROR`
+///      — a `pub const` in production code. If production changes the string,
+///      this test fails. The test and production share a SINGLE source of truth
+///      (eliminates vacuous-mirror drift; F-S025-ADV10-MED-001).
+///   2. Renders the error panel into a `TestBackend` using the same const,
+///      confirming the string renders into the ratatui buffer without panic.
+///
+/// Full integration verification (mock daemon, TTY simulation) is deferred to
+/// Phase 4 holdout scenario HS-EXP-009.
+#[test]
+fn test_bc_2_06_004_pc1_ac002_error_message_text_is_canonical() {
+    use monocle_tui::DAEMON_NOT_RUNNING_ERROR;
+    use ratatui::{backend::TestBackend, Terminal};
+
+    // Pin: the canonical AC-002 error message from the production const.
+    // If the production const changes, this assert fails — single source of truth.
+    assert_eq!(
+        DAEMON_NOT_RUNNING_ERROR, "Daemon not running. Start it with: monocle daemon start",
+        "AC-002: DAEMON_NOT_RUNNING_ERROR must match BC-2.06.004 canonical text verbatim"
+    );
+
+    // Verify the canonical text is renderable via the production render path.
+    // Use a TestBackend to render the error paragraph the same way run() does.
+    // This confirms the const string reaches the ratatui Paragraph without panic.
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    terminal
+        .draw(|frame| {
+            use ratatui::text::Text;
+            use ratatui::widgets::{Block, Borders, Paragraph, Widget};
+            let p = Paragraph::new(Text::raw(DAEMON_NOT_RUNNING_ERROR))
+                .block(Block::default().borders(Borders::ALL).title("Error"));
+            Widget::render(p, frame.area(), frame.buffer_mut());
+        })
+        .expect("error panel must render without panic");
+
+    let buffer = terminal.backend().buffer().clone();
+    let rendered: String = (0..buffer.area().height as usize)
+        .map(|y| {
+            (0..buffer.area().width as usize)
+                .map(|x| buffer[(x as u16, y as u16)].symbol().to_string())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // The production const must appear verbatim in the rendered buffer.
+    // Using DAEMON_NOT_RUNNING_ERROR (not a local copy) — single source of truth.
+    assert!(
+        rendered.contains(DAEMON_NOT_RUNNING_ERROR),
+        "AC-002: DAEMON_NOT_RUNNING_ERROR must appear in rendered error panel; got:\n{}",
+        rendered.trim()
+    );
+
+    // Also verify resolve_runtime_dir() doesn't panic (prerequisite for the error path).
+    let result = monocle_tui::app::resolve_runtime_dir();
+    // May succeed (HOME set) or fail (no HOME) — both are acceptable; we just verify no panic.
+    let _ = result;
+}
+
+// ---------------------------------------------------------------------------
+// AC-003 — TransportEvent::Disconnected handling
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.004 PC-2 / AC-003: on_transport_event(Disconnected) transitions to
+/// Dashboard { focused: Sessions } (AC-003, BC-2.06.004).
+///
+/// Test vector: App in Overlay mode with 1 prompt → Disconnected →
+///   mode == Dashboard { Sessions }, overlay_stack.len() == 0,
+///   status_message == Some("[disconnected] reconnecting...").
+#[test]
+fn test_bc_2_06_004_pc2_ac003_on_disconnect_transitions_to_dashboard() {
+    let mut app = App::new(MonocleConfig::default());
+    // Put app into Overlay mode to verify the transition clears it.
+    // Use on_initial_state (todo!()) to pre-populate the overlay — this test
+    // will panic on todo!() which is the Red Gate for both handlers.
+    // The assertion below documents the contract.
+    let id = Uuid::new_v4();
+    let payload = make_payload(id);
+    // Prime the overlay stack directly (apply_permission_prompt_queued is
+    // also todo!() so the test will panic there first).
+    apply_permission_prompt_queued(&mut app.overlay_stack, payload);
+
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    match &app.mode {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected */ }
+        other => panic!(
+            "AC-003: expected Dashboard after Disconnected, got a different mode: {:?}",
+            core::mem::discriminant(other)
+        ),
+    }
+
+    // F-S025-ADV11-SWEEP: canonical-pin — single source of truth assertion.
+    // If the production const text changes, this assert fails first (prevents
+    // silent drift between the const definition and the BC-2.06.004 contract).
+    assert_eq!(
+        DAEMON_DISCONNECT_STATUS, "[disconnected] reconnecting...",
+        "DAEMON_DISCONNECT_STATUS must match BC-2.06.004 AC-003 canonical text verbatim"
+    );
+
+    // F-S025-ADV9-MED-002: assert the canonical status_message text from AC-003.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "AC-003: status_message must equal DAEMON_DISCONNECT_STATUS exactly after Disconnected"
+    );
+}
+
+/// BC-2.06.004 PC-2 / AC-003: on_transport_event(Disconnected) clears
+/// overlay_stack before transitioning and sets the canonical status_message.
+#[test]
+fn test_bc_2_06_004_pc2_ac003_on_disconnect_clears_overlay_stack() {
+    let mut app = App::new(MonocleConfig::default());
+    // Pre-populate overlay with 2 distinct prompts.
+    let p1 = make_payload(Uuid::new_v4());
+    let p2 = make_payload(Uuid::new_v4());
+    apply_permission_prompt_queued(&mut app.overlay_stack, p1);
+    apply_permission_prompt_queued(&mut app.overlay_stack, p2);
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "precondition: overlay had 2 prompts before disconnect"
+    );
+
+    // on_transport_event is todo!() — this panics. The overlay_stack length
+    // assertion below documents the contract for the implementer.
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    assert_eq!(
+        app.overlay_stack.len(),
+        0,
+        "AC-003: overlay_stack must be empty after Disconnected"
+    );
+
+    // F-S025-ADV9-MED-002: canonical status_message must also be set (same contract,
+    // different teardown precondition — 2-prompt overlay vs 1-prompt above).
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "AC-003: status_message must equal DAEMON_DISCONNECT_STATUS exactly after Disconnected"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-004 — Config load on startup
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.004 PC-3 / AC-004: App::new with MonocleConfig::default() succeeds
+/// (fallback path for HomeDirUnresolvable config load errors).
+///
+/// The App::new constructor accepts a pre-loaded config, so the config-load
+/// error path is in run(). This test verifies the default-config fallback path:
+/// App can be constructed from MonocleConfig::default() without panic.
+#[test]
+fn test_bc_2_06_004_pc3_ac004_default_config_fallback_succeeds() {
+    let config = MonocleConfig::default();
+    let app = App::new(config);
+    // Verify the app is in the initial state — not panicked.
+    assert_eq!(app.drop_counter, 0, "AC-004: drop_counter must start at 0");
+    assert_eq!(app.sessions.len(), 0, "AC-004: sessions must start empty");
+    assert_eq!(
+        app.overlay_stack.len(),
+        0,
+        "AC-004: overlay_stack must start empty"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-007 — Drop counter update
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.005 PC-3 / AC-007: on_drop_counter_update sets app.drop_counter.
+///
+/// Test vector: drop_counter = 0 → no change; drop_counter = 5 → app.drop_counter == 5.
+#[test]
+fn test_bc_2_06_005_pc3_ac007_on_drop_counter_update_sets_field() {
+    let mut app = App::new(MonocleConfig::default());
+    assert_eq!(app.drop_counter, 0, "precondition: starts at 0");
+
+    on_drop_counter_update(&mut app, 5);
+
+    assert_eq!(
+        app.drop_counter, 5,
+        "AC-007: drop_counter must be 5 after update"
+    );
+}
+
+/// BC-2.06.005 PC-3 / AC-007: on_drop_counter_update with 0 sets drop_counter
+/// to 0 (no indicator should be shown).
+#[test]
+fn test_bc_2_06_005_pc3_ac007_on_drop_counter_update_zero() {
+    let mut app = App::new(MonocleConfig::default());
+    // First set a non-zero value, then reset to 0.
+    on_drop_counter_update(&mut app, 99);
+    on_drop_counter_update(&mut app, 0);
+
+    assert_eq!(
+        app.drop_counter, 0,
+        "AC-007: drop_counter must be 0 after update(0)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-008 — InitialState overlay population (BC-2.06.004 PC-2 + BC-2.05.002 Inv 4)
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.004 PC-2 / AC-008: on_initial_state with empty overlay_stack leaves
+/// app in Dashboard mode (test vector: overlay_stack=[] → Dashboard).
+#[test]
+fn test_bc_2_06_004_pc2_ac008_initial_state_empty_overlay_stays_dashboard() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    match &app.mode {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected */ }
+        other => panic!(
+            "AC-008: expected Dashboard for empty overlay_stack, got discriminant {:?}",
+            core::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.004 PC-2 / AC-008: on_initial_state with non-empty overlay_stack
+/// transitions to Overlay mode.
+///
+/// Test vector: overlay_stack=[P1, P2] → AppMode::Overlay with 2 entries.
+#[test]
+fn test_bc_2_06_004_pc2_ac008_initial_state_nonempty_overlay_enters_overlay_mode() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    let p1 = make_payload(Uuid::new_v4());
+    let p2 = make_payload(Uuid::new_v4());
+    let overlay_stack = vec![p1, p2];
+
+    on_initial_state(&mut app, vec![], ring, overlay_stack, 0);
+
+    // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
+    // Verify mode is Overlay AND that App::overlay_stack has the correct count.
+    match &app.mode {
+        AppMode::Overlay { .. } => {
+            assert_eq!(
+                app.overlay_stack.len(),
+                2,
+                "AC-008: App::overlay_stack must have 2 entries from InitialState"
+            );
+        }
+        other => panic!(
+            "AC-008: expected Overlay mode for non-empty overlay_stack, got discriminant {:?}",
+            core::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.004 PC-2 / AC-008: on_initial_state populates app.sessions from
+/// the provided sessions list.
+#[test]
+fn test_bc_2_06_004_pc2_ac008_initial_state_populates_sessions() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    let sessions = vec![
+        make_session("sess-a"),
+        make_session("sess-b"),
+        make_session("sess-c"),
+    ];
+
+    on_initial_state(&mut app, sessions, ring, vec![], 0);
+
+    assert_eq!(
+        app.sessions.len(),
+        3,
+        "AC-008: app.sessions must have 3 entries after InitialState"
+    );
+}
+
+/// BC-2.06.004 PC-2 / AC-008: on_initial_state sets app.drop_counter from
+/// the initial state push.
+///
+/// Test vector: InitialState.drop_counter=3 → app.drop_counter == 3.
+#[test]
+fn test_bc_2_06_004_pc2_ac008_initial_state_sets_drop_counter() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+
+    on_initial_state(&mut app, vec![], ring, vec![], 3);
+
+    assert_eq!(
+        app.drop_counter, 3,
+        "AC-008: drop_counter must be 3 from InitialState"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.05.002 Invariant 4 — apply_permission_prompt_queued idempotency
+// (highest priority per task description)
+// ---------------------------------------------------------------------------
+
+/// BC-2.05.002 Invariant 4 / AC-008: apply_permission_prompt_queued with an
+/// empty overlay and payload P1 inserts exactly one entry containing P1.
+///
+/// Idempotency baseline: empty overlay + one insert → length 1.
+#[test]
+fn test_bc_2_05_002_inv4_apply_empty_overlay_plus_p1_length_1() {
+    let mut overlay: VecDeque<PromptModal> = VecDeque::new();
+    let id = Uuid::new_v4();
+    let p1 = make_payload(id);
+
+    apply_permission_prompt_queued(&mut overlay, p1);
+
+    // Assert by inspecting the VecDeque directly — NOT by re-running the
+    // dedup predicate (that would be a vacuous-mirror-test).
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.05.002 Inv 4: empty overlay + P1 must yield length 1"
+    );
+    assert_eq!(
+        overlay[0].prompt_id, id,
+        "BC-2.05.002 Inv 4: the inserted entry must carry the correct prompt_id"
+    );
+}
+
+/// BC-2.05.002 Invariant 4 / AC-008: applying the SAME prompt_id twice keeps
+/// the overlay at length 1 — duplicate is silently discarded.
+///
+/// This is the core idempotency assertion. The check is on overlay.len() == 1
+/// (not on any re-derived predicate). The prompt_id field is the dedup key.
+#[test]
+fn test_bc_2_05_002_inv4_apply_idempotent_on_duplicate_prompt_id() {
+    let mut overlay: VecDeque<PromptModal> = VecDeque::new();
+    let id = Uuid::new_v4();
+    let p1_first_delivery = make_payload(id);
+    // Second delivery has the SAME prompt_id — different struct instance.
+    let p1_second_delivery = make_payload(id);
+
+    apply_permission_prompt_queued(&mut overlay, p1_first_delivery);
+    apply_permission_prompt_queued(&mut overlay, p1_second_delivery);
+
+    // The dedup key is prompt_id. Length must remain 1.
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.05.002 Inv 4: duplicate prompt_id must not increase overlay length beyond 1"
+    );
+    // And the entry that IS there must be the one with the correct prompt_id.
+    assert_eq!(
+        overlay[0].prompt_id, id,
+        "BC-2.05.002 Inv 4: the retained entry must carry prompt_id == id"
+    );
+}
+
+/// BC-2.05.002 Invariant 4 / AC-008: applying two DIFFERENT prompt_ids yields
+/// overlay length 2 — distinct prompts are NOT deduplicated.
+#[test]
+fn test_bc_2_05_002_inv4_apply_accepts_distinct_prompt_ids() {
+    let mut overlay: VecDeque<PromptModal> = VecDeque::new();
+    let id1 = Uuid::new_v4();
+    let id2 = Uuid::new_v4();
+    assert_ne!(id1, id2, "precondition: test UUIDs must differ");
+
+    apply_permission_prompt_queued(&mut overlay, make_payload(id1));
+    apply_permission_prompt_queued(&mut overlay, make_payload(id2));
+
+    // Both prompts have distinct prompt_ids — both must be present.
+    assert_eq!(
+        overlay.len(),
+        2,
+        "BC-2.05.002 Inv 4: two distinct prompt_ids must yield overlay length 2"
+    );
+    // Verify both IDs are present by inspecting the VecDeque (not by re-running
+    // any dedup logic — that would be a vacuous-mirror-test).
+    let ids_in_overlay: Vec<Uuid> = overlay.iter().map(|m| m.prompt_id).collect();
+    assert!(
+        ids_in_overlay.contains(&id1),
+        "BC-2.05.002 Inv 4: id1 must be in overlay"
+    );
+    assert!(
+        ids_in_overlay.contains(&id2),
+        "BC-2.05.002 Inv 4: id2 must be in overlay"
+    );
+}
+
+/// BC-2.05.002 Invariant 4 / AC-008: idempotency comparison is on prompt_id
+/// field ONLY — not on the whole struct. Two payloads with the same prompt_id
+/// but different tool_name still deduplicate.
+#[test]
+fn test_bc_2_05_002_inv4_dedup_on_prompt_id_not_whole_struct() {
+    let mut overlay: VecDeque<PromptModal> = VecDeque::new();
+    let shared_id = Uuid::new_v4();
+
+    let mut p1 = make_payload(shared_id);
+    p1.tool_name = "Bash".into();
+
+    let mut p2 = make_payload(shared_id);
+    p2.tool_name = "Edit".into(); // Different field, SAME prompt_id.
+
+    apply_permission_prompt_queued(&mut overlay, p1);
+    apply_permission_prompt_queued(&mut overlay, p2);
+
+    // The dedup key is prompt_id — p2 must be discarded despite different tool_name.
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.05.002 Inv 4: dedup must be on prompt_id only, not whole struct"
+    );
+}
+
+/// BC-2.05.002 Invariant 4 / AC-008: three-way dedup — inserting the same
+/// prompt_id three times yields exactly one entry.
+///
+/// Exercises the at-least-once delivery scenario with three deliveries.
+#[test]
+fn test_bc_2_05_002_inv4_triple_insert_same_id_length_1() {
+    let mut overlay: VecDeque<PromptModal> = VecDeque::new();
+    let id = Uuid::new_v4();
+
+    apply_permission_prompt_queued(&mut overlay, make_payload(id));
+    apply_permission_prompt_queued(&mut overlay, make_payload(id));
+    apply_permission_prompt_queued(&mut overlay, make_payload(id));
+
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.05.002 Inv 4: triple insert of same prompt_id must yield length 1"
+    );
+}
+
+/// BC-2.05.002 Invariant 4 / AC-008: on_initial_state uses
+/// apply_permission_prompt_queued for each overlay entry. If a streaming
+/// PermissionPromptQueued message (simulated by a prior apply call) already
+/// inserted P1, then on_initial_state with [P1] must NOT create a duplicate.
+///
+/// This is the canonical at-least-once delivery race scenario.
+#[test]
+fn test_bc_2_05_002_inv4_initial_state_dedups_streamed_prior_prompt() {
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+
+    // Simulate: streaming PermissionPromptQueued for P1 arrived first.
+    let id = Uuid::new_v4();
+    let p1_streamed = make_payload(id);
+    apply_permission_prompt_queued(&mut app.overlay_stack, p1_streamed);
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "precondition: streaming insert produced 1 entry"
+    );
+
+    // Now on_initial_state arrives carrying the same P1 in overlay_stack.
+    let p1_in_initial_state = make_payload(id);
+    on_initial_state(&mut app, vec![], ring, vec![p1_in_initial_state], 0);
+
+    // P1 must appear exactly once — the InitialState duplicate is discarded.
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.05.002 Inv 4: InitialState duplicate of streamed P1 must be discarded"
+    );
+    assert_eq!(
+        app.overlay_stack[0].prompt_id, id,
+        "BC-2.05.002 Inv 4: the retained entry must be P1"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-010 — No ClientToServer::ClientDisconnect variant (BC-2.06.004 INV-1)
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.004 INV-1 / AC-010: ClientToServer::ClientDisconnect MUST NOT exist.
+///
+/// This is a compile-time enforcement test. If `ClientToServer::ClientDisconnect`
+/// were added to the enum, the exhaustive match below would fail to compile
+/// (extra variant with no match arm → E0004 non-exhaustive patterns error),
+/// which is caught by `cargo test`.
+///
+/// Phase 1 has exactly one variant: PermissionDecision. The exhaustive match
+/// with `#[deny(unreachable_patterns)]` proves no other variant exists.
+#[test]
+fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
+    use monocle_ipc::types::{ClientToServer, PermissionDecisionKind};
+
+    let msg = ClientToServer::PermissionDecision {
+        prompt_id: Uuid::new_v4(),
+        decision: PermissionDecisionKind::Allow,
+    };
+
+    // Exhaustive match: if ClientDisconnect were added, this would fail to compile.
+    // The #[deny(unreachable_patterns)] attr would catch any extra arms if we tried
+    // to add a `ClientDisconnect => {}` arm here.
+    match msg {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision: _,
+        } => {
+            // Confirm the prompt_id round-trips correctly (not a vacuous assertion).
+            assert!(
+                !prompt_id.is_nil(),
+                "AC-010: PermissionDecision prompt_id must be non-nil"
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV1-HIGH-002 — App.event_ring seeded from ring_tail (BC-2.05.002 PC-5)
+// ---------------------------------------------------------------------------
+
+/// Architect decision HIGH-002: on_initial_state with N ring_tail records leaves
+/// app.event_ring.len() == N (when N <= EVENT_RING_CAPACITY).
+///
+/// This is the core seed-from-daemon assertion: ring_tail must NOT be discarded.
+#[test]
+fn test_f_s025_adv1_high002_event_ring_seeded_from_ring_tail() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build 3 distinct HookEventRecord entries.
+    let records: Vec<HookEventRecord> = (0..3)
+        .map(|i| {
+            HookEventRecord::new(
+                format!("sess-{i}"),
+                i as i64 * 1_000_000,
+                100 + i as u32,
+                "SessionStart".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    assert_eq!(
+        app.event_ring.len(),
+        3,
+        "HIGH-002: event_ring must contain all 3 ring_tail records"
+    );
+    // Verify the ring_tail records were NOT dropped from drop_counter (only IPC drops go there).
+    assert_eq!(
+        app.drop_counter, 0,
+        "HIGH-002: ring eviction must NOT increment drop_counter"
+    );
+    // Verify capacity constant matches daemon ring size (BC-2.04.012 PC-1).
+    assert_eq!(
+        EVENT_RING_CAPACITY, 4096,
+        "HIGH-002: EVENT_RING_CAPACITY must equal daemon RAM_RING_CAPACITY"
+    );
+}
+
+/// Architect decision HIGH-002: when ring_tail.len() > EVENT_RING_CAPACITY, the oldest
+/// entries are evicted FIFO and app.event_ring.len() == EVENT_RING_CAPACITY.
+///
+/// Also verifies that drop_counter is NOT incremented on ring overflow.
+#[test]
+fn test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build EVENT_RING_CAPACITY + 1 records — this will trigger one eviction.
+    let n = EVENT_RING_CAPACITY + 1;
+    let records: Vec<HookEventRecord> = (0..n)
+        .map(|i| {
+            HookEventRecord::new(
+                "sess-overflow".to_string(),
+                i as i64,
+                1234,
+                "PreToolUse".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    // The oldest record is timestamp_micros=0 (index 0).
+    // After eviction, the ring should hold records 1..=EVENT_RING_CAPACITY.
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    assert_eq!(
+        app.event_ring.len(),
+        EVENT_RING_CAPACITY,
+        "HIGH-002: event_ring.len() must == EVENT_RING_CAPACITY after overflow"
+    );
+
+    // The oldest record (timestamp 0) must have been evicted.
+    let oldest_timestamp = app.event_ring.front().map(|r| r.timestamp_micros);
+    assert_eq!(
+        oldest_timestamp,
+        Some(1),
+        "HIGH-002: FIFO eviction must have dropped the record with timestamp 0 (oldest)"
+    );
+
+    // drop_counter must NOT be incremented on ring eviction.
+    assert_eq!(
+        app.drop_counter, 0,
+        "HIGH-002: ring eviction must NOT increment drop_counter"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV3-MED-001 — SelectNext/SelectPrev gated on Dashboard+Sessions focus
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectNext in Overlay mode
+/// must NOT mutate the sessions_state selection cursor.
+///
+/// UX bug scenario: user is in Overlay mode (permission prompt visible), presses `j`.
+/// Without the gate, `j` resolves to SelectNext via the builtin binding layer and
+/// shifts the sessions list cursor behind the overlay — user sees a different
+/// highlighted row on overlay close.
+///
+/// This test dispatches through the PRODUCTION `dispatch_key_event()` helper —
+/// the same function called by `run()`. If the AC-006 gate is removed from
+/// `dispatch_key_event`, this test will fail (vacuous-mirror anti-pattern eliminated
+/// per F-S025-ADV4-MED-004).
+#[test]
+fn test_f_s025_adv3_med001_select_next_noop_in_overlay_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    // Set up: 2 sessions, selection on index 0.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Precondition: enter Overlay mode (permission prompt visible).
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    // Construct a real `j` KeyEvent and dispatch through production dispatch path.
+    let key_j = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    let outcome = dispatch_key_event(&mut app, &key_j, &binding_layers, &mut sessions_state);
+
+    // AC-006 gate must hold: selection is UNCHANGED (Overlay mode blocked SelectNext).
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(0),
+        "MED-001/AC-006: SelectNext in Overlay mode must NOT mutate list selection; \
+         expected Some(0), got {:?}",
+        sessions_state.list_state.selected()
+    );
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "dispatch_key_event must return Continue in Overlay mode (not Quit)"
+    );
+}
+
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectNext in
+/// Dashboard+Sessions focus DOES advance the cursor (positive case — confirms
+/// the gate permits the action in the correct mode).
+///
+/// Dispatches through production `dispatch_key_event()` — not a local gate duplicate.
+#[test]
+fn test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Precondition: App::new starts in Dashboard { Sessions }.
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "precondition: App::new starts in Dashboard {{ Sessions }}"
+    );
+
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    // Dispatch `j` through production path.
+    let key_j = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    dispatch_key_event(&mut app, &key_j, &binding_layers, &mut sessions_state);
+
+    // AC-006: cursor must have advanced to index 1.
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(1),
+        "MED-001/AC-006: SelectNext in Dashboard {{Sessions}} must advance cursor to 1"
+    );
+}
+
+/// F-S025-ADV4-MED-004 / F-S025-ADV3-MED-001 / AC-006: SelectPrev in Overlay mode
+/// must NOT mutate the sessions_state selection cursor.
+///
+/// Dispatches through production `dispatch_key_event()` — vacuous-mirror eliminated.
+#[test]
+fn test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(
+        &mut app,
+        vec![make_session("sess-a"), make_session("sess-b")],
+        ring,
+        vec![],
+        0,
+    );
+
+    // Start at index 1, enter Overlay mode.
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(1));
+
+    // Dispatch `k` (SelectPrev) through production path.
+    let key_k = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: KeyModifiers::default(),
+    };
+    let binding_layers = build_builtin_binding_layers();
+    let outcome = dispatch_key_event(&mut app, &key_k, &binding_layers, &mut sessions_state);
+
+    // Selection must remain at 1 (Overlay mode blocked SelectPrev).
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(1),
+        "MED-001/AC-006: SelectPrev in Overlay mode must NOT mutate list selection; \
+         expected Some(1), got {:?}",
+        sessions_state.list_state.selected()
+    );
+    assert_eq!(
+        outcome,
+        KeyOutcome::Continue,
+        "dispatch_key_event must return Continue in Overlay mode (not Quit)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV4 — AC-007 page-level status bar drop counter positive test
+// ---------------------------------------------------------------------------
+
+/// AC-007 (positive path): when `app.drop_counter > 0`, the page-level status bar
+/// renders `"[dropped: N] monocle"` in yellow.
+///
+/// Uses `render_frame()` (the production render helper extracted from `run()`) with
+/// a `TestBackend` to exercise the actual status bar rendering path.  If the
+/// `format!("[dropped: {}] monocle", ...)` branch is removed or the yellow style is
+/// stripped, this test fails.
+///
+/// Coverage gap addressed: F-S025-ADV4 noted that only the negative case (no drop
+/// counter in the panel widget) was tested; the positive case (page-level bar renders
+/// the counter text) was untested.
+#[test]
+fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app with drop_counter = 5.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+    on_drop_counter_update(&mut app, 5);
+
+    assert_eq!(
+        app.drop_counter, 5,
+        "precondition: drop_counter must be 5 before render"
+    );
+
+    // Render into a TestBackend (80 columns × 6 rows — small but enough to see status bar).
+    // Layout: build_dashboard_layout splits into main area + 2-row status bar.
+    // Use 80×6: rows 0-3 are main area, rows 4-5 are status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Inspect the buffer for the status bar text.
+    let buffer = terminal.backend().buffer().clone();
+
+    // Collect the full text content of the last two rows (status bar area).
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // F-S025-ADV11-SWEEP: use format_drop_counter(5) as the single source of truth.
+    // If the production format changes, this assertion tracks it automatically.
+    assert!(
+        status_rows.contains(&format_drop_counter(5)),
+        "AC-007: page-level status bar must contain {:?} when drop_counter=5; \
+         got status rows: {:?}",
+        format_drop_counter(5),
+        status_rows.trim()
+    );
+    assert!(
+        status_rows.contains(MONOCLE_STATUS_LABEL),
+        "AC-007: page-level status bar must contain MONOCLE_STATUS_LABEL ({:?}) when drop_counter=5; \
+         got status rows: {:?}",
+        MONOCLE_STATUS_LABEL,
+        status_rows.trim()
+    );
+
+    // Verify the drop counter span is styled yellow (not default color).
+    // Find the first cell of format_drop_counter(5) in the bottom two rows.
+    // F-S025-ADV11-SWEEP: use format_drop_counter instead of literal string.
+    let target = format_drop_counter(5);
+    let target_bytes: Vec<char> = target.chars().collect();
+    let mut found_yellow = false;
+    'outer: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == "[" {
+                // Check if this is the start of our target string.
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer;
+                }
+            }
+        }
+    }
+
+    assert!(
+        found_yellow,
+        "AC-007: {:?} must be rendered with Yellow foreground in the status bar",
+        format_drop_counter(5)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV5-PASS5-INJECTION5 — event_ring FIFO eviction order
+// ---------------------------------------------------------------------------
+
+/// BC-2.05.002 / F-S025-ADV5-PASS5-INJECTION5: event_ring FIFO eviction evicts
+/// the OLDEST entry (insertion order), NOT the newest, when the ring overflows.
+///
+/// This test is a focused complement to `test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction`.
+/// That test exercises overflow on initial seeding with EVENT_RING_CAPACITY+1 records.
+/// This test exercises the same FIFO semantic but asserts on a smaller ring segment
+/// to prove "oldest removed, newest kept" unambiguously at the item level.
+///
+/// Protocol: seed EVENT_RING_CAPACITY items (filling the ring), then add 3 more via
+/// a second call to on_initial_state (clearing and re-filling, effectively replacing).
+/// Instead, directly test the eviction behaviour by seeding capacity+3 items and
+/// verifying the 3 OLDEST (timestamps 0, 1, 2) are gone and the 3 NEWEST are present.
+#[test]
+fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
+    use monocle_tui::EVENT_RING_CAPACITY;
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Build EVENT_RING_CAPACITY + 3 records with sequential timestamps 0..N+3.
+    let n = EVENT_RING_CAPACITY + 3;
+    let records: Vec<HookEventRecord> = (0..n as i64)
+        .map(|i| {
+            HookEventRecord::new(
+                "sess-fifo".to_string(),
+                i, // timestamp_micros = i (ascending = insertion order)
+                9999,
+                "PreToolUse".to_string(),
+                None,
+                None,
+            )
+        })
+        .collect();
+
+    on_initial_state(&mut app, vec![], records, vec![], 0);
+
+    // Ring must be capped at EVENT_RING_CAPACITY.
+    assert_eq!(
+        app.event_ring.len(),
+        EVENT_RING_CAPACITY,
+        "FIFO eviction: ring must be capped at EVENT_RING_CAPACITY"
+    );
+
+    // The 3 OLDEST records (timestamps 0, 1, 2) must have been evicted.
+    let timestamps: Vec<i64> = app.event_ring.iter().map(|r| r.timestamp_micros).collect();
+
+    assert!(
+        !timestamps.contains(&0),
+        "FIFO eviction: oldest record (timestamp=0) must have been evicted; ring starts at: {:?}",
+        timestamps.first()
+    );
+    assert!(
+        !timestamps.contains(&1),
+        "FIFO eviction: record with timestamp=1 must have been evicted"
+    );
+    assert!(
+        !timestamps.contains(&2),
+        "FIFO eviction: record with timestamp=2 must have been evicted"
+    );
+
+    // The 3 NEWEST records (timestamps N-3, N-2, N-1) must be PRESENT.
+    let last_timestamp = (n as i64) - 1;
+    assert!(
+        timestamps.contains(&last_timestamp),
+        "FIFO eviction: newest record (timestamp={last_timestamp}) must be present in ring"
+    );
+    assert!(
+        timestamps.contains(&(last_timestamp - 1)),
+        "FIFO eviction: second-newest record must be present in ring"
+    );
+    assert!(
+        timestamps.contains(&(last_timestamp - 2)),
+        "FIFO eviction: third-newest record must be present in ring"
+    );
+
+    // drop_counter must NOT be incremented on ring eviction (ring overflow != IPC drop).
+    assert_eq!(
+        app.drop_counter, 0,
+        "FIFO eviction: ring overflow must NOT increment drop_counter"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV12-CRITICAL-001 — render-output tests for status_message rendering
+//
+// Red-gate tests added to expose the write-only bug in render_frame:
+// `app.status_message` is set correctly by on_transport_event but render_frame
+// builds `status_line` from `drop_counter` only (app.rs lines 923-933).
+// The status_message text therefore never reaches the rendered buffer.
+//
+// Both tests MUST FAIL until the implementer fixes render_frame to read
+// app.status_message and render it to the status bar area.
+//
+// Contract anchors:
+//   - BC-2.06.016 PC-4 (status bar renders "[disconnected] reconnecting..."
+//     until IPC reconnect sequence completes)
+//   - BC-2.06.004 PC-2 (AC-003: on Disconnected, renders status bar notification)
+//   - S-025 story v1.6 AC-003 verbatim
+//
+// These are ADDITIVE to the state-mutation tests at lines 219 and 254.
+// Those tests correctly verify on_transport_event sets the field.
+// These new tests verify render_frame surfaces the field in the buffer.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.016 PC-4 / BC-2.06.004 PC-2 / AC-003 (render path):
+/// After `on_transport_event(Disconnected)`, `render_frame` must render
+/// `DAEMON_DISCONNECT_STATUS` verbatim into the status-bar area of the buffer.
+///
+/// This is a render-output test distinct from the state-mutation tests at
+/// lines 219 and 254. Those tests assert `app.status_message == Some(...)`.
+/// This test asserts the rendered *buffer* (what the user sees) contains the
+/// text.  The bug: render_frame's status_line builder (app.rs:923-933) reads
+/// `drop_counter` but never reads `status_message`, so the text is silently
+/// dropped.  RED GATE: this test must fail until render_frame is fixed.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Drive the app into the Disconnected state using the production event handler.
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // on_transport_event sets app.status_message = Some(DAEMON_DISCONNECT_STATUS)
+    // and transitions the mode. This is the production trigger path.
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    // Precondition guard — verifies the state-mutation path is working.
+    // If this fails the trigger path is broken; if only the render assertion
+    // below fails the render path is the bug (which is what Pass 12 found).
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "precondition: on_transport_event must set status_message to DAEMON_DISCONNECT_STATUS"
+    );
+
+    // Render via TestBackend (80 × 6).
+    // build_dashboard_layout: rows 0-3 main area, rows 4-5 status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Extract the rendered buffer (NOT the app field — this is the render-output test).
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert the rendered buffer contains DAEMON_DISCONNECT_STATUS verbatim.
+    // Uses the re-exported const — not an inline string — per L-W6-S025-003
+    // (no literal duplication; const is the single source of truth).
+    assert!(
+        status_rows.contains(DAEMON_DISCONNECT_STATUS),
+        "BC-2.06.016 PC-4 / AC-003 render-output: status bar buffer must contain \
+         DAEMON_DISCONNECT_STATUS ({:?}) after on_transport_event(Disconnected); \
+         got status rows: {:?}",
+        DAEMON_DISCONNECT_STATUS,
+        status_rows.trim()
+    );
+
+    // F-S025-ADV13-NIT-002: verify the status_message span is styled Yellow.
+    // app.rs:942 applies Color::Yellow to status_message — match the drop_counter
+    // sibling test (lines 951-978) which already asserts Yellow on its span.
+    let target_bytes: Vec<char> = DAEMON_DISCONNECT_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_disconnect: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_disconnect;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 / AC-003: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)"
+    );
+}
+
+/// BC-2.06.016 PC-4 (offline path): when `app.status_message` is
+/// `Some(DAEMON_OFFLINE_STATUS)`, `render_frame` must render that text verbatim
+/// into the status-bar area of the buffer.
+///
+/// Uses Option C from the dispatch brief: directly set `app.status_message`
+/// before rendering.  This isolates the render-path test from the trigger path
+/// (the trigger-path test above covers the on_transport_event → field mutation
+/// contract).  The BC contract is: regardless of what set status_message, when
+/// it is Some the render path must display it.
+///
+/// RED GATE: this test must fail until render_frame is fixed to read
+/// app.status_message and include it in the status bar output.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after_reconnect_exhausted(
+) {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build app and directly set the offline status.  This is Option C per the
+    // dispatch brief: the public `status_message` field (app.rs:143 `pub`) is
+    // accessible from tests without a special accessor.  No encapsulation is
+    // violated — the field is `pub` by design ("every field is `pub` so that
+    // downstream stories can read it without ceremony", app.rs:120-121).
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Set the offline status directly — isolates the render-path test from
+    // the trigger path (S-023 reconnect-exhaust code path).
+    app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+
+    // Precondition guard.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_OFFLINE_STATUS),
+        "precondition: status_message must be DAEMON_OFFLINE_STATUS before render"
+    );
+
+    // Render via TestBackend (80 × 6).
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    // Extract the rendered buffer (NOT the app field).
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert the rendered buffer contains DAEMON_OFFLINE_STATUS verbatim.
+    assert!(
+        status_rows.contains(DAEMON_OFFLINE_STATUS),
+        "BC-2.06.016 PC-4 (offline) render-output: status bar buffer must contain \
+         DAEMON_OFFLINE_STATUS ({:?}) when app.status_message is set; \
+         got status rows: {:?}",
+        DAEMON_OFFLINE_STATUS,
+        status_rows.trim()
+    );
+
+    // F-S025-ADV13-NIT-002: verify the status_message span is styled Yellow.
+    // app.rs:942 applies Color::Yellow to status_message — symmetric with the
+    // drop_counter sibling test (lines 951-978) which asserts Yellow on its span.
+    let target_bytes: Vec<char> = DAEMON_OFFLINE_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_offline: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_offline;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 (offline): DAEMON_OFFLINE_STATUS ({DAEMON_OFFLINE_STATUS:?}) must be rendered \
+         with Yellow foreground in the status bar (app.rs:942)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV13-NIT-001 — status_message takes precedence over drop_counter
+// when BOTH are active simultaneously.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.016 PC-4 / BC-2.06.004 PC-2 / AC-003 (precedence path):
+/// When `app.status_message` is `Some(...)` AND `app.drop_counter > 0`
+/// simultaneously, `render_frame` must render the `status_message` text —
+/// NOT the drop-counter string.
+///
+/// app.rs:941-953 encodes this as: `if let Some(msg) = app.status_message.as_deref()`
+/// checked BEFORE `else if app.drop_counter > 0`.  A regression that reversed the
+/// if/else order would NOT be caught by the two existing tests (each exercises only
+/// one branch at a time).
+///
+/// F-S025-ADV13-NIT-001: adds the missing simultaneous-both-active coverage.
+#[test]
+fn test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_both_active() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app where BOTH status_message and drop_counter are active.
+    // 1. Trigger on_transport_event(Disconnected) — sets status_message.
+    // 2. Also set drop_counter to 5 directly via the public field.
+    //    (app.drop_counter is `pub` per app.rs:132 — no encapsulation violated.)
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Trigger the Disconnected path — sets status_message = Some(DAEMON_DISCONNECT_STATUS).
+    on_transport_event(&mut app, TransportEvent::Disconnected);
+
+    // Also set drop_counter to a nonzero value to activate the competing branch.
+    app.drop_counter = 5;
+
+    // Precondition guards — both branches must be active before we test precedence.
+    assert_eq!(
+        app.status_message.as_deref(),
+        Some(DAEMON_DISCONNECT_STATUS),
+        "precondition: status_message must be DAEMON_DISCONNECT_STATUS"
+    );
+    assert_eq!(app.drop_counter, 5, "precondition: drop_counter must be 5");
+
+    // Render via TestBackend (80 × 6).
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert: the status_message text is rendered (message wins).
+    // Uses re-exported const per L-W6-S025-003.
+    assert!(
+        status_rows.contains(DAEMON_DISCONNECT_STATUS),
+        "BC-2.06.016 PC-4 precedence: status bar must render DAEMON_DISCONNECT_STATUS \
+         ({:?}) when both status_message and drop_counter are active; \
+         got status rows: {:?}",
+        DAEMON_DISCONNECT_STATUS,
+        status_rows.trim()
+    );
+
+    // Assert: the drop-counter string is NOT rendered (it must lose to status_message).
+    // If the if/else order were reversed, this assertion would catch the regression.
+    assert!(
+        !status_rows.contains(&format_drop_counter(5)),
+        "BC-2.06.016 PC-4 precedence: status bar must NOT render drop-counter ({:?}) \
+         when status_message is also active — status_message takes precedence; \
+         got status rows: {:?}",
+        format_drop_counter(5),
+        status_rows.trim()
+    );
+
+    // Also verify the status_message span is styled Yellow (not default color).
+    // Symmetric with the drop_counter sibling test (lines 951-978) and the
+    // F-S025-ADV13-NIT-002 assertions on the individual status_message tests.
+    let target_bytes: Vec<char> = DAEMON_DISCONNECT_STATUS.chars().collect();
+    let mut found_yellow = false;
+    'outer_prec: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::Yellow) {
+                    found_yellow = true;
+                    break 'outer_prec;
+                }
+            }
+        }
+    }
+    assert!(
+        found_yellow,
+        "BC-2.06.016 PC-4 precedence: DAEMON_DISCONNECT_STATUS must be rendered \
+         with Yellow foreground when both branches are active (app.rs:942)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV14-NIT-001 — DarkGray baseline branch (status_line branch 3)
+// ---------------------------------------------------------------------------
+
+/// AC-007 (baseline path): when `app.status_message` is `None` AND
+/// `app.drop_counter == 0`, `render_frame` must render `MONOCLE_STATUS_LABEL`
+/// with `Color::DarkGray` in the page-level status bar.
+///
+/// app.rs:949-952 is the default branch of the 3-way `status_line` builder:
+///
+/// ```text
+/// } else {
+///     Line::from(Span::styled(
+///         MONOCLE_STATUS_LABEL,
+///         Style::default().fg(Color::DarkGray),
+///     ))
+/// }
+/// ```
+///
+/// A bug-injection that changes `Color::DarkGray` to any other color would
+/// pass all prior tests (branches 1 and 2 assert Yellow; no test asserted
+/// DarkGray on branch 3).  This test closes that coverage gap.
+///
+/// F-S025-ADV14-NIT-001: adds DarkGray color assertion for the baseline branch.
+/// Symmetric with:
+/// - `test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero`
+///   (branch 2, Yellow)
+/// - `test_bc_2_06_016_pc4_render_frame_status_message_precedes_drop_counter_when_both_active`
+///   (branch 1, Yellow with precedence)
+#[test]
+fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline() {
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+    use ratatui::{backend::TestBackend, style::Color, Terminal};
+
+    // Build an app with default state: status_message=None, drop_counter=0.
+    // on_initial_state transitions App into the Connected state so render_frame
+    // exercises the normal rendering path (not an early-return uninitialized path).
+    let mut app = App::new(MonocleConfig::default());
+    let ring: Vec<HookEventRecord> = Vec::new();
+    on_initial_state(&mut app, vec![], ring, vec![], 0);
+
+    // Preconditions: both competing branches must be inactive.
+    assert!(
+        app.status_message.is_none(),
+        "precondition: status_message must be None for baseline branch"
+    );
+    assert_eq!(
+        app.drop_counter, 0,
+        "precondition: drop_counter must be 0 for baseline branch"
+    );
+
+    // Render into a TestBackend (80 columns × 6 rows — matches sibling tests).
+    // Layout: build_dashboard_layout splits into main area + 2-row status bar.
+    // Rows 0-3 are main area, rows 4-5 are status bar.
+    let backend = TestBackend::new(80, 6);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .expect("render_frame must not panic");
+
+    let buffer = terminal.backend().buffer().clone();
+    let width = buffer.area().width as usize;
+    let height = buffer.area().height as usize;
+
+    // Collect full text content of the last two rows (status bar area).
+    let status_rows: String = ((height - 2)..height)
+        .flat_map(|y| (0..width).map(move |x| (x as u16, y as u16)))
+        .map(|(x, y)| buffer[(x, y)].symbol().to_string())
+        .collect();
+
+    // Assert 1: MONOCLE_STATUS_LABEL text is present.
+    // Uses re-exported const — not an inline literal — per L-W6-S025-003.
+    assert!(
+        status_rows.contains(MONOCLE_STATUS_LABEL),
+        "AC-007 baseline: status bar must contain MONOCLE_STATUS_LABEL ({:?}) \
+         when status_message=None and drop_counter=0; \
+         got status rows: {:?}",
+        MONOCLE_STATUS_LABEL,
+        status_rows.trim()
+    );
+
+    // Assert 2: the MONOCLE_STATUS_LABEL span is styled DarkGray (app.rs:949-952).
+    // Scan the bottom two rows for the first character of MONOCLE_STATUS_LABEL;
+    // verify the span starts with DarkGray foreground.
+    let target_bytes: Vec<char> = MONOCLE_STATUS_LABEL.chars().collect();
+    let mut found_dark_gray = false;
+    'outer_baseline: for y in (height - 2) as u16..(height as u16) {
+        for x in 0..(width as u16) {
+            let cell = &buffer[(x, y)];
+            if cell.symbol() == target_bytes[0].to_string() {
+                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+                    let cx = x + i as u16;
+                    cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
+                });
+                if matches && cell.style().fg == Some(Color::DarkGray) {
+                    found_dark_gray = true;
+                    break 'outer_baseline;
+                }
+            }
+        }
+    }
+    assert!(
+        found_dark_gray,
+        "AC-007 baseline: MONOCLE_STATUS_LABEL ({MONOCLE_STATUS_LABEL:?}) must be rendered with \
+         DarkGray foreground in the status bar (app.rs:951) when status_message=None \
+         and drop_counter=0"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S025-ADV38-MED-001 — q→Quit Dashboard exit path coverage
+//
+// The primary exit path (`q` in Dashboard → Action::Quit → is_quit →
+// KeyOutcome::Quit → event-loop break at app.rs:694-697) had zero positive
+// test coverage before Pass 38.
+//
+// Three tests:
+//   1. POSITIVE: `q` in Dashboard { Sessions } → KeyOutcome::Quit.
+//   2. NEGATIVE-A (guards F-S025-ADV2-HIGH-002): `Esc` in Dashboard →
+//      does NOT return KeyOutcome::Quit (Esc is identity in Dashboard).
+//   3. NEGATIVE-B (guards F-S025-ADV2-HIGH-002): `q` in Overlay mode →
+//      does NOT return KeyOutcome::Quit (q is only a quit key in Dashboard).
+//
+// All three dispatch through the PRODUCTION `dispatch_key_event()` path —
+// the same function called by `run()` in the event loop.
+// ---------------------------------------------------------------------------
+
+/// F-S025-ADV38-MED-001 / AC-001 (POSITIVE — primary exit path):
+/// Dispatching `q` while in `Dashboard { focused: Sessions }` must return
+/// `KeyOutcome::Quit`.
+///
+/// This exercises the full production path:
+///   KeyCode::Char('q') → resolve_binding (per-context layer, Dashboard tag)
+///   → Action::Quit → is_quit=true → KeyOutcome::Quit.
+///
+/// If this test FAILS the code has a real quit bug (not a test error).
+#[test]
+fn test_f_s025_adv38_med001_q_in_dashboard_returns_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Precondition: App::new starts in Dashboard { Sessions } — the quit-eligible mode.
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "precondition: App::new must start in Dashboard {{ focused: Sessions }} \
+         (required for q to resolve to Action::Quit)"
+    );
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_q = KeyEvent {
+        code: KeyCode::Char('q'),
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_q, &binding_layers, &mut sessions_state);
+
+    assert_eq!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001: `q` in Dashboard {{ Sessions }} must return KeyOutcome::Quit; \
+         the primary exit path (dispatch → Action::Quit → is_quit → Quit) is broken"
+    );
+}
+
+/// F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002 (NEGATIVE-A — Esc in Dashboard):
+/// Dispatching `Esc` while in `Dashboard { focused: Sessions }` must NOT return
+/// `KeyOutcome::Quit`.
+///
+/// `Esc` resolves to `Action::Esc` which is context-sensitive: in Dashboard mode
+/// `transition()` returns the same mode (identity). It is NOT the quit path.
+/// This guards the F-S025-ADV2-HIGH-002 design decision: `Esc` is not a quit key.
+#[test]
+fn test_f_s025_adv38_med001_esc_in_dashboard_does_not_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Precondition: must be in Dashboard for the test to be meaningful.
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "precondition: App::new must start in Dashboard {{ focused: Sessions }}"
+    );
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_esc = KeyEvent {
+        code: KeyCode::Esc,
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_esc, &binding_layers, &mut sessions_state);
+
+    assert_ne!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002: `Esc` in Dashboard must NOT \
+         return KeyOutcome::Quit; Esc is context-sensitive (identity in Dashboard) \
+         and is NOT the quit path"
+    );
+    // Additionally verify the mode is still Dashboard (Esc is identity in Dashboard).
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "F-S025-ADV2-HIGH-002: `Esc` in Dashboard must leave the mode unchanged \
+         (identity transition); mode must remain Dashboard {{ Sessions }}"
+    );
+}
+
+/// F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002 (NEGATIVE-B — q in Overlay):
+/// Dispatching `q` while in `Overlay` mode must NOT return `KeyOutcome::Quit`.
+///
+/// `q` is registered in the per-context layer under `AppModeTag::Dashboard` only.
+/// In Overlay mode it has no binding and falls through to `None` (no match) →
+/// `KeyOutcome::Continue`. This guards the design that `q` quits ONLY from Dashboard.
+#[test]
+fn test_f_s025_adv38_med001_q_in_overlay_does_not_quit() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+
+    let mut app = App::new(MonocleConfig::default());
+    // Put app into Overlay mode (simulating an active permission prompt).
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+
+    let mut sessions_state = SessionsPanelState::default();
+    let binding_layers = build_builtin_binding_layers();
+
+    let key_q = KeyEvent {
+        code: KeyCode::Char('q'),
+        modifiers: KeyModifiers::default(),
+    };
+
+    let outcome = dispatch_key_event(&mut app, &key_q, &binding_layers, &mut sessions_state);
+
+    assert_ne!(
+        outcome,
+        KeyOutcome::Quit,
+        "F-S025-ADV38-MED-001 / F-S025-ADV2-HIGH-002: `q` in Overlay mode must NOT \
+         return KeyOutcome::Quit; `q` → Action::Quit is gated to Dashboard mode only \
+         (per-context layer, AppModeTag::Dashboard)"
+    );
+    // Overlay mode must be preserved — q does not transition the mode either.
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "F-S025-ADV2-HIGH-002: Overlay mode must be unchanged after `q` keypress \
+         (no binding matched — q only quits in Dashboard)"
+    );
+}

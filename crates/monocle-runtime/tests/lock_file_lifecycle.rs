@@ -1034,12 +1034,11 @@ fn test_BC_2_01_005_acquire_rejects_port_zero() {
                 io_err.kind(),
                 std::io::ErrorKind::InvalidInput,
                 "port 0 rejection must use ErrorKind::InvalidInput; got: {:?}",
-                io_err.kind()
+                io_err.kind(),
             );
         }
-        other => panic!(
-            "expected Err(LockFileWriteFailure(InvalidInput)) for port=0, got: {:?}",
-            other
-        ),
+        other => {
+            panic!("expected Err(LockFileWriteFailure(InvalidInput)) for port=0, got: {other:?}")
+        }
     }
 }

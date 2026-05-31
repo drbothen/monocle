@@ -11,11 +11,9 @@
 #![allow(clippy::panic)]
 
 use monocle_core::tui::binding::{BindingLayers, BindingSource, KeyCode, KeyEvent, KeyModifiers};
-use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
-use std::collections::VecDeque;
+use monocle_core::tui::state::{AppMode, FocusSnapshot};
+
 use std::panic::AssertUnwindSafe;
-use std::time::Instant;
-use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -72,21 +70,10 @@ fn filtering_mode() -> AppMode {
     }
 }
 
-fn make_test_modal() -> PromptModal {
-    PromptModal {
-        prompt_id: Uuid::new_v4(),
-        session_id: "test-session".to_string(),
-        tool_name: "Bash".to_string(),
-        tool_payload: ToolPayload::Bash {
-            command: "echo test".to_string(),
-        },
-        received_at: Instant::now(),
-    }
-}
-
 fn overlay_mode() -> AppMode {
+    // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
+    // The prior field is sufficient to construct the Overlay mode sentinel.
     AppMode::Overlay {
-        stack: VecDeque::from([make_test_modal()]),
         prior: FocusSnapshot::Sessions,
     }
 }
@@ -515,7 +502,7 @@ fn test_BC_2_06_003_key_event_derives() {
     let a = char_key('a');
     let b = a.clone();
     assert_eq!(a, b);
-    let _ = format!("{:?}", a);
+    let _ = format!("{a:?}");
 
     // Hash: can be used as HashMap key
     let mut map = std::collections::HashMap::new();

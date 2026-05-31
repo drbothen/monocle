@@ -14,7 +14,6 @@
 #![allow(clippy::panic)]
 
 use monocle_core::tui::state::{Action, AppMode, FocusSnapshot, PanelId, PromptModal, ToolPayload};
-use std::collections::VecDeque;
 use std::panic::AssertUnwindSafe;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -107,12 +106,13 @@ fn test_BC_2_06_001_filtering_variant_constructs() {
     }
 }
 
-/// BC-2.06.001 PC-1: Overlay variant can be constructed with a non-empty stack.
+/// BC-2.06.001 PC-1: Overlay variant can be constructed.
+///
+/// F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the modal stack.
+/// The stack lives in App::overlay_stack. This test verifies the variant exists.
 #[test]
 fn test_BC_2_06_001_overlay_variant_constructs() {
-    let modal = make_test_modal();
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal]),
         prior: FocusSnapshot::Sessions,
     };
     match mode {
@@ -361,12 +361,16 @@ fn test_BC_2_06_001_tool_payload_generic_constructs() {
 // AC-005 / BC-2.06.001 PC-3 / EC-060: Empty-stack collapse invariant
 // ===========================================================================
 
-/// BC-2.06.001 PC-3 / EC-060 / AC-005: PopOverlay on single-item stack collapses to Dashboard.
+/// BC-2.06.001 PC-3 / EC-060 / AC-005: PopOverlay always collapses to Dashboard (prior restored).
+///
+/// F-S025-ADV2-HIGH-003: transition() no longer has access to the overlay stack.
+/// PopOverlay ALWAYS returns Dashboard { focused: prior }. The App-level handler is
+/// responsible for re-entering Overlay if App::overlay_stack is still non-empty after
+/// the pop. This preserves the empty-stack collapse invariant (AC-005) while keeping
+/// transition() pure.
 #[test]
-fn test_BC_2_06_001_ac005_empty_stack_collapse_to_dashboard() {
-    let modal = make_test_modal();
+fn test_BC_2_06_001_ac005_pop_overlay_always_collapses_to_dashboard() {
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal]),
         prior: FocusSnapshot::Sessions,
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -380,27 +384,23 @@ fn test_BC_2_06_001_ac005_empty_stack_collapse_to_dashboard() {
             assert_eq!(
                 focused,
                 FocusSnapshot::Sessions,
-                "Empty-stack collapse must restore prior FocusSnapshot, not a hardcoded value"
+                "PopOverlay must restore prior FocusSnapshot (App-level decides re-entry)"
             );
         }
-        AppMode::Overlay { stack, .. } => {
-            panic!(
-                "Empty-stack collapse must return Dashboard, not Overlay (stack.len()={})",
-                stack.len()
-            );
-        }
-        _ => panic!("Empty-stack collapse must return Dashboard"),
+        _ => panic!(
+            "PopOverlay must always return Dashboard from transition() (F-S025-ADV2-HIGH-003)"
+        ),
     }
 }
 
-/// BC-2.06.001 PC-3 / EC-060 / AC-005: PopOverlay on multi-item stack leaves Overlay with
-/// one fewer item.
+/// BC-2.06.001 PC-3 / EC-060 / AC-005: PopOverlay preserves prior FocusSnapshot regardless of
+/// which prior was set.
+///
+/// F-S025-ADV2-HIGH-003: transition() always returns Dashboard { prior }; App-level handler
+/// re-enters Overlay if overlay_stack non-empty. This test verifies prior is correctly preserved.
 #[test]
-fn test_BC_2_06_001_ac005_pop_overlay_multi_item_stays_overlay() {
-    let modal1 = make_test_modal();
-    let modal2 = make_test_modal_2();
+fn test_BC_2_06_001_ac005_pop_overlay_preserves_prior() {
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal1, modal2]),
         prior: FocusSnapshot::EventRibbon,
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -410,22 +410,14 @@ fn test_BC_2_06_001_ac005_pop_overlay_multi_item_stays_overlay() {
         panic!("transition() panicked — Red Gate: implementation not yet written")
     });
     match next {
-        AppMode::Overlay { stack, prior } => {
+        AppMode::Dashboard { focused } => {
             assert_eq!(
-                stack.len(),
-                1,
-                "PopOverlay on 2-item stack must leave 1 item"
-            );
-            assert_eq!(
-                prior,
+                focused,
                 FocusSnapshot::EventRibbon,
-                "prior must be preserved through PopOverlay"
+                "prior must be preserved through PopOverlay (EventRibbon case)"
             );
         }
-        AppMode::Dashboard { .. } => {
-            panic!("PopOverlay on non-empty stack must NOT collapse to Dashboard")
-        }
-        _ => panic!("unexpected AppMode variant after PopOverlay"),
+        _ => panic!("PopOverlay must return Dashboard"),
     }
 }
 
@@ -612,12 +604,13 @@ fn test_BC_2_06_002_fullscreen_exit_uses_prior_not_panel() {
 // ===========================================================================
 
 /// BC-2.06.003 PC-5 / AC-008: Esc in Overlay returns same Overlay unchanged.
+///
+/// F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack. The test
+/// verifies that Esc is identity: mode stays Overlay and prior is preserved.
 #[test]
 fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
-    let modal = make_test_modal();
     let prior = FocusSnapshot::Sessions;
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal]),
         prior: prior.clone(),
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -627,13 +620,11 @@ fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay {
-            stack,
             prior: returned_prior,
         } => {
-            assert_eq!(stack.len(), 1, "Esc in Overlay must NOT pop the stack");
             assert_eq!(
                 returned_prior, prior,
-                "Esc in Overlay must NOT change prior"
+                "Esc in Overlay must NOT change prior (identity transition)"
             );
         }
         AppMode::Dashboard { .. } => {
@@ -649,7 +640,11 @@ fn test_BC_2_06_003_ac008_esc_in_overlay_is_identity() {
 // AC-009 / BC-2.06.003 PC-6: Overlay push/pop
 // ===========================================================================
 
-/// BC-2.06.003 PC-6 / AC-009: PushOverlay from Dashboard creates Overlay with 1-item stack.
+/// BC-2.06.003 PC-6 / AC-009: PushOverlay from Dashboard creates Overlay capturing prior focus.
+///
+/// F-S025-ADV2-HIGH-003: transition() only returns the mode change (Dashboard → Overlay).
+/// The modal is pushed to App::overlay_stack by the App-level handler BEFORE calling
+/// transition(). The transition() itself ignores the modal argument.
 #[test]
 fn test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay() {
     let modal = make_test_modal();
@@ -662,12 +657,7 @@ fn test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, prior } => {
-            assert_eq!(
-                stack.len(),
-                1,
-                "PushOverlay from Dashboard must create Overlay with exactly 1 modal"
-            );
+        AppMode::Overlay { prior } => {
             assert_eq!(
                 prior,
                 FocusSnapshot::Sessions,
@@ -678,13 +668,15 @@ fn test_BC_2_06_003_ac009_push_overlay_from_dashboard_creates_overlay() {
     }
 }
 
-/// BC-2.06.003 PC-6 / AC-009: PushOverlay from existing Overlay appends to back of stack.
+/// BC-2.06.003 PC-6 / AC-009: PushOverlay from existing Overlay is identity (mode stays Overlay,
+/// prior preserved).
+///
+/// F-S025-ADV2-HIGH-003: App-level handler pushes to App::overlay_stack; transition() returns
+/// Overlay with prior preserved. Stack item count is not observable from transition() alone.
 #[test]
-fn test_BC_2_06_003_ac009_push_overlay_from_overlay_appends_to_stack() {
-    let modal1 = make_test_modal();
+fn test_BC_2_06_003_ac009_push_overlay_from_overlay_stays_overlay() {
     let modal2 = make_test_modal_2();
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal1]),
         prior: FocusSnapshot::EventRibbon,
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -693,31 +685,26 @@ fn test_BC_2_06_003_ac009_push_overlay_from_overlay_appends_to_stack() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, prior } => {
-            assert_eq!(
-                stack.len(),
-                2,
-                "PushOverlay onto existing Overlay must add 1 item (total=2)"
-            );
+        AppMode::Overlay { prior } => {
             assert_eq!(
                 prior,
                 FocusSnapshot::EventRibbon,
-                "PushOverlay must preserve prior from the existing Overlay"
+                "PushOverlay from Overlay must preserve prior"
             );
         }
-        _ => panic!("PushOverlay from Overlay must return Overlay with incremented stack"),
+        _ => panic!("PushOverlay from Overlay must return Overlay with prior preserved"),
     }
 }
 
-/// BC-2.06.003 PC-6 / AC-009: PopOverlay removes from front of stack.
+/// BC-2.06.003 PC-6 / AC-009: PopOverlay from Overlay returns Dashboard with prior restored.
+///
+/// F-S025-ADV2-HIGH-003: transition(Overlay{prior}, PopOverlay) always returns
+/// Dashboard{prior}. App-level handler: pops App::overlay_stack first; if stack is
+/// still non-empty, re-enters Overlay. The stack-item-count collapse invariant is
+/// enforced at the App level, not in transition().
 #[test]
-fn test_BC_2_06_003_ac009_pop_overlay_removes_front() {
-    let modal1 = make_test_modal();
-    let modal2 = make_test_modal_2();
-    // Store modal2's prompt_id to verify it remains after pop
-    let modal2_id = modal2.prompt_id;
+fn test_BC_2_06_003_ac009_pop_overlay_returns_dashboard_with_prior() {
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal1, modal2]),
         prior: FocusSnapshot::Sessions,
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -726,19 +713,14 @@ fn test_BC_2_06_003_ac009_pop_overlay_removes_front() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, .. } => {
+        AppMode::Dashboard { focused } => {
             assert_eq!(
-                stack.len(),
-                1,
-                "PopOverlay must remove exactly 1 item from the front"
-            );
-            assert_eq!(
-                stack.front().map(|m| m.prompt_id),
-                Some(modal2_id),
-                "After PopOverlay, the remaining item must be the second modal (front was removed)"
+                focused,
+                FocusSnapshot::Sessions,
+                "PopOverlay must return Dashboard restoring prior (Sessions)"
             );
         }
-        _ => panic!("PopOverlay on 2-item stack must return Overlay, not Dashboard"),
+        _ => panic!("PopOverlay must return Dashboard from transition()"),
     }
 }
 
@@ -864,13 +846,13 @@ fn test_BC_2_06_001_ec061_unmatched_action_returns_identity() {
 // ===========================================================================
 
 /// BC-2.06.002 EC-065 / BC-2.06.002 PC-3: OverlayCycleNext preserves prior FocusSnapshot.
+///
+/// F-S025-ADV2-HIGH-003: transition() returns Overlay with prior unchanged; App-level
+/// handler rotates App::overlay_stack. Stack-item count is not observable from transition().
 #[test]
 fn test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior() {
-    let modal1 = make_test_modal();
-    let modal2 = make_test_modal_2();
     let prior = FocusSnapshot::Sessions;
     let mode = AppMode::Overlay {
-        stack: VecDeque::from([modal1, modal2]),
         prior: prior.clone(),
     };
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -880,17 +862,11 @@ fn test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior() {
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
         AppMode::Overlay {
-            stack,
             prior: returned_prior,
         } => {
             assert_eq!(
                 returned_prior, prior,
                 "OverlayCycleNext must NOT change prior (BC-2.06.002 PC-3)"
-            );
-            assert_eq!(
-                stack.len(),
-                2,
-                "OverlayCycleNext must not drop any items from the stack"
             );
         }
         _ => panic!("OverlayCycleNext must return Overlay"),
@@ -901,15 +877,16 @@ fn test_BC_2_06_002_ec065_overlay_cycle_next_preserves_prior() {
 // BC-2.06.002 EC-065: Overlay close after OverlayCycleNext still uses original prior
 // ===========================================================================
 
-/// BC-2.06.002 EC-065: After OverlayCycleNext then PopOverlay (single item), prior is preserved.
+/// BC-2.06.002 EC-065: After OverlayCycleNext then PopOverlay, prior is preserved through both.
+///
+/// F-S025-ADV2-HIGH-003: OverlayCycleNext is identity from mode perspective.
+/// PopOverlay always returns Dashboard with original prior.
 #[test]
 fn test_BC_2_06_002_ec065_overlay_close_after_cycle_uses_original_prior() {
-    let modal1 = make_test_modal();
     let prior = FocusSnapshot::Sessions;
 
-    // First: cycle (on 1-item stack, cycle is a no-op rotation)
+    // Cycle: mode stays Overlay, prior preserved.
     let mode1 = AppMode::Overlay {
-        stack: VecDeque::from([modal1]),
         prior: prior.clone(),
     };
     let after_cycle = std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -917,7 +894,7 @@ fn test_BC_2_06_002_ec065_overlay_close_after_cycle_uses_original_prior() {
     }))
     .unwrap_or_else(|_| panic!("transition(OverlayCycleNext) panicked — Red Gate"));
 
-    // Then: pop (stack is 1 item → Dashboard)
+    // Pop: always Dashboard with original prior.
     let after_pop = std::panic::catch_unwind(AssertUnwindSafe(|| {
         monocle_core::tui::state::transition(after_cycle, Action::PopOverlay)
     }))
@@ -927,7 +904,7 @@ fn test_BC_2_06_002_ec065_overlay_close_after_cycle_uses_original_prior() {
         AppMode::Dashboard { focused } => {
             assert_eq!(
                 focused, prior,
-                "After OverlayCycleNext then close, prior must be the original prior"
+                "After OverlayCycleNext then PopOverlay, prior must be the original prior"
             );
         }
         _ => panic!("PopOverlay after OverlayCycleNext must return Dashboard"),
@@ -1027,7 +1004,10 @@ fn test_BC_2_06_001_pc2_transition_is_deterministic() {
 // BC-2.06.003 PC-6 / AC-009: PushOverlay from Filtering enters Overlay
 // ===========================================================================
 
-/// BC-2.06.003 PC-6 / AC-009: PushOverlay from Filtering mode creates Overlay (captures panel focus).
+/// BC-2.06.003 PC-6 / AC-009: PushOverlay from Filtering mode creates Overlay (captures prior focus).
+///
+/// F-S025-ADV2-HIGH-003: transition() returns Overlay with prior from Filtering.
+/// App-level handler has already pushed the modal to App::overlay_stack.
 #[test]
 fn test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay() {
     let modal = make_test_modal();
@@ -1042,13 +1022,83 @@ fn test_BC_2_06_003_ac009_push_overlay_from_filtering_creates_overlay() {
     let next =
         result.unwrap_or_else(|_| panic!("transition() panicked — Red Gate: not yet implemented"));
     match next {
-        AppMode::Overlay { stack, .. } => {
+        AppMode::Overlay { prior } => {
             assert_eq!(
-                stack.len(),
-                1,
-                "PushOverlay from Filtering must create Overlay with 1 modal"
+                prior,
+                FocusSnapshot::Sessions,
+                "PushOverlay from Filtering must capture prior (Sessions)"
             );
         }
         _ => panic!("PushOverlay from Filtering must return Overlay"),
+    }
+}
+
+// ===========================================================================
+// BC-2.06.005 PC-2 / AC-006 / S-025: Action::MoveFocus cycles focus in Dashboard
+// ===========================================================================
+//
+// The MoveFocus arm was missing from transition() at S-025 story start (cross-story
+// gap). These tests document and guard the canonical two-panel tab order:
+//   Sessions → EventRibbon → Sessions  (FocusSnapshot::cycle())
+// per SS-tui.md §FocusSnapshot::cycle and BC-2.06.005 AC-006.
+
+/// BC-2.06.005 PC-2 / AC-006: Dashboard { Sessions } + MoveFocus → Dashboard { EventRibbon }.
+///
+/// This is the canonical "Tab" binding in Dashboard mode — cycles focus to the
+/// next panel in the two-panel round-robin order (Sessions → EventRibbon).
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_sessions_to_event_ribbon() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+    let next = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    match next {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::EventRibbon,
+        } => { /* expected */ }
+        other => panic!(
+            "MoveFocus from Sessions must yield Dashboard {{EventRibbon}}, got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.005 PC-2 / AC-006: Dashboard { EventRibbon } + MoveFocus → Dashboard { Sessions }.
+///
+/// Completes the two-panel round-robin: EventRibbon → Sessions.
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_event_ribbon_to_sessions() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    let next = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    match next {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected */ }
+        other => panic!(
+            "MoveFocus from EventRibbon must yield Dashboard {{Sessions}}, got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.005 PC-2 / AC-006: MoveFocus is idempotent over two applications —
+/// after two Tab presses, focus returns to the original panel.
+#[test]
+fn test_BC_2_06_005_ac006_move_focus_round_trip_two_tabs() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+    let after_one = monocle_core::tui::state::transition(mode, Action::MoveFocus);
+    let after_two = monocle_core::tui::state::transition(after_one, Action::MoveFocus);
+    match after_two {
+        AppMode::Dashboard {
+            focused: FocusSnapshot::Sessions,
+        } => { /* expected: round-trip restores Sessions */ }
+        other => panic!(
+            "Two MoveFocus applications must return to original focus; got discriminant {:?}",
+            core::mem::discriminant(&other)
+        ),
     }
 }

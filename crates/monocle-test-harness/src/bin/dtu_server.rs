@@ -9,7 +9,7 @@
 //! Source authority:
 //! - S-DTU-001 AC-005 (Rust binary form; `cargo build --bin dtu-claude-code-hooks-v1`)
 //! - S-DTU-001 AC-006 (MONOCLE_HOOK_ENDPOINT_BASE, MONOCLE_NO_AUTOSTART env vars)
-//! - dtu-assessment.md v1.7.5 §Packaging Decision (lines 320-343)
+//! - dtu-assessment.md §Packaging Decision (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - BC-HOOK-013 (lock file scan), BC-HOOK-015 (token), BC-HOOK-016 (auth header)
 
 #![forbid(unsafe_code)]
@@ -158,10 +158,7 @@ async fn main() -> Result<()> {
         Ok(s) if s.is_empty() => monocle_test_harness::dtu::server::DTU_DEFAULT_PORT,
         Ok(s) => {
             let parsed: u16 = s.parse::<u16>().with_context(|| {
-                format!(
-                    "MONOCLE_DTU_LISTEN_PORT={:?} is not a valid u16 port (expected 1-65535)",
-                    s
-                )
+                format!("MONOCLE_DTU_LISTEN_PORT={s:?} is not a valid u16 port (expected 1-65535)")
             })?;
             if parsed == 0 {
                 anyhow::bail!(

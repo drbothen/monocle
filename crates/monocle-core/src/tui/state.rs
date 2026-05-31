@@ -4,7 +4,6 @@
 //! Per AC-013, `AppMode` is NOT `#[non_exhaustive]` — exhaustive matching is
 //! required in the binary crate so the compiler enforces complete mode coverage.
 
-use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
 use uuid::Uuid;
@@ -13,6 +12,10 @@ use uuid::Uuid;
 ///
 /// Intentionally NOT `#[non_exhaustive]` (AC-013): the binary crate must
 /// exhaustively match all modes so new modes require explicit handling.
+///
+/// `Clone` is derived so that the event loop can call `transition(app.mode.clone(), action)`
+/// — `transition` takes ownership of the mode, so cloning avoids moving out of `App`.
+#[derive(Clone)]
 pub enum AppMode {
     /// Normal dashboard view with a focused panel.
     Dashboard {
@@ -29,9 +32,17 @@ pub enum AppMode {
         prior: FocusSnapshot,
     },
     /// One or more permission overlays stacked on the view.
+    ///
+    /// The actual stack of `PromptModal` items lives ONLY in `App::overlay_stack`
+    /// (the single source of truth — F-S025-ADV2-HIGH-003). The existence of this
+    /// mode variant indicates "TUI is in overlay mode"; the stack is accessed via
+    /// the App-level field, not embedded here.
+    ///
+    /// Stack mutations (push, pop, cycle) are performed by App methods that update
+    /// `App::overlay_stack` directly and then call `transition()` for mode changes.
+    /// `transition()` itself never touches the stack — it remains pure on
+    /// `(AppMode, Action) → AppMode`.
     Overlay {
-        /// Stack of pending permission modals; never empty while this mode is active.
-        stack: VecDeque<PromptModal>,
         /// The focus state to restore when all overlays are dismissed.
         prior: FocusSnapshot,
     },
@@ -98,8 +109,10 @@ pub enum PanelId {
 
 /// A pending permission prompt awaiting user disposition.
 ///
-/// Stacked in `AppMode::Overlay::stack` as a `VecDeque<PromptModal>` — never
-/// wrapped in `Option` (forbidden pattern per SS-conventions-anti-patterns.md).
+/// Stored in `App::overlay_stack` as a `VecDeque<PromptModal>` — the single
+/// source of truth per F-S025-ADV2-HIGH-003. Never wrapped in `Option`
+/// (forbidden pattern per SS-conventions-anti-patterns.md).
+#[derive(Clone)]
 pub struct PromptModal {
     /// Stable identifier correlating this modal to the originating hook request.
     pub prompt_id: Uuid,
@@ -121,6 +134,7 @@ pub struct PromptModal {
 /// `#[non_exhaustive]` — additional tool variants will be added as Claude Code
 /// expands its tool set in future releases.
 #[non_exhaustive]
+#[derive(Clone)]
 pub enum ToolPayload {
     /// File edit — old content replaced with new content at path.
     Edit {
@@ -179,7 +193,16 @@ pub enum Action {
     },
     /// Dismiss the top-most overlay; returns to Dashboard if the stack empties.
     PopOverlay,
-    /// Context-sensitive escape: collapse filter, exit fullscreen, or pop overlay.
+    /// Context-sensitive escape key action.
+    ///
+    /// Per-mode behavior (product-owner ruling):
+    /// - `Dashboard` → identity (no-op).
+    /// - `Overlay` → explicit no-op arm in `transition()` (AC-008).
+    /// - `Fullscreen` → identity; only `Action::ExitFullscreen` exits fullscreen
+    ///   (wired by the fullscreen-view story, not S-025 skeleton).
+    /// - `Filtering` → identity; `Action::CancelFilter` cancels filtering — not Esc.
+    ///
+    /// Esc is NOT a quit path.
     Esc,
     /// Move keyboard focus to the next panel in tab order.
     MoveFocus,
@@ -193,6 +216,21 @@ pub enum Action {
     PermissionAcceptAlways,
     /// Reject the top-most permission prompt.
     PermissionReject,
+    /// Move selection to the next row in the currently focused panel list.
+    ///
+    /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
+    SelectNext,
+    /// Move selection to the previous row in the currently focused panel list.
+    ///
+    /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
+    SelectPrev,
+    /// Request clean exit from the TUI.
+    ///
+    /// Only registered in Dashboard mode (via the per-context binding layer) so that
+    /// typing `q` in Filtering mode inserts the character rather than quitting.
+    /// Introduced in F-S025-ADV2-HIGH-002 to replace the overloaded `Action::Esc`
+    /// quit-path that broke Filtering-mode filter entry (MED-004 resolution).
+    Quit,
     /// No-op; used by the key resolver when no binding matches.
     Noop,
 }
@@ -203,9 +241,17 @@ pub enum Action {
 /// The function is pure (no I/O) and must be exercised by unit tests without
 /// spawning any async runtime.
 ///
-/// Empty-stack collapse invariant (AC-005): whenever a path would produce
-/// `Overlay { stack: empty, .. }`, it collapses to `Dashboard { focused: prior }`
-/// instead. This invariant is enforced inside this function — callers need not check.
+/// Empty-stack collapse invariant (AC-005): `AppMode::Overlay` has shape
+/// `Overlay { prior: FocusSnapshot }` — there is no `stack` field on the mode.
+/// The overlay stack lives in `App::overlay_stack` (a `VecDeque<PromptModal>`).
+///
+/// `transition()` is stack-agnostic: it cannot enforce the empty-stack collapse
+/// invariant because it has no access to `App::overlay_stack`. The collapse is
+/// enforced APP-LEVEL in `App::pop_overlay` (the `Action::PopOverlay` arm of
+/// the run-loop key handler): after popping from `overlay_stack`, if the stack
+/// is now empty, the run-loop transitions to `Dashboard { focused: prior }`;
+/// if the stack is still non-empty, it re-enters `Overlay`. Callers of
+/// `transition()` must perform this post-call check themselves.
 pub fn transition(mode: AppMode, action: Action) -> AppMode {
     match (mode, action) {
         // --- Filtering entry ---
@@ -237,46 +283,55 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         }
 
         // --- Overlay push from Dashboard ---
-        (AppMode::Dashboard { focused }, Action::PushOverlay { modal }) => AppMode::Overlay {
-            stack: VecDeque::from([modal]),
-            prior: focused,
-        },
+        //
+        // F-S025-ADV2-HIGH-003: The modal is NOT stored in AppMode::Overlay anymore.
+        // The caller (App-level handler) must push the modal to `App::overlay_stack`
+        // BEFORE calling transition(). transition() here only records the prior focus.
+        (AppMode::Dashboard { focused }, Action::PushOverlay { .. }) => {
+            AppMode::Overlay { prior: focused }
+        }
 
         // --- Overlay push from Filtering ---
-        (AppMode::Filtering { prior, .. }, Action::PushOverlay { modal }) => AppMode::Overlay {
-            stack: VecDeque::from([modal]),
-            prior,
+        // Same as Dashboard push: record prior focus, stack mutation is App-level.
+        (AppMode::Filtering { prior, .. }, Action::PushOverlay { .. }) => {
+            AppMode::Overlay { prior }
+        }
+
+        // --- Overlay push from existing Overlay (identity mode change — prior preserved) ---
+        //
+        // App-level handler has already pushed to overlay_stack. Mode stays Overlay.
+        // The `modal` field is ignored here — App::overlay_stack is the single source.
+        (AppMode::Overlay { prior }, Action::PushOverlay { .. }) => AppMode::Overlay { prior },
+
+        // --- Overlay pop (collapse invariant enforcement is App-level) ---
+        //
+        // F-S025-ADV2-HIGH-003: transition() always collapses to Dashboard.
+        // The App-level handler:
+        //   1. Pops from overlay_stack.
+        //   2. Calls transition(mode, PopOverlay) → Dashboard { focused: prior }.
+        //   3. If overlay_stack is still non-empty, re-enters Overlay: sets
+        //      app.mode = AppMode::Overlay { prior: <captured prior> }.
+        // This preserves the empty-stack collapse invariant (AC-005) while keeping
+        // transition() stack-agnostic.
+        (AppMode::Overlay { prior }, Action::PopOverlay) => AppMode::Dashboard { focused: prior },
+
+        // --- MoveFocus: cycle focus in Dashboard via FocusSnapshot::cycle() ---
+        // BC-2.06.005 PC-2 / AC-006: Tab cycles focus through the panel tab order.
+        // FocusSnapshot::cycle() encodes the canonical two-panel round-robin:
+        //   Sessions → EventRibbon → Sessions (per SS-tui.md §FocusSnapshot::cycle).
+        (AppMode::Dashboard { focused }, Action::MoveFocus) => AppMode::Dashboard {
+            focused: focused.cycle(),
         },
 
-        // --- Overlay push from existing Overlay (append to back, preserve prior) ---
-        (AppMode::Overlay { mut stack, prior }, Action::PushOverlay { modal }) => {
-            stack.push_back(modal);
-            AppMode::Overlay { stack, prior }
-        }
-
-        // --- Overlay pop ---
-        (AppMode::Overlay { mut stack, prior }, Action::PopOverlay) => {
-            stack.pop_front();
-            // Empty-stack collapse invariant (AC-005)
-            if stack.is_empty() {
-                AppMode::Dashboard { focused: prior }
-            } else {
-                AppMode::Overlay { stack, prior }
-            }
-        }
-
         // --- Esc in Overlay is identity (AC-008) ---
-        (AppMode::Overlay { stack, prior }, Action::Esc) => AppMode::Overlay { stack, prior },
+        (AppMode::Overlay { prior }, Action::Esc) => AppMode::Overlay { prior },
 
-        // --- OverlayCycleNext: rotates front to back, preserves prior ---
-        (AppMode::Overlay { mut stack, prior }, Action::OverlayCycleNext) => {
-            if stack.len() > 1 {
-                if let Some(front) = stack.pop_front() {
-                    stack.push_back(front);
-                }
-            }
-            AppMode::Overlay { stack, prior }
-        }
+        // --- OverlayCycleNext: identity mode change; App-level rotates overlay_stack ---
+        //
+        // F-S025-ADV2-HIGH-003: the rotation of overlay_stack is an App-level mutation.
+        // transition() returns Overlay unchanged — the visual change is from the render
+        // loop reading overlay_stack.front() after App rotates it.
+        (AppMode::Overlay { prior }, Action::OverlayCycleNext) => AppMode::Overlay { prior },
 
         // --- Identity (all other combinations) ---
         // EC-061: unmatched (mode, action) pairs return identity

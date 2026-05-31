@@ -114,7 +114,7 @@ impl HookEventRecord {
 pub enum ServerToClient {
     /// Full initial state push sent immediately after a TUI client connects.
     ///
-    /// Fields per BC-2.05.002 v1.0.4 (InitialState push on connect):
+    /// Fields per BC-2.05.002 §Postconditions (InitialState push on connect):
     /// - `sessions`: complete current session roster
     /// - `ring_tail`: last N events from the RAM ring as `Vec<HookEventRecord>`
     /// - `overlay_stack`: current permission prompt queue
@@ -127,7 +127,7 @@ pub enum ServerToClient {
     /// stores `HookEventRecord`; reconstructing `HookEvent` variants from records requires
     /// fabricating absent fields (cwd, transcript_path, prompt, stop_reason) with empty-string
     /// defaults, producing silently incorrect data (previous attempt; superseded by
-    /// ADR-0006 / BC-2.05.002 v1.0.4). The TUI (S-025) renders the event ribbon
+    /// ADR-0006 / BC-2.05.002 §Postconditions PC-2). The TUI (S-025) renders the event ribbon
     /// from `HookEventRecord` fields (`hook_type`, `session_id`, `timestamp_micros`,
     /// `tool_name`) which are sufficient for display.
     InitialState {

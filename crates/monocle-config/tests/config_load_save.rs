@@ -549,8 +549,7 @@ fn test_BC_2_07_002_schema_version_mismatch_error() {
         }
         other => panic!(
             "load_config() must return ConfigError::SchemaMismatch for future schema version, \
-            got: {:?} (story AC-004)",
-            other
+            got: {other:?} (story AC-004)"
         ),
     }
 }

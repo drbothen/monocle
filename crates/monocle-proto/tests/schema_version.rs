@@ -159,10 +159,7 @@ fn test_BC_2_02_007_round_trip_with_session_start_event() {
             assert_eq!(evt.cwd, "/workspace");
             assert_eq!(evt.transcript_path, "/tmp/transcript.jsonl");
         }
-        other => panic!(
-            "Expected SessionStart event after round-trip, got: {:?}",
-            other
-        ),
+        other => panic!("Expected SessionStart event after round-trip, got: {other:?}"),
     }
 }
 

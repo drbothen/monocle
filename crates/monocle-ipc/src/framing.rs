@@ -1,6 +1,6 @@
 //! 4-byte little-endian length-prefix framing for IPC messages.
 //!
-//! # Wire Format (BC-2.05.002, SS-ipc.md v1.4.0 §Framing Protocol)
+//! # Wire Format (BC-2.05.002, SS-ipc.md §Framing Protocol)
 //!
 //! Each framed message is:
 //! ```text

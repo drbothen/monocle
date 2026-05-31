@@ -5,7 +5,7 @@
 //! `tests/fixtures/dtu/claude-code-hook-2x/`.
 //!
 //! Source authority:
-//! - dtu-assessment.md v1.7.5 §Clone Development Approach §Packaging Decision
+//! - dtu-assessment.md §Clone Development Approach §Packaging Decision (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - SS-core-types-and-abi.md v1.2.13 §Non-Exhaustive Inner Structs
 //! - SS-daemon-lifecycle.md v1.0.33 §Start Sequence (lock file schema)
 //! - BC-HOOK-001..BC-HOOK-041

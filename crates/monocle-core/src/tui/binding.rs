@@ -120,6 +120,11 @@ pub struct KeyEvent {
 ///
 /// `#[non_exhaustive]` — additional key codes (e.g., function keys, media keys)
 /// may be added as terminal backend support expands.
+///
+/// `Unknown` is the sentinel for crossterm key codes that don't map to any named
+/// variant. The binding resolver never matches `Unknown`, ensuring unmapped keys
+/// produce no action. This replaces the fragile `Char('\0')` sentinel pattern
+/// (F-S025-ADV2-LOW-001).
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum KeyCode {
@@ -141,13 +146,24 @@ pub enum KeyCode {
     Tab,
     /// The Backspace key.
     Backspace,
+    /// An unknown or unmapped crossterm key code.
+    ///
+    /// The binding resolver never registers bindings for `Unknown`, so any key
+    /// that maps here silently produces no action. This is the canonical sentinel
+    /// for crossterm keys not listed in this enum (F-S025-ADV2-LOW-001).
+    Unknown,
 }
 
 /// Modifier keys held simultaneously with a key press.
 ///
 /// A simple struct of booleans — no bitflags dependency required in the pure
 /// core. The binary crate converts from crossterm's bitflags representation.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+///
+/// `Copy` is derived because `KeyModifiers` is a small value type (3 bools);
+/// `HashMap` lookups produce cloned values, and binding construction code calls
+/// `KeyModifiers::default()` repeatedly — `Copy` eliminates these `.clone()` calls
+/// (F-S025-ADV2-MED-001).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct KeyModifiers {
     /// The Shift key was held.
     pub shift: bool,
@@ -311,6 +327,9 @@ fn clone_action(action: &Action) -> Action {
         Action::PermissionAcceptOnce => Action::PermissionAcceptOnce,
         Action::PermissionAcceptAlways => Action::PermissionAcceptAlways,
         Action::PermissionReject => Action::PermissionReject,
+        Action::SelectNext => Action::SelectNext,
+        Action::SelectPrev => Action::SelectPrev,
+        Action::Quit => Action::Quit,
         Action::Noop => Action::Noop,
         // Non-exhaustive guard: new Action variants added in future waves are treated
         // as Noop until the binding resolver is updated to handle them explicitly.

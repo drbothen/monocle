@@ -35,17 +35,18 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Lint toolchain pin (AC-004)
-        # Asserts rust-toolchain.toml exists at workspace root AND pins channel "1.86".
+        # Asserts rust-toolchain.toml exists at workspace root AND pins channel "1.88".
+        # Bumped from 1.86 → 1.88 by RUSTSEC-2026-0009 Path B resolution (time 0.3.47 requires 1.88).
         run: |
           set -euo pipefail
           test -f rust-toolchain.toml
-          grep -Eq '^channel = "1\.86"$' rust-toolchain.toml
+          grep -Eq '^channel = "1\.88"$' rust-toolchain.toml
 
       - name: Install Rust toolchain (rust-toolchain.toml drives version)
         # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
-          toolchain: "1.86"
+          toolchain: "1.88"
           components: clippy, rustfmt
 
       - name: Cache cargo
@@ -237,11 +238,68 @@ jobs:
           fi
           echo "::notice::audit-table.md matches canonical SS-engine-module.md §Cross-Crate Constructor Audit Table"
 
+  # POL-11 + POL-12 enforcement: version-pin literal freshness + structural-claim freshness.
+  # Runs after preflight (in parallel with semgrep and audit-table-drift).
+  # CI step ordering per SS-conventions-anti-patterns.md §CI Wiring.
+  #
+  # POL-11 (ADR-0007): verifies every active version-pin literal in .md/.rs/.toml/.yml/.yaml
+  #   files matches the canonical version in .factory/specs/version-pin-registry.yaml.
+  #
+  # POL-12 Phase 1 (ADR-0008): verifies App struct field type-identifier claims in
+  #   .factory/stories/*.md Tasks checklists + Downstream Consumer Contract blocks match
+  #   canonical SS-tui.md §App struct declarations.
+  #
+  # Both scripts read from factory-artifacts (checked out at .factory-spec/).
+  # No Rust toolchain required — pure Python with stdlib only.
+  pol-lint:
+    name: POL-11 + POL-12 (version-pin + structural-claim freshness)
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout (PR ref)
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Checkout factory-artifacts spec
+        # Checks out factory-artifacts into .factory-spec/ so version-pin-registry.yaml
+        # and story files are accessible. Same pattern as audit-table-drift job.
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: factory-artifacts
+          path: .factory-spec
+
+      - name: POL-11 — version-pin literal freshness (monocle-version-pin-freshness)
+        # Verifies every active version-pin literal (SS-X.md vN.M, BC-N.N.N vN.M, ADR-NNNN vN.M)
+        # in .md, .rs, .toml, .yml, .yaml files matches the registry current_version.
+        # Active = not in §Trace section, not annotated # version-pin-historical, no time qualifier.
+        # Exit 1 on any stale active pointer. Exit 0 on all-current or all-historical.
+        run: |
+          set -euo pipefail
+          python3 scripts/check_version_pins.py \
+            --factory-root .factory-spec \
+            --workspace-root .
+
+      - name: POL-12 Phase 1 — structural-claim freshness (monocle-structural-claim-check)
+        # Verifies App struct field type-identifier claims in story Tasks checklists,
+        # Downstream Consumer Contract code blocks, and BC postcondition prose match
+        # canonical SS-tui.md §App struct (ADR-0008 §CI enforcement gate Phase 1).
+        # Phase 1 scope: .factory/stories/*.md AND .factory/specs/behavioral-contracts/**/*.md
+        # Phase 2 scope (doc-comment tables in crates/**/*.rs): deferred to Phase 5 per
+        # ADR-0008 §Implementation Plan.
+        # Exit 1 on any stale active structural claim. Exit 0 on all-canonical or all-historical.
+        run: |
+          set -euo pipefail
+          python3 scripts/check_structural_claims.py \
+            --factory-root .factory-spec \
+            --workspace-root .
+
   # Per-platform build + test matrix. Explicit `include:` -- NOT a Cartesian product
   # (matches story AC-003 exactly).
   build-and-test:
     name: Build + Test (${{ matrix.runner }} / ${{ matrix.target }})
-    needs: [semgrep, audit-table-drift]
+    needs: [semgrep, audit-table-drift, pol-lint]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -263,7 +321,7 @@ jobs:
         # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
-          toolchain: "1.86"
+          toolchain: "1.88"
           components: clippy, rustfmt
           targets: ${{ matrix.target }}
 
@@ -341,7 +399,7 @@ jobs:
         # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
-          toolchain: "1.86"
+          toolchain: "1.88"
 
       - name: Cache cargo
         # Swatinem/rust-cache@v2 — pinned to SHA (supply-chain security; SS-conventions §R-001)

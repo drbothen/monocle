@@ -25,7 +25,7 @@
 //! Source authority:
 //! - AC-004 (≥0.95 fidelity against 25-fixture corpus)
 //! - BC-HOOK-007 (scoring function)
-//! - dtu-assessment.md v1.7.5 §DTU Fidelity Measurement Procedure
+//! - dtu-assessment.md §DTU Fidelity Measurement Procedure (implemented against v1.7.5 at S-DTU-001 authoring time)
 
 #[path = "common/mod.rs"]
 mod common;
@@ -336,8 +336,7 @@ async fn test_BC_HOOK_007_fidelity_notification_non_permission_dropped() {
     assert!(
         clone_output.is_none(),
         "BC-HOOK-034: clone must NOT forward assistant_message notifications to daemon; \
-         but daemon received: {:?}",
-        clone_output
+         but daemon received: {clone_output:?}"
     );
 }
 

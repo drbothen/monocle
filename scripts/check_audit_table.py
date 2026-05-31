@@ -24,9 +24,27 @@ FIXTURE_STRUCT_NAMES = {"AuditFixtureMinimal", "AuditFixtureDerived"}
 BEGIN_DELIMITER_REGEX = r'^<!-- BEGIN: Cross-Crate Constructor Audit Table -->$'
 END_DELIMITER_REGEX   = r'^<!-- END: Cross-Crate Constructor Audit Table -->$'
 
+# Regex for extracting struct name from the interpolated message string.
+# F-S025-ADV16-MED-001 root cause: semgrep OSS does NOT populate metavars for pattern-either
+# rules (confirmed semgrep 1.156.0). The struct name is present in the interpolated message
+# field ("Found #[non_exhaustive] pub struct `StructName`.") but absent from metavars.$NAME.
+# Primary extraction path: metavars.$NAME.abstract_content (future-proof if semgrep adds this).
+# Fallback extraction path: regex against message field (required for semgrep OSS today).
+_MESSAGE_NAME_RE = re.compile(r'Found #\[non_exhaustive\] pub struct `([^`]+)`')
+
 
 def parse_semgrep_json(semgrep_json_text: str, rule_id: str) -> set[str]:
-    """Parse semgrep JSON output and return matched struct names for the given rule."""
+    """Parse semgrep JSON output and return matched struct names for the given rule.
+
+    Name extraction strategy (two-path, F-S025-ADV16-MED-001):
+    1. Primary: metavars.$NAME.abstract_content — populated by semgrep Pro / future OSS.
+    2. Fallback: regex against the interpolated message string — required for semgrep OSS
+       (verified semgrep 1.156.0 does not populate metavars for pattern-either rules).
+
+    Safety assertion: if semgrep matched N findings for this rule but zero names were
+    extracted, CI is failed immediately.  This prevents a silent false-green if both
+    extraction paths fail (e.g., message format changes in a future semgrep version).
+    """
     try:
         data = json.loads(semgrep_json_text)
     except json.JSONDecodeError as exc:
@@ -34,14 +52,39 @@ def parse_semgrep_json(semgrep_json_text: str, rule_id: str) -> set[str]:
         sys.exit(1)
 
     struct_names: set[str] = set()
+    matched_count = 0
     for result in data.get("results", []):
         if result.get("check_id") != rule_id:
             continue
+        matched_count += 1
+
+        # Path 1: metavars (semgrep Pro / future OSS)
         metavars = result.get("extra", {}).get("metavars", {})
         name_meta = metavars.get("$NAME", {})
         struct_name = name_meta.get("abstract_content", "").strip("`").strip()
+
+        # Path 2: message field fallback (semgrep OSS 1.x does not populate metavars
+        # for pattern-either rules — confirmed F-S025-ADV16-MED-001 root-cause analysis)
+        if not struct_name:
+            message = result.get("extra", {}).get("message", "")
+            m = _MESSAGE_NAME_RE.search(message)
+            if m:
+                struct_name = m.group(1).strip()
+
         if struct_name:
             struct_names.add(struct_name)
+
+    # Safety assertion: matched findings with zero extracted names is a script defect,
+    # not a CI pass.  Fail loudly so the gap is immediately visible.
+    if matched_count > 0 and not struct_names:
+        print(
+            f"Error: semgrep matched {matched_count} finding(s) for rule {rule_id!r} but "
+            f"struct name extraction returned zero names. Both metavars and message-regex "
+            f"extraction paths failed. Inspect semgrep JSON output for schema changes.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     return struct_names
 
 

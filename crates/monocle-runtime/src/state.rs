@@ -367,7 +367,7 @@ const _: () = {
 
 /// Produce an `InitialState` snapshot from the current `DaemonState`.
 ///
-/// # Contract (BC-2.05.002 v1.0.4 postcondition PC-2, AC-002)
+/// # Contract (BC-2.05.002 §Postconditions PC-2, AC-002)
 ///
 /// The snapshot captures, at the moment of the call:
 /// - `sessions`: clone of the current session roster from `state.session_registry`.

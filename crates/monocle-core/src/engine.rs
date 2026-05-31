@@ -1,9 +1,11 @@
 /// EngineModule trait and supporting types (BC-2.03.001; S-014).
 ///
 /// Tests in `engine_module_surface.rs` (VP-019 AST audit suite) verify structural
-/// conformance to BC-2.03.001 and SS-engine-module.md v1.1.20.
+/// conformance to BC-2.03.001 and SS-engine-module.md v1.1.26.
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+use chrono::{DateTime, Utc};
 
 use crate::hook_events::HookEvent;
 
@@ -136,12 +138,19 @@ impl ProcessSnapshot {
 /// embedded in `ServerToClient::SessionListUpdate` and `ServerToClient::InitialState`
 /// (S-021 BC-2.05.003). `serde_json::to_vec` is called on the containing `ServerToClient`
 /// enum by `monocle-ipc::framing::write_framed`.
+///
+/// All four display fields (`project_name`, `started_at`, `token_count`, `cost_usd`) are
+/// specified in SS-engine-module.md v1.1.26 and BC-2.06.005 PC-2. Phase 1 daemon populates
+/// these with zero-value defaults (`None`/`0`) until a richer enrichment story provides real
+/// values. The TUI renders `None`/`0` as `"—"` per BC-2.06.005 Invariant 3.
+///
+/// `#[non_exhaustive]` per ADR-0006. All construction via `new()`.
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EnrichedSession {
     /// Engine-specific session identifier.
     pub session_id: String,
-    /// Harness type identifier.
+    /// Harness type identifier (e.g., "claude-code").
     pub harness_type: String,
     /// Absolute path to the engine-specific transcript file, if known.
     pub transcript_path: Option<PathBuf>,
@@ -151,7 +160,27 @@ pub struct EnrichedSession {
     pub status: SessionStatus,
     /// Timestamp of the last received hook event, in microseconds since the Unix epoch (UTC).
     /// `None` means no hook events have been received for this session yet.
+    /// `Some(0)` is the Unix epoch, NOT a sentinel — using `0` as "no events" is forbidden.
     pub last_event_micros: Option<i64>,
+    /// Human-readable project name derived from the transcript directory name
+    /// (the immediate parent directory of `transcript_path`).
+    /// `None` when `transcript_path` is unknown or parsing fails.
+    /// Phase 1 daemon populates this during `enrich()`; zero-value is `None`.
+    pub project_name: Option<String>,
+    /// UTC timestamp of the first `SessionStart` hook event for this session.
+    /// `None` until the daemon receives the first hook event carrying session-start data.
+    /// The TUI computes uptime as `now - started_at` at render time.
+    /// Phase 1 daemon defaults to `None`; populated when enrichment reads start time.
+    pub started_at: Option<DateTime<Utc>>,
+    /// Cumulative input + output token count reported by the harness hook stream.
+    /// Defaults to `0` when the daemon has not yet received token-count hook data.
+    /// Phase 1: zero is the sentinel-free default (the TUI renders `0` as `"0"` per
+    /// BC-2.06.005 PC-2 — `format_token_count(0)` returns `"0"`, not `"—"`).
+    pub token_count: u64,
+    /// Cumulative cost in USD as reported by the harness hook stream.
+    /// `None` when the daemon has not received cost data for this session.
+    /// `Some(0.0)` is a valid zero-cost session — not a sentinel.
+    pub cost_usd: Option<f64>,
 }
 
 impl EnrichedSession {
@@ -161,6 +190,10 @@ impl EnrichedSession {
     /// Pass `Some(timestamp_micros)` for an active session with a known last-event time.
     /// Note: `Some(0)` is the Unix epoch (1970-01-01T00:00:00Z), NOT a sentinel — using
     /// `0` as a "no events" sentinel is forbidden per BC-2.03.001 PC-4.
+    ///
+    /// Pass `None, None, 0, None` for `project_name`, `started_at`, `token_count`, `cost_usd`
+    /// in Phase 1 until richer enrichment populates them.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         session_id: String,
         harness_type: String,
@@ -168,6 +201,10 @@ impl EnrichedSession {
         config_path: Option<PathBuf>,
         status: SessionStatus,
         last_event_micros: Option<i64>,
+        project_name: Option<String>,
+        started_at: Option<DateTime<Utc>>,
+        token_count: u64,
+        cost_usd: Option<f64>,
     ) -> Self {
         Self {
             session_id,
@@ -176,6 +213,10 @@ impl EnrichedSession {
             config_path,
             status,
             last_event_micros,
+            project_name,
+            started_at,
+            token_count,
+            cost_usd,
         }
     }
 }

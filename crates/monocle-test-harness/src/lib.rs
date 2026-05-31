@@ -7,7 +7,7 @@
 //!
 //! Source authority:
 //! - S-DTU-001 v1.2 (story spec)
-//! - dtu-assessment.md v1.7.5 §Packaging Decision
+//! - dtu-assessment.md §Packaging Decision (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - BC-HOOK-001..BC-HOOK-041
 
 #![deny(missing_docs)]

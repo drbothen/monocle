@@ -7,7 +7,7 @@
 //!
 //! Source authority:
 //! - S-DTU-001 AC-007 (`cargo xtask dtu-fidelity` oracle)
-//! - dtu-assessment.md v1.7.5 §Xtask Integration
+//! - dtu-assessment.md §Xtask Integration (implemented against v1.7.5 at S-DTU-001 authoring time)
 //! - S-001 (CI/DevOps setup — creates .github/workflows/)
 
 // BC-based test function names use BC_S_SS_NNN_ uppercase pattern per factory convention.

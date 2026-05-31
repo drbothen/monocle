@@ -45,7 +45,7 @@ impl RecoveryCheckpoint {
         //   2. chrono parse to verify the date/time values are real (e.g., month 13 rejected).
         //
         // chrono is already a workspace production dependency; regex-lite is dev-only per
-        // SS-deps-pin-manifest.md v1.1.20 §Trace and must not be used in production code.
+        // SS-deps-pin-manifest.md v1.2.0 §Trace and must not be used in production code.
         //
         // Expected layout (24 chars): YYYY-MM-DDTHH:MM:SS.MMMZ
         //   [0..4]  year digits
@@ -80,18 +80,13 @@ impl RecoveryCheckpoint {
             && s[20..23].bytes().all(|b| b.is_ascii_digit());
         anyhow::ensure!(
             structurally_valid,
-            "shutdown_utc '{}' must match ISO 8601 millisecond format YYYY-MM-DDTHH:MM:SS.sssZ \
+            "shutdown_utc '{s}' must match ISO 8601 millisecond format YYYY-MM-DDTHH:MM:SS.sssZ \
              (exactly 3 fractional digits, mandatory Z suffix)",
-            s
         );
         // Parse with chrono to validate that the date/time values are real
         // (e.g., month 13, hour 25, or minute 61 are rejected).
         chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.3fZ").map_err(|e| {
-            anyhow::anyhow!(
-                "shutdown_utc '{}' contains an invalid date/time value: {}",
-                s,
-                e
-            )
+            anyhow::anyhow!("shutdown_utc '{s}' contains an invalid date/time value: {e}",)
         })?;
         Ok(())
     }

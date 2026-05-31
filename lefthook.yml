@@ -1,0 +1,53 @@
+# lefthook.yml — monocle local development hook configuration.
+#
+# POL-11 + POL-12 pre-commit enforcement (ADR-0007 + ADR-0008).
+#
+# INSTALLATION:
+#   brew install lefthook     # macOS
+#   cargo install lefthook   # cross-platform
+#   lefthook install          # from workspace root
+#
+# After install, lefthook runs the configured hooks on git commit.
+# lefthook respects the standard --no-verify flag for emergency bypasses
+# (CLAUDE.md: NEVER skip hooks in normal workflow; --no-verify requires justification).
+#
+# NOTE: The CI pol-lint job is the authoritative enforcement gate. These hooks
+# provide early feedback at authoring time (the stated goal of ADR-0007 + ADR-0008).
+# A hook failure locally means the same check will fail in CI.
+#
+# FACTORY-ROOT NOTE:
+# On local developer machines, .factory/ is mounted as a git worktree at the
+# workspace root. The scripts use --factory-root .factory for local runs.
+# CI passes --factory-root .factory-spec (factory-artifacts checked out separately).
+
+pre-commit:
+  # Run POL-11 (version-pin freshness) on the entire workspace before commit.
+  # This ensures newly-authored active version-pin literals are current at commit time.
+  # Not staged-files-only: a single active pointer in any file blocks the commit,
+  # consistent with the CI gate behavior.
+  #
+  # IMPORTANT: If .factory/ worktree is not mounted (e.g., fresh clone without worktree
+  # setup), the script will fall back to walking up the directory tree. On a developer
+  # machine with the standard worktree setup, .factory/ is always available.
+  commands:
+    pol-11-version-pin:
+      run: |
+        python3 scripts/check_version_pins.py \
+          --factory-root .factory \
+          --workspace-root .
+      fail_text: |
+        POL-11 FAIL: stale version-pin literal(s) detected.
+        Fix: update cited version, convert to version-free form (§section anchor), or add
+        time qualifier to make it a historical anchor (ADR-0007 §Decision).
+        See 'python3 scripts/check_version_pins.py --help' for options.
+
+    pol-12-structural-claim:
+      run: |
+        python3 scripts/check_structural_claims.py \
+          --factory-root .factory \
+          --workspace-root .
+      fail_text: |
+        POL-12 FAIL: stale structural claim(s) detected.
+        Fix: update cited type to match SS-tui.md §App struct declaration, or add
+        <!-- structural-claim-historical --> annotation (ADR-0008 §Decision).
+        See 'python3 scripts/check_structural_claims.py --help' for options.

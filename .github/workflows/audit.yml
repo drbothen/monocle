@@ -28,7 +28,7 @@ jobs:
         # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
-          toolchain: "1.86"
+          toolchain: "1.88"
 
       # Source-install retained for the weekly deep scan -- the `--locked` flag is
       # what SS-deps-pin-manifest §Re-audit Cadence demands (deterministic install
@@ -42,7 +42,7 @@ jobs:
 
       - name: Update advisory database + run cargo audit
         # --deny warnings escalates every advisory (including unmaintained, yanked,
-        # informational) to a CI failure. Per SS-deps-pin-manifest v1.1.19
+        # informational) to a CI failure. Per SS-deps-pin-manifest v1.2.0
         # §Security Advisory Response Policy: a new advisory blocks merge until
         # either the version is patched or a documented risk-acceptance is filed
         # under .factory/specs/risk-acceptance/.
