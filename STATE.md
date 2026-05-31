@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.65"
+version: "6.66"
 status: active
 producer: state-manager
-timestamp: 2026-05-30T23:30:00Z
+timestamp: 2026-05-30T23:59:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 Pass 37 CLEAN — per-story perimeter (D-216). Counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE; second independent fresh-context fixpoint confirmation). One out-of-perimeter finding F-S025-ADV37-DEFER-001 (STORY-INDEX rows 150-153 stale BC→AC ranges, cross-story scope, classified per BC-5.39.002 PC2 → wave-gate). Does NOT reset counter. Pass 38 pending (1 more CLEAN/NITPICK to 3/3 → S-025 merge-ready)."
+current_step: "S-025 Pass 38 RESET 2/3 → 0/3 (D-217). FIRST in-perimeter CONTENT defect of this session. F-S025-ADV38-HIGH-001 (stale Esc-quit claim AC-001/AC-009/Tasks/app.rs doc-comment) + F-S025-ADV38-MED-001 (q→Quit path zero test coverage) — both CLOSED: story-writer 8c7d693 (S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e (app.rs:546 doc-comment + 3 new tests; 32/32 pass). Both gates PASS 0/0. Counter RESET 0/3. Passes 39/40/41 needed for 3/3 convergence. LESSON: strict 3-consecutive-clean-with-fresh-context caught content defect that perimeter-anchored passes 36+37 missed."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending. D-211: Pass 32 MED remediated; POL-12 scope-gap closed (sibling-gate parity); POL-11 at fixpoint; counter HOLDS 0/3 (14th META); Pass 33 pending CI green on feature 92fe2f8. D-212: Pass 33 2×MED remediated; POL-12 multi-line + type-aware disambiguation; §Form-Coverage Matrix both gates (35/35); ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free; counter HOLDS 0/3 (15th+16th META); Pass 34 pending CI. D-213: Pass 34 MED remediated; ADR-0008 §Form-Coverage Matrix DEFERRED label fix; matrix-vs-code self-consistency CLEAN; ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; counter HOLDS 0/3 (17th META); Pass 35 pending CI. D-214: Pass 35 LOW remediated; gate-script docstring version-free conversion (LIGHT cycle, feature-branch only); ALL 11 citations in scripts/ now §-anchor form; both gates BEHAVIORAL + DOCUMENTARY fixpoint; counter HOLDS 0/3 (18th META); GATE-COMPLETENESS STREAK=7; Pass 36 = genuine advance candidate. D-215: Pass 36 CLEAN — ZERO findings; counter ADVANCES 0/3 → 1/3 (FIRST ADVANCE; ends 15-consecutive 1/3→2/3 failure run; GATE-COMPLETENESS STREAK=7 TERMINATED at fixpoint); L-W6-S025-018 codified. D-216: Pass 37 CLEAN (per-story perimeter); counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE); F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; cross-story; wave-gate anchor per BC-5.39.002 PC2); Pass 38 pending."
-awaiting: "Pass 38 adversary (fresh context, information asymmetry, counter 2/3). Need 1 more consecutive CLEAN/NITPICK pass (Pass 38) for formal 3/3 convergence → S-025 merge-ready. POL-11 PASS: 250 active, 0 stale, 538 files. POL-12 PASS: 10 active, 0 stale, 152 files. Both gates at BEHAVIORAL + DOCUMENTARY fixpoint. F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; wave-gate anchor). Task #9 remaining: m.3, m.4, m.5, m.8, m.9 CODIFIED, ADR-HOOK-001 registered."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending. D-211: Pass 32 MED remediated; POL-12 scope-gap closed (sibling-gate parity); POL-11 at fixpoint; counter HOLDS 0/3 (14th META); Pass 33 pending CI green on feature 92fe2f8. D-212: Pass 33 2×MED remediated; POL-12 multi-line + type-aware disambiguation; §Form-Coverage Matrix both gates (35/35); ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free; counter HOLDS 0/3 (15th+16th META); Pass 34 pending CI. D-213: Pass 34 MED remediated; ADR-0008 §Form-Coverage Matrix DEFERRED label fix; matrix-vs-code self-consistency CLEAN; ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; counter HOLDS 0/3 (17th META); Pass 35 pending CI. D-214: Pass 35 LOW remediated; gate-script docstring version-free conversion (LIGHT cycle, feature-branch only); ALL 11 citations in scripts/ now §-anchor form; both gates BEHAVIORAL + DOCUMENTARY fixpoint; counter HOLDS 0/3 (18th META); GATE-COMPLETENESS STREAK=7; Pass 36 = genuine advance candidate. D-215: Pass 36 CLEAN — ZERO findings; counter ADVANCES 0/3 → 1/3 (FIRST ADVANCE; ends 15-consecutive 1/3→2/3 failure run; GATE-COMPLETENESS STREAK=7 TERMINATED at fixpoint); L-W6-S025-018 codified. D-216: Pass 37 CLEAN (per-story perimeter); counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE); F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; cross-story; wave-gate anchor per BC-5.39.002 PC2); Pass 38 pending. D-217: Pass 38 RESET 2/3 → 0/3 — FIRST genuine in-perimeter S-025 CONTENT defect cluster. F-S025-ADV38-HIGH-001 (stale Esc-quit claim in AC-001/AC-009/Tasks/app.rs:546 doc-comment) + F-S025-ADV38-MED-001 (q→Quit zero test coverage). CLOSED: story-writer 8c7d693 (S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e (3 tests added; 32/32 pass). Both gates PASS 0/0. Counter RESET 0/3. L-W6-S025-019 codified. Pass 39 pending."
+awaiting: "Pass 39 adversary (fresh context, information asymmetry, counter RESET 0/3 after Pass 38 content defect). Need 3 consecutive CLEAN/NITPICK passes (39/40/41) for formal 3/3 convergence → S-025 merge-ready. POL-11 PASS: 250 active, 0 stale, 538 files. POL-12 PASS: 10 active, 0 stale, 152 files. Both gates PASS 0/0. Feature @ 884401e (32/32 tests, clippy/fmt clean). F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; wave-gate anchor). Task #9 remaining: m.3, m.4, m.5, m.8, m.9 CODIFIED, ADR-HOOK-001 registered."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -279,7 +279,7 @@ durable_task_register:
     - "VERSION-FREE INPUTS[] CASCADE-KILL (D-212): story-writer converted STORY-INDEX inputs[]/traces_to to bare-filename form (ADR-0007 Option 2). Active-index re-stale cascade PERMANENTLY ENDED — future bumps of ARCH-INDEX/STORY-INDEX/EVAL-INDEX no longer produce stale STORY-INDEX inputs[]. Also fixed 3 downstream traces_to. L-W6-S025-015 codified."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.65 (D-216) — 2026-05-30T23:30:00Z
+  ZERO-CONTEXT RESUME CHECKPOINT v6.66 (D-217) — 2026-05-30T23:59:00Z
   ============================================================================
 
   YOUR FIRST 5 COMMANDS (RUN IN ORDER):
@@ -287,13 +287,13 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.65, durable_task_register, RECURRENCE WATCH.
+  2. Read this STATE.md fully — especially §Trace v6.66, durable_task_register, RECURRENCE WATCH.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
            prompt="cd /Users/jmagady/Dev/monocle && run factory-worktree-health skill on this project")
 
-  4. Verify CI on PR #28 (feature/S-025-tui-skeleton-sessions, latest commit 4a88e5f):
+  4. Verify CI on PR #28 (feature/S-025-tui-skeleton-sessions, latest commit 884401e):
        gh -R drbothen/monocle pr view 28 --json statusCheckRollup,headRefOid
      Required: all jobs SUCCESS including pol-lint and struct-lint.
      pol-lint: Pattern A (registry-driven) + Pattern B; 538 normative files; 250 active; 0 stale.
@@ -302,51 +302,54 @@ next_session_resume_protocol: |
 
   5. Based on CI result, execute NEXT ACTION below.
 
-  PIPELINE STATE (as of 2026-05-30T23:30:00Z):
+  PIPELINE STATE (as of 2026-05-30T23:59:00Z):
 
   Story: S-025 TUI Skeleton + Sessions Panel (EPIC-06, Wave 6, 8 pts)
   PR: #28 (https://github.com/drbothen/monocle/pull/28) — draft
-  S-025 branch: feature/S-025-tui-skeleton-sessions (Pass 35 fixes live @ 4a88e5f; no change in Passes 36-37)
-  Convergence counter: 2/3 (Pass 38 pending — 1 more CLEAN/NITPICK → 3/3 → merge-ready)
-  factory-artifacts: @ D-216 burst SHA (run: git -C .factory log -1 --format='%h %s')
+  S-025 branch: feature/S-025-tui-skeleton-sessions (Pass 38 fixes live @ 884401e)
+  Convergence counter: 0/3 (RESET after Pass 38 content defect — need 3 fresh CLEAN/NITPICK passes 39/40/41)
+  factory-artifacts: @ D-217 burst SHA (run: git -C .factory log -1 --format='%h %s')
   Worktree path: /Users/jmagady/Dev/monocle/.worktrees/S-025/
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   CYCLE-001 SUMMARY (1 paragraph):
-  S-025 has been through 37 adversarial passes. Counter at 2/3. Passes 36+37 were both CLEAN — two
-  consecutive independent fresh-context fixpoint confirmations. Pass 37 had one out-of-perimeter finding
-  (F-S025-ADV37-DEFER-001: STORY-INDEX rows 150-153 stale BC→AC ranges from pre-renumbering draft;
-  classified cross-story per BC-5.39.002 PC2; deferred to wave-gate with story-writer systematic sweep
-  requirement). Counter did NOT reset. No remediation; no feature-branch or .factory artifact commits in
-  either Pass 36 or Pass 37. State at fixpoint since Pass 35 (4a88e5f). Need 1 more CLEAN/NITPICK
-  (Pass 38) for formal 3/3 convergence → S-025 merge-ready.
+  S-025 has been through 38 adversarial passes. Counter RESET to 0/3 at Pass 38. Passes 36+37 were
+  CLEAN but were anchored on the enforcement-gate perimeter; Pass 38 independently re-derived the quit
+  path from binding layers and caught a genuine in-perimeter content defect: AC-001/AC-009/Tasks prose
+  + app.rs:546 doc-comment all claimed "Esc" quits from Dashboard — stale since F-S025-ADV2-HIGH-002
+  made Esc context-sensitive. The q→Quit primary exit path also had zero test coverage. Both CLOSED:
+  story-writer 8c7d693 (S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e (3 new
+  tests; 32/32 pass, clippy/fmt clean). Both gates PASS 0/0. Counter RESET 0/3. This VINDICATES strict
+  3/3 discipline — perimeter-anchored "clean" passes do NOT confirm story content without
+  implementation-re-derivation.
 
   NEXT ACTION:
-  Dispatch Pass 38 adversary (fresh context, information asymmetry, counter 2/3):
-  - Read passes 29-37 for attack-angle exhaustion map
-  - PRIMARY LENS: genuine fixpoint audit; counter at 2/3; any MED/HIGH/BLOCKER resets to 0/3;
-    NITPICK_ONLY holds at 2/3; counter target 2/3 → 3/3 (CONVERGENCE)
+  Dispatch Pass 39 adversary (fresh context, information asymmetry, counter RESET 0/3):
+  - Read passes 29-38 for attack-angle exhaustion map; note Pass 38 caught content defect
+  - PRIMARY LENS: genuine fixpoint audit after content fix; counter at 0/3; any MED/HIGH/BLOCKER
+    remains at 0/3; NITPICK_ONLY advances to 1/3; counter target 0/3 → 1/3 (FIRST CLEAN post-reset)
+  - CRITICAL: verify 884401e fixes are correct (q-only quit; Esc context-sensitive; 3 new tests)
   - Mandatory adversary briefing files:
-      .factory/STATE.md (v6.65); adversarial-pass-23..pass-37.md; architect-decisions-pass-1.md;
+      .factory/STATE.md (v6.66); adversarial-pass-23..pass-38.md; architect-decisions-pass-1.md;
       architect-decisions-pass-2.md; text-style-adjudication.md; red-gate-log.md;
-      .factory/stories/S-025-tui-skeleton-sessions.md (v1.12);
+      .factory/stories/S-025-tui-skeleton-sessions.md (v1.13);
       .factory/specs/architecture/adr/ADR-0007-version-pin-citation-discipline.md (v1.0.8);
       .factory/specs/architecture/adr/ADR-0008-structural-claim-discipline.md (v1.0.6);
       CLAUDE.md (project principles). All cycle files: .factory/cycles/cycle-001/S-025/
 
-  KEY COMMITS (Passes 36-37 — no changes):
-    Passes 36+37 were CLEAN — no remediation, no feature-branch or .factory commits.
-    Last feature-branch commit: Devops 4a88e5f (Pass 35 LIGHT cycle).
-    State-manager D-216 SHA: run git -C .factory log -1 --format='%H'
+  KEY COMMITS (Pass 38):
+    story-writer 8c7d693 (.factory) — S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23.
+    implementer 884401e (feature) — app.rs:546 doc-comment; 3 tests (q→Quit, Esc≠Quit, q-overlay≠Quit).
+    state-manager D-217 (factory-artifacts) — this commit.
 
-  ARTIFACT VERSIONS (D-216 canonical state — unchanged from D-215):
+  ARTIFACT VERSIONS (D-217 canonical state):
     SS-tui v1.8.2 | SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.5
     SS-daemon-wiring v1.3.0 | SS-daemon-lifecycle v1.0.33
     SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.20
     SS-permissions-phase1 v1.5.2
     ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    S-025 v1.12 | STORY-INDEX v5.22 | EVAL-INDEX v1.6 | VP-INDEX v1.17
+    S-025 v1.13 (UPDATED D-217) | STORY-INDEX v5.23 (UPDATED D-217) | EVAL-INDEX v1.6 | VP-INDEX v1.17
     BC-INDEX v1.32 (113 BCs) | BC-2.05.008 v1.0.7 | BC-HOOK-039 v1.0.5
     BC-HOOK-001..041 v1.0.1 | product-brief v1.4.33
     PRD v1.27.4 | rust-toolchain 1.88 | time 0.3.47 | bytes 1.11.1
@@ -355,18 +358,18 @@ next_session_resume_protocol: |
     Passes 9/16/18/22 (distinct species) | Passes 23-25 (literal-pin, ADR-0007/POL-11 LIVE)
     Passes 26-28 (structural-claim, ADR-0008/POL-12 LIVE)
     Passes 29-35 (gate-completeness streak, 7 consecutive) | ALL CLOSED; both gates at fixpoint
-    Passes 36+37 CLEAN — zero findings; no new META instance; genuine fixpoint confirmed
+    Passes 36+37 CLEAN — perimeter confirmed; Pass 38 RESET — content defect caught (HEALTHY reset)
 
   RECURRENCE WATCH:
     META-pattern: 18 instances total; all classes PERMANENTLY CLOSED
-    1/3→2/3 transition failure count: 15 consecutive BROKEN by Pass 36+37 (2 consecutive CLEAN)
-    GATE-COMPLETENESS STREAK: 7 (Passes 29-35) TERMINATED at fixpoint
-    CONVERGENCE COUNTER: 2/3 (need 1 more consecutive CLEAN/NITPICK for 3/3)
+    Pass 38 RESET type: S-025 CONTENT (stale-spec + zero-test-coverage) — different class from META
+    GATE-COMPLETENESS STREAK: 7 (Passes 29-35) TERMINATED at fixpoint (no new META)
+    CONVERGENCE COUNTER: 0/3 (reset after Pass 38; need 3 consecutive CLEAN/NITPICK for 3/3)
     POL-11: 538 normative files; 250 active; 0 stale; PASS
     POL-12: 152 files; 10 active; 0 stale; 35/35 fixtures; PASS
-    PASS 38 WATCH: any finding resets to 0/3; NITPICK_ONLY holds at 2/3
+    PASS 39 WATCH: any MED/HIGH resets remain 0/3; NITPICK_ONLY advances to 1/3
 
-  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 38:
+  DEFERRED ITEMS — DO NOT RE-FLAG IN PASS 39:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
     F-S025-ADV37-DEFER-001 (STORY-INDEX stale BC→AC ranges; wave-gate anchor)
     cli_daemon_stop flaky failures (environmental)
@@ -412,7 +415,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 37 (D-216); counter 2/3 (SECOND ADVANCE); Pass 38 pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 37: CLEAN (per-story perimeter). Counter ADVANCES 1/3 → 2/3. 1 deferred finding (F-S025-ADV37-DEFER-001, cross-story, wave-gate anchor). Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→R→M(23)→R→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap→M(31)+vocab-blind→M(32)+sibling-gap→MM(33)+suppression-guard-FN→M(34)+matrix-DEFERRED-label→L(35)+gate-self-description→CLEAN(36)→CLEAN(37,per-story). |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 2/4 done; S-025 Pass 38 RESET (D-217); counter 0/3 (CONTENT DEFECT CLOSED); Pass 39 pending | 2026-05-28 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 2/4 done (S-022 8pts + S-023 5pts). 26/33 stories done (156/195 pts). S-025 Pass 38: RESET 2/3→0/3. In-perimeter content defect (Esc-quit stale claim + zero q-quit test coverage). CLOSED story-writer 8c7d693 + implementer 884401e. Feature @ 884401e (32/32 tests). Trajectory: 5→4→3→2→4→H→M→0→M→M→H→C→L→N(14)→C(15)→M(16)→N(17)→M(18)→M(19)→M(20)→C(21)→M(22)→R→M(23)→R→M(24)→M(25)+ADR-0007→M(26)→M(27)+ADR-0008→M(28)+POL-live→M(29)+process-gap→MH(30)+enforcement-gap→M(31)+vocab-blind→M(32)+sibling-gap→MM(33)+suppression-guard-FN→M(34)+matrix-DEFERRED-label→L(35)+gate-self-description→CLEAN(36)→CLEAN(37,per-story)→RESET(38,content-HM). |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -425,7 +428,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 37 (D-216): CLEAN (per-story perimeter). Counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE). F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; cross-story; wave-gate anchor). Both gates BEHAVIORAL + DOCUMENTARY fixpoint. Pass 38 pending (1 more CLEAN/NITPICK → 3/3 → merge-ready).
+develop @ 7a52041. 852+ tests, 0 failures. 26/33 stories done, 156/195 pts (80%). Wave 5 gate PASSED (D-182). Wave 6 in progress: S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041). S-025 Pass 38 RESET (D-217): FIRST genuine in-perimeter content defect. F-S025-ADV38-HIGH-001 + MED-001 CLOSED (story-writer 8c7d693 + implementer 884401e). Feature @ 884401e, 32/32 tests, clippy/fmt clean. Both gates PASS 0/0. Counter RESET 0/3. Pass 39 pending (need 3 consecutive CLEAN/NITPICK for 3/3).
 
 ## Blocking Issues
 
@@ -455,13 +458,14 @@ D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and ear
 | D-214 | S-025 Pass 35 LOW remediation cycle CLOSED — LIGHT CYCLE (feature-branch only; NO .factory artifact content changed). F-S025-ADV35-LOW-001 CLOSED: gate-script POLICY SUMMARY docstrings cited stale ADR versions (ADR-0008 v1.0.4 / ADR-0007 v1.0.7) contradicting the policy the scripts implement. 18th META instance (gate-self-description drift) — invisible to both gates because .py files outside normative-scan scope. ROOT FIX: devops 4a88e5f (feature branch) — COMPREHENSIVE sweep: ALL 11 pinned ADR/spec citations across scripts/ converted to VERSION-FREE §-anchor form (permanent fix). No logic change; 35/35 fixtures pass; POL-11 PASS 0/0; POL-12 PASS 0/0. Adversary confirmed: both gates at BEHAVIORAL + DOCUMENTARY fixpoint; matrices self-consistent; empirical test CLEAN; S-025 content CONVERGED. No .factory artifact version bumps. L-W6-S025-017 codified. GATE-COMPLETENESS STREAK: 7 (Passes 29-35). Counter HOLDS 0/3 (15th 1/3→2/3 failure). STATE v6.62→v6.63. | 2026-05-30 | state-manager |
 | D-215 | S-025 Pass 36 CLEAN — ZERO findings (no BLOCKER/MED/LOW/NITPICK). Counter ADVANCES 0/3 → 1/3 (FIRST ADVANCE; ends 15-consecutive 1/3→2/3 failure run; GATE-COMPLETENESS STREAK=7 TERMINATED at fixpoint). Adversary independently re-derived: App-struct canonical (9 fields), registry currency, both §Form-Coverage matrices match scripts, cascade consistent, both ADRs self-consistent, no residual drift surface. No remediation. No feature-branch or .factory commits. L-W6-S025-018 codified. STATE v6.63→v6.64. Pass 37 pending (2 more clean passes to 3/3). | 2026-05-30 | state-manager |
 | D-216 | S-025 Pass 37 CLEAN (per-story perimeter) — counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE; second independent fresh-context fixpoint confirmation). One out-of-perimeter finding F-S025-ADV37-DEFER-001: STORY-INDEX rows 150-153 stale S-025 BC→AC ranges (pre-renumbering draft not propagated after §Trace v1.3/v1.4 AC renumbering; canonical: BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009). Classified cross-story per BC-5.39.002 PC2 → wave-gate anchor (pre-Phase-4). Does NOT reset counter. No remediation (no feature-branch or .factory artifact commits). STATE v6.64→v6.65. Pass 38 pending (1 more CLEAN/NITPICK → 3/3 → S-025 merge-ready). | 2026-05-30 | state-manager |
+| D-217 | S-025 Pass 38 RESET 2/3 → 0/3 — FIRST genuine in-perimeter S-025 CONTENT defect cluster. VINDICATES strict 3/3 discipline: Passes 36+37 were anchored on enforcement-gate perimeter and missed this content defect; Pass 38 independently re-derived quit path from binding layers and caught it. F-S025-ADV38-HIGH-001: AC-001/AC-009/Tasks prose + app.rs:546 doc-comment claimed "Esc" quits from Dashboard — stale since F-S025-ADV2-HIGH-002 made Esc context-sensitive only (q is sole quit key). F-S025-ADV38-MED-001: q→Quit primary exit path had ZERO test coverage. CLOSED: story-writer 8c7d693 (AC-001+AC-009+Tasks corrected; S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e (app.rs:546 doc-comment fixed; 3 tests added: positive q→Quit + negative Esc-in-Dashboard + q-in-Overlay; 32/32 tests; clippy/fmt clean). Both gates PASS 0/0. BC-2.06.007 unchanged (Escape = fullscreen-return, correct). Counter RESET 0/3. L-W6-S025-019 codified. STATE v6.65→v6.66. Pass 39 pending. | 2026-05-30 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.25** (UPDATED D-213). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.6** (UPDATED D-213). **S-025 v1.12**. **STORY-INDEX v5.22** (UPDATED D-212). **EVAL-INDEX v1.6** (UPDATED D-210). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.33** (UPDATED D-210). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 51 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.32** (113 BCs). **ARCH-INDEX v1.0.25** (UPDATED D-213). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.6** (UPDATED D-213). **S-025 v1.13** (UPDATED D-217). **STORY-INDEX v5.23** (UPDATED D-217). **EVAL-INDEX v1.6** (UPDATED D-210). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.33** (UPDATED D-210). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.30** (26/33 done, 156/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 51 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
 
 ## Historical Content
 
@@ -476,19 +480,20 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.65 (D-216 — Pass 37 CLEAN per-story; counter 1/3 → 2/3; SECOND ADVANCE; Pass 38 pending)
+## §Trace v6.66 (D-217 — Pass 38 RESET 2/3→0/3; content defect CLOSED; Pass 39 pending)
 
-**Pass 37 verdict (2026-05-30, D-216) — CLEAN (per-story perimeter).**
-Second independent fresh-context fixpoint confirmation. Adversary confirmed: empirical test CLEAN; both gates (POL-11 + POL-12) at fixpoint; ADRs clean; S-025 per-story content CONVERGED. One out-of-perimeter finding (F-S025-ADV37-DEFER-001) classified cross-story per BC-5.39.002 PC2 — STORY-INDEX rows 150-153 stale BC→AC ranges (pre-renumbering draft). Does NOT reset counter. Deferred to wave-gate anchor with story-writer systematic sweep requirement.
+**Pass 38 verdict (2026-05-30, D-217) — RESET 2/3 → 0/3.**
+FIRST genuine in-perimeter S-025 content defect cluster across 38 passes. F-S025-ADV38-HIGH-001: AC-001/AC-009/Tasks + app.rs:546 doc-comment carried stale "Esc" quits claim — contradicted by F-S025-ADV2-HIGH-002 design (only `q` quits; Esc context-sensitive). F-S025-ADV38-MED-001: q→Quit primary exit path had zero test coverage. STRATEGIC: Passes 36+37 were clean because they validated enforcement-gate perimeter; Pass 38 independently re-derived quit behavior from binding layers and caught what perimeter validation missed. This VINDICATES strict 3-consecutive-clean-with-fresh-context discipline.
 
-**D-216 BOOKKEEPING:**
-No feature-branch commit (CLEAN pass — per-story perimeter, no remediation).
-No .factory artifact version bumps (no content change to specs/stories/ADRs).
-State-manager (this commit) — D-216 closure; F-S025-ADV37-DEFER-001 logged; STATE v6.64→v6.65.
+**D-217 BOOKKEEPING:**
+story-writer 8c7d693 (.factory) — AC-001/AC-009/Tasks corrected (Esc claim removed; q-only quit); S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23.
+implementer 884401e (feature/S-025-tui-skeleton-sessions) — app.rs:546 doc-comment fixed; 3 tests added (positive q→Quit PASSES; negative Esc-in-Dashboard ≠ Quit; q-in-Overlay ≠ Quit); 32/32 tests; clippy/fmt clean.
+Both gates PASS 0/0 (POL-11: 250 active 0 stale; POL-12: 10 active 0 stale).
+State-manager (this commit) — D-217 closure; L-W6-S025-019 codified; STATE v6.65→v6.66.
 
-**STRATEGIC OBSERVATION (D-216):**
-Counter ADVANCES 1/3 → 2/3. SECOND ADVANCE. Two consecutive CLEAN passes (36+37) confirm genuine fixpoint. Need 1 more consecutive CLEAN/NITPICK pass (Pass 38) for formal 3/3 convergence → S-025 merge-ready.
+**STRATEGIC OBSERVATION (D-217):**
+Counter RESET 0/3. Need 3 consecutive CLEAN/NITPICK passes (39/40/41) for formal 3/3 convergence. The reset is healthy: it confirms the adversary is doing genuine fresh-context re-derivation rather than perimeter confirmation. Passes 39+ briefing must include 884401e as the new feature HEAD.
 
-Trajectory appended: →CLEAN(37,per-story).
+Trajectory appended: →RESET(38,content-HM).
 
 §Trace v6.40 through v6.58 archived to `cycles/cycle-001/burst-log.md`.
