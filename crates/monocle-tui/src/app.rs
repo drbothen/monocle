@@ -19,7 +19,11 @@ use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload}
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
-use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload, ServerToClient};
+use monocle_ipc::types::{ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient};
+// PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
+// decision handler implementations. The re-export here ensures the type is visible at
+// the app module level when todo!() stubs are replaced with real code.
+pub use monocle_ipc::types::PermissionDecisionKind;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -136,6 +140,19 @@ pub struct App {
     /// evicted on overflow; evicted entries are NOT counted in `App::drop_counter`
     /// (that counter tracks IPC channel packet drops, not ring evictions).
     pub event_ring: VecDeque<HookEventRecord>,
+
+    /// Sender half of the IPC outbound channel for dispatching `ClientToServer`
+    /// messages to the daemon (S-026, BC-2.06.011/012/013).
+    ///
+    /// `None` on construction; set by the run loop after the IPC connection is
+    /// established and before the main event loop starts. Decision key handlers
+    /// (`PermissionAcceptOnce`, `PermissionAcceptAlways`, `PermissionReject`) send
+    /// via this channel using `try_send` (bounded, non-blocking — BC-2.04.011).
+    ///
+    /// Using `Option` rather than a unit-struct sentinel avoids phantom-send bugs:
+    /// a handler that attempts to send before the channel is wired will produce a
+    /// tracing WARN rather than silently discarding the message.
+    pub ipc_tx: Option<tokio::sync::mpsc::Sender<ClientToServer>>,
 }
 
 impl App {
@@ -153,6 +170,7 @@ impl App {
             overlay_stack: VecDeque::new(),
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
+            ipc_tx: None,
         }
     }
 }
@@ -1066,6 +1084,44 @@ pub fn dispatch_key_event(
                         }
                     }
                     app.mode = transition(app.mode.clone(), action);
+                }
+                // ---------------------------------------------------------------------------
+                // S-026 — Permission decision key handlers (BC-2.06.011/012/013)
+                //
+                // All three arms:
+                //   1. Look up `app.overlay_stack.front()` to get the target `prompt_id`.
+                //   2. Enqueue `ClientToServer::PermissionDecision { prompt_id, decision }`
+                //      on `app.ipc_tx` via `try_send` (bounded, non-blocking — BC-2.04.011).
+                //   3. Do NOT pop or retain the overlay_stack — the modal stays visible
+                //      until `ServerToClient::PermissionPromptResolved` arrives (BC-2.06.023).
+                //   4. Mode does NOT change here — `transition()` is an identity for these.
+                //
+                // BC-5.38.005 self-check: "If I include this real implementation, will the
+                // test for this function pass trivially without any implementer work?"
+                // YES — the test expects an IPC message enqueued on ipc_tx and modal staying
+                // in the stack; a real implementation here makes all decision tests green
+                // without the implementer writing any code. Therefore: todo!().
+                // ---------------------------------------------------------------------------
+                Action::PermissionAcceptOnce => {
+                    todo!(
+                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
+                         decision: PermissionDecisionKind::Allow }} on app.ipc_tx via try_send; \
+                         do NOT pop overlay_stack (BC-2.06.011 PC-1/2)"
+                    );
+                }
+                Action::PermissionAcceptAlways => {
+                    todo!(
+                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
+                         decision: PermissionDecisionKind::AcceptAlways }} on app.ipc_tx via try_send; \
+                         do NOT pop overlay_stack (BC-2.06.012 PC-1/2)"
+                    );
+                }
+                Action::PermissionReject => {
+                    todo!(
+                        "S-026: send ClientToServer::PermissionDecision {{ prompt_id: front.prompt_id, \
+                         decision: PermissionDecisionKind::Deny }} on app.ipc_tx via try_send; \
+                         do NOT pop overlay_stack (BC-2.06.013 PC-1/2)"
+                    );
                 }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);

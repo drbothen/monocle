@@ -222,10 +222,29 @@ pub enum ClientToServer {
 /// a name collision with the `ClientToServer::PermissionDecision` variant. Using the same
 /// name for both the enum and the variant it appears in would require fully-qualified syntax
 /// at every use site and create confusion when reading IPC message construction code.
+///
+/// # Variant correspondence to BC-2.06.011/012/013
+///
+/// | BC variant name          | IPC enum variant | Keybinding | Semantics                          |
+/// |--------------------------|------------------|------------|------------------------------------|
+/// | `PermissionDecision::Accept`      | `Allow`          | `y`/Enter  | Allow this invocation once         |
+/// | `PermissionDecision::AcceptAlways`| `AcceptAlways`   | `A`        | Allow + persist pattern (S-026)    |
+/// | `PermissionDecision::Reject`      | `Deny`           | `n`/`r`    | Deny this invocation               |
+///
+/// `AcceptAlways` was added in S-026 (BC-2.06.012 PC-1). It instructs the daemon to both
+/// unblock this invocation AND record a persistent allow-pattern for future auto-accept.
+/// The TUI sends this variant verbatim; the daemon is solely responsible for pattern recording.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PermissionDecisionKind {
-    /// The user approved the tool invocation.
+    /// The user approved the tool invocation for this specific occurrence.
     Allow,
+    /// The user approved the tool invocation and requested persistent auto-accept.
+    ///
+    /// Instructs the daemon to: (1) unblock this invocation and (2) record a
+    /// tool+path allow-pattern so future identical invocations bypass the TUI
+    /// overlay (BC-2.06.012 PC-1). Pattern recording is entirely daemon-side;
+    /// the TUI does not maintain any pattern state.
+    AcceptAlways,
     /// The user denied the tool invocation.
     Deny,
 }
