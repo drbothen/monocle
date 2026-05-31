@@ -30,6 +30,7 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
 use tokio::io::AsyncReadExt;
+use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // TransportEvent re-export (S-023 canonical type)
@@ -374,6 +375,64 @@ pub fn on_initial_state(
 /// `"[dropped: N]"` in yellow in the Sessions panel status bar.
 pub fn on_drop_counter_update(app: &mut App, drop_counter: u64) {
     app.drop_counter = drop_counter;
+}
+
+/// Handle `ServerToClient::PermissionPromptQueued` on the streaming IPC path
+/// (BC-2.06.008 / BC-2.05.002 Invariant 4).
+///
+/// Performs the idempotent insert via [`apply_permission_prompt_queued`] and
+/// then transitions `app.mode` to `AppMode::Overlay` if the stack is now
+/// non-empty and the app is not already in Overlay mode.  Prior-focus capture
+/// preserves the focused panel from Dashboard, Filtering, and Fullscreen modes
+/// so that the overlay can restore it on dismiss.
+///
+/// Extracted as a `pub` free function so that tests drive the production code
+/// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
+/// `handle_server_message` delegates to this function.
+pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPayload) {
+    apply_permission_prompt_queued(&mut app.overlay_stack, payload);
+    // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
+    // mutate overlay_stack. Enter Overlay mode if not already in it.
+    if !app.overlay_stack.is_empty() && !matches!(app.mode, AppMode::Overlay { .. }) {
+        let prior = match &app.mode {
+            AppMode::Dashboard { focused } => focused.clone(),
+            AppMode::Filtering { prior, .. } => prior.clone(),
+            AppMode::Fullscreen { prior, .. } => prior.clone(),
+            AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
+        };
+        app.mode = AppMode::Overlay { prior };
+    }
+}
+
+/// Handle `ServerToClient::PermissionPromptResolved` on the streaming IPC path
+/// (BC-2.06.023 / BC-2.05.002 Invariant 4).
+///
+/// Removes every entry whose `prompt_id` matches `prompt_id` from the overlay
+/// stack (retain-all semantics).  If the stack is now empty and the app is in
+/// `AppMode::Overlay`, collapses back to `AppMode::Dashboard { focused: prior }`.
+///
+/// If `prompt_id` is not present in the stack the call is a silent no-op
+/// (BC-2.06.023 PC-3: no WARN/ERROR on unknown prompt; TRACE at most).
+///
+/// Extracted as a `pub` free function so that tests drive the production code
+/// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
+/// `handle_server_message` delegates to this function.
+pub fn on_permission_prompt_resolved(app: &mut App, prompt_id: Uuid) {
+    let before_len = app.overlay_stack.len();
+    app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
+    if app.overlay_stack.len() == before_len {
+        // BC-2.06.023 PC-3: unknown prompt_id — silent discard, TRACE only.
+        tracing::trace!(
+            %prompt_id,
+            "PermissionPromptResolved for unknown prompt_id; silently discarding"
+        );
+    }
+    // F-S025-ADV2-HIGH-003: if stack is now empty, collapse to Dashboard.
+    if app.overlay_stack.is_empty() {
+        if let AppMode::Overlay { prior } = app.mode.clone() {
+            app.mode = AppMode::Dashboard { focused: prior };
+        }
+    }
 }
 
 /// Handle a `TransportEvent` on the IPC channel (AC-003, BC-2.06.004 PC-2).
@@ -983,27 +1042,10 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             on_drop_counter_update(app, drop_counter);
         }
         ServerToClient::PermissionPromptQueued { payload } => {
-            apply_permission_prompt_queued(&mut app.overlay_stack, payload);
-            // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
-            // mutate overlay_stack. Enter Overlay mode if not already in it.
-            if !app.overlay_stack.is_empty() && !matches!(app.mode, AppMode::Overlay { .. }) {
-                let prior = match &app.mode {
-                    AppMode::Dashboard { focused } => focused.clone(),
-                    AppMode::Filtering { prior, .. } => prior.clone(),
-                    AppMode::Fullscreen { prior, .. } => prior.clone(),
-                    AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
-                };
-                app.mode = AppMode::Overlay { prior };
-            }
+            on_permission_prompt_queued(app, payload);
         }
         ServerToClient::PermissionPromptResolved { prompt_id } => {
-            app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
-            // F-S025-ADV2-HIGH-003: if stack is now empty, collapse to Dashboard.
-            if app.overlay_stack.is_empty() {
-                if let AppMode::Overlay { prior } = app.mode.clone() {
-                    app.mode = AppMode::Dashboard { focused: prior };
-                }
-            }
+            on_permission_prompt_resolved(app, prompt_id);
         }
         ServerToClient::HookEventReceived { .. } => {
             // Hook events update the event ribbon — handled in S-027.
