@@ -811,6 +811,153 @@ async fn reconnect_to_daemon(
 }
 
 // ---------------------------------------------------------------------------
+// Offline reconnect orchestration (BC-2.05.006 PC-5 step 5 — F-WAVE6-GATE-CRIT-001)
+// ---------------------------------------------------------------------------
+
+/// Orchestrate the offline→poll→reconnect cycle after the 5-second window exhausted.
+///
+/// Called when [`reconnect_to_daemon`] returns [`IpcError::ReconnectTimeout`] in either
+/// the fatal-protocol arm or the reader-disconnect arm of the event loop.  It implements
+/// BC-2.05.006 PC-5 step 5:
+///
+/// > "TUI polls the lock file every 5 seconds. When a new lock file is detected
+/// > (new daemon started), the TUI re-enters the reconnect loop from step 1."
+///
+/// # What the broken code did
+///
+/// Before this fix, both `ReconnectTimeout` arms set `app.status_message = offline`
+/// and `break`'d out of the IPC drain loop without re-entering the reconnect loop.
+/// The outer event loop continued, but `ipc_rx.try_recv()` returned `Disconnected`
+/// (reader task still aborted) → `on_transport_event(Disconnected)` → `break` again.
+/// The TUI was permanently stuck `[daemon: offline]` with `ipc_tx = None`.
+///
+/// # What this function does
+///
+/// 1. Polls `<runtime_dir>/monocle.lock` via [`monocle_ipc::reconnect::poll_for_new_daemon`]
+///    until a new daemon is detected (5-second interval — BC-2.05.006 PC-5).
+///    This call blocks until a new daemon lock file is detected, satisfying EC-002
+///    (daemon never restarts → indefinite poll, no busy-spin, no crash).
+/// 2. Sets `app.status_message = Some(DAEMON_DISCONNECT_STATUS)` — reconnecting indicator.
+/// 3. Re-enters [`reconnect_to_daemon`] with a fresh [`BackoffState`] (backoff resets).
+/// 4. On successful reconnect: reads the fresh `InitialState` push (BC-2.05.006 PC-6),
+///    calls `on_initial_state` to rebuild TUI state, clears `app.status_message = None`
+///    (BC-2.05.006 PC-8), and wires the new stream via `setup_ipc_streams_with_rx`.
+/// 5. Returns the new `(reader_handle, writer_handle, ipc_rx)` for the caller to shadow
+///    its existing handles.
+///
+/// # If reconnect_to_daemon times out again
+///
+/// The TUI re-enters offline mode: `poll_for_new_daemon` is called again.  This loop
+/// continues indefinitely, satisfying EC-002 without busy-spin (each iteration sleeps
+/// for 5 seconds via `poll_for_new_daemon` before any reconnect attempt).
+///
+/// # Cancellation
+///
+/// The returned future is NOT cancel-safe on the `poll_for_new_daemon` leg — dropping
+/// it mid-poll will restart the poll discriminant (no state corruption, but the next
+/// poll will reload the initial discriminant).  This is acceptable because the TUI only
+/// calls this function during daemon-offline mode when no meaningful state transitions
+/// can occur.
+///
+/// # Extracted seam for testability
+///
+/// This function is extracted from `run()` following the precedent of
+/// `setup_ipc_streams_with_rx` and `reconnect_to_daemon`.  Integration tests drive
+/// the offline→detect→reconnect transition without needing a live terminal.
+pub async fn reconnect_from_offline(
+    runtime_dir: &std::path::Path,
+    sock_path: &std::path::Path,
+    app: &mut App,
+) -> anyhow::Result<(
+    tokio::task::JoinHandle<()>,
+    tokio::task::JoinHandle<()>,
+    tokio::sync::mpsc::Receiver<Result<ServerToClient, IpcError>>,
+)> {
+    // BC-2.05.006 PC-5 step 5: loop until a successful reconnect.
+    // Each iteration: poll for new daemon → attempt reconnect → on success return.
+    // On another timeout: poll again (EC-002 — daemon never restarts = indefinite loop).
+    loop {
+        // 1. Poll until a new daemon is detected (blocks on 5s interval).
+        //    On initial call with None discriminant, poll_for_new_daemon reads the lock
+        //    file at call time as the baseline and returns as soon as it changes.
+        //    If the lock file is already fresh (new daemon already present), it may
+        //    return immediately on the next poll tick.
+        monocle_ipc::reconnect::poll_for_new_daemon(runtime_dir).await;
+        tracing::info!(
+            "offline mode: new daemon detected — re-entering reconnect loop \
+             (BC-2.05.006 PC-5 step 5)"
+        );
+
+        // 2. Show reconnecting indicator (BC-2.05.006 PC-2).
+        app.status_message = Some(DAEMON_DISCONNECT_STATUS.to_string());
+
+        // 3. Re-enter reconnect with a fresh BackoffState (backoff resets — BC-2.05.006 PC-5).
+        let mut fresh_backoff = BackoffState::new();
+        match reconnect_to_daemon(sock_path, &mut fresh_backoff).await {
+            Ok(mut new_stream) => {
+                // 4. Read fresh InitialState (BC-2.05.006 PC-6).
+                match read_framed::<_, ServerToClient>(&mut new_stream).await {
+                    Ok(ServerToClient::InitialState {
+                        sessions,
+                        ring_tail,
+                        overlay_stack: overlay,
+                        drop_counter,
+                    }) => {
+                        on_initial_state(app, sessions, ring_tail, overlay, drop_counter);
+                        // BC-2.05.006 PC-8: clear status bar on success.
+                        app.status_message = None;
+                        tracing::info!(
+                            "offline reconnect succeeded — TUI state rebuilt from fresh InitialState"
+                        );
+                    }
+                    Ok(other) => {
+                        tracing::error!(
+                            unexpected_message = ?other,
+                            "offline reconnect: first message not InitialState \
+                             (BC-2.05.002 Inv 1) — dropping reconnected stream, re-entering offline mode"
+                        );
+                        app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                        // Re-loop: poll again (treat as if reconnect failed).
+                        continue;
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "offline reconnect: failed to read InitialState — re-entering offline mode"
+                        );
+                        app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                        continue;
+                    }
+                }
+
+                // 5. Wire the new stream (BC-2.05.006 PC-6 / F-WAVE6-GATE-CRIT-001 fix).
+                //    split → spawn reader/writer tasks → set app.ipc_tx = Some(...).
+                let (ns_read, ns_write) = new_stream.into_split();
+                let (rh, wh, rx) = setup_ipc_streams_with_rx(app, ns_read, ns_write);
+                return Ok((rh, wh, rx));
+            }
+            Err(IpcError::ReconnectTimeout) => {
+                // 5-second window exhausted again — re-poll (EC-002 indefinite loop).
+                tracing::warn!(
+                    "offline reconnect: 5s window exhausted again — re-entering offline poll \
+                     (BC-2.05.006 EC-002 path)"
+                );
+                app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                // Loop back to poll_for_new_daemon (no busy-spin — poll_for_new_daemon sleeps).
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    "offline reconnect: unexpected error — re-entering offline poll"
+                );
+                app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
+                // Loop back (unexpected error treated like timeout for robustness).
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main async run loop
 // ---------------------------------------------------------------------------
 
@@ -1055,22 +1202,53 @@ pub async fn run() -> Result<()> {
                                     "reconnect_to_daemon: 5s window exhausted — offline mode \
                                      (BC-2.05.006 PC-5)"
                                 );
-                                // Offline mode: poll for new daemon (BC-2.05.006 PC-5).
-                                // poll_for_new_daemon blocks until lock file changes detected.
-                                monocle_ipc::reconnect::poll_for_new_daemon(&runtime_dir).await;
-                                // New daemon detected — fresh BackoffState for next reconnect.
-                                // The event loop will re-enter the reconnect path on the next
-                                // disconnect (current status bar shows offline until then).
+                                // Offline mode: poll for new daemon then RE-ENTER reconnect loop
+                                // (BC-2.05.006 PC-5 step 5 — F-WAVE6-GATE-CRIT-001 fix).
+                                // reconnect_from_offline blocks on poll_for_new_daemon (5s interval)
+                                // then reconnects with fresh BackoffState. On success it rewires
+                                // reader/writer/ipc_rx. On repeated timeout it loops indefinitely
+                                // (EC-002: no busy-spin, no crash).
                                 app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                                break;
+                                match reconnect_from_offline(&runtime_dir, &sock_path, &mut app)
+                                    .await
+                                {
+                                    Ok((rh2, wh2, rx2)) => {
+                                        reader_handle = rh2;
+                                        writer_handle = wh2;
+                                        ipc_rx = rx2;
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            error = %e,
+                                            "reconnect_from_offline: fatal error — breaking event loop"
+                                        );
+                                        break;
+                                    }
+                                }
                             }
                             Err(e) => {
                                 tracing::error!(
                                     error = %e,
-                                    "reconnect_to_daemon: unexpected error — offline mode"
+                                    "reconnect_to_daemon: unexpected error — entering offline mode \
+                                     (BC-2.05.006 PC-5 step 5 via reconnect_from_offline)"
                                 );
                                 app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                                break;
+                                match reconnect_from_offline(&runtime_dir, &sock_path, &mut app)
+                                    .await
+                                {
+                                    Ok((rh2, wh2, rx2)) => {
+                                        reader_handle = rh2;
+                                        writer_handle = wh2;
+                                        ipc_rx = rx2;
+                                    }
+                                    Err(e2) => {
+                                        tracing::error!(
+                                            error = %e2,
+                                            "reconnect_from_offline: fatal error — breaking event loop"
+                                        );
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
@@ -1144,18 +1322,45 @@ pub async fn run() -> Result<()> {
                                 "reconnect_to_daemon: 5s window exhausted — offline mode \
                                  (BC-2.05.006 PC-5)"
                             );
-                            // Offline mode: poll for new daemon (BC-2.05.006 PC-5).
-                            monocle_ipc::reconnect::poll_for_new_daemon(&runtime_dir).await;
+                            // Offline mode: poll for new daemon then RE-ENTER reconnect loop
+                            // (BC-2.05.006 PC-5 step 5 — F-WAVE6-GATE-CRIT-001 fix).
                             app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                            break;
+                            match reconnect_from_offline(&runtime_dir, &sock_path, &mut app).await {
+                                Ok((rh2, wh2, rx2)) => {
+                                    reader_handle = rh2;
+                                    writer_handle = wh2;
+                                    ipc_rx = rx2;
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        error = %e,
+                                        "reconnect_from_offline: fatal error — breaking event loop"
+                                    );
+                                    break;
+                                }
+                            }
                         }
                         Err(e) => {
                             tracing::error!(
                                 error = %e,
-                                "reconnect_to_daemon: unexpected error — offline mode"
+                                "reconnect_to_daemon: unexpected error — entering offline mode \
+                                 (BC-2.05.006 PC-5 step 5 via reconnect_from_offline)"
                             );
                             app.status_message = Some(DAEMON_OFFLINE_STATUS.to_string());
-                            break;
+                            match reconnect_from_offline(&runtime_dir, &sock_path, &mut app).await {
+                                Ok((rh2, wh2, rx2)) => {
+                                    reader_handle = rh2;
+                                    writer_handle = wh2;
+                                    ipc_rx = rx2;
+                                }
+                                Err(e2) => {
+                                    tracing::error!(
+                                        error = %e2,
+                                        "reconnect_from_offline: fatal error — breaking event loop"
+                                    );
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
