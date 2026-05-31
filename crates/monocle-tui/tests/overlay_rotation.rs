@@ -4,26 +4,21 @@
 //! convention uses uppercase BC identifiers: `test_BC_S_SS_NNN_...`.
 #![allow(non_snake_case)]
 //!
-//! # Red Gate
+//! # Production Binding Path
 //!
-//! Tests in this file exercise `dispatch_key_event` with `Action::OverlayCycleNext`.
-//! The rotation logic in `dispatch_key_event` is ALREADY IMPLEMENTED (S-025):
-//! the `Action::OverlayCycleNext` arm calls `pop_front()` + `push_back()`.
+//! `build_builtin_binding_layers()` does NOT need to register Up/Down → OverlayCycleNext
+//! in the search_prompt table — the production `resolve_binding` function handles this
+//! directly in its `AppMode::Overlay { .. }` match arm (binding.rs), which hardcodes
+//! `KeyCode::Up` and `KeyCode::Down` → `Action::OverlayCycleNext` before falling
+//! through to the search_prompt table.  All keypress rotation tests in this file use
+//! `build_builtin_binding_layers()` unmodified so they exercise that production path.
 //!
-//! HOWEVER: the S-026 story task is to "Register `Up`/`Down` keys in `SearchPrompt`
-//! layer to dispatch `Action::OverlayCycleNext` when AppMode::Overlay is active."
-//! The current `build_builtin_binding_layers()` does NOT register Up/Down →
-//! OverlayCycleNext for Overlay mode — Up/Down fall through to SelectPrev/SelectNext
-//! in the Builtin layer, which are no-ops in Overlay mode (AC-010 blocking).
-//!
-//! Therefore:
-//! - Tests that trigger rotation via Up/Down key dispatch through builtin layers
-//!   will NOT exercise the OverlayCycleNext arm — they'll resolve to SelectPrev/Next
-//!   instead. These tests are written with a CUSTOM binding layer that registers
-//!   Up/Down → OverlayCycleNext (as the S-026 implementer will do), exercising the
-//!   correct behavior path.
-//! - Tests that directly call the OverlayCycleNext arm via a custom binding are
-//!   coverage tests (the arm exists) and will PASS immediately.
+//! Non-vacuity guarantee: if the `KeyCode::Up | KeyCode::Down => OverlayCycleNext`
+//! arm in the Overlay branch of `resolve_binding` were removed, Up/Down would fall
+//! through to the Builtin layer's `SelectPrev`/`SelectNext` bindings, which are gated
+//! on `AppMode::Dashboard { focused: Sessions }`.  In Overlay mode the gate fails,
+//! no rotation occurs, and every keypress test in this file would fail because the
+//! stack order would remain unchanged.
 //!
 //! # Coverage
 //!
@@ -31,12 +26,12 @@
 //! - Single-item no-op: `stack.len() == 1`, rotation returns same item to front (EC-065).
 //! - Mode stays `Overlay { prior }` after rotation — `transition()` is identity for OverlayCycleNext.
 //! - `overlay_stack.front()` changes after rotation (new prompt rendered).
-//! - AC-013 (BC-2.06.009 PC-1): Up/Down in Overlay dispatches OverlayCycleNext.
+//! - AC-013 (BC-2.06.009 PC-1): Up/Down in Overlay dispatches OverlayCycleNext via production binding.
 //! - AC-014 (BC-2.06.009 EC-065): Single-item stack: rotation is no-op.
 
 use monocle_config::MonocleConfig;
-use monocle_core::tui::binding::{BindingLayers, KeyCode, KeyEvent, KeyModifiers};
-use monocle_core::tui::state::{Action, AppMode, FocusSnapshot};
+use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_ipc::types::PermissionPromptPayload;
 use monocle_tui::app::{
     apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event, App,
@@ -85,41 +80,20 @@ fn overlay_app_with_prompts(pids: &[Uuid]) -> App {
     app
 }
 
-/// Build a `BindingLayers` that registers Up and Down → OverlayCycleNext in
-/// SearchPrompt (highest layer). This is the binding registration the S-026 story
-/// task requires ("Register `Up`/`Down` keys in `SearchPrompt` layer to dispatch
-/// `Action::OverlayCycleNext` when `AppMode::Overlay` is active").
-///
-/// The builtin layers DO register Up/Down as SelectPrev/SelectNext — those bindings
-/// are at lower precedence (Builtin layer). By registering Up/Down in SearchPrompt,
-/// the higher-precedence layer wins in Overlay mode.
-fn layers_with_overlay_cycle() -> BindingLayers {
-    let mut layers = build_builtin_binding_layers();
-    // Register Up → OverlayCycleNext in search_prompt (highest precedence layer).
-    // The SearchPrompt layer is consulted first in Overlay mode for keys that aren't
-    // captured by the hardcoded permission decision checks (y/A/n/r/Enter).
-    layers
-        .search_prompt
-        .insert(key(KeyCode::Up), Action::OverlayCycleNext);
-    layers
-        .search_prompt
-        .insert(key(KeyCode::Down), Action::OverlayCycleNext);
-    layers
-}
-
 // ---------------------------------------------------------------------------
-// BC-2.06.009 PC-1 / AC-013 — Rotation with len > 1 (coverage — OverlayCycleNext arm exists)
+// BC-2.06.009 PC-1 / AC-013 — Rotation with len > 1 (production binding path)
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.009 PC-1 / AC-013 (coverage): With stack=[P1, P2], dispatching
-/// OverlayCycleNext via Up key moves P1 to back and P2 becomes front.
+/// BC-2.06.009 PC-1 / AC-013: With stack=[P1, P2], pressing Up in Overlay mode
+/// resolves to OverlayCycleNext via the production `resolve_binding` Overlay arm
+/// (not via search_prompt table injection). P1 moves to back; P2 becomes front.
 /// Mode stays Overlay { prior: Sessions }.
 #[test]
 fn test_BC_2_06_009_pc1_rotation_len_gt_1_moves_front_to_back() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid1, pid2]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
     // Precondition: P1 is at front
@@ -166,18 +140,19 @@ fn test_BC_2_06_009_pc1_rotation_len_gt_1_moves_front_to_back() {
     );
 }
 
-/// BC-2.06.009 PC-1 / AC-013 (coverage): Down key also dispatches OverlayCycleNext.
-/// Same rotation behavior as Up.
+/// BC-2.06.009 PC-1 / AC-013: Down key also resolves to OverlayCycleNext via the
+/// production binding path (Overlay arm in resolve_binding). Same rotation behavior
+/// as Up: front moves to back.
 #[test]
 fn test_BC_2_06_009_pc1_rotation_via_down_key_also_rotates() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
     let pid3 = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid1, pid2, pid3]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
-    // Rotate once via Down
+    // Rotate once via Down (production binding path)
     dispatch_key_event(&mut app, &key(KeyCode::Down), &layers, &mut sessions_state);
 
     // After one rotation: P2 at front, P1 at back, P3 in middle
@@ -195,15 +170,15 @@ fn test_BC_2_06_009_pc1_rotation_via_down_key_also_rotates() {
     );
 }
 
-/// BC-2.06.009 PC-1 / AC-013 (coverage): Two successive rotations of a 3-item stack
-/// produce the correct order.
+/// BC-2.06.009 PC-1 / AC-013: Two successive Up presses of a 3-item stack via the
+/// production binding path produce the correct order.
 #[test]
 fn test_BC_2_06_009_pc1_two_rotations_produce_correct_order() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
     let pid3 = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid1, pid2, pid3]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
     // Rotate 1: [P1,P2,P3] → [P2,P3,P1]
@@ -219,15 +194,15 @@ fn test_BC_2_06_009_pc1_two_rotations_produce_correct_order() {
     );
 }
 
-/// BC-2.06.009 PC-1 / AC-013 (coverage): Rotation wraps — three rotations of a 3-item
-/// stack returns to original order.
+/// BC-2.06.009 PC-1 / AC-013: Rotation wraps — three Up presses of a 3-item stack
+/// returns to original order. Production binding path only.
 #[test]
 fn test_BC_2_06_009_pc1_three_rotations_wraps_back_to_original_order() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
     let pid3 = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid1, pid2, pid3]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
     for _ in 0..3 {
@@ -243,16 +218,17 @@ fn test_BC_2_06_009_pc1_three_rotations_wraps_back_to_original_order() {
 }
 
 // ---------------------------------------------------------------------------
-// BC-2.06.009 EC-065 / AC-014 — Single-item rotation is no-op
+// BC-2.06.009 EC-065 / AC-014 — Single-item rotation is no-op (production binding)
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.009 EC-065 / AC-014 (coverage): With stack=[P1] (len==1), rotating
-/// is a structural no-op. P1 is popped and immediately re-pushed to back (same front).
+/// BC-2.06.009 EC-065 / AC-014: With stack=[P1] (len==1), pressing Up in Overlay
+/// mode resolves to OverlayCycleNext via production binding. P1 is popped and
+/// immediately re-pushed to back (structural no-op — same prompt at front).
 #[test]
 fn test_BC_2_06_009_ec065_single_item_rotation_is_noop() {
     let pid = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
     let outcome = dispatch_key_event(&mut app, &key(KeyCode::Up), &layers, &mut sessions_state);
@@ -282,12 +258,13 @@ fn test_BC_2_06_009_ec065_single_item_rotation_is_noop() {
     );
 }
 
-/// BC-2.06.009 EC-065 / AC-014 (coverage): Down key with single-item stack is also no-op.
+/// BC-2.06.009 EC-065 / AC-014: Down key with single-item stack is also a structural
+/// no-op via production binding path.
 #[test]
 fn test_BC_2_06_009_ec065_single_item_rotation_down_is_noop() {
     let pid = Uuid::new_v4();
     let mut app = overlay_app_with_prompts(&[pid]);
-    let layers = layers_with_overlay_cycle();
+    let layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
     dispatch_key_event(&mut app, &key(KeyCode::Down), &layers, &mut sessions_state);
