@@ -2192,3 +2192,45 @@ This test can be in a dedicated test file (ipc_outbound_writer.rs pattern) but m
 - PROCESS-GAP-CI-PARITY-2: Per-story delivery POL-11/POL-12 local gate codification.
 
 **Remediation:** SS-conventions v1.32.6 (87428df) adds `allow-unwrap-in-tests`/`allow-expect-in-tests` policy to clippy.toml. Durable tasks PROCESS-GAP-CI-PARITY-1 and PROCESS-GAP-CI-PARITY-2 recorded in STATE.md durable_task_register.
+
+---
+
+### L-W6-GATE-001: A per-story-deferred finding (target:wave-gate) was correctly elevated to CRITICAL at the wave perimeter and fixed before advance — validates the three-perimeter model and the deferral-with-explicit-anchor discipline [codified]
+
+**Date:** 2026-05-31
+**Severity:** codified (process validation — three-perimeter model confirmed)
+**Origin:** Wave-6 gate adversarial review (Gate 3). F-S026-ADV6-DEFER-001 was deferred from S-026 adversarial Pass 6 with an explicit anchor "target: wave-6-gate (integration)." At the wave perimeter, the adversary received the full Wave 6 diff in fresh context and — without knowledge of the per-story deferral — independently re-discovered the same defect and correctly classified it CRITICAL (BC-2.05.006 PC-5 step 5 violation: TUI permanently stuck "[daemon: offline]" after daemon restart >5s).
+
+**Pattern validated:** Three-perimeter model (BC-5.39.002):
+1. Per-story adversarial review (Passes 1-N): catches defects within the story's own implementation scope.
+2. Wave-gate adversarial review (Gate 3): catches cross-story integration defects and elevates deferred findings to their correct severity at the broader scope.
+3. Phase-level evaluation (Phase 4 holdout): catches system-level behavioral gaps.
+
+**Why the deferral discipline worked:** The deferral entry had explicit fields: id, subject, status: pending, detail (root cause + route + target). When the state-manager recorded it, the issue was discoverable by the wave-gate adversary as context. The target "wave-6-gate" was explicit — it did not say "Wave 7" or "later" or "Phase 5." This made the scope boundary clear: fix before advancing, not fix someday.
+
+**Why the fix was possible:** The per-story isolation during S-023 delivery meant the reconnect control flow was correct for single-story reconnect scenarios. The S-026 full run() loop created the composition context in which the defect became observable. Neither story's per-story tests could structurally catch this — only the wave-perimeter full-stack context exposed it.
+
+**Rule:** Every deferred finding must carry an explicit `target:` anchor (e.g., `target: wave-6-gate`, `target: phase-4-holdout`, `target: S-027`). Vague anchors ("future story", "Wave N or later") are forbidden — they allow findings to fall through all three perimeters. The wave-gate adversary uses the durable_task_register as its deferred-finding checklist; entries without concrete anchors are invisible to it.
+
+**Remediation:** PR #31 merged develop @ 2a51a91. reconnect_from_offline() extracted, 4 offline-break arms corrected, offline_reconnect.rs integration test added (mutation-verified non-vacuous). Gate-3 re-run CLEAN. F-S026-ADV6-DEFER-001 status → resolved.
+
+---
+
+### L-W6-GATE-002: Wave-gate caught a cross-story integration defect that per-story isolation tests structurally could not catch — validates the wave perimeter as a distinct and necessary quality gate [codified]
+
+**Date:** 2026-05-31
+**Severity:** codified (structural argument for wave-gate necessity)
+**Origin:** Wave-6 gate adversarial review (Gate 3). F-WAVE6-GATE-CRIT-001: TUI permanently stuck "[daemon: offline]" after daemon restart >5s. Root cause: S-023 reconnect control flow was correct in isolation (reconnect loop re-enters on IPC error), but S-026's full run() loop introduced 4 new offline-break arms (offline IPC receive, offline send, subscription loss, keepalive timeout) that broke out of the reconnect-attempting code path entirely and fell into a permanent offline-display branch.
+
+**Why per-story tests cannot catch this:**
+- S-023 per-story tests exercised the reconnect loop in isolation: IPC error → reconnect_loop() → reconnect. Correct and green.
+- S-026 per-story tests exercised each AC in isolation: permission overlay render, key dispatch, decision send, SOQ-3 clear. Each correct and green.
+- The composition defect required the FULL run() loop from S-026 running concurrently with the reconnect state machine from S-023. Neither story's test infrastructure had the other story's production code in scope.
+
+**Structural principle:** Per-story isolation is a feature, not a bug — it keeps story-level tests fast, deterministic, and causally traceable. But isolation is also a blind spot: any defect that only manifests when two stories' behaviors compose is structurally invisible to per-story tests. The wave-gate adversarial review fills this blind spot by reviewing the combined wave diff in fresh context, without the per-story scope constraints.
+
+**Rule:** The wave-gate adversarial review MUST use the full wave diff (all stories in the wave) as its context, not per-story diffs. Any adversary that reviews stories individually and declares "all stories CLEAN" without reviewing the composed diff has not completed the wave-gate adversarial gate. The gate requires compositional review.
+
+**Operationally:** When dispatching the wave-gate adversary (Gate 3), the prompt must include: "Review the combined diff of all N stories delivered in this wave against develop. Your task is to find cross-story integration defects that per-story isolation tests cannot structurally catch. Pay particular attention to: (1) state machine composition — does story A's reconnect/lifecycle model compose correctly with story B's run loop? (2) shared resource contention — do both stories' IPC paths work correctly when composed? (3) deferred findings from any story with target:wave-gate anchor."
+
+**Remediation:** PR #31. The three-perimeter model (BC-5.39.002) is empirically validated: per-story adversarial convergence at S-026 was genuine (no false green), and the wave-gate adversary correctly identified the compositional defect that per-story isolation could not.
