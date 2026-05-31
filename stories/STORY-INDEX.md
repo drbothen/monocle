@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.23"
+version: "5.24"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T12:00:00Z
@@ -450,6 +450,22 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.24
+
+**F-S025-ADV39-HIGH-001 S-025 v1.13 → v1.14: Esc semantics corrected to product-owner authoritative text (BC-2.06.007 v1.0.5 re-anchor)** (2026-05-30):
+- S-025 AC-001 and AC-009 carried a corrected-but-still-wrong Esc claim: "returns from
+  Fullscreen/Overlay to Dashboard." Product-owner adjudication (BC-2.06.007 v1.0.5) establishes
+  that `Esc` is identity/no-op in all modes S-025 handles; the Fullscreen exit binding
+  (`Esc`→`Action::ExitFullscreen`) is deferred to the Sessions Panel fullscreen view story.
+- AC-001 Esc clause: replaced with product-owner authoritative text (identity in Dashboard, no-op
+  in Overlay, ExitFullscreen binding deferred to fullscreen view story per BC-2.06.007 PC-5).
+- AC-009 Esc clause: replaced with product-owner authoritative text (identity/no-op/no-binding
+  in respective modes; fullscreen exit deferred to fullscreen view story per BC-2.06.007 PC-5).
+- BC-2.06.007 inputs pin: v1.0.4 → v1.0.5 (product-owner already committed BC patch at 47e6f9b).
+- Tasks sweep: Task line (Esc identity in Dashboard) confirmed accurate — no change.
+- S-025 version bumped v1.13 → v1.14.
+- SE-16d monotonicity: v5.24 timestamp 2026-05-30 >= v5.23 timestamp 2026-05-30. PASS (same-day).
 
 ## §Trace v5.23
 

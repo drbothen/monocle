@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-025
 epic_id: EPIC-06
-version: "1.13"
+version: "1.14"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -22,7 +22,7 @@ estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.004.md, version: "1.2.1"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.005.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.007.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.6"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "1666756"
@@ -45,9 +45,11 @@ The `monocle-tui` binary, when launched as a tmux popup (via
 `tmux display-popup -E monocle tui`), initializes the terminal in alternate screen
 mode via `crossterm`, renders the full layout within 200ms of process start, and exits
 cleanly when the user presses `q` from `Dashboard` mode (restoring the terminal to
-normal mode before exit). `Esc` is context-sensitive — it returns from
-Fullscreen/Overlay to Dashboard and does NOT quit, per the F-S025-ADV2-HIGH-002 design
-decision.
+normal mode before exit). `Esc` is context-sensitive and is NOT an exit path: in
+`Dashboard` mode, `Esc` is identity (mode unchanged); in `Overlay` mode, `Esc` is a
+no-op (overlay decisions require `y`/`n`/`r`/`A`). The `Esc`→`Action::ExitFullscreen`
+binding (Fullscreen → Dashboard return per BC-2.06.007 PC-5) is delivered by the
+Sessions Panel fullscreen view story, not this skeleton story.
 
 ### AC-002 (traces to BC-2.06.004 postcondition PC-1 — IPC connection on startup)
 On startup, `monocle-tui` attempts to connect to the monocle daemon via UDS at the
@@ -116,9 +118,10 @@ the correct resolution.)
 When the TUI exits (any exit path: `q` from Dashboard, IPC error, SIGTERM, or panic), it MUST
 restore the terminal to normal mode: call `crossterm::terminal::disable_raw_mode()` and
 `crossterm::execute!(stdout, LeaveAlternateScreen)`. A panic handler (via `std::panic::set_hook`)
-also restores the terminal before unwinding. Note: `Esc` is NOT an exit path — it is
-context-sensitive (returns from Fullscreen/Overlay to Dashboard; identity in Dashboard mode)
-per the F-S025-ADV2-HIGH-002 design decision.
+also restores the terminal before unwinding. `Esc` is NOT an exit path in any mode: in `Dashboard` mode it is identity; in `Overlay`
+mode it is a no-op; in `Fullscreen` mode, no key is currently bound to
+`Action::ExitFullscreen` in this skeleton story (the Fullscreen exit binding is delivered
+by the Sessions Panel fullscreen view story per BC-2.06.007 PC-5).
 
 ### AC-010 (traces to BC-2.06.004 invariant INV-1 — no ClientDisconnect message)
 The `monocle-tui` codebase MUST NOT send or reference a `ClientToServer::ClientDisconnect`
@@ -244,6 +247,38 @@ pub struct App {
 S-026 (permission overlay) and S-027 (overlay rendering + status bar) build on top of
 `App` and the `monocle-tui` crate structure established here. S-028 adds Sessions filter
 panel to the layout. S-031 (profile picker) adds `Option<ProfilePickerState>` to `App`.
+
+## §Trace v1.14
+
+**F-S025-ADV39-HIGH-001 Esc semantics corrected to product-owner authoritative text (BC-2.06.007 v1.0.5 re-anchor, closes Pass-39 HIGH-001)** (2026-05-30):
+
+The v1.13 correction (F-S025-ADV38-HIGH-001) fixed the false Esc-as-quit claim but replaced it with a
+still-incorrect claim: "Esc returns from Fullscreen/Overlay to Dashboard." Per product-owner adjudication
+from BC-2.06.007 v1.0.5 source, this is also false: `Esc` is bound to `Action::Esc` (identity in all
+modes); `Action::ExitFullscreen` (the Fullscreen→Dashboard return action) is wired by the Sessions Panel
+fullscreen view story, not by this skeleton story.
+
+Two sites corrected with product-owner authoritative text:
+
+- **AC-001** (corrected): False clause "returns from Fullscreen/Overlay to Dashboard and does NOT quit"
+  replaced with: "`Esc` is context-sensitive and is NOT an exit path: in `Dashboard` mode, `Esc` is
+  identity (mode unchanged); in `Overlay` mode, `Esc` is a no-op (overlay decisions require
+  `y`/`n`/`r`/`A`). The `Esc`→`Action::ExitFullscreen` binding (Fullscreen → Dashboard return per
+  BC-2.06.007 PC-5) is delivered by the Sessions Panel fullscreen view story, not this skeleton story."
+
+- **AC-009** (corrected): False clause "context-sensitive (returns from Fullscreen/Overlay to Dashboard;
+  identity in Dashboard mode)" replaced with: "`Esc` is NOT an exit path in any mode: in `Dashboard`
+  mode it is identity; in `Overlay` mode it is a no-op; in `Fullscreen` mode, no key is currently bound
+  to `Action::ExitFullscreen` in this skeleton story (the Fullscreen exit binding is delivered by the
+  Sessions Panel fullscreen view story per BC-2.06.007 PC-5)."
+
+Inputs pin: BC-2.06.007 v1.0.4 → v1.0.5 (product-owner already patched BC at commit 47e6f9b; this
+updates the S-025 inputs[] anchor to match). No other inputs changed.
+
+Tasks sweep: Task line "`Esc` in Dashboard mode is identity — does NOT quit" is accurate and requires no
+change. No other residual false Esc claims found outside §Trace historical blocks.
+
+SE-16d monotonicity: v1.14 timestamp 2026-05-30 >= v1.13 timestamp 2026-05-30. PASS (same-day).
 
 ## §Trace v1.13
 
