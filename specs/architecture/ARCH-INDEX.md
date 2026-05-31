@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.23"
+version: "1.0.24"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -158,6 +158,13 @@ type-name); selects Option B (distinct ADR, POL-12 `monocle-structural-claim-che
 type identifiers, table column counts, variant lists — a categorically distinct detection
 mechanism from ADR-0007's literal `vN.M.P` regex. Dispatches devops-engineer POL-12 CI script
 and story-writer structural-claim sweep for in-flight Wave 6 stories.
+v1.0.5 ratifies two Pass 33 POL-12 form-coverage findings: (MED-001) multi-line structural
+claim assembly is normative — the gate MUST join continuation lines before pattern-matching,
+parity with ADR-0007/POL-11; a single-line-only gate is non-conforming. (MED-002) TYPE-AWARE
+homonym disambiguation is normative — blanket field-name exclusion is forbidden; `overlay_stack`
+must be disambiguated by cited type (`Vec<PermissionPromptPayload>` = IPC homonym SKIP;
+`VecDeque<PromptModal>` = App canonical CHECK). Adds §Form-Coverage Matrix (checklist of all
+forms and gate treatments) and §TYPE-AWARE homonym disambiguation table.
 
 ## §Trace v1.0.2
 
@@ -652,6 +659,19 @@ and story-writer structural-claim sweep for in-flight Wave 6 stories.
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.24
+
+**ADR-0008 v1.0.5 — Pass 33 MED-001+MED-002 ratification (multi-line form + type-aware homonym disambiguation)** (2026-05-30):
+
+- NORMATIVE: ADR-0008 Note in ADR Registry updated to document v1.0.5 additions:
+  multi-line structural claim assembly (normative; parity with ADR-0007/POL-11),
+  TYPE-AWARE homonym disambiguation rule (blanket field-name exclusion forbidden;
+  `overlay_stack` disambiguated by cited type), §Form-Coverage Matrix (complete
+  checklist of all claim forms and gate treatments with no silent-blindness).
+- NORMATIVE: version-pin-registry.yaml: ADR-0008 → v1.0.5; ARCH-INDEX → v1.0.24.
+- NORMATIVE: ARCH-INDEX version 1.0.23 → 1.0.24.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
+
 ## §Trace v1.0.23 — POL-11 version-pin remediation (2026-05-30)
 
 **Bump:** 1.0.22 → 1.0.23.

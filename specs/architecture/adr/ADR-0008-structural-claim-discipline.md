@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.4"
+version: "1.0.5"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -18,10 +18,11 @@ inputs:
     architecture/SS-conventions-anti-patterns.md,
     architecture/adr/ADR-0007-version-pin-citation-discipline.md,
     cycles/cycle-001/S-025/adversarial-pass-26.md,
+    cycles/cycle-001/S-025/adversarial-pass-33.md,
     STATE.md,
   ]
 input-hash: "[pending-compute]"
-traces_to: "D-206 (2nd structural-spec drift tripwire — Pass 26 MED-001 + Pass 27 MED-001 — architect strategic dispatch per Task #9 m.6)"
+traces_to: "D-206 (2nd structural-spec drift tripwire — Pass 26 MED-001 + Pass 27 MED-001 — architect strategic dispatch per Task #9 m.6); Pass 33 MED-001 + MED-002 (multi-line form + type-aware homonym disambiguation)"
 project: monocle
 ---
 
@@ -241,6 +242,81 @@ ADR-0007 §Enforcement Scan Scope formally defines the broader POL-11 exemptions
 in v1.0.4 to address the ADV-29 scope issue. The two policies have independent
 `collect_files()` implementations and must be kept in sync with their respective ADRs.
 
+**Multi-line structural claim assembly (normative — parity with ADR-0007/POL-11):**
+
+A structural claim may be split across two adjacent lines, with the field name on one
+line and the type on the next. This split form is semantically identical to the
+single-line form and MUST be assembled by the gate before type-matching. Examples:
+
+```
+// Single-line (always detected):
+pub overlay_stack: VecDeque<PromptModal>,
+
+// Multi-line split (must be assembled):
+pub overlay_stack:
+    VecDeque<PromptModal>,
+
+// Also: qualified prose split:
+App.overlay_stack:
+    VecDeque<PromptModal>
+```
+
+The gate implementation MUST join continuation lines (lines whose sole token is an
+indented type expression following a trailing `:` with no closing type token on the
+same line) before pattern matching. This mirrors the multi-line pair assembly
+requirement codified for POL-11 in ADR-0007. A gate that processes only single-line
+claims has a structural blind spot for the split form and is non-conforming.
+
+**TYPE-AWARE homonym disambiguation (normative):**
+
+When a field name appears in multiple contexts under different types, blanket
+field-name exclusion MUST NOT be used, as it creates false negatives for legitimate
+structural claims that share the field name.
+
+The REQUIRED approach is TYPE-AWARE disambiguation: extract both the field name and
+the cited type from the matched claim, then consult the context table below to
+determine the correct gate treatment.
+
+| Field name | Context (cited type) | Gate treatment | Canonical source |
+|------------|---------------------|----------------|-----------------|
+| `overlay_stack` | `VecDeque<PromptModal>` | CHECK — App canonical form | `SS-tui.md §App struct` (lines 833-864) |
+| `overlay_stack` | `Vec<PermissionPromptPayload>` | SKIP — IPC homonym; canonical for `ServerToClient::InitialState` in `SS-ipc.md` | `SS-ipc.md §ServerToClient::InitialState` |
+
+**Normative rule:** A match on field name `overlay_stack` with cited type
+`Vec<PermissionPromptPayload>` is an IPC-homonym — the `InitialState.overlay_stack`
+field carries `Vec<PermissionPromptPayload>` by design (daemon sends the
+IPC-serializable form; TUI converts to `VecDeque<PromptModal>` via
+`payload_to_modal()`). This is NOT a structural-claim error. A match with cited type
+`VecDeque<PromptModal>` (or any other type) IS a structural claim about the App form
+and MUST be checked against `SS-tui.md §App struct`. The gate MUST NOT skip it.
+
+If a field name is encountered that is not in the homonym table above, default
+treatment is CHECK (no blanket exclusion). New homonyms MUST be added to this table
+via an ADR amendment before the gate implementation may apply SKIP treatment.
+
+### §Form-Coverage Matrix
+
+> **Scope:** Enumerates every structural-claim form the POL-12 gate must handle.
+> Purpose: future audits have a checklist to verify gate completeness.
+> Gate treatment column is normative: CHECKED = must detect and fail on mismatch;
+> EXEMPT = must not flag; SKIP = suppressed by TYPE-AWARE rule (not blanket exclusion).
+
+| Form | Example | Multi-line variant | Gate treatment | Rationale |
+|------|---------|-------------------|----------------|-----------|
+| Qualified single-line `App.field: Type` | `App.overlay_stack: VecDeque<PromptModal>` | `App.overlay_stack:`⏎`    VecDeque<PromptModal>` | CHECKED | Active structural claim about App canonical form |
+| Qualified single-line `App.field: Type` — IPC homonym | `overlay_stack: Vec<PermissionPromptPayload>` | same split | SKIP (type-aware) | IPC-homonym by type; canonical for `InitialState` in SS-ipc |
+| Unqualified backtick `` `field: Type` `` | `` `sessions: Vec<EnrichedSession>` `` | n/a (backtick spans one line) | CHECKED | Active structural claim in prose/checklist |
+| Struct-body code block | `pub sessions: Vec<EnrichedSession>,` in fenced block | `pub sessions:`⏎`    Vec<EnrichedSession>,` | CHECKED | Consumer Contract + story Tasks code blocks |
+| Module-level doc-comment table | `//! \| Session ID \| Project \| ...` | n/a (table rows are single lines) | CHECKED | Column-count claim vs BC postcondition PC-N |
+| `§Trace` section content | Any type/count reference inside `## §Trace vN.M.P` | same | EXEMPT | Provenance record; sealed at closure |
+| `<!-- structural-claim-historical -->` annotated line | `sessions: Vec<SessionState>  <!-- structural-claim-historical -->` | same | EXEMPT | Explicit historical-anchor declaration |
+| `.factory/cycles/` content | Any content in closed adversarial cycle records | same | EXEMPT | Sealed at closure; historical record |
+| Time-qualified historical statement | `"at S-025 authoring time, App.sessions was Vec<SessionState>"` | same | EXEMPT | Meets criterion 3 of Historical Anchor Classification |
+
+**Invariant:** Every structural claim form that is not in the EXEMPT or SKIP rows
+above is CHECKED. The gate has NO silent-blindness paths. Adding a new SKIP treatment
+for a homonym requires a §Form-Coverage Matrix amendment via ADR bump.
+
 ### Historical Anchor Classification for Structural Claims
 
 A structural claim is a historical anchor (frozen, exempt from CI check) when it
@@ -341,10 +417,10 @@ here contradicts the explicit tripwire condition and the production-grade defaul
 
 | Priority | Dispatch | Instructions |
 |----------|----------|--------------|
-| 1 (HIGH) | devops-engineer | Implement `monocle-structural-claim-check` CI script. Phase 1 scope: (a) scan `.factory/stories/*.md` Tasks checklists + Downstream Consumer Contract blocks for `Vec<`, `VecDeque<`, `Option<` patterns; extract type arguments; compare against SS-tui.md §App struct canonical declarations; fail on mismatch with: `structural-claim mismatch: <file>:<line> cites <App.field> as <cited-type> but canonical SS-tui.md §App struct declares <canonical-type>`. Phase 2 scope (deferred to Phase 5): module-level doc-comment table shape extraction from `crates/**/*.rs`. Add CI step after `cargo test` per §CI Wiring step ordering in SS-conventions. |
+| 1 (HIGH) | devops-engineer | Implement `monocle-structural-claim-check` CI script. Phase 1 scope: (a) scan `.factory/stories/*.md` Tasks checklists + Downstream Consumer Contract blocks for `Vec<`, `VecDeque<`, `Option<` patterns; extract type arguments; compare against SS-tui.md §App struct canonical declarations; fail on mismatch with: `structural-claim mismatch: <file>:<line> cites <App.field> as <cited-type> but canonical SS-tui.md §App struct declares <canonical-type>`. Phase 2 scope (deferred to Phase 5): module-level doc-comment table shape extraction from `crates/**/*.rs`. Add CI step after `cargo test` per §CI Wiring step ordering in SS-conventions. REQUIRED (Pass 33 ratification): (b) multi-line claim assembly — join continuation lines (trailing `:` on one line, indented type token on next) before pattern-matching, per §Multi-line structural claim assembly (normative) in this ADR; a gate that processes only single-line claims is non-conforming. (c) type-aware homonym disambiguation — extract both field name and cited type; apply the §TYPE-AWARE homonym disambiguation table in this ADR; `overlay_stack: Vec<PermissionPromptPayload>` MUST be skipped (IPC homonym); `overlay_stack: VecDeque<PromptModal>` MUST be checked (App canonical); blanket field-name exclusion of `overlay_stack` is FORBIDDEN. |
 | 2 (MEDIUM) | story-writer | Sweep all in-flight + Wave 6 stories for structural claims about `App` field types. For each story that mentions `App.sessions`, `App.events`, `App.overlay_stack`, `App.mode`, `App.drop_counter`: verify type matches SS-tui.md §App struct canonical declaration. Fix any mismatch in same wave-gate sweep. S-028 lines 63+147 are the known deferred instance (deferred per BC-5.39.002 PC2 cross-story; fix in wave-gate sweep). |
 | 3 (MEDIUM) | story-writer | Add §Structural-Claim Discipline to story template: "App struct field types MUST match SS-tui.md §App struct declaration exactly. Before citing `Vec<X>` in Tasks or Consumer Contract blocks, read SS-tui.md §App struct and confirm type name." |
-| 4 (LOW) | architect | If a new canonical type is added to `App` struct in a future story, add it to the canonical source registry table in ADR-0008 §CI enforcement gate and SS-conventions §Structural-Claim Discipline. This is a per-story-cycle obligation for the implementing architect. |
+| 4 (LOW) | architect | If a new canonical type is added to `App` struct in a future story, add it to the canonical source registry table in ADR-0008 §CI enforcement gate and SS-conventions §Structural-Claim Discipline. This is a per-story-cycle obligation for the implementing architect. When a new field-name homonym is introduced (same field name across App and an IPC message type), add it to the §TYPE-AWARE homonym disambiguation table and the §Form-Coverage Matrix via an ADR amendment before the gate may apply SKIP treatment. |
 
 ### Cross-story propagation (S-028)
 
@@ -352,6 +428,33 @@ S-028 lines 63 + 147 carry the same `Vec<SessionState>` drift (surfaced at Pass 
 as cross-story propagation). Per BC-5.39.002 PC2, cross-story structural-claim fixes
 are deferred to wave-gate sweep (not blocking S-025 convergence). Story-writer is
 dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
+
+## §Trace v1.0.5
+
+**Pass 33 F-S025-ADV33-MED-001 + MED-002 ratification — multi-line form + type-aware homonym disambiguation** (2026-05-30):
+
+- NORMATIVE: §Multi-line structural claim assembly added as a normative requirement
+  (parity with ADR-0007/POL-11). The gate MUST join continuation lines (field name
+  ending in `:` on one line, indented type expression on the next) before pattern-matching.
+  A gate that processes only single-line claims is non-conforming and has a structural
+  blind spot for the split form (Pass 33 MED-001 false-negative vector).
+- NORMATIVE: §TYPE-AWARE homonym disambiguation rule added. Blanket field-name exclusion
+  is FORBIDDEN. The gate MUST extract both field name and cited type, then apply the
+  homonym table. Canonical disambiguation for `overlay_stack`: cited type
+  `Vec<PermissionPromptPayload>` → SKIP (IPC homonym, canonical for
+  `ServerToClient::InitialState` in SS-ipc.md); cited type `VecDeque<PromptModal>` →
+  CHECK (App canonical form per SS-tui.md §App struct lines 833-864). The Pass 33 MED-002
+  false-negative vector was a blanket `overlay_stack` field-name exclusion that
+  suppressed the genuine App-form claim alongside the IPC homonym.
+- NORMATIVE: §Form-Coverage Matrix added. Enumerates every structural-claim form with
+  its gate treatment (CHECKED / EXEMPT / SKIP). Normative checklist for future audits.
+  Invariant: no silent-blindness paths. Adding a new SKIP row requires an ADR amendment.
+- NORMATIVE: §Implementation Plan row 1 (devops-engineer) updated with Pass 33
+  requirements (b) multi-line assembly and (c) type-aware homonym disambiguation.
+  Row 4 (architect) updated: new field-name homonyms require ADR amendment before gate
+  may apply SKIP treatment.
+- NORMATIVE: Version bump 1.0.4 → 1.0.5.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
 
 ## §Trace v1.0.4
 

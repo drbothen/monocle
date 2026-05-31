@@ -134,8 +134,8 @@ ADR-0007-version-pin-citation-discipline:
 
 ADR-0008-structural-claim-discipline:
   path: specs/architecture/adr/ADR-0008-structural-claim-discipline.md
-  current_version: "1.0.4"
-  last_bump_commit: "[set at D-ADV30]"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at Pass 33 MED-001+MED-002 ratification]"
   last_bump_date: "2026-05-30"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -144,8 +144,8 @@ ADR-0008-structural-claim-discipline:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.23"
-  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
+  current_version: "1.0.24"
+  last_bump_commit: "[set at ADR-0008 v1.0.5 Pass 33 ratification]"
   last_bump_date: "2026-05-30"
 
 BC-INDEX:
