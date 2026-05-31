@@ -2105,3 +2105,90 @@ An asserted replacement that describes future/intended behavior as current behav
 **Operationally:** Orchestrators dispatching story-writer or implementer to correct a stale spec claim MUST include the instruction: "Re-derive the replacement from the implementation. Read the actual dispatch_key_event / state machine for this mode. State only what the code does today. Use 'deferred to [story]' for any behavior not yet wired." This instruction prevents the over-claim class structurally.
 
 **Remediation:** PO 645c994 (.factory) — BC-2.06.007 v1.0.4→v1.0.5: corrected Action::Escape→Action::ExitFullscreen in PC-5, Description, and test-vector; added clarifying note that S-025 wires only the Enter→Fullscreen arm; fullscreen-Esc-exit deferred to Sessions Panel fullscreen-view story; cascade: BC-INDEX v1.33, EVAL-INDEX v1.7, product-brief v1.4.34, prd-expansion-scope v1.3 all to fixpoint. implementer 74585ea (feature branch) — app.rs:1210+state.rs:196 doc-comments corrected to accurate per-mode Esc semantics (Filtering=identity not cancel; full per-mode behavior documented); no logic change; build/clippy/fmt clean. story-writer 4d0fce1 (.factory) — AC-001+AC-009 corrected to PO authoritative text (S-025 v1.13→v1.14; STORY-INDEX v5.23→v5.24; BC-2.06.007 inputs[] re-anchored to v1.0.5). Both gates PASS 0/0.
+
+### L-W6-S025-021: STRICT 3-consecutive-CLEAN with fresh context + source re-derivation is the mechanism that catches in-perimeter content defects that perimeter-anchored passes and enforcement-gate passes miss [codified]
+
+**Date:** 2026-05-31
+**Severity:** codified (convergence protocol vindication — D-221, Pass 42 FORMALLY CONVERGED)
+**Origin:** S-025 Passes 40+41+42 CLEAN (3/3 convergence). The two in-perimeter content defects (Passes 38+39) were missed by 37 prior passes including 2 perimeter-CLEAN passes (Passes 36+37 at enforcement fixpoint). They were caught only when Pass 38 independently re-derived the quit path from the binding layers from scratch.
+
+**Pattern:** Perimeter-anchored convergence (passes that verify "gates are at fixpoint, cascade is consistent, ADRs are self-consistent") reaches a different CLEAN than source-derivation convergence (passes that independently re-derive every AC from the actual source code). An enforcement-gate perimeter CLEAN establishes that the gates scan correctly and produce zero findings against the spec-as-written. A source-re-derivation CLEAN establishes that the spec-as-written correctly describes the implementation. Both are necessary; neither is sufficient alone.
+
+**Rule:** Adversarial convergence requires 3 consecutive fresh-context source-re-derivation passes. Each pass must:
+1. Independently re-derive every AC from the implementation source (trace dispatch_key_event, state machine, binding tables).
+2. Verify that each AC matches what the code actually does (not what specs claim).
+3. Verify that each AC has a real non-vacuous test that exercises the production path.
+The 3/3 requirement means 3 independent fresh-context agents all arrive at the same conclusion. It is not 3 passes by the same agent continuing from prior context.
+
+**Remediation:** L-W6-S025-021 codified in lessons.md. D-221 records FORMALLY CONVERGED verdict.
+
+---
+
+### L-W6-S026-001: Fresh-context adversarial convergence caught a CRITICAL production-functionality gap — outbound IPC completely unwired — that 4 prior adversarial passes and the implementer missed; the defect was invisible to unit tests that injected ipc_tx directly into test state [codified]
+
+**Date:** 2026-05-31
+**Severity:** CRITICAL (production-functionality gap caught by adversary — S-026 Pass 5)
+**Origin:** S-026 adversarial Pass 5. Four prior adversarial passes (Passes 1-4) reviewed spec compliance, keybinding tables, VecDeque stack logic, and Esc hide behavior — all passed. The implementer declared delivery complete with all 16 ACs green. Pass 5 independently re-derived the production execution path for the "user presses Accept-Once" flow from first principles: keybinding → dispatch_key_event → handle_permission_decision → IPC send. The adversary reached `handle_permission_decision` and found that the function built a `PermissionDecision` value and... dropped it. There was no `ipc_tx` field in the App struct. No channel. No writer task. The IPC outbound path was never wired. Every AC that exercised "decision sent to daemon" was testing against a test-injected binding layer that called the IPC mock directly — bypassing the production wiring that did not exist.
+
+**Pattern:** Test-injected IPC transport (unit tests that create an ipc_tx channel and pass it directly into App state for testing) creates a vacuous-mirror class of test: the test verifies that the mock channel receives the decision, but the production code path (App struct construction → runtime → keypress → dispatch) never gets an ipc_tx at all. The tests are all green; the production binary silently drops every permission decision. This is the permission-overlay analog of the IpcManagerState::new() dedup discovered at S-025 post-merge.
+
+**Why prior passes missed it:** Passes 1-4 reviewed behavioral correctness of the implemented logic (stack operations, keybinding routing, VecDeque management, Esc semantics). They found real defects (ADV1 spec issues, Pass 1 LOW). They did not independently re-derive the production wiring from App::new() → runtime startup → ipc_tx field because they anchored their review on "does this AC's logic work" rather than "does this AC's logic get invoked in production."
+
+**Rule:** For any AC involving IPC send/receive, the adversary MUST trace the full production path:
+1. Where is the IPC channel created? (App::new? main? runtime init?)
+2. Is the sender field present on the App struct?
+3. Is the sender populated at App construction (not just in tests)?
+4. Is there a writer task spawned to consume from the sender?
+5. Does the writer task remain alive across reconnect events?
+Tracing the test path alone (mock → AC handler → assert) is insufficient. Production wiring requires all 5 of these to be true simultaneously.
+
+**Fix:** into_split() on the IpcManager to obtain (reader, writer) halves; App struct gains ipc_tx field; spawn_ipc_writer() spawns a background Tokio task that drains the channel to the writer half; ipc_tx wired at App::new(); reconnect path re-wires ipc_tx after new connection; offline-break path resets ipc_tx to None. Wire-traversal E2E test added (ipc_outbound_writer.rs) that constructs the App from production code path and verifies decisions flow to a real channel.
+
+**Operationally:** Pass 5 must always include an IPC wiring check: re-derive the channel lifecycle from source. Do not accept "tests pass" as evidence that wiring exists — tests can pass against injected state that bypasses the production path.
+
+**Remediation:** Implementer fix in PR #30. ipc_outbound_writer.rs test file added to monocle-tui. SS-ipc v1.9.0 channel lifecycle section reviewed and wiring confirmed complete. CI 10/10 green.
+
+---
+
+### L-W6-S026-002: Vacuous-mirror tests via test-injected transport bindings pass CI but prove nothing about production wiring — every AC exercising an IPC send path requires a wire-traversal test that constructs the App via the production code path [codified]
+
+**Date:** 2026-05-31
+**Severity:** codified (test-quality discipline — companion to L-W6-S026-001)
+**Origin:** S-026 Pass 5 CRITICAL finding. All 16 ACs had green tests. Pass 5 established that tests for "decision sent" ACs exercised a test-injected mock pathway, not the production App construction path.
+
+**Pattern:** Vacuous mirror (test-injected variant): The test creates `let (tx, rx) = mpsc::channel(16)` and passes `tx` directly into the function under test or into a test-only App constructor. The production App::new() never receives a tx. The test verifies that the injected tx sends correctly. This is a true fact about the injected path and a false proof of the production path.
+
+**Distinction from standard vacuous-mirror (fixture identity):** Standard vacuous-mirror (L-001) compares a fixture to itself. Test-injected-transport vacuous-mirror compares the test's injected binding layer to a real behavior — the test is correct in isolation, but it bypasses the production wiring entirely.
+
+**Rule:** For any AC that involves "system sends X over IPC," the test suite MUST include at least one wire-traversal test:
+- Construct the App/runtime using the SAME code path as production (same constructor, same init sequence).
+- Do NOT inject a custom channel before the constructor runs.
+- Send the triggering event (keypress, message, timer).
+- Assert that the real ipc_tx (obtained AFTER construction) received the expected message.
+This test can be in a dedicated test file (ipc_outbound_writer.rs pattern) but must exist.
+
+**Operationally:** story-writer must include a "wire-traversal test required" note in the ACs for any story that involves IPC outbound decisions. test-writer must implement this test as a non-negotiable deliverable, not as an "optional integration test."
+
+**Remediation:** ipc_outbound_writer.rs added in PR #30 as the wire-traversal test for S-026. Codified in lessons.md.
+
+---
+
+### L-W6-S026-003: CI-parity gaps — agents running cargo clippy without --all-targets and skipping POL-11/POL-12 locally produce false-green per-story gates; enforce local CI parity before push [codified]
+
+**Date:** 2026-05-31
+**Severity:** codified (CI parity process gap — two instances in S-026 cycle)
+**Origin:** Two CI-parity gaps observed during S-026 delivery:
+(1) `cargo clippy --workspace -- -D warnings` (CLAUDE.md canonical, lib targets only) passes locally while CI runs `--all-targets`; test code with `unwrap()`/`expect()` calls emitted clippy warnings in test targets that were missed locally. Resolved this cycle via `clippy.toml` `allow-unwrap-in-tests`/`allow-expect-in-tests` policy (SS-conventions v1.32.6, 87428df) — but the root gap (agents not running --all-targets) persists.
+(2) Specialist agents do not run `scripts/check_version_pins.py` (POL-11) or `scripts/check_structural_claims.py` (POL-12) locally before declaring story delivery complete. A version-pin literal in test prose ("BC-2.06.024 v1.10") failed CI POL-11 and required a fix-and-repush cycle.
+
+**Pattern:** When agents run a subset of the CI checks locally, the per-story delivery gate is weaker than CI. Findings that CI catches (extra clippy targets, version-pin violations) require a separate push/fix cycle that is visible as CI churn and extends the delivery timeline.
+
+**Rule:**
+- `cargo clippy` local invocation MUST be `cargo clippy --workspace --all-targets -- -D warnings` to match CI. CLAUDE.md "Build/Test/Lint" Lint line currently reads `cargo clippy --workspace -- -D warnings` — this is a known stale state; human update required (CLAUDE.md is human-maintained).
+- Per-story delivery MUST run `python3 scripts/check_version_pins.py --factory-root .factory` (POL-11) and `python3 scripts/check_structural_claims.py --factory-root .factory` (POL-12) locally before marking a story complete.
+
+**Follow-up durable tasks recorded:**
+- PROCESS-GAP-CI-PARITY-1: CLAUDE.md Lint line update (human action required).
+- PROCESS-GAP-CI-PARITY-2: Per-story delivery POL-11/POL-12 local gate codification.
+
+**Remediation:** SS-conventions v1.32.6 (87428df) adds `allow-unwrap-in-tests`/`allow-expect-in-tests` policy to clippy.toml. Durable tasks PROCESS-GAP-CI-PARITY-1 and PROCESS-GAP-CI-PARITY-2 recorded in STATE.md durable_task_register.

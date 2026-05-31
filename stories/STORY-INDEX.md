@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.24"
+version: "5.25"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-30T12:00:00Z
@@ -73,8 +73,8 @@ traces_to: .factory/specs/prd.md
 | S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028 |
 | S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | done | S-023, S-025, S-026, S-029 |
 | S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | done | S-026 |
-| S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | not_started | S-027, S-028, S-031 |
-| S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | not_started | S-027, S-029 |
+| S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | done | S-027, S-028, S-031 |
+| S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | done | S-027, S-029 |
 | S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | not_started | S-029 |
 | S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | not_started | — |
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
@@ -450,6 +450,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.25
+
+**S-026 DELIVERED — status not_started → done** (2026-05-31):
+- S-026 (Permission Overlay Core, EPIC-06, 13 pts) squash-merged PR #30 to develop @ 9fb0d70.
+- BCs satisfied: BC-2.06.008/009/011..014/016/023/024 + BC-2.05.002 Inv-4. 16 ACs.
+- Adversarial convergence: 9 passes, 3 consecutive CLEAN (Passes 7-8-9). Pass-5 CRITICAL catch: outbound IPC never wired.
+- S-025 status also corrected: not_started → done (was committed done at D-222 but status row not updated in this index).
+- Wave 6: 4/4 done (34/34 pts).
+- SE-16d monotonicity: v5.25 timestamp 2026-05-31 >= v5.24 timestamp 2026-05-30. PASS.
 
 ## §Trace v5.24
 

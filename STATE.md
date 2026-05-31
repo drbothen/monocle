@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.71"
+version: "6.72"
 status: active
 producer: state-manager
-timestamp: 2026-05-31T04:00:00Z
+timestamp: 2026-05-31T08:00:00Z
 phase: phase-3-wave-6-IN-PROGRESS
-current_step: "S-025 DELIVERED (D-222). PR #28 squash-merged develop @ 838477e (2026-05-30). BC-2.06.004/005/007 + BC-2.05.002 Inv-4 satisfied. 65/65 monocle-tui tests. Wave 6: 3/4 done (S-022+S-023+S-025). S-026 (13 pts, EPIC-06) now unblocked — human authorization pending. Wave-6-gate prerequisites recorded. NEXT: human authorizes S-026 dispatch; story-writer F-S025-ADV37-DEFER-001 fix at/before wave-gate."
+current_step: "S-026 DELIVERED (D-223). PR #30 squash-merged develop @ 9fb0d70 (2026-05-31). BC-2.06.008/009/011..014/016/023/024 + BC-2.05.002 Inv-4 satisfied. 16 ACs. 9 adv passes, 3 consecutive CLEAN (Passes 7-8-9). Pass-5 CRITICAL catch: outbound IPC never wired (decisions silently dropped). Wave 6: 4/4 done (34/34 pts). NEXT: run Wave-6 gate (vsdd-factory:wave-gate) — human authorization required."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED (develop @ 1ce7838). D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED (PR #27). D-185: S-023+S-025 parallel AUTHORIZED. D-186: S-023 DELIVERED (PR #29 @ 7a52041). D-187: S-025 in flight. D-188..D-206: see Decisions Log. D-207: Pass 28 3-track + devops CRITICAL elevation. D-208: Pass 29 MED; POL-11 scope bug fixed; ADR-0007 v1.0.4. D-209: Pass 30 MED+HIGH remediated; ADR-0007 v1.0.6 closed-rule; ADR-0008 v1.0.4; SS-conventions v1.32.4; ARCH-INDEX v1.0.20; Pass 31 pending. D-210: Pass 31 MED remediated; ADR-0007 v1.0.8 registry-driven Pattern-A; 207 project-wide stale pins found; 3 living-state exemptions; 154-finding cascade; combined POL-11 clean; Pass 32 pending. D-211: Pass 32 MED remediated; POL-12 scope-gap closed (sibling-gate parity); POL-11 at fixpoint; counter HOLDS 0/3 (14th META); Pass 33 pending CI green on feature 92fe2f8. D-212: Pass 33 2×MED remediated; POL-12 multi-line + type-aware disambiguation; §Form-Coverage Matrix both gates (35/35); ADR-0008 v1.0.5; ARCH-INDEX v1.0.24; STORY-INDEX v5.22 version-free; counter HOLDS 0/3 (15th+16th META); Pass 34 pending CI. D-213: Pass 34 MED remediated; ADR-0008 §Form-Coverage Matrix DEFERRED label fix; matrix-vs-code self-consistency CLEAN; ADR-0008 v1.0.6; ARCH-INDEX v1.0.25; counter HOLDS 0/3 (17th META); Pass 35 pending CI. D-214: Pass 35 LOW remediated; gate-script docstring version-free conversion (LIGHT cycle, feature-branch only); ALL 11 citations in scripts/ now §-anchor form; both gates BEHAVIORAL + DOCUMENTARY fixpoint; counter HOLDS 0/3 (18th META); GATE-COMPLETENESS STREAK=7; Pass 36 = genuine advance candidate. D-215: Pass 36 CLEAN — ZERO findings; counter ADVANCES 0/3 → 1/3 (FIRST ADVANCE; ends 15-consecutive 1/3→2/3 failure run; GATE-COMPLETENESS STREAK=7 TERMINATED at fixpoint); L-W6-S025-018 codified. D-216: Pass 37 CLEAN (per-story perimeter); counter ADVANCES 1/3 → 2/3 (SECOND ADVANCE); F-S025-ADV37-DEFER-001 logged (STORY-INDEX stale BC→AC ranges; cross-story; wave-gate anchor per BC-5.39.002 PC2); Pass 38 pending. D-217: Pass 38 RESET 2/3 → 0/3 — FIRST genuine in-perimeter S-025 CONTENT defect cluster. F-S025-ADV38-HIGH-001 (stale Esc-quit claim in AC-001/AC-009/Tasks/app.rs:546 doc-comment) + F-S025-ADV38-MED-001 (q→Quit zero test coverage). CLOSED: story-writer 8c7d693 (S-025 v1.12→v1.13; STORY-INDEX v5.22→v5.23) + implementer 884401e (3 tests added; 32/32 pass). Both gates PASS 0/0. Counter RESET 0/3. L-W6-S025-019 codified. Pass 39 pending. D-218: Pass 39 HOLD 0/3 — SECOND in-perimeter content finding this session (partial-fix regression). F-S025-ADV39-HIGH-001 (Pass-38 replacement prose over-claimed Esc behavior: AC-001/AC-009 said 'Esc returns from Fullscreen/Overlay to Dashboard'; implementation makes Esc identity/no-op). PO ADJUDICATION: Esc is identity/no-op in all S-025 modes; fullscreen-Esc-exit deferred (roach-motel acceptable skeleton scope). 3-TRACK CLOSURE: PO 645c994 (BC-2.06.007 v1.0.5; cascade) + implementer 74585ea (doc-comment only) + story-writer 4d0fce1 (S-025 v1.14; STORY-INDEX v5.24). Both gates PASS 0/0. Counter STAYS 0/3. L-W6-S025-020 codified. Pass 40 pending. D-219: Pass 40 CLEAN — counter ADVANCES 0/3 → 1/3 (THIRD time reaching 1/3 this session; first two resets were D-217 content defect + D-218 partial-fix regression; this advance is on content-re-derived-from-source basis). All 10 ACs independently verified, non-vacuous tests, production path confirmed. NITPICK (test_bc_2_06_007_pc5_escape_from_fullscreen_returns_to_dashboard fn name informal physical-key reference) ADJUDICATED ACCEPTABLE per BC-2.06.007 v1.0.5 — do NOT re-flag in Passes 41/42. No remediation. No commits. Pass 41 pending (2 more CLEAN/NITPICK for 3/3). D-220: Pass 41 CLEAN — counter ADVANCES 1/3 → 2/3 (second independent fresh-context source-re-derivation; all 10 ACs re-derived from implementation source; gates fixpoint; F-S025-ADV37-DEFER-001 noted but not re-flagged per wave-gate deferral). No remediation. No commits. Pass 42 pending. D-221: Pass 42 CLEAN — counter ADVANCES 2/3 → 3/3 = FORMALLY CONVERGED. Third independent fresh-context source-re-derivation. All 10 ACs (AC-001..AC-010) re-derived from source; each matches impl + has a real non-vacuous production-path test. Reconnect path, IPC reader lifecycle, BC-2.05.002 Inv-4 idempotency races, TestBackend render correctness verified clean. Gates fixpoint, cascade consistent, ADRs self-consistent. S-025 ADVERSARIALLY CONVERGED + MERGE-READY. L-W6-S025-021 codified."
-awaiting: "Human authorization to dispatch S-026 (13 pts, EPIC-06, Permission Overlay Core). S-026 is now fully unblocked (S-023 done @ 7a52041; S-025 done @ 838477e). Story-writer F-S025-ADV37-DEFER-001 (STORY-INDEX rows 150-153 BC→AC ranges + systematic sweep) at/before wave-gate. Wave-6 gate prerequisites: full suite on develop, adversarial wave-diff review, holdout eval, demo validation, DTU validation — after S-026 merges."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE."
+awaiting: "Human authorization to run Wave-6 gate (vsdd-factory:wave-gate). All 4 Wave-6 stories done (S-022+S-023+S-025+S-026 = 34/34 pts). Gate prerequisites: full suite on develop @ 9fb0d70, adversarial wave-diff review (Wave 6 diff), holdout eval, demo validation (docs/demo-evidence/ completeness), DTU validation. Also pending (non-blocking, do at/before wave-gate): story-writer F-S025-ADV37-DEFER-001 (STORY-INDEX rows 150-153 stale BC→AC ranges + systematic sweep)."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -260,6 +260,26 @@ durable_task_register:
       status: deferred-wave-gate
       detail: "STORY-INDEX.md rows 150-153 map S-025 BCs to STALE contiguous AC ranges from pre-renumbering drafts: BC-2.06.004→AC-001..003, BC-2.06.005→AC-004..006, BC-2.06.007→AC-007..008. Canonical (from S-025 body §Trace v1.4): BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009. Root cause: §Trace v1.3/v1.4 AC renumbering was not propagated to STORY-INDEX AC-range column. BC-INDEX has no AC-range column — confined to STORY-INDEX. Classified cross-story per BC-5.39.002 PC2 → does NOT reset Pass 37 convergence counter. FIX ANCHOR: Wave 6 gate / pre-Phase-4 — story-writer must also perform a systematic sweep of ALL other story rows in STORY-INDEX to detect whether the same pre-renumbering staleness affects other stories (systematic check required, not just S-025 rows). Per CLAUDE.md production-grade default, the human/orchestrator may elect to fix in-scope at wave-gate rather than defer further. Routing: story-writer."
       blocking: false
+    - id: "F-S026-ADV6-DEFER-001"
+      subject: "offline-break reconnect paths leave dead ipc_rx and hot-loop without re-attempting reconnect (availability gap)"
+      status: pending
+      detail: "S-026 adversarial Pass 6 deferred finding. offline-break control flow leaves a dead ipc_rx and may enter a hot-loop without backing off or re-attempting reconnect. Roots in S-023 reconnect control flow (BC-2.05.006/007). Route: architect/story-writer at wave-6-gate (integration). Target: Wave 7 integration story."
+      blocking: false
+    - id: "F-S026-ADV1-LOW-002"
+      subject: "PermissionDecisionKind naming divergence vs SS-ipc/BCs PermissionDecision naming (pre-existing S-022 origin)"
+      status: pending
+      detail: "S-026 adversarial Pass 1 LOW finding (deferred). Impl uses PermissionDecisionKind{Allow,AcceptAlways,Deny}; SS-ipc and BCs use PermissionDecision{Accept,AcceptAlways,Reject}. Pre-existing naming divergence from S-022 origin. Route: architect at wave-6-gate (cross-story naming reconciliation). Non-blocking."
+      blocking: false
+    - id: "PROCESS-GAP-CI-PARITY-1"
+      subject: "[process-gap] CLAUDE.md Lint line missing --all-targets flag — agents run cargo clippy without test-target coverage; human CLAUDE.md edit required"
+      status: pending
+      detail: "CLAUDE.md 'Build/Test/Lint' section Lint line reads 'cargo clippy --workspace -- -D warnings' (lib targets only). CI runs --all-targets. Test-code lints (unwrap/expect) slip to CI. Resolved this cycle via clippy.toml allow-*-in-tests (SS-conventions v1.32.6). FOLLOW-UP: CLAUDE.md Lint line must be updated to 'cargo clippy --workspace --all-targets -- -D warnings'. Human-maintained file — human action required. Non-blocking."
+      blocking: false
+    - id: "PROCESS-GAP-CI-PARITY-2"
+      subject: "[process-gap] per-story delivery does not run POL-11/POL-12 locally pre-push; version-pin literal in test prose failed CI POL-11"
+      status: pending
+      detail: "Specialist agents do not run scripts/check_version_pins.py (POL-11) or scripts/check_structural_claims.py (POL-12) locally before declaring per-story delivery complete. A version-pin literal 'BC-2.06.024 v1.10' in test prose failed CI POL-11 and required fix-and-repush. FOLLOW-UP: per-story delivery skill should include POL-11/POL-12 local run as a pre-push gate step. Target: self-improvement epic or wave-gate codification in delivery skill."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -289,7 +309,7 @@ durable_task_register:
     - "VERSION-FREE INPUTS[] CASCADE-KILL (D-212): story-writer converted STORY-INDEX inputs[]/traces_to to bare-filename form (ADR-0007 Option 2). Active-index re-stale cascade PERMANENTLY ENDED — future bumps of ARCH-INDEX/STORY-INDEX/EVAL-INDEX no longer produce stale STORY-INDEX inputs[]. Also fixed 3 downstream traces_to. L-W6-S025-015 codified."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.71 (D-222) — 2026-05-30
+  ZERO-CONTEXT RESUME CHECKPOINT v6.72 (D-223) — 2026-05-31
   ============================================================================
 
   YOUR FIRST 4 COMMANDS (RUN IN ORDER):
@@ -297,7 +317,7 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.71, durable_task_register.
+  2. Read this STATE.md fully — especially §Trace v6.72, durable_task_register.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
@@ -305,47 +325,44 @@ next_session_resume_protocol: |
 
   4. Execute NEXT ACTION below.
 
-  PIPELINE STATE (as of 2026-05-30):
+  PIPELINE STATE (as of 2026-05-31):
 
-  S-025 DELIVERED (D-222). PR #28 squash-merged to develop @ 838477e. BC-2.06.004/005/007 + BC-2.05.002 Inv-4 satisfied.
-  Wave 6: 3/4 done (S-022+S-023+S-025 = 21/34 pts). S-026 is the remaining Wave 6 story (13 pts, EPIC-06).
-  S-026 is now fully unblocked (depends on S-023 done + S-025 done — both satisfied).
+  S-026 DELIVERED (D-223). PR #30 squash-merged to develop @ 9fb0d70.
+  Wave 6: 4/4 done (S-022+S-023+S-025+S-026 = 34/34 pts). WAVE 6 COMPLETE.
+  28/33 stories done (177/195 pts, ~91%). sprint-state v1.33.
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for current HEAD.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
-  sprint-state: v1.32 (27/33 done, 164/195 pts, S-025 = done, review = 0)
 
   NEXT ACTION:
 
-  Obtain human authorization to dispatch S-026 (13 pts, EPIC-06, Permission Overlay Core).
-  S-026 scope: BC-2.06.008/009/011..014/016/023/024 — VecDeque stack, decision keybindings, Esc hide, SOQ-3.
-  Dispatch via: Agent(subagent_type="vsdd-factory:deliver-story", prompt="deliver S-026 ...")
-
-  ALSO PENDING (non-blocking, before Wave-6-gate):
-  (a) story-writer: fix F-S025-ADV37-DEFER-001 — STORY-INDEX rows 150-153 BC→AC ranges (stale since
-      §Trace v1.3/v1.4 AC renumbering: BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007;
-      BC-2.06.007←AC-001/009) + systematic sweep of ALL story rows for same pre-renumbering staleness class.
-
-  WAVE-6-GATE PREREQUISITES (required after S-026 merges before Phase 4):
-  - Full test suite on develop (cargo test --workspace, clippy, fmt)
-  - Adversarial wave-diff review (Wave 6 diff vs develop)
-  - Holdout evaluation (applicable Wave 6 scenarios)
-  - Demo evidence validation (docs/demo-evidence/ completeness)
-  - DTU validation (critical module coverage)
+  Obtain human authorization to run Wave-6 gate.
   Gate skill: vsdd-factory:wave-gate
+  Gate prerequisites:
+  (1) Full test suite on develop @ 9fb0d70 (cargo test --workspace, clippy, fmt)
+  (2) Adversarial wave-diff review (Wave 6 diff vs develop)
+  (3) Holdout evaluation (applicable Wave 6 scenarios)
+  (4) Demo evidence validation (docs/demo-evidence/ completeness for S-022/S-023/S-025/S-026)
+  (5) DTU validation (critical module coverage)
 
-  ARTIFACT VERSIONS (D-222 canonical state):
+  ALSO PENDING (non-blocking, do at/before wave-gate):
+  (a) story-writer: fix F-S025-ADV37-DEFER-001 — STORY-INDEX rows 150-153 stale BC→AC ranges
+      (canonical: BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007;
+      BC-2.06.007←AC-001/009) + systematic sweep of ALL story rows.
+
+  ARTIFACT VERSIONS (D-223 canonical state):
     SS-tui v1.8.2 | SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
-    SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.5
+    SS-ipc v1.9.0 | SS-config v1.3.0 | SS-conventions v1.32.6
     SS-daemon-wiring v1.3.0 | SS-daemon-lifecycle v1.0.33
     SS-core-types-and-abi v1.2.13 | SS-forward-compatibility v1.2.20
     SS-permissions-phase1 v1.5.2
     ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    BC-2.06.007 v1.0.5 | S-025 v1.14 | STORY-INDEX v5.24
+    BC-2.06.007 v1.0.5 | BC-2.06.023 v1.5.0 | BC-2.06.024 v1.1.0
+    S-025 v1.14 | S-026 v1.11 | STORY-INDEX v5.25
     EVAL-INDEX v1.7 | VP-INDEX v1.17 | BC-INDEX v1.33 (113 BCs)
     BC-2.05.008 v1.0.7 | BC-HOOK-039 v1.0.5 | BC-HOOK-001..041 v1.0.1
     product-brief v1.4.34 | prd-expansion-scope v1.3
     PRD v1.27.4 | rust-toolchain 1.88 | time 0.3.47 | bytes 1.11.1
-    sprint-state v1.32
+    sprint-state v1.33
 
   KNOWN-FLAKY (DO NOT FLAG):
     cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip, PATH isolation flake
@@ -353,11 +370,14 @@ next_session_resume_protocol: |
   DEFERRED ITEMS — DO NOT RE-FLAG:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
     F-S025-ADV37-DEFER-001 (STORY-INDEX stale BC→AC ranges; wave-gate anchor — story-writer fix)
-    F-S025-PATH-B-CLAUDE-MD (line 18 MSRV human-update)
+    F-S025-PATH-B-CLAUDE-MD (MSRV CLAUDE.md human-update)
     F-S025-ADV24-MED-001 cross-story + F-S025-ADV24-MED-002 VP-body (phase-5/wave-gate)
     F-S025-ADV28-OBS-002 [worktree-vs-canonical App struct] (phase-5)
     ADR-HOOK-001 (Wave 7 anchor — mechanical ADR pre-commit hook; devops)
-    F-S025-ADV39-HIGH-001 fullscreen-Esc-exit arm (PO adjudicated, roach-motel acceptable)
+    F-S026-ADV6-DEFER-001 (offline-break hot-loop; architect/story-writer Wave 7)
+    F-S026-ADV1-LOW-002 (PermissionDecisionKind naming divergence; architect wave-gate)
+    PROCESS-GAP-CI-PARITY-1 (CLAUDE.md --all-targets; human action required)
+    PROCESS-GAP-CI-PARITY-2 (per-story POL-11/POL-12 local gate; devops codification)
 
   FACTORY INFRASTRUCTURE:
     .factory/ mounted at factory-artifacts orphan branch.
@@ -382,7 +402,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 6 3/4 done; S-026 pending human authorization | 2026-05-30 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 3/4 done (S-022 8pts + S-023 5pts + S-025 8pts = 21/34 pts). 27/33 stories done (164/195 pts, 84%). S-025 DELIVERED (D-222): PR #28 squash-merged develop @ 838477e. BC-2.06.004/005/007 + BC-2.05.002 Inv-4. 65/65 tests. S-026 (13 pts) now unblocked. Wave-6-gate after S-026 merges. |
+| 3 TDD Implementation | IN PROGRESS — Wave 6 DONE; Wave-6-gate pending human authorization | 2026-05-31 | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6: 4/4 done (34/34 pts). 28/33 stories done (177/195 pts, ~91%). S-026 DELIVERED (D-223): PR #30 squash-merged develop @ 9fb0d70. BC-2.06.008/009/011..014/016/023/024 + BC-2.05.002 Inv-4. 16 ACs. Pass-5 CRITICAL IPC wiring gap caught + fixed. Wave-6-gate required before Phase 4. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -395,7 +415,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 838477e. 900+ tests, 0 failures. 27/33 stories done, 164/195 pts (84%). Wave 5 gate PASSED (D-182). Wave 6: 3/4 done — S-022 DONE (D-184, PR #27 @ c7540539), S-023 DONE (D-186, PR #29 @ 7a52041), S-025 DONE (D-222, PR #28 @ 838477e). S-026 (13 pts, EPIC-06) now unblocked; human authorization pending. Wave-6-gate prerequisites: full suite on develop, adversarial wave-diff review, holdout eval, demo validation, DTU validation — after S-026 merges.
+develop @ 9fb0d70. 900+ tests, 0 failures. 28/33 stories done, 177/195 pts (~91%). Wave 5 gate PASSED (D-182). Wave 6: 4/4 done — S-022 DONE (D-184, PR #27 @ c754053), S-023 DONE (D-186, PR #29 @ 7a52041), S-025 DONE (D-222, PR #28 @ 838477e), S-026 DONE (D-223, PR #30 @ 9fb0d70). Wave-6-gate: full suite on develop, adversarial wave-diff review, holdout eval, demo validation, DTU validation — HUMAN AUTHORIZATION REQUIRED to start gate.
 
 ## Blocking Issues
 
@@ -431,13 +451,14 @@ D-047 through D-199 archived at: `cycles/cycle-001/decisions-archive.md` and ear
 | D-220 | S-025 Pass 41 CLEAN — counter ADVANCES 1/3 → 2/3 (second independent fresh-context source-re-derivation; all 10 ACs re-derived from implementation source — each matches impl + has a real non-vacuous test through the production path). Gates at fixpoint, cascade consistent, ADRs self-consistent. Zero findings. Only discrepancy noted: F-S025-ADV37-DEFER-001 (STORY-INDEX stale BC→AC ranges; already wave-gate-deferred per BC-5.39.002 PC2) — NOT re-flagged. No remediation, no feature-branch or .factory artifact commits. STATE v6.68→v6.69. Pass 42 pending (1 more CLEAN/NITPICK for 3/3 convergence). | 2026-05-31 | state-manager |
 | D-221 | S-025 Pass 42 CLEAN — counter ADVANCES 2/3 → 3/3 = FORMALLY CONVERGED. Third independent fresh-context source-re-derivation. All 10 ACs (AC-001..AC-010) re-derived from implementation source — each matches impl + has a real non-vacuous test through the production path. Reconnect path, IPC reader lifecycle, BC-2.05.002 Inv-4 idempotency races, TestBackend render correctness all verified clean. Gates at fixpoint, cascade consistent, ADRs self-consistent. S-025 ADVERSARIALLY CONVERGED + MERGE-READY. L-W6-S025-021 codified: STRICT 3-consecutive-CLEAN with FRESH CONTEXT + SOURCE RE-DERIVATION is what caught the 2 in-perimeter content defects (Passes 38+39) that 37 prior passes + 2 perimeter-clean passes missed — convergence integrity vindicated. No remediation, no feature-branch or .factory artifact commits. STATE v6.69→v6.70. | 2026-05-31 | state-manager |
 | D-222 | S-025 DELIVERED — PR #28 squash-merged to develop @ 838477e (2026-05-30). BCs satisfied: BC-2.06.004, BC-2.06.005, BC-2.06.007 + BC-2.05.002 Inv-4. 10 ACs satisfied. 65/65 monocle-tui tests pass. 3/3 adversarially converged (D-221). Demo evidence in docs/demo-evidence/S-025/. pr-reviewer APPROVE (0 blocking). Wave 6: 3/4 done (S-022+S-023+S-025 = 21/34 pts). S-026 (13 pts, EPIC-06, Permission Overlay Core) now fully unblocked (was blocked on S-023+S-025). Totals: 27/33 stories done (164/195 pts, 84%). Post-merge durable tasks recorded: S-025-POST-MERGE-S1 (IpcManagerState consolidation candidate, future EPIC-06), S-025-POST-MERGE-TD1 (Sessions panel skeleton rows, intentional per S-025 scope). Wave-6-gate prerequisites: full suite, adversarial wave-diff review, holdout eval, demo validation, DTU validation — required after S-026 merges before Phase 4. sprint-state v1.31→v1.32. STATE v6.70→v6.71. | 2026-05-30 | state-manager |
+| D-223 | S-026 DELIVERED — PR #30 squash-merged to develop @ 9fb0d70 (2026-05-31). BCs satisfied: BC-2.06.008/009/011..014/016/023/024 + BC-2.05.002 Inv-4. 16 ACs satisfied. Adversarial convergence: 9 passes, 3 consecutive CLEAN (Passes 7-8-9). CRITICAL catch at Pass 5: outbound IPC path completely unwired — handle_permission_decision built PermissionDecision values but dropped them; App struct had no ipc_tx field. Fix: into_split() + spawn_ipc_writer() + ipc_tx field + reconnect re-wire + offline-break reset. Wire-traversal E2E test in ipc_outbound_writer.rs. BC-2.06.023 v1.4.1→v1.5.0 (retain-all Invariant 1 corrected), BC-2.06.024 v1.0.2→v1.1.0 (Write arm + None/None→Generic EC-008/009), S-026 v1.8→v1.11 (AC-016 rewrite + AC-007 silent-discard per BC-2.06.023 PC-3), SS-conventions v1.32.5→v1.32.6 (clippy allow-unwrap/expect-in-tests policy). CI all-green (10/10 checks). Demo evidence: docs/demo-evidence/S-026/ (evidence-report.md + 7 VHS recordings). Wave 6: 4/4 done (34/34 pts). Totals: 28/33 stories done (177/195 pts, ~91%). 4 durable tasks added: F-S026-ADV6-DEFER-001, F-S026-ADV1-LOW-002, PROCESS-GAP-CI-PARITY-1, PROCESS-GAP-CI-PARITY-2. 3 lessons codified: L-W6-S026-001/002/003. sprint-state v1.32→v1.33. STORY-INDEX v5.24→v5.25. version-pin-registry: 10 new story entries + 3 version corrections. STATE v6.71→v6.72. | 2026-05-31 | state-manager |
 
 ## Key Tech Stack
 
 ratatui 0.30, crossterm 0.29, tokio 1.52, axum 0.8, interprocess 2.4, prost 0.14,
 serde_yaml_ng 0.10, wasmtime 44, directories 6, notify 8, russh 0.60, rmcp 1.6,
 reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.0.149 (EXACT), rand =0.8.6 (EXACT), time 0.3.47 (RUSTSEC-2026-0009 floor).
-28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.33** (113 BCs, UPDATED D-218). **ARCH-INDEX v1.0.25** (UPDATED D-213). **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.5** (UPDATED D-210). **SS-forward-compatibility v1.2.20** (UPDATED D-210). **ADR-0007 v1.0.8** (UPDATED D-210). **ADR-0008 v1.0.6** (UPDATED D-213). **BC-2.06.007 v1.0.5** (UPDATED D-218). **S-025 v1.14** (UPDATED D-218). **STORY-INDEX v5.24** (UPDATED D-218). **EVAL-INDEX v1.7** (UPDATED D-218). **VP-INDEX v1.17** (UPDATED D-210). **BC-2.05.008 v1.0.7** (UPDATED D-210). **BC-HOOK-039 v1.0.5** (UPDATED D-210). **BC-HOOK-001..041 v1.0.1** (UPDATED D-210). **product-brief v1.4.34** (UPDATED D-218). **prd-expansion-scope v1.3** (UPDATED D-218). **version-pin-registry.yaml** (91+ entries). **sprint-state v1.32** (27/33 done, 164/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 52 codified disciplines. 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask.
+28 pinned production deps. **manifest v1.2.0**. **PRD v1.27.4**. **BC-INDEX v1.33** (113 BCs). **ARCH-INDEX v1.0.25**. **SS-tui v1.8.2**. **SS-engine-module v1.1.26**. **SS-conventions v1.32.6** (UPDATED D-223). **SS-forward-compatibility v1.2.20**. **ADR-0007 v1.0.8**. **ADR-0008 v1.0.6**. **BC-2.06.007 v1.0.5**. **BC-2.06.023 v1.5.0** (UPDATED D-223). **BC-2.06.024 v1.1.0** (UPDATED D-223). **S-025 v1.14**. **S-026 v1.11** (UPDATED D-223). **STORY-INDEX v5.25** (UPDATED D-223). **EVAL-INDEX v1.7**. **VP-INDEX v1.17**. **BC-2.05.008 v1.0.7**. **BC-HOOK-039 v1.0.5**. **BC-HOOK-001..041 v1.0.1**. **product-brief v1.4.34**. **prd-expansion-scope v1.3**. **version-pin-registry.yaml** (101+ entries, 10 story entries added D-223). **sprint-state v1.33** (28/33 done, 177/195 pts). MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44). 55 codified disciplines (L-W6-S025-021 + L-W6-S026-001/002/003 added). 8 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask (+ monocle-tui S-025).
 
 ## Historical Content
 
@@ -452,22 +473,23 @@ reqwest 0.13, nucleo 0.5, nix 0.30, serde 1 (derive), chrono 0.4, serde_json =1.
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.71 (D-222 — S-025 DELIVERED; Wave 6 3/4 done)
+## §Trace v6.72 (D-223 — S-026 DELIVERED; Wave 6 4/4 done)
 
-**D-222 (2026-05-30) — S-025 DELIVERED.**
-PR #28 squash-merged to develop @ 838477e. BCs satisfied: BC-2.06.004, BC-2.06.005, BC-2.06.007 +
-BC-2.05.002 Inv-4. 10 ACs satisfied. 65/65 monocle-tui tests pass. Adversarially converged 3/3 (D-221).
-Demo evidence in docs/demo-evidence/S-025/. pr-reviewer APPROVE (0 blocking).
+**D-223 (2026-05-31) — S-026 DELIVERED.**
+PR #30 squash-merged to develop @ 9fb0d70. BCs satisfied: BC-2.06.008/009/011..014/016/023/024 +
+BC-2.05.002 Inv-4. 16 ACs satisfied. Adversarially converged 3/3 (Passes 7-8-9 CLEAN).
+Pass-5 CRITICAL: outbound IPC path completely unwired — fixed via into_split + spawn_ipc_writer + ipc_tx field + reconnect re-wire + offline-break reset + wire-traversal E2E test (ipc_outbound_writer.rs).
+BC-2.06.023 v1.5.0 + BC-2.06.024 v1.1.0 (spec adjudications at convergence). SS-conventions v1.32.6 (clippy policy).
+Demo evidence: docs/demo-evidence/S-026/. CI 10/10 green.
 
-**Wave 6 status:** 3/4 done (S-022 8pts + S-023 5pts + S-025 8pts = 21/34 pts).
-S-026 (13 pts, EPIC-06, Permission Overlay Core) now fully unblocked.
-Totals: 27/33 stories done (164/195 pts, 84%).
+**Wave 6 status:** 4/4 done (34/34 pts). WAVE 6 COMPLETE.
+Totals: 28/33 stories done (177/195 pts, ~91%).
 
-**Post-merge durable tasks recorded (D-222):**
-- S-025-POST-MERGE-S1: IpcManagerState::new() consolidation candidate (future EPIC-06 story)
-- S-025-POST-MERGE-TD1: Sessions panel skeleton rows (intentional per S-025 scope; closed by S-026+)
-- F-S025-ADV37-DEFER-001: STORY-INDEX rows 150-153 BC→AC ranges (carried from D-216; wave-gate anchor)
+**Factory-artifacts spec commits already on branch (pushed in this burst):**
+- 5b5e5ac: BC-2.06.023 v1.5.0, BC-2.06.024 v1.1.0, S-026 convergence adjudications
+- e192707: S-026 AC-007 silent-discard fix
+- 87428df: SS-conventions v1.32.6 clippy allow-unwrap/expect-in-tests
 
-**STATE v6.70→v6.71. sprint-state v1.31→v1.32.**
+**STATE v6.71→v6.72. sprint-state v1.32→v1.33. STORY-INDEX v5.24→v5.25.**
 
-§Trace v6.40 through v6.58 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.40 through v6.71 archived to `cycles/cycle-001/burst-log.md`.
