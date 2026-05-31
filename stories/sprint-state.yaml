@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.30"
+version: "1.31"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-27T00:00:00Z
+timestamp: 2026-05-31T04:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -356,12 +356,12 @@ stories:
     epic: EPIC-06
     wave: 6
     points: 8
-    status: not_started
+    status: review
     assigned_to: null
     started_at: null
     completed_at: null
-    pr_url: null
-    notes: "Wave 6. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007. monocle-tui binary + ratatui draw loop. Depends on S-024, S-022, S-030."
+    pr_url: "https://github.com/drbothen/monocle/pull/28"
+    notes: "Wave 6. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007. monocle-tui binary + ratatui draw loop. Depends on S-024, S-022, S-030. ADVERSARIALLY CONVERGED (D-221): 3/3 CLEAN Passes 40+41+42 (fresh-context source-re-derivation). All 10 ACs satisfied. PR #28 draft — pending demo-recorder evidence + pr-manager merge cycle."
 
   - id: S-026
     title: "Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3"
@@ -425,9 +425,9 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 6
+  not_started: 5
   in_progress: 0
-  review: 0
+  review: 1
   done: 26
   ready: 0
   blocked: 1
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.31 updates (2026-05-31):
+  # - S-025 flipped not_started → review (adversarially converged D-221; 3/3 CLEAN Passes 40+41+42; PR #28 draft pending demo+merge)
+  # - review: 0 → 1; not_started: 6 → 5; points_complete unchanged (156 — S-025 8pts counts on merge)
+  # - Wave 6: 2/4 done + S-025 in review. S-026 pending S-025 merge + human authorization.
   # v1.30 updates (2026-05-28):
   # - S-023 flipped not_started → done (PR #29 squash-merged 7a52041; BC-2.05.006+007 satisfied; 99 tests; adv 5 passes 3 NITPICK_ONLY convergence; 9/9 CI gates pass)
   # - done: 25 → 26; not_started: 7 → 6; points_complete: 151 → 156
