@@ -35,18 +35,12 @@
 //! - BC-2.05.006 PC-6 (fresh InitialState on reconnect)
 //! - BC-2.05.006 PC-8 (status bar reverts to normal after reconnect)
 
-#![allow(
-    clippy::expect_used,
-    clippy::unwrap_used,
-    clippy::disallowed_methods
-)]
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::disallowed_methods)]
 
 use monocle_config::MonocleConfig;
 use monocle_ipc::framing::write_framed;
 use monocle_ipc::types::ServerToClient;
-use monocle_tui::app::{
-    reconnect_from_offline, App, DAEMON_OFFLINE_STATUS,
-};
+use monocle_tui::app::{reconnect_from_offline, App, DAEMON_OFFLINE_STATUS};
 use std::path::PathBuf;
 use tempfile::tempdir;
 use tokio::net::UnixListener;
@@ -120,10 +114,20 @@ fn spawn_mock_daemon(sock_path: PathBuf, hold_secs: u64) {
 /// 5. Re-wire `app.ipc_tx = Some(...)` — BC-2.05.006 PC-6.
 /// 6. Clear `app.status_message` — BC-2.05.006 PC-8.
 ///
+/// # Test setup
+///
+/// `poll_for_new_daemon` detects a CHANGE in the lock file discriminant (pid/port/authToken).
+/// The setup:
+/// 1. Write OLD lock file (pid=9_999) — represents the dead daemon's stale lock.
+/// 2. Call `reconnect_from_offline` — which calls `poll_for_new_daemon` with old-pid baseline.
+/// 3. Meanwhile (in a spawned task): after 200ms, write NEW lock file (pid=10_001)
+///    and bind the UDS socket.  `poll_for_new_daemon` detects the pid change and returns.
+/// 4. `reconnect_from_offline` connects and reads InitialState.
+///
 /// RED GATE: this test fails to compile until `reconnect_from_offline` is
 /// exported from `monocle_tui::app`.  After export (without the re-entry fix),
 /// it fails at assertion 5 (`ipc_tx` stays `None`).
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_bc_2_05_006_pc5_step5_offline_reconnect_rewires_ipc_tx() {
     let dir = tempdir().expect("tempdir");
     let runtime_dir = dir.path().to_path_buf();
@@ -145,25 +149,43 @@ async fn test_bc_2_05_006_pc5_step5_offline_reconnect_rewires_ipc_tx() {
         "precondition: status_message must be DAEMON_OFFLINE_STATUS in offline mode"
     );
 
-    // Step 2: Write a lock file so poll_for_new_daemon can detect the new daemon.
-    // We write the lock file BEFORE binding the socket so that by the time
-    // reconnect_from_offline polls, a fresh lock is present.
-    write_lock(&runtime_dir, 10_001);
+    // Step 2: Write the OLD lock file (dead daemon's stale lock).
+    // poll_for_new_daemon uses this as its initial discriminant baseline.
+    write_lock(&runtime_dir, 9_999);
 
-    // Step 3: Spawn a mock daemon that binds the socket and sends InitialState.
-    // The daemon binds BEFORE reconnect_from_offline is called so the socket
-    // is ready immediately (no race).
-    spawn_mock_daemon(sock_path.clone(), 3);
+    // Step 3: Spawn a task that simulates the new daemon starting ~200ms later.
+    // This is AFTER reconnect_from_offline has called poll_for_new_daemon and
+    // loaded the initial discriminant (pid=9_999).
+    let runtime_dir_clone = runtime_dir.clone();
+    let sock_path_clone = sock_path.clone();
+    tokio::spawn(async move {
+        // Give poll_for_new_daemon time to load the initial discriminant.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+        // Bind the new UDS socket first (so reconnect_to_daemon can connect).
+        spawn_mock_daemon(sock_path_clone, 5);
+
+        // Then write the new lock file (pid=10_001) — poll_for_new_daemon detects
+        // the pid change on its next poll tick and returns.
+        write_lock(&runtime_dir_clone, 10_001);
+    });
 
     // Step 4: Call reconnect_from_offline.
     //
     // This is the seam under test.  It must:
-    // (a) Poll for the new daemon (immediately succeeds because lock file is fresh
-    //     relative to a `None` initial_discriminant baseline).
-    // (b) Re-enter reconnect loop, connect to the new socket.
-    // (c) Read InitialState, re-wire ipc_tx.
-    // (d) Return Ok with the new reader/writer handles + ipc_rx.
-    let result = reconnect_from_offline(&runtime_dir, &sock_path, &mut app).await;
+    // (a) Call poll_for_new_daemon — blocks until new pid is detected (~5s poll interval
+    //     in production, but the new lock file appears within 200ms + poll tick ≤ 5s).
+    // (b) Re-enter reconnect loop with fresh BackoffState.
+    // (c) Connect to the new UDS socket.
+    // (d) Read InitialState, call on_initial_state.
+    // (e) Call setup_ipc_streams_with_rx — wires app.ipc_tx = Some(...).
+    // (f) Return Ok((reader_handle, writer_handle, ipc_rx)).
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(15),
+        reconnect_from_offline(&runtime_dir, &sock_path, &mut app),
+    )
+    .await
+    .expect("reconnect_from_offline must complete within 15s — timed out (test setup issue)");
 
     // Step 5 — PRIMARY ASSERTION (BC-2.05.006 PC-6):
     // ipc_tx MUST be Some after reconnect_from_offline returns Ok.
@@ -185,8 +207,7 @@ async fn test_bc_2_05_006_pc5_step5_offline_reconnect_rewires_ipc_tx() {
     // Step 6 — BC-2.05.006 PC-8:
     // Status bar must be cleared (None) after successful reconnect + InitialState receipt.
     assert_eq!(
-        app.status_message,
-        None,
+        app.status_message, None,
         "BC-2.05.006 PC-8: status_message MUST be None after successful reconnect \
          (offline indicator must be cleared). \
          [RED] Fails because current code sets DAEMON_OFFLINE_STATUS and breaks."
@@ -259,8 +280,7 @@ fn test_bc_2_05_006_pc5_step5_non_vacuity_status_message_offline_fails_assertion
     );
     // And confirm None != Some(DAEMON_OFFLINE_STATUS).
     assert_ne!(
-        app.status_message,
-        None,
+        app.status_message, None,
         "non-vacuity: Some(DAEMON_OFFLINE_STATUS) is not None — the PC-8 assertion is real"
     );
 }
