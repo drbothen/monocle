@@ -33,11 +33,10 @@ use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
 use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_ipc::types::{ClientToServer, PermissionDecisionKind, PermissionPromptPayload};
 use monocle_tui::app::{
-    apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event, App,
-    KeyOutcome,
+    apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event,
+    on_permission_prompt_resolved, App, KeyOutcome,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
-use std::collections::VecDeque;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -508,59 +507,76 @@ fn test_BC_2_06_014_transition_esc_overlay_is_identity_pure_function() {
 // AC-006 / BC-2.06.023 PC-1 — PermissionPromptResolved triggers retain() (PASS immediately)
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.023 PC-1 / AC-006 (coverage): Receiving PermissionPromptResolved for a prompt
-/// that IS in the stack removes it via retain(). Modal gone, stack may shrink.
+/// BC-2.06.023 PC-1 / AC-006: `on_permission_prompt_resolved` for a known prompt_id
+/// removes it from the stack. Modal gone, stack shrinks by 1.
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if retain() is inverted (retains only the
+/// matching entry), the stack will have len=1 with P2 removed and P1 at front — both
+/// asserts will fail.
 #[test]
 fn test_BC_2_06_023_pc1_resolved_known_prompt_id_removes_via_retain() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
-    let mut overlay: VecDeque<_> = VecDeque::new();
+    let mut app = App::new(MonocleConfig::default());
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid1));
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid2));
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    assert_eq!(app.overlay_stack.len(), 2, "precondition: 2 items in stack");
 
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid1));
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid2));
-    assert_eq!(overlay.len(), 2, "precondition: 2 items in stack");
-
-    // Simulate PermissionPromptResolved for P1
-    overlay.retain(|m| m.prompt_id != pid1);
+    // Production handler — not an inline retain().
+    on_permission_prompt_resolved(&mut app, pid1);
 
     assert_eq!(
-        overlay.len(),
+        app.overlay_stack.len(),
         1,
-        "BC-2.06.023 PC-1: retain() must remove the resolved modal; 1 remains"
+        "BC-2.06.023 PC-1: on_permission_prompt_resolved must remove the resolved modal; 1 remains"
     );
     assert_eq!(
-        overlay.front().unwrap().prompt_id,
+        app.overlay_stack.front().unwrap().prompt_id,
         pid2,
         "BC-2.06.023 PC-1: P2 is now at front after P1 removed"
     );
+    // Mode stays Overlay because stack is non-empty
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "BC-2.06.023 PC-1: mode stays Overlay while stack is non-empty"
+    );
 }
 
-/// BC-2.06.023 PC-1 / AC-006 (coverage): retain() removes by position-independent UUID match,
-/// not just front(). Resolving P2 (middle of stack) leaves P1 and P3.
+/// BC-2.06.023 PC-1 / AC-006: `on_permission_prompt_resolved` removes by position-independent
+/// UUID match, not just front(). Resolving P2 (middle of stack) leaves P1 and P3.
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001).
 #[test]
 fn test_BC_2_06_023_pc1_retain_removes_non_front_entry() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
     let pid3 = Uuid::new_v4();
-    let mut overlay: VecDeque<_> = VecDeque::new();
+    let mut app = App::new(MonocleConfig::default());
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid1));
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid2));
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid3));
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
 
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid1));
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid2));
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid3));
-
-    // Resolve middle entry P2
-    overlay.retain(|m| m.prompt_id != pid2);
+    // Production handler — resolve middle entry P2.
+    on_permission_prompt_resolved(&mut app, pid2);
 
     assert_eq!(
-        overlay.len(),
+        app.overlay_stack.len(),
         2,
-        "BC-2.06.023 PC-1: retain() removes P2 (not front); 2 remain"
+        "BC-2.06.023 PC-1: on_permission_prompt_resolved removes P2 (not front); 2 remain"
     );
-    let ids: Vec<Uuid> = overlay.iter().map(|m| m.prompt_id).collect();
+    let ids: Vec<Uuid> = app.overlay_stack.iter().map(|m| m.prompt_id).collect();
     assert_eq!(
         ids,
         vec![pid1, pid3],
-        "BC-2.06.023 PC-1: P1 and P3 remain in order"
+        "BC-2.06.023 PC-1: P1 and P3 remain in order after P2 removed"
     );
 }
 
@@ -568,28 +584,42 @@ fn test_BC_2_06_023_pc1_retain_removes_non_front_entry() {
 // AC-007 / BC-2.06.023 PC-3 — Unknown prompt_id in Resolved is no-op (PASS immediately)
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.023 PC-3 / AC-007 (coverage): PermissionPromptResolved for an unknown
-/// prompt_id is a no-op. retain() with a non-matching predicate leaves the stack intact.
+/// BC-2.06.023 PC-3 / AC-007: `on_permission_prompt_resolved` for an unknown prompt_id
+/// is a silent no-op — stack unchanged, mode unchanged, NO WARN emitted (TRACE only,
+/// per BC-2.06.023 PC-3 and story v1.11).
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler uses `retain(|m| m.prompt_id
+/// == unknown_pid)` (wrong predicate), it would clear the stack and collapse mode — both
+/// stack-len and mode asserts would fail.
 #[test]
 fn test_BC_2_06_023_pc3_unknown_prompt_id_resolved_is_noop() {
     let pid = Uuid::new_v4();
     let unknown_pid = Uuid::new_v4();
-    let mut overlay: VecDeque<_> = VecDeque::new();
+    let mut app = App::new(MonocleConfig::default());
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid));
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    assert_eq!(app.overlay_stack.len(), 1, "precondition: 1 item in stack");
 
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid));
-    assert_eq!(overlay.len(), 1, "precondition: 1 item in stack");
+    // Production handler for an unknown prompt_id — must be silent discard, TRACE only.
+    on_permission_prompt_resolved(&mut app, unknown_pid);
 
-    // Resolved for a pid NOT in the stack
-    overlay.retain(|m| m.prompt_id != unknown_pid);
-
+    // Stack must be unchanged
     assert_eq!(
-        overlay.len(),
+        app.overlay_stack.len(),
         1,
         "BC-2.06.023 PC-3: unknown prompt_id in Resolved must leave stack unchanged"
     );
     assert_eq!(
-        overlay.front().unwrap().prompt_id,
+        app.overlay_stack.front().unwrap().prompt_id,
         pid,
-        "BC-2.06.023 PC-3: existing modal must remain after no-op retain()"
+        "BC-2.06.023 PC-3: existing modal must remain after silent-discard no-op"
+    );
+    // Mode must remain Overlay — no spurious collapse
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "BC-2.06.023 PC-3: mode must remain Overlay after unknown prompt_id no-op"
     );
 }

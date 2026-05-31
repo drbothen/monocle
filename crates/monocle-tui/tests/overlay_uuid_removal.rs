@@ -17,7 +17,7 @@
 //! - BC-2.06.023 PC-2: `retain()` removes ALL entries matching the prompt_id (duplicate
 //!   from reconnect race — though apply_permission_prompt_queued prevents duplicates,
 //!   retain() handles them safely).
-//! - BC-2.06.023 PC-3: Unknown prompt_id in PermissionPromptResolved → WARN logged, no-op.
+//! - BC-2.06.023 PC-3: Unknown prompt_id in PermissionPromptResolved → silent discard, TRACE-only, no-op.
 //! - BC-2.06.023 PC-4 / AC-015: After retain() empties the stack, AppMode must not remain
 //!   Overlay — empty stack triggers collapse to Dashboard { focused: prior }.
 //! - Architecture Compliance: retain() is NOT routed through transition() — direct mutation
@@ -27,7 +27,9 @@
 use monocle_config::MonocleConfig;
 use monocle_core::tui::state::{Action, AppMode, FocusSnapshot};
 use monocle_ipc::types::PermissionPromptPayload;
-use monocle_tui::app::{apply_permission_prompt_queued, on_initial_state, App};
+use monocle_tui::app::{
+    apply_permission_prompt_queued, on_initial_state, on_permission_prompt_resolved, App,
+};
 use std::collections::VecDeque;
 use uuid::Uuid;
 
@@ -48,29 +50,6 @@ fn bash_payload(prompt_id: Uuid) -> PermissionPromptPayload {
 
 fn default_app() -> App {
     App::new(MonocleConfig::default())
-}
-
-/// Simulate the full PermissionPromptResolved handler that will be implemented in S-026.
-///
-/// This is the pattern the S-026 implementer must follow (from BC-2.06.023 and AC-006):
-///   1. retain() removes matching entry (by UUID, not position)
-///   2. If stack is now empty and mode is Overlay, collapse to Dashboard { focused: prior }
-///   3. If stack is non-empty, mode stays Overlay
-///
-/// Architecture Compliance Rule: retain() is NOT routed through transition().
-/// The collapse (if needed) calls transition(Overlay { prior }, PopOverlay).
-fn simulate_permission_prompt_resolved(app: &mut App, prompt_id: Uuid) {
-    // Step 1: direct retain() mutation (NOT through transition())
-    app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
-
-    // Step 2: collapse check
-    if app.overlay_stack.is_empty() {
-        if let AppMode::Overlay { prior } = app.mode.clone() {
-            use monocle_core::tui::state::transition;
-            app.mode = transition(AppMode::Overlay { prior }, Action::PopOverlay);
-        }
-    }
-    // Step 3: if stack non-empty, mode stays Overlay — no change needed
 }
 
 // ---------------------------------------------------------------------------
@@ -207,8 +186,10 @@ fn test_BC_2_06_023_pc2_retain_removes_all_duplicate_entries() {
 // BC-2.06.023 PC-3 / AC-007 — Unknown prompt_id in Resolved is no-op
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.023 PC-3 / AC-007 (coverage): retain() with a non-matching predicate
-/// leaves the stack entirely intact. No panic, no side effects.
+/// BC-2.06.023 PC-3 / AC-007 (data-layer): retain() with a non-matching predicate
+/// leaves the VecDeque entirely intact. No panic, no side effects.
+/// This test exercises the raw data structure; for the App-level production path see
+/// `test_BC_2_06_023_pc3_ac007_unknown_prompt_id_no_state_change_production`.
 #[test]
 fn test_BC_2_06_023_pc3_unknown_prompt_id_noop_stack_unchanged() {
     let pid = Uuid::new_v4();
@@ -217,7 +198,7 @@ fn test_BC_2_06_023_pc3_unknown_prompt_id_noop_stack_unchanged() {
 
     apply_permission_prompt_queued(&mut overlay, bash_payload(pid));
 
-    // Simulate PermissionPromptResolved for unknown prompt_id
+    // Data-layer: retain() directly — validates the predicate semantics.
     overlay.retain(|m| m.prompt_id != unknown);
 
     assert_eq!(
@@ -232,7 +213,7 @@ fn test_BC_2_06_023_pc3_unknown_prompt_id_noop_stack_unchanged() {
     );
 }
 
-/// BC-2.06.023 PC-3 / AC-007 (coverage): retain() on empty stack with unknown prompt_id
+/// BC-2.06.023 PC-3 / AC-007 (data-layer): retain() on empty stack with unknown prompt_id
 /// is a safe no-op. (Can happen if TUI received Resolved before Queued.)
 #[test]
 fn test_BC_2_06_023_pc3_unknown_prompt_id_on_empty_stack_is_safe() {
@@ -249,16 +230,55 @@ fn test_BC_2_06_023_pc3_unknown_prompt_id_on_empty_stack_is_safe() {
     );
 }
 
+/// BC-2.06.023 PC-3 / AC-007 (production path): `on_permission_prompt_resolved` for
+/// an unknown prompt_id is a silent no-op — stack unchanged, AppMode unchanged, NO
+/// WARN emitted (TRACE only per BC-2.06.023 PC-3, story v1.11).
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler has an inverted
+/// predicate (`retain(|m| m.prompt_id == unknown_id)`), the stack would be emptied
+/// and mode would collapse — both stack-len and mode asserts would fail.
+#[test]
+fn test_BC_2_06_023_pc3_ac007_unknown_prompt_id_no_state_change_production() {
+    let pid = Uuid::new_v4();
+    let unknown = Uuid::new_v4();
+    let mut app = default_app();
+    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid));
+    app.mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+
+    // Production handler for unknown prompt_id — silent discard, TRACE only.
+    on_permission_prompt_resolved(&mut app, unknown);
+
+    // Stack unchanged
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.023 PC-3 AC-007: unknown prompt_id → stack unchanged (len=1)"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.023 PC-3 AC-007: existing modal must remain in stack"
+    );
+    // Mode unchanged — no spurious collapse
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "BC-2.06.023 PC-3 AC-007: AppMode must remain Overlay after unknown prompt_id no-op"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // BC-2.06.023 PC-4 / AC-015 — Empty-stack collapse after last retain()
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.023 PC-4 / AC-015 (coverage): After retain() removes the last modal,
-/// the simulated handler collapses AppMode from Overlay to Dashboard { focused: prior }.
+/// BC-2.06.023 PC-4 / AC-015: After `on_permission_prompt_resolved` removes the last
+/// modal, AppMode collapses from Overlay to Dashboard { focused: prior }.
 ///
-/// Architecture Compliance Rule: the collapse is NOT routed through transition() directly
-/// for the retain() path — it uses the PopOverlay action after the direct mutation.
-/// (See simulate_permission_prompt_resolved above for the canonical pattern.)
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001: no vacuous mirror). Non-vacuity: if the production
+/// handler omits the empty-stack collapse, the final assert will fail.
 #[test]
 fn test_BC_2_06_023_pc4_empty_stack_collapse_to_dashboard_after_last_retain() {
     let mut app = default_app();
@@ -270,11 +290,12 @@ fn test_BC_2_06_023_pc4_empty_stack_collapse_to_dashboard_after_last_retain() {
         "precondition: Overlay mode with 1 prompt"
     );
 
-    simulate_permission_prompt_resolved(&mut app, pid);
+    // Production handler — not a test-local mirror.
+    on_permission_prompt_resolved(&mut app, pid);
 
     assert!(
         app.overlay_stack.is_empty(),
-        "BC-2.06.023 PC-4: retain() must empty the stack after last removal"
+        "BC-2.06.023 PC-4: on_permission_prompt_resolved must empty the stack after last removal"
     );
     assert!(
         matches!(
@@ -284,12 +305,16 @@ fn test_BC_2_06_023_pc4_empty_stack_collapse_to_dashboard_after_last_retain() {
             }
         ),
         "BC-2.06.023 PC-4: AppMode must collapse to Dashboard {{ focused: Sessions }} \
-         when overlay_stack empties after retain()"
+         when overlay_stack empties (on_permission_prompt_resolved collapse path)"
     );
 }
 
-/// BC-2.06.023 PC-4 / AC-015 (coverage): Removing one of two prompts leaves the
-/// stack non-empty, so mode remains Overlay.
+/// BC-2.06.023 PC-4 / AC-015: Removing one of two prompts via `on_permission_prompt_resolved`
+/// leaves the stack non-empty, so mode remains Overlay.
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if retain() is inverted in production,
+/// the stack will be empty and the mode will collapse — both asserts will fail.
 #[test]
 fn test_BC_2_06_023_pc4_non_empty_stack_after_retain_stays_overlay() {
     let mut app = default_app();
@@ -304,16 +329,17 @@ fn test_BC_2_06_023_pc4_non_empty_stack_after_retain_stays_overlay() {
         0,
     );
 
-    simulate_permission_prompt_resolved(&mut app, pid1);
+    // Production handler — not a test-local mirror.
+    on_permission_prompt_resolved(&mut app, pid1);
 
     assert_eq!(
         app.overlay_stack.len(),
         1,
-        "BC-2.06.023 PC-4: after removing P1, P2 remains"
+        "BC-2.06.023 PC-4: after removing P1 via on_permission_prompt_resolved, P2 remains"
     );
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
-        "BC-2.06.023 PC-4: mode stays Overlay when stack is non-empty after retain()"
+        "BC-2.06.023 PC-4: mode stays Overlay when stack is non-empty after removal"
     );
     assert_eq!(
         app.overlay_stack.front().unwrap().prompt_id,
@@ -322,8 +348,12 @@ fn test_BC_2_06_023_pc4_non_empty_stack_after_retain_stays_overlay() {
     );
 }
 
-/// BC-2.06.023 PC-4 / AC-015 (coverage): Resolving all three prompts one-by-one
-/// collapses to Dashboard only after the LAST removal.
+/// BC-2.06.023 PC-4 / AC-015: Resolving all three prompts one-by-one via
+/// `on_permission_prompt_resolved` collapses to Dashboard only after the LAST removal.
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly for all
+/// three calls (F-S026-ADV2-HIGH-001). Non-vacuity: if the collapse guard is absent,
+/// the final assert on mode=Dashboard will fail on the third call.
 #[test]
 fn test_BC_2_06_023_pc4_sequential_removals_collapse_only_on_last() {
     let mut app = default_app();
@@ -340,21 +370,21 @@ fn test_BC_2_06_023_pc4_sequential_removals_collapse_only_on_last() {
     );
 
     // Remove P1 — 2 remain, still Overlay
-    simulate_permission_prompt_resolved(&mut app, pid1);
+    on_permission_prompt_resolved(&mut app, pid1);
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
         "BC-2.06.023 PC-4: after removing P1, mode stays Overlay (2 remain)"
     );
 
     // Remove P2 — 1 remains, still Overlay
-    simulate_permission_prompt_resolved(&mut app, pid2);
+    on_permission_prompt_resolved(&mut app, pid2);
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
         "BC-2.06.023 PC-4: after removing P2, mode stays Overlay (1 remains)"
     );
 
     // Remove P3 — 0 remain, collapses to Dashboard
-    simulate_permission_prompt_resolved(&mut app, pid3);
+    on_permission_prompt_resolved(&mut app, pid3);
     assert!(
         app.overlay_stack.is_empty(),
         "BC-2.06.023 PC-4: after removing P3, stack must be empty"

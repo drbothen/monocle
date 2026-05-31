@@ -22,9 +22,12 @@
 //! - `payload_to_modal()` fallback: missing `"path"` key for Read → `ToolPayload::Generic`.
 
 use monocle_config::MonocleConfig;
-use monocle_core::tui::state::{AppMode, FocusSnapshot, ToolPayload};
+use monocle_core::tui::state::{AppMode, FocusSnapshot, PanelId, ToolPayload};
 use monocle_ipc::types::PermissionPromptPayload;
-use monocle_tui::app::{apply_permission_prompt_queued, on_initial_state, payload_to_modal, App};
+use monocle_tui::app::{
+    apply_permission_prompt_queued, on_initial_state, on_permission_prompt_queued,
+    on_permission_prompt_resolved, payload_to_modal, App,
+};
 use std::collections::VecDeque;
 use uuid::Uuid;
 
@@ -90,13 +93,17 @@ fn default_app() -> App {
 // ---------------------------------------------------------------------------
 
 /// BC-2.06.008 PC-3 / AC-001 test vector 1 (canonical):
-/// From Dashboard, pushing one prompt enters Overlay mode and places the modal
-/// at the front of overlay_stack.
+/// From Dashboard, pushing one prompt via `on_permission_prompt_queued` enters Overlay
+/// mode and places the modal at the front of overlay_stack.
 ///
 /// Test vector from BC-2.06.008:
 ///   Initial AppMode: Dashboard { focused: Sessions }
 ///   IPC Message:     PermissionPromptQueued { prompt_id: P1, tool: Bash }
 ///   Expected:        App.overlay_stack = [P1]; AppMode → Overlay { prior: Sessions }
+///
+/// Drives the PRODUCTION `on_permission_prompt_queued` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler fails to set mode to
+/// Overlay, the final mode assert will fail.
 #[test]
 fn test_BC_2_06_008_push_from_dashboard_enters_overlay() {
     let mut app = default_app();
@@ -108,14 +115,8 @@ fn test_BC_2_06_008_push_from_dashboard_enters_overlay() {
         "BC-2.06.008 precondition: must start in Dashboard mode"
     );
 
-    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid, "ls"));
-
-    // Transition to Overlay (as done by the IPC handler)
-    if !app.overlay_stack.is_empty() {
-        app.mode = AppMode::Overlay {
-            prior: FocusSnapshot::Sessions,
-        };
-    }
+    // Production handler — not inline push + manual mode assignment.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
 
     assert_eq!(
         app.overlay_stack.len(),
@@ -139,29 +140,37 @@ fn test_BC_2_06_008_push_from_dashboard_enters_overlay() {
 }
 
 /// BC-2.06.008 PC-4 / AC-001 test vector 2 (canonical):
-/// From existing Overlay (stack=[P1]), pushing P2 extends the stack without
-/// changing AppMode::Overlay::prior.
+/// From existing Overlay (stack=[P1]), pushing P2 via `on_permission_prompt_queued`
+/// extends the stack without changing AppMode::Overlay::prior.
 ///
 /// Test vector from BC-2.06.008:
 ///   Initial: Overlay { prior: Sessions } (App.overlay_stack = [P1])
 ///   IPC:     PermissionPromptQueued { prompt_id: P2, tool: Bash }
 ///   Expected: App.overlay_stack = [P1, P2]; AppMode stays Overlay { prior: Sessions }
+///
+/// Drives the PRODUCTION `on_permission_prompt_queued` entrypoint for both pushes
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler re-enters Overlay
+/// and overwrites prior, the final mode assert will fail.
 #[test]
 fn test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior() {
     let mut app = default_app();
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
 
-    // Setup: push P1 from Dashboard, enter Overlay
-    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid1, "ls"));
-    app.mode = AppMode::Overlay {
-        prior: FocusSnapshot::Sessions,
-    };
+    // First push from Dashboard — production handler transitions to Overlay { prior: Sessions }
+    on_permission_prompt_queued(&mut app, bash_payload(pid1, "ls"));
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.008 PC-3 precondition: first push enters Overlay {{ prior: Sessions }}"
+    );
 
-    // Push P2 while already in Overlay — prior must not change
-    apply_permission_prompt_queued(&mut app.overlay_stack, bash_payload(pid2, "pwd"));
-    // Mode stays Overlay (no transition needed — stack already in Overlay)
-    // If already Overlay, we don't re-transition per BC-2.06.008 PC-4.
+    // Second push while already in Overlay — prior must NOT change.
+    on_permission_prompt_queued(&mut app, bash_payload(pid2, "pwd"));
 
     assert_eq!(
         app.overlay_stack.len(),
@@ -173,7 +182,7 @@ fn test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior() {
         pid1,
         "BC-2.06.008 PC-2: FIFO — P1 is still at front after P2 pushed"
     );
-    // Prior is preserved — still Sessions
+    // Prior is preserved — still Sessions (not overwritten by second push)
     assert!(
         matches!(
             app.mode,
@@ -181,7 +190,7 @@ fn test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior() {
                 prior: FocusSnapshot::Sessions
             }
         ),
-        "BC-2.06.008 PC-4: prior must remain Sessions after second push"
+        "BC-2.06.008 PC-4: prior must remain Sessions after second push (not re-captured)"
     );
 }
 
@@ -270,53 +279,67 @@ fn test_BC_2_05_002_invariant_4_idempotent_after_other_pushes() {
 // BC-2.06.023 PC-4 / AC-015 — Empty-stack collapse after retain()
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.023 PC-4 / AC-015: After retain() removes the last modal, overlay_stack
-/// is empty and AppMode must NOT remain Overlay (the IPC handler must collapse).
+/// BC-2.06.023 PC-4 / AC-015: `on_permission_prompt_resolved` removes the last modal,
+/// empties the stack, and collapses AppMode from Overlay to Dashboard.
 ///
-/// This test verifies the precondition that an empty overlay_stack + Overlay mode
-/// is the trigger for collapse. The actual transition is performed by the IPC
-/// handler (S-026 implementer task), but we test the data-layer invariant here
-/// to confirm retain() produces an empty stack.
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler omits the collapse
+/// guard, mode will remain Overlay — the final mode assert fails.
 #[test]
 fn test_BC_2_06_023_pc4_retain_removes_last_entry_produces_empty_stack() {
-    let mut overlay: VecDeque<_> = VecDeque::new();
+    let mut app = default_app();
     let pid = Uuid::new_v4();
 
-    apply_permission_prompt_queued(&mut overlay, bash_payload(pid, "ls"));
-    assert_eq!(overlay.len(), 1, "precondition: 1 item in stack");
+    // Push via production handler to set both stack and Overlay mode.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
+    assert_eq!(app.overlay_stack.len(), 1, "precondition: 1 item in stack");
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "precondition: mode is Overlay after push"
+    );
 
-    // Simulate PermissionPromptResolved handler
-    overlay.retain(|m| m.prompt_id != pid);
+    // Production resolve handler — not inline retain().
+    on_permission_prompt_resolved(&mut app, pid);
 
     assert!(
-        overlay.is_empty(),
-        "BC-2.06.023 PC-4: retain() with matching prompt_id must produce empty stack"
+        app.overlay_stack.is_empty(),
+        "BC-2.06.023 PC-4: on_permission_prompt_resolved must empty the stack"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.023 PC-4: AppMode must collapse to Dashboard when stack empties"
     );
 }
 
-/// BC-2.06.023 PC-4 / AC-015: on_initial_state with non-empty overlay → Overlay mode;
-/// after retain() empties the stack, the runtime must collapse. Test verifies that
-/// overlay_stack is empty after retain() (collapse trigger for the IPC handler).
+/// BC-2.06.023 PC-4 / AC-015: `on_initial_state` with non-empty overlay enters Overlay
+/// mode; then `on_permission_prompt_resolved` empties the stack and collapses to Dashboard.
+///
+/// Drives BOTH the `on_initial_state` and `on_permission_prompt_resolved` production
+/// entrypoints (F-S026-ADV2-HIGH-001). Non-vacuity: if on_permission_prompt_resolved
+/// omits the empty-stack collapse, mode stays Overlay — the final mode assert fails.
 #[test]
 fn test_BC_2_06_023_pc4_on_initial_state_then_retain_collapses() {
     let mut app = default_app();
     let pid = Uuid::new_v4();
 
-    // Seed overlay via on_initial_state (which uses apply_permission_prompt_queued internally)
+    // Seed overlay via on_initial_state (uses apply_permission_prompt_queued internally)
     on_initial_state(&mut app, vec![], vec![], vec![bash_payload(pid, "ls")], 0);
 
-    // After on_initial_state: should be in Overlay mode
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
         "BC-2.06.023 PC-4 precondition: on_initial_state with overlay → Overlay mode"
     );
 
-    // Simulate PermissionPromptResolved removing the only item
-    app.overlay_stack.retain(|m| m.prompt_id != pid);
+    // Production resolve handler — not inline app.overlay_stack.retain().
+    on_permission_prompt_resolved(&mut app, pid);
 
     assert!(
         app.overlay_stack.is_empty(),
-        "BC-2.06.023 PC-4: stack is empty after retain — implementer must collapse mode"
+        "BC-2.06.023 PC-4: stack is empty after on_permission_prompt_resolved"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.023 PC-4: AppMode must collapse to Dashboard after last prompt resolved"
     );
 }
 
@@ -575,4 +598,182 @@ fn test_BC_2_06_008_on_initial_state_non_empty_overlay_enters_overlay_mode() {
         pid1,
         "BC-2.06.008 PC-2: FIFO — first payload in InitialState is at front"
     );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.008 prior-focus capture from non-Dashboard modes (F-S026-ADV2-HIGH-001)
+//
+// The adversary (Pass 2) found ZERO coverage for the Filtering→Overlay and
+// Fullscreen→Overlay prior-capture paths in on_permission_prompt_queued.
+// These paths differ from on_initial_state (which hardcodes Sessions) and from
+// the Dashboard path (which uses `focused`). The production handler captures
+// `prior` from Filtering::prior and Fullscreen::prior respectively.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Filtering mode.
+///
+/// When `on_permission_prompt_queued` is called while the app is in
+/// `AppMode::Filtering { prior: EventRibbon, .. }`, the resulting Overlay's
+/// `prior` must be `EventRibbon` (captured from Filtering::prior), NOT
+/// the default `Sessions` value produced by on_initial_state.
+///
+/// Non-vacuity: if the production handler falls through to the Dashboard arm
+/// or defaults to Sessions, the prior assert will fail (EventRibbon ≠ Sessions).
+#[test]
+fn test_BC_2_06_008_push_from_filtering_captures_prior_from_filtering_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Pre-condition: app is in Filtering mode with prior=EventRibbon.
+    // (User had EventRibbon focused when they started filtering.)
+    app.mode = AppMode::Filtering {
+        panel: PanelId::Sessions,
+        query: "my-session".to_string(),
+        prior: FocusSnapshot::EventRibbon,
+    };
+
+    // Production handler — must capture Filtering::prior, NOT hardcode Sessions.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
+
+    // Stack must be populated
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.008: overlay_stack must have 1 item after push from Filtering"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.008: pushed prompt_id must be at front"
+    );
+
+    // Mode must be Overlay — and prior must be EventRibbon (from Filtering::prior).
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::EventRibbon,
+                "BC-2.06.008 prior-capture: Overlay::prior must be EventRibbon \
+                 (captured from Filtering::prior), not Sessions"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay after push from Filtering, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Filtering mode with Sessions prior.
+///
+/// Variant: Filtering with prior=Sessions. Ensures the capture path works for both
+/// FocusSnapshot variants — not just EventRibbon.
+#[test]
+fn test_BC_2_06_008_push_from_filtering_captures_sessions_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    app.mode = AppMode::Filtering {
+        panel: PanelId::EventRibbon,
+        query: String::new(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "pwd"));
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.008 prior-capture: Overlay::prior must be Sessions \
+                 (captured from Filtering::prior)"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Fullscreen mode.
+///
+/// When `on_permission_prompt_queued` is called while the app is in
+/// `AppMode::Fullscreen { prior: EventRibbon, .. }`, the resulting Overlay's
+/// `prior` must be `EventRibbon` (captured from Fullscreen::prior).
+///
+/// Non-vacuity: if the production handler defaults to Sessions instead of reading
+/// Fullscreen::prior, the prior assert will fail (EventRibbon ≠ Sessions).
+#[test]
+fn test_BC_2_06_008_push_from_fullscreen_captures_prior_from_fullscreen_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Pre-condition: app is in Fullscreen mode with prior=EventRibbon.
+    app.mode = AppMode::Fullscreen {
+        panel: PanelId::Sessions,
+        prior: FocusSnapshot::EventRibbon,
+    };
+
+    // Production handler — must capture Fullscreen::prior, NOT hardcode Sessions.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "cat /etc/hosts"));
+
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.008: overlay_stack must have 1 item after push from Fullscreen"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.008: pushed prompt_id must be at front"
+    );
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::EventRibbon,
+                "BC-2.06.008 prior-capture: Overlay::prior must be EventRibbon \
+                 (captured from Fullscreen::prior), not Sessions"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay after push from Fullscreen, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Fullscreen with Sessions prior.
+///
+/// Variant: Fullscreen with prior=Sessions. Verifies the Fullscreen branch works
+/// for both FocusSnapshot variants.
+#[test]
+fn test_BC_2_06_008_push_from_fullscreen_captures_sessions_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    app.mode = AppMode::Fullscreen {
+        panel: PanelId::EventRibbon,
+        prior: FocusSnapshot::Sessions,
+    };
+
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls -la"));
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.008 prior-capture: Overlay::prior must be Sessions \
+                 (captured from Fullscreen::prior)"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
 }
