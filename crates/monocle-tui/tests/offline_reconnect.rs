@@ -56,7 +56,8 @@ fn write_lock(runtime_dir: &std::path::Path, pid: u64) {
         "port": 9001u64,
         "authToken": format!("token-{pid}")
     });
-    std::fs::write( // nosemgrep: monocle-no-naked-fs-write — test helper writing to tempdir (not a config path); no atomic write needed
+    // nosemgrep: monocle-no-naked-fs-write — test helper writing to tempdir (not a config path); no atomic write needed
+    std::fs::write(
         runtime_dir.join("monocle.lock"),
         serde_json::to_string(&lock).unwrap(),
     )
