@@ -4,6 +4,15 @@
 # Cargo.toml [workspace.lints.clippy] sets the lint LEVEL (deny). This file
 # defines WHICH methods trigger that lint.
 
+# Allow unwrap()/expect() inside #[test] functions and integration-test binaries.
+# Rationale: test code SHOULD use unwrap/expect to assert program invariants —
+# a panic is the correct failure mode in a test. Production src/ code still
+# triggers unwrap_used/expect_used (controlled via Cargo.toml workspace.lints.clippy).
+# This setting scopes the relaxation to test contexts only; it has no effect on
+# non-test compilation units.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+
 disallowed-methods = [
     { path = "tokio::sync::mpsc::unbounded_channel", reason = "Use bounded mpsc::channel(N) with surfaced drop counter per anti-patterns table" },
     { path = "std::fs::write", reason = "Use tempfile::persist for atomic config writes per anti-patterns table" },

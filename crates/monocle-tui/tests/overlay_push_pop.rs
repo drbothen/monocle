@@ -1,0 +1,959 @@
+//! Tests for BC-2.06.008 (overlay push/FIFO), BC-2.06.023 PC-4 (empty-stack collapse),
+//! BC-2.06.024 (payload_to_modal() conversion), and BC-2.05.002 Invariant 4 (idempotent insert).
+//!
+//! `#![allow(non_snake_case)]` is required because the factory-mandated test naming
+//! convention uses uppercase BC identifiers: `test_BC_S_SS_NNN_...`.
+#![allow(non_snake_case)]
+//!
+//! # Red Gate
+//!
+//! All tests in this file exercise code paths that already exist on develop (pre-built
+//! by S-025): `apply_permission_prompt_queued`, `payload_to_modal`, `on_initial_state`.
+//! These are COVERAGE/characterization tests asserting real behavior. They are expected
+//! to PASS immediately because the production code is already in place.
+//!
+//! # Coverage
+//!
+//! - FIFO ordering: oldest prompt is `overlay_stack.front()`, new prompts append via `push_back`.
+//! - Empty-stack collapse: after the last modal is removed, `AppMode` transitions to Dashboard.
+//! - Idempotent insert: duplicate `prompt_id` is silently discarded (BC-2.05.002 Invariant 4).
+//! - `payload_to_modal()` conversion: all four `ToolPayload` variants (Edit, Bash, Read, Generic).
+//! - `payload_to_modal()` fallback: missing `"command"` key → `ToolPayload::Generic`.
+//! - `payload_to_modal()` fallback: missing `"path"` key for Read → `ToolPayload::Generic`.
+
+use monocle_config::MonocleConfig;
+use monocle_core::tui::state::{AppMode, FocusSnapshot, PanelId, ToolPayload};
+use monocle_ipc::types::PermissionPromptPayload;
+use monocle_tui::app::{
+    apply_permission_prompt_queued, on_initial_state, on_permission_prompt_queued,
+    on_permission_prompt_resolved, payload_to_modal, App,
+};
+use std::collections::VecDeque;
+use uuid::Uuid;
+
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
+
+/// Build a `PermissionPromptPayload` for the Bash tool with a fixed prompt_id.
+fn bash_payload(prompt_id: Uuid, command: &str) -> PermissionPromptPayload {
+    PermissionPromptPayload {
+        prompt_id,
+        session_id: "sess-001".into(),
+        tool_name: "Bash".into(),
+        tool_input: serde_json::json!({"command": command}),
+        old_content: None,
+        new_content: None,
+    }
+}
+
+/// Build a `PermissionPromptPayload` for the Edit tool.
+fn edit_payload(prompt_id: Uuid, path: &str) -> PermissionPromptPayload {
+    PermissionPromptPayload {
+        prompt_id,
+        session_id: "sess-001".into(),
+        tool_name: "Edit".into(),
+        tool_input: serde_json::json!({"path": path}),
+        old_content: Some("old content".into()),
+        new_content: Some("new content".into()),
+    }
+}
+
+/// Build a `PermissionPromptPayload` for the Read tool.
+fn read_payload(prompt_id: Uuid, path: &str) -> PermissionPromptPayload {
+    PermissionPromptPayload {
+        prompt_id,
+        session_id: "sess-001".into(),
+        tool_name: "Read".into(),
+        tool_input: serde_json::json!({"path": path}),
+        old_content: None,
+        new_content: None,
+    }
+}
+
+/// Build a `PermissionPromptPayload` for a generic/unknown tool.
+fn generic_payload(prompt_id: Uuid, tool_name: &str) -> PermissionPromptPayload {
+    PermissionPromptPayload {
+        prompt_id,
+        session_id: "sess-001".into(),
+        tool_name: tool_name.into(),
+        tool_input: serde_json::json!({"key": "val"}),
+        old_content: None,
+        new_content: None,
+    }
+}
+
+/// Build a fresh `App` in default Dashboard state.
+fn default_app() -> App {
+    App::new(MonocleConfig::default())
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.008 PC-1 / AC-001 — PermissionPromptQueued push (from Dashboard)
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.008 PC-3 / AC-001 test vector 1 (canonical):
+/// From Dashboard, pushing one prompt via `on_permission_prompt_queued` enters Overlay
+/// mode and places the modal at the front of overlay_stack.
+///
+/// Test vector from BC-2.06.008:
+///   Initial AppMode: Dashboard { focused: Sessions }
+///   IPC Message:     PermissionPromptQueued { prompt_id: P1, tool: Bash }
+///   Expected:        App.overlay_stack = [P1]; AppMode → Overlay { prior: Sessions }
+///
+/// Drives the PRODUCTION `on_permission_prompt_queued` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler fails to set mode to
+/// Overlay, the final mode assert will fail.
+#[test]
+fn test_BC_2_06_008_push_from_dashboard_enters_overlay() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Precondition: mode is Dashboard
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.008 precondition: must start in Dashboard mode"
+    );
+
+    // Production handler — not inline push + manual mode assignment.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
+
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.008 PC-2: overlay_stack must have 1 item after push"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.008 PC-1: front() must be the pushed prompt_id"
+    );
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.008 PC-3: AppMode must be Overlay {{ prior: Sessions }}"
+    );
+}
+
+/// BC-2.06.008 PC-4 / AC-001 test vector 2 (canonical):
+/// From existing Overlay (stack=[P1]), pushing P2 via `on_permission_prompt_queued`
+/// extends the stack without changing AppMode::Overlay::prior.
+///
+/// Test vector from BC-2.06.008:
+///   Initial: Overlay { prior: Sessions } (App.overlay_stack = [P1])
+///   IPC:     PermissionPromptQueued { prompt_id: P2, tool: Bash }
+///   Expected: App.overlay_stack = [P1, P2]; AppMode stays Overlay { prior: Sessions }
+///
+/// Drives the PRODUCTION `on_permission_prompt_queued` entrypoint for both pushes
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler re-enters Overlay
+/// and overwrites prior, the final mode assert will fail.
+#[test]
+fn test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior() {
+    let mut app = default_app();
+    let pid1 = Uuid::new_v4();
+    let pid2 = Uuid::new_v4();
+
+    // First push from Dashboard — production handler transitions to Overlay { prior: Sessions }
+    on_permission_prompt_queued(&mut app, bash_payload(pid1, "ls"));
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.008 PC-3 precondition: first push enters Overlay {{ prior: Sessions }}"
+    );
+
+    // Second push while already in Overlay — prior must NOT change.
+    on_permission_prompt_queued(&mut app, bash_payload(pid2, "pwd"));
+
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "BC-2.06.008 PC-4: overlay_stack must have 2 items after second push"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid1,
+        "BC-2.06.008 PC-2: FIFO — P1 is still at front after P2 pushed"
+    );
+    // Prior is preserved — still Sessions (not overwritten by second push)
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.008 PC-4: prior must remain Sessions after second push (not re-captured)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.008 PC-2 / AC-002 — FIFO ordering
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.008 PC-2 / AC-002: Three prompts pushed in order P1, P2, P3 appear
+/// at positions front=P1, [1]=P2, [2]=P3 — FIFO is preserved.
+///
+/// Test vector from BC-2.06.008 EC-101:
+///   5 items already; 6th pushed → 6 entries, no bound, P1 still at front.
+#[test]
+fn test_BC_2_06_008_fifo_ordering_three_prompts() {
+    let mut overlay: VecDeque<_> = VecDeque::new();
+    let pid1 = Uuid::new_v4();
+    let pid2 = Uuid::new_v4();
+    let pid3 = Uuid::new_v4();
+
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid1, "cmd1"));
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid2, "cmd2"));
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid3, "cmd3"));
+
+    assert_eq!(overlay.len(), 3, "BC-2.06.008 PC-2: must have 3 items");
+
+    let items: Vec<Uuid> = overlay.iter().map(|m| m.prompt_id).collect();
+    assert_eq!(
+        items[0], pid1,
+        "BC-2.06.008 PC-2: FIFO — P1 at position 0 (front)"
+    );
+    assert_eq!(items[1], pid2, "BC-2.06.008 PC-2: FIFO — P2 at position 1");
+    assert_eq!(
+        items[2], pid3,
+        "BC-2.06.008 PC-2: FIFO — P3 at position 2 (back)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.05.002 Invariant 4 / AC-001 — Idempotent insert
+// ---------------------------------------------------------------------------
+
+/// BC-2.05.002 Invariant 4 / AC-001: A duplicate prompt_id is silently discarded.
+/// The stack does NOT grow when the same prompt_id is inserted twice.
+#[test]
+fn test_BC_2_05_002_invariant_4_duplicate_prompt_id_silently_discarded() {
+    let mut overlay: VecDeque<_> = VecDeque::new();
+    let pid = Uuid::new_v4();
+
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid, "ls"));
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid, "ls")); // duplicate
+
+    assert_eq!(
+        overlay.len(),
+        1,
+        "BC-2.05.002 Invariant 4: duplicate prompt_id must NOT push a second entry"
+    );
+    assert_eq!(
+        overlay.front().unwrap().prompt_id,
+        pid,
+        "BC-2.05.002 Invariant 4: the surviving entry must be the original prompt_id"
+    );
+}
+
+/// BC-2.05.002 Invariant 4: Idempotency holds even when the duplicate arrives after
+/// other different prompts have been pushed (stack=[P1, P2]; push P1 again → still len=2).
+#[test]
+fn test_BC_2_05_002_invariant_4_idempotent_after_other_pushes() {
+    let mut overlay: VecDeque<_> = VecDeque::new();
+    let pid1 = Uuid::new_v4();
+    let pid2 = Uuid::new_v4();
+
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid1, "ls"));
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid2, "pwd"));
+    apply_permission_prompt_queued(&mut overlay, bash_payload(pid1, "ls")); // duplicate of P1
+
+    assert_eq!(
+        overlay.len(),
+        2,
+        "BC-2.05.002 Invariant 4: duplicate P1 re-push must be discarded (len stays 2)"
+    );
+    // FIFO order preserved: P1 still at front
+    assert_eq!(overlay.front().unwrap().prompt_id, pid1);
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.023 PC-4 / AC-015 — Empty-stack collapse after retain()
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.023 PC-4 / AC-015: `on_permission_prompt_resolved` removes the last modal,
+/// empties the stack, and collapses AppMode from Overlay to Dashboard.
+///
+/// Drives the PRODUCTION `on_permission_prompt_resolved` entrypoint directly
+/// (F-S026-ADV2-HIGH-001). Non-vacuity: if the production handler omits the collapse
+/// guard, mode will remain Overlay — the final mode assert fails.
+#[test]
+fn test_BC_2_06_023_pc4_retain_removes_last_entry_produces_empty_stack() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Push via production handler to set both stack and Overlay mode.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
+    assert_eq!(app.overlay_stack.len(), 1, "precondition: 1 item in stack");
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "precondition: mode is Overlay after push"
+    );
+
+    // Production resolve handler — not inline retain().
+    on_permission_prompt_resolved(&mut app, pid);
+
+    assert!(
+        app.overlay_stack.is_empty(),
+        "BC-2.06.023 PC-4: on_permission_prompt_resolved must empty the stack"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.023 PC-4: AppMode must collapse to Dashboard when stack empties"
+    );
+}
+
+/// BC-2.06.023 PC-4 / AC-015: `on_initial_state` with non-empty overlay enters Overlay
+/// mode; then `on_permission_prompt_resolved` empties the stack and collapses to Dashboard.
+///
+/// Drives BOTH the `on_initial_state` and `on_permission_prompt_resolved` production
+/// entrypoints (F-S026-ADV2-HIGH-001). Non-vacuity: if on_permission_prompt_resolved
+/// omits the empty-stack collapse, mode stays Overlay — the final mode assert fails.
+#[test]
+fn test_BC_2_06_023_pc4_on_initial_state_then_retain_collapses() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Seed overlay via on_initial_state (uses apply_permission_prompt_queued internally)
+    on_initial_state(&mut app, vec![], vec![], vec![bash_payload(pid, "ls")], 0);
+
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "BC-2.06.023 PC-4 precondition: on_initial_state with overlay → Overlay mode"
+    );
+
+    // Production resolve handler — not inline app.overlay_stack.retain().
+    on_permission_prompt_resolved(&mut app, pid);
+
+    assert!(
+        app.overlay_stack.is_empty(),
+        "BC-2.06.023 PC-4: stack is empty after on_permission_prompt_resolved"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.023 PC-4: AppMode must collapse to Dashboard after last prompt resolved"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.024 / AC-016 — payload_to_modal() conversion for all 4 ToolPayload variants
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.024 / AC-016 Bash variant: tool_name="Bash" with "command" key →
+/// ToolPayload::Bash { command }.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_bash_variant() {
+    let pid = Uuid::new_v4();
+    let payload = bash_payload(pid, "echo hello");
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match modal.tool_payload {
+        ToolPayload::Bash { command } => {
+            assert_eq!(
+                command, "echo hello",
+                "BC-2.06.024: Bash command must be extracted from tool_input['command']"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024: expected ToolPayload::Bash, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 Edit variant: tool_name="Edit" with old_content, new_content,
+/// and path key → ToolPayload::Edit { old_content, new_content, path }.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_edit_variant() {
+    let pid = Uuid::new_v4();
+    let payload = edit_payload(pid, "/src/main.rs");
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match modal.tool_payload {
+        ToolPayload::Edit {
+            old_content,
+            new_content,
+            path,
+        } => {
+            assert_eq!(
+                old_content, "old content",
+                "BC-2.06.024: Edit old_content must match payload.old_content"
+            );
+            assert_eq!(
+                new_content, "new content",
+                "BC-2.06.024: Edit new_content must match payload.new_content"
+            );
+            assert_eq!(
+                path,
+                std::path::PathBuf::from("/src/main.rs"),
+                "BC-2.06.024: Edit path must be extracted from tool_input['path']"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024: expected ToolPayload::Edit, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 Read variant: tool_name="Read" with "path" key →
+/// ToolPayload::Read { path }.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_read_variant() {
+    let pid = Uuid::new_v4();
+    let payload = read_payload(pid, "/etc/hosts");
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match modal.tool_payload {
+        ToolPayload::Read { path } => {
+            assert_eq!(
+                path,
+                std::path::PathBuf::from("/etc/hosts"),
+                "BC-2.06.024: Read path must be extracted from tool_input['path']"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024: expected ToolPayload::Read, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 Generic variant: unknown tool_name → ToolPayload::Generic.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_generic_variant() {
+    let pid = Uuid::new_v4();
+    let payload = generic_payload(pid, "WebFetch");
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic {
+            tool_name,
+            tool_input,
+        } => {
+            assert_eq!(
+                tool_name, "WebFetch",
+                "BC-2.06.024: Generic tool_name must be preserved from payload"
+            );
+            assert_eq!(
+                tool_input["key"].as_str(),
+                Some("val"),
+                "BC-2.06.024: Generic tool_input must be preserved from payload"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024: expected ToolPayload::Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 fallback: Bash payload with no "command" key → ToolPayload::Generic.
+/// S-026 aligns to AC-016 spec: absent "command" key produces Generic, not Bash { command: "" }.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_bash_missing_command_key() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Bash".into(),
+        tool_input: serde_json::json!({}), // no "command" key
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    // AC-016 (BC-2.06.024): absent "command" key → ToolPayload::Generic (not Bash { command: "" }).
+    assert!(
+        matches!(modal.tool_payload, ToolPayload::Generic { .. }),
+        "BC-2.06.024 AC-016: Bash missing 'command' key must produce ToolPayload::Generic, got {:?}",
+        std::mem::discriminant(&modal.tool_payload)
+    );
+}
+
+/// BC-2.06.024 / AC-016 fallback: Read payload with no "path" key → ToolPayload::Generic.
+/// S-026 aligns to AC-016 spec: absent "path" key produces Generic, not Read { path: "" }.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_read_missing_path_key() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Read".into(),
+        tool_input: serde_json::json!({}), // no "path" key
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    // AC-016 (BC-2.06.024): absent "path" key → ToolPayload::Generic (not Read { path: "" }).
+    assert!(
+        matches!(modal.tool_payload, ToolPayload::Generic { .. }),
+        "BC-2.06.024 AC-016: Read missing 'path' key must produce ToolPayload::Generic, got {:?}",
+        std::mem::discriminant(&modal.tool_payload)
+    );
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Edit, both content fields None, path present → Generic.
+///
+/// This is the Phase-1 normal path: the daemon always sends `old_content=None,
+/// new_content=None` for deferred prompts. With no content to diff, the production
+/// code must fall back to Generic (BC-2.06.010: no blank diff pane).
+///
+/// Non-vacuity: if the production handler incorrectly promotes a None/None Edit to
+/// ToolPayload::Edit, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_edit_none_content_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Edit".into(),
+        tool_input: serde_json::json!({"path": "/src/lib.rs"}),
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Edit",
+                "BC-2.06.024 (AC-016): Edit None/None must produce Generic with tool_name='Edit'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 (AC-016): Edit + None/None + path present must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write, both content fields None, path present → Generic.
+///
+/// Write tool with no content is the same Phase-1 normal path as Edit: daemon sends
+/// None/None, so there is nothing to diff. The production code falls back to Generic.
+///
+/// Non-vacuity: if the production handler treats Write differently from Edit for the
+/// None/None case, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_none_content_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({"path": "/tmp/output.txt"}),
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Write",
+                "BC-2.06.024 (AC-016): Write None/None must produce Generic with tool_name='Write'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 (AC-016): Write + None/None + path present must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write tool with new_content Some and path present → Edit.
+///
+/// When the daemon does supply file content (new_content is Some), the Write arm must
+/// promote to `ToolPayload::Edit` so the diff pane can be rendered. The old_content is
+/// unwrap_or_default() → empty string (no prior content for a new file). The path and
+/// new_content must be carried through exactly.
+///
+/// This covers the entire Write → ToolPayload::Edit branch, which had zero tests prior
+/// to this addition (F-S026-ADV3-MED-001).
+///
+/// Non-vacuity: if the production handler degrades Write to Generic when new_content is
+/// Some, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_with_new_content_and_path_yields_edit() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({"path": "/src/generated.rs"}),
+        old_content: None,
+        new_content: Some("fn main() {}".into()),
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match modal.tool_payload {
+        ToolPayload::Edit {
+            old_content,
+            new_content,
+            path,
+        } => {
+            assert_eq!(
+                old_content, "",
+                "BC-2.06.024 (AC-016): Write old_content=None must unwrap_or_default to empty string"
+            );
+            assert_eq!(
+                new_content, "fn main() {}",
+                "BC-2.06.024 (AC-016): Write new_content must be carried through exactly"
+            );
+            assert_eq!(
+                path,
+                std::path::PathBuf::from("/src/generated.rs"),
+                "BC-2.06.024 (AC-016): Write path must be extracted from tool_input['path']"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 (AC-016): Write + new_content Some + path present must yield Edit, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write tool with content Some but path ABSENT → Generic.
+///
+/// Even when content is present, the absence of a "path" key in tool_input means the
+/// production code cannot construct a meaningful Edit payload (no path to display).
+/// It must fall back to Generic, surfacing the raw tool_input JSON instead.
+///
+/// Also verified for the Edit arm via the same branch in production code (the "Edit"|"Write"
+/// arm shares the path_opt check). This test uses Write to cover the previously-untested arm.
+///
+/// Non-vacuity: if the production handler promotes content-present/no-path to Edit, the
+/// variant assert will fail (Edit requires a valid path).
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_content_present_no_path_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({}), // no "path" key
+        old_content: None,
+        new_content: Some("some content".into()),
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Write",
+                "BC-2.06.024 (AC-016): Write content-present/no-path must produce Generic \
+                 with tool_name='Write'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 (AC-016): Write + content Some + path absent must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 received_at: The `received_at` field is set at conversion time,
+/// NOT from the payload (which has no timestamp). Verify it's a plausible Instant
+/// (not zero / not in the far future). We can only assert it's set — not its exact value.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_received_at_set_at_conversion_time() {
+    use std::time::Instant;
+
+    let before = Instant::now();
+    let modal = payload_to_modal(bash_payload(Uuid::new_v4(), "ls"));
+    let after = Instant::now();
+
+    // received_at must be >= before and <= after (set during conversion)
+    assert!(
+        modal.received_at >= before,
+        "BC-2.06.024 Invariant 4: received_at must be set at TUI handling time, not before"
+    );
+    assert!(
+        modal.received_at <= after,
+        "BC-2.06.024 Invariant 4: received_at must be set at TUI handling time, not after"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.008 Invariant 1 — overlay_stack never empty while mode is Overlay
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.008 Invariant 1 / AC-001: on_initial_state with non-empty overlay →
+/// Overlay mode. With empty overlay → stays Dashboard.
+#[test]
+fn test_BC_2_06_008_invariant_1_empty_overlay_stays_dashboard() {
+    let mut app = default_app();
+    on_initial_state(&mut app, vec![], vec![], vec![], 0);
+
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.008 Invariant 1: empty overlay_stack must not trigger Overlay mode"
+    );
+    assert!(
+        app.overlay_stack.is_empty(),
+        "BC-2.06.008 Invariant 1: overlay_stack must remain empty"
+    );
+}
+
+/// BC-2.06.008 Invariant 1 / AC-001: on_initial_state with overlay=[P1, P2] →
+/// Overlay mode with both prompts in FIFO order.
+#[test]
+fn test_BC_2_06_008_on_initial_state_non_empty_overlay_enters_overlay_mode() {
+    let mut app = default_app();
+    let pid1 = Uuid::new_v4();
+    let pid2 = Uuid::new_v4();
+
+    on_initial_state(
+        &mut app,
+        vec![],
+        vec![],
+        vec![bash_payload(pid1, "ls"), bash_payload(pid2, "pwd")],
+        0,
+    );
+
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "BC-2.06.008 PC-3: non-empty overlay in InitialState → Overlay mode"
+    );
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "BC-2.06.008 PC-1: both prompts must be in overlay_stack"
+    );
+    // FIFO: P1 at front (first in the InitialState vec)
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid1,
+        "BC-2.06.008 PC-2: FIFO — first payload in InitialState is at front"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.008 prior-focus capture from non-Dashboard modes (F-S026-ADV2-HIGH-001)
+//
+// The adversary (Pass 2) found ZERO coverage for the Filtering→Overlay and
+// Fullscreen→Overlay prior-capture paths in on_permission_prompt_queued.
+// These paths differ from on_initial_state (which hardcodes Sessions) and from
+// the Dashboard path (which uses `focused`). The production handler captures
+// `prior` from Filtering::prior and Fullscreen::prior respectively.
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Filtering mode.
+///
+/// When `on_permission_prompt_queued` is called while the app is in
+/// `AppMode::Filtering { prior: EventRibbon, .. }`, the resulting Overlay's
+/// `prior` must be `EventRibbon` (captured from Filtering::prior), NOT
+/// the default `Sessions` value produced by on_initial_state.
+///
+/// Non-vacuity: if the production handler falls through to the Dashboard arm
+/// or defaults to Sessions, the prior assert will fail (EventRibbon ≠ Sessions).
+#[test]
+fn test_BC_2_06_008_push_from_filtering_captures_prior_from_filtering_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Pre-condition: app is in Filtering mode with prior=EventRibbon.
+    // (User had EventRibbon focused when they started filtering.)
+    app.mode = AppMode::Filtering {
+        panel: PanelId::Sessions,
+        query: "my-session".to_string(),
+        prior: FocusSnapshot::EventRibbon,
+    };
+
+    // Production handler — must capture Filtering::prior, NOT hardcode Sessions.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls"));
+
+    // Stack must be populated
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.008: overlay_stack must have 1 item after push from Filtering"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.008: pushed prompt_id must be at front"
+    );
+
+    // Mode must be Overlay — and prior must be EventRibbon (from Filtering::prior).
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::EventRibbon,
+                "BC-2.06.008 prior-capture: Overlay::prior must be EventRibbon \
+                 (captured from Filtering::prior), not Sessions"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay after push from Filtering, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Filtering mode with Sessions prior.
+///
+/// Variant: Filtering with prior=Sessions. Ensures the capture path works for both
+/// FocusSnapshot variants — not just EventRibbon.
+#[test]
+fn test_BC_2_06_008_push_from_filtering_captures_sessions_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    app.mode = AppMode::Filtering {
+        panel: PanelId::EventRibbon,
+        query: String::new(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "pwd"));
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.008 prior-capture: Overlay::prior must be Sessions \
+                 (captured from Filtering::prior)"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Fullscreen mode.
+///
+/// When `on_permission_prompt_queued` is called while the app is in
+/// `AppMode::Fullscreen { prior: EventRibbon, .. }`, the resulting Overlay's
+/// `prior` must be `EventRibbon` (captured from Fullscreen::prior).
+///
+/// Non-vacuity: if the production handler defaults to Sessions instead of reading
+/// Fullscreen::prior, the prior assert will fail (EventRibbon ≠ Sessions).
+#[test]
+fn test_BC_2_06_008_push_from_fullscreen_captures_prior_from_fullscreen_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    // Pre-condition: app is in Fullscreen mode with prior=EventRibbon.
+    app.mode = AppMode::Fullscreen {
+        panel: PanelId::Sessions,
+        prior: FocusSnapshot::EventRibbon,
+    };
+
+    // Production handler — must capture Fullscreen::prior, NOT hardcode Sessions.
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "cat /etc/hosts"));
+
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "BC-2.06.008: overlay_stack must have 1 item after push from Fullscreen"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid,
+        "BC-2.06.008: pushed prompt_id must be at front"
+    );
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::EventRibbon,
+                "BC-2.06.008 prior-capture: Overlay::prior must be EventRibbon \
+                 (captured from Fullscreen::prior), not Sessions"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay after push from Fullscreen, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.008 / AC-001 — Prior-focus capture from Fullscreen with Sessions prior.
+///
+/// Variant: Fullscreen with prior=Sessions. Verifies the Fullscreen branch works
+/// for both FocusSnapshot variants.
+#[test]
+fn test_BC_2_06_008_push_from_fullscreen_captures_sessions_prior() {
+    let mut app = default_app();
+    let pid = Uuid::new_v4();
+
+    app.mode = AppMode::Fullscreen {
+        panel: PanelId::EventRibbon,
+        prior: FocusSnapshot::Sessions,
+    };
+
+    on_permission_prompt_queued(&mut app, bash_payload(pid, "ls -la"));
+
+    match &app.mode {
+        AppMode::Overlay { prior } => {
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.008 prior-capture: Overlay::prior must be Sessions \
+                 (captured from Fullscreen::prior)"
+            );
+        }
+        other => panic!(
+            "BC-2.06.008: expected AppMode::Overlay, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}

@@ -19,11 +19,18 @@ use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload}
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
-use monocle_ipc::types::{HookEventRecord, PermissionPromptPayload, ServerToClient};
+use monocle_ipc::types::{
+    ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient,
+};
+// PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
+// decision handler implementations. The re-export here ensures the type is visible at
+// the app module level when todo!() stubs are replaced with real code.
+pub use monocle_ipc::types::PermissionDecisionKind;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;
 use tokio::io::AsyncReadExt;
+use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // TransportEvent re-export (S-023 canonical type)
@@ -136,6 +143,19 @@ pub struct App {
     /// evicted on overflow; evicted entries are NOT counted in `App::drop_counter`
     /// (that counter tracks IPC channel packet drops, not ring evictions).
     pub event_ring: VecDeque<HookEventRecord>,
+
+    /// Sender half of the IPC outbound channel for dispatching `ClientToServer`
+    /// messages to the daemon (S-026, BC-2.06.011/012/013).
+    ///
+    /// `None` on construction; set by the run loop after the IPC connection is
+    /// established and before the main event loop starts. Decision key handlers
+    /// (`PermissionAcceptOnce`, `PermissionAcceptAlways`, `PermissionReject`) send
+    /// via this channel using `try_send` (bounded, non-blocking — BC-2.04.011).
+    ///
+    /// Using `Option` rather than a unit-struct sentinel avoids phantom-send bugs:
+    /// a handler that attempts to send before the channel is wired will produce a
+    /// tracing WARN rather than silently discarding the message.
+    pub ipc_tx: Option<tokio::sync::mpsc::Sender<ClientToServer>>,
 }
 
 impl App {
@@ -153,6 +173,7 @@ impl App {
             overlay_stack: VecDeque::new(),
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
+            ipc_tx: None,
         }
     }
 }
@@ -169,40 +190,83 @@ impl App {
 /// monocle-core. This is the `payload_to_modal()` function referenced in
 /// BC-2.06.004.
 ///
-/// # Mapping rules
+/// # Mapping rules (BC-2.06.024 / AC-016 v1.10)
 ///
-/// - `tool_name == "Bash"` → `ToolPayload::Bash { command: tool_input["command"] }`
-/// - `tool_name == "Edit"` or `"Write"` → `ToolPayload::Edit { old_content, new_content, path }`
-/// - `tool_name == "Read"` → `ToolPayload::Read { path }`
+/// - `tool_name == "Bash"` AND `tool_input["command"]` present → `ToolPayload::Bash { command }`
+/// - `tool_name == "Bash"` AND `tool_input["command"]` absent → `ToolPayload::Generic`
+/// - `tool_name == "Edit" | "Write"` AND (`old_content.is_some() || new_content.is_some()`)
+///   AND `tool_input["path"]` present → `ToolPayload::Edit { old_content, new_content, path }`
+/// - `tool_name == "Edit" | "Write"` AND BOTH content fields `None`
+///   OR `tool_input["path"]` absent → `ToolPayload::Generic`
+///   (In Phase 1 the daemon always sends `old_content: None, new_content: None` for all
+///   deferred prompts, so ALL Phase-1 Edit/Write prompts produce `ToolPayload::Generic`.)
+/// - `tool_name == "Read"` AND `tool_input["path"]` present → `ToolPayload::Read { path }`
+/// - `tool_name == "Read"` AND `tool_input["path"]` absent → `ToolPayload::Generic`
 /// - Anything else → `ToolPayload::Generic { tool_name, tool_input }`
 pub fn payload_to_modal(payload: PermissionPromptPayload) -> PromptModal {
     let tool_payload = match payload.tool_name.as_str() {
-        "Bash" => ToolPayload::Bash {
-            command: payload
-                .tool_input
-                .get("command")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-        },
-        "Edit" | "Write" => ToolPayload::Edit {
-            old_content: payload.old_content.unwrap_or_default(),
-            new_content: payload.new_content.unwrap_or_default(),
-            path: payload
+        "Bash" => {
+            // AC-016 (BC-2.06.024): fall back to Generic when "command" key is absent.
+            match payload.tool_input.get("command").and_then(|v| v.as_str()) {
+                Some(cmd) => ToolPayload::Bash {
+                    command: cmd.to_string(),
+                },
+                None => ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                },
+            }
+        }
+        "Edit" | "Write" => {
+            // AC-016 v1.10 (BC-2.06.024): Edit/Write → ToolPayload::Edit ONLY when
+            // at least one content field is Some AND path is present.
+            //
+            // Both-None → Generic (the Phase-1 normal path: daemon sends None/None for
+            // all deferred prompts).  An absent path → Generic (no meaningful diff to
+            // show regardless of content).  This avoids rendering a blank diff pane
+            // (BC-2.06.010) when no content is available, surfacing the raw tool_input
+            // JSON instead which at minimum contains the path field.
+            let has_content = payload.old_content.is_some() || payload.new_content.is_some();
+            let path_opt = payload
                 .tool_input
                 .get("path")
                 .and_then(|v| v.as_str())
-                .map(std::path::PathBuf::from)
-                .unwrap_or_default(),
-        },
-        "Read" => ToolPayload::Read {
-            path: payload
-                .tool_input
-                .get("path")
-                .and_then(|v| v.as_str())
-                .map(std::path::PathBuf::from)
-                .unwrap_or_default(),
-        },
+                .map(std::path::PathBuf::from);
+
+            if has_content {
+                if let Some(path) = path_opt {
+                    ToolPayload::Edit {
+                        old_content: payload.old_content.unwrap_or_default(),
+                        new_content: payload.new_content.unwrap_or_default(),
+                        path,
+                    }
+                } else {
+                    // Content present but no path — fall back to Generic.
+                    ToolPayload::Generic {
+                        tool_name: payload.tool_name.clone(),
+                        tool_input: payload.tool_input.clone(),
+                    }
+                }
+            } else {
+                // Both-None (Phase-1 normal path) → Generic.
+                ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                }
+            }
+        }
+        "Read" => {
+            // AC-016 (BC-2.06.024): fall back to Generic when "path" key is absent.
+            match payload.tool_input.get("path").and_then(|v| v.as_str()) {
+                Some(p) => ToolPayload::Read {
+                    path: std::path::PathBuf::from(p),
+                },
+                None => ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                },
+            }
+        }
         _ => ToolPayload::Generic {
             tool_name: payload.tool_name.clone(),
             tool_input: payload.tool_input.clone(),
@@ -311,6 +375,64 @@ pub fn on_initial_state(
 /// `"[dropped: N]"` in yellow in the Sessions panel status bar.
 pub fn on_drop_counter_update(app: &mut App, drop_counter: u64) {
     app.drop_counter = drop_counter;
+}
+
+/// Handle `ServerToClient::PermissionPromptQueued` on the streaming IPC path
+/// (BC-2.06.008 / BC-2.05.002 Invariant 4).
+///
+/// Performs the idempotent insert via [`apply_permission_prompt_queued`] and
+/// then transitions `app.mode` to `AppMode::Overlay` if the stack is now
+/// non-empty and the app is not already in Overlay mode.  Prior-focus capture
+/// preserves the focused panel from Dashboard, Filtering, and Fullscreen modes
+/// so that the overlay can restore it on dismiss.
+///
+/// Extracted as a `pub` free function so that tests drive the production code
+/// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
+/// `handle_server_message` delegates to this function.
+pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPayload) {
+    apply_permission_prompt_queued(&mut app.overlay_stack, payload);
+    // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
+    // mutate overlay_stack. Enter Overlay mode if not already in it.
+    if !app.overlay_stack.is_empty() && !matches!(app.mode, AppMode::Overlay { .. }) {
+        let prior = match &app.mode {
+            AppMode::Dashboard { focused } => focused.clone(),
+            AppMode::Filtering { prior, .. } => prior.clone(),
+            AppMode::Fullscreen { prior, .. } => prior.clone(),
+            AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
+        };
+        app.mode = AppMode::Overlay { prior };
+    }
+}
+
+/// Handle `ServerToClient::PermissionPromptResolved` on the streaming IPC path
+/// (BC-2.06.023 / BC-2.05.002 Invariant 4).
+///
+/// Removes every entry whose `prompt_id` matches `prompt_id` from the overlay
+/// stack (retain-all semantics).  If the stack is now empty and the app is in
+/// `AppMode::Overlay`, collapses back to `AppMode::Dashboard { focused: prior }`.
+///
+/// If `prompt_id` is not present in the stack the call is a silent no-op
+/// (BC-2.06.023 PC-3: no WARN/ERROR on unknown prompt; TRACE at most).
+///
+/// Extracted as a `pub` free function so that tests drive the production code
+/// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
+/// `handle_server_message` delegates to this function.
+pub fn on_permission_prompt_resolved(app: &mut App, prompt_id: Uuid) {
+    let before_len = app.overlay_stack.len();
+    app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
+    if app.overlay_stack.len() == before_len {
+        // BC-2.06.023 PC-3: unknown prompt_id — silent discard, TRACE only.
+        tracing::trace!(
+            %prompt_id,
+            "PermissionPromptResolved for unknown prompt_id; silently discarding"
+        );
+    }
+    // F-S025-ADV2-HIGH-003: if stack is now empty, collapse to Dashboard.
+    if app.overlay_stack.is_empty() {
+        if let AppMode::Overlay { prior } = app.mode.clone() {
+            app.mode = AppMode::Dashboard { focused: prior };
+        }
+    }
 }
 
 /// Handle a `TransportEvent` on the IPC channel (AC-003, BC-2.06.004 PC-2).
@@ -431,6 +553,162 @@ where
             }
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Outbound IPC writer task (F-S026-ADV5-CRIT-001 — BC-2.06.011/012/013)
+// ---------------------------------------------------------------------------
+
+/// Capacity of the outbound `ClientToServer` command channel.
+///
+/// Lower than the inbound reader channel (64) because `ClientToServer` messages are
+/// rare user-driven keypresses, not high-frequency daemon events.  N=32 provides
+/// headroom for burst scenarios while keeping bounded-channel semantics
+/// (SS-conventions-anti-patterns.md §forbidden-patterns: no unbounded channels).
+pub const IPC_CMD_CHANNEL_CAPACITY: usize = 32;
+
+/// Spawn a dedicated outbound writer task that drains `cmd_rx` and writes each
+/// `ClientToServer` message to `writer` using 4-byte LE length-prefix framing.
+///
+/// # Channel semantics (BC-2.04.011 — bounded, non-blocking send)
+///
+/// The caller uses `try_send` (bounded, non-blocking) to enqueue commands.
+/// This task uses `recv().await` on the receiving end — blocking on the task,
+/// not on the event loop.  `try_send` from the event loop returns
+/// `TrySendError::Full` when the channel is at capacity; the caller logs WARN
+/// (surfaced in the status bar via `App::drop_counter`) and discards the message.
+///
+/// # Lifecycle
+///
+/// The task exits when:
+/// 1. `write_framed` returns any `IpcError` (daemon gone — logs WARN, task exits).
+/// 2. The channel sender side is dropped (TUI exiting or reconnect — task exits cleanly).
+///
+/// The caller retains the `JoinHandle` to call `.abort()` on clean exit or reconnect.
+///
+/// # Reconnect
+///
+/// On reconnect, the caller aborts the old writer task and calls `setup_ipc_streams`
+/// with the fresh stream, which creates a new cmd channel + writer task and assigns
+/// `app.ipc_tx = Some(new_cmd_tx)`.
+pub fn spawn_ipc_writer<W>(
+    mut writer: W,
+    mut cmd_rx: tokio::sync::mpsc::Receiver<ClientToServer>,
+) -> tokio::task::JoinHandle<()>
+where
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        while let Some(msg) = cmd_rx.recv().await {
+            if let Err(e) = monocle_ipc::framing::write_framed(&mut writer, &msg).await {
+                tracing::warn!(
+                    error = %e,
+                    "spawn_ipc_writer: write_framed failed — daemon gone; writer task exiting \
+                     (BC-2.06.011/012/013)"
+                );
+                return;
+            }
+        }
+        // cmd_rx exhausted (sender dropped → TUI exiting or reconnect): exit cleanly.
+        tracing::debug!("spawn_ipc_writer: cmd_rx closed — writer task exiting cleanly");
+    })
+}
+
+// ---------------------------------------------------------------------------
+// IPC stream setup helper (F-S026-ADV5-CRIT-001 — wires app.ipc_tx)
+// ---------------------------------------------------------------------------
+
+/// Wire the IPC connection for `app` using a fresh `UnixStream`.
+///
+/// Splits the stream into read and write halves, spawns the inbound reader task
+/// (`spawn_ipc_reader`) and the outbound writer task (`spawn_ipc_writer`), creates
+/// bounded channels for both directions, and assigns `app.ipc_tx = Some(cmd_tx)`.
+///
+/// # Why this function exists
+///
+/// Before this function, `run()` moved the whole `UnixStream` into `spawn_ipc_reader`
+/// (read-only task) and never created an outbound writer task.  `App.ipc_tx` was
+/// permanently `None`, causing every `send_permission_decision` call to WARN and
+/// silently discard the message.  This function is the production fix for
+/// F-S026-ADV5-CRIT-001.
+///
+/// # Returns
+///
+/// `(reader_handle, writer_handle)` — both `JoinHandle<()>`. The caller MUST:
+/// 1. Retain both handles.
+/// 2. Call `reader_handle.abort()` AND `writer_handle.abort()` on clean exit or
+///    reconnect to prevent task leaks.
+///
+/// # Reconnect
+///
+/// On reconnect, call this function again with the fresh stream halves.  It will:
+/// - Drop the old `cmd_tx` (the old writer task exits when its `cmd_rx` is closed).
+/// - Create a new `cmd_tx` and assign it to `app.ipc_tx`.
+///
+/// The caller is responsible for aborting the old handles before or after calling
+/// this function.  The old writer task will exit on its own when `app.ipc_tx` is
+/// replaced (the old `cmd_tx` is dropped → channel closes → writer task exits), but
+/// an explicit `.abort()` is cleaner and ensures immediate cleanup.
+///
+/// # Generics
+///
+/// `R` must implement `AsyncReadExt + Unpin + Send + 'static` (read half).
+/// `W` must implement `tokio::io::AsyncWriteExt + Unpin + Send + 'static` (write half).
+///
+/// This generic form allows tests to pass `tokio::io::DuplexStream` halves
+/// without requiring a real `UnixStream`.  Production code (in `run()`) passes
+/// `OwnedReadHalf` / `OwnedWriteHalf` from `UnixStream::into_split()`.
+pub fn setup_ipc_streams<R, W>(
+    app: &mut App,
+    read_half: R,
+    write_half: W,
+) -> (tokio::task::JoinHandle<()>, tokio::task::JoinHandle<()>)
+where
+    R: AsyncReadExt + Unpin + Send + 'static,
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    let (rh, wh, _inbound_rx) = setup_ipc_streams_with_rx(app, read_half, write_half);
+    (rh, wh)
+}
+
+/// Internal variant used by `run()`: returns the inbound receiver so the event loop
+/// can drain it via `ipc_rx.try_recv()`.
+///
+/// This function performs the authoritative wiring — `setup_ipc_streams` is a thin
+/// wrapper that discards `inbound_rx` for test convenience (when the test only needs
+/// to verify that `app.ipc_tx` is wired and messages flow through the write half).
+///
+/// Returns `(reader_handle, writer_handle, inbound_rx)`.
+fn setup_ipc_streams_with_rx<R, W>(
+    app: &mut App,
+    read_half: R,
+    write_half: W,
+) -> (
+    tokio::task::JoinHandle<()>,
+    tokio::task::JoinHandle<()>,
+    tokio::sync::mpsc::Receiver<Result<ServerToClient, IpcError>>,
+)
+where
+    R: AsyncReadExt + Unpin + Send + 'static,
+    W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
+{
+    // Inbound reader channel: ServerToClient messages from the daemon.
+    // N=64 — same as original; see spawn_ipc_reader doc comment for capacity rationale.
+    let (inbound_tx, inbound_rx) =
+        tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
+    let reader_handle = spawn_ipc_reader(read_half, inbound_tx);
+
+    // Outbound command channel: ClientToServer messages to the daemon (BC-2.06.011/012/013).
+    // N=IPC_CMD_CHANNEL_CAPACITY=32 — lower than inbound because commands are rare,
+    // user-driven keypresses, not high-frequency daemon events.
+    let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel::<ClientToServer>(IPC_CMD_CHANNEL_CAPACITY);
+    let writer_handle = spawn_ipc_writer(write_half, cmd_rx);
+
+    // Wire app.ipc_tx to the new cmd channel sender.
+    // This is the production fix for F-S026-ADV5-CRIT-001: ipc_tx is now Some after wiring.
+    app.ipc_tx = Some(cmd_tx);
+
+    (reader_handle, writer_handle, inbound_rx)
 }
 
 // ---------------------------------------------------------------------------
@@ -635,31 +913,29 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // Transfer transport ownership to the reader task (Option B — F-S025-ADV2-BLOCKER-001).
+    // Wire the IPC connection: split the stream, spawn reader + writer tasks, set app.ipc_tx.
     //
-    // The reader task loops forever, calling read_framed to completion and forwarding
-    // completed frames (or disconnect errors) into the bounded mpsc channel.
-    // The event loop drains ipc_rx with try_recv() — never calling read_framed directly.
+    // F-S026-ADV5-CRIT-001 fix: the original code moved `transport` whole into
+    // `spawn_ipc_reader` (read-only task), leaving no writer half and no outbound channel.
+    // `app.ipc_tx` was permanently `None`, causing every `send_permission_decision` call
+    // to WARN and silently discard the message.
     //
-    // Channel capacity N=64: at 1000 events/sec (SS-conventions channel convention) and
-    // 16ms render cadence, the loop drains ~16 events/tick — well within budget. N=64
-    // provides 4× headroom against burst (64 × ~1KB ≈ 64KB max enqueued).
+    // `setup_ipc_streams_with_rx` fixes this by:
+    // 1. Receiving (read_half, write_half) from `transport.into_split()`.
+    // 2. Spawning `spawn_ipc_reader(read_half, inbound_tx)` — inbound frames.
+    // 3. Creating a bounded cmd channel (N=32) + spawning `spawn_ipc_writer(write_half, cmd_rx)`.
+    // 4. Assigning `app.ipc_tx = Some(cmd_tx)` — outbound decisions are now wired.
+    // 5. Returning the inbound receiver (`inbound_rx`) for the event loop drain loop.
     //
-    // Drop policy: BLOCK (tx.send().await). Silent drop on full would violate at-least-once
-    // delivery for PermissionPromptQueued (BC-2.05.002 Invariant 4).
+    // Channel capacity:
+    //   - Inbound (ServerToClient): N=64 — matches original; see spawn_ipc_reader doc.
+    //   - Outbound (ClientToServer): N=32 — rare user keypresses; see IPC_CMD_CHANNEL_CAPACITY.
     //
-    // Sender ownership (F-S025-ADV3-MED-003): `ipc_tx` is passed by move (not clone) to
-    // `spawn_ipc_reader`. The reader task holds the ONLY sender; when it exits (disconnect or
-    // error), the channel closes and `ipc_rx.try_recv()` returns `TryRecvError::Disconnected`.
-    // This makes the disconnect arm in the drain loop reachable on natural reader exit.
-    //
-    // Reconnect channel (F-S025-ADV3-MED-003): on reconnect, the channel is re-created with
-    // a fresh `(ipc_tx2, ipc_rx2)` pair and `ipc_rx` is shadowed (BC-2.05.006 PC-4). This is
-    // simpler than retaining a long-lived sender clone — there is no performance cost to
-    // channel re-creation (it allocates a small fixed-size ring).
-    let (ipc_tx, mut ipc_rx) = tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-    // reader_handle is `mut` to allow reassignment on reconnect (BC-2.05.006 PC-4).
-    let mut reader_handle = spawn_ipc_reader(transport, ipc_tx); // ipc_tx MOVED here — no clone retained
+    // Reconnect: on disconnect, abort both handles, split the new stream, call
+    // setup_ipc_streams_with_rx; `ipc_rx` is shadowed and `app.ipc_tx` is replaced.
+    let (transport_read, transport_write) = transport.into_split();
+    let (mut reader_handle, mut writer_handle, mut ipc_rx) =
+        setup_ipc_streams_with_rx(&mut app, transport_read, transport_write);
 
     // Set up the ratatui terminal.
     let backend = CrosstermBackend::new(io::stdout());
@@ -714,6 +990,11 @@ pub async fn run() -> Result<()> {
                         // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                         on_transport_event(&mut app, TransportEvent::Disconnected);
                         reader_handle.abort();
+                        writer_handle.abort();
+                        // F-S026-ADV6-MED-001: clear ipc_tx so the Some⇒wired invariant holds
+                        // while the writer task is dead. setup_ipc_streams_with_rx re-assigns
+                        // Some(new_cmd_tx) on a successful reconnect.
+                        app.ipc_tx = None;
 
                         // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                         let mut backoff = BackoffState::new();
@@ -760,14 +1041,14 @@ pub async fn run() -> Result<()> {
                                         break;
                                     }
                                 }
-                                // Transfer ownership to a new reader task.
-                                // Re-create the channel (F-S025-ADV3-MED-003): ipc_tx was moved
-                                // to the old reader task; channel re-creation has negligible cost.
-                                let (ipc_tx2, ipc_rx2) = tokio::sync::mpsc::channel::<
-                                    Result<ServerToClient, IpcError>,
-                                >(64);
-                                reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
-                                ipc_rx = ipc_rx2;
+                                // Wire the new stream (F-S026-ADV5-CRIT-001): split into
+                                // read/write halves, spawn both tasks, set app.ipc_tx.
+                                let (ns_read, ns_write) = new_stream.into_split();
+                                let (rh2, wh2, rx2) =
+                                    setup_ipc_streams_with_rx(&mut app, ns_read, ns_write);
+                                reader_handle = rh2;
+                                writer_handle = wh2;
+                                ipc_rx = rx2;
                             }
                             Err(IpcError::ReconnectTimeout) => {
                                 tracing::warn!(
@@ -800,6 +1081,11 @@ pub async fn run() -> Result<()> {
                     // SOQ-3: clear overlay stack before reconnect (BC-2.05.007 Invariant 1).
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     reader_handle.abort();
+                    writer_handle.abort();
+                    // F-S026-ADV6-MED-001: clear ipc_tx so the Some⇒wired invariant holds
+                    // while the writer task is dead. setup_ipc_streams_with_rx re-assigns
+                    // Some(new_cmd_tx) on a successful reconnect.
+                    app.ipc_tx = None;
 
                     // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                     let mut backoff = BackoffState::new();
@@ -844,13 +1130,14 @@ pub async fn run() -> Result<()> {
                                     break;
                                 }
                             }
-                            // Transfer ownership to a new reader task.
-                            // Re-create the channel (F-S025-ADV3-MED-003): channel re-creation
-                            // is necessary and has negligible allocation cost.
-                            let (ipc_tx2, ipc_rx2) =
-                                tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
-                            reader_handle = spawn_ipc_reader(new_stream, ipc_tx2);
-                            ipc_rx = ipc_rx2;
+                            // Wire the new stream (F-S026-ADV5-CRIT-001): split into
+                            // read/write halves, spawn both tasks, set app.ipc_tx.
+                            let (ns_read, ns_write) = new_stream.into_split();
+                            let (rh2, wh2, rx2) =
+                                setup_ipc_streams_with_rx(&mut app, ns_read, ns_write);
+                            reader_handle = rh2;
+                            writer_handle = wh2;
+                            ipc_rx = rx2;
                         }
                         Err(IpcError::ReconnectTimeout) => {
                             tracing::warn!(
@@ -886,9 +1173,10 @@ pub async fn run() -> Result<()> {
         }
     }
 
-    // Clean exit: abort the reader task before returning so the tokio runtime doesn't
-    // leak the background task between test runs or on graceful shutdown.
+    // Clean exit: abort both IPC tasks before returning so the tokio runtime doesn't
+    // leak background tasks between test runs or on graceful shutdown.
     reader_handle.abort();
+    writer_handle.abort();
 
     Ok(())
 }
@@ -920,27 +1208,10 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             on_drop_counter_update(app, drop_counter);
         }
         ServerToClient::PermissionPromptQueued { payload } => {
-            apply_permission_prompt_queued(&mut app.overlay_stack, payload);
-            // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
-            // mutate overlay_stack. Enter Overlay mode if not already in it.
-            if !app.overlay_stack.is_empty() && !matches!(app.mode, AppMode::Overlay { .. }) {
-                let prior = match &app.mode {
-                    AppMode::Dashboard { focused } => focused.clone(),
-                    AppMode::Filtering { prior, .. } => prior.clone(),
-                    AppMode::Fullscreen { prior, .. } => prior.clone(),
-                    AppMode::Overlay { .. } => FocusSnapshot::Sessions, // unreachable
-                };
-                app.mode = AppMode::Overlay { prior };
-            }
+            on_permission_prompt_queued(app, payload);
         }
         ServerToClient::PermissionPromptResolved { prompt_id } => {
-            app.overlay_stack.retain(|m| m.prompt_id != prompt_id);
-            // F-S025-ADV2-HIGH-003: if stack is now empty, collapse to Dashboard.
-            if app.overlay_stack.is_empty() {
-                if let AppMode::Overlay { prior } = app.mode.clone() {
-                    app.mode = AppMode::Dashboard { focused: prior };
-                }
-            }
+            on_permission_prompt_resolved(app, prompt_id);
         }
         ServerToClient::HookEventReceived { .. } => {
             // Hook events update the event ribbon — handled in S-027.
@@ -964,6 +1235,51 @@ pub enum KeyOutcome {
     Quit,
     /// Normal dispatch — continue the event loop.
     Continue,
+}
+
+// ---------------------------------------------------------------------------
+// Permission decision send helper (BC-2.06.011/012/013)
+// ---------------------------------------------------------------------------
+
+/// Send a `ClientToServer::PermissionDecision` for the front overlay modal.
+///
+/// Uses `try_send` (bounded, non-blocking — BC-2.04.011). If the overlay stack
+/// is empty or `ipc_tx` is not wired (pre-connection), a WARN is logged and no
+/// message is sent. The overlay stack is NOT mutated — the modal stays visible
+/// until `ServerToClient::PermissionPromptResolved` arrives (BC-2.06.023).
+///
+/// On channel-full (`TrySendError::Full`): logs WARN with drop signal. The
+/// decision is discarded; the user can re-key. This matches the project's
+/// bounded-channel policy (SS-conventions-anti-patterns.md §forbidden-patterns).
+fn send_permission_decision(app: &mut App, decision: PermissionDecisionKind) {
+    let Some(prompt_id) = app.overlay_stack.front().map(|m| m.prompt_id) else {
+        tracing::warn!(
+            "send_permission_decision: overlay_stack is empty; ignoring {:?} (BC-2.06.011/012/013)",
+            decision
+        );
+        return;
+    };
+    let Some(tx) = app.ipc_tx.as_ref() else {
+        tracing::warn!(
+            "send_permission_decision: ipc_tx is None (not connected); ignoring {:?} for \
+             prompt_id={} (BC-2.06.011/012/013)",
+            decision,
+            prompt_id
+        );
+        return;
+    };
+    let msg = ClientToServer::PermissionDecision {
+        prompt_id,
+        decision,
+    };
+    if let Err(e) = tx.try_send(msg) {
+        tracing::warn!(
+            "send_permission_decision: try_send failed for prompt_id={}: {} \
+             (channel full or closed — BC-2.04.011 drop policy)",
+            prompt_id,
+            e
+        );
+    }
 }
 
 /// Dispatch a single key event through the full 5-level binding chain.
@@ -1066,6 +1382,26 @@ pub fn dispatch_key_event(
                         }
                     }
                     app.mode = transition(app.mode.clone(), action);
+                }
+                // ---------------------------------------------------------------------------
+                // S-026 — Permission decision key handlers (BC-2.06.011/012/013)
+                //
+                // All three arms:
+                //   1. Look up `app.overlay_stack.front()` to get the target `prompt_id`.
+                //   2. Enqueue `ClientToServer::PermissionDecision { prompt_id, decision }`
+                //      on `app.ipc_tx` via `try_send` (bounded, non-blocking — BC-2.04.011).
+                //   3. Do NOT pop or retain the overlay_stack — the modal stays visible
+                //      until `ServerToClient::PermissionPromptResolved` arrives (BC-2.06.023).
+                //   4. Mode does NOT change here — `transition()` is an identity for these.
+                // ---------------------------------------------------------------------------
+                Action::PermissionAcceptOnce => {
+                    send_permission_decision(app, PermissionDecisionKind::Allow);
+                }
+                Action::PermissionAcceptAlways => {
+                    send_permission_decision(app, PermissionDecisionKind::AcceptAlways);
+                }
+                Action::PermissionReject => {
+                    send_permission_decision(app, PermissionDecisionKind::Deny);
                 }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);

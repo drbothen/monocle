@@ -224,7 +224,8 @@ pub fn resolve_binding(
             }
         }
         AppMode::Overlay { .. } => {
-            // In Overlay mode: permission decision keys captured by SearchPrompt.
+            // In Overlay mode: permission decision keys and stack-navigation keys
+            // captured by SearchPrompt (highest precedence level).
             //
             // Modifier guard: only match if Ctrl and Alt are NOT held. Shift is
             // permitted because 'A' (AcceptAlways) is the uppercase form and shift
@@ -233,6 +234,14 @@ pub fn resolve_binding(
             // Without this guard, Ctrl+Y would match KeyCode::Char('y') and fire
             // PermissionAcceptOnce — incorrect since modifier keys change the
             // semantic intent of a keypress.
+            //
+            // Up/Down are included here (AC-013, AC-014, BC-2.06.009) alongside the
+            // decision keys so that stack rotation is live in production.  The Builtin
+            // layer maps Up/Down → SelectPrev/SelectNext for Dashboard navigation; by
+            // intercepting them here in the SearchPrompt arm we prevent the Builtin
+            // bindings from silently no-op'ing in Overlay mode.  Dashboard Up/Down is
+            // unaffected: the Overlay arm only executes when `mode` is
+            // `AppMode::Overlay { .. }`.
             let overlay_action = if key.modifiers.ctrl || key.modifiers.alt {
                 // Ctrl/Alt modified keys are not permission decisions — fall through.
                 None
@@ -243,6 +252,10 @@ pub fn resolve_binding(
                     KeyCode::Char('A') => Some(Action::PermissionAcceptAlways),
                     KeyCode::Char('n') => Some(Action::PermissionReject),
                     KeyCode::Char('r') => Some(Action::PermissionReject),
+                    // AC-013/AC-014 (BC-2.06.009): Up/Down rotate the overlay stack.
+                    // Both directions map to the same action (circular rotation).
+                    KeyCode::Up => Some(Action::OverlayCycleNext),
+                    KeyCode::Down => Some(Action::OverlayCycleNext),
                     _ => None,
                 }
             };

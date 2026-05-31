@@ -291,6 +291,17 @@ async fn handle_pre_tool_use_inner(
                         Json(serde_json::json!({"decision": "allow", "reason": "user-approved"})),
                     )
                         .into_response(),
+                    Ok(PermissionDecisionKind::AcceptAlways) => {
+                        // BC-2.06.012 PC-1: forward {"decision":"always"} to Claude Code hook
+                        // protocol (SS-ipc §942). Persistent allow-pattern recording is a
+                        // future story (no Phase-1 BC mandates monocle-side pattern persistence).
+                        // The TUI sends AcceptAlways; the daemon forwards the wire decision.
+                        (
+                            axum::http::StatusCode::OK,
+                            Json(serde_json::json!({"decision": "always", "reason": "user-approved-always"})),
+                        )
+                            .into_response()
+                    }
                     Ok(PermissionDecisionKind::Deny) => (
                         axum::http::StatusCode::OK,
                         Json(serde_json::json!({"decision": "block", "reason": "user-denied"})),
