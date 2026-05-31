@@ -554,11 +554,11 @@ fn test_BC_2_06_024_payload_to_modal_edit_none_content_yields_generic() {
         ToolPayload::Generic { tool_name, .. } => {
             assert_eq!(
                 tool_name, "Edit",
-                "BC-2.06.024 v1.10: Edit None/None must produce Generic with tool_name='Edit'"
+                "BC-2.06.024 (AC-016): Edit None/None must produce Generic with tool_name='Edit'"
             );
         }
         other => panic!(
-            "BC-2.06.024 v1.10: Edit + None/None + path present must yield Generic, got {:?}",
+            "BC-2.06.024 (AC-016): Edit + None/None + path present must yield Generic, got {:?}",
             std::mem::discriminant(other)
         ),
     }
@@ -593,11 +593,11 @@ fn test_BC_2_06_024_payload_to_modal_write_none_content_yields_generic() {
         ToolPayload::Generic { tool_name, .. } => {
             assert_eq!(
                 tool_name, "Write",
-                "BC-2.06.024 v1.10: Write None/None must produce Generic with tool_name='Write'"
+                "BC-2.06.024 (AC-016): Write None/None must produce Generic with tool_name='Write'"
             );
         }
         other => panic!(
-            "BC-2.06.024 v1.10: Write + None/None + path present must yield Generic, got {:?}",
+            "BC-2.06.024 (AC-016): Write + None/None + path present must yield Generic, got {:?}",
             std::mem::discriminant(other)
         ),
     }
@@ -641,20 +641,20 @@ fn test_BC_2_06_024_payload_to_modal_write_with_new_content_and_path_yields_edit
         } => {
             assert_eq!(
                 old_content, "",
-                "BC-2.06.024 v1.10: Write old_content=None must unwrap_or_default to empty string"
+                "BC-2.06.024 (AC-016): Write old_content=None must unwrap_or_default to empty string"
             );
             assert_eq!(
                 new_content, "fn main() {}",
-                "BC-2.06.024 v1.10: Write new_content must be carried through exactly"
+                "BC-2.06.024 (AC-016): Write new_content must be carried through exactly"
             );
             assert_eq!(
                 path,
                 std::path::PathBuf::from("/src/generated.rs"),
-                "BC-2.06.024 v1.10: Write path must be extracted from tool_input['path']"
+                "BC-2.06.024 (AC-016): Write path must be extracted from tool_input['path']"
             );
         }
         other => panic!(
-            "BC-2.06.024 v1.10: Write + new_content Some + path present must yield Edit, got {:?}",
+            "BC-2.06.024 (AC-016): Write + new_content Some + path present must yield Edit, got {:?}",
             std::mem::discriminant(&other)
         ),
     }
@@ -693,12 +693,12 @@ fn test_BC_2_06_024_payload_to_modal_write_content_present_no_path_yields_generi
         ToolPayload::Generic { tool_name, .. } => {
             assert_eq!(
                 tool_name, "Write",
-                "BC-2.06.024 v1.10: Write content-present/no-path must produce Generic \
+                "BC-2.06.024 (AC-016): Write content-present/no-path must produce Generic \
                  with tool_name='Write'"
             );
         }
         other => panic!(
-            "BC-2.06.024 v1.10: Write + content Some + path absent must yield Generic, got {:?}",
+            "BC-2.06.024 (AC-016): Write + content Some + path absent must yield Generic, got {:?}",
             std::mem::discriminant(other)
         ),
     }
