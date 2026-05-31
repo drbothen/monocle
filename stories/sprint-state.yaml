@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.31"
+version: "1.32"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-31T04:00:00Z
@@ -356,12 +356,12 @@ stories:
     epic: EPIC-06
     wave: 6
     points: 8
-    status: review
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
+    completed_at: "2026-05-30"
     pr_url: "https://github.com/drbothen/monocle/pull/28"
-    notes: "Wave 6. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007. monocle-tui binary + ratatui draw loop. Depends on S-024, S-022, S-030. ADVERSARIALLY CONVERGED (D-221): 3/3 CLEAN Passes 40+41+42 (fresh-context source-re-derivation). All 10 ACs satisfied. PR #28 draft — pending demo-recorder evidence + pr-manager merge cycle."
+    notes: "Wave 6. BCs: BC-2.06.004, BC-2.06.005, BC-2.06.007 + BC-2.05.002 Inv-4. PR #28 squash-merged develop @ 838477e (2026-05-30). 10 ACs satisfied. 65/65 monocle-tui tests pass. 3/3 adversarially converged (D-221): Passes 40+41+42 fresh-context source-re-derivation all CLEAN. Demo evidence in docs/demo-evidence/S-025/. pr-reviewer APPROVE (0 blocking). D-222."
 
   - id: S-026
     title: "Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3"
@@ -427,12 +427,12 @@ summary:
   total_stories: 33
   not_started: 5
   in_progress: 0
-  review: 1
-  done: 26
+  review: 0
+  done: 27
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 156
+  points_complete: 164
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,10 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.32 updates (2026-05-30):
+  # - S-025 flipped review → done (PR #28 squash-merged develop @ 838477e; BC-2.06.004/005/007+BC-2.05.002 Inv-4 satisfied; 10 ACs; 65 tests; adv 3/3 converged D-221; demo evidence in docs/demo-evidence/S-025/; pr-reviewer APPROVE 0 blocking)
+  # - done: 26 → 27; review: 1 → 0; points_complete: 156 → 164
+  # - Wave 6: 3/4 done (S-022 8pts + S-023 5pts + S-025 8pts = 21/34 pts). S-026 remaining (13 pts, now unblocked — human authorization pending).
   # v1.31 updates (2026-05-31):
   # - S-025 flipped not_started → review (adversarially converged D-221; 3/3 CLEAN Passes 40+41+42; PR #28 draft pending demo+merge)
   # - review: 0 → 1; not_started: 6 → 5; points_complete unchanged (156 — S-025 8pts counts on merge)
