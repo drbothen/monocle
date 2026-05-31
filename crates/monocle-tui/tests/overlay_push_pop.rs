@@ -524,6 +524,186 @@ fn test_BC_2_06_024_payload_to_modal_read_missing_path_key() {
     );
 }
 
+/// BC-2.06.024 / AC-016 v1.10 — Edit, both content fields None, path present → Generic.
+///
+/// This is the Phase-1 normal path: the daemon always sends `old_content=None,
+/// new_content=None` for deferred prompts. With no content to diff, the production
+/// code must fall back to Generic (BC-2.06.010: no blank diff pane).
+///
+/// Non-vacuity: if the production handler incorrectly promotes a None/None Edit to
+/// ToolPayload::Edit, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_edit_none_content_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Edit".into(),
+        tool_input: serde_json::json!({"path": "/src/lib.rs"}),
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Edit",
+                "BC-2.06.024 v1.10: Edit None/None must produce Generic with tool_name='Edit'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 v1.10: Edit + None/None + path present must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write, both content fields None, path present → Generic.
+///
+/// Write tool with no content is the same Phase-1 normal path as Edit: daemon sends
+/// None/None, so there is nothing to diff. The production code falls back to Generic.
+///
+/// Non-vacuity: if the production handler treats Write differently from Edit for the
+/// None/None case, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_none_content_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({"path": "/tmp/output.txt"}),
+        old_content: None,
+        new_content: None,
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Write",
+                "BC-2.06.024 v1.10: Write None/None must produce Generic with tool_name='Write'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 v1.10: Write + None/None + path present must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write tool with new_content Some and path present → Edit.
+///
+/// When the daemon does supply file content (new_content is Some), the Write arm must
+/// promote to `ToolPayload::Edit` so the diff pane can be rendered. The old_content is
+/// unwrap_or_default() → empty string (no prior content for a new file). The path and
+/// new_content must be carried through exactly.
+///
+/// This covers the entire Write → ToolPayload::Edit branch, which had zero tests prior
+/// to this addition (F-S026-ADV3-MED-001).
+///
+/// Non-vacuity: if the production handler degrades Write to Generic when new_content is
+/// Some, the variant assert will fail.
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_with_new_content_and_path_yields_edit() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({"path": "/src/generated.rs"}),
+        old_content: None,
+        new_content: Some("fn main() {}".into()),
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match modal.tool_payload {
+        ToolPayload::Edit {
+            old_content,
+            new_content,
+            path,
+        } => {
+            assert_eq!(
+                old_content, "",
+                "BC-2.06.024 v1.10: Write old_content=None must unwrap_or_default to empty string"
+            );
+            assert_eq!(
+                new_content, "fn main() {}",
+                "BC-2.06.024 v1.10: Write new_content must be carried through exactly"
+            );
+            assert_eq!(
+                path,
+                std::path::PathBuf::from("/src/generated.rs"),
+                "BC-2.06.024 v1.10: Write path must be extracted from tool_input['path']"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 v1.10: Write + new_content Some + path present must yield Edit, got {:?}",
+            std::mem::discriminant(&other)
+        ),
+    }
+}
+
+/// BC-2.06.024 / AC-016 v1.10 — Write tool with content Some but path ABSENT → Generic.
+///
+/// Even when content is present, the absence of a "path" key in tool_input means the
+/// production code cannot construct a meaningful Edit payload (no path to display).
+/// It must fall back to Generic, surfacing the raw tool_input JSON instead.
+///
+/// Also verified for the Edit arm via the same branch in production code (the "Edit"|"Write"
+/// arm shares the path_opt check). This test uses Write to cover the previously-untested arm.
+///
+/// Non-vacuity: if the production handler promotes content-present/no-path to Edit, the
+/// variant assert will fail (Edit requires a valid path).
+#[test]
+fn test_BC_2_06_024_payload_to_modal_write_content_present_no_path_yields_generic() {
+    let pid = Uuid::new_v4();
+    let payload = PermissionPromptPayload {
+        prompt_id: pid,
+        session_id: "sess-001".into(),
+        tool_name: "Write".into(),
+        tool_input: serde_json::json!({}), // no "path" key
+        old_content: None,
+        new_content: Some("some content".into()),
+    };
+
+    let modal = payload_to_modal(payload);
+
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
+    match &modal.tool_payload {
+        ToolPayload::Generic { tool_name, .. } => {
+            assert_eq!(
+                tool_name, "Write",
+                "BC-2.06.024 v1.10: Write content-present/no-path must produce Generic \
+                 with tool_name='Write'"
+            );
+        }
+        other => panic!(
+            "BC-2.06.024 v1.10: Write + content Some + path absent must yield Generic, got {:?}",
+            std::mem::discriminant(other)
+        ),
+    }
+}
+
 /// BC-2.06.024 / AC-016 received_at: The `received_at` field is set at conversion time,
 /// NOT from the payload (which has no timestamp). Verify it's a plausible Instant
 /// (not zero / not in the far future). We can only assert it's set — not its exact value.
