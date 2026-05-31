@@ -156,8 +156,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.21"
-  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
+  current_version: "5.22"
+  last_bump_commit: "[set at inputs[]-version-free conversion burst 2026-05-30]"
   last_bump_date: "2026-05-30"
 
 VP-INDEX:

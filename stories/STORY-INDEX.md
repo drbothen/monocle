@@ -1,26 +1,26 @@
 ---
 document_type: story-index
 level: L4
-version: "5.21"
+version: "5.22"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-30T00:00:00Z
+timestamp: 2026-05-30T12:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/prd.md, version: "1.27.4"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
-  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.17"}
-  - {path: .factory/specs/domain-spec/L2-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.23"}
-  - {path: .factory/specs/dtu-assessment.md, version: "1.7.6"}
-  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.8"}
-  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.6"}
-  - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.9.0"}
-  - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
+  - .factory/specs/prd.md
+  - .factory/specs/behavioral-contracts/BC-INDEX.md
+  - .factory/specs/verification-properties/VP-INDEX.md
+  - .factory/specs/domain-spec/L2-INDEX.md
+  - .factory/specs/architecture/ARCH-INDEX.md
+  - .factory/specs/dtu-assessment.md
+  - .factory/specs/prd-supplements/nfr-catalog.md
+  - .factory/specs/prd-supplements/error-taxonomy.md
+  - .factory/specs/architecture/SS-daemon-wiring.md
+  - .factory/specs/architecture/SS-ipc.md
+  - .factory/specs/architecture/SS-tui.md
+  - .factory/specs/architecture/SS-config.md
 input-hash: "[live-state]"
-traces_to: ".factory/specs/prd.md v1.27.4"
+traces_to: .factory/specs/prd.md
 ---
 
 # Story Index: monocle Phase 2
@@ -450,6 +450,31 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.22
+
+**Permanent fix: inputs[] converted to version-free bare-filename form (ADR-0007 Option 2)** (2026-05-30):
+- Root cause: STORY-INDEX.md's `inputs[]` used the versioned `{path: X, version: "N"}` form for all 12
+  input entries. Because STORY-INDEX is in the ACTIVE set (`*-INDEX.md` per ADR-0007 §inputs[] Provenance
+  Classification), POL-11 treats its inputs[] as active pointers that must match canonical versions.
+  Every ARCH-INDEX bump (which happens on every ADR addition) re-staled STORY-INDEX:14 — this was a
+  structural impossibility of reaching fixpoint under the versioned form.
+- Fix (Option 2 per ADR-0007 §Decision): all 12 versioned `{path:, version:}` inputs[] entries converted
+  to bare-filename strings (no version literal). This matches the convention already used by sibling index
+  documents: BC-INDEX.md uses `inputs: [prd.md, architecture/ARCH-INDEX.md]`; ARCH-INDEX.md uses
+  `inputs: [product-brief.md, prd.md]`; VP-INDEX.md uses `inputs: [prd.md, behavioral-contracts/BC-INDEX.md,
+  architecture/ARCH-INDEX.md]`. STORY-INDEX is now structurally consistent with all sibling indexes.
+- `traces_to` also converted: from `.factory/specs/prd.md v1.27.4` to bare `.factory/specs/prd.md` (no
+  version literal), consistent with BC-INDEX `traces_to: prd.md` and ARCH-INDEX `traces_to: prd.md`.
+- Fixpoint guarantee: bare-filename inputs[] entries carry no version literal; Pattern B
+  (`_YAML_INPUT_PIN_RE`) matches only `{path:, version:}` struct form. Plain string entries are
+  transparent to POL-11 — no re-stale possible regardless of how many times ARCH-INDEX bumps.
+- POL-11 result: 0 .factory findings after this change (STORY-INDEX:14 finding eliminated).
+- Scope: STORY-INDEX.md frontmatter + version-pin-registry.yaml STORY-INDEX entry. No individual
+  story files touched (their inputs[] are HISTORICAL per ADR-0007 closed rule; exempt from POL-11).
+- Version bumped v5.21 → v5.22.
+- SE-16d monotonicity: v5.22 timestamp 2026-05-30 >= v5.20 timestamp 2026-05-30. PASS (same-day;
+  §Trace v5.21 entry absent — pre-existing gap from prior session not in scope).
 
 ## §Trace v5.20
 

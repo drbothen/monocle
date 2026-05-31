@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
-traces_to: ".factory/stories/STORY-INDEX.md v5.21"
+traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
 
