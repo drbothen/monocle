@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.6"
+version: "1.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-30T00:00:00Z
@@ -18,7 +18,7 @@ inputs:
   - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.2"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.32"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.33"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -147,3 +147,9 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.7 — POL-11 version-pin cascade from BC-INDEX v1.33 (2026-05-30)
+
+**Bump:** 1.6 → 1.7.
+**Scope:** `inputs[]` BC-INDEX pin: `"1.32"` → `"1.33"` (Option 1 per ADR-0007 §Decision — EVAL-INDEX is an active INDEX document; BC-INDEX pin bumped after Pass-39 adjudication item 6 corrected BC-2.06.007 Action::Escape → Action::ExitFullscreen terminology).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no holdout scenario behavioral change).

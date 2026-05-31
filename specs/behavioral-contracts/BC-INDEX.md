@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.32"
+version: "1.33"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-29T03:00:00Z
+timestamp: 2026-05-30T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -1083,3 +1083,22 @@ Post-fix verification: all 24 ss-06 BCs now cite SS-tui.md v1.8.2 as active Arch
 BC-INDEX H1 titles: unchanged for all 3 BCs in this burst. No BC retirements or removals.
 
 SE-16d monotonicity: v1.32 timestamp 2026-05-29T03:00:00Z > v1.31 timestamp 2026-05-29T02:00:00Z. PASS.
+
+## §Trace v1.33
+
+**Pass-39 adjudication item 6 — BC-2.06.007 v1.0.4 → v1.0.5: pre-split Action::Escape terminology corrected** (2026-05-30T00:00:00Z):
+
+BC-2.06.007 v1.0.4 → v1.0.5:
+- PC-5, §Description, and test-vector row used `Action::Escape` — a pre-split term no longer valid after
+  F-S025-ADV2-HIGH-002 split Esc into `Action::Esc` (builtin, identity in Fullscreen) and
+  `Action::ExitFullscreen` (per-context, actual fullscreen-exit action).
+- PC-5 corrected: `Action::Escape` → `Action::ExitFullscreen` (full transition signature per adjudication ruling).
+- §Description corrected: "Pressing `Escape` returns to Dashboard" → split-terminology prose (ExitFullscreen
+  exits; Esc key is identity in Fullscreen; per-context binding is fullscreen-view story's responsibility).
+- Test-vector row corrected: `Escape` → `ExitFullscreen`.
+- Clarifying note added distinguishing `Action::Esc` (builtin) from `Action::ExitFullscreen` (per-context).
+
+BC-INDEX H1 title unchanged: "Sessions Panel: Enter Transitions to Fullscreen" — H1 is about the Enter
+transition, not the exit. No BC retirements or removals.
+
+SE-16d monotonicity: v1.33 timestamp 2026-05-30T00:00:00Z > v1.32 timestamp 2026-05-29T03:00:00Z. PASS.

@@ -1,7 +1,7 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.33"
+version: "1.4.34"
 status: draft
 producer: product-owner
 phase: pre-phase-1-brief
@@ -251,7 +251,7 @@ v1 ships (Phase 1 complete) when ALL of the following pass:
 | Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
 | Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-2.01.003 "Body Size Limit (256 KiB, HTTP 413)" (per BC-INDEX §SS-01, renumbered from BC-DAEMON-003). |
 | DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | DTU clone fidelity verified per NFR-011 (≥0.95 against Claude Code real hooks fixture corpus, per nfr-catalog.md). |
-| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.32): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.13, `SS-daemon-lifecycle.md` v1.0.32, and `SS-engine-module.md` v1.1.20. |
+| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.33): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.13, `SS-daemon-lifecycle.md` v1.0.32, and `SS-engine-module.md` v1.1.20. |
 
 ## Phase 2 Exit Criteria
 
@@ -692,4 +692,10 @@ SE-16d monotonicity PASS: 2026-05-19T00:30:00Z > prior 2026-05-18T18:30:00Z (v1.
 
 **Bump:** 1.4.32 → 1.4.33.
 **Scope:** Phase 1 Exit Criteria table: `per BC-INDEX v1.11` → `per BC-INDEX v1.32` (Option 1 per ADR-0007 §Decision — live active pointer citing canonical BC count; bumped to canonical current version).
+**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).
+
+## §Trace v1.4.34 — POL-11 version-pin cascade from BC-INDEX v1.33 (2026-05-30)
+
+**Bump:** 1.4.33 → 1.4.34.
+**Scope:** Phase 1 Exit Criteria table: `per BC-INDEX v1.32` → `per BC-INDEX v1.33` (Option 1 per ADR-0007 §Decision — normative live active pointer; bumped after Pass-39 adjudication item 6 corrected BC-2.06.007 v1.0.4→v1.0.5 Action::Escape→Action::ExitFullscreen terminology).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -32,7 +32,10 @@ Pressing `Enter` when `AppMode` is `Dashboard { focused: FocusSnapshot::Sessions
 to `AppMode::Fullscreen { panel: PanelId::Sessions, prior: FocusSnapshot::Sessions }`. The
 fullscreen view occupies 100% of the main area (excluding the always-visible status bar) and
 renders the selected session's detail: token history, cost breakdown, hook event count, and
-current phase tag. Pressing `Escape` returns to `Dashboard { focused: FocusSnapshot::Sessions }`.
+current phase tag. `Action::ExitFullscreen` returns to `Dashboard { focused: FocusSnapshot::Sessions }`;
+the physical `Esc` key is bound to `Action::Esc` (builtin binding, identity in Fullscreen — does NOT
+exit). The `Esc`→`Action::ExitFullscreen` per-context key binding is the responsibility of the
+Sessions Panel fullscreen-view story, not this BC.
 
 ## Preconditions
 
@@ -62,8 +65,12 @@ current phase tag. Pressing `Escape` returns to `Dashboard { focused: FocusSnaps
 4. **Fullscreen updates live:** While in Fullscreen mode, the TUI continues receiving IPC
    `SessionListUpdate` and `HookEventReceived` messages. The displayed session data updates
    on each draw tick.
-5. **`Escape` returns to Dashboard:** `Action::Escape` in `Fullscreen { panel: Sessions, prior: Sessions }`
-   transitions to `Dashboard { focused: FocusSnapshot::Sessions }` per BC-2.06.002.
+5. **Fullscreen exit — `Action::ExitFullscreen` returns to Dashboard:** When
+   `transition(AppMode::Fullscreen { panel: Sessions, prior: Sessions }, Action::ExitFullscreen)` is
+   called, the returned `AppMode` is `Dashboard { focused: FocusSnapshot::Sessions }` per BC-2.06.002.
+   The physical `Esc` key is bound to `Action::Esc` (identity in Fullscreen — does NOT exit);
+   `Action::ExitFullscreen` is wired to a key (per-context Fullscreen binding) by the Sessions Panel
+   fullscreen view story. Only `Action::ExitFullscreen` exits fullscreen.
 6. **Status bar remains visible:** The 2-row status bar (breadcrumb + keybinding hint) is
    always rendered, even in Fullscreen mode. The breadcrumb shows "Dashboard > Sessions > Fullscreen".
 7. **Empty-session guard:** If `app.sessions` is empty when `Enter` is pressed (transition
@@ -96,9 +103,16 @@ current phase tag. Pressing `Escape` returns to `Dashboard { focused: FocusSnaps
 | Input (mode, action) | Expected AppMode | Category |
 |----------------------|-----------------|----------|
 | `Dashboard { focused: Sessions }`, `Enter` | `Fullscreen { panel: Sessions, prior: Sessions }` | happy-path |
-| `Fullscreen { panel: Sessions, prior: Sessions }`, `Escape` | `Dashboard { focused: Sessions }` | happy-path |
+| `Fullscreen { panel: Sessions, prior: Sessions }`, `ExitFullscreen` | `Dashboard { focused: Sessions }` | happy-path |
 | `Dashboard { focused: EventRibbon }`, `Enter` | `Fullscreen { panel: EventRibbon, prior: EventRibbon }` | edge-case (different panel) |
 | `Filtering { panel: Sessions, query: "foo", prior: Sessions }`, `Enter` | `Filtering { panel: Sessions, query: "foo", prior: Sessions }` (no transition — identity) | edge-case |
+
+**Note — `Action::Esc` vs `Action::ExitFullscreen`:** These are distinct variants after the
+F-S025-ADV2-HIGH-002 split. `Action::Esc` is a builtin binding that is context-sensitive; in
+Fullscreen mode it is an identity transition (no state change). `Action::ExitFullscreen` is a
+per-context Fullscreen binding that triggers the actual fullscreen-exit transition to `Dashboard`.
+The physical `Esc` key mapping to `Action::ExitFullscreen` is wired by the fullscreen-view story
+(outside this BC's scope). Test vectors and PC-5 use `Action::ExitFullscreen` exclusively.
 
 ## Verification Properties
 
@@ -182,3 +196,22 @@ S-TBD — Implement Sessions Panel fullscreen view with session detail (token hi
 - Architecture Source: `SS-tui.md v1.5.0` → `SS-tui.md v1.8.2` (active pointer was stale by 3 minor versions).
 - No substantive BC body prose propagation required: §Sessions Panel Fullscreen paragraph and §Rendering Architecture draw_fullscreen() specification are unchanged across v1.5.0→v1.8.2. The AppMode::Overlay shape change (v1.8.0) and daemon-status rendering change (v1.8.2) do not affect this BC's scope (fullscreen entry/exit/rendering).
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-29T00:00:00Z > v1.0.3. PASS.
+
+## §Trace v1.0.5
+
+**Pass-39 adjudication item 6 — Pre-split `Action::Escape` terminology corrected** (2026-05-30T00:00:00Z):
+- Defect: PC-5, §Description, and test-vector row used `Action::Escape` — a pre-split term that no longer
+  exists as an Action variant after F-S025-ADV2-HIGH-002 split Esc into `Action::Esc` (context-sensitive,
+  builtin-bound, identity in Fullscreen) and `Action::ExitFullscreen` (the actual fullscreen-exit action).
+- §Description: "Pressing `Escape` returns to Dashboard" sentence updated to split terminology —
+  `Action::ExitFullscreen` exits; `Action::Esc` (physical Esc key, builtin binding) is identity in Fullscreen;
+  the Esc→ExitFullscreen key binding is the fullscreen-view story's responsibility.
+- PC-5: replaced `Action::Escape` with `Action::ExitFullscreen`; corrected text per adjudication ruling
+  (full transition call signature, physical key vs action distinction, per-context binding attribution).
+- Test-vector row: `Fullscreen{…}, Escape → Dashboard` corrected to `Fullscreen{…}, ExitFullscreen → Dashboard`.
+- Clarifying note added (before §Verification Properties) distinguishing `Action::Esc` (builtin, identity in
+  Fullscreen) from `Action::ExitFullscreen` (per-context, exits fullscreen).
+- EC-095 description ("Escape returns to Dashboard") left intentionally unchanged — that EC tests renderer
+  behavior on empty-session entry/exit, and the informal "Escape" reference there is to the physical key
+  event, not the Action variant; test-writer to use `Action::ExitFullscreen` in test code.
+- SE-16d monotonicity: v1.0.5 timestamp 2026-05-30T00:00:00Z > v1.0.4 timestamp 2026-05-29T00:00:00Z. PASS.
