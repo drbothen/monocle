@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
@@ -35,6 +35,15 @@ body displays the file path. For `ToolPayload::Generic`, the body displays the t
 a JSON excerpt of `tool_input`. For `ToolPayload::Edit`, the body invokes the diff renderer
 (BC-2.06.010); Edit rendering is NOT in scope of this contract. This BC covers the three
 non-Edit variants only.
+
+Note: In Phase 1, `payload_to_modal()` produces `ToolPayload::Generic` for ALL `"Edit"` and
+`"Write"` tool prompts because the daemon sends `old_content: None, new_content: None` for
+every deferred prompt (rich diff content is S-027 scope). Therefore the `Generic` rendering
+path is the predominant path for file-editing tools in Phase 1, not a rare fallback. This BC's
+`Generic` rendering (PC-3) must correctly handle `tool_name` values of `"Edit"` and `"Write"`
+— the `tool:` line shows the tool name verbatim, and the `input:` line shows the `tool_input`
+JSON (which includes the path field), giving the user meaningful context about which file is
+being modified.
 
 ## Preconditions
 
@@ -132,6 +141,8 @@ match &modal.tool_payload {
 | EC-005 | `ToolPayload::Generic` where `tool_input` is `serde_json::Value::Null` | `serde_json::to_string` produces `"null"`; body renders `input: null` |
 | EC-006 | `ToolPayload::Bash` arrives when terminal height is minimal (e.g., 8 rows) | Header (2 rows) + body (1 row) + hint (1 row) = 4 rows minimum; body is truncated to fit; no panic |
 | EC-007 | `ToolPayload::Generic` where `tool_input` serialization produces an error | Body renders `input: (unrepresentable)` as a safe fallback; error is logged at `WARN` level via `tracing::warn!`; no panic |
+| EC-008 | `ToolPayload::Generic` with `tool_name == "Edit"` (Phase-1 normal path: daemon sent None/None content) | PC-3 applies: renders `tool: Edit` and `input: <tool_input_excerpt>`. The `tool_input` JSON contains the path field, so the user sees which file is being edited. This is the correct Phase-1 behavior; the Edit diff variant is produced only when content is available (S-027+). |
+| EC-009 | `ToolPayload::Generic` with `tool_name == "Write"` (Phase-1 normal path: daemon sent None/None content) | Same as EC-008: PC-3 applies; renders `tool: Write` and `input: <tool_input_excerpt>`. `Write` is a distinct Claude Code tool (full file creation/overwrite) handled identically to `Edit` in `payload_to_modal()`. |
 
 ## Canonical Test Vectors
 
@@ -191,6 +202,24 @@ S-027 — Overlay Rendering + Diff Preview + Status Bar (this BC covers the Bash
 ## VP Anchors
 
 - VP-TBD — Unit tests for Bash/Read/Generic body rendering (render output inspection, truncation boundary, safe fallback for empty fields)
+
+## §Trace v1.1.0
+
+**F-S026-ADV1-MED-001 — Write tool coverage + Phase-1 Generic-fallback documentation** (2026-05-31T00:00:00Z):
+- Finding: BC-2.06.024 did not reference the `Write` tool (`tool_name == "Write"` is a distinct
+  Claude Code tool for full file creation/overwrite, documented at `monocle-core/src/permissions.rs:181`
+  and `monocle-ipc/src/types.rs:255`). Additionally, the Description did not explain that in Phase 1
+  ALL Edit and Write prompts arrive with `old_content: None, new_content: None`, making
+  `ToolPayload::Generic` the predominant rendering path for file tools — not a rare edge case.
+- Fix: Description extended with a Phase-1 note explaining that `ToolPayload::Generic` with
+  `tool_name == "Edit"` or `"Write"` is the normal Phase-1 path. The note clarifies that PC-3
+  (Generic rendering) must correctly display the `tool_input` JSON (which includes the path),
+  giving the user meaningful context about which file is being modified.
+- Fix: EC-008 added — `ToolPayload::Generic` with `tool_name == "Edit"` (Phase-1 normal path).
+- Fix: EC-009 added — `ToolPayload::Generic` with `tool_name == "Write"` (Phase-1 normal path).
+- No changes to H1 title, Preconditions, PC-1/PC-2/PC-3/PC-4, or Invariants — this BC covers
+  rendering; the conversion guard (`is_some() || is_some()`) is in BC-2.06.008/AC-016 scope.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-05-31T00:00:00Z > v1.0.2 (2026-05-29). PASS.
 
 ## §Trace v1.0.1
 

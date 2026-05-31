@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.9"
+version: "1.10"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -27,8 +27,8 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.013.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.014.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.0.8"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.4.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.023.md, version: "1.5.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "b8e5828"
@@ -156,14 +156,34 @@ in a state where `AppMode::Overlay` is active but the stack is empty.
 ### AC-016 (traces to BC-2.06.008 PC-1 and BC-2.06.024 — payload_to_modal() conversion)
 When constructing a `PromptModal` from `PermissionPromptPayload` (received via
 `ServerToClient::PermissionPromptQueued`), the `payload_to_modal()` function dispatches
-on `tool_name`:
-- `tool_name == "Edit"` AND `old_content.is_some()` AND `new_content.is_some()` →
-  `ToolPayload::Edit { old_content, new_content, path: extract from tool_input["path"] }`
+on `tool_name` with the following exhaustive rules:
+
+**Edit and Write file-modification tools (share identical conversion logic):**
+- `tool_name == "Edit" | "Write"` AND (`old_content.is_some() || new_content.is_some()`) →
+  `ToolPayload::Edit { old_content: old_content.unwrap_or_default(), new_content: new_content.unwrap_or_default(), path: tool_input["path"].as_str() }`.
+  Additionally, if `tool_input["path"]` is absent or empty, fall back to
+  `ToolPayload::Generic { tool_name, tool_input }`.
+- `tool_name == "Edit" | "Write"` AND BOTH `old_content` AND `new_content` are `None` →
+  `ToolPayload::Generic { tool_name, tool_input }` (NOT Edit with empty strings).
+  Rationale: an Edit/Write with no content produces an empty diff pane (BC-2.06.010),
+  which is less informative than displaying the raw `tool_input` JSON. The Generic fallback
+  renders the path and tool inputs the user already knows, giving meaningful context.
+  **In Phase 1, the daemon always sends `old_content: None, new_content: None` for ALL
+  deferred permission prompts** (rich diff content is S-027 scope). Therefore ALL Phase-1
+  Edit and Write prompts produce `ToolPayload::Generic` from this function. This is the
+  correct production-grade behavior — the overlay shows the tool name and path JSON rather
+  than a blank diff pane.
+
+**Bash tool:**
 - `tool_name == "Bash"` → `ToolPayload::Bash { command: tool_input["command"].as_str() }`
-  (falls back to `ToolPayload::Generic` if `"command"` key is absent)
+  (falls back to `ToolPayload::Generic` if `"command"` key is absent or empty)
+
+**Read tool:**
 - `tool_name == "Read"` → `ToolPayload::Read { path: tool_input["path"].as_str() }`
-  (falls back to `ToolPayload::Generic` if `"path"` key is absent)
-- Otherwise → `ToolPayload::Generic { tool_name, tool_input }`
+  (falls back to `ToolPayload::Generic` if `"path"` key is absent or empty)
+
+**All other tool names:**
+- → `ToolPayload::Generic { tool_name, tool_input }`
 
 The `received_at` field is set to `Instant::now()` at conversion time (NOT the daemon's
 creation timestamp). The `PermissionPromptPayload` is the IPC wire type; `PromptModal`
@@ -192,8 +212,13 @@ is the TUI-local type — these are NOT the same struct.
 
 ## Tasks
 
-- [ ] Implement `payload_to_modal()` conversion function: dispatches on `tool_name` to produce
-      `ToolPayload::Edit/Bash/Read/Generic`; sets `received_at: Instant::now()` (AC-016)
+- [ ] Implement `payload_to_modal()` conversion function per AC-016:
+      - `"Edit" | "Write"` with at least one content field Some AND path present → `ToolPayload::Edit`
+      - `"Edit" | "Write"` with BOTH content fields None → `ToolPayload::Generic` (Phase-1 normal path)
+      - `"Bash"` with command present → `ToolPayload::Bash`; absent → `ToolPayload::Generic`
+      - `"Read"` with path present → `ToolPayload::Read`; absent → `ToolPayload::Generic`
+      - all other tool names → `ToolPayload::Generic`
+      - sets `received_at: Instant::now()` (AC-016)
 - [ ] Use `apply_permission_prompt_queued` helper (from S-025) for the streaming
       `PermissionPromptQueued` IPC handler — do NOT call `push_back` directly; all inserts
       go through the idempotent helper (BC-2.05.002 Invariant 4; AC-001)
@@ -225,7 +250,14 @@ is the TUI-local type — these are NOT the same struct.
       of `BindingLayers`; verify Esc is identity no-op (AC-008, AC-009)
 - [ ] Verify overlay keyboard bindings block session nav keys while in Overlay mode (AC-010)
 - [ ] Unit tests `monocle-tui/tests/overlay_push_pop.rs` — FIFO push/pop, empty-stack collapse,
-      FIFO ordering, payload_to_modal() conversion for all four ToolPayload variants
+      FIFO ordering, payload_to_modal() conversion covering:
+      - Edit with both content Some → ToolPayload::Edit
+      - Edit with both content None (Phase-1 normal) → ToolPayload::Generic
+      - Write with both content None (Phase-1 normal) → ToolPayload::Generic
+      - Write with at least one content Some → ToolPayload::Edit
+      - Bash with command → ToolPayload::Bash; Bash without command → ToolPayload::Generic
+      - Read with path → ToolPayload::Read; Read without path → ToolPayload::Generic
+      - Unknown tool → ToolPayload::Generic
 - [ ] Unit tests `monocle-tui/tests/overlay_decision.rs` — Accept/AcceptAlways/Reject IPC send,
       wait-for-resolved semantics
 - [ ] Unit tests `monocle-tui/tests/overlay_rotation.rs` — Up/Down rotation with len>1,
@@ -307,6 +339,37 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.10
+
+**F-S026-ADV1-MED-001 — AC-016 Write tool + None/None → Generic fallback** (2026-05-31T00:00:00Z):
+- Finding: AC-016 omitted "Write" as a handled `tool_name` and specified the Edit guard as
+  `AND old_content.is_some() AND new_content.is_some()` (both-must-be-Some), contradicting the
+  architecture source of truth (SS-tui.md v1.8.2 §IPC Payload to PromptModal Conversion) which
+  uses `is_some() || is_some()` (at-least-one). More critically, AC-016 did not specify the
+  None/None → Generic fallback path — which is the ONLY path exercised in Phase 1 (daemon always
+  sends `old_content: None, new_content: None` per pre_tool_use.rs:252-253).
+- Adjudication decisions:
+  1. **"Write" MUST be handled.** `Write` is a distinct Claude Code tool (`monocle-core/src/permissions.rs:181`,
+     `monocle-ipc/src/types.rs:255` — "for Edit/Write tools", tests throughout). AC-016 AND BC-2.06.024
+     must name it explicitly. It shares Edit's conversion logic: same is_some() guard, same path extraction,
+     same None/None → Generic fallback.
+  2. **None/None → Generic is the correct production-grade behavior.** SS-tui.md v1.8.2 §F-P1D4-008 is
+     explicit: "An Edit with no content to diff renders as an empty diff pane; the Generic fallback renders
+     the raw tool_input JSON, which is more informative." The implementation's `unwrap_or_default()` with no
+     guard is wrong — it produces Edit{old:"",new:""} which shows an empty diff pane. The spec must match
+     the architecture: the guard is `is_some() || is_some()`; if both are None, Generic is the result.
+  3. **Phase-1 implication stated explicitly.** All Phase-1 Edit and Write prompts will produce
+     ToolPayload::Generic (because the daemon sends None/None). This is the correct behavior and must be
+     tested. S-027 (diff preview) adds content population, enabling the Edit variant in Phase 2+.
+- AC-016 rewritten to: (a) add "Write" alongside "Edit", (b) specify the OR guard
+  (`is_some() || is_some()`), (c) state the None/None → Generic fallback explicitly, (d) document
+  the Phase-1 implication so the implementer cannot miss it.
+- Tasks: `payload_to_modal()` task updated with explicit bullet rules per the new AC-016.
+- Tests: overlay_push_pop.rs task updated with Phase-1 test cases (Edit/Write None/None → Generic).
+- BC-2.06.024 inputs pin bumped: v1.0.1 → v1.1.0 (BC-2.06.024 updated with Write + Or guard).
+- BC-2.06.023 inputs pin bumped: v1.4.0 → v1.5.0 (F-S026-ADV1-LOW-001 fix).
+- SE-16d monotonicity: v1.10 timestamp 2026-05-31 > v1.9 (2026-05-29). PASS.
 
 ## §Trace v1.8
 

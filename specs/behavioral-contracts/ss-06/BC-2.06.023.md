@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T00:00:00Z
@@ -76,10 +76,15 @@ The breadcrumb and prompt count badge update to reflect the new stack size.
 
 ## Invariants
 
-1. **No double-removal.** If a `prompt_id` appears more than once in the `VecDeque`
-   (which MUST NOT happen per the daemon's invariants, but is defensively considered),
-   only the first matching entry is removed. The TUI MUST NOT scan and remove all matches;
-   it removes at most one entry per `PermissionPromptResolved` message.
+1. **Retain-all removal.** `overlay_stack.retain(|m| m.prompt_id != prompt_id)` removes
+   ALL entries matching `prompt_id` in a single pass — not just the first. In the normal
+   case (daemon idempotent insert per BC-2.05.002 Invariant 4) there is at most one match,
+   so retain-all and remove-first produce identical results. The retain-all form is required
+   for correctness under reconnect races: a `PermissionPromptQueued` duplicate that slips
+   through before the dedup helper fires could leave two entries with the same `prompt_id`;
+   `retain()` removes both atomically. Using a find-and-remove-first strategy MUST NOT be
+   substituted — it would leave a stale duplicate in the VecDeque, blocking the
+   empty-stack collapse and leaving the overlay stuck open.
 2. **Prompt removal uses UUID-based search-and-remove; empty-stack collapse reuses the BC-2.06.001 logic.**
    The prompt removal itself is performed by the TUI event handler directly: it searches the
    `VecDeque` by `prompt_id`, removes the matching entry. This is NOT an Action dispatch to
@@ -233,6 +238,23 @@ VP-TBD — VecDeque removal and AppMode collapse integration tests (filled after
   - SS-tui.md v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC.
   - SS-ipc.md v1.9.0: the `PermissionPromptResolved` message type definition and debounce behavior are unchanged between v1.4.0 and v1.9.0; only other features added. §Section anchor unchanged.
 - SE-16d monotonicity: v1.4.1 timestamp 2026-05-29T00:00:00Z > v1.4.0. PASS.
+
+## §Trace v1.5.0
+
+**F-S026-ADV1-LOW-001 — Invariant 1 corrected to retain-all semantics** (2026-05-31T00:00:00Z):
+- Finding: BC-2.06.023 Invariant 1 stated "only the first matching entry is removed" and
+  "MUST NOT scan and remove all matches." This directly contradicted:
+  - PC-1 (removes the matching `PromptModal` — no first-only restriction in postconditions)
+  - AC-006 of S-026 (`retain()` removes ALL entries matching `prompt_id`)
+  - The implementation (`overlay_stack.retain(|m| m.prompt_id != prompt_id)`)
+  - The rationale for retain-all: reconnect-race defense requires removing all duplicates atomically.
+- Fix: Invariant 1 rewritten to specify `retain()` (remove-all) semantics. The invariant now
+  explains WHY retain-all is required (reconnect race), names the forbidden alternative
+  (find-and-remove-first), and states the failure mode if the wrong strategy is used (stale
+  duplicate leaves overlay stuck open).
+- No other sections changed. PC-1/PC-2/PC-3/PC-4, edge cases, and test vectors are consistent
+  with retain-all and required no edits.
+- SE-16d monotonicity: v1.5.0 timestamp 2026-05-31T00:00:00Z > v1.4.1 (2026-05-29). PASS.
 
 ## §Trace v1.3.0
 
