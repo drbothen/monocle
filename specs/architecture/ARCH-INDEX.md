@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.24"
+version: "1.0.25"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-05-29T12:00:00Z
@@ -165,6 +165,11 @@ homonym disambiguation is normative — blanket field-name exclusion is forbidde
 must be disambiguated by cited type (`Vec<PermissionPromptPayload>` = IPC homonym SKIP;
 `VecDeque<PromptModal>` = App canonical CHECK). Adds §Form-Coverage Matrix (checklist of all
 forms and gate treatments) and §TYPE-AWARE homonym disambiguation table.
+v1.0.6 corrects §Form-Coverage Matrix self-consistency defect (Pass 34 MED-001): "Module-level
+doc-comment table" row relabeled CHECKED → DEFERRED (Phase 2 → Phase 5); DEFERRED added as a
+fourth gate-treatment legend value; invariant qualified to scope to Phase-1 forms only, with
+explicit acknowledgment that DEFERRED is the ONLY non-CHECKED non-EXEMPT non-SKIP form and is
+tracked (not a silent-blindness path). No operative Phase-1 gate behavior change.
 
 ## §Trace v1.0.2
 
@@ -659,6 +664,18 @@ forms and gate treatments) and §TYPE-AWARE homonym disambiguation table.
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.25
+
+**ADR-0008 v1.0.6 — Pass 34 MED-001 closure (§Form-Coverage Matrix DEFERRED label + qualified invariant)** (2026-05-30):
+
+- NORMATIVE: ADR-0008 Note in ADR Registry updated to document v1.0.6 correction:
+  §Form-Coverage Matrix "Module-level doc-comment table" row relabeled CHECKED → DEFERRED
+  (Phase 2 → Phase 5); DEFERRED added as a fourth legend value; invariant text qualified
+  to Phase-1 scope. No operative gate behavior change.
+- NORMATIVE: version-pin-registry.yaml: ADR-0008 → v1.0.6; ARCH-INDEX → v1.0.25.
+- NORMATIVE: ARCH-INDEX version 1.0.24 → 1.0.25.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
+
 ## §Trace v1.0.24
 
 **ADR-0008 v1.0.5 — Pass 33 MED-001+MED-002 ratification (multi-line form + type-aware homonym disambiguation)** (2026-05-30):

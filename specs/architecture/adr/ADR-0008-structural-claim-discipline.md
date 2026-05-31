@@ -8,7 +8,7 @@ supersedes: null
 superseded_by: null
 level: L3
 section: "adr"
-version: "1.0.5"
+version: "1.0.6"
 producer: vsdd-factory:architect
 phase: phase-3-wave-6
 timestamp: 2026-05-29T12:00:00Z
@@ -22,7 +22,7 @@ inputs:
     STATE.md,
   ]
 input-hash: "[pending-compute]"
-traces_to: "D-206 (2nd structural-spec drift tripwire — Pass 26 MED-001 + Pass 27 MED-001 — architect strategic dispatch per Task #9 m.6); Pass 33 MED-001 + MED-002 (multi-line form + type-aware homonym disambiguation)"
+traces_to: "D-206 (2nd structural-spec drift tripwire — Pass 26 MED-001 + Pass 27 MED-001 — architect strategic dispatch per Task #9 m.6); Pass 33 MED-001 + MED-002 (multi-line form + type-aware homonym disambiguation); Pass 34 MED-001 (§Form-Coverage Matrix DEFERRED label + qualified invariant)"
 project: monocle
 ---
 
@@ -299,7 +299,9 @@ via an ADR amendment before the gate implementation may apply SKIP treatment.
 > **Scope:** Enumerates every structural-claim form the POL-12 gate must handle.
 > Purpose: future audits have a checklist to verify gate completeness.
 > Gate treatment column is normative: CHECKED = must detect and fail on mismatch;
-> EXEMPT = must not flag; SKIP = suppressed by TYPE-AWARE rule (not blanket exclusion).
+> EXEMPT = must not flag; SKIP = suppressed by TYPE-AWARE rule (not blanket exclusion);
+> DEFERRED = form is recognized as in-scope but NOT enforced by the current Phase-1
+> gate; tracked explicitly for Phase-2 implementation (not a silent-blindness path).
 
 | Form | Example | Multi-line variant | Gate treatment | Rationale |
 |------|---------|-------------------|----------------|-----------|
@@ -307,15 +309,19 @@ via an ADR amendment before the gate implementation may apply SKIP treatment.
 | Qualified single-line `App.field: Type` — IPC homonym | `overlay_stack: Vec<PermissionPromptPayload>` | same split | SKIP (type-aware) | IPC-homonym by type; canonical for `InitialState` in SS-ipc |
 | Unqualified backtick `` `field: Type` `` | `` `sessions: Vec<EnrichedSession>` `` | n/a (backtick spans one line) | CHECKED | Active structural claim in prose/checklist |
 | Struct-body code block | `pub sessions: Vec<EnrichedSession>,` in fenced block | `pub sessions:`⏎`    Vec<EnrichedSession>,` | CHECKED | Consumer Contract + story Tasks code blocks |
-| Module-level doc-comment table | `//! \| Session ID \| Project \| ...` | n/a (table rows are single lines) | CHECKED | Column-count claim vs BC postcondition PC-N |
+| Module-level doc-comment table | `//! \| Session ID \| Project \| ...` | n/a (table rows are single lines) | DEFERRED (Phase 2 → Phase 5) | Column-count claim vs BC postcondition PC-N; Phase-1 gate scans stories/ + behavioral-contracts/ only, NOT crates/**/*.rs; explicitly tracked in §Implementation Plan row 1 |
 | `§Trace` section content | Any type/count reference inside `## §Trace vN.M.P` | same | EXEMPT | Provenance record; sealed at closure |
 | `<!-- structural-claim-historical -->` annotated line | `sessions: Vec<SessionState>  <!-- structural-claim-historical -->` | same | EXEMPT | Explicit historical-anchor declaration |
 | `.factory/cycles/` content | Any content in closed adversarial cycle records | same | EXEMPT | Sealed at closure; historical record |
 | Time-qualified historical statement | `"at S-025 authoring time, App.sessions was Vec<SessionState>"` | same | EXEMPT | Meets criterion 3 of Historical Anchor Classification |
 
-**Invariant:** Every structural claim form that is not in the EXEMPT or SKIP rows
-above is CHECKED. The gate has NO silent-blindness paths. Adding a new SKIP treatment
-for a homonym requires a §Form-Coverage Matrix amendment via ADR bump.
+**Invariant:** Every Phase-1 structural-claim form that is not in the EXEMPT or SKIP
+rows above is CHECKED. The module-level doc-comment table form is DEFERRED (Phase 2 →
+Phase 5) and is the ONLY non-CHECKED, non-EXEMPT, non-SKIP form; it is explicitly
+tracked in §Implementation Plan row 1 — not a silent-blindness path. The Phase-1 gate
+has NO untracked blind spots. Adding a new SKIP treatment for a homonym requires a
+§Form-Coverage Matrix amendment via ADR bump. Promoting DEFERRED to CHECKED requires
+a §Implementation Plan row 1 update and an ADR bump.
 
 ### Historical Anchor Classification for Structural Claims
 
@@ -428,6 +434,35 @@ S-028 lines 63 + 147 carry the same `Vec<SessionState>` drift (surfaced at Pass 
 as cross-story propagation). Per BC-5.39.002 PC2, cross-story structural-claim fixes
 are deferred to wave-gate sweep (not blocking S-025 convergence). Story-writer is
 dispatched to fix S-028 in the next wave-gate sweep post-S-025 merge.
+
+## §Trace v1.0.6
+
+**Pass 34 F-S025-ADV34-MED-001 closure — §Form-Coverage Matrix DEFERRED label + qualified invariant** (2026-05-30):
+
+- NORMATIVE: §Form-Coverage Matrix legend extended with a fourth gate-treatment value:
+  DEFERRED = form is recognized as in-scope but NOT enforced by the current Phase-1
+  gate; tracked explicitly for Phase-2 implementation (not a silent-blindness path).
+- NORMATIVE: "Module-level doc-comment table" row gate treatment corrected from CHECKED
+  to DEFERRED (Phase 2 → Phase 5). The Phase-1 gate scans `.factory/stories/*.md` and
+  `.factory/specs/behavioral-contracts/**/*.md` only; it does NOT scan `crates/**/*.rs`
+  doc-comment tables. Labeling the form CHECKED contradicted both §Phase 2 scope text
+  (§CI enforcement gate §Phase 2 — Markdown table shape extraction) and §Implementation
+  Plan row 1 devops-engineer dispatch (which explicitly marks Phase 2 scope as
+  "deferred to Phase 5"). The deployed `check_structural_claims.py` script header also
+  correctly labels Form (e) as "PHASE 2 (deferred to Phase 5)." The matrix was the only
+  artifact in disagreement.
+- NORMATIVE: §Form-Coverage Matrix invariant qualified: "Every Phase-1 structural-claim
+  form that is not in the EXEMPT or SKIP rows above is CHECKED. The module-level
+  doc-comment table form is DEFERRED (Phase 2 → Phase 5) and is the ONLY non-CHECKED,
+  non-EXEMPT, non-SKIP form; it is explicitly tracked in §Implementation Plan row 1 —
+  not a silent-blindness path." The prior invariant ("Every structural claim form ...
+  is CHECKED. The gate has NO silent-blindness paths.") was FALSE because it included
+  the deferred form in the scope of "not EXEMPT or SKIP" without acknowledging its
+  deferred status.
+- NORMATIVE: No operative detection-rule change. Phase-1 gate behavior is unaffected;
+  only the matrix and invariant prose are corrected for internal consistency.
+- NORMATIVE: Version bump 1.0.5 → 1.0.6.
+- SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
 
 ## §Trace v1.0.5
 
