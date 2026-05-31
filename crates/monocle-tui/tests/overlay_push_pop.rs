@@ -24,9 +24,7 @@
 use monocle_config::MonocleConfig;
 use monocle_core::tui::state::{AppMode, FocusSnapshot, ToolPayload};
 use monocle_ipc::types::PermissionPromptPayload;
-use monocle_tui::app::{
-    apply_permission_prompt_queued, on_initial_state, payload_to_modal, App,
-};
+use monocle_tui::app::{apply_permission_prompt_queued, on_initial_state, payload_to_modal, App};
 use std::collections::VecDeque;
 use uuid::Uuid;
 
@@ -130,7 +128,12 @@ fn test_BC_2_06_008_push_from_dashboard_enters_overlay() {
         "BC-2.06.008 PC-1: front() must be the pushed prompt_id"
     );
     assert!(
-        matches!(app.mode, AppMode::Overlay { prior: FocusSnapshot::Sessions }),
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
         "BC-2.06.008 PC-3: AppMode must be Overlay {{ prior: Sessions }}"
     );
 }
@@ -172,7 +175,12 @@ fn test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior() {
     );
     // Prior is preserved — still Sessions
     assert!(
-        matches!(app.mode, AppMode::Overlay { prior: FocusSnapshot::Sessions }),
+        matches!(
+            app.mode,
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions
+            }
+        ),
         "BC-2.06.008 PC-4: prior must remain Sessions after second push"
     );
 }
@@ -204,10 +212,7 @@ fn test_BC_2_06_008_fifo_ordering_three_prompts() {
         items[0], pid1,
         "BC-2.06.008 PC-2: FIFO — P1 at position 0 (front)"
     );
-    assert_eq!(
-        items[1], pid2,
-        "BC-2.06.008 PC-2: FIFO — P2 at position 1"
-    );
+    assert_eq!(items[1], pid2, "BC-2.06.008 PC-2: FIFO — P2 at position 1");
     assert_eq!(
         items[2], pid3,
         "BC-2.06.008 PC-2: FIFO — P3 at position 2 (back)"
@@ -298,13 +303,7 @@ fn test_BC_2_06_023_pc4_on_initial_state_then_retain_collapses() {
     let pid = Uuid::new_v4();
 
     // Seed overlay via on_initial_state (which uses apply_permission_prompt_queued internally)
-    on_initial_state(
-        &mut app,
-        vec![],
-        vec![],
-        vec![bash_payload(pid, "ls")],
-        0,
-    );
+    on_initial_state(&mut app, vec![], vec![], vec![bash_payload(pid, "ls")], 0);
 
     // After on_initial_state: should be in Overlay mode
     assert!(
@@ -334,7 +333,10 @@ fn test_BC_2_06_024_payload_to_modal_bash_variant() {
 
     let modal = payload_to_modal(payload);
 
-    assert_eq!(modal.prompt_id, pid, "BC-2.06.024: prompt_id must be preserved");
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
     match modal.tool_payload {
         ToolPayload::Bash { command } => {
             assert_eq!(
@@ -358,7 +360,10 @@ fn test_BC_2_06_024_payload_to_modal_edit_variant() {
 
     let modal = payload_to_modal(payload);
 
-    assert_eq!(modal.prompt_id, pid, "BC-2.06.024: prompt_id must be preserved");
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
     match modal.tool_payload {
         ToolPayload::Edit {
             old_content,
@@ -395,7 +400,10 @@ fn test_BC_2_06_024_payload_to_modal_read_variant() {
 
     let modal = payload_to_modal(payload);
 
-    assert_eq!(modal.prompt_id, pid, "BC-2.06.024: prompt_id must be preserved");
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
     match modal.tool_payload {
         ToolPayload::Read { path } => {
             assert_eq!(
@@ -419,7 +427,10 @@ fn test_BC_2_06_024_payload_to_modal_generic_variant() {
 
     let modal = payload_to_modal(payload);
 
-    assert_eq!(modal.prompt_id, pid, "BC-2.06.024: prompt_id must be preserved");
+    assert_eq!(
+        modal.prompt_id, pid,
+        "BC-2.06.024: prompt_id must be preserved"
+    );
     match &modal.tool_payload {
         ToolPayload::Generic {
             tool_name,
@@ -443,10 +454,7 @@ fn test_BC_2_06_024_payload_to_modal_generic_variant() {
 }
 
 /// BC-2.06.024 / AC-016 fallback: Bash payload with no "command" key → ToolPayload::Generic.
-/// S-026 spec says: "falls back to ToolPayload::Generic if 'command' key is absent".
-/// NOTE: The S-025 implementation uses unwrap_or("") so it currently returns
-/// Bash { command: "" }. This test asserts the ACTUAL production behavior — if S-026
-/// changes the fallback to Generic, update this test accordingly.
+/// S-026 aligns to AC-016 spec: absent "command" key produces Generic, not Bash { command: "" }.
 #[test]
 fn test_BC_2_06_024_payload_to_modal_bash_missing_command_key() {
     let pid = Uuid::new_v4();
@@ -461,34 +469,16 @@ fn test_BC_2_06_024_payload_to_modal_bash_missing_command_key() {
 
     let modal = payload_to_modal(payload);
 
-    // S-025 production behavior: Bash with empty command (unwrap_or(""))
-    // AC-016 spec says fallback to Generic — this is a known gap between AC-016
-    // spec and S-025 implementation. The test documents the actual behavior.
-    // When S-026 implementer fixes to match AC-016 spec (Generic fallback), update here.
-    match &modal.tool_payload {
-        ToolPayload::Bash { command } => {
-            // Current S-025 behavior: empty string fallback
-            assert_eq!(
-                command.as_str(),
-                "",
-                "BC-2.06.024: Bash missing command key → empty string (S-025 behavior; \
-                 AC-016 specifies Generic — update this assertion when S-026 implementer \
-                 aligns with the spec)"
-            );
-        }
-        ToolPayload::Generic { .. } => {
-            // AC-016 spec behavior — acceptable if S-026 aligns to spec
-        }
-        other => panic!(
-            "BC-2.06.024: expected ToolPayload::Bash or Generic for missing command key, \
-             got {:?}",
-            std::mem::discriminant(other)
-        ),
-    }
+    // AC-016 (BC-2.06.024): absent "command" key → ToolPayload::Generic (not Bash { command: "" }).
+    assert!(
+        matches!(modal.tool_payload, ToolPayload::Generic { .. }),
+        "BC-2.06.024 AC-016: Bash missing 'command' key must produce ToolPayload::Generic, got {:?}",
+        std::mem::discriminant(&modal.tool_payload)
+    );
 }
 
-/// BC-2.06.024 / AC-016 fallback: Read payload with no "path" key →
-/// path defaults to empty PathBuf (S-025 behavior via map().unwrap_or_default()).
+/// BC-2.06.024 / AC-016 fallback: Read payload with no "path" key → ToolPayload::Generic.
+/// S-026 aligns to AC-016 spec: absent "path" key produces Generic, not Read { path: "" }.
 #[test]
 fn test_BC_2_06_024_payload_to_modal_read_missing_path_key() {
     let pid = Uuid::new_v4();
@@ -503,22 +493,12 @@ fn test_BC_2_06_024_payload_to_modal_read_missing_path_key() {
 
     let modal = payload_to_modal(payload);
 
-    match &modal.tool_payload {
-        ToolPayload::Read { path } => {
-            assert_eq!(
-                *path,
-                std::path::PathBuf::new(),
-                "BC-2.06.024: Read missing path key → empty PathBuf (S-025 unwrap_or_default())"
-            );
-        }
-        ToolPayload::Generic { .. } => {
-            // AC-016 spec allows Generic fallback — acceptable
-        }
-        other => panic!(
-            "BC-2.06.024: expected ToolPayload::Read or Generic for missing path key, got {:?}",
-            std::mem::discriminant(other)
-        ),
-    }
+    // AC-016 (BC-2.06.024): absent "path" key → ToolPayload::Generic (not Read { path: "" }).
+    assert!(
+        matches!(modal.tool_payload, ToolPayload::Generic { .. }),
+        "BC-2.06.024 AC-016: Read missing 'path' key must produce ToolPayload::Generic, got {:?}",
+        std::mem::discriminant(&modal.tool_payload)
+    );
 }
 
 /// BC-2.06.024 / AC-016 received_at: The `received_at` field is set at conversion time,

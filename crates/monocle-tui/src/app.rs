@@ -19,7 +19,9 @@ use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload}
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
-use monocle_ipc::types::{ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient};
+use monocle_ipc::types::{
+    ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient,
+};
 // PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
 // decision handler implementations. The re-export here ensures the type is visible at
 // the app module level when todo!() stubs are replaced with real code.
@@ -187,22 +189,28 @@ impl App {
 /// monocle-core. This is the `payload_to_modal()` function referenced in
 /// BC-2.06.004.
 ///
-/// # Mapping rules
+/// # Mapping rules (BC-2.06.024 / AC-016)
 ///
-/// - `tool_name == "Bash"` → `ToolPayload::Bash { command: tool_input["command"] }`
+/// - `tool_name == "Bash"` AND `tool_input["command"]` present → `ToolPayload::Bash { command }`
+/// - `tool_name == "Bash"` AND `tool_input["command"]` absent → `ToolPayload::Generic`
 /// - `tool_name == "Edit"` or `"Write"` → `ToolPayload::Edit { old_content, new_content, path }`
-/// - `tool_name == "Read"` → `ToolPayload::Read { path }`
+/// - `tool_name == "Read"` AND `tool_input["path"]` present → `ToolPayload::Read { path }`
+/// - `tool_name == "Read"` AND `tool_input["path"]` absent → `ToolPayload::Generic`
 /// - Anything else → `ToolPayload::Generic { tool_name, tool_input }`
 pub fn payload_to_modal(payload: PermissionPromptPayload) -> PromptModal {
     let tool_payload = match payload.tool_name.as_str() {
-        "Bash" => ToolPayload::Bash {
-            command: payload
-                .tool_input
-                .get("command")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-        },
+        "Bash" => {
+            // AC-016 (BC-2.06.024): fall back to Generic when "command" key is absent.
+            match payload.tool_input.get("command").and_then(|v| v.as_str()) {
+                Some(cmd) => ToolPayload::Bash {
+                    command: cmd.to_string(),
+                },
+                None => ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                },
+            }
+        }
         "Edit" | "Write" => ToolPayload::Edit {
             old_content: payload.old_content.unwrap_or_default(),
             new_content: payload.new_content.unwrap_or_default(),
@@ -213,14 +221,18 @@ pub fn payload_to_modal(payload: PermissionPromptPayload) -> PromptModal {
                 .map(std::path::PathBuf::from)
                 .unwrap_or_default(),
         },
-        "Read" => ToolPayload::Read {
-            path: payload
-                .tool_input
-                .get("path")
-                .and_then(|v| v.as_str())
-                .map(std::path::PathBuf::from)
-                .unwrap_or_default(),
-        },
+        "Read" => {
+            // AC-016 (BC-2.06.024): fall back to Generic when "path" key is absent.
+            match payload.tool_input.get("path").and_then(|v| v.as_str()) {
+                Some(p) => ToolPayload::Read {
+                    path: std::path::PathBuf::from(p),
+                },
+                None => ToolPayload::Generic {
+                    tool_name: payload.tool_name.clone(),
+                    tool_input: payload.tool_input.clone(),
+                },
+            }
+        }
         _ => ToolPayload::Generic {
             tool_name: payload.tool_name.clone(),
             tool_input: payload.tool_input.clone(),
@@ -1015,7 +1027,10 @@ fn send_permission_decision(app: &mut App, decision: PermissionDecisionKind) {
         );
         return;
     };
-    let msg = ClientToServer::PermissionDecision { prompt_id, decision };
+    let msg = ClientToServer::PermissionDecision {
+        prompt_id,
+        decision,
+    };
     if let Err(e) = tx.try_send(msg) {
         tracing::warn!(
             "send_permission_decision: try_send failed for prompt_id={}: {} \

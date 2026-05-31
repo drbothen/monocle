@@ -292,18 +292,15 @@ async fn handle_pre_tool_use_inner(
                     )
                         .into_response(),
                     Ok(PermissionDecisionKind::AcceptAlways) => {
-                        // S-026 stub: AcceptAlways allows this invocation AND records a pattern.
-                        // Pattern recording is daemon-side (BC-2.06.012 PC-8 / Invariant 2).
-                        // The implementer must: (1) forward the allow response, (2) invoke the
-                        // pattern-recording subsystem with the tool+path key.
-                        //
-                        // BC-5.38.005 self-check: "If I include this real implementation, will
-                        // the test pass trivially without implementer work?" YES — pattern recording
-                        // is non-trivial logic requiring registry calls. Therefore: todo!().
-                        todo!(
-                            "S-026: AcceptAlways — forward allow response AND record tool+path \
-                             pattern via pending_decisions registry (BC-2.06.012 PC-8)"
+                        // BC-2.06.012 PC-1: forward {"decision":"always"} to Claude Code hook
+                        // protocol (SS-ipc §942). Persistent allow-pattern recording is a
+                        // future story (no Phase-1 BC mandates monocle-side pattern persistence).
+                        // The TUI sends AcceptAlways; the daemon forwards the wire decision.
+                        (
+                            axum::http::StatusCode::OK,
+                            Json(serde_json::json!({"decision": "always", "reason": "user-approved-always"})),
                         )
+                            .into_response()
                     }
                     Ok(PermissionDecisionKind::Deny) => (
                         axum::http::StatusCode::OK,
