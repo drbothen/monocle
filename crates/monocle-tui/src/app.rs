@@ -991,6 +991,10 @@ pub async fn run() -> Result<()> {
                         on_transport_event(&mut app, TransportEvent::Disconnected);
                         reader_handle.abort();
                         writer_handle.abort();
+                        // F-S026-ADV6-MED-001: clear ipc_tx so the Some⇒wired invariant holds
+                        // while the writer task is dead. setup_ipc_streams_with_rx re-assigns
+                        // Some(new_cmd_tx) on a successful reconnect.
+                        app.ipc_tx = None;
 
                         // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                         let mut backoff = BackoffState::new();
@@ -1078,6 +1082,10 @@ pub async fn run() -> Result<()> {
                     on_transport_event(&mut app, TransportEvent::Disconnected);
                     reader_handle.abort();
                     writer_handle.abort();
+                    // F-S026-ADV6-MED-001: clear ipc_tx so the Some⇒wired invariant holds
+                    // while the writer task is dead. setup_ipc_streams_with_rx re-assigns
+                    // Some(new_cmd_tx) on a successful reconnect.
+                    app.ipc_tx = None;
 
                     // Reconnect with exponential backoff (BC-2.05.006 PC-4).
                     let mut backoff = BackoffState::new();
