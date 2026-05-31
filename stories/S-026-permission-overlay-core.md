@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-026
 epic_id: EPIC-06
-version: "1.10"
+version: "1.11"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -66,7 +66,7 @@ Precondition (BC-2.05.002 Invariant 4): The IPC layer provides at-least-once del
 `PermissionPromptQueued` across the connection snapshot window. A `prompt_id` already
 present in `app.overlay_stack` (from `InitialState.overlay_stack`) MUST be silently
 discarded on the second delivery. This invariant is symmetric with the no-op behavior
-required for `PermissionPromptResolved` (AC-007: unknown `prompt_id` → WARN + no-op).
+required for `PermissionPromptResolved` (AC-007: unknown `prompt_id` → silent discard, no WARN/ERROR).
 
 ### AC-002 (traces to BC-2.06.008 PC-2 — FIFO ordering preserved)
 `PromptModal` items are served in FIFO order. The oldest (first received) prompt is
@@ -101,11 +101,13 @@ stack-collapse check. If the stack is now empty after `retain()`, call
 `Dashboard { focused: prior }`. `retain()` removes ALL entries matching the `prompt_id`
 (in case of duplicates from reconnect races), not just the first.
 
-### AC-007 (traces to BC-2.06.023 PC-3 — unknown prompt_id is no-op)
+### AC-007 (traces to BC-2.06.023 PC-3 — unknown prompt_id is silent no-op)
 If `PermissionPromptResolved { prompt_id }` refers to a `prompt_id` not present in the
-local `overlay_stack`, the TUI logs a WARN and takes no further action. This handles
-the case where the daemon resolved a prompt that the TUI was not aware of (e.g.,
-auto-resolved before connect).
+local `overlay_stack`, the message is silently discarded. No state change occurs. No
+error is logged at WARN or ERROR level — at most a TRACE-level log is acceptable. This
+is expected behavior in multi-client configurations and after reconnection (e.g., the
+prompt was already cleared by SOQ-3 disconnect, resolved by another TUI client, or
+auto-resolved by the daemon before the TUI connected). Per BC-2.06.023 PC-3.
 
 ### AC-008 (traces to BC-2.06.014 PC-1 — Esc in Overlay is no-op identity)
 Pressing `Esc` while in `Overlay` mode is a no-op identity: `transition(Overlay{..}, Action::Esc)`
@@ -234,7 +236,7 @@ is the TUI-local type — these are NOT the same struct.
       (5) Assert: TUI VecDeque<PromptModal> contains X and Y exactly once each (Y not doubled).
       Per architect-decisions-pass-6.md §Implementer Directive.
 - [ ] Implement `PermissionPromptResolved` IPC handler: `retain()` on `overlay_stack`,
-      trigger empty-stack collapse check, log WARN on unknown prompt_id (AC-006, AC-007, AC-015)
+      trigger empty-stack collapse check, silently discard unknown prompt_id (no WARN/ERROR — TRACE at most) (AC-006, AC-007, AC-015)
 - [ ] Implement keyboard handler for `y`/`Enter` → `PermissionDecision::Accept` IPC send;
       modal stays in VecDeque until resolved (AC-003)
 - [ ] Implement keyboard handler for `A` → `PermissionDecision::AcceptAlways` IPC send (AC-004)
@@ -311,7 +313,7 @@ From `architecture/SS-tui.md`:
 | monocle-ipc | workspace path | `ServerToClient`, `ClientToServer`, `PermissionDecision`, `TransportEvent` |
 | uuid | workspace pin | `Uuid` match in `retain()` |
 | std::time::Instant | stdlib | `PromptModal.received_at` |
-| tracing | 0.1 | WARN log on unknown prompt_id |
+| tracing | 0.1 | TRACE log on unknown prompt_id (no WARN/ERROR per BC-2.06.023 PC-3) |
 
 ## File Structure Requirements
 
@@ -339,6 +341,31 @@ The `App` struct (from S-025) gains these guaranteed behaviors:
 
 S-027 (overlay rendering + diff preview) builds its UI atop these guaranteed behaviors.
 S-029 (killer scenario integration test) validates the full round-trip.
+
+## §Trace v1.11
+
+**F-S026-ADV2-MED-001 — AC-007 corrected to silent-discard semantics per BC-2.06.023 PC-3** (2026-05-31T00:00:00Z):
+- Finding: AC-007 stated "the TUI logs a WARN and takes no further action" for an unknown
+  `prompt_id` in `PermissionPromptResolved`. This contradicts the anchored BC directly:
+  BC-2.06.023 PC-3 states "the message is silently discarded. No state change occurs.
+  No error is logged at WARN or ERROR level; this is expected behavior." The WARN log
+  is explicitly forbidden by the BC, not merely absent. The implementation correctly
+  follows the BC (logs nothing for this routine multi-client/post-reconnect resolution
+  race). The story spec was the sole contradiction.
+- Fix: AC-007 rewritten to silent-discard semantics: unknown prompt_id → silently
+  discarded, no WARN or ERROR (TRACE at most), no state change, per BC-2.06.023 PC-3.
+  The AC heading updated: "unknown prompt_id is no-op" → "unknown prompt_id is silent
+  no-op" to make the no-WARN property visible in the heading.
+- Propagated to three additional body locations for consistency:
+  1. AC-001 cross-reference (line ~69): "WARN + no-op" → "silent discard, no WARN/ERROR".
+  2. Tasks section: "log WARN on unknown prompt_id" → "silently discard unknown
+     prompt_id (no WARN/ERROR — TRACE at most)".
+  3. Library & Framework Requirements row for `tracing`: usage note updated from
+     "WARN log on unknown prompt_id" → "TRACE log on unknown prompt_id (no WARN/ERROR
+     per BC-2.06.023 PC-3)".
+- No other ACs changed. No BC pins changed (BC-2.06.023 v1.5.0 already reflects the
+  correct PC-3 semantics; this fix brings the story into alignment with it).
+- SE-16d monotonicity: v1.11 timestamp 2026-05-31 >= v1.10 (2026-05-31). PASS.
 
 ## §Trace v1.10
 
