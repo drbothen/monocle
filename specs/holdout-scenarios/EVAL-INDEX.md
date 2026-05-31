@@ -1,22 +1,22 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-30T00:00:00Z
+timestamp: 2026-05-31T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
-  - {path: .factory/stories/S-016-daemon-binary-cli.md, version: "1.0"}
-  - {path: .factory/stories/S-017-daemon-start-sequence.md, version: "1.0"}
-  - {path: .factory/stories/S-018-hook-routing-event-bus.md, version: "1.1"}
-  - {path: .factory/stories/S-019-daemon-auto-start.md, version: "1.1"}
-  - {path: .factory/stories/S-022-tui-connect-permission-prompt.md, version: "1.1"}
-  - {path: .factory/stories/S-023-reconnect-soq3.md, version: "1.0"}
-  - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.1"}
-  - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.2"}
-  - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.0"}
+  - {path: .factory/stories/S-016-daemon-binary-cli.md, version: "1.1"}
+  - {path: .factory/stories/S-017-daemon-start-sequence.md, version: "1.1"}
+  - {path: .factory/stories/S-018-hook-routing-event-bus.md, version: "1.2"}
+  - {path: .factory/stories/S-019-daemon-auto-start.md, version: "1.2"}
+  - {path: .factory/stories/S-022-tui-connect-permission-prompt.md, version: "1.4"}
+  - {path: .factory/stories/S-023-reconnect-soq3.md, version: "1.2"}
+  - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.14"}
+  - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.11"}
+  - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.2"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.33"}
 traces_to: .factory/stories/STORY-INDEX.md
@@ -147,6 +147,16 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.8 — POL-11 cascade: story inputs[] pins updated to canonical (2026-05-31)
+
+**Bump:** 1.7 → 1.8.
+**Scope:** `inputs[]` story version pins updated to canonical current versions per version-pin-registry.yaml (Option 1 per ADR-0007 §Decision — EVAL-INDEX is an active INDEX document):
+- S-016: "1.0" → "1.1"; S-017: "1.0" → "1.1"; S-018: "1.1" → "1.2"; S-019: "1.1" → "1.2"
+- S-022: "1.1" → "1.4"; S-023: "1.0" → "1.2"; S-025: "1.1" → "1.14"; S-026: "1.2" → "1.11"
+- S-029: "1.0" → "1.2"; S-030: "1.1" remains (no change)
+**Trigger:** POL-11 gate failure on fix/WAVE6-GATE-CRIT-001-reconnect-reentry PR #31.
+**SE-16d PASS:** 2026-05-31 >= 2026-05-31 (no holdout scenario behavioral change; input pins are metadata).
 
 ## §Trace v1.7 — POL-11 version-pin cascade from BC-INDEX v1.33 (2026-05-30)
 
