@@ -56,11 +56,11 @@ fn write_lock(runtime_dir: &std::path::Path, pid: u64) {
         "port": 9001u64,
         "authToken": format!("token-{pid}")
     });
-    std::fs::write(
+    std::fs::write( // nosemgrep: monocle-no-naked-fs-write — test helper writing to tempdir (not a config path); no atomic write needed
         runtime_dir.join("monocle.lock"),
         serde_json::to_string(&lock).unwrap(),
     )
-    .expect("write lock file"); // nosemgrep: monocle-no-naked-fs-write
+    .expect("write lock file");
 }
 
 /// Spawn a mock daemon: bind the socket, accept one connection, send `InitialState`,
