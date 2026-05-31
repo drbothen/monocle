@@ -6,9 +6,10 @@ Implements monocle-structural-claim-check CI gate per ADR-0008
 §Implementation Plan (Phase 1 scope) and SS-conventions-anti-patterns.md
 §Structural-Claim Discipline.
 
-POLICY SUMMARY (ADR-0008 v1.0.1):
-  Every active structural claim in story Tasks checklists and Downstream Consumer
-  Contract code blocks must match the canonical source of truth. Phase 1 scope:
+POLICY SUMMARY (ADR-0008 v1.0.4):
+  Every active structural claim in story Tasks checklists, Downstream Consumer
+  Contract code blocks, and BC postcondition prose must match the canonical source
+  of truth. Phase 1 scope (ADR-0008 §CI enforcement gate):
   - Type-identifier claims: Vec<X>, VecDeque<X>, Option<X> for App struct fields
   - Canonical source: SS-tui.md §App struct (lines 833-864 per ADR-0008 §Canonical
     Source Registry, corrected by architect Fix F-S025-ADV28-MED-002)
@@ -23,11 +24,13 @@ HISTORICAL ANCHOR EXEMPTIONS (a claim is exempt if any ONE holds):
   3. The line contains a time qualifier establishing past state:
      "at S-NNN authoring time", "at T-NNN dispatch time", "as of v", etc.
 
-SCANNED PATHS (Phase 1):
-  .factory/stories/*.md        — Tasks checklists + Downstream Consumer Contract blocks
+SCANNED PATHS (Phase 1 — ADR-0008 §CI enforcement gate):
+  .factory/stories/*.md                          — Tasks checklists + Consumer Contract blocks
+  .factory/specs/behavioral-contracts/**/*.md    — postcondition prose
 
-EXEMPT PATHS (shared scope with POL-11 per ADR-0008 §Canonical Source Registry; Phase 1
-  scope is stories/ only, so plans/planning/code-delivery/STATE.md are implicitly excluded):
+EXEMPT PATHS (ADR-0008 §CI enforcement gate; Phase 1 scope is stories/ and
+  behavioral-contracts/ only — plans/planning/code-delivery/STATE.md are implicitly
+  outside that scope and require no additional exemptions per ADR-0008 §Scope note):
   .factory/cycles/             — closed adversarial cycle records
   .factory/plans/              — frozen adversary/audit records (historical, not normative)
   .factory/planning/           — validation reports (historical, not normative)
@@ -137,6 +140,13 @@ _STRUCT_FIELD_RE = re.compile(
 # Less strict: allows the form `sessions: Vec<...>` anywhere on a line.
 _INLINE_FIELD_TYPE_RE = re.compile(
     r'([a-z_][a-z0-9_]*)\s*:\s*([A-Za-z_<>:,\[\]0-9]+)',
+)
+
+# Matches "App.<field>: <Type>" directly — the qualified form that unambiguously
+# asserts a claim about the App struct field type.
+# Example: "App.sessions: Vec<EnrichedSession>" or "`App.overlay_stack: VecDeque<PromptModal>`"
+_APP_QUALIFIED_FIELD_RE = re.compile(
+    r'[Aa]pp\.([a-z_][a-z0-9_]*)\s*:\s*([A-Za-z_<>:,0-9]+)',
 )
 
 # Container type pattern — matches Vec<X>, VecDeque<X>, Option<X> with type arg
@@ -416,31 +426,162 @@ def _check_prose_line(
     stats: ScanStats,
 ) -> None:
     """
-    Check a prose line (Tasks checklist, description) for inline type-identifier claims
-    that are specifically about App struct fields.
+    Check a prose line (Tasks checklist, description, BC postcondition) for
+    inline type-identifier claims that are specifically about App struct fields.
 
-    To avoid false positives from unrelated structs (DaemonState, ServerToClient, etc.)
-    that share field names, we only check prose lines that explicitly mention "App" in
-    an App-struct context (e.g., "App.sessions", "App struct ... sessions:", "impl App").
+    To avoid false positives from unrelated structs (DaemonState, ServerToClient,
+    IPC messages, etc.) that share field names, we only check prose lines that
+    explicitly mention "App" in an App-struct context, AND we require the cited
+    type to be a well-formed Rust container type (Vec<>, VecDeque<>, Option<>, or
+    a named type with angle-bracket generics starting with uppercase).
 
-    The signal is either:
-    - The line contains "App." followed by a field name with a type
-    - The line mentions implementing App struct fields (Tasks checklist context)
+    Two detection paths:
+
+    Path A — App-qualified form (highest confidence):
+      "App.field: Vec<...>" or "`App.field: Vec<...>`" (direct struct qualifier).
+      Used by _APP_QUALIFIED_FIELD_RE. Only flags the field: Type that directly
+      follows "App." — avoids cross-clause contamination where "App.foo" appears
+      in one clause and "foo: DaemonType" appears in another clause on the same line.
+
+    Path B — Tasks-checklist / BC bullet form (list context):
+      "`field: Vec<...>`" in backtick inline code on a line without an "App." qualifier
+      that would make Path A more appropriate. Used for BC postcondition bullet lists
+      like "- `sessions: Vec<EnrichedSession>` — the full current session roster".
+      Triggered by "`field:" fast-path. Requires the type to be a well-formed Rust
+      container type (must start with Vec, VecDeque, Option, or uppercase letter with
+      angle-brackets) to filter IPC message value forms like `sessions: [<remaining>]`.
     """
-    # Fast-path: must have both a container type indicator AND mention "App" context
+    # Fast-path: must have a container type indicator
     if "<" not in line:
         return
 
-    # Require "App" to appear in the line (with appropriate context) to avoid false positives.
-    # Acceptable patterns:
-    #   "App.sessions: Vec<...>"
-    #   "App struct with fields: sessions: Vec<...>"
-    #   "app.sessions: Vec<...>" (lower-case struct reference)
     line_lower = line.lower()
-    if "app." not in line_lower and "app struct" not in line_lower and "struct app" not in line_lower:
-        # Also check for explicit "App.field:" form in backtick inline code
-        if "`app." not in line_lower and "`sessions:" not in line_lower:
-            return
+
+    # ── Path A: App-qualified form ──────────────────────────────────────────
+    # Scan for "App.<field>: <Type>" directly — the unambiguous App-struct form.
+    # This path is the primary detector for BC postcondition prose where the
+    # author writes "App.sessions: Vec<EnrichedSession>" or similar.
+    app_qualified_fields_found: set[str] = set()
+    for m in _APP_QUALIFIED_FIELD_RE.finditer(line):
+        field_name = m.group(1).strip()
+        raw_type = m.group(2)
+        cited_type = _extract_type_clean(raw_type)
+
+        if field_name not in _CANONICAL_APP_FIELDS:
+            continue
+        if "<" not in cited_type:
+            continue
+
+        app_qualified_fields_found.add(field_name)
+        stats.claims_found += 1
+
+        if _is_historical_anchor(line, prev_line, in_trace):
+            stats.claims_historical += 1
+            continue
+
+        stats.claims_active += 1
+        canonical_type = _CANONICAL_APP_FIELDS[field_name]
+
+        if not _types_match(cited_type, canonical_type):
+            stats.findings.append(
+                StructuralFinding(
+                    file_path=file_path,
+                    line_number=lineno,
+                    field_name=field_name,
+                    cited_type=cited_type,
+                    canonical_type=canonical_type,
+                    context="tasks_inline",
+                    line_text=line.strip(),
+                )
+            )
+
+    # ── Path B: Tasks-checklist / BC bullet form ────────────────────────────
+    # For lines with "`field: Type`" (backtick-enclosed field+type on the same
+    # token) that are NOT already handled by Path A.
+    #
+    # Require ALL of:
+    #   1. The line triggers a specific App-context fast-path signal
+    #      (app struct / struct app context, OR "`field:" backtick form)
+    #   2. The cited type is a well-formed Rust container type:
+    #      starts with Vec/VecDeque/Option, or starts with uppercase letter
+    #      followed by '<' (named generic). This filters IPC value forms like
+    #      `sessions: [<remaining>]` and non-type values.
+    #   3. The field was NOT already processed by Path A (no double-counting).
+    #
+    # The "App." fast-path signal from the OLD logic is intentionally NOT used
+    # here: if "App." appears on the line, Path A already handles it specifically.
+    # Using "App." as a signal for Path B causes cross-clause contamination
+    # (where "App.overlay_stack" in one clause triggers Path B to scan all
+    # field: Type pairs, including daemon IPC fields on the same line).
+
+    # Path B signals: struct-context words OR backtick-enclosed field: pattern
+    has_struct_context = (
+        "app struct" in line_lower
+        or "struct app" in line_lower
+        or "impl app" in line_lower
+    )
+
+    # Check for "`field:" pattern where field is a known App field
+    has_backtick_field_signal = False
+    for field in _CANONICAL_APP_FIELDS:
+        if f"`{field}:" in line_lower:
+            has_backtick_field_signal = True
+            break
+
+    if not has_struct_context and not has_backtick_field_signal:
+        return
+
+    # IPC-ownership guard (Path B only): if the line describes the daemon/IPC layer
+    # owning the field, it is NOT describing an App struct field even if a field name
+    # matches. These markers indicate the `field: Type` belongs to the IPC message
+    # or DaemonState, not the TUI App struct.
+    #
+    # This prevents false positives from lines like:
+    #   "the daemon's `overlay_stack: Vec<PermissionPromptPayload>` in IPC"
+    # which describe the daemon's IPC registry, not App.overlay_stack (VecDeque<PromptModal>).
+    #
+    # Path A (App-qualified form: "App.field: Type") is NOT subject to this guard —
+    # it already requires the literal "App." qualifier which unambiguously names the
+    # TUI struct owner.
+    _IPC_OWNERSHIP_MARKERS = (
+        " in ipc",                # "overlay_stack: Vec<...> in IPC"
+        "(ipc)",                  # field labeled as belonging to IPC
+        "in ipc.",                # trailing form
+        "daemon's ",              # "the daemon's overlay_stack"
+        "daemon owns",            # "daemon owns the pending-prompt registry"
+        "daemonstate",            # DaemonState struct reference
+        "pending-prompt registry",  # the IPC registry descriptor
+        "initialstate.",          # InitialState IPC message field reference
+        "initialstate {",         # InitialState struct literal
+    )
+    if any(marker in line_lower for marker in _IPC_OWNERSHIP_MARKERS):
+        return
+
+    # IPC-homonym exclusion (Path B only): fields whose names appear in BOTH
+    # the TUI App struct AND IPC message types with DIFFERENT types cannot be
+    # reliably classified in the backtick bullet-list form (Path B) without
+    # multi-line context. These fields are excluded from Path B detection.
+    # Path A (App.field: Type) still detects App-qualified claims for these fields.
+    #
+    # Known homonyms (App type → IPC type):
+    #   overlay_stack: VecDeque<PromptModal> (App) vs Vec<PermissionPromptPayload> (IPC/InitialState)
+    #
+    # When overlay_stack appears as "`overlay_stack: Vec<PermissionPromptPayload>`" in a
+    # BC postcondition bullet listing InitialState fields, Path B cannot determine
+    # ownership from the line alone — the IPC context is established by the surrounding
+    # paragraph. Excluding overlay_stack from Path B avoids this false positive class.
+    # If a story or BC authors an App.overlay_stack type claim, they should use the
+    # App-qualified form (Path A): "App.overlay_stack: VecDeque<PromptModal>".
+    _PATH_B_EXCLUDED_FIELDS: frozenset[str] = frozenset({
+        "overlay_stack",  # IPC homonym: Vec<PermissionPromptPayload> vs VecDeque<PromptModal>
+    })
+
+    # _RUST_CONTAINER_RE: matches types that start with Vec/VecDeque/Option
+    # or start with an uppercase letter followed by '<' (named generic).
+    # This excludes IPC value forms like `[<remaining>]` and bare array literals.
+    _RUST_CONTAINER_RE = re.compile(
+        r'^(?:Vec|VecDeque|Option)<|^[A-Z][A-Za-z_0-9]*(?:::[A-Za-z_0-9]+)*<'
+    )
 
     for m in _INLINE_FIELD_TYPE_RE.finditer(line):
         field_name = m.group(1).strip()
@@ -451,9 +592,17 @@ def _check_prose_line(
         if field_name not in _CANONICAL_APP_FIELDS:
             continue
 
-        # Only check container types (Vec<>, VecDeque<>, Option<>) in prose —
-        # plain types like u64 rarely appear incorrectly in prose
-        if "<" not in cited_type:
+        # Skip if already handled by Path A (avoid double-counting)
+        if field_name in app_qualified_fields_found:
+            continue
+
+        # Skip IPC-homonym fields in Path B (unresolvable without multi-line context).
+        # Path A handles the App-qualified form for these fields.
+        if field_name in _PATH_B_EXCLUDED_FIELDS:
+            continue
+
+        # Require the cited type to be a well-formed Rust container type
+        if not _RUST_CONTAINER_RE.match(cited_type):
             continue
 
         stats.claims_found += 1
@@ -641,6 +790,28 @@ def collect_story_files(factory_root: Path) -> list[Path]:
     return files
 
 
+def collect_bc_files(factory_root: Path) -> list[Path]:
+    """
+    Collect behavioral-contract markdown files from .factory/specs/behavioral-contracts/.
+
+    Recursively walks all subdirectories (ss-01, ss-02, etc.) and collects *.md files.
+    ADR-0008 §CI enforcement gate Phase 1 mandates scanning
+    .factory/specs/behavioral-contracts/**/*.md for postcondition prose structural claims.
+
+    Returns sorted list of Path objects.
+    """
+    bc_dir = factory_root / "specs" / "behavioral-contracts"
+    if not bc_dir.is_dir():
+        return []
+
+    files = []
+    for entry in sorted(bc_dir.rglob("*.md")):
+        if entry.is_file():
+            files.append(entry)
+
+    return sorted(files)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
@@ -691,13 +862,18 @@ def main() -> None:
         )
         sys.exit(2)
 
-    # Collect story files (Phase 1 scope)
+    # Collect story files + BC files (Phase 1 scope — ADR-0008 §CI enforcement gate)
     story_files = collect_story_files(factory_root)
+    bc_files = collect_bc_files(factory_root)
+    all_files = story_files + bc_files
     if args.verbose:
-        print(f"POL-12 Phase 1: scanning {len(story_files)} story file(s) for structural claims...")
+        print(
+            f"POL-12 Phase 1: scanning {len(story_files)} story file(s) + "
+            f"{len(bc_files)} behavioral-contract file(s) for structural claims..."
+        )
 
     stats = ScanStats()
-    for file_path in story_files:
+    for file_path in all_files:
         scan_file(file_path, stats)
 
     # Apply authorized deferrals

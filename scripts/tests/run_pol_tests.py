@@ -229,6 +229,11 @@ def run_pol12_fixture(fixture_path: Path, factory_root: Path) -> tuple[bool, str
     Run POL-12 against a single fixture file.
 
     Creates a minimal factory directory containing only the fixture file.
+    Supports 'target_subpath' frontmatter to place fixtures in the correct
+    directory for their fixture type:
+      - (absent / "stories/")               → factory-test/stories/
+      - "specs/behavioral-contracts/ss-NNN/" → factory-test/specs/behavioral-contracts/ss-NNN/
+
     Returns (passed, detail_message).
     """
     expected_str = _read_expected(fixture_path, "expected_pol12_result")
@@ -236,11 +241,17 @@ def run_pol12_fixture(fixture_path: Path, factory_root: Path) -> tuple[bool, str
         return True, f"  SKIP {fixture_path.name} (no expected_pol12_result field)"
 
     expected_fail = (expected_str == "FAIL")
+    target_subpath = _read_frontmatter_str(fixture_path, "target_subpath") or "stories/"
 
     import tempfile, shutil
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        target_dir = tmp_path / "factory-test" / "stories"
+        factory_dir = tmp_path / "factory-test"
+
+        # Place the fixture in the directory that matches its target_subpath.
+        # This mirrors how the script walks stories/ vs specs/behavioral-contracts/.
+        subdir_name = target_subpath.rstrip("/")
+        target_dir = factory_dir / subdir_name
         target_dir.mkdir(parents=True)
         shutil.copy(fixture_path, target_dir / fixture_path.name)
 
@@ -256,16 +267,17 @@ def run_pol12_fixture(fixture_path: Path, factory_root: Path) -> tuple[bool, str
         )
 
     actual_fail = (result.returncode != 0)
+    placement = f"placed in factory-test/{subdir_name}"
 
     if actual_fail == expected_fail:
         status = "FAIL" if expected_fail else "PASS"
-        return True, f"  OK  {fixture_path.name} (expected {status}, got {status})"
+        return True, f"  OK  {fixture_path.name} (expected {status}, got {status}) [{placement}]"
     else:
         expected_label = "FAIL" if expected_fail else "PASS"
         actual_label = "FAIL" if actual_fail else "PASS"
         detail = result.stderr.strip()[:200] if result.stderr else result.stdout.strip()[:200]
         return False, (
-            f"  ERR {fixture_path.name}: expected {expected_label}, got {actual_label}\n"
+            f"  ERR {fixture_path.name}: expected {expected_label}, got {actual_label} [{placement}]\n"
             f"      stdout: {result.stdout.strip()[:100]}\n"
             f"      stderr: {detail}"
         )

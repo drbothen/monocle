@@ -282,10 +282,12 @@ jobs:
             --workspace-root .
 
       - name: POL-12 Phase 1 — structural-claim freshness (monocle-structural-claim-check)
-        # Verifies App struct field type-identifier claims in story Tasks checklists and
-        # Downstream Consumer Contract code blocks match canonical SS-tui.md §App struct.
-        # Phase 1 scope: .factory/stories/*.md only. Phase 2 (doc-comment tables) deferred
-        # to Phase 5 per ADR-0008 §Implementation Plan.
+        # Verifies App struct field type-identifier claims in story Tasks checklists,
+        # Downstream Consumer Contract code blocks, and BC postcondition prose match
+        # canonical SS-tui.md §App struct (ADR-0008 §CI enforcement gate Phase 1).
+        # Phase 1 scope: .factory/stories/*.md AND .factory/specs/behavioral-contracts/**/*.md
+        # Phase 2 scope (doc-comment tables in crates/**/*.rs): deferred to Phase 5 per
+        # ADR-0008 §Implementation Plan.
         # Exit 1 on any stale active structural claim. Exit 0 on all-canonical or all-historical.
         run: |
           set -euo pipefail
