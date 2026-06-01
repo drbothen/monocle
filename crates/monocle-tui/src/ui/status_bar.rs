@@ -98,9 +98,8 @@ pub fn render_status_bar(
         // indicator vs transient notification).  The status_message is silent here — this is
         // the 1-row degraded path only; the normal 2-row path is always preferred.
         let right_span: Option<Span<'static>> = drop_counter_span(drop_counter).or_else(|| {
-            status_message.map(|msg| {
-                Span::styled(msg.to_string(), Style::default().fg(Color::Yellow))
-            })
+            status_message
+                .map(|msg| Span::styled(msg.to_string(), Style::default().fg(Color::Yellow)))
         });
 
         let line = match right_span {
