@@ -248,9 +248,11 @@ pub fn hint_line_text(mode: &AppMode) -> String {
 ///
 /// The caller (`render_status_bar`) decides whether to render this alongside the
 /// keybinding hint or separately — the exact layout integration is implemented in S-031.
-#[allow(clippy::todo)]
-pub fn ccr_path_text(_ccr_path: Option<&std::path::Path>) -> String {
-    todo!("S-031: format CCR path as 'CCR: <path>' or 'CCR: none'")
+pub fn ccr_path_text(ccr_path: Option<&std::path::Path>) -> String {
+    match ccr_path {
+        Some(path) => format!("CCR: {}", path.display()),
+        None => "CCR: none".to_string(),
+    }
 }
 
 /// Build the drop counter indicator for the right side of the status bar.

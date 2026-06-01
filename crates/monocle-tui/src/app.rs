@@ -1119,9 +1119,8 @@ pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
         .insert(current_dir.to_string(), selected_id.clone());
 
     // BC-2.07.005 PC-5b: atomic write via write_config (AC-009 / BC-2.07.005 INV-2).
-    let write_result = MonocleConfig::config_path().and_then(|path| {
-        write_config(&app.config, &path).map_err(|e| e.into())
-    });
+    let write_result =
+        MonocleConfig::config_path().and_then(|path| write_config(&app.config, &path));
 
     if let Err(ref e) = write_result {
         // BC-2.07.005 PC-5c: on write failure, set transient error notification.

@@ -147,10 +147,7 @@ pub fn resolve_profile_for_dir<'a>(
     if profile_id.is_empty() {
         return None;
     }
-    config
-        .harness_profiles
-        .iter()
-        .find(|p| &p.id == profile_id)
+    config.harness_profiles.iter().find(|p| &p.id == profile_id)
 }
 
 // ---------------------------------------------------------------------------
