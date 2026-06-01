@@ -1600,3 +1600,96 @@ fn test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// F-S027-P3-NIT-001 — wrap-aware Generic overflow scroll hint (RED)
+//
+// BC-2.06.024 PC-3 / AC-006: the scroll-hint condition must be based on
+// VISUAL rows (how many display rows the wrapped text occupies), not on
+// logical line count (how many '\n' characters the excerpt contains).
+//
+// Compact JSON (`serde_json::to_string`) produces single-line output with no
+// '\n' characters.  `excerpt.lines().count()` is therefore always 1 regardless
+// of how many columns the text needs to wrap over.  The current implementation
+// compares that logical count (1) against the threshold (area.height - 6),
+// so it never detects overflow for single-line excerpts — even when the text
+// visually wraps to far more rows than the available body height.
+//
+// Chosen dimensions (unambiguous wrap math):
+//   Terminal:       40 × 18  (width × height)
+//   modal_width:    min(40-4, 100) = 36
+//   modal_height:   min(18-4, 30)  = 14
+//   outer_block inner: 34 × 12    (subtract 2 each dimension for the border)
+//   header_height:  2   footer_height: 1   body_height: 12-3 = 9
+//   body_area passed to render_generic_payload: width=34, height=9
+//   Tool-Input block inner: 32 × 7  (subtract 2 each dimension again)
+//
+//   threshold (current code): area.height - 6 = 9 - 6 = 3
+//   json_line_count (current code): excerpt.lines().count() = 1
+//   show_scroll (current code): 1 > 3 → false  ← BUG: hint NOT shown
+//
+//   Compact JSON produced: {"description":"<230-char-ascii-value>"}
+//   serde_json::to_string length: 16 + 230 + 2 = 248 chars
+//   "input: " prefix: 7 chars → rendered text = 255 chars
+//   Visual rows at inner_width=32: ceil(255/32) = 8 rows
+//   "tool: wrap_test" = 15 chars → 1 row
+//   Total visual rows: 9 > inner.height=7 → VISUAL OVERFLOW
+//
+//   Expected after fix: count == 1 (one scroll hint for the wrap overflow).
+//   Actual now (RED):   count == 0 (logical-line check misses the wrap case).
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.024 PC-3 / AC-006 (F-S027-P3-NIT-001, RED):
+/// A Generic payload whose compact JSON excerpt DOES NOT contain newlines but
+/// whose rendered text VISUALLY WRAPS past the available body height must show
+/// EXACTLY ONE `↑↓ to scroll` hint.
+///
+/// Current bug: `json_line_count = excerpt.lines().count() = 1` regardless of
+/// visual wrap extent, so `show_scroll = (1 > threshold)` is always false for
+/// single-line JSON, producing count 0 even when visual overflow is present.
+///
+/// This test will FAIL on assertion (count 0 ≠ expected 1) with the current
+/// implementation and PASS once the fix computes visual row count from
+/// `inner.width` (e.g., `ceil(text_len / inner.width)`) before comparing to
+/// the available height.
+#[test]
+fn test_BC_2_06_024_generic_wrap_overflow_shows_exactly_one_scroll_hint() {
+    // JSON value: {"description":"<230 ASCII 'x' chars>"}
+    // serde_json::to_string → 248 chars (no newlines, no truncation — under 256 cap).
+    // "input: " + 248 chars = 255-char rendered input line.
+    //
+    // At inner_width=32 cols: ceil(255/32) = 8 visual rows for the input line.
+    // Plus 1 row for "tool: wrap_test" (15 chars, fits in one row at 32 cols).
+    // Total visual rows = 9 > inner.height = 7 → content visually overflows.
+    //
+    // Terminal 40×18 produces body_area.height=9 → threshold = 9-6 = 3.
+    // With json_line_count=1 the current code computes show_scroll = (1>3) = false → count=0.
+    let long_value: String = "x".repeat(230);
+    let tool_input = serde_json::json!({ "description": long_value });
+
+    let modal = generic_modal("wrap_test", tool_input);
+    let backend = TestBackend::new(40, 18);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_overlay_widget(&modal, 1, frame.area(), frame);
+        })
+        .expect("render must not panic");
+
+    let all_text = buffer_all_text(&terminal);
+    let scroll_hint_count = count_occurrences(&all_text, "to scroll");
+
+    assert_eq!(
+        scroll_hint_count, 1,
+        "BC-2.06.024 PC-3 / AC-006 (NIT-001): a Generic payload whose single-line JSON \
+         excerpt visually wraps past the body height must show EXACTLY ONE '↑↓ to scroll' \
+         hint; got {} occurrences. Current bug: excerpt.lines().count()==1 so the logical-line \
+         threshold check (1 > {}) never fires, even though {} visual rows exceed the {} rows \
+         of inner body height.",
+        scroll_hint_count,
+        (9usize).saturating_sub(6), // threshold = body_area.height - 6 = 3
+        9,                          // total visual rows (8 input + 1 tool)
+        7,                          // inner.height (body_area inner after Tool-Input block border)
+    );
+}
