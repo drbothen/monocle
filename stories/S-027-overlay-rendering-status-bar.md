@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.6"
+version: "1.7"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -49,7 +49,9 @@ over a dimmed background. The modal displays:
 - Body: tool-specific content (see AC-003 through AC-006)
 - Footer: keyboard hint line: `"[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op"`
 The modal width is capped at `min(terminal_width - 4, 100)` columns. The overlay stack
-depth is shown as `"(1 of N)"` in the header when `N > 1`.
+depth is always shown as `"(M of N)"` in the header (including `"(1 of 1)"` for a single
+prompt), where M is the 1-based index of the active (oldest) prompt and N is the total
+stack depth.
 
 ### AC-002 (traces to BC-2.06.010 postcondition PC-2 — dimmed background)
 The content behind the overlay modal is rendered with a `Modifier::DIM` style applied
@@ -275,6 +277,21 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.7
+
+**ADV Pass-8 NITPICK — AC-001 stack-depth indicator reconciled to always-show, consistent with AC-010 + impl** (2026-06-01):
+- AC-001: removed the `"when N > 1"` conditional caveat. The `(M of N)` indicator is now
+  specified as always present in the header, including `(1 of 1)` for a single-prompt
+  overlay. This aligns with AC-010 ("always refers to the oldest pending prompt being the
+  active decision target") and the production implementation which renders the indicator
+  unconditionally.
+- Neither BC-2.06.010 nor BC-2.06.021 contains a postcondition mandating N>1-only display;
+  the N>1 caveat was story-level over-specification with no BC backing.
+- Wording updated from `"(1 of N)"` (single example) to `"(M of N)"` (general form) to
+  make the indexing semantics explicit: M = 1-based index of the active prompt,
+  N = total stack depth.
+- SE-16d monotonicity: v1.7 timestamp 2026-06-01 >= v1.6 timestamp 2026-06-01. PASS.
 
 ## §Trace v1.6
 
