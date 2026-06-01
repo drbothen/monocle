@@ -1,51 +1,39 @@
-//! ADV Pass-4 failing test for S-031 profile picker — MAJOR-1: wrapper empty-CWD guard gap.
+//! ADV Pass-4 regression test for S-031 profile picker — MAJOR-1: wrapper empty-CWD guard.
 //!
-//! # Finding: MAJOR-1 — Wrapper Err-branch missing empty-CWD guard
+//! # Finding: MAJOR-1 — Wrapper Err-branch missing empty-CWD guard (FIXED)
 //!
-//! `commit_profile_selection` (the WRAPPER, app.rs ~1123-1154) resolves
-//! `MonocleConfig::config_path()`. Its `Ok` branch correctly delegates to
-//! `commit_profile_selection_with_path`, which has an early-return guard:
+//! `commit_profile_selection` (the WRAPPER, app.rs ~1123-1164) previously called
+//! `MonocleConfig::config_path()` before checking whether `current_dir` is empty.
+//! Its `Err` branch lacked the empty-CWD guard and would insert
+//! `project_profiles[""] = id` — silent config-corruption (BC-2.07.005 PC-5 /
+//! INV-5 normalization contract).
+//!
+//! # Fix (c929848)
+//!
+//! The guard was hoisted to the TOP of `commit_profile_selection`, BEFORE the
+//! `config_path()` call:
 //!
 //!   ```text
-//!   if current_dir.is_empty() { ... return; }
-//!   ```
-//!
-//! Its `Err` branch (fired when `config_path()` fails — no HOME dir on Linux etc.)
-//! does NOT have an equivalent guard. Instead it proceeds to:
-//!
-//!   ```text
-//!   if let Some(id) = selected_id {
-//!       if !id.is_empty() {
-//!           app.config.project_profiles.insert(current_dir.to_string(), id.clone());
-//!                                               ^^^^^^^^^^^^^^^^ no guard on current_dir
-//!       }
+//!   if current_dir.is_empty() {
+//!       app.status_message = Some("Config save failed: CWD resolution failed".to_string());
+//!       app.profile_picker = None;
+//!       return;
 //!   }
 //!   ```
 //!
-//! So when `current_dir == ""` AND `config_path()` returns `Err`, the Err branch inserts
-//! `project_profiles[""] = id` — a silent config-corruption defect (BC-2.07.005 PC-5 /
-//! INV-5 normalization contract).
+//! Both the `Ok` and `Err` branches of `config_path()` are now protected by a single
+//! guard — the function returns before reaching either branch when `current_dir == ""`.
 //!
-//! # Platform note
+//! # Test strategy
 //!
-//! On macOS, `directories::ProjectDirs::from("", "", "monocle")` always succeeds via
-//! a `getpwuid_r` fallback even when `HOME` is unset. Therefore the Err branch of
-//! `commit_profile_selection` is NOT triggerable via env-var manipulation on macOS —
-//! `config_path()` always returns `Ok` regardless.
+//! The test calls the WRAPPER `commit_profile_selection(app, "")` with an empty
+//! `current_dir`.  HOME is temporarily unset to attempt to trigger the `Err` branch
+//! of `config_path()` (reachable on Linux; masked by `getpwuid_r` fallback on macOS).
+//! In both cases the hoisted guard fires first, so:
 //!
-//! On Linux CI (standard containers without XDG fallback), `HOME=""` causes
-//! `ProjectDirs::from` to return `None`, `config_path()` returns
-//! `Err(ConfigError::HomeUnresolvable)`, and the Err branch fires.
-//!
-//! The test is structured to:
-//!   - Attempt to trigger the Err branch by temporarily unsetting HOME.
-//!   - If the Err branch fires (Linux): assert no empty key → FAILS against current code.
-//!   - If the Err branch is unavailable (macOS): assert the Ok-branch invariant (passes)
-//!     AND explicitly fail with a documented RED-gate message so the platform gap is visible.
-//!
-//! The explicit `panic!` in the macOS path makes the test RED on macOS while keeping the
-//! error message informative. The implementer's fix (hoisting the guard BEFORE
-//! `config_path()`) makes the test GREEN on both platforms.
+//! - `project_profiles` must NOT contain the `""` key.
+//! - The picker must be closed (`profile_picker == None`).
+//! - `status_message` must be set to a non-empty string (error surfaced to user).
 //!
 //! # Naming convention
 //!
@@ -83,36 +71,31 @@ fn make_app_with_profile(id: &str) -> App {
 }
 
 // ---------------------------------------------------------------------------
-// Test — MAJOR-1 / BC-2.07.005 PC-5 (RED)
+// Test — MAJOR-1 / BC-2.07.005 PC-5 (GREEN after fix c929848)
 //
 // commit_profile_selection WRAPPER must not insert project_profiles[""]
 // when current_dir is "".
 //
-// Red Gate on Linux CI: the Err branch fires → inserts "" key → assertion fails.
-// Red Gate on macOS: the Err branch cannot fire; explicit panic documents the gap.
+// The hoisted guard in commit_profile_selection fires before config_path()
+// on ALL platforms / ALL branches, making this test GREEN everywhere.
 //
-// Fix: hoist `if current_dir.is_empty() { ... return; }` to the TOP of
-// commit_profile_selection, BEFORE the config_path() call. This protects both
-// the Ok and Err branches with a single guard, making the test GREEN on all platforms.
+// Regression value: removing or moving the guard past the config_path() call
+// would cause this test to FAIL on Linux CI (where the Err branch is reachable).
 // ---------------------------------------------------------------------------
 
-/// MAJOR-1 / BC-2.07.005 PC-5 (RED):
+/// MAJOR-1 regression / BC-2.07.005 PC-5:
 ///
 /// `commit_profile_selection` (WRAPPER) must never insert `project_profiles[""] = id`
 /// when `current_dir` is `""` (CWD resolution failure — INV-5 normalization contract).
 ///
-/// **Why RED on Linux CI:** Unsetting HOME causes `config_path()` to return `Err`;
-/// the wrapper's Err branch lacks the empty-CWD guard and inserts `""` key.
+/// HOME is temporarily unset to probe `config_path()` reachability.  On Linux CI the
+/// Err branch fires but the hoisted guard has already returned.  On macOS the Ok branch
+/// fires; the guard still fires first.  Either way the empty-key must not appear.
 ///
-/// **Why RED on macOS:** The `directories` crate has a `getpwuid_r` fallback that
-/// prevents `config_path()` from failing even with HOME unset. The Err branch is
-/// unreachable in-process. The test explicitly panics with a RED-gate diagnostic
-/// message to flag that the STRUCTURAL gap (no guard before config_path()) remains
-/// unfixed, and the correct fix (hoist the guard) would eliminate this panic.
-///
-/// **After fix:** Hoisting the guard makes the wrapper reject `current_dir == ""`
-/// before calling `config_path()`. Both platforms see a clean early-return, no empty
-/// key, correct status_message — test GREEN on all platforms.
+/// Assertions:
+/// - `project_profiles` does not contain the `""` key.
+/// - `profile_picker` is `None` (picker closed regardless of branch taken).
+/// - `status_message` is `Some(_)` (error surfaced to user).
 #[test]
 fn test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_key() {
     let _lock = ENV_MUTEX
@@ -130,7 +113,7 @@ fn test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_ke
         std::env::remove_var("HOME");
     }
 
-    let err_branch_triggered;
+    let err_branch_triggered = MonocleConfig::config_path().is_err();
     let mut app = make_app_with_profile("cc");
 
     // Open the picker so commit has a selection to process.
@@ -140,12 +123,8 @@ fn test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_ke
         "picker must be open before commit"
     );
 
-    // Check whether the Err branch is reachable in this environment.
-    err_branch_triggered = MonocleConfig::config_path().is_err();
-
     // Call the WRAPPER with empty current_dir while HOME is unset.
-    // - Err branch (Linux): config_path() → Err → Err branch fires → BUG: inserts "" key.
-    // - Ok branch (macOS):  config_path() → Ok  → delegates to primary → primary guard fires.
+    // The hoisted guard fires BEFORE config_path() on all platforms / all branches.
     commit_profile_selection(&mut app, "");
 
     // Restore HOME unconditionally before any assertion that could panic.
@@ -157,36 +136,28 @@ fn test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_ke
         }
     }
 
-    // ASSERTION: project_profiles must not contain the empty-string key on ANY branch.
+    // ASSERTION 1: project_profiles must not contain the empty-string key on ANY branch.
     assert!(
         !app.config.project_profiles.contains_key(""),
         "MAJOR-1 / BC-2.07.005 PC-5: commit_profile_selection(\"\") must never insert \
          project_profiles[\"\"] = id. Found entry: {:?}. \
-         FAILS on the Err branch (Linux CI, HOME unset) because the wrapper lacks the \
-         empty-CWD guard. FIX: hoist `if current_dir.is_empty() {{ ... return; }}` to \
-         the TOP of commit_profile_selection before the config_path() call.",
-        app.config.project_profiles.get("")
+         Err-branch triggered = {}. \
+         REGRESSION: the hoisted empty-CWD guard in commit_profile_selection was removed \
+         or moved past the config_path() call.",
+        app.config.project_profiles.get(""),
+        err_branch_triggered,
     );
 
-    // STRUCTURAL RED GATE for platforms where the Err branch is unavailable (macOS):
-    // The Err branch unreachability means the guard gap is masked by the Ok branch
-    // delegating to the already-guarded primary path. The fix — hoisting the guard to
-    // the top of the wrapper — makes this unreachability irrelevant because the guard
-    // fires before config_path() is ever called. Until the guard is hoisted, this
-    // panic documents that the wrapper's Err branch is unprotected. After the fix,
-    // remove this panic block (the test passes cleanly on all platforms without it).
-    if !err_branch_triggered {
-        panic!(
-            "MAJOR-1 RED GATE (macOS platform): `config_path()` succeeded even with HOME \
-             unset (directories crate getpwuid_r fallback). The Err branch of \
-             commit_profile_selection is untriggerable in this environment, so the missing \
-             empty-CWD guard is masked by the Ok branch delegating to the primary path. \
-             This panic flags the structural gap. \
-             FIX: hoist `if current_dir.is_empty() {{ app.status_message = ...; \
-             app.profile_picker = None; return; }}` to the TOP of \
-             commit_profile_selection (BEFORE the config_path() call). After the fix: \
-             (1) the empty-key assertion above passes on all platforms, and \
-             (2) remove this panic block — it is no longer needed."
-        );
-    }
+    // ASSERTION 2: picker must be closed (guard closes it before returning).
+    assert!(
+        app.profile_picker.is_none(),
+        "MAJOR-1 / BC-2.07.005 PC-5: picker must be closed after commit with empty CWD"
+    );
+
+    // ASSERTION 3: status_message must be set (error surfaced to user — not silent).
+    assert!(
+        app.status_message.is_some(),
+        "MAJOR-1 / BC-2.07.005 PC-5: status_message must be Some(_) after empty-CWD \
+         commit so the user sees the failure (not a silent drop)"
+    );
 }
