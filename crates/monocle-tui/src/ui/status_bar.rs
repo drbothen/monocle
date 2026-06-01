@@ -1,25 +1,31 @@
 //! Status bar widget for monocle-tui (S-027).
 //!
-//! The status bar is always visible as the last row of the terminal. It is NOT
-//! dimmed by the overlay background (BC-2.06.019 PC-1 / AC-008).
+//! The status bar occupies the LAST TWO ROWS of the terminal and is always
+//! visible. It is NOT dimmed by the overlay background (BC-2.06.019 PC-1 / AC-008).
 //!
-//! # Layout (AC-008, BC-2.06.019)
+//! # Layout — TWO-ROW design (AC-008, BC-2.06.019/020/021)
 //!
-//! - Left: current `AppMode` indicator:
-//!   - `"[DASHBOARD]"` — `AppMode::Dashboard { .. }`
-//!   - `"[FILTERING]"` — `AppMode::Filtering { .. }`
-//!   - `"[OVERLAY N]"` — `AppMode::Overlay { .. }` (N = stack depth)
-//!   - `"[FULLSCREEN]"` — `AppMode::Fullscreen { .. }`
-//! - Right: `"[dropped: N]"` in yellow when `drop_counter > 0`; nothing otherwise.
+//! Row 0 (upper — breadcrumb row):
+//! - Left: `AppMode` indicator (e.g. `"[DASHBOARD]"`, `"[OVERLAY N]"`).
+//! - Middle: breadcrumb path derived from current focus (e.g.
+//!   `"Dashboard > Sessions"`, `"Dashboard > Overlay [1 prompt]"`).
+//! - Right (optional): `"drops: N"` in yellow when `drop_counter > 0`;
+//!   or `status_message` text in yellow when a transport notification is active
+//!   (status_message takes precedence over drop counter per BC-2.06.016 PC-4).
 //!
-//! # Relationship to existing status bar
+//! Row 1 (lower — hint row):
+//! - Keyboard hint line for the current mode (e.g.
+//!   `"Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit"`).
+//!   Canonical per-mode strings are defined in BC-2.06.021 PC-1. Must fit within
+//!   79 display columns (BC-2.06.021 INV-3).
 //!
-//! S-025 introduced a status bar in `render_frame` (in `app.rs`) that renders a
-//! `MONOCLE_STATUS_LABEL` / drop-counter label. S-027 extends the status bar with a
-//! mode indicator and replaces the `app.rs` inline render with a call to
-//! `render_status_bar` from this module. The `render_frame` function in `app.rs` is
-//! updated (by the S-027 implementer) to call `render_status_bar` instead of the
-//! inline `Paragraph` render.
+//! # Relationship to earlier status bar (S-025)
+//!
+//! S-025 introduced a 1-row `Paragraph` rendering `MONOCLE_STATUS_LABEL` /
+//! `format_drop_counter` in `render_frame`. S-027 replaces that inline render
+//! with a call to `render_status_bar` from this module, upgrading to the
+//! two-row breadcrumb + hint layout and the canonical `drops: N` text format
+//! (BC-2.06.019 PC-2).
 
 use monocle_core::tui::state::AppMode;
 use ratatui::{
@@ -30,21 +36,28 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 
-/// Render the always-visible status bar into `area`.
+/// Render the always-visible two-row status bar into `area`.
 ///
 /// Called from `render_frame` in `app.rs` for ALL modes. The caller must ensure
-/// `area` is the last `Constraint::Length(1)` row of the terminal layout
-/// (or the `status_bar_area` from `build_dashboard_layout` / `build_fullscreen_layout`).
+/// `area` is the last `Constraint::Length(2)` rows of the terminal layout
+/// (from `build_dashboard_layout` / `build_fullscreen_layout`).
+///
+/// When `area.height == 1` the function degrades gracefully: it renders only the
+/// upper breadcrumb/indicator row (no hint line). When `area.height >= 2` it renders
+/// the full two-row layout: upper breadcrumb row + lower hint row.
 ///
 /// # Arguments
 ///
-/// - `mode`: the current `AppMode` (determines the left-side indicator text).
+/// - `mode`: the current `AppMode` (determines indicator text and hint line).
 /// - `drop_counter`: cumulative event drop count from `App::drop_counter`.
-/// - `overlay_stack_depth`: `app.overlay_stack.len()` — used for `"[OVERLAY N]"` label.
-/// - `status_message`: optional notification message (e.g., `"[disconnected] reconnecting..."`).
-///   When `Some(msg)`, the message takes priority over the drop counter display
-///   (same precedence logic as the existing `render_frame` implementation).
-/// - `area`: the `Rect` to render into (single row).
+///   Shown as `"drops: N"` in yellow on the upper row when `> 0`
+///   (BC-2.06.019 PC-2 canonical format — NOT `"[dropped: N]"`).
+/// - `overlay_stack_depth`: `app.overlay_stack.len()` — used for `"[OVERLAY N]"` and
+///   the breadcrumb `"[N prompts]"` count.
+/// - `status_message`: optional transport notification (e.g., `"[disconnected] reconnecting..."`).
+///   When `Some(msg)`, it is rendered in yellow on the upper row and takes precedence
+///   over the drop counter (BC-2.06.016 PC-4).
+/// - `area`: the `Rect` to render into (two rows per AC-008).
 /// - `buf`: the ratatui `Buffer` to write into.
 pub fn render_status_bar(
     mode: &AppMode,
