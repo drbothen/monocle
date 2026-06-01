@@ -82,25 +82,25 @@ pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
 /// this const is the single authoritative source for both.
 pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 
-/// Base status-bar label rendered in the title area when the drop counter is zero.
+/// Base status-bar product name label (legacy — superseded by `render_status_bar`).
 ///
-/// This is the root token from which `format_drop_counter` derives the drop-counter
-/// label `"[dropped: N] monocle"` (BC-2.06.007 PC-7). Both the plain and drop-counter
-/// render paths share this root to prevent silent drift if the product name changes.
+/// This constant was used by the S-025 one-row `Paragraph` renderer in `render_frame`
+/// (which rendered `"monocle"` or `"[dropped: N] monocle"`). S-027 replaced that path
+/// with `render_status_bar`, which no longer uses this label.
+///
+/// Retained as a public re-export because `startup_connect.rs` tests assert the
+/// ABSENCE of the old format (regression guard), which requires the constant to
+/// compile. Do NOT use this in new rendering code.
 pub const MONOCLE_STATUS_LABEL: &str = "monocle";
 
-/// Format the status-bar drop-counter label shown when `app.drop_counter > 0`.
+/// Format the legacy S-025 drop-counter label `"[dropped: N] monocle"`.
 ///
-/// Single source of truth for the `"[dropped: N] monocle"` pattern (BC-2.06.007).
-/// Both the production render path and unit tests reference this helper to
-/// prevent vacuous-mirror drift.
+/// S-027 superseded this with `render_status_bar` / `drop_counter_span` which renders
+/// the canonical BC-2.06.019 PC-2 text `"drops: N"` (no brackets, no product name).
 ///
-/// # Examples
-/// ```
-/// use monocle_tui::format_drop_counter;
-/// assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
-/// assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
-/// ```
+/// Retained as a public function because `startup_connect.rs` tests assert the
+/// ABSENCE of the old format (negative regression guard) — they call this function
+/// to produce the expected-absent string. Do NOT use in new rendering code.
 pub fn format_drop_counter(n: u64) -> String {
     format!("[dropped: {n}] {MONOCLE_STATUS_LABEL}")
 }
@@ -1899,18 +1899,3 @@ pub fn crossterm_key_to_core(
     KeyEvent { code, modifiers }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::format_drop_counter;
-
-    #[test]
-    fn test_format_drop_counter_zero() {
-        assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
-    }
-
-    #[test]
-    fn test_format_drop_counter_nonzero() {
-        assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
-        assert_eq!(format_drop_counter(1_000_000), "[dropped: 1000000] monocle");
-    }
-}
