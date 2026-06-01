@@ -729,7 +729,7 @@ fn format_status(status: &SessionStatus) -> &'static str {
     }
 }
 
-/// Format a single session row as the canonical BC-2.06.005 v1.0.6 column string.
+/// Format a single session row as the canonical BC-2.06.005 column string.
 ///
 /// Accepts an explicit `now` timestamp so callers can supply a deterministic
 /// value for testing (clock injection). Production callers pass `Utc::now()`.
@@ -794,7 +794,7 @@ impl StatefulWidget for SessionsPanel<'_> {
                 .sessions
                 .iter()
                 .map(|s| {
-                    // format_session_row encapsulates BC-2.06.005 v1.0.6 canonical
+                    // format_session_row encapsulates BC-2.06.005 canonical
                     // column order + separator. Pass `now` for deterministic testing.
                     let row = format_session_row(s, now);
                     ListItem::new(row)

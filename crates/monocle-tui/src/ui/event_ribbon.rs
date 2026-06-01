@@ -9,13 +9,13 @@
 //!
 //! # Column layout (BC-2.06.018 PC-1)
 //!
-//! | Column    | Source                       | Width   |
-//! |-----------|------------------------------|---------|
-//! | Timestamp | `HookEventRow::received_at`  | 12 chars |
-//! | Hook type | `HookType` display name      | 16 chars |
-//! | Session   | `session_id` first 8 chars   | 10 chars |
-//! | Latency   | `latency_ms` as `NNNms`      | 8 chars  |
-//! | Status    | `PENDING` or blank           | 8 chars  |
+//! | Column    | Source                        | Width   |
+//! |-----------|-------------------------------|---------|
+//! | Timestamp | `HookEventRow::timestamp_micros` (daemon wall-clock, used for Timestamp column; `received_at` used for ordering only) | 12 chars |
+//! | Hook type | `HookType` display name       | 16 chars |
+//! | Session   | `session_id` first 8 chars    | 10 chars |
+//! | Latency   | `latency_ms` as `NNNms`       | 8 chars  |
+//! | Status    | `PENDING` or blank            | 8 chars  |
 //!
 //! # Scroll state (BC-2.06.018 PC-5)
 //!
@@ -80,7 +80,7 @@ pub struct HookEventRow {
     ///
     /// For `ring_tail` entries: sourced from `HookEventRecord::timestamp_micros` (the daemon's
     /// wall-clock at hook receipt). For streaming `HookEventReceived` messages: sourced from
-    /// `HookEventReceived::timestamp_micros` (the daemon's wall-clock capture — SS-ipc v1.10.0 /
+    /// `HookEventReceived::timestamp_micros` (the daemon's wall-clock capture per SS-ipc /
     /// BC-2.05.004 PC-2). NOT `SystemTime::now()` at TUI receive time.
     ///
     /// Used exclusively for Timestamp column rendering as UTC wall-clock `HH:MM:SS.mmm`
@@ -120,7 +120,7 @@ pub struct HookEventRow {
 /// when the TUI connects (the daemon has already captured their timestamp in
 /// `HookEventRecord::timestamp_micros`). For streaming `HookEventReceived` messages,
 /// `hook_event_row_from_received` uses the daemon-supplied `timestamp_micros` field
-/// directly (SS-ipc v1.10.0 / BC-2.05.004 PC-2) rather than calling this function.
+/// directly (per SS-ipc / BC-2.05.004 PC-2) rather than calling this function.
 /// Falls back to 0 on `SystemTime` errors (should not occur on any supported platform).
 pub fn current_timestamp_micros() -> i64 {
     SystemTime::now()
@@ -182,7 +182,7 @@ pub fn hook_event_row_from_record(record: &monocle_ipc::types::HookEventRecord) 
 ///
 /// `latency_ms` is `Some(latency_ms)` from the IPC message field.
 /// `timestamp_micros` is sourced from the `HookEventReceived::timestamp_micros` field —
-/// the daemon's wall-clock capture at hook POST receipt (BC-2.05.004 PC-2 / SS-ipc v1.10.0).
+/// the daemon's wall-clock capture at hook POST receipt (per BC-2.05.004 PC-2 / SS-ipc).
 /// The TUI MUST use this value, NOT `current_timestamp_micros()` at TUI receive time.
 /// `pending` is initially `false`; set to `true` by the overlay-push logic in
 /// `on_permission_prompt_queued` when the session_id + hook_type matches a new
@@ -194,7 +194,7 @@ pub fn hook_event_row_from_received(
     latency_ms: u64,
     timestamp_micros: i64,
 ) -> HookEventRow {
-    // BC-2.05.004 / SS-ipc v1.10.0: use the daemon's timestamp_micros (not TUI receive time).
+    // BC-2.05.004 / SS-ipc: use the daemon's timestamp_micros (not TUI receive time).
     // This value comes from HookEventReceived::timestamp_micros, which the daemon captures ONCE
     // at hook POST receipt and also writes to HookEventRecord::timestamp_micros in the ring
     // (BC-2.05.004 PC-2 equality: ring and IPC carry the same daemon-clock value).

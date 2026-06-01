@@ -266,7 +266,7 @@ impl App {
 /// monocle-core. This is the `payload_to_modal()` function referenced in
 /// BC-2.06.004.
 ///
-/// # Mapping rules (BC-2.06.024 / AC-016 v1.10)
+/// # Mapping rules (BC-2.06.024 / AC-016)
 ///
 /// - `tool_name == "Bash"` AND `tool_input["command"]` present → `ToolPayload::Bash { command }`
 /// - `tool_name == "Bash"` AND `tool_input["command"]` absent → `ToolPayload::Generic`
@@ -598,7 +598,7 @@ pub fn on_hook_event_received(
     // BC-2.06.018 PC-2: newest at front (prepend).
     // BC-2.06.018 PC-3: use event_ribbon_panel_height as dynamic cap (updated by render_frame
     // each cycle; initialises to EVENT_RING_CAPACITY so the first push before any render is safe).
-    // BC-2.05.004 PC-2 / SS-ipc v1.10.0: use the daemon's timestamp_micros (not TUI receive time).
+    // BC-2.05.004 PC-2 / SS-ipc: use the daemon's timestamp_micros (not TUI receive time).
     let row = crate::ui::event_ribbon::hook_event_row_from_received(
         hook_type,
         session_id,
@@ -1588,7 +1588,7 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // S-028 (BC-2.05.004): delegate to on_hook_event_received for event ribbon
             // population. The handler appends to app.event_ribbon_events (all sessions;
             // client-side session filter applied at render time per BC-2.05.004 INV-3).
-            // BC-2.05.004 PC-2 / SS-ipc v1.10.0: pass daemon's timestamp_micros through.
+            // BC-2.05.004 PC-2 / SS-ipc: pass daemon's timestamp_micros through.
             on_hook_event_received(
                 app,
                 hook_type,

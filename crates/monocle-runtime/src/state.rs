@@ -383,7 +383,7 @@ const _: () = {
 ///
 /// # ring_tail type rationale
 ///
-/// `InitialState.ring_tail` is typed `Vec<HookEventRecord>` per BC-2.05.002 PC-2 v1.0.4.
+/// `InitialState.ring_tail` is typed `Vec<HookEventRecord>` per BC-2.05.002 PC-2.
 /// The previous `Vec<HookEvent>` typing required converting `HookEventRecord` → `HookEvent`,
 /// which involved fabricating absent fields (cwd, transcript_path, prompt, stop_reason)
 /// with empty-string defaults — silently incorrect data. The correct fix is to match the
@@ -411,7 +411,7 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
 
     // ring_tail: last RING_TAIL_N events from the RAM ring as Vec<HookEventRecord>.
     // Pass-through — no type conversion, no field fabrication (architect decision
-    // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2 v1.0.4, ADR-0006).
+    // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2, ADR-0006).
     const RING_TAIL_N: usize = 50;
     let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = state
         .ring

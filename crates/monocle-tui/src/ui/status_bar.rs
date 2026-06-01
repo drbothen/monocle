@@ -217,7 +217,7 @@ pub fn breadcrumb_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
 /// Build the hint line text for the current mode (BC-2.06.021 PC-1/PC-5/PC-6).
 ///
 /// All hint strings MUST fit within 79 characters (BC-2.06.021 INV-3).
-/// Canonical strings from BC-2.06.021 v1.0.6 PC-1 table.
+/// Canonical strings from BC-2.06.021 PC-1 table.
 pub fn hint_line_text(mode: &AppMode) -> String {
     match mode {
         AppMode::Dashboard { .. } => {
@@ -229,7 +229,7 @@ pub fn hint_line_text(mode: &AppMode) -> String {
             "(type to filter)  Esc: cancel".to_string()
         }
         AppMode::Overlay { .. } => {
-            // BC-2.06.021 PC-1 v1.0.6 canonical: y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace
+            // BC-2.06.021 PC-1 canonical: y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace
             "y: accept  A: accept-always  n/r: reject  \u{2191}\u{2193}: cycle  Esc: hide  t: trace"
                 .to_string()
         }

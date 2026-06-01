@@ -158,7 +158,7 @@ pub enum ServerToClient {
     /// Sent for each of the 5 hook endpoints: PreToolUse, Notification, Stop,
     /// SessionStart, UserPromptSubmit (BC-2.05.004 PC-1).
     ///
-    /// # timestamp_micros (SS-ipc v1.10.0 / BC-2.05.004 PC-2)
+    /// # timestamp_micros (SS-ipc / BC-2.05.004 PC-2)
     ///
     /// The daemon captures `SystemTime::now()` ONCE at hook POST receipt time and
     /// writes the same value to BOTH the ring entry (`HookEventRecord::timestamp_micros`)
@@ -176,7 +176,7 @@ pub enum ServerToClient {
         /// Wall-clock milliseconds from HTTP POST receipt to HTTP ACK sent to the caller.
         latency_ms: u64,
         /// Unix epoch timestamp in microseconds at the moment the daemon received the hook
-        /// POST (BC-2.05.004 PC-2 / SS-ipc v1.10.0). The daemon captures this ONCE and
+        /// POST (per BC-2.05.004 PC-2 / SS-ipc). The daemon captures this ONCE and
         /// writes the same value to BOTH this message and the corresponding
         /// `HookEventRecord::timestamp_micros` in the ring (BC-2.05.004 PC-2 equality).
         ///
