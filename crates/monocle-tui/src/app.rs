@@ -1663,29 +1663,7 @@ pub fn render_frame(
         widgets::{Paragraph, StatefulWidget, Widget},
     };
 
-    // Build the status line (shared legacy path — kept for the existing
-    // AC-007 integration tests that call render_frame directly and assert on
-    // the Paragraph content).  The primary render path now uses render_status_bar
-    // from the status_bar module (S-027 wiring below).
-    //
-    // Precedence rationale (BC-2.06.016 PC-4 / BC-2.06.004 PC-2):
-    //
-    // 1. status_message (highest priority): disconnect/offline indicator.
-    // 2. drop_counter > 0: operational warning in yellow.
-    // 3. Default: "monocle" label in dark-gray — the running-normally baseline.
-    let status_line = if let Some(msg) = app.status_message.as_deref() {
-        Line::from(Span::styled(msg, Style::default().fg(Color::Yellow)))
-    } else if app.drop_counter > 0 {
-        Line::from(vec![Span::styled(
-            format_drop_counter(app.drop_counter),
-            Style::default().fg(Color::Yellow),
-        )])
-    } else {
-        Line::from(Span::styled(
-            MONOCLE_STATUS_LABEL,
-            Style::default().fg(Color::DarkGray),
-        ))
-    };
+    use crate::ui::status_bar::render_status_bar;
 
     // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
     match &app.mode {
@@ -1709,9 +1687,13 @@ pub fn render_frame(
                 }
             }
             // Status bar: always full-brightness, never dimmed (AC-008 / BC-2.06.019 PC-1).
-            // Use legacy Paragraph render in Fullscreen for AC-007 test compatibility.
-            Widget::render(
-                Paragraph::new(status_line),
+            // S-027 (AC-012 / BC-2.06.019/020/021): wire render_status_bar into the
+            // production render path (replaces legacy 1-row Paragraph).
+            render_status_bar(
+                &app.mode,
+                app.drop_counter,
+                app.overlay_stack.len(),
+                app.status_message.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );
@@ -1725,11 +1707,11 @@ pub fn render_frame(
             panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
 
             // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM to the dashboard background area
-            // (all rows EXCEPT the status bar row) when overlay is active.
-            // The status bar row is excluded so it remains full-brightness (AC-008).
+            // (all rows EXCEPT the status bar area) when overlay is active.
+            // The status bar rows are excluded so they remain full-brightness (AC-008).
             if matches!(&app.mode, AppMode::Overlay { .. }) {
-                // Dim the full area minus the status bar row.
-                // layout.status_bar_area occupies the last Constraint::Length(1) row.
+                // Dim the full area minus the status bar area.
+                // layout.status_bar_area occupies the last Constraint::Length(2) rows.
                 // We dim the frame area above the status bar.
                 let full_area = frame.area();
                 let background_area = ratatui::layout::Rect {
@@ -1749,17 +1731,14 @@ pub fn render_frame(
                 }
             }
 
-            // S-027 (AC-008 / BC-2.06.019 PC-1): Render the always-visible status bar.
-            // The status bar is NOT dimmed even in Overlay mode.
-            // Use legacy Paragraph render for the baseline (AC-007 integration test compat).
-            // The new render_status_bar is called in addition for the mode indicator.
-            //
-            // Note: the pre-S-027 integration tests (test_ac007_*) assert on the Paragraph
-            // text rendered here (format_drop_counter / MONOCLE_STATUS_LABEL). Those tests
-            // will continue to pass because we still render the same Paragraph. The S-027
-            // tests use render_status_bar directly via TestBackend.
-            Widget::render(
-                Paragraph::new(status_line),
+            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row
+            // status bar (breadcrumb row + hint line row). The status bar is NOT dimmed
+            // even in Overlay mode (BC-2.06.019 PC-1).
+            render_status_bar(
+                &app.mode,
+                app.drop_counter,
+                app.overlay_stack.len(),
+                app.status_message.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );

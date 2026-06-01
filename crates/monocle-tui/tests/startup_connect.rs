@@ -931,35 +931,27 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
         .map(|(x, y)| buffer[(x, y)].symbol().to_string())
         .collect();
 
-    // F-S025-ADV11-SWEEP: use format_drop_counter(5) as the single source of truth.
-    // If the production format changes, this assertion tracks it automatically.
+    // S-027 update (BC-2.06.019 PC-2): render_status_bar now renders the canonical
+    // `drops: N` text (not the legacy `format_drop_counter` `[dropped: N] monocle`).
+    // The breadcrumb row contains `drops: 5` in yellow; MONOCLE_STATUS_LABEL is no
+    // longer rendered in this path (it was the legacy 1-row Paragraph baseline).
     assert!(
-        status_rows.contains(&format_drop_counter(5)),
-        "AC-007: page-level status bar must contain {:?} when drop_counter=5; \
-         got status rows: {:?}",
-        format_drop_counter(5),
-        status_rows.trim()
-    );
-    assert!(
-        status_rows.contains(MONOCLE_STATUS_LABEL),
-        "AC-007: page-level status bar must contain MONOCLE_STATUS_LABEL ({:?}) when drop_counter=5; \
-         got status rows: {:?}",
-        MONOCLE_STATUS_LABEL,
+        status_rows.contains("drops: 5"),
+        "AC-007 (S-027): page-level status bar must contain 'drops: 5' (BC-2.06.019 PC-2 \
+         canonical format) when drop_counter=5; got status rows: {:?}",
         status_rows.trim()
     );
 
     // Verify the drop counter span is styled yellow (not default color).
-    // Find the first cell of format_drop_counter(5) in the bottom two rows.
-    // F-S025-ADV11-SWEEP: use format_drop_counter instead of literal string.
-    let target = format_drop_counter(5);
-    let target_bytes: Vec<char> = target.chars().collect();
+    // Find the first cell of "d" in "drops: 5" in the breadcrumb row.
+    let target = "drops: 5";
+    let target_chars: Vec<char> = target.chars().collect();
     let mut found_yellow = false;
     'outer: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == "[" {
-                // Check if this is the start of our target string.
-                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+            if cell.symbol() == "d" {
+                let matches = target_chars.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
                 });
@@ -973,8 +965,8 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
 
     assert!(
         found_yellow,
-        "AC-007: {:?} must be rendered with Yellow foreground in the status bar",
-        format_drop_counter(5)
+        "AC-007 (S-027): 'drops: 5' must be rendered with Yellow foreground in the status bar \
+         (BC-2.06.019 PC-2)"
     );
 }
 
@@ -1450,27 +1442,37 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
         .map(|(x, y)| buffer[(x, y)].symbol().to_string())
         .collect();
 
-    // Assert 1: MONOCLE_STATUS_LABEL text is present.
-    // Uses re-exported const — not an inline literal — per L-W6-S025-003.
+    // S-027 update (BC-2.06.019/020/021): render_status_bar now renders two rows:
+    //   Row 0 (breadcrumb): "[DASHBOARD]  Dashboard > Sessions" in DarkGray
+    //   Row 1 (hint):       "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit"
+    // MONOCLE_STATUS_LABEL ("monocle") no longer appears in the status bar — it was
+    // part of the legacy 1-row Paragraph renderer. The new canonical baseline text is
+    // the breadcrumb "[DASHBOARD]  Dashboard > Sessions" (BC-2.06.020 PC-1).
     assert!(
-        status_rows.contains(MONOCLE_STATUS_LABEL),
-        "AC-007 baseline: status bar must contain MONOCLE_STATUS_LABEL ({:?}) \
-         when status_message=None and drop_counter=0; \
+        status_rows.contains("[DASHBOARD]"),
+        "AC-007 baseline (S-027): status bar must contain '[DASHBOARD]' mode indicator \
+         (BC-2.06.019 PC-1) when status_message=None and drop_counter=0; \
          got status rows: {:?}",
-        MONOCLE_STATUS_LABEL,
+        status_rows.trim()
+    );
+    assert!(
+        status_rows.contains("Dashboard > Sessions"),
+        "AC-007 baseline (S-027): status bar must contain 'Dashboard > Sessions' breadcrumb \
+         (BC-2.06.020 PC-1) when status_message=None and drop_counter=0; \
+         got status rows: {:?}",
         status_rows.trim()
     );
 
-    // Assert 2: the MONOCLE_STATUS_LABEL span is styled DarkGray (app.rs:949-952).
-    // Scan the bottom two rows for the first character of MONOCLE_STATUS_LABEL;
-    // verify the span starts with DarkGray foreground.
-    let target_bytes: Vec<char> = MONOCLE_STATUS_LABEL.chars().collect();
+    // Assert the breadcrumb row text is rendered in DarkGray (the breadcrumb span
+    // in render_status_bar is styled DarkGray per BC-2.06.020 — no drops/message active).
+    let breadcrumb_text = "Dashboard > Sessions";
+    let breadcrumb_chars: Vec<char> = breadcrumb_text.chars().collect();
     let mut found_dark_gray = false;
     'outer_baseline: for y in (height - 2) as u16..(height as u16) {
         for x in 0..(width as u16) {
             let cell = &buffer[(x, y)];
-            if cell.symbol() == target_bytes[0].to_string() {
-                let matches = target_bytes.iter().enumerate().all(|(i, &ch)| {
+            if cell.symbol() == "D" {
+                let matches = breadcrumb_chars.iter().enumerate().all(|(i, &ch)| {
                     let cx = x + i as u16;
                     cx < width as u16 && buffer[(cx, y)].symbol().starts_with(ch)
                 });
@@ -1483,8 +1485,8 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
     }
     assert!(
         found_dark_gray,
-        "AC-007 baseline: MONOCLE_STATUS_LABEL ({MONOCLE_STATUS_LABEL:?}) must be rendered with \
-         DarkGray foreground in the status bar (app.rs:951) when status_message=None \
+        "AC-007 baseline (S-027): 'Dashboard > Sessions' breadcrumb must be rendered with \
+         DarkGray foreground in the status bar (BC-2.06.020 PC-1) when status_message=None \
          and drop_counter=0"
     );
 }
