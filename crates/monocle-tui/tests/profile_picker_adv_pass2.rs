@@ -42,9 +42,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use monocle_config::{HarnessProfile, MonocleConfig};
-use monocle_tui::app::{
-    commit_profile_selection_with_path, open_profile_picker, App,
-};
+use monocle_tui::app::{commit_profile_selection_with_path, open_profile_picker, App};
 use monocle_tui::ui::profile_picker_widget::render_profile_picker;
 use ratatui::{backend::TestBackend, Terminal};
 
@@ -254,10 +252,7 @@ fn test_BC_2_07_005_active_marker_uses_per_dir_not_first_match() {
     monocle_tui::app::open_profile_picker_with_dir(&mut app, "/dir-y");
     assert!(app.profile_picker.is_some(), "picker must be open");
 
-    let state = app
-        .profile_picker
-        .as_ref()
-        .expect("picker must be Some");
+    let state = app.profile_picker.as_ref().expect("picker must be Some");
 
     // Render the picker into a TestBackend buffer.
     let backend = TestBackend::new(80, 24);

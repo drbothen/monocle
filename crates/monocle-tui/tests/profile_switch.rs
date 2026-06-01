@@ -14,7 +14,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use monocle_config::{HarnessProfile, MonocleConfig};
-use monocle_tui::app::{commit_profile_selection, open_profile_picker, open_profile_picker_with_dir, App};
+use monocle_tui::app::{
+    commit_profile_selection, open_profile_picker, open_profile_picker_with_dir, App,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
