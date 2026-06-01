@@ -20,12 +20,12 @@ behavioral_contracts: [BC-2.05.002, BC-2.05.004, BC-2.06.006, BC-2.06.018]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "b95151a"
+input-hash: "8e980a0"
 traces_to: "Implements BC-2.05.002 (InitialState ring_tail delivery), BC-2.05.004 (HookEventReceived streaming), BC-2.06.006 (sessions fuzzy filter), BC-2.06.018 (event ribbon panel)"
 ---
 
@@ -80,10 +80,10 @@ client-side by `session_id` to display only events for the selected session.
 
 ### AC-007 (traces to BC-2.06.018 postcondition PC-2 — event ribbon keyboard navigation)
 In `Dashboard { focused: FocusSnapshot::EventRibbon }` mode:
-- `j` / `↓` scrolls down one event
-- `k` / `↑` scrolls up one event
-- `G` jumps to the newest event (bottom)
-- `g` (twice: `gg`) jumps to the oldest event (top)
+- `j` / `↓` scrolls down one event (toward older events, per BC-2.06.018 PC-5)
+- `k` / `↑` scrolls up one event (toward newer events, per BC-2.06.018 PC-5)
+- `G` jumps to the OLDEST event (bottom / last row — newest event is at row 0, so the oldest is at the bottom, per BC-2.06.018 PC-2)
+- `g` (twice: `gg`) jumps to the NEWEST event (row 0 / top — the most recent event is prepended to the top, per BC-2.06.018 PC-2)
 - `Enter` enters `Fullscreen { panel: PanelId::EventRibbon, prior: current_focus }`
 These bindings are dispatched via `resolve_binding()` using the `Global` layer.
 
@@ -250,3 +250,11 @@ dependency graph.
 - Tasks: added integration render test task and integration dispatch test task (AC-010).
 - File Structure: added `render_frame_integration_s028.rs` (AC-010 integration test).
 - SE-16d monotonicity: v1.4 timestamp 2026-06-01 >= v1.3 timestamp 2026-05-29. PASS.
+
+## §Trace v1.5
+
+**ADV Pass-4 — AC-007 direction corrected to BC-2.06.018 PC-2; metadata pins reconciled** (2026-06-01):
+- AC-007 direction fix (BLOCKER C2): prior text said "`G` jumps to the newest event (bottom)" and "`gg` jumps to the oldest event (top)" — the opposite of BC-2.06.018 PC-2 which specifies newest-first ordering (newest = row 0 = top, oldest = last row = bottom). Corrected to: `G` jumps to the OLDEST event (bottom / last row); `gg` jumps to the NEWEST event (row 0 / top). Implementation correctly follows the BC; only the story text was wrong. This makes AC-007 consistent with AC-009 which already used the correct newest-at-row-0 framing from §Trace v1.4.
+- BC-2.05.002 inputs pin reconciled: frontmatter `inputs:` pin updated from `1.0.6` → `1.0.7` to match current BC file version (BC-2.05.002 has been patched since §Trace v1.4 was written).
+- §Trace v1.4 pin narrative note: the v1.4 §Trace narrative stated "BC-2.05.004 1.0.0→1.0.4" but the frontmatter inputs pin for BC-2.05.004 is `1.1.0`. The v1.4 narrative was describing the delta from the original story (0→first refresh) and did not reflect the final pinned state; the authoritative pin is the `inputs:` frontmatter. Current confirmed pins: BC-2.05.002 v1.0.7, BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.0.5.
+- SE-16d monotonicity: v1.5 timestamp 2026-06-01 >= v1.4 timestamp 2026-06-01. PASS.
