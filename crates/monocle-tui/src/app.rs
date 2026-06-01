@@ -1178,6 +1178,14 @@ pub fn commit_profile_selection_with_path(
     current_dir: &str,
     config_path: &std::path::Path,
 ) {
+    // BC-2.07.005 PC-5 / MAJOR-2 guard: empty current_dir means CWD resolution failed.
+    // Writing project_profiles[""] would silently corrupt the config — never persisted.
+    if current_dir.is_empty() {
+        app.status_message = Some("Config save failed: CWD resolution failed".to_string());
+        app.profile_picker = None;
+        return;
+    }
+
     // Guard: if picker is not open, nothing to commit.
     let selected_id = match app.profile_picker.as_ref() {
         Some(state) => {
