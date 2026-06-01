@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T18:00:00Z
+timestamp: 2026-05-31T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "ee4d690"
@@ -50,7 +50,7 @@ documentation to know what keys are available in the current mode.
    | AppMode | Hint Line Text |
    |---------|---------------|
    | `Dashboard` (any focus) | `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit` |
-   | `Overlay` | `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` |
+   | `Overlay` | `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace` |
    | `Filtering` | `(type to filter)  Esc: cancel` |
    | `Fullscreen` | `Esc: back  /: filter  q: quit` |
 
@@ -65,8 +65,8 @@ documentation to know what keys are available in the current mode.
 
 4. **No truncation at 80 columns:** All hint strings from Postcondition 1 must fit on a
    single line at 80 columns. The longest is the Overlay hint:
-   `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace`
-   (73 characters). This fits within 80 columns.
+   `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
+   (72 display columns, counting ↑↓ as 2 columns each). This fits within 80 columns.
 
 5. **`Esc: hide` semantics in Overlay hint:** The Overlay hint shows `Esc: hide` — not
    `Esc: dismiss`. This communicates that `Esc` hides the overlay (via `Ctrl-\` tmux
@@ -86,9 +86,9 @@ documentation to know what keys are available in the current mode.
 2. The hint line reflects ONLY `Builtin` bindings. If a user has remapped `q` to quit
    via `UserCustomCommand`, the hint still shows `q: quit` — the builtin default. This
    prevents the hint from showing incorrect keys for other users' configurations.
-3. At 80 columns, no hint line from Postcondition 1 exceeds 79 characters (leaving 1
-   character margin). New hint entries must be checked against this constraint before
-   adding.
+3. At 80 columns, no hint line from Postcondition 1 exceeds 79 display columns (leaving 1
+   column margin). The current longest is the Overlay hint at 72 display columns. New hint
+   entries must be checked against this constraint before adding.
 
 ## Edge Cases
 
@@ -106,10 +106,10 @@ documentation to know what keys are available in the current mode.
 |---------|-------------------|----------|
 | `Dashboard { focused: Sessions }` | `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit` | happy-path |
 | `Dashboard { focused: EventRibbon }` | `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit` | happy-path |
-| `Overlay { prior: Sessions }` (with `App.overlay_stack = [P1]`) | `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace` | happy-path |
+| `Overlay { prior: Sessions }` (with `App.overlay_stack = [P1]`) | `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace` | happy-path |
 | `Fullscreen { panel: Sessions, prior: Sessions }` | `Esc: back  /: filter  q: quit` | happy-path |
 | `Filtering { panel: Sessions, query: "", prior: Sessions }` | `(type to filter)  Esc: cancel` | happy-path |
-| AppMode transition: Overlay → Dashboard (decision made) | Hint changes from Overlay hint to Dashboard hint on next draw | edge-case |
+| AppMode transition: Overlay → Dashboard (decision made) | Hint changes from `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace` to Dashboard hint on next draw | edge-case |
 
 ## Verification Properties
 
@@ -205,6 +205,36 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
   all other references use `Overlay` without stack fields (hint line content is
   mode-agnostic w.r.t. stack shape).
 - SE-16d monotonicity: v1.0.4 timestamp 2026-05-28T13:00:00Z > v1.0.3 timestamp 2026-05-26T00:00:00Z. PASS.
+
+## §Trace v1.0.6
+
+**ADV-S027-BC021-001 HIGH — Overlay hint keys corrected from stale `1/2/3` to canonical `y/A/n/r`** (2026-05-31T12:00:00Z):
+- Finding: BC-2.06.021 PC-1 Overlay hint row contained `1: accept-once  2: accept-always  3: reject`
+  which contradicts PC-3 (stating the Builtin binding table is canonical) and directly contradicts
+  the merged Builtin table in `monocle-core/src/tui/binding.rs` lines ~250-254 (shipped in S-026 /
+  PR #30). The canonical Builtin bindings in `binding.rs` are:
+    `'y'` or `Enter` → `PermissionAcceptOnce`
+    `'A'`            → `PermissionAcceptAlways`
+    `'n'` or `'r'`   → `PermissionReject`
+- Root cause: PC-1 was written before the keybinding table was canonicalized in S-026. The
+  `1/2/3` keys were a design placeholder that was superseded by `y/A/n/r` (aligned with
+  standard accept/reject UX conventions). The `binding.rs` implementation is the authoritative
+  source of truth per CLAUDE.md "merged, tested code wins".
+- Changes:
+  - PC-1 table Overlay row: `1: accept-once  2: accept-always  3: reject  ↑↓: cycle  Esc: hide  t: trace`
+    → `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
+  - PC-4: Updated explicit hint string example and column count (75 display cols → 72 display
+    cols; counting ↑↓ as 2 display columns each per Unicode east-asian-width rules).
+  - INV-3: Updated column-count description from "79 characters" to "79 display columns" (more
+    precise) and replaced the implicit claim with the explicit current maximum (72).
+  - Test vectors: Overlay happy-path row and Overlay→Dashboard transition row updated to
+    reflect the corrected hint string.
+- No changes to PC-2 (context-sensitivity), PC-3 (Builtin-only derivation), PC-5 (`Esc: hide`
+  semantics), PC-6 (`t: trace` stub), EC table, VP table, or Traceability section.
+- Consistency note: BC-2.06.022 (§Trace v1.0.5) already contained the correct hint text
+  (`y: accept-once  A: accept-always  n/r: reject`); BC-2.06.021 was the only remaining BC
+  with the stale `1/2/3` keys.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-05-31T12:00:00Z > v1.0.5 timestamp 2026-05-29T00:00:00Z. PASS.
 
 ## §Trace v1.0.5
 

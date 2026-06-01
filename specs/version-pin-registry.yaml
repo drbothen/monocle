@@ -587,9 +587,9 @@ BC-2.06.020:
 
 BC-2.06.021:
   path: specs/behavioral-contracts/ss-06/BC-2.06.021.md
-  current_version: "1.0.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.6"
+  last_bump_commit: "TBD-ADV-S027-BC021-001"
+  last_bump_date: "2026-05-31"
 
 BC-2.06.022:
   path: specs/behavioral-contracts/ss-06/BC-2.06.022.md
