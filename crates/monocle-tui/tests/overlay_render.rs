@@ -1040,6 +1040,207 @@ fn test_BC_2_06_021_render_status_bar_hint_line_overlay_contains_trace_stub_bind
 // NEW EC/CORRECTNESS TESTS — added to close adversarial findings
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// BC-2.06.019 PC-7 — COEXISTENCE: drops:N on upper row, status_message on lower
+// row (RED against current mutual-exclusion impl).
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.019 PC-7 (EC-129) (RED): With `drop_counter = 42` AND
+/// `status_message = Some("[disconnected] reconnecting...")` simultaneously,
+/// `render_status_bar` on a 2-row area must render BOTH pieces of information:
+/// - Upper row (y=0): contains `"drops: 42"` in yellow (NEVER suppressed).
+/// - Lower row (y=1): contains `"[disconnected] reconnecting..."` in yellow
+///   (temporarily supersedes the keybinding hint).
+///
+/// The current impl uses `if let Some(msg) = status_message { msg } else
+/// { drop_counter_span() }` — mutual exclusion. When status_message is Some,
+/// the drop counter is silently dropped. This assertion on the upper row is RED
+/// against that impl.
+///
+/// Canonical test vector from BC-2.06.019 EC-129 / test vector table:
+///   `drop_counter = 42`, `status_message = Some("[disconnected] reconnecting...")`
+///   Expected: upper row: `drops: 42` in yellow; lower row: message in yellow.
+#[test]
+fn test_BC_2_06_019_pc7_coexistence_drops_and_disconnect_both_visible_in_two_row_bar() {
+    let mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    let mut buf = make_buf(80, 2);
+    let area = Rect::new(0, 0, 80, 2);
+    let disconnect_msg = "[disconnected] reconnecting...";
+
+    render_status_bar(&mode, 42, 1, Some(disconnect_msg), area, &mut buf);
+
+    // Upper row (y=0) MUST contain "drops: 42".
+    // RED against current impl: mutual-exclusion drops the counter when
+    // status_message is Some.
+    let upper_row: String = (0..80u16)
+        .map(|x| buf[(x, 0u16)].symbol().to_string())
+        .collect();
+
+    assert!(
+        upper_row.contains("drops: 42"),
+        "BC-2.06.019 PC-7 (EC-129) COEXISTENCE: upper row (y=0) must contain 'drops: 42' \
+         even when status_message is Some — drops:N is NEVER suppressed by status_message \
+         (BC-2.06.019 PC-7 forbids the mutual-exclusion pattern); got upper row: {:?}",
+        upper_row.trim()
+    );
+
+    // Verify drops:42 is styled Yellow on the upper row.
+    let drop_chars: Vec<char> = "drops: 42".chars().collect();
+    let mut drops_yellow = false;
+    for x in 0..80u16 {
+        let cell = &buf[(x, 0u16)];
+        if cell.symbol() == "d" {
+            let matches = drop_chars.iter().enumerate().all(|(i, &ch)| {
+                let cx = x + i as u16;
+                cx < 80 && buf[(cx, 0u16)].symbol().starts_with(ch)
+            });
+            if matches && cell.style().fg == Some(Color::Yellow) {
+                drops_yellow = true;
+                break;
+            }
+        }
+    }
+    assert!(
+        drops_yellow,
+        "BC-2.06.019 PC-7: 'drops: 42' must be styled Color::Yellow on the upper row (y=0)"
+    );
+
+    // Lower row (y=1) MUST contain the disconnect message.
+    // The lower row supersedes the keybinding hint when status_message is Some.
+    let lower_row: String = (0..80u16)
+        .map(|x| buf[(x, 1u16)].symbol().to_string())
+        .collect();
+
+    assert!(
+        lower_row.contains(disconnect_msg),
+        "BC-2.06.019 PC-7 (EC-129) COEXISTENCE: lower row (y=1) must contain the \
+         disconnect message {:?} — status_message renders on the lower (hint) row \
+         per BC-2.06.019 PC-7 / BC-2.06.016 PC-4 v1.1.0; got lower row: {:?}",
+        disconnect_msg,
+        lower_row.trim()
+    );
+
+    // Confirm drops:42 is NOT absent from the combined buffer (core regression guard).
+    let all_text: String = (0..2u16)
+        .flat_map(|y| (0..80u16).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        all_text.contains("drops: 42"),
+        "BC-2.06.019 PC-7 REGRESSION GUARD: 'drops: 42' must NOT be absent from the \
+         status bar when status_message is Some — got combined text: {:?}",
+        all_text.trim()
+    );
+}
+
+/// BC-2.06.019 PC-7 (EC-130) / BC-2.06.015 (RED): With `drop_counter = 7` AND
+/// `status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)")`
+/// simultaneously (the `[t]` stub scenario), `render_status_bar` on a 2-row area
+/// must render BOTH:
+/// - Upper row (y=0): `"drops: 7"` in yellow (NEVER suppressed).
+/// - Lower row (y=1): `"[t] Trace to source — Phase 2 feature (Static plane)"` in yellow.
+///
+/// Canonical test vector from BC-2.06.019 EC-130 / test vector table.
+/// RED against current impl: mutual-exclusion hides drops:7 when status_message is Some.
+#[test]
+fn test_BC_2_06_019_pc7_coexistence_drops_and_trace_stub_both_visible_in_two_row_bar() {
+    let mode = AppMode::Overlay {
+        prior: FocusSnapshot::Sessions,
+    };
+    let mut buf = make_buf(80, 2);
+    let area = Rect::new(0, 0, 80, 2);
+    // BC-2.06.015 PC-1 canonical placeholder — exact text mandated by BC.
+    let trace_msg = "[t] Trace to source \u{2014} Phase 2 feature (Static plane)";
+
+    render_status_bar(&mode, 7, 1, Some(trace_msg), area, &mut buf);
+
+    // Upper row (y=0) MUST contain "drops: 7".
+    // RED against current impl: mutual-exclusion suppresses the drop counter
+    // when status_message is Some (the [t] press scenario).
+    let upper_row: String = (0..80u16)
+        .map(|x| buf[(x, 0u16)].symbol().to_string())
+        .collect();
+
+    assert!(
+        upper_row.contains("drops: 7"),
+        "BC-2.06.019 PC-7 (EC-130) COEXISTENCE: upper row (y=0) must contain 'drops: 7' \
+         even when [t] trace stub status_message is Some — drops:N is NEVER suppressed \
+         by any status_message (BC-2.06.019 PC-7); got upper row: {:?}",
+        upper_row.trim()
+    );
+
+    // Lower row (y=1) must contain the [t] trace placeholder.
+    let lower_row: String = (0..80u16)
+        .map(|x| buf[(x, 1u16)].symbol().to_string())
+        .collect();
+
+    // The [t] message contains the em-dash character (U+2014). Check for the prefix
+    // and the key discriminating phrase rather than the full string (which may span
+    // buffer cells in a way that varies by terminal width allocation).
+    assert!(
+        lower_row.contains("[t]") && lower_row.contains("Trace to source"),
+        "BC-2.06.019 PC-7 (EC-130) COEXISTENCE: lower row (y=1) must contain the [t] \
+         trace placeholder ('[t]' + 'Trace to source') per BC-2.06.019 PC-7 / BC-2.06.015 \
+         PC-1; got lower row: {:?}",
+        lower_row.trim()
+    );
+
+    // Confirm drops:7 is not absent from the combined buffer (regression guard).
+    let all_text: String = (0..2u16)
+        .flat_map(|y| (0..80u16).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        all_text.contains("drops: 7"),
+        "BC-2.06.019 PC-7 REGRESSION GUARD: 'drops: 7' must NOT be absent when [t] \
+         status_message is active; got combined text: {:?}",
+        all_text.trim()
+    );
+}
+
+/// BC-2.06.019 PC-7 (GREEN, control case): With `drop_counter > 0` and
+/// `status_message = None`, the existing single-drop-counter behavior is unchanged.
+/// The drop counter renders on the upper row; the hint renders on the lower row.
+/// This test must STAY GREEN after the coexistence fix.
+#[test]
+fn test_BC_2_06_019_pc7_drop_counter_only_no_status_message_stays_green() {
+    let mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+    let mut buf = make_buf(80, 2);
+    let area = Rect::new(0, 0, 80, 2);
+
+    // status_message=None — only the drop counter is active (GREEN control case).
+    render_status_bar(&mode, 42, 0, None, area, &mut buf);
+
+    let upper_row: String = (0..80u16)
+        .map(|x| buf[(x, 0u16)].symbol().to_string())
+        .collect();
+
+    assert!(
+        upper_row.contains("drops: 42"),
+        "BC-2.06.019 PC-2 (GREEN): upper row must contain 'drops: 42' when \
+         status_message=None; got: {:?}",
+        upper_row.trim()
+    );
+
+    // The lower row must have the hint (not the drop counter).
+    let lower_row: String = (0..80u16)
+        .map(|x| buf[(x, 1u16)].symbol().to_string())
+        .collect();
+
+    assert!(
+        lower_row.contains("Tab:"),
+        "BC-2.06.021 PC-1 (GREEN): lower row must contain 'Tab:' hint when \
+         status_message=None and mode is Dashboard; got: {:?}",
+        lower_row.trim()
+    );
+}
+
 /// BC-2.06.019 / BC-2.06.020 / BC-2.06.021 PC-2 — Status bar is TWO rows.
 ///
 /// AC-008: the status bar is allocated `Constraint::Length(2)` — two rows.
