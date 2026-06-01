@@ -551,15 +551,15 @@ BC-2.06.014:
 
 BC-2.06.015:
   path: specs/behavioral-contracts/ss-06/BC-2.06.015.md
-  current_version: "1.0.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.7"
+  last_bump_commit: "2e544fd8d194f8600bc1f2a3aab5cb657f62ecbe"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.016:
   path: specs/behavioral-contracts/ss-06/BC-2.06.016.md
-  current_version: "1.0.9"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "f8cf600875cda80d231de0d259468f831f80508f"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.017:
   path: specs/behavioral-contracts/ss-06/BC-2.06.017.md
@@ -575,15 +575,15 @@ BC-2.06.018:
 
 BC-2.06.019:
   path: specs/behavioral-contracts/ss-06/BC-2.06.019.md
-  current_version: "1.0.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "f8cf600875cda80d231de0d259468f831f80508f"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.020:
   path: specs/behavioral-contracts/ss-06/BC-2.06.020.md
-  current_version: "1.0.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "f8cf600875cda80d231de0d259468f831f80508f"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.021:
   path: specs/behavioral-contracts/ss-06/BC-2.06.021.md
