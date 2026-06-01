@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-06-01T14:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "ee4d690"
+input-hash: "64a61b4"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: [F-P1D2-010]
+modified: [F-P1D2-010, S-027-ADV-DROPS-COEXISTENCE]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -73,8 +73,11 @@ even in Fullscreen and Overlay modes.
    `Dashboard > Overlay [99 prompts]` (32 characters for 99 queued prompts).
    Both fit within 80 columns alongside the drop counter text.
 
-5. **Left-aligned:** The breadcrumb is left-aligned on the second-to-last terminal row.
-   The drop counter (`drops: N`) is right-aligned on the same row when non-zero.
+5. **Left-aligned:** The breadcrumb is left-aligned on the upper (breadcrumb) row of the
+   two-row status bar. The drop counter (`drops: N`) is right-aligned on the same upper
+   row when non-zero (BC-2.06.019 PC-7). Transient `status_message` notifications
+   (disconnect indicator, `[t]` stub, etc.) render on the lower (hint) row — they do
+   NOT displace the breadcrumb or the drop counter from the upper row.
 
 ## Invariants
 
@@ -193,3 +196,14 @@ S-TBD — Implement status bar breadcrumb: pure derivation from AppMode, singula
   - v1.8.1 (Sessions Panel 6→7 columns): this BC covers breadcrumb rendering; no Sessions Panel column table in scope.
   - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (breadcrumb shows current AppMode, not daemon-disconnect text).
 - SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.
+
+## §Trace v1.1.0
+
+**S-027-ADV-DROPS-COEXISTENCE LOW — PC-5 layout language aligned with coexistence rule** (2026-06-01T14:00:00Z):
+
+BC-2.06.019 v1.1.0 established the canonical coexistence layout: `drops: N` is permanent
+on the upper row; `status_message` renders on the lower row. PC-5 of this BC was updated
+to use consistent "upper row" / "lower row" terminology and to note explicitly that
+transient notifications do NOT displace breadcrumb or drop counter from the upper row.
+No other changes. This is a terminology alignment, not a behavior change.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-06-01T14:00:00Z > v1.0.5. PASS.

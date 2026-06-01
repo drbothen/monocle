@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.9"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-06-01T14:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "ee4d690"
+input-hash: "64a61b4"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: [F-P1D2-010, F-P1D7-001]
+modified: [F-P1D2-010, F-P1D7-001, S-027-ADV-DROPS-COEXISTENCE]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -60,7 +60,12 @@ decision would be sent to the wrong daemon connection.
    send channel is attempted.
 4. **Status bar renders disconnect indicator:** The status bar renders the text
    `"[disconnected] reconnecting..."` until the IPC reconnect sequence (BC-2.05.006)
-   completes and the daemon delivers a new initial state push (BC-2.05.002).
+   completes and the daemon delivers a new initial state push (BC-2.05.002). The
+   disconnect indicator renders on the **lower (hint) row** of the two-row status bar,
+   temporarily superseding the keybinding hint line. It MUST NOT render on the upper
+   (breadcrumb) row in place of `drops: N` — if `drop_counter > 0` simultaneously, both
+   are visible (see BC-2.06.019 PC-7: coexistence rule; authority for the non-suppression
+   guarantee lives in that BC, not here).
 5. **Badge counter reset:** The overlay badge counter in the status bar resets to 0
    as a consequence of the cleared stack.
 6. **Transition is synchronous:** The clear and mode transition happen within the same
@@ -103,7 +108,7 @@ decision would be sent to the wrong daemon connection.
 | `AppMode::Dashboard { focused: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, stack empty (was empty), status bar `"[disconnected] reconnecting..."` | edge-case |
 | `AppMode::Fullscreen { panel: Sessions, prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar `"[disconnected] reconnecting..."` | edge-case |
 | `AppMode::Filtering { panel: Sessions, query: "api", prior: Sessions }` | `TransportEvent::Disconnected` | `AppMode::Dashboard { focused: Sessions }`, status bar `"[disconnected] reconnecting..."` | edge-case |
-| Stack has 1 `PromptModal`; TUI just sent `ClientToServer::PermissionDecision`; disconnect arrives on same tick | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
+| `AppMode::Overlay { prior: Sessions }`, `App.overlay_stack = [P1]`; TUI just sent `ClientToServer::PermissionDecision`; disconnect arrives on same tick | `TransportEvent::Disconnected` | Stack cleared; mode → Dashboard; warn log for failed send; no panic | error |
 
 ## Verification Properties
 
@@ -125,7 +130,7 @@ decision would be sent to the wrong daemon connection.
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: disconnect handling clears local state only, no file writes occur); DI-001 (every hook event received MUST be written to the JSONL ring before acknowledgement — enforced upstream in daemon; TUI disconnect does not affect JSONL integrity) |
 | Architecture Module | monocle-tui (App::handle_ipc_message disconnect arm); monocle-core (AppMode state, VecDeque<PromptModal>) per ARCH-INDEX SS-06 |
 | Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Overlay Stack Lifecycle step 5 (Daemon disconnect SOQ-3); §Ctrl-\ Integration §State Preservation Across Hide/Show |
-| Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh overlay_stack); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear) |
+| Cross-Ref | BC-2.05.007 (IPC-side: Overlay Stack Cleared on Daemon Disconnect — this is the IPC event this TUI BC responds to); BC-2.05.006 (TUI Reconnects After Daemon Restart — reconnect sequence that follows disconnect); BC-2.05.002 (Initial state push on reconnect — delivers fresh overlay_stack); BC-2.06.014 (Esc hides without clearing — DISTINCT from disconnect which DOES clear); BC-2.06.019 PC-7 (coexistence rule — the disconnect indicator in PC-4 renders on the lower row; `drops: N` on the upper row is NEVER suppressed by it) |
 | Test File | `monocle-tui/tests/overlay_disconnect.rs` |
 | Test Name | `test_BC_2_06_016_overlay_cleared_on_daemon_disconnect` |
 | Stories | S-TBD (filled by story-writer) |
@@ -239,6 +244,25 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
 - Binding decision recorded at `.factory/cycles/cycle-001/S-025/text-style-adjudication.md`.
 - Follow-up required (architect scope): SS-tui.md line 668 still cites prose form — LOW severity.
 - SE-16d monotonicity: v1.0.8 timestamp 2026-05-28T14:00:00Z >= v1.0.7 timestamp 2026-05-28T13:00:00Z. PASS.
+
+## §Trace v1.1.0
+
+**S-027-ADV-DROPS-COEXISTENCE MAJOR — PC-4 placement clarified; coexistence cross-reference added** (2026-06-01T14:00:00Z):
+
+Adversarial review of `status_bar.rs` found that the implementation cited "BC-2.06.016 PC-4"
+as authority for suppressing `drops: N` when `status_message` is active. PC-4 was silent
+about WHERE the disconnect message renders and contained NO drop-counter-precedence rule.
+The implementer fabricated this citation.
+
+**Changes in this version:**
+- PC-4 updated: added explicit placement — disconnect indicator renders on the **lower
+  (hint) row**, NOT the upper (breadcrumb) row. Added explicit statement that it MUST NOT
+  displace `drops: N`. Cross-references BC-2.06.019 PC-7 as the authority for the
+  non-suppression guarantee.
+- Traceability Cross-Ref updated: BC-2.06.019 PC-7 coexistence rule added.
+- No other substantive changes. The overlay-clear behavior, mode transition, and all other
+  postconditions are unchanged.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-06-01T14:00:00Z > v1.0.9. PASS.
 
 ## §Trace v1.0.7
 
