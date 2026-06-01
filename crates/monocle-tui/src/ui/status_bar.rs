@@ -66,9 +66,11 @@ use ratatui::{
 ///   superseding the keybinding hint. It NEVER displaces `drops: N` from the upper row
 ///   (BC-2.06.019 PC-7 coexistence guarantee — the mutual-exclusion pattern is forbidden).
 /// - `ccr_path`: the resolved CCR binary path from `App::ccr_path` (S-031, AC-007 /
-///   BC-2.07.005 PC-3). Rendered on the lower row as `"CCR: <path>"` or `"CCR: none"`.
-///   When `status_message` is `Some`, the status message takes precedence and the CCR
-///   text is appended (space-separated) on the same lower row.
+///   BC-2.07.005 PC-3). Rendered on the UPPER row (breadcrumb row, row 0) as
+///   `"CCR: <path>"` or `"CCR: none"`, appended after the breadcrumb and optional
+///   `"drops: N"` span. The lower (hint) row is reserved for keybinding hints and
+///   `status_message` — CCR path never appears there (BC-2.06.021 PC-1 / INV-3
+///   canonical hint-row strings must remain unchanged).
 /// - `area`: the `Rect` to render into (two rows per AC-008).
 /// - `buf`: the ratatui `Buffer` to write into.
 pub fn render_status_bar(
