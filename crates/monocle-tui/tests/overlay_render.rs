@@ -1641,3 +1641,101 @@ fn test_BC_2_06_024_generic_wrap_overflow_shows_exactly_one_scroll_hint() {
         7,                          // inner.height (body_area inner after Tool-Input block border)
     );
 }
+
+// ---------------------------------------------------------------------------
+// ADV Pass-7 NIT-2 — Strengthen AC-009 elapsed timer test
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.020 PC-1 / AC-009 (CORRECTNESS-CONFIRMING): The elapsed timer renders the
+/// REAL elapsed seconds — not a hardcoded `"Waiting: 0s"`.
+///
+/// Addresses adversarial Pass-7 NIT-2: the original `test_BC_2_06_020_overlay_header_shows_elapsed_timer_waiting_prefix`
+/// used `received_at = Instant::now()` so elapsed is always 0 — it would pass against
+/// an impl that hardcoded `"Waiting: 0s"`. This test back-dates `received_at` by 5 seconds
+/// so elapsed is reliably 5s (as_secs() truncates; the full setup+render takes microseconds,
+/// well under 1s, so 5→4 rounding cannot occur). The exact assertion `"Waiting: 5s"` would
+/// FAIL against any impl that hardcodes `"Waiting: 0s"` and PASSES against the correct
+/// impl that computes `Instant::now().duration_since(modal.received_at).as_secs()`.
+///
+/// Margin rationale: 5s chosen so sub-second execution jitter (< 1ms in practice) cannot
+/// cause as_secs() to floor from 5 → 4. A 1s back-date would be vulnerable to a < 1s
+/// race at the 1s boundary; 5s eliminates that risk entirely.
+#[test]
+fn test_BC_2_06_020_overlay_header_elapsed_timer_reflects_real_elapsed_not_hardcoded_zero() {
+    // Back-date received_at by 5 seconds so elapsed is reliably 5s at render time.
+    let received_at = Instant::now() - std::time::Duration::from_secs(5);
+    let modal = PromptModal {
+        prompt_id: uuid::Uuid::new_v4(),
+        session_id: "sess-elapsed-001".to_string(),
+        tool_name: "Bash".to_string(),
+        tool_payload: monocle_core::tui::state::ToolPayload::Bash {
+            command: "ls".to_string(),
+        },
+        received_at,
+    };
+
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_overlay_widget(&modal, 1, frame.area(), frame);
+        })
+        .expect("render must not panic");
+
+    let buf = terminal.backend().buffer().clone();
+    let all_text: String = (0..buf.area().height)
+        .flat_map(|y| (0..buf.area().width).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        all_text.contains("Waiting: 5s"),
+        "BC-2.06.020 PC-1 / AC-009 (ADV Pass-7 NIT-2): with received_at back-dated 5s, \
+         rendered header must contain 'Waiting: 5s' (real elapsed) — not 'Waiting: 0s' \
+         (which would indicate a hardcoded zero); got: {:?}",
+        all_text.trim()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ADV Pass-8 — AC-001 single-prompt stack indicator always shown
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.021 PC-1 / AC-001 (CORRECTNESS-CONFIRMING): The stack-depth indicator
+/// `"(1 of N)"` is ALWAYS shown in the overlay header — including when N=1 (a single
+/// pending prompt). This exercises the reconciled AC-001: "indicator always shown,
+/// including (1 of 1)".
+///
+/// The assertion checks for the contiguous substring `"(1 of 1)"` — not separately for
+/// "1 of" and "1", which would be a tautology. An impl that omits the indicator when
+/// stack_depth==1 would produce a header without `"(1 of 1)"` and this test would fail.
+/// The current correct impl always calls `build_header_line` with the supplied
+/// `stack_depth`, so this PASSES against the current implementation.
+#[test]
+fn test_BC_2_06_021_overlay_header_shows_one_of_one_indicator_for_single_prompt_stack() {
+    // stack_depth=1: single pending prompt — indicator must still be shown.
+    let modal = bash_modal("echo hello");
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_overlay_widget(&modal, 1, frame.area(), frame);
+        })
+        .expect("render must not panic");
+
+    let buf = terminal.backend().buffer().clone();
+    let all_text: String = (0..buf.area().height)
+        .flat_map(|y| (0..buf.area().width).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        all_text.contains("(1 of 1)"),
+        "BC-2.06.021 PC-1 / AC-001 (ADV Pass-8): stack_depth=1 must render the contiguous \
+         substring '(1 of 1)' — the indicator is always shown, even for a single pending \
+         prompt; got: {:?}",
+        all_text.trim()
+    );
+}
