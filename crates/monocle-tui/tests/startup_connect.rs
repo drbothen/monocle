@@ -1079,13 +1079,13 @@ fn test_bc_2_05_002_event_ring_fifo_eviction_order() {
 /// After `on_transport_event(Disconnected)`, `render_frame` must render
 /// `DAEMON_DISCONNECT_STATUS` verbatim into the status-bar area of the buffer.
 ///
-/// BC-2.06.016 PC-4 v1.1.0 / BC-2.06.019 PC-7: the disconnect message renders on
+/// BC-2.06.016 PC-4 / BC-2.06.019 PC-7: the disconnect message renders on
 /// the LOWER (hint) row (row 5 in an 80×6 terminal, y = height-1), NOT the upper
 /// (breadcrumb) row (y = height-2).  The test now asserts the message is on the
 /// LOWER row.  This is RED against the current impl which renders status_message on
 /// the UPPER row (mutual-exclusion branch).
 ///
-/// RELOCATION (ADV Pass-14, BC-2.06.019 v1.1.0 PC-7): row expectation moved from
+/// RELOCATION (ADV Pass-14, BC-2.06.019 PC-7): row expectation moved from
 /// "upper OR lower" (combined scan) to LOWER row only (y = height-1).
 #[test]
 fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() {
@@ -1124,7 +1124,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
     let width = buffer.area().width as usize;
     let height = buffer.area().height as usize;
 
-    // BC-2.06.016 PC-4 v1.1.0 / BC-2.06.019 PC-7 RELOCATION:
+    // BC-2.06.016 PC-4 / BC-2.06.019 PC-7 RELOCATION:
     // DAEMON_DISCONNECT_STATUS must be on the LOWER (hint) row only (y = height-1).
     // The current impl renders it on the UPPER row (y = height-2) — this assertion
     // is RED against the current impl.
@@ -1134,7 +1134,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
 
     assert!(
         lower_row.contains(DAEMON_DISCONNECT_STATUS),
-        "BC-2.06.016 PC-4 v1.1.0 (RELOCATED to lower row): DAEMON_DISCONNECT_STATUS ({:?}) \
+        "BC-2.06.016 PC-4 (RELOCATED to lower row): DAEMON_DISCONNECT_STATUS ({:?}) \
          must render on the LOWER (hint) row (y={}) per BC-2.06.019 PC-7 coexistence layout; \
          got lower row: {:?}. The current impl renders status_message on the UPPER row \
          (mutual-exclusion pattern, FORBIDDEN by BC-2.06.019 PC-7).",
@@ -1151,7 +1151,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
 
     assert!(
         !upper_row.contains(DAEMON_DISCONNECT_STATUS),
-        "BC-2.06.016 PC-4 v1.1.0 (RELOCATED to lower row): DAEMON_DISCONNECT_STATUS must NOT \
+        "BC-2.06.016 PC-4 (RELOCATED to lower row): DAEMON_DISCONNECT_STATUS must NOT \
          appear on the upper (breadcrumb) row (y={}); it belongs on the lower row; \
          got upper row: {:?}",
         height - 2,
@@ -1177,7 +1177,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
     }
     assert!(
         found_yellow,
-        "BC-2.06.016 PC-4 v1.1.0: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) \
+        "BC-2.06.016 PC-4: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) \
          must be rendered with Yellow foreground on the lower (hint) row"
     );
 }
@@ -1186,10 +1186,10 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
 /// `Some(DAEMON_OFFLINE_STATUS)`, `render_frame` must render that text verbatim
 /// into the status-bar area of the buffer.
 ///
-/// BC-2.06.016 PC-4 v1.1.0 / BC-2.06.019 PC-7: the offline status message renders
+/// BC-2.06.016 PC-4 / BC-2.06.019 PC-7: the offline status message renders
 /// on the LOWER (hint) row (y = height-1), NOT the upper (breadcrumb) row.
 ///
-/// RELOCATION (ADV Pass-14, BC-2.06.019 v1.1.0 PC-7): row expectation moved to
+/// RELOCATION (ADV Pass-14, BC-2.06.019 PC-7): row expectation moved to
 /// LOWER row only.  RED against the current impl (renders status_message on the
 /// UPPER row via mutual-exclusion, FORBIDDEN by BC-2.06.019 PC-7).
 #[test]
@@ -1225,7 +1225,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
     let width = buffer.area().width as usize;
     let height = buffer.area().height as usize;
 
-    // BC-2.06.016 PC-4 v1.1.0 / BC-2.06.019 PC-7 RELOCATION:
+    // BC-2.06.016 PC-4 / BC-2.06.019 PC-7 RELOCATION:
     // DAEMON_OFFLINE_STATUS must be on the LOWER (hint) row (y = height-1).
     // RED against the current impl which renders status_message on the UPPER row.
     let lower_row: String = (0..width)
@@ -1234,7 +1234,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
 
     assert!(
         lower_row.contains(DAEMON_OFFLINE_STATUS),
-        "BC-2.06.016 PC-4 v1.1.0 (RELOCATED to lower row): DAEMON_OFFLINE_STATUS ({:?}) \
+        "BC-2.06.016 PC-4 (RELOCATED to lower row): DAEMON_OFFLINE_STATUS ({:?}) \
          must render on the LOWER (hint) row (y={}) per BC-2.06.019 PC-7 coexistence layout; \
          got lower row: {:?}. The current impl renders status_message on the UPPER row \
          (mutual-exclusion pattern, FORBIDDEN by BC-2.06.019 PC-7).",
@@ -1250,7 +1250,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
 
     assert!(
         !upper_row.contains(DAEMON_OFFLINE_STATUS),
-        "BC-2.06.016 PC-4 v1.1.0 (RELOCATED to lower row): DAEMON_OFFLINE_STATUS must NOT \
+        "BC-2.06.016 PC-4 (RELOCATED to lower row): DAEMON_OFFLINE_STATUS must NOT \
          appear on the upper (breadcrumb) row (y={}); it belongs on the lower row; \
          got upper row: {:?}",
         height - 2,
@@ -1276,7 +1276,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
     }
     assert!(
         found_yellow,
-        "BC-2.06.016 PC-4 v1.1.0: DAEMON_OFFLINE_STATUS ({DAEMON_OFFLINE_STATUS:?}) \
+        "BC-2.06.016 PC-4: DAEMON_OFFLINE_STATUS ({DAEMON_OFFLINE_STATUS:?}) \
          must be rendered with Yellow foreground on the lower (hint) row"
     );
 }
@@ -1288,13 +1288,13 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
 // INVERTED from F-S025-ADV13-NIT-001 (which tested the old FORBIDDEN precedence
 // pattern where status_message suppressed drops:N on the same slot).
 //
-// BC-2.06.019 v1.1.0 PC-7: the mutual-exclusion `if status_message { msg }
+// BC-2.06.019 PC-7: the mutual-exclusion `if status_message { msg }
 // else { drop_counter }` pattern is FORBIDDEN.  `drops: N` is a permanent
 // data-loss indicator on the upper row; status_message is a transient
 // notification on the lower row.  Both are always visible when active.
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.019 PC-7 / BC-2.06.016 PC-4 v1.1.0 (COEXISTENCE — RED):
+/// BC-2.06.019 PC-7 / BC-2.06.016 PC-4 (COEXISTENCE — RED):
 /// When `app.status_message` is `Some(DAEMON_DISCONNECT_STATUS)` AND
 /// `app.drop_counter > 0` simultaneously, `render_frame` must render BOTH:
 /// - `drops: N` in yellow on the UPPER (breadcrumb) row (y = height-2)
@@ -1307,7 +1307,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
 /// `drops: 5` when status_message is Some, so the upper-row assertion fails.
 ///
 /// INVERTED from F-S025-ADV13-NIT-001 (which tested the old precedence).
-/// BC-2.06.019 v1.1.0 PC-7 is the authority — coexistence is mandatory.
+/// BC-2.06.019 PC-7 is the authority — coexistence is mandatory.
 #[test]
 fn test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visible() {
     use monocle_tui::ui::sessions_panel::SessionsPanelState;
@@ -1361,7 +1361,7 @@ fn test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visib
         upper_row.trim()
     );
 
-    // BC-2.06.016 PC-4 v1.1.0 / BC-2.06.019 PC-7: lower row (y = height-1) MUST
+    // BC-2.06.016 PC-4 / BC-2.06.019 PC-7: lower row (y = height-1) MUST
     // contain DAEMON_DISCONNECT_STATUS.
     let lower_row: String = (0..width)
         .map(|x| buffer[(x as u16, (height - 1) as u16)].symbol().to_string())
@@ -1369,7 +1369,7 @@ fn test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visib
 
     assert!(
         lower_row.contains(DAEMON_DISCONNECT_STATUS),
-        "BC-2.06.016 PC-4 v1.1.0 (COEXISTENCE): lower (hint) row (y={}) must contain \
+        "BC-2.06.016 PC-4 (COEXISTENCE): lower (hint) row (y={}) must contain \
          DAEMON_DISCONNECT_STATUS ({:?}) per BC-2.06.019 PC-7 coexistence layout; \
          got lower row: {:?}",
         height - 1,
@@ -1419,7 +1419,7 @@ fn test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visib
     }
     assert!(
         msg_yellow,
-        "BC-2.06.016 PC-4 v1.1.0: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) \
+        "BC-2.06.016 PC-4: DAEMON_DISCONNECT_STATUS ({DAEMON_DISCONNECT_STATUS:?}) \
          must be styled Yellow on the lower row (y={})",
         height - 1
     );

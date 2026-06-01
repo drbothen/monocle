@@ -1000,16 +1000,16 @@ fn test_BC_2_06_021_render_status_bar_hint_line_dashboard_contains_key_hints() {
     );
 }
 
-/// BC-2.06.021 PC-1 v1.0.6 (RED GATE): `render_status_bar` renders the EXACT canonical
+/// BC-2.06.021 PC-1 (RED GATE): `render_status_bar` renders the EXACT canonical
 /// Overlay hint line for `AppMode::Overlay`.
 ///
-/// Canonical test vector from BC-2.06.021 PC-1 (v1.0.6 — corrected from stale `1/2/3` keys):
+/// Canonical test vector from BC-2.06.021 PC-1 (corrected from stale `1/2/3` keys):
 ///   `Overlay { .. }` → `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
 ///
 /// STRENGTHENED: the old assertions `contains('t') && contains("trace")` and
 /// `contains("Esc") || contains("esc")` were tautologies that passed against the broken
 /// impl emitting `"1: accept-once  2: accept-always  3: reject  Esc: hide  t: trace"`.
-/// BC-2.06.021 §Trace v1.0.6 corrected the keys from `1/2/3` to `y/A/n/r` to match
+/// BC-2.06.021 §Trace corrected the keys from `1/2/3` to `y/A/n/r` to match
 /// the canonical `binding.rs` keybindings (S-026 merged). Now asserts EXACT string.
 #[test]
 fn test_BC_2_06_021_render_status_bar_hint_line_overlay_contains_trace_stub_binding() {
@@ -1030,7 +1030,7 @@ fn test_BC_2_06_021_render_status_bar_hint_line_overlay_contains_trace_stub_bind
     assert_eq!(
         hint_trimmed,
         "y: accept  A: accept-always  n/r: reject  \u{2191}\u{2193}: cycle  Esc: hide  t: trace",
-        "BC-2.06.021 PC-1 v1.0.6: Overlay hint line must use canonical y/A/n/r keybindings \
+        "BC-2.06.021 PC-1: Overlay hint line must use canonical y/A/n/r keybindings \
          (not stale 1/2/3 placeholder keys); 't: trace' stub must be present (PC-6); \
          'Esc: hide' semantics must be present (PC-5)"
     );
@@ -1117,7 +1117,7 @@ fn test_BC_2_06_019_pc7_coexistence_drops_and_disconnect_both_visible_in_two_row
         lower_row.contains(disconnect_msg),
         "BC-2.06.019 PC-7 (EC-129) COEXISTENCE: lower row (y=1) must contain the \
          disconnect message {:?} — status_message renders on the lower (hint) row \
-         per BC-2.06.019 PC-7 / BC-2.06.016 PC-4 v1.1.0; got lower row: {:?}",
+         per BC-2.06.019 PC-7 / BC-2.06.016 PC-4; got lower row: {:?}",
         disconnect_msg,
         lower_row.trim()
     );
@@ -1328,7 +1328,7 @@ fn test_BC_2_06_020_breadcrumb_dashboard_event_ribbon_focus_renders_events() {
     );
 }
 
-/// BC-2.06.021 PC-1 (v1.0.6) — Overlay hint EXACT canonical string.
+/// BC-2.06.021 PC-1 — Overlay hint EXACT canonical string.
 ///
 /// Separate dedicated test (in addition to the strengthened existing test) to make the
 /// failure mode unmistakable when the broken stale `1/2/3` impl is present.
@@ -1350,25 +1350,25 @@ fn test_BC_2_06_021_overlay_hint_exact_canonical_y_A_nr_keys() {
     // The stale implementation starts with "1: accept-once" — assert it does NOT appear.
     assert!(
         !hint.contains("1: accept"),
-        "BC-2.06.021 PC-1 v1.0.6: stale placeholder '1: accept-once' MUST NOT appear in \
-         overlay hint; canonical keys are y/A/n/r (BC §Trace v1.0.6); got: {:?}",
+        "BC-2.06.021 PC-1: stale placeholder '1: accept-once' MUST NOT appear in \
+         overlay hint; canonical keys are y/A/n/r (BC §Trace); got: {:?}",
         hint
     );
 
     // The canonical 'y: accept' and 'A: accept-always' must appear.
     assert!(
         hint.contains("y: accept"),
-        "BC-2.06.021 PC-1 v1.0.6: 'y: accept' must appear in overlay hint; got: {:?}",
+        "BC-2.06.021 PC-1: 'y: accept' must appear in overlay hint; got: {:?}",
         hint
     );
     assert!(
         hint.contains("A: accept-always"),
-        "BC-2.06.021 PC-1 v1.0.6: 'A: accept-always' must appear in overlay hint; got: {:?}",
+        "BC-2.06.021 PC-1: 'A: accept-always' must appear in overlay hint; got: {:?}",
         hint
     );
     assert!(
         hint.contains("n/r: reject"),
-        "BC-2.06.021 PC-1 v1.0.6: 'n/r: reject' must appear in overlay hint; got: {:?}",
+        "BC-2.06.021 PC-1: 'n/r: reject' must appear in overlay hint; got: {:?}",
         hint
     );
 }
