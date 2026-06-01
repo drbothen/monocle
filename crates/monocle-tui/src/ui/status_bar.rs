@@ -9,15 +9,22 @@
 //! - Left: `AppMode` indicator (e.g. `"[DASHBOARD]"`, `"[OVERLAY N]"`).
 //! - Middle: breadcrumb path derived from current focus (e.g.
 //!   `"Dashboard > Sessions"`, `"Dashboard > Overlay [1 prompt]"`).
-//! - Right (optional): `"drops: N"` in yellow when `drop_counter > 0`;
-//!   or `status_message` text in yellow when a transport notification is active
-//!   (status_message takes precedence over drop counter per BC-2.06.016 PC-4).
+//! - Right (optional): `"drops: N"` in yellow when `drop_counter > 0`.
+//!   `drops: N` is NEVER suppressed by a `status_message` (BC-2.06.019 PC-7).
 //!
 //! Row 1 (lower — hint row):
-//! - Keyboard hint line for the current mode (e.g.
+//! - When `status_message` is `Some(msg)`: the message is rendered in yellow,
+//!   temporarily superseding the keybinding hint. When `status_message` is
+//!   `None`, the canonical keybinding hint for the current mode is shown (e.g.
 //!   `"Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit"`).
 //!   Canonical per-mode strings are defined in BC-2.06.021 PC-1. Must fit within
 //!   79 display columns (BC-2.06.021 INV-3).
+//!
+//! # Coexistence guarantee (BC-2.06.019 PC-7)
+//!
+//! The mutual-exclusion pattern `if status_message { msg } else { drop_counter }`
+//! is FORBIDDEN. Both signals occupy different rows: `drops: N` is permanently on
+//! the upper row when non-zero; `status_message` is always on the lower row.
 //!
 //! # Relationship to earlier status bar (S-025)
 //!
@@ -55,8 +62,9 @@ use ratatui::{
 /// - `overlay_stack_depth`: `app.overlay_stack.len()` — used for `"[OVERLAY N]"` and
 ///   the breadcrumb `"[N prompts]"` count.
 /// - `status_message`: optional transport notification (e.g., `"[disconnected] reconnecting..."`).
-///   When `Some(msg)`, it is rendered in yellow on the upper row and takes precedence
-///   over the drop counter (BC-2.06.016 PC-4).
+///   When `Some(msg)`, it is rendered in yellow on the LOWER (hint) row, temporarily
+///   superseding the keybinding hint. It NEVER displaces `drops: N` from the upper row
+///   (BC-2.06.019 PC-7 coexistence guarantee — the mutual-exclusion pattern is forbidden).
 /// - `area`: the `Rect` to render into (two rows per AC-008).
 /// - `buf`: the ratatui `Buffer` to write into.
 pub fn render_status_bar(
@@ -83,15 +91,17 @@ pub fn render_status_bar(
     let hint = hint_line_text(mode);
 
     if area.height == 1 {
-        // Single-row: render mode indicator + drop counter / status message.
-        let right_span: Option<Span<'static>> = if let Some(msg) = status_message {
-            Some(Span::styled(
-                msg.to_string(),
-                Style::default().fg(Color::Yellow),
-            ))
-        } else {
-            drop_counter_span(drop_counter)
-        };
+        // Single-row degraded layout: render mode indicator + drops:N (BC-2.06.019 PC-7).
+        // When area.height == 1, there is no room for the hint row.  The drop counter
+        // takes priority over status_message in this degraded case because drops:N signals
+        // an ongoing data-loss condition (BC-2.06.019 PC-7 rationale: permanent operational
+        // indicator vs transient notification).  The status_message is silent here — this is
+        // the 1-row degraded path only; the normal 2-row path is always preferred.
+        let right_span: Option<Span<'static>> = drop_counter_span(drop_counter).or_else(|| {
+            status_message.map(|msg| {
+                Span::styled(msg.to_string(), Style::default().fg(Color::Yellow))
+            })
+        });
 
         let line = match right_span {
             Some(right) => Line::from(vec![
@@ -104,29 +114,23 @@ pub fn render_status_bar(
 
         Paragraph::new(line).render(area, buf);
     } else {
-        // Multi-row: split into mode/breadcrumb row (row 0) and hint row (row 1+).
+        // Multi-row: split into mode/breadcrumb row (row 0) and hint/status row (row 1+).
         let rows = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(1), Constraint::Min(1)])
             .split(area);
 
-        // Row 0: indicator + breadcrumb + optional drop/status.
-        let right_span: Option<Span<'static>> = if let Some(msg) = status_message {
-            Some(Span::styled(
-                msg.to_string(),
-                Style::default().fg(Color::Yellow),
-            ))
-        } else {
-            drop_counter_span(drop_counter)
-        };
-
-        let top_spans: Vec<Span<'static>> = match right_span {
-            Some(right) => vec![
+        // Row 0 (upper — breadcrumb row): indicator + breadcrumb + drops:N.
+        // drops:N is ALWAYS shown here when drop_counter > 0 — never suppressed by
+        // status_message (BC-2.06.019 PC-7 coexistence guarantee).
+        let drops_span: Option<Span<'static>> = drop_counter_span(drop_counter);
+        let top_spans: Vec<Span<'static>> = match drops_span {
+            Some(drops) => vec![
                 Span::styled(indicator, Style::default().fg(Color::Cyan)),
                 Span::raw("  "),
                 Span::styled(breadcrumb, Style::default().fg(Color::DarkGray)),
                 Span::raw("  "),
-                right,
+                drops,
             ],
             None => vec![
                 Span::styled(indicator, Style::default().fg(Color::Cyan)),
@@ -136,12 +140,19 @@ pub fn render_status_bar(
         };
         Paragraph::new(Line::from(top_spans)).render(rows[0], buf);
 
-        // Row 1: hint line.
-        Paragraph::new(Line::from(Span::styled(
-            hint,
-            Style::default().fg(Color::DarkGray),
-        )))
-        .render(rows[1], buf);
+        // Row 1 (lower — hint/status row): status_message when Some, keybinding hint otherwise.
+        // BC-2.06.019 PC-7: status_message (from disconnect, [t] stub, etc.) renders HERE,
+        // on the lower row, temporarily superseding the keybinding hint. When None, the
+        // canonical keybinding hint renders per BC-2.06.021.
+        let lower_line: Line<'static> = if let Some(msg) = status_message {
+            Line::from(Span::styled(
+                msg.to_string(),
+                Style::default().fg(Color::Yellow),
+            ))
+        } else {
+            Line::from(Span::styled(hint, Style::default().fg(Color::DarkGray)))
+        };
+        Paragraph::new(lower_line).render(rows[1], buf);
     }
 }
 

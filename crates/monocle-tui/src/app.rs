@@ -1883,10 +1883,11 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
     // at AppModeTag::Overlay is the correct mechanism — it is hardcoded in this
     // function (not in any user customisation file), so it cannot be overridden.
     //
-    // NOTE: The permission decision keys (y/Enter/A/n/r) are captured BEFORE the
-    // per-context layer in the hard-coded SearchPrompt Overlay arm of resolve_binding.
-    // `t` is NOT a permission decision key and deliberately falls through to the
-    // per-context layer so that empty-layer tests return None (compile-gate only).
+    // NOTE: The permission decision keys (y/Enter/A/n/r) are captured at the SearchPrompt
+    // layer (Level 1) inside the Overlay arm of resolve_binding. `t` is NOT among those keys
+    // (the Overlay SearchPrompt arm matches only y/A/n/r/Up/Down, returning None for `t`).
+    // `t` therefore falls through to the PerContext layer (Level 3) where it is registered
+    // here as Action::PermissionTraceToSource for AppModeTag::Overlay.
     layers.per_context.insert(
         (
             KeyEvent {
