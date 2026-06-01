@@ -1871,9 +1871,15 @@ pub fn dispatch_key_event(
         } else if is_up {
             picker_select_prev(app);
         } else if is_enter {
-            // BC-2.07.005 PC-5: commit selection using process CWD (verbatim, no canonicalize).
-            let current_dir = std::env::current_dir()
-                .map(|p| p.to_string_lossy().into_owned())
+            // BC-2.07.004 INV-1 / BC-2.07.005 PC-5: use the open-time snapshot stored in
+            // ProfilePickerState::current_dir so that pre-selection, the `*` active marker,
+            // and the write key all use ONE source-of-truth directory.  Re-resolving
+            // std::env::current_dir() here would break INV-1 if the process CWD changes
+            // between open and Enter (e.g., in tests or shell integrations).
+            let current_dir = app
+                .profile_picker
+                .as_ref()
+                .map(|s| s.current_dir.clone())
                 .unwrap_or_default();
             commit_profile_selection(app, &current_dir);
         } else if is_esc {
@@ -2036,13 +2042,14 @@ pub fn dispatch_key_event(
 /// - All other modes (Dashboard, Overlay, Filtering) — 60/40 dashboard split;
 ///   Sessions panel left, status bar below.
 ///
-/// # Drop counter (AC-007, BC-2.06.005 PC-3)
+/// # Drop counter (BC-2.06.019 PC-2 / BC-2.06.005 PC-3)
 ///
-/// When `app.drop_counter > 0`, the page-level status bar renders
-/// `"[dropped: N] monocle"` in yellow. When `app.drop_counter == 0`, it renders
-/// `"monocle"` in dark-gray. This is the ONLY location where the drop counter
-/// text is rendered — the Sessions panel widget itself does NOT duplicate it
-/// (F-S025-ADV2-MED-002).
+/// Drop-counter rendering is delegated to `render_status_bar`. When
+/// `app.drop_counter > 0`, `render_status_bar` emits `"drops: N"` in yellow on
+/// the UPPER (breadcrumb) row of the two-row status bar. When zero, no drop
+/// text is emitted. The Sessions panel widget does NOT duplicate the drop
+/// counter (F-S025-ADV2-MED-002). The legacy `"[dropped: N] monocle"` / `"monocle"`
+/// single-string pattern was replaced by S-027.
 pub fn render_frame(
     app: &App,
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
