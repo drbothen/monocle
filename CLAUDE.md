@@ -20,32 +20,31 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.34` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-wave-6-IN-PROGRESS`** — Wave 6 active, 3/4 stories done.
-- **Waves 1-5 (DONE):** 24 stories merged (143 pts), gates D-164/D-166/D-167/D-175/D-182.
-- **Wave 6 (IN PROGRESS — 3/4 done, 21/34 pts):**
-  - **S-022** (8 pts, EPIC-05) — DONE (D-184, PR #27 @ c754053, 2026-05-28). BC-2.05.002 + BC-2.05.005. 15 ACs. 22 tests.
-  - **S-023** (5 pts, EPIC-05) — DONE (D-186, PR #29 @ 7a52041). Daemon Reconnect (SOQ-3). BC-2.05.006/007 satisfied.
-  - **S-025** (8 pts, EPIC-06) — DONE (D-222, PR #28 @ 838477e, 2026-05-30). TUI Skeleton + Sessions Panel. BC-2.06.004/005/007 + BC-2.05.002 Inv-4. 10 ACs. 65 monocle-tui tests. 14-pass adversarial convergence (3/3 consecutive CLEAN at Passes 40/41/42). Demo evidence: docs/demo-evidence/S-025/.
-  - **S-026** (13 pts, EPIC-06) — Permission Overlay Core. Now UNBLOCKED (S-023+S-025 both merged). **AWAITING HUMAN AUTHORIZATION** — do NOT dispatch.
-  - S-PHASE-3-PREP remains BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
-- **Totals:** 33 stories (195 pts), **27 done (164 pts, 84%)**, 6 not_started (31 pts). sprint-state v1.32. BC-INDEX v1.33 (113 BCs). STORY-INDEX v5.24.
-- **develop @ 838477e** (latest). **900+ tests total**, clippy clean, fmt clean.
-- **8 workspace crates**: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask. New this wave: monocle-tui (added by S-025).
-- **Artifact versions at last checkpoint (2026-05-30, STATE v6.71/D-222):** <!-- version-pin-historical: state snapshot at S-025 delivery; not navigation pointers. Use version-pin-registry.yaml as current source-of-truth. -->
-  PRD v1.27.4, SS-tui v1.8.2, SS-ipc v1.9.0, SS-deps-pin-manifest v1.2.0, SS-conventions v1.32.5, SS-engine-module v1.1.26, ARCH-INDEX v1.0.25, ADR-0007 v1.0.8, ADR-0008 v1.0.6, BC-2.06.007 v1.0.5, BC-2.05.008 v1.0.7, EVAL-INDEX v1.7, VP-INDEX v1.17. MSRV: Rust 1.88 (time 0.3.47 RUSTSEC-2026-0009 floor; original ratatui 0.30 floor was 1.86). Phase 3 = Rust 1.92.
-- **This session's arc (2026-05-30):** Rebuilt POL-11/POL-12 enforcement gates (were false-green: POL-11 scanned 0 files); fixed via registry-driven detection + closed-rule + form-coverage matrices + living-state exemptions + version-free tooling; remediated 164-finding stale-pin cascade; 3 ADR amendments (ADR-0007 v1.0.8, ADR-0008 v1.0.6). 21 lessons codified (L-001..L-021 in cycles/cycle-001/lessons.md). 52 codified disciplines total.
+- **Phase: `phase-3-wave-7-READY`** — Wave 6 GATE PASSED (D-224). **Wave 7 is the FINAL wave of Phase 3.** AWAITING human authorization to begin Wave 7 delivery, starting with S-027.
+- **Waves 1-6 (DONE):** 28 stories merged (169 pts), gates D-164/D-166/D-167/D-175/D-182/D-224.
+  - Wave 6 final: S-022 (PR #27 @ c754053), S-023 (PR #29 @ 7a52041), S-025 (PR #28 @ 838477e), S-026 (PR #30 @ 9fb0d70). Wave-6 GATE PASSED via D-224 (PR #31 @ 2a51a91 — CRITICAL offline reconnect fix).
+- **WAVE 7 (FINAL — not yet started, 23 pts):**
+  - **S-027** (8 pts, EPIC-06) — Permission Overlay RENDERING + Diff Preview + Status Bar. UNBLOCKED. BCs: BC-2.06.010/015/019/020/021/024.
+  - **S-028** (5 pts, EPIC-06) — Sessions Panel Nucleo Filter + Event Ribbon Rolling Log. UNBLOCKED. BCs: BC-2.05.002/004, BC-2.06.006/018.
+  - **S-031** (5 pts, EPIC-07) — Profile Picker: sticky-per-project + Ctrl-P override. UNBLOCKED. BCs: BC-2.07.004/005.
+  - **S-029** (5 pts, EPIC-06) — Killer Scenario <=6 keystrokes dual permission resolve. BLOCKED on S-027. BCs: BC-2.06.022.
+  - S-PHASE-3-PREP (3 pts) BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
+- **Totals:** 33 stories (195 pts), **28 done (169 pts, 87%)**, 4 not_started Wave 7 (23 pts), 1 blocked. sprint-state v1.34. BC-INDEX v1.33 (113 BCs). STORY-INDEX v5.25.
+- **develop @ 2a51a91** (Wave 6 GATE PASSED). **90 test suites, 0 failures**. clippy --all-targets clean. fmt clean.
+- **9 workspace crates**: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
+- **Artifact versions at last checkpoint (2026-05-31, STATE v6.74/D-225):** <!-- version-pin-historical: state snapshot at D-225; not navigation pointers. Use version-pin-registry.yaml as current source-of-truth. -->
+  PRD v1.27.4, SS-tui v1.8.2, SS-ipc v1.9.0, SS-deps-pin-manifest v1.2.0, SS-conventions v1.32.6, SS-engine-module v1.1.26, ARCH-INDEX v1.0.25, ADR-0007 v1.0.8, ADR-0008 v1.0.6, BC-2.06.023 v1.5.0, BC-2.06.024 v1.1.0, S-026 v1.11, EVAL-INDEX v1.7, VP-INDEX v1.17. MSRV: Rust 1.88 (Phase 1-2; time 0.3.47 RUSTSEC-2026-0009 floor). Phase 3 = Rust 1.92.
+- **CI-PARITY (learned this cycle — CRITICAL pre-push):** Run `cargo clippy --workspace --all-targets -- -D warnings` (CI uses --all-targets; CLAUDE.md Lint line below MISSES test targets — HUMAN action pending PROCESS-GAP-CI-PARITY-1). Also run `python3 scripts/check_version_pins.py` (POL-11) + `python3 scripts/check_structural_claims.py` (POL-12) locally. Do NOT embed version-pin literals in test prose.
 - **Open durable follow-ups (non-blocking — DO NOT fix unless specifically tasked):**
-  - **S-025-POST-MERGE-S1**: IpcManagerState::new() dedup (monocle-tui vs monocle-ipc) — future EPIC-06 story, architect scope.
-  - **S-025-POST-MERGE-TD1**: Sessions panel skeleton rows for Workflow/Harness/Static planes — closed by S-026+.
-  - **F-S025-ADV37-DEFER-001**: STORY-INDEX rows 150-153 stale BC→AC ranges (pre-§Trace v1.3/v1.4 renumbering) + systematic sweep — story-writer at/before wave-6-gate.
-  - **ADV-W5GATE-HIGH-001**: daemon_start_sequence() DaemonState wiring (integration story needed).
-  - **ADV-W5GATE-HIGH-002**: Duplicate S-009 handler dead code (implementer cleanup fix-PR).
+  - **F-S025-ADV37-DEFER-001**: STORY-INDEX rows 150-153 stale BC→AC ranges + systematic sweep — story-writer at/before wave-7-gate.
+  - **ADV-W5GATE-HIGH-001**: daemon_start_sequence() DaemonState wiring. **ADV-W5GATE-HIGH-002**: Duplicate S-009 handler dead code.
   - **ADV-W5GATE-MED-001**: S-017 UDS socket spurious WARN. **ADV-W5GATE-MED-003**: HookEvent serde constructors.
   - **ADV-W4GATE-MED-002**: Dead tracing subscriber in CLI binary. **HS-EXP-009-hint**: Exit 70 missing stderr hint.
-  - **F-S025-PATH-B-CLAUDE-MD**: MSRV line in CLAUDE.md Build/Test/Lint section needs human update (1.86→1.88).
-  - Full register: `.factory/STATE.md` durable_task_register (35+ items with anchors).
-- **Wave-6-gate prerequisites** (required after S-026 merges, before Phase 4): full suite on develop, adversarial wave-diff review, holdout eval, demo validation, DTU validation. Gate skill: `vsdd-factory:wave-gate`.
-- **Next:** Obtain human authorization for S-026 (13 pts, EPIC-06, Permission Overlay Core, BCs: BC-2.06.008/009/011..014/016/023/024). See `next_session_resume_protocol` in `.factory/STATE.md` for zero-context dispatch instructions.
+  - **F-S025-PATH-B-CLAUDE-MD**: MSRV line in CLAUDE.md Build/Test/Lint needs human update (1.86→1.88) — PENDING HUMAN ACTION.
+  - **PROCESS-GAP-CI-PARITY-1**: CLAUDE.md Lint line add --all-targets — PENDING HUMAN ACTION.
+  - Full register: `.factory/STATE.md` durable_task_register (35+ items).
+- **Wave-7-gate prerequisites** (required after all 4 Wave 7 stories merge): full suite on develop, adversarial wave-diff review, holdout eval, demo validation, DTU validation. Gate skill: `vsdd-factory:wave-gate`. Then Phase 4.
+- **Next:** Human authorization to begin Wave 7 delivery, one story at a time starting with S-027. See `next_session_resume_protocol` in `.factory/STATE.md` for full zero-context dispatch instructions.
 - Mode: greenfield-with-reference-ingest.
 
 ## Build / Test / Lint
@@ -173,7 +172,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — D-155 original, D-168 expansion, D-169 adversarial convergence) — 70 BCs (expanded from 22), 7 subsystems, 5 ADRs, 15-pass adversarial review
 - Phase 2: Story Decomposition (DONE original D-159; EXPANSION D-170+D-171 — adversarial review pending) — 33 stories, 7 waves, 195 points, 24 holdout scenarios
-- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-5 DONE (143 pts, 753 tests, gates D-164/D-166/D-167/D-175/D-182). Wave 6: 3/4 done (S-022 @ c754053 D-184, S-023 @ 7a52041 D-186, S-025 @ 838477e D-222). S-026 (13 pts) unblocked, awaiting human authorization.
+- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-6 DONE (28/33 stories, 169/195 pts, gates D-164/D-166/D-167/D-175/D-182/D-224). develop @ 2a51a91. **Wave 7 (FINAL wave) READY** — S-027/028/029/031 (23 pts), human authorization required per story. After wave-7 gate → Phase 4.
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
