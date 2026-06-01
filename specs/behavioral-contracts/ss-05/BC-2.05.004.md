@@ -134,7 +134,7 @@ which the TUI's event ribbon panel is populated with live hook event data.
 | Cross-Ref | BC-2.01.003 (256 KiB body limit at HTTP layer; this BC's 256-byte excerpt is the IPC-layer bounding, not the HTTP-layer limit); BC-2.04.011 (bounded event bus — drop counter increments on bus-full; this BC's fan-out only sees events that cleared the bus); BC-2.02.003 (non-exhaustive HookType enum) |
 | Test File | `monocle-ipc/tests/hook_event_received.rs` |
 | Test Name | `test_BC_2_05_004_hook_event_received_broadcast` |
-| Stories | S-TBD (filled by story-writer) |
+| Stories | S-021 (IPC message types + struct definition), S-032 (daemon producer path: fan-out broadcast + timestamp_micros PC-2/INV-4) |
 
 ## Related BCs
 
@@ -149,7 +149,8 @@ which the TUI's event ribbon panel is populated with live hook event data.
 
 ## Story Anchor
 
-S-TBD — Implement HookEventReceived IPC broadcast with 256-byte payload excerpt (filled by story-writer)
+S-021 — IPC message types + ServerToClient::HookEventReceived struct definition (done)
+S-032 — Daemon event-bus fan-out: broadcast HookEventReceived with timestamp_micros (BC-2.05.004 PC-2/INV-4; Wave 8 draft)
 
 ## VP Anchors
 
@@ -203,6 +204,16 @@ VP-TBD — HookEventReceived broadcast and excerpt-bounding verification propert
   `SystemTime::now()` at receipt forbidden for ribbon timestamp.
 - **Architecture Source:** `SS-ipc.md v1.9.0` → `SS-ipc.md v1.10.0`.
 - SE-16d monotonicity: v1.1.0 timestamp 2026-06-01 > v1.0.4 timestamp 2026-05-29. PASS.
+
+## §Trace v1.1.1
+
+**Story backlink update — S-032 anchored as daemon producer story** (2026-06-01):
+- Traceability §Stories row: `S-TBD` → `S-021 (types), S-032 (daemon producer)`.
+- Story Anchor section: filled with S-021 (done) + S-032 (Wave 8 draft).
+- S-032 discharges the orphaned BC-2.05.004 v1.1.0 PC-2/INV-4 obligation surfaced
+  during S-028 adversarial review. Backlink established per story-writer BC Backlink
+  Update Obligation.
+- SE-16d monotonicity: v1.1.1 timestamp 2026-06-01 >= v1.1.0 timestamp 2026-06-01. PASS (same-day).
 
 ## §Trace v1.0.4
 

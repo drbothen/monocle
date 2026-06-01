@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.26"
+version: "5.27"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-01T12:00:00Z
+timestamp: 2026-06-01T14:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -79,10 +79,11 @@ traces_to: .factory/specs/prd.md
 | S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | not_started | — |
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | not_started | — |
+| S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 
-**Total stories:** 33 (29 product + 1 DTU + 1 prep + 2 admin)
-**Total points (product):** 189 (excl. DTU 3 pts and PREP 3 pts)
-**Total points (all):** 195
+**Total stories:** 34 (30 product + 1 DTU + 1 prep + 2 admin)
+**Total points (product):** 194 (excl. DTU 3 pts and PREP 3 pts)
+**Total points (all):** 200
 
 ## Wave Summary
 
@@ -96,6 +97,7 @@ traces_to: .factory/specs/prd.md
 | Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration — S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 (parallel after S-017). 34 pts. |
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
+| Wave 8 | S-032 | 5 | Post-Phase-3 follow-up: daemon event-bus fan-out live wiring (discharges deferred S-028 BC-2.05.004 obligation) |
 
 ## BC Coverage Table
 
@@ -139,7 +141,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.05.001 | UDS Server Bind at `runtimeDir/monocle.sock` | S-021 | AC-001..AC-003 | YES |
 | BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022, S-025, S-026 | S-022: AC-001..AC-005; S-025: AC-008 (Invariant 4 idempotency); S-026: AC-001 (Invariant 4 idempotency) | YES |
 | BC-2.05.003 | IPC Message Types: SessionListUpdate | S-021 | AC-004..AC-006 | YES |
-| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021 | AC-007..AC-009 | YES |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021, S-032 | S-021: AC-007..AC-009 (types + struct); S-032: AC-001..AC-007 (daemon producer path, PC-2/INV-4 timestamp_micros) | YES |
 | BC-2.05.005 | IPC Message Types: PermissionPromptQueued | S-022 | AC-006..AC-008 | YES |
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | S-023 | AC-001..AC-004 | YES |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | S-023 | AC-005..AC-006 | YES |
@@ -184,8 +186,8 @@ traces_to: .factory/specs/prd.md
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%)**
-**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027)**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PC-2/INV-4 daemon producer path covered by S-032 (Wave 8)**
+**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027). BC-2.05.004 fully covered when S-021 + S-032 done (S-021 = types; S-032 = daemon producer PC-2/INV-4).**
 
 ## VP Coverage Table
 
@@ -450,6 +452,19 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.27
+
+**S-032 CREATED — deferred daemon obligation anchored** (2026-06-01):
+- S-032 (Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros, EPIC-05, 5 pts, Wave 8, draft) created to discharge the orphaned BC-2.05.004 v1.1.0 PC-2/INV-4 daemon obligation surfaced during S-028 adversarial review.
+- Context: BC-2.05.004 was amended by PO during S-028 adversarial convergence to add PC-2 (timestamp_micros equality) and INV-4 (single clock capture). The daemon-side producer (`event_bus_fan_out_task` in monocle-runtime/src/event_bus.rs) remains a Phase-1 stub; S-021 owns the IPC types; S-028 is TUI-consumer-only. The daemon producer was unowned — CLAUDE.md Principle 3 requires a concrete story anchor before any deferral is valid.
+- Scope: un-stub `event_bus_fan_out_task`; add `timestamp_micros: i64` to `EventBusHookEvent` and `ServerToClient::HookEventReceived`; broadcast `HookEventReceived` to `SubscriberList` on each fan-out; populate `timestamp_micros` from single clock capture shared with ring write.
+- Wave 8 assigned: post-Wave-7 / Phase-5 eligible. Does NOT block Wave 7 delivery.
+- Story Registry: S-032 row added (EPIC-05, 5 pts, Wave 8, draft).
+- BC Coverage Table: BC-2.05.004 row updated — S-021 (types) + S-032 (daemon producer).
+- Wave Summary: Wave 8 row added.
+- Totals: 33 → 34 stories; product points 189 → 194; all 200 total.
+- SE-16d monotonicity: v5.27 timestamp 2026-06-01 >= v5.26 timestamp 2026-06-01. PASS (same-day).
 
 ## §Trace v5.26
 
