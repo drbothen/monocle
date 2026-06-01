@@ -1,5 +1,9 @@
 //! Event Ribbon unit tests (BC-2.06.018, BC-2.05.002, BC-2.05.004, S-028).
 //!
+//! `#![allow(non_snake_case)]` is required because the factory-mandated test naming
+//! convention uses uppercase BC identifiers: `test_BC_S_SS_NNN_...`.
+#![allow(non_snake_case)]
+//!
 //! Tests cover: auto-scroll / pin behaviour, session-change reset, rolling-window
 //! VecDeque bounding, PENDING status display, ring_tail pre-population, and
 //! `HookEventReceived` streaming append.
@@ -27,7 +31,7 @@ use monocle_config::MonocleConfig;
 use monocle_ipc::types::{HookEventRecord, HookType};
 use monocle_tui::app::{on_hook_event_received, App};
 use monocle_tui::ui::event_ribbon::{
-    push_event_row, reset_on_session_change, trim_to_panel_height, EventRibbonState, HookEventRow,
+    push_event_row, reset_on_session_change, EventRibbonState, HookEventRow,
 };
 use std::collections::VecDeque;
 use std::time::Instant;
@@ -64,11 +68,7 @@ fn test_BC_2_06_018_newest_event_at_row_zero() {
 
     // BC-2.06.018 PC-2: index 0 must be the most recently pushed (newest) row.
     // row2 was pushed last, so it must be at index 0.
-    assert_eq!(
-        events.len(),
-        2,
-        "expected 2 events after 2 pushes"
-    );
+    assert_eq!(events.len(), 2, "expected 2 events after 2 pushes");
     // The newest row (row2) was pushed last; it must be at front (index 0).
     // Since both rows are created nearly simultaneously, we verify ordering by
     // push order: the last-pushed row is the newest and must be at index 0.
@@ -156,9 +156,8 @@ fn test_BC_2_06_018_pending_status_reverts_after_decision() {
         front.pending = false;
     }
 
-    assert_eq!(
-        events[0].pending,
-        false,
+    assert!(
+        !events[0].pending,
         "BC-2.06.018 PC-4: pending must revert to false after PermissionDecision"
     );
 }
@@ -171,8 +170,10 @@ fn test_BC_2_06_018_pending_status_reverts_after_decision() {
 /// Verifies AC-008 (BC-2.06.018 PC-8 auto-scroll).
 #[test]
 fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
-    let mut state = EventRibbonState::default();
-    state.pinned_top = false;
+    let mut state = EventRibbonState {
+        pinned_top: false,
+        ..Default::default()
+    };
 
     // Simulate: new HookEventReceived arrives matching selected session.
     // Auto-scroll to row 0 (newest event at front per PC-2).
@@ -195,8 +196,10 @@ fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
 /// Verifies AC-008 "unless user has manually scrolled up" condition.
 #[test]
 fn test_BC_2_06_018_auto_scroll_suppressed_when_pinned_top() {
-    let mut state = EventRibbonState::default();
-    state.pinned_top = true;
+    let mut state = EventRibbonState {
+        pinned_top: true,
+        ..Default::default()
+    };
     // Set scroll to some non-zero position (simulating user scrolled up).
     state.list_state.select(Some(3));
 
@@ -282,8 +285,7 @@ fn test_BC_2_06_018_ec114_empty_state_no_events() {
     // Verify the canonical empty state string is defined (BC-2.06.018 EC-114).
     // The render function outputs this string when the ribbon is empty.
     assert_eq!(
-        EVENT_RIBBON_EMPTY,
-        "No events yet",
+        EVENT_RIBBON_EMPTY, "No events yet",
         "BC-2.06.018 EC-114: empty state text must be 'No events yet'"
     );
 }
@@ -370,13 +372,7 @@ fn test_BC_2_05_002_ring_tail_prepopulates_event_ribbon() {
         .collect();
 
     // Act: call on_initial_state with ring_tail.
-    monocle_tui::app::on_initial_state(
-        &mut app,
-        vec![],
-        ring_tail,
-        vec![],
-        0,
-    );
+    monocle_tui::app::on_initial_state(&mut app, vec![], ring_tail, vec![], 0);
 
     assert_eq!(
         app.event_ribbon_events.len(),
@@ -412,8 +408,7 @@ fn test_BC_2_05_004_hook_event_received_appends_to_ribbon() {
         "BC-2.05.004: on_hook_event_received must append 1 row to event_ribbon_events"
     );
     assert_eq!(
-        app.event_ribbon_events[0].session_id,
-        "sess-001",
+        app.event_ribbon_events[0].session_id, "sess-001",
         "BC-2.05.004: appended row must have correct session_id"
     );
     assert_eq!(

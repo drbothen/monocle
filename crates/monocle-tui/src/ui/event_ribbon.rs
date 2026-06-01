@@ -289,16 +289,15 @@ impl StatefulWidget for EventRibbon<'_> {
 
         if visible.is_empty() {
             // BC-2.06.018 EC-114: empty state.
-            Widget::render(
-                Paragraph::new(Line::from(EVENT_RIBBON_EMPTY)),
-                area,
-                buf,
-            );
+            Widget::render(Paragraph::new(Line::from(EVENT_RIBBON_EMPTY)), area, buf);
             return;
         }
 
         // Use the earliest received_at as epoch for timestamp formatting.
-        let epoch = visible.last().map(|r| r.received_at).unwrap_or_else(Instant::now);
+        let epoch = visible
+            .last()
+            .map(|r| r.received_at)
+            .unwrap_or_else(Instant::now);
 
         let items: Vec<ListItem> = visible
             .iter()
@@ -363,11 +362,7 @@ impl StatefulWidget for EventRibbon<'_> {
 /// is trimmed on the next render cycle (BC-2.06.018 INV-3). This function only
 /// enforces the cap at insert time — callers should also call `trim_to_panel_height`
 /// after a resize event.
-pub fn push_event_row(
-    events: &mut VecDeque<HookEventRow>,
-    row: HookEventRow,
-    panel_height: usize,
-) {
+pub fn push_event_row(events: &mut VecDeque<HookEventRow>, row: HookEventRow, panel_height: usize) {
     // BC-2.06.018 PC-3: prepend (newest at front); evict oldest (back) if at cap.
     if panel_height > 0 && events.len() >= panel_height {
         events.pop_back();

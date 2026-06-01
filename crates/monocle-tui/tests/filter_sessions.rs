@@ -1,5 +1,9 @@
 //! Session filter unit tests (BC-2.06.006, S-028).
 //!
+//! `#![allow(non_snake_case)]` is required because the factory-mandated test naming
+//! convention uses uppercase BC identifiers: `test_BC_S_SS_NNN_...`.
+#![allow(non_snake_case)]
+//!
 //! Tests cover filter entry/exit, nucleo scoring, empty-query behaviour, and the
 //! shared-Matcher invariant. All tests follow the `test_BC_S_SS_NNN_xxx()` naming
 //! convention (TDD naming rule).
@@ -40,6 +44,41 @@ fn make_app_in_filtering(query: &str) -> App {
     app
 }
 
+/// Build the binding layers used by dispatch_key_event.
+fn make_layers() -> monocle_core::tui::binding::BindingLayers {
+    monocle_tui::app::build_builtin_binding_layers()
+}
+
+/// Dispatch a key char to the app via the full binding chain.
+fn dispatch_char(app: &mut App, c: char) {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::dispatch_key_event;
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let layers = make_layers();
+    let mut state = SessionsPanelState::default();
+    let key = KeyEvent {
+        code: KeyCode::Char(c),
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(app, &key, &layers, &mut state);
+}
+
+/// Dispatch a named key to the app.
+fn dispatch_key(app: &mut App, code: monocle_core::tui::binding::KeyCode) {
+    use monocle_core::tui::binding::{KeyEvent, KeyModifiers};
+    use monocle_tui::app::dispatch_key_event;
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let layers = make_layers();
+    let mut state = SessionsPanelState::default();
+    let key = KeyEvent {
+        code,
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(app, &key, &layers, &mut state);
+}
+
 // ---------------------------------------------------------------------------
 // BC-2.06.006 PC-1 — filter entry (/ and f dispatch StartFilter)
 // ---------------------------------------------------------------------------
@@ -47,7 +86,6 @@ fn make_app_in_filtering(query: &str) -> App {
 /// Pressing `/` in Dashboard { Sessions } dispatches StartFilter → Filtering mode.
 /// Verifies AC-001 (BC-2.06.006 PC-1).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_filter_entry_slash_transitions_to_filtering() {
     // Arrange: App in Dashboard { focused: Sessions }.
     let mut app = App::new(MonocleConfig::default());
@@ -59,23 +97,71 @@ fn test_BC_2_06_006_filter_entry_slash_transitions_to_filtering() {
     ));
 
     // Act: simulate `/` keypress → Action::StartFilter { panel: Sessions }.
-    // TODO (implementer): call dispatch_key_event with '/' key and assert Filtering.
-    todo!(
-        "S-028 implement: dispatch '/' key, assert AppMode::Filtering {{ panel: Sessions, \
-         query: \"\", prior: Sessions }} (BC-2.06.006 PC-1 / AC-001)"
-    )
+    dispatch_char(&mut app, '/');
+
+    // Assert: mode must be Filtering { panel: Sessions, query: "", prior: Sessions }.
+    match &app.mode {
+        AppMode::Filtering {
+            panel,
+            query,
+            prior,
+        } => {
+            assert_eq!(
+                *panel,
+                PanelId::Sessions,
+                "BC-2.06.006 PC-1: filter panel must be Sessions"
+            );
+            assert_eq!(
+                query, "",
+                "BC-2.06.006 PC-1: initial filter query must be empty"
+            );
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.006 PC-1: prior focus must be Sessions"
+            );
+        }
+        _other => panic!(
+            "BC-2.06.006 PC-1 / AC-001: expected Filtering mode after '/' key (got non-Filtering)"
+        ),
+    }
 }
 
 /// Pressing `f` in Dashboard { Sessions } dispatches StartFilter → Filtering mode.
 /// Verifies AC-001 (BC-2.06.006 PC-1) for the `f` binding.
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_filter_entry_f_key_transitions_to_filtering() {
     let mut app = App::new(MonocleConfig::default());
-    todo!(
-        "S-028 implement: dispatch 'f' key, assert AppMode::Filtering {{ panel: Sessions, \
-         query: \"\", prior: Sessions }} (BC-2.06.006 PC-1 / AC-001 'f' binding)"
-    )
+
+    // Act: simulate `f` keypress.
+    dispatch_char(&mut app, 'f');
+
+    // Assert: mode must be Filtering.
+    match &app.mode {
+        AppMode::Filtering {
+            panel,
+            query,
+            prior,
+        } => {
+            assert_eq!(
+                *panel,
+                PanelId::Sessions,
+                "BC-2.06.006 PC-1: 'f' must enter Filtering mode for Sessions panel"
+            );
+            assert_eq!(
+                query, "",
+                "BC-2.06.006 PC-1: initial query must be empty after 'f'"
+            );
+            assert_eq!(
+                *prior,
+                FocusSnapshot::Sessions,
+                "BC-2.06.006 PC-1: prior must be Sessions"
+            );
+        }
+        _other => panic!(
+            "BC-2.06.006 PC-1 / AC-001 'f' binding: expected Filtering mode (got non-Filtering)"
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -85,14 +171,26 @@ fn test_BC_2_06_006_filter_entry_f_key_transitions_to_filtering() {
 /// Each typed character in Filtering mode appends to the query string.
 /// Verifies AC-002 precondition (BC-2.06.006 PC-2 query accumulation).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_filter_query_appends_on_char() {
     let mut app = make_app_in_filtering("");
-    // Act: dispatch FilterType('m'), FilterType('o'), FilterType('n').
-    todo!(
-        "S-028 implement: dispatch FilterType chars, assert AppMode::Filtering {{ query: \"mon\" }} \
-         (BC-2.06.006 PC-2 query accumulation)"
-    )
+
+    // Act: dispatch FilterType chars m, o, n.
+    dispatch_char(&mut app, 'm');
+    dispatch_char(&mut app, 'o');
+    dispatch_char(&mut app, 'n');
+
+    // Assert: query must be "mon".
+    match &app.mode {
+        AppMode::Filtering { query, .. } => {
+            assert_eq!(
+                query, "mon",
+                "BC-2.06.006 PC-2: query must accumulate 'm', 'o', 'n' → \"mon\""
+            );
+        }
+        _other => panic!(
+            "BC-2.06.006 PC-2: expected Filtering mode with query=\"mon\" (got non-Filtering)"
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -102,9 +200,12 @@ fn test_BC_2_06_006_filter_query_appends_on_char() {
 /// Nucleo fuzzy match: "mono" against sessions [monocle, another-project] → only monocle shown.
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 1.
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_nucleo_score_filters_non_matching() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{
+        render_sessions_filter, SessionsPanelState, SESSIONS_FILTER_NO_MATCH,
+    };
+    use ratatui::{backend::TestBackend, Terminal};
 
     let mut app = make_app_in_filtering("mono");
     // Seed sessions: monocle + another-project.
@@ -135,11 +236,28 @@ fn test_BC_2_06_006_nucleo_score_filters_non_matching() {
         ),
     ];
 
-    // Act + Assert: render_sessions_filter produces only the monocle session.
-    todo!(
-        "S-028 implement: call render_sessions_filter and assert only monocle session visible \
-         (BC-2.06.006 PC-2 + PC-3 / test vector row 1: query=\"mono\" matches monocle only)"
-    )
+    // Render to a TestBackend buffer and assert monocle is present but another-project is not.
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(&app, "mono", frame.area(), frame.buffer_mut(), &mut state);
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+    assert!(
+        rendered.contains("monocle"),
+        "BC-2.06.006 PC-2 + PC-3 / test vector row 1: \"monocle\" session must be visible with query=\"mono\"; rendered:\n{rendered}"
+    );
+    assert!(
+        !rendered.contains("another-project"),
+        "BC-2.06.006 PC-2 + PC-3 / test vector row 1: \"another-project\" must NOT be visible with query=\"mono\"; rendered:\n{rendered}"
+    );
+    assert!(
+        !rendered.contains(SESSIONS_FILTER_NO_MATCH),
+        "BC-2.06.006 PC-8: SESSIONS_FILTER_NO_MATCH must NOT appear when there IS a match; rendered:\n{rendered}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -149,9 +267,10 @@ fn test_BC_2_06_006_nucleo_score_filters_non_matching() {
 /// Empty query shows all sessions (no scoring applied).
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 2.
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_empty_query_shows_all_sessions() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{render_sessions_filter, SessionsPanelState};
+    use ratatui::{backend::TestBackend, Terminal};
 
     let mut app = make_app_in_filtering("");
     app.sessions = vec![
@@ -181,10 +300,23 @@ fn test_BC_2_06_006_empty_query_shows_all_sessions() {
         ),
     ];
 
-    todo!(
-        "S-028 implement: call render_sessions_filter with empty query, assert both sessions shown \
-         (BC-2.06.006 PC-2 empty-query / AC-004)"
-    )
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(&app, "", frame.area(), frame.buffer_mut(), &mut state);
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+    assert!(
+        rendered.contains("monocle"),
+        "BC-2.06.006 PC-2 empty-query / AC-004: \"monocle\" must be visible with empty query; rendered:\n{rendered}"
+    );
+    assert!(
+        rendered.contains("another-project"),
+        "BC-2.06.006 PC-2 empty-query / AC-004: \"another-project\" must be visible with empty query; rendered:\n{rendered}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -194,13 +326,23 @@ fn test_BC_2_06_006_empty_query_shows_all_sessions() {
 /// Action::CommitFilter transitions Filtering → Dashboard { focused: prior }.
 /// Verifies AC-003 (BC-2.06.006 PC-2 commit exit).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_commit_filter_returns_to_dashboard() {
+    use monocle_core::tui::binding::KeyCode;
+
     let mut app = make_app_in_filtering("mono");
-    todo!(
-        "S-028 implement: dispatch CommitFilter, assert AppMode::Dashboard {{ focused: Sessions }} \
-         (BC-2.06.006 PC-2 exit / AC-003 CommitFilter)"
-    )
+
+    // Dispatch Enter → CommitFilter in Filtering mode.
+    dispatch_key(&mut app, KeyCode::Enter);
+
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.006 PC-2 exit / AC-003: CommitFilter must return to Dashboard {{ focused: Sessions }}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -210,13 +352,23 @@ fn test_BC_2_06_006_commit_filter_returns_to_dashboard() {
 /// Action::CancelFilter transitions Filtering → Dashboard { focused: prior }.
 /// Verifies AC-003 (BC-2.06.006 PC-5 Esc/CancelFilter).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_cancel_filter_returns_to_dashboard() {
+    use monocle_core::tui::binding::KeyCode;
+
     let mut app = make_app_in_filtering("mono");
-    todo!(
-        "S-028 implement: dispatch CancelFilter, assert AppMode::Dashboard {{ focused: Sessions }} \
-         (BC-2.06.006 PC-5 / AC-003 CancelFilter)"
-    )
+
+    // Dispatch Esc → CancelFilter in Filtering mode.
+    dispatch_key(&mut app, KeyCode::Esc);
+
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.006 PC-5 / AC-003: CancelFilter must return to Dashboard {{ focused: Sessions }}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -226,9 +378,12 @@ fn test_BC_2_06_006_cancel_filter_returns_to_dashboard() {
 /// When nucleo returns zero matches, panel renders SESSIONS_FILTER_NO_MATCH.
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 3: query="xyz", no match.
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_filter_no_match_renders_no_sessions_match() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{
+        render_sessions_filter, SessionsPanelState, SESSIONS_FILTER_NO_MATCH,
+    };
+    use ratatui::{backend::TestBackend, Terminal};
 
     let mut app = make_app_in_filtering("xyz");
     app.sessions = vec![EnrichedSession::new(
@@ -244,10 +399,19 @@ fn test_BC_2_06_006_filter_no_match_renders_no_sessions_match() {
         None,
     )];
 
-    todo!(
-        "S-028 implement: call render_sessions_filter, assert buffer contains \
-         SESSIONS_FILTER_NO_MATCH (BC-2.06.006 PC-8 zero-match state)"
-    )
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(&app, "xyz", frame.area(), frame.buffer_mut(), &mut state);
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+    assert!(
+        rendered.contains(SESSIONS_FILTER_NO_MATCH),
+        "BC-2.06.006 PC-8: SESSIONS_FILTER_NO_MATCH must appear when query has no matches; rendered:\n{rendered}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -282,9 +446,12 @@ fn test_BC_2_06_006_invariant_matcher_not_recreated_per_keystroke() {
 /// Case-insensitive match: "MONO" matches "monocle" (BC-2.06.006 PC-3).
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 4.
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_case_insensitive_fuzzy_match() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{
+        render_sessions_filter, SessionsPanelState, SESSIONS_FILTER_NO_MATCH,
+    };
+    use ratatui::{backend::TestBackend, Terminal};
 
     let mut app = make_app_in_filtering("MONO");
     app.sessions = vec![EnrichedSession::new(
@@ -300,10 +467,23 @@ fn test_BC_2_06_006_case_insensitive_fuzzy_match() {
         None,
     )];
 
-    todo!(
-        "S-028 implement: call render_sessions_filter with query=\"MONO\", assert monocle visible \
-         (BC-2.06.006 PC-3 case-insensitive / test vector row 4)"
-    )
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(&app, "MONO", frame.area(), frame.buffer_mut(), &mut state);
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+    assert!(
+        rendered.contains("monocle"),
+        "BC-2.06.006 PC-3 case-insensitive / test vector row 4: \"monocle\" must be visible with query=\"MONO\"; rendered:\n{rendered}"
+    );
+    assert!(
+        !rendered.contains(SESSIONS_FILTER_NO_MATCH),
+        "BC-2.06.006 PC-3: SESSIONS_FILTER_NO_MATCH must NOT appear when case-insensitive match succeeds; rendered:\n{rendered}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -313,13 +493,25 @@ fn test_BC_2_06_006_case_insensitive_fuzzy_match() {
 /// Backspace in Filtering mode removes the last character from the query.
 /// Verifies INV-3 (BC-2.06.006).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_backspace_removes_last_char() {
+    use monocle_core::tui::binding::KeyCode;
+
     let mut app = make_app_in_filtering("mon");
-    todo!(
-        "S-028 implement: dispatch Backspace key, assert query == \"mo\" \
-         (BC-2.06.006 INV-3 backspace removes last char)"
-    )
+
+    // Dispatch Backspace key.
+    dispatch_key(&mut app, KeyCode::Backspace);
+
+    match &app.mode {
+        AppMode::Filtering { query, .. } => {
+            assert_eq!(
+                query, "mo",
+                "BC-2.06.006 INV-3: backspace must remove last char from query \"mon\" → \"mo\""
+            );
+        }
+        _other => panic!(
+            "BC-2.06.006 INV-3: expected Filtering mode with query=\"mo\" (got non-Filtering)"
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -328,13 +520,25 @@ fn test_BC_2_06_006_backspace_removes_last_char() {
 
 /// Backspace on empty query leaves query empty and does not panic (BC-2.06.006 EC-091).
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_ec091_backspace_on_empty_query_no_panic() {
+    use monocle_core::tui::binding::KeyCode;
+
     let mut app = make_app_in_filtering("");
-    todo!(
-        "S-028 implement: dispatch Backspace on empty query, assert query still == \"\" \
-         and no panic (BC-2.06.006 EC-091)"
-    )
+
+    // Dispatch Backspace on empty query — must not panic, query stays "".
+    dispatch_key(&mut app, KeyCode::Backspace);
+
+    match &app.mode {
+        AppMode::Filtering { query, .. } => {
+            assert_eq!(
+                query, "",
+                "BC-2.06.006 EC-091: backspace on empty query must leave query as \"\""
+            );
+        }
+        _other => panic!(
+            "BC-2.06.006 EC-091: expected Filtering mode with empty query (got non-Filtering)"
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -344,9 +548,12 @@ fn test_BC_2_06_006_ec091_backspace_on_empty_query_no_panic() {
 /// Filter matches on `EngineMetadata::display_name` (OR condition in PC-3).
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 5: query="cla", display_name="Claude Code".
 #[test]
-#[should_panic(expected = "todo")]
 fn test_BC_2_06_006_display_name_match() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{
+        render_sessions_filter, SessionsPanelState, SESSIONS_FILTER_NO_MATCH,
+    };
+    use ratatui::{backend::TestBackend, Terminal};
 
     let mut app = make_app_in_filtering("cla");
     app.sessions = vec![EnrichedSession::new(
@@ -365,8 +572,22 @@ fn test_BC_2_06_006_display_name_match() {
     // NOTE: EnrichedSession carries display_name from EngineMetadata.
     // The test verifies that matching against display_name="Claude Code" with query="cla"
     // surfaces the session (BC-2.06.006 PC-3 OR match condition).
-    todo!(
-        "S-028 implement: call render_sessions_filter with query=\"cla\", assert session visible \
-         via display_name OR match (BC-2.06.006 PC-3 test vector row 5)"
-    )
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(&app, "cla", frame.area(), frame.buffer_mut(), &mut state);
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+    assert!(
+        rendered.contains("monocle") || rendered.contains("sess-001"),
+        "BC-2.06.006 PC-3 test vector row 5: session must be visible via display_name OR match \
+         (query=\"cla\", display_name=\"Claude Code\"); rendered:\n{rendered}"
+    );
+    assert!(
+        !rendered.contains(SESSIONS_FILTER_NO_MATCH),
+        "BC-2.06.006 PC-3: SESSIONS_FILTER_NO_MATCH must NOT appear when display_name matches; rendered:\n{rendered}"
+    );
 }

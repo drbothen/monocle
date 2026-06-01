@@ -147,7 +147,6 @@ pub struct App {
     // -----------------------------------------------------------------------
     // S-028 fields: sessions filter (BC-2.06.006) + event ribbon (BC-2.06.018)
     // -----------------------------------------------------------------------
-
     /// Shared nucleo fuzzy matcher for the sessions filter panel (BC-2.06.006 INV-1).
     ///
     /// Instantiated once at startup in `App::new()` and reused across all filter
@@ -549,11 +548,7 @@ pub fn on_hook_event_received(
     // (render-time panel_height trimming applied via push_event_row at the render call site).
     let row =
         crate::ui::event_ribbon::hook_event_row_from_received(hook_type, session_id, latency_ms);
-    crate::ui::event_ribbon::push_event_row(
-        &mut app.event_ribbon_events,
-        row,
-        EVENT_RING_CAPACITY,
-    );
+    crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, EVENT_RING_CAPACITY);
 }
 
 // ---------------------------------------------------------------------------
@@ -1618,7 +1613,23 @@ pub fn dispatch_key_event(
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
 ) -> KeyOutcome {
     use monocle_core::tui::binding::resolve_binding;
+    use monocle_core::tui::binding::KeyCode;
     use monocle_core::tui::state::{transition, Action};
+
+    // S-028 (BC-2.06.006 INV-3): intercept Backspace in Filtering mode before
+    // resolve_binding — backspace removes the last character from the query.
+    // This is App-level mutation (query is a field in AppMode::Filtering, not in
+    // the binding type system). No transition() call needed.
+    if matches!(&app.mode, AppMode::Filtering { .. })
+        && core_key.code == KeyCode::Backspace
+        && !core_key.modifiers.ctrl
+        && !core_key.modifiers.alt
+    {
+        if let AppMode::Filtering { ref mut query, .. } = app.mode {
+            query.pop(); // BC-2.06.006 INV-3: removes last char; no-op on empty query
+        }
+        return KeyOutcome::Continue;
+    }
 
     let resolved = resolve_binding(core_key, &app.mode, binding_layers);
 
@@ -1663,6 +1674,16 @@ pub fn dispatch_key_event(
                     .map(|i| i.saturating_sub(1))
                     .unwrap_or(0);
                 sessions_state.list_state.select(Some(prev));
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::FilterType(c), _)) => {
+            // S-028 (BC-2.06.006 PC-2): append character to the Filtering mode query.
+            // App-level mutation: transition() does not handle FilterType (query is not
+            // in the AppMode type system — it is a field of AppMode::Filtering).
+            if let AppMode::Filtering { ref mut query, .. } = app.mode {
+                query.push(c);
             }
             KeyOutcome::Continue
         }
@@ -2001,6 +2022,68 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Overlay,
         ),
         Action::PermissionTraceToSource,
+    );
+
+    // S-028 (BC-2.06.006 PC-1 / AC-001): `/` → StartFilter { Sessions } in Dashboard.
+    // `f` is also an alias for filter entry (AC-001 'f' binding).
+    // Both are registered as per-context bindings for Dashboard mode so they only fire
+    // in Dashboard and not in other modes (e.g., typing '/' in Filtering appends to query
+    // via the SearchPrompt FilterType capture, not this binding).
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('/'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::StartFilter {
+            panel: PanelId::Sessions,
+        },
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::StartFilter {
+            panel: PanelId::Sessions,
+        },
+    );
+
+    // S-028 (BC-2.06.006 PC-2 exit / AC-003): Enter → CommitFilter in Filtering mode.
+    // Esc → CancelFilter in Filtering mode.
+    //
+    // Registered as per-context bindings for AppModeTag::Filtering:
+    // - In Filtering mode the SearchPrompt layer intercepts non-printable keys via the
+    //   search_prompt table (priority 1), then falls through. Since Enter/Esc must ONLY
+    //   map to CommitFilter/CancelFilter in Filtering (not in Dashboard where Enter →
+    //   EnterFullscreen), per-context (priority 3) is the correct layer.
+    // - The SearchPrompt layer for Filtering only captures printable chars as FilterType
+    //   and then looks up the search_prompt table for non-printables. Since Enter/Esc are
+    //   not in search_prompt, they fall through to per-context — where these bindings fire.
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: no_mod,
+            },
+            AppModeTag::Filtering,
+        ),
+        Action::CommitFilter,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: no_mod,
+            },
+            AppModeTag::Filtering,
+        ),
+        Action::CancelFilter,
     );
 
     layers
