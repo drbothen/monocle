@@ -631,20 +631,30 @@ fn test_BC_2_06_003_binding_layers_empty_constructs() {
 // to `monocle-core/src/tui/state.rs` Action enum (BC-2.06.015 PC-7).
 // ===========================================================================
 
-/// BC-2.06.015 PC-7 / INV-1 (RED GATE): key `t` in `AppMode::Overlay` resolves to
-/// `Action::PermissionTraceToSource` from the `Builtin` binding table.
+/// BC-2.06.015 PC-7 compile-gate: `Action::PermissionTraceToSource` variant exists,
+/// and `t` does NOT resolve from empty `BindingLayers`.
 ///
-/// The `Builtin` table is built by `build_builtin_binding_layers()` in monocle-tui;
-/// here we verify the resolution contract via `resolve_binding` with the Overlay
-/// search-prompt layer (the same layer that captures `y`, `A`, `n`, `r`).
+/// This test does TWO things — neither of which is a positive resolution test:
 ///
-/// This test will FAIL TO COMPILE until `Action::PermissionTraceToSource` is added to
-/// the `Action` enum in `monocle-core/src/tui/state.rs` (BC-2.06.015 PC-7). The
-/// compile error is the expected Red Gate signal for adding a new Action variant.
+/// 1. **Compile-time variant-existence gate:** the match arm referencing
+///    `Action::PermissionTraceToSource` causes a compile error if the variant is absent
+///    from `monocle-core/src/tui/state.rs`. That compile failure is the Red Gate signal
+///    for BC-2.06.015 PC-7 (variant must be defined in monocle-core).
+///
+/// 2. **Empty-layers non-resolution assertion:** with `BindingLayers::empty()` (no Builtin
+///    entries), `t` is NOT captured by the SearchPrompt Overlay arm (unlike `y`/`A`/`n`/`r`)
+///    and the Builtin layer is absent, so the result must NOT be `PermissionTraceToSource`.
+///    The panic in the `Some(PermissionTraceToSource)` arm guards this invariant.
+///
+/// The POSITIVE production-binding path — `t` resolves to `PermissionTraceToSource` via
+/// `build_builtin_binding_layers()` — is covered by
+/// `test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source` in
+/// `crates/monocle-tui/tests/overlay_stub.rs`.
 ///
 /// Traces to: BC-2.06.015 PC-7 (variant defined in monocle-core), INV-1 (Builtin binding).
 #[test]
-fn test_BC_2_06_015_key_t_in_overlay_resolves_to_permission_trace_to_source() {
+fn test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers(
+) {
     let key = char_key('t');
     let layers = BindingLayers::empty();
     let mode = overlay_mode();
