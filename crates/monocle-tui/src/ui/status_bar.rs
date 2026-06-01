@@ -268,7 +268,7 @@ pub fn hint_line_text(mode: &AppMode) -> String {
 /// Build the CCR path footer string for the status bar (S-031, AC-007 / BC-2.07.005 PC-3).
 ///
 /// Returns `"CCR: <path>"` when `ccr_path` is `Some`, `"CCR: none"` when `None`.
-/// This string is appended to the lower (hint) row of the status bar when the
+/// This string is appended to the upper (breadcrumb) row (row 0) of the status bar when the
 /// profile picker successfully resolves a CCR path after a profile switch or at startup.
 ///
 /// The caller (`render_status_bar`) decides whether to render this alongside the
