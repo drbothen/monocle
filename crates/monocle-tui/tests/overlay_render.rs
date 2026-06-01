@@ -1321,69 +1321,16 @@ fn test_BC_2_06_024_read_empty_path_renders_path_empty_fallback() {
     );
 }
 
-/// BC-2.06.021 INV-3 (RED GATE): All hint line strings fit within 79 characters.
-/// This test checks that the hint string for each phase-1 AppMode is <= 79 chars.
-#[test]
-fn test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_columns() {
-    use monocle_core::tui::state::PanelId;
-
-    // For each Phase 1 AppMode, render into a 1-row buffer and collect the text.
-    let modes: Vec<(AppMode, usize)> = vec![
-        (
-            AppMode::Dashboard {
-                focused: FocusSnapshot::Sessions,
-            },
-            0,
-        ),
-        (
-            AppMode::Dashboard {
-                focused: FocusSnapshot::EventRibbon,
-            },
-            0,
-        ),
-        (
-            AppMode::Overlay {
-                prior: FocusSnapshot::Sessions,
-            },
-            1,
-        ),
-        (
-            AppMode::Filtering {
-                panel: PanelId::Sessions,
-                query: String::new(),
-                prior: FocusSnapshot::Sessions,
-            },
-            0,
-        ),
-        (
-            AppMode::Fullscreen {
-                panel: PanelId::Sessions,
-                prior: FocusSnapshot::Sessions,
-            },
-            0,
-        ),
-    ];
-
-    for (mode, depth) in modes {
-        let mut buf = make_buf(80, 2);
-        let area = Rect::new(0, 0, 80, 2);
-        render_status_bar(&mode, 0, depth, None, area, &mut buf);
-
-        // Collect just the hint row (bottom row = row 1).
-        let hint_row: String = (0..80u16)
-            .map(|x| buf[(x, 1u16)].symbol().to_string())
-            .collect();
-        let trimmed = hint_row.trim_end();
-        assert!(
-            trimmed.len() <= 79,
-            "BC-2.06.021 INV-3: hint line for {:?} must be <= 79 chars; \
-             got {} chars: {:?}",
-            std::mem::discriminant(&mode),
-            trimmed.len(),
-            trimmed
-        );
-    }
-}
+// BC-2.06.021 INV-3 byte-length variant removed (ADV Pass-5 NITPICK-1).
+//
+// The byte-length check (`trimmed.len() <= 79`) exercised the same 5 AppMode
+// variants as the display-column test below and used a strictly weaker metric:
+// multi-byte Unicode characters (e.g., ↑↓ arrows at 3 bytes each, 1 display
+// column each) would satisfy the byte-length bound while potentially violating
+// the display-column bound.  BC-2.06.021 INV-3 specifies ≤79 DISPLAY COLUMNS,
+// so the byte-length metric was both incorrect and fully redundant.
+//
+// Canonical test: `test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns`
 
 // ---------------------------------------------------------------------------
 // ADV Pass-2 B1 — Generic scroll-hint consolidation (RED tests)

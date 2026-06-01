@@ -325,15 +325,23 @@ fn test_BC_2_06_010_diff_preview_height_cap_truncates_without_panic() {
 }
 
 // ---------------------------------------------------------------------------
-// BC-2.06.010 PC-1 / AC-005 — Edit path shown in modal header
+// BC-2.06.010 PC-1 / AC-005 — Edit path shown as diff Block title in overlay body
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.010 PC-1 / AC-005 (RED GATE): The path `"Edit: <path>"` must appear in
-/// the rendered output when `render_edit_payload` is called.
+/// BC-2.06.010 PC-1 / AC-005: The path must appear as the title of the diff `Block`
+/// in the overlay BODY, rendered as the contiguous string `"Edit: <path>"`.
 ///
-/// Per AC-005: "The path is shown in the modal header: 'Edit: <path>'".
+/// Per AC-005 (reconciled story v1.6): the path renders as the diff Block title
+/// (`Edit: <path>`) in the body region, NOT in the modal-level header.
+/// `render_edit_payload` renders a `Block::default().title("Edit: {path}")` so the
+/// title string appears in the top border row of that block.
+///
+/// The assertion scans the entire flattened buffer for the contiguous substring
+/// `"Edit: src/lib.rs"`.  This is a real assertion: if `render_edit_payload`
+/// were changed to omit the path from the Block title, the substring would be
+/// absent and the test would fail.
 #[test]
-fn test_BC_2_06_010_diff_preview_edit_path_shown_in_header() {
+fn test_BC_2_06_010_diff_preview_edit_path_shown_in_diff_block_title() {
     let old_content = "fn foo() {}\n";
     let new_content = "fn bar() {}\n";
     let path = PathBuf::from("src/lib.rs");
@@ -344,9 +352,9 @@ fn test_BC_2_06_010_diff_preview_edit_path_shown_in_header() {
 
     let text = buf_text(&buf);
     assert!(
-        text.contains("src/lib.rs") || text.contains("Edit"),
-        "BC-2.06.010 PC-1 / AC-005: rendered buffer must show path 'src/lib.rs' or 'Edit' header; \
-         got: {:?}",
+        text.contains("Edit: src/lib.rs"),
+        "BC-2.06.010 PC-1 / AC-005: rendered buffer must contain the contiguous string \
+         'Edit: src/lib.rs' as the diff Block title; got: {:?}",
         text.trim()
     );
 }
