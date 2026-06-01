@@ -653,8 +653,8 @@ fn test_BC_2_06_003_binding_layers_empty_constructs() {
 ///
 /// Traces to: BC-2.06.015 PC-7 (variant defined in monocle-core), INV-1 (Builtin binding).
 #[test]
-fn test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers(
-) {
+fn test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers()
+{
     let key = char_key('t');
     let layers = BindingLayers::empty();
     let mode = overlay_mode();
