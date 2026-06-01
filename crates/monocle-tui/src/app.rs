@@ -176,7 +176,7 @@ pub struct App {
     ///
     /// Stored in `App` (not in `render_frame` locals) so that:
     /// 1. `on_hook_event_received` can auto-scroll to row 0 when `!pinned_top` (AC-008).
-    /// 2. `dispatch_key_event` can call `reset_on_session_change` in `SelectNext`/`SelectPrev`
+    /// 2. `dispatch_key_event` calls `reset_on_session_change` in the `ScrollDown`/`ScrollUp`
     ///    arms when the selected session changes (BC-2.06.018 INV-1 / AC-009).
     pub event_ribbon_state: crate::ui::event_ribbon::EventRibbonState,
 
@@ -1672,8 +1672,9 @@ fn send_permission_decision(app: &mut App, decision: PermissionDecisionKind) {
 /// # Behaviour
 ///
 /// 1. Resolves the key against `binding_layers` in the context of `app.mode`.
-/// 2. For `SelectNext` / `SelectPrev`: applies the AC-006 gate (only fires in
-///    `Dashboard { focused: Sessions }`); mutates `sessions_state` on pass.
+/// 2. For `SelectNext` / `SelectPrev`: no-op (Dashboard j/k/↑/↓ are shadowed by
+///    per-context `ScrollDown`/`ScrollUp`; these actions only reach here from
+///    non-Dashboard modes where no cursor mutation applies).
 /// 3. For all other actions: drives the `AppMode` state machine via
 ///    `monocle_core::tui::state::transition()`.  Overlay-stack mutations
 ///    (`PopOverlay`, `OverlayCycleNext`) are applied at App-level here (see
@@ -1764,77 +1765,18 @@ pub fn dispatch_key_event(
         Some((Action::Noop, _)) | None => KeyOutcome::Continue,
 
         Some((Action::SelectNext, _)) => {
-            // AC-006: SelectNext is confined to Dashboard mode.
-            // - Dashboard { focused: Sessions } → cursor move in session list.
-            // - Dashboard { focused: EventRibbon } → scroll ribbon down (toward older events,
-            //   BC-2.06.018 PC-5 / AC-007). This dual behaviour is intentional: the binding
-            //   layer cannot distinguish panel focus, so dispatch does the disambiguation here.
-            match &app.mode {
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions,
-                } => {
-                    let len = app.sessions.len();
-                    if len > 0 {
-                        let prev_idx = sessions_state.list_state.selected();
-                        let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
-                        sessions_state.list_state.select(Some(next));
-                        // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
-                        // Only reset when the cursor actually moved to a different session.
-                        if prev_idx != Some(next) {
-                            let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
-                            crate::ui::event_ribbon::reset_on_session_change(
-                                &mut app.event_ribbon_state,
-                                new_sid.as_deref().unwrap_or(""),
-                            );
-                        }
-                    }
-                }
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::EventRibbon,
-                } => {
-                    // BC-2.06.018 PC-5 / AC-007: scroll ribbon one row toward older events.
-                    crate::ui::event_ribbon::scroll_ribbon_down(
-                        &mut app.event_ribbon_state,
-                        &app.event_ribbon_events,
-                    );
-                }
-                _ => {} // Other modes: no-op (Overlay, Fullscreen, etc.).
-            }
+            // ADV Pass-6 NITPICK-1: Dashboard j/↓ now resolves to Action::ScrollDown via
+            // per-context binding (AppModeTag::Dashboard priority 3 > builtin priority 5),
+            // so SelectNext is NEVER produced in Dashboard mode. In non-Dashboard modes
+            // (Fullscreen, Overlay, Filtering) there is no cursor-move semantics — no-op.
             KeyOutcome::Continue
         }
 
         Some((Action::SelectPrev, _)) => {
-            // AC-006: SelectPrev is confined to Dashboard mode.
-            // - Dashboard { focused: Sessions } → cursor move in session list (up).
-            // - Dashboard { focused: EventRibbon } → scroll ribbon up (toward newer events,
-            //   BC-2.06.018 PC-5 / AC-007).
-            match &app.mode {
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions,
-                } if !app.sessions.is_empty() => {
-                    let prev_idx = sessions_state.list_state.selected();
-                    let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
-                    sessions_state.list_state.select(Some(prev));
-                    // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
-                    if prev_idx != Some(prev) {
-                        let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
-                        crate::ui::event_ribbon::reset_on_session_change(
-                            &mut app.event_ribbon_state,
-                            new_sid.as_deref().unwrap_or(""),
-                        );
-                    }
-                }
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::EventRibbon,
-                } => {
-                    // BC-2.06.018 PC-5 / AC-007: scroll ribbon one row toward newer events.
-                    crate::ui::event_ribbon::scroll_ribbon_up(
-                        &mut app.event_ribbon_state,
-                        &app.event_ribbon_events,
-                    );
-                }
-                _ => {} // Other modes or empty sessions: no-op.
-            }
+            // ADV Pass-6 NITPICK-1: Dashboard k/↑ now resolves to Action::ScrollUp via
+            // per-context binding (AppModeTag::Dashboard priority 3 > builtin priority 5),
+            // so SelectPrev is NEVER produced in Dashboard mode. In non-Dashboard modes
+            // (Fullscreen, Overlay, Filtering) there is no cursor-move semantics — no-op.
             KeyOutcome::Continue
         }
 
@@ -2237,11 +2179,12 @@ pub fn render_frame(
 ///   filtering — not Esc). Not used as a quit path.
 /// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
 /// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
-/// - j / ↓ → `Action::SelectNext` (builtin fallback); overridden by per-context
-///   `(j, Dashboard)` → `Action::ScrollDown` so that Dashboard-focus dispatch
-///   can handle Sessions-cursor vs ribbon-scroll in a single arm (BC-2.06.018 AC-010 §2).
-/// - k / ↑ → `Action::SelectPrev` (builtin fallback); similarly overridden by
-///   `(k, Dashboard)` → `Action::ScrollUp`.
+/// - j / ↓ → `Action::SelectNext` (builtin, non-Dashboard modes only); overridden by
+///   per-context `(j, Dashboard)` → `Action::ScrollDown` for all Dashboard focuses.
+///   The `ScrollDown` dispatch arm handles Sessions-cursor vs ribbon-scroll (BC-2.06.018 AC-010 §2).
+///   `SelectNext` is therefore unreachable in Dashboard mode (ADV Pass-6 NITPICK-1).
+/// - k / ↑ → `Action::SelectPrev` (builtin, non-Dashboard modes only); similarly overridden by
+///   `(k, Dashboard)` → `Action::ScrollUp`. `SelectPrev` unreachable in Dashboard mode.
 ///
 /// Future waves add user-custom and per-context layers; for now only builtin,
 /// global, and per-context layers are populated.
