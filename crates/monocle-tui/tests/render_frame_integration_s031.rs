@@ -42,7 +42,8 @@ use monocle_config::{HarnessProfile, MonocleConfig};
 use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_tui::app::{
     build_builtin_binding_layers, close_profile_picker, commit_profile_selection,
-    dispatch_key_event, open_profile_picker, render_frame, App,
+    commit_profile_selection_with_path, dispatch_key_event, open_profile_picker,
+    open_profile_picker_with_dir, render_frame, App,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use ratatui::{backend::TestBackend, Terminal};
@@ -146,7 +147,12 @@ fn test_BC_2_07_005_dispatch_ctrl_p_from_dashboard_opens_picker() {
     assert!(matches!(app.mode, AppMode::Dashboard { .. }));
     assert!(app.profile_picker.is_none());
 
-    let outcome = dispatch_key_event(&mut app, &ctrl_p_key(), &binding_layers, &mut sessions_state);
+    let outcome = dispatch_key_event(
+        &mut app,
+        &ctrl_p_key(),
+        &binding_layers,
+        &mut sessions_state,
+    );
 
     assert!(
         app.profile_picker.is_some(),
@@ -172,11 +178,11 @@ fn test_BC_2_07_005_dispatch_ctrl_p_from_dashboard_opens_picker() {
 /// FAILS: same root cause — Ctrl-P not registered.
 #[test]
 fn test_BC_2_07_005_dispatch_ctrl_p_from_overlay_opens_picker_appmode_unchanged() {
+    use monocle_core::tui::state::PromptModal;
+    use monocle_core::tui::state::ToolPayload;
+    use monocle_tui::app::PermissionDecisionKind as _; // ensure ToolPayload visible
     use std::collections::VecDeque;
     use std::time::Instant;
-    use monocle_core::tui::state::PromptModal;
-    use monocle_tui::app::PermissionDecisionKind as _; // ensure ToolPayload visible
-    use monocle_core::tui::state::ToolPayload;
     use uuid::Uuid;
 
     let config = make_config_with_profiles(&["cc"]);
@@ -200,7 +206,12 @@ fn test_BC_2_07_005_dispatch_ctrl_p_from_overlay_opens_picker_appmode_unchanged(
     let binding_layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
-    dispatch_key_event(&mut app, &ctrl_p_key(), &binding_layers, &mut sessions_state);
+    dispatch_key_event(
+        &mut app,
+        &ctrl_p_key(),
+        &binding_layers,
+        &mut sessions_state,
+    );
 
     assert!(
         app.profile_picker.is_some(),
@@ -233,7 +244,12 @@ fn test_BC_2_07_005_dispatch_ctrl_p_from_filtering_opens_picker() {
     let binding_layers = build_builtin_binding_layers();
     let mut sessions_state = SessionsPanelState::default();
 
-    dispatch_key_event(&mut app, &ctrl_p_key(), &binding_layers, &mut sessions_state);
+    dispatch_key_event(
+        &mut app,
+        &ctrl_p_key(),
+        &binding_layers,
+        &mut sessions_state,
+    );
 
     assert!(
         app.profile_picker.is_some(),
@@ -573,8 +589,7 @@ fn test_BC_2_07_005_startup_ccr_path_initialized_from_detect_ccr() {
     let app = App::new(config);
 
     assert_eq!(
-        app.ccr_path,
-        ccr_from_detect,
+        app.ccr_path, ccr_from_detect,
         "AC-010 / AC-007 / BC-2.07.005 PC-3: App::new must initialize app.ccr_path via \
          detect_ccr(&config). Expected Some('/bin/sh'), got {:?}. \
          FAILS because App::new hardcodes ccr_path: None without calling detect_ccr.",
@@ -694,31 +709,25 @@ fn test_BC_2_07_005_per_directory_preselection_uses_current_dir_not_first_match(
         ],
     );
 
-    // Open "for /dir-a" (no current_dir param — defect). Must yield index 0 ("aaa").
+    // Open FOR "/dir-a" — must yield index 0 ("aaa").
     let mut app = App::new(config.clone());
-    open_profile_picker(&mut app);
+    open_profile_picker_with_dir(&mut app, "/dir-a");
     let idx_for_dir_a = app.profile_picker.as_ref().unwrap().selected_index;
     close_profile_picker(&mut app);
 
-    // Open "for /dir-b" (no current_dir param — defect). Must yield index 2 ("zzz").
+    // Open FOR "/dir-b" — must yield index 2 ("zzz").
     let mut app2 = App::new(config.clone());
-    open_profile_picker(&mut app2);
+    open_profile_picker_with_dir(&mut app2, "/dir-b");
     let idx_for_dir_b = app2.profile_picker.as_ref().unwrap().selected_index;
 
-    // The current first-match implementation returns the SAME index for both opens
-    // (first HashMap value, regardless of directory). Assert they differ: this will
-    // FAIL because first-match returns identical results for both.
+    // The per-directory implementation returns DIFFERENT indices for different dirs.
     assert_ne!(
-        idx_for_dir_a,
-        idx_for_dir_b,
+        idx_for_dir_a, idx_for_dir_b,
         "MAJOR-1 / BC-2.07.005 PC-4: opening picker for '/dir-a' (should be index 0 = 'aaa') \
-         and '/dir-b' (should be index 2 = 'zzz') must yield DIFFERENT selected_index values. \
-         Current first-match returns identical index {} for both because open_profile_picker \
-         has no current_dir parameter.",
-        idx_for_dir_a
+         and '/dir-b' (should be index 2 = 'zzz') must yield DIFFERENT selected_index values.",
     );
 
-    // Additional precise assertions (only meaningful once the defect is fixed):
+    // Precise per-directory assertions.
     assert_eq!(idx_for_dir_a, 0, "/dir-a must pre-select 'aaa' (index 0)");
     assert_eq!(idx_for_dir_b, 2, "/dir-b must pre-select 'zzz' (index 2)");
 }
@@ -737,23 +746,24 @@ fn test_BC_2_07_005_per_directory_preselection_for_dir_a_selects_profile_x() {
     let config = make_config_with_project_profiles(
         &["aaa", "mmm", "zzz"],
         &[
-            ("/decoy", "aaa"),   // decoy — sorted index 0
-            ("/target", "zzz"),  // target — sorted index 2
+            ("/decoy", "aaa"),  // decoy — sorted index 0
+            ("/target", "zzz"), // target — sorted index 2
         ],
     );
     let mut app = App::new(config);
 
     // Open the picker FOR directory "/target" — must pre-select "zzz" (index 2).
-    // Current API has no current_dir; first-match returns "aaa" (index 0) → WRONG.
-    open_profile_picker(&mut app);
+    // After MAJOR-1 fix: open_profile_picker_with_dir uses resolve_profile_for_dir
+    // keyed by current_dir, so "/target" → "zzz" (index 2). The /decoy entry is ignored.
+    open_profile_picker_with_dir(&mut app, "/target");
 
     let state = app.profile_picker.as_ref().expect("picker must be Some");
 
     assert_eq!(
         state.selected_index, 2,
         "MAJOR-1 / BC-2.07.005 PC-4: opening picker for '/target' must pre-select 'zzz' \
-         (index 2). First-match returns 'aaa' (index 0) from the /decoy entry. \
-         FAILS because open_profile_picker has no current_dir parameter."
+         (index 2 after sort ['aaa','mmm','zzz']). \
+         The /decoy entry must NOT influence the pre-selection."
     );
 }
 
@@ -876,16 +886,10 @@ fn test_BC_2_07_005_pc5c_write_failure_applies_in_memory_and_sets_status_message
     open_profile_picker(&mut app);
     assert!(app.profile_picker.is_some());
 
-    // Force write failure by using an unwritable path (parent directory does not exist).
+    // Force write failure by injecting a path under a non-existent parent directory.
+    // commit_profile_selection_with_path is the write-failure seam (AC-006 / BC-2.07.005 PC-5c).
     let bad_path = Path::new("/nonexistent_parent_dir_s031/monocle/config.json");
-
-    // NOTE: This call will fail to compile until the implementer adds
-    // `commit_profile_selection_with_path(app, current_dir, path)`.
-    // The test is written as if the seam exists.
-    // For now, call the existing function — it will SUCCEED (writes to real config path),
-    // so `app.status_message` will be None and the assertion below will FAIL.
-    // This is the correct Red Gate behavior for this test.
-    commit_profile_selection(&mut app, "/home/user/project");
+    commit_profile_selection_with_path(&mut app, "/home/user/project", bad_path);
 
     // After forced write failure:
     // 1. In-memory profile must have been applied (project_profiles entry set).
@@ -900,8 +904,6 @@ fn test_BC_2_07_005_pc5c_write_failure_applies_in_memory_and_sets_status_message
     );
 
     // 2. app.status_message must contain "Config save failed:".
-    // THIS IS THE REAL FAILING ASSERTION: without the seam and forced bad path,
-    // write_config succeeds, so status_message is None.
     // With the seam + bad_path: write fails → status_message is Some("Config save failed: ...").
     assert!(
         app.status_message
@@ -909,10 +911,8 @@ fn test_BC_2_07_005_pc5c_write_failure_applies_in_memory_and_sets_status_message
             .map(|m| m.starts_with("Config save failed:"))
             .unwrap_or(false),
         "BC-2.07.005 PC-5c / AC-006: on write_config failure, app.status_message must be \
-         Some(\"Config save failed: <error>\"); \
-         FAILS because (a) no path seam exists to force failure, and (b) even if seam existed, \
-         the assertion would fail unless the seam is used. bad_path used: {:?}",
-        bad_path
+         Some(\"Config save failed: <error>\"); got: {:?}",
+        app.status_message
     );
 
     // 3. Picker must close.
@@ -990,19 +990,17 @@ fn test_BC_2_07_004_invariant_write_read_normalization_verbatim_consistent() {
     );
 
     // Step 3: open picker for "/my/project" — must pre-select "zzz" (index 2).
-    // With the MAJOR-1 defect (no current_dir), first-match over HashMap values()
-    // returns "aaa" (index 0, from /decoy) — wrong.
-    // After the MAJOR-1 fix, open_profile_picker_for_dir(&mut app, "/my/project")
-    // must return index 2.
-    open_profile_picker(&mut app);
+    // After MAJOR-1 fix: open_profile_picker_with_dir uses resolve_profile_for_dir(config, "/my/project")
+    // which returns the profile "zzz" → position 2 in sorted list ["aaa","mmm","zzz"].
+    // The /decoy entry ("/decoy" → "aaa") is irrelevant because we look up by specific dir.
+    open_profile_picker_with_dir(&mut app, "/my/project");
 
     let state = app.profile_picker.as_ref().expect("picker must be Some");
     assert_eq!(
         state.selected_index, 2,
         "BLOCKER-2 / BC-2.07.005 INV-5: opening picker for '/my/project' must pre-select \
-         'zzz' (index 2 after sort ['aaa','mmm','zzz']). First-match over HashMap values() \
-         returns 'aaa' (index 0) from the /decoy entry. FAILS because open_profile_picker \
-         has no current_dir parameter."
+         'zzz' (index 2 after sort ['aaa','mmm','zzz']). \
+         The /decoy entry must NOT influence pre-selection."
     );
 }
 
@@ -1036,20 +1034,19 @@ fn test_BC_2_07_005_active_profile_highlighted_two_entry_per_dir_not_first_match
     let config = make_config_with_project_profiles(
         &["aaa", "bbb", "zzz"],
         &[
-            ("/decoy", "aaa"),   // decoy — index 0, first in sort
-            ("/target", "zzz"),  // target — index 2, correct for this dir
+            ("/decoy", "aaa"),  // decoy — index 0, first in sort
+            ("/target", "zzz"), // target — index 2, correct for this dir
         ],
     );
 
     // Opening for "/target" must pre-select "zzz" (index 2).
-    // First-match returns "aaa" (index 0) from /decoy → assertion fails.
+    // After MAJOR-1 fix: open_profile_picker_with_dir respects current_dir.
     let mut app = App::new(config.clone());
-    open_profile_picker(&mut app);
+    open_profile_picker_with_dir(&mut app, "/target");
     let state = app.profile_picker.as_ref().unwrap();
     assert_eq!(
         state.selected_index, 2,
         "BC-2.07.005 PC-4 (STRENGTHENED): opening picker for '/target' must pre-select 'zzz' \
-         (index 2). First-match returns 'aaa' (index 0) from /decoy — WRONG. \
-         FAILS because open_profile_picker uses first-match without respecting current_dir."
+         (index 2). The /decoy entry (/decoy → 'aaa') must NOT influence pre-selection."
     );
 }

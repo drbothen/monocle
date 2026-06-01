@@ -33,7 +33,9 @@ pub use app::PermissionDecisionKind;
 // S-031: profile picker state and handlers re-exported for integration tests.
 pub use app::close_profile_picker;
 pub use app::commit_profile_selection;
+pub use app::commit_profile_selection_with_path;
 pub use app::open_profile_picker;
+pub use app::open_profile_picker_with_dir;
 pub use app::picker_select_next;
 pub use app::picker_select_prev;
 pub use app::ProfilePickerState;

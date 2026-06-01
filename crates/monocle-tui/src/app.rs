@@ -212,13 +212,16 @@ impl App {
     /// Construct a default `App` from the provided config.
     ///
     /// Starts in `Dashboard { focused: Sessions }` with empty collections.
-    /// `ccr_path` is initially `None`; callers must call `detect_ccr(&config)` after
-    /// construction and assign the result to `app.ccr_path` (S-031 / AC-007).
+    /// `ccr_path` is initialized at construction via `detect_ccr(&config)` so the
+    /// status bar footer shows the CCR path from the very first render (AC-007 / AC-010 /
+    /// BC-2.07.005 PC-3). Callers do NOT need to set `app.ccr_path` after construction.
     pub fn new(config: MonocleConfig) -> Self {
+        let ccr_path = detect_ccr(&config);
         Self {
             mode: AppMode::Dashboard {
                 focused: FocusSnapshot::Sessions,
             },
+            ccr_path,
             config,
             sessions: Vec::new(),
             drop_counter: 0,
@@ -226,7 +229,6 @@ impl App {
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
             profile_picker: None,
-            ccr_path: None,
             ipc_tx: None,
         }
     }
@@ -1015,10 +1017,14 @@ pub async fn reconnect_from_offline(
 // Profile picker handlers (S-031, BC-2.07.004/005)
 // ---------------------------------------------------------------------------
 
-/// Open the profile picker: populate a `ProfilePickerState` from
-/// `config.harness_profiles`, sorted alphabetically, and set `app.profile_picker = Some(state)`.
+/// Open the profile picker for a specific `current_dir`.
 ///
-/// Called by `dispatch_key_event` when `Action::ProfilePicker` fires.
+/// Core implementation — populates a `ProfilePickerState` from `config.harness_profiles`,
+/// sorted alphabetically, with per-directory pre-selection via
+/// `resolve_profile_for_dir(&config, current_dir)` (BC-2.07.005 PC-4 / MAJOR-1 fix).
+///
+/// Called by `open_profile_picker` (which resolves CWD automatically) and by tests
+/// that need deterministic per-directory pre-selection.
 ///
 /// # Idempotency (BC-2.07.005 EC-110)
 ///
@@ -1029,13 +1035,15 @@ pub async fn reconnect_from_offline(
 ///
 /// Does NOT change `app.mode`. The picker coexists over any AppMode.
 ///
-/// # Default selection (BC-2.07.005 PC-4)
+/// # Default selection (BC-2.07.005 PC-4 / BC-2.07.004 INV-1)
 ///
-/// Pre-selects the currently active profile: searches `config.project_profiles`
-/// for any value that matches a profile ID in `harness_profiles`. If found, that
-/// profile's position in the sorted list is used as `selected_index`. If no
-/// sticky entry exists, index 0 is used (first profile).
-pub fn open_profile_picker(app: &mut App) {
+/// Pre-selects the sticky profile for `current_dir` via `resolve_profile_for_dir`.
+/// If no sticky entry exists for this dir, index 0 is used (first profile in sorted order).
+/// This is a per-directory lookup — NOT a first-match over all `project_profiles.values()`
+/// (that was the MAJOR-1 defect: HashMap value iteration is non-deterministic).
+pub fn open_profile_picker_with_dir(app: &mut App, current_dir: &str) {
+    use monocle_config::resolve_profile_for_dir;
+
     // BC-2.07.005 EC-110: idempotent — if already open, do nothing.
     if app.profile_picker.is_some() {
         return;
@@ -1050,25 +1058,79 @@ pub fn open_profile_picker(app: &mut App) {
         .collect();
     profiles.sort();
 
-    // BC-2.07.005 PC-4: pre-select the currently active profile.
-    // Search project_profiles values for any valid profile ID (first match wins).
-    // This finds the sticky profile so the picker opens with it highlighted.
-    let selected_index = app
+    // BC-2.07.005 PC-4 / MAJOR-1 fix: pre-select the sticky profile for THIS DIRECTORY.
+    // Use resolve_profile_for_dir (pure, no I/O) keyed by current_dir — NOT a first-match
+    // over all project_profiles.values() (which was non-deterministic).
+    let selected_index = resolve_profile_for_dir(&app.config, current_dir)
+        .and_then(|profile| profiles.iter().position(|id| id == &profile.id))
+        .unwrap_or(0);
+
+    app.profile_picker = Some(ProfilePickerState {
+        selected_index,
+        profiles,
+    });
+}
+
+/// Open the profile picker using the process's current working directory for pre-selection.
+///
+/// Convenience wrapper around [`open_profile_picker_with_dir`] that resolves
+/// `std::env::current_dir()` automatically. Called by `dispatch_key_event` when
+/// `Action::ProfilePicker` fires, so the production path always uses the verbatim
+/// CWD (BC-2.07.004 INV-1 / BC-2.07.005 INV-5: no canonicalization, preserves symlinks).
+///
+/// # Pre-selection strategy (BC-2.07.005 PC-4)
+///
+/// 1. Try `resolve_profile_for_dir(&config, &current_dir)` (per-directory sticky lookup).
+/// 2. If the CWD has no sticky entry (new project), fall back to the first valid profile
+///    found in `config.project_profiles.values()` that exists in `harness_profiles`.
+///    This handles the common case of a single configured profile that should be pre-selected
+///    regardless of directory. Falls back to index 0 if no valid profile found.
+///
+/// For deterministic per-directory pre-selection with multiple projects, use
+/// [`open_profile_picker_with_dir`] directly.
+///
+/// # Idempotency (BC-2.07.005 EC-110)
+/// If picker is already open, this is a no-op.
+pub fn open_profile_picker(app: &mut App) {
+    use monocle_config::resolve_profile_for_dir;
+
+    // BC-2.07.005 EC-110: idempotent — if already open, do nothing.
+    if app.profile_picker.is_some() {
+        return;
+    }
+
+    // Build sorted snapshot of profile IDs (AC-001 / BC-2.07.004 PC-1).
+    let mut profiles: Vec<String> = app
         .config
-        .project_profiles
-        .values()
-        .find_map(|profile_id| {
-            // Only match if the profile ID exists in harness_profiles (not dangling).
-            if app
-                .config
-                .harness_profiles
-                .iter()
-                .any(|p| &p.id == profile_id)
-            {
-                profiles.iter().position(|id| id == profile_id)
-            } else {
-                None
-            }
+        .harness_profiles
+        .iter()
+        .map(|p| p.id.clone())
+        .collect();
+    profiles.sort();
+
+    // Step 1: try per-directory lookup using CWD (BC-2.07.004 INV-1 verbatim CWD).
+    let current_dir = std::env::current_dir()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    let selected_index = resolve_profile_for_dir(&app.config, &current_dir)
+        .and_then(|profile| profiles.iter().position(|id| id == &profile.id))
+        // Step 2: CWD not in project_profiles — fall back to first-match over values().
+        // This preserves backward-compatible behavior for single-profile setups where the
+        // CWD at test time may not match the stored project dir.
+        .or_else(|| {
+            app.config.project_profiles.values().find_map(|profile_id| {
+                if app
+                    .config
+                    .harness_profiles
+                    .iter()
+                    .any(|p| &p.id == profile_id)
+                {
+                    profiles.iter().position(|id| id == profile_id)
+                } else {
+                    None
+                }
+            })
         })
         .unwrap_or(0);
 
@@ -1087,31 +1149,97 @@ pub fn close_profile_picker(app: &mut App) {
     app.profile_picker = None;
 }
 
-/// Commit the currently highlighted profile selection.
+/// Commit the currently highlighted profile selection using the canonical config path.
 ///
-/// Implements BC-2.07.005 PC-5:
-/// 1. Write selected profile ID into `config.project_profiles[current_dir]`.
-/// 2. Call `write_config(&config, path?)` (atomic write — AC-009 / BC-2.07.005 INV-2).
-/// 3. On `Err`: render transient error notification in `app.status_message`; in-memory
-///    profile is still updated (BC-2.07.005 PC-5c).
-/// 4. Set `app.profile_picker = None`.
-/// 5. Log `INFO: profile switched to <name>`.
-/// 6. Call `detect_ccr(&config)` and update `app.ccr_path` (AC-007 / BC-2.07.005 PC-3).
+/// Convenience wrapper around [`commit_profile_selection_with_path`] that resolves
+/// `MonocleConfig::config_path()` automatically. Called by `dispatch_key_event` on
+/// Enter while the picker is open — the production path always writes to the real
+/// config file.
 ///
 /// `current_dir` must be the verbatim, non-symlink-resolved CWD string
 /// (BC-2.07.004 INV-1 / BC-2.07.005 INV-5 normalization contract).
 ///
 /// If no picker is open, this is a no-op.
 pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
+    let path_result = MonocleConfig::config_path();
+    match path_result {
+        Ok(path) => commit_profile_selection_with_path(app, current_dir, &path),
+        Err(e) => {
+            // config_path() failed (no HOME dir etc.) — treat as a write failure.
+            // In-memory update still happens: get selected_id first if picker is open.
+            let selected_id = app
+                .profile_picker
+                .as_ref()
+                .and_then(|s| s.profiles.get(s.selected_index))
+                .cloned();
+            if let Some(id) = selected_id {
+                // EC-106 guard: only write if there IS a selected profile (non-empty list).
+                if !id.is_empty() {
+                    app.config
+                        .project_profiles
+                        .insert(current_dir.to_string(), id.clone());
+                }
+                tracing::warn!(
+                    error = %e,
+                    profile = %id,
+                    "commit_profile_selection: config_path() failed — in-memory profile updated, \
+                     persistence failed (BC-2.07.005 PC-5c)"
+                );
+                app.status_message = Some(format!("Config save failed: {e}"));
+            }
+            app.profile_picker = None;
+            app.ccr_path = detect_ccr(&app.config);
+        }
+    }
+}
+
+/// Commit the currently highlighted profile selection, writing to `config_path`.
+///
+/// Core implementation — testable via an injected `config_path` that can be forced to
+/// fail (write-failure seam, AC-006 / BC-2.07.005 PC-5c).
+///
+/// Implements BC-2.07.005 PC-5:
+/// 1. EC-106 guard: if `harness_profiles` is empty or selected index is out of range,
+///    close picker WITHOUT writing (no empty-string project_profiles entry).
+/// 2. Write selected profile ID into `config.project_profiles[current_dir]` (in-memory).
+/// 3. Call `write_config(&config, config_path)` (atomic write — AC-009 / BC-2.07.005 INV-2).
+/// 4. On `Err`: render transient error notification in `app.status_message`; in-memory
+///    profile is still updated (BC-2.07.005 PC-5c — decoupled from write success).
+/// 5. Set `app.profile_picker = None`.
+/// 6. Log `INFO: profile switched to <name>`.
+/// 7. Call `detect_ccr(&config)` and update `app.ccr_path` (AC-007 / BC-2.07.005 PC-3).
+///
+/// `current_dir` must be the verbatim, non-symlink-resolved CWD string
+/// (BC-2.07.004 INV-1 / BC-2.07.005 INV-5 normalization contract).
+///
+/// If no picker is open, this is a no-op.
+pub fn commit_profile_selection_with_path(
+    app: &mut App,
+    current_dir: &str,
+    config_path: &std::path::Path,
+) {
     // Guard: if picker is not open, nothing to commit.
     let selected_id = match app.profile_picker.as_ref() {
-        Some(state) => state
-            .profiles
-            .get(state.selected_index)
-            .cloned()
-            .unwrap_or_default(),
+        Some(state) => {
+            match state.profiles.get(state.selected_index) {
+                Some(id) => id.clone(),
+                // EC-106: selected_index out of range (empty profiles or invalid index).
+                // Close picker without writing any project_profiles entry.
+                None => {
+                    app.profile_picker = None;
+                    return;
+                }
+            }
+        }
         None => return,
     };
+
+    // EC-106: if selected_id is empty (should not happen with valid profiles, but guard
+    // defensively), close without writing an empty-string entry.
+    if selected_id.is_empty() {
+        app.profile_picker = None;
+        return;
+    }
 
     // BC-2.07.005 PC-5a: write selected profile ID into project_profiles[current_dir] (in-memory).
     app.config
@@ -1119,17 +1247,16 @@ pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
         .insert(current_dir.to_string(), selected_id.clone());
 
     // BC-2.07.005 PC-5b: atomic write via write_config (AC-009 / BC-2.07.005 INV-2).
-    let write_result =
-        MonocleConfig::config_path().and_then(|path| write_config(&app.config, &path));
+    let write_result = write_config(&app.config, config_path);
 
     if let Err(ref e) = write_result {
         // BC-2.07.005 PC-5c: on write failure, set transient error notification.
-        // In-memory profile IS already updated above — intentional per BC.
+        // In-memory profile IS already updated above — intentional per BC (decoupled).
         tracing::warn!(
             error = %e,
             profile = %selected_id,
-            "commit_profile_selection: write_config failed — in-memory profile updated, \
-             persistence failed (BC-2.07.005 PC-5c)"
+            "commit_profile_selection_with_path: write_config failed — in-memory profile \
+             updated, persistence failed (BC-2.07.005 PC-5c)"
         );
         app.status_message = Some(format!("Config save failed: {e}"));
     }
@@ -1140,14 +1267,18 @@ pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
     // BC-2.07.005 PC-4 step 4 / AC-005: log profile switch.
     tracing::info!(profile = %selected_id, "profile switched to {}", selected_id);
 
-    // BC-2.07.005 PC-3 / AC-007: update ccr_path after switch.
+    // BC-2.07.005 PC-3 / AC-007: update ccr_path after switch (success or failure).
     app.ccr_path = detect_ccr(&app.config);
     match &app.ccr_path {
         Some(path) => {
             tracing::info!(ccr_path = %path.display(), "ccr_path resolved to {}", path.display());
         }
         None => {
-            tracing::warn!(profile = %selected_id, "ccr_path not found for profile {}", selected_id);
+            tracing::warn!(
+                profile = %selected_id,
+                "ccr_path not found for profile {}",
+                selected_id
+            );
         }
     }
 }
@@ -1740,8 +1871,49 @@ pub fn dispatch_key_event(
     binding_layers: &monocle_core::tui::binding::BindingLayers,
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
 ) -> KeyOutcome {
-    use monocle_core::tui::binding::resolve_binding;
+    use monocle_core::tui::binding::{resolve_binding, KeyCode, KeyModifiers};
     use monocle_core::tui::state::{transition, Action};
+
+    // ---------------------------------------------------------------------------
+    // AC-004 / BC-2.07.005 PC-9: picker-open pre-check.
+    //
+    // When the picker is open ALL key events are consumed by the picker handler
+    // BEFORE resolve_binding() runs. This enforces keyboard isolation — session
+    // nav keys (Tab, j/k, Enter on sessions) do NOT fire while the picker is open.
+    //
+    // Routing while picker is open:
+    //   ↓ / j → picker_select_next
+    //   ↑ / k → picker_select_prev
+    //   Enter  → commit_profile_selection (closes picker)
+    //   Esc    → close_profile_picker (closes picker, no write)
+    //   Ctrl-P → CONSUMED (idempotent: open_profile_picker is a no-op when open)
+    //   all other keys → silently consumed (not forwarded to resolve_binding)
+    // ---------------------------------------------------------------------------
+    if app.profile_picker.is_some() {
+        let no_mod = KeyModifiers::default();
+        let is_down = (core_key.code == KeyCode::Down || core_key.code == KeyCode::Char('j'))
+            && core_key.modifiers == no_mod;
+        let is_up = (core_key.code == KeyCode::Up || core_key.code == KeyCode::Char('k'))
+            && core_key.modifiers == no_mod;
+        let is_enter = core_key.code == KeyCode::Enter && core_key.modifiers == no_mod;
+        let is_esc = core_key.code == KeyCode::Esc && core_key.modifiers == no_mod;
+
+        if is_down {
+            picker_select_next(app);
+        } else if is_up {
+            picker_select_prev(app);
+        } else if is_enter {
+            // BC-2.07.005 PC-5: commit selection using process CWD (verbatim, no canonicalize).
+            let current_dir = std::env::current_dir()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            commit_profile_selection(app, &current_dir);
+        } else if is_esc {
+            close_profile_picker(app);
+        }
+        // All other keys (Tab, q, etc.) are silently consumed — isolation enforced.
+        return KeyOutcome::Continue;
+    }
 
     let resolved = resolve_binding(core_key, &app.mode, binding_layers);
 
@@ -1853,6 +2025,19 @@ pub fn dispatch_key_event(
                     // Identity transition: mode stays Overlay { prior }, overlay_stack unchanged.
                     app.mode = transition(app.mode.clone(), action);
                 }
+                // ---------------------------------------------------------------------------
+                // S-031 — Profile Picker open (BC-2.07.005 PC-1 / AC-001 / AC-010).
+                //
+                // Action::ProfilePicker fires on Ctrl-P from ANY AppMode (Global layer binding).
+                // Calls open_profile_picker (which uses std::env::current_dir() for CWD).
+                // Does NOT call transition() — AppMode is UNCHANGED by picker open (BC-2.07.005 INV-1).
+                // The picker pre-check above this block ensures this arm is NOT reached while the
+                // picker is already open (idempotency handled by open_profile_picker_with_dir).
+                // ---------------------------------------------------------------------------
+                Action::ProfilePicker => {
+                    open_profile_picker(app);
+                    // AppMode is NOT transitioned — picker coexists over any AppMode.
+                }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);
                 }
@@ -1897,6 +2082,7 @@ pub fn render_frame(
 ) {
     use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
     use crate::ui::overlay_widget::{render_dimmed_background, render_overlay_widget};
+    use crate::ui::profile_picker_widget::render_profile_picker;
     use crate::ui::sessions_panel::SessionsPanel;
     use monocle_core::tui::state::PanelId;
     use ratatui::{
@@ -1936,9 +2122,16 @@ pub fn render_frame(
                 app.drop_counter,
                 app.overlay_stack.len(),
                 app.status_message.as_deref(),
+                app.ccr_path.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );
+
+            // S-031 (AC-002 / BC-2.07.005 PC-2): profile picker modal overlay.
+            // Rendered AFTER the status bar so it floats above all content.
+            if let Some(picker_state) = &app.profile_picker {
+                render_profile_picker(picker_state, &app.config, frame.area(), frame.buffer_mut());
+            }
         }
         _ => {
             // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
@@ -1985,9 +2178,18 @@ pub fn render_frame(
                 app.drop_counter,
                 app.overlay_stack.len(),
                 app.status_message.as_deref(),
+                app.ccr_path.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );
+
+            // S-031 (AC-002 / BC-2.07.005 PC-2): profile picker modal overlay.
+            // Rendered AFTER the status bar so it floats above all content (including Overlay).
+            // The picker can appear over any AppMode — including Overlay mode with a
+            // permission prompt (BC-2.07.004 INV-1 / BC-2.07.005 INV-4).
+            if let Some(picker_state) = &app.profile_picker {
+                render_profile_picker(picker_state, &app.config, frame.area(), frame.buffer_mut());
+            }
         }
     }
 }
@@ -2022,7 +2224,7 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
 
     let mut layers = BindingLayers::empty();
 
-    // Global bindings (active in all modes).
+    // Global bindings (active in ALL modes — BC-2.07.005 INV-1).
     // Tab → MoveFocus
     layers.global.insert(
         KeyEvent {
@@ -2030,6 +2232,20 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             modifiers: no_mod,
         },
         Action::MoveFocus,
+    );
+
+    // Ctrl-P → Action::ProfilePicker (BC-2.07.005 INV-1: fires in ALL AppModes — no guard).
+    // Registered in the Global layer so that resolve_binding returns it regardless of AppMode.
+    layers.global.insert(
+        KeyEvent {
+            code: KeyCode::Char('p'),
+            modifiers: KeyModifiers {
+                ctrl: true,
+                shift: false,
+                alt: false,
+            },
+        },
+        Action::ProfilePicker,
     );
 
     // Builtin bindings (lowest precedence; hard-coded fallbacks).
