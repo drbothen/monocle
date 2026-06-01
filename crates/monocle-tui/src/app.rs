@@ -106,6 +106,32 @@ pub fn format_drop_counter(n: u64) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// ProfilePickerState (S-031, BC-2.07.004/005)
+// ---------------------------------------------------------------------------
+
+/// Transient state for the profile picker modal (AC-001, BC-2.07.004 PC-1).
+///
+/// Stored as `App::profile_picker: Option<ProfilePickerState>`.
+/// MUST NOT be modeled as an `AppMode` variant — it is an orthogonal overlay that
+/// can appear over any `AppMode` (AC-008, BC-2.07.004 INV-1 / BC-2.07.005 INV-4).
+///
+/// Populated when `Action::ProfilePicker` fires (Ctrl-P):
+/// - `profiles` is a sorted snapshot of `config.harness_profiles[*].id` at open time.
+/// - `selected_index` tracks the highlighted row (0-based, wraps on j/k).
+///
+/// Dismissed (set to `None`) on:
+/// - `Esc` — closes without change.
+/// - `Enter` — selects, triggers persistence + CCR re-detect, then closes.
+#[derive(Clone, Debug)]
+pub struct ProfilePickerState {
+    /// Index of the currently highlighted row (0-based, wraps on navigation).
+    pub selected_index: usize,
+    /// Snapshot of profile IDs at picker-open time, sorted alphabetically.
+    /// Immutable for the lifetime of one picker session (AC-002 / BC-2.07.005 EC-112).
+    pub profiles: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
 
@@ -144,6 +170,30 @@ pub struct App {
     /// (that counter tracks IPC channel packet drops, not ring evictions).
     pub event_ring: VecDeque<HookEventRecord>,
 
+    /// Profile picker transient overlay state (S-031, BC-2.07.004/005).
+    ///
+    /// `None` means the picker is closed. `Some(state)` means the picker is open
+    /// and rendering a centered modal over the current view. This field is orthogonal
+    /// to `App::mode` — the picker can appear over any `AppMode` (BC-2.07.005 INV-4).
+    ///
+    /// Set to `Some(ProfilePickerState { .. })` by the `Action::ProfilePicker` handler.
+    /// Set to `None` by the `Esc` handler (no change) or `Enter` handler (after profile switch).
+    ///
+    /// MUST NOT use `AppMode::Overlay` for the profile picker — that variant is reserved
+    /// for permission prompts (AC-008 / BC-2.07.004 INV-1 / BC-2.07.005 INV-4).
+    pub profile_picker: Option<ProfilePickerState>,
+
+    /// Resolved CCR binary path (S-031, BC-2.07.005 PC-3 / AC-007).
+    ///
+    /// Populated at startup via `detect_ccr(&config)` and updated after every
+    /// successful profile switch. `None` means CCR is not detected (either not
+    /// configured or not on PATH). Used by the status bar footer to render
+    /// `"CCR: <path>"` or `"CCR: none"`.
+    ///
+    /// Distinct from `MonocleConfig::ccr_path` (an explicit override string) —
+    /// this is the RESOLVED executable path returned by `monocle_config::detect_ccr`.
+    pub ccr_path: Option<std::path::PathBuf>,
+
     /// Sender half of the IPC outbound channel for dispatching `ClientToServer`
     /// messages to the daemon (S-026, BC-2.06.011/012/013).
     ///
@@ -162,6 +212,8 @@ impl App {
     /// Construct a default `App` from the provided config.
     ///
     /// Starts in `Dashboard { focused: Sessions }` with empty collections.
+    /// `ccr_path` is initially `None`; callers must call `detect_ccr(&config)` after
+    /// construction and assign the result to `app.ccr_path` (S-031 / AC-007).
     pub fn new(config: MonocleConfig) -> Self {
         Self {
             mode: AppMode::Dashboard {
@@ -173,6 +225,8 @@ impl App {
             overlay_stack: VecDeque::new(),
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
+            profile_picker: None,
+            ccr_path: None,
             ipc_tx: None,
         }
     }
@@ -955,6 +1009,74 @@ pub async fn reconnect_from_offline(
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Profile picker handlers (S-031, BC-2.07.004/005)
+// ---------------------------------------------------------------------------
+
+/// Open the profile picker: populate a `ProfilePickerState` from
+/// `config.harness_profiles`, sorted alphabetically, and set `app.profile_picker = Some(state)`.
+///
+/// Called by `dispatch_key_event` when `Action::ProfilePicker` fires.
+///
+/// # Idempotency (BC-2.07.005 EC-110)
+///
+/// If `app.profile_picker` is already `Some(...)`, this is a no-op — only one picker
+/// instance is active at a time. The second Ctrl-P keypress does NOT replace the picker.
+///
+/// # AppMode contract (BC-2.07.005 PC-1 / BC-2.07.004 INV-1)
+///
+/// Does NOT change `app.mode`. The picker coexists over any AppMode.
+#[allow(clippy::todo)]
+pub fn open_profile_picker(_app: &mut App) {
+    todo!("S-031: populate ProfilePickerState from config.harness_profiles, sorted; set app.profile_picker = Some(state)")
+}
+
+/// Close the profile picker without committing any selection.
+///
+/// Called when `Esc` is pressed while `app.profile_picker` is `Some(..)`.
+/// Sets `app.profile_picker = None`. Does not call `write_config`. Does not
+/// change `app.mode` (BC-2.07.005 PC-8).
+#[allow(clippy::todo)]
+pub fn close_profile_picker(_app: &mut App) {
+    todo!("S-031: set app.profile_picker = None without config write")
+}
+
+/// Commit the currently highlighted profile selection.
+///
+/// Implements BC-2.07.005 PC-5:
+/// 1. Write selected profile ID into `config.project_profiles[current_dir]`.
+/// 2. Call `write_config(&config, path?)` (atomic write — AC-009 / BC-2.07.005 INV-2).
+/// 3. On `Err`: render transient error notification in `app.status_message`; in-memory
+///    profile is still updated (BC-2.07.005 PC-5c).
+/// 4. Set `app.profile_picker = None`.
+/// 5. Log `INFO: profile switched to <name>`.
+/// 6. Call `detect_ccr(&config)` and update `app.ccr_path` (AC-007 / BC-2.07.005 PC-3).
+///
+/// `current_dir` must be the verbatim, non-symlink-resolved CWD string
+/// (BC-2.07.004 INV-1 / BC-2.07.005 INV-5 normalization contract).
+#[allow(clippy::todo)]
+pub fn commit_profile_selection(_app: &mut App, _current_dir: &str) {
+    todo!("S-031: persist selected profile, update ccr_path, close picker")
+}
+
+/// Navigate the picker selection down one row (wraps to top).
+///
+/// Called when `j` / `↓` is pressed while `app.profile_picker` is `Some(..)`.
+/// A no-op if `profile_picker` is `None` or `profiles` is empty.
+#[allow(clippy::todo)]
+pub fn picker_select_next(_app: &mut App) {
+    todo!("S-031: increment selected_index (wrap to 0 at len)")
+}
+
+/// Navigate the picker selection up one row (wraps to bottom).
+///
+/// Called when `k` / `↑` is pressed while `app.profile_picker` is `Some(..)`.
+/// A no-op if `profile_picker` is `None` or `profiles` is empty.
+#[allow(clippy::todo)]
+pub fn picker_select_prev(_app: &mut App) {
+    todo!("S-031: decrement selected_index (wrap to len-1 at 0)")
 }
 
 // ---------------------------------------------------------------------------

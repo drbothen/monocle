@@ -112,6 +112,39 @@ impl MonocleConfig {
 }
 
 // ---------------------------------------------------------------------------
+// resolve_profile_for_dir (BC-2.07.004 PC-9)
+// ---------------------------------------------------------------------------
+
+/// Resolve the sticky harness profile for `dir` from `config.project_profiles`.
+///
+/// Pure function — no I/O, no side effects, no logging (BC-2.07.004 INV-2 / PC-9).
+///
+/// # Algorithm (BC-2.07.004 PC-2/3/4/5/6/7)
+///
+/// 1. Look up `dir` in `config.project_profiles` as a verbatim string key
+///    (INV-1: no normalization here — caller normalizes once at lookup time,
+///    identical to write-time normalization from BC-2.07.005 PC-5a).
+/// 2. If the key exists, retrieve the profile ID string.
+/// 3. Find the first entry in `config.harness_profiles` where `profile.id == profile_id`.
+/// 4. If found: return `Some(&profile)` (PC-5: sticky match, picker NOT shown).
+/// 5. If the profile ID is dangling (not in `harness_profiles`): return `None`
+///    (PC-6: treated as "no match"; dangling entry is NOT removed).
+/// 6. If `dir` is not in `project_profiles`: return `None` (PC-7 or PC-8).
+///
+/// # Edge cases
+///
+/// - Empty string profile ID (`""`) never matches a valid profile (all valid IDs
+///   are non-empty) → returns `None` (BC-2.07.004 EC-105).
+/// - `default_config` with no profiles and no entries → `None` (EC-097).
+#[allow(clippy::todo)]
+pub fn resolve_profile_for_dir<'a>(
+    _config: &'a MonocleConfig,
+    _dir: &str,
+) -> Option<&'a HarnessProfile> {
+    todo!("S-031: look up dir in project_profiles, then find matching HarnessProfile by id")
+}
+
+// ---------------------------------------------------------------------------
 // load_config
 // ---------------------------------------------------------------------------
 

@@ -240,6 +240,19 @@ pub fn hint_line_text(mode: &AppMode) -> String {
     }
 }
 
+/// Build the CCR path footer string for the status bar (S-031, AC-007 / BC-2.07.005 PC-3).
+///
+/// Returns `"CCR: <path>"` when `ccr_path` is `Some`, `"CCR: none"` when `None`.
+/// This string is appended to the lower (hint) row of the status bar when the
+/// profile picker successfully resolves a CCR path after a profile switch or at startup.
+///
+/// The caller (`render_status_bar`) decides whether to render this alongside the
+/// keybinding hint or separately — the exact layout integration is implemented in S-031.
+#[allow(clippy::todo)]
+pub fn ccr_path_text(_ccr_path: Option<&std::path::Path>) -> String {
+    todo!("S-031: format CCR path as 'CCR: <path>' or 'CCR: none'")
+}
+
 /// Build the drop counter indicator for the right side of the status bar.
 ///
 /// Returns `None` when `drop_counter == 0` (no text shown — BC-2.06.019 PC-1).

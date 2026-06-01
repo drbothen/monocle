@@ -30,6 +30,13 @@ pub use app::EVENT_RING_CAPACITY;
 pub use app::MONOCLE_STATUS_LABEL;
 // S-026: PermissionDecisionKind re-exported for overlay decision integration tests.
 pub use app::PermissionDecisionKind;
+// S-031: profile picker state and handlers re-exported for integration tests.
+pub use app::close_profile_picker;
+pub use app::commit_profile_selection;
+pub use app::open_profile_picker;
+pub use app::picker_select_next;
+pub use app::picker_select_prev;
+pub use app::ProfilePickerState;
 // Re-export pub consts from ui/sessions_panel.rs for external test crates
 // (L-W6-S025-003 discipline: pub const extraction must be accessible at crate root)
 pub use ui::sessions_panel::SESSIONS_EMPTY_LINE_1;

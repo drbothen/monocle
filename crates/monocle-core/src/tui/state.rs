@@ -247,6 +247,12 @@ pub enum Action {
     Quit,
     /// No-op; used by the key resolver when no binding matches.
     Noop,
+    /// Open the profile picker modal (BC-2.07.005 PC-1).
+    ///
+    /// Sets `App.profile_picker = Some(ProfilePickerState { .. })` without changing
+    /// `AppMode`. Registered as a global binding for `Ctrl-P` so it is active in
+    /// ALL AppMode variants (BC-2.07.005 INV-1).
+    ProfilePicker,
 }
 
 /// Drive the `AppMode` state machine forward by one step.
