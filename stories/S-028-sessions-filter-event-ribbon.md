@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-028
 epic_id: EPIC-06
-version: "1.3"
+version: "1.4"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -20,12 +20,12 @@ behavioral_contracts: [BC-2.05.002, BC-2.05.004, BC-2.06.006, BC-2.06.018]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "[pending]"
+input-hash: "b95151a"
 traces_to: "Implements BC-2.05.002 (InitialState ring_tail delivery), BC-2.05.004 (HookEventReceived streaming), BC-2.06.006 (sessions fuzzy filter), BC-2.06.018 (event ribbon panel)"
 ---
 
@@ -94,14 +94,35 @@ auto-scrolls to the bottom UNLESS the user has manually scrolled up (i.e., the c
 scroll position is not at the bottom). This is a standard "follow tail unless pinned"
 pattern — track whether the user has scrolled away from bottom via a `pinned_top: bool` flag.
 
-### AC-009 (traces to BC-2.06.018 invariant INV-1 — event ribbon panel scope)
+### AC-009 (traces to BC-2.06.018 invariant INV-1 / postcondition PC-2 — event ribbon panel scope)
 The event ribbon shows events ONLY for the session currently selected in the Sessions
 panel. When session selection changes (via `j`/`k` navigation or filter commit), the
 event ribbon re-filters `App.event_ribbon_events` (the full `VecDeque<HookEventRow>`)
-by the new `session_id` and resets the scroll position to the bottom. No new IPC request
-is issued on selection change — all events across all sessions are already held
-client-side from `InitialState.ring_tail` (BC-2.05.002) and ongoing `HookEventReceived`
-messages (BC-2.05.004); filtering is purely client-side per BC-2.05.004 invariant 3.
+by the new `session_id` and resets scroll to the auto-follow position: the newest event
+at row 0 (the top of the newest-first list, per BC-2.06.018 PC-2), clearing any
+`pinned_top` state (i.e., `pinned_top = false`). No new IPC request is issued on
+selection change — all events across all sessions are already held client-side from
+`InitialState.ring_tail` (BC-2.05.002) and ongoing `HookEventReceived` messages
+(BC-2.05.004); filtering is purely client-side per BC-2.05.004 invariant 3.
+
+### AC-010 (traces to BC-2.06.006 postcondition PC-2 / BC-2.06.018 postcondition PC-5 — integration: Event Ribbon and Sessions filter wired into render_frame and dispatch_key_event)
+The Event Ribbon widget AND the Sessions filter input MUST be rendered by the production
+`render_frame` / `draw()` path — not only callable in isolation as unit-tested widgets.
+Acceptance:
+1. A `TestBackend`-driven `render_frame` test asserts that (a) the 40% right-side area of
+   the terminal buffer contains event ribbon row content (timestamp | hook-type | session |
+   latency columns) when `App.event_ribbon_events` is non-empty, and (b) when
+   `AppMode::Filtering { panel: PanelId::Sessions, .. }` is active, the buffer contains
+   the filter input box and scored/filtered session rows (including the "No sessions match
+   filter" sentinel for a zero-match query).
+2. A `dispatch_key_event` test asserts that pressing `j` / `k` / `↓` / `↑` / `G` / `gg`
+   in `Dashboard { focused: FocusSnapshot::EventRibbon }` dispatches
+   `Action::ScrollDown` / `Action::ScrollUp` and that the ribbon's scroll offset changes
+   accordingly (i.e., the action reaches the ribbon state handler, not just a key table).
+
+A widget that is fully implemented and unit-tested in isolation but never wired into
+`render_frame` / `dispatch_key_event` is dead code and would cause the event ribbon and
+filter input to be absent or non-interactive at runtime. This AC closes that process gap.
 
 ## Token Budget Estimate
 
@@ -138,9 +159,14 @@ messages (BC-2.05.004); filtering is purely client-side per BC-2.05.004 invarian
 - [ ] Implement auto-scroll logic: auto-follow bottom unless user has scrolled up (bool flag `pinned_top`)
 - [ ] Implement event ribbon keyboard navigation: `j`/`k`/`G`/`gg`/`Enter` bindings in Global layer
 - [ ] Implement session-change event ribbon reset: on selection change, re-filter `App.event_ribbon_events`
-      by new `session_id` (client-side only — no IPC request issued) and reset scroll to bottom
+      by new `session_id` (client-side only — no IPC request issued) and reset scroll to auto-follow
+      position (newest at row 0, `pinned_top = false`) per AC-009
 - [ ] Unit tests `monocle-tui/tests/filter_sessions.rs` — filter entry/exit, nucleo scoring, empty query
 - [ ] Unit tests `monocle-tui/tests/event_ribbon.rs` — auto-scroll, pin/unpin, session-change reset
+- [ ] Integration render test `monocle-tui/tests/render_frame_integration_s028.rs` — drive `App::render_frame`
+      via `TestBackend`; assert event ribbon content in 40% area and filtered sessions in Filtering mode (AC-010)
+- [ ] Integration dispatch test — drive `dispatch_key_event` for `j`/`k`/`G`/`gg` in EventRibbon focus;
+      assert `Action::ScrollDown`/`Action::ScrollUp` is dispatched and ribbon scroll offset changes (AC-010)
 
 ## Previous Story Intelligence
 
@@ -192,6 +218,7 @@ Files to create:
 - `monocle-tui/src/ui/event_ribbon.rs` — EventRibbon panel widget
 - `monocle-tui/tests/filter_sessions.rs` — session filter unit tests
 - `monocle-tui/tests/event_ribbon.rs` — event ribbon unit tests
+- `monocle-tui/tests/render_frame_integration_s028.rs` — AC-010 integration render test (TestBackend drive of `App::render_frame`; asserts ribbon content and Filtering mode layout)
 
 Files to modify:
 - `monocle-tui/Cargo.toml` — add `nucleo 0.5`
@@ -213,3 +240,13 @@ dependency graph.
 - Architecture Compliance Rules header: `architecture/SS-tui-core.md` → `architecture/SS-tui.md`.
 - Systematic EPIC-06 story-writing burst defect; canonical anchor is `SS-tui.md` per BC-2.06.005 §Architecture Source + audit-table.md row 41.
 - SE-16d monotonicity: v1.3 timestamp 2026-05-29 >= v1.2 timestamp 2026-05-27. PASS.
+
+## §Trace v1.4
+
+**ADV S-028 Pass-1 — AC-009 reconciled to BC-2.06.018 PC-2 row-0-newest; added integration AC-010; BC version pins refreshed** (2026-06-01):
+- AC-009 reconciliation: removed contradictory "resets scroll position to the bottom" phrasing. The ribbon uses newest-first ordering (BC-2.06.018 PC-2): newest event is at row 0 (top). AC-009 now says "resets scroll to the auto-follow position: newest event at row 0 (the top of the newest-first list, per BC-2.06.018 PC-2), clearing `pinned_top = false`." The prior "bottom" wording implied an oldest-first model, which is the opposite of PC-2.
+- AC-010 added: integration render + dispatch requirement — `App::render_frame` must wire Event Ribbon widget (40% area) and Sessions filter input (Filtering mode layout); `dispatch_key_event` must handle `j`/`k`/`G`/`gg` scroll in EventRibbon focus via `Action::ScrollDown`/`Action::ScrollUp`. Closes dead-code integration gap (same class as S-027 AC-012).
+- BC version pins in `inputs:` frontmatter refreshed to current: BC-2.05.002 1.0.0→1.0.6, BC-2.05.004 1.0.0→1.0.4, BC-2.06.006 1.0.0→1.0.4, BC-2.06.018 1.0.0→1.0.5.
+- Tasks: added integration render test task and integration dispatch test task (AC-010).
+- File Structure: added `render_frame_integration_s028.rs` (AC-010 integration test).
+- SE-16d monotonicity: v1.4 timestamp 2026-06-01 >= v1.3 timestamp 2026-05-29. PASS.
