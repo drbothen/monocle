@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.7"
+version: "1.8"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -20,14 +20,14 @@ behavioral_contracts: [BC-2.06.010, BC-2.06.015, BC-2.06.019, BC-2.06.020, BC-2.
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.1.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "d74870e"
+input-hash: "ec6b608"
 traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
 ---
 
@@ -178,6 +178,30 @@ The modal footer lists decision keys rendered inside the overlay widget itself; 
 status bar hint line is always visible below the main layout and provides keybinding
 discovery independent of whether the overlay is active.
 
+### AC-013 (traces to BC-2.06.015 PC-1/PC-2/PC-3/PC-7 — `[t]` trace-to-source stub)
+When `[t]` is pressed in `AppMode::Overlay`, the key handler sets:
+```
+app.status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)".to_string());
+```
+The status bar renders this message on the next draw tick in the default terminal color
+(no special styling). The press is gated — the message appears only after `[t]` is
+pressed, not on every render of the overlay (BC-2.06.015 PC-1).
+
+The `AppMode` transition is identity: `transition(Overlay { prior }, PermissionTraceToSource)`
+returns `Overlay { prior }` unchanged and `App.overlay_stack` is not modified (BC-2.06.015
+PC-2). No IPC message is sent to the daemon; the mutation is a local `App.status_message`
+write only (BC-2.06.015 PC-3).
+
+`Action::PermissionTraceToSource` is defined in `monocle-core/src/tui/state.rs` (the
+`Action` enum) with the comment `// Phase 1: stub sets status_message placeholder`. The
+`Builtin` binding table for `AppMode::Overlay` maps key `t` to `Action::PermissionTraceToSource`.
+The `monocle-tui` match arm for this action sets `app.status_message` (BC-2.06.015 PC-7).
+
+In `AppMode::Dashboard`, `PermissionTraceToSource` is unbound — `[t]` is not present in the
+Dashboard binding arm, yielding an identity transition with `app.status_message` unchanged
+(BC-2.06.015 EC-099). No `trace_pressed: bool` field is added to `App`; the shared
+`status_message` field is the delivery vehicle (BC-2.06.015 INV-4, last-write-wins).
+
 ## Token Budget Estimate
 
 | Component | Tokens |
@@ -205,6 +229,9 @@ discovery independent of whether the overlay is active.
 - [ ] Implement `render_edit_payload()` — unified diff via `similar::TextDiff::from_lines()`, colored lines (AC-005)
 - [ ] Implement `render_generic_payload()` — `tool: <name>` + `input: <excerpt>` label lines, 256-char `serde_json::to_string` excerpt, `input: (unrepresentable)` + WARN fallback (AC-006)
 - [ ] Add `similar 3.x` to `monocle-tui/Cargo.toml` (NOT monocle-core)
+- [ ] Add `Action::PermissionTraceToSource` variant to `monocle-core/src/tui/state.rs` Action enum with comment `// Phase 1: stub sets status_message placeholder` (BC-2.06.015 PC-7)
+- [ ] Register `t` → `Action::PermissionTraceToSource` in the `Builtin` binding table Overlay arm in `monocle-core/src/tui/binding.rs` (BC-2.06.015 INV-1)
+- [ ] Add identity match arm for `PermissionTraceToSource` in `monocle-tui/src/app.rs` key handler: sets `app.status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)".to_string())` (BC-2.06.015 PC-1); transition is `AppMode::Overlay { prior }` → unchanged (PC-2); no IPC send (PC-3)
 - [ ] Create `monocle-tui/src/ui/status_bar.rs` — always-visible two-row status bar: upper breadcrumb row (AppMode derivation + drop counter `drops: N`) and lower hint line (context-sensitive Builtin keybinding summary)
 - [ ] Implement elapsed timer in overlay footer: `Instant::now().duration_since(modal.received_at).as_secs()`
 - [ ] Implement `"(1 of N)"` stack depth indicator in overlay header
@@ -270,13 +297,35 @@ Files to create:
 Files to modify:
 - `monocle-tui/Cargo.toml` — add `similar 3.x`
 - `monocle-tui/src/ui/mod.rs` — declare `overlay_widget`, `status_bar` modules
-- `monocle-tui/src/app.rs` — wire overlay widget and status bar into render loop; set 100ms tick
+- `monocle-tui/src/app.rs` — wire overlay widget and status bar into render loop; set 100ms tick; add `PermissionTraceToSource` match arm setting `app.status_message` (AC-013)
+- `monocle-core/src/tui/state.rs` — add `Action::PermissionTraceToSource` variant with Phase 1 stub comment (AC-013 / BC-2.06.015 PC-7)
+- `monocle-core/src/tui/binding.rs` — register `t` → `Action::PermissionTraceToSource` in Builtin Overlay arm (AC-013 / BC-2.06.015 INV-1)
 
 ## Downstream Consumer Contract
 
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.8
+
+**ADV Pass-9 MAJOR + human scope authorization — AC-013 added for BC-2.06.015 [t] stub; STORY-INDEX re-anchored** (2026-06-01):
+- AC-013 added: `[t]` trace-to-source stub behavior per BC-2.06.015 PC-1 (status_message set,
+  press-gated), PC-2 (identity AppMode transition, overlay_stack unchanged), PC-3 (no IPC
+  send), PC-7 (Action::PermissionTraceToSource defined in monocle-core). Dashboard unbound
+  behavior (EC-099) and INV-4 (no trace_pressed field; shared status_message last-write-wins)
+  also captured.
+- Input pins updated to match actual BC versions (pre-existing drift fixed):
+  BC-2.06.010: v1.0.5 → v1.0.6; BC-2.06.015: v1.0.4 → v1.0.6 (PO reconciled contradiction,
+  Story Anchor assigned to S-027); BC-2.06.019: v1.0.0 → v1.0.5; BC-2.06.020: v1.0.4 → v1.0.5.
+- input-hash refreshed: d74870e → ec6b608 (all 7 input files; MD5 of concatenated contents).
+- Tasks: three [t] stub tasks added — Action variant in monocle-core/src/tui/state.rs, Builtin
+  `t` binding in monocle-core/src/tui/binding.rs, identity match arm in monocle-tui/src/app.rs.
+- File Structure: monocle-core/src/tui/state.rs and monocle-core/src/tui/binding.rs added to
+  "Files to modify" list; monocle-tui/src/app.rs note updated to include PermissionTraceToSource.
+- STORY-INDEX BC-2.06.015 row re-anchored from AC-004 (Read payload — wrong) to AC-013 (new
+  [t] stub AC — correct).
+- SE-16d monotonicity: v1.8 timestamp 2026-06-01 >= v1.7 timestamp 2026-06-01. PASS.
 
 ## §Trace v1.7
 

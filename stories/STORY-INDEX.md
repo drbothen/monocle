@@ -158,7 +158,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | S-026 | AC-004 | YES |
 | BC-2.06.013 | Permission Overlay: Reject Keybinding | S-026 | AC-005 | YES |
 | BC-2.06.014 | Permission Overlay: `[Esc]` Hides Without Rejecting | S-026 | AC-008 | YES |
-| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | AC-004 | YES |
+| BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | AC-013 | YES |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | AC-011, AC-012 | YES |
 | BC-2.06.017 | Permission Response Within Hook Timeout Budget | — | — | GAP (see GAP-P2-005) |
 | BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-006..AC-009 | YES |
