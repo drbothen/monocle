@@ -145,8 +145,7 @@ fn test_BC_2_06_021_render_frame_dashboard_mode_hint_line_appears_on_last_row() 
     let last_row_trimmed = last_row.trim_end();
 
     assert_eq!(
-        last_row_trimmed,
-        "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit",
+        last_row_trimmed, "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit",
         "AC-012 / BC-2.06.021 PC-1: the last terminal row (hint row) must contain the \
          EXACT Dashboard hint line; the broken impl shows 'monocle' (MONOCLE_STATUS_LABEL) \
          instead of the hint line"

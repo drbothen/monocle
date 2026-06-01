@@ -18,9 +18,7 @@ use monocle_tui::app::{
     TransportEvent,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
-use monocle_tui::{
-    format_drop_counter, DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS, MONOCLE_STATUS_LABEL,
-};
+use monocle_tui::{format_drop_counter, DAEMON_DISCONNECT_STATUS, DAEMON_OFFLINE_STATUS};
 use std::collections::VecDeque;
 use std::time::Instant;
 use uuid::Uuid;

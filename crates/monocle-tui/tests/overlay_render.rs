@@ -993,8 +993,7 @@ fn test_BC_2_06_021_render_status_bar_hint_line_dashboard_contains_key_hints() {
     let hint_trimmed = hint_row.trim_end();
 
     assert_eq!(
-        hint_trimmed,
-        "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit",
+        hint_trimmed, "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit",
         "BC-2.06.021 PC-1: Dashboard hint line must be EXACTLY the canonical string \
          from BC-2.06.021 PC-1 table (includes '/: filter' and 'Ctrl-P: profile' \
          which the broken impl omits)"
@@ -1195,8 +1194,7 @@ fn test_BC_2_06_021_filtering_hint_exact_canonical_string() {
     let hint = hint_row.trim_end();
 
     assert_eq!(
-        hint,
-        "(type to filter)  Esc: cancel",
+        hint, "(type to filter)  Esc: cancel",
         "BC-2.06.021 PC-1: Filtering hint must be EXACTLY '(type to filter)  Esc: cancel'; \
          the broken impl returns 'Enter: apply  Esc: cancel'"
     );
@@ -1223,8 +1221,7 @@ fn test_BC_2_06_021_fullscreen_hint_exact_canonical_string() {
     let hint = hint_row.trim_end();
 
     assert_eq!(
-        hint,
-        "Esc: back  /: filter  q: quit",
+        hint, "Esc: back  /: filter  q: quit",
         "BC-2.06.021 PC-1: Fullscreen hint must be EXACTLY 'Esc: back  /: filter  q: quit'; \
          the broken impl returns 'Esc: exit fullscreen'"
     );
@@ -1254,8 +1251,7 @@ fn test_BC_2_06_024_generic_payload_fallback_text_is_unrepresentable() {
     // this serializes to "null" successfully, confirming the normal path.
     // The fallback path cannot be triggered via the public API because `serde_json::Value`
     // always serializes, but we verify the fallback constant via source inspection.
-    let manifest_dir =
-        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set");
     let workspace_root = std::path::Path::new(&manifest_dir)
         .parent()
         .and_then(|p| p.parent())
