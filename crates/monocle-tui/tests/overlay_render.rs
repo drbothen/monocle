@@ -235,7 +235,8 @@ fn test_BC_2_06_010_overlay_modal_width_respects_cap_min_w_minus_4_100() {
     for y in 0..height as u16 {
         let sym = buf[(0u16, y)].symbol();
         // Border chars from ratatui Block: '┌', '│', '└', '─'
-        if sym == "┌" || sym == "│" || sym == "└" || sym == "─" || sym == "+" || sym == "|" {
+        if sym == "┌" || sym == "│" || sym == "└" || sym == "─" || sym == "+" || sym == "|"
+        {
             leftmost_col_has_modal_border = true;
             break;
         }

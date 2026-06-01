@@ -66,7 +66,12 @@ pub fn render_overlay_widget(
         .as_secs();
 
     // Build header and footer lines.
-    let header_line = build_header_line(&modal.session_id, &modal.tool_name, stack_depth, elapsed_secs);
+    let header_line = build_header_line(
+        &modal.session_id,
+        &modal.tool_name,
+        stack_depth,
+        elapsed_secs,
+    );
     let show_scroll_hint = matches!(&modal.tool_payload, ToolPayload::Generic { .. });
     let footer_line = build_footer_line(show_scroll_hint);
 
@@ -88,7 +93,9 @@ pub fn render_overlay_widget(
     // even in narrow terminals (AC-009 / BC-2.06.020 PC-1).
     let header_height = 2u16;
     let footer_height = 1u16;
-    let body_height = inner_area.height.saturating_sub(header_height + footer_height);
+    let body_height = inner_area
+        .height
+        .saturating_sub(header_height + footer_height);
 
     let header_area = Rect {
         x: inner_area.x,

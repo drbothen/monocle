@@ -17,11 +17,7 @@
 #![allow(non_snake_case)]
 
 use monocle_tui::ui::overlay_widget::render_edit_payload;
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Color,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Color};
 use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------
@@ -400,8 +396,8 @@ fn test_BC_2_06_015_invariant_2_similar_crate_not_in_monocle_core_cargo_toml() {
     // Locate monocle-core/Cargo.toml relative to the workspace root.
     // The worktree root is two levels above the monocle-tui tests directory.
     // We use CARGO_MANIFEST_DIR which points to the crate under test (monocle-tui).
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR must be set by cargo test");
+    let manifest_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set by cargo test");
 
     // Navigate from monocle-tui/ up two levels to workspace root, then to monocle-core/.
     let workspace_root = std::path::Path::new(&manifest_dir)
@@ -416,7 +412,8 @@ fn test_BC_2_06_015_invariant_2_similar_crate_not_in_monocle_core_cargo_toml() {
         core_cargo_toml
     );
 
-    let contents = std::fs::read_to_string(&core_cargo_toml).expect("must read monocle-core Cargo.toml");
+    let contents =
+        std::fs::read_to_string(&core_cargo_toml).expect("must read monocle-core Cargo.toml");
 
     // `similar` must NOT appear anywhere in monocle-core/Cargo.toml.
     assert!(
@@ -436,8 +433,8 @@ fn test_BC_2_06_015_invariant_2_similar_crate_not_in_monocle_core_cargo_toml() {
 /// sneaked-in `use` statement would cause a build error if someone added it.
 #[test]
 fn test_BC_2_06_015_invariant_2_similar_not_used_in_monocle_core_source() {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .expect("CARGO_MANIFEST_DIR must be set by cargo test");
+    let manifest_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set by cargo test");
 
     let workspace_root = std::path::Path::new(&manifest_dir)
         .parent()
@@ -470,11 +467,7 @@ fn test_BC_2_06_015_invariant_2_similar_not_used_in_monocle_core_source() {
 }
 
 /// Helper: recursively walk `.rs` files under `dir`, recording files containing `pattern`.
-fn visit_rs_files_for_pattern(
-    dir: &std::path::Path,
-    pattern: &str,
-    violations: &mut Vec<String>,
-) {
+fn visit_rs_files_for_pattern(dir: &std::path::Path, pattern: &str, violations: &mut Vec<String>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
