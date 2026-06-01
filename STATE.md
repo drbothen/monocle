@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.74"
+version: "6.75"
 status: active
 producer: state-manager
-timestamp: 2026-05-31T14:00:00Z
-phase: phase-3-wave-7-READY
-current_step: "Wave-6 GATE PASSED (D-224). develop @ 2a51a91. Wave 7 is the FINAL wave of Phase 3 (S-027/028/029/031 = 23 pts). AWAITING human authorization to begin Wave 7 delivery, starting with S-027."
+timestamp: 2026-06-01T12:00:00Z
+phase: phase-3-wave-7-IN-PROGRESS
+current_step: "Wave 7 IN PROGRESS: 1/4 stories done. S-027 DELIVERED (PR #32 @ 3787ebd, D-226). 29/33 stories done (177/195 pts). Remaining: S-028 (5pts, UNBLOCKED), S-031 (5pts, UNBLOCKED), S-029 (5pts, UNBLOCKED — S-027 delivered)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state."
-awaiting: "Human authorization to begin Wave 7 delivery (FINAL wave of Phase 3), starting with S-027 (8 pts, EPIC-06). Phase 3 is IN PROGRESS: 6 of 7 waves done (28/33 stories, 169/195 pts). Wave 7 stories: S-027/028/031 UNBLOCKED; S-029 blocked on S-027. After all 4 Wave 7 stories merge + wave-7 gate PASSES → THEN Phase 4 (Holdout Evaluation). Also pending (non-blocking): story-writer F-S025-ADV37-DEFER-001 (STORY-INDEX rows 150-153 stale BC→AC ranges + systematic sweep); architect F-S026-ADV1-LOW-002 (PermissionDecisionKind naming reconciliation)."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done."
+awaiting: "Human authorization to begin next Wave 7 story. S-028 (5pts, UNBLOCKED) + S-031 (5pts, UNBLOCKED) are parallel-eligible. S-029 (5pts) is now UNBLOCKED (S-027 delivered). Phase 3 IN PROGRESS: 7 of 7 waves started; Wave 7 at 1/4 (29/33 stories, 177/195 pts). After all 4 Wave 7 stories merge + wave-7 gate PASSES → THEN Phase 4 (Holdout Evaluation). Pending (non-blocking): story-writer F-S025-ADV37-DEFER-001 (STORY-INDEX rows 150-153 stale BC→AC ranges + systematic sweep); architect F-S026-ADV1-LOW-002 (PermissionDecisionKind naming reconciliation)."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -290,6 +290,26 @@ durable_task_register:
       status: pending
       detail: "Specialist agents do not run scripts/check_version_pins.py (POL-11) or scripts/check_structural_claims.py (POL-12) locally before declaring per-story delivery complete. A version-pin literal 'BC-2.06.024 v1.10' in test prose failed CI POL-11 and required fix-and-repush. FOLLOW-UP: per-story delivery skill should include POL-11/POL-12 local run as a pre-push gate step. Target: self-improvement epic or wave-gate codification in delivery skill."
       blocking: false
+    - id: "F-S027-DOC-001"
+      subject: "BC-2.06.021 PC-3 stale 'or replaced' prose vs BC-2.06.019 v1.1.0 PC-7"
+      status: pending
+      detail: "S-027 residual: BC-2.06.021 PC-3 body still reads 'or replaced' which conflicts with BC-2.06.019 v1.1.0 PC-7 semantic. Non-blocking doc-only fix. Routing: product-owner. Anchor: wave-7-gate sweep."
+      blocking: false
+    - id: "F-S027-DOC-002"
+      subject: "render_frame doc-comment references legacy [dropped:N] format"
+      status: pending
+      detail: "S-027 residual: render_frame() doc-comment contains stale reference to legacy [dropped:N] status bar format. Current format is per BC-2.06.019 v1.1.0. Non-blocking. Routing: implementer at wave-7-gate sweep."
+      blocking: false
+    - id: "F-S027-DOC-003"
+      subject: "overlay.rs / overlay_stub.rs stale docstrings"
+      status: pending
+      detail: "S-027 residual: overlay.rs and overlay_stub.rs contain docstrings referencing pre-S-027 placeholder behavior. Non-blocking cleanup. Routing: implementer at wave-7-gate sweep."
+      blocking: false
+    - id: "L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY"
+      subject: "[process-gap] version-pin-registry.yaml must be bumped atomically with BC version bumps in same convergence-fix burst"
+      status: pending
+      detail: "S-027 lesson: BC version bumps (BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6) were committed in convergence-fix bursts but version-pin-registry.yaml was not always updated atomically in the same commit. Codify in convergence-fix burst checklist: bump version-pin-registry.yaml in the same commit as BC version bump. Routing: devops-engineer (checklist update). Anchor: wave-7-gate or delivery-skill update."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -304,8 +324,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.74 (D-225) — 2026-05-31
-  WAVE 7 READY — FINAL WAVE OF PHASE 3
+  ZERO-CONTEXT RESUME CHECKPOINT v6.75 (D-226) — 2026-06-01
+  WAVE 7 IN PROGRESS — 1/4 DONE — S-027 DELIVERED
   ============================================================================
 
   YOUR FIRST 4 COMMANDS (RUN IN ORDER):
@@ -313,7 +333,7 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.74, durable_task_register.
+  2. Read this STATE.md fully — especially §Trace v6.75, durable_task_register.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
@@ -321,31 +341,25 @@ next_session_resume_protocol: |
 
   4. Execute NEXT ACTION below.
 
-  PIPELINE STATE (as of 2026-05-31):
+  PIPELINE STATE (as of 2026-06-01):
 
-  Wave-6 GATE PASSED (D-224). develop @ 2a51a91.
-  90 test suites green. clippy --all-targets clean. fmt clean.
-  Phase 3 TDD Implementation IN PROGRESS: 6 of 7 waves done.
-  28/33 stories done (169/195 pts). Wave 7 is the FINAL wave of Phase 3.
-  5 remaining: 4 not_started Wave 7 (S-027/028/029/031 = 23 pts) + 1 blocked S-PHASE-3-PREP (3 pts, does NOT block).
-  sprint-state v1.34.
+  Wave 7 IN PROGRESS (D-226). develop @ 3787ebd.
+  Phase 3 TDD Implementation IN PROGRESS: Wave 7 at 1/4 stories done.
+  29/33 stories done (177/195 pts, 91%). 3 remaining Wave 7 stories (15 pts) + 1 blocked S-PHASE-3-PREP (does NOT block).
+  sprint-state v1.35.
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for current HEAD.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   NEXT ACTION:
 
-  Obtain human authorization to begin Wave 7 delivery, starting with S-027.
-  Each story requires individual human authorization before dispatch (project norm).
-  RECOMMENDED ORDER: S-027 FIRST (8 pts — unblocks S-029; delivers visual overlay rendering layer).
-                     S-028 + S-031 in parallel (both unblocked, independent).
-                     S-029 LAST (5 pts — blocked on S-027).
+  Obtain human authorization for next Wave 7 story.
+  RECOMMENDED ORDER: S-028 + S-031 in parallel (both UNBLOCKED, independent — 5pts each).
+                     S-029 after S-028/S-031 or in parallel (now UNBLOCKED — S-027 delivered).
+  All 3 remaining require individual human authorization before dispatch (project norm).
   After all 4 Wave 7 stories merge → run vsdd-factory:wave-gate wave-7 → THEN Phase 4.
 
   WAVE 7 STORIES (final wave of Phase 3):
-  * S-027 (8 pts, EPIC-06) — Permission Overlay RENDERING + Diff Preview + Status Bar.
-    deps [S-026 done, S-025 done] = UNBLOCKED. blocks S-029.
-    BCs: BC-2.06.010/015/019/020/021/024.
-    Note: ui/overlay.rs is currently a placeholder — S-026 wired IPC; S-027 adds rendering.
+  * S-027 (8 pts, EPIC-06) — DONE. PR #32 @ 3787ebd (D-226).
   * S-028 (5 pts, EPIC-06) — Sessions Panel Nucleo Filter + Event Ribbon Rolling Log.
     deps [S-025 done, S-021 done] = UNBLOCKED.
     BCs: BC-2.05.002/004, BC-2.06.006/018.
@@ -353,7 +367,7 @@ next_session_resume_protocol: |
     deps [S-030 done, S-024 done, S-025 done] = UNBLOCKED.
     BCs: BC-2.07.004/005.
   * S-029 (5 pts, EPIC-06) — Killer Scenario: <=6 keystrokes dual permission resolve.
-    deps [S-026 done, S-027 NOT DONE, S-022 done, S-018 done] = BLOCKED on S-027.
+    deps [S-026 done, S-027 done, S-022 done, S-018 done] = UNBLOCKED (S-027 delivered D-226).
     BCs: BC-2.06.022. Validates holdout HS-EXP-008.
 
   DELIVERY (each story):
@@ -372,14 +386,15 @@ next_session_resume_protocol: |
   3. Do NOT embed version-pin literals (e.g. "BC-X v1.2") in test prose — use version-free citations.
 
   ALSO PENDING (non-blocking, do at/before wave-7-gate or Phase 4):
-  (a) story-writer: F-S025-ADV37-DEFER-001 — STORY-INDEX rows 150-153 stale BC→AC ranges
-      (BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009) + sweep.
+  (a) story-writer: F-S025-ADV37-DEFER-001 — STORY-INDEX rows 150-153 stale BC→AC ranges + sweep.
   (b) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — confirm terminal restore in TTY-backed harness.
   (c) architect: F-S026-ADV1-LOW-002 — PermissionDecisionKind naming reconciliation vs SS-ipc.
   (d) devops: ADR-HOOK-001 — mechanical ADR pre-commit hook (~3 pts, Wave 7 anchor).
+  (e) product-owner/implementer: F-S027-DOC-001/002/003 — S-027 residual doc fixes (wave-7-gate sweep).
+  (f) devops: L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY — version-pin-registry.yaml atomicity checklist.
 
-  ARTIFACT VERSIONS (D-225 canonical): see §Key Tech Stack below.
-    SS-conventions v1.32.6 | STORY-INDEX v5.25 | BC-INDEX v1.33 (113 BCs) | sprint-state v1.34
+  ARTIFACT VERSIONS (D-226 canonical): see §Key Tech Stack below.
+    SS-conventions v1.32.6 | STORY-INDEX v5.26 | BC-INDEX v1.33 (113 BCs) | sprint-state v1.35
 
   KNOWN-FLAKY (DO NOT FLAG):
     cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip, PATH isolation flake
@@ -394,6 +409,8 @@ next_session_resume_protocol: |
     F-S026-ADV1-LOW-002 (PermissionDecisionKind naming divergence; architect pre-Phase-4)
     PROCESS-GAP-CI-PARITY-1 (CLAUDE.md --all-targets; human action required)
     PROCESS-GAP-CI-PARITY-2 (per-story POL-11/POL-12 local gate; devops codification)
+    F-S027-DOC-001/002/003 (S-027 residual doc fixes; wave-7-gate sweep)
+    L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY (version-pin-registry.yaml atomicity; devops)
 
   FACTORY INFRASTRUCTURE:
     .factory/ mounted at factory-artifacts orphan branch.
@@ -418,7 +435,7 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave-6 GATE PASSED (D-224); Wave 7 REMAINING | — | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6 GATE PASSED (D-224): develop @ 2a51a91; 5/6 gates green; CRITICAL F-WAVE6-GATE-CRIT-001 found+fixed (PR #31); mutation testing SKIPPED. 28/33 stories done (169/195 pts). Wave 7 remaining (S-027/028/029/031 = 23 pts) — FINAL wave of Phase 3. After wave-7 gate → Phase 4. |
+| 3 TDD Implementation | IN PROGRESS — Wave 7 (FINAL wave) IN PROGRESS | — | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6 GATE PASSED (D-224): develop @ 2a51a91; CRITICAL F-WAVE6-GATE-CRIT-001 fixed. Wave 7: S-027 DONE (PR #32 @ 3787ebd, D-226). 29/33 stories done (177/195 pts). Remaining: S-028/031 (UNBLOCKED), S-029 (UNBLOCKED). After wave-7 gate → Phase 4. |
 | 4-7 | not-started | — | |
 
 ## Wave 5 — GATE PASSED (D-182)
@@ -431,7 +448,7 @@ current_cycle: cycle-001
 | S-020 JSONL Ring Capacity and Rotation | 5 | done | PR #24, f69d53a, 24 tests, adv 12→8→0 (CONVERGED) |
 | S-021 UDS Server + IPC Transport + Core Message Types | 8 | done | PR #23, acaacb9, 49 tests, adv 9→4→4 (CONVERGED) |
 
-develop @ 2a51a91. 90 test suites, 0 failures. 28/33 stories done, 169/195 pts (87%). Wave 5 gate PASSED (D-182). Wave 6: 4/4 done — S-022 DONE (D-184, PR #27 @ c754053), S-023 DONE (D-186, PR #29 @ 7a52041), S-025 DONE (D-222, PR #28 @ 838477e), S-026 DONE (D-223, PR #30 @ 9fb0d70). Wave-6 GATE PASSED (D-224): PR #31 CRITICAL fix @ 2a51a91 — offline_reconnect() extracted + 4 offline-break arms + offline_reconnect.rs integration test (mutation-verified non-vacuous). 5/6 gates green; mutation testing SKIPPED (no facade stories in Wave 6). Wave 7 is the FINAL wave of Phase 3 — AWAITING human authorization.
+develop @ 3787ebd (S-027 merged). Wave 5 gate PASSED (D-182). Wave 6: 4/4 done — S-022/023/025/026 (D-184/186/222/223). Wave-6 GATE PASSED (D-224): PR #31 CRITICAL fix @ 2a51a91. Wave 7 IN PROGRESS: S-027 DONE (D-226, PR #32 @ 3787ebd) — overlay rendering + diff preview + two-row status bar + [t] stub. 29/33 stories done, 177/195 pts (91%). Remaining: S-028 (UNBLOCKED), S-031 (UNBLOCKED), S-029 (UNBLOCKED as of D-226).
 
 ## Blocking Issues
 
@@ -453,18 +470,20 @@ D-047 through D-214 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-222 | S-025 DELIVERED — PR #28 @ 838477e. 27/33 done (164/195 pts). sprint-state v1.32. STATE v6.70→v6.71. | 2026-05-30 | state-manager |
 | D-223 | S-026 DELIVERED — PR #30 @ 9fb0d70. BCs: BC-2.06.008/009/011..014/016/023/024. 9 adv passes, 3 CLEAN. CRITICAL Pass 5: outbound IPC unwired — fixed via ipc_tx/into_split/spawn_ipc_writer. Wave 6: 4/4 done (34/34 pts). 28/33 done. SS-conventions v1.32.6. sprint-state v1.33. STORY-INDEX v5.25. STATE v6.71→v6.72. | 2026-05-31 | state-manager |
 | D-224 | Wave-6 GATE PASSED — develop @ 2a51a91. 5/6 gates green. CRITICAL F-WAVE6-GATE-CRIT-001 fixed (PR #31: reconnect_from_offline() + 4 offline-break arms). Holdout mean 0.97. sprint-state v1.34. L-W6-GATE-001/002. STATE v6.72→v6.73. | 2026-05-31 | state-manager |
-| D-225 | STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to phase-3-wave-7-READY; points 177→169/195 reconciled to sprint-state per-story sum. L-W6-GATE-003. POINTS-TALLY-RECONCILE resolved. STATE v6.73→v6.74. Surfaced by human review. | 2026-05-31 | state-manager |
+| D-225 | STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to phase-3-wave-7-READY; points 177→169/195 reconciled to sprint-state per-story sum. L-W6-GATE-003. POINTS-TALLY-RECONCILE resolved. STATE v6.74→v6.73. Surfaced by human review. | 2026-05-31 | state-manager |
+| D-226 | S-027 DELIVERED — PR #32 @ 3787ebd. Overlay rendering + diff preview (similar 3) + two-row status bar + [t] trace-to-source stub (BC-2.06.015, human-authorized). 18-pass adversarial convergence. BC bumps: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019/020/021 v1.1.0/v1.1.0/v1.0.6. Wave 7: 1/4 done. S-029 UNBLOCKED. 29/33 done (177/195 pts). sprint-state v1.35. STORY-INDEX v5.26. STATE v6.74→v6.75. | 2026-06-01 | state-manager |
 
-## Key Tech Stack (D-225 canonical)
+## Key Tech Stack (D-226 canonical)
 
 ratatui 0.30 | crossterm 0.29 | tokio 1.52 | axum 0.8 | interprocess 2.4 | prost 0.14
 serde_yaml_ng 0.10 | wasmtime 44 | nucleo 0.5 | time 0.3.47 (RUSTSEC-2026-0009 floor)
 serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.0.
 MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 **PRD v1.27.4** | **BC-INDEX v1.33** (113 BCs) | **ARCH-INDEX v1.0.25** | **SS-tui v1.8.2**
-**SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.25**
-**BC-2.06.023 v1.5.0** | **BC-2.06.024 v1.1.0** | **S-026 v1.11** | **product-brief v1.4.34**
-**sprint-state v1.34** (28/33 done, 169/195 pts per per-story sum; D-225 corrected). 59 codified disciplines.
+**SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.26**
+**BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.6**
+**BC-2.06.023 v1.5.0** | **BC-2.06.024 v1.1.0** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
+**sprint-state v1.35** (29/33 done, 177/195 pts; D-226). 59 codified disciplines.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
 ## Historical Content
@@ -480,7 +499,13 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.74 (D-225 — STATE correction; Wave-7-READY)
+## §Trace v6.75 (D-226 — S-027 DELIVERED; Wave-7 IN PROGRESS)
+
+**D-226 (2026-06-01):** S-027 DELIVERED — PR #32 @ 3787ebd squash-merged to develop.
+Overlay rendering + diff preview (similar 3) + two-row status bar + [t] trace-to-source stub (BC-2.06.015, human-authorized scope addition).
+18-pass adversarial convergence (5 BLOCKER + 6 MAJOR + [t]-stub MAJOR + drops:N coexistence MAJOR resolved).
+BC version bumps: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6.
+Wave 7: 1/4 done. S-029 UNBLOCKED. 29/33 stories done (177/195 pts). sprint-state v1.35. STORY-INDEX v5.26. v6.74→v6.75.
 
 **D-225 (2026-05-31):** STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains).
 Corrected to phase-3-wave-7-READY. Points 177→169/195 (sprint-state per-story re-sum). L-W6-GATE-003. v6.73→v6.74.
@@ -490,7 +515,7 @@ CRITICAL F-WAVE6-GATE-CRIT-001 fixed: offline stuck TUI — reconnect_from_offli
 Tests PASS | DTU PASS (mean 1.000) | Adversarial PASS (post-remediation) | Demo Evidence PASS | Holdout PASS (mean 0.97) | Mutation SKIPPED.
 L-W6-GATE-001/002. v6.72→v6.73.
 
-Phase 3 IN PROGRESS — Waves 1-6 PASSED (D-164/D-166/D-167/D-175/D-182/D-224). Wave 7 FINAL wave remaining.
-28/33 stories done (169/195 pts). After wave-7 gate → Phase 4.
+Phase 3 IN PROGRESS — Waves 1-6 PASSED (D-164/D-166/D-167/D-175/D-182/D-224). Wave 7 IN PROGRESS (D-226).
+29/33 stories done (177/195 pts). After wave-7 gate → Phase 4.
 
 §Trace v6.40 through v6.72 archived to `cycles/cycle-001/burst-log.md`.

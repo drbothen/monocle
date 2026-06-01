@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.25"
+version: "5.26"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-30T12:00:00Z
+timestamp: 2026-06-01T12:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -75,7 +75,7 @@ traces_to: .factory/specs/prd.md
 | S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | done | S-026 |
 | S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | done | S-027, S-028, S-031 |
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | done | S-027, S-029 |
-| S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | not_started | S-029 |
+| S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | done | S-029 |
 | S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | not_started | — |
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | not_started | — |
@@ -450,6 +450,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.26
+
+**S-027 DELIVERED — status not_started → done** (2026-06-01):
+- S-027 (Permission Overlay Rendering + Diff Preview + Two-Row Status Bar + [t] trace-to-source stub, EPIC-06, 8 pts) squash-merged PR #32 to develop @ 3787ebd.
+- BCs satisfied: BC-2.06.010 (diff preview via similar 3), BC-2.06.015 ([t] trace-to-source stub, human-authorized scope addition), BC-2.06.019 (status bar drop counter), BC-2.06.020 (breadcrumb), BC-2.06.021 (keybinding hint line), BC-2.06.024 (ToolPayload body rendering by variant, shared with S-026).
+- BC version bumps this cycle: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6. S-027 v1.10.
+- 18-pass adversarial convergence: 5 BLOCKER + 6 MAJOR + [t]-stub MAJOR + drops:N coexistence MAJOR resolved.
+- S-029 UNBLOCKED: S-027 was its sole blocker.
+- Wave 7: 1/4 done (8/23 pts). Remaining: S-028 (UNBLOCKED), S-031 (UNBLOCKED), S-029 (UNBLOCKED).
+- D-226. SE-16d monotonicity: v5.26 timestamp 2026-06-01 >= v5.25 timestamp 2026-05-31. PASS.
 
 ## §Trace v5.25
 
