@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-01T00:00:00Z
+timestamp: 2026-06-01T12:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "64a61b4"
@@ -15,7 +15,7 @@ capability: CAP-006
 # Lifecycle fields (DF-030)
 lifecycle_status: active
 introduced: v1.1.0
-modified: [F-P1D2-010, S-027-ADV-CONTRADICTION-FIX]
+modified: [F-P1D2-010, S-027-ADV-CONTRADICTION-FIX, S-027-ADV-BINDING-LAYER-FIX]
 deprecated: null
 deprecated_by: null
 replacement: null
@@ -28,17 +28,18 @@ removal_reason: null
 
 ## Description
 
-In `AppMode::Overlay`, pressing `[t]` (bound to `Action::PermissionTraceToSource` in the
-`Builtin` binding table for `AppMode::Overlay`) sets `App.status_message` to the
-placeholder text `"[t] Trace to source — Phase 2 feature (Static plane)"`, which the
-status bar renders on the next draw tick.
+In `AppMode::Overlay`, pressing `[t]` (bound to `Action::PermissionTraceToSource` via
+the per-context `AppModeTag::Overlay` slot in `build_builtin_binding_layers()`) sets
+`App.status_message` to the placeholder text
+`"[t] Trace to source — Phase 2 feature (Static plane)"`, which the status bar renders
+on the next draw tick using the shared `Color::Yellow` convention.
 
 No navigation occurs. No file is opened. No IPC message is sent to the daemon. The
 `AppMode` remains `Overlay { prior }` unchanged and `App.overlay_stack` is not modified.
-The keybinding is registered in the `Builtin` table and appears in the keybinding hint
-line so it is discoverable in Phase 1. This stub reserves the `[t]` binding for Phase 2
-(the Static plane), preventing future keybinding conflicts when the full trace-to-source
-behavior is implemented.
+The keybinding is hardcoded in `build_builtin_binding_layers()` (non-user-overridable)
+and appears in the keybinding hint line so it is discoverable in Phase 1. This stub
+reserves the `[t]` binding for Phase 2 (the Static plane), preventing future keybinding
+conflicts when the full trace-to-source behavior is implemented.
 
 **Mechanism rationale (S-027 contradiction resolution):** `App.status_message: Option<String>`
 is the canonical mechanism for transient status bar notifications in this architecture (see
@@ -52,8 +53,15 @@ subsequent IPC events or by the user making a decision that transitions mode).
 ## Preconditions
 
 1. `AppMode` is `Overlay { prior }` and `App.overlay_stack.len() >= 1`.
-2. The `Builtin` binding table for `AppMode::Overlay` maps key `t` to
-   `Action::PermissionTraceToSource`.
+2. `build_builtin_binding_layers()` has registered `t` → `Action::PermissionTraceToSource`
+   in the `BindingLayers::per_context` map keyed by `(key_t, AppModeTag::Overlay)`.
+   This is the correct scope for an Overlay-only, non-user-overridable binding: the
+   `BindingLayers::builtin` map is mode-agnostic (`HashMap<KeyEvent, Action>` with no
+   mode discriminant), so inserting `t` there would make it fire in Dashboard and all
+   other modes, directly violating EC-099. The per-context entry is hardcoded inside
+   `build_builtin_binding_layers()` — it is not loaded from any user customisation file —
+   so it satisfies the non-overridable intent of INV-1 despite being placed at the
+   `PerContext` layer in `BindingSource` terms.
 3. The `Action::PermissionTraceToSource` variant is defined in `monocle-core/src/tui/state.rs`
    (the `Action` enum) with the comment `// Phase 1: stub sets status_message placeholder`.
 4. `App.status_message` is `Option<String>` — the existing transient notification field
@@ -67,9 +75,14 @@ subsequent IPC events or by the user making a decision that transitions mode).
    ```
    app.status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)".to_string());
    ```
-   The status bar renders this message on the next draw tick in the default terminal color
-   (no special styling required in Phase 1). The message is press-gated: it appears only
-   after `[t]` is pressed, not on every render of the overlay.
+   The status bar renders this message on the next draw tick using the shared
+   `status_message` rendering convention (`Color::Yellow` — the same styling used by
+   transport notifications such as `"[disconnected] reconnecting..."` and offline status
+   messages; see `ui/status_bar.rs`). No bespoke/special styling is required beyond this
+   shared convention; distinguishing `[t]` stub messages by source at the render layer
+   would require a separate message-source discriminant and is out of scope for Phase 1.
+   The message is press-gated: it appears only after `[t]` is pressed, not on every render
+   of the overlay.
 2. **No AppMode transition:** `transition(Overlay { prior }, PermissionTraceToSource)`
    returns `Overlay { prior }` unchanged. `App.overlay_stack` is not modified. This is
    the identity transition for this action.
@@ -93,8 +106,17 @@ subsequent IPC events or by the user making a decision that transitions mode).
 
 ## Invariants
 
-1. `Action::PermissionTraceToSource` is a `Builtin` binding (not `PerContext`, not
-   `UserCustomCommand`). It cannot be overridden by the user in Phase 1.
+1. `Action::PermissionTraceToSource` is a **non-user-overridable, hardcoded binding**
+   registered in `build_builtin_binding_layers()` under the `PerContext` map scoped to
+   `AppModeTag::Overlay`. It intentionally does NOT use the `BindingLayers::builtin`
+   (`HashMap<KeyEvent, Action>`) map: that map has no mode discriminant, so registering
+   `t` there would cause `t` to fire in Dashboard, Filtering, and all other modes —
+   directly violating EC-099 ("Dashboard `t` must be identity/unbound"). The per-context
+   placement achieves Overlay-only scope while being equally non-overridable (the entry
+   is hardcoded in the binary's `build_builtin_binding_layers()`, not loaded from any
+   user customisation file). The resolved `BindingSource` is `BindingSource::PerContext`,
+   not `BindingSource::Builtin`; INV-1's "non-overridable" intent is satisfied by the
+   registration site, not by the `BindingSource` enum variant.
 2. The `[t]` stub is present in Phase 1 SOLELY to reserve the keybinding. The Phase 2
    implementation (trace-to-source in the Static plane) will replace the stub behavior
    without needing to add a new binding — the binding already exists.
@@ -142,15 +164,15 @@ subsequent IPC events or by the user making a decision that transitions mode).
 | L2 Domain Invariants | DI-007 (monocle MUST NOT write to any file owned by a harness or factory workflow system — satisfied: the stub sends no IPC message and writes no files; it is a pure `App.status_message` mutation) |
 | Architecture Module | monocle-core (Action::PermissionTraceToSource variant — reserved); monocle-tui (key handler stub arm for PermissionTraceToSource sets `app.status_message`) per ARCH-INDEX SS-06 |
 | Architecture Source | SS-tui.md v1.8.2 §Permission Overlay §Trace-to-Source Stub; §Action Enum (PermissionTraceToSource variant with `// Phase 1: stub` comment); §Status Bar §Keybinding hint line (Overlay mode includes `t: trace`) |
-| Cross-Ref | BC-2.06.001 (pure transition function — PermissionTraceToSource identity arm), BC-2.06.003 (5-level binding precedence — Builtin level for `[t]`), BC-2.06.021 (`t: trace` in Overlay hint line) |
+| Cross-Ref | BC-2.06.001 (pure transition function — PermissionTraceToSource identity arm), BC-2.06.003 (5-level binding precedence — PerContext/Overlay level for `[t]`; non-overridable by virtue of hardcoded registration in `build_builtin_binding_layers()`), BC-2.06.021 (`t: trace` in Overlay hint line) |
 | Test File | `monocle-tui/tests/overlay_stub.rs` |
-| Test Name | `test_BC_2_06_015_trace_to_source_stub_sets_status_message` |
+| Test Name | `monocle-tui/tests/overlay_stub.rs`: `test_BC_2_06_015_handler_sets_status_message_exact_canonical_text` (PC-1), `test_BC_2_06_015_handler_sets_status_message_mode_stays_overlay` (PC-2), `test_BC_2_06_015_handler_no_ipc_sent_on_trace_key` (PC-3), `test_BC_2_06_015_ec099_t_in_dashboard_status_message_unchanged` (EC-099), `test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source` (INV-1), `test_BC_2_06_015_ec098_repeated_t_press_idempotent_status_message` (EC-098); `monocle-core/tests/tui_binding.rs`: `test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers` (PC-7 compile gate); `monocle-core/tests/tui_state_machine.rs`: `test_BC_2_06_015_transition_overlay_permission_trace_to_source_is_identity` (PC-2 state machine) |
 | Stories | S-027 |
 
 ## Related BCs
 
 - [BC-2.06.001] — depends on: `PermissionTraceToSource` is the identity arm in the `transition()` pure function; the variant must be covered in any exhaustive match
-- [BC-2.06.003] — depends on: `[t]` is registered at the `Builtin` level of the 5-level binding precedence system
+- [BC-2.06.003] — depends on: `[t]` is registered at the `PerContext` level (scoped to `AppModeTag::Overlay`) of the 5-level binding precedence system; the binding is non-user-overridable because it is hardcoded in `build_builtin_binding_layers()`, not because it uses the `Builtin` layer
 - [BC-2.06.021] — composes with: `t: trace` appears in the Overlay hint line as the primary discoverability surface for this stub
 
 ## Architecture Anchors
@@ -166,6 +188,62 @@ S-027 — Permission Overlay RENDERING + Diff Preview + Status Bar (absorbs `[t]
 ## VP Anchors
 
 - VP-TBD — Unit tests for stub `status_message` set and no-op transition behavior
+
+## §Trace v1.0.7
+
+**S-027-ADV-BINDING-LAYER-FIX MEDIUM — Binding-layer placement corrected; test names grounded; PC-1 color clarified** (2026-06-01T12:00:00Z):
+
+Three defects surfaced by adversarial review of the implemented `[t]` stub (S-027 TDD red gate passed):
+
+**I-1 (MEDIUM) — Binding-layer placement corrected (PC-2, INV-1, Description, Related BCs, Cross-Ref):**
+- Previous wording stated the `t` → `PermissionTraceToSource` binding is in the
+  `Builtin` binding table for `AppMode::Overlay`. This is architecturally unsatisfiable:
+  `BindingLayers::builtin` is `HashMap<KeyEvent, Action>` with no mode discriminant, so
+  inserting `t` there makes it fire in ALL modes — directly violating EC-099.
+- The implementation places the binding in `BindingLayers::per_context` keyed by
+  `(key_t, AppModeTag::Overlay)` inside `build_builtin_binding_layers()`. This is the
+  ONLY mechanism that achieves both Overlay-only scope AND non-user-overridability
+  (hardcoded in the binary function, not in any user customisation file).
+- PC-2 reworded: describes the actual `per_context` insertion with `AppModeTag::Overlay`,
+  explains why `builtin` cannot be used (mode-agnostic → would break EC-099), and
+  confirms non-overridable intent is satisfied by the registration site.
+- INV-1 reworded: replaces `"a Builtin binding (not PerContext, not UserCustomCommand)"`
+  with an accurate statement: non-user-overridable binding registered at `PerContext`
+  scope for `AppModeTag::Overlay`; explains the mode-agnostic `builtin` map constraint.
+  The resolved `BindingSource` is `BindingSource::PerContext`; the non-overridable intent
+  is satisfied by the hardcoded registration site.
+- Description, Related BCs (BC-2.06.003 bullet), Cross-Ref updated to use correct layer.
+
+**N-2 (ADVISORY) — Test names corrected to match overlay_stub.rs implementation:**
+- Previous `§Test Name`: `test_BC_2_06_015_trace_to_source_stub_sets_status_message`
+  (non-existent; leftover from v1.0.6 partial update).
+- Replaced with complete list of 8 real test functions grounded in
+  `crates/monocle-tui/tests/overlay_stub.rs` and `crates/monocle-core/tests/`:
+  `test_BC_2_06_015_handler_sets_status_message_exact_canonical_text` (PC-1),
+  `test_BC_2_06_015_handler_sets_status_message_mode_stays_overlay` (PC-2),
+  `test_BC_2_06_015_handler_no_ipc_sent_on_trace_key` (PC-3),
+  `test_BC_2_06_015_ec099_t_in_dashboard_status_message_unchanged` (EC-099),
+  `test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source` (INV-1),
+  `test_BC_2_06_015_ec098_repeated_t_press_idempotent_status_message` (EC-098),
+  `test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers`
+  (tui_binding.rs PC-7 compile gate),
+  `test_BC_2_06_015_transition_overlay_permission_trace_to_source_is_identity`
+  (tui_state_machine.rs PC-2 state machine).
+
+**N-3 (ADVISORY) — PC-1 color clarification:**
+- Previous PC-1 stated "default terminal color (no special styling required in Phase 1)".
+  The implementation renders `status_message` via the shared status bar field which always
+  applies `Color::Yellow` (confirmed in `ui/status_bar.rs` — same styling as
+  `"[disconnected] reconnecting..."` and offline messages).
+- PC-1 updated: "shared `status_message` rendering convention (`Color::Yellow`); no
+  bespoke/special styling beyond this shared convention." Distinguishing `[t]` stub
+  messages by source at the render layer would require a separate message-source
+  discriminant — out of scope for Phase 1.
+
+**NOTE for story-writer:** AC-013 in S-027 says "default terminal color" — story-writer
+should align AC-013 to the shared `Color::Yellow` status_message convention (N-3).
+
+- SE-16d monotonicity: v1.0.7 timestamp 2026-06-01T12:00:00Z > v1.0.6 timestamp 2026-06-01T00:00:00Z. PASS.
 
 ## §Trace v1.0.6
 
