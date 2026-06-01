@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.9"
+version: "1.10"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -22,12 +22,13 @@ estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.7"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.016.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.1.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "e4427fc"
+input-hash: "dae2a28"
 traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
 ---
 
@@ -107,12 +108,12 @@ that case, and `tool_input` contains the path field giving the user meaningful c
 appear in `monocle-core`. If a refactor is proposed that moves diff logic to
 `monocle-core`, it is a purity boundary violation and MUST be rejected.
 
-### AC-008 (traces to BC-2.06.019 PC-2 / BC-2.06.020 PC-1,3 / BC-2.06.021 PC-3 — two-row status bar always visible)
+### AC-008 (traces to BC-2.06.019 PC-2,PC-7 / BC-2.06.020 PC-1,3,5 / BC-2.06.021 PC-3 — two-row status bar, coexistence layout)
 The status bar is rendered as the last TWO rows of the terminal at all times (allocated
 via `Constraint::Length(2)` in the ratatui layout). It is NOT dimmed by the overlay
 background dimming. The two rows are:
 
-**Upper row (breadcrumb row) — BC-2.06.020:**
+**Upper row (breadcrumb row) — BC-2.06.020 / BC-2.06.019 PC-2,PC-7:**
 A breadcrumb string derived from the current `AppMode`, left-aligned. Derivation table:
 - `Dashboard { focused: Sessions }` → `Dashboard > Sessions`
 - `Dashboard { focused: EventRibbon }` → `Dashboard > Events`
@@ -124,21 +125,40 @@ A breadcrumb string derived from the current `AppMode`, left-aligned. Derivation
 - `Filtering { panel: EventRibbon, .. }` → `Dashboard > Events > Filter`
 
 When `drop_counter > 0` (BC-2.06.019 PC-2), the text `drops: N` is rendered right-aligned
-on the breadcrumb row in `Style::default().fg(Color::Yellow)`. When `drop_counter == 0`,
+on the upper (breadcrumb) row in `Style::default().fg(Color::Yellow)`. When `drop_counter == 0`,
 no drop counter text is shown (no `drops: 0` noise). The drop counter reflects the daemon's
 cumulative value from the last `ServerToClient::DropCounterUpdate` verbatim.
 
-**Lower row (hint line) — BC-2.06.021:**
-A context-sensitive one-line keybinding summary derived from `AppMode`. Canonical hint
-strings (from the `Builtin` binding table):
+**Coexistence guarantee — BC-2.06.019 PC-7 (MANDATORY):**
+When `App.status_message` is `Some(msg)` AND `drop_counter > 0`, BOTH pieces of information
+MUST be visible simultaneously:
+- `drops: N` (yellow, right-aligned) remains on the **upper (breadcrumb) row** — it is
+  NEVER displaced, hidden, or suppressed by an active `status_message`.
+- `status_message` (yellow) renders on the **lower (hint) row**, temporarily superseding
+  the keybinding hint line. When `status_message` is `None`, the lower row renders the
+  normal keybinding hint per BC-2.06.021.
+
+The mutual-exclusion pattern — `if let Some(msg) = status_message { render msg } else { render drops }` — is
+**FORBIDDEN**. This applies to ALL sources of `status_message`: daemon-disconnect indicators
+(BC-2.06.016 PC-4), the `[t]` trace-to-source stub (BC-2.06.015 PC-7 / AC-013), and any
+future transient notification. When `drop_counter == 0`, `status_message` still renders
+on the lower row (and lower row still reverts to the hint line when `status_message` becomes
+`None` again).
+
+**Lower row (hint line or transient message) — BC-2.06.021 / BC-2.06.019 PC-7:**
+When `status_message` is `None`: a context-sensitive one-line keybinding summary derived
+from `AppMode`. Canonical hint strings (from the `Builtin` binding table):
 - `Dashboard` (any focus): `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit`
 - `Overlay`: `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
 - `Filtering`: `(type to filter)  Esc: cancel`
 - `Fullscreen`: `Esc: back  /: filter  q: quit`
 
-The hint line is a pure function of `AppMode` and reflects only `Builtin` bindings. All
-hint strings fit within 80 columns (longest: Overlay hint at 72 display columns). The
-hint line renders on every `draw()` tick regardless of mode.
+When `status_message` is `Some(msg)`: the lower row renders `msg` in `Color::Yellow`,
+superseding the keybinding hint. The hint line is restored on the next tick after
+`status_message` reverts to `None`.
+
+The hint line (or transient message) renders on every `draw()` tick. Hint strings fit
+within 80 columns (longest: Overlay hint at 72 display columns).
 
 ### AC-009 (traces to BC-2.06.020 postcondition PC-1 — overlay timer display)
 For each active `PromptModal`, the time elapsed since `received_at` is displayed in the
@@ -178,16 +198,22 @@ The modal footer lists decision keys rendered inside the overlay widget itself; 
 status bar hint line is always visible below the main layout and provides keybinding
 discovery independent of whether the overlay is active.
 
-### AC-013 (traces to BC-2.06.015 PC-1/PC-2/PC-3/PC-7 — `[t]` trace-to-source stub)
+### AC-013 (traces to BC-2.06.015 PC-1/PC-2/PC-3/PC-7 / BC-2.06.019 PC-7 — `[t]` trace-to-source stub)
 When `[t]` is pressed in `AppMode::Overlay`, the key handler sets:
 ```
 app.status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)".to_string());
 ```
-The status bar renders this message on the next draw tick using the shared
-`App.status_message` rendering convention (`Color::Yellow` — the same styling used by
-transport notifications such as `"[disconnected] reconnecting..."` and offline status
-messages; no bespoke styling). The press is gated — the message appears only after `[t]`
-is pressed, not on every render of the overlay (BC-2.06.015 PC-1).
+The status bar renders this message on the next draw tick on the **lower (hint) row** in
+`Color::Yellow`, temporarily superseding the keybinding hint line (per BC-2.06.019 PC-7
+coexistence rule and AC-008). This is the same shared `App.status_message` rendering
+convention used by transport notifications such as `"[disconnected] reconnecting..."` and
+offline status messages — no bespoke styling. The press is gated — the message appears
+only after `[t]` is pressed, not on every render of the overlay (BC-2.06.015 PC-1).
+
+**Coexistence with `drops: N` (BC-2.06.019 PC-7 / EC-130):** When `[t]` is pressed and
+`drop_counter > 0`, the `[t]` placeholder renders on the lower row while `drops: N`
+continues to render right-aligned on the upper (breadcrumb) row unchanged. Pressing `[t]`
+MUST NOT hide or displace `drops: N`. The mutual-exclusion pattern is forbidden per AC-008.
 
 The `AppMode` transition is identity: `transition(Overlay { prior }, PermissionTraceToSource)`
 returns `Overlay { prior }` unchanged and `App.overlay_stack` is not modified (BC-2.06.015
@@ -308,6 +334,28 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.10
+
+**ADV Pass-14 MAJOR — AC-008/AC-013 aligned to BC-2.06.019 v1.1.0 PC-7 coexistence layout** (2026-06-01):
+- AC-008: expanded to describe the canonical coexistence layout — `drops: N` (yellow,
+  right-aligned) is ALWAYS on the upper (breadcrumb) row when `drop_counter > 0`, never
+  suppressed by any `status_message`; `status_message` renders on the lower (hint) row,
+  temporarily superseding the keybinding hint. Mutual-exclusion pattern explicitly
+  forbidden. Lower row rendering rules unified: `status_message` (when `Some`) supersedes
+  hint; reverts to hint when `None`. References BC-2.06.019 PC-7, BC-2.06.016 PC-4,
+  BC-2.06.015 PC-7, and BC-2.06.020 PC-5. AC trace updated:
+  `BC-2.06.019 PC-2 / BC-2.06.020 PC-1,3 / BC-2.06.021 PC-3` →
+  `BC-2.06.019 PC-2,PC-7 / BC-2.06.020 PC-1,3,5 / BC-2.06.021 PC-3`.
+- AC-013: added lower-row placement — `[t]` placeholder renders on the lower (hint) row
+  in `Color::Yellow`; added coexistence guarantee — pressing `[t]` MUST NOT hide `drops: N`
+  on the upper row; mutual-exclusion pattern forbidden. AC trace updated to include
+  `BC-2.06.019 PC-7`.
+- Input pins updated: BC-2.06.019 v1.0.5 → v1.1.0; BC-2.06.020 v1.0.5 → v1.1.0;
+  BC-2.06.016 v1.1.0 added (new input — coexistence rule references it via PC-4).
+- input-hash refreshed: e4427fc → dae2a28 (BC-2.06.016.md added as new input;
+  BC-2.06.019.md and BC-2.06.020.md content changed at v1.1.0; MD5 of 8 concatenated input files).
+- SE-16d monotonicity: v1.10 timestamp 2026-06-01 >= v1.9 timestamp 2026-06-01. PASS.
 
 ## §Trace v1.9
 
