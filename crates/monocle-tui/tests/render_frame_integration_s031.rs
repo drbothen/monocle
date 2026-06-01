@@ -514,12 +514,23 @@ fn test_BC_2_07_005_render_frame_picker_modal_shows_profile_list() {
 
 /// AC-002 / BC-2.07.005 PC-3 (RED):
 /// When picker is open with empty profiles, the no-profiles message must appear in the
-/// rendered buffer.
+/// rendered buffer with the EXACT canonical literal from BC-2.07.005 PC-3.
 ///
-/// FAILS: same root cause — render_frame never calls render_profile_picker.
+/// Canonical literal (BC-2.07.005 PC-3): "No profiles configured — add profiles to config.json"
+/// (em-dash between "configured" and "add").
+///
+/// FAILS (Pass-6 ADV): production `NO_PROFILES_MSG` uses a period and different word order
+/// ("No profiles configured. Edit config.json to add profiles.") — diverges from the BC spec
+/// literal. Also fails if render_frame never calls render_profile_picker.
 #[test]
 fn test_BC_2_07_005_render_frame_picker_modal_shows_no_profiles_message() {
     use monocle_tui::ui::profile_picker_widget::NO_PROFILES_MSG;
+
+    // The exact canonical literal mandated by BC-2.07.005 PC-3 / AC-002.
+    // Em-dash (U+2014): "No profiles configured — add profiles to config.json"
+    // Must NOT be weakened to a substring — must catch string drift.
+    const SPEC_LITERAL: &str =
+        "No profiles configured \u{2014} add profiles to config.json";
 
     let config = MonocleConfig::default();
     let mut app = App::new(config);
@@ -535,13 +546,19 @@ fn test_BC_2_07_005_render_frame_picker_modal_shows_no_profiles_message() {
 
     let all_text = buffer_text(&terminal);
 
-    // The NO_PROFILES_MSG string must appear in the rendered modal.
-    // We check a distinctive substring that will not appear elsewhere.
+    // Assert the EXACT canonical spec literal appears in the rendered buffer.
+    // A substring-only check (e.g. "No profiles configured") is insufficient:
+    // it cannot detect drift in the em-dash, word order, or trailing text.
+    // This assertion intentionally FAILS until NO_PROFILES_MSG is aligned to
+    // the BC-2.07.005 PC-3 canonical literal.
     assert!(
-        all_text.contains("No profiles configured"),
-        "BC-2.07.005 PC-3 / AC-002: picker modal must render '{}' when harness_profiles is empty; \
-         FAILS because render_frame never calls render_profile_picker. NO_PROFILES_MSG = {:?}",
-        NO_PROFILES_MSG,
+        all_text.contains(SPEC_LITERAL),
+        "BC-2.07.005 PC-3 / AC-002: picker modal must render the EXACT spec literal \
+         {:?} when harness_profiles is empty; \
+         actual NO_PROFILES_MSG = {:?}; \
+         rendered buffer did not contain the exact em-dash form. \
+         Implementer: align NO_PROFILES_MSG to the BC-2.07.005 PC-3 canonical literal.",
+        SPEC_LITERAL,
         NO_PROFILES_MSG
     );
 }
