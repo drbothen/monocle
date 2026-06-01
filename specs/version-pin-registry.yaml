@@ -569,9 +569,9 @@ BC-2.06.017:
 
 BC-2.06.018:
   path: specs/behavioral-contracts/ss-06/BC-2.06.018.md
-  current_version: "1.0.5"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "pending-S-028-ADR-timestamp_micros"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.019:
   path: specs/behavioral-contracts/ss-06/BC-2.06.019.md
