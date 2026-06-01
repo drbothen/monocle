@@ -1849,28 +1849,70 @@ pub fn dispatch_key_event(
         }
 
         Some((Action::ScrollDown, _)) => {
-            // BC-2.06.018 AC-010 §2: Action::ScrollDown calls scroll_ribbon_down
-            // unconditionally (only reachable in EventRibbon context by design —
-            // per-context or explicit bindings produce this action only for ribbon focus).
-            // This arm ensures ScrollDown is NOT a dead variant that falls through to the
-            // transition() catch-all (which would be a no-op via EC-061 identity).
-            crate::ui::event_ribbon::scroll_ribbon_down(
-                &mut app.event_ribbon_state,
-                &app.event_ribbon_events,
-            );
+            // BC-2.06.018 AC-010 §2 (F-1 FIX): Action::ScrollDown is now the per-context
+            // binding for j/↓ in ALL Dashboard focuses (AppModeTag::Dashboard cannot
+            // discriminate by sub-focus). Dispatch checks the live focus:
+            //   - Sessions focus → sessions cursor down (same semantics as old SelectNext arm).
+            //   - EventRibbon focus (or any other) → scroll ribbon toward older events.
+            match &app.mode {
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions,
+                } => {
+                    let len = app.sessions.len();
+                    if len > 0 {
+                        let prev_idx = sessions_state.list_state.selected();
+                        let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
+                        sessions_state.list_state.select(Some(next));
+                        // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                        if prev_idx != Some(next) {
+                            let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
+                            crate::ui::event_ribbon::reset_on_session_change(
+                                &mut app.event_ribbon_state,
+                                new_sid.as_deref().unwrap_or(""),
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    // EventRibbon focus or non-Dashboard: scroll ribbon toward older events.
+                    crate::ui::event_ribbon::scroll_ribbon_down(
+                        &mut app.event_ribbon_state,
+                        &app.event_ribbon_events,
+                    );
+                }
+            }
             KeyOutcome::Continue
         }
 
         Some((Action::ScrollUp, _)) => {
-            // BC-2.06.018 AC-010 §2: Action::ScrollUp calls scroll_ribbon_up
-            // unconditionally (only reachable in EventRibbon context by design —
-            // per-context or explicit bindings produce this action only for ribbon focus).
-            // This arm ensures ScrollUp is NOT a dead variant that falls through to the
-            // transition() catch-all (which would be a no-op via EC-061 identity).
-            crate::ui::event_ribbon::scroll_ribbon_up(
-                &mut app.event_ribbon_state,
-                &app.event_ribbon_events,
-            );
+            // BC-2.06.018 AC-010 §2 (F-1 FIX): Action::ScrollUp is now the per-context
+            // binding for k/↑ in ALL Dashboard focuses. Dispatch checks the live focus:
+            //   - Sessions focus → sessions cursor up (same semantics as old SelectPrev arm).
+            //   - EventRibbon focus (or any other) → scroll ribbon toward newer events.
+            match &app.mode {
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions,
+                } if !app.sessions.is_empty() => {
+                    let prev_idx = sessions_state.list_state.selected();
+                    let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
+                    sessions_state.list_state.select(Some(prev));
+                    // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                    if prev_idx != Some(prev) {
+                        let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
+                        crate::ui::event_ribbon::reset_on_session_change(
+                            &mut app.event_ribbon_state,
+                            new_sid.as_deref().unwrap_or(""),
+                        );
+                    }
+                }
+                _ => {
+                    // EventRibbon focus, empty sessions, or non-Dashboard: scroll ribbon toward newer events.
+                    crate::ui::event_ribbon::scroll_ribbon_up(
+                        &mut app.event_ribbon_state,
+                        &app.event_ribbon_events,
+                    );
+                }
+            }
             KeyOutcome::Continue
         }
 
@@ -2195,8 +2237,11 @@ pub fn render_frame(
 ///   filtering — not Esc). Not used as a quit path.
 /// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
 /// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
-/// - j / ↓ → `Action::SelectNext` (move selection down)
-/// - k / ↑ → `Action::SelectPrev` (move selection up)
+/// - j / ↓ → `Action::SelectNext` (builtin fallback); overridden by per-context
+///   `(j, Dashboard)` → `Action::ScrollDown` so that Dashboard-focus dispatch
+///   can handle Sessions-cursor vs ribbon-scroll in a single arm (BC-2.06.018 AC-010 §2).
+/// - k / ↑ → `Action::SelectPrev` (builtin fallback); similarly overridden by
+///   `(k, Dashboard)` → `Action::ScrollUp`.
 ///
 /// Future waves add user-custom and per-context layers; for now only builtin,
 /// global, and per-context layers are populated.
@@ -2372,6 +2417,61 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Filtering,
         ),
         Action::CancelFilter,
+    );
+
+    // BC-2.06.018 AC-010 §2 (F-1 FIX): j/↓ → Action::ScrollDown and k/↑ → Action::ScrollUp
+    // as per-context bindings for AppModeTag::Dashboard.
+    //
+    // These override the builtin SelectNext/SelectPrev in Dashboard mode. The dispatch
+    // arms for ScrollDown/ScrollUp check the focus (Sessions vs EventRibbon) and route
+    // accordingly — Sessions focus does cursor movement, EventRibbon focus scrolls the ribbon.
+    //
+    // Because AppModeTag cannot discriminate focus sub-state (Sessions vs EventRibbon),
+    // the focus discrimination lives in dispatch_key_event's ScrollDown/ScrollUp arms,
+    // not in the binding layer. resolve_binding returns ScrollDown/ScrollUp for ALL
+    // Dashboard focus sub-states; dispatch handles the split.
+    //
+    // The SelectNext/SelectPrev builtin bindings remain for non-Dashboard contexts
+    // (Fullscreen, etc.) where the session cursor semantics still apply.
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollDown,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollDown,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollUp,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollUp,
     );
 
     layers
