@@ -529,8 +529,7 @@ fn test_BC_2_07_005_render_frame_picker_modal_shows_no_profiles_message() {
     // The exact canonical literal mandated by BC-2.07.005 PC-3 / AC-002.
     // Em-dash (U+2014): "No profiles configured — add profiles to config.json"
     // Must NOT be weakened to a substring — must catch string drift.
-    const SPEC_LITERAL: &str =
-        "No profiles configured \u{2014} add profiles to config.json";
+    const SPEC_LITERAL: &str = "No profiles configured \u{2014} add profiles to config.json";
 
     let config = MonocleConfig::default();
     let mut app = App::new(config);
