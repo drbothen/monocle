@@ -20,7 +20,7 @@ use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
 use monocle_ipc::types::{
-    ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient,
+    ClientToServer, HookEventRecord, HookType, PermissionPromptPayload, ServerToClient,
 };
 // PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
 // decision handler implementations. The re-export here ensures the type is visible at
@@ -144,6 +144,35 @@ pub struct App {
     /// (that counter tracks IPC channel packet drops, not ring evictions).
     pub event_ring: VecDeque<HookEventRecord>,
 
+    // -----------------------------------------------------------------------
+    // S-028 fields: sessions filter (BC-2.06.006) + event ribbon (BC-2.06.018)
+    // -----------------------------------------------------------------------
+
+    /// Shared nucleo fuzzy matcher for the sessions filter panel (BC-2.06.006 INV-1).
+    ///
+    /// Instantiated once at startup in `App::new()` and reused across all filter
+    /// keystrokes. MUST NOT be recreated per keystroke — recreating resets internal
+    /// caches and degrades performance at the P0 60fps target (BC-2.06.006 AC-005,
+    /// INV-1). The matcher is held here (not in `AppMode::Filtering`) to satisfy the
+    /// "shared Matcher" architecture constraint in S-028 §Architecture Compliance Rules.
+    pub matcher: nucleo::Matcher,
+
+    /// All hook events received from the daemon, across all sessions (BC-2.06.018).
+    ///
+    /// Populated from two sources (BC-2.05.002 + BC-2.05.004):
+    /// 1. `InitialState::ring_tail` (on connect) — backfills historical events via
+    ///    `on_initial_state_event_ribbon()`.
+    /// 2. `ServerToClient::HookEventReceived` messages (streaming) — appended via
+    ///    `on_hook_event_received()`.
+    ///
+    /// Contains events for ALL sessions. The Event Ribbon panel filters client-side
+    /// by the selected `session_id` at render time (BC-2.05.004 INV-3: no IPC-layer
+    /// filtering; BC-2.06.018 INV-1: no new IPC request on session-change).
+    ///
+    /// The `VecDeque` is bounded to `panel_height` entries (determined at render time)
+    /// per BC-2.06.018 PC-3. Oldest entries are popped from the back when full.
+    pub event_ribbon_events: VecDeque<crate::ui::event_ribbon::HookEventRow>,
+
     /// Sender half of the IPC outbound channel for dispatching `ClientToServer`
     /// messages to the daemon (S-026, BC-2.06.011/012/013).
     ///
@@ -162,6 +191,8 @@ impl App {
     /// Construct a default `App` from the provided config.
     ///
     /// Starts in `Dashboard { focused: Sessions }` with empty collections.
+    /// The `nucleo::Matcher` is initialized once here (BC-2.06.006 AC-005 / INV-1:
+    /// shared Matcher — NOT recreated per keystroke).
     pub fn new(config: MonocleConfig) -> Self {
         Self {
             mode: AppMode::Dashboard {
@@ -173,6 +204,15 @@ impl App {
             overlay_stack: VecDeque::new(),
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
+            // S-028: nucleo Matcher initialized once at startup (BC-2.06.006 INV-1).
+            // nucleo::Config::DEFAULT is the standard configuration for case-insensitive
+            // fuzzy matching (SS-deps-pin-manifest.md §nucleo 0.5 / ADR-0002).
+            matcher: nucleo::Matcher::new(nucleo::Config::DEFAULT),
+            // S-028: event ribbon event log for all sessions (BC-2.06.018).
+            // Initially empty; populated by on_initial_state (ring_tail) and
+            // on_hook_event_received (streaming). No pre-allocated capacity because
+            // the effective cap is dynamic (panel_height, determined at render time).
+            event_ribbon_events: VecDeque::new(),
             ipc_tx: None,
         }
     }
@@ -457,6 +497,46 @@ pub fn on_transport_event(app: &mut App, event: TransportEvent) {
             tracing::debug!(event = ?event, "on_transport_event: unhandled variant (future extension)");
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// S-028: Event ribbon IPC handlers (BC-2.05.002 + BC-2.05.004)
+// ---------------------------------------------------------------------------
+
+/// Handle `ServerToClient::HookEventReceived` — append new event to the ribbon log.
+///
+/// Called from `handle_server_message` for every `HookEventReceived` IPC message
+/// (BC-2.05.004). Converts the message fields into a `HookEventRow` and appends it
+/// to `app.event_ribbon_events` (the rolling log for all sessions).
+///
+/// # Rolling window (BC-2.06.018 PC-3)
+///
+/// Events are prepended to the front of `app.event_ribbon_events` (newest at front,
+/// oldest at back — BC-2.06.018 PC-2 newest-first ordering). When the `VecDeque` is
+/// at capacity (`panel_height` bound, determined at render time), the oldest event
+/// (back) is popped before prepending. The `panel_height` cap is enforced here using
+/// the compile-time fallback `EVENT_RING_CAPACITY` until the render-time cap is
+/// applied at `push_event_row` call sites.
+///
+/// # Client-side filtering (BC-2.05.004 INV-3)
+///
+/// ALL events (from all sessions) are appended unconditionally. Session filtering
+/// for display is deferred to the Event Ribbon render path (EventRibbon::render
+/// filters by `selected_session_id`). No IPC-layer filtering is performed.
+///
+/// Extracted as a `pub` free function for test-driven dispatch (same testability
+/// pattern as `on_permission_prompt_queued` — F-S026-ADV2-HIGH-001).
+pub fn on_hook_event_received(
+    app: &mut App,
+    hook_type: HookType,
+    session_id: String,
+    _payload_excerpt: String,
+    latency_ms: u64,
+) {
+    todo!(
+        "S-028 implement: call hook_event_row_from_received(), prepend to \
+         app.event_ribbon_events with panel_height cap (BC-2.05.004 + BC-2.06.018 PC-3)"
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1421,9 +1501,16 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         ServerToClient::PermissionPromptResolved { prompt_id } => {
             on_permission_prompt_resolved(app, prompt_id);
         }
-        ServerToClient::HookEventReceived { .. } => {
-            // Hook events update the event ribbon — handled in S-027.
-            tracing::trace!("HookEventReceived: event ribbon update deferred to S-027");
+        ServerToClient::HookEventReceived {
+            hook_type,
+            session_id,
+            payload_excerpt,
+            latency_ms,
+        } => {
+            // S-028 (BC-2.05.004): delegate to on_hook_event_received for event ribbon
+            // population. The handler appends to app.event_ribbon_events (all sessions;
+            // client-side session filter applied at render time per BC-2.05.004 INV-3).
+            on_hook_event_received(app, hook_type, session_id, payload_excerpt, latency_ms);
         }
     }
     Ok(())

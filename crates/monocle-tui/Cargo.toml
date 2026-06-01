@@ -44,6 +44,12 @@ directories = { workspace = true }
 # serde_json for stub types
 serde_json = { workspace = true }
 
+# nucleo: fuzzy matcher for the sessions filter panel (BC-2.06.006, S-028).
+# Caret pin: 0.5. Architecture compliance: ONLY in monocle-tui — NEVER monocle-core
+# (purity boundary per S-028 §Forbidden Dependencies + SS-tui.md §Dependency Graph).
+# ADR-0002 (nucleo dormancy risk) accepted with explicit re-eval trigger at TD-001.
+nucleo = "0.5"
+
 # similar: unified diff for ToolPayload::Edit (AC-005, BC-2.06.015).
 # ONLY in monocle-tui — NEVER monocle-core (purity boundary, AC-007 / BC-2.06.015 INV-1).
 similar = "3"

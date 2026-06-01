@@ -28,6 +28,15 @@
 //!
 //! The status bar at the bottom of the panel shows `"[dropped: N]"` in yellow
 //! when `app.drop_counter > 0`; nothing when it is zero.
+//!
+//! # Filter mode (BC-2.06.006, S-028)
+//!
+//! When `app.mode == AppMode::Filtering { panel: PanelId::Sessions, .. }`:
+//! - A search input box is rendered at the top of the panel (AC-001).
+//! - Sessions are scored against `query` using `app.matcher` (nucleo, AC-002).
+//! - Non-matching sessions are hidden; score-0 sessions removed (AC-002).
+//! - Empty `query` shows all sessions (AC-004).
+//! - Zero matches renders "No sessions match filter" (BC-2.06.006 PC-8).
 
 use chrono::{DateTime, Utc};
 use monocle_core::engine::{EnrichedSession, SessionStatus};
@@ -340,6 +349,63 @@ mod format_session_row_tests {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Filter-mode empty state (BC-2.06.006 PC-8)
+// ---------------------------------------------------------------------------
+
+/// Filter-mode zero-match empty state message (BC-2.06.006 PC-8, S-028 AC-002).
+///
+/// Rendered when `AppMode::Filtering { panel: Sessions, query, .. }` is active
+/// AND the nucleo matcher returns zero matches for `query`. Distinct from the
+/// base empty state (`SESSIONS_EMPTY_LINE_1`) which renders when `app.sessions`
+/// is empty entirely (no sessions running).
+///
+/// Single source of truth shared by production render and integration tests.
+pub const SESSIONS_FILTER_NO_MATCH: &str = "No sessions match filter";
+
+// ---------------------------------------------------------------------------
+// Filter input rendering (BC-2.06.006 PC-1..PC-4 — S-028 stub)
+// ---------------------------------------------------------------------------
+
+/// Render the sessions panel in filter mode (BC-2.06.006, S-028).
+///
+/// Called from `SessionsPanel::render` when `app.mode` is
+/// `AppMode::Filtering { panel: PanelId::Sessions, query, .. }`.
+///
+/// # Contract
+///
+/// - Renders a search input box at the top of `area` showing the current `query`
+///   with a cursor (AC-001, BC-2.06.006 PC-1).
+/// - Scores all `app.sessions` against `query` using `app.matcher` (nucleo);
+///   sessions with score > 0 are displayed sorted by descending score (AC-002,
+///   BC-2.06.006 PC-2).
+/// - When `query` is empty, all sessions are shown in insertion order (AC-004,
+///   BC-2.06.006 PC-2 empty-query case).
+/// - When no sessions match, renders `SESSIONS_FILTER_NO_MATCH` (BC-2.06.006 PC-8).
+/// - Matched character positions are rendered with a highlight style via
+///   `ratatui::text::Span::styled` (BC-2.06.006 PC-4).
+///
+/// # Implementation note (stub)
+///
+/// This function body is `todo!()` — the test-writer compiles tests against the
+/// correct signature. The implementer fills in the logic (S-028 stub discipline).
+pub fn render_sessions_filter(
+    app: &crate::app::App,
+    query: &str,
+    area: ratatui::layout::Rect,
+    buf: &mut ratatui::buffer::Buffer,
+    state: &mut SessionsPanelState,
+) {
+    todo!(
+        "S-028 implement: render filter input box, nucleo-scored session list, \
+         match highlights, SESSIONS_FILTER_NO_MATCH empty state (BC-2.06.006 PC-1..PC-8)"
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Sessions panel render state
+// ---------------------------------------------------------------------------
 
 /// Render state for `SessionsPanel` — tracks the currently selected row index.
 ///
