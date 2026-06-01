@@ -45,7 +45,7 @@ fn test_BC_2_05_003_server_to_client_session_list_update_serde_roundtrip() {
 /// `ServerToClient::InitialState` survives a JSON roundtrip with all fields intact.
 ///
 /// Verifies sessions count, ring_tail count, overlay_stack count, and drop_counter value.
-/// ring_tail uses `HookEventRecord` per BC-2.05.002 PC-2 v1.0.4 (architect decision
+/// ring_tail uses `HookEventRecord` per BC-2.05.002 PC-2 (architect decision
 /// F-S022-ADV2-HIGH-002: ring_tail uses Vec<HookEventRecord>, the native ring storage type).
 #[test]
 fn test_server_to_client_initial_state_serde_roundtrip() {
@@ -63,7 +63,7 @@ fn test_server_to_client_initial_state_serde_roundtrip() {
     );
 
     // ring_tail now uses HookEventRecord (the native RAM ring storage type) per
-    // architect decision F-S022-ADV2-HIGH-002 and BC-2.05.002 PC-2 v1.0.4.
+    // architect decision F-S022-ADV2-HIGH-002 and BC-2.05.002 PC-2.
     // HookEventRecord::new() uses the public constructor (ADR-0006).
     let record = HookEventRecord::new(
         "session-init-001".to_string(),
@@ -164,7 +164,7 @@ fn test_BC_2_05_004_server_to_client_hook_event_received_serde_roundtrip() {
             assert_eq!(session_id, "test-session-123");
             assert_eq!(payload_excerpt, r#"{"tool":"Bash"}"#);
             assert_eq!(latency_ms, 42);
-            // BC-2.05.004 PC-2 / SS-ipc v1.10.0: timestamp_micros survives JSON roundtrip.
+            // BC-2.05.004 PC-2: timestamp_micros survives JSON roundtrip.
             assert_eq!(
                 timestamp_micros, 1_705_311_000_000_000i64,
                 "timestamp_micros must survive serde roundtrip (BC-2.05.004 PC-2)"
