@@ -2234,3 +2234,23 @@ This test can be in a dedicated test file (ipc_outbound_writer.rs pattern) but m
 **Operationally:** When dispatching the wave-gate adversary (Gate 3), the prompt must include: "Review the combined diff of all N stories delivered in this wave against develop. Your task is to find cross-story integration defects that per-story isolation tests cannot structurally catch. Pay particular attention to: (1) state machine composition — does story A's reconnect/lifecycle model compose correctly with story B's run loop? (2) shared resource contention — do both stories' IPC paths work correctly when composed? (3) deferred findings from any story with target:wave-gate anchor."
 
 **Remediation:** PR #31. The three-perimeter model (BC-5.39.002) is empirically validated: per-story adversarial convergence at S-026 was genuine (no false green), and the wave-gate adversary correctly identified the compositional defect that per-story isolation could not.
+
+---
+
+### L-W6-GATE-003: STATE running-tally numbers (points-done, story-counts) MUST be re-summed from sprint-state.yaml at every phase/wave transition — hand-increment drift produced both a +8 pts error and a premature "Phase 3 COMPLETE" that reached a human-facing report before being caught [process-gap, codified]
+
+**Date:** 2026-05-31
+**Severity:** process-gap (STATE correctness failure — misinformed human)
+**Origin:** D-225 STATE correction burst. Two errors co-present: (1) sprint-state summary.points_complete read 177 but authoritative per-story sum = 169 (drift of +8 over time from hand-incrementing the summary rather than re-summing). (2) STATE frontmatter declared `phase: phase-3-COMPLETE` and the §Trace + resume protocol declared "Phase 3 TDD Implementation COMPLETE" when Wave 7 (S-027/028/029/031 = 23 pts) had not been delivered. Both errors were caught by the human at checkpoint review and required a correction burst.
+
+**Root cause:** The state-manager (and orchestrator-driven state updates) maintained STATE.md running totals by incrementing the prior number at each story delivery, rather than computing the sum from source. This is the classic tally-drift anti-pattern: each individual increment is correct, but the accumulated total drifts if any increment is skipped, double-counted, or off by even 1. The "Phase 3 COMPLETE" error co-occurred because the sprint-state summary.points_complete value (177) was used as the signal for "all stories done" without cross-checking against the not_started count (4 Wave 7 stories still not_started in sprint-state.yaml).
+
+**Why this is dangerous:** STATE.md is the single source of truth for the pipeline's phase. A premature "COMPLETE" declaration causes the next session to dispatch Phase 4 when Wave 7 has not been delivered. The human caught this, but a fully autonomous session would not.
+
+**Guard rule:** At every phase transition or wave gate, the state-manager MUST:
+1. Re-read sprint-state.yaml and sum `points` for all stories with `status: done` directly from the story list (never from summary.points_complete).
+2. Cross-check the not_started list — if any wave-N stories remain not_started, Phase 3 is NOT complete regardless of total points.
+3. Update sprint-state summary.points_complete to match the re-summed value before recording the gate verdict.
+4. Only advance `phase:` to the next phase after BOTH checks pass: (a) per-story sum matches expected, (b) not_started count for current phase's waves = 0 (or only BLOCKED stories with non-blocking status).
+
+**Process fix:** Added POINTS-TALLY-RECONCILE to durable_task_register (resolved D-225) as a guard. state-manager must apply the re-sum discipline on every future wave transition (D-226, D-227, D-228 etc). The summary section in sprint-state.yaml is a CACHE — never trust it without re-verification from the story list.

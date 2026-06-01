@@ -432,7 +432,7 @@ summary:
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 177
+  points_complete: 169
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -483,8 +483,9 @@ summary:
   # v1.34 updates (2026-05-31):
   # - S-026 status normalized: completed → done (27 prior done stories use "done"; "completed" was inconsistent)
   # - Wave-6 gate PASSED (D-224): develop @ 2a51a91; 5/6 gates green; PR #31 CRITICAL fix merged
-  # - Phase 3 TDD Implementation COMPLETE: all 6 waves done (28/33 stories, 177/195 pts)
-  # - Next: Phase 4 Holdout Evaluation — human authorization required
+  # - Phase 3 IN PROGRESS: Wave 6 of 7 done. Wave 7 (S-027/028/029/031 = 23 pts) is the FINAL wave.
+  # - points_complete corrected 177→169 per authoritative per-story sum (D-225; summary had hand-increment drift)
+  # - Next: Human authorization to begin Wave 7 delivery starting with S-027
   # v1.33 updates (2026-05-31):
   # - S-026 flipped not_started → completed (PR #30 squash-merged develop @ 9fb0d70; BC-2.06.008/009/011..014/016/023/024 + BC-2.05.002 Inv-4 satisfied; 16 ACs; 9 adversarial passes, 3 consecutive CLEAN Passes 7-8-9; Pass-5 CRITICAL outbound IPC gap caught + fixed; CI 10/10 green; demo evidence in docs/demo-evidence/S-026/; D-223)
   # - done: 27 → 28; not_started: 5 → 4; points_complete: 164 → 177
