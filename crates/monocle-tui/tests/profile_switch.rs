@@ -14,7 +14,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use monocle_config::{HarnessProfile, MonocleConfig};
-use monocle_tui::app::{commit_profile_selection, open_profile_picker, App};
+use monocle_tui::app::{commit_profile_selection, open_profile_picker, open_profile_picker_with_dir, App};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -209,11 +209,16 @@ fn test_BC_2_07_005_invariant_atomic_write_via_write_config() {
 // ---------------------------------------------------------------------------
 
 /// AC-002 (BC-2.07.004 PC-2 / BC-2.07.005 PC-4): the currently active profile
-/// (the one stored in project_profiles for the current dir) is marked with `"* "`
-/// when the picker is opened again after a switch.
+/// (the one stored in project_profiles for the directory) is pre-selected when the
+/// picker opens for that directory.
 ///
-/// After commit_profile_selection stores "cc" in project_profiles[current_dir],
-/// re-opening the picker should highlight "cc" as the default selection.
+/// After commit_profile_selection stores "bbb" in project_profiles["/home/user/project"],
+/// re-opening the picker for "/home/user/project" should pre-select "bbb" (index 1).
+///
+/// Uses `open_profile_picker_with_dir` explicitly — the test scenario is per-directory
+/// pre-selection, not the production Ctrl-P path. The production path (`open_profile_picker`)
+/// uses the process CWD which is not "/home/user/project" in a test environment; using it
+/// here would rely on the removed Step-2 first-match fallback (BLOCKER-1 defect).
 #[test]
 fn test_BC_2_07_005_active_profile_highlighted_as_default_selection() {
     let mut config = make_config_with_profiles(&["aaa", "bbb", "ccc"]);
@@ -222,14 +227,16 @@ fn test_BC_2_07_005_active_profile_highlighted_as_default_selection() {
         .insert("/home/user/project".to_string(), "bbb".to_string());
     let mut app = App::new(config);
 
-    open_profile_picker(&mut app);
+    // Open for the directory that has "bbb" as its sticky profile.
+    open_profile_picker_with_dir(&mut app, "/home/user/project");
 
     let state = app.profile_picker.as_ref().unwrap();
     // The active profile "bbb" should be the default selected_index.
     // Profiles are sorted: ["aaa", "bbb", "ccc"], so "bbb" is at index 1.
     assert_eq!(
         state.selected_index, 1,
-        "active profile must be pre-selected when picker opens (BC-2.07.005 PC-4 / BC-2.07.004 PC-2)"
+        "active profile must be pre-selected when picker opens for its directory \
+         (BC-2.07.005 PC-4 / BC-2.07.004 PC-2)"
     );
 }
 
