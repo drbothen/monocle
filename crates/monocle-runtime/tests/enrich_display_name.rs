@@ -213,6 +213,7 @@ fn test_BC_2_06_006_PC3_snapshot_enriched_sessions_populates_display_name() {
     assert!(
         session.display_name.contains("Claude"),
         "BC-2.06.006 PC-3: display_name must contain \"Claude\" for harness_type=\"claude-code\". \
-         Got: {:?}", session.display_name
+         Got: {:?}",
+        session.display_name
     );
 }
