@@ -99,14 +99,14 @@ fn row_text(terminal: &Terminal<TestBackend>, row: u16) -> String {
 /// does NOT appear in the terminal buffer. This test FAILS against the broken code.
 #[test]
 fn test_BC_2_06_020_render_frame_dashboard_mode_breadcrumb_appears_in_buffer() {
-    let app = dashboard_app();
+    let mut app = dashboard_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 
@@ -129,14 +129,14 @@ fn test_BC_2_06_020_render_frame_dashboard_mode_breadcrumb_appears_in_buffer() {
 /// `"monocle"` (MONOCLE_STATUS_LABEL) — not the hint line. This test FAILS.
 #[test]
 fn test_BC_2_06_021_render_frame_dashboard_mode_hint_line_appears_on_last_row() {
-    let app = dashboard_app();
+    let mut app = dashboard_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 
@@ -159,14 +159,14 @@ fn test_BC_2_06_021_render_frame_dashboard_mode_hint_line_appears_on_last_row() 
 /// `render_overlay_widget` call path works end-to-end through the production renderer.
 #[test]
 fn test_BC_2_06_010_render_frame_overlay_mode_modal_header_appears_in_buffer() {
-    let app = overlay_app();
+    let mut app = overlay_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 
@@ -188,14 +188,14 @@ fn test_BC_2_06_010_render_frame_overlay_mode_modal_header_appears_in_buffer() {
 /// the legacy Paragraph (drops the hint line entirely).
 #[test]
 fn test_BC_2_06_021_render_frame_overlay_mode_hint_line_appears_on_last_row() {
-    let app = overlay_app();
+    let mut app = overlay_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 
@@ -219,14 +219,14 @@ fn test_BC_2_06_021_render_frame_overlay_mode_hint_line_appears_on_last_row() {
 /// breadcrumb `"Dashboard > Overlay [1 prompt]"`.
 #[test]
 fn test_BC_2_06_020_render_frame_overlay_mode_breadcrumb_appears_on_breadcrumb_row() {
-    let app = overlay_app();
+    let mut app = overlay_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 
@@ -290,14 +290,14 @@ fn test_BC_2_06_010_small_terminal_modal_does_not_collide_with_status_bar_rows()
     // Modal inner height = 3 - 2(border) = 1 row.
     // header_height=2, footer_height=1: footer_y = inner.y + 2 + 0 = inner.y + 2 = 5.
     // Row 5 is the status bar breadcrumb row → collision.
-    let app = overlay_app();
+    let mut app = overlay_app();
     let mut sessions_state = SessionsPanelState::default();
     let backend = TestBackend::new(80, 7);
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
         .draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })
         .expect("render_frame must not panic");
 

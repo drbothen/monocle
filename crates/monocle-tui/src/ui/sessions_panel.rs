@@ -391,7 +391,7 @@ pub const SESSIONS_FILTER_NO_MATCH: &str = "No sessions match filter";
 /// This function body is `todo!()` — the test-writer compiles tests against the
 /// correct signature. The implementer fills in the logic (S-028 stub discipline).
 pub fn render_sessions_filter(
-    app: &crate::app::App,
+    app: &mut crate::app::App,
     query: &str,
     area: ratatui::layout::Rect,
     buf: &mut ratatui::buffer::Buffer,
@@ -399,7 +399,7 @@ pub fn render_sessions_filter(
 ) {
     use nucleo::{
         pattern::{Atom, AtomKind, CaseMatching, Normalization},
-        Config, Matcher, Utf32Str,
+        Utf32Str,
     };
 
     // BC-2.06.006 PC-1: split area — input box at top (1 line), list below.
@@ -444,28 +444,10 @@ pub fn render_sessions_filter(
     }
 
     // BC-2.06.006 PC-2 + PC-3: score sessions against query using nucleo Matcher.
-    // INV-1: use app.matcher (shared instance, not recreated per keystroke).
-    // The app.matcher is &mut but we need to use it here; we create a local Matcher
-    // because the app is borrowed immutably. INV-1 says the SAME matcher instance
-    // must be reused (not recreated per render) — this is satisfied: `app.matcher`
-    // is the field; we use it here by reconstructing only when needed.
-    //
-    // Technical note: nucleo::Matcher::fuzzy_match takes &mut self because it uses
-    // internal scratch buffers. We borrow app immutably here (render path). Per the
-    // architecture constraint (INV-1), the shared matcher lives in App::matcher for
-    // the dispatch/keystroke path. For rendering, we use a local matcher since render
-    // takes &App (immutable). This does NOT violate INV-1: the shared app.matcher is
-    // the single source for dispatch-time scoring; render uses a local instance for
-    // the display scoring pass only. The performance implication is acceptable because
-    // render occurs on the draw path (not per-keystroke scoring).
-    //
-    // Note: In the tests the matcher field on App is accessed directly (INV-1 assertion);
-    // the tests verify the FIELD EXISTS on App, not that a specific instance is used in render.
-    let mut local_matcher = Matcher::new(Config::DEFAULT);
-
-    // BC-2.06.006 PC-3: parse query as a fuzzy Atom with CaseMatching::Ignore (case-insensitive).
-    // Using Atom::parse ensures proper case-folding for upper-case queries like "MONO".
-    // Normalization::Smart handles Unicode normalization for accented characters.
+    // INV-1: use app.matcher (shared instance, not recreated per render/keystroke).
+    // render_sessions_filter accepts &mut App so it can borrow app.matcher as &mut.
+    // This satisfies BC-2.06.006 INV-1: a single Matcher instance shared across the
+    // filter session without recreating it on each render call.
     let atom = Atom::new(
         query,
         CaseMatching::Ignore,
@@ -476,23 +458,29 @@ pub fn render_sessions_filter(
 
     // Score each session: match against project_name OR harness display_name.
     // BC-2.06.006 PC-3: case-insensitive (CaseMatching::Ignore via Atom).
-    let mut scored: Vec<(u32, &monocle_core::engine::EnrichedSession)> = app
+    // Collect session data to avoid holding a borrow on app.sessions while also
+    // borrowing app.matcher (both are fields of app, which is &mut).
+    let session_data: Vec<(String, String, &monocle_core::engine::EnrichedSession)> = app
         .sessions
         .iter()
-        .filter_map(|s| {
-            // Build haystack from project_name + harness_type display name (OR condition).
-            // Map harness_type to display_name: "claude-code" → "Claude Code".
+        .map(|s| {
             let display_name = harness_display_name(&s.harness_type);
             let project = s.project_name.as_deref().unwrap_or("").to_string();
+            (project, display_name, s)
+        })
+        .collect();
 
+    let mut scored: Vec<(u32, &monocle_core::engine::EnrichedSession)> = session_data
+        .iter()
+        .filter_map(|(project, display_name, s)| {
             let mut haystack_buf1: Vec<char> = Vec::new();
             let mut haystack_buf2: Vec<char> = Vec::new();
-            let haystack_project = Utf32Str::new(&project, &mut haystack_buf1);
-            let haystack_display = Utf32Str::new(&display_name, &mut haystack_buf2);
+            let haystack_project = Utf32Str::new(project, &mut haystack_buf1);
+            let haystack_display = Utf32Str::new(display_name, &mut haystack_buf2);
 
             // OR condition: match on either field; take the higher score.
-            let score_project = atom.score(haystack_project, &mut local_matcher);
-            let score_display = atom.score(haystack_display, &mut local_matcher);
+            let score_project = atom.score(haystack_project, &mut app.matcher);
+            let score_display = atom.score(haystack_display, &mut app.matcher);
 
             let score = match (score_project, score_display) {
                 (Some(a), Some(b)) => Some(a.max(b)),
@@ -501,7 +489,7 @@ pub fn render_sessions_filter(
                 (None, None) => None,
             };
 
-            score.map(|sc| (sc as u32, s))
+            score.map(|sc| (sc as u32, *s))
         })
         .collect();
 

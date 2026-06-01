@@ -172,6 +172,22 @@ pub struct App {
     /// per BC-2.06.018 PC-3. Oldest entries are popped from the back when full.
     pub event_ribbon_events: VecDeque<crate::ui::event_ribbon::HookEventRow>,
 
+    /// Event ribbon scroll and pin state (BC-2.06.018 PC-5/PC-8/INV-1/AC-009).
+    ///
+    /// Stored in `App` (not in `render_frame` locals) so that:
+    /// 1. `on_hook_event_received` can auto-scroll to row 0 when `!pinned_top` (AC-008).
+    /// 2. `dispatch_key_event` can call `reset_on_session_change` in `SelectNext`/`SelectPrev`
+    ///    arms when the selected session changes (BC-2.06.018 INV-1 / AC-009).
+    pub event_ribbon_state: crate::ui::event_ribbon::EventRibbonState,
+
+    /// Last rendered event ribbon panel height (rows), captured in `render_frame`.
+    ///
+    /// Used as the dynamic cap for `push_event_row` in `on_hook_event_received`
+    /// (BC-2.06.018 PC-3: VecDeque bounded to `panel_height`). Initialises to
+    /// `EVENT_RING_CAPACITY` so the first push before any render sees a safe cap.
+    /// Updated each frame in `render_frame` when the EventRibbon widget is rendered.
+    pub event_ribbon_panel_height: usize,
+
     /// Sender half of the IPC outbound channel for dispatching `ClientToServer`
     /// messages to the daemon (S-026, BC-2.06.011/012/013).
     ///
@@ -212,6 +228,12 @@ impl App {
             // on_hook_event_received (streaming). No pre-allocated capacity because
             // the effective cap is dynamic (panel_height, determined at render time).
             event_ribbon_events: VecDeque::new(),
+            // S-028: ribbon scroll/pin state stored in App so dispatch and IPC handlers
+            // can mutate it (auto-scroll, session-change reset — BC-2.06.018 PC-5/PC-8/INV-1).
+            event_ribbon_state: crate::ui::event_ribbon::EventRibbonState::default(),
+            // S-028: initial cap is EVENT_RING_CAPACITY so the first push before any render is safe.
+            // Updated each frame by render_frame to the actual event_ribbon_area height.
+            event_ribbon_panel_height: EVENT_RING_CAPACITY,
             ipc_tx: None,
         }
     }
@@ -439,6 +461,20 @@ pub fn on_drop_counter_update(app: &mut App, drop_counter: u64) {
 /// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
 /// `handle_server_message` delegates to this function.
 pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPayload) {
+    // BC-2.06.018 PC-4: set pending=true on the most recent PreToolUse ribbon row
+    // matching the prompt's session_id BEFORE inserting into overlay_stack.
+    // This links the permission prompt to its corresponding ribbon event display.
+    let session_id = &payload.session_id;
+    for row in app.event_ribbon_events.iter_mut() {
+        if row.session_id == *session_id
+            && matches!(row.hook_type, monocle_ipc::types::HookType::PreToolUse)
+            && !row.pending
+        {
+            row.pending = true;
+            break; // Set only the most recent matching row (front = newest).
+        }
+    }
+
     apply_permission_prompt_queued(&mut app.overlay_stack, payload);
     // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
     // mutate overlay_stack. Enter Overlay mode if not already in it.
@@ -544,11 +580,19 @@ pub fn on_hook_event_received(
 ) {
     // BC-2.05.004: append new event to the ribbon log for all sessions (no IPC filtering).
     // BC-2.06.018 PC-2: newest at front (prepend).
-    // BC-2.06.018 PC-3: use EVENT_RING_CAPACITY as the compile-time fallback cap
-    // (render-time panel_height trimming applied via push_event_row at the render call site).
+    // BC-2.06.018 PC-3: use event_ribbon_panel_height as dynamic cap (updated by render_frame
+    // each cycle; initialises to EVENT_RING_CAPACITY so the first push before any render is safe).
     let row =
         crate::ui::event_ribbon::hook_event_row_from_received(hook_type, session_id, latency_ms);
-    crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, EVENT_RING_CAPACITY);
+    let cap = app.event_ribbon_panel_height;
+    crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, cap);
+
+    // BC-2.06.018 PC-8 / AC-008: auto-scroll to row 0 (newest) when not pinned_top.
+    // The ribbon tracks all sessions; auto-scroll unconditionally resets to front when
+    // !pinned_top (any new event is potentially relevant to the selected session).
+    if !app.event_ribbon_state.pinned_top {
+        app.event_ribbon_state.list_state.select(Some(0));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1196,7 +1240,7 @@ pub async fn run() -> Result<()> {
     loop {
         // 1. Render the current frame (AC-001, AC-005, BLOCKER-004, BC-2.06.007 PC-7).
         terminal.draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })?;
 
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
@@ -1648,12 +1692,18 @@ pub fn dispatch_key_event(
             ) {
                 let len = app.sessions.len();
                 if len > 0 {
-                    let next = sessions_state
-                        .list_state
-                        .selected()
-                        .map(|i| (i + 1).min(len - 1))
-                        .unwrap_or(0);
+                    let prev_idx = sessions_state.list_state.selected();
+                    let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
                     sessions_state.list_state.select(Some(next));
+                    // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                    // Only reset when the cursor actually moved to a different session.
+                    if prev_idx != Some(next) {
+                        let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
+                        crate::ui::event_ribbon::reset_on_session_change(
+                            &mut app.event_ribbon_state,
+                            new_sid.as_deref().unwrap_or(""),
+                        );
+                    }
                 }
             }
             KeyOutcome::Continue
@@ -1668,12 +1718,17 @@ pub fn dispatch_key_event(
                 }
             ) && !app.sessions.is_empty()
             {
-                let prev = sessions_state
-                    .list_state
-                    .selected()
-                    .map(|i| i.saturating_sub(1))
-                    .unwrap_or(0);
+                let prev_idx = sessions_state.list_state.selected();
+                let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
                 sessions_state.list_state.select(Some(prev));
+                // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                if prev_idx != Some(prev) {
+                    let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
+                    crate::ui::event_ribbon::reset_on_session_change(
+                        &mut app.event_ribbon_state,
+                        new_sid.as_deref().unwrap_or(""),
+                    );
+                }
             }
             KeyOutcome::Continue
         }
@@ -1789,13 +1844,14 @@ pub fn dispatch_key_event(
 /// text is rendered — the Sessions panel widget itself does NOT duplicate it
 /// (F-S025-ADV2-MED-002).
 pub fn render_frame(
-    app: &App,
+    app: &mut App,
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
     frame: &mut ratatui::Frame,
 ) {
+    use crate::ui::event_ribbon::EventRibbon;
     use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
     use crate::ui::overlay_widget::{render_dimmed_background, render_overlay_widget};
-    use crate::ui::sessions_panel::SessionsPanel;
+    use crate::ui::sessions_panel::{render_sessions_filter, SessionsPanel};
     use monocle_core::tui::state::PanelId;
     use ratatui::{
         style::{Color, Style},
@@ -1806,16 +1862,68 @@ pub fn render_frame(
     use crate::ui::status_bar::render_status_bar;
 
     // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
-    match &app.mode {
-        AppMode::Fullscreen { panel, .. } => {
+    // Clone mode to avoid borrow conflict when mutating app fields below.
+    let mode_tag = match &app.mode {
+        AppMode::Dashboard { .. } => 0u8,
+        AppMode::Filtering { .. } => 1u8,
+        AppMode::Overlay { .. } => 2u8,
+        AppMode::Fullscreen { .. } => 3u8,
+    };
+
+    match mode_tag {
+        3u8 => {
+            // Fullscreen mode.
+            let panel = match &app.mode {
+                AppMode::Fullscreen { panel, .. } => panel.clone(),
+                _ => unreachable!(),
+            };
             let layout = build_fullscreen_layout(frame.area());
-            match panel {
+            match &panel {
                 PanelId::Sessions => {
                     let p = SessionsPanel::new(app);
                     p.render(layout.panel_area, frame.buffer_mut(), sessions_state);
                 }
+                PanelId::EventRibbon => {
+                    // S-028 (AC-010): EventRibbon fullscreen.
+                    // Pre-compute and assign panel_height before borrowing app for widget.
+                    let fs_panel_height = layout.panel_area.height as usize;
+                    app.event_ribbon_panel_height = fs_panel_height;
+                    let selected_sid: Option<String> = sessions_state
+                        .list_state
+                        .selected()
+                        .and_then(|i| app.sessions.get(i))
+                        .map(|s| s.session_id.clone());
+                    // Render widget: split borrow — widget borrows app.event_ribbon_events
+                    // immutably; state is separate from the immutable widget fields.
+                    // Use a local state snapshot to avoid aliasing via &mut App.
+                    let mut local_ribbon_state = {
+                        use ratatui::widgets::ListState;
+                        let mut s = ListState::default();
+                        s.select(app.event_ribbon_state.list_state.selected());
+                        crate::ui::event_ribbon::EventRibbonState {
+                            list_state: s,
+                            pinned_top: app.event_ribbon_state.pinned_top,
+                        }
+                    };
+                    let sid_ref = selected_sid.as_deref();
+                    let widget = EventRibbon::new(app, sid_ref);
+                    StatefulWidget::render(
+                        widget,
+                        layout.panel_area,
+                        frame.buffer_mut(),
+                        &mut local_ribbon_state,
+                    );
+                    // Write back the updated state.
+                    app.event_ribbon_state
+                        .list_state
+                        .select(local_ribbon_state.list_state.selected());
+                    crate::ui::event_ribbon::trim_to_panel_height(
+                        &mut app.event_ribbon_events,
+                        fs_panel_height,
+                    );
+                }
                 _ => {
-                    // Future panels (EventRibbon fullscreen — S-028+).
+                    // Future panels.
                     Widget::render(
                         Paragraph::new(Line::from(Span::styled(
                             "Panel (S-028+)",
@@ -1827,8 +1935,6 @@ pub fn render_frame(
                 }
             }
             // Status bar: always full-brightness, never dimmed (AC-008 / BC-2.06.019 PC-1).
-            // S-027 (AC-012 / BC-2.06.019/020/021): wire render_status_bar into the
-            // production render path (replaces legacy 1-row Paragraph).
             render_status_bar(
                 &app.mode,
                 app.drop_counter,
@@ -1842,17 +1948,75 @@ pub fn render_frame(
             // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
             let layout = build_dashboard_layout(frame.area());
 
-            // Render the Sessions panel (left 60%).
-            let panel = SessionsPanel::new(app);
-            panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+            // S-028 (AC-010 / BC-2.06.006 PC-1): In Filtering mode, render the filter
+            // input box + scored session list instead of the regular SessionsPanel.
+            // In all other modes (Dashboard, Overlay), render SessionsPanel normally.
+            if let AppMode::Filtering {
+                panel: PanelId::Sessions,
+                ref query,
+                ..
+            } = app.mode.clone()
+            {
+                // BC-2.06.006 PC-1/PC-2/PC-8: filter input box + scored list.
+                render_sessions_filter(
+                    app,
+                    query.as_str(),
+                    layout.sessions_area,
+                    frame.buffer_mut(),
+                    sessions_state,
+                );
+            } else {
+                // Dashboard / Overlay: regular sessions panel.
+                let panel = SessionsPanel::new(app);
+                panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+            }
 
-            // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM to the dashboard background area
-            // (all rows EXCEPT the status bar area) when overlay is active.
-            // The status bar rows are excluded so they remain full-brightness (AC-008).
+            // S-028 (AC-010 / BC-2.06.018 PC-1): Render Event Ribbon in the right 40% area.
+            // Derive the selected session_id from the Sessions panel state.
+            let selected_sid: Option<String> = sessions_state
+                .list_state
+                .selected()
+                .and_then(|i| app.sessions.get(i))
+                .map(|s| s.session_id.clone());
+            let ribbon_area = layout.event_ribbon_area;
+            let panel_height = ribbon_area.height as usize;
+
+            // BC-2.06.018 PC-3: update the cached panel_height for push-time cap before render.
+            app.event_ribbon_panel_height = panel_height;
+
+            // Split borrow: EventRibbon borrows app.event_ribbon_events immutably (through &App).
+            // We need &mut app.event_ribbon_state for StatefulWidget::render. To avoid aliasing,
+            // extract a local copy of the state, render into it, then write back.
+            let mut local_ribbon_state = {
+                use ratatui::widgets::ListState;
+                let mut s = ListState::default();
+                s.select(app.event_ribbon_state.list_state.selected());
+                crate::ui::event_ribbon::EventRibbonState {
+                    list_state: s,
+                    pinned_top: app.event_ribbon_state.pinned_top,
+                }
+            };
+            let sid_ref = selected_sid.as_deref();
+            let widget = EventRibbon::new(app, sid_ref);
+            StatefulWidget::render(
+                widget,
+                ribbon_area,
+                frame.buffer_mut(),
+                &mut local_ribbon_state,
+            );
+            // Write back updated list scroll state (ratatui may adjust selected() during render).
+            app.event_ribbon_state
+                .list_state
+                .select(local_ribbon_state.list_state.selected());
+
+            // BC-2.06.018 INV-3: trim on resize — remove events beyond new panel_height.
+            crate::ui::event_ribbon::trim_to_panel_height(
+                &mut app.event_ribbon_events,
+                panel_height,
+            );
+
+            // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM when overlay is active.
             if matches!(&app.mode, AppMode::Overlay { .. }) {
-                // Dim the full area minus the status bar area.
-                // layout.status_bar_area occupies the last Constraint::Length(2) rows.
-                // We dim the frame area above the status bar.
                 let full_area = frame.area();
                 let background_area = ratatui::layout::Rect {
                     x: full_area.x,
@@ -1864,20 +2028,13 @@ pub fn render_frame(
                 };
                 render_dimmed_background(background_area, frame.buffer_mut());
 
-                // Render the overlay modal centered within `background_area` (the
-                // non-status region). Using `full_area` here would allow `modal_rect`
-                // to center the modal over the full terminal including the status bar
-                // rows, causing the modal footer to bleed into the status bar at small
-                // terminal heights (AC-008 / BC-2.06.010 PC-1 / BC-2.06.019 PC-1).
                 if let Some(modal) = app.overlay_stack.front() {
                     let stack_depth = app.overlay_stack.len();
                     render_overlay_widget(modal, stack_depth, background_area, frame);
                 }
             }
 
-            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row
-            // status bar (breadcrumb row + hint line row). The status bar is NOT dimmed
-            // even in Overlay mode (BC-2.06.019 PC-1).
+            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row status bar.
             render_status_bar(
                 &app.mode,
                 app.drop_counter,

@@ -242,7 +242,13 @@ fn test_BC_2_06_006_nucleo_score_filters_non_matching() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "mono", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(
+                &mut app,
+                "mono",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
         })
         .unwrap();
     let rendered = terminal.backend().to_string();
@@ -305,7 +311,7 @@ fn test_BC_2_06_006_empty_query_shows_all_sessions() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(&mut app, "", frame.area(), frame.buffer_mut(), &mut state);
         })
         .unwrap();
     let rendered = terminal.backend().to_string();
@@ -404,7 +410,13 @@ fn test_BC_2_06_006_filter_no_match_renders_no_sessions_match() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "xyz", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(
+                &mut app,
+                "xyz",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
         })
         .unwrap();
     let rendered = terminal.backend().to_string();
@@ -472,7 +484,13 @@ fn test_BC_2_06_006_case_insensitive_fuzzy_match() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "MONO", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(
+                &mut app,
+                "MONO",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
         })
         .unwrap();
     let rendered = terminal.backend().to_string();
@@ -596,7 +614,13 @@ fn test_BC_2_06_006_display_name_match() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "cla", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(
+                &mut app,
+                "cla",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
         })
         .unwrap();
     let rendered = terminal.backend().to_string();

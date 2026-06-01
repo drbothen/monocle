@@ -40,7 +40,7 @@ use ratatui::{
     widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 use std::collections::VecDeque;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::app::App;
 
@@ -55,7 +55,10 @@ use crate::app::App;
 /// It holds only the fields required for display in the Event Ribbon columns.
 ///
 /// Fields follow BC-2.06.018 PC-1 column definitions:
-/// - `received_at`: used for Timestamp column (`HH:MM:SS.mmm`)
+/// - `timestamp_micros`: Unix epoch microseconds used for Timestamp column (`HH:MM:SS.mmm`).
+///   For `ring_tail` entries this comes from `HookEventRecord::timestamp_micros` (daemon time).
+///   For streaming `HookEventReceived` messages this is the TUI's wall-clock capture at receipt.
+/// - `received_at`: monotonic `Instant` for ordering only (newest-first — BC-2.06.018 PC-2).
 /// - `hook_type`: used for Hook type column
 /// - `session_id`: full session ID (display truncates to 8 chars — BC-2.06.018 INV-4)
 /// - `latency_ms`: used for Latency column (`NNNms` or `—`)
@@ -73,12 +76,19 @@ use crate::app::App;
 /// display is purely client-side (BC-2.05.004 INV-3).
 #[derive(Debug, Clone)]
 pub struct HookEventRow {
-    /// Wall-clock instant at which the event was received by the TUI.
+    /// Unix epoch microseconds for the Timestamp column (BC-2.06.018 PC-1).
     ///
-    /// For `ring_tail` entries, this is the TUI's receive time (at connect), not
-    /// the original daemon hook-receive time. For `HookEventReceived` messages,
-    /// this is the TUI's message-arrival time.
-    /// Used for Timestamp column rendering (`HH:MM:SS.mmm`).
+    /// For `ring_tail` entries: sourced from `HookEventRecord::timestamp_micros` (the daemon's
+    /// wall-clock at hook receipt). For streaming `HookEventReceived` messages: captured as
+    /// `SystemTime::now()` at TUI message-arrival time.
+    ///
+    /// Used exclusively for Timestamp column rendering as UTC wall-clock `HH:MM:SS.mmm`
+    /// via `format_timestamp`. Stable across scroll/window changes (not an elapsed delta).
+    pub timestamp_micros: i64,
+    /// Monotonic instant of receipt — used ONLY for ordering (BC-2.06.018 PC-2 newest-first).
+    ///
+    /// NOT used for Timestamp column rendering (use `timestamp_micros` for that).
+    /// Retained so that VecDeque ordering can be verified in tests via `>=` comparisons.
     pub received_at: Instant,
     /// Hook type discriminant (e.g., `HookType::PreToolUse`).
     ///
@@ -101,6 +111,19 @@ pub struct HookEventRow {
     /// `true` → renders `PENDING` in yellow in the Status column (BC-2.06.018 PC-4).
     /// Reverts to `false` when `ClientToServer::PermissionDecision` is sent.
     pub pending: bool,
+}
+
+/// Capture the current wall-clock time as Unix epoch microseconds.
+///
+/// Used by `hook_event_row_from_received` for streaming events that do not carry
+/// a daemon-side timestamp (the daemon sends them with its own timestamp, but the
+/// TUI receives them via `HookEventReceived` which carries `latency_ms` not `timestamp_micros`).
+/// Falls back to 0 on `SystemTime` errors (should not occur on any supported platform).
+pub fn current_timestamp_micros() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_micros() as i64)
+        .unwrap_or(0)
 }
 
 /// Convert a `HookEventRecord` (from `InitialState::ring_tail`) to a `HookEventRow`.
@@ -136,6 +159,9 @@ pub fn hook_event_row_from_record(record: &monocle_ipc::types::HookEventRecord) 
     });
 
     HookEventRow {
+        // BC-2.06.018 PC-1: use the daemon's wall-clock timestamp (not TUI receive time).
+        // ring_tail records carry timestamp_micros from the daemon's hook receipt time.
+        timestamp_micros: record.timestamp_micros,
         received_at: Instant::now(),
         hook_type,
         session_id: record.session_id.clone(),
@@ -162,7 +188,10 @@ pub fn hook_event_row_from_received(
     latency_ms: u64,
 ) -> HookEventRow {
     // BC-2.05.004: convert HookEventReceived IPC fields → HookEventRow for the ribbon.
+    // Streaming events do not carry daemon-side timestamp_micros — capture TUI wall-clock.
+    // This is stable across scroll/window changes (not an elapsed delta from a visible epoch).
     HookEventRow {
+        timestamp_micros: current_timestamp_micros(),
         received_at: Instant::now(),
         hook_type,
         session_id,
@@ -293,16 +322,14 @@ impl StatefulWidget for EventRibbon<'_> {
             return;
         }
 
-        // Use the earliest received_at as epoch for timestamp formatting.
-        let epoch = visible
-            .last()
-            .map(|r| r.received_at)
-            .unwrap_or_else(Instant::now);
+        // Epoch is unused in wall-clock mode but kept for format_timestamp signature compat.
+        let epoch = Instant::now();
 
         let items: Vec<ListItem> = visible
             .iter()
             .map(|row| {
-                let ts = format_timestamp(row.received_at, epoch);
+                // BC-2.06.018 PC-1: use timestamp_micros for stable wall-clock HH:MM:SS.mmm.
+                let ts = format_timestamp(row.timestamp_micros, epoch);
                 let ht = format_hook_type(row.hook_type);
                 // Session ID: first 8 chars (BC-2.06.018 INV-4).
                 let sid = if row.session_id.len() > 8 {
@@ -385,29 +412,32 @@ pub fn trim_to_panel_height(events: &mut VecDeque<HookEventRow>, panel_height: u
 // Timestamp formatter (BC-2.06.018 PC-1 Timestamp column)
 // ---------------------------------------------------------------------------
 
-/// Format an `Instant` as `HH:MM:SS.mmm` for the Timestamp column (BC-2.06.018 PC-1).
+/// Format a Unix epoch microsecond timestamp as UTC wall-clock `HH:MM:SS.mmm`
+/// for the Timestamp column (BC-2.06.018 PC-1).
 ///
-/// Accepts an explicit `epoch: Instant` (the `Instant` at TUI startup) so callers
-/// can supply a stable reference for deterministic tests. The elapsed duration
-/// `received_at - epoch` is formatted as wall-clock time.
+/// `timestamp_micros` is a Unix epoch timestamp in microseconds (as stored in
+/// `HookEventRow::timestamp_micros`). The result is the UTC time of day:
+/// `HH:MM:SS.mmm` where `HH` is hours since midnight UTC, `MM` minutes, `SS`
+/// seconds, and `mmm` milliseconds.
 ///
-/// Returns `"??:??:??.???"` if elapsed would overflow or underflow (clock skew guard).
-pub fn format_timestamp(received_at: Instant, epoch: Instant) -> String {
-    // BC-2.06.018 PC-1: format as HH:MM:SS.mmm relative to epoch.
-    // Guard against clock skew (received_at before epoch).
-    let elapsed = match received_at.checked_duration_since(epoch) {
-        Some(d) => d,
-        None => return "??:??:??.???".to_string(),
-    };
-    let total_ms = elapsed.as_millis();
-    let hours = (total_ms / 3_600_000) as u64;
-    let minutes = ((total_ms % 3_600_000) / 60_000) as u64;
-    let seconds = ((total_ms % 60_000) / 1_000) as u64;
-    let millis = (total_ms % 1_000) as u64;
-    if hours > 99 {
-        // Overflow guard: cap display at 99:59:59.999.
+/// The second parameter `_epoch` is accepted for backward compatibility with
+/// call sites that previously passed an `Instant` epoch; it is ignored because
+/// the wall-clock derivation uses only `timestamp_micros` (BC-2.06.018 PC-1:
+/// stable wall-clock — not an elapsed delta from a visible epoch).
+///
+/// Returns `"??:??:??.???"` on negative timestamp (clock skew guard).
+pub fn format_timestamp(timestamp_micros: i64, _epoch: Instant) -> String {
+    // BC-2.06.018 PC-1: format as UTC wall-clock HH:MM:SS.mmm from Unix epoch microseconds.
+    // Guard against negative timestamps (clock skew, test sentinel values).
+    if timestamp_micros < 0 {
         return "??:??:??.???".to_string();
     }
+    let total_micros = timestamp_micros as u64;
+    let total_secs = total_micros / 1_000_000;
+    let millis = (total_micros % 1_000_000) / 1_000;
+    let hours = (total_secs / 3600) % 24;
+    let minutes = (total_secs / 60) % 60;
+    let seconds = total_secs % 60;
     format!("{hours:02}:{minutes:02}:{seconds:02}.{millis:03}")
 }
 

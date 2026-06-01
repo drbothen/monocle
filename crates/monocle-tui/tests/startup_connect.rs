@@ -915,7 +915,7 @@ fn test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero() {
     let mut sessions_state = SessionsPanelState::default();
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     // Inspect the buffer for the status bar text.
@@ -1116,7 +1116,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar() 
     let mut sessions_state = SessionsPanelState::default();
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     // Extract the rendered buffer.
@@ -1218,7 +1218,7 @@ fn test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after
     let mut sessions_state = SessionsPanelState::default();
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let buffer = terminal.backend().buffer().clone();
@@ -1337,7 +1337,7 @@ fn test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visib
     let mut sessions_state = SessionsPanelState::default();
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let buffer = terminal.backend().buffer().clone();
@@ -1484,7 +1484,7 @@ fn test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_ba
     let mut sessions_state = SessionsPanelState::default();
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let buffer = terminal.backend().buffer().clone();

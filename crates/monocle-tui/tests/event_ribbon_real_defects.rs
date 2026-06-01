@@ -43,7 +43,7 @@
 use monocle_config::MonocleConfig;
 use monocle_ipc::types::{HookEventRecord, HookType};
 use monocle_tui::app::{on_hook_event_received, App};
-use monocle_tui::ui::event_ribbon::{push_event_row, EventRibbonState};
+use monocle_tui::ui::event_ribbon::push_event_row;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -127,8 +127,11 @@ fn test_BC_2_06_018_PC1_wall_clock_timestamp_from_timestamp_micros() {
     // If the implementation is correct (wall-clock from timestamp_micros), the output
     // will be "09:30:00.000" instead. The test asserts the latter.
     let stable_epoch = Instant::now();
+    // BC-2.06.018 PC-1: use timestamp_micros (not received_at Instant) for wall-clock format.
+    // The fix: hook_event_row_from_record propagates record.timestamp_micros into row.timestamp_micros,
+    // and format_timestamp uses timestamp_micros for UTC wall-clock output.
     let rendered_ts =
-        monocle_tui::ui::event_ribbon::format_timestamp(row.received_at, stable_epoch);
+        monocle_tui::ui::event_ribbon::format_timestamp(row.timestamp_micros, stable_epoch);
 
     // The correct wall-clock timestamp from timestamp_micros=1_705_311_000_000_000 is
     // "09:30:00.000" (UTC). The current broken output is either "00:00:00.NNN" (elapsed
@@ -172,6 +175,7 @@ fn test_BC_2_06_018_PC3_panel_height_cap_enforced_at_push_time() {
     // This verifies that push_event_row correctly enforces the cap.
     for i in 0..50u64 {
         let row = monocle_tui::ui::event_ribbon::HookEventRow {
+            timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
             received_at: Instant::now(),
             hook_type: HookType::Notification,
             session_id: format!("sess-{i:04}"),
@@ -188,9 +192,14 @@ fn test_BC_2_06_018_PC3_panel_height_cap_enforced_at_push_time() {
          len=10. This part passes. Now test the PRODUCTION path:"
     );
 
-    // Now test the PRODUCTION on_hook_event_received path — which uses EVENT_RING_CAPACITY
-    // (4096) instead of panel_height. This is the defect.
+    // Now test the PRODUCTION on_hook_event_received path.
+    // The fix: on_hook_event_received uses app.event_ribbon_panel_height as the cap.
+    // Set event_ribbon_panel_height to panel_height=10 to simulate a render that
+    // computed the ribbon area height as 10 rows (BC-2.06.018 PC-3 cached panel_height).
     let mut app = App::new(MonocleConfig::default());
+    // Simulate that a render has occurred with panel_height=10 (the production flow:
+    // render_frame sets app.event_ribbon_panel_height from the ribbon Rect height).
+    app.event_ribbon_panel_height = panel_height;
 
     // Push 50 events via the PRODUCTION on_hook_event_received path.
     for i in 0..50u64 {
@@ -276,7 +285,7 @@ fn test_BC_2_06_018_INV3_trim_on_resize_called_from_render_frame() {
     terminal
         .draw(|frame| {
             let mut state = monocle_tui::ui::sessions_panel::SessionsPanelState::default();
-            render_frame(&app, &mut state, frame);
+            render_frame(&mut app, &mut state, frame);
         })
         .unwrap();
 
@@ -450,15 +459,14 @@ fn test_BC_2_06_018_INV1_AC009_session_change_resets_ribbon_scroll_via_dispatch(
     sessions_state.list_state.select(Some(0));
 
     // Simulate: user scrolled ribbon to a non-zero offset (pinned_top=true).
-    // Since EventRibbonState is not yet threaded through dispatch_key_event, we track
-    // it separately and assert it would need to be reset.
-    let mut ribbon_state = EventRibbonState::default();
-    ribbon_state.list_state.select(Some(4)); // scrolled down to row 4
-    ribbon_state.pinned_top = true;
+    // The production fix stores EventRibbonState in App (app.event_ribbon_state).
+    // Set up the app's ribbon state directly (not an external instance).
+    app.event_ribbon_state.list_state.select(Some(4)); // scrolled down to row 4
+    app.event_ribbon_state.pinned_top = true;
 
     // Precondition: ribbon is scrolled to row 4, pinned_top=true.
-    assert_eq!(ribbon_state.list_state.selected(), Some(4));
-    assert!(ribbon_state.pinned_top);
+    assert_eq!(app.event_ribbon_state.list_state.selected(), Some(4));
+    assert!(app.event_ribbon_state.pinned_top);
 
     // Act: press 'j' → SelectNext → session changes from 0 to 1.
     let j_key = KeyEvent {
@@ -474,33 +482,22 @@ fn test_BC_2_06_018_INV1_AC009_session_change_resets_ribbon_scroll_via_dispatch(
         "precondition for ribbon reset: SelectNext must move cursor to row 1"
     );
 
-    // THE DEFINITIVE RED ASSERTION: after dispatch_key_event causes a session change,
-    // the ribbon scroll state (managed via EventRibbonState) MUST have been reset to
-    // row 0 with pinned_top=false (BC-2.06.018 INV-1 / AC-009).
-    //
-    // The production fix requires EventRibbonState to be accessible from the dispatch path.
-    // The two valid implementation paths:
-    //   (a) Store EventRibbonState in App (app.event_ribbon_state: EventRibbonState) — then
-    //       dispatch_key_event can mutate app.event_ribbon_state.list_state and .pinned_top
-    //       in the SelectNext/SelectPrev arms.
-    //   (b) Thread &mut EventRibbonState through dispatch_key_event's signature.
-    //
-    // Currently: neither path is wired. ribbon_state (external, unthreaded) stays at Some(4).
-    //
-    // We assert the REQUIRED post-fix state: the ribbon scroll must be at row 0 after
-    // session selection changes via SelectNext. This FAILS because:
-    //   - ribbon_state is external to dispatch_key_event (not passed, not in App)
-    //   - dispatch_key_event does NOT call reset_on_session_change
-    //   - ribbon_state.list_state.selected() remains Some(4)
+    // THE DEFINITIVE ASSERTION: after dispatch_key_event causes a session change,
+    // app.event_ribbon_state must be reset to row 0 with pinned_top=false
+    // (BC-2.06.018 INV-1 / AC-009).
+    // The production fix: SelectNext/SelectPrev arms call reset_on_session_change
+    // on app.event_ribbon_state when the cursor moves to a different session.
     assert_eq!(
-        ribbon_state.list_state.selected(),
+        app.event_ribbon_state.list_state.selected(),
         Some(0),
-        "BC-2.06.018 INV-1 / AC-009 defect: after SelectNext causes session change (cursor \
-         moved from row 0 to row 1), the ribbon scroll state must be reset to row 0 (newest) \
-         with pinned_top=false. Currently ribbon_state.list_state.selected()=Some(4) \
-         (unchanged, defect confirmed: dispatch_key_event does not call reset_on_session_change). \
-         FIX: store EventRibbonState in App (app.event_ribbon_state) and call \
-         reset_on_session_change in the SelectNext/SelectPrev arms of dispatch_key_event."
+        "BC-2.06.018 INV-1 / AC-009: after SelectNext causes session change (cursor \
+         moved from row 0 to row 1), app.event_ribbon_state must be reset to row 0 (newest) \
+         with pinned_top=false. FIX: dispatch_key_event SelectNext/SelectPrev arms must call \
+         reset_on_session_change on app.event_ribbon_state when session cursor changes."
+    );
+    assert!(
+        !app.event_ribbon_state.pinned_top,
+        "BC-2.06.018 INV-1 / AC-009: pinned_top must be cleared after session change"
     );
 }
 
@@ -616,7 +613,13 @@ fn test_BC_2_06_006_INV1_render_uses_shared_matcher_not_fresh_per_render() {
     terminal
         .draw(|frame| {
             let mut state = SessionsPanelState::default();
-            render_sessions_filter(&app, "mono", frame.area(), frame.buffer_mut(), &mut state);
+            render_sessions_filter(
+                &mut app,
+                "mono",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
         })
         .unwrap();
     let rendered_1 = terminal.backend().to_string();

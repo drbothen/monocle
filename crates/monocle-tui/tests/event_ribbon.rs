@@ -42,6 +42,7 @@ use std::time::Instant;
 
 fn make_hook_event_row(session_id: &str) -> HookEventRow {
     HookEventRow {
+        timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
         received_at: Instant::now(),
         hook_type: HookType::PreToolUse,
         session_id: session_id.to_string(),
@@ -115,6 +116,7 @@ fn test_BC_2_06_018_pending_status_for_unresolved_pretooluse() {
     // This test verifies the HookEventRow.pending flag semantics and that the render
     // path reads it correctly.
     let row = HookEventRow {
+        timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
         received_at: Instant::now(),
         hook_type: HookType::PreToolUse,
         session_id: "sess-001".to_string(),
@@ -188,19 +190,17 @@ fn test_BC_2_06_018_pending_status_reverts_after_decision() {
 /// auto-scroll call (or the render path handles it post-event).
 #[test]
 fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
-    // Arrange: ribbon state with pinned_top=false and scroll at a non-zero position.
-    let mut ribbon_state = EventRibbonState {
-        pinned_top: false,
-        ..Default::default()
-    };
-    // Simulate the user was at row 3 before the new event arrived.
-    ribbon_state.list_state.select(Some(3));
-
+    // Arrange: App with ribbon state pinned_top=false and scroll at a non-zero position.
+    // The production fix stores EventRibbonState in App (app.event_ribbon_state) so that
+    // on_hook_event_received can mutate it without requiring an extra function parameter.
     let mut app = App::new(MonocleConfig::default());
+    // Simulate the user was at row 3 before the new event arrived.
+    app.event_ribbon_state.list_state.select(Some(3));
+    app.event_ribbon_state.pinned_top = false; // not pinned → auto-scroll must fire
 
     // Act: new HookEventReceived arrives for "sess-001" (the selected session).
     // BC-2.06.018 PC-8 / AC-008: since pinned_top=false, the production handler must
-    // reset the scroll to row 0 (newest event at front).
+    // reset the ribbon scroll to row 0 (newest event at front) via app.event_ribbon_state.
     on_hook_event_received(
         &mut app,
         HookType::PreToolUse,
@@ -209,36 +209,16 @@ fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
         5u64,
     );
 
-    // The production auto-scroll logic must set ribbon_state.list_state.selected() to Some(0).
-    // Since ribbon_state is not threaded through on_hook_event_received (it lives outside App),
-    // the production auto-scroll handler must either:
-    //   (a) Accept &mut EventRibbonState in on_hook_event_received, OR
-    //   (b) Store EventRibbonState in App and update it there.
-    //
-    // The auto-scroll call (mirroring the correct behavior) would be:
-    //   if !ribbon_state.pinned_top { ribbon_state.list_state.select(Some(0)); }
-    //
-    // To verify the PRODUCTION path, we call the canonical auto-scroll helper that the
-    // implementer must wire. We assert the CORRECT post-event state via the helper.
-    // This will FAIL if the helper is not called by on_hook_event_received.
-    //
-    // Simulate what the production handler MUST do: apply auto-scroll when not pinned.
-    // We do this by calling the production auto-scroll logic directly to verify it
-    // would produce the correct result — then assert on_hook_event_received did it.
-    //
-    // Since on_hook_event_received does NOT touch ribbon_state, the actual selected()
-    // is still Some(3) after the call. The correct value is Some(0).
-    // The RED assertion: ribbon_state.list_state.selected() must be Some(0) after
-    // on_hook_event_received (but it's still Some(3) because not wired).
+    // Assert: app.event_ribbon_state.list_state.selected() must be Some(0) after the call.
+    // The production fix: on_hook_event_received checks app.event_ribbon_state.pinned_top
+    // and calls app.event_ribbon_state.list_state.select(Some(0)) when !pinned_top.
     assert_eq!(
-        ribbon_state.list_state.selected(),
+        app.event_ribbon_state.list_state.selected(),
         Some(0),
-        "BC-2.06.018 PC-8 / AC-008 defect: when pinned_top=false and a new event arrives \
-         for the selected session, the production handler must set ribbon scroll to row 0 \
-         (newest, auto-follow). Currently on_hook_event_received does not mutate \
-         EventRibbonState. The scroll remains at Some(3) instead of Some(0). \
-         FIX: thread EventRibbonState through the event handler (or store in App) and \
-         call list_state.select(Some(0)) when !pinned_top."
+        "BC-2.06.018 PC-8 / AC-008: when pinned_top=false and a new event arrives, \
+         the production handler must set app.event_ribbon_state.list_state to row 0 \
+         (newest, auto-follow). FIX: on_hook_event_received must check \
+         app.event_ribbon_state.pinned_top and call list_state.select(Some(0)) when !pinned_top."
     );
 }
 
@@ -266,14 +246,11 @@ fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
 /// suppress the auto-scroll — this test verifies that branch is correctly implemented.
 #[test]
 fn test_BC_2_06_018_auto_scroll_suppressed_when_pinned_top() {
-    let mut ribbon_state = EventRibbonState {
-        pinned_top: true,
-        ..Default::default()
-    };
-    // Set scroll to row 3 — simulating user has scrolled up (away from newest).
-    ribbon_state.list_state.select(Some(3));
-
+    // Arrange: App with ribbon state pinned_top=true and scroll at row 3.
     let mut app = App::new(MonocleConfig::default());
+    app.event_ribbon_state.pinned_top = true;
+    // Set scroll to row 3 — simulating user has scrolled up (away from newest).
+    app.event_ribbon_state.list_state.select(Some(3));
 
     // Act: new HookEventReceived arrives. When pinned_top=true, scroll must NOT change.
     on_hook_event_received(
@@ -286,17 +263,17 @@ fn test_BC_2_06_018_auto_scroll_suppressed_when_pinned_top() {
 
     // Assert: scroll offset must still be Some(3) (preserved — pinned_top=true suppresses
     // auto-scroll per BC-2.06.018 PC-8 / AC-008).
-    // This currently passes vacuously (nothing touches ribbon_state).
-    // Once auto-scroll is wired, this assertion verifies the pinned_top=true branch.
+    // The production handler checks app.event_ribbon_state.pinned_top — when true, must NOT
+    // call list_state.select(Some(0)).
     assert_eq!(
-        ribbon_state.list_state.selected(),
+        app.event_ribbon_state.list_state.selected(),
         Some(3),
         "BC-2.06.018 PC-8 / AC-008: scroll offset must be preserved when pinned_top=true \
-         (user has manually scrolled up). The production handler must check pinned_top before \
-         calling list_state.select(Some(0))."
+         (user has manually scrolled up). The production handler must check \
+         app.event_ribbon_state.pinned_top before calling list_state.select(Some(0))."
     );
     assert!(
-        ribbon_state.pinned_top,
+        app.event_ribbon_state.pinned_top,
         "BC-2.06.018 PC-8: pinned_top must remain true after new event arrival when user has \
          pinned scroll position"
     );
@@ -409,6 +386,7 @@ fn test_BC_2_06_018_ec116_scroll_past_oldest_clamped() {
     // Push exactly 3 events via production push_event_row.
     for i in 0..3u64 {
         let row = HookEventRow {
+            timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
             received_at: Instant::now(),
             hook_type: HookType::Notification,
             session_id: format!("sess-{i}"),
@@ -475,6 +453,7 @@ fn test_BC_2_06_018_ec113_1000_events_vecdeque_bounded() {
     // Push 1000 events.
     for i in 0..1000u64 {
         let row = HookEventRow {
+            timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
             received_at: Instant::now(),
             hook_type: HookType::Notification,
             session_id: format!("sess-{i:04}"),

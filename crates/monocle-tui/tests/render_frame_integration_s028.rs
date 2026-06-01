@@ -63,7 +63,7 @@ fn buffer_region_text(terminal: &Terminal<TestBackend>, x_start: u16, width: u16
 }
 
 /// Build a 100x30 terminal driven by App::render_frame.
-fn render_to_terminal(app: &App) -> Terminal<TestBackend> {
+fn render_to_terminal(app: &mut App) -> Terminal<TestBackend> {
     let backend = TestBackend::new(100, 30);
     let mut terminal = Terminal::new(backend).unwrap();
     terminal
@@ -127,7 +127,7 @@ fn test_BC_2_06_018_AC010_render_frame_dashboard_shows_event_ribbon_content() {
     );
 
     // Act: render via the production path.
-    let terminal = render_to_terminal(&app);
+    let terminal = render_to_terminal(&mut app);
 
     // The terminal is 100 columns wide. Dashboard layout: left 60% = 60 cols (Sessions),
     // right 40% = 40 cols (Event Ribbon). The ribbon area starts at x=60.
@@ -191,7 +191,7 @@ fn test_BC_2_06_006_AC010_render_frame_filtering_mode_shows_filter_input_box() {
     )];
 
     // Act: render via the production path.
-    let terminal = render_to_terminal(&app);
+    let terminal = render_to_terminal(&mut app);
     let rendered = buffer_text(&terminal);
 
     // Assert: the filter input box must be present with the "/ query_" format.
@@ -250,7 +250,7 @@ fn test_BC_2_06_006_AC010_render_frame_filtering_zero_match_shows_sentinel() {
     )];
 
     // Act: render via the production path.
-    let terminal = render_to_terminal(&app);
+    let terminal = render_to_terminal(&mut app);
     let rendered = buffer_text(&terminal);
 
     assert!(
