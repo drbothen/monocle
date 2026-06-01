@@ -540,7 +540,11 @@ pub fn render_sessions_filter(
             let tokens = format_token_count(s.token_count);
             let cost = format_cost(s.cost_usd);
             let uptime = format_uptime_at(s.started_at, now);
-            let id_str = if s.session_id.is_empty() { "?" } else { &s.session_id };
+            let id_str = if s.session_id.is_empty() {
+                "?"
+            } else {
+                &s.session_id
+            };
 
             // Compute nucleo match indices for project_name (BC-2.06.006 PC-4).
             // Use a fresh Vec per session — indices() fills it unconditionally.
@@ -550,7 +554,9 @@ pub fn render_sessions_filter(
             // indices() returns None when the atom does not match the haystack.
             // For scored sessions the atom MUST match — but gracefully fall back to
             // plain rendering if indices() unexpectedly returns None (defensive).
-            let has_indices = atom.indices(haystack, &mut app.matcher, &mut indices).is_some();
+            let has_indices = atom
+                .indices(haystack, &mut app.matcher, &mut indices)
+                .is_some();
 
             if has_indices && !indices.is_empty() {
                 // Build character-level styled spans for the project_name field.

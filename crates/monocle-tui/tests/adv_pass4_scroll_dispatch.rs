@@ -44,8 +44,8 @@ use monocle_config::MonocleConfig;
 use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::tui::binding::{BindingLayers, KeyCode, KeyEvent, KeyModifiers};
 use monocle_core::tui::state::{Action, AppMode, FocusSnapshot};
-use monocle_tui::app::{dispatch_key_event, on_hook_event_received, App};
 use monocle_ipc::types::HookType;
+use monocle_tui::app::{dispatch_key_event, on_hook_event_received, App};
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 
 // ---------------------------------------------------------------------------
@@ -58,12 +58,26 @@ fn make_app_with_events_event_ribbon_focus() -> App {
         EnrichedSession::new(
             "sess-001".to_string(),
             "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None,
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
         ),
         EnrichedSession::new(
             "sess-002".to_string(),
             "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None,
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
         ),
     ];
     app.mode = AppMode::Dashboard {
@@ -71,8 +85,12 @@ fn make_app_with_events_event_ribbon_focus() -> App {
     };
     for i in 0..10u64 {
         on_hook_event_received(
-            &mut app, HookType::Notification, "sess-001".to_string(),
-            "{}".to_string(), i, 0i64,
+            &mut app,
+            HookType::Notification,
+            "sess-001".to_string(),
+            "{}".to_string(),
+            i,
+            0i64,
         );
     }
     // Ribbon at row 0 (newest), not pinned.
@@ -81,7 +99,9 @@ fn make_app_with_events_event_ribbon_focus() -> App {
     app
 }
 
-fn no_mod() -> KeyModifiers { KeyModifiers::default() }
+fn no_mod() -> KeyModifiers {
+    KeyModifiers::default()
+}
 
 /// Build a `BindingLayers` that maps a UNIQUE test key (`Ctrl+PageDown`) to
 /// `Action::ScrollDown` and another (`Ctrl+PageUp`) to `Action::ScrollUp`.
@@ -270,10 +290,30 @@ fn test_BC_2_06_018_AC010_C1_scroll_up_variant_is_dead_in_dispatch() {
 fn test_BC_2_06_018_AC010_C1_regression_j_in_sessions_focus_still_moves_cursor() {
     let mut app = App::new(MonocleConfig::default());
     app.sessions = vec![
-        EnrichedSession::new("sess-001".to_string(), "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None),
-        EnrichedSession::new("sess-002".to_string(), "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None),
+        EnrichedSession::new(
+            "sess-001".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
+        ),
+        EnrichedSession::new(
+            "sess-002".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
+        ),
     ];
     app.mode = AppMode::Dashboard {
         focused: FocusSnapshot::Sessions,
@@ -282,7 +322,10 @@ fn test_BC_2_06_018_AC010_C1_regression_j_in_sessions_focus_still_moves_cursor()
     let mut sessions_state = SessionsPanelState::default();
     sessions_state.list_state.select(Some(0));
 
-    let j_key = KeyEvent { code: KeyCode::Char('j'), modifiers: no_mod() };
+    let j_key = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: no_mod(),
+    };
     dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
 
     assert_eq!(
@@ -297,10 +340,30 @@ fn test_BC_2_06_018_AC010_C1_regression_j_in_sessions_focus_still_moves_cursor()
 fn test_BC_2_06_018_AC010_C1_regression_k_in_sessions_focus_still_moves_cursor_up() {
     let mut app = App::new(MonocleConfig::default());
     app.sessions = vec![
-        EnrichedSession::new("sess-001".to_string(), "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None),
-        EnrichedSession::new("sess-002".to_string(), "claude-code".to_string(),
-            None, None, SessionStatus::Active, None, None, None, 0, None),
+        EnrichedSession::new(
+            "sess-001".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
+        ),
+        EnrichedSession::new(
+            "sess-002".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Active,
+            None,
+            None,
+            None,
+            0,
+            None,
+        ),
     ];
     app.mode = AppMode::Dashboard {
         focused: FocusSnapshot::Sessions,
@@ -309,7 +372,10 @@ fn test_BC_2_06_018_AC010_C1_regression_k_in_sessions_focus_still_moves_cursor_u
     let mut sessions_state = SessionsPanelState::default();
     sessions_state.list_state.select(Some(1)); // start at row 1
 
-    let k_key = KeyEvent { code: KeyCode::Char('k'), modifiers: no_mod() };
+    let k_key = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: no_mod(),
+    };
     dispatch_key_event(&mut app, &k_key, &layers, &mut sessions_state);
 
     assert_eq!(

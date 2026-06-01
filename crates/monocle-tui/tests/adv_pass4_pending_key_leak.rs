@@ -38,8 +38,10 @@ use monocle_config::MonocleConfig;
 use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
 use monocle_core::tui::state::{AppMode, FocusSnapshot};
-use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event, on_hook_event_received, App};
 use monocle_ipc::types::HookType;
+use monocle_tui::app::{
+    build_builtin_binding_layers, dispatch_key_event, on_hook_event_received, App,
+};
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 
 // ---------------------------------------------------------------------------
@@ -122,7 +124,12 @@ fn test_BC_2_06_018_PC5_I1a_pending_key_cleared_on_focus_switch_tab() {
 
     // Precondition: in EventRibbon focus, ribbon at row 5 (scrolled), pending_key=None.
     assert!(
-        matches!(&app.mode, AppMode::Dashboard { focused: FocusSnapshot::EventRibbon }),
+        matches!(
+            &app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::EventRibbon
+            }
+        ),
         "precondition: must be in Dashboard EventRibbon focus"
     );
     assert_eq!(
@@ -130,7 +137,10 @@ fn test_BC_2_06_018_PC5_I1a_pending_key_cleared_on_focus_switch_tab() {
         Some(5),
         "precondition: ribbon must be at row 5"
     );
-    assert_eq!(app.pending_key, None, "precondition: pending_key must be None");
+    assert_eq!(
+        app.pending_key, None,
+        "precondition: pending_key must be None"
+    );
 
     // Step 1: Press 'g' → pending_key = Some('g').
     dispatch(&mut app, KeyCode::Char('g'), &mut sessions_state);
@@ -150,13 +160,17 @@ fn test_BC_2_06_018_PC5_I1a_pending_key_cleared_on_focus_switch_tab() {
     dispatch(&mut app, KeyCode::Tab, &mut sessions_state);
     // After Tab, mode must be Dashboard { Sessions }.
     assert!(
-        matches!(&app.mode, AppMode::Dashboard { focused: FocusSnapshot::Sessions }),
+        matches!(
+            &app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
         "step 2: Tab must switch focus to Sessions"
     );
     // CRITICAL: pending_key must be cleared when we leave EventRibbon focus.
     assert_eq!(
-        app.pending_key,
-        None,
+        app.pending_key, None,
         "BC-2.06.018 PC-5 I1 RED: pending_key must be cleared when focus leaves \
          EventRibbon (Tab switches focus to Sessions). \
          If pending_key is NOT cleared here, a stale 'g' prefix leaks across focus modes. \
@@ -212,10 +226,18 @@ fn test_BC_2_06_018_PC5_I1b_pending_key_cleared_by_intervening_key() {
 
     // Precondition: in EventRibbon focus, ribbon at row 5.
     assert!(
-        matches!(&app.mode, AppMode::Dashboard { focused: FocusSnapshot::EventRibbon }),
+        matches!(
+            &app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::EventRibbon
+            }
+        ),
         "precondition: must be in Dashboard EventRibbon focus"
     );
-    assert_eq!(app.pending_key, None, "precondition: pending_key must be None");
+    assert_eq!(
+        app.pending_key, None,
+        "precondition: pending_key must be None"
+    );
 
     // Step 1: Press 'g' → pending_key = Some('g').
     dispatch(&mut app, KeyCode::Char('g'), &mut sessions_state);
@@ -229,8 +251,7 @@ fn test_BC_2_06_018_PC5_I1b_pending_key_cleared_by_intervening_key() {
     dispatch(&mut app, KeyCode::Char('j'), &mut sessions_state);
     // After 'j', pending_key must be None (cleared by the non-'g' key).
     assert_eq!(
-        app.pending_key,
-        None,
+        app.pending_key, None,
         "BC-2.06.018 PC-5 I1 RED: pending_key must be cleared when a non-'g' key is pressed \
          while pending (the '_ =>' branch in the match arm). \
          FIX: the catch-all arm in the EventRibbon key dispatch match must clear pending_key \
@@ -266,8 +287,7 @@ fn test_BC_2_06_018_PC5_I1b_pending_key_cleared_by_intervening_key() {
     // Step 4: Press a non-'g' key to clear the fresh pending without triggering jump.
     dispatch(&mut app, KeyCode::Char('k'), &mut sessions_state);
     assert_eq!(
-        app.pending_key,
-        None,
+        app.pending_key, None,
         "step 4: non-'g' key after fresh pending must clear pending_key"
     );
 
@@ -305,7 +325,10 @@ fn test_BC_2_06_018_PC5_I1c_pending_key_cleared_on_filtering_mode_entry() {
     sessions_state.list_state.select(Some(0));
 
     // Precondition: EventRibbon focus, pending_key = None.
-    assert_eq!(app.pending_key, None, "precondition: pending_key must be None");
+    assert_eq!(
+        app.pending_key, None,
+        "precondition: pending_key must be None"
+    );
 
     // Step 1: Set pending by pressing 'g'.
     dispatch(&mut app, KeyCode::Char('g'), &mut sessions_state);
@@ -325,8 +348,7 @@ fn test_BC_2_06_018_PC5_I1c_pending_key_cleared_on_filtering_mode_entry() {
     // After '/', mode should be Filtering or at minimum not Dashboard { EventRibbon }.
     // The important assertion: pending_key must be None.
     assert_eq!(
-        app.pending_key,
-        None,
+        app.pending_key, None,
         "BC-2.06.018 PC-5 I1 RED: pending_key must be cleared when mode changes away from \
          Dashboard {{ EventRibbon }} (pressing '/' enters Filtering mode). \
          If pending_key is NOT cleared, a stale 'g' prefix persists into Filtering mode. \
