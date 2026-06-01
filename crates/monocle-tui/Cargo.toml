@@ -44,6 +44,10 @@ directories = { workspace = true }
 # serde_json for stub types
 serde_json = { workspace = true }
 
+# similar: unified diff for ToolPayload::Edit (AC-005, BC-2.06.015).
+# ONLY in monocle-tui — NEVER monocle-core (purity boundary, AC-007 / BC-2.06.015 INV-1).
+similar = "3"
+
 # chrono for uptime formatting (started_at → elapsed duration)
 chrono = { workspace = true }
 

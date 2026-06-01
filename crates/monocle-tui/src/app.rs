@@ -1727,7 +1727,29 @@ pub fn render_frame(
             let panel = SessionsPanel::new(app);
             panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
 
-            // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
+            // S-027: Render overlay modal when AppMode::Overlay is active.
+            //
+            // The overlay widget and dimmed background are wired here by the S-027
+            // implementer. The status bar (rendered below) is EXCLUDED from dimming
+            // per BC-2.06.019 PC-1 (status bar is always full-brightness).
+            //
+            // Implementation contract:
+            // - Call `ui::overlay_widget::render_dimmed_background(layout.main_area, buf)`
+            //   to apply Modifier::DIM to all non-modal cells (excluding status_bar_area).
+            // - Call `ui::overlay_widget::render_overlay_widget(modal, depth, area, frame)`
+            //   to draw the centered modal on top.
+            // todo!(S-027): wire overlay_widget::render_overlay_widget + render_dimmed_background
+            // when AppMode::Overlay { .. } is active.
+
+            // S-027: Render the status bar using the new status_bar module.
+            //
+            // The implementer replaces the inline Paragraph::render below with a call to
+            // `ui::status_bar::render_status_bar(mode, drop_counter, stack_depth, status_message, area, buf)`.
+            // The status bar is never dimmed, even in Overlay mode.
+            //
+            // For now the existing inline render is preserved so the S-026 behavior
+            // compiles and passes until S-027 implementation replaces it.
+            // todo!(S-027): replace inline status bar with status_bar::render_status_bar.
             Widget::render(
                 Paragraph::new(status_line),
                 layout.status_bar_area,
