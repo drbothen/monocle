@@ -1102,3 +1102,102 @@ fn test_BC_2_06_005_ac006_move_focus_round_trip_two_tabs() {
         ),
     }
 }
+
+// ===========================================================================
+// BC-2.06.015 — [t] trace-to-source stub: identity transition
+//
+// RED GATE: `Action::PermissionTraceToSource` does not yet exist in the Action
+// enum. Tests in this section fail to COMPILE until the implementer adds the
+// variant to `monocle-core/src/tui/state.rs` (BC-2.06.015 PC-7).
+// ===========================================================================
+
+/// BC-2.06.015 PC-2 (RED GATE): `transition(Overlay { prior: Sessions }, PermissionTraceToSource)`
+/// returns `Overlay { prior: Sessions }` unchanged.
+///
+/// The identity semantics: no AppMode change, prior is preserved verbatim. This is the
+/// canonical "no navigation" postcondition for the [t] stub (BC-2.06.015 PC-2, PC-4).
+///
+/// This test FAILS TO COMPILE until `Action::PermissionTraceToSource` is added to the
+/// Action enum in `monocle-core/src/tui/state.rs`.
+///
+/// Traces to: BC-2.06.015 PC-2 (identity AppMode transition), PC-4 (no navigation).
+#[test]
+fn test_BC_2_06_015_transition_overlay_permission_trace_to_source_is_identity() {
+    let prior = FocusSnapshot::Sessions;
+    let mode = AppMode::Overlay {
+        prior: prior.clone(),
+    };
+
+    // `Action::PermissionTraceToSource` must exist for this to compile — RED GATE.
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        monocle_core::tui::state::transition(mode, Action::PermissionTraceToSource)
+    }));
+    let next = result.unwrap_or_else(|_| {
+        panic!(
+            "transition(Overlay, PermissionTraceToSource) panicked — \
+             Red Gate: Action::PermissionTraceToSource arm missing from transition()"
+        )
+    });
+
+    match next {
+        AppMode::Overlay {
+            prior: returned_prior,
+        } => {
+            assert_eq!(
+                returned_prior, prior,
+                "BC-2.06.015 PC-2: transition(Overlay, PermissionTraceToSource) must \
+                 return Overlay with prior UNCHANGED (identity transition)"
+            );
+        }
+        AppMode::Dashboard { .. } => {
+            panic!(
+                "BC-2.06.015 PC-2: transition(Overlay, PermissionTraceToSource) must NOT \
+                 collapse to Dashboard — it is an identity transition"
+            );
+        }
+        _ => {
+            panic!(
+                "BC-2.06.015 PC-2: transition(Overlay, PermissionTraceToSource) must \
+                 return Overlay unchanged; got a different mode"
+            );
+        }
+    }
+}
+
+/// BC-2.06.015 PC-2 (RED GATE): identity holds with `prior: EventRibbon` too.
+///
+/// Verifies the identity is not accidentally hardcoded to `Sessions`. The prior value
+/// must round-trip exactly regardless of which FocusSnapshot it holds.
+///
+/// Traces to: BC-2.06.015 PC-2 (prior unchanged for any prior value).
+#[test]
+fn test_BC_2_06_015_transition_overlay_trace_identity_preserves_any_prior() {
+    for prior in [FocusSnapshot::Sessions, FocusSnapshot::EventRibbon] {
+        let mode = AppMode::Overlay {
+            prior: prior.clone(),
+        };
+        let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            monocle_core::tui::state::transition(mode, Action::PermissionTraceToSource)
+        }));
+        let next = result.unwrap_or_else(|_| {
+            panic!(
+                "transition(Overlay {{prior: {prior:?}}}, PermissionTraceToSource) panicked — Red Gate"
+            )
+        });
+        match next {
+            AppMode::Overlay {
+                prior: returned_prior,
+            } => {
+                assert_eq!(
+                    returned_prior, prior,
+                    "BC-2.06.015 PC-2: prior must be preserved for prior={prior:?}"
+                );
+            }
+            _ => {
+                panic!(
+                    "BC-2.06.015 PC-2: transition must return Overlay for prior={prior:?}"
+                );
+            }
+        }
+    }
+}
