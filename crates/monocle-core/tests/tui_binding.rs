@@ -622,3 +622,127 @@ fn test_BC_2_06_003_binding_layers_empty_constructs() {
     let _layers = BindingLayers::empty();
     // No assertion needed — if construction panics, the test fails.
 }
+
+// ===========================================================================
+// BC-2.06.015 — [t] trace-to-source stub: binding in Overlay arm
+//
+// RED GATE: `Action::PermissionTraceToSource` does not yet exist in the Action
+// enum. This test will fail to COMPILE until the implementer adds the variant
+// to `monocle-core/src/tui/state.rs` Action enum (BC-2.06.015 PC-7).
+// ===========================================================================
+
+/// BC-2.06.015 PC-7 compile-gate: `Action::PermissionTraceToSource` variant exists,
+/// and `t` does NOT resolve from empty `BindingLayers`.
+///
+/// This test does TWO things — neither of which is a positive resolution test:
+///
+/// 1. **Compile-time variant-existence gate:** the match arm referencing
+///    `Action::PermissionTraceToSource` causes a compile error if the variant is absent
+///    from `monocle-core/src/tui/state.rs`. That compile failure is the Red Gate signal
+///    for BC-2.06.015 PC-7 (variant must be defined in monocle-core).
+///
+/// 2. **Empty-layers non-resolution assertion:** with `BindingLayers::empty()` (no Builtin
+///    entries), `t` is NOT captured by the SearchPrompt Overlay arm (unlike `y`/`A`/`n`/`r`)
+///    and the Builtin layer is absent, so the result must NOT be `PermissionTraceToSource`.
+///    The panic in the `Some(PermissionTraceToSource)` arm guards this invariant.
+///
+/// The POSITIVE production-binding path — `t` resolves to `PermissionTraceToSource` via
+/// `build_builtin_binding_layers()` — is covered by
+/// `test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source` in
+/// `crates/monocle-tui/tests/overlay_stub.rs`.
+///
+/// Traces to: BC-2.06.015 PC-7 (variant defined in monocle-core), INV-1 (Builtin binding).
+#[test]
+fn test_BC_2_06_015_permission_trace_to_source_variant_compiles_and_not_resolved_from_empty_layers()
+{
+    let key = char_key('t');
+    let layers = BindingLayers::empty();
+    let mode = overlay_mode();
+
+    let result = call_resolve!(key, mode, layers);
+
+    // With empty layers, `t` falls through the search_prompt / user_custom / per_context /
+    // global layers; it must be present in the Builtin layer.
+    // However, the `call_resolve!` macro uses `BindingLayers::empty()` which has NO Builtin
+    // entries. We therefore assert that `Action::PermissionTraceToSource` EXISTS as a variant
+    // (compile-time assertion) and that the SearchPrompt layer in Overlay captures `t`.
+    //
+    // In the Overlay SearchPrompt layer, `t` is NOT a permission decision key (unlike
+    // `y`/`A`/`n`/`r`). It is registered in the Builtin layer. With empty layers it
+    // returns None — but the TEST STILL FAILS TO COMPILE if the variant is absent.
+    //
+    // The compile-failure Red Gate fires because this function references
+    // `Action::PermissionTraceToSource` in the assertion below. If the variant
+    // does not exist, the entire test binary fails to build.
+    // If any layer returned PermissionTraceToSource, that is incorrect with empty layers.
+    // The load-bearing assertion is the COMPILE CHECK: `Action::PermissionTraceToSource`
+    // must exist in the Action enum for this test to compile. Matching against the
+    // variant here is the compile-time proof the variant exists.
+    if let Some((monocle_core::tui::state::Action::PermissionTraceToSource, _source)) = result {
+        // This arm being reachable proves the variant compiles.
+        // With empty layers, this branch should NOT be reached (see note above).
+        panic!(
+            "BC-2.06.015 binding: PermissionTraceToSource resolved from empty layers \
+             — SearchPrompt layer must not capture `t`"
+        );
+    }
+    // None (or Some with another action) is expected with empty layers — correct.
+    // The load-bearing assertion is the COMPILE CHECK above.
+}
+
+/// BC-2.06.015 PC-7 / INV-1 (RED GATE — production binding layer):
+/// key `t` in `AppMode::Overlay` resolves to `Action::PermissionTraceToSource`
+/// from the PRODUCTION `build_builtin_binding_layers()` binding table.
+///
+/// This test exercises the full production binding path — the same function used
+/// in `run()`. It will fail to COMPILE if `Action::PermissionTraceToSource` is
+/// absent from the Action enum, and will FAIL AT RUNTIME if `build_builtin_binding_layers()`
+/// does not register `t → PermissionTraceToSource` in the Overlay arm.
+///
+/// Traces to: BC-2.06.015 PC-7, INV-1 (Builtin binding, not PerContext or UserCustomCommand).
+///
+/// NOTE: This test imports from monocle-tui which lives in a different crate. However,
+/// monocle-core integration tests cannot import monocle-tui. This test is therefore
+/// written as a compile-time variant check only (see overlay_stub.rs for the runtime
+/// production-layer binding test in monocle-tui).
+///
+/// Variant existence proof — compile-time only:
+#[test]
+fn test_BC_2_06_015_permission_trace_to_source_variant_exists_and_matches() {
+    use monocle_core::tui::state::Action;
+    // Construct the variant — fails to compile if it doesn't exist.
+    // This is the canonical compile-time Red Gate for a new Action variant.
+    let _action: Option<Action> = Some(Action::PermissionTraceToSource);
+    // Collapsed match to prove the compiler knows about the variant.
+    // The collapsed form satisfies clippy::collapsible_match while still
+    // exercising the compile-time proof that the variant is matchable.
+    if let Some(Action::PermissionTraceToSource) = _action {
+        // Variant exists and is matchable — compile-time proof.
+    }
+}
+
+/// BC-2.06.015 EC-099 (RED GATE): key `t` in `AppMode::Dashboard` does NOT resolve to
+/// `Action::PermissionTraceToSource` — the binding is absent in the Dashboard arm.
+///
+/// With empty layers, `t` must return `None` in Dashboard mode (no Builtin Dashboard
+/// binding for `t`). This guards the EC-099 invariant: `[t]` is Overlay-only.
+///
+/// Traces to: BC-2.06.015 EC-099 (Dashboard: identity; `t` unbound).
+#[test]
+fn test_BC_2_06_015_ec099_key_t_in_dashboard_does_not_resolve_trace_to_source() {
+    let key = char_key('t');
+    let layers = BindingLayers::empty();
+    let mode = dashboard_sessions();
+
+    let result = call_resolve!(key, mode, layers);
+
+    // With empty layers in Dashboard, `t` resolves to None.
+    // Verify it is NOT PermissionTraceToSource if somehow resolved.
+    if let Some((monocle_core::tui::state::Action::PermissionTraceToSource, _source)) = result {
+        panic!(
+            "BC-2.06.015 EC-099: `t` in Dashboard must NOT resolve to \
+             PermissionTraceToSource — binding is Overlay-only (INV-1)"
+        );
+    }
+    // None (or Some with another action) is expected with empty layers in Dashboard — correct.
+}

@@ -44,6 +44,16 @@ directories = { workspace = true }
 # serde_json for stub types
 serde_json = { workspace = true }
 
+# similar: unified diff for ToolPayload::Edit (AC-005, BC-2.06.015).
+# ONLY in monocle-tui — NEVER monocle-core (purity boundary, AC-007 / BC-2.06.015 INV-1).
+similar = "3"
+
+# unicode-width: compute display column width for VISUAL overflow detection in
+# render_generic_payload (BC-2.06.024 PC-3 / AC-006 / F-S027-P3-NIT-001).
+# Production code needs this to estimate wrapped rows for the scroll-hint predicate.
+# Same minor pin (0.2) as the dev-dep consumed transitively by ratatui.
+unicode-width = "0.2"
+
 # chrono for uptime formatting (started_at → elapsed duration)
 chrono = { workspace = true }
 
@@ -51,6 +61,9 @@ chrono = { workspace = true }
 tokio = { workspace = true }
 tempfile = { workspace = true }
 serde_json = { workspace = true }
+# unicode-width is now a normal [dependencies] entry (promoted for production use in
+# render_generic_payload wrap-aware overflow detection — F-S027-P3-NIT-001).
+# The dev-dep entry is removed to avoid the duplicate; tests use the production dep.
 
 [lints]
 workspace = true

@@ -82,25 +82,25 @@ pub const DAEMON_DISCONNECT_STATUS: &str = "[disconnected] reconnecting...";
 /// this const is the single authoritative source for both.
 pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 
-/// Base status-bar label rendered in the title area when the drop counter is zero.
+/// Base status-bar product name label (legacy — superseded by `render_status_bar`).
 ///
-/// This is the root token from which `format_drop_counter` derives the drop-counter
-/// label `"[dropped: N] monocle"` (BC-2.06.007 PC-7). Both the plain and drop-counter
-/// render paths share this root to prevent silent drift if the product name changes.
+/// This constant was used by the S-025 one-row `Paragraph` renderer in `render_frame`
+/// (which rendered `"monocle"` or `"[dropped: N] monocle"`). S-027 replaced that path
+/// with `render_status_bar`, which no longer uses this label.
+///
+/// Retained as a public re-export because `startup_connect.rs` tests assert the
+/// ABSENCE of the old format (regression guard), which requires the constant to
+/// compile. Do NOT use this in new rendering code.
 pub const MONOCLE_STATUS_LABEL: &str = "monocle";
 
-/// Format the status-bar drop-counter label shown when `app.drop_counter > 0`.
+/// Format the legacy S-025 drop-counter label `"[dropped: N] monocle"`.
 ///
-/// Single source of truth for the `"[dropped: N] monocle"` pattern (BC-2.06.007).
-/// Both the production render path and unit tests reference this helper to
-/// prevent vacuous-mirror drift.
+/// S-027 superseded this with `render_status_bar` / `drop_counter_span` which renders
+/// the canonical BC-2.06.019 PC-2 text `"drops: N"` (no brackets, no product name).
 ///
-/// # Examples
-/// ```
-/// use monocle_tui::format_drop_counter;
-/// assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
-/// assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
-/// ```
+/// Retained as a public function because `startup_connect.rs` tests assert the
+/// ABSENCE of the old format (negative regression guard) — they call this function
+/// to produce the expected-absent string. Do NOT use in new rendering code.
 pub fn format_drop_counter(n: u64) -> String {
     format!("[dropped: {n}] {MONOCLE_STATUS_LABEL}")
 }
@@ -1095,8 +1095,11 @@ pub async fn run() -> Result<()> {
     // Future: merge user-custom and per-context layers from config.
     let binding_layers = build_builtin_binding_layers();
 
-    // Main event loop (~60fps render cadence, keyboard polling, IPC drain).
-    let tick_rate = Duration::from_millis(16); // ~60fps; also the keyboard poll ceiling
+    // Main event loop (100ms tick rate — AC-009 / BC-2.06.020: timer updates for
+    // the overlay "Waiting: Ns" elapsed timer require 100ms granularity).
+    // 100ms is also the keyboard poll ceiling; key response latency is acceptable
+    // for a permission overlay workflow where decisions are deliberate, not rapid.
+    let tick_rate = Duration::from_millis(100);
 
     loop {
         // 1. Render the current frame (AC-001, AC-005, BLOCKER-004, BC-2.06.007 PC-7).
@@ -1608,6 +1611,21 @@ pub fn dispatch_key_event(
                 Action::PermissionReject => {
                     send_permission_decision(app, PermissionDecisionKind::Deny);
                 }
+                // ---------------------------------------------------------------------------
+                // BC-2.06.015 PC-1 — [t] trace-to-source stub
+                //
+                // Phase 1: sets App.status_message to the canonical placeholder text.
+                // No AppMode transition (identity via transition()), no overlay_stack
+                // mutation, no IPC send (PC-3). The per-context binding for AppModeTag::Overlay
+                // ensures this arm is only reachable in Overlay mode (EC-099 holds).
+                // ---------------------------------------------------------------------------
+                Action::PermissionTraceToSource => {
+                    app.status_message = Some(
+                        "[t] Trace to source \u{2014} Phase 2 feature (Static plane)".to_string(),
+                    );
+                    // Identity transition: mode stays Overlay { prior }, overlay_stack unchanged.
+                    app.mode = transition(app.mode.clone(), action);
+                }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);
                 }
@@ -1651,6 +1669,7 @@ pub fn render_frame(
     frame: &mut ratatui::Frame,
 ) {
     use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
+    use crate::ui::overlay_widget::{render_dimmed_background, render_overlay_widget};
     use crate::ui::sessions_panel::SessionsPanel;
     use monocle_core::tui::state::PanelId;
     use ratatui::{
@@ -1659,38 +1678,7 @@ pub fn render_frame(
         widgets::{Paragraph, StatefulWidget, Widget},
     };
 
-    // Build the status line (shared between Dashboard and Fullscreen).
-    //
-    // Precedence rationale (BC-2.06.016 PC-4 / BC-2.06.004 PC-2):
-    //
-    // 1. status_message (highest priority): When the daemon is disconnected or
-    //    offline, the spec unconditionally requires the status bar to render the
-    //    message text until the condition clears.  This takes precedence over the
-    //    drop_counter because the drop_counter is stable while disconnected (no
-    //    new events arrive) and becomes visible again once status_message is
-    //    cleared on successful reconnect.
-    //
-    //    Color: Yellow — matches the existing drop_counter warning color.  Not
-    //    Red (disconnect is recoverable; Red over-signals terminal severity).
-    //    Not DarkGray (reserved for the "running normally" baseline indicator).
-    //
-    // 2. drop_counter > 0: Operational warning — some events were dropped due to
-    //    backpressure.  Yellow matches the existing convention from AC-007.
-    //
-    // 3. Default: "monocle" label in dark-gray — the running-normally baseline.
-    let status_line = if let Some(msg) = app.status_message.as_deref() {
-        Line::from(Span::styled(msg, Style::default().fg(Color::Yellow)))
-    } else if app.drop_counter > 0 {
-        Line::from(vec![Span::styled(
-            format_drop_counter(app.drop_counter),
-            Style::default().fg(Color::Yellow),
-        )])
-    } else {
-        Line::from(Span::styled(
-            MONOCLE_STATUS_LABEL,
-            Style::default().fg(Color::DarkGray),
-        ))
-    };
+    use crate::ui::status_bar::render_status_bar;
 
     // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
     match &app.mode {
@@ -1702,10 +1690,10 @@ pub fn render_frame(
                     p.render(layout.panel_area, frame.buffer_mut(), sessions_state);
                 }
                 _ => {
-                    // Future panels (EventRibbon fullscreen — S-027, others).
+                    // Future panels (EventRibbon fullscreen — S-028+).
                     Widget::render(
                         Paragraph::new(Line::from(Span::styled(
-                            "Panel (S-027+)",
+                            "Panel (S-028+)",
                             Style::default().fg(Color::DarkGray),
                         ))),
                         layout.panel_area,
@@ -1713,8 +1701,14 @@ pub fn render_frame(
                     );
                 }
             }
-            Widget::render(
-                Paragraph::new(status_line),
+            // Status bar: always full-brightness, never dimmed (AC-008 / BC-2.06.019 PC-1).
+            // S-027 (AC-012 / BC-2.06.019/020/021): wire render_status_bar into the
+            // production render path (replaces legacy 1-row Paragraph).
+            render_status_bar(
+                &app.mode,
+                app.drop_counter,
+                app.overlay_stack.len(),
+                app.status_message.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );
@@ -1727,9 +1721,43 @@ pub fn render_frame(
             let panel = SessionsPanel::new(app);
             panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
 
-            // Render the status bar (bottom 2 rows): drop counter + breadcrumb.
-            Widget::render(
-                Paragraph::new(status_line),
+            // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM to the dashboard background area
+            // (all rows EXCEPT the status bar area) when overlay is active.
+            // The status bar rows are excluded so they remain full-brightness (AC-008).
+            if matches!(&app.mode, AppMode::Overlay { .. }) {
+                // Dim the full area minus the status bar area.
+                // layout.status_bar_area occupies the last Constraint::Length(2) rows.
+                // We dim the frame area above the status bar.
+                let full_area = frame.area();
+                let background_area = ratatui::layout::Rect {
+                    x: full_area.x,
+                    y: full_area.y,
+                    width: full_area.width,
+                    height: full_area
+                        .height
+                        .saturating_sub(layout.status_bar_area.height),
+                };
+                render_dimmed_background(background_area, frame.buffer_mut());
+
+                // Render the overlay modal centered within `background_area` (the
+                // non-status region). Using `full_area` here would allow `modal_rect`
+                // to center the modal over the full terminal including the status bar
+                // rows, causing the modal footer to bleed into the status bar at small
+                // terminal heights (AC-008 / BC-2.06.010 PC-1 / BC-2.06.019 PC-1).
+                if let Some(modal) = app.overlay_stack.front() {
+                    let stack_depth = app.overlay_stack.len();
+                    render_overlay_widget(modal, stack_depth, background_area, frame);
+                }
+            }
+
+            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row
+            // status bar (breadcrumb row + hint line row). The status bar is NOT dimmed
+            // even in Overlay mode (BC-2.06.019 PC-1).
+            render_status_bar(
+                &app.mode,
+                app.drop_counter,
+                app.overlay_stack.len(),
+                app.status_message.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
             );
@@ -1847,6 +1875,30 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
         Action::Quit,
     );
 
+    // BC-2.06.015 INV-1: `t` → PermissionTraceToSource ONLY in Overlay mode.
+    //
+    // Registered as a per-context binding scoped to AppModeTag::Overlay so that
+    // EC-099 holds naturally: `t` in Dashboard resolves to None (no binding).
+    // INV-1 states this is a Builtin (non-user-overridable) binding; per-context
+    // at AppModeTag::Overlay is the correct mechanism — it is hardcoded in this
+    // function (not in any user customisation file), so it cannot be overridden.
+    //
+    // NOTE: The permission decision keys (y/Enter/A/n/r) are captured at the SearchPrompt
+    // layer (Level 1) inside the Overlay arm of resolve_binding. `t` is NOT among those keys
+    // (the Overlay SearchPrompt arm matches only y/A/n/r/Up/Down, returning None for `t`).
+    // `t` therefore falls through to the PerContext layer (Level 3) where it is registered
+    // here as Action::PermissionTraceToSource for AppModeTag::Overlay.
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('t'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Overlay,
+        ),
+        Action::PermissionTraceToSource,
+    );
+
     layers
 }
 
@@ -1884,20 +1936,4 @@ pub fn crossterm_key_to_core(
     };
 
     KeyEvent { code, modifiers }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_drop_counter;
-
-    #[test]
-    fn test_format_drop_counter_zero() {
-        assert_eq!(format_drop_counter(0), "[dropped: 0] monocle");
-    }
-
-    #[test]
-    fn test_format_drop_counter_nonzero() {
-        assert_eq!(format_drop_counter(5), "[dropped: 5] monocle");
-        assert_eq!(format_drop_counter(1_000_000), "[dropped: 1000000] monocle");
-    }
 }

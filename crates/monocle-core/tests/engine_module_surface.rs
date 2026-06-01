@@ -5,7 +5,7 @@
 //!
 //! **Red Gate discipline:** All tests in this file MUST FAIL before the implementing
 //! engineer brings `engine.rs` and `hook_events.rs` to production-grade per
-//! SS-engine-module.md v1.1.20 (TDD red-gate authoring baseline; current canonical is v1.1.26).
+//! SS-engine-module.md (see version-pin-registry.yaml for current canonical version).
 //!
 //! Probe mapping (from VP-019 §Probe Matrix):
 //! - 19.a — method count == 5; names match `{id, metadata, detect, enrich, on_hook}`
@@ -545,7 +545,7 @@ fn test_BC_2_03_001_ac001_on_hook_method_signature() {
 
 /// Exercises AC-003: `SessionStatus` has exactly 5 canonical variants.
 ///
-/// Canonical variants per SS-engine-module.md v1.1.20 (F-D-01 fix):
+/// Canonical variants per SS-engine-module.md (F-D-01 fix):
 /// `Active`, `Idle`, `WaitingOnPermission`, `Stopping`, `Stopped`.
 #[test]
 fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
@@ -578,7 +578,7 @@ fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
     assert_eq!(
         variant_names.len(),
         5,
-        "SessionStatus must have exactly 5 variants (SS-engine-module.md v1.1.20 F-D-01). \
+        "SessionStatus must have exactly 5 variants (SS-engine-module.md F-D-01). \
          Found {}: {variant_names:?}",
         variant_names.len(),
     );
@@ -591,7 +591,7 @@ fn test_BC_2_03_001_ac003_session_status_has_5_canonical_variants() {
 /// Exercises AC-003: `HookResponse` has canonical 3-field set:
 /// `decision`, `redirect_url: Option<String>`, `diagnostic: Option<String>`.
 ///
-/// Per SS-engine-module.md v1.1.20 (F-D-02 fix). `DeferUntil` is NOT part of this type (F-D-03).
+/// Per SS-engine-module.md (F-D-02 fix). `DeferUntil` is NOT part of this type (F-D-03).
 #[test]
 fn test_BC_2_03_001_ac003_hook_response_has_canonical_3_fields() {
     let file = parse_engine_rs();
@@ -621,7 +621,7 @@ fn test_BC_2_03_001_ac003_hook_response_has_canonical_3_fields() {
     for req in &required {
         assert!(
             field_names.contains(req),
-            "HookResponse must have field `{req}` (SS-engine-module.md v1.1.20 F-D-02). \
+            "HookResponse must have field `{req}` (SS-engine-module.md F-D-02). \
              Found fields: {field_names:?}",
         );
     }
@@ -1194,7 +1194,7 @@ fn test_BC_2_03_001_invariant_non_exhaustive_on_all_supporting_enums() {
 
 /// Exercises AC-001 (F-014-P2-H01): `metadata` must be a sync method (asyncness.is_none()).
 ///
-/// Per SS-engine-module.md v1.1.26, `metadata()` performs no I/O and must be synchronous.
+/// Per SS-engine-module.md, `metadata()` performs no I/O and must be synchronous.
 /// This is the missing async-ness assertion parallel to the existing `id` and `detect` probes.
 #[test]
 fn test_BC_2_03_001_ac001_metadata_method_is_sync() {
@@ -1220,7 +1220,7 @@ fn test_BC_2_03_001_ac001_metadata_method_is_sync() {
 
 /// Exercises AC-001 (F-014-P2-H01): `enrich` must be an async method (asyncness.is_some()).
 ///
-/// Per SS-engine-module.md v1.1.26, `enrich()` performs engine-specific I/O and must be
+/// Per SS-engine-module.md, `enrich()` performs engine-specific I/O and must be
 /// declared async. This is the missing async-ness assertion parallel to the existing
 /// `on_hook` probe.
 #[test]
