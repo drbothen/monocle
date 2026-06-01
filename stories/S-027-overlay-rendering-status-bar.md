@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.8"
+version: "1.9"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -21,13 +21,13 @@ verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.010.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.5"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.6"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.1.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "ec6b608"
+input-hash: "e4427fc"
 traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
 ---
 
@@ -183,9 +183,11 @@ When `[t]` is pressed in `AppMode::Overlay`, the key handler sets:
 ```
 app.status_message = Some("[t] Trace to source — Phase 2 feature (Static plane)".to_string());
 ```
-The status bar renders this message on the next draw tick in the default terminal color
-(no special styling). The press is gated — the message appears only after `[t]` is
-pressed, not on every render of the overlay (BC-2.06.015 PC-1).
+The status bar renders this message on the next draw tick using the shared
+`App.status_message` rendering convention (`Color::Yellow` — the same styling used by
+transport notifications such as `"[disconnected] reconnecting..."` and offline status
+messages; no bespoke styling). The press is gated — the message appears only after `[t]`
+is pressed, not on every render of the overlay (BC-2.06.015 PC-1).
 
 The `AppMode` transition is identity: `transition(Overlay { prior }, PermissionTraceToSource)`
 returns `Overlay { prior }` unchanged and `App.overlay_stack` is not modified (BC-2.06.015
@@ -306,6 +308,14 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.9
+
+**ADV Pass-12 N-3 — AC-013 color wording aligned to BC-2.06.015 v1.0.7 shared status_message yellow convention** (2026-06-01):
+- AC-013: "default terminal color (no special styling)" replaced with shared `App.status_message` rendering convention (`Color::Yellow` — same as transport/offline notifications; no bespoke styling), per BC-2.06.015 v1.0.7 PC-1 clarification.
+- BC-2.06.015 input pin bumped: v1.0.6 → v1.0.7.
+- input-hash refreshed: ec6b608 → e4427fc (BC-2.06.015.md content changed at v1.0.7).
+- SE-16d monotonicity: v1.9 timestamp 2026-06-01 >= v1.8 timestamp 2026-06-01. PASS.
 
 ## §Trace v1.8
 
