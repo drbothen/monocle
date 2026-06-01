@@ -1848,6 +1848,32 @@ pub fn dispatch_key_event(
             KeyOutcome::Continue
         }
 
+        Some((Action::ScrollDown, _)) => {
+            // BC-2.06.018 AC-010 §2: Action::ScrollDown calls scroll_ribbon_down
+            // unconditionally (only reachable in EventRibbon context by design —
+            // per-context or explicit bindings produce this action only for ribbon focus).
+            // This arm ensures ScrollDown is NOT a dead variant that falls through to the
+            // transition() catch-all (which would be a no-op via EC-061 identity).
+            crate::ui::event_ribbon::scroll_ribbon_down(
+                &mut app.event_ribbon_state,
+                &app.event_ribbon_events,
+            );
+            KeyOutcome::Continue
+        }
+
+        Some((Action::ScrollUp, _)) => {
+            // BC-2.06.018 AC-010 §2: Action::ScrollUp calls scroll_ribbon_up
+            // unconditionally (only reachable in EventRibbon context by design —
+            // per-context or explicit bindings produce this action only for ribbon focus).
+            // This arm ensures ScrollUp is NOT a dead variant that falls through to the
+            // transition() catch-all (which would be a no-op via EC-061 identity).
+            crate::ui::event_ribbon::scroll_ribbon_up(
+                &mut app.event_ribbon_state,
+                &app.event_ribbon_events,
+            );
+            KeyOutcome::Continue
+        }
+
         Some((action, _)) => {
             // All other actions: drive the AppMode state machine.
             let is_quit = matches!(&action, Action::Quit);

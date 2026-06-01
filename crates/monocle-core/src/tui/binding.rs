@@ -343,6 +343,8 @@ fn clone_action(action: &Action) -> Action {
         Action::PermissionTraceToSource => Action::PermissionTraceToSource,
         Action::SelectNext => Action::SelectNext,
         Action::SelectPrev => Action::SelectPrev,
+        Action::ScrollDown => Action::ScrollDown,
+        Action::ScrollUp => Action::ScrollUp,
         Action::Quit => Action::Quit,
         Action::Noop => Action::Noop,
         // Non-exhaustive guard: new Action variants added in future waves are treated
