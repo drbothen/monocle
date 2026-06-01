@@ -23,7 +23,7 @@
 //! `Option<ProfilePickerState>` in `App` and can coexist over any `AppMode`.
 
 use crate::app::ProfilePickerState;
-use monocle_config::MonocleConfig;
+use monocle_config::{resolve_profile_for_dir, MonocleConfig};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -89,14 +89,21 @@ pub fn render_profile_picker(
     // Clear the modal region so the picker floats above the underlying render.
     Clear.render(modal_area, frame_buf);
 
-    // Determine the active profile: look through project_profiles values for the
-    // first one that matches a profile in harness_profiles (first-match semantics,
-    // same as open_profile_picker — AC-002 / BC-2.07.004 PC-2).
-    let active_profile_id: Option<&str> = config
-        .project_profiles
-        .values()
-        .find(|profile_id| config.harness_profiles.iter().any(|p| &&p.id == profile_id))
-        .map(|s| s.as_str());
+    // Determine the active profile: per-directory sticky lookup using state.current_dir.
+    // This is the correct BC-2.07.004 PC-2 / BC-2.07.005 PC-2 behaviour — the `*` marker
+    // must reflect the sticky profile for the directory the picker was opened for, not an
+    // arbitrary first-match over all project_profiles.values().
+    let active_profile_id: Option<&str> = resolve_profile_for_dir(config, &state.current_dir)
+        .map(|p| {
+            // The profile ID is borrowed from config.harness_profiles; find the matching
+            // entry in config to get a &str with the correct lifetime.
+            config
+                .harness_profiles
+                .iter()
+                .find(|hp| hp.id == p.id)
+                .map(|hp| hp.id.as_str())
+        })
+        .flatten();
 
     // Build the list widget.
     let (list, mut list_state) = build_profile_list(&state.profiles, active_profile_id);

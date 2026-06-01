@@ -129,6 +129,10 @@ pub struct ProfilePickerState {
     /// Snapshot of profile IDs at picker-open time, sorted alphabetically.
     /// Immutable for the lifetime of one picker session (AC-002 / BC-2.07.005 EC-112).
     pub profiles: Vec<String>,
+    /// The directory the picker was opened for — used by the widget to mark the
+    /// per-directory active profile with `"* "` (BC-2.07.004 PC-2 / BC-2.07.005 PC-2).
+    /// Set to the verbatim CWD at open time; never canonicalized (BC-2.07.004 INV-1).
+    pub current_dir: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -1068,76 +1072,32 @@ pub fn open_profile_picker_with_dir(app: &mut App, current_dir: &str) {
     app.profile_picker = Some(ProfilePickerState {
         selected_index,
         profiles,
+        current_dir: current_dir.to_string(),
     });
 }
 
 /// Open the profile picker using the process's current working directory for pre-selection.
 ///
-/// Convenience wrapper around [`open_profile_picker_with_dir`] that resolves
-/// `std::env::current_dir()` automatically. Called by `dispatch_key_event` when
-/// `Action::ProfilePicker` fires, so the production path always uses the verbatim
-/// CWD (BC-2.07.004 INV-1 / BC-2.07.005 INV-5: no canonicalization, preserves symlinks).
+/// Resolves `std::env::current_dir()` (verbatim, no canonicalization — BC-2.07.004 INV-1 /
+/// BC-2.07.005 INV-5) and delegates to [`open_profile_picker_with_dir`].
+/// Called by `dispatch_key_event` when `Action::ProfilePicker` fires (Ctrl-P).
 ///
 /// # Pre-selection strategy (BC-2.07.005 PC-4)
 ///
-/// 1. Try `resolve_profile_for_dir(&config, &current_dir)` (per-directory sticky lookup).
-/// 2. If the CWD has no sticky entry (new project), fall back to the first valid profile
-///    found in `config.project_profiles.values()` that exists in `harness_profiles`.
-///    This handles the common case of a single configured profile that should be pre-selected
-///    regardless of directory. Falls back to index 0 if no valid profile found.
-///
-/// For deterministic per-directory pre-selection with multiple projects, use
-/// [`open_profile_picker_with_dir`] directly.
+/// Pre-selection is determined exclusively by `resolve_profile_for_dir(&config, &cwd)`.
+/// If the CWD has no sticky entry, pre-selection falls back to index 0 (first profile
+/// in sorted order). There is no fallback over `project_profiles.values()` — such a
+/// fallback would produce non-deterministic behaviour when multiple project entries exist.
 ///
 /// # Idempotency (BC-2.07.005 EC-110)
-/// If picker is already open, this is a no-op.
+/// If picker is already open, this is a no-op (handled by the delegate).
 pub fn open_profile_picker(app: &mut App) {
-    use monocle_config::resolve_profile_for_dir;
-
-    // BC-2.07.005 EC-110: idempotent — if already open, do nothing.
-    if app.profile_picker.is_some() {
-        return;
-    }
-
-    // Build sorted snapshot of profile IDs (AC-001 / BC-2.07.004 PC-1).
-    let mut profiles: Vec<String> = app
-        .config
-        .harness_profiles
-        .iter()
-        .map(|p| p.id.clone())
-        .collect();
-    profiles.sort();
-
-    // Step 1: try per-directory lookup using CWD (BC-2.07.004 INV-1 verbatim CWD).
+    // BC-2.07.004 INV-1 / BC-2.07.005 INV-5: verbatim CWD, no canonicalization.
     let current_dir = std::env::current_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_default();
 
-    let selected_index = resolve_profile_for_dir(&app.config, &current_dir)
-        .and_then(|profile| profiles.iter().position(|id| id == &profile.id))
-        // Step 2: CWD not in project_profiles — fall back to first-match over values().
-        // This preserves backward-compatible behavior for single-profile setups where the
-        // CWD at test time may not match the stored project dir.
-        .or_else(|| {
-            app.config.project_profiles.values().find_map(|profile_id| {
-                if app
-                    .config
-                    .harness_profiles
-                    .iter()
-                    .any(|p| &p.id == profile_id)
-                {
-                    profiles.iter().position(|id| id == profile_id)
-                } else {
-                    None
-                }
-            })
-        })
-        .unwrap_or(0);
-
-    app.profile_picker = Some(ProfilePickerState {
-        selected_index,
-        profiles,
-    });
+    open_profile_picker_with_dir(app, &current_dir);
 }
 
 /// Close the profile picker without committing any selection.
