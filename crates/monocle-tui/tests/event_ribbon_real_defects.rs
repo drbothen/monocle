@@ -1,40 +1,45 @@
-//! Real-defect failing tests for S-028 event ribbon (ADV Pass-1).
+//! Real-defect failing tests for S-028 event ribbon (ADV Pass-1 + Pass-2).
 //!
 //! Each test exercises a production code path and asserts a postcondition that
-//! is CURRENTLY BROKEN — either due to missing wiring, wrong timestamp semantics,
-//! incorrect capacity bounding, or missing pending-flag propagation.
+//! is CURRENTLY BROKEN — either due to missing struct fields, missing wiring,
+//! wrong timestamp semantics, incorrect capacity bounding, or missing pending-flag
+//! propagation.
 //!
 //! # Red Gate rationale for each test
 //!
-//! - Test 5 (wall-clock timestamp): FAILS because `hook_event_row_from_record` ignores
-//!   `record.timestamp_micros` and sets `received_at = Instant::now()`. The
-//!   `format_timestamp` function then computes an elapsed-delta-from-epoch, not a
-//!   wall-clock HH:MM:SS.mmm derived from `timestamp_micros`. A known `timestamp_micros`
-//!   must produce a deterministic HH:MM:SS string; the current code cannot do this.
+//! - Test 5 (wall-clock timestamp from ring_tail): GREEN — `hook_event_row_from_record`
+//!   propagates `record.timestamp_micros` and `format_timestamp` formats UTC wall-clock.
+//!   The assertion `rendered_ts == "09:30:00.000"` now passes.
 //!
-//! - Test 6a (panel_height bound): FAILS because `on_hook_event_received` uses
-//!   `EVENT_RING_CAPACITY` (4096) as the cap, not `panel_height`. After pushing 50 events
-//!   with `panel_height=10` via the PRODUCTION push path, `event_ribbon_events.len()` is
-//!   50, not 10.
+//! - Test 6a (panel_height cap via production path): GREEN — `on_hook_event_received`
+//!   uses `app.event_ribbon_panel_height` as the cap (not EVENT_RING_CAPACITY), so
+//!   50 pushes with panel_height=10 yield len<=10.
 //!
-//! - Test 6b (resize trim): FAILS because `trim_to_panel_height` is never called from
-//!   `render_frame` — there is no resize-detection path that invokes it.
+//! - Test 6b (resize trim from render_frame): GREEN — `render_frame` calls
+//!   `trim_to_panel_height` after rendering the EventRibbon widget.
 //!
-//! - Test 7 (PENDING wiring): FAILS because `on_permission_prompt_queued` never sets
-//!   `pending=true` on any `event_ribbon_events` row. The flag stays `false` regardless
-//!   of overlay state.
+//! - Test 7 (PENDING wiring): GREEN — `on_permission_prompt_queued` sets `pending=true`
+//!   on the matching ribbon row.
 //!
-//! - Test 8 (session-change reset): FAILS because `dispatch_key_event`'s SelectNext and
-//!   SelectPrev arms do NOT call `reset_on_session_change` — the ribbon scroll offset is
-//!   never reset when session selection changes.
+//! - Test 8 (session-change reset via dispatch): GREEN — `dispatch_key_event`'s
+//!   SelectNext / SelectPrev arms call `reset_on_session_change` when the cursor moves.
 //!
-//! - Test 9 (shared matcher assertion): FAILS because `render_sessions_filter` constructs
-//!   a fresh `local_matcher = Matcher::new(Config::DEFAULT)` at every render call, violating
-//!   BC-2.06.006 INV-1 (the shared `app.matcher` must be the scoring source, not a per-render
-//!   fresh instance). We cannot assert at runtime that NO fresh matcher was constructed, but we
-//!   CAN assert via a render + scoring consistency check that the production render result is
-//!   consistent with the shared matcher's output — and that the INV-1 unit test currently
-//!   only checks field existence (vacuous), not that the render path uses `app.matcher`.
+//! - Test 9 (shared matcher / INV-1 structural audit): GREEN — `render_sessions_filter`
+//!   does NOT contain `local_matcher = Matcher::new`; the shared `app.matcher` is used.
+//!
+//! - Test 10 (streaming HookEventReceived timestamp_micros — ADV Pass-2 architect change):
+//!   COMPILE-GATE RED — `ServerToClient::HookEventReceived` does not carry
+//!   `timestamp_micros: i64` yet (SS-ipc breaking change, to be added by implementer).
+//!   When the field is present, this test verifies that `on_hook_event_received`
+//!   propagates the daemon's `timestamp_micros` to the ribbon row rather than
+//!   substituting `SystemTime::now()` (which would produce a different wall-clock value).
+//!
+//! - Test 11 (display_name field on EnrichedSession — ADV Pass-2 architect change):
+//!   COMPILE-GATE RED — `EnrichedSession::display_name` does not exist yet.
+//!   When added, this test verifies that the sessions filter (BC-2.06.006 PC-3) matches
+//!   `session.display_name` directly rather than via the hardcoded `harness_display_name`
+//!   map, so that sessions with a display_name matching the query are included even when
+//!   project_name and harness_type do not.
 //!
 //! `#![allow(non_snake_case)]` is required because the factory-mandated test naming
 //! convention uses uppercase BC identifiers.
@@ -48,11 +53,11 @@ use std::collections::VecDeque;
 use std::time::Instant;
 
 // ---------------------------------------------------------------------------
-// Test 5: BC-2.06.018 PC-1 / Defect — wall-clock timestamp from timestamp_micros
+// Test 5: BC-2.06.018 PC-1 — wall-clock timestamp from ring_tail timestamp_micros
 //
-// RED: FAILS because hook_event_row_from_record sets received_at = Instant::now()
-//      and discards record.timestamp_micros. format_timestamp then formats an
-//      elapsed-delta, not the wall-clock time embedded in timestamp_micros.
+// GREEN: hook_event_row_from_record propagates record.timestamp_micros into the row,
+//        and format_timestamp formats it as UTC wall-clock HH:MM:SS.mmm.
+//        The assertion rendered_ts == "09:30:00.000" passes in the current production code.
 //      The test asserts that the formatted timestamp encodes the correct wall-clock
 //      HH:MM:SS.mmm derived from the known timestamp_micros value.
 // ---------------------------------------------------------------------------
@@ -151,8 +156,8 @@ fn test_BC_2_06_018_PC1_wall_clock_timestamp_from_timestamp_micros() {
 // ---------------------------------------------------------------------------
 // Test 6a: BC-2.06.018 PC-3 / INV-3 — panel_height cap enforced at push time
 //
-// RED: FAILS because on_hook_event_received uses EVENT_RING_CAPACITY (4096) as
-//      the cap. After 50 pushes via the production path, len=50, not panel_height=10.
+// GREEN: on_hook_event_received uses app.event_ribbon_panel_height as the cap.
+//        After 50 pushes with panel_height=10, len <= 10 in the production path.
 // ---------------------------------------------------------------------------
 
 /// After pushing many events via the production `on_hook_event_received` with a given
@@ -237,9 +242,8 @@ fn test_BC_2_06_018_PC3_panel_height_cap_enforced_at_push_time() {
 // ---------------------------------------------------------------------------
 // Test 6b: BC-2.06.018 INV-3 — trim_to_panel_height called on resize
 //
-// RED: FAILS because render_frame never calls trim_to_panel_height. A resize event
-//      (panel_height decreases) leaves stale events in the VecDeque beyond the new
-//      panel_height. There is no resize-detection + trim call in the production path.
+// GREEN: render_frame calls trim_to_panel_height after rendering the EventRibbon.
+//        After a render with panel_height=10 (80x12 terminal), len <= 10.
 // ---------------------------------------------------------------------------
 
 /// On terminal resize (panel_height decreases), `trim_to_panel_height` must be applied
@@ -310,8 +314,8 @@ fn test_BC_2_06_018_INV3_trim_on_resize_called_from_render_frame() {
 // ---------------------------------------------------------------------------
 // Test 7: BC-2.06.018 PC-4 — PENDING status wired via on_permission_prompt_queued
 //
-// RED: FAILS because on_permission_prompt_queued never sets pending=true on any
-//      event_ribbon_events row. The pending flag stays false regardless of overlay state.
+// GREEN: on_permission_prompt_queued sets pending=true on the most recent PreToolUse
+//        row matching the prompt's session_id in event_ribbon_events.
 // ---------------------------------------------------------------------------
 
 /// An unresolved `PreToolUse` event shows `PENDING` in yellow in the ribbon through the
@@ -380,9 +384,8 @@ fn test_BC_2_06_018_PC4_pending_status_set_via_on_permission_prompt_queued() {
 // ---------------------------------------------------------------------------
 // Test 8: BC-2.06.018 INV-1 / AC-009 — session-change reset via dispatch_key_event
 //
-// RED: FAILS because dispatch_key_event's SelectNext and SelectPrev arms do NOT call
-//      reset_on_session_change. The ribbon scroll offset is never reset when session
-//      selection changes via j/k navigation.
+// GREEN: dispatch_key_event's SelectNext and SelectPrev arms call reset_on_session_change
+//        when the cursor moves to a different session, resetting ribbon to row 0 / pinned_top=false.
 // ---------------------------------------------------------------------------
 
 /// Selecting a different session via SelectNext/SelectPrev resets the ribbon scroll
@@ -504,13 +507,10 @@ fn test_BC_2_06_018_INV1_AC009_session_change_resets_ribbon_scroll_via_dispatch(
 // ---------------------------------------------------------------------------
 // Test 9: BC-2.06.006 INV-1 — shared Matcher used in production render path
 //
-// RED: FAILS (in the strengthened form) because render_sessions_filter creates a fresh
-//      `local_matcher = Matcher::new(Config::DEFAULT)` at every render call. This
-//      violates INV-1 which requires the shared `app.matcher` to be the scoring source.
-//
-//      The CURRENT tautological INV-1 test only checks that `App::matcher` is a field.
-//      It does NOT verify that `render_sessions_filter` uses `app.matcher` vs a fresh one.
-//      This strengthened test asserts that the production render path goes through app.matcher.
+// GREEN: render_sessions_filter does NOT create a fresh `local_matcher = Matcher::new`.
+//        It uses the shared `app.matcher` (&mut App signature enables this).
+//        The source-code audit assertion `!sessions_panel_src.contains("local_matcher = Matcher::new")`
+//        passes because the production code was fixed to use app.matcher directly.
 // ---------------------------------------------------------------------------
 
 /// The production `render_sessions_filter` scoring path must use the shared `app.matcher`
@@ -651,15 +651,219 @@ fn test_BC_2_06_006_INV1_render_uses_shared_matcher_not_fresh_per_render() {
     let sessions_panel_src = include_str!("../src/ui/sessions_panel.rs");
     assert!(
         !sessions_panel_src.contains("local_matcher = Matcher::new"),
-        "BC-2.06.006 INV-1 defect (strengthened): render_sessions_filter creates a fresh \
-         `local_matcher = Matcher::new(Config::DEFAULT)` per render call instead of using \
-         the shared `app.matcher`. This violates INV-1 which requires a single Matcher instance \
-         shared across the filter session. \
+        "BC-2.06.006 INV-1 (GREEN check): render_sessions_filter must NOT create a fresh \
+         `local_matcher = Matcher::new(Config::DEFAULT)` per render call. \
          Found 'local_matcher = Matcher::new' in sessions_panel.rs — this proves a fresh \
-         matcher is constructed per render. \
-         FIX: change render_sessions_filter to accept `&mut App` (or refactor to score at \
-         dispatch time using app.matcher, storing pre-scored results in App state). \
-         The current `&App` signature structurally prevents use of app.matcher \
-         (which requires &mut self for scoring)."
+         matcher is constructed per render, violating INV-1. \
+         FIX: use app.matcher directly (render_sessions_filter accepts &mut App)."
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 10: BC-2.05.004 PC-2 / ADV Pass-2 architect change — streaming
+//          HookEventReceived must carry daemon's timestamp_micros
+//
+// RED: COMPILE-GATE — `ServerToClient::HookEventReceived` does not carry
+//      `timestamp_micros: i64` yet. The match arm in handle_server_message
+//      (`crates/monocle-tui/src/app.rs`) will fail to compile once the field
+//      is present but unhandled, and any construction with the new field will
+//      fail until it exists. This test constructs a `HookEventReceived` with
+//      the field explicitly to trigger the compile error.
+//
+//      Missing field: `timestamp_micros: i64` on `ServerToClient::HookEventReceived`
+//      (crates/monocle-ipc/src/types.rs). See SS-ipc.md §S-028 ADR.
+//
+//      When the field is added:
+//        1. `on_hook_event_received` must accept `timestamp_micros: i64` and pass it to
+//           `hook_event_row_from_received` (which must set `row.timestamp_micros` from
+//           the message's value, NOT from `current_timestamp_micros()`).
+//        2. The resulting ribbon row must display the DAEMON's timestamp, not the TUI
+//           receive time. For known `timestamp_micros`, the wall-clock must be deterministic.
+// ---------------------------------------------------------------------------
+
+/// A streaming `HookEventReceived` message carries `timestamp_micros: i64` from the
+/// daemon. The TUI's ribbon row must use that value for the Timestamp column, NOT
+/// substitute `SystemTime::now()` at receipt time.
+///
+/// BC-2.05.004 PC-2: `timestamp_micros` in `HookEventReceived` MUST equal the value
+/// in the corresponding `HookEventRecord` (same daemon clock capture).
+///
+/// RED: compile-gate — `ServerToClient::HookEventReceived` does not have
+/// `timestamp_micros` field yet (monocle-ipc/src/types.rs). The struct-literal
+/// construction below will fail to compile:
+///   error[E0026]: struct `HookEventReceived` has no field named `timestamp_micros`
+#[test]
+fn test_BC_2_05_004_PC2_streaming_event_uses_daemon_timestamp_micros() {
+    use monocle_ipc::types::ServerToClient;
+    use monocle_ipc::types::HookType;
+
+    // Known daemon timestamp: 2024-01-15 09:30:00.000 UTC
+    // = 1_705_311_000_000_000 microseconds since Unix epoch.
+    // Expected wall-clock rendering: "09:30:00.000"
+    let known_ts: i64 = 1_705_311_000_000_000;
+
+    // Construct a HookEventReceived with the daemon's timestamp_micros.
+    // COMPILE-GATE: this field does not yet exist on ServerToClient::HookEventReceived.
+    // The implementer must add `timestamp_micros: i64` to the variant
+    // (crates/monocle-ipc/src/types.rs) to make this compile.
+    let _msg = ServerToClient::HookEventReceived {
+        hook_type: HookType::PreToolUse,
+        session_id: "sess-ts-test".to_string(),
+        payload_excerpt: r#"{"tool":"Bash"}"#.to_string(),
+        latency_ms: 10u64,
+        timestamp_micros: known_ts, // NEW FIELD — does not exist yet
+    };
+
+    // When the field exists and on_hook_event_received propagates it:
+    // Build an App, invoke the handler with the known timestamp, and assert the ribbon row.
+    let mut app = App::new(MonocleConfig::default());
+
+    // Call on_hook_event_received with the daemon's known timestamp.
+    // The updated signature must accept timestamp_micros (not just the 4 existing args).
+    // COMPILE-GATE: on_hook_event_received currently has signature:
+    //   pub fn on_hook_event_received(app, hook_type, session_id, payload_excerpt, latency_ms)
+    // It must gain a `timestamp_micros: i64` parameter and pass it to
+    // hook_event_row_from_received, which must store it in HookEventRow::timestamp_micros
+    // (instead of calling current_timestamp_micros()).
+    monocle_tui::app::on_hook_event_received(
+        &mut app,
+        HookType::PreToolUse,
+        "sess-ts-test".to_string(),
+        r#"{"tool":"Bash"}"#.to_string(),
+        10u64,
+        known_ts, // NEW PARAMETER — does not exist in current signature
+    );
+
+    assert_eq!(
+        app.event_ribbon_events.len(),
+        1,
+        "precondition: ribbon must have 1 event after on_hook_event_received"
+    );
+
+    // Assert: the ribbon row's timestamp_micros must equal the daemon's value.
+    // NOT the TUI's receive-time (current_timestamp_micros() at message arrival).
+    let row = &app.event_ribbon_events[0];
+    assert_eq!(
+        row.timestamp_micros, known_ts,
+        "BC-2.05.004 PC-2: ribbon row timestamp_micros must equal the daemon's \
+         timestamp_micros={} from HookEventReceived. \
+         Must NOT use TUI receive-time (current_timestamp_micros()) which would \
+         differ from known_ts by the latency delta.",
+        known_ts
+    );
+
+    // Assert: the formatted wall-clock timestamp matches the expected UTC string.
+    // 1_705_311_000_000_000 µs = 2024-01-15 09:30:00.000 UTC → "09:30:00.000"
+    let stable_epoch = std::time::Instant::now();
+    let rendered_ts =
+        monocle_tui::ui::event_ribbon::format_timestamp(row.timestamp_micros, stable_epoch);
+    assert_eq!(
+        rendered_ts, "09:30:00.000",
+        "BC-2.05.004 PC-2 / BC-2.06.018 PC-1: wall-clock timestamp for \
+         timestamp_micros={} must be \"09:30:00.000\" (2024-01-15 09:30:00 UTC). \
+         Actual: {:?}. FIX: on_hook_event_received must propagate timestamp_micros \
+         from HookEventReceived to HookEventRow.",
+        known_ts, rendered_ts
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 11: BC-2.06.006 PC-3 / ADV Pass-2 architect change — filter matches on
+//          EnrichedSession::display_name (NOT hardcoded harness_display_name map)
+//
+// RED: COMPILE-GATE — `EnrichedSession::display_name` does not exist as a field
+//      yet. The struct literal construction and field access below will fail to compile:
+//        error[E0026]: struct `EnrichedSession` has no field named `display_name`
+//
+//      When the field is added:
+//        1. The daemon must populate it from `EngineModule::metadata()?.display_name`
+//           during session enrichment.
+//        2. `render_sessions_filter` must score against `session.display_name`
+//           (the IPC wire copy) instead of the hardcoded `harness_display_name()`
+//           lookup — so that third-party engines (not in the hardcoded map) can
+//           also be matched by their display name.
+// ---------------------------------------------------------------------------
+
+/// The sessions filter (BC-2.06.006 PC-3) must match against `EnrichedSession::display_name`
+/// — the daemon-populated field from `EngineMetadata::display_name` — NOT against a
+/// hardcoded `harness_type` → display name lookup table.
+///
+/// Test vector (BC-2.06.006 §Canonical Test Vectors row 5 — updated for arch change):
+/// - Query: "Cla"
+/// - Session: `display_name = "Claude Code"`, project_name does NOT match "Cla"
+/// - Expected: session IS included (via display_name match)
+///
+/// The distinction from the existing `test_BC_2_06_006_display_name_match` test:
+/// - That test relies on `harness_type = "claude-code"` → `harness_display_name()` → "Claude Code"
+/// - This test uses `session.display_name = "Claude Code"` DIRECTLY (no harness_type lookup)
+///   and uses `harness_type = "unknown-engine-xyz"` (not in the hardcoded map) to prove
+///   the lookup is bypassed in favor of the session field.
+///
+/// RED: compile-gate — `EnrichedSession::display_name` does not exist.
+#[test]
+fn test_BC_2_06_006_PC3_filter_matches_session_display_name_field_not_hardcoded_map() {
+    use monocle_core::engine::{EnrichedSession, SessionStatus};
+    use monocle_tui::ui::sessions_panel::{
+        render_sessions_filter, SessionsPanelState, SESSIONS_FILTER_NO_MATCH,
+    };
+    use ratatui::{backend::TestBackend, Terminal};
+
+    let mut app = App::new(MonocleConfig::default());
+
+    // Session: harness_type is NOT in the hardcoded harness_display_name() map.
+    // display_name is "Claude Code" (populated directly — as the daemon would populate it).
+    // project_name "xyz-project" has no characters matching "Cla".
+    // The ONLY way this session can match "Cla" is via session.display_name = "Claude Code".
+    //
+    // COMPILE-GATE: EnrichedSession::new() currently takes 10 args with no display_name.
+    // The updated constructor must accept display_name as a parameter.
+    // Until display_name is added to EnrichedSession, this line will fail to compile.
+    app.sessions = vec![EnrichedSession::new_with_display_name(
+        "sess-dn-001".to_string(),
+        "unknown-engine-xyz".to_string(), // NOT in harness_display_name() map
+        None,
+        None,
+        SessionStatus::Idle,
+        None,
+        Some("xyz-project".to_string()), // no chars matching "Cla"
+        None,
+        0,
+        None,
+        "Claude Code".to_string(), // display_name from EngineMetadata::display_name
+    )];
+
+    let backend = TestBackend::new(80, 10);
+    let mut terminal = Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_sessions_filter(
+                &mut app,
+                "Cla",
+                frame.area(),
+                frame.buffer_mut(),
+                &mut state,
+            );
+        })
+        .unwrap();
+    let rendered = terminal.backend().to_string();
+
+    // Assert: the session must appear (via display_name="Claude Code" fuzzy-matching "Cla").
+    // project_name="xyz-project" does not match "Cla".
+    // harness_type="unknown-engine-xyz" is NOT in the hardcoded map — so if the filter
+    // relied on harness_display_name(), this session would be ABSENT (no match).
+    // It must be PRESENT because session.display_name="Claude Code" matches "Cla".
+    assert!(
+        rendered.contains("xyz-project") || rendered.contains("sess-dn-001"),
+        "BC-2.06.006 PC-3 (architect change): session with display_name=\"Claude Code\" and \
+         harness_type=\"unknown-engine-xyz\" must be visible with query=\"Cla\" via \
+         session.display_name match. harness_display_name() would NOT match \
+         \"unknown-engine-xyz\" → \"Claude Code\". The filter must use session.display_name \
+         directly (BC-2.06.006 PC-3 updated per ADR). Rendered:\n{rendered}"
+    );
+    assert!(
+        !rendered.contains(SESSIONS_FILTER_NO_MATCH),
+        "BC-2.06.006 PC-3: SESSIONS_FILTER_NO_MATCH must NOT appear when display_name matches. \
+         Rendered:\n{rendered}"
     );
 }

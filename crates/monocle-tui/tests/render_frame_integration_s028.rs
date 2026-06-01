@@ -78,9 +78,8 @@ fn render_to_terminal(app: &mut App) -> Terminal<TestBackend> {
 // ---------------------------------------------------------------------------
 // Test 1: AC-010 / BC-2.06.018 PC-1 — Event Ribbon content rendered in 40% area
 //
-// RED: FAILS because render_frame does NOT call EventRibbon::render on
-//      layout.event_ribbon_area. The right 40% area is blank — the event ribbon
-//      widget is fully implemented in isolation but never wired into render_frame.
+// GREEN: render_frame calls EventRibbon::render on layout.event_ribbon_area.
+//        The right 40% area contains hook type names from the event ribbon.
 // ---------------------------------------------------------------------------
 
 /// In Dashboard mode with non-empty event_ribbon_events, the 40% right-side area
@@ -154,10 +153,8 @@ fn test_BC_2_06_018_AC010_render_frame_dashboard_shows_event_ribbon_content() {
 // ---------------------------------------------------------------------------
 // Test 2a: AC-010 / BC-2.06.006 PC-1 — Sessions filter input box rendered in Filtering mode
 //
-// RED: FAILS because render_frame's `_ =>` branch (which handles Dashboard, Overlay,
-//      AND Filtering) always calls `SessionsPanel::render` (which shows regular session
-//      list) — it never calls `render_sessions_filter`. The filter input "/ query_" box
-//      is therefore absent from the buffer even when AppMode::Filtering is active.
+// GREEN: render_frame calls render_sessions_filter when AppMode::Filtering is active.
+//        The filter input box "/ foo_" is present in the rendered buffer.
 // ---------------------------------------------------------------------------
 
 /// When AppMode::Filtering is active, render_frame must render the filter input box
@@ -216,8 +213,8 @@ fn test_BC_2_06_006_AC010_render_frame_filtering_mode_shows_filter_input_box() {
 // ---------------------------------------------------------------------------
 // Test 2b: AC-010 / BC-2.06.006 PC-8 — SESSIONS_FILTER_NO_MATCH sentinel rendered
 //
-// RED: FAILS because render_frame never calls render_sessions_filter, so the
-//      no-match sentinel is never rendered even when the query matches nothing.
+// GREEN: render_frame calls render_sessions_filter in Filtering mode; when the query
+//        has zero matches, SESSIONS_FILTER_NO_MATCH is rendered.
 // ---------------------------------------------------------------------------
 
 /// When AppMode::Filtering is active with a zero-match query, render_frame must
@@ -266,120 +263,284 @@ fn test_BC_2_06_006_AC010_render_frame_filtering_zero_match_shows_sentinel() {
 // Tests 3a-3e: AC-010 / BC-2.06.018 PC-5 — Scroll dispatch changes ribbon offset
 //
 // RED: COMPILE-GATE — `Action::ScrollDown` and `Action::ScrollUp` do NOT exist in
-//      the `Action` enum (`monocle-core/src/tui/state.rs`). These tests will produce
-//      compile errors: `no variant named ScrollDown/ScrollUp in enum Action`.
+//      the `Action` enum (`monocle-core/src/tui/state.rs`). The tests below reference
+//      these variants directly and will produce compile errors until the implementer
+//      adds them:
+//        error[E0599]: no variant named `ScrollDown` found for enum `Action`
+//        error[E0599]: no variant named `ScrollUp` found for enum `Action`
 //
 //      The missing variants are: Action::ScrollDown, Action::ScrollUp.
-//      The implementer must add these to the Action enum and wire them in
-//      dispatch_key_event before these tests can compile and pass.
+//      The implementer must add these to the Action enum (crates/monocle-core/src/tui/state.rs)
+//      and wire them in dispatch_key_event (crates/monocle-tui/src/app.rs) before these
+//      tests can compile and pass.
 //
-// NOTE: Because these tests reference non-existent enum variants, they are wrapped
-//      in a module and guarded by a compile-time check. We use a commented-out
-//      pattern that documents the missing variants without breaking the compilation
-//      of the entire test binary. The individual functions below contain the
-//      assertions that WILL apply once Action::ScrollDown and Action::ScrollUp exist.
-//
-//      The Red Gate for these tests is the compilation failure on Action::ScrollDown /
-//      Action::ScrollUp references. When the implementer adds those variants, the
-//      tests must then pass (they will verify the actual dispatch logic).
+// BC coverage: BC-2.06.018 PC-5 (j/k/G/gg scroll actions), AC-007, AC-010.
 // ---------------------------------------------------------------------------
 
-/// Tests 3a-3e are gated on the existence of Action::ScrollDown and Action::ScrollUp.
+/// When the ribbon has focus (Dashboard { EventRibbon }) and the user presses `j`
+/// or `↓`, `dispatch_key_event` dispatches `Action::ScrollDown`, moving the ribbon
+/// scroll offset one row toward older events (down the newest-first list).
 ///
-/// These variants are documented in BC-2.06.018 PC-5 and AC-010:
-/// - j / ↓ → Action::ScrollDown (scroll toward older events, i.e., down the list)
-/// - k / ↑ → Action::ScrollUp   (scroll toward newer events, i.e., up the list)
-/// - G     → jump to newest (bottom of list in newest-first, i.e., oldest visual row = G)
-/// - gg    → jump to oldest visible (top = newest in newest-first)
+/// BC-2.06.018 PC-5 / AC-007 / AC-010.
 ///
-/// The compile-gate RED is intentional and expected: the Action enum in monocle-core
-/// MUST be extended with ScrollDown/ScrollUp before dispatch can be wired.
-///
-/// This marker test documents the compile-gate RED Gate for BC-2.06.018 PC-5 / AC-010.
-/// It currently PASSES (it has no body), but the sister tests below that reference
-/// Action::ScrollDown/Action::ScrollUp will FAIL to compile until those variants exist.
+/// RED: compile-gate — `Action::ScrollDown` does not exist in the Action enum
+/// (`monocle-core/src/tui/state.rs`). The test will fail to compile until the
+/// implementer adds the variant and wires it in dispatch_key_event.
 #[test]
-fn test_BC_2_06_018_AC010_scroll_actions_missing_compile_gate_documented() {
-    // This test documents the RED GATE for scroll actions.
-    // The tests test_BC_2_06_018_AC010_scroll_j_dispatches_scroll_down,
-    // test_BC_2_06_018_AC010_scroll_k_dispatches_scroll_up,
-    // test_BC_2_06_018_AC010_scroll_G_jumps_to_newest,
-    // test_BC_2_06_018_AC010_scroll_gg_jumps_to_top
-    // all reference Action::ScrollDown / Action::ScrollUp which DO NOT EXIST in the
-    // current Action enum (monocle-core/src/tui/state.rs).
-    //
-    // Missing variants: Action::ScrollDown, Action::ScrollUp
-    // Required by: BC-2.06.018 PC-5, AC-010, AC-007
-    // File to modify: crates/monocle-core/src/tui/state.rs
-    //
-    // The tests are included in the COMMENTED BLOCK below. They will fail to
-    // compile (not just fail at runtime) until the variants are added.
-    // This is the intended compile-gate RED for the Red Gate log.
-    // The documentation of missing variants is in the comment block above.
-    // No assertion needed — the compile-gate is the commented-out tests below.
+fn test_BC_2_06_018_AC010_scroll_j_dispatches_scroll_down() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    // Arrange: Dashboard focused on EventRibbon, scroll at row 0, 5 events loaded.
+    let mut app = App::new(MonocleConfig::default());
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    for i in 0..5u64 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            format!("sess-{i:03}"),
+            "{}".to_string(),
+            i,
+        );
+    }
+    app.event_ribbon_state.list_state.select(Some(0));
+    app.event_ribbon_state.pinned_top = false;
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: press 'j' → Action::ScrollDown (scroll one row toward older events).
+    let j_key = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
+
+    // Assert: scroll offset moved from 0 to 1 (one row toward older events).
+    // BC-2.06.018 PC-5: j/↓ scrolls toward older events (higher index in newest-first list).
+    // pinned_top must be set to true (user manually scrolled away from newest).
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(1),
+        "BC-2.06.018 PC-5 / AC-007: 'j' in Dashboard {{ EventRibbon }} must move ribbon \
+         scroll from row 0 to row 1 (toward older events). \
+         COMPILE-GATE: Action::ScrollDown missing in monocle-core/src/tui/state.rs."
+    );
+    assert!(
+        app.event_ribbon_state.pinned_top,
+        "BC-2.06.018 PC-5: after 'j' scroll, pinned_top must be true (user scrolled away from newest)"
+    );
 }
 
-// The following tests are intentionally commented out because they reference
-// Action::ScrollDown / Action::ScrollUp which don't yet exist. They are left
-// as commented code so the implementer can see exactly what needs to pass.
-//
-// UNCOMMENT AFTER adding Action::ScrollDown and Action::ScrollUp to the Action enum.
-//
-// #[test]
-// fn test_BC_2_06_018_AC010_scroll_j_dispatches_scroll_down() {
-//     use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
-//     use monocle_core::tui::state::Action;
-//     use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
-//     use monocle_tui::ui::sessions_panel::SessionsPanelState;
-//
-//     // Arrange: Dashboard focused on EventRibbon.
-//     let mut app = App::new(MonocleConfig::default());
-//     app.mode = AppMode::Dashboard {
-//         focused: FocusSnapshot::EventRibbon,
-//     };
-//     // Seed 10 events so there is something to scroll.
-//     for i in 0..10u64 {
-//         on_hook_event_received(
-//             &mut app,
-//             HookType::Notification,
-//             format!("sess-{i:03}"),
-//             "{}".to_string(),
-//             i,
-//         );
-//     }
-//
-//     let layers = build_builtin_binding_layers();
-//     let mut sessions_state = SessionsPanelState::default();
-//
-//     // Act: press 'j' — must dispatch Action::ScrollDown.
-//     let j_key = KeyEvent {
-//         code: KeyCode::Char('j'),
-//         modifiers: KeyModifiers::default(),
-//     };
-//     dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
-//
-//     // Assert: the ribbon scroll offset has moved down from its initial position.
-//     // After wiring, the EventRibbonState::list_state.selected() must reflect the offset change.
-//     // (Exact assertion depends on how EventRibbonState is exposed; adapt as needed.)
-//     // assert!(ribbon_scroll_offset(&app) > 0, "scroll offset must increase after 'j'");
-// }
-//
-// #[test]
-// fn test_BC_2_06_018_AC010_scroll_k_dispatches_scroll_up() {
-//     // Similar to above but for 'k' → Action::ScrollUp.
-//     // Start at a non-zero scroll offset, press 'k', assert offset decreases.
-// }
-//
-// #[test]
-// fn test_BC_2_06_018_AC010_scroll_G_jumps_to_newest() {
-//     // 'G' → jump to the newest event (row 0 in newest-first ordering).
-// }
-//
-// #[test]
-// fn test_BC_2_06_018_AC010_scroll_gg_jumps_to_top() {
-//     // 'gg' sequence → jump to the oldest event (end of list in newest-first ordering).
-//     // Requires pending-key state in dispatch_key_event to detect two consecutive 'g' presses.
-// }
+/// When the ribbon has focus and the user presses `↓`, `dispatch_key_event` dispatches
+/// `Action::ScrollDown` (identical semantics to `j`).
+///
+/// BC-2.06.018 PC-5 / AC-007.
+///
+/// RED: compile-gate — `Action::ScrollDown` does not exist.
+#[test]
+fn test_BC_2_06_018_AC010_scroll_down_arrow_dispatches_scroll_down() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let mut app = App::new(MonocleConfig::default());
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    for i in 0..5u64 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            format!("sess-{i:03}"),
+            "{}".to_string(),
+            i,
+        );
+    }
+    app.event_ribbon_state.list_state.select(Some(0));
+    app.event_ribbon_state.pinned_top = false;
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: press ↓ → Action::ScrollDown.
+    let down_key = KeyEvent {
+        code: KeyCode::Down,
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(&mut app, &down_key, &layers, &mut sessions_state);
+
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(1),
+        "BC-2.06.018 PC-5: ↓ in Dashboard {{ EventRibbon }} must move ribbon scroll \
+         from row 0 to row 1. COMPILE-GATE: Action::ScrollDown missing."
+    );
+}
+
+/// Starting at row 0 (newest), two consecutive `j` presses must advance the
+/// ribbon scroll to row 2. This confirms that each 'j' increments the offset
+/// and that the action is handled distinctly from the Sessions `SelectNext`.
+///
+/// This test serves as a prerequisite for the clamp test: it verifies that 'j'
+/// moves the offset before we test that it stops at the boundary.
+///
+/// BC-2.06.018 PC-5 (j scrolls toward older events), AC-007.
+///
+/// RED: assertion failure — 'j' currently dispatches Action::SelectNext which
+/// is a no-op in Dashboard {{ EventRibbon }} focus. The offset stays at Some(0)
+/// instead of advancing to Some(2) after two presses.
+#[test]
+fn test_BC_2_06_018_AC010_scroll_j_twice_advances_two_rows() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let mut app = App::new(MonocleConfig::default());
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    // 5 events so we can scroll twice without hitting the bottom.
+    app.event_ribbon_panel_height = 5;
+    for i in 0..5u64 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            format!("sess-{i:03}"),
+            "{}".to_string(),
+            i,
+        );
+    }
+    // Start at top (row 0 = newest).
+    app.event_ribbon_state.list_state.select(Some(0));
+    app.event_ribbon_state.pinned_top = false;
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    let j_key = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: KeyModifiers::default(),
+    };
+
+    // Press 'j' twice.
+    dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
+    dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
+
+    // Assert: scroll offset must be Some(2) (moved 2 rows toward older events).
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(2),
+        "BC-2.06.018 PC-5 / AC-007: two 'j' presses in Dashboard {{ EventRibbon }} \
+         must advance ribbon scroll offset from row 0 to row 2. \
+         Current: offset did not move (ScrollDown not wired; 'j' dispatches SelectNext \
+         which is no-op in EventRibbon focus). \
+         FIX: add Action::ScrollDown to the binding for 'j' in EventRibbon focus."
+    );
+}
+
+/// When the ribbon has focus and the user presses `k` or `↑`, `dispatch_key_event`
+/// dispatches `Action::ScrollUp`, moving the ribbon scroll offset one row toward newer
+/// events (up the newest-first list). At row 0, `pinned_top` is cleared.
+///
+/// BC-2.06.018 PC-5 / AC-007.
+///
+/// RED: compile-gate — `Action::ScrollUp` does not exist in the Action enum.
+#[test]
+fn test_BC_2_06_018_AC010_scroll_k_dispatches_scroll_up() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let mut app = App::new(MonocleConfig::default());
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    for i in 0..5u64 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            format!("sess-{i:03}"),
+            "{}".to_string(),
+            i,
+        );
+    }
+    // Start at row 3 (user has scrolled down, pinned).
+    app.event_ribbon_state.list_state.select(Some(3));
+    app.event_ribbon_state.pinned_top = true;
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: press 'k' → Action::ScrollUp.
+    let k_key = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(&mut app, &k_key, &layers, &mut sessions_state);
+
+    // Assert: scroll moved from 3 to 2 (toward newer events).
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(2),
+        "BC-2.06.018 PC-5 / AC-007: 'k' in Dashboard {{ EventRibbon }} must move ribbon \
+         scroll from row 3 to row 2 (toward newer events). \
+         COMPILE-GATE: Action::ScrollUp missing in monocle-core/src/tui/state.rs."
+    );
+}
+
+/// When `k`/`↑` scrolls back to row 0 (newest), `pinned_top` must be cleared to
+/// re-enable auto-scroll (BC-2.06.018 PC-5 / AC-008: scrolling to top resumes auto-scroll).
+///
+/// RED: compile-gate — `Action::ScrollUp` does not exist.
+#[test]
+fn test_BC_2_06_018_AC010_scroll_k_at_row0_clears_pinned_top() {
+    use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+    use monocle_tui::app::{build_builtin_binding_layers, dispatch_key_event};
+    use monocle_tui::ui::sessions_panel::SessionsPanelState;
+
+    let mut app = App::new(MonocleConfig::default());
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::EventRibbon,
+    };
+    for i in 0..3u64 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            format!("sess-{i:03}"),
+            "{}".to_string(),
+            i,
+        );
+    }
+    // Start at row 1 (one below newest), pinned_top=true.
+    app.event_ribbon_state.list_state.select(Some(1));
+    app.event_ribbon_state.pinned_top = true;
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: press 'k' from row 1 → moves to row 0.
+    let k_key = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: KeyModifiers::default(),
+    };
+    dispatch_key_event(&mut app, &k_key, &layers, &mut sessions_state);
+
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(0),
+        "BC-2.06.018 PC-5: 'k' from row 1 must move to row 0 (newest). \
+         COMPILE-GATE: Action::ScrollUp missing."
+    );
+    assert!(
+        !app.event_ribbon_state.pinned_top,
+        "BC-2.06.018 PC-5 / AC-008: when 'k' moves to row 0 (newest), pinned_top must \
+         be cleared (auto-scroll re-enabled). COMPILE-GATE: Action::ScrollUp missing."
+    );
+}
 
 // ---------------------------------------------------------------------------
 // Test 4: BC-2.06.006 AC-010 — dispatch_key_event filter mode transitions (smoke)

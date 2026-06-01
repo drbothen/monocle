@@ -167,14 +167,9 @@ fn test_BC_2_06_018_pending_status_reverts_after_decision() {
 // ---------------------------------------------------------------------------
 // BC-2.06.018 PC-8 / AC-008 — auto-scroll follows bottom when not pinned
 //
-// STRENGTHENED: removed tautological self-driven select(Some(0)). Now drives the
-// PRODUCTION `on_hook_event_received` path and asserts that the production auto-scroll
-// handler resets the ribbon to row 0 when a new event arrives and pinned_top=false.
-//
-// RED: FAILS because there is no production auto-scroll handler that calls
-//      state.list_state.select(Some(0)) on new event arrival (the on_hook_event_received
-//      function only appends to event_ribbon_events; it does not touch EventRibbonState).
-//      The auto-scroll logic is not yet implemented in the production path.
+// GREEN: on_hook_event_received checks app.event_ribbon_state.pinned_top and calls
+//        app.event_ribbon_state.list_state.select(Some(0)) when !pinned_top.
+//        This test verifies the production auto-scroll path is wired correctly.
 // ---------------------------------------------------------------------------
 
 /// When `pinned_top = false`, a new event via `on_hook_event_received` triggers
@@ -183,11 +178,6 @@ fn test_BC_2_06_018_pending_status_reverts_after_decision() {
 /// Verifies AC-008 (BC-2.06.018 PC-8 auto-scroll): the ribbon scroll state must
 /// be updated to row 0 when a new event arrives for the selected session and
 /// `pinned_top = false`.
-///
-/// RED: on_hook_event_received does not accept nor mutate EventRibbonState.
-/// The auto-scroll logic (select row 0 when not pinned) is not yet wired into the
-/// production IPC handler. This test will fail until the implementer wires the
-/// auto-scroll call (or the render path handles it post-event).
 #[test]
 fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
     // Arrange: App with ribbon state pinned_top=false and scroll at a non-zero position.
@@ -225,25 +215,15 @@ fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
 // ---------------------------------------------------------------------------
 // BC-2.06.018 PC-8 / AC-008 — auto-scroll suppressed when pinned_top
 //
-// STRENGTHENED: removed the inline `if !state.pinned_top { ... }` guard that made
-// the test vacuously pass. Now drives the PRODUCTION path and asserts that the
-// production handler DOES NOT change scroll offset when pinned_top=true.
-//
-// RED: because on_hook_event_received doesn't touch EventRibbonState at all, the
-// test currently PASSES vacuously (nothing changes ribbon_state). After the auto-scroll
-// fix (test above) is applied, this test correctly verifies that pinned_top=true
-// suppresses the auto-scroll. Both tests must be RED before the fix.
+// GREEN: on_hook_event_received checks pinned_top before calling list_state.select(Some(0)).
+//        When pinned_top=true, the scroll offset is preserved.
+//        This test verifies the suppression branch of the auto-scroll logic.
 // ---------------------------------------------------------------------------
 
 /// When `pinned_top = true`, new events via `on_hook_event_received` do NOT change
 /// the ribbon scroll offset.
 ///
 /// Verifies AC-008 "unless user has manually scrolled up" condition via production path.
-///
-/// RED: when auto-scroll is correctly wired, this test verifies the suppression path.
-/// Before auto-scroll is wired, this test vacuously passes (nothing touches ribbon_state).
-/// After auto-scroll is wired (fixing test above), the pinned_top=true check must
-/// suppress the auto-scroll — this test verifies that branch is correctly implemented.
 #[test]
 fn test_BC_2_06_018_auto_scroll_suppressed_when_pinned_top() {
     // Arrange: App with ribbon state pinned_top=true and scroll at row 3.
@@ -307,24 +287,48 @@ fn test_BC_2_06_018_session_change_resets_scroll() {
 
 // ---------------------------------------------------------------------------
 // BC-2.06.018 INV-1 — session change does NOT issue IPC request
+//
+// STRENGTHENED (ADV Pass-2): previous version only checked that the function
+// compiles with a minimal signature (no assertions on actual behavior). This version
+// asserts the concrete postconditions of reset_on_session_change to verify the IPC
+// isolation invariant via its behavioral consequences: scroll must go to row 0 AND
+// pinned_top must be false — confirming the reset path executes correctly.
 // ---------------------------------------------------------------------------
 
 /// When session selection changes, no IPC request is issued (client-side only).
 /// Verifies BC-2.06.018 INV-1: all events held client-side; no new IPC request.
+///
+/// STRENGTHENED: the previous version only asserted the minimal function signature
+/// (compile-time invariant), not behavioral correctness. This version asserts both:
+/// 1. The reset postconditions (list_state=Some(0), pinned_top=false) — confirming
+///    the function executes without error.
+/// 2. The IPC isolation invariant — structurally guaranteed by the function accepting
+///    only `&mut EventRibbonState` and `&str` (no App, no IPC channel reference).
 #[test]
 fn test_BC_2_06_018_session_change_no_ipc_request() {
-    // Architecture invariant: the event ribbon never issues an IPC request on
-    // session-change. This is enforced by design — `reset_on_session_change` takes
-    // only `&mut EventRibbonState` and `&str`, with no IPC-channel or App reference.
-    // The function signature prevents IPC from being called (compile-time invariant).
-    //
-    // This test documents the invariant by asserting the function compiles with the
-    // minimal signature (no App, no IPC sender).
+    // Set up state that is NOT at the reset position (offset=5, pinned_top=true).
     let mut state = EventRibbonState::default();
-    reset_on_session_change(&mut state, "sess-any");
-    // If reset_on_session_change accepted an App reference or IPC sender, this test
-    // would need to verify no message was enqueued. The minimal signature makes the
-    // IPC-isolation invariant structurally true (BC-2.06.018 INV-1).
+    state.list_state.select(Some(5));
+    state.pinned_top = true;
+
+    // Act: call the pure, no-IPC reset path.
+    reset_on_session_change(&mut state, "sess-new");
+
+    // Assert: scroll reset to row 0 (newest).
+    assert_eq!(
+        state.list_state.selected(),
+        Some(0),
+        "BC-2.06.018 INV-1: reset_on_session_change must set list_state to row 0"
+    );
+    // Assert: pinned_top cleared (auto-scroll re-enabled).
+    assert!(
+        !state.pinned_top,
+        "BC-2.06.018 INV-1: reset_on_session_change must clear pinned_top"
+    );
+    // IPC isolation invariant is structurally true: the function signature
+    // `(&mut EventRibbonState, &str)` carries no IPC-channel or App reference,
+    // making it compile-time impossible for this function to issue IPC requests
+    // (BC-2.06.018 INV-1: all events held client-side).
 }
 
 // ---------------------------------------------------------------------------
@@ -355,35 +359,41 @@ fn test_BC_2_06_018_ec114_empty_state_no_events() {
 // ---------------------------------------------------------------------------
 // BC-2.06.018 EC-116 — scroll past oldest is clamped (no panic)
 //
-// STRENGTHENED: original test computed the clamp entirely in-test (tautological).
-// Now drives the PRODUCTION scroll_ribbon_down helper (once it exists). Until then,
-// verifies the clamping formula via the push_event_row + explicit cap assertion.
+// STRENGTHENED (ADV Pass-2): previous test was tautological — it computed
+// `(current + 1).min(event_count - 1)` inline in the test body (the DEFINITION
+// of clamping, not a test of production code). This version calls the PRODUCTION
+// `scroll_ribbon_down` function and asserts on `state.list_state.selected()` after
+// the call.
+//
+// RED: `scroll_ribbon_down` does not yet exist as a public function in
+//      `monocle_tui::ui::event_ribbon`. This test will fail to compile until the
+//      implementer adds the function:
+//        error[E0425]: cannot find function `scroll_ribbon_down` in module `event_ribbon`
 // ---------------------------------------------------------------------------
 
 /// ScrollDown past the last (oldest) event clamps the offset; no panic.
-/// Verifies BC-2.06.018 EC-116 via the production scroll helper.
+/// Verifies BC-2.06.018 EC-116 by calling the PRODUCTION scroll_ribbon_down helper.
 ///
-/// STRENGTHENED from the adversary-flagged tautological version: the original test
-/// computed `new_offset = (current + 1).min(event_count - 1)` inline in the test
-/// body — this is the DEFINITION of clamping, not a test of production code.
+/// STRENGTHENED from the ADV Pass-2 tautology finding:
+/// the previous version computed `(current + 1).min(event_count - 1)` inline — which
+/// is the clamping formula itself, not a test of whether production code applies it.
 ///
 /// This version:
-/// 1. Sets up a VecDeque with a known number of events via the production push path.
-/// 2. Calls the PRODUCTION scroll_ribbon_down function (to be added by the implementer).
-/// 3. Asserts the scroll offset did not exceed the event count.
+/// 1. Builds a 3-event VecDeque at scroll=2 (oldest row).
+/// 2. Calls the PRODUCTION `scroll_ribbon_down(&mut state, &events)` — to be added
+///    by the implementer in `event_ribbon.rs`.
+/// 3. Asserts `state.list_state.selected() == Some(2)` (clamped; did NOT advance to 3).
 ///
-/// RED: `scroll_ribbon_down` does not yet exist as a production function.
-/// The test is expressed here to document the required interface and RED state.
-/// Until scroll_ribbon_down exists, we drive the closest available production function
-/// (push_event_row) and assert the boundary condition on the state manually —
-/// but the assertion targets the CORRECT expected behavior (not a restatement of the
-/// clamping formula).
+/// RED: `monocle_tui::ui::event_ribbon::scroll_ribbon_down` does not exist.
+/// Compile-gate failure is the expected RED for this test.
 #[test]
 fn test_BC_2_06_018_ec116_scroll_past_oldest_clamped() {
+    use monocle_tui::ui::event_ribbon::scroll_ribbon_down;
+
     let mut events: VecDeque<HookEventRow> = VecDeque::new();
     let panel_height = 3usize;
 
-    // Push exactly 3 events via production push_event_row.
+    // Push exactly 3 events via the production push_event_row path.
     for i in 0..3u64 {
         let row = HookEventRow {
             timestamp_micros: monocle_tui::ui::event_ribbon::current_timestamp_micros(),
@@ -397,46 +407,37 @@ fn test_BC_2_06_018_ec116_scroll_past_oldest_clamped() {
     }
     assert_eq!(events.len(), 3, "precondition: 3 events in VecDeque");
 
-    // Set state to the bottom (index 2 = oldest in newest-first).
+    // Place scroll at the last row (index 2 = oldest in newest-first ordering).
     let mut state = EventRibbonState::default();
     state.list_state.select(Some(2));
 
-    // The production scroll-down handler must clamp: cannot scroll past oldest.
-    // BC-2.06.018 EC-116: "scroll offset stays at max (clamped to last event index);
-    // no crash; no out-of-bounds access on VecDeque."
-    //
-    // The clamping logic the production handler must implement:
-    //   let event_count = visible_events.len();
-    //   let new_offset = (current + 1).min(event_count.saturating_sub(1));
-    //   state.list_state.select(Some(new_offset));
-    //
-    // We call the production scroll helper here. Since it doesn't exist yet (RED),
-    // we assert the EXPECTED post-call state:
-    let event_count = events.len();
-    // Simulate what the production handler must do — and verify it produces the right result.
-    // The production handler will be: scroll_ribbon_down(&mut state, &events)
-    // Expected: scroll stays at index 2 (clamped).
-    let current = state.list_state.selected().unwrap_or(0);
-    let clamped = (current + 1).min(event_count.saturating_sub(1));
-    // The assertion is NOT tautological here: we assert that `clamped == 2` (not 3 or higher),
-    // which verifies the boundary condition for a 3-event VecDeque at scroll=2.
-    // If the formula were wrong (e.g., no min() call), clamped would be 3 (out of bounds).
+    // Act: call the PRODUCTION scroll_ribbon_down helper.
+    // Expected: clamp fires — scroll stays at 2 (cannot advance past the last event).
+    // The production implementation must be:
+    //   let event_count = events.len();
+    //   let current = state.list_state.selected().unwrap_or(0);
+    //   let next = (current + 1).min(event_count.saturating_sub(1));
+    //   state.list_state.select(Some(next));
+    //   if next > 0 { state.pinned_top = true; }
+    scroll_ribbon_down(&mut state, &events);
+
+    // Assert: scroll offset must still be 2 (clamped at oldest).
+    // BC-2.06.018 EC-116: no out-of-bounds access on VecDeque; no panic.
     assert_eq!(
-        clamped, 2,
-        "BC-2.06.018 EC-116: clamp formula for 3 events at offset=2 must yield 2, not 3 \
-         (out-of-bounds). event_count={}, current={}, clamped={}",
-        event_count, current, clamped
+        state.list_state.selected(),
+        Some(2),
+        "BC-2.06.018 EC-116: scroll_ribbon_down at the oldest row (index 2 of 3) must clamp \
+         (selected stays Some(2), not Some(3) which would be out-of-bounds). \
+         event_count=3, current=2, expected_after=2."
     );
-    // Assert that the clamped value is within bounds of the VecDeque.
+    // Additionally verify the clamped index is within VecDeque bounds (no panic guard).
+    let selected = state.list_state.selected().unwrap();
     assert!(
-        clamped < events.len(),
-        "BC-2.06.018 EC-116: clamped scroll offset ({}) must be < event count ({}) \
-         — no out-of-bounds access",
-        clamped,
+        selected < events.len(),
+        "BC-2.06.018 EC-116: selected index {} must be < event count {} after clamp",
+        selected,
         events.len()
     );
-    // Verify VecDeque does not panic on access at the clamped index.
-    let _ = &events[clamped]; // would panic if out-of-bounds
 }
 
 // ---------------------------------------------------------------------------
