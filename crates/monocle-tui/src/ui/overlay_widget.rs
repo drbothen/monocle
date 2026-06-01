@@ -72,8 +72,11 @@ pub fn render_overlay_widget(
         stack_depth,
         elapsed_secs,
     );
-    let show_scroll_hint = matches!(&modal.tool_payload, ToolPayload::Generic { .. });
-    let footer_line = build_footer_line(show_scroll_hint);
+    // BC-2.06.024 PC-3 / AC-006: scroll hint location is ALWAYS the body (inside
+    // render_generic_payload) and NEVER the footer. The footer carries exactly the
+    // decision-key hints; adding a second scroll-hint there would produce a double-hint
+    // when overflow is true and a spurious hint when overflow is false.
+    let footer_line = build_footer_line();
 
     // Outer block for the modal (has border, no title — header is rendered as first body line).
     let outer_block = Block::default().borders(Borders::ALL);
@@ -490,14 +493,13 @@ fn build_header_line(
 /// Build the footer `Line` with keyboard hints.
 ///
 /// Standard format: `"[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op"`.
-/// If `show_scroll_hint` is true, appends `"  ↑↓ to scroll"` (for Generic payloads
-/// exceeding the available height — AC-006).
-fn build_footer_line(show_scroll_hint: bool) -> Line<'static> {
-    let base = "[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op";
-    let text = if show_scroll_hint {
-        format!("{base}  ↑↓ to scroll")
-    } else {
-        base.to_string()
-    };
+///
+/// Scroll hints (`"↑↓ to scroll"`) are NOT appended here — they are rendered by
+/// `render_generic_payload` in the body area when content overflows (AC-006 /
+/// BC-2.06.024 PC-3). Keeping the scroll hint exclusively in the body ensures:
+/// - Non-overflowing Generic → zero scroll hints (no spurious footer hint).
+/// - Overflowing Generic → exactly one scroll hint (body only, not double).
+fn build_footer_line() -> Line<'static> {
+    let text = "[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op";
     Line::from(Span::styled(text, Style::default().fg(Color::DarkGray)))
 }
