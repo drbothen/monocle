@@ -1724,10 +1724,14 @@ pub fn render_frame(
                 };
                 render_dimmed_background(background_area, frame.buffer_mut());
 
-                // Render the overlay modal on top of the dimmed background (AC-001).
+                // Render the overlay modal centered within `background_area` (the
+                // non-status region). Using `full_area` here would allow `modal_rect`
+                // to center the modal over the full terminal including the status bar
+                // rows, causing the modal footer to bleed into the status bar at small
+                // terminal heights (AC-008 / BC-2.06.010 PC-1 / BC-2.06.019 PC-1).
                 if let Some(modal) = app.overlay_stack.front() {
                     let stack_depth = app.overlay_stack.len();
-                    render_overlay_widget(modal, stack_depth, full_area, frame);
+                    render_overlay_widget(modal, stack_depth, background_area, frame);
                 }
             }
 
