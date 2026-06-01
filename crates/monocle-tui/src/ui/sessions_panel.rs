@@ -43,8 +43,8 @@ use monocle_core::engine::{EnrichedSession, SessionStatus};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::Line,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
@@ -519,15 +519,96 @@ pub fn render_sessions_filter(
         return;
     }
 
-    // BC-2.06.006 PC-4: render matched sessions with match highlights.
-    // Full highlight implementation uses Span::styled; here we render the row text
-    // with the full column format. Match highlights via bold style on project_name.
+    // BC-2.06.006 PC-4: render matched sessions with per-character match highlights.
+    //
+    // For each matched session, compute nucleo match indices against the project_name
+    // field and build a Line with:
+    //   - A plain Span for the "{session_id} {icon} " prefix.
+    //   - Character-level Spans for project_name: matched chars → Span::styled(BOLD),
+    //     non-matched chars → Span::raw (default style).
+    //   - A plain Span for the " {status} {tokens} {cost} {uptime}" suffix.
+    //
+    // INV-1: reuse app.matcher (shared instance — not recreated per render).
     let now = chrono::Utc::now();
+    let highlight_style = Style::default().add_modifier(Modifier::BOLD);
     let items: Vec<ListItem> = scored
         .iter()
         .map(|(_score, s)| {
-            let row = crate::ui::sessions_panel::format_session_row(s, now);
-            ListItem::new(row)
+            let icon = harness_icon(&s.harness_type);
+            let project_name = s.project_name.as_deref().unwrap_or("");
+            let status = format_status(&s.status);
+            let tokens = format_token_count(s.token_count);
+            let cost = format_cost(s.cost_usd);
+            let uptime = format_uptime_at(s.started_at, now);
+            let id_str = if s.session_id.is_empty() { "?" } else { &s.session_id };
+
+            // Compute nucleo match indices for project_name (BC-2.06.006 PC-4).
+            // Use a fresh Vec per session — indices() fills it unconditionally.
+            let mut indices: Vec<u32> = Vec::new();
+            let mut project_chars_buf: Vec<char> = Vec::new();
+            let haystack = nucleo::Utf32Str::new(project_name, &mut project_chars_buf);
+            // indices() returns None when the atom does not match the haystack.
+            // For scored sessions the atom MUST match — but gracefully fall back to
+            // plain rendering if indices() unexpectedly returns None (defensive).
+            let has_indices = atom.indices(haystack, &mut app.matcher, &mut indices).is_some();
+
+            if has_indices && !indices.is_empty() {
+                // Build character-level styled spans for the project_name field.
+                // project_chars_buf holds the UTF-32 chars; indices are u32 offsets
+                // into that char array.
+                let matched: std::collections::HashSet<u32> = indices.into_iter().collect();
+                let mut project_spans: Vec<Span> = Vec::with_capacity(project_name.len() + 2);
+                // Collect consecutive char runs into single Span for efficiency.
+                let project_graphemes: Vec<char> = project_name.chars().collect();
+                let mut run_chars = String::new();
+                let mut run_is_bold: Option<bool> = None;
+                for (char_idx, &ch) in project_graphemes.iter().enumerate() {
+                    let is_match = matched.contains(&(char_idx as u32));
+                    let want_bold = is_match;
+                    match run_is_bold {
+                        Some(b) if b == want_bold => {
+                            run_chars.push(ch);
+                        }
+                        _ => {
+                            // Flush the previous run if non-empty.
+                            if !run_chars.is_empty() {
+                                if run_is_bold == Some(true) {
+                                    project_spans.push(Span::styled(
+                                        std::mem::take(&mut run_chars),
+                                        highlight_style,
+                                    ));
+                                } else {
+                                    project_spans.push(Span::raw(std::mem::take(&mut run_chars)));
+                                }
+                            }
+                            run_chars.push(ch);
+                            run_is_bold = Some(want_bold);
+                        }
+                    }
+                }
+                // Flush the last run.
+                if !run_chars.is_empty() {
+                    if run_is_bold == Some(true) {
+                        project_spans.push(Span::styled(run_chars, highlight_style));
+                    } else {
+                        project_spans.push(Span::raw(run_chars));
+                    }
+                }
+
+                // Assemble the full Line: prefix + highlighted project + suffix.
+                let prefix = format!("{id_str} {icon} ");
+                let suffix = format!(" {status} {tokens} {cost} {uptime}");
+                let mut spans = Vec::with_capacity(project_spans.len() + 2);
+                spans.push(Span::raw(prefix));
+                spans.extend(project_spans);
+                spans.push(Span::raw(suffix));
+                ListItem::new(Line::from(spans))
+            } else {
+                // No indices or atom did not match: fall back to plain row string.
+                // This branch is defensive (atom must match because we scored the session).
+                let row = crate::ui::sessions_panel::format_session_row(s, now);
+                ListItem::new(row)
+            }
         })
         .collect();
 
