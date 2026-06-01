@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-027
 epic_id: EPIC-06
-version: "1.4"
+version: "1.5"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
@@ -24,8 +24,8 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.015.md, version: "1.0.4"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.019.md, version: "1.0.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.020.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.0.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.021.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.024.md, version: "1.1.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "d74870e"
 traces_to: "Implements BC-2.06.010 (overlay widget render), BC-2.06.015 (trace-to-source stub), BC-2.06.019..021 (status bar), BC-2.06.024 (tool payload rendering by type)"
@@ -57,13 +57,19 @@ to all non-modal cells. The sessions panel and event ribbon remain visible but d
 to indicate they are inactive.
 
 ### AC-003 (traces to BC-2.06.024 postcondition PC-1 — Bash tool display)
-For `ToolPayload::Bash { command }`: the modal body renders the command in a bordered
-`Block` with title `"Command"`. If the command exceeds the modal height minus 6 rows,
-it is truncated with `"... (truncated)"` at the end.
+For `ToolPayload::Bash { command }`: the modal body renders a single label line:
+`command: <command>` where `<command>` is the full value of the `command` field.
+Both the `command:` label and the value render in the default terminal color (no special
+styling). Long command values wrap using `Wrap { trim: false }` so the full command is
+visible without silent truncation. If `command` is empty, the body renders
+`command: (empty)` as a safe fallback (no panic).
 
 ### AC-004 (traces to BC-2.06.024 postcondition PC-2 — Read tool display)
-For `ToolPayload::Read { path }`: the modal body renders the path in a single-line
-`Block` with title `"File"`. No truncation is needed.
+For `ToolPayload::Read { path }`: the modal body renders a single label line:
+`path: <path>` where `<path>` is the full value of the `path` field.
+Both the `path:` label and the value render in the default terminal color (no special
+styling). Long paths wrap using `Wrap { trim: false }`. If `path` is empty, the body
+renders `path: (empty)` as a safe fallback (no panic).
 
 ### AC-005 (traces to BC-2.06.015 postcondition PC-1 — Edit diff preview via similar)
 For `ToolPayload::Edit { old_content, new_content, path }`: the modal body renders
@@ -75,23 +81,59 @@ The diff is rendered line-by-line with:
 The path is shown in the modal header: `"Edit: <path>"`.
 
 ### AC-006 (traces to BC-2.06.024 postcondition PC-3 — Generic tool display)
-For `ToolPayload::Generic { tool_name, tool_input }`: the modal body renders
-`serde_json::to_string_pretty(tool_input)` in a `Block` titled `"Tool Input"`.
-If the JSON exceeds the modal height minus 6 rows, scroll hints are shown:
-`"↑↓ to scroll"` in the footer alongside the decision keys.
+For `ToolPayload::Generic { tool_name, tool_input }`: the modal body renders two label
+lines:
+```
+tool: <tool_name>
+input: <tool_input_excerpt>
+```
+where `<tool_input_excerpt>` is `serde_json::to_string(&tool_input)` truncated at 256
+characters (UTF-8 boundary respected). Both labels and values render in the default
+terminal color. Long values wrap using `Wrap { trim: false }`. If `tool_input`
+serialization fails (should not occur for valid `serde_json::Value`), the body renders
+`input: (unrepresentable)` and logs the failure at `WARN` level via `tracing::warn!`
+(no panic). Note: `ToolPayload::Generic` is the predominant Phase-1 rendering path for
+`tool_name == "Edit"` and `tool_name == "Write"` tool prompts (daemon sends
+`old_content: None, new_content: None`); `payload_to_modal()` falls back to Generic in
+that case, and `tool_input` contains the path field giving the user meaningful context.
 
 ### AC-007 (traces to BC-2.06.015 invariant INV-1 — similar in monocle-tui only)
 `similar` crate is imported ONLY in `monocle-tui`. The diff generation code MUST NOT
 appear in `monocle-core`. If a refactor is proposed that moves diff logic to
 `monocle-core`, it is a purity boundary violation and MUST be rejected.
 
-### AC-008 (traces to BC-2.06.019 postcondition PC-1 — status bar always visible)
-The status bar is rendered as the last row of the terminal at all times (including when
-the overlay modal is shown). It is NOT dimmed by the overlay background dimming. The
-status bar shows:
-- Left: current `AppMode` indicator: `"[DASHBOARD]"`, `"[FILTERING]"`, `"[OVERLAY N]"`
-  (where N is the overlay stack depth), or `"[FULLSCREEN]"`
-- Right: `"[dropped: N]"` in yellow when `drop_counter > 0`, otherwise nothing
+### AC-008 (traces to BC-2.06.019 PC-2 / BC-2.06.020 PC-1,3 / BC-2.06.021 PC-3 — two-row status bar always visible)
+The status bar is rendered as the last TWO rows of the terminal at all times (allocated
+via `Constraint::Length(2)` in the ratatui layout). It is NOT dimmed by the overlay
+background dimming. The two rows are:
+
+**Upper row (breadcrumb row) — BC-2.06.020:**
+A breadcrumb string derived from the current `AppMode`, left-aligned. Derivation table:
+- `Dashboard { focused: Sessions }` → `Dashboard > Sessions`
+- `Dashboard { focused: EventRibbon }` → `Dashboard > Events`
+- `Overlay { prior }` with `App.overlay_stack.len() == 1` → `Dashboard > Overlay [1 prompt]`
+- `Overlay { prior }` with `App.overlay_stack.len() == N (N > 1)` → `Dashboard > Overlay [N prompts]`
+- `Fullscreen { panel: Sessions, .. }` → `Dashboard > Sessions > Fullscreen`
+- `Fullscreen { panel: EventRibbon, .. }` → `Dashboard > Events > Fullscreen`
+- `Filtering { panel: Sessions, .. }` → `Dashboard > Sessions > Filter`
+- `Filtering { panel: EventRibbon, .. }` → `Dashboard > Events > Filter`
+
+When `drop_counter > 0` (BC-2.06.019 PC-2), the text `drops: N` is rendered right-aligned
+on the breadcrumb row in `Style::default().fg(Color::Yellow)`. When `drop_counter == 0`,
+no drop counter text is shown (no `drops: 0` noise). The drop counter reflects the daemon's
+cumulative value from the last `ServerToClient::DropCounterUpdate` verbatim.
+
+**Lower row (hint line) — BC-2.06.021:**
+A context-sensitive one-line keybinding summary derived from `AppMode`. Canonical hint
+strings (from the `Builtin` binding table):
+- `Dashboard` (any focus): `Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit`
+- `Overlay`: `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
+- `Filtering`: `(type to filter)  Esc: cancel`
+- `Fullscreen`: `Esc: back  /: filter  q: quit`
+
+The hint line is a pure function of `AppMode` and reflects only `Builtin` bindings. All
+hint strings fit within 80 columns (longest: Overlay hint at 72 display columns). The
+hint line renders on every `draw()` tick regardless of mode.
 
 ### AC-009 (traces to BC-2.06.020 postcondition PC-1 — overlay timer display)
 For each active `PromptModal`, the time elapsed since `received_at` is displayed in the
@@ -109,6 +151,27 @@ All diff generation (via `similar`) and JSON pretty-printing (via `serde_json`) 
 complete within a single render frame (target: < 5ms for typical inputs). These are
 CPU-bound operations on strings — they do not block the async runtime. No
 `tokio::spawn` or background threading for render computations.
+
+### AC-012 (traces to BC-2.06.019 PC-1 / BC-2.06.020 PC-3 / BC-2.06.021 PC-3 — integration render: overlay and status bar wired into render_frame)
+The overlay widget AND the two-row status bar (mode indicator breadcrumb row + hint line
+row) MUST be rendered by the production `render_frame` / `draw()` path — not only
+callable in isolation as unit-tested widgets. Acceptance: a test drives
+`App::render_frame` (or the `draw()` callback) against a `ratatui::backend::TestBackend`
+and asserts that the rendered terminal buffer contains:
+1. The breadcrumb string on the second-to-last row (e.g., `Dashboard > Sessions`)
+2. The hint line on the last row (e.g., `Tab: cycle  Enter: fullscreen`)
+3. When `AppMode::Overlay` is active and `overlay_stack` is non-empty, the modal header
+   text `"Permission Request"` is present in the buffer.
+
+A widget that is fully implemented and unit-tested in isolation but never wired into
+`render_frame` is dead code and would cause the user-visible status bar and overlay to
+be absent at runtime. This AC closes that process gap.
+
+Note: The modal footer `[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op`
+(AC-001) and the status bar hint line (AC-008 lower row) are two distinct surfaces.
+The modal footer lists decision keys rendered inside the overlay widget itself; the
+status bar hint line is always visible below the main layout and provides keybinding
+discovery independent of whether the overlay is active.
 
 ## Token Budget Estimate
 
@@ -132,12 +195,12 @@ CPU-bound operations on strings — they do not block the async runtime. No
 
 - [ ] Create `monocle-tui/src/ui/overlay_widget.rs` — centered modal widget with header/body/footer layout
 - [ ] Implement dimmed background rendering: apply `Modifier::DIM` to all non-modal cells
-- [ ] Implement `render_bash_payload()` — command in bordered Block with truncation
-- [ ] Implement `render_read_payload()` — path in single-line Block
-- [ ] Implement `render_edit_payload()` — unified diff via `similar::TextDiff::from_lines()`, colored lines
-- [ ] Implement `render_generic_payload()` — JSON pretty-print with scroll hint
+- [ ] Implement `render_bash_payload()` — `command: <command>` label line with `Wrap { trim: false }` and `command: (empty)` fallback (AC-003)
+- [ ] Implement `render_read_payload()` — `path: <path>` label line with `Wrap { trim: false }` and `path: (empty)` fallback (AC-004)
+- [ ] Implement `render_edit_payload()` — unified diff via `similar::TextDiff::from_lines()`, colored lines (AC-005)
+- [ ] Implement `render_generic_payload()` — `tool: <name>` + `input: <excerpt>` label lines, 256-char `serde_json::to_string` excerpt, `input: (unrepresentable)` + WARN fallback (AC-006)
 - [ ] Add `similar 3.x` to `monocle-tui/Cargo.toml` (NOT monocle-core)
-- [ ] Create `monocle-tui/src/ui/status_bar.rs` — always-visible bottom row with mode indicator and drop counter
+- [ ] Create `monocle-tui/src/ui/status_bar.rs` — always-visible two-row status bar: upper breadcrumb row (AppMode derivation + drop counter `drops: N`) and lower hint line (context-sensitive Builtin keybinding summary)
 - [ ] Implement elapsed timer in overlay footer: `Instant::now().duration_since(modal.received_at).as_secs()`
 - [ ] Implement `"(1 of N)"` stack depth indicator in overlay header
 - [ ] Implement modal width cap: `min(terminal_width - 4, 100)`
@@ -145,6 +208,7 @@ CPU-bound operations on strings — they do not block the async runtime. No
 - [ ] Set render tick rate to 100ms for timer updates
 - [ ] Unit tests `monocle-tui/tests/overlay_render.rs` — widget layout, dim background, header/footer content
 - [ ] Unit tests `monocle-tui/tests/diff_preview.rs` — similar diff generation, color codes, truncation
+- [ ] Integration render test `monocle-tui/tests/render_frame_integration.rs` — drive `App::render_frame` via `TestBackend`; assert breadcrumb, hint line, and overlay header present in terminal buffer (AC-012)
 
 ## Previous Story Intelligence
 
@@ -156,7 +220,8 @@ active. The `PromptModal.received_at: Instant` is set when the TUI receives the
 S-025 (TUI skeleton): ratatui layout uses `Layout::default().direction(Direction::Vertical)`
 with constraints for panels and status bar. The overlay widget is a `Clear` + `Block`
 overlay rendered on top of the existing layout. The status bar occupies the last
-`Constraint::Length(1)` row.
+`Constraint::Length(2)` rows (two-row status bar: breadcrumb row + hint row per
+BC-2.06.019/020/021).
 
 `similar` 3.x API: `TextDiff::from_lines(old: &str, new: &str)` returns a `TextDiff`
 that yields `Change` items. Each `Change` has a `tag()` method returning
@@ -170,7 +235,7 @@ From `architecture/SS-tui.md`:
 - Render loop tick rate: 100ms (for timer updates)
 - Modal width: `min(terminal_width - 4, 100)` — enforced in render, not hardcoded
 - `similar::TextDiff::from_lines()` for Edit diffs — NOT a custom diff implementation
-- `serde_json::to_string_pretty()` for Generic payloads — NOT manual JSON formatting
+- `serde_json::to_string()` for Generic payload excerpt (compact JSON, truncated at 256 chars) — NOT `to_string_pretty`, NOT manual JSON formatting
 - All render operations are synchronous and complete within one frame (< 5ms target)
 
 **Forbidden Dependencies:**
@@ -185,16 +250,17 @@ From `architecture/SS-tui.md`:
 | similar | 3.x | Unified diff for `ToolPayload::Edit` via `TextDiff::from_lines` |
 | ratatui | workspace pin | Widget rendering: `Block`, `Paragraph`, `Clear`, `Modifier::DIM`, `Color` |
 | monocle-core | workspace path | `PromptModal`, `ToolPayload`, `AppMode` |
-| serde_json | workspace pin | `to_string_pretty` for `ToolPayload::Generic` |
+| serde_json | workspace pin | `to_string` (compact) for `ToolPayload::Generic` excerpt (256-char truncated) |
 | std::time::Instant | stdlib | Elapsed timer calculation |
 
 ## File Structure Requirements
 
 Files to create:
 - `monocle-tui/src/ui/overlay_widget.rs` — overlay modal widget
-- `monocle-tui/src/ui/status_bar.rs` — status bar widget
+- `monocle-tui/src/ui/status_bar.rs` — two-row status bar widget (breadcrumb + hint line)
 - `monocle-tui/tests/overlay_render.rs` — overlay rendering tests
 - `monocle-tui/tests/diff_preview.rs` — diff preview rendering tests
+- `monocle-tui/tests/render_frame_integration.rs` — AC-012 integration render test (TestBackend drive of `App::render_frame`)
 
 Files to modify:
 - `monocle-tui/Cargo.toml` — add `similar 3.x`
@@ -206,6 +272,20 @@ Files to modify:
 No new public API produced by this story. The rendering behavior is internal to
 `monocle-tui`. S-029 (killer scenario test) validates the complete overlay render path
 end-to-end.
+
+## §Trace v1.5
+
+**ADV-S027-RECONCILE-001 — AC prose reconciled to canonical BCs (adversarial review finding)** (2026-05-31):
+- AC-003 (Bash): rewritten from "bordered Block titled 'Command' with truncation" to canonical `command: <command>` label line per BC-2.06.024 PC-1; adds `command: (empty)` fallback (PC-1.4) and `Wrap { trim: false }` (PC-1.5/INV-4).
+- AC-004 (Read): rewritten from "single-line Block titled 'File'" to canonical `path: <path>` label line per BC-2.06.024 PC-2; adds `path: (empty)` fallback (PC-2.4) and `Wrap { trim: false }` (PC-2.5).
+- AC-006 (Generic): rewritten from "`serde_json::to_string_pretty` in Block titled 'Tool Input'" to canonical two label lines `tool: <tool_name>` and `input: <tool_input_excerpt>` per BC-2.06.024 PC-3; adds 256-char excerpt limit, `Wrap { trim: false }`, `input: (unrepresentable)` + WARN-log fallback (EC-007), and Phase-1 note about `tool_name == "Edit"/"Write"` predominance (BC-2.06.024 v1.1.0 Description).
+- AC-008: (a) drop counter text corrected from `[dropped: N]` to `drops: N` in yellow per BC-2.06.019 PC-2; (b) status bar expanded from one row to two rows per BC-2.06.019/020/021 — upper breadcrumb row (AppMode derivation table per BC-2.06.020 PC-1) + lower hint line (canonical Builtin hints per BC-2.06.021 v1.0.6 PC-1, including corrected Overlay hint `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`). Traces now span BC-2.06.019/020/021.
+- AC-012 added: integration render requirement — `App::render_frame` / `draw()` must wire overlay widget and status bar; test drives `TestBackend` and asserts breadcrumb, hint line, and overlay header in terminal buffer. Closes adversary process-gap: widgets fully implemented + unit-tested in isolation but never wired into `render_frame` would be dead code.
+- Frontmatter: BC-2.06.021 input pin v1.0.4 → v1.0.6 (canonical version); BC-2.06.024 input pin v1.0.1 → v1.1.0 (canonical version, adds Write tool coverage).
+- Tasks: status bar task updated to describe two-row layout; integration render test task added.
+- File Structure: `status_bar.rs` description updated to two-row; `render_frame_integration.rs` added.
+- Previous Story Intelligence: S-025 `Constraint::Length(1)` → `Constraint::Length(2)` (matches two-row status bar).
+- SE-16d monotonicity: v1.5 timestamp 2026-05-31 >= v1.4 timestamp 2026-05-29. PASS.
 
 ## §Trace v1.4
 
