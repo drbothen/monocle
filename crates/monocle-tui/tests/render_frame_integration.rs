@@ -247,3 +247,91 @@ fn test_BC_2_06_020_render_frame_overlay_mode_breadcrumb_appears_on_breadcrumb_r
         breadcrumb_row.trim()
     );
 }
+
+// ---------------------------------------------------------------------------
+// ADV Pass-2 B2 — Modal must not collide with / clip the status bar rows
+//
+// Bug: `render_overlay_widget` is called with `full_area` (the whole terminal
+// frame including the two status bar rows). `modal_rect(full_area)` centers the
+// modal using `full_area.height`, so the inner area allocations can push the
+// modal footer below the top of the status bar region at small terminal heights.
+//
+// At terminal height=7 the modal footer (`[y] Accept  [Esc] No-op`) is placed
+// on the same row as the status bar breadcrumb (row 5 = second-to-last row),
+// corrupting it with mixed content.
+//
+// Correct behavior (AC-008): the modal is confined to rows above the status bar;
+// the status bar rows are not overwritten by modal content.
+//
+// BC-2.06.010 PC-1 / PC-4, AC-008.
+// ---------------------------------------------------------------------------
+
+/// AC-008 / BC-2.06.010 PC-1 (ADV PASS-2 B2, RED):
+/// At a small terminal height (7 rows × 80 cols), the full production render frame
+/// must render the status bar on the last two rows WITHOUT contamination from the
+/// overlay modal.
+///
+/// Failure mode (current): at height=7 the modal footer (e.g. `[Esc] No-op`) is
+/// rendered on row 5, which is ALSO the status bar breadcrumb row. The breadcrumb
+/// row ends up containing mixed modal footer + breadcrumb text — a collision.
+///
+/// Assertions:
+/// (a) The breadcrumb row (second-to-last = row 5) must contain the status bar
+///     breadcrumb text `"Dashboard > Overlay"` and must NOT contain any text from
+///     the modal footer (`"[Esc] No-op"` is the canonical modal footer fragment).
+/// (b) The hint row (last row = row 6) must contain the Overlay hint line
+///     (`"y: accept"`) intact — status bar must remain visible.
+#[test]
+fn test_BC_2_06_010_small_terminal_modal_does_not_collide_with_status_bar_rows() {
+    // Terminal height=7 is the minimal height where the current modal centering
+    // (using full_area) places the modal footer on the breadcrumb row.
+    // Status bar = last 2 rows (rows 5, 6 for height=7).
+    // Modal: modal_height = min(7-4,30) = 3, y = (7-3)/2 = 2.
+    // Modal inner height = 3 - 2(border) = 1 row.
+    // header_height=2, footer_height=1: footer_y = inner.y + 2 + 0 = inner.y + 2 = 5.
+    // Row 5 is the status bar breadcrumb row → collision.
+    let app = overlay_app();
+    let mut sessions_state = SessionsPanelState::default();
+    let backend = TestBackend::new(80, 7);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_frame(&app, &mut sessions_state, frame);
+        })
+        .expect("render_frame must not panic");
+
+    // Row 5 = second-to-last row = status bar breadcrumb row.
+    let breadcrumb_row = row_text(&terminal, 5);
+
+    // (a-i) The breadcrumb row must contain status bar content.
+    assert!(
+        breadcrumb_row.contains("Dashboard"),
+        "AC-008 / BC-2.06.010 PC-1 (B2): breadcrumb row (row 5 at height=7) must contain \
+         'Dashboard' from the status bar breadcrumb; \
+         got: {:?}",
+        breadcrumb_row.trim()
+    );
+
+    // (a-ii) The breadcrumb row must NOT be contaminated by the modal footer.
+    // The modal footer canonical text is "[Esc] No-op"; if it appears on the
+    // breadcrumb row, the modal has collided with the status bar.
+    assert!(
+        !breadcrumb_row.contains("[Esc] No-op"),
+        "AC-008 / BC-2.06.010 PC-1 (B2): breadcrumb row (row 5 at height=7) must NOT \
+         contain modal footer text '[Esc] No-op'; the modal footer is bleeding into the \
+         status bar region (modal centered over full_area instead of non-status area); \
+         got row content: {:?}",
+        breadcrumb_row.trim()
+    );
+
+    // (b) The hint row (last row = row 6) must still contain the Overlay hint.
+    let hint_row = row_text(&terminal, 6);
+    assert!(
+        hint_row.contains("y: accept"),
+        "AC-008 / BC-2.06.010 PC-1 (B2): hint row (row 6 at height=7) must contain \
+         'y: accept' from the Overlay hint line; status bar must remain visible; \
+         got: {:?}",
+        hint_row.trim()
+    );
+}

@@ -55,6 +55,10 @@ chrono = { workspace = true }
 tokio = { workspace = true }
 tempfile = { workspace = true }
 serde_json = { workspace = true }
+# unicode-width: needed by test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns
+# to measure display column width of hint strings (INV-3 guards display cols, not bytes).
+# Pinned to the same minor version already resolved transitively by ratatui.
+unicode-width = "0.2"
 
 [lints]
 workspace = true

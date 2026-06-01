@@ -1384,3 +1384,219 @@ fn test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_columns() {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// ADV Pass-2 B1 — Generic scroll-hint consolidation (RED tests)
+//
+// Bug: build_footer_line receives show_scroll_hint=true for ALL Generic payloads
+// unconditionally (line ~75: matches!(ToolPayload::Generic { .. })), regardless
+// of whether the content actually overflows. render_generic_payload ALSO shows its
+// own scroll hint in the body when overflow occurs. This causes:
+//   - No-overflow case: footer shows spurious "↑↓ to scroll" (count should be 0)
+//   - Overflow case: body shows it AND footer shows it (count should be 1, is 2)
+//
+// BC-2.06.024 PC-3, AC-006 (scroll hint location).
+// ---------------------------------------------------------------------------
+
+/// Count non-overlapping occurrences of `needle` in `haystack`.
+fn count_occurrences(haystack: &str, needle: &str) -> usize {
+    let mut count = 0;
+    let mut start = 0;
+    while let Some(pos) = haystack[start..].find(needle) {
+        count += 1;
+        start += pos + needle.len();
+    }
+    count
+}
+
+/// Collect all buffer cell symbols into a single string.
+fn buffer_all_text(terminal: &ratatui::Terminal<ratatui::backend::TestBackend>) -> String {
+    let buf = terminal.backend().buffer().clone();
+    let area = buf.area();
+    (0..area.height)
+        .flat_map(|y| (0..area.width).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect()
+}
+
+/// BC-2.06.024 PC-3 / AC-006 (ADV PASS-2 B1, RED):
+/// A Generic payload whose content does NOT overflow the modal body must show
+/// ZERO `↑↓ to scroll` hints in the entire rendered overlay.
+///
+/// Failure mode (current): `build_footer_line(show_scroll_hint=true)` is called for
+/// ALL Generic payloads unconditionally, so the footer always appends `↑↓ to scroll`
+/// even when no scrolling is needed. Count is 1 (footer only) but should be 0.
+///
+/// Test vector: short `tool:`/`input:` content, ample 80×24 terminal → no overflow.
+#[test]
+fn test_BC_2_06_024_generic_no_overflow_shows_zero_scroll_hints() {
+    // Short content: {"x":"hi"} → 1 input line, well within any modal height.
+    // Ample 80×24 terminal: modal height = min(24-4,30) = 20 rows → threshold = 20-6 = 14.
+    // json_line_count = 1 ≤ 14 → no overflow → body scroll hint suppressed.
+    // The footer MUST also suppress the hint because there is no overflow.
+    let modal = generic_modal("short_tool", serde_json::json!({"x": "hi"}));
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_overlay_widget(&modal, 1, frame.area(), frame);
+        })
+        .expect("render must not panic");
+
+    let all_text = buffer_all_text(&terminal);
+    let scroll_hint_count = count_occurrences(&all_text, "to scroll");
+
+    assert_eq!(
+        scroll_hint_count, 0,
+        "BC-2.06.024 PC-3 / AC-006: a Generic payload that does NOT overflow must show \
+         ZERO '↑↓ to scroll' hints in the rendered overlay; \
+         got {} occurrences (current bug: footer shows hint unconditionally for all Generic \
+         payloads regardless of overflow state)",
+        scroll_hint_count
+    );
+}
+
+/// BC-2.06.024 PC-3 / AC-006 (ADV PASS-2 B1, RED):
+/// A Generic payload whose content DOES overflow the modal body must show
+/// EXACTLY ONE `↑↓ to scroll` hint in the entire rendered overlay (not two).
+///
+/// Failure mode (current): `build_footer_line(show_scroll_hint=true)` shows the
+/// hint in the footer, AND `render_generic_payload` shows the hint in the body
+/// on overflow, producing a count of 2. The correct count is 1 (one hint, one location).
+///
+/// Test vector: multi-line JSON with 8 fields in a 15-row terminal where the body
+/// overflows the `area.height - 6` threshold.
+#[test]
+fn test_BC_2_06_024_generic_overflow_shows_exactly_one_scroll_hint() {
+    // Large input produces a long compact-JSON string that exceeds the threshold
+    // in a modest terminal.  At 80×15: modal_height = min(11,30)=11,
+    // inner=9 rows, body=9-2(header)-1(footer)=6 rows, body inner=4 rows.
+    // render_generic_payload area = body≈6 rows; threshold = 6-6 = 0, so
+    // any non-empty content triggers scroll. Body will show the hint once.
+    // Footer will ALSO show it (bug), giving count=2. Correct behavior: count=1.
+    let large_input = serde_json::json!({
+        "a": "line1", "b": "line2", "c": "line3", "d": "line4",
+        "e": "line5", "f": "line6", "g": "line7", "h": "line8",
+    });
+    let modal = generic_modal("big_tool", large_input);
+    let backend = TestBackend::new(80, 15);
+    let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
+
+    terminal
+        .draw(|frame| {
+            render_overlay_widget(&modal, 1, frame.area(), frame);
+        })
+        .expect("render must not panic");
+
+    let all_text = buffer_all_text(&terminal);
+    let scroll_hint_count = count_occurrences(&all_text, "to scroll");
+
+    assert_eq!(
+        scroll_hint_count, 1,
+        "BC-2.06.024 PC-3 / AC-006: a Generic payload that DOES overflow must show \
+         EXACTLY ONE '↑↓ to scroll' hint (one location, not two); \
+         got {} occurrences (current bug: footer adds a second hint unconditionally, \
+         producing a double hint — body hint + footer hint = 2 when only 1 is correct)",
+        scroll_hint_count
+    );
+}
+
+// ---------------------------------------------------------------------------
+// ADV Pass-2 B5 — INV-3 hint width measured in DISPLAY COLUMNS (augment test)
+//
+// BC-2.06.021 INV-3 says hints must fit within 79 DISPLAY COLUMNS.  The ↑↓
+// arrows are U+2191/U+2193 (3 bytes each in UTF-8) so `.len()` (bytes) gives
+// a larger number than display columns.  The replaced test used byte length and
+// thus measured the wrong quantity.  This test uses `unicode_width::UnicodeWidthStr`
+// to measure display columns (the correct metric per INV-3).
+//
+// The Overlay hint `y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace`
+// is 72 display columns (arrows are width 1 each in non-CJK context) and 76 bytes.
+// Both ≤ 79, so this test PASSES for the current correct strings.
+// It GUARDS the right metric for future changes (adding a wide char would fail here
+// but pass the byte-length check, making the byte test an incorrect guard).
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.021 INV-3 (ADV PASS-2 B5, GUARD): All hint line strings fit within
+/// 79 DISPLAY COLUMNS (not 79 bytes).
+///
+/// `unicode_width::UnicodeWidthStr::width()` returns the terminal display column
+/// count, which is the correct metric for INV-3 per BC-2.06.021 §Invariants:
+/// "At 80 columns, no hint line from Postcondition 1 exceeds 79 display columns."
+///
+/// The ↑↓ arrows (U+2191/U+2193) are 3 bytes each but 1 display column each
+/// (East Asian Width = Ambiguous → 1 col in non-CJK context per unicode-width 0.2).
+/// Current hint strings measure 72 display columns for the Overlay hint — safely
+/// within the 79-column budget. This test will catch any future addition of a
+/// wide character (e.g., a CJK glyph) that would exceed the budget while the
+/// old byte-length test would have let it through.
+#[test]
+fn test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns() {
+    use monocle_core::tui::state::PanelId;
+    use unicode_width::UnicodeWidthStr;
+
+    let modes: Vec<(&str, AppMode, usize)> = vec![
+        (
+            "Dashboard/Sessions",
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions,
+            },
+            0,
+        ),
+        (
+            "Dashboard/EventRibbon",
+            AppMode::Dashboard {
+                focused: FocusSnapshot::EventRibbon,
+            },
+            0,
+        ),
+        (
+            "Overlay",
+            AppMode::Overlay {
+                prior: FocusSnapshot::Sessions,
+            },
+            1,
+        ),
+        (
+            "Filtering",
+            AppMode::Filtering {
+                panel: PanelId::Sessions,
+                query: String::new(),
+                prior: FocusSnapshot::Sessions,
+            },
+            0,
+        ),
+        (
+            "Fullscreen",
+            AppMode::Fullscreen {
+                panel: PanelId::Sessions,
+                prior: FocusSnapshot::Sessions,
+            },
+            0,
+        ),
+    ];
+
+    for (label, mode, depth) in modes {
+        let mut buf = make_buf(80, 2);
+        let area = Rect::new(0, 0, 80, 2);
+        render_status_bar(&mode, 0, depth, None, area, &mut buf);
+
+        // Collect just the hint row (row 1).
+        let hint_row: String = (0..80u16)
+            .map(|x| buf[(x, 1u16)].symbol().to_string())
+            .collect();
+        let trimmed = hint_row.trim_end();
+        let display_width = UnicodeWidthStr::width(trimmed);
+
+        assert!(
+            display_width <= 79,
+            "BC-2.06.021 INV-3: hint line for {} must be <= 79 DISPLAY COLUMNS \
+             (not 79 bytes); got {} display columns (byte len={}): {:?}",
+            label,
+            display_width,
+            trimmed.len(),
+            trimmed
+        );
+    }
+}
