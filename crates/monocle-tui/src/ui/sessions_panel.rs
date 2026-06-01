@@ -483,28 +483,43 @@ pub fn render_sessions_filter(
         })
         .collect();
 
-    let mut scored: Vec<(u32, &monocle_core::engine::EnrichedSession)> = session_data
-        .iter()
-        .filter_map(|(project, display_name, s)| {
-            let mut haystack_buf1: Vec<char> = Vec::new();
-            let mut haystack_buf2: Vec<char> = Vec::new();
-            let haystack_project = Utf32Str::new(project, &mut haystack_buf1);
-            let haystack_display = Utf32Str::new(display_name, &mut haystack_buf2);
+    // Track which field won the OR-match so the highlight is applied against the
+    // correct haystack (BC-2.06.006 PC-4 F-2 FIX). When display_name produces the
+    // higher score, we render the display_name text with matched-char highlights;
+    // when project_name wins (or ties), we render the project_name as before.
+    // `winning_display_name`: Some(display_name) when display_name score > project score,
+    // None otherwise (project_name wins or equal).
+    let mut scored: Vec<(u32, &monocle_core::engine::EnrichedSession, Option<String>)> =
+        session_data
+            .iter()
+            .filter_map(|(project, display_name, s)| {
+                let mut haystack_buf1: Vec<char> = Vec::new();
+                let mut haystack_buf2: Vec<char> = Vec::new();
+                let haystack_project = Utf32Str::new(project, &mut haystack_buf1);
+                let haystack_display = Utf32Str::new(display_name, &mut haystack_buf2);
 
-            // OR condition: match on either field; take the higher score.
-            let score_project = atom.score(haystack_project, &mut app.matcher);
-            let score_display = atom.score(haystack_display, &mut app.matcher);
+                // OR condition: match on either field; take the higher score.
+                let score_project = atom.score(haystack_project, &mut app.matcher);
+                let score_display = atom.score(haystack_display, &mut app.matcher);
 
-            let score = match (score_project, score_display) {
-                (Some(a), Some(b)) => Some(a.max(b)),
-                (Some(a), None) => Some(a),
-                (None, Some(b)) => Some(b),
-                (None, None) => None,
-            };
+                let (score, winning_display) = match (score_project, score_display) {
+                    (Some(a), Some(b)) => {
+                        if b > a {
+                            // display_name strictly wins — highlight on display_name text
+                            (Some(b), Some(display_name.clone()))
+                        } else {
+                            // project_name wins or ties — highlight on project_name text
+                            (Some(a), None)
+                        }
+                    }
+                    (Some(a), None) => (Some(a), None),
+                    (None, Some(b)) => (Some(b), Some(display_name.clone())),
+                    (None, None) => (None, None),
+                };
 
-            score.map(|sc| (sc as u32, *s))
-        })
-        .collect();
+                score.map(|sc| (sc as u32, *s, winning_display))
+            })
+            .collect();
 
     // Sort descending by score (BC-2.06.006 PC-3: highest score first; u32 for full range).
     scored.sort_by(|a, b| b.0.cmp(&a.0));
@@ -521,19 +536,22 @@ pub fn render_sessions_filter(
 
     // BC-2.06.006 PC-4: render matched sessions with per-character match highlights.
     //
-    // For each matched session, compute nucleo match indices against the project_name
-    // field and build a Line with:
-    //   - A plain Span for the "{session_id} {icon} " prefix.
-    //   - Character-level Spans for project_name: matched chars → Span::styled(BOLD),
-    //     non-matched chars → Span::raw (default style).
-    //   - A plain Span for the " {status} {tokens} {cost} {uptime}" suffix.
+    // For each matched session, compute nucleo match indices against the WINNING
+    // match field (project_name or display_name, tracked in `winning_display`):
+    //   - winning_display = None  → project_name won → highlight project_name chars.
+    //   - winning_display = Some(dn) → display_name won → render display_name text
+    //     in the project column with display_name matched-char highlights.
+    //
+    // BC-2.06.006 PC-4 F-2 FIX: previously indices() was always called against
+    // project_name, so display_name-only matches produced no highlight (indices()
+    // returned None for the unmatched project_name → plain-row fallback).
     //
     // INV-1: reuse app.matcher (shared instance — not recreated per render).
     let now = chrono::Utc::now();
     let highlight_style = Style::default().add_modifier(Modifier::BOLD);
     let items: Vec<ListItem> = scored
         .iter()
-        .map(|(_score, s)| {
+        .map(|(_score, s, winning_display)| {
             let icon = harness_icon(&s.harness_type);
             let project_name = s.project_name.as_deref().unwrap_or("");
             let status = format_status(&s.status);
@@ -546,11 +564,19 @@ pub fn render_sessions_filter(
                 &s.session_id
             };
 
-            // Compute nucleo match indices for project_name (BC-2.06.006 PC-4).
+            // BC-2.06.006 PC-4 F-2 FIX: compute indices against the winning match field.
+            // When display_name won, use display_name as both the haystack for indices()
+            // AND as the displayed text in the project column position.
+            let (highlight_text, haystack_str): (&str, &str) = match winning_display.as_deref() {
+                Some(dn) => (dn, dn),
+                None => (project_name, project_name),
+            };
+
+            // Compute nucleo match indices for the winning haystack.
             // Use a fresh Vec per session — indices() fills it unconditionally.
             let mut indices: Vec<u32> = Vec::new();
-            let mut project_chars_buf: Vec<char> = Vec::new();
-            let haystack = nucleo::Utf32Str::new(project_name, &mut project_chars_buf);
+            let mut haystack_chars_buf: Vec<char> = Vec::new();
+            let haystack = nucleo::Utf32Str::new(haystack_str, &mut haystack_chars_buf);
             // indices() returns None when the atom does not match the haystack.
             // For scored sessions the atom MUST match — but gracefully fall back to
             // plain rendering if indices() unexpectedly returns None (defensive).
@@ -559,16 +585,15 @@ pub fn render_sessions_filter(
                 .is_some();
 
             if has_indices && !indices.is_empty() {
-                // Build character-level styled spans for the project_name field.
-                // project_chars_buf holds the UTF-32 chars; indices are u32 offsets
-                // into that char array.
+                // Build character-level styled spans for the highlighted field.
+                // haystack_chars_buf holds the UTF-32 chars; indices are u32 offsets.
                 let matched: std::collections::HashSet<u32> = indices.into_iter().collect();
-                let mut project_spans: Vec<Span> = Vec::with_capacity(project_name.len() + 2);
+                let mut field_spans: Vec<Span> = Vec::with_capacity(highlight_text.len() + 2);
                 // Collect consecutive char runs into single Span for efficiency.
-                let project_graphemes: Vec<char> = project_name.chars().collect();
+                let field_graphemes: Vec<char> = highlight_text.chars().collect();
                 let mut run_chars = String::new();
                 let mut run_is_bold: Option<bool> = None;
-                for (char_idx, &ch) in project_graphemes.iter().enumerate() {
+                for (char_idx, &ch) in field_graphemes.iter().enumerate() {
                     let is_match = matched.contains(&(char_idx as u32));
                     let want_bold = is_match;
                     match run_is_bold {
@@ -579,12 +604,12 @@ pub fn render_sessions_filter(
                             // Flush the previous run if non-empty.
                             if !run_chars.is_empty() {
                                 if run_is_bold == Some(true) {
-                                    project_spans.push(Span::styled(
+                                    field_spans.push(Span::styled(
                                         std::mem::take(&mut run_chars),
                                         highlight_style,
                                     ));
                                 } else {
-                                    project_spans.push(Span::raw(std::mem::take(&mut run_chars)));
+                                    field_spans.push(Span::raw(std::mem::take(&mut run_chars)));
                                 }
                             }
                             run_chars.push(ch);
@@ -595,18 +620,18 @@ pub fn render_sessions_filter(
                 // Flush the last run.
                 if !run_chars.is_empty() {
                     if run_is_bold == Some(true) {
-                        project_spans.push(Span::styled(run_chars, highlight_style));
+                        field_spans.push(Span::styled(run_chars, highlight_style));
                     } else {
-                        project_spans.push(Span::raw(run_chars));
+                        field_spans.push(Span::raw(run_chars));
                     }
                 }
 
-                // Assemble the full Line: prefix + highlighted project + suffix.
+                // Assemble the full Line: prefix + highlighted field text + suffix.
                 let prefix = format!("{id_str} {icon} ");
                 let suffix = format!(" {status} {tokens} {cost} {uptime}");
-                let mut spans = Vec::with_capacity(project_spans.len() + 2);
+                let mut spans = Vec::with_capacity(field_spans.len() + 2);
                 spans.push(Span::raw(prefix));
-                spans.extend(project_spans);
+                spans.extend(field_spans);
                 spans.push(Span::raw(suffix));
                 ListItem::new(Line::from(spans))
             } else {
