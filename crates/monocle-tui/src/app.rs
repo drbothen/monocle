@@ -13,7 +13,7 @@
 
 use anyhow::{Context, Result};
 use directories::ProjectDirs;
-use monocle_config::{load_config, MonocleConfig};
+use monocle_config::{detect_ccr, load_config, write_config, MonocleConfig};
 use monocle_core::engine::EnrichedSession;
 use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
 use monocle_ipc::error::IpcError;
@@ -1028,9 +1028,54 @@ pub async fn reconnect_from_offline(
 /// # AppMode contract (BC-2.07.005 PC-1 / BC-2.07.004 INV-1)
 ///
 /// Does NOT change `app.mode`. The picker coexists over any AppMode.
-#[allow(clippy::todo)]
-pub fn open_profile_picker(_app: &mut App) {
-    todo!("S-031: populate ProfilePickerState from config.harness_profiles, sorted; set app.profile_picker = Some(state)")
+///
+/// # Default selection (BC-2.07.005 PC-4)
+///
+/// Pre-selects the currently active profile: searches `config.project_profiles`
+/// for any value that matches a profile ID in `harness_profiles`. If found, that
+/// profile's position in the sorted list is used as `selected_index`. If no
+/// sticky entry exists, index 0 is used (first profile).
+pub fn open_profile_picker(app: &mut App) {
+    // BC-2.07.005 EC-110: idempotent — if already open, do nothing.
+    if app.profile_picker.is_some() {
+        return;
+    }
+
+    // Build sorted snapshot of profile IDs (AC-001 / BC-2.07.004 PC-1).
+    let mut profiles: Vec<String> = app
+        .config
+        .harness_profiles
+        .iter()
+        .map(|p| p.id.clone())
+        .collect();
+    profiles.sort();
+
+    // BC-2.07.005 PC-4: pre-select the currently active profile.
+    // Search project_profiles values for any valid profile ID (first match wins).
+    // This finds the sticky profile so the picker opens with it highlighted.
+    let selected_index = app
+        .config
+        .project_profiles
+        .values()
+        .find_map(|profile_id| {
+            // Only match if the profile ID exists in harness_profiles (not dangling).
+            if app
+                .config
+                .harness_profiles
+                .iter()
+                .any(|p| &p.id == profile_id)
+            {
+                profiles.iter().position(|id| id == profile_id)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(0);
+
+    app.profile_picker = Some(ProfilePickerState {
+        selected_index,
+        profiles,
+    });
 }
 
 /// Close the profile picker without committing any selection.
@@ -1038,9 +1083,8 @@ pub fn open_profile_picker(_app: &mut App) {
 /// Called when `Esc` is pressed while `app.profile_picker` is `Some(..)`.
 /// Sets `app.profile_picker = None`. Does not call `write_config`. Does not
 /// change `app.mode` (BC-2.07.005 PC-8).
-#[allow(clippy::todo)]
-pub fn close_profile_picker(_app: &mut App) {
-    todo!("S-031: set app.profile_picker = None without config write")
+pub fn close_profile_picker(app: &mut App) {
+    app.profile_picker = None;
 }
 
 /// Commit the currently highlighted profile selection.
@@ -1056,27 +1100,89 @@ pub fn close_profile_picker(_app: &mut App) {
 ///
 /// `current_dir` must be the verbatim, non-symlink-resolved CWD string
 /// (BC-2.07.004 INV-1 / BC-2.07.005 INV-5 normalization contract).
-#[allow(clippy::todo)]
-pub fn commit_profile_selection(_app: &mut App, _current_dir: &str) {
-    todo!("S-031: persist selected profile, update ccr_path, close picker")
+///
+/// If no picker is open, this is a no-op.
+pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
+    // Guard: if picker is not open, nothing to commit.
+    let selected_id = match app.profile_picker.as_ref() {
+        Some(state) => state
+            .profiles
+            .get(state.selected_index)
+            .cloned()
+            .unwrap_or_default(),
+        None => return,
+    };
+
+    // BC-2.07.005 PC-5a: write selected profile ID into project_profiles[current_dir] (in-memory).
+    app.config
+        .project_profiles
+        .insert(current_dir.to_string(), selected_id.clone());
+
+    // BC-2.07.005 PC-5b: atomic write via write_config (AC-009 / BC-2.07.005 INV-2).
+    let write_result = MonocleConfig::config_path().and_then(|path| {
+        write_config(&app.config, &path).map_err(|e| e.into())
+    });
+
+    if let Err(ref e) = write_result {
+        // BC-2.07.005 PC-5c: on write failure, set transient error notification.
+        // In-memory profile IS already updated above — intentional per BC.
+        tracing::warn!(
+            error = %e,
+            profile = %selected_id,
+            "commit_profile_selection: write_config failed — in-memory profile updated, \
+             persistence failed (BC-2.07.005 PC-5c)"
+        );
+        app.status_message = Some(format!("Config save failed: {e}"));
+    }
+
+    // BC-2.07.005 PC-4 step 3 / AC-005: close picker regardless of write outcome.
+    app.profile_picker = None;
+
+    // BC-2.07.005 PC-4 step 4 / AC-005: log profile switch.
+    tracing::info!(profile = %selected_id, "profile switched to {}", selected_id);
+
+    // BC-2.07.005 PC-3 / AC-007: update ccr_path after switch.
+    app.ccr_path = detect_ccr(&app.config);
+    match &app.ccr_path {
+        Some(path) => {
+            tracing::info!(ccr_path = %path.display(), "ccr_path resolved to {}", path.display());
+        }
+        None => {
+            tracing::warn!(profile = %selected_id, "ccr_path not found for profile {}", selected_id);
+        }
+    }
 }
 
 /// Navigate the picker selection down one row (wraps to top).
 ///
 /// Called when `j` / `↓` is pressed while `app.profile_picker` is `Some(..)`.
 /// A no-op if `profile_picker` is `None` or `profiles` is empty.
-#[allow(clippy::todo)]
-pub fn picker_select_next(_app: &mut App) {
-    todo!("S-031: increment selected_index (wrap to 0 at len)")
+pub fn picker_select_next(app: &mut App) {
+    if let Some(ref mut state) = app.profile_picker {
+        if state.profiles.is_empty() {
+            return;
+        }
+        // Wrap: len-1 → 0.
+        state.selected_index = (state.selected_index + 1) % state.profiles.len();
+    }
 }
 
 /// Navigate the picker selection up one row (wraps to bottom).
 ///
 /// Called when `k` / `↑` is pressed while `app.profile_picker` is `Some(..)`.
 /// A no-op if `profile_picker` is `None` or `profiles` is empty.
-#[allow(clippy::todo)]
-pub fn picker_select_prev(_app: &mut App) {
-    todo!("S-031: decrement selected_index (wrap to len-1 at 0)")
+pub fn picker_select_prev(app: &mut App) {
+    if let Some(ref mut state) = app.profile_picker {
+        if state.profiles.is_empty() {
+            return;
+        }
+        // Wrap: 0 → len-1.
+        if state.selected_index == 0 {
+            state.selected_index = state.profiles.len() - 1;
+        } else {
+            state.selected_index -= 1;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
