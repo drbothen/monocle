@@ -543,10 +543,26 @@ fn test_BC_2_06_006_ec091_backspace_on_empty_query_no_panic() {
 
 // ---------------------------------------------------------------------------
 // BC-2.06.006 PC-3 — display_name match (OR condition)
+//
+// STRENGTHENED: original test used `rendered.contains("monocle") || rendered.contains("sess-001")`.
+// The `contains("monocle")` branch is satisfiable by the project_name "monocle" being returned
+// via the project_name scoring path — this would pass even if display_name matching is broken.
+// To isolate the display_name branch, the project_name must NOT match the query "cla".
+// We use project_name="xyz-project" (no "cla" characters) so the ONLY way the session appears
+// is via the display_name="Claude Code" branch (harness_type="claude-code" → "Claude Code").
 // ---------------------------------------------------------------------------
 
-/// Filter matches on `EngineMetadata::display_name` (OR condition in PC-3).
+/// Filter matches on `EngineMetadata::display_name` (OR condition in PC-3), verified by
+/// using a project_name that cannot match the query — proving the display_name branch fired.
+///
 /// Test vector from BC-2.06.006 §Canonical Test Vectors row 5: query="cla", display_name="Claude Code".
+///
+/// STRENGTHENED: project_name is "xyz-project" (no "cla" anywhere), so the session can
+/// ONLY match via the harness_type="claude-code" → display_name="Claude Code" OR branch.
+/// The original weaker assertion `contains("monocle") || contains("sess-001")` was
+/// satisfiable by the project_name path (project_name="monocle" does not contain "cla",
+/// but "monocle" may fuzzy-match "cla" depending on nucleo's algorithm). This version
+/// uses a project_name with no characters in common with "cla" to isolate the OR branch.
 #[test]
 fn test_BC_2_06_006_display_name_match() {
     use monocle_core::engine::{EnrichedSession, SessionStatus};
@@ -555,23 +571,26 @@ fn test_BC_2_06_006_display_name_match() {
     };
     use ratatui::{backend::TestBackend, Terminal};
 
+    // Strengthened: project_name="xyz-project" has NO characters in common with "cla".
+    // The session can ONLY appear via display_name="Claude Code" (harness_type="claude-code").
+    // This isolates the display_name OR-match branch (BC-2.06.006 PC-3).
     let mut app = make_app_in_filtering("cla");
     app.sessions = vec![EnrichedSession::new(
         "sess-001".to_string(),
-        "claude-code".to_string(),
+        "claude-code".to_string(), // harness_type → display_name = "Claude Code"
         None,
         None,
         SessionStatus::Idle,
         None,
-        Some("monocle".to_string()),
+        Some("xyz-project".to_string()), // project_name has no chars matching "cla"
         None,
         0,
         None,
     )];
 
-    // NOTE: EnrichedSession carries display_name from EngineMetadata.
-    // The test verifies that matching against display_name="Claude Code" with query="cla"
-    // surfaces the session (BC-2.06.006 PC-3 OR match condition).
+    // BC-2.06.006 PC-3: nucleo must match "cla" against "Claude Code" (display_name).
+    // harness_display_name("claude-code") → "Claude Code" → fuzzy match "cla" → score > 0.
+    // The session must be visible because "cla" fuzzy-matches "Claude Code".
     let backend = TestBackend::new(80, 10);
     let mut terminal = Terminal::new(backend).unwrap();
     terminal
@@ -581,13 +600,22 @@ fn test_BC_2_06_006_display_name_match() {
         })
         .unwrap();
     let rendered = terminal.backend().to_string();
+
+    // Strengthened assertion: "xyz-project" confirms the session was rendered (project_name
+    // visible in output) OR "sess-001" is visible — but via display_name match ONLY.
+    // We assert on "xyz-project" (the project_name from this session) to confirm the session
+    // was returned by the filter. "xyz-project" cannot match "cla" directly, so its presence
+    // proves the display_name branch fired.
     assert!(
-        rendered.contains("monocle") || rendered.contains("sess-001"),
-        "BC-2.06.006 PC-3 test vector row 5: session must be visible via display_name OR match \
-         (query=\"cla\", display_name=\"Claude Code\"); rendered:\n{rendered}"
+        rendered.contains("xyz-project") || rendered.contains("sess-001"),
+        "BC-2.06.006 PC-3 test vector row 5 (STRENGTHENED): session with project_name=\"xyz-project\" \
+         must be visible with query=\"cla\" via display_name=\"Claude Code\" match ONLY \
+         (project_name has no 'cla' chars, so display_name branch must fire). \
+         Rendered:\n{rendered}"
     );
     assert!(
         !rendered.contains(SESSIONS_FILTER_NO_MATCH),
-        "BC-2.06.006 PC-3: SESSIONS_FILTER_NO_MATCH must NOT appear when display_name matches; rendered:\n{rendered}"
+        "BC-2.06.006 PC-3: SESSIONS_FILTER_NO_MATCH must NOT appear when display_name matches \
+         (display_name=\"Claude Code\" fuzzy-matches \"cla\"); rendered:\n{rendered}"
     );
 }
