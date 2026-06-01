@@ -156,6 +156,24 @@ impl SessionRegistry {
     ///   `SessionState::Stopped` → `SessionStatus::Stopped`.
     /// - `last_event_micros`: `None` (not tracked in `SessionEntry` in Phase 1).
     pub fn snapshot_enriched_sessions(&self) -> Vec<monocle_core::engine::EnrichedSession> {
+        // BC-2.06.006 PC-3 / ADV Pass-4 C3: resolve display_name from
+        // ClaudeCodeModule::metadata().display_name — NOT a hardcoded literal.
+        //
+        // This single resolution covers all sessions in the snapshot (Phase 1:
+        // every session uses harness_type="claude-code"). When metadata() returns
+        // Err (HomeUnresolvable in headless/container CI), fall back to the
+        // EngineMetadata canonical constant "Claude Code" so the snapshot is
+        // never empty-string. The fallback literal matches the metadata() value —
+        // it is a guard against environment failures, not a primary data source.
+        //
+        // `use monocle_core::engine::EngineModule` brings metadata() into scope
+        // as a trait method (it is defined on the EngineModule trait).
+        use monocle_core::engine::EngineModule;
+        let claude_display_name = crate::engine::ClaudeCodeModule::new(String::new())
+            .metadata()
+            .map(|m| m.display_name.to_owned())
+            .unwrap_or_else(|_| "Claude Code".to_owned());
+
         let guard = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         guard
             .values()
@@ -166,8 +184,9 @@ impl SessionRegistry {
                 };
                 // BC-2.06.006 PC-3 / ADV Pass-3 MAJOR-2: populate display_name with
                 // the harness engine's human-readable name so the IPC wire snapshot
-                // carries display_name for the TUI sessions filter (not a hardcoded
-                // TUI-side fallback). Phase 1 has a single harness ("claude-code").
+                // carries display_name for the TUI sessions filter.
+                // ADV Pass-4 C3: sourced from ClaudeCodeModule::metadata() (above),
+                // not from a hardcoded literal that could drift from the canonical value.
                 monocle_core::engine::EnrichedSession::new_with_display_name(
                     entry.session_id.clone(),
                     "claude-code".to_owned(),
@@ -179,7 +198,7 @@ impl SessionRegistry {
                     None, // started_at: Phase 1 default
                     0,    // token_count: Phase 1 default
                     None, // cost_usd: Phase 1 default
-                    "Claude Code".to_owned(),
+                    claude_display_name.clone(),
                 )
             })
             .collect()
