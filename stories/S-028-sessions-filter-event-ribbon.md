@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-028
 epic_id: EPIC-06
-version: "1.5"
+version: "1.6"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -23,9 +23,9 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.1.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.1.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
-input-hash: "8e980a0"
+input-hash: "2434a31"
 traces_to: "Implements BC-2.05.002 (InitialState ring_tail delivery), BC-2.05.004 (HookEventReceived streaming), BC-2.06.006 (sessions fuzzy filter), BC-2.06.018 (event ribbon panel)"
 ---
 
@@ -85,7 +85,7 @@ In `Dashboard { focused: FocusSnapshot::EventRibbon }` mode:
 - `G` jumps to the OLDEST event (bottom / last row — newest event is at row 0, so the oldest is at the bottom, per BC-2.06.018 PC-2)
 - `g` (twice: `gg`) jumps to the NEWEST event (row 0 / top — the most recent event is prepended to the top, per BC-2.06.018 PC-2)
 - `Enter` enters `Fullscreen { panel: PanelId::EventRibbon, prior: current_focus }`
-These bindings are dispatched via `resolve_binding()` using the `Global` layer.
+`j`/`k`/`↓`/`↑` resolve via `resolve_binding()` on the **PerContext (`AppModeTag::Dashboard`)** binding layer to `Action::ScrollDown` / `Action::ScrollUp`; focus is discriminated in `dispatch_key_event` so that when `EventRibbon` is focused the action is applied to ribbon scroll, and when `Sessions` is focused the same keys move the sessions cursor. `G` and `gg` are **not** binding-table entries: they are intercepted directly in `dispatch_key_event` before `resolve_binding()` via a pending-key state machine (`Option<KeyCode>`) that detects two consecutive `g` keystrokes for `gg`.
 
 ### AC-008 (traces to BC-2.06.018 postcondition PC-3 — event ribbon auto-scroll)
 When a new `HookEventReceived` message arrives (per BC-2.05.004) and the incoming event
@@ -250,6 +250,14 @@ dependency graph.
 - Tasks: added integration render test task and integration dispatch test task (AC-010).
 - File Structure: added `render_frame_integration_s028.rs` (AC-010 integration test).
 - SE-16d monotonicity: v1.4 timestamp 2026-06-01 >= v1.3 timestamp 2026-05-29. PASS.
+
+## §Trace v1.6
+
+**ADV Pass-6 — AC-007 mechanism-prose corrected (PerContext/pending-key, not Global); BC-2.06.018 pin updated to v1.1.0 (PC-1 timestamp_micros)** (2026-06-01):
+- AC-007 mechanism fix (NITPICK-2): prior sentence "These bindings are dispatched via `resolve_binding()` using the `Global` layer" misdescribed the shipped design in two ways: (a) `G`/`gg` are intercepted directly in `dispatch_key_event` before `resolve_binding()` via a pending-key state machine (`Option<KeyCode>`) — they have no binding-table entry; (b) `j`/`k`/`↓`/`↑` resolve via the **PerContext (`AppModeTag::Dashboard`)** layer (not Global), with focus discrimination in `dispatch_key_event` routing ribbon-scroll when EventRibbon-focused vs sessions-cursor when Sessions-focused. Rewritten to accurately describe both paths.
+- BC-2.06.018 inputs pin updated from `1.0.5` → `1.1.0`: product-owner bumped BC-2.06.018 to v1.1.0 (S-028-ADR-timestamp_micros — PC-1 Timestamp column source corrected from `received_at` to `timestamp_micros` daemon wall-clock). Story pin must track the version the story was validated against.
+- Version bump 1.5 → 1.6 to reflect this pass.
+- SE-16d monotonicity: v1.6 timestamp 2026-06-01 >= v1.5 timestamp 2026-06-01. PASS.
 
 ## §Trace v1.5
 
