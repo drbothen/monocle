@@ -98,6 +98,7 @@ fn test_BC_2_06_018_AC010_render_frame_dashboard_shows_event_ribbon_content() {
         "sess-abc123def".to_string(),
         r#"{"tool":"Bash"}"#.to_string(),
         42u64,
+        0i64,
     );
     on_hook_event_received(
         &mut app,
@@ -105,6 +106,7 @@ fn test_BC_2_06_018_AC010_render_frame_dashboard_shows_event_ribbon_content() {
         "sess-xyz789ghi".to_string(),
         r#"{"msg":"hello"}"#.to_string(),
         7u64,
+        0i64,
     );
     on_hook_event_received(
         &mut app,
@@ -112,6 +114,7 @@ fn test_BC_2_06_018_AC010_render_frame_dashboard_shows_event_ribbon_content() {
         "sess-aaa000bbb".to_string(),
         r#"{}"#.to_string(),
         1u64,
+        0i64,
     );
 
     // App must be in Dashboard mode (the default).
@@ -304,6 +307,7 @@ fn test_BC_2_06_018_AC010_scroll_j_dispatches_scroll_down() {
             format!("sess-{i:03}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     app.event_ribbon_state.list_state.select(Some(0));
@@ -358,6 +362,7 @@ fn test_BC_2_06_018_AC010_scroll_down_arrow_dispatches_scroll_down() {
             format!("sess-{i:03}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     app.event_ribbon_state.list_state.select(Some(0));
@@ -412,6 +417,7 @@ fn test_BC_2_06_018_AC010_scroll_j_twice_advances_two_rows() {
             format!("sess-{i:03}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     // Start at top (row 0 = newest).
@@ -466,6 +472,7 @@ fn test_BC_2_06_018_AC010_scroll_k_dispatches_scroll_up() {
             format!("sess-{i:03}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     // Start at row 3 (user has scrolled down, pinned).
@@ -513,6 +520,7 @@ fn test_BC_2_06_018_AC010_scroll_k_at_row0_clears_pinned_top() {
             format!("sess-{i:03}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     // Start at row 1 (one below newest), pinned_top=true.

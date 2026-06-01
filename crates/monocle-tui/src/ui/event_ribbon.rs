@@ -79,8 +79,9 @@ pub struct HookEventRow {
     /// Unix epoch microseconds for the Timestamp column (BC-2.06.018 PC-1).
     ///
     /// For `ring_tail` entries: sourced from `HookEventRecord::timestamp_micros` (the daemon's
-    /// wall-clock at hook receipt). For streaming `HookEventReceived` messages: captured as
-    /// `SystemTime::now()` at TUI message-arrival time.
+    /// wall-clock at hook receipt). For streaming `HookEventReceived` messages: sourced from
+    /// `HookEventReceived::timestamp_micros` (the daemon's wall-clock capture — SS-ipc v1.10.0 /
+    /// BC-2.05.004 PC-2). NOT `SystemTime::now()` at TUI receive time.
     ///
     /// Used exclusively for Timestamp column rendering as UTC wall-clock `HH:MM:SS.mmm`
     /// via `format_timestamp`. Stable across scroll/window changes (not an elapsed delta).
@@ -115,9 +116,11 @@ pub struct HookEventRow {
 
 /// Capture the current wall-clock time as Unix epoch microseconds.
 ///
-/// Used by `hook_event_row_from_received` for streaming events that do not carry
-/// a daemon-side timestamp (the daemon sends them with its own timestamp, but the
-/// TUI receives them via `HookEventReceived` which carries `latency_ms` not `timestamp_micros`).
+/// Used by `hook_event_row_from_record` for ring_tail entries that are pre-existing
+/// when the TUI connects (the daemon has already captured their timestamp in
+/// `HookEventRecord::timestamp_micros`). For streaming `HookEventReceived` messages,
+/// `hook_event_row_from_received` uses the daemon-supplied `timestamp_micros` field
+/// directly (SS-ipc v1.10.0 / BC-2.05.004 PC-2) rather than calling this function.
 /// Falls back to 0 on `SystemTime` errors (should not occur on any supported platform).
 pub fn current_timestamp_micros() -> i64 {
     SystemTime::now()
@@ -178,6 +181,9 @@ pub fn hook_event_row_from_record(record: &monocle_ipc::types::HookEventRecord) 
 /// to append live events to `App::event_ribbon_events` (BC-2.05.004).
 ///
 /// `latency_ms` is `Some(latency_ms)` from the IPC message field.
+/// `timestamp_micros` is sourced from the `HookEventReceived::timestamp_micros` field —
+/// the daemon's wall-clock capture at hook POST receipt (BC-2.05.004 PC-2 / SS-ipc v1.10.0).
+/// The TUI MUST use this value, NOT `current_timestamp_micros()` at TUI receive time.
 /// `pending` is initially `false`; set to `true` by the overlay-push logic in
 /// `on_permission_prompt_queued` when the session_id + hook_type matches a new
 /// `PreToolUse` prompt (see BC-2.06.018 PC-4 — overlay management is in S-026/S-027;
@@ -186,12 +192,14 @@ pub fn hook_event_row_from_received(
     hook_type: HookType,
     session_id: String,
     latency_ms: u64,
+    timestamp_micros: i64,
 ) -> HookEventRow {
-    // BC-2.05.004: convert HookEventReceived IPC fields → HookEventRow for the ribbon.
-    // Streaming events do not carry daemon-side timestamp_micros — capture TUI wall-clock.
-    // This is stable across scroll/window changes (not an elapsed delta from a visible epoch).
+    // BC-2.05.004 / SS-ipc v1.10.0: use the daemon's timestamp_micros (not TUI receive time).
+    // This value comes from HookEventReceived::timestamp_micros, which the daemon captures ONCE
+    // at hook POST receipt and also writes to HookEventRecord::timestamp_micros in the ring
+    // (BC-2.05.004 PC-2 equality: ring and IPC carry the same daemon-clock value).
     HookEventRow {
-        timestamp_micros: current_timestamp_micros(),
+        timestamp_micros,
         received_at: Instant::now(),
         hook_type,
         session_id,
@@ -439,6 +447,57 @@ pub fn format_timestamp(timestamp_micros: i64, _epoch: Instant) -> String {
     let minutes = (total_secs / 60) % 60;
     let seconds = total_secs % 60;
     format!("{hours:02}:{minutes:02}:{seconds:02}.{millis:03}")
+}
+
+// ---------------------------------------------------------------------------
+// Scroll helpers (BC-2.06.018 PC-5 / AC-007)
+// ---------------------------------------------------------------------------
+
+/// Scroll the Event Ribbon one row toward older events (down the newest-first list).
+///
+/// Increments `state.list_state.selected()` by 1, clamped at `events.len() - 1`
+/// to avoid out-of-bounds access (BC-2.06.018 EC-116: no panic at oldest row).
+///
+/// Sets `state.pinned_top = true` when the new index is > 0 (user scrolled away
+/// from the newest event). At index 0 → 0 (empty or already clamped) `pinned_top`
+/// is not changed.
+///
+/// `events` is passed as a reference to determine the clamp boundary — it is NOT
+/// mutated. The caller holds the full VecDeque (not a slice) so the length is the
+/// authoritative event count.
+pub fn scroll_ribbon_down(
+    state: &mut EventRibbonState,
+    events: &std::collections::VecDeque<HookEventRow>,
+) {
+    let event_count = events.len();
+    if event_count == 0 {
+        return;
+    }
+    let current = state.list_state.selected().unwrap_or(0);
+    let next = (current + 1).min(event_count.saturating_sub(1));
+    state.list_state.select(Some(next));
+    // BC-2.06.018 PC-5: set pinned_top=true when user scrolls away from newest (index 0).
+    if next > 0 {
+        state.pinned_top = true;
+    }
+}
+
+/// Scroll the Event Ribbon one row toward newer events (up the newest-first list).
+///
+/// Decrements `state.list_state.selected()` by 1, clamped at 0 (the newest event).
+/// When the new index reaches 0, `state.pinned_top` is cleared to `false`
+/// (BC-2.06.018 AC-008: auto-scroll resumes when user returns to the newest event).
+pub fn scroll_ribbon_up(
+    state: &mut EventRibbonState,
+    _events: &std::collections::VecDeque<HookEventRow>,
+) {
+    let current = state.list_state.selected().unwrap_or(0);
+    let prev = current.saturating_sub(1);
+    state.list_state.select(Some(prev));
+    // BC-2.06.018 AC-008 / PC-5: clear pinned_top when user returns to row 0 (newest).
+    if prev == 0 {
+        state.pinned_top = false;
+    }
 }
 
 // ---------------------------------------------------------------------------

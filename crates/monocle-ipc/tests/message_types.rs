@@ -147,6 +147,7 @@ fn test_BC_2_05_004_server_to_client_hook_event_received_serde_roundtrip() {
         session_id: "test-session-123".to_string(),
         payload_excerpt: r#"{"tool":"Bash"}"#.to_string(),
         latency_ms: 42,
+        timestamp_micros: 1_705_311_000_000_000i64,
     };
     let json = serde_json::to_string(&msg).expect("serialize HookEventReceived");
     let decoded: ServerToClient =
@@ -157,11 +158,17 @@ fn test_BC_2_05_004_server_to_client_hook_event_received_serde_roundtrip() {
             session_id,
             payload_excerpt,
             latency_ms,
+            timestamp_micros,
         } => {
             assert_eq!(hook_type, HookType::PreToolUse);
             assert_eq!(session_id, "test-session-123");
             assert_eq!(payload_excerpt, r#"{"tool":"Bash"}"#);
             assert_eq!(latency_ms, 42);
+            // BC-2.05.004 PC-2 / SS-ipc v1.10.0: timestamp_micros survives JSON roundtrip.
+            assert_eq!(
+                timestamp_micros, 1_705_311_000_000_000i64,
+                "timestamp_micros must survive serde roundtrip (BC-2.05.004 PC-2)"
+            );
         }
         other => panic!("expected HookEventReceived, got {other:?}"),
     }

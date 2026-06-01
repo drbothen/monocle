@@ -456,15 +456,28 @@ pub fn render_sessions_filter(
         false, // not inverse match
     );
 
-    // Score each session: match against project_name OR harness display_name.
+    // Score each session: match against project_name OR display_name.
     // BC-2.06.006 PC-3: case-insensitive (CaseMatching::Ignore via Atom).
+    // BC-2.06.006 PC-3 (ADV Pass-2 architect change): prefer session.display_name directly
+    // (populated by daemon from EngineMetadata::display_name). When display_name is empty
+    // (legacy sessions or sessions created without display_name), fall back to deriving the
+    // display name from harness_type via harness_display_name(). This graceful degradation
+    // ensures backward compatibility while preferring the IPC-wire value for third-party
+    // engines not in the hardcoded map.
     // Collect session data to avoid holding a borrow on app.sessions while also
     // borrowing app.matcher (both are fields of app, which is &mut).
     let session_data: Vec<(String, String, &monocle_core::engine::EnrichedSession)> = app
         .sessions
         .iter()
         .map(|s| {
-            let display_name = harness_display_name(&s.harness_type);
+            // BC-2.06.006 PC-3: use session.display_name when non-empty (IPC wire copy
+            // from daemon's EngineMetadata::display_name). Fall back to harness_display_name()
+            // when display_name is empty (legacy sessions without the field populated).
+            let display_name = if s.display_name.is_empty() {
+                harness_display_name(&s.harness_type)
+            } else {
+                s.display_name.clone()
+            };
             let project = s.project_name.as_deref().unwrap_or("").to_string();
             (project, display_name, s)
         })
@@ -524,9 +537,12 @@ pub fn render_sessions_filter(
 
 /// Map harness_type string to its user-facing display name for fuzzy matching.
 ///
-/// Used by `render_sessions_filter` for the OR-match against `EngineMetadata::display_name`
-/// (BC-2.06.006 PC-3). "claude-code" → "Claude Code" enables matching on "cla", "Claude",
-/// "code", etc.
+/// Used as a fallback by `render_sessions_filter` when `session.display_name` is empty
+/// (legacy sessions or sessions enriched before the display_name field was added).
+/// When `session.display_name` is non-empty, `render_sessions_filter` uses it directly
+/// per BC-2.06.006 PC-3 (ADV Pass-2 architect change).
+///
+/// "claude-code" → "Claude Code" enables matching on "cla", "Claude", "code", etc.
 fn harness_display_name(harness_type: &str) -> String {
     match harness_type {
         "claude-code" => "Claude Code".to_string(),

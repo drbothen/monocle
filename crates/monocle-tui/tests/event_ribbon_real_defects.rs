@@ -214,6 +214,7 @@ fn test_BC_2_06_018_PC3_panel_height_cap_enforced_at_push_time() {
             format!("sess-{i:04}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
 
@@ -274,6 +275,7 @@ fn test_BC_2_06_018_INV3_trim_on_resize_called_from_render_frame() {
             format!("sess-{i:04}"),
             "{}".to_string(),
             i,
+            0i64,
         );
     }
     // The production path caps at EVENT_RING_CAPACITY=4096, so len=30.
@@ -341,6 +343,7 @@ fn test_BC_2_06_018_PC4_pending_status_set_via_on_permission_prompt_queued() {
         "sess-001".to_string(),
         r#"{"tool":"Bash","command":"cargo test"}"#.to_string(),
         12u64,
+        0i64,
     );
 
     // Verify precondition: the event is in the ribbon and pending=false initially.
@@ -446,6 +449,7 @@ fn test_BC_2_06_018_INV1_AC009_session_change_resets_ribbon_scroll_via_dispatch(
             "sess-001".to_string(),
             "{}".to_string(),
             1u64,
+            0i64,
         );
         on_hook_event_received(
             &mut app,
@@ -453,6 +457,7 @@ fn test_BC_2_06_018_INV1_AC009_session_change_resets_ribbon_scroll_via_dispatch(
             "sess-002".to_string(),
             "{}".to_string(),
             2u64,
+            0i64,
         );
     }
 
@@ -694,8 +699,8 @@ fn test_BC_2_06_006_INV1_render_uses_shared_matcher_not_fresh_per_render() {
 ///   error[E0026]: struct `HookEventReceived` has no field named `timestamp_micros`
 #[test]
 fn test_BC_2_05_004_PC2_streaming_event_uses_daemon_timestamp_micros() {
-    use monocle_ipc::types::ServerToClient;
     use monocle_ipc::types::HookType;
+    use monocle_ipc::types::ServerToClient;
 
     // Known daemon timestamp: 2024-01-15 09:30:00.000 UTC
     // = 1_705_311_000_000_000 microseconds since Unix epoch.

@@ -247,6 +247,22 @@ pub enum Action {
     Quit,
     /// No-op; used by the key resolver when no binding matches.
     Noop,
+    /// Scroll the Event Ribbon one row toward older events (down the newest-first list).
+    ///
+    /// Only dispatched when `AppMode::Dashboard { focused: EventRibbon }` is active.
+    /// Sets `EventRibbonState::pinned_top = true` (user left row 0).
+    /// At the last row (oldest), the scroll offset is clamped — no panic, no wrap.
+    ///
+    /// BC-2.06.018 PC-5 / AC-007.
+    ScrollDown,
+    /// Scroll the Event Ribbon one row toward newer events (up the newest-first list).
+    ///
+    /// Only dispatched when `AppMode::Dashboard { focused: EventRibbon }` is active.
+    /// Clears `EventRibbonState::pinned_top = false` when row 0 is reached
+    /// (auto-scroll resumes — BC-2.06.018 AC-008).
+    ///
+    /// BC-2.06.018 PC-5 / AC-007.
+    ScrollUp,
 }
 
 /// Drive the `AppMode` state machine forward by one step.

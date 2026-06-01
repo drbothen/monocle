@@ -75,6 +75,7 @@ async fn test_S022_broadcast_slow_client_removed_fast_client_receives() {
                 session_id: format!("fill-session-{i}"),
                 payload_excerpt: format!("fill-{i}"),
                 latency_ms: 0,
+                timestamp_micros: 0,
             };
             tx_a_clone
                 .try_send(fill_msg)
@@ -95,6 +96,7 @@ async fn test_S022_broadcast_slow_client_removed_fast_client_receives() {
         session_id: "broadcast-session".to_string(),
         payload_excerpt: "broadcast-payload".to_string(),
         latency_ms: 5,
+        timestamp_micros: 0,
     };
 
     // Broadcast: client A is full -> removed with WARN log; client B receives normally.
@@ -139,6 +141,7 @@ async fn test_S022_broadcast_slow_client_removed_fast_client_receives() {
         session_id: "second-broadcast".to_string(),
         payload_excerpt: "second-payload".to_string(),
         latency_ms: 1,
+        timestamp_micros: 0,
     };
     broadcast_to_subscribers(&subscribers, second_msg).await;
 
@@ -237,6 +240,7 @@ async fn test_S022_broadcast_slow_client_connection_closed() {
             session_id: format!("fill-{i}"),
             payload_excerpt: format!("fill-{i}"),
             latency_ms: 0,
+            timestamp_micros: 0,
         };
         tx_slow
             .try_send(fill_msg)
@@ -266,6 +270,7 @@ async fn test_S022_broadcast_slow_client_connection_closed() {
         session_id: "trigger-slow-disconnect".to_string(),
         payload_excerpt: "trigger".to_string(),
         latency_ms: 1,
+        timestamp_micros: 0,
     };
     broadcast_to_subscribers(&subscribers, broadcast_msg).await;
 

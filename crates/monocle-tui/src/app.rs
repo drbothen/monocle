@@ -577,13 +577,19 @@ pub fn on_hook_event_received(
     session_id: String,
     _payload_excerpt: String,
     latency_ms: u64,
+    timestamp_micros: i64,
 ) {
     // BC-2.05.004: append new event to the ribbon log for all sessions (no IPC filtering).
     // BC-2.06.018 PC-2: newest at front (prepend).
     // BC-2.06.018 PC-3: use event_ribbon_panel_height as dynamic cap (updated by render_frame
     // each cycle; initialises to EVENT_RING_CAPACITY so the first push before any render is safe).
-    let row =
-        crate::ui::event_ribbon::hook_event_row_from_received(hook_type, session_id, latency_ms);
+    // BC-2.05.004 PC-2 / SS-ipc v1.10.0: use the daemon's timestamp_micros (not TUI receive time).
+    let row = crate::ui::event_ribbon::hook_event_row_from_received(
+        hook_type,
+        session_id,
+        latency_ms,
+        timestamp_micros,
+    );
     let cap = app.event_ribbon_panel_height;
     crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, cap);
 
@@ -1562,11 +1568,20 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             session_id,
             payload_excerpt,
             latency_ms,
+            timestamp_micros,
         } => {
             // S-028 (BC-2.05.004): delegate to on_hook_event_received for event ribbon
             // population. The handler appends to app.event_ribbon_events (all sessions;
             // client-side session filter applied at render time per BC-2.05.004 INV-3).
-            on_hook_event_received(app, hook_type, session_id, payload_excerpt, latency_ms);
+            // BC-2.05.004 PC-2 / SS-ipc v1.10.0: pass daemon's timestamp_micros through.
+            on_hook_event_received(
+                app,
+                hook_type,
+                session_id,
+                payload_excerpt,
+                latency_ms,
+                timestamp_micros,
+            );
         }
     }
     Ok(())
@@ -1680,55 +1695,114 @@ pub fn dispatch_key_event(
     match resolved {
         Some((Action::Noop, _)) | None => KeyOutcome::Continue,
 
-        Some((Action::SelectNext, _)) => {
-            // AC-006: SelectNext is confined to Dashboard { focused: Sessions }.
-            // In Overlay or Fullscreen mode the keypress is dropped — no cursor
-            // mutation behind the overlay or in other modes.
+        Some((Action::ScrollDown, _)) => {
+            // BC-2.06.018 PC-5 / AC-007: ScrollDown in Dashboard { focused: EventRibbon }.
+            // Scroll the ribbon one row toward older events (down the newest-first list).
+            // Only active when EventRibbon has focus; no-op otherwise (belt+suspenders since
+            // the per-context binding already scopes this to EventRibbon focus).
             if matches!(
                 app.mode,
                 AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions
+                    focused: FocusSnapshot::EventRibbon
                 }
             ) {
-                let len = app.sessions.len();
-                if len > 0 {
+                crate::ui::event_ribbon::scroll_ribbon_down(
+                    &mut app.event_ribbon_state,
+                    &app.event_ribbon_events,
+                );
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::ScrollUp, _)) => {
+            // BC-2.06.018 PC-5 / AC-007: ScrollUp in Dashboard { focused: EventRibbon }.
+            // Scroll the ribbon one row toward newer events (up the newest-first list).
+            // Clears pinned_top when row 0 is reached (AC-008: auto-scroll resumes).
+            if matches!(
+                app.mode,
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::EventRibbon
+                }
+            ) {
+                crate::ui::event_ribbon::scroll_ribbon_up(
+                    &mut app.event_ribbon_state,
+                    &app.event_ribbon_events,
+                );
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::SelectNext, _)) => {
+            // AC-006: SelectNext is confined to Dashboard mode.
+            // - Dashboard { focused: Sessions } → cursor move in session list.
+            // - Dashboard { focused: EventRibbon } → scroll ribbon down (toward older events,
+            //   BC-2.06.018 PC-5 / AC-007). This dual behaviour is intentional: the binding
+            //   layer cannot distinguish panel focus, so dispatch does the disambiguation here.
+            match &app.mode {
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions,
+                } => {
+                    let len = app.sessions.len();
+                    if len > 0 {
+                        let prev_idx = sessions_state.list_state.selected();
+                        let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
+                        sessions_state.list_state.select(Some(next));
+                        // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                        // Only reset when the cursor actually moved to a different session.
+                        if prev_idx != Some(next) {
+                            let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
+                            crate::ui::event_ribbon::reset_on_session_change(
+                                &mut app.event_ribbon_state,
+                                new_sid.as_deref().unwrap_or(""),
+                            );
+                        }
+                    }
+                }
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::EventRibbon,
+                } => {
+                    // BC-2.06.018 PC-5 / AC-007: scroll ribbon one row toward older events.
+                    crate::ui::event_ribbon::scroll_ribbon_down(
+                        &mut app.event_ribbon_state,
+                        &app.event_ribbon_events,
+                    );
+                }
+                _ => {} // Other modes: no-op (Overlay, Fullscreen, etc.).
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::SelectPrev, _)) => {
+            // AC-006: SelectPrev is confined to Dashboard mode.
+            // - Dashboard { focused: Sessions } → cursor move in session list (up).
+            // - Dashboard { focused: EventRibbon } → scroll ribbon up (toward newer events,
+            //   BC-2.06.018 PC-5 / AC-007).
+            match &app.mode {
+                AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions,
+                } if !app.sessions.is_empty() => {
                     let prev_idx = sessions_state.list_state.selected();
-                    let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
-                    sessions_state.list_state.select(Some(next));
+                    let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
+                    sessions_state.list_state.select(Some(prev));
                     // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
-                    // Only reset when the cursor actually moved to a different session.
-                    if prev_idx != Some(next) {
-                        let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
+                    if prev_idx != Some(prev) {
+                        let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
                         crate::ui::event_ribbon::reset_on_session_change(
                             &mut app.event_ribbon_state,
                             new_sid.as_deref().unwrap_or(""),
                         );
                     }
                 }
-            }
-            KeyOutcome::Continue
-        }
-
-        Some((Action::SelectPrev, _)) => {
-            // AC-006: SelectPrev is confined to Dashboard { focused: Sessions }.
-            if matches!(
-                app.mode,
                 AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions
-                }
-            ) && !app.sessions.is_empty()
-            {
-                let prev_idx = sessions_state.list_state.selected();
-                let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
-                sessions_state.list_state.select(Some(prev));
-                // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
-                if prev_idx != Some(prev) {
-                    let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
-                    crate::ui::event_ribbon::reset_on_session_change(
+                    focused: FocusSnapshot::EventRibbon,
+                } => {
+                    // BC-2.06.018 PC-5 / AC-007: scroll ribbon one row toward newer events.
+                    crate::ui::event_ribbon::scroll_ribbon_up(
                         &mut app.event_ribbon_state,
-                        new_sid.as_deref().unwrap_or(""),
+                        &app.event_ribbon_events,
                     );
                 }
+                _ => {} // Other modes or empty sessions: no-op.
             }
             KeyOutcome::Continue
         }

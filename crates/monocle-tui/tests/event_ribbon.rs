@@ -197,6 +197,7 @@ fn test_BC_2_06_018_auto_scroll_follows_bottom_when_not_pinned() {
         "sess-001".to_string(),
         r#"{"tool":"Bash"}"#.to_string(),
         5u64,
+        0i64,
     );
 
     // Assert: app.event_ribbon_state.list_state.selected() must be Some(0) after the call.
@@ -239,6 +240,7 @@ fn test_BC_2_06_018_auto_scroll_suppressed_when_pinned_top() {
         "sess-001".to_string(),
         "{}".to_string(),
         2u64,
+        0i64,
     );
 
     // Assert: scroll offset must still be Some(3) (preserved — pinned_top=true suppresses
@@ -525,6 +527,7 @@ fn test_BC_2_05_004_hook_event_received_appends_to_ribbon() {
         "sess-001".to_string(),
         r#"{"tool":"Bash"}"#.to_string(),
         7u64,
+        0i64,
     );
 
     assert_eq!(
@@ -560,6 +563,7 @@ fn test_BC_2_06_018_client_side_session_filter() {
         "sess-001".to_string(),
         "{}".to_string(),
         3u64,
+        0i64,
     );
     on_hook_event_received(
         &mut app,
@@ -567,6 +571,7 @@ fn test_BC_2_06_018_client_side_session_filter() {
         "sess-002".to_string(),
         "{}".to_string(),
         4u64,
+        0i64,
     );
 
     // Assert: both events are in event_ribbon_events (no IPC-layer filtering).
