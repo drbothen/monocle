@@ -35,7 +35,9 @@ use monocle_ipc::types::HookType;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    widgets::{ListState, StatefulWidget},
+    style::{Color, Style},
+    text::{Line, Span},
+    widgets::{List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 use std::collections::VecDeque;
 use std::time::Instant;
@@ -117,10 +119,31 @@ pub struct HookEventRow {
 /// or malformed string), falls back to `HookType::PreToolUse` with a TRACE log
 /// (BC-2.05.004 PC-5 catch-all forward-compat requirement).
 pub fn hook_event_row_from_record(record: &monocle_ipc::types::HookEventRecord) -> HookEventRow {
-    todo!(
-        "S-028 implement: parse record.hook_type string -> HookType, build HookEventRow \
-         (BC-2.05.002 PC-2 ring_tail pre-population)"
-    )
+    // BC-2.05.002 PC-2: convert ring_tail HookEventRecord → HookEventRow.
+    // Parse hook_type string via serde JSON round-trip (canonical discriminant format).
+    // On parse failure (unknown future hook type), fall back to PreToolUse with TRACE log
+    // (BC-2.05.004 PC-5 catch-all forward-compat requirement).
+    let hook_type = serde_json::from_value::<HookType>(serde_json::Value::String(
+        record.hook_type.clone(),
+    ))
+    .unwrap_or_else(|_| {
+        tracing::trace!(
+            hook_type = %record.hook_type,
+            "hook_event_row_from_record: unknown hook_type string, falling back to PreToolUse \
+             (BC-2.05.004 PC-5 forward-compat catch-all)"
+        );
+        HookType::PreToolUse
+    });
+
+    HookEventRow {
+        received_at: Instant::now(),
+        hook_type,
+        session_id: record.session_id.clone(),
+        // ring_tail entries carry no latency (stored as None — BC-2.06.018 EC-118).
+        latency_ms: None,
+        // Historical entries are not pending (pending is overlay-driven, not historical).
+        pending: false,
+    }
 }
 
 /// Convert a `ServerToClient::HookEventReceived` payload to a `HookEventRow`.
@@ -138,10 +161,14 @@ pub fn hook_event_row_from_received(
     session_id: String,
     latency_ms: u64,
 ) -> HookEventRow {
-    todo!(
-        "S-028 implement: construct HookEventRow from HookEventReceived fields \
-         (BC-2.05.004 streaming path)"
-    )
+    // BC-2.05.004: convert HookEventReceived IPC fields → HookEventRow for the ribbon.
+    HookEventRow {
+        received_at: Instant::now(),
+        hook_type,
+        session_id,
+        latency_ms: Some(latency_ms),
+        pending: false,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -208,18 +235,114 @@ impl<'a> EventRibbon<'a> {
     }
 }
 
+/// Empty state placeholder text for the Event Ribbon (BC-2.06.018 EC-114).
+pub const EVENT_RIBBON_EMPTY: &str = "No events yet";
+
+/// Column widths for the Event Ribbon (BC-2.06.018 PC-1).
+const COL_TIMESTAMP: usize = 12;
+const COL_HOOK_TYPE: usize = 16;
+const COL_SESSION: usize = 10;
+const COL_LATENCY: usize = 8;
+const COL_STATUS: usize = 8;
+
+/// Format the hook type display name (BC-2.06.018 PC-1 Hook type column).
+///
+/// BC-2.05.004 PC-5: unknown future variants render as "unknown" (catch-all).
+fn format_hook_type(ht: HookType) -> &'static str {
+    match ht {
+        HookType::PreToolUse => "PreToolUse",
+        HookType::Notification => "Notification",
+        HookType::SessionStart => "SessionStart",
+        HookType::UserPromptSubmit => "UserPromptSubmit",
+        HookType::Stop => "Stop",
+        // BC-2.05.004 PC-5: non_exhaustive catch-all — render safe fallback.
+        _ => "unknown",
+    }
+}
+
 impl StatefulWidget for EventRibbon<'_> {
     type State = EventRibbonState;
 
     /// Render the Event Ribbon panel into `buf` within `area`.
     ///
-    /// Implementation is `todo!()` — the stub provides the correct signature and type
-    /// contract for the test-writer to compile tests against (S-028 stub discipline).
-    fn render(self, _area: Rect, _buf: &mut Buffer, _state: &mut Self::State) {
-        todo!(
-            "S-028 implement: render EventRibbon panel with column layout, newest-first ordering, \
-             PENDING status, scroll state (BC-2.06.018 PC-1..PC-6)"
-        )
+    /// BC-2.06.018 PC-1: column layout (Timestamp | HookType | Session | Latency | Status).
+    /// BC-2.06.018 PC-2: newest-first ordering (index 0 = newest).
+    /// BC-2.06.018 PC-3: VecDeque bounded to panel_height (enforced via trim_to_panel_height).
+    /// BC-2.06.018 PC-4: PENDING in yellow for unresolved PreToolUse rows.
+    /// BC-2.06.018 EC-114: empty state placeholder "No events yet".
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let panel_height = area.height as usize;
+
+        // Collect events filtered by selected session_id (BC-2.05.004 INV-3: client-side only).
+        let filtered: Vec<&HookEventRow> = match self.selected_session_id {
+            Some(sid) => self
+                .app
+                .event_ribbon_events
+                .iter()
+                .filter(|r| r.session_id == sid)
+                .collect(),
+            None => self.app.event_ribbon_events.iter().collect(),
+        };
+
+        // Trim to panel_height for display (BC-2.06.018 PC-3 dynamic cap).
+        let visible: Vec<&HookEventRow> = filtered.into_iter().take(panel_height).collect();
+
+        if visible.is_empty() {
+            // BC-2.06.018 EC-114: empty state.
+            Widget::render(
+                Paragraph::new(Line::from(EVENT_RIBBON_EMPTY)),
+                area,
+                buf,
+            );
+            return;
+        }
+
+        // Use the earliest received_at as epoch for timestamp formatting.
+        let epoch = visible.last().map(|r| r.received_at).unwrap_or_else(Instant::now);
+
+        let items: Vec<ListItem> = visible
+            .iter()
+            .map(|row| {
+                let ts = format_timestamp(row.received_at, epoch);
+                let ht = format_hook_type(row.hook_type);
+                // Session ID: first 8 chars (BC-2.06.018 INV-4).
+                let sid = if row.session_id.len() > 8 {
+                    &row.session_id[..8]
+                } else {
+                    &row.session_id
+                };
+                let lat = match row.latency_ms {
+                    Some(ms) => format!("{ms}ms"),
+                    None => "\u{2014}".to_string(), // em-dash (BC-2.06.018 EC-118)
+                };
+
+                if row.pending {
+                    // BC-2.06.018 PC-4: PENDING in yellow for unresolved PreToolUse.
+                    let spans = vec![
+                        Span::raw(format!("{ts:<width$}", width = COL_TIMESTAMP + 1)),
+                        Span::raw(format!("{ht:<width$}", width = COL_HOOK_TYPE + 1)),
+                        Span::raw(format!("{sid:<width$}", width = COL_SESSION + 1)),
+                        Span::raw(format!("{lat:<width$}", width = COL_LATENCY + 1)),
+                        Span::styled("PENDING", Style::default().fg(Color::Yellow)),
+                    ];
+                    ListItem::new(Line::from(spans))
+                } else {
+                    let text = format!(
+                        "{ts:<ts_w$} {ht:<ht_w$} {sid:<sid_w$} {lat:<lat_w$} {:<st_w$}",
+                        "",
+                        ts_w = COL_TIMESTAMP,
+                        ht_w = COL_HOOK_TYPE,
+                        sid_w = COL_SESSION,
+                        lat_w = COL_LATENCY,
+                        st_w = COL_STATUS,
+                    );
+                    ListItem::new(text)
+                }
+            })
+            .collect();
+
+        let list = List::new(items);
+        StatefulWidget::render(list, area, buf, &mut state.list_state);
     }
 }
 
@@ -245,10 +368,11 @@ pub fn push_event_row(
     row: HookEventRow,
     panel_height: usize,
 ) {
-    todo!(
-        "S-028 implement: prepend row to VecDeque; pop back if len >= panel_height \
-         (BC-2.06.018 PC-3 rolling window)"
-    )
+    // BC-2.06.018 PC-3: prepend (newest at front); evict oldest (back) if at cap.
+    if panel_height > 0 && events.len() >= panel_height {
+        events.pop_back();
+    }
+    events.push_front(row);
 }
 
 /// Trim a `VecDeque<HookEventRow>` to at most `panel_height` entries.
@@ -256,10 +380,10 @@ pub fn push_event_row(
 /// Called after a terminal resize event to enforce the dynamic `panel_height` cap
 /// (BC-2.06.018 INV-3). Removes oldest entries (from the back) until `len <= panel_height`.
 pub fn trim_to_panel_height(events: &mut VecDeque<HookEventRow>, panel_height: usize) {
-    todo!(
-        "S-028 implement: pop_back until events.len() <= panel_height \
-         (BC-2.06.018 INV-3 dynamic panel_height cap)"
-    )
+    // BC-2.06.018 INV-3: trim oldest (back) until len <= panel_height.
+    while events.len() > panel_height {
+        events.pop_back();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -274,10 +398,22 @@ pub fn trim_to_panel_height(events: &mut VecDeque<HookEventRow>, panel_height: u
 ///
 /// Returns `"??:??:??.???"` if elapsed would overflow or underflow (clock skew guard).
 pub fn format_timestamp(received_at: Instant, epoch: Instant) -> String {
-    todo!(
-        "S-028 implement: format Instant as HH:MM:SS.mmm relative to epoch \
-         (BC-2.06.018 PC-1 Timestamp column)"
-    )
+    // BC-2.06.018 PC-1: format as HH:MM:SS.mmm relative to epoch.
+    // Guard against clock skew (received_at before epoch).
+    let elapsed = match received_at.checked_duration_since(epoch) {
+        Some(d) => d,
+        None => return "??:??:??.???".to_string(),
+    };
+    let total_ms = elapsed.as_millis();
+    let hours = (total_ms / 3_600_000) as u64;
+    let minutes = ((total_ms % 3_600_000) / 60_000) as u64;
+    let seconds = ((total_ms % 60_000) / 1_000) as u64;
+    let millis = (total_ms % 1_000) as u64;
+    if hours > 99 {
+        // Overflow guard: cap display at 99:59:59.999.
+        return "??:??:??.???".to_string();
+    }
+    format!("{hours:02}:{minutes:02}:{seconds:02}.{millis:03}")
 }
 
 // ---------------------------------------------------------------------------
@@ -294,8 +430,8 @@ pub fn format_timestamp(received_at: Instant, epoch: Instant) -> String {
 /// No IPC request is issued (BC-2.06.018 INV-1: all events held client-side;
 /// filtering is purely in-memory).
 pub fn reset_on_session_change(state: &mut EventRibbonState, _new_session_id: &str) {
-    todo!(
-        "S-028 implement: reset scroll state to top; clear pinned_top \
-         (BC-2.06.018 INV-1 / AC-009 session-change reset)"
-    )
+    // BC-2.06.018 INV-1 / AC-009: reset scroll to top (row 0) and clear pinned_top.
+    // No IPC request issued — all events held client-side, filter is render-time.
+    state.list_state.select(Some(0));
+    state.pinned_top = false;
 }

@@ -389,10 +389,20 @@ pub fn on_initial_state(
     // Bounded to EVENT_RING_CAPACITY; ring_tail from daemon is already bounded
     // to RAM_RING_CAPACITY (4096) so overflow is not expected, but enforced defensively.
     app.event_ring.clear();
+    // S-028 (BC-2.05.002 PC-2): also pre-populate event_ribbon_events from ring_tail.
+    // Clear first to avoid duplicate entries on reconnect.
+    app.event_ribbon_events.clear();
     for record in ring_tail {
         if app.event_ring.len() == EVENT_RING_CAPACITY {
             app.event_ring.pop_front(); // FIFO eviction; does NOT increment drop_counter
         }
+        // Build a HookEventRow from the record and prepend to the ribbon rolling window.
+        let row = crate::ui::event_ribbon::hook_event_row_from_record(&record);
+        crate::ui::event_ribbon::push_event_row(
+            &mut app.event_ribbon_events,
+            row,
+            EVENT_RING_CAPACITY,
+        );
         app.event_ring.push_back(record);
     }
 
@@ -533,10 +543,17 @@ pub fn on_hook_event_received(
     _payload_excerpt: String,
     latency_ms: u64,
 ) {
-    todo!(
-        "S-028 implement: call hook_event_row_from_received(), prepend to \
-         app.event_ribbon_events with panel_height cap (BC-2.05.004 + BC-2.06.018 PC-3)"
-    )
+    // BC-2.05.004: append new event to the ribbon log for all sessions (no IPC filtering).
+    // BC-2.06.018 PC-2: newest at front (prepend).
+    // BC-2.06.018 PC-3: use EVENT_RING_CAPACITY as the compile-time fallback cap
+    // (render-time panel_height trimming applied via push_event_row at the render call site).
+    let row =
+        crate::ui::event_ribbon::hook_event_row_from_received(hook_type, session_id, latency_ms);
+    crate::ui::event_ribbon::push_event_row(
+        &mut app.event_ribbon_events,
+        row,
+        EVENT_RING_CAPACITY,
+    );
 }
 
 // ---------------------------------------------------------------------------
