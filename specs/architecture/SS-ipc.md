@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.9.0"
+version: "1.10.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -183,6 +183,22 @@ pub enum ServerToClient {
     },
 
     /// A hook event was ingested by the daemon.
+    ///
+    /// # timestamp_micros field (S-028 ADR — breaking change from v1.9.0)
+    ///
+    /// `timestamp_micros: i64` added in v1.10.0. This is a BREAKING change to the
+    /// `ServerToClient` wire format. Consumers of the `HookEventReceived` variant
+    /// that pattern-match with named fields MUST add `timestamp_micros` to their
+    /// match arm. Consumers using `..` wildcard patterns are unaffected at compile
+    /// time but will silently discard the field — they MUST be audited.
+    ///
+    /// **Breaking-change consumer list (all must be updated):**
+    /// 1. `monocle-ipc/src/types.rs` — variant definition (DONE v1.10.0)
+    /// 2. `monocle-runtime/tests/ipc_broadcast.rs` — struct literal construction (DONE v1.10.0)
+    /// 3. `monocle-ipc/tests/message_types.rs` — serde roundtrip test (DONE v1.10.0)
+    /// 4. `monocle-tui/src/app.rs` — `ServerToClient::HookEventReceived { .. }` match arm
+    ///    (S-028 implementer: extract `timestamp_micros` here; pass to `HookEventRow`)
+    /// 5. Any future S-028+ code that constructs or matches `HookEventReceived`
     HookEventReceived {
         hook_type: HookType,
         session_id: String,
@@ -190,6 +206,14 @@ pub enum ServerToClient {
         payload_excerpt: String,
         /// Time from hook POST receipt to daemon ACK, in milliseconds.
         latency_ms: u64,
+        /// Daemon-owned event timestamp: Unix epoch microseconds (i64, signed).
+        ///
+        /// Set by the hook handler from the same clock source used to populate
+        /// `HookEventRecord::timestamp_micros` in the JSONL ring buffer.
+        /// The TUI event ribbon MUST render this as the wall-clock event time
+        /// (BC-2.05.004 PC-1). MUST NOT be replaced by `SystemTime::now()` at
+        /// TUI receipt time — that would show IPC transit time, not event time.
+        timestamp_micros: i64,
     },
 
     /// A PreToolUse hook arrived with `decision_required: true`.
@@ -770,6 +794,41 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.10.0
+
+**S-028 ADR — `HookEventReceived.timestamp_micros` field added (breaking change)** (2026-06-01):
+
+- **Problem:** Adversarial review found that `ServerToClient::HookEventReceived` carried no
+  daemon-side timestamp. The TUI event ribbon (BC-2.05.004 PC-1, S-028) was therefore forced
+  to use `SystemTime::now()` at receipt time as the displayed event time — showing IPC transit
+  latency, not the real event time. BC-2.05.004 PC-1 requires the ribbon to render the wall-clock
+  event time as determined by the daemon.
+- **Decision:** Add `timestamp_micros: i64` (signed Unix epoch microseconds) to
+  `ServerToClient::HookEventReceived`. Field type matches `HookEventRecord::timestamp_micros`
+  (the canonical daemon ring record type per BC-2.04.012 PC-1 and SS-core-types-and-abi.md
+  §HookEventRecord). Signed `i64` is the correct type; unsigned `u64` was considered and
+  rejected because `HookEventRecord` is already `i64` (consistency beats theoretical
+  unsigned advantage for timestamps in the range 1970–2262).
+- **Daemon-side obligation:** The hook handler that emits `HookEventReceived` MUST populate
+  `timestamp_micros` from the same clock call used to populate `HookEventRecord::timestamp_micros`
+  for the ring write. Both must use the same timestamp: capture once via
+  `std::time::SystemTime::now()` → Unix micros conversion, write to ring record, write to IPC
+  message. Do NOT capture two separate `SystemTime::now()` values.
+- **TUI-side obligation:** `App::on_hook_event_received` MUST extract `timestamp_micros` from
+  the message struct and pass it to the `HookEventRow` constructor. The ribbon render path
+  converts `timestamp_micros` to a wall-clock `HH:MM:SS.mmm` string using
+  `chrono::DateTime::<Utc>::from_timestamp_micros(timestamp_micros)`. MUST NOT substitute
+  `Utc::now()` or `SystemTime::now()`.
+- **Breaking-change scope:** This is a Rust struct field addition to a non-`#[non_exhaustive]`
+  enum variant. All struct literal constructions of `HookEventReceived` fail to compile until
+  `timestamp_micros` is added. Match arms using named bindings also fail. Match arms using `..`
+  compile but silently discard the field — those must be audited. Full consumer list is
+  documented in the variant doc comment above.
+- **Wire format:** JSON key `"timestamp_micros"` added to the `HookEventReceived` object.
+  Old TUI builds (< v1.10.0) that receive a v1.10.0 daemon's `HookEventReceived` will fail
+  serde deserialization (unknown field). This is accepted: Phase 1 TUI and daemon are always
+  co-deployed; no cross-version compatibility is required until Phase 4 federation.
 
 ## §Trace v1.9.0
 

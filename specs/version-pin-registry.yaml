@@ -100,9 +100,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.9.0"
-  last_bump_commit: "d55a0e1daa8e3673fe74a28af686870c1cd8b57b"
-  last_bump_date: "2026-05-28"
+  current_version: "1.10.0"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -419,51 +419,51 @@ BC-2.04.012:
 
 BC-2.05.001:
   path: specs/behavioral-contracts/ss-05/BC-2.05.001.md
-  current_version: "1.3.0"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.3.1"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.002:
   path: specs/behavioral-contracts/ss-05/BC-2.05.002.md
-  current_version: "1.0.6"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.7"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.003:
   path: specs/behavioral-contracts/ss-05/BC-2.05.003.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.004:
   path: specs/behavioral-contracts/ss-05/BC-2.05.004.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.005:
   path: specs/behavioral-contracts/ss-05/BC-2.05.005.md
-  current_version: "1.7.0"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.7.1"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.006:
   path: specs/behavioral-contracts/ss-05/BC-2.05.006.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.007:
   path: specs/behavioral-contracts/ss-05/BC-2.05.007.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.5"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
-  current_version: "1.0.7"
-  last_bump_commit: "[set at POL-11 remediation burst 2026-05-30]"
-  last_bump_date: "2026-05-30"
+  current_version: "1.0.8"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.001:
   path: specs/behavioral-contracts/ss-06/BC-2.06.001.md
@@ -497,9 +497,9 @@ BC-2.06.005:
 
 BC-2.06.006:
   path: specs/behavioral-contracts/ss-06/BC-2.06.006.md
-  current_version: "1.0.4"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.0"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.007:
   path: specs/behavioral-contracts/ss-06/BC-2.06.007.md
@@ -599,9 +599,9 @@ BC-2.06.022:
 
 BC-2.06.023:
   path: specs/behavioral-contracts/ss-06/BC-2.06.023.md
-  current_version: "1.5.0"
-  last_bump_commit: "5b5e5ac"
-  last_bump_date: "2026-05-31"
+  current_version: "1.5.1"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 BC-2.06.024:
   path: specs/behavioral-contracts/ss-06/BC-2.06.024.md
@@ -704,6 +704,12 @@ S-026-permission-overlay-core:
   current_version: "1.11"
   last_bump_commit: "e192707"
   last_bump_date: "2026-05-31"
+
+S-028-sessions-filter-event-ribbon:
+  path: stories/S-028-sessions-filter-event-ribbon.md
+  current_version: "1.5"
+  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
+  last_bump_date: "2026-06-01"
 
 S-029-killer-scenario-test:
   path: stories/S-029-killer-scenario-test.md

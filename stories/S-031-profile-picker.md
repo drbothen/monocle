@@ -184,7 +184,7 @@ Note: the config write API is `write_config(&config, &path)`, NOT `config.save(.
 is no `save()` method on `MonocleConfig`.
 
 S-024 (TUI core types): `Action::ProfilePicker` (NOT `OpenProfilePicker`) was canonicalized in
-F-P1D-003 / BC-2.07.005 v1.1.0. The variant is already named `ProfilePicker` in
+F-P1D-003 / BC-2.07.005 v1.1.0 at S-024 authoring time. <!-- version-pin-historical: historical record of canonicalization event; not a navigation pointer --> The variant is already named `ProfilePicker` in
 `monocle-core/src/tui/state.rs`. Because `Action` is `#[non_exhaustive]`, all existing
 `match action` arms with `_` catch-all continue to work.
 

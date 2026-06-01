@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:00:00Z
@@ -55,7 +55,11 @@ matcher on every keystroke. Only `EnrichedSession` entries whose `project_name` 
    one draw tick (≤16ms).
 3. **Nucleo match criteria:** Sessions are included in the filtered view if the nucleo
    fuzzy matcher returns a match for either `EnrichedSession::project_name` OR
-   `EngineMetadata::display_name` against the current `query`. The match is case-insensitive.
+   `EnrichedSession::display_name` against the current `query`. The match is case-insensitive.
+   `EnrichedSession::display_name` is the TUI-readable copy of `EngineMetadata::display_name`
+   stored on `EnrichedSession` at enrichment time by the daemon (S-028 ADR: display_name
+   sourcing decision — the TUI reads `session.display_name` directly from IPC wire data;
+   it MUST NOT call `EngineModule::metadata()` which is a daemon-only call path).
 4. **Match highlight:** For each displayed session row, matched character positions are
    rendered using ratatui `Span::styled` with a distinct highlight style (e.g., bold or
    foreground color different from the default). Unmatched characters use the default style.
@@ -181,6 +185,23 @@ S-TBD — Implement Sessions Panel filter mode with nucleo 0.5 matcher; match hi
 **F-FINAL-003 LOW — Architecture Source version pin updated** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-tui.md v1.3.0` → `SS-tui.md v1.5.0` per F-FINAL-003 bulk pin update.
 - SE-16d monotonicity: v1.0.3 timestamp >= v1.0.2. PASS.
+
+## §Trace v1.1.0
+
+**S-028 ADR — display_name sourcing decision: field source corrected to `EnrichedSession::display_name`** (2026-06-01):
+- PC-3 previously referenced `EngineMetadata::display_name` as the filter match source. This
+  was incorrect: `EngineMetadata` is a daemon-side type returned by `EngineModule::metadata()`.
+  The TUI process cannot call `EngineModule::metadata()` — it has no access to the
+  `EngineModule` trait object. The correct source is `EnrichedSession::display_name`, a new
+  field added to `EnrichedSession` in `monocle-core` in this same S-028 ADR burst.
+- **What changed:** At daemon enrichment time, `ClaudeCodeModule::enrich()` calls
+  `metadata()?.display_name` and stores the result as `EnrichedSession::display_name`. This
+  field is serialized into `SessionListUpdate` / `InitialState.sessions` IPC messages and is
+  therefore available to the TUI without any trait object access. The TUI filter reads
+  `session.display_name` directly.
+- **PC-3 updated:** `EngineMetadata::display_name` → `EnrichedSession::display_name` with
+  explanation of the sourcing chain and MUST NOT constraint on `EngineModule::metadata()`.
+- SE-16d monotonicity: v1.1.0 timestamp 2026-06-01 > v1.0.4 timestamp 2026-05-29. PASS.
 
 ## §Trace v1.0.4
 

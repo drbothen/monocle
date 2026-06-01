@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-028
 epic_id: EPIC-06
-version: "1.4"
+version: "1.5"
 status: not_started
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
@@ -21,8 +21,8 @@ verification_properties: []
 estimated_days: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.002.md, version: "1.0.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.004.md, version: "1.1.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.006.md, version: "1.1.0"}
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.018.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.1.17"}
 input-hash: "b95151a"
