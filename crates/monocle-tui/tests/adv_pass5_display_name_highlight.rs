@@ -70,15 +70,15 @@ fn app_with_display_name_only_match() -> App {
     app.sessions = vec![EnrichedSession::new_with_display_name(
         "sess-dn-001".to_string(),
         "claude-code".to_string(),
-        None,                                    // transcript_path
-        None,                                    // config_path
+        None, // transcript_path
+        None, // config_path
         SessionStatus::Active,
-        None,                                    // last_event_micros
-        Some("xyz-project".to_string()),         // project_name — "cla" does NOT match
-        None,                                    // started_at
-        0,                                       // token_count
-        None,                                    // cost_usd
-        "Claude Code".to_string(),               // display_name — "cla" DOES match
+        None,                            // last_event_micros
+        Some("xyz-project".to_string()), // project_name — "cla" does NOT match
+        None,                            // started_at
+        0,                               // token_count
+        None,                            // cost_usd
+        "Claude Code".to_string(),       // display_name — "cla" DOES match
     )];
     app.mode = AppMode::Filtering {
         panel: PanelId::Sessions,
@@ -231,15 +231,15 @@ fn test_BC_2_06_006_PC4_F2_regression_project_name_match_still_highlights() {
     app.sessions = vec![EnrichedSession::new_with_display_name(
         "sess-pn-001".to_string(),
         "claude-code".to_string(),
-        None,                               // transcript_path
-        None,                               // config_path
+        None, // transcript_path
+        None, // config_path
         SessionStatus::Active,
-        None,                               // last_event_micros
-        Some("monocle".to_string()),        // project_name — matches "mono"
-        None,                               // started_at
-        0,                                  // token_count
-        None,                               // cost_usd
-        "Claude Code".to_string(),          // display_name — "mono" does NOT match this
+        None,                        // last_event_micros
+        Some("monocle".to_string()), // project_name — matches "mono"
+        None,                        // started_at
+        0,                           // token_count
+        None,                        // cost_usd
+        "Claude Code".to_string(),   // display_name — "mono" does NOT match this
     )];
     app.mode = AppMode::Filtering {
         panel: PanelId::Sessions,
@@ -274,9 +274,8 @@ fn test_BC_2_06_006_PC4_F2_regression_project_name_match_still_highlights() {
         chars == "monocle"
     });
 
-    let start_x = monocle_start_x.expect(
-        "regression: 'monocle' must appear in rendered row at y=1 for project_name match"
-    );
+    let start_x = monocle_start_x
+        .expect("regression: 'monocle' must appear in rendered row at y=1 for project_name match");
 
     let has_bold = (start_x..start_x + 7).any(|x| {
         buffer

@@ -152,7 +152,12 @@ fn test_BC_2_06_018_PC4_F4_pending_row_renders_yellow_in_buffer() {
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 5);
             let widget = EventRibbon::new(&app, Some("sess-pend-001"));
-            ratatui::widgets::StatefulWidget::render(widget, area, frame.buffer_mut(), &mut ribbon_state);
+            ratatui::widgets::StatefulWidget::render(
+                widget,
+                area,
+                frame.buffer_mut(),
+                &mut ribbon_state,
+            );
         })
         .unwrap();
 
@@ -276,7 +281,12 @@ fn test_BC_2_06_018_PC4_F4_non_pending_row_does_not_render_pending_text() {
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 5);
             let widget = EventRibbon::new(&app, Some("sess-nonpend"));
-            ratatui::widgets::StatefulWidget::render(widget, area, frame.buffer_mut(), &mut ribbon_state);
+            ratatui::widgets::StatefulWidget::render(
+                widget,
+                area,
+                frame.buffer_mut(),
+                &mut ribbon_state,
+            );
         })
         .unwrap();
 
