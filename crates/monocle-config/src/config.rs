@@ -136,12 +136,21 @@ impl MonocleConfig {
 /// - Empty string profile ID (`""`) never matches a valid profile (all valid IDs
 ///   are non-empty) → returns `None` (BC-2.07.004 EC-105).
 /// - `default_config` with no profiles and no entries → `None` (EC-097).
-#[allow(clippy::todo)]
 pub fn resolve_profile_for_dir<'a>(
-    _config: &'a MonocleConfig,
-    _dir: &str,
+    config: &'a MonocleConfig,
+    dir: &str,
 ) -> Option<&'a HarnessProfile> {
-    todo!("S-031: look up dir in project_profiles, then find matching HarnessProfile by id")
+    // BC-2.07.004 PC-2/3/4: look up dir verbatim in project_profiles.
+    let profile_id = config.project_profiles.get(dir)?;
+    // BC-2.07.004 PC-4/5/6: find first matching profile by id.
+    // EC-105: empty string never matches (all valid ids are non-empty).
+    if profile_id.is_empty() {
+        return None;
+    }
+    config
+        .harness_profiles
+        .iter()
+        .find(|p| &p.id == profile_id)
 }
 
 // ---------------------------------------------------------------------------
