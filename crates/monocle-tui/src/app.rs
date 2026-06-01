@@ -1121,6 +1121,16 @@ pub fn close_profile_picker(app: &mut App) {
 ///
 /// If no picker is open, this is a no-op.
 pub fn commit_profile_selection(app: &mut App, current_dir: &str) {
+    // BC-2.07.005 PC-5 / MAJOR-1 guard: hoist empty-CWD check BEFORE config_path() so
+    // BOTH the Ok and Err branches are protected by a single early return. Without this
+    // guard the Err branch would proceed to insert project_profiles[""] = id — silent
+    // config corruption (INV-5 normalization contract).
+    if current_dir.is_empty() {
+        app.status_message = Some("Config save failed: CWD resolution failed".to_string());
+        app.profile_picker = None;
+        return;
+    }
+
     let path_result = MonocleConfig::config_path();
     match path_result {
         Ok(path) => commit_profile_selection_with_path(app, current_dir, &path),
