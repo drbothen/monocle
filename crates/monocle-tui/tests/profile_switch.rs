@@ -116,10 +116,10 @@ fn test_BC_2_07_005_detect_ccr_called_and_ccr_path_updated_after_switch() {
     // The stub triggers todo!() so the test will fail at the stub boundary.
     // When implemented: this assertion verifies detect_ccr was called.
     let _ = app.ccr_path; // access the field — assert it was populated, not skipped
-    // If ccr is not on PATH (most CI environments), ccr_path will be None.
-    // If ccr IS on PATH, it will be Some. Either is correct as long as it reflects
-    // detect_ccr(&config)'s return value. This test primarily asserts that the code path
-    // is exercised and does not panic.
+                          // If ccr is not on PATH (most CI environments), ccr_path will be None.
+                          // If ccr IS on PATH, it will be Some. Either is correct as long as it reflects
+                          // detect_ccr(&config)'s return value. This test primarily asserts that the code path
+                          // is exercised and does not panic.
 }
 
 // ---------------------------------------------------------------------------
@@ -175,10 +175,9 @@ fn test_BC_2_07_005_invariant_atomic_write_via_write_config() {
     let config_path = tmp.path().join("config.json");
 
     let mut config = make_config_with_profiles(&["cc"]);
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "cc".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "cc".to_string());
 
     // write_config is already implemented (S-030). This test verifies the round-trip
     // that commit_profile_selection relies upon.
@@ -189,11 +188,17 @@ fn test_BC_2_07_005_invariant_atomic_write_via_write_config() {
     );
 
     let read_result = monocle_config::load_config(&config_path);
-    assert!(read_result.is_ok(), "config must be loadable after atomic write");
+    assert!(
+        read_result.is_ok(),
+        "config must be loadable after atomic write"
+    );
 
     let loaded = read_result.unwrap();
     assert_eq!(
-        loaded.project_profiles.get("/home/user/project").map(|s| s.as_str()),
+        loaded
+            .project_profiles
+            .get("/home/user/project")
+            .map(|s| s.as_str()),
         Some("cc"),
         "round-trip must preserve project_profiles entry"
     );
@@ -212,10 +217,9 @@ fn test_BC_2_07_005_invariant_atomic_write_via_write_config() {
 #[test]
 fn test_BC_2_07_005_active_profile_highlighted_as_default_selection() {
     let mut config = make_config_with_profiles(&["aaa", "bbb", "ccc"]);
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "bbb".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "bbb".to_string());
     let mut app = App::new(config);
 
     open_profile_picker(&mut app);
@@ -263,10 +267,9 @@ fn test_BC_2_07_005_ec106_ctrl_p_with_empty_profiles_opens_picker() {
 #[test]
 fn test_BC_2_07_005_ec108_select_same_profile_is_idempotent() {
     let mut config = make_config_with_profiles(&["cc"]);
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "cc".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "cc".to_string());
     let mut app = App::new(config);
     open_profile_picker(&mut app);
 
@@ -279,8 +282,16 @@ fn test_BC_2_07_005_ec108_select_same_profile_is_idempotent() {
         "picker must close after selecting same profile (EC-108)"
     );
     // The project_profiles entry must still be "cc".
-    let id = app.config.project_profiles.get("/home/user/project").cloned();
-    assert_eq!(id.as_deref(), Some("cc"), "project_profiles must still be 'cc' (EC-108)");
+    let id = app
+        .config
+        .project_profiles
+        .get("/home/user/project")
+        .cloned();
+    assert_eq!(
+        id.as_deref(),
+        Some("cc"),
+        "project_profiles must still be 'cc' (EC-108)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -300,5 +311,8 @@ fn test_BC_2_07_005_ec110_second_ctrl_p_no_extra_picker() {
     open_profile_picker(&mut app); // second call — must be no-op
 
     // Still exactly one picker state.
-    assert!(app.profile_picker.is_some(), "picker must still be Some (EC-110)");
+    assert!(
+        app.profile_picker.is_some(),
+        "picker must still be Some (EC-110)"
+    );
 }

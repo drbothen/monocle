@@ -11,7 +11,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use monocle_config::{HarnessProfile, MonocleConfig};
-use monocle_tui::app::{open_profile_picker, close_profile_picker, picker_select_next, picker_select_prev, App};
+use monocle_tui::app::{
+    close_profile_picker, open_profile_picker, picker_select_next, picker_select_prev, App,
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,7 +65,10 @@ fn test_BC_2_07_005_open_picker_does_not_change_app_mode() {
     let config = make_config_with_profiles(&["cc"]);
     let mut app = App::new(config);
     // Verify starting mode is Dashboard.
-    assert!(matches!(app.mode, AppMode::Dashboard { .. }), "expected Dashboard mode");
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "expected Dashboard mode"
+    );
 
     open_profile_picker(&mut app);
 
@@ -104,7 +109,10 @@ fn test_BC_2_07_005_ctrl_p_idempotent_when_picker_already_open() {
     }
     open_profile_picker(&mut app); // second call — must be no-op
 
-    let state = app.profile_picker.as_ref().expect("picker must still be Some");
+    let state = app
+        .profile_picker
+        .as_ref()
+        .expect("picker must still be Some");
     assert_eq!(
         state.selected_index, 0,
         "second open_profile_picker must not reset existing state (EC-110)"
@@ -163,7 +171,11 @@ fn test_BC_2_07_004_picker_select_next_increments_index() {
     picker_select_next(&mut app);
     let after = app.profile_picker.as_ref().unwrap().selected_index;
 
-    assert_eq!(after, initial + 1, "select_next must increment selected_index");
+    assert_eq!(
+        after,
+        initial + 1,
+        "select_next must increment selected_index"
+    );
 }
 
 /// AC-003 (BC-2.07.004 PC-3): `j` at the last item wraps to index 0.
@@ -181,7 +193,10 @@ fn test_BC_2_07_004_picker_select_next_wraps_to_top() {
     picker_select_next(&mut app);
 
     let after = app.profile_picker.as_ref().unwrap().selected_index;
-    assert_eq!(after, 0, "select_next at last item must wrap to 0 (BC-2.07.004 PC-3)");
+    assert_eq!(
+        after, 0,
+        "select_next at last item must wrap to 0 (BC-2.07.004 PC-3)"
+    );
 }
 
 /// AC-003 (BC-2.07.004 PC-3): `k` moves selection up one row.
@@ -230,7 +245,10 @@ fn test_BC_2_07_005_picker_opens_with_empty_profiles() {
     let mut app = App::new(config);
     open_profile_picker(&mut app);
 
-    let state = app.profile_picker.as_ref().expect("picker must be Some even with empty profiles");
+    let state = app
+        .profile_picker
+        .as_ref()
+        .expect("picker must be Some even with empty profiles");
     assert!(
         state.profiles.is_empty(),
         "profiles list must be empty when harness_profiles is empty (BC-2.07.005 PC-3)"
@@ -250,7 +268,10 @@ fn test_BC_2_07_004_navigation_noop_on_empty_profiles() {
 
     // selected_index should remain at 0 (no valid range to navigate).
     let idx = app.profile_picker.as_ref().unwrap().selected_index;
-    assert_eq!(idx, 0, "navigation on empty profiles must leave selected_index at 0");
+    assert_eq!(
+        idx, 0,
+        "navigation on empty profiles must leave selected_index at 0"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +311,10 @@ fn test_BC_2_07_004_ec097_first_launch_empty_config() {
     // Opening the picker with empty harness_profiles is valid.
     open_profile_picker(&mut app);
     let state = app.profile_picker.as_ref().unwrap();
-    assert!(state.profiles.is_empty(), "EC-097: no profiles on first launch");
+    assert!(
+        state.profiles.is_empty(),
+        "EC-097: no profiles on first launch"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -311,10 +335,9 @@ fn test_BC_2_07_004_resolve_profile_for_dir_default_config_returns_none() {
 fn test_BC_2_07_004_resolve_profile_for_dir_returns_matching_profile() {
     use monocle_config::resolve_profile_for_dir;
     let mut config = make_config_with_profiles(&["cc"]);
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "cc".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "cc".to_string());
     let result = resolve_profile_for_dir(&config, "/home/user/project");
     assert!(result.is_some(), "should find profile 'cc'");
     assert_eq!(result.unwrap().id, "cc");
@@ -326,10 +349,9 @@ fn test_BC_2_07_004_resolve_profile_for_dir_dangling_id_returns_none() {
     use monocle_config::resolve_profile_for_dir;
     let config = make_config_with_profiles(&["cc"]);
     let mut config = config;
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "old-profile".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "old-profile".to_string());
     let result = resolve_profile_for_dir(&config, "/home/user/project");
     assert!(
         result.is_none(),
@@ -358,10 +380,9 @@ fn test_BC_2_07_004_invariant_trailing_slash_mismatch_is_a_miss() {
     use monocle_config::resolve_profile_for_dir;
     let mut config = make_config_with_profiles(&["cc"]);
     // Stored WITHOUT trailing slash.
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "cc".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "cc".to_string());
     // Look up WITH trailing slash — different string → miss (demonstrates INV-1).
     let result = resolve_profile_for_dir(&config, "/home/user/project/");
     assert!(
@@ -391,10 +412,9 @@ fn test_BC_2_07_004_ec105_empty_string_profile_id_returns_none() {
 fn test_BC_2_07_004_invariant_resolve_is_pure_no_side_effects() {
     use monocle_config::resolve_profile_for_dir;
     let mut config = make_config_with_profiles(&["cc"]);
-    config.project_profiles.insert(
-        "/home/user/project".to_string(),
-        "cc".to_string(),
-    );
+    config
+        .project_profiles
+        .insert("/home/user/project".to_string(), "cc".to_string());
     let result1 = resolve_profile_for_dir(&config, "/home/user/project");
     let result2 = resolve_profile_for_dir(&config, "/home/user/project");
     // Both must return Some with the same id — pure function, no state mutation.
