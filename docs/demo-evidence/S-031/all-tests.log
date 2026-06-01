@@ -1,0 +1,384 @@
+
+running 12 tests
+test ui::sessions_panel::format_cost_tests::test_format_cost_nan_renders_em_dash ... ok
+test ui::sessions_panel::format_cost_tests::test_format_cost_negative_infinity_renders_em_dash ... ok
+test ui::sessions_panel::format_cost_tests::test_format_cost_positive_infinity_renders_em_dash ... ok
+test ui::sessions_panel::format_session_row_tests::test_format_session_row_empty_session_id_renders_question_mark ... ok
+test ui::sessions_panel::format_token_count_cap_tests::test_format_token_count_billion_caps_at_999m_plus ... ok
+test ui::sessions_panel::format_token_count_cap_tests::test_format_token_count_u64_max_caps_at_999m_plus ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_0s ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_1h2m3s ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_59s ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_canonical_3h47m ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_ec086_100h ... ok
+test ui::sessions_panel::uptime_tests::test_bc_2_06_005_uptime_none_renders_em_dash ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 13 tests
+test test_BC_2_06_015_invariant_2_similar_crate_not_in_monocle_core_cargo_toml ... ok
+test test_BC_2_06_010_equal_line_content_cells_not_red_or_green ... ok
+test test_BC_2_06_010_diff_prefix_and_content_share_same_style_single_token ... ok
+test test_BC_2_06_010_diff_preview_empty_new_content_all_delete_lines_red ... ok
+test test_BC_2_06_010_diff_preview_height_cap_truncates_without_panic ... ok
+test test_BC_2_06_010_diff_height_cap_equals_area_height_minus_8 ... ok
+test test_BC_2_06_010_diff_preview_empty_old_content_all_insert_lines_green ... ok
+test test_BC_2_06_010_diff_preview_equal_lines_rendered_default_color ... ok
+test test_BC_2_06_010_diff_preview_wrap_trim_false_preserves_leading_spaces ... ok
+test test_BC_2_06_010_diff_preview_insert_lines_rendered_green ... ok
+test test_BC_2_06_010_diff_preview_delete_lines_rendered_red ... ok
+test test_BC_2_06_010_diff_preview_edit_path_shown_in_diff_block_title ... ok
+test test_BC_2_06_015_invariant_2_similar_not_used_in_monocle_core_source ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test test_f_s026_adv5_crit001_ipc_tx_is_some_after_setup ... ok
+test test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon ... ok
+test test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test test_f_s025_adv3_med003_reader_exit_closes_channel ... ok
+test test_bc_2_05_002_pc_6_no_frame_corruption_across_inter_message_gap ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+running 3 tests
+test test_bc_2_05_006_pc5_step5_non_vacuity_ipc_tx_none_fails_assertion ... ok
+test test_bc_2_05_006_pc5_step5_non_vacuity_status_message_offline_fails_assertion ... ok
+test test_bc_2_05_006_pc5_step5_offline_reconnect_rewires_ipc_tx ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.26s
+
+
+running 11 tests
+test test_BC_2_06_014_transition_esc_overlay_is_identity_pure_function ... ok
+test test_BC_2_06_023_pc3_unknown_prompt_id_resolved_is_noop ... ok
+test test_BC_2_06_011_accept_once_uses_front_prompt_id_in_multi_stack ... ok
+test test_BC_2_06_023_pc1_retain_removes_non_front_entry ... ok
+test test_BC_2_06_023_pc1_resolved_known_prompt_id_removes_via_retain ... ok
+test test_BC_2_06_011_accept_once_y_sends_allow_ipc_modal_stays_in_stack ... ok
+test test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack ... ok
+test test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack ... ok
+test test_BC_2_06_014_esc_in_overlay_is_identity_no_ipc_send ... ok
+test test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays ... ok
+test test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test test_BC_2_06_016_pc1_disconnect_sets_status_message ... ok
+test test_BC_2_06_016_pc2_reconnect_with_empty_overlay_stays_dashboard ... ok
+test test_BC_2_06_016_pc1_disconnect_is_idempotent ... ok
+test test_BC_2_06_016_pc2_overlay_restored_in_fifo_order ... ok
+test test_BC_2_06_016_pc2_reconnect_restores_overlay_from_initial_state ... ok
+test test_BC_2_06_016_pc1_disconnect_clears_overlay_stack ... ok
+test test_BC_2_05_002_invariant_4_streaming_dedup_of_initial_state_prompt ... ok
+test test_snapshot_window_prompt_dedup ... ok
+test test_BC_2_06_016_pc1_disconnect_from_dashboard_no_overlay_is_safe ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 24 tests
+test test_BC_2_05_002_invariant_4_duplicate_prompt_id_silently_discarded ... ok
+test test_BC_2_05_002_invariant_4_idempotent_after_other_pushes ... ok
+test test_BC_2_06_008_fifo_ordering_three_prompts ... ok
+test test_BC_2_06_024_payload_to_modal_bash_missing_command_key ... ok
+test test_BC_2_06_024_payload_to_modal_bash_variant ... ok
+test test_BC_2_06_024_payload_to_modal_edit_none_content_yields_generic ... ok
+test test_BC_2_06_024_payload_to_modal_edit_variant ... ok
+test test_BC_2_06_024_payload_to_modal_generic_variant ... ok
+test test_BC_2_06_024_payload_to_modal_read_missing_path_key ... ok
+test test_BC_2_06_008_invariant_1_empty_overlay_stays_dashboard ... ok
+test test_BC_2_06_008_push_from_dashboard_enters_overlay ... ok
+test test_BC_2_06_008_push_from_filtering_captures_prior_from_filtering_prior ... ok
+test test_BC_2_06_008_push_from_fullscreen_captures_prior_from_fullscreen_prior ... ok
+test test_BC_2_06_008_push_from_fullscreen_captures_sessions_prior ... ok
+test test_BC_2_06_008_push_from_filtering_captures_sessions_prior ... ok
+test test_BC_2_06_008_on_initial_state_non_empty_overlay_enters_overlay_mode ... ok
+test test_BC_2_06_008_push_from_overlay_extends_stack_preserves_prior ... ok
+test test_BC_2_06_024_payload_to_modal_read_variant ... ok
+test test_BC_2_06_024_payload_to_modal_received_at_set_at_conversion_time ... ok
+test test_BC_2_06_024_payload_to_modal_write_content_present_no_path_yields_generic ... ok
+test test_BC_2_06_024_payload_to_modal_write_none_content_yields_generic ... ok
+test test_BC_2_06_023_pc4_retain_removes_last_entry_produces_empty_stack ... ok
+test test_BC_2_06_023_pc4_on_initial_state_then_retain_collapses ... ok
+test test_BC_2_06_024_payload_to_modal_write_with_new_content_and_path_yields_edit ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 47 tests
+test test_BC_2_06_019_drop_counter_span_returns_none_when_zero ... ok
+test test_BC_2_06_010_render_dimmed_background_applies_dim_modifier_to_all_cells ... ok
+test test_BC_2_06_019_mode_indicator_text_filtering_returns_filtering_label ... ok
+test test_BC_2_06_019_mode_indicator_text_dashboard_returns_dashboard_label ... ok
+test test_BC_2_06_019_drop_counter_span_returns_some_with_text_when_nonzero ... ok
+test test_BC_2_06_019_mode_indicator_text_overlay_includes_depth ... ok
+test test_BC_2_06_019_mode_indicator_text_fullscreen_returns_fullscreen_label ... ok
+test test_BC_2_06_019_render_status_bar_drop_zero_renders_mode_indicator ... ok
+test test_BC_2_06_019_render_status_bar_drop_nonzero_renders_dropped_label_in_yellow ... ok
+test test_BC_2_06_010_overlay_does_not_dim_status_bar_row ... ok
+test test_BC_2_06_019_pc7_coexistence_drops_and_trace_stub_both_visible_in_two_row_bar ... ok
+test test_BC_2_06_019_pc7_coexistence_drops_and_disconnect_both_visible_in_two_row_bar ... ok
+test test_BC_2_06_019_status_bar_is_two_rows_breadcrumb_upper_hint_lower ... ok
+test test_BC_2_06_010_invariant_1_render_overlay_widget_completes_synchronously_within_5ms ... ok
+test test_BC_2_06_010_overlay_modal_width_respects_cap_min_w_minus_4_100 ... ok
+test test_BC_2_06_019_pc7_drop_counter_only_no_status_message_stays_green ... ok
+test test_BC_2_06_020_render_status_bar_breadcrumb_dashboard_sessions ... ok
+test test_BC_2_06_021_filtering_hint_exact_canonical_string ... ok
+test test_BC_2_06_020_render_status_bar_breadcrumb_overlay_singular_prompt ... ok
+test test_BC_2_06_021_fullscreen_hint_exact_canonical_string ... ok
+test test_BC_2_06_020_breadcrumb_dashboard_event_ribbon_focus_renders_events ... ok
+test test_BC_2_06_010_overlay_footer_contains_accept_hint ... ok
+test test_BC_2_06_010_overlay_footer_contains_reject_hint ... ok
+test test_BC_2_06_010_overlay_header_contains_permission_request_label ... ok
+test test_BC_2_06_010_overlay_header_shows_stack_depth_indicator ... ok
+test test_BC_2_06_020_overlay_header_shows_elapsed_timer_waiting_prefix ... ok
+test test_BC_2_06_024_bash_empty_command_renders_command_empty_fallback ... ok
+test test_BC_2_06_024_generic_payload_fallback_text_is_unrepresentable ... ok
+test test_BC_2_06_024_read_empty_path_renders_path_empty_fallback ... ok
+test test_BC_2_06_024_render_bash_payload_block_has_title_command ... ok
+test test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns ... ok
+test test_BC_2_06_024_render_bash_payload_shows_command_label_and_value ... ok
+test test_BC_2_06_020_render_status_bar_breadcrumb_overlay_plural_prompts ... ok
+test test_BC_2_06_021_overlay_hint_exact_canonical_y_A_nr_keys ... ok
+test test_BC_2_06_021_render_status_bar_hint_line_overlay_contains_trace_stub_binding ... ok
+test test_BC_2_06_020_overlay_header_elapsed_timer_reflects_real_elapsed_not_hardcoded_zero ... ok
+test test_BC_2_06_024_render_read_payload_block_has_title_file ... ok
+test test_BC_2_06_024_render_generic_payload_shows_scroll_hint_when_content_exceeds_height ... ok
+test test_BC_2_06_021_overlay_header_shows_one_of_one_indicator_for_single_prompt_stack ... ok
+test test_BC_2_06_024_render_generic_payload_shows_tool_and_input_labels ... ok
+test test_BC_2_06_024_generic_wrap_overflow_shows_exactly_one_scroll_hint ... ok
+test test_BC_2_06_024_render_read_payload_shows_path_label_and_value ... ok
+test test_BC_2_06_024_render_generic_payload_truncates_input_excerpt_at_256_chars ... ok
+test test_BC_2_06_024_generic_overflow_shows_exactly_one_scroll_hint ... ok
+test test_BC_2_06_021_render_status_bar_hint_line_dashboard_contains_key_hints ... ok
+test test_BC_2_06_021_overlay_oldest_first_fifo_indicator_in_header_for_multi_stack ... ok
+test test_BC_2_06_024_generic_no_overflow_shows_zero_scroll_hints ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test test_BC_2_06_009_transition_overlay_cycle_next_is_identity ... ok
+test test_BC_2_06_009_pc1_two_rotations_produce_correct_order ... ok
+test test_ac_010_overlay_binding_isolation_j_does_not_scroll_sessions ... ok
+test test_BC_2_06_009_ec065_single_item_rotation_is_noop ... ok
+test test_BC_2_06_009_pc1_rotation_len_gt_1_moves_front_to_back ... ok
+test test_BC_2_06_009_ec065_single_item_rotation_down_is_noop ... ok
+test test_BC_2_06_009_pc1_three_rotations_wraps_back_to_original_order ... ok
+test test_BC_2_06_009_pc1_rotation_via_down_key_also_rotates ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test test_BC_2_06_015_ec099_t_in_dashboard_status_message_unchanged ... ok
+test test_BC_2_06_015_ec098_repeated_t_press_idempotent_status_message ... ok
+test test_BC_2_06_015_handler_sets_status_message_exact_canonical_text ... ok
+test test_BC_2_06_015_handler_no_ipc_sent_on_trace_key ... ok
+test test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source ... ok
+test test_BC_2_06_015_handler_sets_status_message_mode_stays_overlay ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test test_BC_2_06_023_architecture_compliance_transition_does_not_touch_stack ... ok
+test test_BC_2_06_023_pc1_retain_removes_front_entry ... ok
+test test_BC_2_06_023_pc1_retain_removes_back_entry ... ok
+test test_BC_2_06_023_pc2_retain_removes_all_duplicate_entries ... ok
+test test_BC_2_06_023_pc3_unknown_prompt_id_noop_stack_unchanged ... ok
+test test_BC_2_06_023_pc1_retain_removes_middle_entry_in_four_item_stack ... ok
+test test_BC_2_06_023_pc3_unknown_prompt_id_on_empty_stack_is_safe ... ok
+test test_BC_2_06_023_transition_pop_overlay_preserves_prior_focus ... ok
+test test_BC_2_06_023_pc3_ac007_unknown_prompt_id_no_state_change_production ... ok
+test test_BC_2_06_023_pc4_empty_stack_collapse_to_dashboard_after_last_retain ... ok
+test test_BC_2_06_023_pc4_sequential_removals_collapse_only_on_last ... ok
+test test_BC_2_06_023_pc4_non_empty_stack_after_retain_stays_overlay ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 21 tests
+test test_BC_2_07_004_ec105_empty_string_profile_id_returns_none ... ok
+test test_BC_2_07_004_esc_closes_picker_without_change ... ok
+test test_BC_2_07_004_ec097_first_launch_empty_config ... ok
+test test_BC_2_07_004_invariant_dangling_entry_no_panic ... ok
+test test_BC_2_07_004_invariant_picker_is_not_app_mode_overlay ... ok
+test test_BC_2_07_004_invariant_resolve_is_pure_no_side_effects ... ok
+test test_BC_2_07_004_invariant_trailing_slash_mismatch_is_a_miss ... ok
+test test_BC_2_07_004_navigation_noop_on_empty_profiles ... ok
+test test_BC_2_07_004_picker_profiles_sorted_alphabetically ... ok
+test test_BC_2_07_004_picker_select_next_increments_index ... ok
+test test_BC_2_07_004_picker_select_next_wraps_to_top ... ok
+test test_BC_2_07_004_picker_select_prev_decrements_index ... ok
+test test_BC_2_07_004_picker_select_prev_wraps_to_bottom ... ok
+test test_BC_2_07_004_resolve_profile_for_dir_dangling_id_returns_none ... ok
+test test_BC_2_07_004_resolve_profile_for_dir_default_config_returns_none ... ok
+test test_BC_2_07_004_resolve_profile_for_dir_returns_matching_profile ... ok
+test test_BC_2_07_005_ctrl_p_idempotent_when_picker_already_open ... ok
+test test_BC_2_07_005_ctrl_p_sets_profile_picker_some ... ok
+test test_BC_2_07_005_esc_does_not_change_app_mode ... ok
+test test_BC_2_07_005_open_picker_does_not_change_app_mode ... ok
+test test_BC_2_07_005_picker_opens_with_empty_profiles ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test test_BC_2_07_005_production_open_no_sticky_entry_pre_selects_index_0 ... ok
+test test_BC_2_07_005_commit_production_empty_cwd_does_not_write_empty_dir_key ... ok
+test test_BC_2_07_005_active_marker_uses_per_dir_not_first_match ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_key ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test test_BC_2_07_005_active_profile_highlighted_as_default_selection ... ok
+test test_BC_2_07_005_ec106_ctrl_p_with_empty_profiles_opens_picker ... ok
+test test_BC_2_07_005_ec110_second_ctrl_p_no_extra_picker ... ok
+test test_BC_2_07_005_invariant_atomic_write_via_write_config ... ok
+test test_BC_2_07_005_commit_selection_writes_project_profiles_entry ... ok
+test test_BC_2_07_005_ec108_select_same_profile_is_idempotent ... ok
+test test_BC_2_07_005_commit_selection_closes_picker ... ok
+test test_BC_2_07_005_detect_ccr_called_and_ccr_path_updated_after_switch ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test test_BC_2_06_010_small_terminal_modal_does_not_collide_with_status_bar_rows ... ok
+test test_BC_2_06_021_render_frame_dashboard_mode_hint_line_appears_on_last_row ... ok
+test test_BC_2_06_020_render_frame_dashboard_mode_breadcrumb_appears_in_buffer ... ok
+test test_BC_2_06_021_render_frame_overlay_mode_hint_line_appears_on_last_row ... ok
+test test_BC_2_06_020_render_frame_overlay_mode_breadcrumb_appears_on_breadcrumb_row ... ok
+test test_BC_2_06_010_render_frame_overlay_mode_modal_header_appears_in_buffer ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 20 tests
+test test_BC_2_07_004_invariant_write_read_normalization_verbatim_consistent ... ok
+test test_BC_2_07_005_active_profile_highlighted_two_entry_per_dir_not_first_match ... ok
+test test_BC_2_07_005_dispatch_ctrl_p_from_dashboard_opens_picker ... ok
+test test_BC_2_07_005_per_directory_preselection_for_dir_a_selects_profile_x ... ok
+test test_BC_2_07_005_picker_open_tab_key_isolated_does_not_move_focus ... ok
+test test_BC_2_07_005_dispatch_ctrl_p_from_filtering_opens_picker ... ok
+test test_BC_2_07_005_dispatch_ctrl_p_from_overlay_opens_picker_appmode_unchanged ... ok
+test test_BC_2_07_005_ec106_empty_profiles_esc_closes_without_write ... ok
+test test_BC_2_07_005_ec106_empty_profiles_commit_does_not_write_project_profiles_entry ... ok
+test test_BC_2_07_005_picker_open_down_arrow_routes_to_picker_not_session_scroll ... ok
+test test_BC_2_07_005_picker_open_esc_routes_to_close_picker ... ok
+test test_BC_2_07_005_per_directory_preselection_uses_current_dir_not_first_match ... ok
+test test_BC_2_07_005_pc5c_write_failure_applies_in_memory_and_sets_status_message ... ok
+test test_BC_2_07_005_startup_ccr_path_initialized_from_detect_ccr ... ok
+test test_BC_2_07_005_picker_open_enter_commits_and_closes_picker ... ok
+test test_BC_2_07_005_render_frame_status_bar_shows_ccr_path_when_some ... ok
+test test_BC_2_07_005_render_frame_status_bar_shows_ccr_none_when_absent ... ok
+test test_BC_2_07_005_render_frame_picker_modal_shows_no_profiles_message ... ok
+test test_BC_2_07_005_render_frame_picker_modal_shows_profile_list ... ok
+test test_BC_2_07_005_render_frame_renders_picker_modal_when_picker_is_some ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 33 tests
+test test_bc_2_06_005_canonical_row_verbatim_with_mocked_time ... ok
+test test_bc_2_06_005_columns_separated_by_single_space ... ok
+test test_bc_2_06_005_pc2_ac006_tab_cycles_focus_sessions_to_event_ribbon ... ok
+test test_bc_2_06_005_pc2_ac006_tab_cycles_focus_event_ribbon_to_sessions ... ok
+test test_bc_2_06_005_pc2_cost_formatter_0_83_renders_dollar_0_83 ... ok
+test test_bc_2_06_005_pc2_cost_formatter_none_renders_em_dash ... ok
+test test_bc_2_06_005_pc2_token_formatter_1000_renders_1k ... ok
+test test_bc_2_06_005_pc2_token_formatter_1200000_renders_1_2m ... ok
+test test_bc_2_06_005_pc2_token_formatter_142000_renders_142k ... ok
+test test_bc_2_06_005_pc2_token_formatter_below_1000_no_suffix ... ok
+test test_bc_2_06_005_token_formatter_low002_1_050_000_truncates_omits_zero_decimal ... ok
+test test_bc_2_06_005_token_formatter_low002_1_999_999_renders_1_9m ... ok
+test test_bc_2_06_005_token_formatter_low002_999_999_renders_999k ... ok
+test test_bc_2_06_005_uptime_clock_skew_renders_em_dash ... ok
+test test_bc_2_06_005_pc5_dashboard_layout_sessions_area_nonzero ... ok
+test test_bc_2_06_005_pc6_selected_row_renders_blue_highlight_background ... ok
+test test_bc_2_06_007_pc1_enter_transitions_to_fullscreen ... ok
+test test_bc_2_06_007_pc5_escape_from_fullscreen_returns_to_dashboard ... ok
+test test_f_s025_adv10_low002_format_cost_negative_value_renders_em_dash ... ok
+test test_f_s025_adv10_low002_format_cost_negative_zero_renders_em_dash ... ok
+test test_bc_2_06_005_pc3_ac007_sessions_panel_does_not_render_drop_counter ... ok
+test test_bc_2_06_005_pc2_inv3_em_dash_present_when_project_name_none ... ok
+test test_bc_2_06_005_canonical_row_jitter_tolerant_integration ... ok
+test test_bc_2_06_005_column_order_session_id_first ... ok
+test test_bc_2_06_005_pc2_inv3_em_dash_present_when_started_at_none ... ok
+test test_bc_2_06_005_pc1_ac005_renders_one_row_per_session ... ok
+test test_bc_2_06_005_pc1_ac005_renders_three_rows_for_three_sessions ... ok
+test test_bc_2_06_005_pc2_inv3_cost_column_renders_em_dash_when_none ... ok
+test test_bc_2_06_005_pc3_ac005_renders_empty_state_when_no_sessions ... ok
+test test_f_s025_adv3_med002_fullscreen_layout_panel_occupies_full_area ... ok
+test test_bc_2_06_005_pc3_ac007_drop_counter_hidden_when_zero ... ok
+test test_bc_2_06_007_pc7_fullscreen_renderer_no_panic_empty_sessions ... ok
+test test_f_s025_adv3_med002_fullscreen_render_branch_renders_sessions ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 32 tests
+test test_bc_2_05_002_inv4_apply_idempotent_on_duplicate_prompt_id ... ok
+test test_bc_2_05_002_inv4_dedup_on_prompt_id_not_whole_struct ... ok
+test test_bc_2_05_002_inv4_apply_accepts_distinct_prompt_ids ... ok
+test test_bc_2_05_002_inv4_apply_empty_overlay_plus_p1_length_1 ... ok
+test test_bc_2_06_004_inv1_ac010_no_client_disconnect_message ... ok
+test test_bc_2_05_002_inv4_triple_insert_same_id_length_1 ... ok
+test test_bc_2_05_002_inv4_initial_state_dedups_streamed_prior_prompt ... ok
+test test_bc_2_06_004_pc2_ac008_initial_state_empty_overlay_stays_dashboard ... ok
+test test_bc_2_06_004_pc2_ac003_on_disconnect_transitions_to_dashboard ... ok
+test test_bc_2_06_004_pc2_ac003_on_disconnect_clears_overlay_stack ... ok
+test test_bc_2_06_004_pc2_ac008_initial_state_nonempty_overlay_enters_overlay_mode ... ok
+test test_bc_2_06_004_pc2_ac008_initial_state_populates_sessions ... ok
+test test_bc_2_06_004_pc2_ac008_initial_state_sets_drop_counter ... ok
+test test_bc_2_06_004_pc3_ac004_default_config_fallback_succeeds ... ok
+test test_bc_2_06_005_pc3_ac007_on_drop_counter_update_zero ... ok
+test test_bc_2_06_005_pc3_ac007_on_drop_counter_update_sets_field ... ok
+test test_bc_2_06_007_pc1_ac001_app_constructs_for_startup ... ok
+test test_bc_2_06_004_pc1_ac002_error_message_text_is_canonical ... ok
+test test_f_s025_adv38_med001_esc_in_dashboard_does_not_quit ... ok
+test test_f_s025_adv3_med001_select_next_noop_in_overlay_mode ... ok
+test test_f_s025_adv3_med001_select_next_fires_in_dashboard_sessions_mode ... ok
+test test_f_s025_adv3_med001_select_prev_noop_in_overlay_mode ... ok
+test test_f_s025_adv38_med001_q_in_overlay_does_not_quit ... ok
+test test_f_s025_adv38_med001_q_in_dashboard_returns_quit ... ok
+test test_f_s025_adv1_high002_event_ring_seeded_from_ring_tail ... ok
+test test_bc_2_05_002_event_ring_fifo_eviction_order ... ok
+test test_f_s025_adv1_high002_event_ring_overflow_fifo_eviction ... ok
+test test_ac007_page_level_status_bar_renders_monocle_label_with_dark_gray_when_baseline ... ok
+test test_ac007_page_level_status_bar_renders_drop_counter_when_nonzero ... ok
+test test_bc_2_06_016_pc4_render_frame_displays_disconnect_status_in_status_bar ... ok
+test test_bc_2_06_016_pc4_render_frame_displays_offline_status_in_status_bar_after_reconnect_exhausted ... ok
+test test_bc_2_06_019_pc7_render_frame_coexistence_drops_and_disconnect_both_visible ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
