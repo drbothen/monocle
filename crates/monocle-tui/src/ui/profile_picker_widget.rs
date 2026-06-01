@@ -8,8 +8,8 @@
 //! - A centered floating modal with a titled border (`"Profile Picker"`).
 //! - Each row shows a profile name; the currently active profile is marked
 //!   with a `"* "` prefix.
-//! - When no profiles exist, renders: `"No profiles configured. Edit config.json
-//!   to add profiles."` (AC-002 / BC-2.07.005 PC-3).
+//! - When no profiles exist, renders: `"No profiles configured — add profiles to
+//!   config.json"` (AC-002 / BC-2.07.005 PC-3).
 //!
 //! # Keyboard isolation (AC-004, BC-2.07.005 PC-9 / BC-2.07.004 INV-4)
 //!
@@ -33,7 +33,7 @@ use ratatui::{
 };
 
 /// No-profiles message rendered when `harness_profiles` is empty (AC-002 / BC-2.07.005 PC-3).
-pub const NO_PROFILES_MSG: &str = "No profiles configured. Edit config.json to add profiles.";
+pub const NO_PROFILES_MSG: &str = "No profiles configured \u{2014} add profiles to config.json";
 
 /// Compute the centered modal `Rect` for the profile picker.
 ///
