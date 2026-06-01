@@ -1898,4 +1898,3 @@ pub fn crossterm_key_to_core(
 
     KeyEvent { code, modifiers }
 }
-

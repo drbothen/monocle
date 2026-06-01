@@ -32,6 +32,7 @@ use ratatui::{
     Frame,
 };
 use similar::{ChangeTag, TextDiff};
+use unicode_width::UnicodeWidthStr;
 
 /// Render the permission overlay modal centered over the given `area`.
 ///
@@ -407,17 +408,54 @@ pub fn render_generic_payload(
         full_json
     };
 
-    // Determine if scroll hint is needed (AC-006 / BC-2.06.024 PC-3).
-    // Show scroll hint when JSON content (tool: + input: lines) exceeds the
-    // "modal height minus 6" threshold per AC-006.
-    // When area.height <= 6, the threshold is 0: any non-empty content overflows.
-    let area_height = area.height as usize;
-    let json_line_count = excerpt.lines().count();
-    // threshold = area.height - 6 (floored at 0 via saturating_sub)
-    let threshold = area_height.saturating_sub(6);
-    // Content overflows when: json_line_count > threshold.
-    // When threshold == 0 (area.height <= 6), show scroll hint if any JSON content exists.
-    let show_scroll = json_line_count > threshold;
+    // Determine if scroll hint is needed (AC-006 / BC-2.06.024 PC-3 / F-S027-P3-NIT-001).
+    //
+    // Two conditions trigger the scroll hint (OR):
+    //
+    // 1. SMALL-MODAL RULE (area.height ≤ 6): the outer area passed to this function is
+    //    so small that any non-empty content may be clipped by ratatui before it can wrap.
+    //    The original threshold predicate `area.height - 6 < json_line_count` reduces to
+    //    "any content" when area.height ≤ 6 (saturating_sub → 0).  This correctly signals
+    //    that the modal is too cramped to show content without truncation.
+    //
+    // 2. VISUAL-WRAP RULE (F-S027-P3-NIT-001): for modals tall enough that the
+    //    small-modal rule does not fire, the content may still overflow because compact
+    //    JSON (`serde_json::to_string`) is a single logical line with no '\n' characters.
+    //    A logical-line count of 1 would never trigger the old threshold for normal-sized
+    //    modals, even when the single-line JSON wraps over many terminal rows.  This rule
+    //    computes the estimated visual row count using `unicode_width::UnicodeWidthStr` and
+    //    triggers when that count exceeds the available inner body height.
+    //
+    // The no-overflow case (e.g., `{"x":"hi"}` in an 80×24 terminal with inner.height≈13)
+    // produces 2 visual rows, which neither rule fires for.
+    let show_scroll = if inner.width == 0 {
+        false
+    } else {
+        // Small-modal rule: area.height ≤ 6 → threshold saturates to 0 → any content.
+        let area_height = area.height as usize;
+        let json_line_count = excerpt.lines().count();
+        let threshold = area_height.saturating_sub(6);
+        let small_modal_overflow = json_line_count > threshold;
+
+        // Visual-wrap rule: estimate rendered rows and compare to inner body height.
+        let col_width = inner.width as usize;
+        let visual_rows = |text: &str| -> usize {
+            let mut total = 0usize;
+            for line in text.lines() {
+                let cols = UnicodeWidthStr::width(line);
+                // A completely empty line still occupies 1 row.
+                total += cols.div_ceil(col_width).max(1);
+            }
+            // An entirely empty string has no rows.
+            total
+        };
+        let tool_line = format!("tool: {tool_name}");
+        let input_line = format!("input: {excerpt}");
+        let estimated_visual_rows = visual_rows(&tool_line) + visual_rows(&input_line);
+        let visual_wrap_overflow = estimated_visual_rows > inner.height as usize;
+
+        small_modal_overflow || visual_wrap_overflow
+    };
 
     if show_scroll && inner.height >= 2 {
         // Reserve the last inner row for the scroll hint; render content above it.

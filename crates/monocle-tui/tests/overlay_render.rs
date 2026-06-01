@@ -1681,7 +1681,8 @@ fn test_BC_2_06_024_generic_wrap_overflow_shows_exactly_one_scroll_hint() {
     let scroll_hint_count = count_occurrences(&all_text, "to scroll");
 
     assert_eq!(
-        scroll_hint_count, 1,
+        scroll_hint_count,
+        1,
         "BC-2.06.024 PC-3 / AC-006 (NIT-001): a Generic payload whose single-line JSON \
          excerpt visually wraps past the body height must show EXACTLY ONE '↑↓ to scroll' \
          hint; got {} occurrences. Current bug: excerpt.lines().count()==1 so the logical-line \
