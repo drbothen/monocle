@@ -69,3 +69,24 @@ Pass-9 found a [t]-stub compile-gate MAJOR (28e3ad5). This pattern — where a t
 diverges from the production interface during implementation — should be caught earlier. The
 `[t]` prefix convention flags test-only stubs; a pre-commit lint check on `[t]-` stubs vs
 their production counterparts would catch this before adversarial review.
+
+### L-S027-004: [process-gap] PROCESS-GAP-REGISTRY-ATOMICITY
+
+**ID:** PROCESS-GAP-REGISTRY-ATOMICITY
+**Severity:** process gap (CI breakage)
+**Description:** BC version bumps during S-027 adversarial convergence (BC-2.06.015 v1.0.7 at
+commit 2e544fd; BC-2.06.016/019/020 v1.1.0 at commit f8cf600) did not update
+`.factory/specs/version-pin-registry.yaml` atomically in the same factory-artifacts commit.
+The registry still listed the pre-S-027 versions, so POL-11 (check_version_pins.py) failed
+in CI on PR #32 when story frontmatter and test prose cited the new versions (ADR-0007
+§"Registry Update Obligation").
+
+pr-manager authored the fix commit (ffaf406) locally on factory-artifacts but did not push;
+state-manager pushed it as part of the S-027 bookkeeping repair on 2026-06-01.
+
+**Fix:** the PO or state-manager MUST update version-pin-registry.yaml in the SAME burst as
+any BC version bump. The registry update and the BC file bump are a single atomic unit.
+Committing the BC file without updating the registry is a partial commit that breaks CI.
+
+**Target:** codify this as a mandatory checklist item in the convergence-fix burst checklist:
+"[ ] version-pin-registry.yaml updated for every BC whose version changed in this burst."
