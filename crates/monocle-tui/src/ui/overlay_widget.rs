@@ -222,12 +222,15 @@ pub fn render_bash_payload(command: &str, area: Rect, buf: &mut Buffer) {
 
 /// Render a `ToolPayload::Read { path }` body inside `area`.
 ///
-/// Renders `path` in a single-line `Block` titled `"File"`.
+/// Renders a bordered `Block` titled `"File"` containing the label line
+/// `path: <path>` per BC-2.06.024 PC-2. If `path` is empty, renders
+/// `path: (empty)` as a safe fallback (BC-2.06.024 PC-2.4). Long paths
+/// wrap using `Wrap { trim: false }` (BC-2.06.024 INV-4).
 ///
 /// # Parameters
 ///
 /// - `path`: the filesystem path from `ToolPayload::Read`.
-/// - `area`: the body area inside the modal.
+/// - `area`: the body area inside the modal (header and footer already excluded).
 /// - `buf`: the ratatui `Buffer` to render into.
 pub fn render_read_payload(path: &std::path::Path, area: Rect, buf: &mut Buffer) {
     let block = Block::default().borders(Borders::ALL).title("File");
@@ -335,15 +338,24 @@ pub fn render_edit_payload(
 
 /// Render a `ToolPayload::Generic { tool_name, tool_input }` body inside `area`.
 ///
-/// Renders `serde_json::to_string_pretty(tool_input)` in a `Block` titled
-/// `"Tool Input"`. If the JSON exceeds `(area.height - 6)` rows, scroll hints
-/// `"↑↓ to scroll"` are shown in the footer alongside the decision keys.
+/// Renders two label lines in a `Block` titled `"Tool Input"` (AC-006 /
+/// BC-2.06.024 PC-3):
+/// - `tool: <tool_name>` — identifies the requesting tool.
+/// - `input: <json_excerpt>` — compact JSON (via `serde_json::to_string`),
+///   truncated at 256 bytes/chars to prevent unbounded rendering.
+///
+/// On JSON serialization failure (BC-2.06.024 EC-007) renders
+/// `input: (unrepresentable)` and emits `tracing::warn!`.
+///
+/// If content exceeds `(area.height - 6)` lines, a `"↑↓ to scroll"` hint is
+/// rendered as the last line of the body (not in the footer — to ensure exactly
+/// one hint on overflow and zero hints when no overflow per AC-006).
 ///
 /// # Parameters
 ///
-/// - `tool_name`: the tool name string (for the block title).
+/// - `tool_name`: the tool name string (used in the `tool:` label line and block title).
 /// - `tool_input`: the raw JSON tool input value.
-/// - `area`: the body area inside the modal.
+/// - `area`: the body area inside the modal (header and footer already excluded).
 /// - `buf`: the ratatui `Buffer` to render into.
 pub fn render_generic_payload(
     tool_name: &str,
