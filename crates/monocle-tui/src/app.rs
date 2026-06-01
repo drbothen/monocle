@@ -200,6 +200,17 @@ pub struct App {
     /// a handler that attempts to send before the channel is wired will produce a
     /// tracing WARN rather than silently discarding the message.
     pub ipc_tx: Option<tokio::sync::mpsc::Sender<ClientToServer>>,
+
+    /// Pending key prefix state for multi-keystroke sequences (BC-2.06.018 PC-5 / AC-007).
+    ///
+    /// Used to implement the vi-style `gg` (jump to newest) two-keystroke sequence:
+    /// - First `g` keypress (in `Dashboard { focused: EventRibbon }`): sets `pending_key = Some('g')`.
+    /// - Second `g` keypress while `pending_key == Some('g')`: fires `jump_newest` and clears.
+    /// - Any other key while pending: `pending_key` is cleared and the key is processed normally.
+    ///
+    /// `None` means no pending prefix (the common case). Only meaningful in
+    /// `Dashboard { focused: EventRibbon }` context; other modes do not set this field.
+    pub pending_key: Option<char>,
 }
 
 impl App {
@@ -235,6 +246,10 @@ impl App {
             // Updated each frame by render_frame to the actual event_ribbon_area height.
             event_ribbon_panel_height: EVENT_RING_CAPACITY,
             ipc_tx: None,
+            // BC-2.06.018 PC-5 / AC-007: no pending key prefix initially.
+            // Set to Some('g') on first 'g' press in Dashboard { EventRibbon } focus;
+            // cleared on second 'g' (fires gg jump) or any other key.
+            pending_key: None,
         }
     }
 }
@@ -1690,47 +1705,63 @@ pub fn dispatch_key_event(
         return KeyOutcome::Continue;
     }
 
+    // BC-2.06.018 PC-5 / AC-007: intercept G / g / gg in Dashboard { EventRibbon } before
+    // resolve_binding (the binding table has no entries for 'G' or 'g' in this context).
+    // These are App-level mutations with no AppMode transition, matching the Backspace
+    // interception pattern above.
+    //
+    // - 'G' (uppercase): jump to OLDEST event (last index in newest-first list), pinned_top=true.
+    // - 'g' first press: set pending_key = Some('g') — no visible effect yet.
+    // - 'g' second press (pending_key == Some('g')): jump to NEWEST event (row 0), pinned_top=false.
+    // - Any other key while pending_key == Some('g'): clear pending_key and process normally.
+    if matches!(
+        &app.mode,
+        AppMode::Dashboard {
+            focused: FocusSnapshot::EventRibbon
+        }
+    ) && !core_key.modifiers.ctrl
+        && !core_key.modifiers.alt
+    {
+        match core_key.code {
+            KeyCode::Char('G') => {
+                // G → jump to oldest (bottom of newest-first list).
+                app.pending_key = None; // clear any pending prefix
+                crate::ui::event_ribbon::jump_oldest(
+                    &mut app.event_ribbon_state,
+                    &app.event_ribbon_events,
+                );
+                return KeyOutcome::Continue;
+            }
+            KeyCode::Char('g') => {
+                if app.pending_key == Some('g') {
+                    // Second 'g': fire gg → jump to newest (row 0).
+                    app.pending_key = None;
+                    crate::ui::event_ribbon::jump_newest(&mut app.event_ribbon_state);
+                } else {
+                    // First 'g': enter pending-key state; no ribbon change yet.
+                    app.pending_key = Some('g');
+                }
+                return KeyOutcome::Continue;
+            }
+            _ => {
+                // Any other key while pending: clear pending_key and fall through
+                // to normal resolve_binding dispatch.
+                if app.pending_key.is_some() {
+                    app.pending_key = None;
+                }
+            }
+        }
+    } else {
+        // Not in Dashboard { EventRibbon } — clear any stale pending_key (mode switched).
+        if app.pending_key.is_some() {
+            app.pending_key = None;
+        }
+    }
+
     let resolved = resolve_binding(core_key, &app.mode, binding_layers);
 
     match resolved {
         Some((Action::Noop, _)) | None => KeyOutcome::Continue,
-
-        Some((Action::ScrollDown, _)) => {
-            // BC-2.06.018 PC-5 / AC-007: ScrollDown in Dashboard { focused: EventRibbon }.
-            // Scroll the ribbon one row toward older events (down the newest-first list).
-            // Only active when EventRibbon has focus; no-op otherwise (belt+suspenders since
-            // the per-context binding already scopes this to EventRibbon focus).
-            if matches!(
-                app.mode,
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::EventRibbon
-                }
-            ) {
-                crate::ui::event_ribbon::scroll_ribbon_down(
-                    &mut app.event_ribbon_state,
-                    &app.event_ribbon_events,
-                );
-            }
-            KeyOutcome::Continue
-        }
-
-        Some((Action::ScrollUp, _)) => {
-            // BC-2.06.018 PC-5 / AC-007: ScrollUp in Dashboard { focused: EventRibbon }.
-            // Scroll the ribbon one row toward newer events (up the newest-first list).
-            // Clears pinned_top when row 0 is reached (AC-008: auto-scroll resumes).
-            if matches!(
-                app.mode,
-                AppMode::Dashboard {
-                    focused: FocusSnapshot::EventRibbon
-                }
-            ) {
-                crate::ui::event_ribbon::scroll_ribbon_up(
-                    &mut app.event_ribbon_state,
-                    &app.event_ribbon_events,
-                );
-            }
-            KeyOutcome::Continue
-        }
 
         Some((Action::SelectNext, _)) => {
             // AC-006: SelectNext is confined to Dashboard mode.

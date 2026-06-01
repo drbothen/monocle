@@ -519,3 +519,44 @@ pub fn reset_on_session_change(state: &mut EventRibbonState, _new_session_id: &s
     state.list_state.select(Some(0));
     state.pinned_top = false;
 }
+
+// ---------------------------------------------------------------------------
+// Jump helpers (BC-2.06.018 PC-5 / AC-007: G → oldest, gg → newest)
+// ---------------------------------------------------------------------------
+
+/// Jump the Event Ribbon to the OLDEST event (last index in newest-first ordering).
+///
+/// `G` in vi-style navigation jumps to the bottom of the list, which is the oldest
+/// event in the newest-first `VecDeque` (BC-2.06.018 PC-5: oldest = back = last index).
+/// Sets `pinned_top = true` — the user is explicitly at the oldest event, away from
+/// the newest (auto-scroll suppressed until the user navigates back to row 0).
+///
+/// No-op when the event list is empty.
+pub fn jump_oldest(
+    state: &mut EventRibbonState,
+    events: &std::collections::VecDeque<HookEventRow>,
+) {
+    let event_count = events.len();
+    if event_count == 0 {
+        return;
+    }
+    let last_index = event_count.saturating_sub(1);
+    state.list_state.select(Some(last_index));
+    // BC-2.06.018 PC-5: pinned_top=true when user navigates away from newest (row 0).
+    state.pinned_top = true;
+}
+
+/// Jump the Event Ribbon to the NEWEST event (row 0 = top of newest-first list).
+///
+/// `gg` in vi-style navigation jumps to the top of the list, which is the newest
+/// event in the newest-first `VecDeque` (BC-2.06.018 PC-5: newest = front = row 0).
+/// Clears `pinned_top = false` — the user has returned to the newest event, so
+/// auto-scroll resumes (BC-2.06.018 AC-008).
+///
+/// Always selects row 0; no-op check on event count is not required (an empty ribbon
+/// is a valid state — row 0 on an empty list is handled by ratatui ListState).
+pub fn jump_newest(state: &mut EventRibbonState) {
+    state.list_state.select(Some(0));
+    // BC-2.06.018 AC-008 / PC-5: clear pinned_top when user returns to row 0 (newest).
+    state.pinned_top = false;
+}
