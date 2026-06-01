@@ -1,0 +1,142 @@
+{
+  "story": "S-027",
+  "cycle": "cycle-001",
+  "feature_branch": "feature/S-027-overlay-rendering",
+  "final_sha": "6559f61",
+  "total_passes": 18,
+  "converged": true,
+  "convergence_criterion": "passes_clean>=3 AND last==NITPICK_ONLY",
+  "convergence_met_at_pass": 16,
+  "convergence_note": "Passes 16/17/18 consecutive NITPICK_ONLY on frozen code — criterion MET",
+  "trajectory": [
+    {
+      "pass": 1,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "5 BLOCKER + 6 MAJOR",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": "f89c63e"
+    },
+    {
+      "pass": 2,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "MAJOR findings (AC-005 and related)",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": "e781a17"
+    },
+    {
+      "pass": 3,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "fixes-applied",
+      "fix_commit": "e2236d2"
+    },
+    {
+      "pass": 4,
+      "verdict": "CLEAN",
+      "severity_summary": "no findings",
+      "action": "none"
+    },
+    {
+      "pass": 5,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "AC-005 MAJOR",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": null
+    },
+    {
+      "pass": 6,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 7,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 8,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 9,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "[t]-stub MAJOR (compile-gate triggered)",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": "28e3ad5"
+    },
+    {
+      "pass": 10,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 11,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 12,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "BC-2.06.015 artifact (stale spec reference)",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": null
+    },
+    {
+      "pass": 13,
+      "verdict": "CLEAN",
+      "severity_summary": "no findings",
+      "action": "none"
+    },
+    {
+      "pass": 14,
+      "verdict": "HAS_FINDINGS",
+      "severity_summary": "drop-counter coexistence MAJOR",
+      "action": "adversary-dispatched-fixes",
+      "fix_commit": "4da27b3"
+    },
+    {
+      "pass": 15,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 16,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only — convergence window starts",
+      "action": "none"
+    },
+    {
+      "pass": 17,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only",
+      "action": "none"
+    },
+    {
+      "pass": 18,
+      "verdict": "NITPICK_ONLY",
+      "severity_summary": "nitpick-level items only — convergence confirmed",
+      "action": "none"
+    }
+  ],
+  "spec_version_bumps_during_convergence": {
+    "BC-2.06.021": "v1.0.6",
+    "BC-2.06.015": "v1.0.7",
+    "BC-2.06.019": "v1.1.0",
+    "BC-2.06.016": "v1.1.0",
+    "BC-2.06.020": "v1.1.0",
+    "S-027": "v1.10",
+    "STORY-INDEX": "BC-2.06.015 re-anchored AC-004 to AC-013"
+  },
+  "residual_non_blocking_followups": [
+    "F-S027-DOC-001",
+    "F-S027-DOC-002",
+    "F-S027-DOC-003"
+  ]
+}
