@@ -1,7 +1,3 @@
-// Stub module: all function bodies are todo!(). Parameters are intentionally
-// unused until the S-027 implementer replaces todo!() with real code.
-#![allow(unused_variables, unused_imports)]
-
 //! Status bar widget for monocle-tui (S-027).
 //!
 //! The status bar is always visible as the last row of the terminal. It is NOT
@@ -26,7 +22,13 @@
 //! inline `Paragraph` render.
 
 use monocle_core::tui::state::AppMode;
-use ratatui::{buffer::Buffer, layout::Rect, text::Span};
+use ratatui::{
+    buffer::Buffer,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::{Line, Span},
+    widgets::{Paragraph, Widget},
+};
 
 /// Render the always-visible status bar into `area`.
 ///
@@ -52,7 +54,82 @@ pub fn render_status_bar(
     area: Rect,
     buf: &mut Buffer,
 ) {
-    todo!("S-027: render status bar — wire mode indicator + drop counter")
+    // Row 0: mode indicator + optional status/drop message on the same line (1-row area).
+    // Row 1 (if area.height >= 2): breadcrumb + hint line.
+    if area.height == 0 {
+        return;
+    }
+
+    // Build the mode indicator text for the left side.
+    let indicator = mode_indicator_text(mode, overlay_stack_depth);
+
+    // Build the breadcrumb string.
+    let breadcrumb = breadcrumb_text(mode, overlay_stack_depth);
+
+    // Build the hint line for the current mode.
+    let hint = hint_line_text(mode);
+
+    if area.height == 1 {
+        // Single-row: render mode indicator + drop counter / status message.
+        let right_span: Option<Span<'static>> = if let Some(msg) = status_message {
+            Some(Span::styled(
+                msg.to_string(),
+                Style::default().fg(Color::Yellow),
+            ))
+        } else {
+            drop_counter_span(drop_counter)
+        };
+
+        let line = match right_span {
+            Some(right) => Line::from(vec![
+                Span::styled(indicator, Style::default().fg(Color::Cyan)),
+                Span::raw("  "),
+                right,
+            ]),
+            None => Line::from(Span::styled(indicator, Style::default().fg(Color::Cyan))),
+        };
+
+        Paragraph::new(line).render(area, buf);
+    } else {
+        // Multi-row: split into mode/breadcrumb row (row 0) and hint row (row 1+).
+        let rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Min(1)])
+            .split(area);
+
+        // Row 0: indicator + breadcrumb + optional drop/status.
+        let right_span: Option<Span<'static>> = if let Some(msg) = status_message {
+            Some(Span::styled(
+                msg.to_string(),
+                Style::default().fg(Color::Yellow),
+            ))
+        } else {
+            drop_counter_span(drop_counter)
+        };
+
+        let top_spans: Vec<Span<'static>> = match right_span {
+            Some(right) => vec![
+                Span::styled(indicator, Style::default().fg(Color::Cyan)),
+                Span::raw("  "),
+                Span::styled(breadcrumb, Style::default().fg(Color::DarkGray)),
+                Span::raw("  "),
+                right,
+            ],
+            None => vec![
+                Span::styled(indicator, Style::default().fg(Color::Cyan)),
+                Span::raw("  "),
+                Span::styled(breadcrumb, Style::default().fg(Color::DarkGray)),
+            ],
+        };
+        Paragraph::new(Line::from(top_spans)).render(rows[0], buf);
+
+        // Row 1: hint line.
+        Paragraph::new(Line::from(Span::styled(
+            hint,
+            Style::default().fg(Color::DarkGray),
+        )))
+        .render(rows[1], buf);
+    }
 }
 
 /// Build the mode indicator string for the left side of the status bar.
@@ -66,8 +143,60 @@ pub fn render_status_bar(
 /// `overlay_stack_depth` is passed separately because `AppMode::Overlay` no longer
 /// stores the stack (F-S025-ADV2-HIGH-003); the depth is read from `App::overlay_stack`.
 pub fn mode_indicator_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
-    let _ = (mode, overlay_stack_depth);
-    todo!("S-027: build mode indicator text")
+    match mode {
+        AppMode::Dashboard { .. } => "[DASHBOARD]".to_string(),
+        AppMode::Filtering { .. } => "[FILTERING]".to_string(),
+        AppMode::Overlay { .. } => format!("[OVERLAY {}]", overlay_stack_depth),
+        AppMode::Fullscreen { .. } => "[FULLSCREEN]".to_string(),
+    }
+}
+
+/// Build the breadcrumb string for the status bar (BC-2.06.020 PC-1/PC-2).
+///
+/// Returns a human-readable path describing the current location, e.g.:
+/// - `"Dashboard > Sessions"` for Dashboard with Sessions focused.
+/// - `"Dashboard > Overlay [1 prompt]"` for Overlay with 1 item.
+/// - `"Dashboard > Overlay [3 prompts]"` for Overlay with 3 items.
+/// - `"Dashboard > Filtering"` for Filtering mode.
+/// - `"Dashboard > Fullscreen"` for Fullscreen mode.
+pub fn breadcrumb_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
+    match mode {
+        AppMode::Dashboard { .. } => "Dashboard > Sessions".to_string(),
+        AppMode::Filtering { .. } => "Dashboard > Filtering".to_string(),
+        AppMode::Overlay { .. } => {
+            if overlay_stack_depth == 1 {
+                "Dashboard > Overlay [1 prompt]".to_string()
+            } else {
+                format!("Dashboard > Overlay [{} prompts]", overlay_stack_depth)
+            }
+        }
+        AppMode::Fullscreen { .. } => "Dashboard > Fullscreen".to_string(),
+    }
+}
+
+/// Build the hint line text for the current mode (BC-2.06.021 PC-1/PC-5/PC-6).
+///
+/// All hint strings MUST fit within 79 characters (BC-2.06.021 INV-3).
+pub fn hint_line_text(mode: &AppMode) -> String {
+    match mode {
+        AppMode::Dashboard { .. } => {
+            // BC-2.06.021 PC-1: Tab: cycle  Enter: fullscreen  /: filter  q: quit
+            "Tab: cycle  Enter: fullscreen  q: quit".to_string()
+        }
+        AppMode::Filtering { .. } => {
+            // BC-2.06.021 PC-3: Enter: apply  Esc: cancel
+            "Enter: apply  Esc: cancel".to_string()
+        }
+        AppMode::Overlay { .. } => {
+            // BC-2.06.021 PC-4/PC-5/PC-6:
+            // 1: accept-once  2: accept-always  3: reject  Esc: hide  t: trace
+            "1: accept-once  2: accept-always  3: reject  Esc: hide  t: trace".to_string()
+        }
+        AppMode::Fullscreen { .. } => {
+            // BC-2.06.021 PC-2: Esc: exit fullscreen
+            "Esc: exit fullscreen".to_string()
+        }
+    }
 }
 
 /// Build the drop counter indicator for the right side of the status bar.
@@ -77,8 +206,12 @@ pub fn mode_indicator_text(mode: &AppMode, overlay_stack_depth: usize) -> String
 ///
 /// The returned `Span` is used by `render_status_bar` to right-align the indicator.
 pub fn drop_counter_span(drop_counter: u64) -> Option<Span<'static>> {
-    todo!(
-        "S-027: build drop counter span drop_counter={}",
-        drop_counter
-    )
+    if drop_counter == 0 {
+        None
+    } else {
+        Some(Span::styled(
+            format!("[dropped: {drop_counter}]"),
+            Style::default().fg(Color::Yellow),
+        ))
+    }
 }

@@ -1,7 +1,3 @@
-// Stub module: all function bodies are todo!(). Parameters are intentionally
-// unused and private helpers are dead until the S-027 implementer fills them in.
-#![allow(unused_variables, unused_imports, dead_code)]
-
 //! Permission overlay modal widget for monocle-tui (S-027).
 //!
 //! Renders the active `PromptModal` from `App::overlay_stack` as a centered
@@ -26,8 +22,16 @@
 //! `monocle-core`. Any refactor that moves diff logic to `monocle-core` is a
 //! purity boundary violation.
 
-use monocle_core::tui::state::PromptModal;
-use ratatui::{buffer::Buffer, layout::Rect, text::Line, Frame};
+use monocle_core::tui::state::{PromptModal, ToolPayload};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Widget, Wrap},
+    Frame,
+};
+use similar::{ChangeTag, TextDiff};
 
 /// Render the permission overlay modal centered over the given `area`.
 ///
@@ -51,12 +55,103 @@ pub fn render_overlay_widget(
     area: Rect,
     frame: &mut Frame,
 ) {
-    todo!(
-        "S-027: render overlay modal for {:?} stack_depth={} area={:?}",
-        modal.tool_name,
-        stack_depth,
-        area
-    )
+    let modal_area = modal_rect(area);
+
+    // Clear the modal region first (so it is not dimmed behind the modal).
+    Clear.render(modal_area, frame.buffer_mut());
+
+    // Compute elapsed timer.
+    let elapsed_secs = std::time::Instant::now()
+        .duration_since(modal.received_at)
+        .as_secs();
+
+    // Build header and footer lines.
+    let header_line = build_header_line(&modal.session_id, &modal.tool_name, stack_depth, elapsed_secs);
+    let show_scroll_hint = matches!(&modal.tool_payload, ToolPayload::Generic { .. });
+    let footer_line = build_footer_line(show_scroll_hint);
+
+    // Outer block for the modal (has border, no title — header is rendered as first body line).
+    let outer_block = Block::default().borders(Borders::ALL);
+
+    // Compute inner area for content (inside the border).
+    let inner_area = outer_block.inner(modal_area);
+
+    // Render the outer block/border (no title — header line is body row 0).
+    outer_block.render(modal_area, frame.buffer_mut());
+
+    // Split inner area: 1 header row, body rows, 1 footer row.
+    if inner_area.height == 0 {
+        return;
+    }
+
+    // Header: 2 rows to accommodate the full header text (session + tool + timer)
+    // even in narrow terminals (AC-009 / BC-2.06.020 PC-1).
+    let header_height = 2u16;
+    let footer_height = 1u16;
+    let body_height = inner_area.height.saturating_sub(header_height + footer_height);
+
+    let header_area = Rect {
+        x: inner_area.x,
+        y: inner_area.y,
+        width: inner_area.width,
+        height: header_height,
+    };
+    let body_area = Rect {
+        x: inner_area.x,
+        y: inner_area.y + header_height,
+        width: inner_area.width,
+        height: body_height,
+    };
+    let footer_area = Rect {
+        x: inner_area.x,
+        y: inner_area.y + header_height + body_height,
+        width: inner_area.width,
+        height: footer_height,
+    };
+
+    let buf = frame.buffer_mut();
+
+    // Render the header line (row 0 of inner area) with wrapping so long
+    // headers (including "Waiting:" timer) are visible even in narrow terminals.
+    if inner_area.height >= 1 {
+        Paragraph::new(header_line)
+            .wrap(Wrap { trim: false })
+            .render(header_area, buf);
+    }
+
+    // Render payload-specific body content.
+    match &modal.tool_payload {
+        ToolPayload::Bash { command } => {
+            render_bash_payload(command, body_area, buf);
+        }
+        ToolPayload::Read { path } => {
+            render_read_payload(path, body_area, buf);
+        }
+        ToolPayload::Edit {
+            old_content,
+            new_content,
+            path,
+        } => {
+            render_edit_payload(old_content, new_content, path, body_area, buf);
+        }
+        ToolPayload::Generic {
+            tool_name,
+            tool_input,
+        } => {
+            render_generic_payload(tool_name, tool_input, body_area, buf);
+        }
+        _ => {
+            // Forward-compatibility: unknown ToolPayload variants render a placeholder.
+            let p = Paragraph::new(Line::from(Span::styled(
+                "(unknown tool payload)",
+                Style::default().fg(Color::DarkGray),
+            )));
+            p.render(body_area, buf);
+        }
+    }
+
+    // Render footer.
+    Paragraph::new(footer_line).render(footer_area, buf);
 }
 
 /// Apply `Modifier::DIM` to all cells in `area` to visually de-emphasize the
@@ -66,10 +161,13 @@ pub fn render_overlay_widget(
 /// before calling this function so the status bar remains full-brightness
 /// (BC-2.06.019 PC-1).
 pub fn render_dimmed_background(area: Rect, buf: &mut Buffer) {
-    todo!(
-        "S-027: apply Modifier::DIM to background area={:?}",
-        area
-    )
+    for y in area.top()..area.bottom() {
+        for x in area.left()..area.right() {
+            let current_style = buf[(x, y)].style();
+            let new_style = current_style.add_modifier(Modifier::DIM);
+            buf[(x, y)].set_style(new_style);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -87,11 +185,35 @@ pub fn render_dimmed_background(area: Rect, buf: &mut Buffer) {
 /// - `area`: the body area inside the modal (header and footer already excluded).
 /// - `buf`: the ratatui `Buffer` to render into.
 pub fn render_bash_payload(command: &str, area: Rect, buf: &mut Buffer) {
-    todo!(
-        "S-027: render Bash payload command={:?} area={:?}",
-        command,
-        area
-    )
+    let block = Block::default().borders(Borders::ALL).title("Command");
+    let inner = block.inner(area);
+    block.render(area, buf);
+
+    if inner.height == 0 || inner.width == 0 {
+        return;
+    }
+
+    // Truncate if command is too tall (exceeds available lines).
+    let available_lines = inner.height as usize;
+    let lines: Vec<&str> = command.lines().collect();
+
+    let text = if lines.len() > available_lines {
+        let mut truncated: Vec<Line<'static>> = lines[..available_lines.saturating_sub(1)]
+            .iter()
+            .map(|l| Line::from(l.to_string()))
+            .collect();
+        truncated.push(Line::from(Span::styled(
+            "... (truncated)",
+            Style::default().fg(Color::DarkGray),
+        )));
+        ratatui::text::Text::from(truncated)
+    } else {
+        ratatui::text::Text::from(command.to_string())
+    };
+
+    Paragraph::new(text)
+        .wrap(Wrap { trim: false })
+        .render(inner, buf);
 }
 
 /// Render a `ToolPayload::Read { path }` body inside `area`.
@@ -104,11 +226,20 @@ pub fn render_bash_payload(command: &str, area: Rect, buf: &mut Buffer) {
 /// - `area`: the body area inside the modal.
 /// - `buf`: the ratatui `Buffer` to render into.
 pub fn render_read_payload(path: &std::path::Path, area: Rect, buf: &mut Buffer) {
-    todo!(
-        "S-027: render Read payload path={:?} area={:?}",
-        path,
-        area
-    )
+    let block = Block::default().borders(Borders::ALL).title("File");
+    let inner = block.inner(area);
+    block.render(area, buf);
+
+    if inner.height == 0 || inner.width == 0 {
+        return;
+    }
+
+    let path_str = path.display().to_string();
+    let content = format!("path: {path_str}");
+
+    Paragraph::new(Line::from(content))
+        .wrap(Wrap { trim: false })
+        .render(inner, buf);
 }
 
 /// Render a `ToolPayload::Edit { old_content, new_content, path }` body as a
@@ -141,11 +272,54 @@ pub fn render_edit_payload(
     area: Rect,
     buf: &mut Buffer,
 ) {
-    todo!(
-        "S-027: render Edit payload diff path={:?} area={:?}",
-        path,
-        area
-    )
+    // Compute the height cap: area.height - 8 rows (BC-2.06.010 PC-5).
+    // Minimum 0 so saturating_sub is used.
+    let height_cap = (area.height as usize).saturating_sub(8);
+
+    // Title block showing "Edit: <path>".
+    let path_str = path.display().to_string();
+    let title = format!("Edit: {path_str}");
+    let block = Block::default().borders(Borders::ALL).title(title);
+    let inner = block.inner(area);
+    block.render(area, buf);
+
+    if inner.height == 0 || inner.width == 0 {
+        return;
+    }
+
+    // Compute unified diff via `similar` (AC-005, BC-2.06.015).
+    let diff = TextDiff::from_lines(old_content, new_content);
+
+    // Collect diff lines up to the height cap.
+    let mut diff_lines: Vec<Line<'static>> = Vec::new();
+
+    for change in diff.iter_all_changes() {
+        if height_cap > 0 && diff_lines.len() >= height_cap {
+            break;
+        }
+        let (prefix, color) = match change.tag() {
+            ChangeTag::Delete => ("-", Some(Color::Red)),
+            ChangeTag::Insert => ("+", Some(Color::Green)),
+            ChangeTag::Equal => (" ", None),
+        };
+
+        let value = change.value().trim_end_matches('\n').to_string();
+        let style = match color {
+            Some(c) => Style::default().fg(c),
+            None => Style::default(),
+        };
+
+        let line = Line::from(vec![
+            Span::styled(prefix.to_string(), style),
+            Span::styled(value, style),
+        ]);
+        diff_lines.push(line);
+    }
+
+    let text = ratatui::text::Text::from(diff_lines);
+    Paragraph::new(text)
+        .wrap(Wrap { trim: false })
+        .render(inner, buf);
 }
 
 /// Render a `ToolPayload::Generic { tool_name, tool_input }` body inside `area`.
@@ -166,11 +340,80 @@ pub fn render_generic_payload(
     area: Rect,
     buf: &mut Buffer,
 ) {
-    todo!(
-        "S-027: render Generic payload tool_name={:?} area={:?}",
-        tool_name,
-        area
-    )
+    let block = Block::default().borders(Borders::ALL).title("Tool Input");
+    let inner = block.inner(area);
+    block.render(area, buf);
+
+    if inner.height == 0 || inner.width == 0 {
+        return;
+    }
+
+    // Produce JSON excerpt, truncated at 256 chars (BC-2.06.024 PC-3).
+    let full_json = serde_json::to_string(tool_input).unwrap_or_else(|_| "{}".to_string());
+    let excerpt = if full_json.len() > 256 {
+        // Truncate at a UTF-8 character boundary at or before 256 bytes.
+        let truncate_at = full_json
+            .char_indices()
+            .take_while(|(i, _)| *i < 256)
+            .last()
+            .map(|(i, c)| i + c.len_utf8())
+            .unwrap_or(0);
+        format!("{}…", &full_json[..truncate_at])
+    } else {
+        full_json
+    };
+
+    // Determine if scroll hint is needed (AC-006 / BC-2.06.024 PC-3).
+    // Show scroll hint when JSON content (tool: + input: lines) exceeds the
+    // "modal height minus 6" threshold per AC-006.
+    // When area.height <= 6, the threshold is 0: any non-empty content overflows.
+    let area_height = area.height as usize;
+    let json_line_count = excerpt.lines().count();
+    // threshold = area.height - 6 (floored at 0 via saturating_sub)
+    let threshold = area_height.saturating_sub(6);
+    // Content overflows when: json_line_count > threshold.
+    // When threshold == 0 (area.height <= 6), show scroll hint if any JSON content exists.
+    let show_scroll = json_line_count > threshold;
+
+    if show_scroll && inner.height >= 2 {
+        // Reserve the last inner row for the scroll hint; render content above it.
+        let content_area = Rect {
+            x: inner.x,
+            y: inner.y,
+            width: inner.width,
+            height: inner.height - 1,
+        };
+        let hint_area = Rect {
+            x: inner.x,
+            y: inner.y + inner.height - 1,
+            width: inner.width,
+            height: 1,
+        };
+
+        let content_lines: Vec<Line<'static>> = vec![
+            Line::from(format!("tool: {tool_name}")),
+            Line::from(format!("input: {excerpt}")),
+        ];
+        let text = ratatui::text::Text::from(content_lines);
+        Paragraph::new(text)
+            .wrap(Wrap { trim: false })
+            .render(content_area, buf);
+
+        Paragraph::new(Line::from(Span::styled(
+            "↑↓ to scroll",
+            Style::default().fg(Color::DarkGray),
+        )))
+        .render(hint_area, buf);
+    } else {
+        let content_lines: Vec<Line<'static>> = vec![
+            Line::from(format!("tool: {tool_name}")),
+            Line::from(format!("input: {excerpt}")),
+        ];
+        let text = ratatui::text::Text::from(content_lines);
+        Paragraph::new(text)
+            .wrap(Wrap { trim: false })
+            .render(inner, buf);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -182,10 +425,19 @@ pub fn render_generic_payload(
 /// Width: `min(terminal_area.width.saturating_sub(4), 100)` (AC-001).
 /// Height: `min(terminal_area.height.saturating_sub(4), 30)` — implementation-defined cap.
 fn modal_rect(terminal_area: Rect) -> Rect {
-    todo!(
-        "S-027: compute modal_rect for terminal_area={:?}",
-        terminal_area
-    )
+    let modal_width = terminal_area.width.saturating_sub(4).min(100);
+    let modal_height = terminal_area.height.saturating_sub(4).min(30);
+
+    // Center the modal horizontally and vertically.
+    let x = terminal_area.x + (terminal_area.width.saturating_sub(modal_width)) / 2;
+    let y = terminal_area.y + (terminal_area.height.saturating_sub(modal_height)) / 2;
+
+    Rect {
+        x,
+        y,
+        width: modal_width,
+        height: modal_height,
+    }
 }
 
 /// Build the header `Line` for the overlay modal.
@@ -199,13 +451,11 @@ fn build_header_line(
     stack_depth: usize,
     elapsed_secs: u64,
 ) -> Line<'static> {
-    todo!(
-        "S-027: build header line session_id={:?} tool={:?} depth={} elapsed={}s",
-        session_id,
-        tool_name,
-        stack_depth,
-        elapsed_secs
-    )
+    let text = format!(
+        "Permission Request | session: {} | tool: {} | (1 of {}) | Waiting: {}s",
+        session_id, tool_name, stack_depth, elapsed_secs
+    );
+    Line::from(Span::styled(text, Style::default().fg(Color::White)))
 }
 
 /// Build the footer `Line` with keyboard hints.
@@ -214,8 +464,11 @@ fn build_header_line(
 /// If `show_scroll_hint` is true, appends `"  ↑↓ to scroll"` (for Generic payloads
 /// exceeding the available height — AC-006).
 fn build_footer_line(show_scroll_hint: bool) -> Line<'static> {
-    todo!(
-        "S-027: build footer line show_scroll_hint={}",
-        show_scroll_hint
-    )
+    let base = "[y] Accept  [A] Accept Always  [n/r] Reject  [Esc] No-op";
+    let text = if show_scroll_hint {
+        format!("{base}  ↑↓ to scroll")
+    } else {
+        base.to_string()
+    };
+    Line::from(Span::styled(text, Style::default().fg(Color::DarkGray)))
 }
