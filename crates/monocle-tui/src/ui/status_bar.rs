@@ -153,16 +153,29 @@ pub fn mode_indicator_text(mode: &AppMode, overlay_stack_depth: usize) -> String
 
 /// Build the breadcrumb string for the status bar (BC-2.06.020 PC-1/PC-2).
 ///
-/// Returns a human-readable path describing the current location, e.g.:
-/// - `"Dashboard > Sessions"` for Dashboard with Sessions focused.
-/// - `"Dashboard > Overlay [1 prompt]"` for Overlay with 1 item.
-/// - `"Dashboard > Overlay [3 prompts]"` for Overlay with 3 items.
-/// - `"Dashboard > Filtering"` for Filtering mode.
-/// - `"Dashboard > Fullscreen"` for Fullscreen mode.
+/// Returns a human-readable path describing the current location derived from
+/// the current `AppMode` focus per BC-2.06.020 PC-1 derivation table:
+/// - `Dashboard { focused: Sessions }` → `"Dashboard > Sessions"`
+/// - `Dashboard { focused: EventRibbon }` → `"Dashboard > Events"`
+/// - `Overlay { prior }` with `overlay_stack_depth == 1` → `"Dashboard > Overlay [1 prompt]"`
+/// - `Overlay { prior }` with `overlay_stack_depth == N (N > 1)` → `"Dashboard > Overlay [N prompts]"`
+/// - `Fullscreen { panel: Sessions, .. }` → `"Dashboard > Sessions > Fullscreen"`
+/// - `Fullscreen { panel: EventRibbon, .. }` → `"Dashboard > Events > Fullscreen"`
+/// - `Filtering { panel: Sessions, .. }` → `"Dashboard > Sessions > Filter"`
+/// - `Filtering { panel: EventRibbon, .. }` → `"Dashboard > Events > Filter"`
 pub fn breadcrumb_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
+    use monocle_core::tui::state::{FocusSnapshot, PanelId};
     match mode {
-        AppMode::Dashboard { .. } => "Dashboard > Sessions".to_string(),
-        AppMode::Filtering { .. } => "Dashboard > Filtering".to_string(),
+        AppMode::Dashboard { focused } => match focused {
+            FocusSnapshot::Sessions => "Dashboard > Sessions".to_string(),
+            FocusSnapshot::EventRibbon => "Dashboard > Events".to_string(),
+            _ => "Dashboard".to_string(),
+        },
+        AppMode::Filtering { panel, .. } => match panel {
+            PanelId::Sessions => "Dashboard > Sessions > Filter".to_string(),
+            PanelId::EventRibbon => "Dashboard > Events > Filter".to_string(),
+            _ => "Dashboard > Filter".to_string(),
+        },
         AppMode::Overlay { .. } => {
             if overlay_stack_depth == 1 {
                 "Dashboard > Overlay [1 prompt]".to_string()
@@ -170,31 +183,36 @@ pub fn breadcrumb_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
                 format!("Dashboard > Overlay [{} prompts]", overlay_stack_depth)
             }
         }
-        AppMode::Fullscreen { .. } => "Dashboard > Fullscreen".to_string(),
+        AppMode::Fullscreen { panel, .. } => match panel {
+            PanelId::Sessions => "Dashboard > Sessions > Fullscreen".to_string(),
+            PanelId::EventRibbon => "Dashboard > Events > Fullscreen".to_string(),
+            _ => "Dashboard > Fullscreen".to_string(),
+        },
     }
 }
 
 /// Build the hint line text for the current mode (BC-2.06.021 PC-1/PC-5/PC-6).
 ///
 /// All hint strings MUST fit within 79 characters (BC-2.06.021 INV-3).
+/// Canonical strings from BC-2.06.021 v1.0.6 PC-1 table.
 pub fn hint_line_text(mode: &AppMode) -> String {
     match mode {
         AppMode::Dashboard { .. } => {
-            // BC-2.06.021 PC-1: Tab: cycle  Enter: fullscreen  /: filter  q: quit
-            "Tab: cycle  Enter: fullscreen  q: quit".to_string()
+            // BC-2.06.021 PC-1 canonical: Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit
+            "Tab: cycle  Enter: fullscreen  /: filter  Ctrl-P: profile  q: quit".to_string()
         }
         AppMode::Filtering { .. } => {
-            // BC-2.06.021 PC-3: Enter: apply  Esc: cancel
-            "Enter: apply  Esc: cancel".to_string()
+            // BC-2.06.021 PC-1 canonical: (type to filter)  Esc: cancel
+            "(type to filter)  Esc: cancel".to_string()
         }
         AppMode::Overlay { .. } => {
-            // BC-2.06.021 PC-4/PC-5/PC-6:
-            // 1: accept-once  2: accept-always  3: reject  Esc: hide  t: trace
-            "1: accept-once  2: accept-always  3: reject  Esc: hide  t: trace".to_string()
+            // BC-2.06.021 PC-1 v1.0.6 canonical: y: accept  A: accept-always  n/r: reject  ↑↓: cycle  Esc: hide  t: trace
+            "y: accept  A: accept-always  n/r: reject  \u{2191}\u{2193}: cycle  Esc: hide  t: trace"
+                .to_string()
         }
         AppMode::Fullscreen { .. } => {
-            // BC-2.06.021 PC-2: Esc: exit fullscreen
-            "Esc: exit fullscreen".to_string()
+            // BC-2.06.021 PC-1 canonical: Esc: back  /: filter  q: quit
+            "Esc: back  /: filter  q: quit".to_string()
         }
     }
 }
@@ -202,7 +220,8 @@ pub fn hint_line_text(mode: &AppMode) -> String {
 /// Build the drop counter indicator for the right side of the status bar.
 ///
 /// Returns `None` when `drop_counter == 0` (no text shown — BC-2.06.019 PC-1).
-/// Returns `Some("[dropped: N]")` styled in yellow when `drop_counter > 0`.
+/// Returns `Some("drops: N")` styled in yellow when `drop_counter > 0`
+/// (BC-2.06.019 PC-2 canonical format: `drops: N`, no brackets, no "dropped").
 ///
 /// The returned `Span` is used by `render_status_bar` to right-align the indicator.
 pub fn drop_counter_span(drop_counter: u64) -> Option<Span<'static>> {
@@ -210,7 +229,7 @@ pub fn drop_counter_span(drop_counter: u64) -> Option<Span<'static>> {
         None
     } else {
         Some(Span::styled(
-            format!("[dropped: {drop_counter}]"),
+            format!("drops: {drop_counter}"),
             Style::default().fg(Color::Yellow),
         ))
     }
