@@ -202,12 +202,6 @@ fn test_BC_2_06_006_PC3_snapshot_enriched_sessions_populates_display_name() {
         "precondition: snapshot must carry harness_type=\"claude-code\" (Phase 1 only harness)"
     );
 
-    // The expected display name for "claude-code" is "Claude Code" — same as
-    // EngineMetadata::display_name returned by ClaudeCodeModule::metadata().
-    // We do not hardcode the string here to avoid coupling the test to a specific
-    // display name that might change — instead we assert it is non-empty and let
-    // the implementer choose the canonical value.
-    //
     // A second assertion: display_name must contain the substring "Claude" (case-sensitive)
     // to confirm the correct engine name is populated, not a generic placeholder.
     assert!(
@@ -216,4 +210,47 @@ fn test_BC_2_06_006_PC3_snapshot_enriched_sessions_populates_display_name() {
          Got: {:?}",
         session.display_name
     );
+
+    // Strengthen per ADV Pass-4 finding C3: display_name must EQUAL the value from
+    // ClaudeCodeModule::metadata().display_name — NOT merely be non-empty or contain
+    // "Claude". This assertion enforces that snapshot_enriched_sessions sources the
+    // display_name from the SAME canonical field as ClaudeCodeModule::metadata(), not
+    // from a separate hardcoded literal that could drift out of sync.
+    //
+    // RED: snapshot_enriched_sessions currently hardcodes "Claude Code" as a string literal
+    // ("Claude Code".to_owned()) rather than calling ClaudeCodeModule::metadata().display_name.
+    // If metadata().display_name were changed (e.g., to "Claude Code AI"), the snapshot
+    // would still return "Claude Code" — wrong. This assertion catches that divergence.
+    //
+    // FIX: snapshot_enriched_sessions must source display_name from
+    // ClaudeCodeModule::metadata().display_name (or an equivalent registry) rather than
+    // inlining the literal.
+    //
+    // Note: to assert equality here without adding a monocle-runtime → monocle-tui
+    // dependency (which would be wrong), we construct ClaudeCodeModule in-place —
+    // it is already imported above via `use monocle_runtime::engine::ClaudeCodeModule`.
+    let module_for_snapshot_check = ClaudeCodeModule::new("http://127.0.0.1:7891".to_string());
+    // metadata() may fail if HOME is unset — skip the equality assertion in that case.
+    match module_for_snapshot_check.metadata() {
+        Ok(meta) => {
+            assert_eq!(
+                session.display_name.as_str(),
+                meta.display_name,
+                "BC-2.06.006 PC-3 (ADV Pass-4 C3): snapshot_enriched_sessions() must populate \
+                 display_name == EngineMetadata::display_name (\"{expected}\"). \
+                 Got: {:?}. \
+                 FIX: source display_name from ClaudeCodeModule::metadata().display_name, \
+                 not from a hardcoded literal.",
+                session.display_name,
+                expected = meta.display_name
+            );
+        }
+        Err(_) => {
+            // HOME unavailable in this environment — skip the equality check.
+            eprintln!(
+                "test_BC_2_06_006_PC3_snapshot_enriched_sessions_populates_display_name: \
+                 skipping equality assertion — metadata() returned Err (HOME unavailable)"
+            );
+        }
+    }
 }
