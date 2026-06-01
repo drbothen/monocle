@@ -94,7 +94,7 @@ pub fn render_profile_picker(
     // must reflect the sticky profile for the directory the picker was opened for, not an
     // arbitrary first-match over all project_profiles.values().
     let active_profile_id: Option<&str> = resolve_profile_for_dir(config, &state.current_dir)
-        .map(|p| {
+        .and_then(|p| {
             // The profile ID is borrowed from config.harness_profiles; find the matching
             // entry in config to get a &str with the correct lifetime.
             config
@@ -102,8 +102,7 @@ pub fn render_profile_picker(
                 .iter()
                 .find(|hp| hp.id == p.id)
                 .map(|hp| hp.id.as_str())
-        })
-        .flatten();
+        });
 
     // Build the list widget.
     let (list, mut list_state) = build_profile_list(&state.profiles, active_profile_id);
