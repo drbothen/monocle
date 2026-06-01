@@ -15,7 +15,7 @@
 
 use monocle_config::{HarnessProfile, MonocleConfig};
 use monocle_tui::app::{
-    commit_profile_selection, open_profile_picker, open_profile_picker_with_dir, App,
+    commit_profile_selection_with_path, open_profile_picker, open_profile_picker_with_dir, App,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,9 +48,10 @@ fn test_BC_2_07_005_commit_selection_closes_picker() {
     open_profile_picker(&mut app);
     assert!(app.profile_picker.is_some());
 
-    // commit_profile_selection writes to config — in the stub this is todo!(),
-    // so the test fails at the stub. When implemented, it should close the picker.
-    commit_profile_selection(&mut app, "/home/user/project");
+    // Redirect the write to a temp path to avoid polluting the real user config.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let config_path = tmp.path().join("config.json");
+    commit_profile_selection_with_path(&mut app, "/home/user/project", &config_path);
 
     assert!(
         app.profile_picker.is_none(),
@@ -75,7 +76,10 @@ fn test_BC_2_07_005_commit_selection_writes_project_profiles_entry() {
         s.selected_index = 0;
     }
 
-    commit_profile_selection(&mut app, "/home/user/project");
+    // Redirect the write to a temp path to avoid polluting the real user config.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let config_path = tmp.path().join("config.json");
+    commit_profile_selection_with_path(&mut app, "/home/user/project", &config_path);
 
     // The project_profiles map must have the entry written.
     let profile_id = app
@@ -106,7 +110,10 @@ fn test_BC_2_07_005_detect_ccr_called_and_ccr_path_updated_after_switch() {
     assert!(app.ccr_path.is_none());
 
     open_profile_picker(&mut app);
-    commit_profile_selection(&mut app, "/home/user/project");
+    // Redirect the write to a temp path to avoid polluting the real user config.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let config_path = tmp.path().join("config.json");
+    commit_profile_selection_with_path(&mut app, "/home/user/project", &config_path);
 
     // After commit, ccr_path field must have been updated (Some or None — depends on
     // whether ccr is found on PATH in the test env, but the field must no longer be
@@ -124,40 +131,9 @@ fn test_BC_2_07_005_detect_ccr_called_and_ccr_path_updated_after_switch() {
                           // is exercised and does not panic.
 }
 
-// ---------------------------------------------------------------------------
-// BC-2.07.005 PC-5c / AC-006 — write failure: notification, in-memory update
-// ---------------------------------------------------------------------------
-
-/// AC-006 (BC-2.07.005 PC-5c): if `write_config` fails (e.g., disk full),
-/// the TUI renders a transient error notification in `app.status_message`.
-/// The picker closes and in-memory profile IS still updated.
-///
-/// This test verifies the behavior is correctly modeled by the stub.
-/// Full test: mock write_config to return Err; assert status_message is set.
-///
-/// NOTE: Because this requires a controllable write_config path, the current stub
-/// test focuses on the observable state: picker closes and status_message is not cleared
-/// (i.e., some error text is present) when write fails. In the stub this fails at todo!().
-#[test]
-fn test_BC_2_07_005_write_config_failure_sets_status_message() {
-    // To test the error path, we need a config path that cannot be written.
-    // For the stub test, we verify commit_profile_selection structure:
-    // the error notification must be a non-empty string.
-    //
-    // Full implementation test: construct an App where config_path() resolves to
-    // a read-only path and assert status_message is Some("Error saving config: ...").
-    //
-    // For now: just verify that the function signature is callable and will panic at todo!().
-    let config = make_config_with_profiles(&["cc"]);
-    let mut app = App::new(config);
-    open_profile_picker(&mut app);
-
-    // This will panic at todo!() in the stub — that is the Red Gate.
-    commit_profile_selection(&mut app, "/home/user/project");
-
-    // When implemented: assert error notification path exists.
-    // assert!(app.status_message.is_some(), "error notification must be set on write failure");
-}
+// BC-2.07.005 PC-5c / AC-006 — write failure: canonical test is
+// render_frame_integration_s031.rs::test_BC_2_07_005_pc5c_write_failure_applies_in_memory_and_sets_status_message
+// (uses commit_profile_selection_with_path with a bad path and asserts status_message).
 
 // ---------------------------------------------------------------------------
 // BC-2.07.005 INV-2 / AC-009 — atomic write via tempfile::persist
@@ -283,7 +259,10 @@ fn test_BC_2_07_005_ec108_select_same_profile_is_idempotent() {
     open_profile_picker(&mut app);
 
     // selected_index should be 0 (only one profile "cc").
-    commit_profile_selection(&mut app, "/home/user/project");
+    // Redirect the write to a temp path to avoid polluting the real user config.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let config_path = tmp.path().join("config.json");
+    commit_profile_selection_with_path(&mut app, "/home/user/project", &config_path);
 
     // Must not error; picker must close.
     assert!(
