@@ -183,8 +183,11 @@ pub fn render_dimmed_background(area: Rect, buf: &mut Buffer) {
 
 /// Render a `ToolPayload::Bash { command }` body inside `area`.
 ///
-/// Renders `command` in a bordered `Block` titled `"Command"`. If `command`
-/// exceeds `available_height` rows, it is truncated with `"... (truncated)"`.
+/// Renders a bordered `Block` titled `"Command"` containing the label line
+/// `command: <command>` per BC-2.06.024 PC-1. If `command` is empty, renders
+/// `command: (empty)` as a safe fallback (BC-2.06.024 PC-1.4). Long command
+/// values wrap using `Wrap { trim: false }` so the full command is visible
+/// without silent truncation (BC-2.06.024 PC-1.5 / INV-4).
 ///
 /// # Parameters
 ///
@@ -200,25 +203,16 @@ pub fn render_bash_payload(command: &str, area: Rect, buf: &mut Buffer) {
         return;
     }
 
-    // Truncate if command is too tall (exceeds available lines).
-    let available_lines = inner.height as usize;
-    let lines: Vec<&str> = command.lines().collect();
-
-    let text = if lines.len() > available_lines {
-        let mut truncated: Vec<Line<'static>> = lines[..available_lines.saturating_sub(1)]
-            .iter()
-            .map(|l| Line::from(l.to_string()))
-            .collect();
-        truncated.push(Line::from(Span::styled(
-            "... (truncated)",
-            Style::default().fg(Color::DarkGray),
-        )));
-        ratatui::text::Text::from(truncated)
+    // BC-2.06.024 PC-1: render `command: <command>` label line.
+    // BC-2.06.024 PC-1.4: if command is empty, render `command: (empty)`.
+    let label_value = if command.is_empty() {
+        "(empty)".to_string()
     } else {
-        ratatui::text::Text::from(command.to_string())
+        command.to_string()
     };
+    let label_line = format!("command: {label_value}");
 
-    Paragraph::new(text)
+    Paragraph::new(Line::from(label_line))
         .wrap(Wrap { trim: false })
         .render(inner, buf);
 }
@@ -241,8 +235,15 @@ pub fn render_read_payload(path: &std::path::Path, area: Rect, buf: &mut Buffer)
         return;
     }
 
+    // BC-2.06.024 PC-2: render `path: <path>` label line.
+    // BC-2.06.024 PC-2.4: if path is empty, render `path: (empty)`.
     let path_str = path.display().to_string();
-    let content = format!("path: {path_str}");
+    let label_value = if path_str.is_empty() {
+        "(empty)".to_string()
+    } else {
+        path_str
+    };
+    let content = format!("path: {label_value}");
 
     Paragraph::new(Line::from(content))
         .wrap(Wrap { trim: false })
@@ -356,7 +357,28 @@ pub fn render_generic_payload(
     }
 
     // Produce JSON excerpt, truncated at 256 chars (BC-2.06.024 PC-3).
-    let full_json = serde_json::to_string(tool_input).unwrap_or_else(|_| "{}".to_string());
+    // BC-2.06.024 EC-007: on serialization failure, render `input: (unrepresentable)`
+    // and log at WARN level. `serde_json::Value` serialization should not fail in
+    // practice, but the fallback is required by the BC.
+    let full_json = match serde_json::to_string(tool_input) {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::warn!(
+                tool_name = %tool_name,
+                error = %e,
+                "render_generic_payload: serde_json::to_string failed for tool_input \
+                 (BC-2.06.024 EC-007) — rendering (unrepresentable) fallback"
+            );
+            let fallback_line = Line::from("input: (unrepresentable)");
+            Paragraph::new(ratatui::text::Text::from(vec![
+                Line::from(format!("tool: {tool_name}")),
+                fallback_line,
+            ]))
+            .wrap(Wrap { trim: false })
+            .render(inner, buf);
+            return;
+        }
+    };
     let excerpt = if full_json.len() > 256 {
         // Truncate at a UTF-8 character boundary at or before 256 bytes.
         let truncate_at = full_json
