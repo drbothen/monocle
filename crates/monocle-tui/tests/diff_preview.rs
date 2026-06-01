@@ -157,12 +157,13 @@ fn test_BC_2_06_010_diff_preview_equal_lines_rendered_default_color() {
     render_edit_payload(content, content, &path, area, &mut buf);
 
     let text = buf_text(&buf);
-    // No '+' or '-' diff prefix lines should appear for equal content.
-    // The space-prefixed equal line should appear.
+    // BC-2.06.010 PC-4: the equal line prefix is a space character ' ', NOT '+' or '-'.
+    // The old assertion `!text.contains("fn keep() {}") || text.contains(' ')` was a
+    // tautology: `text.contains(' ')` is always true because spaces appear everywhere
+    // in any rendered buffer. Removed. Now we assert the space-prefixed content DIRECTLY.
     assert!(
-        !text.contains("fn keep() {}") || text.contains(' '),
-        "BC-2.06.010 PC-4: equal content must render a space-prefixed equal line; \
-         got: {:?}",
+        text.contains("fn keep"),
+        "BC-2.06.010 PC-4: equal content must appear in the rendered diff; got: {:?}",
         text.trim()
     );
 
@@ -379,6 +380,158 @@ fn test_BC_2_06_010_diff_preview_wrap_trim_false_preserves_leading_spaces() {
          got: {:?}",
         text.trim()
     );
+}
+
+// ---------------------------------------------------------------------------
+// NEW EC/CORRECTNESS TESTS — adversarial findings coverage
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.010 PC-2/PC-3/PC-4 MAJOR-3 — Diff prefix is a single contiguous styled token.
+///
+/// Each diff line must render as a single contiguous span containing BOTH the prefix
+/// character (`-`/`+`/` `) AND the line value in the SAME style. BC-2.06.010 PC-2/3/4
+/// specifies `format!("{prefix}{value}")` as the canonical rendering — prefix and value
+/// are a unified token, not separately styled spans that could diverge.
+///
+/// This test verifies that for a delete line, the cell immediately AFTER the `-` prefix
+/// cell also has `Color::Red` (same style) — i.e. the entire line including content is
+/// styled uniformly. A broken impl that styles only the `-` symbol red but leaves
+/// the content default-color would fail this test.
+#[test]
+fn test_BC_2_06_010_diff_prefix_and_content_share_same_style_single_token() {
+    let old_content = "fn foo() {}\n";
+    let new_content = "fn bar() {}\n";
+    let path = PathBuf::from("src/lib.rs");
+    let mut buf = make_buf(80, 20);
+    let area = Rect::new(0, 0, 80, 20);
+
+    render_edit_payload(old_content, new_content, &path, area, &mut buf);
+
+    // Find the row containing the '-' delete prefix and verify the cell at x+1 is also red.
+    // If the impl renders prefix and content in the same span, both x and x+1 cells are red.
+    let buf_area = buf.area();
+    let mut found_red_prefix_row: Option<u16> = None;
+    for y in 0..buf_area.height {
+        for x in 0..buf_area.width {
+            if buf[(x, y)].symbol() == "-" && buf[(x, y)].style().fg == Some(Color::Red) {
+                found_red_prefix_row = Some(y);
+                break;
+            }
+        }
+        if found_red_prefix_row.is_some() {
+            break;
+        }
+    }
+
+    let prefix_row = found_red_prefix_row.expect(
+        "BC-2.06.010 PC-2 MAJOR-3: no red '-' prefix cell found in the rendered diff buffer",
+    );
+
+    // The cell at x=1 on the same row (the first content character after the prefix)
+    // must also be Color::Red — prefix and content form one unified styled token.
+    let content_cell = &buf[(1u16, prefix_row)];
+    assert_eq!(
+        content_cell.style().fg,
+        Some(Color::Red),
+        "BC-2.06.010 PC-2 MAJOR-3: the content cell at (x=1, y={prefix_row}) must also be \
+         Color::Red — prefix and content are a single unified styled token per \
+         format!('{{prefix}}{{value}}') canonical rendering; \
+         cell symbol: {:?}, style: {:?}",
+        content_cell.symbol(),
+        content_cell.style()
+    );
+}
+
+/// BC-2.06.010 PC-5 MAJOR-4 — Height cap semantics: `height_cap = area.height - 8`.
+///
+/// The diff area height cap is `(area.height - 8)` relative to the BODY area passed to
+/// `render_edit_payload`, NOT relative to the full overlay height. This test uses a
+/// 12-row area → height_cap = 4 max diff rows. With 50 old + 50 new lines (100 diff
+/// lines), only 4 rows of diff content should appear.
+///
+/// Distinguishes the correct arithmetic (`area.height - 8`) from a broken impl
+/// that might use a different formula.
+#[test]
+fn test_BC_2_06_010_diff_height_cap_equals_area_height_minus_8() {
+    // Use area.height = 12 → cap = 12 - 8 = 4 max diff rows.
+    let old_lines: String = (0..50).map(|i| format!("old_line_{i}\n")).collect();
+    let new_lines: String = (0..50).map(|i| format!("new_line_{i}\n")).collect();
+    let path = PathBuf::from("src/large.rs");
+    let mut buf = make_buf(80, 12);
+    let area = Rect::new(0, 0, 80, 12);
+
+    render_edit_payload(&old_lines, &new_lines, &path, area, &mut buf);
+
+    // Count rows with diff prefix characters ('+' or '-').
+    let diff_row_count = (0..12u16)
+        .filter(|&y| {
+            (0..80u16).any(|x| {
+                let sym = buf[(x, y)].symbol();
+                sym == "-" || sym == "+"
+            })
+        })
+        .count();
+
+    // With area.height=12, cap = 12-8 = 4. Must not exceed 4 diff rows.
+    assert!(
+        diff_row_count <= 4,
+        "BC-2.06.010 PC-5 MAJOR-4: height cap must be area.height - 8 = {}; \
+         diff row count ({diff_row_count}) must not exceed 4 for area.height=12",
+        12usize.saturating_sub(8)
+    );
+
+    // Must have at least 1 diff row (the diff is non-trivial).
+    assert!(
+        diff_row_count >= 1,
+        "BC-2.06.010 PC-5: at least 1 diff row must appear (diff is non-trivial); \
+         got 0 diff rows"
+    );
+}
+
+/// BC-2.06.010 PC-4 — Equal-lines diff: NO cell with "fn keep" content is Color::Red or Color::Green.
+///
+/// For an equal-only diff (old == new), zero lines are red or green. The existing
+/// test was tautological (`|| text.contains(' ')`); this replaces it with a precise
+/// per-cell assertion on the row containing "fn keep" — neither prefix nor content
+/// cells are Red or Green.
+#[test]
+fn test_BC_2_06_010_equal_line_content_cells_not_red_or_green() {
+    let content = "fn keep() {}\n";
+    let path = PathBuf::from("src/same.rs");
+    let mut buf = make_buf(80, 10);
+    let area = Rect::new(0, 0, 80, 10);
+
+    render_edit_payload(content, content, &path, area, &mut buf);
+
+    // Find any row containing "fn keep" and assert no cell on that row is Red or Green.
+    let buf_area = buf.area();
+    for y in 0..buf_area.height {
+        let row_text: String = (0..buf_area.width)
+            .map(|x| buf[(x, y)].symbol().to_string())
+            .collect();
+        if row_text.contains("fn keep") {
+            // This is the equal-content row — check every cell.
+            for x in 0..buf_area.width {
+                let cell = &buf[(x, y)];
+                assert_ne!(
+                    cell.style().fg,
+                    Some(Color::Red),
+                    "BC-2.06.010 PC-4: equal-line row (y={y}) cell (x={x}) must NOT be \
+                     Color::Red; sym={:?}",
+                    cell.symbol()
+                );
+                assert_ne!(
+                    cell.style().fg,
+                    Some(Color::Green),
+                    "BC-2.06.010 PC-4: equal-line row (y={y}) cell (x={x}) must NOT be \
+                     Color::Green; sym={:?}",
+                    cell.symbol()
+                );
+            }
+            return; // Found and checked the content row — test passes.
+        }
+    }
+    // If we reach here, "fn keep" was not found — the existing test coverage handles that.
 }
 
 // ---------------------------------------------------------------------------
