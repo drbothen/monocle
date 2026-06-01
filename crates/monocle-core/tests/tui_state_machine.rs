@@ -1194,9 +1194,7 @@ fn test_BC_2_06_015_transition_overlay_trace_identity_preserves_any_prior() {
                 );
             }
             _ => {
-                panic!(
-                    "BC-2.06.015 PC-2: transition must return Overlay for prior={prior:?}"
-                );
+                panic!("BC-2.06.015 PC-2: transition must return Overlay for prior={prior:?}");
             }
         }
     }

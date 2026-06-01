@@ -216,6 +216,20 @@ pub enum Action {
     PermissionAcceptAlways,
     /// Reject the top-most permission prompt.
     PermissionReject,
+    /// Stub: trace the current permission prompt to its source file.
+    ///
+    /// // Phase 1: stub sets status_message placeholder
+    ///
+    /// In Phase 1 this is a no-op that writes `App.status_message` to the
+    /// canonical placeholder text (BC-2.06.015 PC-1). The `[t]` binding is
+    /// registered in Phase 1 to reserve the key for the Phase 2 Static-plane
+    /// implementation — preventing keybinding conflicts when the full
+    /// trace-to-source behavior ships.
+    ///
+    /// `transition(Overlay { prior }, PermissionTraceToSource)` is the identity:
+    /// mode stays `Overlay { prior }` and `overlay_stack` is not modified
+    /// (BC-2.06.015 PC-2). No IPC message is sent (BC-2.06.015 PC-3).
+    PermissionTraceToSource,
     /// Move selection to the next row in the currently focused panel list.
     ///
     /// Does not change `AppMode`; the render loop updates the panel's `ListState`.
@@ -332,6 +346,13 @@ pub fn transition(mode: AppMode, action: Action) -> AppMode {
         // transition() returns Overlay unchanged — the visual change is from the render
         // loop reading overlay_stack.front() after App rotates it.
         (AppMode::Overlay { prior }, Action::OverlayCycleNext) => AppMode::Overlay { prior },
+
+        // --- PermissionTraceToSource: identity (BC-2.06.015 PC-2) ---
+        //
+        // Phase 1 stub: App-level handler sets status_message to the canonical placeholder.
+        // No mode change, no overlay_stack mutation, no IPC send.
+        // The identity arm is needed in all modes (EC-099: Dashboard also returns identity).
+        (AppMode::Overlay { prior }, Action::PermissionTraceToSource) => AppMode::Overlay { prior },
 
         // --- Identity (all other combinations) ---
         // EC-061: unmatched (mode, action) pairs return identity

@@ -1611,6 +1611,21 @@ pub fn dispatch_key_event(
                 Action::PermissionReject => {
                     send_permission_decision(app, PermissionDecisionKind::Deny);
                 }
+                // ---------------------------------------------------------------------------
+                // BC-2.06.015 PC-1 — [t] trace-to-source stub
+                //
+                // Phase 1: sets App.status_message to the canonical placeholder text.
+                // No AppMode transition (identity via transition()), no overlay_stack
+                // mutation, no IPC send (PC-3). The per-context binding for AppModeTag::Overlay
+                // ensures this arm is only reachable in Overlay mode (EC-099 holds).
+                // ---------------------------------------------------------------------------
+                Action::PermissionTraceToSource => {
+                    app.status_message = Some(
+                        "[t] Trace to source \u{2014} Phase 2 feature (Static plane)".to_string(),
+                    );
+                    // Identity transition: mode stays Overlay { prior }, overlay_stack unchanged.
+                    app.mode = transition(app.mode.clone(), action);
+                }
                 _ => {
                     app.mode = transition(app.mode.clone(), action);
                 }
@@ -1858,6 +1873,29 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Dashboard,
         ),
         Action::Quit,
+    );
+
+    // BC-2.06.015 INV-1: `t` → PermissionTraceToSource ONLY in Overlay mode.
+    //
+    // Registered as a per-context binding scoped to AppModeTag::Overlay so that
+    // EC-099 holds naturally: `t` in Dashboard resolves to None (no binding).
+    // INV-1 states this is a Builtin (non-user-overridable) binding; per-context
+    // at AppModeTag::Overlay is the correct mechanism — it is hardcoded in this
+    // function (not in any user customisation file), so it cannot be overridden.
+    //
+    // NOTE: The permission decision keys (y/Enter/A/n/r) are captured BEFORE the
+    // per-context layer in the hard-coded SearchPrompt Overlay arm of resolve_binding.
+    // `t` is NOT a permission decision key and deliberately falls through to the
+    // per-context layer so that empty-layer tests return None (compile-gate only).
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('t'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Overlay,
+        ),
+        Action::PermissionTraceToSource,
     );
 
     layers

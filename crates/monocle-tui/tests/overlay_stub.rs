@@ -25,10 +25,10 @@
 //!   (BC-2.06.015 EC-099 — `t` in Dashboard is unbound; status_message unchanged)
 //! - test_BC_2_06_015_production_binding_t_in_overlay_resolves_trace_to_source
 //!   (BC-2.06.015 INV-1 — `build_builtin_binding_layers()` wires `t` → PermissionTraceToSource
-//!    in the Overlay SearchPrompt arm)
+//!   in the Overlay SearchPrompt arm)
 //! - test_BC_2_06_015_ec098_repeated_t_press_idempotent_status_message
 //!   (BC-2.06.015 EC-098 — pressing [t] multiple times: each press writes the same string,
-//!    no state accumulation)
+//!   no state accumulation)
 
 #![allow(non_snake_case)]
 #![allow(clippy::expect_used)]
@@ -36,7 +36,7 @@
 
 use monocle_config::MonocleConfig;
 use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
-use monocle_core::tui::state::{Action, AppMode, FocusSnapshot};
+use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_ipc::types::{ClientToServer, PermissionPromptPayload};
 use monocle_tui::app::{
     apply_permission_prompt_queued, build_builtin_binding_layers, dispatch_key_event, App,

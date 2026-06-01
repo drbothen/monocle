@@ -340,6 +340,7 @@ fn clone_action(action: &Action) -> Action {
         Action::PermissionAcceptOnce => Action::PermissionAcceptOnce,
         Action::PermissionAcceptAlways => Action::PermissionAcceptAlways,
         Action::PermissionReject => Action::PermissionReject,
+        Action::PermissionTraceToSource => Action::PermissionTraceToSource,
         Action::SelectNext => Action::SelectNext,
         Action::SelectPrev => Action::SelectPrev,
         Action::Quit => Action::Quit,
