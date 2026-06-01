@@ -164,17 +164,22 @@ impl SessionRegistry {
                     SessionState::Active => monocle_core::engine::SessionStatus::Active,
                     SessionState::Stopped => monocle_core::engine::SessionStatus::Stopped,
                 };
-                monocle_core::engine::EnrichedSession::new(
+                // BC-2.06.006 PC-3 / ADV Pass-3 MAJOR-2: populate display_name with
+                // the harness engine's human-readable name so the IPC wire snapshot
+                // carries display_name for the TUI sessions filter (not a hardcoded
+                // TUI-side fallback). Phase 1 has a single harness ("claude-code").
+                monocle_core::engine::EnrichedSession::new_with_display_name(
                     entry.session_id.clone(),
                     "claude-code".to_owned(),
                     None,
                     None,
                     status,
                     None,
-                    None, // project_name: Phase 1 default
-                    None, // started_at: Phase 1 default
-                    0,    // token_count: Phase 1 default
-                    None, // cost_usd: Phase 1 default
+                    None,  // project_name: Phase 1 default
+                    None,  // started_at: Phase 1 default
+                    0,     // token_count: Phase 1 default
+                    None,  // cost_usd: Phase 1 default
+                    "Claude Code".to_owned(),
                 )
             })
             .collect()
