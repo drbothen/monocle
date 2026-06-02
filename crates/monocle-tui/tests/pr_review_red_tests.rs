@@ -30,12 +30,19 @@
 //! `#![allow(non_snake_case)]` is required because the factory-mandated naming
 //! convention uses uppercase BC identifiers.
 #![allow(non_snake_case)]
+// expect/unwrap are idiomatic assertion amplification in test code.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use monocle_config::MonocleConfig;
 use monocle_core::engine::{EnrichedSession, SessionStatus};
+use monocle_core::tui::binding::{KeyCode, KeyEvent, KeyModifiers};
+use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_ipc::types::HookType;
-use monocle_tui::app::{on_hook_event_received, App};
+use monocle_tui::app::{
+    build_builtin_binding_layers, dispatch_key_event, on_hook_event_received, App,
+};
 use monocle_tui::ui::event_ribbon::{trim_to_panel_height, HookEventRow};
+use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -324,5 +331,176 @@ fn test_BC_2_06_018_INV3_trim_to_positive_height_still_evicts() {
         4,
         "BC-2.06.018 INV-3: trim_to_panel_height(events, 4) must leave exactly 4 events. \
          The zero-height guard must not affect positive-height eviction."
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Finding 3 — selected_session_id never updated by cursor movement
+//
+// The AC-008 fix adds `app.selected_session_id: Option<String>` and gates
+// auto-scroll on it, but the ScrollDown/ScrollUp dispatch arms (which drive
+// the Sessions cursor in Dashboard/Sessions focus) did NOT update
+// `selected_session_id` when moving the cursor.
+//
+// As a result: after the user presses `j` to move to session 1, `selected_session_id`
+// remains `None`, `on_hook_event_received` falls back to `sessions.first()` (session 0),
+// and events for session 0 trigger auto-scroll even though the user is viewing
+// session 1's ribbon.
+//
+// Fix required:
+//   In the `ScrollDown { Dashboard/Sessions }` arm: set `app.selected_session_id`
+//   from `app.sessions.get(next)`.
+//   In the `ScrollUp { Dashboard/Sessions }` arm: set `app.selected_session_id`
+//   from `app.sessions.get(prev)`.
+// ---------------------------------------------------------------------------
+
+fn no_mod() -> KeyModifiers {
+    KeyModifiers::default()
+}
+
+/// After pressing `j` (ScrollDown → Sessions cursor down), `selected_session_id`
+/// must be updated to the newly highlighted session.
+///
+/// BC-2.06.018 AC-008: auto-scroll gates on the selected session. For this gate to
+/// work correctly after cursor movement, `selected_session_id` must track the cursor.
+#[test]
+fn test_BC_2_06_018_AC008_selected_session_id_updated_on_cursor_down() {
+    let mut app = App::new(MonocleConfig::default());
+    app.sessions = vec![make_session("sess-A"), make_session("sess-B")];
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    // Act: press j to move cursor from sess-A (index 0) to sess-B (index 1).
+    let j_key = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: no_mod(),
+    };
+    dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
+
+    // Assert: sessions cursor moved to index 1.
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(1),
+        "precondition: sessions cursor at index 1 after j"
+    );
+
+    // Assert: selected_session_id must reflect the new selection (sess-B).
+    // If this is None, on_hook_event_received falls back to sessions.first() (sess-A)
+    // and will incorrectly auto-scroll for sess-A events while the user views sess-B.
+    assert_eq!(
+        app.selected_session_id.as_deref(),
+        Some("sess-B"),
+        "BC-2.06.018 AC-008: selected_session_id must be updated to 'sess-B' after \
+         pressing j (cursor moves from 0 to 1). If None, auto-scroll gate falls back to \
+         sessions.first() (sess-A) — wrong session."
+    );
+}
+
+/// After pressing `k` (ScrollUp → Sessions cursor up), `selected_session_id`
+/// must be updated to the newly highlighted session.
+#[test]
+fn test_BC_2_06_018_AC008_selected_session_id_updated_on_cursor_up() {
+    let mut app = App::new(MonocleConfig::default());
+    app.sessions = vec![make_session("sess-A"), make_session("sess-B")];
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+    // Start at index 1 (sess-B selected).
+    sessions_state.list_state.select(Some(1));
+
+    // Act: press k to move cursor up from sess-B (index 1) to sess-A (index 0).
+    let k_key = KeyEvent {
+        code: KeyCode::Char('k'),
+        modifiers: no_mod(),
+    };
+    dispatch_key_event(&mut app, &k_key, &layers, &mut sessions_state);
+
+    // Assert: sessions cursor moved to index 0.
+    assert_eq!(
+        sessions_state.list_state.selected(),
+        Some(0),
+        "precondition: sessions cursor at index 0 after k"
+    );
+
+    // Assert: selected_session_id must reflect the new selection (sess-A).
+    assert_eq!(
+        app.selected_session_id.as_deref(),
+        Some("sess-A"),
+        "BC-2.06.018 AC-008: selected_session_id must be updated to 'sess-A' after \
+         pressing k (cursor moves from 1 to 0)."
+    );
+}
+
+/// End-to-end: after navigating to sess-B, an event for sess-A must NOT trigger auto-scroll.
+///
+/// This closes the gap: verifies that the cursor-sync + auto-scroll gate work together
+/// in the realistic scenario (user presses j → navigates to sess-B → event for sess-A
+/// arrives → ribbon scroll must NOT be disturbed).
+#[test]
+fn test_BC_2_06_018_AC008_auto_scroll_correct_after_cursor_move() {
+    let mut app = App::new(MonocleConfig::default());
+    app.sessions = vec![make_session("sess-A"), make_session("sess-B")];
+    app.mode = AppMode::Dashboard {
+        focused: FocusSnapshot::Sessions,
+    };
+
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+    sessions_state.list_state.select(Some(0));
+
+    // Seed the ribbon with some events so scroll index 3 is within bounds.
+    for _ in 0..5 {
+        on_hook_event_received(
+            &mut app,
+            HookType::Notification,
+            "sess-A".to_string(),
+            "{}".to_string(),
+            1u64,
+            0i64,
+        );
+    }
+
+    // Navigate: press j to select sess-B (index 1).
+    let j_key = KeyEvent {
+        code: KeyCode::Char('j'),
+        modifiers: no_mod(),
+    };
+    dispatch_key_event(&mut app, &j_key, &layers, &mut sessions_state);
+    // selected_session_id should now be "sess-B".
+    assert_eq!(
+        app.selected_session_id.as_deref(),
+        Some("sess-B"),
+        "precondition: cursor moved to sess-B via j"
+    );
+
+    // Manually set ribbon scroll to row 3 (user scrolled up in the ribbon).
+    app.event_ribbon_state.list_state.select(Some(3));
+    app.event_ribbon_state.pinned_top = false;
+
+    // Act: event arrives for sess-A (not the selected session sess-B).
+    on_hook_event_received(
+        &mut app,
+        HookType::Notification,
+        "sess-A".to_string(),
+        "{}".to_string(),
+        2u64,
+        0i64,
+    );
+
+    // Assert: ribbon scroll must NOT have moved to row 0.
+    // sess-A event must not disturb the ribbon when sess-B is selected.
+    assert_eq!(
+        app.event_ribbon_state.list_state.selected(),
+        Some(3),
+        "BC-2.06.018 AC-008: after navigating to sess-B via j, an event for sess-A must \
+         NOT reset ribbon scroll to row 0. scroll must remain at row 3."
     );
 }

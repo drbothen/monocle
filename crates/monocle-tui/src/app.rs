@@ -2245,12 +2245,16 @@ pub fn dispatch_key_event(
                         let prev_idx = sessions_state.list_state.selected();
                         let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
                         sessions_state.list_state.select(Some(next));
+                        // BC-2.06.018 AC-008: keep selected_session_id in sync with the
+                        // Sessions cursor so on_hook_event_received can gate auto-scroll
+                        // to the session the user is actually viewing.
+                        app.selected_session_id =
+                            app.sessions.get(next).map(|s| s.session_id.clone());
                         // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
                         if prev_idx != Some(next) {
-                            let new_sid = app.sessions.get(next).map(|s| s.session_id.clone());
                             crate::ui::event_ribbon::reset_on_session_change(
                                 &mut app.event_ribbon_state,
-                                new_sid.as_deref().unwrap_or(""),
+                                app.selected_session_id.as_deref().unwrap_or(""),
                             );
                         }
                     }
@@ -2278,12 +2282,15 @@ pub fn dispatch_key_event(
                     let prev_idx = sessions_state.list_state.selected();
                     let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
                     sessions_state.list_state.select(Some(prev));
+                    // BC-2.06.018 AC-008: keep selected_session_id in sync with the
+                    // Sessions cursor so on_hook_event_received can gate auto-scroll
+                    // to the session the user is actually viewing.
+                    app.selected_session_id = app.sessions.get(prev).map(|s| s.session_id.clone());
                     // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
                     if prev_idx != Some(prev) {
-                        let new_sid = app.sessions.get(prev).map(|s| s.session_id.clone());
                         crate::ui::event_ribbon::reset_on_session_change(
                             &mut app.event_ribbon_state,
-                            new_sid.as_deref().unwrap_or(""),
+                            app.selected_session_id.as_deref().unwrap_or(""),
                         );
                     }
                 }
