@@ -27,9 +27,9 @@
 //! # Test strategy
 //!
 //! The test calls the WRAPPER `commit_profile_selection(app, "")` with an empty
-//! `current_dir`.  HOME is temporarily unset to attempt to trigger the `Err` branch
-//! of `config_path()` (reachable on Linux; masked by `getpwuid_r` fallback on macOS).
-//! In both cases the hoisted guard fires first, so:
+//! `current_dir`.  HOME is temporarily unset via `temp_env::with_vars` to probe the
+//! `Err` branch of `config_path()` (reachable on Linux; masked by `getpwuid_r` fallback
+//! on macOS).  In both cases the hoisted guard fires first, so:
 //!
 //! - `project_profiles` must NOT contain the `""` key.
 //! - The picker must be closed (`profile_picker == None`).
@@ -46,14 +46,6 @@
 
 use monocle_config::{HarnessProfile, MonocleConfig};
 use monocle_tui::app::{commit_profile_selection, open_profile_picker, App};
-
-// ---------------------------------------------------------------------------
-// Env-serialisation lock
-//
-// HOME manipulation is process-wide. Serialise against any parallel test thread
-// that also calls code depending on HOME (e.g. config_path, directories crate).
-// ---------------------------------------------------------------------------
-static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -88,9 +80,14 @@ fn make_app_with_profile(id: &str) -> App {
 /// `commit_profile_selection` (WRAPPER) must never insert `project_profiles[""] = id`
 /// when `current_dir` is `""` (CWD resolution failure — INV-5 normalization contract).
 ///
-/// HOME is temporarily unset to probe `config_path()` reachability.  On Linux CI the
-/// Err branch fires but the hoisted guard has already returned.  On macOS the Ok branch
-/// fires; the guard still fires first.  Either way the empty-key must not appear.
+/// HOME is temporarily unset via `temp_env::with_vars` to probe `config_path()`
+/// reachability.  On Linux CI the Err branch fires but the hoisted guard has already
+/// returned.  On macOS the Ok branch fires; the guard still fires first.  Either way
+/// the empty-key must not appear.
+///
+/// `temp_env::with_vars` provides safe, scoped env-var mutation compliant with the
+/// `monocle-no-raw-env-mutation-in-tests` Semgrep rule (SS-conventions-anti-patterns.md
+/// §Test Conventions).
 ///
 /// Assertions:
 /// - `project_profiles` does not contain the `""` key.
@@ -98,66 +95,46 @@ fn make_app_with_profile(id: &str) -> App {
 /// - `status_message` is `Some(_)` (error surfaced to user).
 #[test]
 fn test_BC_2_07_005_commit_wrapper_err_branch_empty_cwd_does_not_insert_empty_key() {
-    let _lock = ENV_MUTEX
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    // temp_env::with_vars provides safe scoped env mutation.
+    // The None value unsets HOME for the duration of the closure.
+    temp_env::with_vars([("HOME", None::<&str>)], || {
+        let err_branch_triggered = MonocleConfig::config_path().is_err();
+        let mut app = make_app_with_profile("cc");
 
-    let original_home = std::env::var("HOME").ok();
+        // Open the picker so commit has a selection to process.
+        open_profile_picker(&mut app);
+        assert!(
+            app.profile_picker.is_some(),
+            "picker must be open before commit"
+        );
 
-    // Temporarily unset HOME to attempt to trigger the Err branch of config_path().
-    // SAFETY: ENV_MUTEX is held for the full HOME-unset window. This is the only test
-    // in this file that mutates HOME. The risk of cross-file parallel races is inherent
-    // to testing HOME-dependent code without a proper injection seam.
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::remove_var("HOME");
-    }
+        // Call the WRAPPER with empty current_dir while HOME is unset.
+        // The hoisted guard fires BEFORE config_path() on all platforms / all branches.
+        commit_profile_selection(&mut app, "");
 
-    let err_branch_triggered = MonocleConfig::config_path().is_err();
-    let mut app = make_app_with_profile("cc");
+        // ASSERTION 1: project_profiles must not contain the empty-string key on ANY branch.
+        assert!(
+            !app.config.project_profiles.contains_key(""),
+            "MAJOR-1 / BC-2.07.005 PC-5: commit_profile_selection(\"\") must never insert \
+             project_profiles[\"\"] = id. Found entry: {:?}. \
+             Err-branch triggered = {}. \
+             REGRESSION: the hoisted empty-CWD guard in commit_profile_selection was removed \
+             or moved past the config_path() call.",
+            app.config.project_profiles.get(""),
+            err_branch_triggered,
+        );
 
-    // Open the picker so commit has a selection to process.
-    open_profile_picker(&mut app);
-    assert!(
-        app.profile_picker.is_some(),
-        "picker must be open before commit"
-    );
+        // ASSERTION 2: picker must be closed (guard closes it before returning).
+        assert!(
+            app.profile_picker.is_none(),
+            "MAJOR-1 / BC-2.07.005 PC-5: picker must be closed after commit with empty CWD"
+        );
 
-    // Call the WRAPPER with empty current_dir while HOME is unset.
-    // The hoisted guard fires BEFORE config_path() on all platforms / all branches.
-    commit_profile_selection(&mut app, "");
-
-    // Restore HOME unconditionally before any assertion that could panic.
-    #[allow(unsafe_code)]
-    unsafe {
-        match &original_home {
-            Some(h) => std::env::set_var("HOME", h),
-            None => std::env::remove_var("HOME"),
-        }
-    }
-
-    // ASSERTION 1: project_profiles must not contain the empty-string key on ANY branch.
-    assert!(
-        !app.config.project_profiles.contains_key(""),
-        "MAJOR-1 / BC-2.07.005 PC-5: commit_profile_selection(\"\") must never insert \
-         project_profiles[\"\"] = id. Found entry: {:?}. \
-         Err-branch triggered = {}. \
-         REGRESSION: the hoisted empty-CWD guard in commit_profile_selection was removed \
-         or moved past the config_path() call.",
-        app.config.project_profiles.get(""),
-        err_branch_triggered,
-    );
-
-    // ASSERTION 2: picker must be closed (guard closes it before returning).
-    assert!(
-        app.profile_picker.is_none(),
-        "MAJOR-1 / BC-2.07.005 PC-5: picker must be closed after commit with empty CWD"
-    );
-
-    // ASSERTION 3: status_message must be set (error surfaced to user — not silent).
-    assert!(
-        app.status_message.is_some(),
-        "MAJOR-1 / BC-2.07.005 PC-5: status_message must be Some(_) after empty-CWD \
-         commit so the user sees the failure (not a silent drop)"
-    );
+        // ASSERTION 3: status_message must be set (error surfaced to user — not silent).
+        assert!(
+            app.status_message.is_some(),
+            "MAJOR-1 / BC-2.07.005 PC-5: status_message must be Some(_) after empty-CWD \
+             commit so the user sees the failure (not a silent drop)"
+        );
+    });
 }
