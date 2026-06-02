@@ -70,6 +70,10 @@ serde_json = { workspace = true }
 # unicode-width is now a normal [dependencies] entry (promoted for production use in
 # render_generic_payload wrap-aware overflow detection — F-S027-P3-NIT-001).
 # The dev-dep entry is removed to avoid the duplicate; tests use the production dep.
+# temp-env: safe env-var isolation in tests (sync/async); required by Semgrep rule
+# monocle-no-raw-env-mutation-in-tests (SS-conventions-anti-patterns.md §Test Conventions).
+# NOT workspace = true per SS-deps-pin-manifest.md §Dev Dependencies (least-privilege).
+temp-env = { version = "0.3", features = ["async_closure"] }
 
 [lints]
 workspace = true

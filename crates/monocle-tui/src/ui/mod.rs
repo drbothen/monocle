@@ -5,6 +5,7 @@
 //! - `overlay`: Permission overlay rendering (S-027 fills the implementation;
 //!   module declared here per S-026 §File Structure Requirements).
 //! - `overlay_widget`: Overlay modal widget functions (S-027, BC-2.06.010/015/024).
+//! - `profile_picker_widget`: Profile picker modal widget (S-031, BC-2.07.004/005).
 //! - `status_bar`: Always-visible status bar widget (S-027, BC-2.06.019/020/021).
 //! - `event_ribbon`: Event Ribbon rolling log panel (S-028, BC-2.06.018).
 
@@ -12,5 +13,6 @@ pub mod event_ribbon;
 pub mod layout;
 pub mod overlay;
 pub mod overlay_widget;
+pub mod profile_picker_widget;
 pub mod sessions_panel;
 pub mod status_bar;

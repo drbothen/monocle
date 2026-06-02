@@ -347,6 +347,9 @@ fn clone_action(action: &Action) -> Action {
         Action::ScrollUp => Action::ScrollUp,
         Action::Quit => Action::Quit,
         Action::Noop => Action::Noop,
+        // S-031 (BC-2.07.005 INV-1): ProfilePicker is a Global-layer action and must
+        // be cloneable so resolve_binding can return it from the BindingLayers table.
+        Action::ProfilePicker => Action::ProfilePicker,
         // Non-exhaustive guard: new Action variants added in future waves are treated
         // as Noop until the binding resolver is updated to handle them explicitly.
         // This is safe because BindingLayers storage is controlled by monocle-tui,
