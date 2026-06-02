@@ -108,7 +108,7 @@ All tests passed at time of recording. Relevant test file → passing count:
 | `filter_sessions.rs` | 13 | 13 |
 | `event_ribbon.rs` | 14 | 14 |
 | `render_frame_integration_s028.rs` | 11 (3 ignored: adv_pass5 RED gate) | 8 pass, 3 ignore |
-| `event_ribbon_real_defects.rs` | 9 (2 ignored: compile-gate RED) | 7 pass, 2 ignore |
+| `event_ribbon_real_defects.rs` | 8 | 8 |
 | `adv_pass4_scroll_dispatch.rs` | 4 | 4 |
 | `adv_pass4_pending_key_leak.rs` | included in monocle-tui suite | passes |
 | `adv_pass4_pc4_highlight.rs` | included in monocle-tui suite | passes |
@@ -121,4 +121,5 @@ Ignored tests (not evidence gaps):
   documenting future arch changes (ADV Pass-2: `EnrichedSession::display_name` field and
   `ServerToClient::HookEventReceived::timestamp_micros` field — both tracked for post-Wave-7
   implementation). These tests are intentionally ignored; they do NOT block AC coverage.
-- `event_ribbon_real_defects.rs`: 2 tests similarly ignored pending arch changes.
+- `event_ribbon_real_defects.rs`: 0 ignored — all 8 tests now pass (tests 10/11 from original
+  PR review were implemented and are fully green; stale "2 ignored" count corrected).
