@@ -284,7 +284,9 @@ pub struct App {
     /// auto-scroll behavior is consistent with the Sessions panel default (first session
     /// highlighted on startup).
     ///
-    /// Set by `dispatch_key_event` when `SelectNext`/`SelectPrev` advance the cursor.
+    /// Set by `dispatch_key_event` when `ScrollDown`/`ScrollUp` advance the Sessions
+    /// cursor (Dashboard/Sessions focus: j/k/↓/↑ resolve to these actions via per-context
+    /// binding — `SelectNext`/`SelectPrev` are unreachable in Dashboard mode per ADV Pass-6).
     /// Set by `render_frame` after the sessions list is (re-)populated to track the
     /// `SessionsPanelState::list_state.selected()` index.
     pub selected_session_id: Option<String>,
