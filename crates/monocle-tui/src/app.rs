@@ -713,14 +713,23 @@ pub fn on_hook_event_received(
     //   - Use app.selected_session_id if explicitly set (by dispatch_key_event or render_frame).
     //   - Fall back to app.sessions.first() when selected_session_id is None (startup default:
     //     the Sessions panel highlights the first row before any cursor movement).
-    let effective_selected = app
+    // Effective selected session resolution:
+    //   - Use app.selected_session_id if explicitly set (by dispatch_key_event / render_frame).
+    //   - Fall back to app.sessions.first() when selected_session_id is None (startup default:
+    //     Sessions panel highlights the first row before any cursor movement).
+    //   - When sessions is empty and selected_session_id is None, effective_selected is None;
+    //     in that case auto-scroll fires unconditionally (no session to discriminate against).
+    let effective_selected: Option<&str> = app
         .selected_session_id
         .as_deref()
         .or_else(|| app.sessions.first().map(|s| s.session_id.as_str()));
 
-    if !app.event_ribbon_state.pinned_top
-        && effective_selected == Some(session_id_owned.as_str())
-    {
+    // Gate: scroll only when !pinned AND (no discriminating session OR incoming matches selected).
+    let session_matches = effective_selected
+        .map(|sel| sel == session_id_owned.as_str())
+        .unwrap_or(true); // no sessions → no discrimination → any event may scroll
+
+    if !app.event_ribbon_state.pinned_top && session_matches {
         app.event_ribbon_state.list_state.select(Some(0));
     }
 }
