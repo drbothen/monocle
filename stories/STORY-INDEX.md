@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.27"
+version: "5.28"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-01T14:00:00Z
+timestamp: 2026-06-01T18:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -76,9 +76,9 @@ traces_to: .factory/specs/prd.md
 | S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | done | S-027, S-028, S-031 |
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | done | S-027, S-029 |
 | S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | done | S-029 |
-| S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | not_started | — |
+| S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | done | — |
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
-| S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | not_started | — |
+| S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 
 **Total stories:** 34 (30 product + 1 DTU + 1 prep + 2 admin)
@@ -452,6 +452,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.28
+
+**S-028 + S-031 DELIVERED — Wave 7 now 3/4 done** (2026-06-01):
+- S-031 (Profile Picker: Sticky-Per-Project + Ctrl-P, EPIC-07, 5 pts) squash-merged PR #33 to develop @ 8451486. BCs: BC-2.07.004 (sticky-per-project), BC-2.07.005 (Ctrl-P override). 9-pass adversarial convergence, 3 consecutive CLEAN. D-227.
+- S-028 (Sessions Panel Nucleo Filter + Event Ribbon, EPIC-06, 5 pts) squash-merged PR #34 to develop @ 682e5e5. BCs: BC-2.05.002, BC-2.05.004 (TUI consumer), BC-2.06.006 (nucleo filter), BC-2.06.018 (event ribbon). 10-pass adversarial convergence + S-031 integration-merge + 3-cycle PR review. Human-authorized scope expansion: timestamp_micros added to HookEventReceived IPC (daemon emit deferred to S-032) + EnrichedSession.display_name. BC version bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0, SS-ipc v1.10.0. D-228.
+- Wave 7: 3/4 done (18/23 pts). S-029 (5 pts) is SOLE remaining Wave 7 story — UNBLOCKED.
+- S-032 (Wave 8, draft) carries the deferred daemon fan-out obligation; does NOT block Wave 7 gate.
+- Totals: 31/33 done (187/195 pts). sprint-state v1.36. STORY-INDEX v5.28.
+- SE-16d monotonicity: v5.28 timestamp 2026-06-01 >= v5.27 timestamp 2026-06-01. PASS (same-day).
 
 ## §Trace v5.27
 

@@ -3,9 +3,9 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.0"
+version: "1.3"
 producer: state-manager
-timestamp: 2026-05-14T06:00:00Z
+timestamp: 2026-06-01T18:00:00Z
 input-hash: "[live-state]"
 ---
 
@@ -2254,3 +2254,34 @@ This test can be in a dedicated test file (ipc_outbound_writer.rs pattern) but m
 4. Only advance `phase:` to the next phase after BOTH checks pass: (a) per-story sum matches expected, (b) not_started count for current phase's waves = 0 (or only BLOCKED stories with non-blocking status).
 
 **Process fix:** Added POINTS-TALLY-RECONCILE to durable_task_register (resolved D-225) as a guard. state-manager must apply the re-sum discipline on every future wave transition (D-226, D-227, D-228 etc). The summary section in sprint-state.yaml is a CACHE — never trust it without re-verification from the story list.
+
+---
+
+## Wave 7 S-028/S-031 Cycle Process Lessons (D-228)
+
+### L-W7-S028-001: Architect must produce spec and guidance only — code must be written by implementer in isolated worktree [process-gap, CODIFY]
+
+**Date:** 2026-06-01
+**Severity:** process-gap (routing failure — wrong agent produced code artifact)
+**Origin:** D-228 S-028 cycle. The architect committed implementation code directly to develop (commit 32f319e) instead of producing a spec amendment and routing to the implementer-in-worktree. The branch had to be reset and the implementer re-dispatched.
+**Root cause:** Architect role boundary not enforced at the per-story dispatch level. The architect responded to a TDD gap by writing and committing Rust code rather than updating the BC/spec and routing to the implementer.
+**Codify:** Architect role = spec, ADRs, BC amendments, and guidance prose only. All Rust source code must be written by the implementer in an isolated worktree branch. Orchestrator must enforce this boundary at dispatch time — if an architect proposes to write code directly, route to implementer instead.
+**Guard:** PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP in durable_task_register.
+
+### L-W7-S028-002: Parallel implementer dispatches must use unique /tmp commit-message file paths per story [process-gap, CODIFY]
+
+**Date:** 2026-06-01
+**Severity:** process-gap (artifact labeling corruption — cross-story commit message contamination)
+**Origin:** D-228 S-028+S-031 parallel dispatch cycle. Two implementer agents running in parallel for S-028 and S-031 both used `/tmp/commit-msg` as the commit message file path. This caused cross-contamination: commit 881cde2 (S-028 branch) had the S-031 commit message; commits 71e9426/5266acd had misleading messages from the other story's context. This corrupts the git audit trail and can confuse PR-manager when selecting a merge strategy.
+**Root cause:** No per-story uniqueness constraint on /tmp file paths in the delivery skill or orchestrator dispatch protocol.
+**Codify:** Each story dispatch must use a unique commit-message path, e.g. `/tmp/commit-msg-S-{id}-{timestamp}`. Orchestrator must inject the unique path at dispatch time. Delivery skill must not hard-code `/tmp/commit-msg`.
+**Guard:** PROCESS-GAP-TMP-COMMIT-MSG-MIXUP in durable_task_register.
+
+### L-W7-S028-003: pr-manager must emit an explicit completion signal and must not return mid-process [process-gap, CODIFY]
+
+**Date:** 2026-06-01
+**Severity:** process-gap (workflow interruption — required two re-dispatches to complete merge)
+**Origin:** D-228 S-028 cycle. The pr-manager agent returned control to the orchestrator after completing steps 4-5 of the 9-step PR workflow twice in a row, requiring two separate re-dispatch cycles to complete the merge. This creates unnecessary context overhead and risks state loss between dispatches.
+**Root cause:** pr-manager skill does not have an explicit "COMPLETE" signal requirement. Agents can return early (at any intermediate step) without failure — the early return is semantically valid but operationally wrong when 4-5 remaining steps are still needed.
+**Codify:** pr-manager must complete all 9 steps in a single dispatch before returning. The skill should emit `PR-MANAGER COMPLETE: PR #NNN merged` as the terminal output. Orchestrator should treat any early return (before the COMPLETE signal) as a partial and re-dispatch with continuation prompt "continue from step N".
+**Guard:** PROCESS-GAP-PRMANAGER-EARLY-RETURN in durable_task_register.

@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.35"
+version: "1.36"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-01T12:00:00Z
+timestamp: 2026-06-01T18:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -392,12 +392,12 @@ stories:
     epic: EPIC-06
     wave: 7
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 7. BCs: BC-2.06.006, BC-2.06.018. Nucleo fuzzy filter + event ribbon. Depends on S-025, S-021."
+    completed_at: "2026-06-01"
+    pr_url: "https://github.com/jmagady/monocle/pull/34"
+    notes: "Wave 7. BCs: BC-2.05.002, BC-2.05.004 (TUI consumer), BC-2.06.006, BC-2.06.018. PR #34 squash-merged to develop @ 682e5e5. 10-pass adversarial convergence + integration-merge of S-031 + 3-cycle PR review. Human-authorized scope expansion: timestamp_micros added to HookEventReceived IPC (daemon emit deferred to S-032) + EnrichedSession.display_name. BC version bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0, SS-ipc v1.10.0. D-228."
 
   - id: S-029
     title: "Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve"
@@ -416,23 +416,23 @@ stories:
     epic: EPIC-07
     wave: 7
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. Depends on S-030, S-024, S-025."
+    completed_at: "2026-06-01"
+    pr_url: "https://github.com/jmagady/monocle/pull/33"
+    notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. PR #33 squash-merged to develop @ 8451486. 9-pass adversarial convergence (3 consecutive CLEAN). D-227."
 
 summary:
   total_stories: 33
-  not_started: 3
+  not_started: 1
   in_progress: 0
   review: 0
-  done: 29
+  done: 31
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 177
+  points_complete: 187
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,11 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.36 updates (2026-06-01):
+  # - S-031 flipped not_started → done (PR #33 squash-merged develop @ 8451486; BCs: BC-2.07.004/005 satisfied; 9-pass adversarial convergence 3 consecutive CLEAN; D-227)
+  # - S-028 flipped not_started → done (PR #34 squash-merged develop @ 682e5e5; BCs: BC-2.05.002/004/BC-2.06.006/018 satisfied; 10-pass adversarial convergence + S-031 integration-merge + 3-cycle PR review; human-authorized scope expansion timestamp_micros + display_name; BC bumps BC-2.05.004 v1.1.0/BC-2.06.006 v1.1.0/BC-2.06.018 v1.1.0/SS-ipc v1.10.0; D-228)
+  # - done: 29 → 31; not_started: 3 → 1; points_complete: 177 → 187
+  # - Wave 7: 3/4 done (18/23 pts). Remaining: S-029 (5pts, UNBLOCKED — sole remaining Wave 7 story). S-032 draft Wave 8 (discharges deferred daemon fan-out).
   # v1.35 updates (2026-06-01):
   # - S-027 flipped not_started → done (PR #32 squash-merged develop @ 3787ebd; BCs: BC-2.06.010/015/019..021/024; 18-pass adversarial convergence; D-226)
   # - S-029 notes updated: UNBLOCKED (S-027 delivered, its sole blocker)
