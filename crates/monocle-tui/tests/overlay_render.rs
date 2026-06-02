@@ -635,7 +635,7 @@ fn test_BC_2_06_019_render_status_bar_drop_zero_renders_mode_indicator() {
     let mut buf = make_buf(80, 1);
     let area = Rect::new(0, 0, 80, 1);
 
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     let text: String = (0..80u16)
         .map(|x| buf[(x, 0u16)].symbol().to_string())
@@ -666,7 +666,7 @@ fn test_BC_2_06_019_render_status_bar_drop_nonzero_renders_dropped_label_in_yell
     let mut buf = make_buf(80, 1);
     let area = Rect::new(0, 0, 80, 1);
 
-    render_status_bar(&mode, 1, 0, None, area, &mut buf);
+    render_status_bar(&mode, 1, 0, None, None, area, &mut buf);
 
     let text: String = (0..80u16)
         .map(|x| buf[(x, 0u16)].symbol().to_string())
@@ -887,7 +887,7 @@ fn test_BC_2_06_020_render_status_bar_breadcrumb_dashboard_sessions() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     let text: String = (0..2u16)
         .flat_map(|y| (0..80u16).map(move |x| (x, y)))
@@ -914,7 +914,7 @@ fn test_BC_2_06_020_render_status_bar_breadcrumb_overlay_singular_prompt() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 1, None, area, &mut buf);
+    render_status_bar(&mode, 0, 1, None, None, area, &mut buf);
 
     let text: String = (0..2u16)
         .flat_map(|y| (0..80u16).map(move |x| (x, y)))
@@ -948,7 +948,7 @@ fn test_BC_2_06_020_render_status_bar_breadcrumb_overlay_plural_prompts() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 3, None, area, &mut buf);
+    render_status_bar(&mode, 0, 3, None, None, area, &mut buf);
 
     let text: String = (0..2u16)
         .flat_map(|y| (0..80u16).map(move |x| (x, y)))
@@ -984,7 +984,7 @@ fn test_BC_2_06_021_render_status_bar_hint_line_dashboard_contains_key_hints() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     // Collect just the hint row (row 1 of a 2-row status bar).
     let hint_row: String = (0..80u16)
@@ -1019,7 +1019,7 @@ fn test_BC_2_06_021_render_status_bar_hint_line_overlay_contains_trace_stub_bind
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 1, None, area, &mut buf);
+    render_status_bar(&mode, 0, 1, None, None, area, &mut buf);
 
     // Collect just the hint row (row 1).
     let hint_row: String = (0..80u16)
@@ -1069,7 +1069,7 @@ fn test_BC_2_06_019_pc7_coexistence_drops_and_disconnect_both_visible_in_two_row
     let area = Rect::new(0, 0, 80, 2);
     let disconnect_msg = "[disconnected] reconnecting...";
 
-    render_status_bar(&mode, 42, 1, Some(disconnect_msg), area, &mut buf);
+    render_status_bar(&mode, 42, 1, Some(disconnect_msg), None, area, &mut buf);
 
     // Upper row (y=0) MUST contain "drops: 42".
     // RED against current impl: mutual-exclusion drops the counter when
@@ -1155,7 +1155,7 @@ fn test_BC_2_06_019_pc7_coexistence_drops_and_trace_stub_both_visible_in_two_row
     // BC-2.06.015 PC-1 canonical placeholder — exact text mandated by BC.
     let trace_msg = "[t] Trace to source \u{2014} Phase 2 feature (Static plane)";
 
-    render_status_bar(&mode, 7, 1, Some(trace_msg), area, &mut buf);
+    render_status_bar(&mode, 7, 1, Some(trace_msg), None, area, &mut buf);
 
     // Upper row (y=0) MUST contain "drops: 7".
     // RED against current impl: mutual-exclusion suppresses the drop counter
@@ -1215,7 +1215,7 @@ fn test_BC_2_06_019_pc7_drop_counter_only_no_status_message_stays_green() {
     let area = Rect::new(0, 0, 80, 2);
 
     // status_message=None — only the drop counter is active (GREEN control case).
-    render_status_bar(&mode, 42, 0, None, area, &mut buf);
+    render_status_bar(&mode, 42, 0, None, None, area, &mut buf);
 
     let upper_row: String = (0..80u16)
         .map(|x| buf[(x, 0u16)].symbol().to_string())
@@ -1258,7 +1258,7 @@ fn test_BC_2_06_019_status_bar_is_two_rows_breadcrumb_upper_hint_lower() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     // Row 0 (y=0) must contain the breadcrumb "Dashboard > Sessions".
     let upper_row: String = (0..80u16)
@@ -1307,7 +1307,7 @@ fn test_BC_2_06_020_breadcrumb_dashboard_event_ribbon_focus_renders_events() {
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
 
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     // Collect the upper breadcrumb row.
     let upper_row: String = (0..80u16)
@@ -1340,7 +1340,7 @@ fn test_BC_2_06_021_overlay_hint_exact_canonical_y_A_nr_keys() {
     };
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
-    render_status_bar(&mode, 0, 1, None, area, &mut buf);
+    render_status_bar(&mode, 0, 1, None, None, area, &mut buf);
 
     let hint_row: String = (0..80u16)
         .map(|x| buf[(x, 1u16)].symbol().to_string())
@@ -1387,7 +1387,7 @@ fn test_BC_2_06_021_filtering_hint_exact_canonical_string() {
     };
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     let hint_row: String = (0..80u16)
         .map(|x| buf[(x, 1u16)].symbol().to_string())
@@ -1414,7 +1414,7 @@ fn test_BC_2_06_021_fullscreen_hint_exact_canonical_string() {
     };
     let mut buf = make_buf(80, 2);
     let area = Rect::new(0, 0, 80, 2);
-    render_status_bar(&mode, 0, 0, None, area, &mut buf);
+    render_status_bar(&mode, 0, 0, None, None, area, &mut buf);
 
     let hint_row: String = (0..80u16)
         .map(|x| buf[(x, 1u16)].symbol().to_string())
@@ -1728,7 +1728,7 @@ fn test_BC_2_06_021_invariant_3_all_hint_lines_fit_in_79_display_columns() {
     for (label, mode, depth) in modes {
         let mut buf = make_buf(80, 2);
         let area = Rect::new(0, 0, 80, 2);
-        render_status_bar(&mode, 0, depth, None, area, &mut buf);
+        render_status_bar(&mode, 0, depth, None, None, area, &mut buf);
 
         // Collect just the hint row (row 1).
         let hint_row: String = (0..80u16)

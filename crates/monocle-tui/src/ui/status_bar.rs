@@ -65,6 +65,12 @@ use ratatui::{
 ///   When `Some(msg)`, it is rendered in yellow on the LOWER (hint) row, temporarily
 ///   superseding the keybinding hint. It NEVER displaces `drops: N` from the upper row
 ///   (BC-2.06.019 PC-7 coexistence guarantee — the mutual-exclusion pattern is forbidden).
+/// - `ccr_path`: the resolved CCR binary path from `App::ccr_path` (S-031, AC-007 /
+///   BC-2.07.005 PC-3). Rendered on the UPPER row (breadcrumb row, row 0) as
+///   `"CCR: <path>"` or `"CCR: none"`, appended after the breadcrumb and optional
+///   `"drops: N"` span. The lower (hint) row is reserved for keybinding hints and
+///   `status_message` — CCR path never appears there (BC-2.06.021 PC-1 / INV-3
+///   canonical hint-row strings must remain unchanged).
 /// - `area`: the `Rect` to render into (two rows per AC-008).
 /// - `buf`: the ratatui `Buffer` to write into.
 pub fn render_status_bar(
@@ -72,6 +78,7 @@ pub fn render_status_bar(
     drop_counter: u64,
     overlay_stack_depth: usize,
     status_message: Option<&str>,
+    ccr_path: Option<&std::path::Path>,
     area: Rect,
     buf: &mut Buffer,
 ) {
@@ -91,7 +98,7 @@ pub fn render_status_bar(
     let hint = hint_line_text(mode);
 
     if area.height == 1 {
-        // Single-row degraded layout: render mode indicator + drops:N (BC-2.06.019 PC-7).
+        // Single-row degraded layout: render mode indicator + drops:N + CCR (BC-2.06.019 PC-7).
         // When area.height == 1, there is no room for the hint row.  The drop counter
         // takes priority over status_message in this degraded case because drops:N signals
         // an ongoing data-loss condition (BC-2.06.019 PC-7 rationale: permanent operational
@@ -101,14 +108,21 @@ pub fn render_status_bar(
             status_message
                 .map(|msg| Span::styled(msg.to_string(), Style::default().fg(Color::Yellow)))
         });
+        let ccr_text = ccr_path_text(ccr_path);
 
         let line = match right_span {
             Some(right) => Line::from(vec![
                 Span::styled(indicator, Style::default().fg(Color::Cyan)),
                 Span::raw("  "),
                 right,
+                Span::raw("  "),
+                Span::styled(ccr_text, Style::default().fg(Color::DarkGray)),
             ]),
-            None => Line::from(Span::styled(indicator, Style::default().fg(Color::Cyan))),
+            None => Line::from(vec![
+                Span::styled(indicator, Style::default().fg(Color::Cyan)),
+                Span::raw("  "),
+                Span::styled(ccr_text, Style::default().fg(Color::DarkGray)),
+            ]),
         };
 
         Paragraph::new(line).render(area, buf);
@@ -119,10 +133,15 @@ pub fn render_status_bar(
             .constraints([Constraint::Length(1), Constraint::Min(1)])
             .split(area);
 
-        // Row 0 (upper — breadcrumb row): indicator + breadcrumb + drops:N.
+        // Row 0 (upper — breadcrumb row): indicator + breadcrumb + drops:N + CCR path.
         // drops:N is ALWAYS shown here when drop_counter > 0 — never suppressed by
         // status_message (BC-2.06.019 PC-7 coexistence guarantee).
+        // S-031 (AC-007 / BC-2.07.005 PC-3): CCR path is appended to the upper row,
+        // separated from the breadcrumb/drops area. This keeps the lower (hint) row
+        // stable (BC-2.06.021 PC-1 canonical strings unchanged).
         let drops_span: Option<Span<'static>> = drop_counter_span(drop_counter);
+        let ccr_text = ccr_path_text(ccr_path);
+        let ccr_span = Span::styled(ccr_text, Style::default().fg(Color::DarkGray));
         let top_spans: Vec<Span<'static>> = match drops_span {
             Some(drops) => vec![
                 Span::styled(indicator, Style::default().fg(Color::Cyan)),
@@ -130,11 +149,15 @@ pub fn render_status_bar(
                 Span::styled(breadcrumb, Style::default().fg(Color::DarkGray)),
                 Span::raw("  "),
                 drops,
+                Span::raw("  "),
+                ccr_span,
             ],
             None => vec![
                 Span::styled(indicator, Style::default().fg(Color::Cyan)),
                 Span::raw("  "),
                 Span::styled(breadcrumb, Style::default().fg(Color::DarkGray)),
+                Span::raw("  "),
+                ccr_span,
             ],
         };
         Paragraph::new(Line::from(top_spans)).render(rows[0], buf);
@@ -143,6 +166,8 @@ pub fn render_status_bar(
         // BC-2.06.019 PC-7: status_message (from disconnect, [t] stub, etc.) renders HERE,
         // on the lower row, temporarily superseding the keybinding hint. When None, the
         // canonical keybinding hint renders per BC-2.06.021.
+        // NOTE: CCR path is on the UPPER row (row 0) so that the hint row strings remain
+        // the canonical BC-2.06.021 PC-1 values (required by BC-2.06.021 INV-3 / exact tests).
         let lower_line: Line<'static> = if let Some(msg) = status_message {
             Line::from(Span::styled(
                 msg.to_string(),
@@ -237,6 +262,21 @@ pub fn hint_line_text(mode: &AppMode) -> String {
             // BC-2.06.021 PC-1 canonical: Esc: back  /: filter  q: quit
             "Esc: back  /: filter  q: quit".to_string()
         }
+    }
+}
+
+/// Build the CCR path footer string for the status bar (S-031, AC-007 / BC-2.07.005 PC-3).
+///
+/// Returns `"CCR: <path>"` when `ccr_path` is `Some`, `"CCR: none"` when `None`.
+/// This string is appended to the upper (breadcrumb) row (row 0) of the status bar when the
+/// profile picker successfully resolves a CCR path after a profile switch or at startup.
+///
+/// The caller (`render_status_bar`) decides whether to render this alongside the
+/// keybinding hint or separately — the exact layout integration is implemented in S-031.
+pub fn ccr_path_text(ccr_path: Option<&std::path::Path>) -> String {
+    match ccr_path {
+        Some(path) => format!("CCR: {}", path.display()),
+        None => "CCR: none".to_string(),
     }
 }
 
