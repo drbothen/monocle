@@ -409,7 +409,20 @@ pub fn push_event_row(events: &mut VecDeque<HookEventRow>, row: HookEventRow, pa
 ///
 /// Called after a terminal resize event to enforce the dynamic `panel_height` cap
 /// (BC-2.06.018 INV-3). Removes oldest entries (from the back) until `len <= panel_height`.
+///
+/// # Zero-height guard (BC-2.06.018 INV-3)
+///
+/// When `panel_height == 0` (transient terminal resize where the ribbon area collapses
+/// to zero rows) this function is a **no-op** — all events are preserved. A height of 0
+/// is a display artifact, not a directive to destroy event history. The events will be
+/// visible again once the terminal is resized back to a positive height.
 pub fn trim_to_panel_height(events: &mut VecDeque<HookEventRow>, panel_height: usize) {
+    // BC-2.06.018 INV-3: a panel_height of 0 is a transient display state (terminal
+    // resize collapsed the ribbon area). Destroying event history at height=0 causes
+    // permanent data loss when the terminal is enlarged again. Guard: no-op.
+    if panel_height == 0 {
+        return;
+    }
     // BC-2.06.018 INV-3: trim oldest (back) until len <= panel_height.
     while events.len() > panel_height {
         events.pop_back();
