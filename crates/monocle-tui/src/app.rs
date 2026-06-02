@@ -268,6 +268,26 @@ pub struct App {
     /// `None` means no pending prefix (the common case). Only meaningful in
     /// `Dashboard { focused: EventRibbon }` context; other modes do not set this field.
     pub pending_key: Option<char>,
+
+    /// Session ID of the currently selected session in the Sessions panel.
+    ///
+    /// Used by `on_hook_event_received` to gate auto-scroll (BC-2.06.018 AC-008 / PC-8):
+    /// auto-scroll to row 0 fires ONLY when the incoming event's session_id matches
+    /// the currently selected session. An event for a non-selected session must NOT
+    /// disturb the scroll position of the selected session's ribbon view.
+    ///
+    /// # Semantics
+    ///
+    /// `None` means no explicit selection has been recorded (e.g., before the first
+    /// render populates the sessions list). When `None`, `on_hook_event_received` falls
+    /// back to `app.sessions.first()` as the effective selected session so that the
+    /// auto-scroll behavior is consistent with the Sessions panel default (first session
+    /// highlighted on startup).
+    ///
+    /// Set by `dispatch_key_event` when `SelectNext`/`SelectPrev` advance the cursor.
+    /// Set by `render_frame` after the sessions list is (re-)populated to track the
+    /// `SessionsPanelState::list_state.selected()` index.
+    pub selected_session_id: Option<String>,
 }
 
 impl App {
@@ -314,6 +334,10 @@ impl App {
             // Set to Some('g') on first 'g' press in Dashboard { EventRibbon } focus;
             // cleared on second 'g' (fires gg jump) or any other key.
             pending_key: None,
+            // BC-2.06.018 AC-008 / PC-8: no selected session initially.
+            // on_hook_event_received falls back to sessions.first() when None.
+            // Set by dispatch_key_event (SelectNext/SelectPrev) and render_frame.
+            selected_session_id: None,
         }
     }
 }
@@ -663,6 +687,12 @@ pub fn on_hook_event_received(
     // BC-2.06.018 PC-3: use event_ribbon_panel_height as dynamic cap (updated by render_frame
     // each cycle; initialises to EVENT_RING_CAPACITY so the first push before any render is safe).
     // BC-2.05.004 PC-2 / SS-ipc: use the daemon's timestamp_micros (not TUI receive time).
+    //
+    // Capture session_id as a String before it is moved into hook_event_row_from_received.
+    // This copy is used by the AC-008 auto-scroll gate below to compare against the
+    // currently selected session. One heap copy per received event is acceptable at the
+    // expected event rate (bound by IPC throughput, not TUI frame rate).
+    let session_id_owned = session_id.clone();
     let row = crate::ui::event_ribbon::hook_event_row_from_received(
         hook_type,
         session_id,
@@ -672,10 +702,25 @@ pub fn on_hook_event_received(
     let cap = app.event_ribbon_panel_height;
     crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, cap);
 
-    // BC-2.06.018 PC-8 / AC-008: auto-scroll to row 0 (newest) when not pinned_top.
-    // The ribbon tracks all sessions; auto-scroll unconditionally resets to front when
-    // !pinned_top (any new event is potentially relevant to the selected session).
-    if !app.event_ribbon_state.pinned_top {
+    // BC-2.06.018 PC-8 / AC-008: auto-scroll to row 0 (newest) ONLY when:
+    //   1. !pinned_top (user has not pinned the scroll position), AND
+    //   2. The incoming event's session_id matches the currently selected session.
+    //
+    // An event for a non-selected session must NOT disturb the selected session's
+    // scroll position (BC-2.06.018 AC-008).
+    //
+    // Effective selected session resolution:
+    //   - Use app.selected_session_id if explicitly set (by dispatch_key_event or render_frame).
+    //   - Fall back to app.sessions.first() when selected_session_id is None (startup default:
+    //     the Sessions panel highlights the first row before any cursor movement).
+    let effective_selected = app
+        .selected_session_id
+        .as_deref()
+        .or_else(|| app.sessions.first().map(|s| s.session_id.as_str()));
+
+    if !app.event_ribbon_state.pinned_top
+        && effective_selected == Some(session_id_owned.as_str())
+    {
         app.event_ribbon_state.list_state.select(Some(0));
     }
 }
