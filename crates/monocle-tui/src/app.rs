@@ -20,7 +20,7 @@ use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
 use monocle_ipc::types::{
-    ClientToServer, HookEventRecord, PermissionPromptPayload, ServerToClient,
+    ClientToServer, HookEventRecord, HookType, PermissionPromptPayload, ServerToClient,
 };
 // PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
 // decision handler implementations. The re-export here ensures the type is visible at
@@ -174,6 +174,53 @@ pub struct App {
     /// (that counter tracks IPC channel packet drops, not ring evictions).
     pub event_ring: VecDeque<HookEventRecord>,
 
+    // -----------------------------------------------------------------------
+    // S-028 fields: sessions filter (BC-2.06.006) + event ribbon (BC-2.06.018)
+    // -----------------------------------------------------------------------
+    /// Shared nucleo fuzzy matcher for the sessions filter panel (BC-2.06.006 INV-1).
+    ///
+    /// Instantiated once at startup in `App::new()` and reused across all filter
+    /// keystrokes. MUST NOT be recreated per keystroke — recreating resets internal
+    /// caches and degrades performance at the P0 60fps target (BC-2.06.006 AC-005,
+    /// INV-1). The matcher is held here (not in `AppMode::Filtering`) to satisfy the
+    /// "shared Matcher" architecture constraint in S-028 §Architecture Compliance Rules.
+    pub matcher: nucleo::Matcher,
+
+    /// All hook events received from the daemon, across all sessions (BC-2.06.018).
+    ///
+    /// Populated from two sources (BC-2.05.002 + BC-2.05.004):
+    /// 1. `InitialState::ring_tail` (on connect) — backfills historical events via
+    ///    `on_initial_state_event_ribbon()`.
+    /// 2. `ServerToClient::HookEventReceived` messages (streaming) — appended via
+    ///    `on_hook_event_received()`.
+    ///
+    /// Contains events for ALL sessions. The Event Ribbon panel filters client-side
+    /// by the selected `session_id` at render time (BC-2.05.004 INV-3: no IPC-layer
+    /// filtering; BC-2.06.018 INV-1: no new IPC request on session-change).
+    ///
+    /// The `VecDeque` is bounded to `panel_height` entries (determined at render time)
+    /// per BC-2.06.018 PC-3. Oldest entries are popped from the back when full.
+    pub event_ribbon_events: VecDeque<crate::ui::event_ribbon::HookEventRow>,
+
+    /// Event ribbon scroll and pin state (BC-2.06.018 PC-5/PC-8/INV-1/AC-009).
+    ///
+    /// Stored in `App` (not in `render_frame` locals) so that:
+    /// 1. `on_hook_event_received` can auto-scroll to row 0 when `!pinned_top` (AC-008).
+    /// 2. `dispatch_key_event` calls `reset_on_session_change` in the `ScrollDown`/`ScrollUp`
+    ///    arms when the selected session changes (BC-2.06.018 INV-1 / AC-009).
+    pub event_ribbon_state: crate::ui::event_ribbon::EventRibbonState,
+
+    /// Last rendered event ribbon panel height (rows), captured in `render_frame`.
+    ///
+    /// Used as the dynamic cap for `push_event_row` in `on_hook_event_received`
+    /// (BC-2.06.018 PC-3: VecDeque bounded to `panel_height`). Initialises to
+    /// `EVENT_RING_CAPACITY` so the first push before any render sees a safe cap.
+    /// Updated each frame in `render_frame` when the EventRibbon widget is rendered.
+    pub event_ribbon_panel_height: usize,
+
+    // -----------------------------------------------------------------------
+    // S-031 fields: profile picker (BC-2.07.004/005) + CCR path (BC-2.07.005)
+    // -----------------------------------------------------------------------
     /// Profile picker transient overlay state (S-031, BC-2.07.004/005).
     ///
     /// `None` means the picker is closed. `Some(state)` means the picker is open
@@ -210,12 +257,47 @@ pub struct App {
     /// a handler that attempts to send before the channel is wired will produce a
     /// tracing WARN rather than silently discarding the message.
     pub ipc_tx: Option<tokio::sync::mpsc::Sender<ClientToServer>>,
+
+    /// Pending key prefix state for multi-keystroke sequences (BC-2.06.018 PC-5 / AC-007).
+    ///
+    /// Used to implement the vi-style `gg` (jump to newest) two-keystroke sequence:
+    /// - First `g` keypress (in `Dashboard { focused: EventRibbon }`): sets `pending_key = Some('g')`.
+    /// - Second `g` keypress while `pending_key == Some('g')`: fires `jump_newest` and clears.
+    /// - Any other key while pending: `pending_key` is cleared and the key is processed normally.
+    ///
+    /// `None` means no pending prefix (the common case). Only meaningful in
+    /// `Dashboard { focused: EventRibbon }` context; other modes do not set this field.
+    pub pending_key: Option<char>,
+
+    /// Session ID of the currently selected session in the Sessions panel.
+    ///
+    /// Used by `on_hook_event_received` to gate auto-scroll (BC-2.06.018 AC-008 / PC-8):
+    /// auto-scroll to row 0 fires ONLY when the incoming event's session_id matches
+    /// the currently selected session. An event for a non-selected session must NOT
+    /// disturb the scroll position of the selected session's ribbon view.
+    ///
+    /// # Semantics
+    ///
+    /// `None` means no explicit selection has been recorded (e.g., before the first
+    /// render populates the sessions list). When `None`, `on_hook_event_received` falls
+    /// back to `app.sessions.first()` as the effective selected session so that the
+    /// auto-scroll behavior is consistent with the Sessions panel default (first session
+    /// highlighted on startup).
+    ///
+    /// Set by `dispatch_key_event` when `ScrollDown`/`ScrollUp` advance the Sessions
+    /// cursor (Dashboard/Sessions focus: j/k/↓/↑ resolve to these actions via per-context
+    /// binding — `SelectNext`/`SelectPrev` are unreachable in Dashboard mode per ADV Pass-6).
+    /// Set by `render_frame` after the sessions list is (re-)populated to track the
+    /// `SessionsPanelState::list_state.selected()` index.
+    pub selected_session_id: Option<String>,
 }
 
 impl App {
     /// Construct a default `App` from the provided config.
     ///
     /// Starts in `Dashboard { focused: Sessions }` with empty collections.
+    /// The `nucleo::Matcher` is initialized once here (BC-2.06.006 AC-005 / INV-1:
+    /// shared Matcher — NOT recreated per keystroke).
     /// `ccr_path` is initialized at construction via `detect_ccr(&config)` so the
     /// status bar footer shows the CCR path from the very first render (AC-007 / AC-010 /
     /// BC-2.07.005 PC-3). Callers do NOT need to set `app.ccr_path` after construction.
@@ -232,8 +314,32 @@ impl App {
             overlay_stack: VecDeque::new(),
             status_message: None,
             event_ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
+            // S-028: nucleo Matcher initialized once at startup (BC-2.06.006 INV-1).
+            // nucleo::Config::DEFAULT is the standard configuration for case-insensitive
+            // fuzzy matching (SS-deps-pin-manifest.md §nucleo 0.5 / ADR-0002).
+            matcher: nucleo::Matcher::new(nucleo::Config::DEFAULT),
+            // S-028: event ribbon event log for all sessions (BC-2.06.018).
+            // Initially empty; populated by on_initial_state (ring_tail) and
+            // on_hook_event_received (streaming). No pre-allocated capacity because
+            // the effective cap is dynamic (panel_height, determined at render time).
+            event_ribbon_events: VecDeque::new(),
+            // S-028: ribbon scroll/pin state stored in App so dispatch and IPC handlers
+            // can mutate it (auto-scroll, session-change reset — BC-2.06.018 PC-5/PC-8/INV-1).
+            event_ribbon_state: crate::ui::event_ribbon::EventRibbonState::default(),
+            // S-028: initial cap is EVENT_RING_CAPACITY so the first push before any render is safe.
+            // Updated each frame by render_frame to the actual event_ribbon_area height.
+            event_ribbon_panel_height: EVENT_RING_CAPACITY,
+            // S-031: profile picker closed at startup (BC-2.07.004 INV-1).
             profile_picker: None,
             ipc_tx: None,
+            // BC-2.06.018 PC-5 / AC-007: no pending key prefix initially.
+            // Set to Some('g') on first 'g' press in Dashboard { EventRibbon } focus;
+            // cleared on second 'g' (fires gg jump) or any other key.
+            pending_key: None,
+            // BC-2.06.018 AC-008 / PC-8: no selected session initially.
+            // on_hook_event_received falls back to sessions.first() when None.
+            // Set by dispatch_key_event (SelectNext/SelectPrev) and render_frame.
+            selected_session_id: None,
         }
     }
 }
@@ -250,7 +356,7 @@ impl App {
 /// monocle-core. This is the `payload_to_modal()` function referenced in
 /// BC-2.06.004.
 ///
-/// # Mapping rules (BC-2.06.024 / AC-016 v1.10)
+/// # Mapping rules (BC-2.06.024 / AC-016)
 ///
 /// - `tool_name == "Bash"` AND `tool_input["command"]` present → `ToolPayload::Bash { command }`
 /// - `tool_name == "Bash"` AND `tool_input["command"]` absent → `ToolPayload::Generic`
@@ -409,10 +515,20 @@ pub fn on_initial_state(
     // Bounded to EVENT_RING_CAPACITY; ring_tail from daemon is already bounded
     // to RAM_RING_CAPACITY (4096) so overflow is not expected, but enforced defensively.
     app.event_ring.clear();
+    // S-028 (BC-2.05.002 PC-2): also pre-populate event_ribbon_events from ring_tail.
+    // Clear first to avoid duplicate entries on reconnect.
+    app.event_ribbon_events.clear();
     for record in ring_tail {
         if app.event_ring.len() == EVENT_RING_CAPACITY {
             app.event_ring.pop_front(); // FIFO eviction; does NOT increment drop_counter
         }
+        // Build a HookEventRow from the record and prepend to the ribbon rolling window.
+        let row = crate::ui::event_ribbon::hook_event_row_from_record(&record);
+        crate::ui::event_ribbon::push_event_row(
+            &mut app.event_ribbon_events,
+            row,
+            EVENT_RING_CAPACITY,
+        );
         app.event_ring.push_back(record);
     }
 
@@ -450,6 +566,20 @@ pub fn on_drop_counter_update(app: &mut App, drop_counter: u64) {
 /// path directly (F-S026-ADV2-HIGH-001 streaming-IPC handler testability).
 /// `handle_server_message` delegates to this function.
 pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPayload) {
+    // BC-2.06.018 PC-4: set pending=true on the most recent PreToolUse ribbon row
+    // matching the prompt's session_id BEFORE inserting into overlay_stack.
+    // This links the permission prompt to its corresponding ribbon event display.
+    let session_id = &payload.session_id;
+    for row in app.event_ribbon_events.iter_mut() {
+        if row.session_id == *session_id
+            && matches!(row.hook_type, monocle_ipc::types::HookType::PreToolUse)
+            && !row.pending
+        {
+            row.pending = true;
+            break; // Set only the most recent matching row (front = newest).
+        }
+    }
+
     apply_permission_prompt_queued(&mut app.overlay_stack, payload);
     // F-S025-ADV2-HIGH-003: mode update is App-level; transition() does not
     // mutate overlay_stack. Enter Overlay mode if not already in it.
@@ -516,6 +646,93 @@ pub fn on_transport_event(app: &mut App, event: TransportEvent) {
         _ => {
             tracing::debug!(event = ?event, "on_transport_event: unhandled variant (future extension)");
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S-028: Event ribbon IPC handlers (BC-2.05.002 + BC-2.05.004)
+// ---------------------------------------------------------------------------
+
+/// Handle `ServerToClient::HookEventReceived` — append new event to the ribbon log.
+///
+/// Called from `handle_server_message` for every `HookEventReceived` IPC message
+/// (BC-2.05.004). Converts the message fields into a `HookEventRow` and appends it
+/// to `app.event_ribbon_events` (the rolling log for all sessions).
+///
+/// # Rolling window (BC-2.06.018 PC-3)
+///
+/// Events are prepended to the front of `app.event_ribbon_events` (newest at front,
+/// oldest at back — BC-2.06.018 PC-2 newest-first ordering). When the `VecDeque` is
+/// at capacity (`panel_height` bound, determined at render time), the oldest event
+/// (back) is popped before prepending. The `panel_height` cap is enforced here using
+/// the compile-time fallback `EVENT_RING_CAPACITY` until the render-time cap is
+/// applied at `push_event_row` call sites.
+///
+/// # Client-side filtering (BC-2.05.004 INV-3)
+///
+/// ALL events (from all sessions) are appended unconditionally. Session filtering
+/// for display is deferred to the Event Ribbon render path (EventRibbon::render
+/// filters by `selected_session_id`). No IPC-layer filtering is performed.
+///
+/// Extracted as a `pub` free function for test-driven dispatch (same testability
+/// pattern as `on_permission_prompt_queued` — F-S026-ADV2-HIGH-001).
+pub fn on_hook_event_received(
+    app: &mut App,
+    hook_type: HookType,
+    session_id: String,
+    _payload_excerpt: String,
+    latency_ms: u64,
+    timestamp_micros: i64,
+) {
+    // BC-2.05.004: append new event to the ribbon log for all sessions (no IPC filtering).
+    // BC-2.06.018 PC-2: newest at front (prepend).
+    // BC-2.06.018 PC-3: use event_ribbon_panel_height as dynamic cap (updated by render_frame
+    // each cycle; initialises to EVENT_RING_CAPACITY so the first push before any render is safe).
+    // BC-2.05.004 PC-2 / SS-ipc: use the daemon's timestamp_micros (not TUI receive time).
+    //
+    // Capture session_id as a String before it is moved into hook_event_row_from_received.
+    // This copy is used by the AC-008 auto-scroll gate below to compare against the
+    // currently selected session. One heap copy per received event is acceptable at the
+    // expected event rate (bound by IPC throughput, not TUI frame rate).
+    let session_id_owned = session_id.clone();
+    let row = crate::ui::event_ribbon::hook_event_row_from_received(
+        hook_type,
+        session_id,
+        latency_ms,
+        timestamp_micros,
+    );
+    let cap = app.event_ribbon_panel_height;
+    crate::ui::event_ribbon::push_event_row(&mut app.event_ribbon_events, row, cap);
+
+    // BC-2.06.018 PC-8 / AC-008: auto-scroll to row 0 (newest) ONLY when:
+    //   1. !pinned_top (user has not pinned the scroll position), AND
+    //   2. The incoming event's session_id matches the currently selected session.
+    //
+    // An event for a non-selected session must NOT disturb the selected session's
+    // scroll position (BC-2.06.018 AC-008).
+    //
+    // Effective selected session resolution:
+    //   - Use app.selected_session_id if explicitly set (by dispatch_key_event or render_frame).
+    //   - Fall back to app.sessions.first() when selected_session_id is None (startup default:
+    //     the Sessions panel highlights the first row before any cursor movement).
+    // Effective selected session resolution:
+    //   - Use app.selected_session_id if explicitly set (by dispatch_key_event / render_frame).
+    //   - Fall back to app.sessions.first() when selected_session_id is None (startup default:
+    //     Sessions panel highlights the first row before any cursor movement).
+    //   - When sessions is empty and selected_session_id is None, effective_selected is None;
+    //     in that case auto-scroll fires unconditionally (no session to discriminate against).
+    let effective_selected: Option<&str> = app
+        .selected_session_id
+        .as_deref()
+        .or_else(|| app.sessions.first().map(|s| s.session_id.as_str()));
+
+    // Gate: scroll only when !pinned AND (no discriminating session OR incoming matches selected).
+    let session_matches = effective_selected
+        .map(|sel| sel == session_id_owned.as_str())
+        .unwrap_or(true); // no sessions → no discrimination → any event may scroll
+
+    if !app.event_ribbon_state.pinned_top && session_matches {
+        app.event_ribbon_state.list_state.select(Some(0));
     }
 }
 
@@ -1440,7 +1657,7 @@ pub async fn run() -> Result<()> {
     loop {
         // 1. Render the current frame (AC-001, AC-005, BLOCKER-004, BC-2.06.007 PC-7).
         terminal.draw(|frame| {
-            render_frame(&app, &mut sessions_state, frame);
+            render_frame(&mut app, &mut sessions_state, frame);
         })?;
 
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
@@ -1757,9 +1974,25 @@ fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         ServerToClient::PermissionPromptResolved { prompt_id } => {
             on_permission_prompt_resolved(app, prompt_id);
         }
-        ServerToClient::HookEventReceived { .. } => {
-            // Hook events update the event ribbon — handled in S-027.
-            tracing::trace!("HookEventReceived: event ribbon update deferred to S-027");
+        ServerToClient::HookEventReceived {
+            hook_type,
+            session_id,
+            payload_excerpt,
+            latency_ms,
+            timestamp_micros,
+        } => {
+            // S-028 (BC-2.05.004): delegate to on_hook_event_received for event ribbon
+            // population. The handler appends to app.event_ribbon_events (all sessions;
+            // client-side session filter applied at render time per BC-2.05.004 INV-3).
+            // BC-2.05.004 PC-2 / SS-ipc: pass daemon's timestamp_micros through.
+            on_hook_event_received(
+                app,
+                hook_type,
+                session_id,
+                payload_excerpt,
+                latency_ms,
+                timestamp_micros,
+            );
         }
     }
     Ok(())
@@ -1835,8 +2068,9 @@ fn send_permission_decision(app: &mut App, decision: PermissionDecisionKind) {
 /// # Behaviour
 ///
 /// 1. Resolves the key against `binding_layers` in the context of `app.mode`.
-/// 2. For `SelectNext` / `SelectPrev`: applies the AC-006 gate (only fires in
-///    `Dashboard { focused: Sessions }`); mutates `sessions_state` on pass.
+/// 2. For `SelectNext` / `SelectPrev`: no-op (Dashboard j/k/↑/↓ are shadowed by
+///    per-context `ScrollDown`/`ScrollUp`; these actions only reach here from
+///    non-Dashboard modes where no cursor mutation applies).
 /// 3. For all other actions: drives the `AppMode` state machine via
 ///    `monocle_core::tui::state::transition()`.  Overlay-stack mutations
 ///    (`PopOverlay`, `OverlayCycleNext`) are applied at App-level here (see
@@ -1853,7 +2087,7 @@ pub fn dispatch_key_event(
     use monocle_core::tui::state::{transition, Action};
 
     // ---------------------------------------------------------------------------
-    // AC-004 / BC-2.07.005 PC-9: picker-open pre-check.
+    // AC-004 / BC-2.07.005 PC-9: picker-open pre-check (S-031).
     //
     // When the picker is open ALL key events are consumed by the picker handler
     // BEFORE resolve_binding() runs. This enforces keyboard isolation — session
@@ -1899,49 +2133,176 @@ pub fn dispatch_key_event(
         return KeyOutcome::Continue;
     }
 
+    // S-028 (BC-2.06.006 INV-3): intercept Backspace in Filtering mode before
+    // resolve_binding — backspace removes the last character from the query.
+    // This is App-level mutation (query is a field in AppMode::Filtering, not in
+    // the binding type system). No transition() call needed.
+    if matches!(&app.mode, AppMode::Filtering { .. })
+        && core_key.code == KeyCode::Backspace
+        && !core_key.modifiers.ctrl
+        && !core_key.modifiers.alt
+    {
+        if let AppMode::Filtering { ref mut query, .. } = app.mode {
+            query.pop(); // BC-2.06.006 INV-3: removes last char; no-op on empty query
+        }
+        return KeyOutcome::Continue;
+    }
+
+    // BC-2.06.018 PC-5 / AC-007: intercept G / g / gg in Dashboard { EventRibbon } before
+    // resolve_binding (the binding table has no entries for 'G' or 'g' in this context).
+    // These are App-level mutations with no AppMode transition, matching the Backspace
+    // interception pattern above.
+    //
+    // - 'G' (uppercase): jump to OLDEST event (last index in newest-first list), pinned_top=true.
+    // - 'g' first press: set pending_key = Some('g') — no visible effect yet.
+    // - 'g' second press (pending_key == Some('g')): jump to NEWEST event (row 0), pinned_top=false.
+    // - Any other key while pending_key == Some('g'): clear pending_key and process normally.
+    if matches!(
+        &app.mode,
+        AppMode::Dashboard {
+            focused: FocusSnapshot::EventRibbon
+        }
+    ) && !core_key.modifiers.ctrl
+        && !core_key.modifiers.alt
+    {
+        match core_key.code {
+            KeyCode::Char('G') => {
+                // G → jump to oldest (bottom of newest-first list).
+                app.pending_key = None; // clear any pending prefix
+                crate::ui::event_ribbon::jump_oldest(
+                    &mut app.event_ribbon_state,
+                    &app.event_ribbon_events,
+                );
+                return KeyOutcome::Continue;
+            }
+            KeyCode::Char('g') => {
+                if app.pending_key == Some('g') {
+                    // Second 'g': fire gg → jump to newest (row 0).
+                    app.pending_key = None;
+                    crate::ui::event_ribbon::jump_newest(&mut app.event_ribbon_state);
+                } else {
+                    // First 'g': enter pending-key state; no ribbon change yet.
+                    app.pending_key = Some('g');
+                }
+                return KeyOutcome::Continue;
+            }
+            _ => {
+                // Any other key while pending: clear pending_key and fall through
+                // to normal resolve_binding dispatch.
+                if app.pending_key.is_some() {
+                    app.pending_key = None;
+                }
+            }
+        }
+    } else {
+        // Not in Dashboard { EventRibbon } — clear any stale pending_key (mode switched).
+        if app.pending_key.is_some() {
+            app.pending_key = None;
+        }
+    }
+
     let resolved = resolve_binding(core_key, &app.mode, binding_layers);
 
     match resolved {
         Some((Action::Noop, _)) | None => KeyOutcome::Continue,
 
         Some((Action::SelectNext, _)) => {
-            // AC-006: SelectNext is confined to Dashboard { focused: Sessions }.
-            // In Overlay or Fullscreen mode the keypress is dropped — no cursor
-            // mutation behind the overlay or in other modes.
-            if matches!(
-                app.mode,
+            // ADV Pass-6 NITPICK-1: Dashboard j/↓ now resolves to Action::ScrollDown via
+            // per-context binding (AppModeTag::Dashboard priority 3 > builtin priority 5),
+            // so SelectNext is NEVER produced in Dashboard mode. In non-Dashboard modes
+            // (Fullscreen, Overlay, Filtering) there is no cursor-move semantics — no-op.
+            KeyOutcome::Continue
+        }
+
+        Some((Action::SelectPrev, _)) => {
+            // ADV Pass-6 NITPICK-1: Dashboard k/↑ now resolves to Action::ScrollUp via
+            // per-context binding (AppModeTag::Dashboard priority 3 > builtin priority 5),
+            // so SelectPrev is NEVER produced in Dashboard mode. In non-Dashboard modes
+            // (Fullscreen, Overlay, Filtering) there is no cursor-move semantics — no-op.
+            KeyOutcome::Continue
+        }
+
+        Some((Action::FilterType(c), _)) => {
+            // S-028 (BC-2.06.006 PC-2): append character to the Filtering mode query.
+            // App-level mutation: transition() does not handle FilterType (query is not
+            // in the AppMode type system — it is a field of AppMode::Filtering).
+            if let AppMode::Filtering { ref mut query, .. } = app.mode {
+                query.push(c);
+            }
+            KeyOutcome::Continue
+        }
+
+        Some((Action::ScrollDown, _)) => {
+            // BC-2.06.018 AC-010 §2 (F-1 FIX): Action::ScrollDown is now the per-context
+            // binding for j/↓ in ALL Dashboard focuses (AppModeTag::Dashboard cannot
+            // discriminate by sub-focus). Dispatch checks the live focus:
+            //   - Sessions focus → sessions cursor down (same semantics as old SelectNext arm).
+            //   - EventRibbon focus (or any other) → scroll ribbon toward older events.
+            match &app.mode {
                 AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions
+                    focused: FocusSnapshot::Sessions,
+                } => {
+                    let len = app.sessions.len();
+                    if len > 0 {
+                        let prev_idx = sessions_state.list_state.selected();
+                        let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
+                        sessions_state.list_state.select(Some(next));
+                        // BC-2.06.018 AC-008: keep selected_session_id in sync with the
+                        // Sessions cursor so on_hook_event_received can gate auto-scroll
+                        // to the session the user is actually viewing.
+                        app.selected_session_id =
+                            app.sessions.get(next).map(|s| s.session_id.clone());
+                        // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                        if prev_idx != Some(next) {
+                            crate::ui::event_ribbon::reset_on_session_change(
+                                &mut app.event_ribbon_state,
+                                app.selected_session_id.as_deref().unwrap_or(""),
+                            );
+                        }
+                    }
                 }
-            ) {
-                let len = app.sessions.len();
-                if len > 0 {
-                    let next = sessions_state
-                        .list_state
-                        .selected()
-                        .map(|i| (i + 1).min(len - 1))
-                        .unwrap_or(0);
-                    sessions_state.list_state.select(Some(next));
+                _ => {
+                    // EventRibbon focus or non-Dashboard: scroll ribbon toward older events.
+                    crate::ui::event_ribbon::scroll_ribbon_down(
+                        &mut app.event_ribbon_state,
+                        &app.event_ribbon_events,
+                    );
                 }
             }
             KeyOutcome::Continue
         }
 
-        Some((Action::SelectPrev, _)) => {
-            // AC-006: SelectPrev is confined to Dashboard { focused: Sessions }.
-            if matches!(
-                app.mode,
+        Some((Action::ScrollUp, _)) => {
+            // BC-2.06.018 AC-010 §2 (F-1 FIX): Action::ScrollUp is now the per-context
+            // binding for k/↑ in ALL Dashboard focuses. Dispatch checks the live focus:
+            //   - Sessions focus → sessions cursor up (same semantics as old SelectPrev arm).
+            //   - EventRibbon focus (or any other) → scroll ribbon toward newer events.
+            match &app.mode {
                 AppMode::Dashboard {
-                    focused: FocusSnapshot::Sessions
+                    focused: FocusSnapshot::Sessions,
+                } if !app.sessions.is_empty() => {
+                    let prev_idx = sessions_state.list_state.selected();
+                    let prev = prev_idx.map(|i| i.saturating_sub(1)).unwrap_or(0);
+                    sessions_state.list_state.select(Some(prev));
+                    // BC-2.06.018 AC-008: keep selected_session_id in sync with the
+                    // Sessions cursor so on_hook_event_received can gate auto-scroll
+                    // to the session the user is actually viewing.
+                    app.selected_session_id = app.sessions.get(prev).map(|s| s.session_id.clone());
+                    // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                    if prev_idx != Some(prev) {
+                        crate::ui::event_ribbon::reset_on_session_change(
+                            &mut app.event_ribbon_state,
+                            app.selected_session_id.as_deref().unwrap_or(""),
+                        );
+                    }
                 }
-            ) && !app.sessions.is_empty()
-            {
-                let prev = sessions_state
-                    .list_state
-                    .selected()
-                    .map(|i| i.saturating_sub(1))
-                    .unwrap_or(0);
-                sessions_state.list_state.select(Some(prev));
+                _ => {
+                    // EventRibbon focus, empty sessions, or non-Dashboard: scroll ribbon toward newer events.
+                    crate::ui::event_ribbon::scroll_ribbon_up(
+                        &mut app.event_ribbon_state,
+                        &app.event_ribbon_events,
+                    );
+                }
             }
             KeyOutcome::Continue
         }
@@ -2061,14 +2422,15 @@ pub fn dispatch_key_event(
 /// counter (F-S025-ADV2-MED-002). The legacy `"[dropped: N] monocle"` / `"monocle"`
 /// single-string pattern was replaced by S-027.
 pub fn render_frame(
-    app: &App,
+    app: &mut App,
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
     frame: &mut ratatui::Frame,
 ) {
+    use crate::ui::event_ribbon::EventRibbon;
     use crate::ui::layout::{build_dashboard_layout, build_fullscreen_layout};
     use crate::ui::overlay_widget::{render_dimmed_background, render_overlay_widget};
     use crate::ui::profile_picker_widget::render_profile_picker;
-    use crate::ui::sessions_panel::SessionsPanel;
+    use crate::ui::sessions_panel::{render_sessions_filter, SessionsPanel};
     use monocle_core::tui::state::PanelId;
     use ratatui::{
         style::{Color, Style},
@@ -2079,16 +2441,68 @@ pub fn render_frame(
     use crate::ui::status_bar::render_status_bar;
 
     // Branch on app.mode for layout and panel rendering (BC-2.06.007 PC-7).
-    match &app.mode {
-        AppMode::Fullscreen { panel, .. } => {
+    // Clone mode to avoid borrow conflict when mutating app fields below.
+    let mode_tag = match &app.mode {
+        AppMode::Dashboard { .. } => 0u8,
+        AppMode::Filtering { .. } => 1u8,
+        AppMode::Overlay { .. } => 2u8,
+        AppMode::Fullscreen { .. } => 3u8,
+    };
+
+    match mode_tag {
+        3u8 => {
+            // Fullscreen mode.
+            let panel = match &app.mode {
+                AppMode::Fullscreen { panel, .. } => panel.clone(),
+                _ => unreachable!(),
+            };
             let layout = build_fullscreen_layout(frame.area());
-            match panel {
+            match &panel {
                 PanelId::Sessions => {
                     let p = SessionsPanel::new(app);
                     p.render(layout.panel_area, frame.buffer_mut(), sessions_state);
                 }
+                PanelId::EventRibbon => {
+                    // S-028 (AC-010): EventRibbon fullscreen.
+                    // Pre-compute and assign panel_height before borrowing app for widget.
+                    let fs_panel_height = layout.panel_area.height as usize;
+                    app.event_ribbon_panel_height = fs_panel_height;
+                    let selected_sid: Option<String> = sessions_state
+                        .list_state
+                        .selected()
+                        .and_then(|i| app.sessions.get(i))
+                        .map(|s| s.session_id.clone());
+                    // Render widget: split borrow — widget borrows app.event_ribbon_events
+                    // immutably; state is separate from the immutable widget fields.
+                    // Use a local state snapshot to avoid aliasing via &mut App.
+                    let mut local_ribbon_state = {
+                        use ratatui::widgets::ListState;
+                        let mut s = ListState::default();
+                        s.select(app.event_ribbon_state.list_state.selected());
+                        crate::ui::event_ribbon::EventRibbonState {
+                            list_state: s,
+                            pinned_top: app.event_ribbon_state.pinned_top,
+                        }
+                    };
+                    let sid_ref = selected_sid.as_deref();
+                    let widget = EventRibbon::new(app, sid_ref);
+                    StatefulWidget::render(
+                        widget,
+                        layout.panel_area,
+                        frame.buffer_mut(),
+                        &mut local_ribbon_state,
+                    );
+                    // Write back the updated state.
+                    app.event_ribbon_state
+                        .list_state
+                        .select(local_ribbon_state.list_state.selected());
+                    crate::ui::event_ribbon::trim_to_panel_height(
+                        &mut app.event_ribbon_events,
+                        fs_panel_height,
+                    );
+                }
                 _ => {
-                    // Future panels (EventRibbon fullscreen — S-028+).
+                    // Future panels.
                     Widget::render(
                         Paragraph::new(Line::from(Span::styled(
                             "Panel (S-028+)",
@@ -2100,8 +2514,6 @@ pub fn render_frame(
                 }
             }
             // Status bar: always full-brightness, never dimmed (AC-008 / BC-2.06.019 PC-1).
-            // S-027 (AC-012 / BC-2.06.019/020/021): wire render_status_bar into the
-            // production render path (replaces legacy 1-row Paragraph).
             render_status_bar(
                 &app.mode,
                 app.drop_counter,
@@ -2122,17 +2534,75 @@ pub fn render_frame(
             // Dashboard, Overlay, Filtering: all use dashboard 60/40 split.
             let layout = build_dashboard_layout(frame.area());
 
-            // Render the Sessions panel (left 60%).
-            let panel = SessionsPanel::new(app);
-            panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+            // S-028 (AC-010 / BC-2.06.006 PC-1): In Filtering mode, render the filter
+            // input box + scored session list instead of the regular SessionsPanel.
+            // In all other modes (Dashboard, Overlay), render SessionsPanel normally.
+            if let AppMode::Filtering {
+                panel: PanelId::Sessions,
+                ref query,
+                ..
+            } = app.mode.clone()
+            {
+                // BC-2.06.006 PC-1/PC-2/PC-8: filter input box + scored list.
+                render_sessions_filter(
+                    app,
+                    query.as_str(),
+                    layout.sessions_area,
+                    frame.buffer_mut(),
+                    sessions_state,
+                );
+            } else {
+                // Dashboard / Overlay: regular sessions panel.
+                let panel = SessionsPanel::new(app);
+                panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+            }
 
-            // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM to the dashboard background area
-            // (all rows EXCEPT the status bar area) when overlay is active.
-            // The status bar rows are excluded so they remain full-brightness (AC-008).
+            // S-028 (AC-010 / BC-2.06.018 PC-1): Render Event Ribbon in the right 40% area.
+            // Derive the selected session_id from the Sessions panel state.
+            let selected_sid: Option<String> = sessions_state
+                .list_state
+                .selected()
+                .and_then(|i| app.sessions.get(i))
+                .map(|s| s.session_id.clone());
+            let ribbon_area = layout.event_ribbon_area;
+            let panel_height = ribbon_area.height as usize;
+
+            // BC-2.06.018 PC-3: update the cached panel_height for push-time cap before render.
+            app.event_ribbon_panel_height = panel_height;
+
+            // Split borrow: EventRibbon borrows app.event_ribbon_events immutably (through &App).
+            // We need &mut app.event_ribbon_state for StatefulWidget::render. To avoid aliasing,
+            // extract a local copy of the state, render into it, then write back.
+            let mut local_ribbon_state = {
+                use ratatui::widgets::ListState;
+                let mut s = ListState::default();
+                s.select(app.event_ribbon_state.list_state.selected());
+                crate::ui::event_ribbon::EventRibbonState {
+                    list_state: s,
+                    pinned_top: app.event_ribbon_state.pinned_top,
+                }
+            };
+            let sid_ref = selected_sid.as_deref();
+            let widget = EventRibbon::new(app, sid_ref);
+            StatefulWidget::render(
+                widget,
+                ribbon_area,
+                frame.buffer_mut(),
+                &mut local_ribbon_state,
+            );
+            // Write back updated list scroll state (ratatui may adjust selected() during render).
+            app.event_ribbon_state
+                .list_state
+                .select(local_ribbon_state.list_state.selected());
+
+            // BC-2.06.018 INV-3: trim on resize — remove events beyond new panel_height.
+            crate::ui::event_ribbon::trim_to_panel_height(
+                &mut app.event_ribbon_events,
+                panel_height,
+            );
+
+            // S-027 (AC-002 / BC-2.06.010 PC-2): Apply DIM when overlay is active.
             if matches!(&app.mode, AppMode::Overlay { .. }) {
-                // Dim the full area minus the status bar area.
-                // layout.status_bar_area occupies the last Constraint::Length(2) rows.
-                // We dim the frame area above the status bar.
                 let full_area = frame.area();
                 let background_area = ratatui::layout::Rect {
                     x: full_area.x,
@@ -2144,20 +2614,13 @@ pub fn render_frame(
                 };
                 render_dimmed_background(background_area, frame.buffer_mut());
 
-                // Render the overlay modal centered within `background_area` (the
-                // non-status region). Using `full_area` here would allow `modal_rect`
-                // to center the modal over the full terminal including the status bar
-                // rows, causing the modal footer to bleed into the status bar at small
-                // terminal heights (AC-008 / BC-2.06.010 PC-1 / BC-2.06.019 PC-1).
                 if let Some(modal) = app.overlay_stack.front() {
                     let stack_depth = app.overlay_stack.len();
                     render_overlay_widget(modal, stack_depth, background_area, frame);
                 }
             }
 
-            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row
-            // status bar (breadcrumb row + hint line row). The status bar is NOT dimmed
-            // even in Overlay mode (BC-2.06.019 PC-1).
+            // S-027 (AC-012 / BC-2.06.019/020/021): Render the always-visible two-row status bar.
             render_status_bar(
                 &app.mode,
                 app.drop_counter,
@@ -2196,8 +2659,12 @@ pub fn render_frame(
 ///   filtering — not Esc). Not used as a quit path.
 /// - Tab → `Action::MoveFocus` (cycle Sessions ↔ EventRibbon)
 /// - Enter → `Action::EnterFullscreen { Sessions }` (expand current panel)
-/// - j / ↓ → `Action::SelectNext` (move selection down)
-/// - k / ↑ → `Action::SelectPrev` (move selection up)
+/// - j / ↓ → `Action::SelectNext` (builtin, non-Dashboard modes only); overridden by
+///   per-context `(j, Dashboard)` → `Action::ScrollDown` for all Dashboard focuses.
+///   The `ScrollDown` dispatch arm handles Sessions-cursor vs ribbon-scroll (BC-2.06.018 AC-010 §2).
+///   `SelectNext` is therefore unreachable in Dashboard mode (ADV Pass-6 NITPICK-1).
+/// - k / ↑ → `Action::SelectPrev` (builtin, non-Dashboard modes only); similarly overridden by
+///   `(k, Dashboard)` → `Action::ScrollUp`. `SelectPrev` unreachable in Dashboard mode.
 ///
 /// Future waves add user-custom and per-context layers; for now only builtin,
 /// global, and per-context layers are populated.
@@ -2325,6 +2792,123 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Overlay,
         ),
         Action::PermissionTraceToSource,
+    );
+
+    // S-028 (BC-2.06.006 PC-1 / AC-001): `/` → StartFilter { Sessions } in Dashboard.
+    // `f` is also an alias for filter entry (AC-001 'f' binding).
+    // Both are registered as per-context bindings for Dashboard mode so they only fire
+    // in Dashboard and not in other modes (e.g., typing '/' in Filtering appends to query
+    // via the SearchPrompt FilterType capture, not this binding).
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('/'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::StartFilter {
+            panel: PanelId::Sessions,
+        },
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('f'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::StartFilter {
+            panel: PanelId::Sessions,
+        },
+    );
+
+    // S-028 (BC-2.06.006 PC-2 exit / AC-003): Enter → CommitFilter in Filtering mode.
+    // Esc → CancelFilter in Filtering mode.
+    //
+    // Registered as per-context bindings for AppModeTag::Filtering:
+    // - In Filtering mode the SearchPrompt layer intercepts non-printable keys via the
+    //   search_prompt table (priority 1), then falls through. Since Enter/Esc must ONLY
+    //   map to CommitFilter/CancelFilter in Filtering (not in Dashboard where Enter →
+    //   EnterFullscreen), per-context (priority 3) is the correct layer.
+    // - The SearchPrompt layer for Filtering only captures printable chars as FilterType
+    //   and then looks up the search_prompt table for non-printables. Since Enter/Esc are
+    //   not in search_prompt, they fall through to per-context — where these bindings fire.
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Enter,
+                modifiers: no_mod,
+            },
+            AppModeTag::Filtering,
+        ),
+        Action::CommitFilter,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: no_mod,
+            },
+            AppModeTag::Filtering,
+        ),
+        Action::CancelFilter,
+    );
+
+    // BC-2.06.018 AC-010 §2 (F-1 FIX): j/↓ → Action::ScrollDown and k/↑ → Action::ScrollUp
+    // as per-context bindings for AppModeTag::Dashboard.
+    //
+    // These override the builtin SelectNext/SelectPrev in Dashboard mode. The dispatch
+    // arms for ScrollDown/ScrollUp check the focus (Sessions vs EventRibbon) and route
+    // accordingly — Sessions focus does cursor movement, EventRibbon focus scrolls the ribbon.
+    //
+    // Because AppModeTag cannot discriminate focus sub-state (Sessions vs EventRibbon),
+    // the focus discrimination lives in dispatch_key_event's ScrollDown/ScrollUp arms,
+    // not in the binding layer. resolve_binding returns ScrollDown/ScrollUp for ALL
+    // Dashboard focus sub-states; dispatch handles the split.
+    //
+    // The SelectNext/SelectPrev builtin bindings remain for non-Dashboard contexts
+    // (Fullscreen, etc.) where the session cursor semantics still apply.
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('j'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollDown,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollDown,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Char('k'),
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollUp,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: no_mod,
+            },
+            AppModeTag::Dashboard,
+        ),
+        Action::ScrollUp,
     );
 
     layers

@@ -379,7 +379,16 @@ impl EngineModule for ClaudeCodeModule {
         // Derive a session_id from the process pid — no hook events have arrived yet.
         let session_id = format!("claude-{}", proc.pid);
 
-        Ok(EnrichedSession::new(
+        // BC-2.06.006 PC-3 / ADV Pass-3 MAJOR-2: populate display_name from
+        // EngineMetadata::display_name ("Claude Code") so the IPC wire copy carries
+        // the engine's human-readable name. The TUI sessions filter matches against
+        // session.display_name — not a hardcoded TUI-side fallback map.
+        let display_name = self
+            .metadata()
+            .map(|m| m.display_name.to_string())
+            .unwrap_or_default();
+
+        Ok(EnrichedSession::new_with_display_name(
             session_id,
             "claude-code".to_string(),
             None, // transcript_path: no transcript path until hook events arrive
@@ -390,6 +399,7 @@ impl EngineModule for ClaudeCodeModule {
             None, // started_at: Phase 1 default
             0,    // token_count: Phase 1 default
             None, // cost_usd: Phase 1 default
+            display_name,
         ))
     }
 

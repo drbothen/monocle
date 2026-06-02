@@ -157,6 +157,14 @@ pub enum ServerToClient {
     ///
     /// Sent for each of the 5 hook endpoints: PreToolUse, Notification, Stop,
     /// SessionStart, UserPromptSubmit (BC-2.05.004 PC-1).
+    ///
+    /// # timestamp_micros (SS-ipc / BC-2.05.004 PC-2)
+    ///
+    /// The daemon captures `SystemTime::now()` ONCE at hook POST receipt time and
+    /// writes the same value to BOTH the ring entry (`HookEventRecord::timestamp_micros`)
+    /// AND this IPC message. The TUI MUST use this value for the ribbon's Timestamp column
+    /// rather than substituting `SystemTime::now()` at message-arrival time — which would
+    /// produce a wall-clock skew equal to the IPC round-trip latency.
     HookEventReceived {
         /// The discriminant of the received hook endpoint.
         hook_type: HookType,
@@ -167,6 +175,15 @@ pub enum ServerToClient {
         payload_excerpt: String,
         /// Wall-clock milliseconds from HTTP POST receipt to HTTP ACK sent to the caller.
         latency_ms: u64,
+        /// Unix epoch timestamp in microseconds at the moment the daemon received the hook
+        /// POST (per BC-2.05.004 PC-2 / SS-ipc). The daemon captures this ONCE and
+        /// writes the same value to BOTH this message and the corresponding
+        /// `HookEventRecord::timestamp_micros` in the ring (BC-2.05.004 PC-2 equality).
+        ///
+        /// The TUI MUST propagate this value to `HookEventRow::timestamp_micros` (not
+        /// substitute `SystemTime::now()` at TUI receive time) to maintain deterministic
+        /// wall-clock display in the Event Ribbon Timestamp column.
+        timestamp_micros: i64,
     },
 
     /// A new permission prompt has been queued and is awaiting a TUI decision.

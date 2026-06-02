@@ -28,14 +28,23 @@
 //!
 //! The status bar at the bottom of the panel shows `"[dropped: N]"` in yellow
 //! when `app.drop_counter > 0`; nothing when it is zero.
+//!
+//! # Filter mode (BC-2.06.006, S-028)
+//!
+//! When `app.mode == AppMode::Filtering { panel: PanelId::Sessions, .. }`:
+//! - A search input box is rendered at the top of the panel (AC-001).
+//! - Sessions are scored against `query` using `app.matcher` (nucleo, AC-002).
+//! - Non-matching sessions are hidden; score-0 sessions removed (AC-002).
+//! - Empty `query` shows all sessions (AC-004).
+//! - Zero matches renders "No sessions match filter" (BC-2.06.006 PC-8).
 
 use chrono::{DateTime, Utc};
 use monocle_core::engine::{EnrichedSession, SessionStatus};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    text::Line,
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
@@ -341,6 +350,322 @@ mod format_session_row_tests {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Filter-mode empty state (BC-2.06.006 PC-8)
+// ---------------------------------------------------------------------------
+
+/// Filter-mode zero-match empty state message (BC-2.06.006 PC-8, S-028 AC-002).
+///
+/// Rendered when `AppMode::Filtering { panel: Sessions, query, .. }` is active
+/// AND the nucleo matcher returns zero matches for `query`. Distinct from the
+/// base empty state (`SESSIONS_EMPTY_LINE_1`) which renders when `app.sessions`
+/// is empty entirely (no sessions running).
+///
+/// Single source of truth shared by production render and integration tests.
+pub const SESSIONS_FILTER_NO_MATCH: &str = "No sessions match filter";
+
+// ---------------------------------------------------------------------------
+// Filter input rendering (BC-2.06.006 PC-1..PC-4 — S-028 stub)
+// ---------------------------------------------------------------------------
+
+/// Render the sessions panel in filter mode (BC-2.06.006, S-028).
+///
+/// Called from `SessionsPanel::render` when `app.mode` is
+/// `AppMode::Filtering { panel: PanelId::Sessions, query, .. }`.
+///
+/// # Contract
+///
+/// - Renders a search input box at the top of `area` showing the current `query`
+///   with a cursor (AC-001, BC-2.06.006 PC-1).
+/// - Scores all `app.sessions` against `query` using `app.matcher` (nucleo);
+///   sessions with score > 0 are displayed sorted by descending score (AC-002,
+///   BC-2.06.006 PC-2).
+/// - When `query` is empty, all sessions are shown in insertion order (AC-004,
+///   BC-2.06.006 PC-2 empty-query case).
+/// - When no sessions match, renders `SESSIONS_FILTER_NO_MATCH` (BC-2.06.006 PC-8).
+/// - Matched character positions are rendered with a highlight style via
+///   `ratatui::text::Span::styled` (BC-2.06.006 PC-4).
+///
+/// # Implementation note (stub)
+///
+/// This function body is `todo!()` — the test-writer compiles tests against the
+/// correct signature. The implementer fills in the logic (S-028 stub discipline).
+pub fn render_sessions_filter(
+    app: &mut crate::app::App,
+    query: &str,
+    area: ratatui::layout::Rect,
+    buf: &mut ratatui::buffer::Buffer,
+    state: &mut SessionsPanelState,
+) {
+    use nucleo::{
+        pattern::{Atom, AtomKind, CaseMatching, Normalization},
+        Utf32Str,
+    };
+
+    // BC-2.06.006 PC-1: split area — input box at top (1 line), list below.
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .split(area);
+
+    let input_area = chunks[0];
+    let list_area = chunks[1];
+
+    // Render search input box with cursor indicator (AC-001).
+    let input_text = format!("/ {query}_");
+    Widget::render(
+        Paragraph::new(input_text).style(Style::default().fg(Color::Yellow)),
+        input_area,
+        buf,
+    );
+
+    // BC-2.06.006 PC-2: if query is empty, show all sessions in insertion order (AC-004).
+    if query.is_empty() {
+        let now = chrono::Utc::now();
+        let items: Vec<ListItem> = app
+            .sessions
+            .iter()
+            .map(|s| {
+                let row = crate::ui::sessions_panel::format_session_row(s, now);
+                ListItem::new(row)
+            })
+            .collect();
+        if items.is_empty() {
+            Widget::render(
+                Paragraph::new(Line::from(SESSIONS_EMPTY_LINE_1)),
+                list_area,
+                buf,
+            );
+        } else {
+            let list = List::new(items).highlight_style(Style::default().bg(Color::Blue));
+            StatefulWidget::render(list, list_area, buf, &mut state.list_state);
+        }
+        return;
+    }
+
+    // BC-2.06.006 PC-2 + PC-3: score sessions against query using nucleo Matcher.
+    // INV-1: use app.matcher (shared instance, not recreated per render/keystroke).
+    // render_sessions_filter accepts &mut App so it can borrow app.matcher as &mut.
+    // This satisfies BC-2.06.006 INV-1: a single Matcher instance shared across the
+    // filter session without recreating it on each render call.
+    let atom = Atom::new(
+        query,
+        CaseMatching::Ignore,
+        Normalization::Smart,
+        AtomKind::Fuzzy,
+        false, // not inverse match
+    );
+
+    // Score each session: match against project_name OR display_name.
+    // BC-2.06.006 PC-3: case-insensitive (CaseMatching::Ignore via Atom).
+    // BC-2.06.006 PC-3 (ADV Pass-2 architect change): prefer session.display_name directly
+    // (populated by daemon from EngineMetadata::display_name). When display_name is empty
+    // (legacy sessions or sessions created without display_name), fall back to deriving the
+    // display name from harness_type via harness_display_name(). This graceful degradation
+    // ensures backward compatibility while preferring the IPC-wire value for third-party
+    // engines not in the hardcoded map.
+    // Collect session data to avoid holding a borrow on app.sessions while also
+    // borrowing app.matcher (both are fields of app, which is &mut).
+    let session_data: Vec<(String, String, &monocle_core::engine::EnrichedSession)> = app
+        .sessions
+        .iter()
+        .map(|s| {
+            // BC-2.06.006 PC-3: use session.display_name when non-empty (IPC wire copy
+            // from daemon's EngineMetadata::display_name). Fall back to harness_display_name()
+            // when display_name is empty (legacy sessions without the field populated).
+            let display_name = if s.display_name.is_empty() {
+                harness_display_name(&s.harness_type)
+            } else {
+                s.display_name.clone()
+            };
+            let project = s.project_name.as_deref().unwrap_or("").to_string();
+            (project, display_name, s)
+        })
+        .collect();
+
+    // Track which field won the OR-match so the highlight is applied against the
+    // correct haystack (BC-2.06.006 PC-4 F-2 FIX). When display_name produces the
+    // higher score, we render the display_name text with matched-char highlights;
+    // when project_name wins (or ties), we render the project_name as before.
+    // `winning_display_name`: Some(display_name) when display_name score > project score,
+    // None otherwise (project_name wins or equal).
+    let mut scored: Vec<(u32, &monocle_core::engine::EnrichedSession, Option<String>)> =
+        session_data
+            .iter()
+            .filter_map(|(project, display_name, s)| {
+                let mut haystack_buf1: Vec<char> = Vec::new();
+                let mut haystack_buf2: Vec<char> = Vec::new();
+                let haystack_project = Utf32Str::new(project, &mut haystack_buf1);
+                let haystack_display = Utf32Str::new(display_name, &mut haystack_buf2);
+
+                // OR condition: match on either field; take the higher score.
+                let score_project = atom.score(haystack_project, &mut app.matcher);
+                let score_display = atom.score(haystack_display, &mut app.matcher);
+
+                let (score, winning_display) = match (score_project, score_display) {
+                    (Some(a), Some(b)) => {
+                        if b > a {
+                            // display_name strictly wins — highlight on display_name text
+                            (Some(b), Some(display_name.clone()))
+                        } else {
+                            // project_name wins or ties — highlight on project_name text
+                            (Some(a), None)
+                        }
+                    }
+                    (Some(a), None) => (Some(a), None),
+                    (None, Some(b)) => (Some(b), Some(display_name.clone())),
+                    (None, None) => (None, None),
+                };
+
+                score.map(|sc| (sc as u32, *s, winning_display))
+            })
+            .collect();
+
+    // Sort descending by score (BC-2.06.006 PC-3: highest score first; u32 for full range).
+    scored.sort_by(|a, b| b.0.cmp(&a.0));
+
+    if scored.is_empty() {
+        // BC-2.06.006 PC-8: zero matches → "No sessions match filter".
+        Widget::render(
+            Paragraph::new(Line::from(SESSIONS_FILTER_NO_MATCH)),
+            list_area,
+            buf,
+        );
+        return;
+    }
+
+    // BC-2.06.006 PC-4: render matched sessions with per-character match highlights.
+    //
+    // For each matched session, compute nucleo match indices against the WINNING
+    // match field (project_name or display_name, tracked in `winning_display`):
+    //   - winning_display = None  → project_name won → highlight project_name chars.
+    //   - winning_display = Some(dn) → display_name won → render display_name text
+    //     in the project column with display_name matched-char highlights.
+    //
+    // BC-2.06.006 PC-4 F-2 FIX: previously indices() was always called against
+    // project_name, so display_name-only matches produced no highlight (indices()
+    // returned None for the unmatched project_name → plain-row fallback).
+    //
+    // INV-1: reuse app.matcher (shared instance — not recreated per render).
+    let now = chrono::Utc::now();
+    let highlight_style = Style::default().add_modifier(Modifier::BOLD);
+    let items: Vec<ListItem> = scored
+        .iter()
+        .map(|(_score, s, winning_display)| {
+            let icon = harness_icon(&s.harness_type);
+            let project_name = s.project_name.as_deref().unwrap_or("");
+            let status = format_status(&s.status);
+            let tokens = format_token_count(s.token_count);
+            let cost = format_cost(s.cost_usd);
+            let uptime = format_uptime_at(s.started_at, now);
+            let id_str = if s.session_id.is_empty() {
+                "?"
+            } else {
+                &s.session_id
+            };
+
+            // BC-2.06.006 PC-4 F-2 FIX: compute indices against the winning match field.
+            // When display_name won, use display_name as both the haystack for indices()
+            // AND as the displayed text in the project column position.
+            let (highlight_text, haystack_str): (&str, &str) = match winning_display.as_deref() {
+                Some(dn) => (dn, dn),
+                None => (project_name, project_name),
+            };
+
+            // Compute nucleo match indices for the winning haystack.
+            // Use a fresh Vec per session — indices() fills it unconditionally.
+            let mut indices: Vec<u32> = Vec::new();
+            let mut haystack_chars_buf: Vec<char> = Vec::new();
+            let haystack = nucleo::Utf32Str::new(haystack_str, &mut haystack_chars_buf);
+            // indices() returns None when the atom does not match the haystack.
+            // For scored sessions the atom MUST match — but gracefully fall back to
+            // plain rendering if indices() unexpectedly returns None (defensive).
+            let has_indices = atom
+                .indices(haystack, &mut app.matcher, &mut indices)
+                .is_some();
+
+            if has_indices && !indices.is_empty() {
+                // Build character-level styled spans for the highlighted field.
+                // haystack_chars_buf holds the UTF-32 chars; indices are u32 offsets.
+                let matched: std::collections::HashSet<u32> = indices.into_iter().collect();
+                let mut field_spans: Vec<Span> = Vec::with_capacity(highlight_text.len() + 2);
+                // Collect consecutive char runs into single Span for efficiency.
+                let field_graphemes: Vec<char> = highlight_text.chars().collect();
+                let mut run_chars = String::new();
+                let mut run_is_bold: Option<bool> = None;
+                for (char_idx, &ch) in field_graphemes.iter().enumerate() {
+                    let is_match = matched.contains(&(char_idx as u32));
+                    let want_bold = is_match;
+                    match run_is_bold {
+                        Some(b) if b == want_bold => {
+                            run_chars.push(ch);
+                        }
+                        _ => {
+                            // Flush the previous run if non-empty.
+                            if !run_chars.is_empty() {
+                                if run_is_bold == Some(true) {
+                                    field_spans.push(Span::styled(
+                                        std::mem::take(&mut run_chars),
+                                        highlight_style,
+                                    ));
+                                } else {
+                                    field_spans.push(Span::raw(std::mem::take(&mut run_chars)));
+                                }
+                            }
+                            run_chars.push(ch);
+                            run_is_bold = Some(want_bold);
+                        }
+                    }
+                }
+                // Flush the last run.
+                if !run_chars.is_empty() {
+                    if run_is_bold == Some(true) {
+                        field_spans.push(Span::styled(run_chars, highlight_style));
+                    } else {
+                        field_spans.push(Span::raw(run_chars));
+                    }
+                }
+
+                // Assemble the full Line: prefix + highlighted field text + suffix.
+                let prefix = format!("{id_str} {icon} ");
+                let suffix = format!(" {status} {tokens} {cost} {uptime}");
+                let mut spans = Vec::with_capacity(field_spans.len() + 2);
+                spans.push(Span::raw(prefix));
+                spans.extend(field_spans);
+                spans.push(Span::raw(suffix));
+                ListItem::new(Line::from(spans))
+            } else {
+                // No indices or atom did not match: fall back to plain row string.
+                // This branch is defensive (atom must match because we scored the session).
+                let row = crate::ui::sessions_panel::format_session_row(s, now);
+                ListItem::new(row)
+            }
+        })
+        .collect();
+
+    let list = List::new(items).highlight_style(Style::default().bg(Color::Blue));
+    StatefulWidget::render(list, list_area, buf, &mut state.list_state);
+}
+
+/// Map harness_type string to its user-facing display name for fuzzy matching.
+///
+/// Used as a fallback by `render_sessions_filter` when `session.display_name` is empty
+/// (legacy sessions or sessions enriched before the display_name field was added).
+/// When `session.display_name` is non-empty, `render_sessions_filter` uses it directly
+/// per BC-2.06.006 PC-3 (ADV Pass-2 architect change).
+///
+/// "claude-code" → "Claude Code" enables matching on "cla", "Claude", "code", etc.
+fn harness_display_name(harness_type: &str) -> String {
+    match harness_type {
+        "claude-code" => "Claude Code".to_string(),
+        _ => harness_type.to_string(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sessions panel render state
+// ---------------------------------------------------------------------------
+
 /// Render state for `SessionsPanel` — tracks the currently selected row index.
 ///
 /// Wraps `ratatui::widgets::ListState` so that the implementer can call
@@ -404,7 +729,7 @@ fn format_status(status: &SessionStatus) -> &'static str {
     }
 }
 
-/// Format a single session row as the canonical BC-2.06.005 v1.0.6 column string.
+/// Format a single session row as the canonical BC-2.06.005 column string.
 ///
 /// Accepts an explicit `now` timestamp so callers can supply a deterministic
 /// value for testing (clock injection). Production callers pass `Utc::now()`.
@@ -469,7 +794,7 @@ impl StatefulWidget for SessionsPanel<'_> {
                 .sessions
                 .iter()
                 .map(|s| {
-                    // format_session_row encapsulates BC-2.06.005 v1.0.6 canonical
+                    // format_session_row encapsulates BC-2.06.005 canonical
                     // column order + separator. Pass `now` for deterministic testing.
                     let row = format_session_row(s, now);
                     ListItem::new(row)

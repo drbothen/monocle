@@ -467,7 +467,7 @@ fn test_BC_2_07_005_render_frame_renders_picker_modal_when_picker_is_some() {
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let all_text = buffer_text(&terminal);
@@ -495,7 +495,7 @@ fn test_BC_2_07_005_render_frame_picker_modal_shows_profile_list() {
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let all_text = buffer_text(&terminal);
@@ -540,7 +540,7 @@ fn test_BC_2_07_005_render_frame_picker_modal_shows_no_profiles_message() {
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let all_text = buffer_text(&terminal);
@@ -633,7 +633,7 @@ fn test_BC_2_07_005_render_frame_status_bar_shows_ccr_path_when_some() {
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let all_text = buffer_text(&terminal);
@@ -662,7 +662,7 @@ fn test_BC_2_07_005_render_frame_status_bar_shows_ccr_none_when_absent() {
     let mut terminal = Terminal::new(backend).expect("TestBackend terminal");
 
     terminal
-        .draw(|frame| render_frame(&app, &mut sessions_state, frame))
+        .draw(|frame| render_frame(&mut app, &mut sessions_state, frame))
         .expect("render_frame must not panic");
 
     let all_text = buffer_text(&terminal);

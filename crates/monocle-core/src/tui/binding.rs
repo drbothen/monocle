@@ -343,6 +343,8 @@ fn clone_action(action: &Action) -> Action {
         Action::PermissionTraceToSource => Action::PermissionTraceToSource,
         Action::SelectNext => Action::SelectNext,
         Action::SelectPrev => Action::SelectPrev,
+        Action::ScrollDown => Action::ScrollDown,
+        Action::ScrollUp => Action::ScrollUp,
         Action::Quit => Action::Quit,
         Action::Noop => Action::Noop,
         // S-031 (BC-2.07.005 INV-1): ProfilePicker is a Global-layer action and must

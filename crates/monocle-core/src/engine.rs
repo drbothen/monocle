@@ -181,6 +181,22 @@ pub struct EnrichedSession {
     /// `None` when the daemon has not received cost data for this session.
     /// `Some(0.0)` is a valid zero-cost session — not a sentinel.
     pub cost_usd: Option<f64>,
+
+    /// Human-readable display name for the harness engine that owns this session.
+    ///
+    /// Populated by the daemon from `EngineMetadata::display_name` during session
+    /// enrichment (e.g., `"Claude Code"` for the `claude-code` harness).
+    ///
+    /// Used by the TUI sessions filter (BC-2.06.006 PC-3 OR-match: sessions are
+    /// included when `project_name` OR `display_name` fuzzy-matches the query).
+    /// Sourced from the daemon's IPC wire copy — NOT from a hardcoded TUI-side lookup
+    /// table — so that third-party harness engines not listed in the TUI's map can
+    /// also be found by their display name.
+    ///
+    /// Defaults to `""` (empty) for sessions enriched before this field was added;
+    /// the TUI sessions filter treats an empty `display_name` as no additional match surface
+    /// (project_name OR-match still applies).
+    pub display_name: String,
 }
 
 impl EnrichedSession {
@@ -193,6 +209,9 @@ impl EnrichedSession {
     ///
     /// Pass `None, None, 0, None` for `project_name`, `started_at`, `token_count`, `cost_usd`
     /// in Phase 1 until richer enrichment populates them.
+    ///
+    /// `display_name` is populated from `EngineMetadata::display_name` (e.g., `"Claude Code"`).
+    /// Pass `""` for legacy callers that do not yet have the display name.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         session_id: String,
@@ -217,6 +236,47 @@ impl EnrichedSession {
             started_at,
             token_count,
             cost_usd,
+            // Default to empty — callers that do not have a display_name can pass ""
+            // explicitly via new_with_display_name; this keeps existing call sites stable.
+            display_name: String::new(),
+        }
+    }
+
+    /// Construct an `EnrichedSession` with an explicit `display_name`.
+    ///
+    /// BC-2.06.006 PC-3 / ADV Pass-2: the daemon populates `display_name` from
+    /// `EngineMetadata::display_name` during enrichment. This constructor is the
+    /// canonical path for daemon-side session construction and for tests that verify
+    /// display-name filter matching.
+    ///
+    /// `display_name` is the human-readable engine name (e.g., `"Claude Code"`).
+    /// It is used by the TUI sessions filter as an OR-match target alongside `project_name`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_with_display_name(
+        session_id: String,
+        harness_type: String,
+        transcript_path: Option<PathBuf>,
+        config_path: Option<PathBuf>,
+        status: SessionStatus,
+        last_event_micros: Option<i64>,
+        project_name: Option<String>,
+        started_at: Option<DateTime<Utc>>,
+        token_count: u64,
+        cost_usd: Option<f64>,
+        display_name: String,
+    ) -> Self {
+        Self {
+            session_id,
+            harness_type,
+            transcript_path,
+            config_path,
+            status,
+            last_event_micros,
+            project_name,
+            started_at,
+            token_count,
+            cost_usd,
+            display_name,
         }
     }
 }
