@@ -31,7 +31,7 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   - S-PHASE-3-PREP (3 pts) BLOCKED on upstream vsdd-factory spec-kit-mcp rc.19+; does NOT block Phase 3.
   - S-032 (5 pts, EPIC-05, Wave 8, draft) — deferred daemon fan-out (BC-2.05.004 v1.1.0 PC-2 obligation). Does NOT block wave-7 gate.
 - **Totals:** 33 stories (195 pts), **31 done (187 pts, 96%)**, 1 not_started Wave 7 (5 pts), 1 blocked. sprint-state v1.36. BC-INDEX v1.33 (113 BCs). STORY-INDEX v5.28.
-- **develop @ 08696f2** (CLAUDE.md checkpoint on top of 682e5e5 S-028 merge, D-229). **90 test suites, 0 failures**. clippy --all-targets clean. fmt clean.
+- **develop @ 1158e24** (this CLAUDE.md D-229 checkpoint commit). **90 test suites, 0 failures**. clippy --all-targets clean. fmt clean.
 - **9 workspace crates**: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 - **Artifact versions at last checkpoint (2026-06-02, STATE v6.78/D-229):** <!-- version-pin-historical: state snapshot at D-229; not navigation pointers. Use version-pin-registry.yaml as current source-of-truth. -->
   PRD v1.27.4, SS-tui v1.8.2, SS-ipc v1.10.0, SS-deps-pin-manifest v1.2.0, SS-conventions v1.32.6, SS-engine-module v1.1.26, ARCH-INDEX v1.0.25, ADR-0007 v1.0.8, ADR-0008 v1.0.6, BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.018 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6, BC-2.06.023 v1.5.0, BC-2.06.024 v1.1.0, BC-2.07.004 v1.0.2, BC-2.07.005 v1.3.1, S-026 v1.11, S-027 v1.10, EVAL-INDEX v1.7, VP-INDEX v1.17. MSRV: Rust 1.88 (Phase 1-2; time 0.3.47 RUSTSEC-2026-0009 floor). Phase 3 = Rust 1.92.
