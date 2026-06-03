@@ -2252,33 +2252,31 @@ pub fn dispatch_key_event(
             // BC-2.06.018 AC-010 §2 (F-1 FIX): Action::ScrollDown is now the per-context
             // binding for j/↓ in ALL Dashboard focuses (AppModeTag::Dashboard cannot
             // discriminate by sub-focus). Dispatch checks the live focus:
-            //   - Sessions focus → sessions cursor down (same semantics as old SelectNext arm).
+            //   - Sessions focus (non-empty list) → sessions cursor down (same semantics as
+            //     old SelectNext arm). Empty session list falls through to the ribbon arm.
             //   - EventRibbon focus (or any other) → scroll ribbon toward older events.
             match &app.mode {
                 AppMode::Dashboard {
                     focused: FocusSnapshot::Sessions,
-                } => {
+                } if !app.sessions.is_empty() => {
                     let len = app.sessions.len();
-                    if len > 0 {
-                        let prev_idx = sessions_state.list_state.selected();
-                        let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
-                        sessions_state.list_state.select(Some(next));
-                        // BC-2.06.018 AC-008: keep selected_session_id in sync with the
-                        // Sessions cursor so on_hook_event_received can gate auto-scroll
-                        // to the session the user is actually viewing.
-                        app.selected_session_id =
-                            app.sessions.get(next).map(|s| s.session_id.clone());
-                        // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
-                        if prev_idx != Some(next) {
-                            crate::ui::event_ribbon::reset_on_session_change(
-                                &mut app.event_ribbon_state,
-                                app.selected_session_id.as_deref().unwrap_or(""),
-                            );
-                        }
+                    let prev_idx = sessions_state.list_state.selected();
+                    let next = prev_idx.map(|i| (i + 1).min(len - 1)).unwrap_or(0);
+                    sessions_state.list_state.select(Some(next));
+                    // BC-2.06.018 AC-008: keep selected_session_id in sync with the
+                    // Sessions cursor so on_hook_event_received can gate auto-scroll
+                    // to the session the user is actually viewing.
+                    app.selected_session_id = app.sessions.get(next).map(|s| s.session_id.clone());
+                    // BC-2.06.018 INV-1 / AC-009: on session change, reset ribbon scroll.
+                    if prev_idx != Some(next) {
+                        crate::ui::event_ribbon::reset_on_session_change(
+                            &mut app.event_ribbon_state,
+                            app.selected_session_id.as_deref().unwrap_or(""),
+                        );
                     }
                 }
                 _ => {
-                    // EventRibbon focus or non-Dashboard: scroll ribbon toward older events.
+                    // EventRibbon focus, empty sessions, or non-Dashboard: scroll ribbon toward older events.
                     crate::ui::event_ribbon::scroll_ribbon_down(
                         &mut app.event_ribbon_state,
                         &app.event_ribbon_events,
@@ -2433,10 +2431,9 @@ pub fn dispatch_key_event(
 ///
 /// Drop-counter rendering is delegated to `render_status_bar`. When
 /// `app.drop_counter > 0`, `render_status_bar` emits `"drops: N"` in yellow on
-/// the UPPER (breadcrumb) row of the two-row status bar. When zero, no drop
-/// text is emitted. The Sessions panel widget does NOT duplicate the drop
-/// counter (F-S025-ADV2-MED-002). The legacy `"[dropped: N] monocle"` / `"monocle"`
-/// single-string pattern was replaced by S-027.
+/// the UPPER (breadcrumb) row of the two-row status bar (BC-2.06.019 PC-2).
+/// When the counter is zero, no drop text is emitted. The Sessions panel widget
+/// does NOT duplicate the drop counter (F-S025-ADV2-MED-002).
 pub fn render_frame(
     app: &mut App,
     sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,

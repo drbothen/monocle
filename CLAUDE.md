@@ -39,7 +39,7 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   1. In worktree: `cargo clippy --workspace --all-targets -- -D warnings` (CI uses --all-targets; CLAUDE.md Lint line MISSES test targets — HUMAN action pending PROCESS-GAP-CI-PARITY-1).
   2. From REPO ROOT (not worktree): `python3 scripts/check_version_pins.py` (POL-11) + `python3 scripts/check_structural_claims.py` (POL-12). Run from main checkout where .factory is mounted.
   3. Do NOT embed version-pin literals in test prose or source doc-comments (de-version them; POL-11 flags stale).
-  4. REGISTRY ATOMICITY: if BC/SS spec version bumped, update version-pin-registry.yaml in SAME burst and push factory-artifacts BEFORE the PR (CI's POL-11 checks out factory-artifacts).
+  4. REGISTRY ATOMICITY (L-S027-004): if BC/SS spec version bumped, update version-pin-registry.yaml in the SAME factory-artifacts commit as the spec file bump — these two writes are a single atomic unit. Committing the spec file without updating the registry breaks CI (POL-11 checks out factory-artifacts at PR-open time). Convergence-fix burst checklist: `[ ] version-pin-registry.yaml updated for every BC whose version changed in this burst` — verify before pushing factory-artifacts and before opening the PR.
   5. Use unique /tmp paths per story dispatch (PROCESS-GAP-TMP-COMMIT-MSG-MIXUP).
   6. Architect = spec only; all code to implementer-in-worktree (PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP).
   7. pr-manager must complete ALL 9 steps; orchestrator verifies merge via gh pr view (PROCESS-GAP-PRMANAGER-EARLY-RETURN).
