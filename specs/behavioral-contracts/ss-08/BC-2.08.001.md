@@ -1,0 +1,152 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-06-03T23:30:00Z
+phase: v1A-prd-delta
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
+input-hash: "4e2542c"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-08
+capability: CAP-008
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1A
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.08.001: Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created
+
+## Description
+
+`SessionManager::spawn_session()` receives a `SpawnRecipe` (from `ClaudeCodeModule::spawn_recipe()`),
+a `harness_id`, and a `profile_id`. Within 2 seconds it must call `SessionHostSpawner::spawn()`
+to start a `monocle-session-host` process, add a `SessionEntry` to the registry, write the
+`session-state.json` sidecar, and return the `session_id` to the caller. The session transitions
+through `Created → Launching` states during this call.
+
+## Preconditions
+
+1. `SessionManager` is initialized with a valid `spawner` (real or mock).
+2. `recipe` is a valid `SpawnRecipe` (binary exists, args non-empty, cwd valid).
+3. `harness_id` and `profile_id` are non-empty strings.
+4. The daemon's `runtime_dir` exists and is writable.
+5. `SessionHostSpawner::spawn()` is expected to succeed (pre-condition for happy-path).
+
+## Postconditions
+
+1. `SessionHostSpawner::spawn(session_id, recipe, runtime_dir)` is called within 2 seconds
+   of `spawn_session()` being invoked. The `session_id` is a UUID v4 rendered as a String
+   (generated via `uuid::Uuid::new_v4().to_string()` inside `spawn_session()`).
+2. A `SessionEntry` is added to `SessionManager.sessions` keyed by `session_id`. The entry's
+   initial `state` is `SessionState::Launching`.
+3. `session-state.json` is written to `<runtime_dir>/session-<session_id>.json` with the
+   schema specified in SS-session-manager.md §session-state.json schema:
+   - `schema_version: 1`
+   - `session_id`: the generated UUID string
+   - `pid`: the `SpawnedHostHandle.pid` returned by the spawner
+   - `socket_path`: `<runtime_dir>/session-<session_id>.sock`
+   - `child_pid`: the session-host's tracked child PID (available after session-host startup)
+   - `state: "Launching"`
+   - `project_root`: `recipe.cwd.to_string_lossy()`
+   - `harness_id`: the supplied `harness_id`
+   - `profile_id`: the supplied `profile_id`
+   - `started_at`: ISO-8601 UTC timestamp of spawn
+   - `display_name`: defaults to `"<harness_id> — <project_root_basename>"`
+   - `pty_rows: 24`, `pty_cols: 80` (initial default dimensions)
+4. `spawn_session()` returns `Ok(session_id)` (the UUID string).
+5. A `ServerToClient::SessionListUpdate` IPC message is published to the broker for all
+   connected TUI clients within one broker tick of the session being added to the registry.
+
+## Invariants
+
+1. The `session_id` MUST be unique across all sessions in the registry. UUID v4 generation
+   provides collision-free IDs in practice; the implementation MUST check for collisions and
+   regenerate if a collision is detected (probability negligible but the invariant is required
+   for correctness under adversarial conditions).
+2. `session-state.json` MUST be written atomically via `tempfile::persist` (per CLAUDE.md
+   conventions — no naked `std::fs::write`).
+3. `SessionState::Launching` is the transition state — the entry is visible in the registry
+   but the session-host has not yet confirmed readiness. The TUI may display a "Launching..."
+   indicator for sessions in this state.
+4. `spawn_session()` does NOT wait for the session-host to reach `SessionState::Running`. It
+   returns after the OS process is spawned and the sidecar is written. The
+   `SessionState::Running` transition happens asynchronously when the session-host's UDS
+   socket becomes connectable.
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-150 | `SessionHostSpawner::spawn()` fails (e.g., binary not found at `recipe.binary`) | `spawn_session()` returns `Err(SessionError::SpawnFailed { reason: ... })`; no `SessionEntry` is added to the registry; no sidecar is written |
+| EC-151 | `runtime_dir` is not writable (permissions error on sidecar write) | `spawn_session()` returns `Err(SessionError::SidecarWriteFailed { path: ..., reason: ... })`; the session-host OS process may have been spawned — `SessionManager` MUST send `DaemonToHost::Kill` to the just-spawned host to avoid orphans |
+| EC-152 | UUID collision (session_id already in registry) | Regenerate UUID; retry once; if second collision occurs (astronomically unlikely), return `Err(SessionError::SessionIdCollision)` |
+| EC-153 | `spawn_session()` called while re-discovery is still running | Re-discovery is guaranteed complete before UDS bind (BC-2.08.004 invariant); TUI cannot call `SpawnSession` before the UDS is up; this case is structurally impossible in correct deployment |
+
+## Canonical Test Vectors
+
+| Input | Expected Output | Category |
+|-------|----------------|----------|
+| Valid `SpawnRecipe`, `harness_id: "claude-code"`, `profile_id: "default"`, `MockSessionHostSpawner` | `Ok(session_id)` where `session_id` is a non-empty UUID string; `SessionEntry` in registry with `state: Launching`; sidecar written to `runtime_dir/session-<id>.json` | happy-path |
+| `MockSessionHostSpawner` configured to fail | `Err(SessionError::SpawnFailed {...})`; no registry entry; no sidecar | error |
+| Two rapid `spawn_session()` calls | Two distinct session_ids; two distinct sidecars; both entries in registry | happy-path |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | `spawn_session()` returns `Ok(session_id)` within 2s using `MockSessionHostSpawner` | unit |
+| VP-TBD | `SessionEntry` in registry with `state: Launching` after spawn | unit |
+| VP-TBD | `session-state.json` written atomically; contents match schema | unit |
+| VP-TBD | `SessionListUpdate` published to broker on successful spawn | integration |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
+| Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
+| L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
+| Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
+| Architecture Source | SS-session-manager.md v1.0.1 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema; ADR-0009 §native-detached-session-host-process-model |
+| Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
+
+## Related BCs
+
+- [BC-2.03.005] — depends on: spawn_recipe() provides the SpawnRecipe consumed by spawn_session()
+- [BC-2.08.002] — composes with: session-state.json written here is read during re-discovery
+- [BC-2.08.003] — composes with: session spawned here is later killed via kill_session()
+- [BC-2.08.006] — composes with: hook auto-injection in the SpawnRecipe is validated by this spawn
+
+## Architecture Anchors
+
+- `architecture/SS-session-manager.md#sessionmanager` — struct definition, public API, session lifecycle state machine
+- `architecture/SS-session-manager.md#session-statejson-schema` — sidecar schema specification
+- `architecture/adr/ADR-0009-native-session-host-process-model.md` — process model decision
+
+## Story Anchor
+
+S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (filled by story-writer)
+
+## VP Anchors
+
+VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.0.0
+
+**Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
+- BC-2.08.001 authored for SS-08 (new subsystem) as part of the v1A control-center pivot BC burst.
+- Covers: spawn_session() happy path, sidecar write, SessionListUpdate publication.
+- Design decision (in-scope): 2s timing bound from SS-session-manager.md architect proposal
+  preserved verbatim. The sidecar initial state is `Launching` not `Running` (session-host
+  has not yet confirmed PTY ready); this distinction matters for re-discovery.
+- SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

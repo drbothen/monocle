@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.9"
+version: "1.10"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-31T00:00:00Z
+timestamp: 2026-06-03T12:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.34"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.35"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -50,6 +50,11 @@ input-hash: "[pending]"
 | HS-EXP-008 | Killer Scenario: Dual Prompt Resolved in 6 Keystrokes via ratatui TestBackend | 7 | S-029, S-026, S-027 | must-pass |
 | HS-EXP-009 | Daemon Binary: runtime_dir Level 4 Fail-Fast Produces Exit Code 70 Not 1 | 4 | S-016 | must-pass |
 | HS-EXP-010 | Permission Overlay Lifecycle: Queue → Timeout-Resolved → Clear from Both Paths | 6 | S-022, S-026 | must-pass |
+| HS-EXP-011 | Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible | 8 | S-TBD-session-manager | must-pass |
+| HS-EXP-012 | Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window | 8 | S-TBD-session-manager | must-pass |
+| HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 8 | S-TBD-embedded-pty | must-pass |
+| HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — No hooks-settings.json Clobber | 8 | S-TBD-session-manager | must-pass |
+| HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 8 | S-TBD-embedded-pty | must-pass |
 
 ---
 
@@ -61,10 +66,11 @@ input-hash: "[pending]"
 | Wave 5 | HS-EXP-001, HS-EXP-002 | S-017, S-018 | SOQ-2 ordering; fail-open timeout |
 | Wave 6 | HS-EXP-003, HS-EXP-004, HS-EXP-005, HS-EXP-006, HS-EXP-010 | S-022, S-023, S-025, S-026 | InitialState gap-free; SOQ-3 ordering; state rebuild; Ctrl-\\ survival |
 | Wave 7 | HS-EXP-008 | S-026, S-027, S-029 | Killer scenario ≤6 keystrokes |
+| Wave 8 | HS-EXP-011, HS-EXP-012, HS-EXP-013, HS-EXP-014, HS-EXP-015 | S-TBD-session-manager, S-TBD-embedded-pty | Session persistence; re-discovery ordering; SUG-3 badge+bell; hook injection concurrency; keyboard fidelity |
 
-**Total expansion holdout scenarios: 10**
-**Coverage: ≥1 scenario per wave (Wave 4-7 all covered)**
-**Coverage: ≥1 scenario per BC grouping (SS-04, SS-05, SS-06, SS-07)**
+**Total expansion holdout scenarios: 15**
+**Coverage: ≥1 scenario per wave (Wave 4-8 all covered)**
+**Coverage: ≥1 scenario per BC grouping (SS-04, SS-05, SS-06, SS-07, SS-08, SS-09)**
 
 ---
 
@@ -82,6 +88,11 @@ input-hash: "[pending]"
 | HS-EXP-008 | BC-2.06.022, BC-2.06.009, BC-2.06.011 | Killer scenario; ≤6 keystrokes |
 | HS-EXP-009 | BC-2.04.006, BC-2.04.004 | runtime_dir Level 4 fail-fast exit code 70 |
 | HS-EXP-010 | BC-2.05.005, BC-2.06.011, BC-2.06.016 | Timeout-resolved + disconnect-cleared overlap |
+| HS-EXP-011 | BC-2.08.002, BC-2.08.004, BC-2.05.006 | Session-host survives daemon restart; re-discovery + IPC reconnect integration |
+| HS-EXP-012 | BC-2.08.004 | UDS bind blocked until re-discovery complete (startup ordering/race window) |
+| HS-EXP-013 | BC-2.09.009, BC-2.06.008 | SUG-3: permission badge+bell within one render tick while in EmbeddedTerminal |
+| HS-EXP-014 | BC-2.08.006, BC-2.08.001 | Hook auto-injection with per-session hooks file under concurrent spawns (no clobber) |
+| HS-EXP-015 | BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005 | Full-fidelity keyboard forwarding: all v1A input classes (Kitty + SGR + bracketed paste) |
 
 ---
 
@@ -93,7 +104,8 @@ This index covers Waves 4-7 only. The existing holdout scenarios for Waves 1-3 r
 Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 - `.factory/stories/holdout-scenarios.md` — Waves 1-3 (HS-W1-001..HS-W3-006, 14 scenarios)
 - This index + scenario files — Waves 4-7 (HS-EXP-001..HS-EXP-010, 10 scenarios)
-- **Combined total: 24 holdout scenarios**
+- This index + scenario files — Wave 8 v1A (HS-EXP-011..HS-EXP-015, 5 scenarios)
+- **Combined total: 29 holdout scenarios**
 
 ---
 
@@ -148,6 +160,24 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.10 — D-241 control-center v1A: 5 new holdout scenarios HS-EXP-011..HS-EXP-015 (2026-06-03T12:00:00Z)
+
+**Bump:** 1.9 → 1.10.
+**Scope:** Wave 8 v1A holdout scenarios added for SS-08 (Session Manager) and SS-09 (Embedded PTY) BCs introduced by the D-236 control-center pivot.
+
+New scenarios:
+- HS-EXP-011 (BC-2.08.002/004/05.006): session survives graceful daemon restart; PTY re-attached; SessionEntry visible after reconnect. Tests the integration timing property between BC-2.08.002 (session persistence) and BC-2.08.004 (UDS bind blocked until re-discovery) and BC-2.05.006 (TUI reconnect).
+- HS-EXP-012 (BC-2.08.004): re-discovery completes before UDS bind; concurrent TUI connect attempts during discovery window all fail. Tests the race-window ordering property (startup sequencing invariant).
+- HS-EXP-013 (BC-2.09.009/2.06.008): permission badge+bell within one render tick while in EmbeddedTerminal (SUG-3 guarantee). Tests the concurrent PTY output + permission prompt surface property that no AC captures in isolation.
+- HS-EXP-014 (BC-2.08.006/001): hook auto-injection under 5 concurrent spawns; no hooks-settings.json clobber. Tests the concurrent write race condition for the per-runtime-dir hook injection file.
+- HS-EXP-015 (BC-2.09.002/003/004/005): all v1A input classes (printable, control, arrows, Kitty CSI u, SGR mouse, bracketed paste) forwarded correctly in a single running EmbeddedTerminal session with adversarial 100-keystroke flood.
+
+Scenario Index table updated: 10 → 15 scenarios. Wave Coverage Summary updated to include Wave 8. BC Coverage Traceability table updated with 5 new rows. Combined total: 24 → 29 holdout scenarios. BC-INDEX input pin updated: "1.34" → "1.35".
+
+All 5 new scenarios carry `wave: 8` and `stories_tested: [S-TBD-session-manager]` or `[S-TBD-embedded-pty]` — these will be updated to canonical story IDs after story-writer decomposes the Wave 8 stories for the v1A scope.
+
+**SE-16d PASS:** 2026-06-03T12:00:00Z > 2026-06-03T00:00:00Z (v1.9). ARITHMETICALLY TRUE. PASS.
 
 ## §Trace v1.9 — MED-003: add S-027 to inputs[] for HS-EXP-008 evaluator coverage (2026-06-03)
 

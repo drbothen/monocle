@@ -1,0 +1,151 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-06-03T23:30:00Z
+phase: v1A-prd-delta
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md]
+input-hash: "18c22ec"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-03
+capability: CAP-003
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1A
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.03.007: spawn_recipe() Error Cases — BinaryNotFound and InvalidPath
+
+## Description
+
+`ClaudeCodeModule::spawn_recipe()` returns typed errors for two distinct failure modes:
+`EngineError::BinaryNotFound` when `which::which("claude")` cannot locate the harness
+binary on `PATH`, and `EngineError::InvalidPath` when `opts.hooks_settings_path` cannot
+be converted to a valid UTF-8 string (required for CLI arg passing). These two error modes
+are categorically distinct — `BinaryNotFound` means the harness is not installed;
+`InvalidPath` means the supplied configuration is structurally invalid. The distinction
+matters for diagnostic accuracy.
+
+## Preconditions
+
+1. `ClaudeCodeModule` is instantiated.
+2. `spawn_recipe()` is called with a `SpawnOptions` value.
+
+## Postconditions
+
+### BinaryNotFound path
+
+1. When `which::which("claude")` fails (the `claude` binary is not found on `PATH`),
+   `spawn_recipe()` returns `Err(EngineError::BinaryNotFound("claude".into()))`.
+2. The `BinaryNotFound` variant carries the string `"claude"` identifying which binary
+   was not found. The error message format is: `"harness binary not found: claude"`.
+3. On receiving `BinaryNotFound`, the daemon MUST surface a user-visible error in the TUI
+   status bar: `"claude binary not found — is Claude Code installed and on PATH?"`. The session
+   spawn fails; no `monocle-session-host` process is started.
+4. `BinaryNotFound` is NOT returned for any other failure mode. It is reserved exclusively
+   for `which::which` failures.
+
+### InvalidPath path
+
+5. When `opts.hooks_settings_path.to_str()` returns `None` (the path bytes are not valid
+   UTF-8), `spawn_recipe()` returns
+   `Err(EngineError::InvalidPath(format!("hooks_settings_path is not valid UTF-8: {:?}", opts.hooks_settings_path)))`.
+6. The `InvalidPath` variant carries a descriptive message including the problematic path
+   rendered via `{:?}` formatting. The error message format is:
+   `"invalid argument: hooks_settings_path is not valid UTF-8: <path_debug>"`.
+7. On receiving `InvalidPath`, the daemon MUST surface a user-visible error in the TUI
+   status bar: `"Session spawn failed: invalid hooks settings path (non-UTF-8)"`. The session
+   spawn fails; no `monocle-session-host` process is started.
+8. `InvalidPath` is NOT used for binary-not-found. The two variants MUST NOT be conflated.
+
+## Invariants
+
+1. **Semantic separation is mandatory:** `BinaryNotFound` = harness not installed (which failure).
+   `InvalidPath` = argument structurally invalid (UTF-8 conversion failure). The original draft
+   of this BC incorrectly proposed using `BinaryNotFound` for both cases. SS-engine-module-v2-delta.md
+   §Trace v1.0.1 (IMP-5) corrected this; this BC encodes the corrected taxonomy.
+2. `spawn_recipe()` checks binary existence FIRST (via `which::which`); if that succeeds,
+   it then checks UTF-8 path validity. The order of checks is: (1) binary, (2) args validity.
+   Early return on first failure.
+3. Neither error variant is retried by the caller. Both are terminal failures requiring user
+   intervention (install the binary, or fix the daemon's hooks-settings path generation).
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-108 | `claude` binary is on PATH but not executable (permission denied) | `which::which` succeeds (returns path); execution permission failure occurs later at spawn time (in `monocle-session-host`); `spawn_recipe()` returns `Ok(recipe)` — it does not check executability |
+| EC-109 | `hooks_settings_path` contains embedded null bytes (not just non-UTF-8) | `to_str()` returns `None` (null bytes invalidate path conversion); returns `Err(EngineError::InvalidPath(...))` — treated identically to non-UTF-8 |
+| EC-110 | `hooks_settings_path` is valid UTF-8 but the file does not exist at that path | `spawn_recipe()` returns `Ok(recipe)` — it does not check file existence; the `--settings <path>` arg is passed through; `claude` will fail to read the settings file at runtime |
+| EC-111 | Both `which::which` fails AND `hooks_settings_path` is invalid UTF-8 | Returns `Err(EngineError::BinaryNotFound("claude"))` — binary check is first; arg validation is never reached |
+
+## Canonical Test Vectors
+
+| Input | Expected Output | Category |
+|-------|----------------|----------|
+| `claude` not on PATH | `Err(EngineError::BinaryNotFound("claude"))` | error |
+| `hooks_settings_path` with `\xFF\xFE` non-UTF-8 bytes | `Err(EngineError::InvalidPath("hooks_settings_path is not valid UTF-8: ..."))` | error |
+| `claude` not on PATH AND invalid hooks path | `Err(EngineError::BinaryNotFound("claude"))` — binary checked first | error |
+| `claude` on PATH AND valid UTF-8 hooks path | `Ok(SpawnRecipe {...})` — no error | happy-path |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | `which::which` failure → `BinaryNotFound("claude")`; never `InvalidPath` | unit |
+| VP-TBD | Non-UTF-8 `hooks_settings_path` → `InvalidPath`; never `BinaryNotFound` | unit |
+| VP-TBD | Binary check precedes arg check (both fail: BinaryNotFound returned) | unit |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability §SS-03 |
+| Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
+| L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
+| Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
+| Architecture Source | SS-engine-module-v2-delta.md v1.0.1 §EngineError additions + §Semantic contract (IMP-5 InvalidPath correction) |
+| Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
+
+## Related BCs
+
+- [BC-2.03.005] — composes with: this BC covers the error branches of the same method
+- [BC-2.03.001] — depends on: EngineError is an extension of the error taxonomy used in the EngineModule trait
+
+## Architecture Anchors
+
+- `architecture/SS-engine-module-v2-delta.md#engineerror-additions` — BinaryNotFound and InvalidPath variant definitions
+- `architecture/SS-engine-module-v2-delta.md#semantic-contract` — IMP-5 semantic separation ruling
+
+## Story Anchor
+
+S-TBD — Same story as BC-2.03.005 (error handling in spawn_recipe(); filled by story-writer)
+
+## VP Anchors
+
+VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
+
+## §Trace v1.0.0
+
+**Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
+- BC-2.03.007 authored for SS-03 as part of the v1A control-center pivot BC burst.
+- Title corrected per SS-engine-module-v2-delta.md §Trace v1.0.1 (IMP-5): original architect
+  proposal was "spawn_recipe() with non-UTF-8 hooks_settings_path returns BinaryNotFound error"
+  — this is wrong. The corrected title covers both BinaryNotFound AND InvalidPath in one BC.
+  The architect's IMP-5 fix established that InvalidPath is a distinct variant; this BC encodes
+  the full error taxonomy for spawn_recipe().
+- Design decision (in-scope): Consolidated architect's proposed BC-2.03.007 (non-UTF-8 → InvalidPath)
+  and implicit BinaryNotFound error coverage into a single BC covering the full spawn_recipe() error
+  taxonomy. Rationale: both errors are preconditions of the same method; splitting them would create
+  two BCs covering two exit arms of one function, harming test vector organization.
+- SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

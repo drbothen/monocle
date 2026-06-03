@@ -1,14 +1,14 @@
 ---
 document_type: prd
 level: L3
-version: "1.27.4"
+version: "1.28.0"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-05-28T12:00:00Z
+timestamp: 2026-06-03T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "c63fd39"
-traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.17; 70 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-07 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15" # version-pin-historical
+input-hash: "3b9c73b"
+traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.35; 136 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-09 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15" # version-pin-historical: BC-INDEX v1.17 was canonical at PRD v1.27.4; updated to v1.35 and 70→136 BCs at v1.28.0 (D-241 control-center v1A)
 project: monocle
 supplements:
   - interface-definitions.md
@@ -128,6 +128,10 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.03.002 | ClaudeCodeModule Implementation (Strict-Basename Detect) | P0 |
 | BC-2.03.003 | HomeUnresolvable Error Contract | P0 |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods (hook_paths, spawn, preflight) | P0 |
+| BC-2.03.005 | ClaudeCodeModule.spawn_recipe() — Happy-Path Recipe Assembly | P0 |
+| BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | P0 |
+| BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | P0 |
+| BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | P1 |
 
 > Full contracts: `behavioral-contracts/ss-03/BC-2.03.NNN.md`
 
@@ -166,6 +170,8 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession | P0 |
 
 > Full contracts: `behavioral-contracts/ss-05/BC-2.05.NNN.md`
 
@@ -198,6 +204,8 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | P1 |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 |
+| BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | P1 |
+| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | P0 |
 
 > Full contracts: `behavioral-contracts/ss-06/BC-2.06.NNN.md`
 
@@ -215,6 +223,61 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | P1 |
 
 > Full contracts: `behavioral-contracts/ss-07/BC-2.07.NNN.md`
+
+### 2.8 Session Manager (CAP-008)
+
+> Architecture source: `architecture/SS-session-manager.md` | ARCH-INDEX: SS-08
+> Phase: v1A (control-center pivot D-236)
+
+Session Manager governs the complete lifecycle of monocle-managed harness sessions: spawning
+`monocle-session-host` child processes via `SessionHostSpawner`, maintaining the `SessionEntry`
+registry and `session-state.json` sidecars, killing sessions via `DaemonToHost::Kill`, re-discovering
+alive sessions after daemon restart (blocking UDS bind until complete), garbage-collecting terminated
+sessions after a 10-second grace period, and auto-injecting the `--settings` hook argument at spawn
+time. The detached session-host process model (ADR-0009) means sessions survive daemon restart and
+their PTY streams are re-attached by the new daemon instance, which is the primary differentiator vs.
+daemon-owned PTY approaches.
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | P0 |
+| BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | P0 |
+| BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | P0 |
+| BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | P0 |
+| BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 |
+| BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 |
+| BC-2.08.007 | Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach | P1 |
+
+> Full contracts: `behavioral-contracts/ss-08/BC-2.08.NNN.md`
+> Key architecture decisions: ADR-0009 (native detached session-host process model)
+
+### 2.9 Embedded PTY (CAP-009)
+
+> Architecture source: `architecture/SS-embedded-pty.md` | ARCH-INDEX: SS-09
+> Phase: v1A (control-center pivot D-236)
+
+Embedded PTY provides the in-TUI terminal widget that renders PTY output from `monocle-session-host`
+processes. The PTY byte pipeline is: IPC (`PtyOutput` message) → `vt100` parser → `tui-term` widget →
+ratatui frame. Full-fidelity keyboard forwarding covers printable characters, control keys, arrows,
+Kitty enhanced key protocol (CSI u sequences), SGR mouse events, and bracketed paste. The
+`EmbeddedTerminal` AppMode and `SessionCreation` wizard AppMode are the two PTY-active states;
+the SUG-3 guarantee ensures permission badge+bell are surfaced within one render tick even while
+the user is in `EmbeddedTerminal` mode — monocle never silently queues prompts.
+
+| BC ID | Title | Priority |
+|-------|-------|----------|
+| BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | P0 |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | P0 |
+| BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | P1 |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | P1 |
+| BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | P1 |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | P0 |
+| BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | P1 |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | P0 |
+| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | P0 |
+
+> Full contracts: `behavioral-contracts/ss-09/BC-2.09.NNN.md`
+> Key architecture decisions: ADR-0010 (PTY bytes shared on existing UDS IPC channel); ADR-0011 (PTY stack: native portable-pty + vt100 + tui-term)
 
 ---
 
@@ -1385,3 +1448,60 @@ v1.27.1 → v1.27.2; `timestamp` refreshed `2026-05-27T00:00:00Z` → `2026-05-2
 §Trace v1.27.2 added.
 
 SE-16d monotonicity PASS: v1.27.2 is a later version than v1.27.1. PASS.
+
+---
+
+## §Trace v1.27.3 — BC-2.06.024 row missing from §2.6 (patch)
+
+**Bump:** v1.27.2 → v1.27.3.
+**Predecessor pin:** v1.27.2 (F-P1D2-006 BC-2.06.023 §2.6 row; timestamp `2026-05-26T00:00:00Z`).
+
+BC-2.06.024 ("Permission Overlay: ToolPayload Body Rendering by Variant") was authored as part of the BC expansion but was absent from the §2.6 TUI BC index table in the PRD. Added in this patch. No other changes.
+
+**Changes made:** §2.6 TUI BC index table — BC-2.06.024 row added; `version` v1.27.2 → v1.27.3; `timestamp` refreshed.
+
+SE-16d monotonicity PASS: v1.27.3 > v1.27.2. PASS.
+
+---
+
+## §Trace v1.28.0 — D-241 control-center v1A BC delta (23 new BCs; §2.3/§2.5/§2.6/§2.8/§2.9 expansion)
+
+**Bump:** v1.27.3 → v1.28.0 (minor — new subsections §2.8 and §2.9 added; BC count 70 → 136 across all active subsystems).
+**Predecessor pin:** v1.27.3 (BC-2.06.024 §2.6 patch; 2026-06-03).
+**Timestamp:** 2026-06-03T12:00:00Z
+
+**Scope of v1.28.0 (control-center v1A BC integration):**
+
+This is a delta amendment reflecting the D-236 control-center pivot. monocle is no longer observe-only; the Session Manager (SS-08) and Embedded PTY (SS-09) subsystems join the Phase 1 scope.
+
+**New §2.8 — Session Manager (CAP-008):**
+
+7 BCs (BC-2.08.001..BC-2.08.007). Architecture source SS-session-manager.md. Covers session spawn (SessionHostSpawner 2s SLA + SessionEntry creation), session persistence across daemon restart (ADR-0009 detached process model), session kill (SIGTERM via DaemonToHost::Kill 500ms), re-discovery after daemon restart (blocks UDS bind until complete, 5s SLA), GC (10s grace period), hook auto-injection at spawn (`--settings` arg), and attach/detach (ScrollbackDump on attach; session-host stays alive on detach).
+
+**New §2.9 — Embedded PTY (CAP-009):**
+
+9 BCs (BC-2.09.001..BC-2.09.009). Architecture source SS-embedded-pty.md. Covers: PTY byte pipeline render latency (100ms IPC → vt100 → tui-term), full-fidelity keyboard forwarding (printable + control + arrows + Kitty CSI u), SGR mouse encoding, Kitty keyboard protocol, bracketed paste, resize with 50ms debounce, 1000-row scrollback, EmbeddedTerminal/SessionCreation AppMode transitions, and the SUG-3 guarantee (permission badge+bell within one render tick while in EmbeddedTerminal — monocle never silently queues prompts). Key decisions: ADR-0010 (PTY bytes over existing UDS IPC), ADR-0011 (native portable-pty + vt100 + tui-term stack).
+
+**Existing subsection additions:**
+
+- §2.3 Engine Module (CAP-003): 4 new BCs (BC-2.03.005..BC-2.03.008) — spawn_recipe() happy path, CCR injection, error cases, and default UnsupportedOperation.
+- §2.5 IPC (CAP-005): 2 new BCs (BC-2.05.009..BC-2.05.010) — PtyOutput fan-out (per-session bounded channel 1024 with surfaced drop counter); new ClientToServer variants (SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession).
+- §2.6 TUI (CAP-006): 1 new BC (BC-2.06.025) — multi-session / multi-project sessions panel grouped by project with fast switching and TUI lifecycle actions.
+
+**BC count change:**
+
+| Metric | Before (v1.27.3) | After (v1.28.0) |
+|--------|-----------------|----------------|
+| Total BCs in §2 | 72 | 95 |
+| Subsystems in §2 | 7 (SS-01..SS-07) | 9 (SS-01..SS-09) |
+| BC-INDEX version | v1.34 | v1.35 |
+
+Note: BC-INDEX tracks all 136 BCs (including SS-DTU 41 gene-source contracts). §2 of the PRD covers behavioral contracts authored by this project (not the SS-DTU gene-source contracts which are covered in the DTU assessment).
+
+**VP deferral note:** All 23 new BCs carry `VP Anchors: VP-TBD`. VP authoring for SS-08 and SS-09 BCs is deferred to the formal-hardening scheduling phase per the project's established pattern. Architect must author VPs at hardening phase scheduling (tracked per D-241).
+
+**SE-22 v2 producer declaration:** Known consumers with stale pins after this bump: VP-INDEX §References and individual VP files (dispatch: formal-verifier; not in this burst's scope per correct-agent-routing).
+
+**Changes made:** frontmatter `version` v1.27.3 → v1.28.0; `timestamp` refreshed; `traces_to:` BC-INDEX pin v1.34 → v1.35, BC count 70 → 136; §2.3 Engine Module — BC-2.03.005..008 rows added; §2.5 IPC — BC-2.05.009..010 rows added; §2.6 TUI — BC-2.06.024 (retroactive patch per v1.27.3) and BC-2.06.025 rows added; §2.8 Session Manager — new subsection with 7 BC rows; §2.9 Embedded PTY — new subsection with 9 BC rows; §Trace v1.27.3 and v1.28.0 added.
+
+SE-16d monotonicity PASS: 2026-06-03T12:00:00Z > 2026-05-28T12:00:00Z (v1.27.4 predecessor). ARITHMETICALLY TRUE. PASS.

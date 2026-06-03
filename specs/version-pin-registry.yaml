@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.34"
-  last_bump_commit: "[D-231 wave-7-gate sweep 2026-06-03 — PO BC-2.06.021 v1.0.7 + BC-INDEX v1.34]"
+  current_version: "1.35"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — 23 new BCs (SS-08/SS-09/SS-03/SS-05/SS-06), 113→136 BCs]"
   last_bump_date: "2026-06-03"
 
 STORY-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.9"
-  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — PO added S-027 input]"
+  current_version: "1.10"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — 5 new holdout scenarios HS-EXP-011..015, 24→29 scenarios]"
   last_bump_date: "2026-06-03"
 
 nfr-catalog:
@@ -252,9 +252,9 @@ dtu-assessment:
 
 prd:
   path: specs/prd.md
-  current_version: "1.27.4"
-  last_bump_commit: "dd82c05"
-  last_bump_date: "2026-05-30"
+  current_version: "1.28.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — added §2.8 SessionManager + §2.9 EmbeddedPTY capabilities]"
+  last_bump_date: "2026-06-03"
 
 product-brief:
   path: specs/product-brief.md
@@ -699,6 +699,144 @@ BC-2.07.006:
   last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
   last_bump_date: "2026-05-28"
 
+BC-2.03.005:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager spawn recipe validation]"
+  last_bump_date: "2026-06-03"
+
+BC-2.03.006:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.006.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager hook auto-injection]"
+  last_bump_date: "2026-06-03"
+
+BC-2.03.007:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager invalid path error]"
+  last_bump_date: "2026-06-03"
+
+BC-2.03.008:
+  path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager discovery re-probe]"
+  last_bump_date: "2026-06-03"
+
+BC-2.05.009:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-05 BC: SessionCreation wizard flow]"
+  last_bump_date: "2026-06-03"
+
+BC-2.05.010:
+  path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-05 BC: SessionCreation multi-project scope]"
+  last_bump_date: "2026-06-03"
+
+BC-2.06.025:
+  path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-06 BC: permission badge+bell guarantee during EmbeddedTerminal/SessionCreation]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.001:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: session spawn]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.002:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: session kill]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.003:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: SIGTERM/SIGKILL 10s escalation]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.004:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: parallel re-discovery probing]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.005:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: state persistence across daemon restart]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.006:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: per-session hooks file (prevent concurrent-spawn clobber)]"
+  last_bump_date: "2026-06-03"
+
+BC-2.08.007:
+  path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: session GC / orphan reaping]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.001:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY attach]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.002:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY detach]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.003:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: keyboard passthrough]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.004:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY output rendering]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.005:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY resize]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.006:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY reconnect after session-host restart]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.007:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: EmbeddedTerminal AppMode entry/exit]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.008:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY scrollback]"
+  last_bump_date: "2026-06-03"
+
+BC-2.09.009:
+  path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: EmbeddedTerminal permission overlay integration]"
+  last_bump_date: "2026-06-03"
+
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md
   current_version: "1.0.5"
@@ -762,7 +900,7 @@ S-026-permission-overlay-core:
 S-027-overlay-rendering-status-bar:
   path: stories/S-027-overlay-rendering-status-bar.md
   current_version: "1.10"
-  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — added to registry, cited by EVAL-INDEX v1.9]"
+  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — added to registry, cited at S-027 authoring time by EVAL-INDEX v1.9]"
   last_bump_date: "2026-06-03"
 
 S-028-sessions-filter-event-ribbon:

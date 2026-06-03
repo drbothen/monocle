@@ -1,0 +1,139 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-06-03T23:30:00Z
+phase: v1A-prd-delta
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
+input-hash: "f46d499"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-05
+capability: CAP-005
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1A
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.05.009: PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter
+
+## Description
+
+When a `monocle-session-host` sends `HostToDaemon::PtyBytes { bytes }`, the daemon's
+session-host proxy task posts the bytes to the broker as `Event::PtyOutput { session_id, bytes }`.
+The broker fan-out sends `ServerToClient::PtyOutput { session_id, bytes }` to all connected
+TUI clients. The PTY reader channel inside the session-host is bounded at capacity 1024 with
+a drop counter that is surfaced in the session-host's stderr log. No silent drops: if the
+channel fills, a drop counter is incremented and logged.
+
+## Preconditions
+
+1. A session-host is running and connected to the daemon.
+2. At least one TUI client is connected to the daemon's UDS.
+3. The session-host's PTY reader is producing bytes.
+
+## Postconditions
+
+1. For each `HostToDaemon::PtyBytes { bytes }` received from the session-host:
+   a. The daemon proxy task posts `Event::PtyOutput { session_id: session_id.clone(), bytes }` to
+      the broker.
+   b. The broker fan-out sends `ServerToClient::PtyOutput { session_id, bytes }` to ALL
+      connected TUI clients (not just the TUI currently displaying this session).
+2. The per-session UDS connection has a bounded mpsc channel (capacity 1024) between the
+   PTY reader blocking thread and the session-host async event loop. When the channel is
+   full, the PTY reader thread drops the bytes and increments a `drop_counter`.
+3. The `drop_counter` is NOT surfaced in the TUI status bar (session-host has no TUI). It
+   is logged to the session-host's stderr at `WARN` level:
+   `WARN: PTY channel drop #N for session <session_id>`.
+4. The broker fan-out for `PtyOutput` follows the same fan-out semantics as
+   `HookEventReceived` (BC-2.05.004): slow TUI clients are disconnected; other clients continue.
+5. `ServerToClient::PtyOutput` is framed with the standard 4-byte LE length-prefix protocol
+   per SS-ipc.md.
+
+## Invariants
+
+1. PTY bytes are forwarded verbatim — no truncation, no excerpt bounding. Unlike
+   `HookEventReceived` which truncates POST bodies to 256 bytes, `PtyOutput` carries
+   raw terminal bytes that MUST be preserved in full (vt100 sequences would be corrupted
+   by truncation).
+2. Fan-out is to ALL TUI clients, not just the client currently displaying the session.
+   This supports future multi-TUI scenarios and ensures background sessions can be
+   monitored by connecting a second TUI instance.
+3. The channel capacity of 1024 per ADR-0010 provides a sliding window of ~1024 PTY
+   read()s at the session-host level. At typical terminal output rates this is sufficient
+   for smooth rendering; drop counter increments indicate extreme output bursts or a
+   slow consumer (session-host's drop counter, NOT the daemon broker drop counter from
+   BC-2.04.011).
+4. `Event::PtyOutput` is a new event type in the broker. It does NOT increment the hook
+   event drop counter (BC-2.04.011). The session-host's own PTY channel drop counter is
+   a separate metric at a different layer.
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-270 | Session-host PTY produces >1024 read()s faster than daemon can consume | Session-host drops excess reads; drop counter incremented; WARN logged; consumer (daemon broker) sees slightly reduced throughput; no crash |
+| EC-271 | No TUI clients connected | Bytes posted to broker; broker fan-out has no subscribers; bytes discarded by broker; no error |
+| EC-272 | TUI client's send buffer full (slow TUI) | Slow client disconnected per BC-2.05.004 EC-005 semantics; other clients continue |
+| EC-273 | Large `PtyBytes` chunk (e.g., 64 KiB of output) | Sent as a single `ServerToClient::PtyOutput` IPC message; 256 KiB message size limit per BC-2.01.003; 64 KiB is within limit |
+
+## Canonical Test Vectors
+
+| Scenario | Expected Output | Category |
+|----------|----------------|----------|
+| Session-host sends 10 `PtyBytes` messages; 2 TUI clients connected | Each TUI client receives 10 `PtyOutput` messages with correct bytes | happy-path |
+| PTY channel full: 1025th read arrives | Drop counter = 1; WARN logged; 1024 messages remain in channel | edge-case |
+| `PtyBytes` arrives when no TUI clients connected | Bytes discarded by broker; no error | edge-case |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | `PtyOutput` fan-out to all connected TUI clients on PtyBytes receipt | integration |
+| VP-TBD | Bytes NOT truncated (full PtyBytes content in PtyOutput) | unit |
+| VP-TBD | Drop counter incremented on channel overflow; WARN logged | unit |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
+| Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
+| Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.0.1 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.0.1 §PTY reader thread |
+| Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
+| Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
+
+## Related BCs
+
+- [BC-2.05.004] — composes with: same fan-out semantics (slow client disconnect, no connected clients)
+- [BC-2.09.001] — depends on: PtyOutput received by TUI triggers the 100ms render pipeline
+
+## Architecture Anchors
+
+- `architecture/SS-daemon-wiring-v2-delta.md#broker-fan-out-ptyoutput-messages` — PtyOutput event type
+- `architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md` — shared UDS decision + bounded channel 1024
+
+## Story Anchor
+
+S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded channel (filled by story-writer)
+
+## VP Anchors
+
+VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.0.0
+
+**Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
+- BC-2.05.009 authored for SS-05 as part of the v1A control-center pivot BC burst.
+- ADR-0010 channel capacity 1024 from architect spec preserved verbatim.
+- SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

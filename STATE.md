@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.90"
+version: "6.91"
 status: active
 producer: state-manager
 timestamp: 2026-06-03T23:30:00Z
 phase: PIVOT-delta-in-progress
-current_step: "D-240: Consistency gate PASSED. Fresh-context consistency-validator found 12 findings (3 CRIT/5 IMP/4 SUG) on the control-center spec package; root cause = vision/brief lagged the v2.1 session-host model introduced by ADR-0009. ALL resolved: architect fixed IMP-2 (session_id:String canonical), IMP-3 (daemon-wiring step 8b placement), IMP-5 (InvalidPath error variant; BC-2.03.007 retitled), SUG-3 (permission badge+bell during EmbeddedTerminal/SessionCreation — no silent suppression; v1B pre-emption flagged for human ratification), SUG-4 (ARCH-INDEX token estimates) → SS-session-manager v1.0.1, SS-embedded-pty v1.0.2, SS-engine-module-v2-delta v1.0.1, SS-daemon-wiring-v2-delta v1.0.1, ARCH-INDEX v1.0.28. product-owner propagated v2.1 session-host model + rulings into vision v2.2 and brief v2.0.1 (CRIT-1/2/3, IMP-1, SUG-1/2). IMP-4 (stale registry product-brief 1.4.34→2.0.1) fixed. NEXT = BC/PRD delta (product-owner authors control-center behavioral contracts) → Phase-1d adversarial convergence (3 clean passes) on full spec package → human spec-package approval gate → story decomposition."
+current_step: "D-241: v1A control-center BC/PRD/holdout delta COMMITTED. 23 new BCs authored (SS-03: BC-2.03.005-008; SS-05: BC-2.05.009-010; SS-06: BC-2.06.025; SS-08 SessionManager NEW: BC-2.08.001-007; SS-09 EmbeddedPTY NEW: BC-2.09.001-009). BC-INDEX v1.34→v1.35 (113→136 BCs). PRD v1.27.4→v1.28.0 (added §2.8/§2.9). 5 holdout scenarios HS-EXP-011..015 (EVAL-INDEX v1.9→v1.10, 24→29 scenarios). Registry atomicity: 26 new/updated entries (23 new BCs + BC-INDEX/EVAL-INDEX/prd bumps) in same commit. POL-11 PASS (271 active). POL-12 PASS. NEXT = Phase-1d adversarial convergence (3 clean passes) on full control-center spec package, then human approval gate, then v1A story decomposition."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer)."
-awaiting: "BC/PRD delta (product-owner authors control-center behavioral contracts for the 6 new capabilities: Launch, EmbeddedTerminal, SessionCreation, Multi-session/multi-project, Interactive Tune, Hook auto-injection) including BC/PRD delta for permission badge+bell guarantee during EmbeddedTerminal/SessionCreation. Then Phase-1d adversarial convergence (3 clean passes) on full spec package (vision v2.2 + brief v2.0.1 + ARCH-INDEX v1.0.28 + 4 SS deltas + new BCs). Then human spec-package approval gate. Then story decomposition. OPEN (non-blocking, human ratification required): v1B embedded-terminal→overlay pre-emption behavior — SUG-3 adds badge+bell guarantee but the question of whether an overlay pre-empts (suspends) EmbeddedTerminal mode vs. renders inline is flagged for human decision before BC authoring."
+awaiting: "Phase-1d adversarial convergence (3 clean passes, minimum) on full control-center spec package (vision v2.2 + brief v2.0.1 + ARCH-INDEX v1.0.28 + 4 SS deltas + 23 new BCs + PRD v1.28.0 + 5 new holdout scenarios). Then human spec-package approval gate. Then v1A story decomposition. OPEN (non-blocking, human ratification required): v1B embedded-terminal→overlay pre-emption behavior — BC-2.06.025 adds badge+bell guarantee but the question of whether an overlay pre-empts (suspends) EmbeddedTerminal mode vs. renders inline is flagged for human decision before v1B BC authoring. DEFERRED (architect task, non-blocking): VP authoring for SS-08/SS-09 BCs (all 16 new BCs cite VP-TBD; follow VP-DTU-001 pattern); v1B Tune BCs."
 durable_task_register:
   outstanding:
     - id: "DTU-CLONE-STORY"
@@ -399,8 +399,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.90 (D-240) — 2026-06-03
-  PIVOT: monocle → full TUI control center — CONSISTENCY GATE PASSED
+  ZERO-CONTEXT RESUME CHECKPOINT v6.91 (D-241) — 2026-06-03
+  PIVOT: monocle → full TUI control center — BC/PRD DELTA COMMITTED
   ============================================================================
 
   YOUR FIRST 3 COMMANDS (RUN IN ORDER — BEFORE ANYTHING ELSE):
@@ -410,18 +410,20 @@ next_session_resume_protocol: |
   2. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults.
 
-  3. Read this STATE.md fully — especially §Trace v6.90 (D-240), durable_task_register,
+  3. Read this STATE.md fully — especially §Trace v6.91 (D-241), durable_task_register,
      and PIVOT-CONTROL-CENTER entry.
 
-  CRITICAL ORIENTATION — D-240: CONSISTENCY GATE PASSED, BC/PRD DELTA NEXT:
+  CRITICAL ORIENTATION — D-241: BC/PRD DELTA COMMITTED, ADVERSARIAL REVIEW NEXT:
 
-  D-240: Consistency convergence COMPLETE. 12 findings (3 CRIT/5 IMP/4 SUG) resolved.
-  Architecture: SS-session-manager v1.0.1, SS-embedded-pty v1.0.2, SS-engine-module-v2-delta
-  v1.0.1, SS-daemon-wiring-v2-delta v1.0.1, ARCH-INDEX v1.0.28. Vision v2.2, brief v2.0.1.
-  OPEN (human ratification required before BC authoring): v1B embedded-terminal→overlay
-  pre-emption behavior — does overlay pre-empt (suspend) EmbeddedTerminal mode or render inline?
-  NEXT: BC/PRD delta (product-owner) → Phase-1d adversarial convergence (3 clean passes)
-  on full spec package → human spec-package approval gate → story decomposition.
+  D-241: 23 new BCs committed (SS-08 SessionManager + SS-09 EmbeddedPTY new;
+  SS-03/05/06 extensions). BC-INDEX v1.35 (136 BCs). PRD v1.28.0 (§2.8/§2.9).
+  EVAL-INDEX v1.10 (29 holdout scenarios, HS-EXP-011..015 added).
+  Registry atomicity confirmed. POL-11 PASS (271 active). POL-12 PASS.
+  OPEN (non-blocking, human ratification required before v1B BC authoring):
+  v1B embedded-terminal→overlay pre-emption behavior — BC-2.06.025 adds badge+bell
+  guarantee but pre-emption vs. inline rendering is deferred for human decision.
+  NEXT: Phase-1d adversarial convergence (3 clean passes) → human approval gate →
+  v1A story decomposition.
 
   DO NOT run vsdd-factory:phase-4-holdout-evaluation.
   DO NOT resume adversarial refinement (Phase 5), formal hardening (Phase 6), or
@@ -429,14 +431,14 @@ next_session_resume_protocol: |
 
   WHAT THE NEW SESSION MUST DO:
 
-  Step 1 (DONE): Brief delta — product-brief.md v2.0.0 committed. validate-brief VALID.
+  Step 1 (DONE): Brief delta — product-brief.md v2.0.1 committed. validate-brief VALID.
   Step 2 (DONE): Architecture delta — ADR-0009/0010/0011 + 5 SS deltas committed (D-239).
   Step 3a (DONE D-240): Consistency validation PASSED (12 findings resolved; vision v2.2 +
            brief v2.0.1 + arch fixes committed).
-  Step 3b: BC/PRD delta — product-owner authors control-center BCs (6 new capabilities +
-           permission badge+bell guarantee BC). Human ratification needed for v1B
-           overlay pre-emption behavior first.
-  Step 3c: Phase-1d adversarial convergence (3 clean passes) of full spec package.
+  Step 3b (DONE D-241): BC/PRD delta — 23 new BCs + PRD v1.28.0 + 5 holdout scenarios committed.
+  Step 3c: Phase-1d adversarial convergence (3 clean passes, minimum) of full spec package.
+           Spec package = vision v2.2 + brief v2.0.1 + ARCH-INDEX v1.0.28 + 4 SS deltas +
+           23 new BCs + PRD v1.28.0 + BC-INDEX v1.35 + EVAL-INDEX v1.10.
   Step 4: Human spec-package approval gate.
   Step 5: Story decomposition (story-writer decomposes v1A delta into new waves).
 
@@ -450,30 +452,32 @@ next_session_resume_protocol: |
   - TUI rendering (ratatui + crossterm, sessions panel, event ribbon, profile picker, status bar).
   - 1514 passing tests. 9 workspace crates on develop.
 
-  PIPELINE STATE (as of 2026-06-03 D-239):
+  PIPELINE STATE (as of 2026-06-03 D-241):
 
   Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
   D-235: Daemon-wiring CONVERGED (feat/daemon-wire-serve merged as PR #39 @ fcd42f0).
   develop: check git log -1 for live HEAD.
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   32/33 stories done (192/195 pts, 98%). Phase 4-7 SUSPENDED per D-236 pivot.
-  Vision v2.1 APPROVED (D-238). product-brief.md v2.0.0 COMMITTED (draft, D-238-delta).
+  Vision v2.2 APPROVED (D-238/D-240). product-brief.md v2.0.1 (consistency-gate-passed D-240).
   Architecture delta COMMITTED (D-239): ADR-0009/0010/0011 + 5 SS deltas.
   Consistency gate PASSED (D-240): SS-session-manager v1.0.1, SS-embedded-pty v1.0.2,
   SS-engine-module-v2-delta v1.0.1, SS-daemon-wiring-v2-delta v1.0.1, ARCH-INDEX v1.0.28.
-  Vision v2.2. Brief v2.0.1. 12 findings resolved.
-  NEXT: BC/PRD delta → adversarial review (3 clean passes) → human gate → story decomposition.
+  BC/PRD delta COMMITTED (D-241): 23 new BCs, PRD v1.28.0 (§2.8/§2.9), EVAL-INDEX v1.10.
+  NEXT: Phase-1d adversarial convergence (3 clean passes) → human gate → story decomposition.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   KEY ARTIFACTS FOR ADVERSARIAL REVIEW:
 
   - /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — pivot handoff (read FIRST)
-  - .factory/specs/product-brief.md v2.0.1 — control-center re-baseline (draft; consistency-gate-passed)
-  - .factory/specs/research/domain-monocle-vision-synthesis.md v2.2 — APPROVED canonical basis (updated D-240)
+  - .factory/specs/product-brief.md v2.0.1 — control-center re-baseline (consistency-gate-passed)
+  - .factory/specs/research/domain-monocle-vision-synthesis.md v2.2 — APPROVED canonical basis
   - .factory/specs/architecture/ARCH-INDEX.md v1.0.28 — index of all architecture artifacts
   - .factory/specs/architecture/adr/ADR-0009/0010/0011 — PTY persistence, UDS routing, stack
   - .factory/specs/architecture/SS-session-manager.md — SS-08 (session-host coordinator)
   - .factory/specs/architecture/SS-embedded-pty.md — SS-09 (embedded PTY widget)
+  - .factory/specs/behavioral-contracts/BC-INDEX.md v1.35 — 136 BCs (23 new D-241)
+  - .factory/specs/prd.md v1.28.0 — PRD with §2.8/§2.9 (D-241)
   - .factory/STATE.md durable_task_register entry PIVOT-CONTROL-CENTER
 
   WAVE-8 BACKLOG (valid, subordinate to pivot):
@@ -509,7 +513,7 @@ current_cycle: cycle-001
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
 | 4-7 | SUSPENDED — vision pivot D-236 | — | Old observe-only scope retired. Do NOT run phase-4-holdout-evaluation until vision revision complete. |
-| PIVOT | CONSISTENCY-GATE-PASSED (D-240) | 2026-06-03 | Vision v2.2 + brief v2.0.1 (D-240). Architecture: SS-session-manager v1.0.1, SS-embedded-pty v1.0.2, SS-engine-module-v2-delta v1.0.1, SS-daemon-wiring-v2-delta v1.0.1, ARCH-INDEX v1.0.28. 12 findings resolved. NEXT: BC/PRD delta → Phase-1d adversarial (3 clean passes) → human gate → story decomposition. |
+| PIVOT | BC/PRD-DELTA-COMMITTED (D-241) | 2026-06-03 | D-241: 23 new BCs (SS-08/SS-09 new + SS-03/05/06 ext). BC-INDEX v1.35 (136 BCs). PRD v1.28.0 (§2.8/§2.9). 5 holdout scenarios HS-EXP-011..015 (EVAL-INDEX v1.10, 29 scenarios). NEXT: Phase-1d adversarial convergence (3 clean passes) → human approval → story decomposition. |
 
 develop @ fcd42f04 (NEXT-SESSION-PIVOT.md + CLAUDE.md D-236 banner). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-236: PRODUCT-VISION PIVOT — monocle becomes full TUI control center. D-238: Vision v2.1 APPROVED. D-239: Architecture delta COMMITTED (ADR-0009/0010/0011 + 5 SS deltas; ARCH-INDEX v1.0.27). D-240: Consistency gate PASSED — vision v2.2 + brief v2.0.1 + arch fixes (ARCH-INDEX v1.0.28). VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: BC/PRD delta → adversarial review (3 clean passes) → human gate → story decomposition.
 
@@ -542,6 +546,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-238 | Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). STATE v6.86→v6.87. | 2026-06-03 | human+state-manager |
 | D-238-delta | product-brief.md v2.0.0 COMMITTED to factory-artifacts (control-center re-baseline, status draft; validate-brief v6.0 verdict VALID). input-hash 7e4f4f4 written. planning/brief-validation.md v6.0 (input-hash 1659922) committed alongside. Draft-commit: spec package goes through adversarial + human gate during/after architecture delta. Part of the D-238 delta progression (no new heavyweight D-number). STATE v6.87→v6.88. | 2026-06-03 | state-manager |
 | D-239 | Control-center architecture delta COMMITTED. 3 ADRs: ADR-0009 (native detached session-host process model for PTY ownership — Q-8 resolved native; monocle-session-host binary owns PTY masters + harness child, daemon re-attaches over UDS on restart), ADR-0010 (PTY bytes shared on existing UDS IPC channel — Q-1 resolved Option A), ADR-0011 (PTY stack: native portable-pty 0.9 + vt100 0.16 + tui-term 0.3.4 — Q-7 fork posture: exact-pin, no fork). 5 SS deltas: SS-session-manager 1.0.0 (SS-08, CAP-008 — SessionManager coordinator, monocle-session-host binary, session-state.json, re-discovery, GC), SS-embedded-pty 1.0.0 (SS-09, CAP-009 — EmbeddedTerminal AppMode, PTY widget, keyboard encoding, SessionCreation wizard), SS-engine-module-v2-delta 1.0.0 (Q-2 resolved — spawn_recipe() method, SpawnRecipe/SpawnOptions), SS-daemon-wiring-v2-delta 1.0.0 (D-235 rework scope — DaemonState.session_manager, daemon_start_sequence step 8b, PtyOutput fan-out), SS-deps-pin-manifest-v2-delta 1.0.0 (portable-pty/vt100/tui-term pins, monocle-session-host crate). ARCH-INDEX bumped to v1.0.27 (SS-08/SS-09, CAP-008/009, ADR-0009/0010/0011 rows). 8 version-pin-registry entries added atomically. input-hashes computed. POL-11 PASS, POL-12 PASS. NEXT: adversarial review (3 clean passes) → human gate → story decomposition. STATE v6.88→v6.89. | 2026-06-03 | state-manager |
+| D-241 | v1A control-center BC/PRD/holdout delta — 23 new BCs authored: SS-03 BC-2.03.005-008 (spawn validation, hook auto-injection, invalid-path error, re-probe), SS-05 BC-2.05.009-010 (SessionCreation wizard, multi-project scope), SS-06 BC-2.06.025 (permission badge+bell guarantee during EmbeddedTerminal/SessionCreation), SS-08 NEW BC-2.08.001-007 (session spawn/kill/SIGTERM-SIGKILL-10s-escalation/parallel-re-discovery/state-persistence/per-session-hooks-file/GC), SS-09 NEW BC-2.09.001-009 (PTY attach/detach/keyboard/output/resize/reconnect/AppMode/scrollback/overlay-integration). BC-INDEX v1.34→v1.35 (113→136 BCs). PRD v1.27.4→v1.28.0 (§2.8 SessionManager + §2.9 EmbeddedPTY). 5 holdout scenarios HS-EXP-011..015 (EVAL-INDEX v1.9→v1.10, 24→29 scenarios). Registry atomicity (L-S027-004): 26 new/updated entries in same atomic commit. POL-11 PASS (271 active), POL-12 PASS. In-scope production-grade design decisions: SIGTERM→SIGKILL 10s escalation (BC-2.08.003); parallel re-discovery probing (BC-2.08.004); per-session hooks file to prevent concurrent-spawn clobber (BC-2.08.006). DEFERRED (architect task, VP-DTU-001 pattern): VP authoring for SS-08/SS-09 BCs (all 16 cite VP-TBD) — formal-hardening scheduling. v1B Tune BCs + embedded-terminal pre-emption BC remain out of scope (v1B scheduling; pre-emption needs human ratification). NEXT = Phase-1d adversarial convergence (3 clean passes) on full control-center spec package, then human approval gate, then v1A story decomposition. STATE v6.90→v6.91. | 2026-06-03 | state-manager |
 | D-240 | Consistency convergence — fresh-context consistency-validator found 12 findings (3 Critical/5 Important/4 Suggestion) on the control-center spec package; root cause = vision/brief lagged the v2.1 session-host model introduced by ADR-0009. ALL resolved: architect fixed IMP-2 (session_id:String canonical), IMP-3 (daemon-wiring step 8b placement), IMP-5 (InvalidPath error variant; BC-2.03.007 retitled), SUG-3 (production-grade permission badge+bell during embedded-terminal, no silent suppression; v1B pre-emption flagged for human ratification), SUG-4 (ARCH-INDEX token estimates) → SS-session-manager v1.0.1, SS-embedded-pty v1.0.2, SS-engine-module-v2-delta v1.0.1, SS-daemon-wiring-v2-delta v1.0.1, ARCH-INDEX v1.0.28. product-owner propagated v2.1 session-host model + rulings into vision v2.2 and brief v2.0.1 (CRIT-1/2/3, IMP-1, SUG-1/2). IMP-4 (stale registry product-brief 1.4.34→2.0.1) fixed. NEW open item (non-blocking): v1B embedded-terminal→overlay pre-emption requires human ratification before BC authoring. NEW BC needed: permission badge+bell guarantee during EmbeddedTerminal/SessionCreation (product-owner to author in BC/PRD delta). STATE v6.89→v6.90. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
@@ -550,7 +555,7 @@ ratatui 0.30 | crossterm 0.29 | tokio 1.52 | axum 0.8 | interprocess 2.4 | prost
 serde_yaml_ng 0.10 | wasmtime 44 | nucleo 0.5 | time 0.3.47 (RUSTSEC-2026-0009 floor)
 serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.1 (D-235: +tracing-subscriber 0.3 prod, +ureq/libc dev-deps).
 MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
-**PRD v1.27.4** | **BC-INDEX v1.34** (113 BCs) | **ARCH-INDEX v1.0.28** | **SS-tui v1.8.2**
+**PRD v1.28.0** | **BC-INDEX v1.35** (136 BCs) | **ARCH-INDEX v1.0.28** | **SS-tui v1.8.2**
 **SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.32**
 **SS-deps-pin-manifest v1.2.1** | **SS-daemon-wiring-impl v1.3.0** | **SS-session-manager v1.0.1** | **SS-embedded-pty v1.0.2**
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
@@ -572,6 +577,32 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
+
+## §Trace v6.91 (D-241 — BC/PRD delta COMMITTED; adversarial review next)
+
+**D-241 (2026-06-03):** v1A control-center BC/PRD/holdout delta COMMITTED to factory-artifacts.
+23 new BCs authored: SS-03 extensions (BC-2.03.005 spawn-recipe validation, BC-2.03.006
+hook auto-injection, BC-2.03.007 invalid-path error, BC-2.03.008 discovery re-probe);
+SS-05 extensions (BC-2.05.009 SessionCreation wizard flow, BC-2.05.010 multi-project scope);
+SS-06 extension (BC-2.06.025 permission badge+bell guarantee during EmbeddedTerminal
+/SessionCreation); SS-08 NEW SessionManager (BC-2.08.001 spawn, BC-2.08.002 kill,
+BC-2.08.003 SIGTERM-SIGKILL 10s escalation, BC-2.08.004 parallel re-discovery probing,
+BC-2.08.005 state persistence across daemon restart, BC-2.08.006 per-session hooks file,
+BC-2.08.007 GC/orphan reaping); SS-09 NEW EmbeddedPTY (BC-2.09.001 attach, BC-2.09.002
+detach, BC-2.09.003 keyboard passthrough, BC-2.09.004 output rendering, BC-2.09.005 resize,
+BC-2.09.006 reconnect after session-host restart, BC-2.09.007 AppMode entry/exit,
+BC-2.09.008 scrollback, BC-2.09.009 permission overlay integration). BC-INDEX v1.34→v1.35
+(113→136 BCs). PRD v1.27.4→v1.28.0 (§2.8 SessionManager + §2.9 EmbeddedPTY capabilities
+added). EVAL-INDEX v1.9→v1.10 (5 new holdout scenarios HS-EXP-011..015, 24→29 scenarios).
+Registry atomicity (L-S027-004): 26 entries updated atomically in same commit (23 new BC
+entries at v1.0.0 + BC-INDEX/EVAL-INDEX/prd bumps). All 23 new BC input-hashes computed
+and written. product-brief.md: 2 stale BC-INDEX v1.34 active citations updated to v1.35.
+Defensive count-propagation sweep: STATE.md Key Tech Stack line updated (BC-INDEX v1.34/113
+BCs → v1.35/136 BCs; PRD v1.27.4 → v1.28.0). POL-11 PASS (271 active, 629 files).
+POL-12 PASS. HS-EXP holdout files NOT individually tracked in registry (no existing pattern
+— only EVAL-INDEX is tracked). DEFERRED (architect task, non-blocking): VP authoring for
+SS-08/SS-09 BCs (all 16 BCs cite VP-TBD; VP-DTU-001 pattern; formal-hardening scheduling).
+OPEN (human ratification required): v1B overlay pre-emption behavior. v6.90→v6.91.
 
 ## §Trace v6.90 (D-240 — consistency gate PASSED; BC/PRD delta next)
 

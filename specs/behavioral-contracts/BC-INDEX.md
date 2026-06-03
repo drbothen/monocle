@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.34"
+version: "1.35"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T00:00:00Z
+timestamp: 2026-06-03T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "17f342c"
+input-hash: "f29eadb"
 traces_to: prd.md
 ---
 
@@ -74,6 +74,10 @@ traces_to: prd.md
 | BC-2.03.002 | ClaudeCodeModule Implementation (Strict-Basename Detect) | P0 | active | ss-03/BC-2.03.002.md | BC-ENGINE-002 |
 | BC-2.03.003 | HomeUnresolvable Error Contract | P0 | active | ss-03/BC-2.03.003.md | BC-ENGINE-002-ERR |
 | BC-2.03.004 | ClaudeCodeModule Inherent Methods (hook_paths, spawn, preflight) | P0 | active | ss-03/BC-2.03.004.md | BC-ENGINE-003 |
+| BC-2.03.005 | ClaudeCodeModule.spawn_recipe() — Happy-Path Recipe Assembly | P0 | active | ss-03/BC-2.03.005.md | — |
+| BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | P0 | active | ss-03/BC-2.03.006.md | — |
+| BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | P0 | active | ss-03/BC-2.03.007.md | — |
+| BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | P1 | active | ss-03/BC-2.03.008.md | — |
 
 ---
 
@@ -118,6 +122,8 @@ traces_to: prd.md
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 | active | ss-05/BC-2.05.006.md | — |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 | active | ss-05/BC-2.05.007.md | — |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 | active | ss-05/BC-2.05.008.md | — |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 | active | ss-05/BC-2.05.009.md | — |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession | P0 | active | ss-05/BC-2.05.010.md | — |
 
 ---
 
@@ -153,6 +159,7 @@ traces_to: prd.md
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | P0 | active | ss-06/BC-2.06.022.md | — |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | P0 | active | ss-06/BC-2.06.023.md | — |
 | BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | P1 | active | ss-06/BC-2.06.024.md | — |
+| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | P0 | active | ss-06/BC-2.06.025.md | — |
 
 ---
 
@@ -170,6 +177,44 @@ traces_to: prd.md
 | BC-2.07.004 | Profile Picker: Sticky-Per-Project | P1 | active | ss-07/BC-2.07.004.md | — |
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | P1 | active | ss-07/BC-2.07.005.md | — |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | P1 | active | ss-07/BC-2.07.006.md | — |
+
+---
+
+## SS-08: Session Manager
+
+> Architecture source: `architecture/SS-session-manager.md`
+> ARCH-INDEX subsystem: SS-08
+> Capability: CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | P0 | active | ss-08/BC-2.08.001.md | — |
+| BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | P0 | active | ss-08/BC-2.08.002.md | — |
+| BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | P0 | active | ss-08/BC-2.08.003.md | — |
+| BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | P0 | active | ss-08/BC-2.08.004.md | — |
+| BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 | active | ss-08/BC-2.08.005.md | — |
+| BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 | active | ss-08/BC-2.08.006.md | — |
+| BC-2.08.007 | Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach | P1 | active | ss-08/BC-2.08.007.md | — |
+
+---
+
+## SS-09: Embedded PTY
+
+> Architecture source: `architecture/SS-embedded-pty.md`
+> ARCH-INDEX subsystem: SS-09
+> Capability: CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard")
+
+| BC ID | Title | Priority | Status | File | Old ID (historical) |
+|-------|-------|----------|--------|------|---------------------|
+| BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | P0 | active | ss-09/BC-2.09.001.md | — |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | P0 | active | ss-09/BC-2.09.002.md | — |
+| BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | P1 | active | ss-09/BC-2.09.003.md | — |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | P1 | active | ss-09/BC-2.09.004.md | — |
+| BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | P1 | active | ss-09/BC-2.09.005.md | — |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | P0 | active | ss-09/BC-2.09.006.md | — |
+| BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | P1 | active | ss-09/BC-2.09.007.md | — |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | P0 | active | ss-09/BC-2.09.008.md | — |
+| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | P0 | active | ss-09/BC-2.09.009.md | — |
 
 ---
 
@@ -235,13 +280,15 @@ traces_to: prd.md
 |-----------|-----------|--------|---------|
 | SS-01 Daemon Lifecycle | 10 | 10 | 0 |
 | SS-02 Core Types and ABI | 8 | 8 | 0 |
-| SS-03 Engine Module | 4 | 4 | 0 |
+| SS-03 Engine Module | 8 | 8 | 0 |
 | SS-04 Daemon Wiring | 12 | 12 | 0 |
-| SS-05 IPC | 8 | 8 | 0 |
-| SS-06 TUI | 24 | 24 | 0 |
+| SS-05 IPC | 10 | 10 | 0 |
+| SS-06 TUI | 25 | 25 | 0 |
 | SS-07 Config | 6 | 6 | 0 |
+| SS-08 Session Manager | 7 | 7 | 0 |
+| SS-09 Embedded PTY | 9 | 9 | 0 |
 | SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
-| **Total** | **113** | **113** | **0** |
+| **Total** | **136** | **136** | **0** |
 
 ---
 
@@ -1120,3 +1167,24 @@ BC-2.06.021 v1.0.6 → v1.0.7:
 BC-INDEX H1 title unchanged: "Status Bar: Keybinding Hint Line". No BC retirements or removals.
 
 SE-16d monotonicity: v1.34 timestamp 2026-06-03T00:00:00Z > v1.33 timestamp 2026-05-30T00:00:00Z. PASS.
+
+## §Trace v1.35
+
+**D-241 control-center v1A BC integration — 23 new BCs across SS-03/SS-05/SS-06/SS-08/SS-09** (2026-06-03T12:00:00Z):
+
+New subsystem sections added:
+- SS-08 (Session Manager): 7 BCs (BC-2.08.001..BC-2.08.007); architecture source SS-session-manager.md; CAP-008.
+- SS-09 (Embedded PTY): 9 BCs (BC-2.09.001..BC-2.09.009); architecture source SS-embedded-pty.md; CAP-009.
+
+New BCs added to existing subsections:
+- SS-03 Engine Module: BC-2.03.005/006/007/008 (spawn_recipe() contract expansion for control-center session launch).
+- SS-05 IPC: BC-2.05.009/010 (PtyOutput fan-out channel; new ClientToServer variants).
+- SS-06 TUI: BC-2.06.025 (multi-session / multi-project sessions panel).
+
+Summary table updated: 113 → 136 total BCs. Per-subsystem counts updated (SS-03: 4→8, SS-05: 8→10, SS-06: 24→25, SS-08: 0→7, SS-09: 0→9).
+
+BC H1 titles are the authoritative source; all 23 new BCs use their BC file H1 as the index title per bc_h1_is_title_source_of_truth policy.
+
+VP authoring for SS-08 and SS-09 BCs deferred to formal-hardening phase per the project's established VP-DTU-001 Phase-4 deferral pattern. All 23 new BCs carry `VP Anchors: VP-TBD`. Architect must author VPs at hardening phase scheduling (tracked per D-241).
+
+SE-16d monotonicity: v1.35 timestamp 2026-06-03T12:00:00Z > v1.34 timestamp 2026-06-03T00:00:00Z. PASS.

@@ -1,0 +1,134 @@
+---
+document_type: behavioral-contract
+level: L3
+version: "1.0.0"
+status: active
+producer: vsdd-factory:product-owner
+timestamp: 2026-06-03T23:30:00Z
+phase: v1A-prd-delta
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
+input-hash: "cc4aaa1"
+traces_to: prd.md
+origin: greenfield
+subsystem: SS-09
+capability: CAP-009
+# Lifecycle fields (DF-030)
+lifecycle_status: active
+introduced: v1A
+modified: []
+deprecated: null
+deprecated_by: null
+replacement: null
+retired: null
+removed: null
+removal_reason: null
+---
+
+# Behavioral Contract BC-2.09.006: Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce
+
+## Description
+
+When the TUI's Preview pane area dimensions change (user resizes terminal, panel layout
+changes), monocle detects the new dimensions, debounces for 50ms, then sends
+`ClientToServer::ResizePane { session_id, rows, cols }` to the daemon. The daemon forwards
+to the session-host as `DaemonToHost::Resize`, which calls `pty.resize()` and
+`parser.set_size()`. The TUI's local `vt100::Parser` is also resized. Both the PTY and
+the parser must reflect the new size within 2 render ticks of the first dimension change.
+
+## Preconditions
+
+1. `AppMode::EmbeddedTerminal { session_id }` is active.
+2. The Preview pane's `Rect` area has changed since the last rendered size.
+3. The 50ms debounce window has elapsed since the first size change detected.
+
+## Postconditions
+
+1. Size change detection: at each render cycle, the TUI checks
+   `area.rows != parser.screen().size().0 || area.cols != parser.screen().size().1`.
+   If different AND 50ms has elapsed since the first detected change, a resize is triggered.
+2. `ClientToServer::ResizePane { session_id, rows: area.rows, cols: area.cols }` is sent
+   over IPC within the same render cycle as the size change detection.
+3. The TUI calls `pty_parsers[session_id].set_size(area.rows, area.cols)` locally to
+   keep the parser in sync with the displayed area.
+4. The daemon routes `ResizePane` to `SessionManager::resize_session(session_id, rows, cols)`.
+5. `SessionManager` sends `DaemonToHost::Resize { rows, cols }` to the session-host.
+6. The session-host calls `pty.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })`
+   and `parser.set_size(rows, cols)`.
+7. The harness child (Claude Code) receives `SIGWINCH` (if PTY master sends it, which
+   `portable-pty` does on resize) and adjusts its output formatting.
+8. All of steps 2-6 complete within 2 render ticks (≈ 33ms at 60fps) of the first size
+   change. Total end-to-end resize latency from user terminal resize to PTY resize: ≤ 100ms
+   (50ms debounce + ~50ms for IPC round-trip and PTY resize).
+
+## Invariants
+
+1. The 50ms debounce prevents excessive resize messages during drag operations. Only one
+   `ResizePane` message is sent per 50ms window; intermediate sizes are discarded.
+2. The TUI tracks `last_sent_size: Option<(u16, u16)>`. A resize message is sent ONLY when
+   `pending_size != last_sent_size` AND the 50ms debounce has elapsed.
+3. Resize is sent for the FOCUSED session only. If the user resizes the terminal while
+   looking at a non-focused session in the sessions panel, no `ResizePane` is sent until the
+   session is focused in EmbeddedTerminal mode.
+4. `parser.set_size()` in the TUI is called synchronously (not debounced) to keep the local
+   rendering correct on the NEXT render tick. The IPC `ResizePane` message is debounced but
+   the local parser is updated immediately.
+
+## Edge Cases
+
+| ID | Description | Expected Behavior |
+|----|-------------|-------------------|
+| EC-235 | User rapidly resizes terminal (continuous drag) | Debounce fires; only the final stable size within each 50ms window is sent; multiple intermediate sizes coalesced |
+| EC-236 | Resize while `AppMode::Dashboard` (not in EmbeddedTerminal) | No `ResizePane` sent; local parsers are NOT resized; they will be resized when the session is next entered in EmbeddedTerminal mode |
+| EC-237 | Resize to same size as current | `area.rows == parser.screen().size().0 && area.cols == parser.screen().size().1`; no-op; no IPC message sent |
+| EC-238 | Session-host dies while resize IPC is in-flight | Resize message arrives at dead socket; daemon handles `SessionError` from `resize_session()`; session transitions to Terminated; TUI receives `SessionStateChanged::Terminated` |
+
+## Canonical Test Vectors
+
+| Input | Expected Output | Category |
+|-------|----------------|----------|
+| Pane resizes from 24×80 to 30×100; 50ms debounce elapsed | `ResizePane { rows: 30, cols: 100 }` sent; session-host PTY resized to 30×100 | happy-path |
+| Continuous resize: 24×80 → 25×82 → 26×84 (within 50ms) | Only one `ResizePane` for 26×84 sent after 50ms | edge-case |
+| Resize to current size (no change) | No IPC message sent | edge-case |
+
+## Verification Properties
+
+| VP-NNN | Property | Proof Method |
+|--------|----------|-------------|
+| VP-TBD | `ResizePane` sent after 50ms debounce with correct dimensions | unit (tokio::time::pause) |
+| VP-TBD | Local parser resized immediately on detection | unit |
+| VP-TBD | Rapid resize coalesced (only final size sent per 50ms window) | unit |
+
+## Traceability
+
+| Field | Value |
+|-------|-------|
+| L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
+| Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — resize propagation is a core PTY widget capability that ensures the harness child renders at the correct dimensions in the embedded terminal pane |
+| Architecture Module | monocle-tui (resize detection, debounce, ResizePane send); monocle-runtime (SessionManager resize_session); monocle-session-host (PTY resize) per ARCH-INDEX Subsystem Registry SS-09 |
+| Architecture Source | SS-embedded-pty.md v1.0.2 §Pane area and resize (detection logic, debounce, SIGWINCH) |
+| Test Name | test_BC_2_09_006_pty_and_parser_resized_within_2_render_ticks |
+
+## Related BCs
+
+- [BC-2.09.001] — composes with: after resize, PTY output is rendered at new dimensions via the parser pipeline
+
+## Architecture Anchors
+
+- `architecture/SS-embedded-pty.md#pane-area-and-resize` — detection logic, 50ms debounce, resize sequence
+
+## Story Anchor
+
+S-TBD — Implement resize detection, debounce, ResizePane IPC in monocle-tui (filled by story-writer)
+
+## VP Anchors
+
+VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.0.0
+
+**Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
+- BC-2.09.006 authored for SS-09 as part of the v1A control-center pivot BC burst.
+- Design decision (in-scope): local parser resized immediately (not debounced) while IPC
+  resize is debounced. This is required for correct rendering during the debounce window
+  (the local render uses the new pane size; the PTY will catch up after the IPC round-trip).
+- SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
