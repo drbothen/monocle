@@ -386,17 +386,20 @@ pub const SESSIONS_FILTER_NO_MATCH: &str = "No sessions match filter";
 /// - Matched character positions are rendered with a highlight style via
 ///   `ratatui::text::Span::styled` (BC-2.06.006 PC-4).
 ///
-/// # Implementation note (stub)
+/// # Return value
 ///
-/// This function body is `todo!()` — the test-writer compiles tests against the
-/// correct signature. The implementer fills in the logic (S-028 stub discipline).
+/// Returns the `session_id` of the row currently highlighted in the rendered list,
+/// or `None` when no row is selected or when the filter yields zero matches.
+/// The caller (`render_frame`) uses this to derive the Event Ribbon's
+/// `selected_sid` — avoiding the index-space mismatch that occurs when the scored
+/// list is reordered relative to `app.sessions` (F-W7G3-MED-001).
 pub fn render_sessions_filter(
     app: &mut crate::app::App,
     query: &str,
     area: ratatui::layout::Rect,
     buf: &mut ratatui::buffer::Buffer,
     state: &mut SessionsPanelState,
-) {
+) -> Option<String> {
     use nucleo::{
         pattern::{Atom, AtomKind, CaseMatching, Normalization},
         Utf32Str,
@@ -436,11 +439,18 @@ pub fn render_sessions_filter(
                 list_area,
                 buf,
             );
+            // No sessions, no selection.
+            return None;
         } else {
             let list = List::new(items).highlight_style(Style::default().bg(Color::Blue));
             StatefulWidget::render(list, list_area, buf, &mut state.list_state);
         }
-        return;
+        // Empty query: list_state indexes into app.sessions (insertion order == display order).
+        return state
+            .list_state
+            .selected()
+            .and_then(|i| app.sessions.get(i))
+            .map(|s| s.session_id.clone());
     }
 
     // BC-2.06.006 PC-2 + PC-3: score sessions against query using nucleo Matcher.
@@ -531,7 +541,8 @@ pub fn render_sessions_filter(
             list_area,
             buf,
         );
-        return;
+        // No matching sessions → no highlighted session for the Event Ribbon.
+        return None;
     }
 
     // BC-2.06.006 PC-4: render matched sessions with per-character match highlights.
@@ -645,6 +656,16 @@ pub fn render_sessions_filter(
 
     let list = List::new(items).highlight_style(Style::default().bg(Color::Blue));
     StatefulWidget::render(list, list_area, buf, &mut state.list_state);
+
+    // F-W7G3-MED-001: return the session_id of the highlighted row in the SCORED list.
+    // After StatefulWidget::render, state.list_state.selected() is an index into `scored`
+    // (the filtered/reordered subset), NOT into app.sessions. Returning the session_id
+    // directly avoids the index-space mismatch in render_frame.
+    state
+        .list_state
+        .selected()
+        .and_then(|i| scored.get(i))
+        .map(|(_, s, _)| s.session_id.clone())
 }
 
 /// Map harness_type string to its user-facing display name for fuzzy matching.

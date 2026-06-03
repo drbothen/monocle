@@ -837,3 +837,150 @@ fn test_BC_2_06_018_AC007_gg_jumps_to_newest_event() {
          (auto-scroll resumes). RED: 'g' has no binding; pinned_top unchanged at true."
     );
 }
+
+// ---------------------------------------------------------------------------
+// Test 6: F-W7G3-MED-001 — Event Ribbon shows the CORRECT session's events
+//         in Filtering mode when the scored list is reordered relative to app.sessions.
+//
+// RED under the old code: sessions_state.list_state.selected() indexed into app.sessions
+// (insertion order), but in Filtering mode that index refers to the scored list. A
+// filter query that puts session B at position 0 and session A at position 1 caused
+// the ribbon to show A's events (app.sessions[0]) while B was highlighted.
+//
+// GREEN under the fix: render_sessions_filter returns the session_id of the highlighted
+// row in the scored list; render_frame passes it directly to EventRibbon as selected_sid.
+//
+// BC coverage: BC-2.06.018 PC-1 (ribbon shows events for the selected session),
+//              BC-2.05.004 INV-3 (client-side filtering by session_id).
+// ---------------------------------------------------------------------------
+
+/// In Filtering mode with a query that reorders sessions (session B scores higher
+/// than session A), the Event Ribbon must show events for the highlighted (filtered-top)
+/// session B — NOT for app.sessions[0] (session A in insertion order).
+///
+/// This test would FAIL under the old buggy code: `app.sessions.get(list_state_index)`
+/// uses the filtered-list index to index the unfiltered sessions, returning the wrong session.
+/// It PASSES under the fix: render_sessions_filter returns the session_id of the
+/// highlighted row in the scored list and render_frame passes it to EventRibbon directly.
+#[test]
+fn test_F_W7G3_MED_001_event_ribbon_shows_highlighted_session_events_in_filter_mode() {
+    use monocle_core::engine::{EnrichedSession, SessionStatus};
+
+    // Arrange: two sessions.
+    // - sess-ALPHA: project "alpha-project" (inserted first → app.sessions[0])
+    // - sess-ZETA: project "zeta-xyz" (inserted second → app.sessions[1])
+    // The query "xyz" scores "zeta-xyz" much higher than "alpha-project", so the
+    // scored list has sess-ZETA at index 0 (top) and sess-ALPHA at index 1 (or absent
+    // if its score is 0). The user highlights the top row (index 0 in the scored list).
+    //
+    // Under the old buggy code: list_state.selected() == Some(0) → app.sessions.get(0)
+    // returns sess-ALPHA → ribbon shows ALPHA events. WRONG.
+    // Under the fix: render_sessions_filter returns "sess-ZETA" → ribbon shows ZETA events.
+
+    let mut app = App::new(monocle_config::MonocleConfig::default());
+    app.sessions = vec![
+        EnrichedSession::new(
+            "sess-ALPHA".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Idle,
+            None,
+            Some("alpha-project".to_string()),
+            None,
+            0,
+            None,
+        ),
+        EnrichedSession::new(
+            "sess-ZETA".to_string(),
+            "claude-code".to_string(),
+            None,
+            None,
+            SessionStatus::Idle,
+            None,
+            Some("zeta-xyz".to_string()),
+            None,
+            0,
+            None,
+        ),
+    ];
+
+    // Seed distinct events: only sess-ZETA has a "SessionStart" event; sess-ALPHA
+    // only has a "Notification" event. The ribbon content uniquely identifies the session.
+    on_hook_event_received(
+        &mut app,
+        HookType::Notification,
+        "sess-ALPHA".to_string(),
+        r#"{"msg":"alpha-event"}"#.to_string(),
+        1u64,
+        0i64,
+    );
+    on_hook_event_received(
+        &mut app,
+        HookType::SessionStart,
+        "sess-ZETA".to_string(),
+        r#"{}"#.to_string(),
+        2u64,
+        0i64,
+    );
+
+    // Enter Filtering mode with query "xyz" — "zeta-xyz" matches; "alpha-project" does not
+    // (or scores zero). The scored list will have sess-ZETA at position 0.
+    app.mode = monocle_core::tui::state::AppMode::Filtering {
+        panel: monocle_core::tui::state::PanelId::Sessions,
+        query: "xyz".to_string(),
+        prior: monocle_core::tui::state::FocusSnapshot::Sessions,
+    };
+
+    // Render via the production path. The terminal is 100x30.
+    // We use a custom render helper that captures the sessions_state after render
+    // so we can verify sessions_state.list_state picks up the right selection.
+    // The key assertion is on the ribbon region content (right 40% = x=60..100).
+    let backend = ratatui::backend::TestBackend::new(100, 30);
+    let mut terminal = ratatui::Terminal::new(backend).unwrap();
+    terminal
+        .draw(|frame| {
+            // sessions_state with no pre-set selection — render_sessions_filter will
+            // populate list_state after scoring. With one matching session (ZETA at 0),
+            // ratatui leaves list_state with no auto-selection; we set it to Some(0)
+            // before the second render to simulate the user highlighting the top result.
+            let mut state = SessionsPanelState::default();
+            state.list_state.select(Some(0)); // user highlights row 0 of the filter list
+            render_frame(&mut app, &mut state, frame);
+        })
+        .unwrap();
+
+    // The right 40% area (x=60..100) is the Event Ribbon.
+    // Under the fix: selected_sid = "sess-ZETA" → ribbon shows "SessionStart" (ZETA's event).
+    // Under the old bug: selected_sid = "sess-ALPHA" (app.sessions[0]) →
+    //   ribbon shows "Notification" (ALPHA's event), NOT "SessionStart".
+    let buf = terminal.backend().buffer().clone();
+    let area = buf.area();
+    let ribbon_text: String = (0..area.height)
+        .flat_map(|y| (60u16..100u16).map(move |x| (x, y)))
+        .filter(|(x, _)| *x < area.width)
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect();
+
+    assert!(
+        ribbon_text.contains("SessionStart"),
+        "F-W7G3-MED-001: In Filtering mode with query 'xyz', sess-ZETA (project 'zeta-xyz') \
+         is highlighted at filter-list position 0. The Event Ribbon must show sess-ZETA's \
+         'SessionStart' event — NOT sess-ALPHA's 'Notification' event. \
+         Old bug: app.sessions.get(list_state_index=0) returns sess-ALPHA (insertion order), \
+         so the ribbon shows ALPHA's events while ZETA is highlighted. \
+         Fix: render_sessions_filter returns 'sess-ZETA' directly (from scored[0]); \
+         render_frame passes it to EventRibbon as selected_sid. \
+         Actual right-40%% content (first 300 chars): {:?}",
+        &ribbon_text[..ribbon_text.len().min(300)]
+    );
+
+    assert!(
+        !ribbon_text.contains("Notification"),
+        "F-W7G3-MED-001: The ribbon must NOT show sess-ALPHA's 'Notification' event \
+         when sess-ZETA (zeta-xyz) is highlighted in the filter list. \
+         Finding 'Notification' in the ribbon region means the old index-space bug is present. \
+         Actual right-40%% content (first 300 chars): {:?}",
+        &ribbon_text[..ribbon_text.len().min(300)]
+    );
+}

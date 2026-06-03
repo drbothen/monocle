@@ -2550,6 +2550,12 @@ pub fn render_frame(
             // S-028 (AC-010 / BC-2.06.006 PC-1): In Filtering mode, render the filter
             // input box + scored session list instead of the regular SessionsPanel.
             // In all other modes (Dashboard, Overlay), render SessionsPanel normally.
+            // F-W7G3-MED-001: In Filtering mode, render_sessions_filter returns the
+            // session_id of the highlighted row in the SCORED (filtered/reordered) list.
+            // In non-filtering modes, derive selected_sid from sessions_state.list_state,
+            // which indexes into app.sessions (insertion order == display order there).
+            let filter_selected_sid: Option<Option<String>>;
+
             if let AppMode::Filtering {
                 panel: PanelId::Sessions,
                 ref query,
@@ -2557,26 +2563,38 @@ pub fn render_frame(
             } = app.mode.clone()
             {
                 // BC-2.06.006 PC-1/PC-2/PC-8: filter input box + scored list.
-                render_sessions_filter(
+                // Returns Some(session_id) of the highlighted row in the scored list,
+                // or None when no row is highlighted or zero sessions match the query.
+                let sid = render_sessions_filter(
                     app,
                     query.as_str(),
                     layout.sessions_area,
                     frame.buffer_mut(),
                     sessions_state,
                 );
+                filter_selected_sid = Some(sid);
             } else {
                 // Dashboard / Overlay: regular sessions panel.
                 let panel = SessionsPanel::new(app);
                 panel.render(layout.sessions_area, frame.buffer_mut(), sessions_state);
+                filter_selected_sid = None;
             }
 
             // S-028 (AC-010 / BC-2.06.018 PC-1): Render Event Ribbon in the right 40% area.
             // Derive the selected session_id from the Sessions panel state.
-            let selected_sid: Option<String> = sessions_state
-                .list_state
-                .selected()
-                .and_then(|i| app.sessions.get(i))
-                .map(|s| s.session_id.clone());
+            //
+            // F-W7G3-MED-001: When in Filtering mode, use the session_id returned directly
+            // by render_sessions_filter (which knows the scored ordering). In other modes,
+            // sessions_state.list_state.selected() safely indexes into app.sessions because
+            // the list is in insertion order.
+            let selected_sid: Option<String> = match filter_selected_sid {
+                Some(sid) => sid,
+                None => sessions_state
+                    .list_state
+                    .selected()
+                    .and_then(|i| app.sessions.get(i))
+                    .map(|s| s.session_id.clone()),
+            };
             let ribbon_area = layout.event_ribbon_area;
             let panel_height = ribbon_area.height as usize;
 
