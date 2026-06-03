@@ -156,8 +156,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.30"
-  last_bump_commit: "[D-231 wave-7-gate sweep 2026-06-03 — story-writer F-S025-ADV37-DEFER-001 BC→AC ranges]"
+  current_version: "5.31"
+  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — story-writer MED-001 Wave-2 status drift, MED-004 BC-2.05.004 overclaim, LOW-001 story-count, LOW-002 EPIC-05 S-032, LOW-005 EPIC-05 S-032 header]"
   last_bump_date: "2026-06-03"
 
 VP-INDEX:
@@ -174,9 +174,9 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.7"
-  last_bump_commit: "47e6f9b"
-  last_bump_date: "2026-05-30"
+  current_version: "1.9"
+  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — PO added S-027 input]"
+  last_bump_date: "2026-06-03"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -704,6 +704,12 @@ S-026-permission-overlay-core:
   current_version: "1.11"
   last_bump_commit: "e192707"
   last_bump_date: "2026-05-31"
+
+S-027-overlay-rendering-status-bar:
+  path: stories/S-027-overlay-rendering-status-bar.md
+  current_version: "1.10"
+  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — added to registry, cited by EVAL-INDEX v1.9]"
+  last_bump_date: "2026-06-03"
 
 S-028-sessions-filter-event-ribbon:
   path: stories/S-028-sessions-filter-event-ribbon.md

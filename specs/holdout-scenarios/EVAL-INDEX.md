@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-31T00:00:00Z
@@ -16,6 +16,7 @@ inputs:
   - {path: .factory/stories/S-023-reconnect-soq3.md, version: "1.2"}
   - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.14"}
   - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.11"}
+  - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.34"}
@@ -147,6 +148,13 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.9 — MED-003: add S-027 to inputs[] for HS-EXP-008 evaluator coverage (2026-06-03)
+
+**Bump:** 1.8 → 1.9.
+**Scope:** `inputs[]` array: added `{path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}` between S-026 and S-029 entries.
+**Rationale:** HS-EXP-008 declares `stories_tested: [S-029, S-026, S-027]` — the holdout evaluator needs S-027's AC spec (overlay rendering + diff-preview + two-row status bar) as an input to evaluate the rendering/diff-preview expectations asserted by HS-EXP-008. S-027 was omitted from the inputs[] array at index creation time; this is a coverage gap (MED-003) that leaves the evaluator blind to S-027's ACs during Phase 4 evaluation.
+**SE-16d PASS:** 2026-06-03 >= 2026-05-31 (monotonicity satisfied; no holdout scenario behavioral change — this is a metadata/input-pin correction).
 
 ## §Trace v1.8 — POL-11 cascade: story inputs[] pins updated to canonical (2026-05-31)
 

@@ -11,7 +11,7 @@ gaps_by_severity:
   high: 2
   medium: 6
   low: 3
-input-hash: "f100319"
+input-hash: "8a9d5ca"
 inputs:
   - stories/STORY-INDEX.md
   - stories/dependency-graph.md

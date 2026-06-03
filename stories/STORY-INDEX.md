@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.30"
+version: "5.31"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T04:35:15Z
@@ -36,7 +36,7 @@ traces_to: .factory/specs/prd.md
 | EPIC-02 | Core Types and ABI | CAP-002 | SS-02 | S-010, S-011, S-012, S-013 |
 | EPIC-03 | Engine Module | CAP-003 | SS-03 | S-014, S-015 |
 | EPIC-04 | Daemon Wiring | CAP-004 | SS-04 | S-016, S-017, S-018, S-019, S-020 |
-| EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023 |
+| EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023, S-032 |
 | EPIC-06 | TUI | CAP-006 | SS-06 | S-024, S-025, S-026, S-027, S-028, S-029 |
 | EPIC-07 | Config | CAP-007 | SS-07 | S-030, S-031 |
 | EPIC-DTU | Claude Code Hook Protocol Clone | CAP-001 (DTU) | — | S-DTU-001 |
@@ -49,16 +49,16 @@ traces_to: .factory/specs/prd.md
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | done | S-009 |
 | S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | done | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 |
-| S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | draft | S-003, S-005 |
-| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | draft | S-004, S-005, S-009, S-010 |
-| S-004 | Body Size Limit | EPIC-01 | 2 | 2 | draft | S-009 |
-| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | draft | — |
-| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | draft | S-005, S-007, S-008, S-009 |
+| S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | done | S-003, S-005 |
+| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | done | S-004, S-005, S-009, S-010 |
+| S-004 | Body Size Limit | EPIC-01 | 2 | 2 | done | S-009 |
+| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | done | — |
+| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | done | S-005, S-007, S-008, S-009 |
 | S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | done | — |
-| S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | draft | S-011, S-012, S-014 |
-| S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | draft | S-012 |
-| S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | draft | — |
-| S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | draft | S-015 |
+| S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | done | S-011, S-012, S-014 |
+| S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | done | S-012 |
+| S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | done | — |
+| S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | done | S-015 |
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | done | — |
 | S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
 | S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
@@ -81,7 +81,7 @@ traces_to: .factory/specs/prd.md
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 
-**Total stories:** 34 (30 product + 1 DTU + 1 prep + 2 admin)
+**Total stories:** 34 (32 product + 1 DTU + 1 prep)
 **Total points (product):** 194 (excl. DTU 3 pts and PREP 3 pts)
 **Total points (all):** 200
 
@@ -141,7 +141,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.05.001 | UDS Server Bind at `runtimeDir/monocle.sock` | S-021 | AC-001..AC-003 | YES |
 | BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022, S-025, S-026, S-028 | S-022: AC-001..AC-005; S-025: AC-008 (Invariant 4 idempotency); S-026: AC-001 (Invariant 4 idempotency); S-028: AC-006 (ring_tail backfill on connect) | YES |
 | BC-2.05.003 | IPC Message Types: SessionListUpdate | S-021 | AC-004..AC-006 | YES |
-| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021, S-028, S-032 | S-021: AC-007..AC-009 (types + struct); S-028: AC-006, AC-009 (TUI consumer — HookEventReceived streaming per INV-3); S-032: AC-001..AC-007 (daemon producer path, PC-2/INV-4 timestamp_micros) | YES |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021, S-028, S-032 | S-021: AC-007..AC-009 (types + struct); S-028: AC-006, AC-009 (TUI consumer — HookEventReceived streaming per INV-3); S-032: AC-001..AC-007 (daemon producer path, PC-2/INV-4 timestamp_micros) | PARTIAL (daemon producer path deferred to S-032 Wave 8) |
 | BC-2.05.005 | IPC Message Types: PermissionPromptQueued | S-022 | AC-006..AC-008 | YES |
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | S-023 | AC-001..AC-004 | YES |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | S-023 | AC-005..AC-006 | YES |
@@ -186,8 +186,8 @@ traces_to: .factory/specs/prd.md
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PC-2/INV-4 daemon producer path covered by S-032 (Wave 8)**
-**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027). BC-2.05.004 fully covered when S-021 + S-032 done (S-021 = types; S-032 = daemon producer PC-2/INV-4).**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PARTIAL — daemon producer path (PC-2/INV-4) deferred to S-032 Wave 8**
+**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027). BC-2.05.004 partial: S-021 (types) + S-028 (TUI consumer) done; S-032 (daemon producer PC-2/INV-4) Wave 8 draft — full coverage when S-032 delivered.**
 
 ## VP Coverage Table
 
@@ -452,6 +452,20 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.31
+
+**Phase-3→4 consistency-audit — four index findings resolved** (2026-06-03):
+
+MED-001 (Status drift — 9 Wave-2 stories): Story Registry rows for S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 corrected from `draft` to `done`. Cross-verified against sprint-state.yaml — all 9 carry `status: done` there. These stories were delivered in Waves 2-3 (PRs merged to develop) but the STORY-INDEX status was never flipped from the initial decomposition value.
+
+MED-004 (BC Coverage overclaim — BC-2.05.004): BC-2.05.004 `Full Coverage?` column corrected from `YES` to `PARTIAL (daemon producer path deferred to S-032 Wave 8)`. Rationale: S-021 covers IPC types; S-028 covers the TUI consumer path; S-032 (Wave 8, draft, unimplemented) covers the daemon producer path (PC-2 timestamp_micros equality, INV-4 single clock capture). Claiming YES while S-032 is undelivered is an overclaim. BC Coverage summary paragraph updated to match. Full coverage will be accurate only after S-032 merges.
+
+LOW-001 (Story-count description internally wrong): `34 (30 product + 1 DTU + 1 prep + 2 admin)` corrected to `34 (32 product + 1 DTU + 1 prep)`. Reality: S-001..S-032 = 32 product stories; S-DTU-001 = 1 DTU; S-PHASE-3-PREP = 1 prep. No "admin" category exists in this project.
+
+LOW-002 (EPIC-05 Epics table omits S-032): EPIC-05 Stories column updated from `S-021, S-022, S-023` to `S-021, S-022, S-023, S-032`. S-032 is assigned to EPIC-05 in the Story Registry (IPC epic, daemon event-bus fan-out).
+
+SE-16d monotonicity: v5.31 timestamp 2026-06-03 >= v5.30 timestamp 2026-06-03. PASS (same-day).
 
 ## §Trace v5.30
 

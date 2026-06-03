@@ -4,7 +4,7 @@ level: L4
 story_id: S-022
 epic_id: EPIC-05
 version: "1.4"
-status: in_progress
+status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-28T00:00:00Z
 phase: 2

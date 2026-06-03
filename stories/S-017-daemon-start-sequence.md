@@ -4,7 +4,7 @@ level: L4
 story_id: S-017
 epic_id: EPIC-04
 version: "1.1"
-status: not_started
+status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-27T00:00:00Z
 phase: 2

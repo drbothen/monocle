@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.38"
+version: "1.39"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -453,6 +453,15 @@ summary:
   wave_7_gate_decision: D-232
   wave_7_gate_date: "2026-06-03"
   phase_3_status: COMPLETE
+  # S-032 NOTE: S-032 (Wave 8, daemon event-bus fan-out, 5 pts, EPIC-05) is tracked in STORY-INDEX
+  #   as a draft story but is EXCLUDED from sprint-state Phase-3 totals (33 stories / 195 pts)
+  #   by design. S-032 discharges the deferred BC-2.05.004 v1.1.0 PC-2 obligation (timestamp_micros
+  #   daemon emit) and belongs to a post-Phase-3 wave. It does not block Phase 4 holdout evaluation.
+  # v1.39 updates (2026-06-03):
+  # - LOW-003: added S-032 exclusion note to summary block (by design, not counted in Phase-3 totals).
+  # - LOW-004: bulk story-file status corrections — 15 draft→done (S-001..S-015), 12 not_started→done
+  #   (S-016..S-021/S-023..S-026/S-030/S-031), 1 in_progress→done (S-022). 28 story files corrected.
+  #   Cross-checked against sprint-state.yaml; S-032, S-PHASE-3-PREP untouched (draft/blocked).
   # v1.38 updates (2026-06-03):
   # - Wave-7 gate PASSED (D-232). Gate checks: gate-1 PASS (1514 tests), gate-2 SKIP (no DTU clone story),
   #   gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 FIXED via PR #37 @ 6811103), gate-4 PASS (all 4 demos),

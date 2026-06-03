@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-20T21:00:00Z
@@ -20,7 +20,7 @@ lifecycle_status: active
 introduced: v1.0.0
 modified: []
 deprecated: null
-decorated_by: null
+deprecated_by: null
 replacement: null
 retired: null
 removed: null
@@ -120,6 +120,14 @@ S-DTU-001 — Claude Code Hook Protocol DTU Clone
 - Monocle improvement: add `if (isNaN(p)) continue;` to defensively skip non-numeric lock files.
 - Authored for S-DTU-001 DTU clone prerequisite gate.
 - SE-16d monotonicity PASS: 2026-05-20T21:00:00Z is initial creation.
+## §Trace v1.0.2
+
+**LOW-005: frontmatter typo `decorated_by` → `deprecated_by`** (2026-06-03):
+- Field name corrected: `decorated_by: null` → `deprecated_by: null`.
+- Pure frontmatter spelling fix; zero normative or behavioral content change.
+- Version bump: 1.0.1 → 1.0.2 (minimal bump per convention; typo corrections in frontmatter fields are versioned to maintain registry atomicity).
+- SE-16d PASS: 2026-06-03 >= 2026-05-30 (monotonicity satisfied).
+
 ## §Trace v1.0.1
 
 **POL-11 version-pin remediation — dtu-assessment Architecture Source version-free** (2026-05-30):

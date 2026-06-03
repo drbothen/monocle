@@ -2,16 +2,16 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.81"
+version: "6.82"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T08:00:00Z
+timestamp: 2026-06-03T10:00:00Z
 phase: phase-3-COMPLETE
-current_step: "D-232: Wave-7 gate PASSED. Phase 3 TDD Implementation COMPLETE (all 7 waves delivered and gated). develop @ 6811103 (F-W7G3-MED-001 fix). Gate: 1514 tests PASS, DTU SKIP (no clone story — DTU-CLONE-STORY added to register), adversarial PASS (0 CRIT/HIGH, 1 MED fixed in scope PR #37), demos PASS (all 4 stories), HS-EXP-008 score 1.0 PASS. sprint-state v1.38. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4."
+current_step: "D-233: Phase-3→4 consistency cleanup complete. EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2, sprint-state v1.39. 28 story-file status fields corrected to done. Input-hash refresh: 113 stale → 114 updated (17 residual bookkeeping-class). POL-11/POL-12 PASS. All D-233 audit findings RESOLVED. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED."
 awaiting: "Phase 3→4 transition gate: consistency audit (vsdd-factory:consistency-validation) + human approval. Then Phase 4 Holdout Evaluation. Before Phase 4: story-writer must decompose DTU-CLONE-STORY (dtu-claude-code-hooks-v1 behavioral clone). Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
 durable_task_register:
   outstanding:
@@ -52,9 +52,9 @@ durable_task_register:
       detail: "BC-2.03.001 v1.0.7 PC-3 still enumerates DeferUntil in supporting types. Authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.26 (no DeferUntil). PO mechanical fix."
       blocking: false
     - id: "BC-HOOK-034-typo"
-      subject: "BC-HOOK-034 typo decorated_by -> deprecated_by"
-      status: pending
-      detail: "Cosmetic typo in BC-HOOK-034 frontmatter. Non-blocking. Maintenance sweep."
+      subject: "BC-HOOK-034 typo decorated_by -> deprecated_by — RESOLVED D-233"
+      status: resolved
+      detail: "RESOLVED: product-owner fixed deprecated_by typo in D-233 Phase-3→4 consistency cleanup. BC-HOOK-034 bumped v1.0.1→v1.0.2."
       blocking: false
     - id: "VP-DTU-001"
       subject: "VP-DTU-001 to be created by architect in Phase 4"
@@ -380,7 +380,7 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.81 (D-232) — 2026-06-03
+  ZERO-CONTEXT RESUME CHECKPOINT v6.82 (D-233) — 2026-06-03
   PHASE 3 COMPLETE — WAVE-7 GATE PASSED — 32/33 STORIES — NEXT: Phase 3->4 gate
   ============================================================================
 
@@ -404,10 +404,13 @@ next_session_resume_protocol: |
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (upstream dep, does NOT block Phase 4).
   S-032 draft Wave 8 (daemon fan-out, does NOT block Phase 4).
-  sprint-state v1.38 (wave_7_gate_status: passed). STORY-INDEX v5.30. BC-INDEX v1.34 (113 BCs).
+  sprint-state v1.39 (wave_7_gate_status: passed). STORY-INDEX v5.31. BC-INDEX v1.34 (113 BCs). EVAL-INDEX v1.9.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   NEXT ACTION — Phase 3->4 transition gate:
+
+  NOTE: D-233 Phase-3→4 consistency cleanup COMPLETE. All MED/LOW audit findings RESOLVED.
+  EVAL-INDEX v1.9, STORY-INDEX v5.31, sprint-state v1.39. 28 story-file statuses corrected.
 
   STEP 1: Run consistency audit (blocking gate prerequisite):
     vsdd-factory:consistency-validation
@@ -440,7 +443,7 @@ next_session_resume_protocol: |
     PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
     SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.30 | EVAL-INDEX v1.7 | VP-INDEX v1.17
+    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.31 | EVAL-INDEX v1.9 | VP-INDEX v1.17
     BC-2.05.004 v1.1.0 | BC-2.06.006 v1.1.0 | BC-2.06.015 v1.0.7 | BC-2.06.016 v1.1.0
     BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.7
     BC-2.06.023 v1.5.1 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
@@ -516,6 +519,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-230 | S-029 DELIVERED — PR #35 squash-merged to develop @ 48463fb (mergedAt 2026-06-03T04:35:15Z). Killer Scenario: <=6 keystrokes dual permission resolve. BC-2.06.022. Validates holdout HS-EXP-008. 3 consecutive CLEAN adversarial passes (BC-5.39.001). Security review PASS (0 findings). Wave 7 COMPLETE (4/4: S-027 #32, S-031 #33, S-028 #34, S-029 #35). 32/33 stories done (192/195 pts, 98%). sprint-state v1.36→v1.37. STORY-INDEX v5.28→v5.29. S-029 spec v1.3. STATE v6.78→v6.79. | 2026-06-03 | state-manager |
 | D-231 | Wave-7-gate prerequisite sweep complete. SS-ipc v1.10.0→v1.11.0 (architect, F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.6→v1.0.7 (PO, F-S027-DOC-001 PC-3 'or replaced' fix). BC-INDEX v1.33→v1.34. STORY-INDEX v5.29→v5.30 (story-writer, F-S025-ADV37-DEFER-001 AC ranges corrected + systematic sweep). Citation atomicity propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc Architecture Source rows; EVAL-INDEX + product-brief BC-INDEX rows. S-027/S-028 story frontmatter status → done. version-pin-registry.yaml updated. POL-11 PASS (246 active, 575 files). POL-12 PASS. RESOLVED: F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS, L-S027-004. New residual: ADR-HOOK-001-WIRING (HUMAN action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. STATE v6.79→v6.80. | 2026-06-03 | state-manager |
 | D-232 | Wave-7 gate PASSED — Phase 3 TDD Implementation COMPLETE. Gate results: gate-1 PASS (1514 tests, 0 failures; clippy+fmt CLEAN), gate-2 SKIP (no DTU clone story — DTU-CLONE-STORY added as Phase 4 prereq; zero hook-boundary files touched), gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 fixed in scope via PR #37 @ 6811103), gate-4 PASS (all 4 wave-7 demos), gate-5 PASS (HS-EXP-008 score 1.0), gate-6 PASS (this update), mutation-testing SKIP (strict-mode only). F-S028-NIT-002/NIT-002-DEFERRED both RESOLVED. sprint-state v1.37→v1.38 (wave_7_gate_status: passed). POL-11 PASS (248 active, 578 files). POL-12 PASS. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4. STATE v6.80→v6.81. | 2026-06-03 | state-manager |
+| D-233 | Phase-3→4 consistency cleanup — all MED/LOW audit findings RESOLVED. EVAL-INDEX v1.8→v1.9 (PO, S-027 input added). BC-HOOK-034 v1.0.1→v1.0.2 (PO, deprecated_by typo). STORY-INDEX v5.30→v5.31 (story-writer, 9 Wave-2 stories draft→done + BC-2.05.004 coverage PARTIAL + story-count fix + EPIC-05 S-032). sprint-state v1.38→v1.39 (S-032 exclusion note + LOW-004 bulk flip note). 28 story-file status fields corrected (15 draft→done, 12 not_started→done, 1 in_progress→done). version-pin-registry: EVAL-INDEX 1.9 + STORY-INDEX 5.31 anchors set + S-027 added. Input-hash refresh: 113+1 stale → 114 updated, 17 residual bookkeeping-class (convergence limit — not content drift; POL-11/POL-12 PASS). BC-HOOK-034-typo RESOLVED. STATE v6.81→v6.82. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -524,11 +528,11 @@ serde_yaml_ng 0.10 | wasmtime 44 | nucleo 0.5 | time 0.3.47 (RUSTSEC-2026-0009 f
 serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.0.
 MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 **PRD v1.27.4** | **BC-INDEX v1.34** (113 BCs) | **ARCH-INDEX v1.0.25** | **SS-tui v1.8.2**
-**SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.30**
+**SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.31**
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
 **BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.7** | **BC-2.06.023 v1.5.1** | **BC-2.06.024 v1.1.0**
-**BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
-**sprint-state v1.38** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-232: Phase 3 COMPLETE.
+**BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **BC-HOOK-034 v1.0.2** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
+**EVAL-INDEX v1.9** | **STORY-INDEX v5.31** | **sprint-state v1.39** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-233: Phase-3→4 consistency cleanup COMPLETE.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
 ## Historical Content
@@ -545,7 +549,18 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.81 (D-232 — Wave-7 gate PASSED, Phase 3 COMPLETE)
+## §Trace v6.82 (D-233 — Phase-3→4 consistency cleanup COMPLETE)
+
+**D-233 (2026-06-03):** Phase-3→4 consistency cleanup (D-233). All MED/LOW audit findings
+RESOLVED. EVAL-INDEX v1.8→v1.9 (PO: added S-027 as input). BC-HOOK-034 v1.0.1→v1.0.2 (PO:
+deprecated_by typo fixed). STORY-INDEX v5.30→v5.31 (story-writer: 9 Wave-2 stories draft→done,
+BC-2.05.004 coverage PARTIAL, story-count fix, EPIC-05 S-032 added). sprint-state v1.38→v1.39
+(S-032 exclusion note + LOW-004 bulk flip note). 28 story-file status fields corrected
+(15 draft→done S-001..S-015, 12 not_started→done S-016..S-026/S-030/S-031, 1 in_progress→done
+S-022). version-pin-registry: EVAL-INDEX 1.9 + STORY-INDEX 5.31 D-233 anchors + S-027 added.
+Input-hash refresh: 113+1=114 updated, 17 residual bookkeeping-class (convergence limit —
+not content drift). POL-11 PASS (251 active, 578 files). POL-12 PASS. BC-HOOK-034-typo
+RESOLVED. v6.81→v6.82.
 
 **D-232 (2026-06-03):** Wave-7 integration gate PASSED. Phase 3 TDD Implementation COMPLETE
 (all 7 waves delivered and gated). Gate results: gate-1 PASS (1514 tests, 0 failures; clippy
@@ -562,4 +577,4 @@ SKIP (all wave-7 stories tdd_mode: strict; no facade stories). F-S028-NIT-002 an
 F-S028-NIT-002-DEFERRED both RESOLVED (fixed in scope as F-W7G3-MED-001). POL-11 PASS
 (248 active, 578 files). POL-12 PASS. sprint-state v1.37→v1.38. develop @ 6811103. v6.80→v6.81.
 
-§Trace v6.40 through v6.80 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.40 through v6.81 archived to `cycles/cycle-001/burst-log.md`.
