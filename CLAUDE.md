@@ -18,9 +18,15 @@ Vision approved verbatim by the human on 2026-05-11. Canonical vision: `.factory
 
 ## Current Pipeline State
 
+> **D-236 PIVOT (2026-06-03): monocle is now a FULL TUI CONTROL CENTER.**
+> Read `/Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md` FIRST before anything else.
+> The observe-only principle is RETIRED. VSDD Phase 4/5/6/7 of the old scope are SUSPENDED.
+> DO NOT run phase-4-holdout-evaluation or any Phase 5-7 skill until vision revision is complete.
+> Handoff is at NEXT-SESSION-PIVOT.md. Next action: facilitate vision revision with human.
+
 Read `.factory/STATE.md` for live state. As of last commit on this branch:
 - Brief: `v1.4.34` at `.factory/specs/product-brief.md`, `validate-brief` verdict: v5 VALID.
-- **Phase: `phase-3-COMPLETE`** — Wave-7 gate PASSED (D-232). **Phase 3 TDD Implementation COMPLETE.** All 7 waves delivered and gated. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4.
+- **Phase: `PIVOT-vision-revision-pending` (D-236)** — Product vision pivot in effect. monocle becomes a full TUI control center (launch/manage/observe/tune/control; multi-session, multi-project; never leave the TUI). Observe-only principle RETIRED. Phase 4-7 (old scope) SUSPENDED. See NEXT-SESSION-PIVOT.md.
 - **Waves 1-6 (DONE):** 28 stories merged (169 pts), gates D-164/D-166/D-167/D-175/D-182/D-224.
   - Wave 6 final: S-022 (PR #27 @ c754053), S-023 (PR #29 @ 7a52041), S-025 (PR #28 @ 838477e), S-026 (PR #30 @ 9fb0d70). Wave-6 GATE PASSED via D-224 (PR #31 @ 2a51a91 — CRITICAL offline reconnect fix).
 - **WAVE 7 (FINAL — GATE PASSED D-232, 4/4 done):**
@@ -53,8 +59,9 @@ Read `.factory/STATE.md` for live state. As of last commit on this branch:
   - **PROCESS-GAP-CI-PARITY-1**: CLAUDE.md Lint line add --all-targets — PENDING HUMAN ACTION.
   - Full register: `.factory/STATE.md` durable_task_register (40+ items).
 - **Wave-7-gate PASSED (D-232):** 1514 tests, 0 failures. F-W7G3-MED-001 fixed. HS-EXP-008 score 1.0. Phase 3 COMPLETE.
-- **Next:** Phase 3→4 transition gate (consistency audit + human approval) → Phase 4 Holdout Evaluation. Before Phase 4: story-writer decomposes DTU-CLONE-STORY. See `next_session_resume_protocol` in `.factory/STATE.md` for complete zero-context instructions.
-- Mode: greenfield-with-reference-ingest.
+- **D-236 PIVOT:** Observe-only scope superseded. Phase 4-7 SUSPENDED. Next: vision revision for control-center direction. See NEXT-SESSION-PIVOT.md.
+- **Next:** Read NEXT-SESSION-PIVOT.md. Facilitate vision revision (launch+manage+observe+tune+control; multi-session, multi-project). Redo gene-source disposition (claude-squad + zellij first). Delta brief→architecture→stories. DO NOT resume Phase 4.
+- Mode: greenfield-with-reference-ingest (vision revision in progress).
 
 ## Build / Test / Lint
 
