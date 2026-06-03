@@ -2,25 +2,29 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.82"
+version: "6.83"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T10:00:00Z
-phase: phase-3-COMPLETE
-current_step: "D-233: Phase-3→4 consistency cleanup complete. EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2, sprint-state v1.39. 28 story-file status fields corrected to done. Input-hash refresh: 113 stale → 114 updated (17 residual bookkeeping-class). POL-11/POL-12 PASS. All D-233 audit findings RESOLVED. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4."
+timestamp: 2026-06-03T12:00:00Z
+phase: phase-4-ACTIVE
+current_step: "D-234: DTU clone false-negative corrected. S-DTU-001 clone validated fidelity 1.0000 (25/25 fixtures, 5 endpoints). Gate-2 DTU-VALIDATION = PASS (was incorrectly recorded as SKIP). DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 Holdout Evaluation UNBLOCKED. PROC-DTU-VALIDATE-LOCATION process gap added. POL-11/POL-12 PASS. NEXT: Phase 4 Holdout Evaluation — vsdd-factory:phase-4-holdout-evaluation."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED."
-awaiting: "Phase 3→4 transition gate: consistency audit (vsdd-factory:consistency-validation) + human approval. Then Phase 4 Holdout Evaluation. Before Phase 4: story-writer must decompose DTU-CLONE-STORY (dtu-claude-code-hooks-v1 behavioral clone). Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added."
+awaiting: "Phase 4 Holdout Evaluation — vsdd-factory:phase-4-holdout-evaluation. D-234: DTU clone validated (fidelity 1.0000), Phase 4 UNBLOCKED. Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
 durable_task_register:
   outstanding:
     - id: "DTU-CLONE-STORY"
-      subject: "story-writer must decompose dtu-claude-code-hooks-v1 into a story BEFORE Phase 4 holdout-eval gate"
+      subject: "DTU clone false-negative — RESOLVED D-234 (RESOLVED-FALSE-PREMISE)"
+      status: resolved-false-premise
+      detail: "RESOLVED D-234: the D-232 Gate-2 SKIP and this task's blocking: true classification were based on a false premise. The DTU clone EXISTS as S-DTU-001 (status: done, facade mode, wave 1, BC-HOOK-001..041). Binary dtu-claude-code-hooks-v1 lives in crates/monocle-test-harness/src/bin/dtu_server.rs (built at target/release/dtu-claude-code-hooks-v1). Validated on develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints covered (pre-tool-use, notification, stop, session-start, prompt-submit), X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep CLEAN. Gate-2 DTU-VALIDATION corrected to PASS (see wave-7-gate-report.md D-234 annotation). Phase 4 holdout-eval gate is UNBLOCKED. Root cause: dtu-validator tooling looked for .factory/dtu-clones/ docker dir and missed the cargo-binary clone location. Process gap tracked as PROC-DTU-VALIDATE-LOCATION."
+      blocking: false
+    - id: "PROC-DTU-VALIDATE-LOCATION"
+      subject: "[process-gap] DTU validation must check cargo-binary clone location, not only .factory/dtu-clones/ docker dir"
       status: pending
-      detail: "Wave-7 gate D-232: DTU validation skipped because no DTU clone story was decomposed in Phase 2. The dtu-assessment.md specifies dtu-claude-code-hooks-v1 (5-endpoint hook protocol behavioral clone) as the required clone. Story-writer must create this story before Phase 4 holdout-eval gate — needed to exercise hook endpoints without a live Claude Code instance. Reference dtu-assessment.md acceptance criteria."
-      blocking: true
-      blocking_gate: "Phase 4 holdout-eval gate"
+      detail: "D-234: two independent agents (wave-7 Gate-2 dtu-validator and Phase-3→4 consistency-audit HIGH-001) produced false-negative DTU-missing verdicts by looking for a .factory/dtu-clones/ docker-style directory. They MISSED the cargo-binary clone delivered as S-DTU-001 (crates/monocle-test-harness/src/bin/dtu_server.rs, binary target dtu-claude-code-hooks-v1). DTU validation tooling must check the actual clone artifact location as recorded in the DTU story (target_module field) rather than assuming a fixed .factory/dtu-clones/ path. Routing: agent-prompt improvement for vsdd-factory:dtu-validator and vsdd-factory:consistency-validator. Target: self-improvement epic or upstream vsdd-factory issue. Non-blocking."
+      blocking: false
     - id: "ADV-W5GATE-HIGH-001"
       subject: "daemon_start_sequence() doesn't wire DaemonState — integration story needed"
       status: pending
@@ -380,8 +384,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.82 (D-233) — 2026-06-03
-  PHASE 3 COMPLETE — WAVE-7 GATE PASSED — 32/33 STORIES — NEXT: Phase 3->4 gate
+  ZERO-CONTEXT RESUME CHECKPOINT v6.83 (D-234) — 2026-06-03
+  PHASE 4 ACTIVE — DTU VALIDATED — 32/33 STORIES — NEXT: Phase 4 Holdout Evaluation
   ============================================================================
 
   YOUR FIRST 4 COMMANDS (RUN IN ORDER):
@@ -389,7 +393,7 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.81, durable_task_register.
+  2. Read this STATE.md fully — especially §Trace v6.83, durable_task_register.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
@@ -400,44 +404,43 @@ next_session_resume_protocol: |
   PIPELINE STATE (as of 2026-06-03):
 
   Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
+  Phase 4 ACTIVE — UNBLOCKED (D-234).
   develop @ 6811103 (F-W7G3-MED-001 fix, PR #37 — final wave-7-gate fix).
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (upstream dep, does NOT block Phase 4).
   S-032 draft Wave 8 (daemon fan-out, does NOT block Phase 4).
   sprint-state v1.39 (wave_7_gate_status: passed). STORY-INDEX v5.31. BC-INDEX v1.34 (113 BCs). EVAL-INDEX v1.9.
+  DTU: S-DTU-001 clone validated fidelity 1.0000 (25/25 fixtures, 5 endpoints). dtu_clones_built: 2026-05-28.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
-  NEXT ACTION — Phase 3->4 transition gate:
+  NEXT ACTION — Phase 4 Holdout Evaluation:
 
-  NOTE: D-233 Phase-3→4 consistency cleanup COMPLETE. All MED/LOW audit findings RESOLVED.
-  EVAL-INDEX v1.9, STORY-INDEX v5.31, sprint-state v1.39. 28 story-file statuses corrected.
+  D-234 CORRECTION: DTU-CLONE-STORY false-negative closed. Phase 4 is UNBLOCKED.
+  The DTU clone S-DTU-001 exists as cargo binary dtu-claude-code-hooks-v1
+  (crates/monocle-test-harness/src/bin/dtu_server.rs). No story decomposition needed.
 
-  STEP 1: Run consistency audit (blocking gate prerequisite):
-    vsdd-factory:consistency-validation
-  STEP 2: Human approval of Phase 3->4 transition.
-  STEP 3: Dispatch story-writer to decompose DTU-CLONE-STORY (BLOCKING for Phase 4 holdout-eval gate;
-    see durable_task_register DTU-CLONE-STORY entry). Reference dtu-assessment.md acceptance criteria.
-  STEP 4: vsdd-factory:phase-4-holdout-evaluation
+  STEP 1: vsdd-factory:phase-4-holdout-evaluation
 
-  WAVE 7 GATE SUMMARY (D-232 — PASSED):
+  WAVE 7 GATE SUMMARY (D-232 — PASSED; D-234 correction applied):
   * Gate 1 (test-suite): PASS — 1514 tests, 0 failures; clippy --all-targets CLEAN; fmt CLEAN.
-  * Gate 2 (dtu-validation): SKIP — no DTU clone story; hook-boundary untouched. DTU-CLONE-STORY added.
+  * Gate 2 (dtu-validation): PASS (D-234 correction — was incorrectly recorded SKIP; S-DTU-001 validated fidelity 1.0000).
   * Gate 3 (adversarial-review): PASS — 0 CRIT/HIGH, 1 MED fixed (F-W7G3-MED-001 PR #37 @ 6811103).
   * Gate 4 (demo-evidence): PASS — all 4 stories demoed (S-027/S-031 @ b2c8635, S-028 @ 70418e7, S-029 @ fdf1a31).
   * Gate 5 (holdout-eval): PASS — HS-EXP-008 score 1.0 (killer scenario <=6 keystrokes).
   * Gate 6 (state-update): PASS — this checkpoint.
   * Mutation testing: SKIP — all wave-7 stories tdd_mode: strict.
 
-  D-232 RESOLVED (do NOT re-flag):
+  D-232/D-234 RESOLVED (do NOT re-flag):
   (RESOLVED) F-S028-NIT-002 — fixed in scope as F-W7G3-MED-001 (PR #37 @ 6811103).
   (RESOLVED) F-S028-NIT-002-DEFERRED — same fix, index-space remap complete.
+  (RESOLVED) DTU-CLONE-STORY — false-negative; S-DTU-001 clone exists and validated (D-234).
 
   REMAINING OPEN (non-blocking for Phase 4):
   (a) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — terminal restore TTY-backed harness.
   (b) HUMAN ACTION: ADR-HOOK-001-WIRING — wire scripts/validate_adr_self_consistency.sh into settings.json.
   (c) implementer: F-S027-DOC-002/003 — render_frame and overlay.rs stale docstrings.
   (d) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
-  (e) DTU-CLONE-STORY — BLOCKING Phase 4 holdout-eval gate (story-writer must decompose).
+  (e) PROC-DTU-VALIDATE-LOCATION — agent-prompt improvement (non-blocking process gap).
 
   ARTIFACT VERSIONS (D-232 canonical; version-pin-registry.yaml is authoritative source):
     PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
@@ -477,7 +480,7 @@ next_session_resume_protocol: |
     NEVER use --no-verify. NEVER add Co-Authored-By: Claude or robot emoji.
 dtu_required: true
 dtu_assessment: 2026-05-12
-dtu_clones_built: pending
+dtu_clones_built: 2026-05-28
 dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 ---
@@ -494,9 +497,10 @@ current_cycle: cycle-001
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
-| 4-7 | not-started | — | |
+| 4 Holdout Evaluation | ACTIVE — UNBLOCKED (D-234) | — | DTU clone S-DTU-001 validated fidelity 1.0000 (25/25). Dispatch vsdd-factory:phase-4-holdout-evaluation. |
+| 5-7 | not-started | — | |
 
-develop @ 6811103 (D-232 — wave-7 gate PASSED, F-W7G3-MED-001 fix). Waves 1-7 DONE. Wave-7 GATE PASSED (D-232). Phase 3 COMPLETE. 32/33 stories done, 192/195 pts (98%). NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4 Holdout Evaluation.
+develop @ 6811103 (D-232 — wave-7 gate PASSED, F-W7G3-MED-001 fix). Waves 1-7 DONE. Phase 3 COMPLETE. 32/33 stories done, 192/195 pts (98%). D-234: DTU clone S-DTU-001 validated (fidelity 1.0000). Phase 4 ACTIVE — UNBLOCKED. NEXT: vsdd-factory:phase-4-holdout-evaluation.
 
 ## Blocking Issues
 
@@ -520,6 +524,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-231 | Wave-7-gate prerequisite sweep complete. SS-ipc v1.10.0→v1.11.0 (architect, F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.6→v1.0.7 (PO, F-S027-DOC-001 PC-3 'or replaced' fix). BC-INDEX v1.33→v1.34. STORY-INDEX v5.29→v5.30 (story-writer, F-S025-ADV37-DEFER-001 AC ranges corrected + systematic sweep). Citation atomicity propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc Architecture Source rows; EVAL-INDEX + product-brief BC-INDEX rows. S-027/S-028 story frontmatter status → done. version-pin-registry.yaml updated. POL-11 PASS (246 active, 575 files). POL-12 PASS. RESOLVED: F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS, L-S027-004. New residual: ADR-HOOK-001-WIRING (HUMAN action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. STATE v6.79→v6.80. | 2026-06-03 | state-manager |
 | D-232 | Wave-7 gate PASSED — Phase 3 TDD Implementation COMPLETE. Gate results: gate-1 PASS (1514 tests, 0 failures; clippy+fmt CLEAN), gate-2 SKIP (no DTU clone story — DTU-CLONE-STORY added as Phase 4 prereq; zero hook-boundary files touched), gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 fixed in scope via PR #37 @ 6811103), gate-4 PASS (all 4 wave-7 demos), gate-5 PASS (HS-EXP-008 score 1.0), gate-6 PASS (this update), mutation-testing SKIP (strict-mode only). F-S028-NIT-002/NIT-002-DEFERRED both RESOLVED. sprint-state v1.37→v1.38 (wave_7_gate_status: passed). POL-11 PASS (248 active, 578 files). POL-12 PASS. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4. STATE v6.80→v6.81. | 2026-06-03 | state-manager |
 | D-233 | Phase-3→4 consistency cleanup — all MED/LOW audit findings RESOLVED. EVAL-INDEX v1.8→v1.9 (PO, S-027 input added). BC-HOOK-034 v1.0.1→v1.0.2 (PO, deprecated_by typo). STORY-INDEX v5.30→v5.31 (story-writer, 9 Wave-2 stories draft→done + BC-2.05.004 coverage PARTIAL + story-count fix + EPIC-05 S-032). sprint-state v1.38→v1.39 (S-032 exclusion note + LOW-004 bulk flip note). 28 story-file status fields corrected (15 draft→done, 12 not_started→done, 1 in_progress→done). version-pin-registry: EVAL-INDEX 1.9 + STORY-INDEX 5.31 anchors set + S-027 added. Input-hash refresh: 113+1 stale → 114 updated, 17 residual bookkeeping-class (convergence limit — not content drift; POL-11/POL-12 PASS). BC-HOOK-034-typo RESOLVED. STATE v6.81→v6.82. | 2026-06-03 | state-manager |
+| D-234 | DTU clone false-negative corrected — S-DTU-001 clone (dtu-claude-code-hooks-v1 cargo binary, crates/monocle-test-harness/src/bin/dtu_server.rs) validated on develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints covered (pre-tool-use/notification/stop/session-start/prompt-submit), X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep CLEAN. GATE-2 DTU-VALIDATION corrected from SKIP (false-negative) to PASS. Wave-7-gate-report.md Gate-2 annotated with D-234 correction. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE — blocking: false). dtu_clones_built updated to 2026-05-28. Phase 4 holdout-eval gate UNBLOCKED. Process gap: dtu-validator and consistency-validator searched for .factory/dtu-clones/ docker dir and missed cargo-binary clone location (S-DTU-001). PROC-DTU-VALIDATE-LOCATION added. POL-11/POL-12 PASS. STATE v6.82→v6.83. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -549,7 +554,18 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.82 (D-233 — Phase-3→4 consistency cleanup COMPLETE)
+## §Trace v6.83 (D-234 — DTU clone false-negative corrected; Phase 4 ACTIVE)
+
+**D-234 (2026-06-03):** DTU clone false-negative corrected. S-DTU-001 (cargo binary
+dtu-claude-code-hooks-v1, crates/monocle-test-harness/src/bin/dtu_server.rs) validated on
+develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints
+covered (pre-tool-use, notification, stop, session-start, prompt-submit),
+X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep
+CLEAN. Gate-2 DTU-VALIDATION corrected from SKIP to PASS in wave-7-gate-report.md (D-234
+annotation). DTU-CLONE-STORY closed: RESOLVED-FALSE-PREMISE (blocking: false). dtu_clones_built
+updated to 2026-05-28. Phase 4 holdout-eval gate UNBLOCKED. Process gap: dtu-validator and
+consistency-validator searched for .factory/dtu-clones/ docker dir and missed cargo-binary clone
+location. PROC-DTU-VALIDATE-LOCATION added. POL-11/POL-12 PASS. v6.82→v6.83.
 
 **D-233 (2026-06-03):** Phase-3→4 consistency cleanup (D-233). All MED/LOW audit findings
 RESOLVED. EVAL-INDEX v1.8→v1.9 (PO: added S-027 as input). BC-HOOK-034 v1.0.1→v1.0.2 (PO:
@@ -577,4 +593,4 @@ SKIP (all wave-7 stories tdd_mode: strict; no facade stories). F-S028-NIT-002 an
 F-S028-NIT-002-DEFERRED both RESOLVED (fixed in scope as F-W7G3-MED-001). POL-11 PASS
 (248 active, 578 files). POL-12 PASS. sprint-state v1.37→v1.38. develop @ 6811103. v6.80→v6.81.
 
-§Trace v6.40 through v6.81 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.40 through v6.82 archived to `cycles/cycle-001/burst-log.md`.
