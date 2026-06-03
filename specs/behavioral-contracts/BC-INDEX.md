@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.33"
+version: "1.34"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-30T00:00:00Z
+timestamp: 2026-06-03T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "17f342c"
@@ -1102,3 +1102,21 @@ BC-INDEX H1 title unchanged: "Sessions Panel: Enter Transitions to Fullscreen" �
 transition, not the exit. No BC retirements or removals.
 
 SE-16d monotonicity: v1.33 timestamp 2026-05-30T00:00:00Z > v1.32 timestamp 2026-05-29T03:00:00Z. PASS.
+
+## §Trace v1.34
+
+**F-S027-DOC-001 LOW — BC-2.06.021 v1.0.6 → v1.0.7: PC-3 "or replaced" corrected** (2026-06-03T00:00:00Z):
+
+BC-2.06.021 v1.0.6 → v1.0.7:
+- PC-3 asserted "no AppMode in which the hint line is hidden or replaced," which contradicted
+  BC-2.06.019 v1.1.0 PC-7's canonical supersede model (status_message temporarily supersedes the
+  keybinding hint on the lower row).
+- Fix: PC-3 reworded to "always rendered (with supersede exception)" with explicit cross-reference
+  to BC-2.06.019 PC-7. The permanent-visibility claim is preserved for the AppMode-level guarantee;
+  the temporary supersede by status_message is now acknowledged.
+- Documentation-only. No behavior change, no test vector changes, no story pin impact.
+- Closes S-027 residual follow-up F-S027-DOC-001.
+
+BC-INDEX H1 title unchanged: "Status Bar: Keybinding Hint Line". No BC retirements or removals.
+
+SE-16d monotonicity: v1.34 timestamp 2026-06-03T00:00:00Z > v1.33 timestamp 2026-05-30T00:00:00Z. PASS.

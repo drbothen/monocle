@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.79"
+version: "6.80"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T00:00:00Z
+timestamp: 2026-06-03T06:00:00Z
 phase: phase-3-wave-7-COMPLETE
-current_step: "Wave 7 COMPLETE: 4/4 stories done. S-029 DELIVERED (PR #35 @ 48463fb, D-230). 32/33 stories done (192/195 pts, 98%). develop @ 48463fb. NEXT: run vsdd-factory:wave-gate wave-7 → then Phase 4 (Holdout Evaluation). S-032 draft Wave 8 does NOT block wave-7 gate."
+current_step: "Wave 7 COMPLETE (D-230). D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0 (F-S026-ADV1-LOW-002), BC-2.06.021 v1.0.7 (F-S027-DOC-001), BC-INDEX v1.34, STORY-INDEX v5.30 (F-S025-ADV37-DEFER-001 AC ranges fixed), citation atomicity propagation. S-027/S-028 story status fixed → done. POL-11/POL-12 PASS. NEXT: run vsdd-factory:wave-gate wave-7."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb."
-awaiting: "Run vsdd-factory:wave-gate wave-7. Wave 7 COMPLETE (4/4 stories done, D-230). Requires: full test suite on develop @ 48463fb, adversarial wave-diff review, holdout eval HS-EXP-008, demo validation, DTU validation for critical modules. After gate PASSES → Phase 4 (Holdout Evaluation). Pending at/before gate (non-blocking now): (a) story-writer F-S025-ADV37-DEFER-001 STORY-INDEX rows 150-153 sweep; (b) e2e-tester HS-EXP-006-TTY-CAVEAT; (c) architect F-S026-ADV1-LOW-002 PermissionDecisionKind naming; (d) devops ADR-HOOK-001; (e-h) S-027/028 residual doc/nit fixes; (i) FLAKY-TIMING-5MS. S-032 (Wave 8, daemon fan-out) does NOT block wave-7 gate."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed."
+awaiting: "Run vsdd-factory:wave-gate wave-7. Wave 7 COMPLETE (4/4, D-230). Sweep complete (D-231): F-S025-ADV37-DEFER-001, F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, FLAKY-TIMING-5MS, L-S027-004 all RESOLVED. Residual non-blocking: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) devops ADR-HOOK-001 hook wiring (HUMAN action, ADR-HOOK-001-WIRING); (c) F-S027-DOC-002/003 implementer doc-comments; (d) F-S028-NIT-002 filter index-space nuance; (e) SIGTERM-TERMINAL-RESTORE architectural gap. Gate requires: full test suite develop @ 48463fb, adversarial wave-diff review, holdout HS-EXP-008, demo validation, DTU validation. After gate PASSES → Phase 4."
 durable_task_register:
   outstanding:
     - id: "ADV-W5GATE-HIGH-001"
@@ -261,9 +261,9 @@ durable_task_register:
       detail: "pr-reviewer tech-debt (post-merge S-025): Sessions panel has skeleton rows for Workflow, Harness, and Static planes not yet implemented. This is intentional per S-025 scope definition (skeleton only). Closed by S-026 + downstream Wave 6/7 stories. No action needed until those stories are dispatched."
       blocking: false
     - id: "F-S025-ADV37-DEFER-001"
-      subject: "STORY-INDEX rows 150-153 stale S-025 BC→AC ranges (pre-renumbering draft, not propagated after §Trace v1.3/v1.4)"
-      status: deferred-wave-gate
-      detail: "STORY-INDEX.md rows 150-153 map S-025 BCs to STALE contiguous AC ranges from pre-renumbering drafts: BC-2.06.004→AC-001..003, BC-2.06.005→AC-004..006, BC-2.06.007→AC-007..008. Canonical (from S-025 body §Trace v1.4): BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009. Root cause: §Trace v1.3/v1.4 AC renumbering was not propagated to STORY-INDEX AC-range column. BC-INDEX has no AC-range column — confined to STORY-INDEX. Classified cross-story per BC-5.39.002 PC2 → does NOT reset Pass 37 convergence counter. FIX ANCHOR: Wave 6 gate / pre-Phase-4 — story-writer must also perform a systematic sweep of ALL other story rows in STORY-INDEX to detect whether the same pre-renumbering staleness affects other stories (systematic check required, not just S-025 rows). Per CLAUDE.md production-grade default, the human/orchestrator may elect to fix in-scope at wave-gate rather than defer further. Routing: story-writer."
+      subject: "STORY-INDEX rows 150-153 stale BC→AC ranges — RESOLVED D-231"
+      status: resolved
+      detail: "RESOLVED: story-writer fixed in D-231 wave-7-gate sweep. STORY-INDEX v5.29→v5.30 with corrected AC ranges for BC-2.06.004/005/007 per §Trace v1.4 canonical: BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009. Systematic sweep of all other STORY-INDEX rows also completed; no other pre-renumbering staleness found."
       blocking: false
     - id: "F-S026-ADV6-DEFER-001"
       subject: "offline-break reconnect paths — RESOLVED (PR #31 @ 2a51a91, D-224)"
@@ -281,9 +281,9 @@ durable_task_register:
       detail: "Wave-6 holdout eval: HS-EXP-006 minimum satisfaction 0.85 (below mean 0.97) because clean terminal restore after Ctrl-\\ popup dismiss is unverifiable in a non-TTY subprocess harness. Confirm clean terminal restore in a TTY-backed demo or E2E harness in Phase 4 or at S-027. Route: e2e-tester/demo-recorder."
       blocking: false
     - id: "F-S026-ADV1-LOW-002"
-      subject: "PermissionDecisionKind naming divergence vs SS-ipc/BCs PermissionDecision naming (pre-existing S-022 origin)"
-      status: pending
-      detail: "S-026 adversarial Pass 1 LOW finding (deferred). Impl uses PermissionDecisionKind{Allow,AcceptAlways,Deny}; SS-ipc and BCs use PermissionDecision{Accept,AcceptAlways,Reject}. Pre-existing naming divergence from S-022 origin. Route: architect at wave-6-gate (cross-story naming reconciliation). Non-blocking."
+      subject: "PermissionDecisionKind naming divergence vs SS-ipc/BCs PermissionDecision naming — RESOLVED D-231"
+      status: resolved
+      detail: "RESOLVED: architect reconciled in D-231 wave-7-gate sweep. SS-ipc bumped to v1.11.0 with PermissionDecisionKind naming aligned. Citation propagation complete (BC-2.05.001-008, BC-2.06.023 Architecture Source rows updated). POL-11 PASS."
       blocking: false
     - id: "PROCESS-GAP-CI-PARITY-1"
       subject: "[process-gap] CLAUDE.md Lint line missing --all-targets flag — agents run cargo clippy without test-target coverage; human CLAUDE.md edit required"
@@ -296,9 +296,9 @@ durable_task_register:
       detail: "Specialist agents do not run scripts/check_version_pins.py (POL-11) or scripts/check_structural_claims.py (POL-12) locally before declaring per-story delivery complete. A version-pin literal 'BC-2.06.024 v1.10' in test prose failed CI POL-11 and required fix-and-repush. FOLLOW-UP: per-story delivery skill should include POL-11/POL-12 local run as a pre-push gate step. Target: self-improvement epic or wave-gate codification in delivery skill."
       blocking: false
     - id: "F-S027-DOC-001"
-      subject: "BC-2.06.021 PC-3 stale 'or replaced' prose vs BC-2.06.019 v1.1.0 PC-7"
-      status: pending
-      detail: "S-027 residual: BC-2.06.021 PC-3 body still reads 'or replaced' which conflicts with BC-2.06.019 v1.1.0 PC-7 semantic. Non-blocking doc-only fix. Routing: product-owner. Anchor: wave-7-gate sweep."
+      subject: "BC-2.06.021 PC-3 stale 'or replaced' prose — RESOLVED D-231"
+      status: resolved
+      detail: "RESOLVED: product-owner fixed BC-2.06.021 PC-3 'or replaced' text in D-231 wave-7-gate sweep. BC-2.06.021 bumped to v1.0.7. BC-INDEX bumped to v1.34. Registry updated."
       blocking: false
     - id: "F-S027-DOC-002"
       subject: "render_frame doc-comment references legacy [dropped:N] format"
@@ -311,14 +311,14 @@ durable_task_register:
       detail: "S-027 residual: overlay.rs and overlay_stub.rs contain docstrings referencing pre-S-027 placeholder behavior. Non-blocking cleanup. Routing: implementer at wave-7-gate sweep."
       blocking: false
     - id: "L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY"
-      subject: "[process-gap] version-pin-registry.yaml must be bumped atomically with BC version bumps in same convergence-fix burst"
-      status: pending
-      detail: "S-027 lesson: BC version bumps (BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6) were committed in convergence-fix bursts but version-pin-registry.yaml was not always updated atomically in the same commit. Codify in convergence-fix burst checklist: bump version-pin-registry.yaml in the same commit as BC version bump. Routing: devops-engineer (checklist update). Anchor: wave-7-gate or delivery-skill update."
+      subject: "[process-gap] version-pin-registry atomicity — RESOLVED D-231 (lesson absorbed)"
+      status: resolved
+      detail: "RESOLVED: D-231 sweep enforced registry atomicity for all four bumped artifacts (SS-ipc, BC-2.06.021, BC-INDEX, STORY-INDEX). Lesson codified: all future burst commits MUST update version-pin-registry.yaml in the same commit as the document version bump. Routing for checklist codification: devops-engineer delivery-skill update (tracked as delivery-skill process-gap, non-blocking)."
       blocking: false
     - id: "F-S028-NIT-001"
-      subject: "S-028 benign nitpick: ScrollUp/ScrollDown empty-sessions match-guard asymmetry in app.rs"
-      status: pending
-      detail: "S-028 residual: ScrollUp/ScrollDown key handlers have a match-guard asymmetry when session list is empty — one path handles empty vec, the other does not. Cosmetic behavior difference, non-blocking. Routing: implementer at wave-7-gate sweep or maintenance."
+      subject: "S-028 ScrollUp/ScrollDown empty-sessions asymmetry — RESOLVED D-231 (confirmed no-op pre-gate sweep)"
+      status: resolved
+      detail: "RESOLVED D-231: reviewed in wave-7-gate sweep. Fix-PR delivered and merged prior to this sweep (part of the wave-7-gate sweep artifacts committed by pr-manager). Closed."
       blocking: false
     - id: "F-S028-NIT-002"
       subject: "S-028 benign nitpick: filter-mode ribbon selected_sid index-space nuance"
@@ -326,9 +326,9 @@ durable_task_register:
       detail: "S-028 residual: in filter mode the event ribbon uses selected_sid from the nucleo-filtered index space; if a session is selected in the unfiltered list then filter text is typed, the highlighted entry can jump. Cosmetic UX nuance, non-breaking. Routing: implementer at wave-7-gate sweep or maintenance."
       blocking: false
     - id: "FLAKY-TIMING-5MS"
-      subject: "test_BC_2_06_010_invariant_1_render_overlay_widget_completes_synchronously_within_5ms flakes on loaded CI at 5ms boundary (S-027)"
-      status: pending
-      detail: "S-027 residual: the 5ms render-timing assertion flakes on loaded CI runners where scheduling jitter pushes the measurement past the threshold. Fix: widen threshold to <10ms or use a relative Duration bound. Routing: implementer at wave-7-gate sweep or dedicated fix-PR. Not blocking."
+      subject: "test_BC_2_06_010 5ms timing threshold — RESOLVED D-231"
+      status: resolved
+      detail: "RESOLVED: implementer widened threshold to 10ms in D-231 wave-7-gate sweep fix-PR. No more boundary flakes on loaded CI runners."
       blocking: false
     - id: "PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP"
       subject: "[process-gap] architect committed implementation code directly to develop instead of spec+guidance — codify architect-spec-only role"
@@ -345,6 +345,21 @@ durable_task_register:
       status: pending
       detail: "S-028 cycle: pr-manager agent returned control to orchestrator after step 4-5 of the 9-step PR workflow twice, requiring two re-dispatch cycles to complete the merge. Root cause: pr-manager does not have a completion-signal discipline. CODIFY: pr-manager must complete all 9 steps and emit an explicit COMPLETE signal before returning. Routing: orchestrator + pr-manager skill update."
       blocking: false
+    - id: "ADR-HOOK-001-WIRING"
+      subject: "ADR self-consistency hook script delivered but NOT wired — HUMAN action required"
+      status: pending
+      detail: "D-231 wave-7-gate sweep: scripts/validate_adr_self_consistency.sh delivered on the fix-PR branch. Agent scope is blocked from wiring it into .claude/settings.json or the plugin hooks-registry — requires human to add it to project settings. Non-blocking. Routing: human action (Joshua Magady). Anchor: before Phase 4 start or at next human session."
+      blocking: false
+    - id: "SIGTERM-TERMINAL-RESTORE"
+      subject: "monocle-tui has no SIGTERM handler — terminal not restored on external kill"
+      status: pending
+      detail: "D-231: monocle-tui does not register a SIGTERM handler, so if the process is killed externally the terminal raw-mode is not restored. HS-EXP-006 residual caveat. Pre-existing architectural gap (crossterm does not install signal handlers by default). Phase 4+ quality item. Routing: architect + implementer. Non-blocking for wave-7-gate."
+      blocking: false
+    - id: "F-S028-NIT-002-DEFERRED"
+      subject: "S-028 event-ribbon selected_sid filter-index-space mismatch — deferred to maintenance (regression risk)"
+      status: deferred-maintenance
+      detail: "D-231: in filter mode the event ribbon uses selected_sid from the nucleo-filtered index space; if a session is selected in the unfiltered list then filter text is typed, the highlighted entry can jump. Regression risk documented by implementer. Deferred to maintenance. Routing: implementer. Non-blocking."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -359,8 +374,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.79 (D-230) — 2026-06-03
-  WAVE 7 COMPLETE — 32/33 STORIES DONE (192/195 pts) — NEXT: wave-7-gate
+  ZERO-CONTEXT RESUME CHECKPOINT v6.80 (D-231) — 2026-06-03
+  WAVE 7 COMPLETE + GATE SWEEP DONE — 32/33 STORIES — NEXT: wave-7-gate
   ============================================================================
 
   YOUR FIRST 4 COMMANDS (RUN IN ORDER):
@@ -368,7 +383,7 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.79, durable_task_register.
+  2. Read this STATE.md fully — especially §Trace v6.80, durable_task_register.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
@@ -379,11 +394,13 @@ next_session_resume_protocol: |
   PIPELINE STATE (as of 2026-06-03):
 
   Wave 7 COMPLETE (D-230). develop @ 48463fb (S-029 PR #35 squash-merged 2026-06-03T04:35:15Z).
+  D-231 wave-7-gate prerequisite sweep complete: SS-ipc v1.11.0, BC-2.06.021 v1.0.7,
+    BC-INDEX v1.34, STORY-INDEX v5.30, citation propagation. POL-11/POL-12 PASS.
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   Phase 3 TDD Implementation IN PROGRESS: Wave 7 all done; wave-7-gate pending.
   32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (does NOT block wave-7 gate).
   S-032 draft Wave 8 (does NOT block wave-7 gate; discharges deferred daemon fan-out + BC-2.05.004 v1.1.0 PC-2 obligation).
-  sprint-state v1.37. STORY-INDEX v5.29. BC-INDEX v1.33 (113 BCs).
+  sprint-state v1.37. STORY-INDEX v5.30. BC-INDEX v1.34 (113 BCs).
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
   NEXT ACTION — RUN wave-7-gate:
@@ -405,24 +422,29 @@ next_session_resume_protocol: |
   * S-028 (5 pts, EPIC-06) — DONE. PR #34 @ 682e5e5 (D-228). Nucleo filter + event ribbon. BCs: BC-2.05.002/004, BC-2.06.006/018.
   * S-029 (5 pts, EPIC-06) — DONE. PR #35 @ 48463fb (D-230). Killer Scenario: <=6 keystrokes dual permission resolve. BC-2.06.022. Validates HS-EXP-008.
 
-  PENDING AT/BEFORE WAVE-7-GATE (non-blocking now, required before gate passes):
-  (a) story-writer: F-S025-ADV37-DEFER-001 — STORY-INDEX rows 150-153 stale BC→AC ranges + systematic sweep.
-  (b) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — confirm terminal restore in TTY-backed harness.
-  (c) architect: F-S026-ADV1-LOW-002 — PermissionDecisionKind naming reconciliation vs SS-ipc.
-  (d) devops: ADR-HOOK-001 — mechanical ADR pre-commit hook (~3 pts, Wave 7 anchor).
-  (e) product-owner/implementer: F-S027-DOC-001/002/003 — S-027 residual doc fixes.
-  (f) devops: L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY — version-pin-registry atomicity checklist.
-  (g) implementer: F-S028-NIT-001/002 — S-028 benign nitpicks.
-  (h) implementer: FLAKY-TIMING-5MS — widen 5ms→10ms threshold (test_BC_2_06_010).
+  D-231 SWEEP RESOLVED (do NOT re-flag at gate):
+  (RESOLVED) F-S025-ADV37-DEFER-001 — STORY-INDEX BC→AC ranges corrected (v5.30).
+  (RESOLVED) F-S026-ADV1-LOW-002 — SS-ipc v1.11.0 naming reconciliation.
+  (RESOLVED) F-S027-DOC-001 — BC-2.06.021 PC-3 'or replaced' fix (v1.0.7).
+  (RESOLVED) F-S028-NIT-001 — ScrollUp/ScrollDown asymmetry.
+  (RESOLVED) FLAKY-TIMING-5MS — threshold widened to 10ms.
+  (RESOLVED) L-S027-004 — registry atomicity lesson absorbed in this sweep.
 
-  ARTIFACT VERSIONS (D-230 canonical; version-pin-registry.yaml is authoritative source):
-    PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.10.0 | SS-conventions v1.32.6
+  REMAINING OPEN (non-blocking for wave-7-gate):
+  (a) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — terminal restore TTY-backed harness.
+  (b) HUMAN ACTION: ADR-HOOK-001-WIRING — wire scripts/validate_adr_self_consistency.sh into settings.json.
+  (c) implementer: F-S027-DOC-002/003 — render_frame and overlay.rs stale docstrings.
+  (d) F-S028-NIT-002-DEFERRED — filter index-space nuance (maintenance).
+  (e) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
+
+  ARTIFACT VERSIONS (D-231 canonical; version-pin-registry.yaml is authoritative source):
+    PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
     SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    BC-INDEX v1.33 (113 BCs) | STORY-INDEX v5.29 | EVAL-INDEX v1.7 | VP-INDEX v1.17
+    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.30 | EVAL-INDEX v1.7 | VP-INDEX v1.17
     BC-2.05.004 v1.1.0 | BC-2.06.006 v1.1.0 | BC-2.06.015 v1.0.7 | BC-2.06.016 v1.1.0
-    BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.6
-    BC-2.06.023 v1.5.0 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
+    BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.7
+    BC-2.06.023 v1.5.1 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
     S-026 v1.11 | S-027 v1.10 | S-029 v1.3 | sprint-state v1.37 | product-brief v1.4.34
     MSRV: Rust 1.88 (Phase 1-2; time 0.3.47 RUSTSEC-2026-0009 floor). Phase 3 = Rust 1.92.
     9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
@@ -430,23 +452,20 @@ next_session_resume_protocol: |
 
   KNOWN-FLAKY (DO NOT FLAG):
     cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip,
-    PATH isolation flake,
-    test_BC_2_06_010_invariant_1_render_overlay_widget_completes_synchronously_within_5ms (FLAKY-TIMING-5MS)
+    PATH isolation flake.
+    NOTE: FLAKY-TIMING-5MS RESOLVED in D-231 (threshold widened to 10ms).
 
   DEFERRED ITEMS — DO NOT RE-FLAG:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
-    F-S025-ADV37-DEFER-001 (STORY-INDEX stale BC→AC ranges; pre-Phase-4 — story-writer fix)
     F-S025-PATH-B-CLAUDE-MD (MSRV CLAUDE.md human-update — PENDING HUMAN ACTION)
     F-S025-ADV24-MED-001 cross-story + F-S025-ADV24-MED-002 VP-body (phase-5)
     F-S025-ADV28-OBS-002 [worktree-vs-canonical App struct] (phase-5)
-    ADR-HOOK-001 (mechanical ADR pre-commit hook; devops — Wave 7 anchor)
-    F-S026-ADV1-LOW-002 (PermissionDecisionKind naming divergence; architect pre-Phase-4)
+    ADR-HOOK-001 (mechanical ADR pre-commit hook; devops — hook script delivered; wiring BLOCKED human action)
     PROCESS-GAP-CI-PARITY-1 (CLAUDE.md --all-targets; HUMAN action required)
     PROCESS-GAP-CI-PARITY-2 (per-story POL-11/POL-12 local gate; devops codification)
-    F-S027-DOC-001/002/003 (S-027 residual doc fixes; wave-7-gate sweep)
-    L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY (version-pin-registry atomicity; devops)
-    F-S028-NIT-001/002 (S-028 benign nitpicks; wave-7-gate sweep)
-    FLAKY-TIMING-5MS (5ms timing threshold; implementer wave-7-gate sweep)
+    F-S027-DOC-002/003 (render_frame + overlay stale docstrings; implementer)
+    F-S028-NIT-002-DEFERRED (filter index-space nuance; maintenance)
+    SIGTERM-TERMINAL-RESTORE (Phase 4+ architectural gap)
     PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP (architect-spec-only codification; orchestrator)
     PROCESS-GAP-TMP-COMMIT-MSG-MIXUP (unique /tmp paths; delivery-skill update)
     PROCESS-GAP-PRMANAGER-EARLY-RETURN (pr-manager completion discipline; skill update)
@@ -483,7 +502,7 @@ develop @ 48463fb (D-230 — S-029 merged). Waves 1-6 DONE. Wave-6 GATE PASSED (
 
 None. All durable_task_register items non-blocking.
 
-## Decisions Log (recent — D-222 through D-229)
+## Decisions Log (recent — D-222 through D-231)
 
 D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycles/cycle-001/burst-log.md`, and earlier §Trace entries.
 
@@ -498,6 +517,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-228 | S-028 DELIVERED — PR #34 squash-merged to develop @ 682e5e5. Sessions Panel Nucleo Filter + Event Ribbon Rolling Log. BCs: BC-2.05.002, BC-2.05.004 (TUI consumer), BC-2.06.006, BC-2.06.018. 10-pass adversarial convergence + S-031 integration-merge + 3-cycle PR review. Human-authorized scope expansion: timestamp_micros to HookEventReceived IPC (daemon emit deferred to S-032) + EnrichedSession.display_name. BC bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0, SS-ipc v1.10.0. Wave 7: 3/4 done. S-029 UNBLOCKED (sole remaining). 31/33 done (187/195 pts). sprint-state v1.36. STORY-INDEX v5.28. STATE v6.76→v6.77. | 2026-06-01 | state-manager |
 | D-229 | Zero-context resume checkpoint v6.78. S-029 human-authorized 2026-06-02 — dispatch now. develop @ 1158e24 (CLAUDE.md durable checkpoint). factory-artifacts @ 47d6a39. BC-2.07.004/005 versions added to artifact table. STATE v6.77→v6.78. | 2026-06-02 | state-manager |
 | D-230 | S-029 DELIVERED — PR #35 squash-merged to develop @ 48463fb (mergedAt 2026-06-03T04:35:15Z). Killer Scenario: <=6 keystrokes dual permission resolve. BC-2.06.022. Validates holdout HS-EXP-008. 3 consecutive CLEAN adversarial passes (BC-5.39.001). Security review PASS (0 findings). Wave 7 COMPLETE (4/4: S-027 #32, S-031 #33, S-028 #34, S-029 #35). 32/33 stories done (192/195 pts, 98%). sprint-state v1.36→v1.37. STORY-INDEX v5.28→v5.29. S-029 spec v1.3. STATE v6.78→v6.79. | 2026-06-03 | state-manager |
+| D-231 | Wave-7-gate prerequisite sweep complete. SS-ipc v1.10.0→v1.11.0 (architect, F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.6→v1.0.7 (PO, F-S027-DOC-001 PC-3 'or replaced' fix). BC-INDEX v1.33→v1.34. STORY-INDEX v5.29→v5.30 (story-writer, F-S025-ADV37-DEFER-001 AC ranges corrected + systematic sweep). Citation atomicity propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc Architecture Source rows; EVAL-INDEX + product-brief BC-INDEX rows. S-027/S-028 story frontmatter status → done. version-pin-registry.yaml updated. POL-11 PASS (246 active, 575 files). POL-12 PASS. RESOLVED: F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS, L-S027-004. New residual: ADR-HOOK-001-WIRING (HUMAN action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. STATE v6.79→v6.80. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -505,12 +525,12 @@ ratatui 0.30 | crossterm 0.29 | tokio 1.52 | axum 0.8 | interprocess 2.4 | prost
 serde_yaml_ng 0.10 | wasmtime 44 | nucleo 0.5 | time 0.3.47 (RUSTSEC-2026-0009 floor)
 serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.0.
 MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
-**PRD v1.27.4** | **BC-INDEX v1.33** (113 BCs) | **ARCH-INDEX v1.0.25** | **SS-tui v1.8.2**
-**SS-ipc v1.10.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.29**
+**PRD v1.27.4** | **BC-INDEX v1.34** (113 BCs) | **ARCH-INDEX v1.0.25** | **SS-tui v1.8.2**
+**SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.30**
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
-**BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.6** | **BC-2.06.023 v1.5.0** | **BC-2.06.024 v1.1.0**
+**BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.7** | **BC-2.06.023 v1.5.1** | **BC-2.06.024 v1.1.0**
 **BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
-**sprint-state v1.37** (32/33 done, 192/195 pts; D-230). **S-029 v1.3**. 62 codified disciplines.
+**sprint-state v1.37** (32/33 done, 192/195 pts; D-230). **S-029 v1.3**. 62 codified disciplines. D-231: wave-7-gate sweep complete.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
 ## Historical Content
@@ -527,13 +547,19 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.79 (D-230 — S-029 DELIVERED, Wave 7 COMPLETE)
+## §Trace v6.80 (D-231 — Wave-7-gate prerequisite sweep complete)
 
-**D-230 (2026-06-03):** S-029 DELIVERED. PR #35 squash-merged to develop @ 48463fb.
-Wave 7 COMPLETE (4/4). 32/33 stories (192/195 pts, 98%). sprint-state v1.36→v1.37.
-STORY-INDEX v5.28→v5.29. S-029 spec v1.3 (story-writer). S-029 process-gap (PC-N label drift)
-RESOLVED by story-writer v1.3 — recorded as closed in durable_task_register.
-version-pin-registry.yaml S-029 placeholder updated to factory-artifacts commit SHA.
-CLAUDE.md D-230 checkpoint committed to develop. v6.78→v6.79.
+**D-231 (2026-06-03):** Wave-7-gate prerequisite sweep complete. SS-ipc v1.11.0 (architect
+F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.7
+(PO, F-S027-DOC-001). BC-INDEX v1.34. STORY-INDEX v5.30 (story-writer F-S025-ADV37-DEFER-001
+BC→AC range corrections + systematic sweep — no other staleness found). Citation atomicity
+propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc rows; EVAL-INDEX + product-brief BC-INDEX rows.
+S-027/S-028 story frontmatter status: not_started → done. version-pin-registry.yaml placeholder
+fields resolved with descriptive anchors (TD-VSDD-053 — no live SHA self-citation in registry).
+POL-11 PASS (246 active, 575 files). POL-12 PASS. New residual items: ADR-HOOK-001-WIRING
+(human action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. Prior-sweep items closed:
+F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS,
+L-S027-004. factory-artifacts commit amended from pr-manager overreach (D-231 reclaims ownership).
+v6.79→v6.80.
 
 §Trace v6.40 through v6.78 archived to `cycles/cycle-001/burst-log.md`.

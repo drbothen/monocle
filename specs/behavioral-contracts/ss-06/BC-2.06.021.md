@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-31T12:00:00Z
@@ -60,8 +60,11 @@ documentation to know what keys are available in the current mode.
    This is intentional: the hint line is a discovery aid for first-time users, not a
    complete binding documentation.
 
-3. **Always rendered:** The hint line renders on every `draw()` tick. There is no AppMode
-   in which the hint line is hidden or replaced.
+3. **Always rendered (with supersede exception):** The hint line renders on every `draw()`
+   tick. There is no AppMode in which the hint line is permanently hidden. However, when
+   `App.status_message` is `Some(msg)`, the lower row temporarily renders `status_message`
+   instead of the keybinding hint — this is the canonical supersede model defined in
+   BC-2.06.019 PC-7. The hint line resumes when `status_message` returns to `None`.
 
 4. **No truncation at 80 columns:** All hint strings from Postcondition 1 must fit on a
    single line at 80 columns. The longest is the Overlay hint:
@@ -245,3 +248,24 @@ S-TBD — Implement status bar keybinding hint line: context-sensitive, pure App
   - v1.8.1 (Sessions Panel 6→7 columns): this BC covers keybinding hint line; no Sessions Panel column table in scope.
   - v1.8.2 (disconnect bracketed-tag style): no disconnect rendering in scope for this BC (hint line shows mode-specific keybindings, not daemon connection status).
 - SE-16d monotonicity: v1.0.5 timestamp 2026-05-29T00:00:00Z > v1.0.4. PASS.
+
+## §Trace v1.0.7
+
+**F-S027-DOC-001 LOW — PC-3 "or replaced" corrected to acknowledge BC-2.06.019 PC-7 supersede model** (2026-06-03T00:00:00Z):
+
+- Finding: BC-2.06.021 PC-3 asserted "there is no AppMode in which the hint line is hidden
+  or replaced." BC-2.06.019 v1.1.0 PC-7 (added in the S-027 ADV pass, 2026-06-01) defines
+  the canonical coexistence layout in which `status_message` temporarily supersedes the
+  keybinding hint on the lower row. The two postconditions were inconsistent: PC-3 denied
+  any supersession; PC-7 in the authoritative BC explicitly permitted and required it.
+- Root cause: BC-2.06.021 PC-3 was written before BC-2.06.019 PC-7 existed. When PC-7 was
+  added in BC-2.06.019 v1.1.0 to resolve the coexistence defect, BC-2.06.021 PC-3 was not
+  updated in the same burst. Tracked as S-027 residual F-S027-DOC-001.
+- Fix: PC-3 reworded to "always rendered (with supersede exception)." The new text
+  preserves the intent (hint is never permanently hidden) while explicitly acknowledging
+  that `status_message` temporarily supersedes it per BC-2.06.019 PC-7. A cross-reference
+  to BC-2.06.019 PC-7 is added so implementers and reviewers trace to the authority.
+- No behavior change. This is a documentation-only clarification. The actual rendering
+  behavior is governed by BC-2.06.019 PC-7, which was already the canonical authority.
+  No test vectors, invariants, edge cases, or verification properties require changes.
+- SE-16d monotonicity: v1.0.7 timestamp 2026-06-03T00:00:00Z > v1.0.6 timestamp 2026-05-31T12:00:00Z. PASS.

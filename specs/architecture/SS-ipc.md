@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.10.0"
+version: "1.11.0"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -260,7 +260,7 @@ pub enum ClientToServer {
     /// User responded to a permission prompt.
     PermissionDecision {
         prompt_id: Uuid,
-        decision: PermissionDecision,
+        decision: PermissionDecisionKind,
     },
 
     /// Keepalive probe. Daemon responds with Pong.
@@ -280,21 +280,57 @@ pub enum ClientToServer {
 // - No BC is required for Ping/Pong in Phase 1; the types are present solely to
 //   reserve their wire encoding so Phase 2 can activate them without a breaking change.
 
-#[non_exhaustive]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PermissionDecision {
-    /// Accept this invocation only. Wire value: `"accept"`.
-    #[serde(rename = "accept")]
-    Accept,
-    /// Accept this tool + input pattern always (daemon records for auto-accept).
-    /// Wire value: `"always"` — matches Claude Code hook protocol.
-    #[serde(rename = "always")]
+/// The kind of permission decision the user made.
+///
+/// Named `PermissionDecisionKind` (not `PermissionDecision`) to avoid a name collision
+/// with the `ClientToServer::PermissionDecision` variant — see §PermissionDecisionKind
+/// Naming section below for the full rationale and BC-name mapping table.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PermissionDecisionKind {
+    /// Allow this invocation once.
+    Allow,
+    /// Allow and record a persistent auto-accept pattern (daemon-side; S-026).
     AcceptAlways,
-    /// Reject this invocation. Wire value: `"deny"` — matches Claude Code hook protocol.
-    #[serde(rename = "deny")]
-    Reject,
+    /// Deny this invocation.
+    Deny,
 }
 ```
+
+### §PermissionDecisionKind Naming — Authoritative Reference
+
+**Source of truth:** The Rust enum `PermissionDecisionKind` in `crates/monocle-ipc/src/types.rs`
+is the authoritative definition for the wire-level permission decision type. BC prose,
+SS specs, and story files that use abstract names such as `PermissionDecision::Accept`
+or `PermissionDecision::Reject` MUST be interpreted via the mapping table below.
+
+**Why two names exist:** The enum is named `PermissionDecisionKind` — not `PermissionDecision` —
+to avoid a collision with the `ClientToServer::PermissionDecision` *variant*. If both had
+the same identifier, every use site would require fully-qualified syntax and the code
+would be confusing to read. The variant name `PermissionDecision` is kept because it
+is the semantic name of the IPC operation; the payload type therefore takes the `Kind`
+suffix.
+
+**Canonical mapping table** (BC prose name → wire Rust variant):
+
+| BC / prose name              | Rust variant (`PermissionDecisionKind`) | Keybinding | Semantics                                      |
+|------------------------------|-----------------------------------------|------------|------------------------------------------------|
+| `PermissionDecision::Accept` | `Allow`                                 | `y` / Enter | Allow this invocation once                    |
+| `PermissionDecision::AcceptAlways` | `AcceptAlways`                    | `A`        | Allow + persist pattern for future auto-accept |
+| `PermissionDecision::Reject` | `Deny`                                  | `n` / `r`  | Deny this invocation                           |
+
+**Wire serialization:** `PermissionDecisionKind` has no `#[serde(rename)]` attributes;
+variants serialize as their Rust identifiers: `"Allow"`, `"AcceptAlways"`, `"Deny"`.
+The daemon reads these from the `ClientToServer::PermissionDecision.decision` field and
+translates to the Claude Code hook protocol response (`{"decision":"accept"}`,
+`{"decision":"always"}`, `{"decision":"deny"}`) in the daemon's IPC handler —
+the TUI sends the `PermissionDecisionKind` variant verbatim and does not need to know
+the hook protocol wire values.
+
+**Rule for future BCs and specs:** When citing the permission decision type, use the
+Rust name `PermissionDecisionKind` and its variants `Allow` / `AcceptAlways` / `Deny`.
+The abstract BC shorthand names (`Accept`, `Reject`) remain acceptable in prose-level
+descriptions provided they are understood to map via the table above and are NOT used
+in Rust code snippets or test assertions.
 
 ### Supporting Types
 
@@ -727,7 +763,7 @@ depends on `monocle-runtime` for other types.
 |-------------------|---------------|-----------|
 | `ServerToClient` enum | Pure core | Data type only; `#[derive(Serialize, Deserialize)]`. No I/O. |
 | `ClientToServer` enum | Pure core | Data type only. No I/O. |
-| `PermissionDecision` enum | Pure core | Data type only. No I/O. |
+| `PermissionDecisionKind` enum | Pure core | Data type only. No I/O. |
 | `TransportEvent` enum | Pure core | Process-local signal type only; NOT serialized. No I/O. |
 | `write_framed()` | Effectful shell | Async write to `UnixStream`. Integration tested with `tokio::io::duplex`. |
 | `read_framed()` | Effectful shell | Async read from `UnixStream`. Integration tested. |
@@ -794,6 +830,38 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.11.0
+
+**F-S026-ADV1-LOW-002 — PermissionDecisionKind naming reconciliation** (2026-06-03):
+
+- **Finding:** BC prose and the SS-ipc.md v1.10.0 spec code block both referenced a
+  `PermissionDecision { Accept, AcceptAlways, Reject }` enum that does not exist in the
+  production codebase. The actual wire type is `PermissionDecisionKind { Allow, AcceptAlways, Deny }`
+  (`crates/monocle-ipc/src/types.rs`). Multiple adversarial passes flagged the prose-vs-type
+  drift as a process gap routed to architect (F-S026-ADV1-LOW-002).
+- **Root cause:** The production enum was renamed to `PermissionDecisionKind` during S-026
+  implementation (to avoid a collision with the `ClientToServer::PermissionDecision` variant),
+  but the spec code block was not updated at the same time. A `PermissionDecision` enum with
+  serde-rename attributes (`"accept"` / `"always"` / `"deny"`) was authored in the spec as
+  a design intent artifact; the implementation chose different variant names and no serde
+  renames (variant names serialize as their Rust identifiers).
+- **Resolution (spec-only; no production enum renamed):**
+  1. `ClientToServer` code block: `decision: PermissionDecision` → `decision: PermissionDecisionKind`.
+  2. Stale `PermissionDecision` enum code block replaced with correct `PermissionDecisionKind`
+     definition (matching production: variants `Allow`, `AcceptAlways`, `Deny`; no serde renames).
+  3. Added `§PermissionDecisionKind Naming — Authoritative Reference` section with:
+     - Rationale for the `Kind` suffix (collision avoidance).
+     - Canonical mapping table: BC prose name → Rust variant → keybinding → semantics.
+     - Wire serialization note (no serde renames; variants serialize as Rust identifiers).
+     - Hook-protocol translation note (daemon translates to `{"decision":"..."}` values;
+       the TUI is not responsible for hook protocol wire values).
+     - Rule for future BCs and specs.
+  4. Module Purity Classification table: `PermissionDecision` row → `PermissionDecisionKind`.
+- **Follow-up:** BC files (BC-2.06.011, BC-2.06.012, BC-2.06.013, BC-2.06.022) use
+  abstract prose names (`PermissionDecision::Accept`, `PermissionDecision::Reject`).
+  These are acceptable shorthand provided they are understood via the mapping table above;
+  no BC version bumps required. Future BCs SHOULD prefer the Rust names directly.
 
 ## §Trace v1.10.0
 

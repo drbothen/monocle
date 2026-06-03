@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.29"
+version: "5.30"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T04:35:15Z
@@ -139,9 +139,9 @@ traces_to: .factory/specs/prd.md
 | BC-2.04.011 | Bounded Event Bus with Drop Counter | S-018 | AC-011..AC-013 | YES |
 | BC-2.04.012 | JSONL Ring: Capacity and Rotation Policy | S-020 | AC-001..AC-005 | YES |
 | BC-2.05.001 | UDS Server Bind at `runtimeDir/monocle.sock` | S-021 | AC-001..AC-003 | YES |
-| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022, S-025, S-026 | S-022: AC-001..AC-005; S-025: AC-008 (Invariant 4 idempotency); S-026: AC-001 (Invariant 4 idempotency) | YES |
+| BC-2.05.002 | TUI Client Connects to UDS and Receives Initial State Push | S-022, S-025, S-026, S-028 | S-022: AC-001..AC-005; S-025: AC-008 (Invariant 4 idempotency); S-026: AC-001 (Invariant 4 idempotency); S-028: AC-006 (ring_tail backfill on connect) | YES |
 | BC-2.05.003 | IPC Message Types: SessionListUpdate | S-021 | AC-004..AC-006 | YES |
-| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021, S-032 | S-021: AC-007..AC-009 (types + struct); S-032: AC-001..AC-007 (daemon producer path, PC-2/INV-4 timestamp_micros) | YES |
+| BC-2.05.004 | IPC Message Types: HookEventReceived | S-021, S-028, S-032 | S-021: AC-007..AC-009 (types + struct); S-028: AC-006, AC-009 (TUI consumer — HookEventReceived streaming per INV-3); S-032: AC-001..AC-007 (daemon producer path, PC-2/INV-4 timestamp_micros) | YES |
 | BC-2.05.005 | IPC Message Types: PermissionPromptQueued | S-022 | AC-006..AC-008 | YES |
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | S-023 | AC-001..AC-004 | YES |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | S-023 | AC-005..AC-006 | YES |
@@ -151,11 +151,11 @@ traces_to: .factory/specs/prd.md
 | BC-2.06.003 | Action Dispatch: 5-Level Binding Precedence | S-024 | AC-008..AC-012 | YES |
 | BC-2.06.004 | `Ctrl-\` Popup: Appears and Dismisses Without State Loss | S-025 | AC-001..AC-003 | YES |
 | BC-2.06.005 | Sessions Panel: Session List Renders from IPC State | S-025 | AC-004..AC-006 | YES |
-| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | S-028 | AC-001..AC-004 | YES |
+| BC-2.06.006 | Sessions Panel: `/` Filter with Nucleo Fuzzy Match | S-028 | AC-001..AC-005 | YES |
 | BC-2.06.007 | Sessions Panel: `Enter` Transitions to Fullscreen | S-025 | AC-007..AC-008 | YES |
 | BC-2.06.008 | Permission Overlay: VecDeque Stack Push on PermissionPromptQueued | S-026 | AC-001, AC-002, AC-016 | YES |
 | BC-2.06.009 | Permission Overlay: `[↑↓]` Rotates Stack | S-026 | AC-013, AC-014 | YES |
-| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | S-027 | AC-001..AC-003 | YES |
+| BC-2.06.010 | Permission Overlay: Diff Preview via `similar 3` | S-027 | AC-001, AC-002, AC-005, AC-011, AC-012 | YES |
 | BC-2.06.011 | Permission Overlay: Accept-Once Keybinding | S-026 | AC-003 | YES |
 | BC-2.06.012 | Permission Overlay: Accept-Always Keybinding | S-026 | AC-004 | YES |
 | BC-2.06.013 | Permission Overlay: Reject Keybinding | S-026 | AC-005 | YES |
@@ -163,18 +163,18 @@ traces_to: .factory/specs/prd.md
 | BC-2.06.015 | Permission Overlay: `[t]` Trace-to-Source Stub | S-027 | AC-013 | YES |
 | BC-2.06.016 | Permission Overlay: Cleared on Daemon Disconnect | S-026 | AC-011, AC-012 | YES |
 | BC-2.06.017 | Permission Response Within Hook Timeout Budget | — | — | GAP (see GAP-P2-005) |
-| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-006..AC-009 | YES |
-| BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | S-027 | AC-007..AC-008 | YES |
-| BC-2.06.020 | Status Bar: Breadcrumb | S-027 | AC-009 | YES |
-| BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | AC-010 | YES |
-| BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | AC-001..AC-006 | YES |
+| BC-2.06.018 | Event Ribbon Panel: Rolling Hook Event Log | S-028 | AC-006..AC-010 | YES |
+| BC-2.06.019 | Status Bar: Drop Counter Renders Under Load | S-027 | AC-008, AC-012 | YES |
+| BC-2.06.020 | Status Bar: Breadcrumb | S-027 | AC-008, AC-009 | YES |
+| BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | AC-008, AC-010, AC-012 | YES |
+| BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | AC-001..AC-008 | YES |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | AC-006, AC-007, AC-015 | YES |
 | BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | S-026, S-027 | S-026: AC-016; S-027: AC-003, AC-004, AC-006 | YES |
 | BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | S-030 | AC-001..AC-002 | YES |
 | BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | S-030 | AC-003..AC-005 | YES |
 | BC-2.07.003 | Config Missing or Corrupted: Default Applied | S-030 | AC-006..AC-008 | YES |
-| BC-2.07.004 | Profile Picker: Sticky-Per-Project | S-031 | AC-001..AC-003 | YES |
-| BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-004..AC-006 | YES |
+| BC-2.07.004 | Profile Picker: Sticky-Per-Project | S-031 | AC-003, AC-004, AC-008 | YES |
+| BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-001, AC-002, AC-005..AC-007, AC-009, AC-010 | YES |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | AC-009..AC-010 | YES |
 
 | BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
@@ -452,6 +452,35 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.30
+
+**F-S025-ADV37-DEFER-001 — Systematic BC→AC range sweep (Wave 7 gate prerequisite)** (2026-06-03):
+
+Systematic audit of all BC Coverage Table rows against actual AC trace annotations in story files. The original finding flagged rows ~150-153 as stale; the full sweep found 11 stale rows spanning SS-05, SS-06, and SS-07 BCs, all introduced by Wave 7 story authoring and subsequent adversarial-pass AC additions (AC-008 in S-029 added in §Trace v1.3; AC-012 added to S-027 in §Trace v1.5; S-028 BCs expanded in S-028 §Trace v1.4/v1.6; S-031 BCs derived from initial decomposition before AC count settled).
+
+**Rows changed (old → new):**
+
+| BC ID | Old AC Range | New AC Range | Root Cause |
+|-------|-------------|-------------|------------|
+| BC-2.05.002 | `S-022, S-025, S-026` | `S-022, S-025, S-026, S-028` | S-028 AC-006 traces to BC-2.05.002 (ring_tail backfill on connect); S-028 added to behavioral_contracts in §Trace v5.28 |
+| BC-2.05.004 | `S-021, S-032` | `S-021, S-028, S-032` | S-028 AC-006/AC-009 reference BC-2.05.004 INV-3 (client-side session filter); S-028 in behavioral_contracts since initial story decomposition |
+| BC-2.06.006 | `AC-001..AC-004` | `AC-001..AC-005` | S-028 AC-005 traces to BC-2.06.006 INV-1 (shared Matcher); added in S-028 initial decomposition but not reflected in index |
+| BC-2.06.010 | `AC-001..AC-003` | `AC-001, AC-002, AC-005, AC-011, AC-012` | S-027 AC-003 does not trace to BC-2.06.010 (it traces to BC-2.06.024); AC-005 (Edit diff), AC-011 (INV-1 no blocking render), AC-012 (integration render) added in S-027 §Trace v1.5 |
+| BC-2.06.018 | `AC-006..AC-009` | `AC-006..AC-010` | S-028 AC-010 traces to BC-2.06.018 PC-5 (integration render + dispatch); added in S-028 §Trace v1.4 |
+| BC-2.06.019 | `AC-007..AC-008` | `AC-008, AC-012` | AC-007 does NOT trace to BC-2.06.019; AC-008 traces BC-2.06.019 PC-2,PC-7; AC-012 traces BC-2.06.019 PC-1 (integration render); AC-012 added in S-027 §Trace v1.5 |
+| BC-2.06.020 | `AC-009` | `AC-008, AC-009` | S-027 AC-008 traces to BC-2.06.020 PC-1,3,5 (breadcrumb derivation per coexistence layout); added in S-027 §Trace v1.5/v1.10 |
+| BC-2.06.021 | `AC-010` | `AC-008, AC-010, AC-012` | S-027 AC-008 traces BC-2.06.021 PC-3 (hint line coexistence); AC-012 traces BC-2.06.021 PC-3 (integration render); both added in S-027 §Trace v1.5 |
+| BC-2.06.022 | `AC-001..AC-006` | `AC-001..AC-008` | S-029 AC-007 (test isolation per KS canonical vectors) and AC-008 (AcceptAlways dual-resolve) added in S-029 §Trace v1.3 (post-delivery reconciliation) |
+| BC-2.07.004 | `AC-001..AC-003` | `AC-003, AC-004, AC-008` | S-031 AC-001/AC-002 trace to BC-2.07.005 (not BC-2.07.004); AC-003 (PC-3 navigation), AC-004 (PC-4 keyboard isolation), AC-008 (INV-1 not AppMode::Overlay) are the correct BC-2.07.004 traces |
+| BC-2.07.005 | `AC-004..AC-006` | `AC-001, AC-002, AC-005..AC-007, AC-009, AC-010` | S-031 AC-001 (PC-1 Ctrl-P entry), AC-002 (PC-2 list rendering), AC-005 (PC-5 atomic config save), AC-006 (PC-5c save error), AC-007 (PC-5 detect_ccr), AC-009 (INV-2 atomic write), AC-010 (PC-1,7,8 integration) |
+
+SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. PASS (same-day).
+
+**Story-file residual follow-ups (noted, not fixed here per task constraint):**
+- S-027: `status: not_started` in frontmatter is stale — story is done (PR #32, D-226). Story-file body fix is a status-only change; flag for state-manager.
+- S-028: `status: not_started` in frontmatter is stale — story is done (PR #34, D-228). Flag for state-manager.
+- S-027 BC-2.06.016 appears in `inputs:` (added in §Trace v1.10) but BC-2.06.016 (Overlay Cleared on Daemon Disconnect) is not in S-027 `behavioral_contracts:` and no AC in S-027 explicitly traces to BC-2.06.016 (AC-008 references it via coexistence rule prose only). The STORY-INDEX BC-2.06.016 row correctly cites S-026; no index change needed.
 
 ## §Trace v5.28
 

@@ -124,7 +124,7 @@ specified in BC-2.06.016.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — the capability description explicitly names "SOQ-3 overlay clear" as a responsibility of SS-05; this BC is the canonical specification of that invariant at the IPC transport layer |
 | L2 Domain Invariants | DI-001 (hook events written before ACK — SOQ-3 protects the integrity of this invariant by ensuring TUI clients cannot send decisions for timed-out prompts after daemon restart, which would corrupt the decision channel); DI-007 (monocle must not write to harness-owned files — ghost approvals would cause monocle to indirectly influence Claude Code behavior via a stale decision channel; SOQ-3 prevents this) |
 | Architecture Module | monocle-ipc (UdsTransport, TransportEvent::Disconnected) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.10.0 §SOQ-3 Overlay Clear on Disconnect; SS-ipc.md v1.10.0 §Reconnection Behavior |
+| Architecture Source | SS-ipc.md v1.11.0 §SOQ-3 Overlay Clear on Disconnect; SS-ipc.md v1.11.0 §Reconnection Behavior |
 | Cross-Ref | BC-2.05.006 (reconnect loop — SOQ-3 fires before the loop begins); BC-2.06.016 (TUI-layer handler that clears VecDeque<PromptModal> in response to TransportEvent::Disconnected); product-brief.md line 145 (SOQ-3 definition) |
 | Test File | `monocle-ipc/tests/soq3_overlay_clear.rs` |
 | Test Name | `test_BC_2_05_007_overlay_cleared_on_disconnect` |

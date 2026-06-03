@@ -130,7 +130,7 @@ delivered as incremental push messages (no polling required).
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the connection handshake and initial-state push that is the entry point for all TUI-to-daemon transport |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon must be written to the JSONL ring before acknowledgement — the ring_tail in InitialState reflects events already durably written, satisfying DI-001 ordering); DI-002 (lock file must be present before connections accepted — Precondition 2 requires TUI to read the lock file before connecting, enforcing DI-002) |
 | Architecture Module | monocle-ipc (UdsTransport, framing, ServerToClient::InitialState) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.10.0 §Framing Protocol; SS-ipc.md v1.10.0 §Connection Lifecycle §Phase 1 Connect |
+| Architecture Source | SS-ipc.md v1.11.0 §Framing Protocol; SS-ipc.md v1.11.0 §Connection Lifecycle §Phase 1 Connect |
 | Cross-Ref | BC-2.05.001 (UDS socket that this BC connects to); BC-2.05.003..005 (subsequent push message types); BC-2.05.006 (reconnection on disconnect) |
 | Test File | `monocle-ipc/tests/connection_handshake.rs` |
 | Test Name | `test_BC_2_05_002_initial_state_push_on_connect` |

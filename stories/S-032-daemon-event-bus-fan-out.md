@@ -169,7 +169,7 @@ path is complete when S-028 + S-032 are both done.
 | BC-2.05.004 v1.1.0 | ~1,800 |
 | BC-2.05.002 v1.0.7 (ring_tail context) | ~1,200 |
 | BC-2.04.011 (event bus + drop counter) | ~1,500 |
-| SS-ipc.md v1.10.0 (message types + framing) | ~3,000 |
+| SS-ipc.md v1.10.0 (message types + framing) <!-- version-pin-historical: authored against SS-ipc v1.10.0 at S-032 authoring time --> | ~3,000 |
 | SS-daemon-wiring.md v1.3.0 (fan-out task context) | ~2,000 |
 | SS-deps-pin-manifest.md v1.2.0 (version pins) | ~2,000 |
 | `event_bus.rs` (current stub, ~200 lines) | ~800 |
@@ -249,7 +249,7 @@ required.
 
 ## Architecture Compliance Rules
 
-Source: `architecture/SS-ipc.md v1.10.0`, `architecture/SS-daemon-wiring.md v1.3.0`,
+Source: `architecture/SS-ipc.md v1.10.0`, `architecture/SS-daemon-wiring.md v1.3.0`, <!-- version-pin-historical: authored against SS-ipc v1.10.0 at S-032 authoring time -->
 `architecture/SS-deps-pin-manifest.md v1.2.0`.
 
 1. **Single clock capture per hook event (BC-2.05.004 INV-4 / SS-ipc.md §timestamp_micros):**

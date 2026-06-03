@@ -16,9 +16,9 @@ inputs:
   - {path: .factory/stories/S-023-reconnect-soq3.md, version: "1.2"}
   - {path: .factory/stories/S-025-tui-skeleton-sessions.md, version: "1.14"}
   - {path: .factory/stories/S-026-permission-overlay-core.md, version: "1.11"}
-  - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.2"}
+  - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.33"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.34"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
