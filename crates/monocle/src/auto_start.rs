@@ -503,18 +503,32 @@ async fn launch_daemon_in_process(runtime_dir: &Path) -> DaemonHandle {
         //
         // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
         // must not be lost on shutdown. Signal the flush task via the Notify handle (H1 fix
-        // — SS-daemon-wiring-impl.md §Round 3 H1), then drop the ring Arc as belt-and-
-        // suspenders, then await the flush JoinHandle with a 2s bounded timeout.
+        // — SS-daemon-wiring-impl.md §Round 3 H1), then drop the ring Arc backstop,
+        // then await the flush JoinHandle with a 2s bounded timeout.
+        //
+        // The ring_arc drop is a belt-and-suspenders backstop, NOT the close mechanism.
+        // Hook handlers clone the Arc out before calling append, so dropping the
+        // DaemonState's Arc does NOT necessarily close write_tx while any handler clone
+        // is live. The Notify (begin_shutdown → notify_one) is the deterministic drain trigger.
+        //
         // The in-process daemon does not call exit_with, so the tokio runtime would
         // eventually drop DaemonState — but "eventually" is non-deterministic under
         // tokio's task scheduling. Explicit drain ensures determinism (CRITICAL-1 fix).
         const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
         {
-            // Step (d-1): Signal the flush task to drain and exit (H1 fix — deterministic).
+            // Step (d-1): set begin_shutdown flag BEFORE notify so post-shutdown appends
+            // are loudly rejected. Order: begin_shutdown → notify_one → drop(backstop).
+            {
+                let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if let Some(ring) = ring_arc.as_ref() {
+                    ring.begin_shutdown();
+                }
+            }
+            // Primary deterministic drain signal (H1 fix).
             if let Some(notify) = state.ring_flush_shutdown.as_ref() {
                 notify.notify_one();
             }
-            // Belt-and-suspenders: also drop the ring Arc to close write_tx.
+            // Belt-and-suspenders backstop: drop the DaemonState's Arc clone.
             let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
             drop(ring_arc);
         }

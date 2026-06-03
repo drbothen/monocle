@@ -29,7 +29,10 @@ use std::{
     collections::VecDeque,
     io::Write as _,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 /// Shutdown signal handle for the ring flush task (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1).
@@ -121,6 +124,21 @@ pub enum RingError {
     /// (BC-2.04.012 EC-103). Subsequent `append()` calls return this until disk space recovers.
     #[error("ring disk full: disk I/O failed during rotation or flush (E-RING-004)")]
     DiskFull,
+    /// `begin_shutdown()` has been called and the ring is no longer accepting new records.
+    ///
+    /// Any `append()` call after `begin_shutdown()` returns this error. The caller MUST log
+    /// this at ERROR via `tracing::error!` (the ring's `append()` already does so) and MUST
+    /// NOT enqueue the record or change the HTTP response — append is best-effort. This
+    /// variant guards the post-shutdown force-close window against silent record loss: a
+    /// still-live handler holding its own `Arc<RingBuffer>` clone could otherwise
+    /// `try_send()` to `write_tx` (which remains open via that clone) after the flush task
+    /// has drained and exited, silently losing records.
+    ///
+    /// Error code: E-RING-007 (ring shut down — post-shutdown enqueue rejected).
+    #[error(
+        "E-RING-007: ring append after shutdown — record rejected (post-shutdown enqueue guard)"
+    )]
+    Shutdown,
 }
 
 /// JSONL ring buffer writer.
@@ -157,6 +175,24 @@ pub struct RingBuffer {
     /// Disk-error state: set to `true` when rotation or flush fails due to a full disk.
     /// While `true`, `append()` returns `Err(RingError::DiskFull)` (BC-2.04.012 EC-103).
     disk_error: Arc<Mutex<bool>>,
+    /// Shutdown guard (MED-002 — post-shutdown enqueue protection).
+    ///
+    /// Set to `true` by `begin_shutdown()`. Once set, `append()` returns
+    /// `Err(RingError::Shutdown)` and emits a `tracing::error!` ("E-RING: append after ring
+    /// shutdown — record dropped (post-shutdown enqueue rejected)") instead of
+    /// `try_send()`-ing the record to `write_tx`. This closes the force-close post-timeout
+    /// window where a still-live handler (holding its own Arc clone) could enqueue a record
+    /// after the flush task has exited, causing silent loss.
+    ///
+    /// `begin_shutdown()` MUST be called BEFORE `notify_one()` in the shutdown tail so the
+    /// flag is set before the flush task drains and exits. On the graceful path, all
+    /// in-flight handlers have returned before `begin_shutdown()` is called, so no legitimate
+    /// handler append occurs after the flag is set.
+    ///
+    /// `Ordering::SeqCst`: the write happens in the shutdown tail task; the read happens
+    /// in hook handler tasks on different threads. SeqCst provides the strongest ordering
+    /// guarantee, ensuring the flag is visible to all handler threads.
+    shutting_down: AtomicBool,
 }
 
 impl RingBuffer {
@@ -209,7 +245,24 @@ impl RingBuffer {
             write_tx: Arc::new(tx),
             write_rx: Mutex::new(Some(rx)),
             disk_error: Arc::new(Mutex::new(false)),
+            shutting_down: AtomicBool::new(false),
         }
+    }
+
+    /// Signal that the ring is shutting down; subsequent `append()` calls will be rejected.
+    ///
+    /// Called by the shutdown tail BEFORE `notify_one()` (H1) and BEFORE `drop(ring_arc)`
+    /// (backstop). This ordering ensures that the flag is visible to any handler thread
+    /// that holds its own `Arc<RingBuffer>` clone and calls `append()` after the flush task
+    /// has exited (the force-close post-timeout window).
+    ///
+    /// On the graceful path, `run_server` has already drained all in-flight handlers before
+    /// the shutdown tail runs, so no legitimate handler append occurs after this call.
+    /// The flag only defends against the abnormal force-close window.
+    ///
+    /// `Ordering::SeqCst`: write in shutdown tail, read in handler tasks on other threads.
+    pub fn begin_shutdown(&self) {
+        self.shutting_down.store(true, Ordering::SeqCst);
     }
 
     /// Enqueue a hook event record for async-jsonl flush (BC-2.04.012 PC-4, AC-004).
@@ -223,11 +276,26 @@ impl RingBuffer {
     /// - If the queue is full, returns `Err(RingError::WriteFull)`; the caller must log
     ///   `WARN: ring append failed: write queue full` and discard the event.
     /// - If the disk-error state is active, returns `Err(RingError::DiskFull)` immediately.
+    /// - If `begin_shutdown()` has been called, returns `Err(RingError::Shutdown)` and
+    ///   emits `tracing::error!` (E-RING-007). This guards the force-close post-timeout
+    ///   window against silent record loss.
     ///
     /// # Errors
+    /// - `RingError::Shutdown` — ring has been shut down; event rejected with loud log (E-RING-007).
     /// - `RingError::WriteFull` — write-queue is full; event must be discarded.
     /// - `RingError::DiskFull` — disk-error state is active (EC-103).
     pub fn append(&self, record: HookEventRecord) -> Result<(), RingError> {
+        // MED-002: post-shutdown enqueue guard. If begin_shutdown() has been called,
+        // reject the append loudly (tracing::error!) instead of silently enqueuing into
+        // a write_tx that has no live consumer. This converts silent loss (force-close
+        // post-timeout window) into a loud, provably-closed rejection.
+        if self.shutting_down.load(Ordering::SeqCst) {
+            tracing::error!(
+                "E-RING: append after ring shutdown — record dropped (post-shutdown enqueue rejected)"
+            );
+            return Err(RingError::Shutdown);
+        }
+
         // AC-010 / BC-2.04.012 invariant 5: if disk error is active, return DiskFull immediately.
         {
             let disk_err = self.disk_error.lock().expect("disk_error mutex poisoned");

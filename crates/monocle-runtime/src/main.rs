@@ -232,7 +232,12 @@ fn main() {
         // (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1) rather than relying on
         // Arc<RingBuffer> refcount reaching zero. The notify_one() call triggers the select!
         // drain branch in flush_task_loop, which drains all pending records via try_recv()
-        // and returns. The ring_arc drop below is belt-and-suspenders.
+        // and returns.
+        //
+        // The ring_arc drop below is a belt-and-suspenders backstop, NOT the close mechanism.
+        // Hook handlers clone the Arc out before calling append, so the DaemonState's Arc
+        // drop does NOT necessarily close write_tx while any handler still holds a clone.
+        // The Notify (begin_shutdown → notify_one) is the sole deterministic drain trigger.
         //
         // Ordering: this step runs AFTER hooks-settings.json removal (step c) so no new
         // hook events arrive from Claude Code after we begin draining. The drain is thus a
@@ -241,12 +246,27 @@ fn main() {
         const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
 
         // Step (d-1): Signal the flush task to drain remaining records and exit.
-        // The Notify is the primary deterministic close mechanism (H1 fix).
+        // Order within this block: begin_shutdown (AtomicBool flag) → notify_one (Notify)
+        // → drop(ring_arc) (backstop). The flag must be set BEFORE notify so that any
+        // post-shutdown append (force-close window only) is rejected loudly by append().
         {
+            // Set the shutdown flag on the ring so post-shutdown append attempts are rejected
+            // with a loud tracing::error! instead of silently enqueuing into a dead channel.
+            // This only affects the abnormal force-close path; on the graceful path,
+            // run_server has already drained all in-flight handlers before we reach here.
+            {
+                let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if let Some(ring) = ring_arc.as_ref() {
+                    ring.begin_shutdown();
+                }
+            }
+            // Primary deterministic drain signal (H1 fix).
             if let Some(notify) = state.ring_flush_shutdown.as_ref() {
                 notify.notify_one();
             }
-            // Belt-and-suspenders: also drop the ring Arc to close write_tx.
+            // Belt-and-suspenders backstop: drop the DaemonState's Arc clone of the ring.
+            // This does NOT reliably close write_tx (handlers may hold their own clones),
+            // but it ensures no new clones can be created via state.ring after this point.
             let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
             drop(ring_arc);
         }

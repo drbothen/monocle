@@ -133,16 +133,28 @@ pub struct DaemonState {
     /// `None` — ring buffer has not been initialized (normal in tests and before XDG path
     ///   resolution completes during daemon startup). Hook handlers MUST log WARN and
     ///   return 200 when this is `None` (AC-005: ring write is best-effort).
-    /// `Some(ring)` — ring buffer is live; handlers call `ring.push(&record)`. On push
+    /// `Some(ring)` — ring buffer is live; handlers call `ring.append(record)`. On append
     ///   failure the same best-effort policy applies (log WARN, return 200).
     ///
     /// Wrapped in `Arc` so the `DaemonState` can be cloned into axum's `State` extractor
     /// while the ring buffer remains shared (no double-buffering).
     ///
     /// Wrapped in `std::sync::Mutex` so the shutdown tail can take the Arc out (setting
-    /// `None`) from the shared `Arc<DaemonState>`, closing `write_tx` and signalling the
-    /// flush task to drain-and-exit (CRITICAL-1 fix — SS-daemon-wiring-impl.md
-    /// §Fix Addendum Round 2 CRITICAL-1).
+    /// `None`) from the shared `Arc<DaemonState>` as a belt-and-suspenders backstop
+    /// (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2 CRITICAL-1).
+    ///
+    /// # Shutdown close mechanism
+    ///
+    /// The deterministic close/drain mechanism is the explicit `ring_flush_shutdown` Notify
+    /// (H1 fix): the shutdown tail calls `ring_flush_shutdown.notify_one()` BEFORE dropping
+    /// the ring Arc, which signals the flush task to drain all pending records and exit.
+    /// The subsequent `drop(ring_arc)` is a harmless belt-and-suspenders backstop — it does
+    /// NOT by itself close `write_tx` while any hook handler still holds a cloned Arc (hook
+    /// handlers lock the Mutex, clone the Arc out, and drop the guard BEFORE calling append,
+    /// so they may hold a live Arc clone past the DaemonState's Arc drop).
+    /// The `begin_shutdown` AtomicBool (on `RingBuffer`) converts any post-shutdown append
+    /// attempt (abnormal force-close window) into a loud, logged rejection rather than a
+    /// silent enqueue-then-loss.
     ///
     /// Hook handlers MUST lock, clone the `Arc` out, drop the guard, THEN call
     /// `ring.append()` so no `std::sync::MutexGuard` is held across an `.await` point
