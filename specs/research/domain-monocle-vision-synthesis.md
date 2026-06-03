@@ -1,11 +1,11 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "2.0"
-status: draft
+version: "2.1"
+status: approved
 producer: product-owner
 phase: pre-phase-0-vision
-timestamp: 2026-06-03T18:00:00Z
+timestamp: 2026-06-03T20:00:00Z
 inputs:
   - semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -29,15 +29,17 @@ traces_to: >
   D-236 product-vision pivot (2026-06-03) human-directed;
   D-237 human ratification of re-baselined v1 control-center scope (2026-06-03);
   DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md v1.0;
-  embedded-pty-evaluation.md v1.0
+  embedded-pty-evaluation.md v1.0;
+  D-238 human gate escalation (2026-06-03) — graceful daemon-process restart
+  must survive (session-host-owns-PTY model, native preferred, no-tmux preserved)
 project: monocle
-approved_by: PENDING (draft — human approval gate required before architecture delta)
-approved_at: ~
+approved_by: Joshua Magady
+approved_at: 2026-06-03
 approved_at_v1_0: 2026-05-11T20:30:00Z
 approved_at_v1_1: 2026-05-12T00:00:00Z
 ---
 
-# Monocle Vision Synthesis (v2.0 — D-236/D-237 Control-Center Pivot)
+# Monocle Vision Synthesis (v2.1 — D-238 Persistence Escalation, Approved)
 
 ## Amendment History
 
@@ -48,6 +50,7 @@ approved_at_v1_1: 2026-05-12T00:00:00Z
 | 1.1.1 | 2026-05-12 | business-analyst | Surgical frontmatter and §Tech Stack pointer fixes. |
 | 1.1.2 | 2026-05-12 | business-analyst | Surgical path fix — `/hooks/prompt-submit` wire correction. |
 | **2.0** | **2026-06-03** | **product-owner** | **D-236/D-237 CONTROL-CENTER PIVOT.** Retired: observe-only constraint; all specific "rejected" non-goals that blocked launching/orchestration. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. DAEMON-OWNS-PTY persistence model. Hook auto-injection on spawn. v1A/v1B wave ordering. See §Retired Constraints and §v1 Capability Set. Status: draft — pending human approval gate before architecture delta proceeds. Reconciled to human-ratified decisions 2026-06-03: full keyboard fidelity (mouse + Kitty keyboard protocol) IN v1A; Q-3/Q-5/Q-6 in §Open Questions converted to RESOLVED; wave-split adjudication note at §Wave Plan updated to reflect human ratification. Applied spec-review patch (SR-001..SR-005, SR-007): keyboard scope supersession pointer added; stale softener sentence replaced with affirmation; Q-4 merged into Q-1 benchmark gate; persistence model three-case disambiguation; workspace legend exists-today vs. aspirational; tui-term Q-7 softened to confirm-posture framing. |
+| **2.1** | **2026-06-03** | **product-owner** | **D-238 (human gate, 2026-06-03): v1A persistence ESCALATED — graceful daemon-process restart must SURVIVE.** Changed: CASE 2 (graceful daemon restart) now requires sessions survive via a native detached per-session session-host mechanism that owns PTY masters + child processes and outlives the daemon process (abduco/dtach-style); daemon coordinates and re-attaches on restart. Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches (no-tmux preserved as default; external supervisor only as architect-surfaced fallback for human decision). CASE 1 (TUI exit) unchanged; CASE 3 (hard crash → lost) unchanged. §Open Questions: new HIGH-priority item Q-8 for PTY-ownership-survival mechanism. Doc APPROVED by Joshua Magady to proceed to brief→architecture→story delta. |
 
 **What D-236/D-237 retired (precise list):**
 - The vision statement phrase "Observe-only for state, action-only via overlays"
@@ -161,15 +164,16 @@ TUI client
 
 **The architectural inversion:** in v1.1.2, the daemon received hooks from sessions the user launched elsewhere. In v2.0, the daemon spawns sessions (via SessionManager + EngineModule.spawn_recipe()) and owns their PTYs. The TUI is a client that streams PTY output and forwards keystrokes. Hook events continue to arrive via HTTP and are fan-out as before.
 
-**Persistence model (DAEMON-OWNS-PTY) — three cases:**
+**Persistence model (session-host-owns-PTY; daemon coordinates/re-attaches) — three cases:**
+_(Previously called DAEMON-OWNS-PTY. Renamed at v2.1 / D-238 escalation. The daemon still coordinates all session lifecycle and streams PTY bytes to TUI clients; the change is that PTY ownership now resides in per-session session-host processes that outlive a daemon restart, rather than inside the daemon process itself.)_
 
-1. **TUI exit and reconnect (supported in v1A):** Sessions survive a monocle TUI process exit. The daemon continues owning PTY masters; child Claude processes keep running; a reconnecting TUI client re-streams from the existing per-session `vt100::Parser` state. This is the primary DAEMON-OWNS-PTY survival path.
+1. **TUI exit and reconnect (supported in v1A):** Sessions survive a monocle TUI process exit. The per-session session-host processes continue owning PTY masters and child handles; the daemon remains running; a reconnecting TUI client re-streams from the existing per-session `vt100::Parser` state. Unchanged from v2.0.
 
-2. **Graceful daemon-process restart (NOT supported in v1A — later-wave feature):** In v1A, a daemon process restart drops all PTY masters and owned child processes. Native `portable-pty` does not support PTY-state serialization and cross-process PTY-master handoff; that capability is a deferred later-wave feature alongside cross-crash serialization. The `DaemonRestart` action in v1A therefore means: gracefully signal the daemon to stop (sessions terminate), restart, and the user re-launches sessions. If a future wave implements in-place daemon restart without dropping PTYs, it will require explicit PTY-fd serialization work.
+2. **Graceful daemon-process restart (REQUIRED to survive in v1A — D-238 escalation):** When the daemon process restarts gracefully, sessions MUST survive. This requires PTY masters and harness child processes to be owned by a component that outlives the daemon process — a native detached per-session "session-host" process (abduco/dtach-style ownership). The daemon coordinates session-hosts and re-attaches to them on restart. A planned `DaemonRestart` therefore performs a clean reconnect/handoff, not a session teardown. Persistence principle: the session-host owns the PTY master + child process; the daemon is a coordinator that can detach and re-attach. **Default: native implementation (no external multiplexer dependency, no-tmux constraint preserved).** If native daemon-restart-survival proves infeasible at acceptable cost or complexity for v1A, the architect MUST surface the external-supervisor (tmux/abduco/dtach) tradeoff for human decision rather than adopting it silently. Architecture route: Q-8 in §Open Questions.
 
-3. **Daemon crash (accepted v1A boundary):** Hard crash → in-flight sessions lost → user re-launches. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides the operational mitigation.
+3. **Daemon crash (accepted v1A boundary — unchanged):** Hard crash → in-flight sessions lost → user re-launches. This is an unplanned death; no clean handoff completes. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides the operational mitigation. Cross-crash PTY state serialization remains explicitly out of v1A scope.
 
-`session-state.json` persists enough metadata to re-display terminated sessions and offer re-launch with the same parameters (project, harness, profile). Cross-crash PTY state serialization is a deferred later-wave feature.
+`session-state.json` persists enough metadata to re-display terminated sessions and offer re-launch with the same parameters (project, harness, profile).
 
 The canonical Phase 1 hook set is 5 endpoints (unchanged from v1.1.2, locked by JC-2). Hook auto-injection: when monocle launches a session, it passes `--settings <hooks_settings_path>` to the `claude` binary — no manual `settings.json` copy required. The `lock.app = 'monocle'` filter in the hook JS ensures only monocle-launched sessions trigger the monocle hook endpoint.
 
@@ -500,7 +504,7 @@ Input fidelity (v1A): printable keys + control keys (Ctrl-C, Ctrl-D, Ctrl-Z) + a
 
 List, switch, create, kill, rename, and group sessions by project from the TUI. Sessions grouped by `project_name` with collapsible header rows. Fast switching: O(1) — swap which parser the TUI widget renders; all sessions parse in the background. Project picker overlay (SessionCreation step 2). GC policy: Terminated sessions cleaned from registry after 10-second grace period.
 
-Persistence: DAEMON-OWNS-PTY (three cases — see §Process Topology for full detail): (1) TUI exit/restart → daemon PTY masters still running → TUI reconnects and re-streams (supported in v1A); (2) daemon-process restart → PTY masters dropped → sessions lost → user re-launches (in-place daemon restart without dropping PTYs is a later-wave feature, not v1A); (3) daemon crash → sessions lost → re-launch. `session-state.json` per session for re-display and parameter-based re-launch.
+Persistence: session-host-owns-PTY; daemon coordinates/re-attaches (three cases — see §Process Topology for full detail): (1) TUI exit/restart → session-host processes still running, daemon still running → TUI reconnects and re-streams (supported in v1A); (2) graceful daemon-process restart → sessions SURVIVE via native detached session-host ownership → daemon re-attaches on restart (required in v1A — D-238 escalation; native default, no-tmux preserved; external supervisor only as architect-surfaced fallback for human decision); (3) daemon crash → sessions lost → re-launch (unplanned death, no clean handoff, accepted v1A boundary). `session-state.json` per session for re-display and parameter-based re-launch.
 
 **Hook auto-injection on spawn**
 
@@ -627,8 +631,23 @@ Human-ratified questions are marked RESOLVED; they are retained for traceability
 
 ---
 
+**[HIGH PRIORITY] Q-8: PTY-ownership-survival mechanism for graceful daemon-process restart (CASE 2) — architect (D-238)**
+
+Design a native detached per-session session-host that owns the PTY master and harness child process and survives a daemon-process restart, with the daemon coordinating and re-attaching over UDS. Specific design questions:
+
+- What is the session-host process model? Options include: (a) a standalone lightweight subprocess per session forked from the daemon at spawn time and detached (POSIX double-fork or `setsid`); (b) a dedicated `monocle-session-host` binary invoked per session; (c) use of an existing detach library (abduco, dtach) as the host container. Option (a) or (b) is the default (native, no external dep).
+- How does the daemon re-attach to a running session-host after restart? The session-host must expose a stable re-attach IPC endpoint (e.g., per-session UDS socket at a known path derived from session ID) that the daemon can connect to on startup. The `vt100::Parser` scroll-back state must be re-streamable after re-attach.
+- What is the re-attach protocol? The daemon must query surviving session-hosts at startup to reconstruct the in-memory session registry before accepting TUI client connections.
+- What changes are required to the already-built in-process daemon wiring (D-235)? The current implementation places PTY ownership inside the daemon process (SessionManager sub-module of monocle-runtime). Moving PTY ownership to session-host processes likely requires reworking the SessionManager abstraction boundary — the PtySpawner trait may need to model a session-host spawn rather than a direct portable-pty call.
+
+**Default design constraint (no-tmux preserved):** The native detached session-host approach is the required default. An external supervisor (tmux, abduco, dtach as primary mechanism) is NOT the default. If the architect determines that a native session-host is infeasible for v1A at acceptable cost/complexity, the architect MUST surface that tradeoff explicitly for human decision — do NOT silently adopt an external multiplexer dependency.
+
+This question interacts with: Q-1 (PTY bytes over UDS — the re-attach protocol uses the same UDS), Q-2 (EngineModule/SessionManager surface — PTY ownership boundary changes), and the already-built in-process daemon wiring from D-235 (which assumed in-process PTY ownership and will likely need rework). Route: architect (architecture delta). Flag: architect must confirm or propose rework before the architecture delta spec is finalized.
+
+---
+
 **RESOLVED — Q-3: Daemon crash persistence posture for v1A (human-ratified 2026-06-03, D-237)**
-Daemon crash → sessions lost → user re-launches. This is the accepted v1A boundary. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides operational mitigation. Native portable-pty only — no tmux fallback required for v1A. Cross-crash PTY state serialization is deferred to a later wave. TUI reconnect to a running daemon (DAEMON-OWNS-PTY) is the supported survival path; that is already the design in §Process Topology. Architect follow-on (implementation only): session-state.json schema for re-display and parameter-based re-launch of terminated sessions.
+Daemon crash → sessions lost → user re-launches. This is the accepted v1A boundary. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides operational mitigation. Cross-crash PTY state serialization remains out of v1A scope. TUI reconnect to a running daemon (session-host-owns-PTY; daemon coordinates/re-attaches — formerly called DAEMON-OWNS-PTY; renamed at v2.1) is the survival path for TUI exit/restart (CASE 1); this is already the design in §Process Topology. Note: CASE 2 (graceful daemon-process restart) was escalated at D-238 and is now REQUIRED to survive — see Q-8. Architect follow-on (implementation only): session-state.json schema for re-display and parameter-based re-launch of terminated sessions.
 
 **RESOLVED — Q-5: v1A / v1B wave boundary (human-ratified 2026-06-03, D-237)**
 v1A = Launch + Embedded PTY + Multi-session/Multi-project (+ persistence + hook auto-injection); v1B = Interactive Tune. All four capabilities ship in v1. The two-wave split is confirmed feature-ordering (CLAUDE.md Rule 2), not an MVP shortcut. Interactive Tune does NOT merge into v1A.
@@ -666,14 +685,15 @@ v1.1.2 (2026-05-12): Surgical path fix — `/hooks/prompt-submit` wire correctio
 **v2.0 (2026-06-03):** Major revision by the product-owner agent in response to the D-236 human-directed vision pivot and D-237 human ratification of the re-baselined v1 control-center scope. This revision:
 - Retires the observe-only constraint and the specific rejections it codified
 - Adds LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, and INTERACTIVE TUNE as first-class v1 capabilities
-- Captures the DAEMON-OWNS-PTY persistence model (ratified D-237)
+- Captures the DAEMON-OWNS-PTY persistence model (ratified D-237; renamed to session-host-owns-PTY at v2.1)
 - Captures the embedded-PTY tech direction (portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4; from embedded-pty-evaluation.md v1.0)
 - Documents the v1A/v1B wave ordering (feature-ordering, not MVP shortcut)
 - Enumerates the preserved Phase-1 substrate as an asset set (not to be rebuilt)
 - Captures open architecture questions for the architect in the architecture delta phase
 - Sources: NEXT-SESSION-PIVOT.md, DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md v1.0, embedded-pty-evaluation.md v1.0, STATE.md decisions D-236 and D-237
+- Status at v2.0: DRAFT — pending human approval gate.
 
-**Status: DRAFT — pending human approval gate.** The architecture delta (brief revision → architecture subsystem specs → story decomposition) must not begin until the human approves this document. The orchestrator should present this to the human for review and approval before dispatching the architect.
+**v2.1 (2026-06-03):** D-238 escalation applied by product-owner agent. Persistence model escalated: CASE 2 (graceful daemon-process restart) now REQUIRES session survival via native detached session-host processes (session-host-owns-PTY model). Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches. No-tmux default preserved; external supervisor only as architect-surfaced fallback for human decision. Q-8 (HIGH priority) added to §Open Questions for architect. Doc **APPROVED** by Joshua Magady (2026-06-03) to proceed to brief → architecture → story delta.
 
 The vision is the synthesis lens for disposition decisions: every subsystem in every reference repo gets sorted through THIS vision. The D-236/D-237 reversal of the launch/manage genes is captured in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md. If future vision-doc changes invalidate prior dispositions, those dispositions must be re-run.
 
