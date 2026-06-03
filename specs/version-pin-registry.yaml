@@ -156,9 +156,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.25"
-  last_bump_commit: "c6ec52a"
-  last_bump_date: "2026-05-31"
+  current_version: "5.29"
+  last_bump_commit: "a7bf811"
+  last_bump_date: "2026-06-03"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -713,9 +713,9 @@ S-028-sessions-filter-event-ribbon:
 
 S-029-killer-scenario-test:
   path: stories/S-029-killer-scenario-test.md
-  current_version: "1.2"
-  last_bump_commit: "c6ec52a"
-  last_bump_date: "2026-05-31"
+  current_version: "1.3"
+  last_bump_commit: "a7bf811"
+  last_bump_date: "2026-06-03"
 
 S-030-config-crate-foundation:
   path: stories/S-030-config-crate-foundation.md
