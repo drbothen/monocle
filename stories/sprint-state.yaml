@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.37"
+version: "1.38"
 status: active
-producer: vsdd-factory:story-writer
-timestamp: 2026-06-03T04:35:15Z
+producer: vsdd-factory:state-manager
+timestamp: 2026-06-03T08:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -381,11 +381,13 @@ stories:
     wave: 7
     points: 8
     status: done
+    gate_passed: true
+    wave_gate: "wave-7 D-232"
     assigned_to: null
     started_at: null
     completed_at: "2026-06-01"
     pr_url: "https://github.com/jmagady/monocle/pull/32"
-    notes: "Wave 7. BCs: BC-2.06.010, BC-2.06.015, BC-2.06.019..021, BC-2.06.024. Rendering layer + diff preview (similar 3) + two-row status bar + [t] trace-to-source stub (BC-2.06.015, human-authorized scope addition). PR #32 squash-merged to develop @ 3787ebd. 18-pass adversarial convergence (5 BLOCKER + 6 MAJOR + [t]-stub MAJOR + drops:N coexistence MAJOR resolved). BC version bumps: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6. D-226. Unblocks S-029."
+    notes: "Wave 7. BCs: BC-2.06.010, BC-2.06.015, BC-2.06.019..021, BC-2.06.024. Rendering layer + diff preview (similar 3) + two-row status bar + [t] trace-to-source stub (BC-2.06.015, human-authorized scope addition). PR #32 squash-merged to develop @ 3787ebd. 18-pass adversarial convergence (5 BLOCKER + 6 MAJOR + [t]-stub MAJOR + drops:N coexistence MAJOR resolved). BC version bumps: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6. D-226. Unblocks S-029. Wave-7 gate PASSED D-232."
 
   - id: S-028
     title: "Sessions Panel Nucleo Filter + Event Ribbon Rolling Log"
@@ -393,11 +395,13 @@ stories:
     wave: 7
     points: 5
     status: done
+    gate_passed: true
+    wave_gate: "wave-7 D-232"
     assigned_to: null
     started_at: null
     completed_at: "2026-06-01"
     pr_url: "https://github.com/jmagady/monocle/pull/34"
-    notes: "Wave 7. BCs: BC-2.05.002, BC-2.05.004 (TUI consumer), BC-2.06.006, BC-2.06.018. PR #34 squash-merged to develop @ 682e5e5. 10-pass adversarial convergence + integration-merge of S-031 + 3-cycle PR review. Human-authorized scope expansion: timestamp_micros added to HookEventReceived IPC (daemon emit deferred to S-032) + EnrichedSession.display_name. BC version bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0, SS-ipc v1.10.0. D-228."
+    notes: "Wave 7. BCs: BC-2.05.002, BC-2.05.004 (TUI consumer), BC-2.06.006, BC-2.06.018. PR #34 squash-merged to develop @ 682e5e5. 10-pass adversarial convergence + integration-merge of S-031 + 3-cycle PR review. Human-authorized scope expansion: timestamp_micros added to HookEventReceived IPC (daemon emit deferred to S-032) + EnrichedSession.display_name. BC version bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0, SS-ipc v1.10.0. D-228. F-W7G3-MED-001 (cross-story integration finding) fixed via PR #37 @ 6811103. Wave-7 gate PASSED D-232."
 
   - id: S-029
     title: "Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve"
@@ -405,11 +409,13 @@ stories:
     wave: 7
     points: 5
     status: done
+    gate_passed: true
+    wave_gate: "wave-7 D-232"
     assigned_to: null
     started_at: null
     completed_at: "2026-06-03"
     pr_url: "https://github.com/jmagady/monocle/pull/35"
-    notes: "Wave 7. BCs: BC-2.06.022. Validates holdout HS-EXP-008. PR #35 squash-merged to develop @ 48463fb (2026-06-03T04:35:15Z). 7-scenario E2E integration test (killer_scenario.rs). Production seam: setup_ipc_streams_with_rx + handle_server_message exposed #[doc(hidden)] pub. 3 consecutive CLEAN adversarial passes (BC-5.39.001) after 2 fix rounds closing EPIC-06 inbound-wiring defect class. Security review PASS (0 findings). All 9 CI checks green. S-029 spec v1.3 (story-writer). D-230. Wave 7 COMPLETE (4/4)."
+    notes: "Wave 7. BCs: BC-2.06.022. Validates holdout HS-EXP-008. PR #35 squash-merged to develop @ 48463fb (2026-06-03T04:35:15Z). 7-scenario E2E integration test (killer_scenario.rs). Production seam: setup_ipc_streams_with_rx + handle_server_message exposed #[doc(hidden)] pub. 3 consecutive CLEAN adversarial passes (BC-5.39.001) after 2 fix rounds closing EPIC-06 inbound-wiring defect class. Security review PASS (0 findings). All 9 CI checks green. S-029 spec v1.3 (story-writer). D-230. Wave 7 COMPLETE (4/4). HS-EXP-008 holdout score 1.0 (PASS). Wave-7 gate PASSED D-232."
 
   - id: S-031
     title: "Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override"
@@ -417,11 +423,13 @@ stories:
     wave: 7
     points: 5
     status: done
+    gate_passed: true
+    wave_gate: "wave-7 D-232"
     assigned_to: null
     started_at: null
     completed_at: "2026-06-01"
     pr_url: "https://github.com/jmagady/monocle/pull/33"
-    notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. PR #33 squash-merged to develop @ 8451486. 9-pass adversarial convergence (3 consecutive CLEAN). D-227."
+    notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. PR #33 squash-merged to develop @ 8451486. 9-pass adversarial convergence (3 consecutive CLEAN). D-227. Wave-7 gate PASSED D-232."
 
 summary:
   total_stories: 33
@@ -441,6 +449,19 @@ summary:
   wave_5_points: 34
   wave_6_points: 34
   wave_7_points: 23
+  wave_7_gate_status: passed
+  wave_7_gate_decision: D-232
+  wave_7_gate_date: "2026-06-03"
+  phase_3_status: COMPLETE
+  # v1.38 updates (2026-06-03):
+  # - Wave-7 gate PASSED (D-232). Gate checks: gate-1 PASS (1514 tests), gate-2 SKIP (no DTU clone story),
+  #   gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 FIXED via PR #37 @ 6811103), gate-4 PASS (all 4 demos),
+  #   gate-5 PASS (HS-EXP-008 score 1.0), gate-6 PASS (this update), mutation-testing SKIP (strict-mode stories).
+  # - S-027/S-028/S-029/S-031: gate_passed: true, wave_gate: "wave-7 D-232"
+  # - Phase 3 TDD Implementation: COMPLETE. 7/7 waves delivered and gated.
+  # - Next: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4 Holdout Evaluation.
+  # - DTU-CLONE-STORY added to durable_task_register (Phase 4 prerequisite — story-writer must decompose).
+  # - F-S028-NIT-002 RESOLVED (fixed in scope as F-W7G3-MED-001 via PR #37).
   # v1.13 updates (2026-05-26T12:00:00Z):
   # - S-014 flipped not_started → done (PR #10 merged 40dab9c; BC-2.03.001 satisfied; 5 adversary rounds 3/3 convergence)
   # - S-011 flipped not_started → done (PR #11 merged 1e789f0; BC-2.02.003 satisfied; 4 adversary rounds 3/3 convergence)

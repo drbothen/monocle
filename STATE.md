@@ -2,19 +2,25 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.80"
+version: "6.81"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T06:00:00Z
-phase: phase-3-wave-7-COMPLETE
-current_step: "Wave 7 COMPLETE (D-230). D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0 (F-S026-ADV1-LOW-002), BC-2.06.021 v1.0.7 (F-S027-DOC-001), BC-INDEX v1.34, STORY-INDEX v5.30 (F-S025-ADV37-DEFER-001 AC ranges fixed), citation atomicity propagation. S-027/S-028 story status fixed → done. POL-11/POL-12 PASS. NEXT: run vsdd-factory:wave-gate wave-7."
+timestamp: 2026-06-03T08:00:00Z
+phase: phase-3-COMPLETE
+current_step: "D-232: Wave-7 gate PASSED. Phase 3 TDD Implementation COMPLETE (all 7 waves delivered and gated). develop @ 6811103 (F-W7G3-MED-001 fix). Gate: 1514 tests PASS, DTU SKIP (no clone story — DTU-CLONE-STORY added to register), adversarial PASS (0 CRIT/HIGH, 1 MED fixed in scope PR #37), demos PASS (all 4 stories), HS-EXP-008 score 1.0 PASS. sprint-state v1.38. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed."
-awaiting: "Run vsdd-factory:wave-gate wave-7. Wave 7 COMPLETE (4/4, D-230). Sweep complete (D-231): F-S025-ADV37-DEFER-001, F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, FLAKY-TIMING-5MS, L-S027-004 all RESOLVED. Residual non-blocking: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) devops ADR-HOOK-001 hook wiring (HUMAN action, ADR-HOOK-001-WIRING); (c) F-S027-DOC-002/003 implementer doc-comments; (d) F-S028-NIT-002 filter index-space nuance; (e) SIGTERM-TERMINAL-RESTORE architectural gap. Gate requires: full test suite develop @ 48463fb, adversarial wave-diff review, holdout HS-EXP-008, demo validation, DTU validation. After gate PASSES → Phase 4."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38."
+awaiting: "Phase 3→4 transition gate: consistency audit (vsdd-factory:consistency-validation) + human approval. Then Phase 4 Holdout Evaluation. Before Phase 4: story-writer must decompose DTU-CLONE-STORY (dtu-claude-code-hooks-v1 behavioral clone). Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
 durable_task_register:
   outstanding:
+    - id: "DTU-CLONE-STORY"
+      subject: "story-writer must decompose dtu-claude-code-hooks-v1 into a story BEFORE Phase 4 holdout-eval gate"
+      status: pending
+      detail: "Wave-7 gate D-232: DTU validation skipped because no DTU clone story was decomposed in Phase 2. The dtu-assessment.md specifies dtu-claude-code-hooks-v1 (5-endpoint hook protocol behavioral clone) as the required clone. Story-writer must create this story before Phase 4 holdout-eval gate — needed to exercise hook endpoints without a live Claude Code instance. Reference dtu-assessment.md acceptance criteria."
+      blocking: true
+      blocking_gate: "Phase 4 holdout-eval gate"
     - id: "ADV-W5GATE-HIGH-001"
       subject: "daemon_start_sequence() doesn't wire DaemonState — integration story needed"
       status: pending
@@ -321,9 +327,9 @@ durable_task_register:
       detail: "RESOLVED D-231: reviewed in wave-7-gate sweep. Fix-PR delivered and merged prior to this sweep (part of the wave-7-gate sweep artifacts committed by pr-manager). Closed."
       blocking: false
     - id: "F-S028-NIT-002"
-      subject: "S-028 benign nitpick: filter-mode ribbon selected_sid index-space nuance"
-      status: pending
-      detail: "S-028 residual: in filter mode the event ribbon uses selected_sid from the nucleo-filtered index space; if a session is selected in the unfiltered list then filter text is typed, the highlighted entry can jump. Cosmetic UX nuance, non-breaking. Routing: implementer at wave-7-gate sweep or maintenance."
+      subject: "S-028 filter-mode ribbon selected_sid index-space mismatch — RESOLVED D-232 (fixed as F-W7G3-MED-001)"
+      status: resolved
+      detail: "RESOLVED D-232: surfaced at integration scope as F-W7G3-MED-001 during wave-7 adversarial gate review. Fixed in scope via PR #37 @ 6811103 — render_sessions_filter now returns the highlighted session_id from the filtered entry with index-space remap + render test. pr-reviewer CLEAN. Security-reviewer CLEAN. 9 CI checks green."
       blocking: false
     - id: "FLAKY-TIMING-5MS"
       subject: "test_BC_2_06_010 5ms timing threshold — RESOLVED D-231"
@@ -356,9 +362,9 @@ durable_task_register:
       detail: "D-231: monocle-tui does not register a SIGTERM handler, so if the process is killed externally the terminal raw-mode is not restored. HS-EXP-006 residual caveat. Pre-existing architectural gap (crossterm does not install signal handlers by default). Phase 4+ quality item. Routing: architect + implementer. Non-blocking for wave-7-gate."
       blocking: false
     - id: "F-S028-NIT-002-DEFERRED"
-      subject: "S-028 event-ribbon selected_sid filter-index-space mismatch — deferred to maintenance (regression risk)"
-      status: deferred-maintenance
-      detail: "D-231: in filter mode the event ribbon uses selected_sid from the nucleo-filtered index space; if a session is selected in the unfiltered list then filter text is typed, the highlighted entry can jump. Regression risk documented by implementer. Deferred to maintenance. Routing: implementer. Non-blocking."
+      subject: "S-028 event-ribbon selected_sid filter-index-space mismatch — RESOLVED D-232 (fixed as F-W7G3-MED-001 in scope)"
+      status: resolved
+      detail: "RESOLVED D-232: the D-231 deferred maintenance item surfaced at integration scope during wave-7 adversarial gate review as F-W7G3-MED-001 (MEDIUM severity). Fixed in scope via PR #37 @ 6811103. Both F-S028-NIT-002 and F-S028-NIT-002-DEFERRED are now closed."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -374,8 +380,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.80 (D-231) — 2026-06-03
-  WAVE 7 COMPLETE + GATE SWEEP DONE — 32/33 STORIES — NEXT: wave-7-gate
+  ZERO-CONTEXT RESUME CHECKPOINT v6.81 (D-232) — 2026-06-03
+  PHASE 3 COMPLETE — WAVE-7 GATE PASSED — 32/33 STORIES — NEXT: Phase 3->4 gate
   ============================================================================
 
   YOUR FIRST 4 COMMANDS (RUN IN ORDER):
@@ -383,7 +389,7 @@ next_session_resume_protocol: |
   1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults. Read before dispatching anything.
 
-  2. Read this STATE.md fully — especially §Trace v6.80, durable_task_register.
+  2. Read this STATE.md fully — especially §Trace v6.81, durable_task_register.
 
   3. Run worktree health check (BLOCKING per orchestrator startup protocol):
      Agent(subagent_type="vsdd-factory:devops-engineer",
@@ -393,51 +399,44 @@ next_session_resume_protocol: |
 
   PIPELINE STATE (as of 2026-06-03):
 
-  Wave 7 COMPLETE (D-230). develop @ 48463fb (S-029 PR #35 squash-merged 2026-06-03T04:35:15Z).
-  D-231 wave-7-gate prerequisite sweep complete: SS-ipc v1.11.0, BC-2.06.021 v1.0.7,
-    BC-INDEX v1.34, STORY-INDEX v5.30, citation propagation. POL-11/POL-12 PASS.
+  Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
+  develop @ 6811103 (F-W7G3-MED-001 fix, PR #37 — final wave-7-gate fix).
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
-  Phase 3 TDD Implementation IN PROGRESS: Wave 7 all done; wave-7-gate pending.
-  32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (does NOT block wave-7 gate).
-  S-032 draft Wave 8 (does NOT block wave-7 gate; discharges deferred daemon fan-out + BC-2.05.004 v1.1.0 PC-2 obligation).
-  sprint-state v1.37. STORY-INDEX v5.30. BC-INDEX v1.34 (113 BCs).
+  32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (upstream dep, does NOT block Phase 4).
+  S-032 draft Wave 8 (daemon fan-out, does NOT block Phase 4).
+  sprint-state v1.38 (wave_7_gate_status: passed). STORY-INDEX v5.30. BC-INDEX v1.34 (113 BCs).
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
-  NEXT ACTION — RUN wave-7-gate:
+  NEXT ACTION — Phase 3->4 transition gate:
 
-  vsdd-factory:wave-gate wave-7
+  STEP 1: Run consistency audit (blocking gate prerequisite):
+    vsdd-factory:consistency-validation
+  STEP 2: Human approval of Phase 3->4 transition.
+  STEP 3: Dispatch story-writer to decompose DTU-CLONE-STORY (BLOCKING for Phase 4 holdout-eval gate;
+    see durable_task_register DTU-CLONE-STORY entry). Reference dtu-assessment.md acceptance criteria.
+  STEP 4: vsdd-factory:phase-4-holdout-evaluation
 
-  Gate requires ALL of:
-    - Full test suite on develop @ 48463fb (cargo test --workspace; must be 0 failures)
-    - Adversarial wave-diff review (wave 7 diff vs wave 6 gate @ 2a51a91)
-    - Holdout evaluation HS-EXP-008 (S-029 validates this scenario)
-    - Demo evidence validation (S-027/028/029/031 demos recorded by demo-recorder)
-    - DTU validation for critical modules (hook endpoints x5)
-  After gate PASSES → Phase 4 (Holdout Evaluation).
-  NOTE: S-032 (daemon fan-out, Wave 8) does NOT block the wave-7 gate.
+  WAVE 7 GATE SUMMARY (D-232 — PASSED):
+  * Gate 1 (test-suite): PASS — 1514 tests, 0 failures; clippy --all-targets CLEAN; fmt CLEAN.
+  * Gate 2 (dtu-validation): SKIP — no DTU clone story; hook-boundary untouched. DTU-CLONE-STORY added.
+  * Gate 3 (adversarial-review): PASS — 0 CRIT/HIGH, 1 MED fixed (F-W7G3-MED-001 PR #37 @ 6811103).
+  * Gate 4 (demo-evidence): PASS — all 4 stories demoed (S-027/S-031 @ b2c8635, S-028 @ 70418e7, S-029 @ fdf1a31).
+  * Gate 5 (holdout-eval): PASS — HS-EXP-008 score 1.0 (killer scenario <=6 keystrokes).
+  * Gate 6 (state-update): PASS — this checkpoint.
+  * Mutation testing: SKIP — all wave-7 stories tdd_mode: strict.
 
-  WAVE 7 STORIES (FINAL WAVE — ALL DONE):
-  * S-027 (8 pts, EPIC-06) — DONE. PR #32 @ 3787ebd (D-226). Overlay + diff preview + 2-row status bar + [t] stub.
-  * S-031 (5 pts, EPIC-07) — DONE. PR #33 @ 8451486 (D-227). Profile Picker. BCs: BC-2.07.004/005.
-  * S-028 (5 pts, EPIC-06) — DONE. PR #34 @ 682e5e5 (D-228). Nucleo filter + event ribbon. BCs: BC-2.05.002/004, BC-2.06.006/018.
-  * S-029 (5 pts, EPIC-06) — DONE. PR #35 @ 48463fb (D-230). Killer Scenario: <=6 keystrokes dual permission resolve. BC-2.06.022. Validates HS-EXP-008.
+  D-232 RESOLVED (do NOT re-flag):
+  (RESOLVED) F-S028-NIT-002 — fixed in scope as F-W7G3-MED-001 (PR #37 @ 6811103).
+  (RESOLVED) F-S028-NIT-002-DEFERRED — same fix, index-space remap complete.
 
-  D-231 SWEEP RESOLVED (do NOT re-flag at gate):
-  (RESOLVED) F-S025-ADV37-DEFER-001 — STORY-INDEX BC→AC ranges corrected (v5.30).
-  (RESOLVED) F-S026-ADV1-LOW-002 — SS-ipc v1.11.0 naming reconciliation.
-  (RESOLVED) F-S027-DOC-001 — BC-2.06.021 PC-3 'or replaced' fix (v1.0.7).
-  (RESOLVED) F-S028-NIT-001 — ScrollUp/ScrollDown asymmetry.
-  (RESOLVED) FLAKY-TIMING-5MS — threshold widened to 10ms.
-  (RESOLVED) L-S027-004 — registry atomicity lesson absorbed in this sweep.
-
-  REMAINING OPEN (non-blocking for wave-7-gate):
+  REMAINING OPEN (non-blocking for Phase 4):
   (a) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — terminal restore TTY-backed harness.
   (b) HUMAN ACTION: ADR-HOOK-001-WIRING — wire scripts/validate_adr_self_consistency.sh into settings.json.
   (c) implementer: F-S027-DOC-002/003 — render_frame and overlay.rs stale docstrings.
-  (d) F-S028-NIT-002-DEFERRED — filter index-space nuance (maintenance).
-  (e) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
+  (d) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
+  (e) DTU-CLONE-STORY — BLOCKING Phase 4 holdout-eval gate (story-writer must decompose).
 
-  ARTIFACT VERSIONS (D-231 canonical; version-pin-registry.yaml is authoritative source):
+  ARTIFACT VERSIONS (D-232 canonical; version-pin-registry.yaml is authoritative source):
     PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
     SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
     ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
@@ -445,7 +444,7 @@ next_session_resume_protocol: |
     BC-2.05.004 v1.1.0 | BC-2.06.006 v1.1.0 | BC-2.06.015 v1.0.7 | BC-2.06.016 v1.1.0
     BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.7
     BC-2.06.023 v1.5.1 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
-    S-026 v1.11 | S-027 v1.10 | S-029 v1.3 | sprint-state v1.37 | product-brief v1.4.34
+    S-026 v1.11 | S-027 v1.10 | S-029 v1.3 | sprint-state v1.38 | product-brief v1.4.34
     MSRV: Rust 1.88 (Phase 1-2; time 0.3.47 RUSTSEC-2026-0009 floor). Phase 3 = Rust 1.92.
     9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
       monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui.
@@ -453,7 +452,6 @@ next_session_resume_protocol: |
   KNOWN-FLAKY (DO NOT FLAG):
     cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip,
     PATH isolation flake.
-    NOTE: FLAKY-TIMING-5MS RESOLVED in D-231 (threshold widened to 10ms).
 
   DEFERRED ITEMS — DO NOT RE-FLAG:
     F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
@@ -464,7 +462,6 @@ next_session_resume_protocol: |
     PROCESS-GAP-CI-PARITY-1 (CLAUDE.md --all-targets; HUMAN action required)
     PROCESS-GAP-CI-PARITY-2 (per-story POL-11/POL-12 local gate; devops codification)
     F-S027-DOC-002/003 (render_frame + overlay stale docstrings; implementer)
-    F-S028-NIT-002-DEFERRED (filter index-space nuance; maintenance)
     SIGTERM-TERMINAL-RESTORE (Phase 4+ architectural gap)
     PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP (architect-spec-only codification; orchestrator)
     PROCESS-GAP-TMP-COMMIT-MSG-MIXUP (unique /tmp paths; delivery-skill update)
@@ -493,10 +490,10 @@ current_cycle: cycle-001
 | Pre-Phase-1 Final Gate | DONE | 2026-05-14 | D-054. 26 adv rounds. 22 BCs. |
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
-| 3 TDD Implementation | IN PROGRESS — Wave 7 COMPLETE, wave-7-gate pending | — | Wave 1+2+3 DONE (83 pts, 447 tests). Wave 4 GATE PASSED (D-175): 634 tests. Wave 5 GATE PASSED (D-182): 753 tests. Wave 6 GATE PASSED (D-224): develop @ 2a51a91; CRITICAL F-WAVE6-GATE-CRIT-001 fixed. Wave 7 COMPLETE (D-230): S-027 DONE (D-226), S-031 DONE (D-227), S-028 DONE (D-228), S-029 DONE (D-230, PR #35 @ 48463fb). 32/33 done (192/195 pts, 98%). develop @ 48463fb. NEXT: wave-7-gate → Phase 4. |
+| 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
 | 4-7 | not-started | — | |
 
-develop @ 48463fb (D-230 — S-029 merged). Waves 1-6 DONE. Wave-6 GATE PASSED (D-224) @ 2a51a91. Wave 7 COMPLETE: S-027 DONE (D-226, PR #32 @ 3787ebd), S-031 DONE (D-227, PR #33 @ 8451486), S-028 DONE (D-228, PR #34 @ 682e5e5), S-029 DONE (D-230, PR #35 @ 48463fb). 32/33 stories done, 192/195 pts (98%). NEXT: wave-7-gate → Phase 4.
+develop @ 6811103 (D-232 — wave-7 gate PASSED, F-W7G3-MED-001 fix). Waves 1-7 DONE. Wave-7 GATE PASSED (D-232). Phase 3 COMPLETE. 32/33 stories done, 192/195 pts (98%). NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4 Holdout Evaluation.
 
 ## Blocking Issues
 
@@ -518,6 +515,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-229 | Zero-context resume checkpoint v6.78. S-029 human-authorized 2026-06-02 — dispatch now. develop @ 1158e24 (CLAUDE.md durable checkpoint). factory-artifacts @ 47d6a39. BC-2.07.004/005 versions added to artifact table. STATE v6.77→v6.78. | 2026-06-02 | state-manager |
 | D-230 | S-029 DELIVERED — PR #35 squash-merged to develop @ 48463fb (mergedAt 2026-06-03T04:35:15Z). Killer Scenario: <=6 keystrokes dual permission resolve. BC-2.06.022. Validates holdout HS-EXP-008. 3 consecutive CLEAN adversarial passes (BC-5.39.001). Security review PASS (0 findings). Wave 7 COMPLETE (4/4: S-027 #32, S-031 #33, S-028 #34, S-029 #35). 32/33 stories done (192/195 pts, 98%). sprint-state v1.36→v1.37. STORY-INDEX v5.28→v5.29. S-029 spec v1.3. STATE v6.78→v6.79. | 2026-06-03 | state-manager |
 | D-231 | Wave-7-gate prerequisite sweep complete. SS-ipc v1.10.0→v1.11.0 (architect, F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.6→v1.0.7 (PO, F-S027-DOC-001 PC-3 'or replaced' fix). BC-INDEX v1.33→v1.34. STORY-INDEX v5.29→v5.30 (story-writer, F-S025-ADV37-DEFER-001 AC ranges corrected + systematic sweep). Citation atomicity propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc Architecture Source rows; EVAL-INDEX + product-brief BC-INDEX rows. S-027/S-028 story frontmatter status → done. version-pin-registry.yaml updated. POL-11 PASS (246 active, 575 files). POL-12 PASS. RESOLVED: F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS, L-S027-004. New residual: ADR-HOOK-001-WIRING (HUMAN action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. STATE v6.79→v6.80. | 2026-06-03 | state-manager |
+| D-232 | Wave-7 gate PASSED — Phase 3 TDD Implementation COMPLETE. Gate results: gate-1 PASS (1514 tests, 0 failures; clippy+fmt CLEAN), gate-2 SKIP (no DTU clone story — DTU-CLONE-STORY added as Phase 4 prereq; zero hook-boundary files touched), gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 fixed in scope via PR #37 @ 6811103), gate-4 PASS (all 4 wave-7 demos), gate-5 PASS (HS-EXP-008 score 1.0), gate-6 PASS (this update), mutation-testing SKIP (strict-mode only). F-S028-NIT-002/NIT-002-DEFERRED both RESOLVED. sprint-state v1.37→v1.38 (wave_7_gate_status: passed). POL-11 PASS (248 active, 578 files). POL-12 PASS. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4. STATE v6.80→v6.81. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -530,7 +528,7 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
 **BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.7** | **BC-2.06.023 v1.5.1** | **BC-2.06.024 v1.1.0**
 **BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
-**sprint-state v1.37** (32/33 done, 192/195 pts; D-230). **S-029 v1.3**. 62 codified disciplines. D-231: wave-7-gate sweep complete.
+**sprint-state v1.38** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-232: Phase 3 COMPLETE.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
 ## Historical Content
@@ -547,19 +545,21 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.80 (D-231 — Wave-7-gate prerequisite sweep complete)
+## §Trace v6.81 (D-232 — Wave-7 gate PASSED, Phase 3 COMPLETE)
 
-**D-231 (2026-06-03):** Wave-7-gate prerequisite sweep complete. SS-ipc v1.11.0 (architect
-F-S026-ADV1-LOW-002 PermissionDecisionKind naming reconciliation). BC-2.06.021 v1.0.7
-(PO, F-S027-DOC-001). BC-INDEX v1.34. STORY-INDEX v5.30 (story-writer F-S025-ADV37-DEFER-001
-BC→AC range corrections + systematic sweep — no other staleness found). Citation atomicity
-propagation: BC-2.05.001-008 + BC-2.06.023 SS-ipc rows; EVAL-INDEX + product-brief BC-INDEX rows.
-S-027/S-028 story frontmatter status: not_started → done. version-pin-registry.yaml placeholder
-fields resolved with descriptive anchors (TD-VSDD-053 — no live SHA self-citation in registry).
-POL-11 PASS (246 active, 575 files). POL-12 PASS. New residual items: ADR-HOOK-001-WIRING
-(human action), SIGTERM-TERMINAL-RESTORE, F-S028-NIT-002-DEFERRED. Prior-sweep items closed:
-F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S025-ADV37-DEFER-001, FLAKY-TIMING-5MS,
-L-S027-004. factory-artifacts commit amended from pr-manager overreach (D-231 reclaims ownership).
-v6.79→v6.80.
+**D-232 (2026-06-03):** Wave-7 integration gate PASSED. Phase 3 TDD Implementation COMPLETE
+(all 7 waves delivered and gated). Gate results: gate-1 PASS (1514 tests, 0 failures; clippy
+--all-targets + fmt CLEAN on develop @ 6811103), gate-2 SKIP (DTU clone story not decomposed
+in Phase 2; wave-7 touched zero hook-boundary files; DTU-CLONE-STORY added to durable_task_register
+as Phase 4 prereq with blocking: true for Phase 4 holdout-eval gate), gate-3 PASS (cross-story
+wave-diff adversarial review: 0 CRIT/HIGH/1 MED F-W7G3-MED-001 FIXED IN SCOPE via PR #37 @
+6811103 — render_sessions_filter index-space remap + render test; pr-reviewer + security-reviewer
+CLEAN; 9 CI checks green), gate-4 PASS (all 4 wave-7 stories demoed; S-029 @ fdf1a31;
+S-027/S-031 @ b2c8635; S-028 @ 70418e7; all ACs covered), gate-5 PASS (HS-EXP-008 score 1.0;
+black-box info-asymmetric; killer scenario ≤6 keystrokes validated), gate-6 PASS (this state
+update; sprint-state v1.38; CLAUDE.md D-232 checkpoint committed to develop), mutation-testing
+SKIP (all wave-7 stories tdd_mode: strict; no facade stories). F-S028-NIT-002 and
+F-S028-NIT-002-DEFERRED both RESOLVED (fixed in scope as F-W7G3-MED-001). POL-11 PASS
+(248 active, 578 files). POL-12 PASS. sprint-state v1.37→v1.38. develop @ 6811103. v6.80→v6.81.
 
-§Trace v6.40 through v6.78 archived to `cycles/cycle-001/burst-log.md`.
+§Trace v6.40 through v6.80 archived to `cycles/cycle-001/burst-log.md`.
