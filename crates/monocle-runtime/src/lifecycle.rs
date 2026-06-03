@@ -471,8 +471,19 @@ pub async fn daemon_start_sequence(
     let ring: Arc<crate::ring::RingBuffer> =
         Arc::new(crate::ring::RingBuffer::new(ring_path, ring_config));
 
+    // Step 4b: Spawn the ring flush task so write-queue records are persisted to disk.
+    // SS-daemon-wiring.md §Daemon Start Sequence step 4: "call spawn_flush_task() separately
+    // at daemon start step 4". Without this, ring.append() enqueues records to the in-memory
+    // write queue but they are never written to monocle-events.jsonl on disk (I2 fix).
+    ring.spawn_flush_task();
+
     // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
-    let (event_tx, _event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
+    // Retain event_rx so the channel has a live consumer; fan-out and debounce tasks are
+    // spawned at step 5b after DaemonState construction. Dropping event_rx here would make
+    // the channel permanently Closed, causing every try_send to fail with
+    // TrySendError::Closed and produce a WARN per hook event (C1 fix —
+    // SS-daemon-wiring-impl.md §Fix Addendum C1).
+    let (event_tx, event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
         crate::types::EVENT_BUS_CAPACITY,
     );
     let drop_counter: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
@@ -597,8 +608,39 @@ pub async fn daemon_start_sequence(
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
         uds_transport: Some(uds_transport),
         hook_decision_override: None,
-        hook_delay_ms: None,
+        hook_delay_ms: None, // Unit-test override only; not set via env var.
+        // MONOCLE_HOOK_DELAY_MS: test-only env var for E2E drain-timeout testing (C2 fix —
+        // SS-daemon-wiring-impl.md §Fix Addendum C2). When set, the hook outer handler (before
+        // the 300ms inner timeout budget) sleeps for this many milliseconds, creating a
+        // genuinely in-flight HTTP request that holds axum's graceful-shutdown drain open.
+        // Not set in production deployments. Absent env var → None → no delay.
+        hook_outer_delay_ms: std::env::var("MONOCLE_HOOK_DELAY_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok()),
     });
+
+    // Step 5b: Spawn event-bus fan-out and drop-counter-debounce tasks.
+    // Both tasks are Phase-1 drain/log tasks only (no TUI IPC delivery in Phase 1).
+    // Full TUI ribbon streaming is S-032 scope (BC-2.05.004 PC-2 obligation).
+    // Both tasks observe shutdown signals and exit cleanly (C1 fix —
+    // SS-daemon-wiring-impl.md §Fix Addendum C1).
+    //
+    // Ordering: DaemonState is fully constructed above before this block so the
+    // task closures receive a complete Arc<DaemonState>.
+    {
+        let fan_out_state = Arc::clone(&daemon_state);
+        tokio::spawn(crate::event_bus::event_bus_fan_out_task(
+            event_rx,
+            fan_out_state,
+        ));
+
+        let debounce_state = Arc::clone(&daemon_state);
+        let debounce_shutdown_rx = daemon_state.shutdown_rx.clone();
+        tokio::spawn(crate::event_bus::drop_counter_debounce_task(
+            debounce_state,
+            debounce_shutdown_rx,
+        ));
+    }
 
     // Spawn the UDS accept loop (BC-2.05.002 PC-1).
     // Clone shutdown_rx and ipc_subscribers before moving into the spawned task.

@@ -67,6 +67,15 @@ pub async fn post_hook_pre_tool_use(
         }
     };
 
+    // hook_outer_delay_ms: test-only delay at the outer handler level, BEFORE the 300ms
+    // inner timeout budget. Set via MONOCLE_HOOK_DELAY_MS env var (read at daemon startup).
+    // Used by AC-E2E-007 to create a genuinely in-flight request that holds axum's
+    // graceful-shutdown drain open for the drain-timeout test (C2 fix).
+    // Never set in production deployments; always None in normal operation.
+    if let Some(delay_ms) = state.hook_outer_delay_ms {
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+    }
+
     // Track any deferred prompt_id registered during this handler invocation.
     // The inner handler writes to this cell when a Defer prompt is registered;
     // the timeout handler reads it to clean up the registry entry and broadcast

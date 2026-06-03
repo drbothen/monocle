@@ -434,15 +434,72 @@ async fn launch_daemon(runtime_dir: &Path) -> DaemonHandle {
     }
 }
 
-/// Start daemon_start_sequence in a background tokio task.
+/// Start daemon_start_sequence in a background tokio task, then serve HTTP.
+///
+/// Retains the `(state, listener)` pair returned by `daemon_start_sequence` and calls
+/// `run_server(state, listener)` so that the port recorded in `monocle.lock` is genuinely
+/// served. Without calling `run_server`, dropping the `TcpListener` would release the
+/// OS port immediately, making the lock file point to a dead endpoint (I1 fix —
+/// SS-daemon-wiring-impl.md §Fix Addendum I1).
+///
+/// Runs the same shutdown tail as `main()` step 7 (UDS cleanup, lock release, hooks
+/// removal) so no stale files remain when the TUI process exits. Does NOT call `exit_with`
+/// — it returns from the task and lets the tokio runtime drop `DaemonState`.
 async fn launch_daemon_in_process(runtime_dir: &Path) -> DaemonHandle {
     let dir = runtime_dir.to_path_buf();
     // Spawn and drop the JoinHandle — the task runs until the runtime is dropped.
     // Dropping the handle does NOT abort the task (tokio semantics).
     tokio::spawn(async move {
-        if let Err(e) = monocle_runtime::lifecycle::daemon_start_sequence(&dir).await {
-            tracing::warn!(error = %e, "in-process daemon_start_sequence failed");
+        let (state, listener) = match monocle_runtime::lifecycle::daemon_start_sequence(&dir).await
+        {
+            Ok(pair) => pair,
+            Err(e) => {
+                tracing::warn!(error = %e, "in-process daemon_start_sequence failed");
+                return;
+            }
+        };
+
+        tracing::info!("in-process daemon: start sequence complete; serving HTTP");
+
+        // Run HTTP server — blocks until shutdown signal fires.
+        // The UDS accept loop is already spawned inside daemon_start_sequence.
+        // Note: the in-process daemon does NOT wrap run_server with tokio::time::timeout.
+        // BC-2.01.004 INV-1 applies to the subprocess binary; if the TUI process exits,
+        // the runtime drops and the task is aborted, preventing indefinite hang.
+        if let Err(e) =
+            monocle_runtime::server::run_server(std::sync::Arc::clone(&state), listener).await
+        {
+            tracing::warn!(error = %e, "in-process daemon: HTTP server returned error");
         }
+
+        // Shutdown tail — mirror main()'s step 7 cleanup.
+        // UDS socket cleanup.
+        if let Some(transport) = state.uds_transport.as_ref() {
+            transport.cleanup();
+        }
+        // Release the daemon lock.
+        let lock_opt = state
+            .daemon_lock
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(lock) = lock_opt {
+            if let Err(e) = lock.release() {
+                tracing::warn!(
+                    error = %e,
+                    "in-process daemon: lock release failed during shutdown; continuing"
+                );
+            }
+        }
+        // Remove hooks-settings.json.
+        if let Err(e) = monocle_runtime::lifecycle::remove_hooks_settings(&dir) {
+            tracing::warn!(
+                error = %e,
+                "in-process daemon: hooks-settings removal failed; continuing"
+            );
+        }
+
+        tracing::info!("in-process daemon: shutdown complete");
     });
     DaemonHandle::Task(())
 }

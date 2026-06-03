@@ -100,13 +100,19 @@ pub async fn event_bus_fan_out_task(mut rx: EventBusRx, state: Arc<DaemonState>)
 ///
 /// # Lifetime
 ///
-/// This task should be cancelled (or will exit) when the daemon shuts down. The debounce
-/// interval is short enough (100ms) that clean shutdown is prompt.
+/// Exits when `shutdown_rx` fires (within one 100ms interval of the signal). The
+/// `tokio::select!` branch exits the loop cleanly without needing task abort
+/// (C1 fix — SS-daemon-wiring-impl.md §Fix Addendum C1).
 ///
 /// # Arguments
 ///
 /// - `state`: Shared daemon state providing access to `drop_counter` and `tui_clients`.
-pub async fn drop_counter_debounce_task(state: Arc<DaemonState>) {
+/// - `shutdown_rx`: Watch receiver that fires when the daemon signals graceful shutdown.
+///   The task exits within one 100ms interval of `shutdown_rx` changing to `true`.
+pub async fn drop_counter_debounce_task(
+    state: Arc<DaemonState>,
+    mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) {
     use std::time::Duration;
     use tokio::time;
 
@@ -114,29 +120,35 @@ pub async fn drop_counter_debounce_task(state: Arc<DaemonState>) {
     let mut last_sent: u64 = 0;
 
     loop {
-        interval.tick().await;
+        tokio::select! {
+            _ = interval.tick() => {
+                let current = match state.drop_counter.as_ref() {
+                    None => continue, // Counter not initialized; nothing to send.
+                    Some(counter) => counter.load(Ordering::Relaxed),
+                };
 
-        let current = match state.drop_counter.as_ref() {
-            None => continue, // Counter not initialized; nothing to send.
-            Some(counter) => counter.load(Ordering::Relaxed),
-        };
+                if current == last_sent {
+                    // Counter unchanged since last send; skip this cycle (BC-2.04.011 PC-8).
+                    continue;
+                }
 
-        if current == last_sent {
-            // Counter unchanged since last send; skip this cycle (BC-2.04.011 PC-8).
-            continue;
+                // Counter changed — record new value and send DropCounterUpdate to TUI clients.
+                last_sent = current;
+
+                // Phase 1: TUI IPC clients are not yet wired (S-021/S-022 scope).
+                // Future: send ServerToClient::DropCounterUpdate(current) to all tui_clients with
+                // the per-client 50ms write timeout (BC-2.04.011 PC-8, EC-095).
+                tracing::debug!(
+                    drop_count = current,
+                    "drop counter update (debounce 100ms): {} events dropped",
+                    current
+                );
+            }
+            _ = shutdown_rx.changed() => {
+                tracing::debug!("drop_counter_debounce_task: shutdown signal received; exiting");
+                return;
+            }
         }
-
-        // Counter changed — record new value and send DropCounterUpdate to TUI clients.
-        last_sent = current;
-
-        // Phase 1: TUI IPC clients are not yet wired (S-021/S-022 scope).
-        // Future: send ServerToClient::DropCounterUpdate(current) to all tui_clients with
-        // the per-client 50ms write timeout (BC-2.04.011 PC-8, EC-095).
-        tracing::debug!(
-            drop_count = current,
-            "drop counter update (debounce 100ms): {} events dropped",
-            current
-        );
     }
 }
 

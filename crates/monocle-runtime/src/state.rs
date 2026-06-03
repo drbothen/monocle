@@ -299,14 +299,24 @@ pub struct DaemonState {
     /// NEVER set by production code. Only tests assign a `Some(_)` value.
     pub hook_decision_override: Option<(monocle_core::engine::HookDecision, Option<String>)>,
 
-    /// Artificial delay override for integration tests.
+    /// Artificial delay override for integration tests (inner handler, inside 300ms timeout).
     ///
     /// `None` — no delay (production default).
-    /// `Some(ms)` — sleep `ms` milliseconds inside the handler, before the decision is
-    ///   returned. Use a value > 300 to reliably trigger the 300ms outer timeout path.
+    /// `Some(ms)` — sleep `ms` milliseconds inside the inner handler body, before the decision
+    ///   is returned. Use a value > 300 to reliably trigger the 300ms outer timeout path.
     ///
-    /// NEVER set by production code. Only tests assign a `Some(_)` value.
+    /// NEVER set by production code. Only unit tests assign a `Some(_)` value.
     pub hook_delay_ms: Option<u64>,
+
+    /// Artificial delay override for E2E tests (outer handler, before 300ms timeout budget).
+    ///
+    /// `None` — no delay (production default).
+    /// `Some(ms)` — sleep `ms` milliseconds at the outer handler level, BEFORE the 300ms inner
+    ///   timeout budget starts. Used by the E2E drain-timeout test (AC-E2E-007) to create a
+    ///   genuinely long in-flight HTTP request that holds axum's graceful-shutdown drain open.
+    ///   Set via the `MONOCLE_HOOK_DELAY_MS` env var (read at daemon startup in
+    ///   `daemon_start_sequence`). Never set by production deployments.
+    pub hook_outer_delay_ms: Option<u64>,
 }
 
 impl DaemonState {
@@ -344,6 +354,7 @@ impl DaemonState {
             uds_transport: None,
             hook_decision_override: None,
             hook_delay_ms: None,
+            hook_outer_delay_ms: None,
         }
     }
 }

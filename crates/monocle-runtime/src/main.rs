@@ -153,14 +153,32 @@ fn main() {
         // /shutdown). The UDS accept loop is already running as a tokio::spawn task
         // (spawned inside daemon_start_sequence at step 10 of the sequence).
         // Graceful shutdown: run_server uses axum::serve(...).with_graceful_shutdown(...)
-        // which waits for in-flight requests to complete (10s drain window per BC-2.01.004
-        // INV-1, enforced inside run_server via tokio::signal).
+        // which waits for in-flight requests to complete. The 10-second outer drain timeout
+        // (BC-2.01.004 INV-1) is enforced by the tokio::time::timeout wrapper here in main().
+        // If the timeout fires, remaining connections are force-closed and cleanup proceeds.
         // -----------------------------------------------------------------------
-        let serve_result = monocle_runtime::server::run_server(
-            std::sync::Arc::clone(&state),
-            listener,
+        const GRACEFUL_DRAIN_TIMEOUT_SECS: u64 = 10;
+        let timed_serve = tokio::time::timeout(
+            std::time::Duration::from_secs(GRACEFUL_DRAIN_TIMEOUT_SECS),
+            monocle_runtime::server::run_server(std::sync::Arc::clone(&state), listener),
         )
         .await;
+
+        // Flatten Result<Result<(), io::Error>, Elapsed> to Result<(), io::Error>.
+        let serve_result = match timed_serve {
+            Ok(inner) => inner, // Timeout did not fire; propagate io::Error if any.
+            Err(_elapsed) => {
+                // BC-2.01.004 INV-1: 10s drain window exhausted. Force-close remaining
+                // connections. axum drops the serve future here; any in-flight connections
+                // are aborted. Cleanup tail runs normally — shutdown must not block forever.
+                tracing::warn!(
+                    timeout_secs = GRACEFUL_DRAIN_TIMEOUT_SECS,
+                    "graceful drain timeout exhausted; forcing close of remaining connections \
+                     (BC-2.01.004 INV-1)"
+                );
+                Ok(()) // Treat as clean exit — cleanup tail runs normally.
+            }
+        };
 
         if let Err(e) = serve_result {
             tracing::error!(error = %e, "daemon: HTTP server returned error");
