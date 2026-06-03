@@ -29,7 +29,11 @@ if ! command -v jq &>/dev/null; then
 fi
 
 INPUT=$(cat)
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+# F1 fix: guard against non-JSON stdin — jq exits 4 on parse error; with set -e
+# that would terminate the hook non-zero before reaching the ADR path check.
+# Use || FILE_PATH="" so malformed/empty payloads are treated as "not an ADR file".
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)
+FILE_PATH="${FILE_PATH:-}"
 
 # Only trigger for ADR files under .factory/specs/architecture/adr/
 if [[ -z "$FILE_PATH" ]] || [[ ! -f "$FILE_PATH" ]]; then
@@ -96,8 +100,12 @@ while IFS= read -r line; do
       continue
     fi
     # This is a violation
-    label=$(echo "$line" | grep -oE '\*\*v?[0-9]+\.[0-9]+[^*]*\*\*' | head -1)
-    ERRORS="${ERRORS}Check1: line $line_num: bold version label ${label} appears outside §Trace section and outside code block. Extract into its own '## §Trace vN.M.P' section.\n"
+    # F3 fix: append || echo "" so grep -oE returning no match does not trigger set -e
+    label=$(echo "$line" | grep -oE '\*\*v?[0-9]+\.[0-9]+[^*]*\*\*' | head -1 || echo "")
+    # F2 fix: build ERRORS with a real newline (not \n literal) to avoid printf '%b'
+    # interpreting ANSI escape sequences that could appear in file-derived content.
+    ERRORS="${ERRORS}Check1: line $line_num: bold version label ${label} appears outside §Trace section and outside code block. Extract into its own '## §Trace vN.M.P' section.
+"
   fi
 done < "$FILE_PATH"
 
@@ -149,13 +157,17 @@ for s in backtick_strings:
 print(' '.join(violations))
 " "$line" 2>/dev/null || true)
     if [[ -n "$violations" ]]; then
-      ERRORS="${ERRORS}Check2: line $line_num: unescaped '|' inside backtick string in table cell: $violations — escape alternation operators as '\|' to avoid pipe count mismatch.\n"
+      # F2 fix: real newline instead of \n literal to avoid printf '%b' ANSI interpretation
+      ERRORS="${ERRORS}Check2: line $line_num: unescaped '|' inside backtick string in table cell: $violations — escape alternation operators as '\|' to avoid pipe count mismatch.
+"
     fi
   else
     # Fallback: grep-based approximation (less precise)
     # Look for backtick strings containing literal | not preceded by backslash
     if echo "$line" | grep -qP '`[^`]*(?<!\\)\|[^`]*`' 2>/dev/null; then
-      ERRORS="${ERRORS}Check2: line $line_num: possible unescaped '|' inside backtick string in table cell — escape alternation operators as '\|'.\n"
+      # F2 fix: real newline instead of \n literal
+      ERRORS="${ERRORS}Check2: line $line_num: possible unescaped '|' inside backtick string in table cell — escape alternation operators as '\|'.
+"
     fi
   fi
 done < "$FILE_PATH"
@@ -176,7 +188,8 @@ while IFS= read -r line; do
   line_num=$((line_num + 1))
 
   if echo "$line" | grep -qE '^[0-9]+\. '; then
-    current_num=$(echo "$line" | grep -oE '^[0-9]+' | head -1)
+    # F3 fix: || echo "0" guards the grep pipeline against set -e if grep finds no match
+    current_num=$(echo "$line" | grep -oE '^[0-9]+' | head -1 || echo "0")
     if [[ "$current_num" -eq 1 ]]; then
       # New list starts
       prev_num=1
@@ -184,7 +197,9 @@ while IFS= read -r line; do
     elif [[ "$prev_num" -gt 0 ]]; then
       expected=$((prev_num + 1))
       if [[ "$current_num" -ne "$expected" ]]; then
-        ERRORS="${ERRORS}Check3: line $line_num: numbered list discontinuity — expected item $expected but found item $current_num (list started at line $list_start_line). Renumber or extract interloping §Trace content.\n"
+        # F2 fix: real newline instead of \n literal; F3 fix: || echo "0" guard on grep pipeline above
+        ERRORS="${ERRORS}Check3: line $line_num: numbered list discontinuity — expected item $expected but found item $current_num (list started at line $list_start_line). Renumber or extract interloping §Trace content.
+"
       fi
       prev_num=$current_num
     else
@@ -207,7 +222,10 @@ if [[ -n "$ERRORS" ]]; then
   echo "---" >&2
   echo "validate_adr_self_consistency: FAIL in $FILE_BASENAME" >&2
   echo "" >&2
-  printf '%b' "$ERRORS" >&2
+  # F2 fix: use printf '%s' (not printf '%b') — ERRORS now uses real newlines, so
+  # %b's backslash-sequence interpretation of file-derived content is not needed
+  # and could inject ANSI escapes from crafted version labels.
+  printf '%s' "$ERRORS" >&2
   echo "" >&2
   echo "Reference: SS-conventions-anti-patterns.md §'Pre-Commit ADR Self-Consistency Checklist' (ADR-HOOK-001)" >&2
   echo "---" >&2
