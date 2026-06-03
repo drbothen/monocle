@@ -13,7 +13,7 @@ use std::time::Instant;
 
 use tokio::sync::watch;
 
-use crate::ring::RingBuffer;
+use crate::ring::{RingBuffer, RingShutdownNotify};
 
 /// Operating mode of the monocle daemon.
 ///
@@ -155,6 +155,20 @@ pub struct DaemonState {
     /// `None` until `daemon_start_sequence` spawns the task at step 4b.
     /// Taken (set to `None`) during the shutdown drain sequence so no double-await occurs.
     pub ring_flush_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
+
+    /// Shutdown notify for the ring flush task (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1).
+    ///
+    /// The shutdown tail calls `ring_flush_shutdown.notify_one()` BEFORE dropping the ring Arc
+    /// and BEFORE awaiting the flush JoinHandle. This signals the flush task to drain all
+    /// pending records via `try_recv()` and exit deterministically, independent of
+    /// `Arc<RingBuffer>` refcount.
+    ///
+    /// `None` in the unit-test constructor (`DaemonState::new()`) — no flush task is spawned
+    /// there. `Some(notify)` after `daemon_start_sequence` wires the flush task at step 4b.
+    ///
+    /// The shutdown tail checks `if let Some(notify) = state.ring_flush_shutdown.as_ref()`
+    /// so a `None` value (test path) is a no-op.
+    pub ring_flush_shutdown: Option<RingShutdownNotify>,
 
     /// Count of TUI clients currently attached to this daemon session (F-ADV2-HIGH-003).
     ///
@@ -358,6 +372,7 @@ impl DaemonState {
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
             ring: Mutex::new(None),
             ring_flush_handle: Mutex::new(None),
+            ring_flush_shutdown: None,
             tui_attached_count: AtomicUsize::new(0),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),

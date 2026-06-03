@@ -494,21 +494,30 @@ pub async fn daemon_start_sequence(
     // at daemon start step 4". Without this, ring.append() enqueues records to the in-memory
     // write queue but they are never written to monocle-events.jsonl on disk (I2 fix).
     //
-    // Store the JoinHandle on DaemonState so the shutdown tail can await it after closing
-    // the write channel (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2).
+    // Create a RingShutdownNotify (Arc<Notify>) that allows the shutdown tail to signal the
+    // flush task to drain and exit deterministically, independent of Arc<RingBuffer> refcount
+    // (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1). The notify is cloned into the flush
+    // task via spawn_flush_task(), and a clone is stored on DaemonState for the shutdown tail.
+    //
+    // Store the JoinHandle on DaemonState so the shutdown tail can await it after signalling
+    // the flush task (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2).
     //
     // E2E-TEST-AFFORDANCE (e2e-test-affordances feature only): read MONOCLE_RING_FLUSH_DELAY_MS
     // and pass to spawn_flush_task. Under this feature, the flush task sleeps for the specified
     // number of milliseconds BEFORE writing each record to disk, making the record sit
     // "enqueued but not yet flushed" for a controllable window so AC-E2E-008 can prove that
-    // the shutdown drain-join (step d in main.rs) is non-vacuous. In production (no feature),
-    // this block is not compiled and spawn_flush_task takes no delay argument.
+    // the shutdown drain (H1 drain branch) is non-vacuous. In production (no feature), this
+    // block is not compiled and spawn_flush_task takes no delay argument.
+    let ring_shutdown_notify: crate::ring::RingShutdownNotify =
+        Arc::new(tokio::sync::Notify::new());
+
     #[cfg(feature = "e2e-test-affordances")]
     let ring_flush_delay_ms: Option<u64> = std::env::var("MONOCLE_RING_FLUSH_DELAY_MS")
         .ok()
         .and_then(|v| v.parse::<u64>().ok());
 
     let ring_flush_handle = ring.spawn_flush_task(
+        Arc::clone(&ring_shutdown_notify),
         #[cfg(feature = "e2e-test-affordances")]
         ring_flush_delay_ms,
     );
@@ -633,6 +642,7 @@ pub async fn daemon_start_sequence(
         last_hook_ts: std::sync::RwLock::new(crate::state::LastHookTimestamps::default()),
         ring: std::sync::Mutex::new(Some(ring)),
         ring_flush_handle: std::sync::Mutex::new(Some(ring_flush_handle)),
+        ring_flush_shutdown: Some(Arc::clone(&ring_shutdown_notify)),
         tui_attached_count: std::sync::atomic::AtomicUsize::new(0),
         force_exit: std::sync::atomic::AtomicBool::new(false),
         daemon_lock: std::sync::Mutex::new(Some(daemon_lock)),
@@ -669,9 +679,11 @@ pub async fn daemon_start_sequence(
     // task closures receive a complete Arc<DaemonState>.
     {
         let fan_out_state = Arc::clone(&daemon_state);
+        let fan_out_shutdown_rx = daemon_state.shutdown_rx.clone();
         tokio::spawn(crate::event_bus::event_bus_fan_out_task(
             event_rx,
             fan_out_state,
+            fan_out_shutdown_rx,
         ));
 
         let debounce_state = Arc::clone(&daemon_state);

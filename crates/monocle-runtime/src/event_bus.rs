@@ -48,9 +48,14 @@ const DROP_COUNTER_DEBOUNCE_MS: u64 = 100;
 ///
 /// # Lifetime
 ///
-/// The task runs until the channel is closed (i.e., all `EventBusTx` senders are dropped).
-/// On channel close, `rx.recv()` returns `None` and the loop exits cleanly (BC-2.04.011 PC-7).
-/// The task MUST NOT be forcibly aborted; it must exit via the channel close mechanism.
+/// The task runs until `shutdown_rx` fires OR the channel is closed (all `EventBusTx` senders
+/// are dropped). On `shutdown_rx.changed()`: logs debug and returns immediately (M3 fix —
+/// SS-daemon-wiring-impl.md §Round 3 M3). On channel close, `rx.recv()` returns `None` and
+/// the loop exits cleanly (BC-2.04.011 PC-7).
+///
+/// The `shutdown_rx` branch mirrors `drop_counter_debounce_task` — both long-running tasks
+/// now exit promptly within one tokio scheduler tick of the shutdown signal firing, symmetric
+/// shutdown behavior for all event bus background tasks.
 ///
 /// # Client removal
 ///
@@ -66,27 +71,43 @@ const DROP_COUNTER_DEBOUNCE_MS: u64 = 100;
 ///
 /// - `rx`: The receiver half of the bounded event bus channel. Consumed by this task.
 /// - `state`: Shared daemon state providing access to `tui_clients`.
-pub async fn event_bus_fan_out_task(mut rx: EventBusRx, state: Arc<DaemonState>) {
+/// - `shutdown_rx`: Watch receiver that fires when the daemon signals graceful shutdown.
+///   The task exits within one scheduler tick of `shutdown_rx` changing to `true`.
+pub async fn event_bus_fan_out_task(
+    mut rx: EventBusRx,
+    state: Arc<DaemonState>,
+    mut shutdown_rx: tokio::sync::watch::Receiver<bool>,
+) {
     // Phase 1: TUI IPC clients are not yet wired (S-021/S-022 scope).
-    // The fan-out task runs the recv loop and exits cleanly when the channel closes.
-    // Per-client write logic (50ms timeout, client removal) is structurally present
-    // but operates on an empty client list in Phase 1.
+    // The fan-out task runs the recv loop and exits cleanly when the channel closes
+    // or the shutdown signal fires. Per-client write logic (50ms timeout, client removal)
+    // is structurally present but operates on an empty client list in Phase 1.
     loop {
-        match rx.recv().await {
-            None => {
-                // All senders dropped — channel closed. Exit cleanly (BC-2.04.011 PC-7).
-                tracing::info!("event bus channel closed; fan-out task exiting");
-                return;
+        tokio::select! {
+            event = rx.recv() => {
+                match event {
+                    None => {
+                        // All senders dropped — channel closed. Exit cleanly (BC-2.04.011 PC-7).
+                        tracing::info!("event bus channel closed; fan-out task exiting");
+                        return;
+                    }
+                    Some(event) => {
+                        // Phase 1: no TUI clients to fan out to.
+                        // Future (S-021/S-022): iterate tui_clients, write with 50ms timeout per
+                        // client, remove failed/slow clients (BC-2.04.011 PC-4, PC-5, EC-095).
+                        let _ = &state; // Suppress unused warning — state will be used in S-021/S-022.
+                        tracing::trace!(
+                            received_at = %event.received_at,
+                            "fan-out: event received (no TUI clients in Phase 1)"
+                        );
+                    }
+                }
             }
-            Some(event) => {
-                // Phase 1: no TUI clients to fan out to.
-                // Future (S-021/S-022): iterate tui_clients, write with 50ms timeout per client,
-                // remove failed/slow clients from the list (BC-2.04.011 PC-4, PC-5, EC-095).
-                let _ = &state; // Suppress unused warning — state will be used in S-021/S-022.
-                tracing::trace!(
-                    received_at = %event.received_at,
-                    "fan-out: event received (no TUI clients in Phase 1)"
-                );
+            _ = shutdown_rx.changed() => {
+                // M3 fix: shutdown signal received. Exit promptly within one tokio scheduler
+                // tick, mirroring drop_counter_debounce_task's shutdown branch behavior.
+                tracing::debug!("event_bus_fan_out_task: shutdown signal received; exiting");
+                return;
             }
         }
     }

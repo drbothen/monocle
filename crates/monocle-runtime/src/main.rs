@@ -224,26 +224,31 @@ fn main() {
             tracing::warn!(error = %e, "daemon: hooks-settings removal failed; continuing");
         }
 
-        // (d) Ring flush drain — close the write channel and await the flush task.
+        // (d) Ring flush drain — signal flush task to drain remaining records and exit,
+        //     then await the JoinHandle with a bounded timeout.
         //
         // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
-        // must not be lost on shutdown. We close the write channel by dropping the ring
-        // Arc from DaemonState (sets ring to None), which closes write_tx when no other
-        // Arc<RingBuffer> holders exist (DaemonState holds the only one). The flush
-        // task's rx.recv() then returns None, draining all pending records and exiting.
-        // We await the JoinHandle with a 2-second bounded timeout so a stuck disk cannot
-        // delay exit indefinitely (CRITICAL-1 fix — SS-daemon-wiring-impl.md Round 2).
+        // must not be lost on shutdown. The flush task exits via an explicit Notify signal
+        // (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1) rather than relying on
+        // Arc<RingBuffer> refcount reaching zero. The notify_one() call triggers the select!
+        // drain branch in flush_task_loop, which drains all pending records via try_recv()
+        // and returns. The ring_arc drop below is belt-and-suspenders.
         //
         // Ordering: this step runs AFTER hooks-settings.json removal (step c) so no new
-        // hook events arrive from Claude Code after we begin draining. The write channel
-        // close is thus a clean quiesce point: all in-flight hooks have already returned
-        // (run_server drain complete), and no new hooks will be enqueued.
+        // hook events arrive from Claude Code after we begin draining. The drain is thus a
+        // clean quiesce point: all in-flight hooks have already returned (run_server drain
+        // complete), and no new hooks will be enqueued.
         const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
 
-        // Step (d-1): Take the ring Arc out of DaemonState (sets ring to None, drops Arc).
+        // Step (d-1): Signal the flush task to drain remaining records and exit.
+        // The Notify is the primary deterministic close mechanism (H1 fix).
         {
+            if let Some(notify) = state.ring_flush_shutdown.as_ref() {
+                notify.notify_one();
+            }
+            // Belt-and-suspenders: also drop the ring Arc to close write_tx.
             let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
-            drop(ring_arc); // Explicitly drop to close write_tx (closes the channel).
+            drop(ring_arc);
         }
 
         // Step (d-2): Take the flush JoinHandle and await with bounded timeout.

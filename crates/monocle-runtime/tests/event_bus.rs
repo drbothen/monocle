@@ -240,11 +240,12 @@ async fn test_BC_2_04_011_fan_out_task_exits_on_channel_close() {
     state.drop_counter = Some(Arc::clone(&drop_counter));
     let state = Arc::new(state);
 
-    // Spawn the fan-out task.
-    // Red Gate: event_bus_fan_out_task is todo!() → this will panic.
+    // Spawn the fan-out task with a shutdown_rx (M3: fan-out now requires shutdown_rx).
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let task_handle = tokio::spawn(monocle_runtime::event_bus::event_bus_fan_out_task(
         rx,
         Arc::clone(&state),
+        shutdown_rx,
     ));
 
     // Drop all senders. This closes the channel.
@@ -280,11 +281,13 @@ async fn test_BC_2_04_011_fan_out_task_removes_disconnected_client() {
     state.drop_counter = Some(Arc::clone(&drop_counter));
     let state = Arc::new(state);
 
-    // Red Gate: event_bus_fan_out_task is todo!() → panics.
+    // Spawn the fan-out task with a shutdown_rx (M3: fan-out now requires shutdown_rx).
     // This test documents the EC-095 contract for the future implementation.
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let task_handle = tokio::spawn(monocle_runtime::event_bus::event_bus_fan_out_task(
         rx,
         Arc::clone(&state),
+        shutdown_rx,
     ));
 
     // Allow brief startup.

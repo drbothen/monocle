@@ -180,6 +180,7 @@ async fn test_BC_2_04_012_rotation_at_100mb_threshold() {
 
     // Spawn flush task before appending — it must be running to process records.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -239,6 +240,7 @@ async fn test_BC_2_04_012_rotation_procedure_cascade_order() {
 
     // Spawn flush task before appending.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -289,6 +291,7 @@ async fn test_BC_2_04_012_6_rotations_max_5_rotation_files() {
 
     // Spawn flush task before appending.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -342,6 +345,7 @@ async fn test_BC_2_04_012_active_file_mode_0o600_after_rotation() {
 
     // Spawn flush task before appending.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -632,6 +636,7 @@ async fn test_BC_2_04_012_byte_count_reflects_written_bytes() {
 
     // Spawn flush task, append one record.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -679,6 +684,7 @@ async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
 
     // Spawn flush task before appending.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -738,6 +744,7 @@ async fn test_BC_2_04_012_graceful_shutdown_file_not_deleted() {
 
     // Spawn flush task so the record is written to disk.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -801,6 +808,7 @@ async fn test_BC_2_04_012_jsonl_format_version_first_field() {
 
     // Spawn flush task and append a single record.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -926,6 +934,7 @@ async fn test_BC_2_04_012_initial_file_creation_mode_0o600() {
 
     // Spawn flush task, append one record, drain flush task.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );
@@ -964,6 +973,7 @@ async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
 
     // Spawn flush task.
     let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
         #[cfg(feature = "e2e-test-affordances")]
         None,
     );

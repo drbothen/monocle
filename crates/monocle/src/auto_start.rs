@@ -502,15 +502,21 @@ async fn launch_daemon_in_process(runtime_dir: &Path) -> DaemonHandle {
         // Ring flush drain — mirror main()'s step (d) for durability.
         //
         // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
-        // must not be lost on shutdown. Close write_tx by taking the ring Arc out of
-        // DaemonState, then await the flush JoinHandle with a 2s bounded timeout.
+        // must not be lost on shutdown. Signal the flush task via the Notify handle (H1 fix
+        // — SS-daemon-wiring-impl.md §Round 3 H1), then drop the ring Arc as belt-and-
+        // suspenders, then await the flush JoinHandle with a 2s bounded timeout.
         // The in-process daemon does not call exit_with, so the tokio runtime would
         // eventually drop DaemonState — but "eventually" is non-deterministic under
         // tokio's task scheduling. Explicit drain ensures determinism (CRITICAL-1 fix).
         const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
         {
+            // Step (d-1): Signal the flush task to drain and exit (H1 fix — deterministic).
+            if let Some(notify) = state.ring_flush_shutdown.as_ref() {
+                notify.notify_one();
+            }
+            // Belt-and-suspenders: also drop the ring Arc to close write_tx.
             let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
-            drop(ring_arc); // Drop to close write_tx (signals flush task to drain-and-exit).
+            drop(ring_arc);
         }
         {
             let flush_handle = state
