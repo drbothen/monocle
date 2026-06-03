@@ -68,10 +68,14 @@ pub async fn post_hook_pre_tool_use(
     };
 
     // hook_outer_delay_ms: test-only delay at the outer handler level, BEFORE the 300ms
-    // inner timeout budget. Set via MONOCLE_HOOK_DELAY_MS env var (read at daemon startup).
+    // inner timeout budget. Set via MONOCLE_HOOK_DELAY_MS env var (read at daemon startup
+    // ONLY when compiled with the `e2e-test-affordances` cargo feature).
     // Used by AC-E2E-007 to create a genuinely in-flight request that holds axum's
     // graceful-shutdown drain open for the drain-timeout test (C2 fix).
-    // Never set in production deployments; always None in normal operation.
+    // HIGH-1 fix: gated behind cfg(feature = "e2e-test-affordances") so production binaries
+    // compiled without the feature never execute this code path (SS-daemon-wiring-impl.md
+    // §Fix Addendum Round 2 HIGH-1).
+    #[cfg(feature = "e2e-test-affordances")]
     if let Some(delay_ms) = state.hook_outer_delay_ms {
         tokio::time::sleep(Duration::from_millis(delay_ms)).await;
     }
@@ -382,7 +386,10 @@ async fn handle_pre_tool_use_inner(
         envelope.tool_name.clone(),
         envelope.tool_input.clone(),
     );
-    if let Some(ring) = &state.ring {
+    // Lock, clone Arc out, drop guard BEFORE calling append (which is async-safe but
+    // the guard must not be held across any await point — CRITICAL-1 constraint).
+    let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(ring) = ring_arc.as_ref() {
         if let Err(e) = ring.append(record) {
             tracing::warn!(
                 session_id = %envelope.session_id,

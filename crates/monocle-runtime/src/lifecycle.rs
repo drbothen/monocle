@@ -188,6 +188,15 @@ pub enum DaemonExit {
 
     /// A second SIGINT (signal 2, Ctrl-C) was received while a drain was in progress.
     /// POSIX convention 128+2. Exit code `130`.
+    ///
+    /// # IMPLEMENTATION STATUS
+    ///
+    /// CONTRACT GAP (S-DAEMON-WIRE-FIX-001): second-signal detection not yet wired;
+    /// this variant is defined per BC-2.01.004 INV-4 but not yet produced by
+    /// run_server/main. `main()` currently yields only `Graceful(0)` or
+    /// `AdminForceStop(2)`. A second SIGINT during the drain window hits the OS default
+    /// (process killed without this exit code). Second-signal detection is anchored to
+    /// story S-DAEMON-WIRE-FIX-001.
     SigintDuringDrain,
 
     /// A second SIGTERM (signal 15) was received while a drain was in progress.
@@ -197,6 +206,15 @@ pub enum DaemonExit {
     /// drain-timeout-forced-shutdown exits with `DaemonExit::Graceful` (exit code 0)
     /// per story spec line 171: "drain-timeout-forced-shutdown exits 0". This variant
     /// is exclusively for when a second SIGTERM arrives before the drain window closes.
+    ///
+    /// # IMPLEMENTATION STATUS
+    ///
+    /// CONTRACT GAP (S-DAEMON-WIRE-FIX-001): second-signal detection not yet wired;
+    /// this variant is defined per BC-2.01.004 INV-4 but not yet produced by
+    /// run_server/main. `main()` currently yields only `Graceful(0)` or
+    /// `AdminForceStop(2)`. A second SIGTERM during the drain window hits the OS default
+    /// (process killed without this exit code). Second-signal detection is anchored to
+    /// story S-DAEMON-WIRE-FIX-001.
     SigtermDuringDrain,
 }
 
@@ -475,7 +493,10 @@ pub async fn daemon_start_sequence(
     // SS-daemon-wiring.md §Daemon Start Sequence step 4: "call spawn_flush_task() separately
     // at daemon start step 4". Without this, ring.append() enqueues records to the in-memory
     // write queue but they are never written to monocle-events.jsonl on disk (I2 fix).
-    ring.spawn_flush_task();
+    //
+    // Store the JoinHandle on DaemonState so the shutdown tail can await it after closing
+    // the write channel (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2).
+    let ring_flush_handle = ring.spawn_flush_task();
 
     // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
     // Retain event_rx so the channel has a live consumer; fan-out and debounce tasks are
@@ -595,7 +616,8 @@ pub async fn daemon_start_sequence(
         lock_file_path,
         sock_file_path,
         last_hook_ts: std::sync::RwLock::new(crate::state::LastHookTimestamps::default()),
-        ring: Some(ring),
+        ring: std::sync::Mutex::new(Some(ring)),
+        ring_flush_handle: std::sync::Mutex::new(Some(ring_flush_handle)),
         tui_attached_count: std::sync::atomic::AtomicUsize::new(0),
         force_exit: std::sync::atomic::AtomicBool::new(false),
         daemon_lock: std::sync::Mutex::new(Some(daemon_lock)),
@@ -609,14 +631,17 @@ pub async fn daemon_start_sequence(
         uds_transport: Some(uds_transport),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
-        // MONOCLE_HOOK_DELAY_MS: test-only env var for E2E drain-timeout testing (C2 fix —
-        // SS-daemon-wiring-impl.md §Fix Addendum C2). When set, the hook outer handler (before
-        // the 300ms inner timeout budget) sleeps for this many milliseconds, creating a
-        // genuinely in-flight HTTP request that holds axum's graceful-shutdown drain open.
-        // Not set in production deployments. Absent env var → None → no delay.
+        // HIGH-1 fix: MONOCLE_HOOK_DELAY_MS env var is gated behind the `e2e-test-affordances`
+        // cargo feature so production binaries compiled without the feature never read or
+        // compile this code path (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
+        // Under `e2e-test-affordances`: reads the env var; absent → None → no delay.
+        // Under production (no feature): always None; delay code never compiled.
+        #[cfg(feature = "e2e-test-affordances")]
         hook_outer_delay_ms: std::env::var("MONOCLE_HOOK_DELAY_MS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok()),
+        #[cfg(not(feature = "e2e-test-affordances"))]
+        hook_outer_delay_ms: None,
     });
 
     // Step 5b: Spawn event-bus fan-out and drop-counter-debounce tasks.

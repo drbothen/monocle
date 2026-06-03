@@ -138,7 +138,23 @@ pub struct DaemonState {
     ///
     /// Wrapped in `Arc` so the `DaemonState` can be cloned into axum's `State` extractor
     /// while the ring buffer remains shared (no double-buffering).
-    pub ring: Option<Arc<RingBuffer>>,
+    ///
+    /// Wrapped in `std::sync::Mutex` so the shutdown tail can take the Arc out (setting
+    /// `None`) from the shared `Arc<DaemonState>`, closing `write_tx` and signalling the
+    /// flush task to drain-and-exit (CRITICAL-1 fix — SS-daemon-wiring-impl.md
+    /// §Fix Addendum Round 2 CRITICAL-1).
+    ///
+    /// Hook handlers MUST lock, clone the `Arc` out, drop the guard, THEN call
+    /// `ring.append()` so no `std::sync::MutexGuard` is held across an `.await` point
+    /// (clippy::await_holding_lock would fire otherwise; CRITICAL-1 constraint).
+    pub ring: Mutex<Option<Arc<RingBuffer>>>,
+
+    /// JoinHandle for the ring buffer flush task (BC-2.04.012 PC-4).
+    ///
+    /// Stored so the shutdown tail can await it after closing the write channel.
+    /// `None` until `daemon_start_sequence` spawns the task at step 4b.
+    /// Taken (set to `None`) during the shutdown drain sequence so no double-await occurs.
+    pub ring_flush_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
 
     /// Count of TUI clients currently attached to this daemon session (F-ADV2-HIGH-003).
     ///
@@ -340,7 +356,8 @@ impl DaemonState {
             lock_file_path: String::new(),
             sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
-            ring: None,
+            ring: Mutex::new(None),
+            ring_flush_handle: Mutex::new(None),
             tui_attached_count: AtomicUsize::new(0),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
@@ -423,12 +440,19 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
     // ring_tail: last RING_TAIL_N events from the RAM ring as Vec<HookEventRecord>.
     // Pass-through — no type conversion, no field fabrication (architect decision
     // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2, ADR-0006).
+    //
+    // Lock, clone Arc out, drop guard — do NOT hold the guard across the latest_events call.
+    // This follows the CRITICAL-1 constraint: no Mutex guard held across any await point.
+    // snapshot_initial_state is a sync function so there is no await, but the pattern is
+    // consistent with the hook handlers and prevents accidental future regression.
     const RING_TAIL_N: usize = 50;
-    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = state
-        .ring
-        .as_ref()
-        .map(|ring| ring.latest_events(RING_TAIL_N))
-        .unwrap_or_default();
+    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = {
+        let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        ring_arc
+            .as_ref()
+            .map(|ring| ring.latest_events(RING_TAIL_N))
+            .unwrap_or_default()
+    };
 
     // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
     let overlay_stack: Vec<monocle_ipc::types::PermissionPromptPayload> = state

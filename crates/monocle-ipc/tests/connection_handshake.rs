@@ -531,8 +531,8 @@ fn test_BC_2_05_002_ring_tail_non_empty_passes_through() {
         ring.append(record).expect("ring append must succeed");
     }
 
-    let mut state = monocle_runtime::state::DaemonState::new();
-    state.ring = Some(Arc::clone(&ring));
+    let state = monocle_runtime::state::DaemonState::new();
+    *state.ring.lock().unwrap() = Some(Arc::clone(&ring));
 
     // snapshot_initial_state must populate ring_tail from the RAM ring directly.
     let snapshot = monocle_runtime::state::snapshot_initial_state(&state);

@@ -499,6 +499,49 @@ async fn launch_daemon_in_process(runtime_dir: &Path) -> DaemonHandle {
             );
         }
 
+        // Ring flush drain — mirror main()'s step (d) for durability.
+        //
+        // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
+        // must not be lost on shutdown. Close write_tx by taking the ring Arc out of
+        // DaemonState, then await the flush JoinHandle with a 2s bounded timeout.
+        // The in-process daemon does not call exit_with, so the tokio runtime would
+        // eventually drop DaemonState — but "eventually" is non-deterministic under
+        // tokio's task scheduling. Explicit drain ensures determinism (CRITICAL-1 fix).
+        const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
+        {
+            let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
+            drop(ring_arc); // Drop to close write_tx (signals flush task to drain-and-exit).
+        }
+        {
+            let flush_handle = state
+                .ring_flush_handle
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+            if let Some(handle) = flush_handle {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(RING_FLUSH_DRAIN_TIMEOUT_SECS),
+                    handle,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        tracing::info!(
+                            "in-process daemon: ring flush task drained cleanly \
+                             (BC-2.04.012 durability)"
+                        );
+                    }
+                    Err(_elapsed) => {
+                        tracing::warn!(
+                            timeout_secs = RING_FLUSH_DRAIN_TIMEOUT_SECS,
+                            "in-process daemon: ring flush drain timeout; some records may \
+                             be lost (BC-2.04.012 best-effort)"
+                        );
+                    }
+                }
+            }
+        }
+
         tracing::info!("in-process daemon: shutdown complete");
     });
     DaemonHandle::Task(())

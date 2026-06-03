@@ -224,6 +224,61 @@ fn main() {
             tracing::warn!(error = %e, "daemon: hooks-settings removal failed; continuing");
         }
 
+        // (d) Ring flush drain — close the write channel and await the flush task.
+        //
+        // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
+        // must not be lost on shutdown. We close the write channel by dropping the ring
+        // Arc from DaemonState (sets ring to None), which closes write_tx when no other
+        // Arc<RingBuffer> holders exist (DaemonState holds the only one). The flush
+        // task's rx.recv() then returns None, draining all pending records and exiting.
+        // We await the JoinHandle with a 2-second bounded timeout so a stuck disk cannot
+        // delay exit indefinitely (CRITICAL-1 fix — SS-daemon-wiring-impl.md Round 2).
+        //
+        // Ordering: this step runs AFTER hooks-settings.json removal (step c) so no new
+        // hook events arrive from Claude Code after we begin draining. The write channel
+        // close is thus a clean quiesce point: all in-flight hooks have already returned
+        // (run_server drain complete), and no new hooks will be enqueued.
+        const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
+
+        // Step (d-1): Take the ring Arc out of DaemonState (sets ring to None, drops Arc).
+        {
+            let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
+            drop(ring_arc); // Explicitly drop to close write_tx (closes the channel).
+        }
+
+        // Step (d-2): Take the flush JoinHandle and await with bounded timeout.
+        {
+            let flush_handle = state
+                .ring_flush_handle
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+
+            if let Some(handle) = flush_handle {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(RING_FLUSH_DRAIN_TIMEOUT_SECS),
+                    handle,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        tracing::info!(
+                            "daemon: ring flush task drained and exited cleanly \
+                             (BC-2.04.012 durability)"
+                        );
+                    }
+                    Err(_elapsed) => {
+                        tracing::warn!(
+                            timeout_secs = RING_FLUSH_DRAIN_TIMEOUT_SECS,
+                            "daemon: ring flush drain timeout — some pending records may be \
+                             lost (disk I/O too slow); proceeding with exit \
+                             (BC-2.04.012 best-effort)"
+                        );
+                    }
+                }
+            }
+        }
+
         // -----------------------------------------------------------------------
         // Step 8: Determine exit code and exit.
         //
