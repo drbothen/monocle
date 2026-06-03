@@ -743,8 +743,8 @@ BC-2.06.025:
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: session spawn]"
+  current_version: "1.1.0"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — Architecture Source cite updated to SS-session-manager v1.2.0]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.002:
@@ -755,8 +755,8 @@ BC-2.08.002:
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: SIGTERM/SIGKILL 10s escalation]"
+  current_version: "1.1.0"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — Architecture Source cite updated to SS-session-manager v1.2.0]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.004:
@@ -773,8 +773,8 @@ BC-2.08.005:
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: per-session hooks file (prevent concurrent-spawn clobber)]"
+  current_version: "1.1.0"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — C1 shared-hooks model; Architecture Source cite updated to SS-session-manager v1.2.0]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.007:
@@ -797,8 +797,8 @@ BC-2.09.002:
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: keyboard passthrough]"
+  current_version: "1.1.0"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — I1 mouse_event_to_pty_bytes pane_area:Rect parameter rename; Architecture Source cite updated to SS-embedded-pty v1.1.0]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.004:
