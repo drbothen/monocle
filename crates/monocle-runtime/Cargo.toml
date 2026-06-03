@@ -12,8 +12,11 @@ description = "Runtime daemon for monocle: hook ingestion, session lifecycle, au
 # E2E test affordances — test-only delay injection for drain-timeout tests.
 # MUST NOT be enabled in production builds. Only enabled by the E2E test binary target
 # via the test target's invocation: `cargo test --features e2e-test-affordances`.
-# When this feature is active, MONOCLE_HOOK_DELAY_MS env var is read and the outer
-# handler sleep is compiled in. When absent (production), neither is compiled.
+# When this feature is active, two env vars control delay injection:
+#   MONOCLE_HOOK_DELAY_MS   — outer handler sleep before the 300ms inner budget (AC-E2E-007).
+#   MONOCLE_RING_FLUSH_DELAY_MS — pre-write sleep in flush_task_loop; used by AC-E2E-008 to
+#                                 prove the drain-join is non-vacuous (CRITICAL-1 fix).
+# When this feature is absent (production), neither env var is read nor compiled in.
 # HIGH-1 fix (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
 e2e-test-affordances = []
 

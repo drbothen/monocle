@@ -12,11 +12,13 @@
 // Suppress unwrap/expect lints in tests — canonical project pattern (matches all other test files).
 #![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
 
+use std::path::PathBuf;
+
 use monocle_runtime::ring::{
     HookEventRecord, RingBuffer, RingError, RotationConfig, RING_FORMAT_VERSION,
 };
-use std::path::PathBuf;
 use tempfile::TempDir;
+use tracing_test::traced_test;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -550,7 +552,10 @@ fn test_BC_RING_001_flush_failure_degraded_not_broken() {
 /// - `append()` succeeds BEFORE `begin_shutdown()` (pre-condition: ring is live).
 /// - After `begin_shutdown()`, append returns `Err(RingError::Shutdown)`, not a panic.
 /// - The RAM ring is NOT updated on rejected appends (record count does not increase).
+/// - The loud `tracing::error!` "E-RING: append after ring shutdown" is emitted exactly
+///   once per rejected append (verifies the observable contract in ring.rs append()).
 #[test]
+#[traced_test]
 fn test_ring_begin_shutdown_rejects_append() {
     let dir = TempDir::new().expect("create tempdir");
     let path = ring_path(&dir);
@@ -597,5 +602,15 @@ fn test_ring_begin_shutdown_rejects_append() {
     assert!(
         matches!(result2.unwrap_err(), RingError::Shutdown),
         "subsequent appends after begin_shutdown must all return RingError::Shutdown"
+    );
+
+    // Verify the loud tracing::error! was emitted on each rejected append (E-RING-007).
+    // ring.rs append() documents: "returns Err(RingError::Shutdown) and emits tracing::error!".
+    // This assertion makes the observable log contract machine-verifiable.
+    // Uses tracing-test `logs_contain` injected by #[traced_test]; `no-env-filter` feature
+    // is required because this is an integration test in tests/ (separate crate from impl).
+    assert!(
+        logs_contain("E-RING: append after ring shutdown"),
+        "append() after begin_shutdown must emit E-RING: append after ring shutdown error log (E-RING-007)"
     );
 }

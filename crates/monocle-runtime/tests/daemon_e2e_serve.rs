@@ -24,6 +24,25 @@
 use std::os::unix::fs::FileTypeExt as _;
 use std::time::Duration;
 
+/// RAII guard that kills and waits the daemon subprocess on drop.
+///
+/// Ensures the spawned daemon is always reaped, even when a test assertion panics
+/// before the graceful-shutdown block. Prevents stale-daemon pollution across repeated
+/// or parallel test runs (F-DW-ADV-MED-001).
+///
+/// On the normal (non-panic) path the test's explicit SIGTERM+wait loop runs first,
+/// so by the time the guard drops the child has already exited. The extra `kill()` call
+/// returns ESRCH (ignored) and `wait()` returns an error because the process was already
+/// waited (also ignored). No double-panic risk.
+struct DaemonGuard(std::process::Child);
+
+impl Drop for DaemonGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
 /// Poll for a path to appear on the filesystem.
 ///
 /// Returns `true` if the file appears within `max_wait`, `false` on timeout.
@@ -77,15 +96,18 @@ fn test_daemon_e2e_serve_lifecycle() {
     let tmp = tempfile::tempdir().expect("create tmpdir for E2E test");
     let runtime_dir = tmp.path().to_path_buf();
 
-    // Spawn the daemon.
-    let mut child = std::process::Command::new(&binary)
-        .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
-        // Suppress daemon stderr so test output is clean; set RUST_LOG for visibility on failure.
-        .env("RUST_LOG", "monocle_runtime=info")
-        .spawn()
-        .expect("spawn monocle-runtime binary");
+    // Spawn the daemon and immediately wrap in DaemonGuard for leak-safe cleanup.
+    // If any assertion below panics before the SIGTERM block, Drop kills the child.
+    let mut guard = DaemonGuard(
+        std::process::Command::new(&binary)
+            .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
+            // Suppress daemon stderr so test output is clean; set RUST_LOG for visibility on failure.
+            .env("RUST_LOG", "monocle_runtime=info")
+            .spawn()
+            .expect("spawn monocle-runtime binary"),
+    );
 
-    let daemon_pid = child.id();
+    let daemon_pid = guard.0.id();
 
     // -----------------------------------------------------------------------
     // AC-E2E-001: Lock file appears with a real (non-zero, non-39001) port.
@@ -284,13 +306,16 @@ fn test_daemon_e2e_serve_lifecycle() {
     }
 
     // Wait for exit (up to 5 seconds for the graceful drain to complete).
+    // The guard's Drop is a safety net for panic paths — on the normal path here we
+    // explicitly wait to capture the real exit code. After this loop the child has
+    // exited and been waited; the guard's subsequent kill()+wait() on drop is a no-op.
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     let exit_status = loop {
-        match child.try_wait() {
+        match guard.0.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    child.kill().ok();
+                    guard.0.kill().ok();
                     panic!("AC-E2E-006: daemon did not exit within 5s after SIGTERM");
                 }
                 std::thread::sleep(Duration::from_millis(50));
@@ -353,14 +378,17 @@ fn test_daemon_e2e_drain_timeout_AC_E2E_007() {
     // MONOCLE_HOOK_DELAY_MS=15000 sets hook_outer_delay_ms on DaemonState.
     // The pre_tool_use outer handler sleeps 15s before entering the 300ms inner budget,
     // creating a genuinely in-flight request that holds axum's graceful shutdown open.
-    let mut child = std::process::Command::new(&binary)
-        .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
-        .env("RUST_LOG", "monocle_runtime=info")
-        .env("MONOCLE_HOOK_DELAY_MS", "15000")
-        .spawn()
-        .expect("spawn monocle-runtime binary for drain timeout test");
+    // Wrapped in DaemonGuard so panic on any assertion kills the child (F-DW-ADV-MED-001).
+    let mut guard = DaemonGuard(
+        std::process::Command::new(&binary)
+            .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
+            .env("RUST_LOG", "monocle_runtime=info")
+            .env("MONOCLE_HOOK_DELAY_MS", "15000")
+            .spawn()
+            .expect("spawn monocle-runtime binary for drain timeout test"),
+    );
 
-    let daemon_pid = child.id();
+    let daemon_pid = guard.0.id();
 
     let lock_path = runtime_dir.join("monocle.lock");
     assert!(
@@ -434,14 +462,16 @@ fn test_daemon_e2e_drain_timeout_AC_E2E_007() {
     // Assert the daemon exits within ~11s (10s drain timeout + 1s tolerance).
     // Without the tokio::time::timeout wrapper in main(), the daemon would hang for
     // 15s (the full hook_outer_delay_ms). With it, it exits within ~10s.
+    // The guard's Drop is a safety net for earlier panic paths; here we explicitly
+    // wait to capture the real exit code before the guard drops.
     let max_exit_wait = Duration::from_secs(11);
     let deadline = sigterm_time + max_exit_wait;
     let exit_status = loop {
-        match child.try_wait() {
+        match guard.0.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    child.kill().ok();
+                    guard.0.kill().ok();
                     let elapsed = sigterm_time.elapsed();
                     panic!(
                         "AC-E2E-007: daemon did not exit within 11s after SIGTERM with \
@@ -496,15 +526,18 @@ fn test_daemon_e2e_drop_counter_zero_under_normal_load_C1() {
     let runtime_dir = tmp.path().to_path_buf();
 
     // Capture stderr so we can assert the absence of "event bus closed" WARN.
-    let mut child = std::process::Command::new(&binary)
-        .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
-        // Use warn level: "event bus closed" WARN fires at warn; info won't show it.
-        .env("RUST_LOG", "monocle_runtime=warn")
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .expect("spawn monocle-runtime binary for drop counter test");
+    // Wrapped in DaemonGuard so panic on any assertion kills the child (F-DW-ADV-MED-001).
+    let mut guard = DaemonGuard(
+        std::process::Command::new(&binary)
+            .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
+            // Use warn level: "event bus closed" WARN fires at warn; info won't show it.
+            .env("RUST_LOG", "monocle_runtime=warn")
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("spawn monocle-runtime binary for drop counter test"),
+    );
 
-    let daemon_pid = child.id();
+    let daemon_pid = guard.0.id();
 
     let lock_path = runtime_dir.join("monocle.lock");
     assert!(
@@ -596,17 +629,18 @@ fn test_daemon_e2e_drop_counter_zero_under_normal_load_C1() {
          (polled up to 3s for ring flush task to write all records)"
     );
 
-    // Graceful shutdown.
+    // Graceful shutdown. Guard's Drop is a safety net for earlier panic paths; here we
+    // explicitly wait so the child is reaped before we take stderr.
     unsafe {
         libc::kill(daemon_pid as libc::pid_t, libc::SIGTERM);
     }
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     loop {
-        match child.try_wait() {
+        match guard.0.try_wait() {
             Ok(Some(_)) => break,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    child.kill().ok();
+                    guard.0.kill().ok();
                     panic!("C1 test: daemon did not exit within 5s after SIGTERM");
                 }
                 std::thread::sleep(Duration::from_millis(50));
@@ -619,7 +653,8 @@ fn test_daemon_e2e_drop_counter_zero_under_normal_load_C1() {
     // This message fires when event_rx is dropped and try_send gets TrySendError::Closed.
     // Its absence proves the fan-out task held event_rx throughout the test run (C1 fix).
     let stderr_output = {
-        let mut stderr = child
+        let mut stderr = guard
+            .0
             .stderr
             .take()
             .expect("C1 test: stderr was piped; take() should succeed");
@@ -707,14 +742,17 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
     // MONOCLE_RING_FLUSH_DELAY_MS=500 causes flush_task_loop to sleep 500ms BEFORE
     // writing each record to disk. Combined with an immediate SIGTERM after the POST,
     // the record will be ENQUEUED but NOT YET FLUSHED when shutdown begins.
-    let mut child = std::process::Command::new(&binary)
-        .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
-        .env("RUST_LOG", "monocle_runtime=info")
-        .env("MONOCLE_RING_FLUSH_DELAY_MS", FLUSH_DELAY_MS.to_string())
-        .spawn()
-        .expect("AC-E2E-008: spawn monocle-runtime binary with MONOCLE_RING_FLUSH_DELAY_MS");
+    // Wrapped in DaemonGuard so panic on any assertion kills the child (F-DW-ADV-MED-001).
+    let mut guard = DaemonGuard(
+        std::process::Command::new(&binary)
+            .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
+            .env("RUST_LOG", "monocle_runtime=info")
+            .env("MONOCLE_RING_FLUSH_DELAY_MS", FLUSH_DELAY_MS.to_string())
+            .spawn()
+            .expect("AC-E2E-008: spawn monocle-runtime binary with MONOCLE_RING_FLUSH_DELAY_MS"),
+    );
 
-    let daemon_pid = child.id();
+    let daemon_pid = guard.0.id();
 
     let lock_path = runtime_dir.join("monocle.lock");
     assert!(
@@ -789,14 +827,16 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
     // Wait for daemon exit.
     // Budget: 10s HTTP drain (no in-flight requests so this is fast) + 500ms flush delay
     // + 2s drain-join timeout + 2s buffer = ~15s total.
+    // The guard's Drop is a safety net for earlier panic paths; here we explicitly
+    // wait to capture the real exit code before the guard drops.
     let sigterm_time = std::time::Instant::now();
     let deadline = sigterm_time + Duration::from_secs(15);
     let exit_status = loop {
-        match child.try_wait() {
+        match guard.0.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    child.kill().ok();
+                    guard.0.kill().ok();
                     let elapsed = sigterm_time.elapsed();
                     panic!(
                         "AC-E2E-008: daemon did not exit within 15s after SIGTERM \
